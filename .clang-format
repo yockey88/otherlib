@@ -1,0 +1,104 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+Cpp11BracedListStyle: false
+IndentPPDirectives: BeforeHash
+
+IndentWidth: 2
+IndentRequires: true
+ContinuationIndentWidth: 2
+ColumnLimit: 0
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+NamespaceIndentation: All
+CompactNamespaces: false
+FixNamespaceComments: true
+
+AlignConsecutiveBitFields: true
+BitFieldColonSpacing: Both
+
+AlignTrailingComments: true
+
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortLambdasOnASingleLine: Inline
+
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeConceptDeclarations: true
+BreakBeforeTernaryOperators: false
+
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+AlignOperands: DontAlign
+
+AlignAfterOpenBracket: BlockIndent
+
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterEnum: false
+  AfterStruct: false
+  AfterClass: false
+  SplitEmptyFunction: false
+  AfterControlStatement: false
+  AfterNamespace: false
+  AfterFunction: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+IncludeCategories:
+  # Headers in <> without extension.
+  - Regex:           '<([A-Za-z0-9\/-_])+>'
+    Priority:        1
+  # Headers in <> from specific external libraries.
+  - Regex:           '<((glm|spdlog|entt|glad|gtest|imgui(zmo)?|json|toml++|magic_enum|refl|nlohmann|assimp|SDL3|steam|asio)\/ | SDL*)>'
+    Priority:        2
+  # Headers in <> with extension.
+  - Regex:           '<([A-Za-z0-9\/-_])+\.h(pp|xx|h)?>'
+    Priority:        3
+  # test harness headers
+  - Regex:           '"((testing_core|fuzzing|statistics|benchmarking)\/)'
+    Priority:        4
+  # core headers
+  - Regex:           '"((testing_core|core|math|thread|engine|environment|thread)\/)'
+    Priority:        5
+  # application/asset/semi-core system headers
+  - Regex:           '"((application|io|event|asset|parsing|project|plugin|layers|thread|memory|network)\/)'
+    Priority:        6
+  # scene/ecs headers
+  - Regex:           '"((scene|ecs)\/)'
+    Priority:        7
+  # rendering/scripting/physics headers
+  - Regex:           '"((rendering|scripting|physics)\/)'
+    Priority:        8
+
+  # editor/library extensions
+  - Regex:           '"((editor)\/)'
+    Priority:        9
+---
+Language: CSharp
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterEnum: false
+  AfterStruct: false
+  AfterClass: false
+  SplitEmptyFunction: false
+  AfterControlStatement: false
+  AfterNamespace: false
+  AfterFunction: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+---
+Language: Proto
+DisableFormat: true
