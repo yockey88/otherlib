@@ -100,6 +100,12 @@ namespace other {
 
    protected:
     static T* instance;
+
+   private:
+    subsystem(subsystem&&) = delete;
+    subsystem(const subsystem&) = delete;
+    subsystem& operator=(subsystem&&) = delete;
+    subsystem& operator=(const subsystem&) = delete;
   };
   template <typename T>
   T* subsystem<T>::instance = nullptr;

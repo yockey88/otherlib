@@ -39,17 +39,6 @@ namespace other {
     static void free(void* ptr, size_t size);
 
    private:
-    // friend class ModuleRegistry;
-
-    // static void set_arena_instance(arena* arena);
-
-    // arena(arena&&) = delete;
-    // arena(const arena&) = delete;
-    // arena& operator=(arena&&) = delete;
-    // arena& operator=(const arena&) = delete;
-
-    // static arena* instance;
-
     // Registers* registers = nullptr;
 
     size_t page_allocation_cursor = 0;
@@ -61,8 +50,8 @@ namespace other {
 
     void allocate_page();
 
-    // #ifdef OTHERENV_MEMORY_DEBUG
-    //     static void ReportAllocation(void* ptr, std::size_t size);
+    // #ifdef OTHER_MEMORY_DEBUG
+    //     static void report_allocation(void* ptr, std::size_t size);
     // #endif
   };
 
