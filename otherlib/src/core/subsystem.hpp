@@ -99,6 +99,8 @@ namespace other {
     }
 
    protected:
+    subsystem() = default;
+
     static T* instance;
 
    private:
