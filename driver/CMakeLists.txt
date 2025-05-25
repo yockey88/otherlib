@@ -1,0 +1,3 @@
+add_executable(other_driver)
+target_sources(other_driver PRIVATE other_driver.cpp)
+target_link_libraries(other_driver PRIVATE otherlib)
