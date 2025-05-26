@@ -80,6 +80,7 @@ namespace other {
 #define CORE_LOG_WARN(format, ...) LOG_WARN("other-core-log", format, __VA_ARGS__)
 #define CORE_LOG_ERROR(format, ...) LOG_ERROR("other-core-log", format, __VA_ARGS__)
 #define CORE_LOG_CRITICAL(format, ...) LOG_CRITICAL("other-core-log", format, __VA_ARGS__)
+  /// \todo add automatic enter/exit function logger structs (raii tracing)
 
 }  // namespace other
 

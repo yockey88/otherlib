@@ -31,28 +31,36 @@ if (CMAKE_BUILD_TYPE MATCHES Debug-AS)
   if(MSVC)
     add_compile_options("/fsanitize=address" "/EHsc")
   else()
-    add_compile_options("-fsanitize=address" "-fno-omit-frame-pointer")
+    add_compile_options("-fsanitize=address")
   endif()
 endif()
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   message(STATUS "Debug build enabled")
   if(MSVC)
-    add_compile_options("/Zi" "/Od")
+    add_compile_options("/Zi" "/Od" "/D_DEBUG" "/EHsc")
+    add_definitions("-D_CRT_SECURE_NO_WARNINGS")
   else()
     add_compile_options("-ggdb3" "-O0")
   endif()
 else()
   message(STATUS "Release build enabled")
   if(MSVC)
-    add_compile_options("/O2" "/GL" "/Gy")
+    # set(CMAKE_MSVC_RUNTIME_CHECKS "")
+    # add_compile_options("/O2" "/Gy" "/GL" "/DNDEBUG")
   else()
-    add_compile_options("-O2" "-flto")
+    add_compile_options("-O2")
   endif()
 endif()
 
 if (MSVC)
   set(VS_STARTUP_PROJECT "other_driver")
+endif()
+
+if (CMAKE_BUILD_TYPE MATCHES Debug-AS OR CMAKE_BUILD_TYPE MATCHES Debug)
+  set(OTHER_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug")
+else()
+  set(OTHER_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release")
 endif()
 
 set(OTHER_EXTERN_INCLUDES
@@ -61,6 +69,9 @@ set(OTHER_EXTERN_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/tomlplusplus
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/spdlog
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/stb
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/include
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/glm
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include
 )

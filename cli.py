@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import argparse
+import shutil
 
 def find_msbuild():
   # Check if MSBuild is in the PATH
@@ -45,6 +46,20 @@ def build_sln_file(sln_file, cfg=None):
     print(f"Error: {e}")
     sys.exit(1)
 
+def copy_dlls(cfg):
+  print(f"Copying DLLs for configuration: {cfg}...")
+  dlls = [
+    f"extern/sdl/lib/{cfg.lower()}/SDL3.dll",
+  ]
+  
+  for dll in dlls:
+    if os.path.exists(dll):
+      dest = f"build/driver/{cfg}/"
+      shutil.copy(dll, dest)
+      print(f"Copied {dll} to {dest}")
+    else:
+      print(f"Warning: {dll} does not exist.")
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="A simple CLI for a Python project.")
   parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output.")
@@ -71,6 +86,7 @@ if __name__ == "__main__":
         print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
         sys.exit(1)
       build_sln_file(filename, cfg)
+      copy_dlls(cfg)
       
 
     if args.run:

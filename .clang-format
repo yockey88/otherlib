@@ -64,24 +64,11 @@ IncludeCategories:
   - Regex:           '<([A-Za-z0-9\/-_])+\.h(pp|xx|h)?>'
     Priority:        3
   # test harness headers
-  - Regex:           '"((testing_core|fuzzing|statistics|benchmarking)\/)'
+  - Regex:           '"((core|renderer|plugin|driver)\/)'
     Priority:        4
-  # core headers
-  - Regex:           '"((testing_core|core|math|thread|engine|environment|thread)\/)'
-    Priority:        5
   # application/asset/semi-core system headers
-  - Regex:           '"((application|io|event|asset|parsing|project|plugin|layers|thread|memory|network)\/)'
-    Priority:        6
-  # scene/ecs headers
-  - Regex:           '"((scene|ecs)\/)'
-    Priority:        7
-  # rendering/scripting/physics headers
-  - Regex:           '"((rendering|scripting|physics)\/)'
-    Priority:        8
-
-  # editor/library extensions
-  - Regex:           '"((editor)\/)'
-    Priority:        9
+  - Regex:           '"((pbrt)\/)'
+    Priority:        5
 ---
 Language: CSharp
 BreakBeforeBraces: Custom

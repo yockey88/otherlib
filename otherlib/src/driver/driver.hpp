@@ -6,10 +6,12 @@
 
 #include "core/config_table.hpp"
 #include "core/defines.hpp"
-
 #include "plugin/plugin.hpp"
+#include "renderer/renderer.hpp"
 
 namespace other {
+
+  class driver_thread;
 
   class OTHER_CLASS driver {
    public:
@@ -17,16 +19,33 @@ namespace other {
         : config(config) {}
     virtual ~driver() = default;
 
-    virtual void initialize() = 0;
-    virtual void run() = 0;
-    virtual void shutdown() = 0;
+    void initialize();
+    void run();
+    void shutdown();
+
+    static std::pair<driver*, std::string> create(const config_table& config);
+    static void destroy(const std::string& name, driver* instance);
 
    protected:
     const config_table& configuration() const {
       return config;
     }
 
+    virtual void on_initialize() = 0;
+    virtual void on_run() = 0;
+    virtual void on_shutdown() = 0;
+
+    bool should_shutdown() const {
+      return shutdown_requested;
+    }
+
+    void pump_events();
+    virtual void on_event(SDL_Event* event) {}
+
+    scope<renderer> get_renderer() const;
+
    private:
+    bool shutdown_requested = false;
     config_table config;
   };
 

@@ -47,11 +47,6 @@ namespace other {
       other.object = nullptr;
     }
 
-    // Ref(View<T> view) {
-    //   object = view.object;
-    //   IncRef();
-    // }
-
     ref& operator=(const ref<T>& other) {
       if (this != &other) {
         object = other.object;
@@ -190,7 +185,7 @@ namespace other {
     }
 
     template <typename U>
-    friend class Ref;
+    friend class ref;
   };
 
   template <typename T, typename... Args>

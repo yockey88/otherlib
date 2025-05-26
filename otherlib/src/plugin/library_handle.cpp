@@ -4,13 +4,10 @@
 #include "plugin/library_handle.hpp"
 
 #include "core/fnv.hpp"
-#include "core/logger.hpp"
-
-#include "plugin/plugin.hpp"
 
 namespace other {
 
-  symbol& library_handle::get_symbol(const std::string_view sym) {
+  std::expected<symbol, std::nullptr_t> library_handle::get_symbol(const std::string_view sym) {
     uint64_t hash = FNV(sym);
     auto it = symbols.find(hash);
     if (it != symbols.end()) {
@@ -19,16 +16,13 @@ namespace other {
 
     symbol sym_obj = load_symbol(sym);
     auto [it2, inserted] = symbols.insert({ hash, sym_obj });
-    if (!inserted) {
-      throw std::runtime_error(std::format("Failed to insert symbol into map : {}", sym));
+    if (!inserted || it2 == symbols.end()) {
+      return std::unexpected(nullptr);
+    } else if (it2->second.address == nullptr) {
+      return std::unexpected(nullptr);
     }
 
     return it2->second;
-  }
-
-  void library_handle::call_plugin_binder(other_plugin_argv* argv) {
-    subsystem<arena>::set(argv->arena);
-    subsystem<logger>::set(argv->logger);
   }
 
 }  // namespace other

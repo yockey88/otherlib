@@ -12,6 +12,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "core/defines.hpp"
+
 namespace other {
 
   template <typename T>
@@ -51,6 +53,10 @@ namespace other {
         throw std::runtime_error("Cannot set subsystem instance to null.");
       }
       instance = obj;
+
+      if constexpr (requires(T t) { { T::on_set(std::declval<T*>()) } -> std::same_as<void>; }) {
+        T::on_set(obj);
+      }
     }
 
     static void initialize() {

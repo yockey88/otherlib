@@ -23,6 +23,12 @@ target_sources(other_infrastructure
 
       src/driver/driver.cpp
       src/driver/terminal_driver.cpp
+
+      src/renderer/rendering_api.cpp
+      src/renderer/backends/opengl_api.cpp
+      src/renderer/renderer_backend.cpp
+      src/renderer/renderer.cpp
+      src/renderer/shader.cpp
 )
 if (MSVC)
     target_sources(other_infrastructure
@@ -31,8 +37,13 @@ if (MSVC)
             platform/windows/windows_plugin.cpp
     )
 else()
+### TODO: add linux support
 endif()
+
+
 target_include_directories(other_infrastructure PUBLIC ${OTHER_INCLUDES})
+target_link_directories(other_infrastructure PUBLIC ${OTHER_LIBRARIES_PATH})
+target_link_libraries(other_infrastructure PUBLIC imgui SDL3 glad)
 
 add_library(otherlib)
 target_sources(otherlib PRIVATE src/other.cpp)

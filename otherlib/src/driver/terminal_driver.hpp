@@ -14,9 +14,9 @@ namespace other {
         : driver(config) {}
     virtual ~terminal_driver() = default;
 
-    void initialize() override;
-    void run() override;
-    void shutdown() override;
+    void on_initialize() override;
+    void on_run() override;
+    void on_shutdown() override;
   };
 
   driver* create_terminal_driver(const config_table& config);

@@ -40,17 +40,14 @@ namespace other {
     if (handle == nullptr) {
       CORE_LOG_ERROR("Library handle is null");
       return {
-        .name = sym_name,
         .address = nullptr,
       };
     }
 
     symbol sym = {
-      .name = sym_name,
       .address = (void*)GetProcAddress(handle, sym_name.data()),
     };
     if (sym.address == nullptr) {
-      CORE_LOG_ERROR("Failed to get symbol '{}' from library '{}'", sym_name, filepath);
       print_error();
     }
     return sym;
@@ -75,7 +72,7 @@ namespace other {
     // use converter (.to_bytes: wstr->str, .from_bytes: str->wstr)
     std::string error_str = converter.to_bytes(error_wstr);
 
-    CORE_LOG_ERROR("Error [{}] : {}", error_code, error_str);
+    CORE_LOG_ERROR("Windows Error [{}] :\n\t!> {}", error_code, error_str);
   }
 
 }  // namespace other

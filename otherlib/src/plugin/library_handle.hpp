@@ -4,6 +4,7 @@
 #ifndef OTHER_PLUGIN_LIBRARY_HANDLE_HPP
 #define OTHER_PLUGIN_LIBRARY_HANDLE_HPP
 
+#include <expected>
 #include <map>
 #include <string_view>
 
@@ -12,7 +13,6 @@ namespace other {
   struct other_plugin_argv;
 
   struct symbol {
-    std::string_view name;
     void* address;
 
     template <typename Fn>
@@ -29,7 +29,7 @@ namespace other {
 
     virtual void load() = 0;
     virtual bool is_loaded() const = 0;
-    symbol& get_symbol(const std::string_view symbol);
+    std::expected<symbol, std::nullptr_t> get_symbol(const std::string_view symbol);
 
     virtual void unload() = 0;
 
@@ -39,10 +39,6 @@ namespace other {
     std::map<uint64_t, symbol> symbols;
 
     virtual symbol load_symbol(const std::string_view symbol) = 0;
-
-   private:
-    friend class plugin;
-    void call_plugin_binder(other_plugin_argv* argv);
   };
 
 }  // namespace other

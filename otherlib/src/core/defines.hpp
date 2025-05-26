@@ -16,6 +16,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 // #include <glm/glm.hpp>
@@ -110,13 +111,18 @@ namespace other {
       // PROFILE_DEALLOCATION(ptr);
       delete ptr;
     }
+
+    scope_deleter() = default;
+    template <typename U>
+      requires std::is_base_of_v<T, U>
+    scope_deleter(const scope_deleter<U>&) {}
   };
 
   template <typename T>
   using scope_dtor = scope_deleter<T>;
 
   template <typename T>
-  using scope = std::unique_ptr<T>;
+  using scope = std::unique_ptr<T, scope_deleter<T>>;
 
   template <typename T>
   using opt = std::optional<T>;
@@ -128,7 +134,9 @@ namespace other {
   ///    memory pool to allocate into
   scope<T> make_scope(Args&&... args) {
     // PROFILE_ALLOCATION(memory, max_objects * sizeof(T));
-    return std::make_unique<T>(std::forward<Args>(args)...);
+    // static arena_allocator<T> memory;
+    // return std::unique_ptr<T, scope_deleter<T>>(allocator.allocate(std::forward<Args>(args)...), scope_deleter<T>());
+    return std::unique_ptr<T, scope_deleter<T>>(new T(std::forward<Args>(args)...), scope_deleter<T>());
   }
 
   template <typename T>

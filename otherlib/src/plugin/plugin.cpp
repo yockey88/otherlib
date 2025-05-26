@@ -6,6 +6,7 @@
 #include "core/arena.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "renderer/renderer_backend.hpp"
 
 namespace other {
 
@@ -21,6 +22,7 @@ namespace other {
     }
 
     std::string name = filepath(plugin_path).filename().stem().string();
+    CORE_LOG_DEBUG("plugin path [{}] exists: {}", name, plugin_path);
 
     uint64_t hash = FNV(name);
     auto it = loaded_libraries.find(hash);
@@ -33,22 +35,33 @@ namespace other {
       CORE_LOG_ERROR("Failed to create library handle for plugin '{}'", plugin_path);
       return nullptr;
     }
+    CORE_LOG_DEBUG("Created library handle for plugin '{}'", plugin_path);
+
     lib_handle->load();
     if (!lib_handle->is_loaded()) {
       CORE_LOG_ERROR("Failed to load plugin library '{}'", plugin_path);
       return nullptr;
     }
 
-    symbol& sym = lib_handle->get_symbol("bind_plugin_systems");
-    if (sym.address == nullptr) {
+    auto sym_res = lib_handle->get_symbol("bind_plugin_systems");
+    if (!sym_res.has_value()) {
       CORE_LOG_ERROR("Failed to load symbol '{}' from plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
       return nullptr;
     }
+    symbol& sym = sym_res.value();
+    if (sym.address == nullptr) {
+      CORE_LOG_ERROR("Symbol '{}' not found in plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
+      return nullptr;
+    }
+
     other_plugin_argv argv = {
       subsystem<arena>::get(),
       subsystem<logger>::get(),
+      subsystem<renderer_backend>::get(),
     };
+    CORE_LOG_DEBUG("Calling plugin binding function '{}' for plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
     sym.get_function<void (*)(other_plugin_argv*)>()(&argv);
+    CORE_LOG_DEBUG("Plugin binding function '{}' called successfully for plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
 
     auto [itr2, success] = loaded_libraries.insert({ hash, std::move(lib_handle) });
     if (!success || itr2 == loaded_libraries.end()) {
@@ -56,6 +69,7 @@ namespace other {
       throw std::runtime_error("Failed to insert library handle into map");
     }
 
+    CORE_LOG_DEBUG("successfylly loaded plugin library '{}'", name);
     return itr2->second;
   }
 
@@ -75,22 +89,20 @@ namespace other {
     return nullptr;
   }
 
-  void plugin::unload_plugin_library(const std::string_view plugin_path) {
-    for (auto& [hash, lib_handle] : loaded_libraries) {
-      if (lib_handle != nullptr) {
-        lib_handle->unload();
-      }
+  void plugin::unload_plugin_library(const std::string_view plugin_name) {
+    auto* lib_handle = get_plugin_library(plugin_name);
+    if (lib_handle == nullptr) {
+      CORE_LOG_ERROR("Plugin library '{}' not found", plugin_name);
+      return;
     }
-    loaded_libraries.clear();
-  }
 
-  void plugin::unload_all_plugin_libraries() {
-    for (auto& [hash, lib_handle] : loaded_libraries) {
-      if (lib_handle != nullptr) {
-        lib_handle->unload();
-      }
+    auto it = loaded_libraries.find(FNV(plugin_name));
+    if (it != loaded_libraries.end()) {
+      lib_handle->unload();
+      loaded_libraries.erase(it);
+    } else {
+      CORE_LOG_ERROR("Plugin library '{}' not found in loaded libraries", plugin_name);
     }
-    loaded_libraries.clear();
   }
 
 }  // namespace other

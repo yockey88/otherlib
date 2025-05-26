@@ -5,16 +5,17 @@
 #define OTHER_PLUGIN_PLUGIN_HPP
 
 #include "core/defines.hpp"
-
 #include "plugin/library_handle.hpp"
 
 namespace other {
 
   class arena;
   class logger;
+  class renderer_backend;
   struct OTHER_CLASS other_plugin_argv {
     arena* arena = nullptr;
     logger* logger = nullptr;
+    renderer_backend* renderer = nullptr;
   };
 
   class plugin {
@@ -22,8 +23,7 @@ namespace other {
     static library_handle* load_plugin_library(const std::string_view plugin_path);
     static library_handle* get_plugin_library(const std::string_view plugin_name);
 
-    static void unload_plugin_library(const std::string_view plugin_path);
-    static void unload_all_plugin_libraries();
+    static void unload_plugin_library(const std::string_view plugin_name);
 
    private:
     constexpr static const char* kPluginBindingSymbolName = "bind_plugin_systems";
@@ -37,6 +37,7 @@ namespace other {
   OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) { \
     other::subsystem<other::arena>::set(argv->arena);                  \
     other::subsystem<other::logger>::set(argv->logger);                \
+    other::subsystem<other::renderer_backend>::set(argv->renderer);    \
   }
 
 }  // namespace other
