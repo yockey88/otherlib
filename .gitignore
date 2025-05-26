@@ -6,3 +6,5 @@ artifacts/
 development-drivers
 
 dev-*.toml
+
+*-log-failure.log
