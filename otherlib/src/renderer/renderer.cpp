@@ -3,26 +3,53 @@
  **/
 #include "renderer/renderer.hpp"
 
-#include "core/logger.hpp"
 #include "renderer/renderer_backend.hpp"
+
+#include "SDL3/SDL.h"
 
 namespace other {
 
   void renderer::begin_frame() {
-    rendering()->rendering_api_instance->begin_frame();
+    rendering()->api()->begin_frame();
   }
 
   void renderer::end_frame() {
-    rendering()->rendering_api_instance->end_frame();
+    rendering()->api()->end_frame();
+  }
+
+  glm::ivec2 renderer::get_window_size() {
+    SDL_Window* window = rendering()->api()->window_handle();
+    if (window == nullptr) {
+      CORE_LOG_ERROR("SDL window handle is null, cannot get window size.");
+      return { 0, 0 };
+    }
+
+    int width, height;
+    SDL_GetWindowSize(window, &width, &height);
+    return { width, height };
   }
 
   void renderer::set_clear_color(const glm::vec4& color) {
-    auto* r = rendering();
-    r->rendering_api_instance->set_clear_color(color);
+    rendering()->api()->set_clear_color(color);
   }
 
-  resource_handle renderer::create_resource(resource_type type) {
-    return rendering()->rendering_api_instance->create_resource(type);
+  glm::vec2 renderer::get_mouse_position() {
+    SDL_Window* window = rendering()->api()->window_handle();
+    if (window == nullptr) {
+      return {};
+    }
+
+    float x, y;
+    SDL_MouseButtonFlags _ = SDL_GetGlobalMouseState(&x, &y);
+    return { x, y };
+  }
+
+  resource_handle renderer::create_resource(const std::string& name, resource_type type) {
+    return rendering()->api()->create_resource(name, type);
+  }
+
+  void renderer::destroy_resource(const resource_handle& handle) {
+    rendering()->api()->destroy_resource(handle);
   }
 
   renderer_backend* renderer::rendering() {

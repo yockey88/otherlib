@@ -6,6 +6,9 @@
 
 #include <compare>
 #include <cstdint>
+#include <string>
+
+#include "core/defines.hpp"
 
 namespace other {
 
@@ -25,6 +28,8 @@ namespace other {
 
     SHADER,
 
+    MESH,
+
     EMPTY,
     NUM_RESOURCES = EMPTY,
   };
@@ -32,6 +37,7 @@ namespace other {
 
   struct resource_handle {
     uint64_t id = 0;
+    uint64_t name_hash = 0;
     resource_type type = resource_type::EMPTY;
 
     constexpr resource_handle() = default;
@@ -43,15 +49,13 @@ namespace other {
 
   class resource {
    public:
-    resource(resource_handle handle) {}
+    resource(resource_handle handle)
+        : res_handle(handle) {}
     virtual ~resource() = default;
 
     virtual resource_type type() const = 0;
 
-   protected:
-    resource_handle& handle() {
-      return res_handle;
-    }
+    const resource_handle& handle() const { return res_handle; }
 
    private:
     resource_handle res_handle;

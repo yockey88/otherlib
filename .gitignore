@@ -2,6 +2,7 @@ build/
 .vs*/
 .cache/
 artifacts/
+wip/
 
 development-drivers
 

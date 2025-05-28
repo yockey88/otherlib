@@ -14,37 +14,55 @@ namespace other {
 
   class shader : public resource {
    public:
-    enum source_type {
+    enum source_type : uint8_t {
+      INVALID = 0,
+
       VERTEX_SHADER,
       FRAGMENT_SHADER,
-      COMPUTE_SHADER
+
+      COMPUTE_SHADER,
+      RENDER_SHADER,
+
+      NUM_SHADERS
+    };
+
+    enum compute_barrier_type : uint8_t {
+      NONE = 0,
+      SHADER_IMAGE_ACCESS,
+      /// add more here...
+
+      NUM_BARRIER_TYPES
     };
 
     shader(resource_handle handle)
         : resource(handle) {}
     virtual ~shader() = default;
 
+    static resource_handle create(const std::string_view name, const std::string_view source, source_type type);
+    static resource_handle create(const std::string_view name, const std::string_view vert_source, const std::string_view frag_source);
+
     resource_type type() const override { return resource_type::SHADER; }
 
-    void bind() const;
-    void unbind() const;
+    shader& bind();
+    void unbind();
+
+    shader& dispatch(const glm::ivec3& group_dims = { 1, 1, 1 }, compute_barrier_type barrier_type = compute_barrier_type::NONE);
 
     shader& add_source(const std::string& source, source_type type);
-    shader& finalize_shader();
+    void finalize_shader();
 
-    void set_uniform(const std::string& name, int value);
-    void set_uniform(const std::string& name, float value);
-    void set_uniform(const std::string& name, const glm::vec3& value);
-    void set_uniform(const std::string& name, const glm::vec4& value);
-    void set_uniform(const std::string& name, const glm::mat4& value);
+    shader& set_uniform(const std::string& name, int32_t value);
+    shader& set_uniform(const std::string& name, float value);
+    shader& set_uniform(const std::string& name, const glm::vec3& value);
+    shader& set_uniform(const std::string& name, const glm::vec4& value);
+    shader& set_uniform(const std::string& name, const glm::mat4& value);
 
    protected:
     bool complete = false;
     bool compiled = false;
 
+    source_type final_type = source_type::INVALID;
     std::vector<source_type> sources_attached;
-
-    resource_handle handle;
 
     void check_build_status();
   };

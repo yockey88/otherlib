@@ -25,10 +25,6 @@ namespace other {
     on_initialize();
   }
 
-  void driver::run() {
-    on_run();
-  }
-
   void driver::shutdown() {
     on_shutdown();
 
@@ -81,7 +77,7 @@ namespace other {
   }
 
   void driver::destroy(const std::string& name, driver* instance) {
-    if (name.empty()) {
+    if (name == "terminal_driver") {
       destroy_terminal_driver(instance);
     } else {
       library_handle* lib_handle = plugin::get_plugin_library(name);

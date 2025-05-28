@@ -20,7 +20,7 @@ namespace other {
     virtual ~driver() = default;
 
     void initialize();
-    void run();
+    virtual void run() = 0;
     void shutdown();
 
     static std::pair<driver*, std::string> create(const config_table& config);
@@ -32,7 +32,6 @@ namespace other {
     }
 
     virtual void on_initialize() = 0;
-    virtual void on_run() = 0;
     virtual void on_shutdown() = 0;
 
     bool should_shutdown() const {

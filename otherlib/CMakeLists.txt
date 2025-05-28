@@ -18,17 +18,27 @@ target_sources(other_infrastructure
       src/core/ref_counted.cpp
       src/core/value.cpp
 
+      src/math/ray.cpp
+      src/math/integrator.cpp
+
       src/plugin/library_handle.cpp
       src/plugin/plugin.cpp
 
       src/driver/driver.cpp
       src/driver/terminal_driver.cpp
 
+      src/renderer/renderer_resource.cpp
       src/renderer/rendering_api.cpp
       src/renderer/backends/opengl_api.cpp
       src/renderer/renderer_backend.cpp
       src/renderer/renderer.cpp
       src/renderer/shader.cpp
+      src/renderer/texture.cpp
+      src/renderer/gpu_buffer.cpp
+      src/renderer/mesh.cpp
+
+      src/simulation/material.cpp
+      src/simulation/scene_object.cpp
 )
 if (MSVC)
     target_sources(other_infrastructure

@@ -20,22 +20,17 @@ namespace other {
     void begin_frame();
     void end_frame();
 
+    glm::ivec2 get_window_size();
     void set_clear_color(const glm::vec4& color);
 
-    resource_handle create_resource(resource_type type);
+    glm::vec2 get_mouse_position();
+
+    resource_handle create_resource(const std::string& name, resource_type type);
+    void destroy_resource(const resource_handle& handle);
 
     template <typename T>
-    T& bind_resource(const resource_handle& handle, const std::string& name) {
-      auto* r = rendering();
-
-      uint64_t name_hash = FNV(name);
-      if (r->api()->resource_has_name(handle, name_hash)) {
-        CORE_LOG_ERROR("Resource with name '{}' already exists.", name);
-        return *r->rendering_api_instance->bind_resource_as<T>(handle);
-      }
-
-      r->api()->set_resource_name(handle, name);
-      return *r->api()->bind_resource_as<T>(handle);
+    T& get_resource(const resource_handle& handle) {
+      return *rendering()->api()->get_resource_as<T>(handle);
     }
 
    private:

@@ -10,21 +10,22 @@
 #include <SDL3/SDL.h>
 #include <glm/glm.hpp>
 
-#include "core/logger.hpp"
+#include "renderer/gpu_buffer.hpp"
+#include "renderer/mesh.hpp"
 #include "renderer/renderer_resource.hpp"
 #include "renderer/shader.hpp"
+#include "renderer/texture.hpp"
 
 namespace other {
 
   class rendering_api {
    public:
-    rendering_api(void* native_window_handle)
+    rendering_api(SDL_Window* native_window_handle)
         : native_window_handle(native_window_handle) {}
     virtual ~rendering_api() = default;
 
-    template <typename T>
-    const T window_handle() {
-      return native_window<T>();
+    SDL_Window* window_handle() {
+      return native_window();
     }
     void* get_context_handle() {
       return native_window_handle;
@@ -47,35 +48,45 @@ namespace other {
     virtual void unbind_shader_resource(const resource_handle& handle) = 0;
     virtual void compile_and_attach_source(const resource_handle& handle, const std::string& source, shader::source_type type) = 0;
     virtual void finalize_shader(const resource_handle& handle) = 0;
+    virtual void dispatch_shader(const resource_handle& handle, const glm::ivec3& group_dims, shader::compute_barrier_type barrier_type) = 0;
 
-    virtual void bind_texture_resource(const resource_handle& handle) = 0;
-    virtual void unbind_texture_resource(const resource_handle& handle) = 0;
+    virtual void bind_texture_resource(const resource_handle& handle, uint32_t index) = 0;
+    virtual void unbind_texture_resource(const resource_handle& handle, uint32_t index) = 0;
+    virtual void set_texture_filter(const resource_handle& handle, texture::filter min_filter, texture::filter mag_filter) = 0;
+    virtual void set_texture_wrap_mode(const resource_handle& handle, texture::wrap wrap_s, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_r = texture::wrap::CLAMP_TO_EDGE) = 0;
+    virtual void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) = 0;
+    virtual void bind_texture_as_image(const resource_handle& handle, uint32_t index, bool writable = false) = 0;
 
-    virtual void bind_buffer_resource(const resource_handle& handle) = 0;
+    virtual void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) = 0;
     virtual void unbind_buffer_resource(const resource_handle& handle) = 0;
+    virtual void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string& name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) = 0;
+    virtual void buffer_data(const resource_handle& handle, uint32_t binding_point, const void* data, size_t size) = 0;
+    virtual void buffer_range(const resource_handle& handle, uint32_t binding_point, size_t start, size_t size, const void* data) = 0;
 
-    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, int value) = 0;
+    virtual void bind_mesh_resource(const resource_handle& handle) = 0;
+    virtual void unbind_mesh_resource(const resource_handle& handle) = 0;
+    virtual void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<mesh::attribute>& attributes) = 0;
+    virtual void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) = 0;
+
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, float value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value) = 0;
 
-    resource_handle create_resource(resource_type type);
+    resource_handle create_resource(const std::string& name, resource_type type);
+    void destroy_resource(const resource_handle& handle);
 
     void set_resource_name(const resource_handle& handle, const std::string& name);
-    bool resource_has_name(const resource_handle& handle, uint64_t name_hash) const;
 
     template <typename T>
-    T* bind_resource_as(const resource_handle& handle) {
+    T* get_resource_as(const resource_handle& handle) {
       return (T*)get_resource(handle.id);
     }
+    resource* get_resource(uint64_t id);
 
    protected:
-    template <typename T>
-    T native_window() {
-      return static_cast<T>(native_window_handle);
-    }
-
+    SDL_Window* native_window() { return native_window_handle; }
     void set_gpu_context(void* context) {
       gpu_context = context;
     }
@@ -97,28 +108,27 @@ namespace other {
       return ++next_id;
     }
 
-    virtual resource* get_resource(uint64_t id) = 0;
+    virtual mesh* create_mesh_resource(const resource_handle& handle, resource_type type) = 0;
+    virtual void destroy_mesh_resource(const resource_handle& handle) = 0;
 
-    virtual void* create_buffer_resource(uint64_t id, resource_type type) = 0;
-    virtual void* create_texture_resource(uint64_t id, resource_type type) = 0;
-    virtual void* create_shader_resource(uint64_t id, resource_type type) = 0;
+    virtual gpu_buffer* create_buffer_resource(const resource_handle& handle, resource_type type) = 0;
+    virtual void destroy_buffer_resource(const resource_handle& handle) = 0;
+
+    virtual texture* create_texture_resource(const resource_handle& handle, resource_type type) = 0;
+    virtual void destroy_texture_resource(const resource_handle& handle) = 0;
+
+    virtual shader* create_shader_resource(const resource_handle& handle, resource_type type) = 0;
+    virtual void destroy_shader_resource(const resource_handle& handle) = 0;
 
    private:
     void* gpu_context = nullptr;
-    void* native_window_handle = nullptr;
+    SDL_Window* native_window_handle = nullptr;
 
     glm::vec3 clear_color;
 
     std::map<uint64_t, resource_handle> resource_handles;
     std::map<uint64_t, resource*> resources;
-
-    struct resource_name {
-      std::string name;
-      uint64_t hash;
-
-      constexpr auto operator<=>(const resource_name&) const = default;
-    };
-    std::map<uint64_t, resource_name> resource_names;
+    std::map<uint64_t, std::string> resource_names;
   };
 
 }  // namespace other

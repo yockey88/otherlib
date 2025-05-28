@@ -1,0 +1,195 @@
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout (rgba32f, binding = 0) uniform image2D image_output;
+
+const float epsilon = 0.0001f;
+const float infinity = 1.0/0.0;
+const float kPi = 3.14159265358979323846f;
+
+struct sphere {
+  vec3 position;
+  float radius;
+
+  vec3 albedo;
+  float reflectance;
+};
+
+layout (std140, binding = 1) uniform sphere_buffer {
+  sphere spheres[MAX_SPHERES];
+};
+
+layout (std140, binding = 2) uniform camera_buffer {
+  vec4 camera_position;
+  vec4 camera_forward;
+  /// near & far clip, padding x2
+  vec4 camera_features;
+
+  mat4 view_matrix;
+  mat4 projection_matrix;
+};
+
+layout (std140, binding = 3) uniform scene_metadata {
+  vec4 window_size;
+  int num_spheres;
+  int samples_per_pixel;
+};
+
+layout (std140, binding = 4) uniform ray_buffer {
+  vec4 pixel00_loc;
+  vec4 pixel_delta_u;
+  vec4 pixel_delta_v;
+  vec2 square_sample;
+};
+
+vec2 screen_to_ndc(ivec2 screen_coords, int screen_width, int screen_height) {
+  float ndc_x = 2.0f * (screen_coords.x / float(screen_width)) - 1.0f;
+  float ndc_y = 1.0f - 2.0f * (screen_coords.y / float(screen_height));
+  return vec2(ndc_x, ndc_y);
+}
+
+vec4 ndc_to_view(vec2 ndc_coords) {
+  vec4 homo = vec4(ndc_coords.x, ndc_coords.y, 0.f, 1.f);
+  mat4 inv_projection = inverse(projection_matrix);
+  vec4 view_coords = inv_projection * homo;
+
+  if (view_coords.w != 0) {
+    view_coords = view_coords / view_coords.w;
+  }
+  return view_coords;
+}
+
+vec3 view_to_world(vec4 view_coords) {
+  vec4 homo = vec4(view_coords.xyz, 1);
+  mat4 inv_view = inverse(view_matrix);
+  vec4 world_coords = inv_view * homo;
+  return world_coords.xyz;
+}
+
+struct interval {
+  float min;
+  float max;
+};
+
+struct intersection_record {
+  bool hit;
+  float t;
+  int idx;
+
+  vec3 color;
+  vec3 normal;
+};
+
+struct ray {
+  vec3 origin;
+  vec3 direction;
+};
+
+bool interval_contains(interval i, float a) {
+  return i.min <= a && a <= i.max;
+}
+
+bool interval_surronds(interval i, float a) {
+  return i.min < a && a < i.max;
+}
+
+vec3 get_gradient(float a, vec3 col1, vec3 col2) {
+  return (1.0 - a) * col1 + a * col2;
+}
+
+vec3 get_ray_point(float t, ray r) {
+  return r.origin + t * r.direction;
+}
+
+vec3 get_normal(sphere s, vec3 point) {
+  return (point - s.position) / s.radius;
+}
+
+void intersect_sphere(ray r, interval range, inout intersection_record record) {
+  for (int i = 0; i < num_spheres; ++i) {
+    sphere s = spheres[i];
+
+    vec3 oc = r.origin - s.position;
+    float a = dot(r.direction, r.direction);
+    float h = -dot(r.direction, oc);
+    float c = dot(oc, oc) - s.radius * s.radius;
+
+    float discriminant = h * h - a * c;
+    if (discriminant < 0) {
+      continue;
+    }
+
+    float rt_dis = sqrt(discriminant);
+    float t = (h - rt_dis) / a;
+    if (!interval_contains(range, t)) {
+      t = (h + rt_dis) / a;
+      if (!interval_contains(range, t)) {
+        continue;
+      }
+    }
+
+    record.hit = true;
+    record.t = t;
+    record.idx = i;
+
+    record.color = s.albedo;
+    record.normal = get_normal(s, get_ray_point(t, r));
+    return;
+  }
+
+  record.hit = false;
+}
+
+ray get_ray(vec2 pixel) {
+  vec3 pixel00 = pixel00_loc.xyz;
+  vec3 pixeldu = pixel_delta_u.xyz;
+  vec3 pixeldv = pixel_delta_v.xyz;
+
+  vec3 pixel_sample = pixel00 + 
+          ((float(pixel.x) + square_sample.x) * pixeldu) + 
+          ((float(pixel.y) + square_sample.y) * pixeldv);
+
+  ray r;
+  r.origin = camera_position.xyz;
+  r.direction = normalize(pixel_sample - r.origin);
+  return r;
+}
+
+vec3 cast_ray(ray r, interval range) {
+  intersection_record rec;
+  intersect_sphere(r, range, rec);
+  if (!rec.hit) {
+    float a = 0.5f * (normalize(r.direction).y + 1.f);
+    return get_gradient(a, vec3(1.f, 1.f, 1.f), vec3(0.5f, 0.7f, 1.f));
+  }
+
+  float t = rec.t;
+  
+  /// add a bit of shading
+  return 0.5 * (rec.normal + vec3(1,1,1));
+}
+
+bool debug_patch(ivec2 pixel, ivec2 bounds) {
+  return pixel.x >= bounds.x && pixel.x <= bounds.y &&
+         pixel.y >= bounds.x && pixel.y <= bounds.y;
+}
+
+vec4 get_debug_patch_color() {
+  if (num_spheres > 0) {
+    return vec4(0, 1, 0, 1);
+  } else {
+    return vec4(1, 0, 0, 1);
+  }
+}
+
+void main() {
+  ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+  
+  vec3 color = vec3(0);
+  for (int i = 0; i < samples_per_pixel; ++i) {
+    ray r = get_ray(pixel);
+    interval range = interval(0, infinity);
+
+    color += cast_ray(r, range);
+  }
+
+  imageStore(image_output, pixel, vec4(color, 1.0));
+}
