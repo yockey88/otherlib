@@ -69,9 +69,12 @@ namespace other {
     resource_handle quad_mesh_handle;
 
     resource_handle camera_buffer_handle;
-    resource_handle sphere_buffer_handle;
     resource_handle scene_metadata_handle;
     resource_handle ray_buffer_handle;
+
+    resource_handle sphere_buffer_handle;
+    resource_handle object_buffer_handle;
+    resource_handle material_buffer_handle;
 
     ref<compound_object> scene = nullptr;
 

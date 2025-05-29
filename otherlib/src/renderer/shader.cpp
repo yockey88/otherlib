@@ -3,25 +3,55 @@
  **/
 #include "renderer/shader.hpp"
 
+#include <fstream>
+
+#define STB_INCLUDE_LINE_GLSL
+#define STB_INCLUDE_IMPLEMENTATION
+#include <stb/stb_include.h>
+
 #include "core/logger.hpp"
 #include "renderer/renderer_backend.hpp"
 
 namespace other {
 
-  resource_handle shader::create(const std::string_view name, const std::string_view source, source_type type) {
-    if (name.empty() || source.empty()) {
-      CORE_LOG_ERROR("Shader name or source is empty, cannot create shader.");
+  void shader::setting::define(std::string& str) const {
+    str.append("#define ");
+    str.append(setting_name);
+    if (value.has_value()) {
+      str.append(" ");
+      str.append(value.value());
+    }
+    str.append("\n");
+  }
+
+  resource_handle shader::create(const std::string_view name, const filepath& filepath, const std::vector<setting>& settings) {
+    resource_handle handle = create_handle(name);
+    if (handle.id == 0) {
       return { 0, resource_type::EMPTY };
     }
 
-    resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(std::string{ name }, resource_type::SHADER);
-    if (handle.id == 0) {
-      CORE_LOG_ERROR("Failed to create shader resource with name: {}", name);
+    std::string source = preprocess_file(filepath, settings);
+    if (source.empty()) {
+      CORE_LOG_ERROR("Failed to preprocess shader source from file: {}", filepath.string());
       return { 0, resource_type::EMPTY };
     }
 
     (*subsystem<renderer_backend>::get()->api()->get_resource_as<shader>(handle))
-      .add_source(std::string{ source }, shader::source_type::COMPUTE_SHADER)
+      .add_source(source, source_type::COMPUTE_SHADER)
+      .finalize_shader();
+
+    CORE_LOG_DEBUG("Created shader resource with name: {}, handle ID: {}", name, handle.id);
+    return handle;
+  }
+
+  resource_handle shader::create(const std::string_view name, const std::string_view source, source_type type) {
+    resource_handle handle = create_handle(name);
+    if (handle.id == 0) {
+      return { 0, resource_type::EMPTY };
+    }
+
+    (*subsystem<renderer_backend>::get()->api()->get_resource_as<shader>(handle))
+      .add_source(std::string{ source }, type)
       .finalize_shader();
 
     CORE_LOG_DEBUG("Created shader resource with name: {}, handle ID: {}", name, handle.id);
@@ -47,6 +77,52 @@ namespace other {
 
     CORE_LOG_DEBUG("Created shader resource with name: {}, handle ID: {}", name, handle.id);
     return handle;
+  }
+
+  std::string shader::preprocess_file(const filepath& file, const std::vector<setting>& setting_definitions) {
+    CORE_LOG_DEBUG("Attempting to preprocess shader source from file: {}", file.string());
+    std::ifstream file_stream(file);
+    if (!file_stream.is_open()) {
+      CORE_LOG_ERROR("Failed to open shader file: {}", file.string());
+      return {};
+    }
+
+    std::string raw_source;
+    {
+      std::stringstream ss;
+      ss << file_stream.rdbuf();
+      file_stream.close();
+      raw_source = ss.str();
+    }
+
+    char error_message[256];
+    std::memset(error_message, 0, sizeof(error_message));
+
+    std::string src;
+    src.append("#version 460 core\n");
+    for (const auto& setting : setting_definitions) {
+      setting.define(src);
+    }
+    src.append(raw_source);
+
+    std::string dir_path = file.parent_path().string();
+    std::string name = file.filename().string();
+    CORE_LOG_DEBUG("Including shader source from directory: {}, name: {}", dir_path, name);
+
+    char* buffer = src.data();
+    char* dir_str_buffer = dir_path.data();
+    char* name_buffer = name.data();
+
+    char* included_source = stb_include_string(buffer, nullptr, dir_str_buffer, name_buffer, error_message);
+    if (included_source == nullptr) {
+      CORE_LOG_ERROR("Failed to include shader source: {}", error_message);
+      return {};
+    }
+
+    std::string res = std::string(included_source);
+    free(included_source);
+
+    return res;
   }
 
   shader& shader::bind() {
@@ -86,6 +162,7 @@ namespace other {
     CORE_LOG_DEBUG("Attaching shader source [{}], resource-handle = {}", type, handle().id);
     subsystem<renderer_backend>::get()->api()->compile_and_attach_source(handle(), source, type);
 
+    sources.push_back(source);
     sources_attached.push_back(type);
     check_build_status();
 
@@ -135,6 +212,33 @@ namespace other {
   shader& shader::set_uniform(const std::string& name, const glm::mat4& value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
+  }
+
+  shader& shader::add_setting(const std::string& setting, opt<std::string> value) {
+    std::string defn = "#define " + setting;
+    if (value.has_value()) {
+      defn += " " + value.value();
+    }
+    defn += "\n";
+    setting_definitions.push_back(defn);
+    CORE_LOG_DEBUG("Added shader setting: {}", defn);
+    return *this;
+  }
+
+  resource_handle shader::create_handle(const std::string_view name) {
+    if (name.empty()) {
+      CORE_LOG_ERROR("Shader name is empty, cannot create handle.");
+      return { 0, resource_type::EMPTY };
+    }
+
+    resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(std::string{ name }, resource_type::SHADER);
+    if (handle.id == 0) {
+      CORE_LOG_ERROR("Failed to create shader handle with name: {}", name);
+      return { 0, resource_type::EMPTY };
+    }
+
+    CORE_LOG_DEBUG("Created shader handle with name: {}, ID: {}", name, handle.id);
+    return handle;
   }
 
   void shader::check_build_status() {

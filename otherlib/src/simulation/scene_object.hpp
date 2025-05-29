@@ -6,6 +6,8 @@
 
 #include "core/ref.hpp"
 
+#include "math/interval.hpp"
+#include "math/orthonormal_basis.hpp"
 #include "math/ray.hpp"
 #include "simulation/material.hpp"
 

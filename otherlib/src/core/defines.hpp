@@ -39,9 +39,11 @@
   #ifdef OTHER_CLIENT
     #define OTHER_API extern "C" __declspec(dllexport)
     #define OTHER_CLASS __declspec(dllexport)
+    #define OTHER_ALIGN(x) __declspec(align(x))
   #else
     #define OTHER_API
     #define OTHER_CLASS
+    #define OTHER_ALIGN(x)
   #endif  // OTHER_CLIENT
 #endif    // OTHER_ENVIRONMENT_WINDOWS
 
@@ -49,9 +51,11 @@
   #ifdef OTHER_CLIENT
     #define OTHER_API __attribute__((visibility("default")))
     #define OTHER_CLASS __attribute__((visibility("default")))
+    #define OTHER_ALIGN(x) __attribute__((aligned(x)))
   #else
     #define OTHER_API
     #define OTHER_CLASS
+    #define OTHER_ALIGN(x)
   #endif  // OTHER_CLIENT
 #endif    // OTHER_ENVIRONMENT_LINUX
 
@@ -70,6 +74,16 @@
 #ifdef OTHER_ENVIRONMENT_PROFILE
   #define OTHER_PROFILE_BUILD
 #endif  // !OTHER_PROFILE
+
+#ifndef OTHER_API
+  #error "OTHER_API is not defined. Please define it for your platform."
+#endif  // !OTHER_API
+#ifndef OTHER_CLASS
+  #error "OTHER_CLASS is not defined. Please define it for your platform."
+#endif  // !OTHER_CLASS
+#ifndef OTHER_ALIGN
+  #error "OTHER_ALIGN is not defined. Please define it for your platform."
+#endif  // !OTHER_ALIGN
 
 namespace other {
 

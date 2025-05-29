@@ -3,8 +3,6 @@
  **/
 #include "driver/terminal_driver.hpp"
 
-#include <random>
-
 #include <SDL3/SDL_events.h>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -12,105 +10,18 @@
 
 #include "SDL3/SDL_keycode.h"
 
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 
 #include "core/arena_allocator.hpp"
+#include "renderer/gpu_structs.hpp"
+
+#include "math/constants.hpp"
+#include "math/random.hpp"
 
 namespace other {
   namespace {
-
-    inline float rand_float() {
-      static std::uniform_real_distribution<float> distribution(0.0, 1.0);
-      static std::mt19937 generator;
-      return distribution(generator);
-    }
-
-    inline float rand_float(float min, float max) {
-      // Returns a random real in [min,max).
-      return min + (max - min) * rand_float();
-    }
-
-    glm::vec3 sample_square() {
-      /// Sample a point in the square [-0.5, 0.5] x [-0.5, 0.5]
-      return glm::vec3(rand_float() - 0.5f, rand_float() - 0.5f, 0.f);
-    }
-
-    inline glm::vec3 random_vec3() {
-      return glm::vec3(rand_float(), rand_float(), rand_float());
-    }
-
-    inline glm::vec3 random_vec3(float min, float max) {
-      return glm::vec3(rand_float(min, max), rand_float(min, max), rand_float(min, max));
-    }
-
-    inline glm::vec3 random_unit_vector() {
-      do {
-        auto p = random_vec3(-1.f, 1.f);
-        float lensq = glm::dot(p, p);
-        if (epsilon < lensq && lensq <= 1.f) {
-          return glm::normalize(p);
-        }
-      } while (true);
-    }
-
-    inline glm::vec3 random_in_hemisphere(const glm::vec3& normal) {
-      glm::vec3 in_unit_sphere = random_unit_vector();
-      if (glm::dot(in_unit_sphere, normal) > 0.f) {
-        return in_unit_sphere;
-      } else {
-        return -in_unit_sphere;
-      }
-    }
-
-    inline float linear_to_gamma(float linear_component) {
-      if (linear_component > 0) {
-        return std::sqrt(linear_component);
-      }
-
-      return 0;
-    }
-
-    __declspec(align(16)) struct sphere {
-      glm::vec3 position;
-      float radius;
-      glm::vec3 albedo;
-      float reflectance;
-    };
-
-    constexpr size_t kMaxSpheres = 100;
-    __declspec(align(16)) struct sphere_buffer {
-      sphere spheres[kMaxSpheres];
-    };
-
-    __declspec(align(16)) struct camera_data {
-      glm::vec4 position;
-      glm::vec4 forward;
-
-      // near & far clip, padding x2
-      glm::vec4 camera_features;
-
-      glm::mat4 view_matrix;
-      glm::mat4 projection_matrix;
-    };
-
-    __declspec(align(16)) struct scene_metadata {
-      glm::vec4 window_size;
-      int num_spheres;
-      int samples_per_pixel = 100;
-    };
-
-    __declspec(align(16)) struct camera_buffer {
-      glm::vec4 camera_position;
-      glm::vec4 camera_forward;
-    };
-
-    __declspec(align(16)) struct ray_gen_data {
-      glm::vec4 pixel00_loc;
-      glm::vec4 pixel_delta_u;
-      glm::vec4 pixel_delta_v;
-      glm::vec3 square_sample;
-    };
 
     constexpr static const char* vert_shader_source = R"(
     #version 460 core
@@ -148,19 +59,31 @@ namespace other {
       1.0, -1.0f, 0.0f, 1.0f, 0.0f
     };
 
-    static std::array<sphere, kMaxSpheres> spheres = {
-      sphere{
+    constexpr static std::array spheres = {
+      gpu::sphere{
         glm::vec3(0.f, 0.f, 0.f),
         0.5f,
+      },
+      gpu::sphere{
+        glm::vec3(0.f, -100.5, 0.f),
+        100.f,
+      },
+    };
+
+    constexpr static std::array materials = {
+      gpu::material{
         glm::vec3(0.2f, 0.2f, 0.2f),
         0.15f,
       },
-      sphere{
-        glm::vec3(0.f, -100.5, 0.f),
-        100.f,
+      gpu::material{
         glm::vec3(0.3f, 0.8f, 0.3f),
         0.15f,
       },
+    };
+
+    constexpr static std::array objects = {
+      gpu::object{ { gpu::SHAPE_SPHERE, 0 }, 0 },
+      gpu::object{ { gpu::SHAPE_SPHERE, 1 }, 1 },
     };
 
   }  // namespace
@@ -194,35 +117,25 @@ namespace other {
       .finalize_mesh();
 
     image_size = renderer->get_window_size();
-    CORE_LOG_DEBUG("Image size: [{}, {}]", image_size.x, image_size.y);
-    screen_texture_handle = renderer->create_resource("screen_texture", resource_type::TEXTURE);
-    renderer->get_resource<texture>(screen_texture_handle)
-      .set_type(texture::tex_type::TEXTURE_2D)
-      .set_format(texture::format::RGBA32F)
-      .set_size(image_size.x, image_size.y)
-      .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
-      .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE)
-      .finalize_image(0, true);
+    screen_texture_handle = texture::create("screen_texture", texture::tex_type::TEXTURE_2D, texture::format::RGBA32F, image_size.x, image_size.y, true);
 
-    std::string comp_shader_file = "";
-    if (std::ifstream file("resources/raytrace.comp"); file.is_open()) {
-      std::stringstream buffer;
-      buffer << "#version 460 core\n";
-      buffer << "#define MAX_SPHERES " << kMaxSpheres << "\n";
-      buffer << file.rdbuf();
-      file.close();
-      comp_shader_file = buffer.str();
-    } else {
-      CORE_LOG_ERROR("Failed to open compute shader file.");
-    }
-
-    comp_shader_handle = shader::create("comp_shader", comp_shader_file, shader::source_type::COMPUTE_SHADER);
+    const auto settings = {
+      shader::setting{ "DEBUG_PATCH" },
+      shader::setting{ "MAX_MATERIALS", std::to_string(gpu::kMaxMaterials) },
+      shader::setting{ "MAX_SPHERES", std::to_string(gpu::kMaxSpheres) },
+      shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) },
+      shader::setting{ "USE_WEIGHT_COSINE_HEMISPHERE" },
+    };
+    comp_shader_handle = shader::create("comp_shader", "resources/raytrace.comp", settings);
     screen_shader_handle = shader::create("screen_shader", vert_shader_source, frag_shader_source);
 
-    sphere_buffer_handle = gpu_buffer::create("sphere_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     camera_buffer_handle = gpu_buffer::create("camera_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     scene_metadata_handle = gpu_buffer::create("scene_metadata", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     ray_buffer_handle = gpu_buffer::create("ray_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+
+    material_buffer_handle = gpu_buffer::create("material_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+    sphere_buffer_handle = gpu_buffer::create("sphere_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+    object_buffer_handle = gpu_buffer::create("object_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
 
     cam.position = glm::vec3(0, 0, 1);
     cam.target = glm::vec3(0, 0, 0);
@@ -252,6 +165,40 @@ namespace other {
     mouse.position = renderer->get_mouse_position();
   }
 
+  namespace {
+
+    void write_materials_to_buffer(gpu_buffer& buffer) {
+      gpu::material_buffer mat_buf;
+      for (size_t i = 0; i < materials.size() && i < gpu::kMaxMaterials; ++i) {
+        mat_buf.materials[i] = materials[i];
+      }
+
+      buffer.set_data(&mat_buf, sizeof(gpu::material_buffer))
+        .finalize_buffer();
+    }
+
+    void write_spheres_to_buffer(gpu_buffer& buffer) {
+      gpu::sphere_buffer sphere_buf;
+      for (size_t i = 0; i < spheres.size() && i < gpu::kMaxSpheres; ++i) {
+        sphere_buf.spheres[i] = spheres[i];
+      }
+
+      buffer.set_data(&sphere_buf, sizeof(gpu::sphere_buffer))
+        .finalize_buffer();
+    }
+
+    void write_objects_to_buffer(gpu_buffer& buffer) {
+      gpu::object_buffer obj_buf;
+      for (size_t i = 0; i < objects.size() && i < gpu::kMaxObjects; ++i) {
+        obj_buf.objects[i] = objects[i];
+      }
+
+      buffer.set_data(&obj_buf, sizeof(gpu::object_buffer))
+        .finalize_buffer();
+    }
+
+  }  // namespace
+
   void terminal_driver::run() {
     CORE_LOG_DEBUG("Running terminal driver...");
     while (running) {
@@ -261,48 +208,32 @@ namespace other {
         break;
       }
 
-      /// update mouse state and camera
       glm::ivec2 window_size = renderer->get_window_size();
-      // glm::vec2 mouse_pos = renderer->get_mouse_position();
-      // SDL_WarpMouseInWindow(SDL_GetMouseFocus(), float(window_size.x) / 2, float(window_size.y) / 2);
-
-      float rel_x, rel_y;
-      SDL_GetRelativeMouseState(&rel_x, &rel_y);
-      glm::vec2 rel_pos = { rel_x, rel_y };
-      cam.euler_angles.x += rel_pos.x * cam.sensitivity;
-      cam.euler_angles.y -= rel_pos.y * cam.sensitivity;
-
-      if (cam.constrain_pitch) {
-        if (cam.euler_angles.y > 89.0f) {
-          cam.euler_angles.y = 89.0f;
-        }
-        if (cam.euler_angles.y < -89.0f) {
-          cam.euler_angles.y = -89.0f;
-        }
-      }
-
-      glm::vec3 new_dir;
-      new_dir.x = cos(glm::radians(cam.euler_angles.x)) * cos(glm::radians(cam.euler_angles.y));
-      new_dir.y = sin(glm::radians(cam.euler_angles.y));
-      new_dir.z = sin(glm::radians(cam.euler_angles.x)) * cos(glm::radians(cam.euler_angles.y));
-      cam.target = cam.position + glm::normalize(new_dir);
 
       renderer->begin_frame();
 
-      scene_metadata metadata;
-      metadata.num_spheres = 2;
+      gpu::scene_metadata metadata;
       metadata.window_size = glm::vec4(window_size.x, window_size.y, 0, 0);
-      metadata.samples_per_pixel = 1;
+
+      metadata.object_data = {
+        spheres.size(),
+        objects.size(),
+        materials.size(),
+        0
+      };
+
+      metadata.samples_per_pixel = samples_per_pixel;
+      metadata.max_depth = 50;
 
       renderer->get_resource<gpu_buffer>(scene_metadata_handle)
         .set_shader_resource(3, comp_shader_handle)
-        .set_data(&metadata, sizeof(scene_metadata))
+        .set_data(&metadata, sizeof(gpu::scene_metadata))
         .finalize_buffer();
 
       glm::mat4 view_mat = cam.get_view_matrix();
       glm::mat4 projection_mat = cam.get_projection_matrix(window_size);
 
-      camera_data cam_data;
+      gpu::camera_data cam_data;
       cam_data.position = glm::vec4(cam.position, 1.f);
       cam_data.forward = glm::vec4(glm::normalize(cam.target - cam.position), 0.f);
       cam_data.camera_features = glm::vec4(cam.clip.near_plane, cam.clip.far_plane, 0.f, 0.f);
@@ -311,28 +242,23 @@ namespace other {
 
       renderer->get_resource<gpu_buffer>(camera_buffer_handle)
         .set_shader_resource(2, comp_shader_handle)
-        .set_data(&cam_data, sizeof(camera_data))
+        .set_data(&cam_data, sizeof(gpu::camera_data))
         .finalize_buffer();
 
-      ray_gen_data ray_data;
+      gpu::ray_gen_data ray_data;
       ray_data.pixel00_loc = glm::vec4(pixel00_loc, 0.f);
       ray_data.pixel_delta_u = glm::vec4(pixel_delta_u, 0.f);
       ray_data.pixel_delta_v = glm::vec4(pixel_delta_v, 0.f);
-      ray_data.square_sample = sample_square();
+      ray_data.square_sample = other::sample_square();
 
       renderer->get_resource<gpu_buffer>(ray_buffer_handle)
         .set_shader_resource(4, comp_shader_handle)
-        .set_data(&ray_data, sizeof(ray_gen_data))
+        .set_data(&ray_data, sizeof(gpu::ray_gen_data))
         .finalize_buffer();
 
-      sphere_buffer sphere_buf;
-      for (size_t i = 0; i < metadata.num_spheres && i < kMaxSpheres; ++i) {
-        sphere_buf.spheres[i] = spheres[i];
-      }
-      renderer->get_resource<gpu_buffer>(sphere_buffer_handle)
-        .set_shader_resource(1, comp_shader_handle)
-        .set_data(&sphere_buf, sizeof(sphere_buffer))
-        .finalize_buffer();
+      write_materials_to_buffer(renderer->get_resource<gpu_buffer>(material_buffer_handle).set_shader_resource(6, comp_shader_handle));
+      write_spheres_to_buffer(renderer->get_resource<gpu_buffer>(sphere_buffer_handle).set_shader_resource(1, comp_shader_handle));
+      write_objects_to_buffer(renderer->get_resource<gpu_buffer>(object_buffer_handle).set_shader_resource(5, comp_shader_handle));
 
       /// compute pass
       renderer->get_resource<texture>(screen_texture_handle).bind(0);
@@ -355,6 +281,8 @@ namespace other {
     CORE_LOG_DEBUG("Shutting down terminal driver...");
 
     renderer->destroy_resource(sphere_buffer_handle);
+    renderer->destroy_resource(object_buffer_handle);
+    renderer->destroy_resource(material_buffer_handle);
     renderer->destroy_resource(camera_buffer_handle);
     renderer->destroy_resource(scene_metadata_handle);
     renderer->destroy_resource(screen_texture_handle);

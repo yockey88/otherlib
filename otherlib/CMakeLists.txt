@@ -18,6 +18,9 @@ target_sources(other_infrastructure
       src/core/ref_counted.cpp
       src/core/value.cpp
 
+      src/math/random.cpp
+      src/math/orthonormal_basis.cpp
+      src/math/interval.cpp
       src/math/ray.cpp
       src/math/integrator.cpp
 
