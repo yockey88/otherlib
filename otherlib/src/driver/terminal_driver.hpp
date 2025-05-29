@@ -5,6 +5,7 @@
 #define OTHER_DRIVER_TERMINAL_DRIVER_HPP
 
 #include "driver/driver.hpp"
+#include "renderer/renderer_resource.hpp"
 
 #include "glm/fwd.hpp"
 #include "math/ray.hpp"
@@ -72,16 +73,20 @@ namespace other {
     resource_handle scene_metadata_handle;
     resource_handle ray_buffer_handle;
 
+    resource_handle material_buffer_handle;
+    resource_handle lambertian_buffer_handle;
+    resource_handle metal_buffer_handle;
+    resource_handle dielectrics_buffer_handle;
+
     resource_handle sphere_buffer_handle;
     resource_handle object_buffer_handle;
-    resource_handle material_buffer_handle;
 
     ref<compound_object> scene = nullptr;
 
     constexpr static uint8_t kPixelStride = 4;
 
     float pixel_sample_scale = 0.f;
-    uint32_t samples_per_pixel = 10;
+    uint32_t samples_per_pixel = 5;
     uint32_t max_depth = 50;
     float reflectance = 0.15f;
 

@@ -34,6 +34,9 @@ namespace other {
     void begin_frame() override;
     void end_frame() override;
 
+    void begin_ui_frame_backend_newframe() override;
+    void end_ui_frame_backend_draw_data() override;
+
     void bind_shader_resource(const resource_handle& handle) override;
     void unbind_shader_resource(const resource_handle& handle) override;
     void compile_and_attach_source(const resource_handle& handle, const std::string& source, shader::source_type type) override;

@@ -9,7 +9,7 @@
 #include <glm/fwd.hpp>
 
 #include "SDL3/SDL_keycode.h"
-
+#include "imgui.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
@@ -22,6 +22,14 @@
 
 namespace other {
   namespace {
+
+    float linear_to_gamma(float linear_component) {
+      if (linear_component > 0) {
+        return std::sqrt(linear_component);
+      }
+
+      return 0;
+    }
 
     constexpr static const char* vert_shader_source = R"(
     #version 460 core
@@ -59,31 +67,41 @@ namespace other {
       1.0, -1.0f, 0.0f, 1.0f, 0.0f
     };
 
-    constexpr static std::array spheres = {
-      gpu::sphere{
-        glm::vec3(0.f, 0.f, 0.f),
-        0.5f,
-      },
-      gpu::sphere{
-        glm::vec3(0.f, -100.5, 0.f),
-        100.f,
-      },
+    constexpr static std::array lambertians = {
+      gpu::lambertian{ glm::vec3(0.2f, 0.2f, 0.2f) },
+      gpu::lambertian{ glm::vec3(0.3f, 0.8f, 0.3f) },
+    };
+
+    constexpr static std::array metallics = {
+      gpu::metal{ glm::vec3(0.8f, 0.8f, 0.8f), 0.3f },
+      gpu::metal{ glm::vec3(0.8f, 0.6f, 0.2f), 1.f },
+    };
+
+    constexpr static std::array dielectrics = {
+      gpu::dielectric{ glm::vec3(1.f, 1.f, 1.f), 1.00 / 1.33 },
+      gpu::dielectric{ glm::vec3(0.2f, 0.5f, 0.8f), 1.00 / 1.52 },
     };
 
     constexpr static std::array materials = {
-      gpu::material{
-        glm::vec3(0.2f, 0.2f, 0.2f),
-        0.15f,
-      },
-      gpu::material{
-        glm::vec3(0.3f, 0.8f, 0.3f),
-        0.15f,
-      },
+      gpu::material{ gpu::MATERIAL_LAMBERTIAN, 0 },
+      gpu::material{ gpu::MATERIAL_LAMBERTIAN, 1 },
+      gpu::material{ gpu::MATERIAL_METAL, 0 },
+      gpu::material{ gpu::MATERIAL_METAL, 1 },
+      gpu::material{ gpu::MATERIAL_DIELECTRIC, 0 },
+      gpu::material{ gpu::MATERIAL_DIELECTRIC, 1 },
+    };
+
+    constexpr static std::array spheres = {
+      gpu::sphere{ glm::vec3(0.f, 0.f, 0.f), 0.5f },
+      gpu::sphere{ glm::vec3(0.f, -100.5, 0.f), 100.f },
+      gpu::sphere{ glm::vec3(-2.f, 1.f, 0.f), 1.0f },
+      // gpu::sphere{ glm::vec3(-2.f, 1.5f, 0.f), 0.5f },
     };
 
     constexpr static std::array objects = {
       gpu::object{ { gpu::SHAPE_SPHERE, 0 }, 0 },
       gpu::object{ { gpu::SHAPE_SPHERE, 1 }, 1 },
+      gpu::object{ { gpu::SHAPE_SPHERE, 2 }, 4 },
     };
 
   }  // namespace
@@ -120,11 +138,23 @@ namespace other {
     screen_texture_handle = texture::create("screen_texture", texture::tex_type::TEXTURE_2D, texture::format::RGBA32F, image_size.x, image_size.y, true);
 
     const auto settings = {
-      shader::setting{ "DEBUG_PATCH" },
       shader::setting{ "MAX_MATERIALS", std::to_string(gpu::kMaxMaterials) },
+      shader::setting{ "MAX_LAMBERTIAN", std::to_string(gpu::kMaxLambertian) },
+      shader::setting{ "MAX_METAL", std::to_string(gpu::kMaxMetal) },
+      shader::setting{ "MAX_DIELECTRIC", std::to_string(gpu::kMaxDielectric) },
+
       shader::setting{ "MAX_SPHERES", std::to_string(gpu::kMaxSpheres) },
       shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) },
+
       shader::setting{ "USE_WEIGHT_COSINE_HEMISPHERE" },
+
+      /// material indices
+      shader::setting{ "MATERIAL_LAMBERTIAN", std::to_string(gpu::MATERIAL_LAMBERTIAN) },
+      shader::setting{ "MATERIAL_METAL", std::to_string(gpu::MATERIAL_METAL) },
+      shader::setting{ "MATERIAL_DIELECTRIC", std::to_string(gpu::MATERIAL_DIELECTRIC) },
+
+      /// shape indices
+      shader::setting{ "SPHERE_TYPE", std::to_string(gpu::SHAPE_SPHERE) },
     };
     comp_shader_handle = shader::create("comp_shader", "resources/raytrace.comp", settings);
     screen_shader_handle = shader::create("screen_shader", vert_shader_source, frag_shader_source);
@@ -134,6 +164,9 @@ namespace other {
     ray_buffer_handle = gpu_buffer::create("ray_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
 
     material_buffer_handle = gpu_buffer::create("material_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+    lambertian_buffer_handle = gpu_buffer::create("lambertian_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+    metal_buffer_handle = gpu_buffer::create("metal_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+    dielectrics_buffer_handle = gpu_buffer::create("dielectric_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     sphere_buffer_handle = gpu_buffer::create("sphere_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     object_buffer_handle = gpu_buffer::create("object_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
 
@@ -177,6 +210,36 @@ namespace other {
         .finalize_buffer();
     }
 
+    void write_lambertian_to_buffer(gpu_buffer& buffer) {
+      gpu::lambertian_buffer lam_buf;
+      for (size_t i = 0; i < lambertians.size() && i < gpu::kMaxLambertian; ++i) {
+        lam_buf.materials[i] = lambertians[i];
+      }
+
+      buffer.set_data(&lam_buf, sizeof(gpu::lambertian_buffer))
+        .finalize_buffer();
+    }
+
+    void write_metal_to_buffer(gpu_buffer& buffer) {
+      gpu::metal_buffer metal_buf;
+      for (size_t i = 0; i < metallics.size() && i < gpu::kMaxMetal; ++i) {
+        metal_buf.materials[i] = metallics[i];
+      }
+
+      buffer.set_data(&metal_buf, sizeof(gpu::metal_buffer))
+        .finalize_buffer();
+    }
+
+    void write_dielectrics_to_buffer(gpu_buffer& buffer) {
+      gpu::dielectric_buffer dielectrics_buf;
+      for (size_t i = 0; i < dielectrics.size() && i < gpu::kMaxDielectric; ++i) {
+        dielectrics_buf.materials[i] = dielectrics[i];
+      }
+
+      buffer.set_data(&dielectrics_buf, sizeof(gpu::dielectric_buffer))
+        .finalize_buffer();
+    }
+
     void write_spheres_to_buffer(gpu_buffer& buffer) {
       gpu::sphere_buffer sphere_buf;
       for (size_t i = 0; i < spheres.size() && i < gpu::kMaxSpheres; ++i) {
@@ -201,6 +264,60 @@ namespace other {
 
   void terminal_driver::run() {
     CORE_LOG_DEBUG("Running terminal driver...");
+
+    glm::ivec2 window_size = renderer->get_window_size();
+
+    gpu::scene_metadata metadata;
+    metadata.window_size = glm::vec4(window_size.x, window_size.y, 0, 0);
+
+    metadata.object_data = {
+      spheres.size(),
+      objects.size(),
+      materials.size(),
+      0
+    };
+
+    metadata.samples_per_pixel = samples_per_pixel;
+    metadata.max_depth = 50;
+
+    renderer->get_resource<gpu_buffer>(scene_metadata_handle)
+      .set_shader_resource(3, comp_shader_handle)
+      .set_data(&metadata, sizeof(gpu::scene_metadata))
+      .finalize_buffer();
+
+    glm::mat4 view_mat = cam.get_view_matrix();
+    glm::mat4 projection_mat = cam.get_projection_matrix(window_size);
+
+    gpu::camera_data cam_data;
+    cam_data.position = glm::vec4(cam.position, 1.f);
+    cam_data.forward = glm::vec4(glm::normalize(cam.target - cam.position), 0.f);
+    cam_data.camera_features = glm::vec4(cam.clip.near_plane, cam.clip.far_plane, 0.f, 0.f);
+    cam_data.view_matrix = view_mat;
+    cam_data.projection_matrix = projection_mat;
+
+    renderer->get_resource<gpu_buffer>(camera_buffer_handle)
+      .set_shader_resource(2, comp_shader_handle)
+      .set_data(&cam_data, sizeof(gpu::camera_data))
+      .finalize_buffer();
+
+    gpu::ray_gen_data ray_data;
+    ray_data.pixel00_loc = glm::vec4(pixel00_loc, 0.f);
+    ray_data.pixel_delta_u = glm::vec4(pixel_delta_u, 0.f);
+    ray_data.pixel_delta_v = glm::vec4(pixel_delta_v, 0.f);
+    ray_data.square_sample = other::sample_square();
+
+    renderer->get_resource<gpu_buffer>(ray_buffer_handle)
+      .set_shader_resource(4, comp_shader_handle)
+      .set_data(&ray_data, sizeof(gpu::ray_gen_data))
+      .finalize_buffer();
+
+    write_materials_to_buffer(renderer->get_resource<gpu_buffer>(material_buffer_handle).set_shader_resource(6, comp_shader_handle));
+    write_lambertian_to_buffer(renderer->get_resource<gpu_buffer>(lambertian_buffer_handle).set_shader_resource(7, comp_shader_handle));
+    write_metal_to_buffer(renderer->get_resource<gpu_buffer>(metal_buffer_handle).set_shader_resource(8, comp_shader_handle));
+    write_dielectrics_to_buffer(renderer->get_resource<gpu_buffer>(dielectrics_buffer_handle).set_shader_resource(9, comp_shader_handle));
+    write_spheres_to_buffer(renderer->get_resource<gpu_buffer>(sphere_buffer_handle).set_shader_resource(1, comp_shader_handle));
+    write_objects_to_buffer(renderer->get_resource<gpu_buffer>(object_buffer_handle).set_shader_resource(5, comp_shader_handle));
+
     while (running) {
       pump_events();
 
@@ -208,57 +325,7 @@ namespace other {
         break;
       }
 
-      glm::ivec2 window_size = renderer->get_window_size();
-
       renderer->begin_frame();
-
-      gpu::scene_metadata metadata;
-      metadata.window_size = glm::vec4(window_size.x, window_size.y, 0, 0);
-
-      metadata.object_data = {
-        spheres.size(),
-        objects.size(),
-        materials.size(),
-        0
-      };
-
-      metadata.samples_per_pixel = samples_per_pixel;
-      metadata.max_depth = 50;
-
-      renderer->get_resource<gpu_buffer>(scene_metadata_handle)
-        .set_shader_resource(3, comp_shader_handle)
-        .set_data(&metadata, sizeof(gpu::scene_metadata))
-        .finalize_buffer();
-
-      glm::mat4 view_mat = cam.get_view_matrix();
-      glm::mat4 projection_mat = cam.get_projection_matrix(window_size);
-
-      gpu::camera_data cam_data;
-      cam_data.position = glm::vec4(cam.position, 1.f);
-      cam_data.forward = glm::vec4(glm::normalize(cam.target - cam.position), 0.f);
-      cam_data.camera_features = glm::vec4(cam.clip.near_plane, cam.clip.far_plane, 0.f, 0.f);
-      cam_data.view_matrix = view_mat;
-      cam_data.projection_matrix = projection_mat;
-
-      renderer->get_resource<gpu_buffer>(camera_buffer_handle)
-        .set_shader_resource(2, comp_shader_handle)
-        .set_data(&cam_data, sizeof(gpu::camera_data))
-        .finalize_buffer();
-
-      gpu::ray_gen_data ray_data;
-      ray_data.pixel00_loc = glm::vec4(pixel00_loc, 0.f);
-      ray_data.pixel_delta_u = glm::vec4(pixel_delta_u, 0.f);
-      ray_data.pixel_delta_v = glm::vec4(pixel_delta_v, 0.f);
-      ray_data.square_sample = other::sample_square();
-
-      renderer->get_resource<gpu_buffer>(ray_buffer_handle)
-        .set_shader_resource(4, comp_shader_handle)
-        .set_data(&ray_data, sizeof(gpu::ray_gen_data))
-        .finalize_buffer();
-
-      write_materials_to_buffer(renderer->get_resource<gpu_buffer>(material_buffer_handle).set_shader_resource(6, comp_shader_handle));
-      write_spheres_to_buffer(renderer->get_resource<gpu_buffer>(sphere_buffer_handle).set_shader_resource(1, comp_shader_handle));
-      write_objects_to_buffer(renderer->get_resource<gpu_buffer>(object_buffer_handle).set_shader_resource(5, comp_shader_handle));
 
       /// compute pass
       renderer->get_resource<texture>(screen_texture_handle).bind(0);
@@ -280,9 +347,13 @@ namespace other {
   void terminal_driver::on_shutdown() {
     CORE_LOG_DEBUG("Shutting down terminal driver...");
 
+    renderer->destroy_resource(material_buffer_handle);
+    renderer->destroy_resource(lambertian_buffer_handle);
+    renderer->destroy_resource(metal_buffer_handle);
+
     renderer->destroy_resource(sphere_buffer_handle);
     renderer->destroy_resource(object_buffer_handle);
-    renderer->destroy_resource(material_buffer_handle);
+
     renderer->destroy_resource(camera_buffer_handle);
     renderer->destroy_resource(scene_metadata_handle);
     renderer->destroy_resource(screen_texture_handle);

@@ -11,28 +11,13 @@
 namespace other {
   namespace gpu {
 
-    constexpr static inline size_t kGpuAlignment = 16;
-#define GPU_ALIGN __declspec(align(kGpuAlignment))
+    enum material_type : int {
+      MATERIAL_LAMBERTIAN = 0,
+      MATERIAL_METAL,
+      MATERIAL_DIELECTRIC,
 
-    GPU_ALIGN struct sphere {
-      glm::vec3 position;
-      float radius;
-    };
-
-    constexpr size_t kMaxSpheres = 100;
-    GPU_ALIGN struct sphere_buffer {
-      sphere spheres[kMaxSpheres];
-    };
-
-    GPU_ALIGN struct material {
-      glm::vec3 albedo;
-      float reflectance;
-      float absorption;
-    };
-
-    constexpr size_t kMaxMaterials = 2;
-    GPU_ALIGN struct material_buffer {
-      material materials[kMaxMaterials];
+      MATERIAL_NUM_TYPES,
+      INVALID_MATERIAL = -1
     };
 
     enum shape_type : int {
@@ -43,6 +28,58 @@ namespace other {
 
       SHAPE_NUM_TYPES,
       INVALID_SHAPE = -1
+    };
+
+    constexpr static inline size_t kGpuAlignment = 16;
+#define GPU_ALIGN __declspec(align(kGpuAlignment))
+
+    GPU_ALIGN struct material {
+      int type = INVALID_MATERIAL;
+      int idx = -1;
+    };
+
+    constexpr size_t kMaxMaterials = 100;
+    GPU_ALIGN struct material_buffer {
+      material materials[kMaxMaterials];
+    };
+
+    GPU_ALIGN struct lambertian {
+      glm::vec3 albedo;
+    };
+
+    GPU_ALIGN struct metal {
+      glm::vec3 albedo;
+      float fuzziness = 0.0f;
+    };
+
+    GPU_ALIGN struct dielectric {
+      glm::vec3 albedo;
+      float refraction_index = 1.0f;
+    };
+
+    constexpr size_t kMaxLambertian = 100;
+    GPU_ALIGN struct lambertian_buffer {
+      lambertian materials[kMaxLambertian];
+    };
+
+    constexpr size_t kMaxMetal = 100;
+    GPU_ALIGN struct metal_buffer {
+      metal materials[kMaxMetal];
+    };
+
+    constexpr size_t kMaxDielectric = 100;
+    GPU_ALIGN struct dielectric_buffer {
+      dielectric materials[kMaxDielectric];
+    };
+
+    GPU_ALIGN struct sphere {
+      glm::vec3 position;
+      float radius;
+    };
+
+    constexpr size_t kMaxSpheres = 100;
+    GPU_ALIGN struct sphere_buffer {
+      sphere spheres[kMaxSpheres];
     };
 
     GPU_ALIGN struct shape {

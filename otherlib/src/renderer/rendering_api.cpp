@@ -3,9 +3,35 @@
  **/
 #include "renderer/rendering_api.hpp"
 
+#include <imgui/backends/imgui_impl_sdl3.h>
+
 #include "core/logger.hpp"
 
 namespace other {
+
+  void rendering_api::begin_ui_frame() {
+    if (get_gpu_context() == nullptr) {
+      CORE_LOG_ERROR("Rendering API context handle is null, cannot begin UI frame.");
+      return;
+    }
+
+    begin_ui_frame_backend_newframe();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+    ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+  }
+
+  void rendering_api::end_ui_frame() {
+    if (get_gpu_context() == nullptr) {
+      CORE_LOG_ERROR("Rendering API context handle is null, cannot end UI frame.");
+      return;
+    }
+
+    ImGui::Render();
+    end_ui_frame_backend_draw_data();
+    ImGui::UpdatePlatformWindows();
+    ImGui::RenderPlatformWindowsDefault();
+  }
 
   resource_handle rendering_api::create_resource(const std::string& name, resource_type type) {
     resource_handle handle = { get_next_resource_id(), type };

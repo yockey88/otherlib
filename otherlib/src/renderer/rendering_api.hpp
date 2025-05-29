@@ -44,6 +44,12 @@ namespace other {
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
 
+    void begin_ui_frame();
+    void end_ui_frame();
+
+    virtual void begin_ui_frame_backend_newframe() = 0;
+    virtual void end_ui_frame_backend_draw_data() = 0;
+
     virtual void bind_shader_resource(const resource_handle& handle) = 0;
     virtual void unbind_shader_resource(const resource_handle& handle) = 0;
     virtual void compile_and_attach_source(const resource_handle& handle, const std::string& source, shader::source_type type) = 0;
@@ -102,6 +108,16 @@ namespace other {
       clear_color = color;
     }
 
+    glm::ivec2 get_window_size() const {
+      return window_size;
+    }
+    void set_window_size(const glm::ivec2& size) {
+      window_size = size;
+      if (native_window_handle) {
+        SDL_SetWindowSize(native_window_handle, size.x, size.y);
+      }
+    }
+
     inline uint64_t get_next_resource_id() {
       static uint64_t next_id = 0;
       /// start at 1
@@ -125,6 +141,7 @@ namespace other {
     SDL_Window* native_window_handle = nullptr;
 
     glm::vec3 clear_color;
+    glm::ivec2 window_size;
 
     std::map<uint64_t, resource_handle> resource_handles;
     std::map<uint64_t, resource*> resources;

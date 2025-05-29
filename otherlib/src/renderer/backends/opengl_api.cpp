@@ -53,7 +53,7 @@ namespace other {
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
     SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
-    SDL_GL_SetSwapInterval(0);
+    // SDL_GL_SetSwapInterval(0);
 
     SDL_GLContext gpu_context = SDL_GL_CreateContext(window);
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
@@ -128,23 +128,23 @@ namespace other {
   }
 
   void opengl_api::initialize_ui_context() {
-    // if (get_gpu_context() == nullptr) {
-    //   CORE_LOG_ERROR("OpenGL context handle is null, cannot initialize UI context.");
-    //   return;
-    // }
+    if (get_gpu_context() == nullptr) {
+      CORE_LOG_ERROR("OpenGL context handle is null, cannot initialize UI context.");
+      return;
+    }
 
-    // ImGui_ImplSDL3_InitForOpenGL(native_window(), get_context_handle());
-    // ImGui_ImplOpenGL3_Init("#version 460 core");
+    ImGui_ImplSDL3_InitForOpenGL(native_window(), get_context_handle());
+    ImGui_ImplOpenGL3_Init("#version 460 core");
   }
 
   void opengl_api::shutdown_ui_context() {
-    // if (get_gpu_context() == nullptr) {
-    //   CORE_LOG_ERROR("OpenGL context handle is null, cannot shutdown UI context.");
-    //   return;
-    // }
+    if (get_gpu_context() == nullptr) {
+      CORE_LOG_ERROR("OpenGL context handle is null, cannot shutdown UI context.");
+      return;
+    }
 
-    // ImGui_ImplOpenGL3_Shutdown();
-    // ImGui_ImplSDL3_Shutdown();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
   }
 
   void opengl_api::handle_event(SDL_Event* event) {
@@ -155,7 +155,7 @@ namespace other {
       glViewport(0, 0, width, height);
     }
 
-    // ImGui_ImplSDL3_ProcessEvent(event);
+    ImGui_ImplSDL3_ProcessEvent(event);
   }
 
   void opengl_api::set_clear_color(const glm::vec4& color) {
@@ -175,32 +175,26 @@ namespace other {
       return;
     }
 
-    // glViewport(0, 0, window->window_size.x, window->window_size.y);
+    // glViewport(0, 0, get_window_size().x, get_window_size().y);
     glm::vec3 clear_color = get_clear_color();
     glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // glInsertEventMarkerEXT(0, "Begin Frame");
-    // CHECKGL();
-
-    // ImGui_ImplOpenGL3_NewFrame();
-    // ImGui_ImplSDL3_NewFrame();
-    // ImGui::NewFrame();
-    // ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+    CHECKGL();
   }
 
   void opengl_api::end_frame() {
-    // ImGui::Render();
-    // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    // ImGui::UpdatePlatformWindows();
-    // ImGui::RenderPlatformWindowsDefault();
-
-    // glInsertEventMarkerEXT(0, "End Frame");
-
     SDL_GL_MakeCurrent(native_window(), gl_ctx(get_gpu_context()));
     SDL_GL_SwapWindow(native_window());
 
     CHECKGL();
+  }
+
+  void opengl_api::begin_ui_frame_backend_newframe() {
+    ImGui_ImplOpenGL3_NewFrame();
+  }
+
+  void opengl_api::end_ui_frame_backend_draw_data() {
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 
   void opengl_api::bind_shader_resource(const resource_handle& handle) {

@@ -21,6 +21,13 @@ int get_num_spheres() { return scene_data.x; }
 int get_num_objects() { return scene_data.y; }
 int get_num_materials() { return scene_data.z; }
 
+float linear_to_gamma(float color) {
+  if (color > 0) {
+    return sqrt(color);
+  }
+  return 0;
+}
+
 bool debug_patch(ivec2 pixel, ivec2 bounds) {
   return pixel.x >= bounds.x && pixel.x <= bounds.y &&
          pixel.y >= bounds.x && pixel.y <= bounds.y;

@@ -17,6 +17,13 @@ namespace other {
     rendering()->api()->end_frame();
   }
 
+  void renderer::begin_ui_frame() {
+    rendering()->api()->begin_ui_frame();
+  }
+  void renderer::end_ui_frame() {
+    rendering()->api()->end_ui_frame();
+  }
+
   glm::ivec2 renderer::get_window_size() {
     SDL_Window* window = rendering()->api()->window_handle();
     if (window == nullptr) {

@@ -20,6 +20,10 @@ ray get_ray(vec2 pixel, vec2 sample_vec) {
   return r;
 }
 
+vec3 get_gradient(float a, vec3 col1, vec3 col2) {
+  return (1.0 - a) * col1 + a * col2;
+}
+
 vec3 cast_ray(ray r, interval range, int depth) {
   vec3 color = vec3(1.0);
   vec3 final_color = vec3(0.0);
@@ -28,30 +32,20 @@ vec3 cast_ray(ray r, interval range, int depth) {
   for (int i = 0; i < depth; ++i) {
     intersection_record rec;
     intersect_object(current_ray, range, rec);
+    check_face_orientation(rec, r, rec.normal);
+
     if (!rec.hit) {
-      float a = 0.5f * (normalize(current_ray.direction).y + 1.f);
-      vec3 sky_grad = get_gradient(a, vec3(1.f, 1.f, 1.f), vec3(0.5f, 0.7f, 1.f));
-      final_color += color * sky_grad;
+      float a = normalize(current_ray.direction).y + 1.f;
+      final_color += color * get_gradient(a, vec3(1.f, 1.f, 1.f), vec3(0.5f, 0.7f, 1.f));
       return final_color;
     }
 
-    material mat = get_object_material(rec.idx);
-    color *= mat.albedo; // mat.absorption
-
-    vec3 hit_point = get_ray_point(rec.t, current_ray);
-    
     uint seed = uint(gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * 1920 + i * 73 + rec.idx * 37);
-    vec3 scatter_direction = random_cosine_hemisphere(rec.normal, seed);
-    if (length(scatter_direction) < epsilon) {
-      scatter_direction = rec.normal;
-    }
+    material mat = get_object_material(rec.idx);
+    scatter_ray(mat, color, current_ray, rec, seed);
 
-    const float shadow_offset = 0.001f;
-    current_ray.origin = hit_point + rec.normal * shadow_offset;
-    current_ray.direction = scatter_direction;
-
-    range.min = shadow_offset;
+    range.min = 0.001f;
   }
 
-  return color;
+  return color * 0.1f;
 }

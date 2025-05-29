@@ -10,7 +10,6 @@ namespace other {
 
   float rand_float();
   float rand_float(float min, float max);
-  float linear_to_gamma(float linear_component);
 
   glm::vec3 sample_square();
   glm::vec3 random_vec3();

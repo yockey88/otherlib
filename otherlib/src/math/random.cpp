@@ -20,14 +20,6 @@ namespace other {
     return min + (max - min) * rand_float();
   }
 
-  float linear_to_gamma(float linear_component) {
-    if (linear_component > 0) {
-      return std::sqrt(linear_component);
-    }
-
-    return 0;
-  }
-
   glm::vec3 sample_square() {
     /// Sample a point in the square [-0.5, 0.5] x [-0.5, 0.5]
     return glm::vec3(rand_float() - 0.5f, rand_float() - 0.5f, 0.f);

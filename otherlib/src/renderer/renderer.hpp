@@ -20,6 +20,9 @@ namespace other {
     void begin_frame();
     void end_frame();
 
+    void begin_ui_frame();
+    void end_ui_frame();
+
     glm::ivec2 get_window_size();
     void set_clear_color(const glm::vec4& color);
 

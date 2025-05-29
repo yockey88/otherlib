@@ -9,7 +9,6 @@ struct scene_object {
   int material_idx;
 };
 
-#define SPHERE_TYPE 0
 layout (std140) uniform sphere_buffer {
   sphere spheres[MAX_SPHERES];
 };
