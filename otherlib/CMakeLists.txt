@@ -39,9 +39,10 @@ target_sources(other_infrastructure
       src/renderer/texture.cpp
       src/renderer/gpu_buffer.cpp
       src/renderer/mesh.cpp
+      src/renderer/camera.cpp
 
-      src/simulation/material.cpp
       src/simulation/scene_object.cpp
+      src/simulation/scene_tree.cpp
 )
 if (MSVC)
     target_sources(other_infrastructure

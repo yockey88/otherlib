@@ -17,6 +17,14 @@ namespace other {
   constexpr static float inv_two_pi = 1.f / two_pi;
   constexpr static float inv_four_pi = 1.f / (4.f * pi);
 
+  constexpr static float degrees_to_radians(float degrees) {
+    return degrees * (pi / 180.f);
+  }
+
+  constexpr static float radians_to_degrees(float radians) {
+    return radians * (180.f / pi);
+  }
+
 }  // namespace other
 
 #endif  // !OTHER_MATH_CONSTANTS_HPP

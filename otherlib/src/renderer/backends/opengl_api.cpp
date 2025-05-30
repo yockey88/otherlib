@@ -352,8 +352,12 @@ namespace other {
 
     glUseProgram(itr->second);
     glDispatchCompute(group_dims.x, group_dims.y, group_dims.z);
+    CHECKGL();
+
     /// \todo make gl-specific barrier mask from barrier_type
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    CHECKGL();
+
     glUseProgram(0);
     CHECKGL();
   }
@@ -1228,11 +1232,14 @@ namespace other {
 
     void check_for_gl_error(const char* func_name, const char* file, int line) {
       GLenum err;
+
+      constexpr static int max_errors = 10;
+      int error_count = 0;
       do {
         err = glGetError();
         switch (err) {
           case GL_NO_ERROR:
-            continue;
+            break;
 
           case GL_INVALID_ENUM:
             CORE_LOG_ERROR("OpenGL error in {} at {}:{}: GL_INVALID_ENUM", func_name, file, line);
@@ -1254,8 +1261,11 @@ namespace other {
             CORE_LOG_ERROR("Unknown OpenGL error code: {}", err);
             return;  // Exit on unknown error
         }
-
-      } while (err != GL_NO_ERROR);
+        ++error_count;
+      } while (err != GL_NO_ERROR && error_count < max_errors);
+      if (error_count >= max_errors) {
+        assert(false && "Too many OpenGL errors encountered");
+      }
     }
 
   }  // namespace

@@ -18,6 +18,8 @@ namespace other {
    public:
     using value_type = T;
 
+    arena_allocator(arena* arena) noexcept
+        : override_arena(arena) {}
     arena_allocator() = default;
     virtual ~arena_allocator() override = default;
 
@@ -28,7 +30,13 @@ namespace other {
     T* allocate(Args&&... args) {
       // PROFILE_SECTION("ArenaAllocator--Allocate");
       /// TODO: custom alignment
-      void* memory = arena::allocate(type_size, alignof(T));
+      void* memory = nullptr;
+      if (override_arena != nullptr) {
+        memory = override_arena->allocate(type_size, alignof(T));
+      } else {
+        memory = arena::allocate(type_size, alignof(T));
+      }
+
       if (memory == nullptr) {
         throw std::bad_alloc();
       }
@@ -50,7 +58,11 @@ namespace other {
         void* memory = static_cast<void*>(ptr);
         std::memset(memory, 0, sizeof(T));
       }
-      arena::free(ptr, type_size);
+      if (override_arena != nullptr) {
+        override_arena->free(ptr, type_size);
+      } else {
+        arena::free(ptr, type_size);
+      }
     }
 
     void free(void* ptr) {
@@ -62,7 +74,11 @@ namespace other {
         void* memory = static_cast<void*>(ptr);
         std::memset(memory, 0, sizeof(T));
       }
-      arena::free(ptr, type_size);
+      if (override_arena != nullptr) {
+        override_arena->free(ptr, type_size);
+      } else {
+        arena::free(ptr, type_size);
+      }
     }
 
     /// cpp standard allocator interface
@@ -75,6 +91,9 @@ namespace other {
     }
 
     static constexpr size_t type_size = sizeof(T);
+
+   private:
+    arena* override_arena = nullptr;
   };
 
   template <class T, class U>

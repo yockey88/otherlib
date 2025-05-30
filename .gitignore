@@ -4,7 +4,7 @@ build/
 artifacts/
 wip/
 
-development-drivers
+development-drivers/pbrt
 
 dev-*.toml
 

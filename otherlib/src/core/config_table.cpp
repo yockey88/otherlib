@@ -12,6 +12,8 @@ namespace other {
 
   opt<config_table> parse_raw_config(const std::string_view filename) {
     toml::table table;
+    opt<toml::table> project_table;
+
     std::string driver = "";
     std::string rendering = "";
     int32_t log_level = 0;
@@ -56,6 +58,15 @@ namespace other {
         log_level = 2;
       }
 
+      {
+        toml::node_view ptable = table.at_path("project");
+        if (ptable.is_table()) {
+          if (auto* p = ptable.as_table(); p != nullptr) {
+            project_table.emplace(std::move(*p));
+          }
+        }
+      }
+
     } catch (const toml::parse_error& err) {
       std::println(std::cerr, "Failed to parse configuration file '{}': {}", filename, err.description());
       return std::nullopt;
@@ -80,8 +91,17 @@ namespace other {
     return std::move(parse_raw_config(filename).value_or(config_table{}));
   }
 
-  value config_table::get_value(const std::string_view section, const std::string_view key) const {
+  value config_table::get_project_value(const std::string_view section, const std::string_view key) const {
     return value();
+  }
+
+  toml::table& config_table::get_project_table() {
+    if (project_table.has_value()) {
+      return project_table.value();
+    }
+
+    static toml::table empty_table;
+    return empty_table;
   }
 
 }  // namespace other

@@ -84,7 +84,7 @@ if(EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
   add_subdirectory(development-drivers)
 else()
   # Code to execute if the file does not exist
-  message(STATUS "dir does not exist.")
+  message(STATUS "not including development drivers")
 endif()
 
 add_subdirectory(driver)

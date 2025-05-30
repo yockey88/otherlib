@@ -63,6 +63,7 @@ void intersect_object(ray r, interval range, inout intersection_record record) {
   if (closest_idx >= 0) {
     record = closest_rec;
     record.idx = closest_idx;
+    check_face_orientation(record, r, record.normal);
   } 
   else {
     record.hit = false;

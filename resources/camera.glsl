@@ -1,12 +1,20 @@
 layout (std140) uniform camera_buffer {
   vec4 camera_position;
   vec4 camera_forward;
-  /// near & far clip, padding x2
+
+  /// near & far clip, defocus_angle padding x2
   vec4 camera_features;
+
+  vec4 defocus_disk_u;
+  vec4 defocus_disk_v;
 
   mat4 view_matrix;
   mat4 projection_matrix;
 };
+
+float camera_near_clip() { return camera_features.x; }
+float camera_far_clip() { return camera_features.y; }
+float camera_defocus_angle() { return camera_features.z; }
 
 vec2 screen_to_ndc(ivec2 screen_coords, int screen_width, int screen_height) {
   float ndc_x = 2.0f * (screen_coords.x / float(screen_width)) - 1.0f;
@@ -30,4 +38,9 @@ vec3 view_to_world(vec4 view_coords) {
   mat4 inv_view = inverse(view_matrix);
   vec4 world_coords = inv_view * homo;
   return world_coords.xyz;
+}
+
+vec3 sample_defocus_disk(inout uint seed) {
+  vec3 ruv = random_unit_vector(seed);
+  return camera_position.xyz + (ruv.x * defocus_disk_u.xyz) + (ruv.y * defocus_disk_v.xyz);
 }

@@ -15,6 +15,7 @@ layout (std140) uniform scene_metadata {
 
   int samples_per_pixel;
   int max_depth;
+  int frame_number;
 };
 
 int get_num_spheres() { return scene_data.x; }
@@ -26,6 +27,13 @@ float linear_to_gamma(float color) {
     return sqrt(color);
   }
   return 0;
+}
+
+vec3 linear_to_gamma(vec3 color) {
+  color.x = linear_to_gamma(color.x);
+  color.y = linear_to_gamma(color.y);
+  color.z = linear_to_gamma(color.z);
+  return color;
 }
 
 bool debug_patch(ivec2 pixel, ivec2 bounds) {
@@ -66,12 +74,14 @@ void main() {
   for (int i = 0; i < samples_per_pixel; ++i) {
     uint sample_seed = uint(pixel.x + pixel.y * 1920 + i * 73);
     vec2 random_sample = vec2(random_float(sample_seed), random_float(sample_seed));
-    ray r = get_ray(pixel, random_sample);
+    ray r = get_ray(pixel, random_sample, sample_seed);
 
     const float near_clip = 0.001f;
     color += cast_ray(r, interval(near_clip, infinity), max_depth);
   }
   color /= float(samples_per_pixel);
+  color = linear_to_gamma(color);
+
 
   imageStore(image_output, pixel, vec4(color, 1.0));
 }

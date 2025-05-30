@@ -65,7 +65,7 @@ vec3 reflect(vec3 v, vec3 n) {
 vec3 refract(vec3 uv, vec3 n, float etai_over_etat) {
   float cos_theta = min(dot(-uv, n), 1.0);
   
-  vec3 r_out_perp = etai_over_etat * (uv * cos_theta * n);
+  vec3 r_out_perp = etai_over_etat * (uv + cos_theta * n);
   float len_sq = length(r_out_perp) * length(r_out_perp);
 
   vec3 r_out_parallel = -sqrt(abs(1.0 - len_sq)) * n;

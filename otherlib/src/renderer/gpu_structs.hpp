@@ -8,6 +8,8 @@
 
 #include "core/defines.hpp"
 
+#include "glm/fwd.hpp"
+
 namespace other {
   namespace gpu {
 
@@ -101,8 +103,11 @@ namespace other {
       glm::vec4 position;
       glm::vec4 forward;
 
-      // near & far clip, padding x2
+      // near & far clip, defocus angle, padding
       glm::vec4 camera_features;
+
+      glm::vec4 defocus_disk_u;  /// horizontal
+      glm::vec4 defocus_disk_v;  // vertical
 
       glm::mat4 view_matrix;
       glm::mat4 projection_matrix;
@@ -116,6 +121,7 @@ namespace other {
 
       int samples_per_pixel = 100;
       int max_depth = 50;
+      int frame_index = 0;
     };
 
     GPU_ALIGN struct camera_buffer {
@@ -127,7 +133,6 @@ namespace other {
       glm::vec4 pixel00_loc;
       glm::vec4 pixel_delta_u;
       glm::vec4 pixel_delta_v;
-      glm::vec3 square_sample;
     };
 
   }  // namespace gpu

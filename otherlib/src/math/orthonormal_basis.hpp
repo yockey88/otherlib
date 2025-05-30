@@ -14,10 +14,14 @@ namespace other {
     orthonormal_basis()
         : orthonormal_basis(glm::vec3(0, 0, 1)) {}
     orthonormal_basis(const glm::vec3& n);
+    orthonormal_basis(const glm::vec3& reference_vector, const glm::vec3& n);
 
     glm::vec3 to_local(const glm::vec3& v) const;
     glm::vec3 to_world(const glm::vec3& vec) const;
     glm::mat4 to_matrix() const;
+
+   private:
+    glm::vec3 find_first_non_zero(const glm::vec3& v) const;
   };
 
 }  // namespace other

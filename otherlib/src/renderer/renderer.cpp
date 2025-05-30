@@ -6,6 +6,7 @@
 #include "renderer/renderer_backend.hpp"
 
 #include "SDL3/SDL.h"
+#include "SDL3/SDL_mouse.h"
 
 namespace other {
 
@@ -47,7 +48,7 @@ namespace other {
     }
 
     float x, y;
-    SDL_MouseButtonFlags _ = SDL_GetGlobalMouseState(&x, &y);
+    SDL_MouseButtonFlags _ = SDL_GetMouseState(&x, &y);
     return { x, y };
   }
 

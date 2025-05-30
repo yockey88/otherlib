@@ -97,7 +97,7 @@ vec3 scatter_dielectric(dielectric di, inout ray r, intersection_record rec, ino
   }
 
   r = ray(get_ray_point(rec.t, r), direction);
-  return vec3(1.0);
+  return vec3(1.0) * di.albedo;
 }
 
 void scatter_ray(material m, inout vec3 color, inout ray r, intersection_record rec, inout uint seed) {
