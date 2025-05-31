@@ -8,48 +8,65 @@
 #ifndef OTHERENV_WINDOWS
   #include <cstddef>
 #endif
+#include <mutex>
 
 #include "core/subsystem.hpp"
 
 namespace other {
 
-  // class Registers;
+  struct arena_storage {
+    static inline constexpr size_t kPageSize = 16 * (4096u * 4096u);
+    static inline constexpr size_t kAlignment = 16;
+    static inline constexpr size_t kMaxPages = 16;
+    static inline constexpr size_t kMaxMemoryAllowed = kMaxPages * kPageSize;
+
+    struct page {
+      size_t cursor = 0;
+      alignas(kAlignment) uint8_t storage[kPageSize] = {};
+
+      void* data() { return &storage[0]; }
+
+      const void* data() const { return &storage[0]; }
+
+      void* get_ptr_at(size_t offset);
+    };
+
+    page* allocate_page(size_t idx);
+    void free_page(size_t index);
+
+    page* get_page(size_t idx);
+
+   private:
+#ifdef OTHER_TEST_ENVIRONMENT
+    friend class arena_test;
+#endif
+    page* pages[kMaxPages];
+  };
 
   class arena : public subsystem<arena> {
    public:
-    static inline constexpr size_t kPageSize = 64 * 4096u * 4096u;
-    /// TODO: this feels wrong, this is correct for the GPU but seems incorrect if
-    ///         aiming to be as cross platform as possible (research: confirm all
-    ///         GPUs read mem in 16 byte chunks)
-    static inline constexpr size_t kAlignment = 16;
-    static inline constexpr size_t kMaxPages = 16;
-    static inline constexpr size_t kMaxMemoryAllowed =
-      arena::kMaxPages * arena::kPageSize;
-
-    template <size_t size, size_t alignment = kAlignment>
-    struct page {
-      size_t cursor = 0;
-      std::aligned_storage_t<size, alignment> storage;
-    };
-
     arena() = default;
     ~arena();
 
-    static void* allocate(size_t size, size_t alignment);
-    static void free(void* ptr, size_t size);
+    void* allocate(size_t size);
+    void free(void* ptr, size_t size);
+
+    using page = arena_storage::page;
+    page* get_current_page();
 
    private:
-    // Registers* registers = nullptr;
+    std::recursive_mutex mtx;
 
+    arena_storage storage;
     size_t page_allocation_cursor = 0;
-    size_t page_cursor = 0;
     size_t total_allocations = 0;
     size_t allocated_memory = 0;
 
-    uint8_t* pages[kMaxPages];
-
     void allocate_page();
 
+#ifdef OTHER_TEST_ENVIRONMENT
+    friend class arena_test;
+#endif
     // #ifdef OTHER_MEMORY_DEBUG
     //     static void report_allocation(void* ptr, std::size_t size);
     // #endif
@@ -61,13 +78,8 @@ namespace other {
     static constexpr size_t alignment = alignof(arena);
     static inline subsystem_storage_t<arena> storage;
 
-    static arena* ptr() {
-      return std::launder(reinterpret_cast<arena*>(&storage));
-    }
-
-    static void* address() {
-      return reinterpret_cast<void*>(&storage);
-    }
+    static arena* ptr() { return std::launder(reinterpret_cast<arena*>(&storage)); }
+    static void* address() { return reinterpret_cast<void*>(&storage); }
   };
 
 }  // namespace other

@@ -62,7 +62,7 @@ namespace other {
     shader& add_source(const std::string& source, source_type type);
 
     shader& set_uniform(const std::string& name, int32_t value);
-    shader& set_uniform(const std::string& name, float value);
+    shader& set_uniform(const std::string& name, real_t value);
     shader& set_uniform(const std::string& name, const glm::vec3& value);
     shader& set_uniform(const std::string& name, const glm::vec4& value);
     shader& set_uniform(const std::string& name, const glm::mat4& value);

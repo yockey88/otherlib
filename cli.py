@@ -66,11 +66,12 @@ if __name__ == "__main__":
   parser.add_argument("--regen-project", "-rg", action="store_true", help="Regenerate the project files.")
   parser.add_argument("--build", "-b", action="store_true", help="Build the project.")
   parser.add_argument("--run", "-r", action="store_true", help="Run the main driver.")
+  parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Debug-AS", "Profile"])
 
   args = parser.parse_args()
   try:
-    if not args.build and not args.run and not args.regen_project:
+    if not args.build and not args.run and not args.run_tests and not args.regen_project:
       parser.print_help()
       sys.exit(1)
 
@@ -88,13 +89,25 @@ if __name__ == "__main__":
       build_sln_file(filename, cfg)
       copy_dlls(cfg)
       
+    if args.run_tests:
+      print("Running tests...")
+      test_cmd = [f"build/tests/{cfg}/other_tests.exe", "resources/dev-test-config.toml"]
+      if args.verbose is not None and args.verbose:
+        test_cmd.append("--verbose")
+      res = subprocess.run(test_cmd, check=True)
+      if res.returncode != 0:
+        print("Tests failed.")
+        sys.exit(1)
+      else:
+        print("All tests passed successfully.")
+        sys.exit(0)
+      
 
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
       run_command = [f"build/driver/{cfg}/other_driver.exe", "resources/dev-config.toml"] 
       if args.verbose is not None and args.verbose:
         run_command.append("--verbose")
-
       subprocess.run(run_command, check=True)
       
   except subprocess.CalledProcessError as e:

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <fstream>
 #include <span>
+#include <stacktrace>
 #include <string>
 
 #include <spdlog/sinks/basic_file_sink.h>
@@ -44,7 +45,7 @@ namespace other {
     std::unique_ptr<std::ofstream> error_log_file = nullptr;
 
     std::map<uint16_t, spdlog::sink_ptr> sinks;
-    std::map<uint64_t, std::shared_ptr<spdlog::logger>> loggers;
+    std::map<natural_t, std::shared_ptr<spdlog::logger>> loggers;
 
     void log_failure_error(const std::string& message);
   };
@@ -81,6 +82,27 @@ namespace other {
 #define CORE_LOG_ERROR(format, ...) LOG_ERROR("other-core-log", format, __VA_ARGS__)
 #define CORE_LOG_CRITICAL(format, ...) LOG_CRITICAL("other-core-log", format, __VA_ARGS__)
   /// \todo add automatic enter/exit function logger structs (raii tracing)
+
+#define GET_STACKTRACE (std::stringstream{} << std::stacktrace::current() << "\n").str()
+#ifndef OTHER_TEST_ENVIRONMENT
+  #define OTHER_ABORT std::terminate()
+#else
+  #define OTHER_ABORT throw std::runtime_error("Critical failure in test environment, aborting.");
+#endif
+
+#define OTHER_CRITICAL_FAILURE(format, ...)                                                           \
+  do {                                                                                                \
+    CORE_LOG_CRITICAL("Critical failure!\nstacktrace =\n{}\n" format, GET_STACKTRACE, ##__VA_ARGS__); \
+    OTHER_ABORT;                                                                                      \
+  } while (0)
+
+#define OTHER_ASSERT(condition, format, ...)       \
+  do {                                             \
+    if ((condition)) {                             \
+    } else {                                       \
+      OTHER_CRITICAL_FAILURE(format, __VA_ARGS__); \
+    }                                              \
+  } while (0)
 
 }  // namespace other
 

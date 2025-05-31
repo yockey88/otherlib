@@ -43,6 +43,8 @@ target_sources(other_infrastructure
 
       src/simulation/scene_object.cpp
       src/simulation/scene_tree.cpp
+
+      src/other.cpp
 )
 if (MSVC)
     target_sources(other_infrastructure

@@ -6,6 +6,8 @@
 
 #include <glm/glm.hpp>
 
+#include "core/defines.hpp"
+
 namespace other {
 
   struct ray {
@@ -15,7 +17,7 @@ namespace other {
     ray(const glm::vec3& o, const glm::vec3& d)
         : origin(o), direction(glm::normalize(d)) {}
 
-    glm::vec3 at(float t) const;
+    glm::vec3 at(real_t t) const;
   };
 
 }  // namespace other

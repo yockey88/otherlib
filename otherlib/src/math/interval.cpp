@@ -5,14 +5,14 @@
 
 namespace other {
 
-  interval interval::infinite = { -std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
-  interval interval::empty = { std::numeric_limits<float>::max(), -std::numeric_limits<float>::infinity() };
+  interval interval::infinite = { -std::numeric_limits<real_t>::max(), std::numeric_limits<real_t>::max() };
+  interval interval::empty = { std::numeric_limits<real_t>::max(), -std::numeric_limits<real_t>::infinity() };
 
-  float interval::size() const {
+  real_t interval::size() const {
     return max - min;
   }
 
-  bool interval::contains(float t) const {
+  bool interval::contains(real_t t) const {
     return (min <= t && t <= max);
   }
 
@@ -20,7 +20,7 @@ namespace other {
     return (min <= other.min && other.max <= max);
   }
 
-  bool interval::surrounds(float t) const {
+  bool interval::surrounds(real_t t) const {
     return (min < t && t < max);
   }
 
@@ -32,7 +32,7 @@ namespace other {
     return other.min <= max || other.max >= min;
   }
 
-  float interval::clamp(float t) const {
+  real_t interval::clamp(real_t t) const {
     return t < min ? min : (t > max ? max : t);
   }
 

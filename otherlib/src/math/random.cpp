@@ -9,34 +9,34 @@
 
 namespace other {
 
-  float rand_float() {
-    static std::uniform_real_distribution<float> distribution(0.0, 1.0);
+  real_t rand_real_t() {
+    static std::uniform_real_distribution<real_t> distribution(0.0, 1.0);
     static std::mt19937 generator;
     return distribution(generator);
   }
 
-  float rand_float(float min, float max) {
+  real_t rand_real_t(real_t min, real_t max) {
     // Returns a random real in [min,max).
-    return min + (max - min) * rand_float();
+    return min + (max - min) * rand_real_t();
   }
 
   glm::vec3 sample_square() {
     /// Sample a point in the square [-0.5, 0.5] x [-0.5, 0.5]
-    return glm::vec3(rand_float() - 0.5f, rand_float() - 0.5f, 0.f);
+    return glm::vec3(rand_real_t() - 0.5f, rand_real_t() - 0.5f, 0.f);
   }
 
   glm::vec3 random_vec3() {
-    return glm::vec3(rand_float(), rand_float(), rand_float());
+    return glm::vec3(rand_real_t(), rand_real_t(), rand_real_t());
   }
 
-  glm::vec3 random_vec3(float min, float max) {
-    return glm::vec3(rand_float(min, max), rand_float(min, max), rand_float(min, max));
+  glm::vec3 random_vec3(real_t min, real_t max) {
+    return glm::vec3(rand_real_t(min, max), rand_real_t(min, max), rand_real_t(min, max));
   }
 
   glm::vec3 random_unit_vector() {
     do {
       auto p = random_vec3(-1.f, 1.f);
-      float lensq = glm::dot(p, p);
+      real_t lensq = glm::dot(p, p);
       if (epsilon < lensq && lensq <= 1.f) {
         return glm::normalize(p);
       }

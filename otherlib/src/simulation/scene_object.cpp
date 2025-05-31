@@ -23,7 +23,7 @@ namespace other {
   // void compound_object::ray_intersect(const ray& r, const interval& range, intersection_info& info) const {
   //   intersection_info temp_info;
   //   bool hit_any = false;
-  //   float closest_t = range.max;
+  //   real_t closest_t = range.max;
 
   //   for (const auto& child : children) {
   //     intersection_info child_info;

@@ -12,6 +12,7 @@
 #include <imgui/backends/imgui_impl_opengl3.h>
 #include <imgui/backends/imgui_impl_sdl3.h>
 
+#include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "renderer/renderer_resource.hpp"
 #include "renderer/shader.hpp"
@@ -35,6 +36,8 @@ namespace other {
   } while (0)
 
 namespace other {
+
+  opengl_api::~opengl_api() {}
 
   void opengl_api::initialize() {
     if (native_window() == nullptr) {
@@ -87,33 +90,15 @@ namespace other {
       return;
     }
 
-    for (auto& [id, type] : resource_types) {
-      auto itr = gpu_resources.find(id);
-      if (itr != gpu_resources.end()) {
-        uint32_t resource_id = itr->second;
-        switch (type) {
-          case resource_type::MESH: {
-            glDeleteVertexArrays(1, &resource_id);
-          } break;
-
-          case resource_type::BUFFER:
-            glDeleteBuffers(1, &resource_id);
-            break;
-
-          case resource_type::TEXTURE:
-            glDeleteTextures(1, &resource_id);
-            break;
-
-          case resource_type::SHADER:
-            glDeleteProgram(resource_id);
-            break;
-
-          default:
-            CORE_LOG_ERROR("Unsupported resource type for OpenGL: {}", static_cast<int>(type));
-            break;
-        }
-      }
-    }
+    gpu_resources.clear();
+    resource_types.clear();
+    in_process_resources.clear();
+    shader_resources.clear();
+    shader_uniforms.clear();
+    texture_resources.clear();
+    buffer_resources.clear();
+    mesh_resources.clear();
+    resource_handles.clear();
 
     SDL_GLContext ctx = gl_ctx(get_gpu_context());
     if (ctx == nullptr) {
@@ -335,6 +320,11 @@ namespace other {
       CORE_LOG_ERROR("Failed to create GPU resource for shader ID: {}", handle.id);
       glDeleteProgram(shader_id);
       return;
+    }
+
+    auto ip_itr = in_process_resources.find(handle.id);
+    if (ip_itr != in_process_resources.end()) {
+      in_process_resources.erase(ip_itr);
     }
   }
 
@@ -680,7 +670,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, float value) {
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) {
     auto itr = gpu_resources.find(shader.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
@@ -797,9 +787,7 @@ namespace other {
       CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
       return;
     }
-
     itr->second.destroy_resources();
-
     mesh_resources.erase(itr);
 
     auto gpu_itr = gpu_resources.find(handle.id);
@@ -1192,7 +1180,7 @@ namespace other {
     }
   }
 
-  int32_t opengl_api::get_resource_handle(uint64_t id) const {
+  int32_t opengl_api::get_resource_handle(natural_t id) const {
     auto itr = gpu_resources.find(id);
     if (itr != gpu_resources.end()) {
       return itr->second;

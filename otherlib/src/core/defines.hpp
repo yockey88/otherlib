@@ -4,11 +4,6 @@
 #ifndef OTHER_CORE_DEFINES_HPP
 #define OTHER_CORE_DEFINES_HPP
 
-#include <magic_enum/magic_enum.hpp>
-
-#include "core/fnv.hpp"
-
-// #include <concepts>
 #include <cstdint>
 #include <filesystem>
 #include <format>
@@ -19,13 +14,14 @@
 #include <type_traits>
 #include <utility>
 
-// #include <glm/glm.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #define OTHERENV_VERSION_MAJOR 0
 #define OTHERENV_VERSION_MINOR 1
 #define OTHERENV_VERSION_PATCH 0
 
-#define OTHERENV_VERSION_STRING "0.1.0"
+#define OTHERENV_VERSION_STRING \
+  std::format("{}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH)
 
 #define bit(x) (1ll << x)
 
@@ -96,62 +92,10 @@ namespace other {
   using natural_t = uint64_t;
   using integer_t = int64_t;
 
-  enum ExitCode : uint8_t {
-    /// for os (program exit)
-    SUCCESS = 0x00,
-    FAILURE = 0x01,
-
-    /// for internal use (reboot, reload, etc...)
-    ///   internal good codes
-    // RELOAD_PROJECT,
-    // LOAD_NEW_PROJECT,
-    // NO_EXIT,
-
-    ///   internal bad codes
-    // UNKNOWN_EXCEPTION,
-    // NO_CONFIG_FILE,
-    // CONFIG_PARSE_FAILURE,
-
-    /// for user (config, etc...)
-    // CORRUPT_CONFIGURATION,
-
-    NUM_EXIT_CODES,
-    INVALID = NUM_EXIT_CODES,
-  };
-
-  template <typename T>
-  struct scope_deleter {
-    void operator()(T* ptr) const {
-      // PROFILE_DEALLOCATION(ptr);
-      delete ptr;
-    }
-
-    scope_deleter() = default;
-    template <typename U>
-      requires std::is_base_of_v<T, U>
-    scope_deleter(const scope_deleter<U>&) {}
-  };
-
-  template <typename T>
-  using scope_dtor = scope_deleter<T>;
-
-  template <typename T>
-  using scope = std::unique_ptr<T, scope_deleter<T>>;
-
   template <typename T>
   using opt = std::optional<T>;
 
   using filepath = std::filesystem::path;
-
-  template <typename T, typename... Args>
-  /// replace this allocation with arena allocator and maybe make a pool version of scope that takes a
-  ///    memory pool to allocate into
-  scope<T> make_scope(Args&&... args) {
-    // PROFILE_ALLOCATION(memory, max_objects * sizeof(T));
-    // static arena_allocator<T> memory;
-    // return std::unique_ptr<T, scope_deleter<T>>(allocator.allocate(std::forward<Args>(args)...), scope_deleter<T>());
-    return std::unique_ptr<T, scope_deleter<T>>(new T(std::forward<Args>(args)...), scope_deleter<T>());
-  }
 
   template <typename T>
   struct result {

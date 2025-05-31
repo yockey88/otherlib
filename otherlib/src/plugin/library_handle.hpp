@@ -8,6 +8,8 @@
 #include <map>
 #include <string_view>
 
+#include "core/defines.hpp"
+
 namespace other {
 
   struct other_plugin_argv;
@@ -36,7 +38,7 @@ namespace other {
    protected:
     std::string_view filepath;
 
-    std::map<uint64_t, symbol> symbols;
+    std::map<natural_t, symbol> symbols;
 
     virtual symbol load_symbol(const std::string_view symbol) = 0;
   };

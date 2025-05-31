@@ -194,7 +194,7 @@ namespace other {
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, float value) {
+  shader& shader::set_uniform(const std::string& name, real_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }

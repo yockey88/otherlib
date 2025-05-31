@@ -5,48 +5,86 @@
 
 #include <cstdint>
 
-// #include <new>
+#include "core/logger.hpp"
 
 namespace other {
 
-  arena::~arena() {
-    // PROFILE_SECTION("Arena--Destructor");
-
-    for (size_t i = 0; i < page_allocation_cursor; i++) {
-      // PROFILE_DEALLOCATION(pages[i]);
-      std::free(pages[i]);
-      pages[i] = nullptr;
-    }
-    page_allocation_cursor = 0;
-    page_cursor = 0;
+  void* arena_storage::page::get_ptr_at(size_t offset) {
+    OTHER_ASSERT(offset < kPageSize, "Offset out of bounds for page allocation.");
+    return &storage[offset];
   }
 
-  void* arena::allocate(size_t size, size_t alignment) {
-    //     OE_ASSERT(instance != nullptr, "Arena instance is null.");
-    //     OE_ASSERT(size <= kPageSize, "Allocation size is too large for Arena.");
+  arena_storage::page* arena_storage::allocate_page(size_t idx) {
+    OTHER_ASSERT(idx < kMaxPages, "Page index out of bounds.");
+
+    /// PROFILE_SECTION("ArenaStorage--AllocatePage");
+    pages[idx] = new page();
+    std::memset(pages[idx]->storage, 0, kPageSize);
+    OTHER_ASSERT(pages[idx] != nullptr, "Failed to allocate page.");
+    return pages[idx];
+  }
+
+  void arena_storage::free_page(size_t index) {
+    OTHER_ASSERT(index < kMaxPages, "Page index out of bounds.");
+    OTHER_ASSERT(pages[index] != nullptr, "Page is already freed or not allocated.");
+
+    // PROFILE_DEALLOCATION(pages[index]);
+    delete pages[index];
+    pages[index] = nullptr;
+  }
+
+  arena_storage::page* arena_storage::get_page(size_t idx) {
+    if (idx >= kMaxPages || pages[idx] == nullptr) {
+      return nullptr;
+    }
+    return pages[idx];
+  }
+
+  arena::~arena() {
+    // PROFILE_SECTION("Arena--Destructor");
+    for (size_t i = 0; i < page_allocation_cursor; i++) {
+      storage.free_page(i);
+    }
+    page_allocation_cursor = 0;
+  }
+
+  void* arena::allocate(size_t size) {
+    arena* instance = subsystem<arena>::get();
+
+    OTHER_ASSERT(instance != nullptr, "Arena instance is null.");
+    OTHER_ASSERT(size <= arena_storage::kPageSize, "Allocation size is too large for Arena.");
 
     //     PROFILE_SECTION("Arena--Allocate");
+    void* mem = nullptr;
+    {
+      std::lock_guard lock(instance->mtx);
 
-    if (instance->page_allocation_cursor == 0 || instance->page_cursor + size >= kPageSize) {
-      instance->allocate_page();
+      if (instance->page_allocation_cursor == 0) {
+        instance->allocate_page();
+        OTHER_ASSERT(instance->get_current_page() != nullptr, "Failed to allocate initial page.");
+      }
+
+      page* current_page = instance->get_current_page();
+      if (current_page->cursor + size >= arena_storage::kPageSize) {
+        OTHER_ASSERT(instance->page_allocation_cursor < arena_storage::kMaxPages, "Exceeded maximum number of pages.");
+        instance->allocate_page();
+        current_page = instance->get_current_page();
+      }
+      OTHER_ASSERT(current_page != nullptr, "Current page is null.");
+
+      /// TODO: investigate if this alignment is wrong or not if feels safe enought but what do I know
+      // clang-format off
+      size_t alignment_offset = (current_page->cursor % arena_storage::kAlignment) != 0 ?
+          arena_storage::kAlignment - (current_page->cursor % arena_storage::kAlignment) : 0;
+      // clang-format on
+      current_page->cursor += alignment_offset;
+
+      mem = current_page->get_ptr_at(current_page->cursor);
+
+      instance->total_allocations++;
+      instance->allocated_memory += size;
+      current_page->cursor += size;
     }
-    //     OE_ASSERT(instance->page_allocation_cursor < kMaxPages, "Exceeded maximum number of pages.");
-
-    /// FIXME: this alignment offset may not be correct for all cases because the alignment is hardcoded to 16 bytes,
-    ///         but I need to figure out how to balance the needed alignment for std containers while keeping 16 byte
-    ///         alignment because GPUs read memory in 16 byte chunks
-    // clang-format off
-    size_t alignment_offset = (instance->page_cursor % alignment) != 0 ?
-      alignment - (instance->page_cursor % alignment) : 0;
-    // clang-format on
-    instance->page_cursor += alignment_offset;
-
-    void* mem = instance->pages[instance->page_allocation_cursor - 1] + instance->page_cursor;
-
-    instance->total_allocations++;
-    instance->allocated_memory += size;
-    instance->page_cursor += size;
-
     // #ifdef OTHERENV_MEMORY_DEBUG
     //     ReportAllocation(mem, size);
     // #endif
@@ -60,17 +98,18 @@ namespace other {
     return;
   }
 
+  arena::page* arena::get_current_page() {
+    return storage.get_page(page_allocation_cursor - 1);
+  }
+
   void arena::allocate_page() {
-    // OE_TRACE("Attempting to page allocation.");
-    // OE_ASSERT(page_allocation_cursor < kMaxPages, "Exceeded maximum number of pages. Allocating page : {}.", page_allocation_cursor);
-    // OE_ASSERT(pages[page_allocation_cursor] == nullptr, "Page already allocated.");
-
     // PROFILE_SECTION("Arena--AllocatePage");
+    OTHER_ASSERT(page_allocation_cursor < arena_storage::kMaxPages, "Exceeded maximum number of pages. Allocating page : {}.", page_allocation_cursor);
 
-    pages[page_allocation_cursor++] = (uint8_t*)malloc(kPageSize);
-    // OE_ASSERT(pages[page_allocation_cursor] != nullptr, "Failed to allocate page.");
+    page* p = storage.allocate_page(page_allocation_cursor++);
+    OTHER_ASSERT(p != nullptr, "Failed to allocate page.");
 
-    page_cursor = 0;
+    p->cursor = 0;
   }
 
   // #ifdef OTHERENV_MEMORY_DEBUG

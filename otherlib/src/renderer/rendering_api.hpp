@@ -75,7 +75,7 @@ namespace other {
     virtual void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) = 0;
 
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) = 0;
-    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, float value) = 0;
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value) = 0;
@@ -89,7 +89,7 @@ namespace other {
     T* get_resource_as(const resource_handle& handle) {
       return (T*)get_resource(handle.id);
     }
-    resource* get_resource(uint64_t id);
+    resource* get_resource(natural_t id);
 
    protected:
     SDL_Window* native_window() { return native_window_handle; }
@@ -118,8 +118,8 @@ namespace other {
       }
     }
 
-    inline uint64_t get_next_resource_id() {
-      static uint64_t next_id = 0;
+    inline natural_t get_next_resource_id() {
+      static natural_t next_id = 0;
       /// start at 1
       return ++next_id;
     }
@@ -136,6 +136,8 @@ namespace other {
     virtual shader* create_shader_resource(const resource_handle& handle, resource_type type) = 0;
     virtual void destroy_shader_resource(const resource_handle& handle) = 0;
 
+    std::map<natural_t, resource_handle> resource_handles;
+
    private:
     void* gpu_context = nullptr;
     SDL_Window* native_window_handle = nullptr;
@@ -143,9 +145,8 @@ namespace other {
     glm::vec3 clear_color;
     glm::ivec2 window_size;
 
-    std::map<uint64_t, resource_handle> resource_handles;
-    std::map<uint64_t, resource*> resources;
-    std::map<uint64_t, std::string> resource_names;
+    std::map<natural_t, resource*> resources;
+    std::map<natural_t, std::string> resource_names;
   };
 
 }  // namespace other

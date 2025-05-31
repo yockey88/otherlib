@@ -51,12 +51,12 @@ namespace other {
 
     GPU_ALIGN struct metal {
       glm::vec3 albedo;
-      float fuzziness = 0.0f;
+      real_t fuzziness = 0.0f;
     };
 
     GPU_ALIGN struct dielectric {
       glm::vec3 albedo;
-      float refraction_index = 1.0f;
+      real_t refraction_index = 1.0f;
     };
 
     constexpr size_t kMaxLambertian = 100;
@@ -76,7 +76,7 @@ namespace other {
 
     GPU_ALIGN struct sphere {
       glm::vec3 position;
-      float radius;
+      real_t radius;
     };
 
     constexpr size_t kMaxSpheres = 100;

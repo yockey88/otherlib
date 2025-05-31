@@ -36,26 +36,17 @@ namespace other {
       inc_ref();
     }
 
-    ref(const ref<T>& other) {
-      object = other.object;
+    template <typename T2>
+      requires std::is_base_of_v<T, T2>
+    ref(T2* p) {
+      object = p;
       inc_ref();
     }
 
-    /// ref count stays the same under move assignment
     ref(ref<T>&& other) noexcept {
       object = other.object;
       other.object = nullptr;
     }
-
-    ref& operator=(const ref<T>& other) {
-      if (this != &other) {
-        object = other.object;
-        inc_ref();
-      }
-      return *this;
-    }
-
-    /// ref count stays the same under move assignment
     ref& operator=(ref<T>&& other) noexcept {
       if (this != &other) {
         object = other.object;
@@ -63,18 +54,31 @@ namespace other {
       }
       return *this;
     }
-
     template <typename T2>
-    ref(const ref<T2>& other) {
-      object = (T*)other.object;
-      inc_ref();
+      requires std::is_base_of_v<T, T2>
+    ref(ref<T2>&& other) noexcept {
+      static_assert(std::is_base_of_v<T, T2>, "No viable conversion to construct ref with");
+      object = reinterpret_cast<T*>(other.object);
+      other.object = nullptr;
     }
 
-    /// ref count stays the same under move assignment
+    ref(const ref<T>& other) {
+      object = other.object;
+      inc_ref();
+    }
+    ref& operator=(const ref<T>& other) {
+      if (this != &other) {
+        object = other.object;
+        inc_ref();
+      }
+      return *this;
+    }
     template <typename T2>
-    ref(ref<T2>&& other) noexcept {
-      object = (T*)other.object;
-      other.object = nullptr;
+      requires std::is_base_of_v<T, T2>
+    ref(const ref<T2>& other) {
+      static_assert(std::is_base_of_v<T, T2>, "No viable conversion to construct ref with");
+      object = reinterpret_cast<T*>(other.object);
+      inc_ref();
     }
 
     virtual ~ref() {
@@ -103,7 +107,9 @@ namespace other {
     }
 
     ref& operator=(std::nullptr_t) {
-      dec_ref();
+      if (object != nullptr) {
+        dec_ref();
+      }
       object = nullptr;
       return *this;
     }
@@ -120,6 +126,13 @@ namespace other {
     T* raw_ptr() { return object; }
     const T* raw_ptr() const { return object; }
 
+    size_t count() const {
+      if (object != nullptr) {
+        return object->count();
+      }
+      return 0;
+    }
+
     template <typename U>
       requires ref_castable<T, U>
     static ref<T> clone(const ref<U>& old_ref) {
@@ -135,19 +148,14 @@ namespace other {
     }
 
     template <typename... Args>
-      requires std::is_base_of_v<ref_counted, T> &&
-      requires(Args&&... args) { std::declval<arena_allocator<T>>().allocate(std::forward<Args>(args)...); }
-    static ref<T> create(Args&&... args) {
-      return ref<T>(allocator.allocate(std::forward<Args>(args)...));
+      requires std::is_base_of_v<ref_counted, std::remove_cvref_t<T>> &&
+      requires(Args&&... args) { std::declval<arena_allocator<std::remove_cvref_t<T>>>().allocate(std::forward<Args>(args)...); }
+    static ref<std::remove_cvref_t<T>> create(Args&&... args) {
+      return ref<std::remove_cvref_t<T>>(arena_allocator<std::remove_cvref_t<T>>{}.allocate(std::forward<Args>(args)...));
     }
 
-    bool operator==(const ref<T>& other) const {
-      return object == other.object;
-    }
-
-    bool operator==(std::nullptr_t) const {
-      return object == nullptr;
-    }
+    bool operator==(std::nullptr_t) const { return object == nullptr; }
+    bool operator==(const ref<T>& other) const { return object == other.object; }
 
    private:
     static inline arena_allocator<T> allocator;
@@ -191,7 +199,7 @@ namespace other {
   template <typename T, typename... Args>
     requires ref_type<T> && std::constructible_from<T, Args...>
   ref<T> make_ref(Args&&... args) {
-    return ref<T>::Create(std::forward<Args>(args)...);
+    return ref<T>::create(std::forward<Args>(args)...);
   }
 
 }  // namespace other

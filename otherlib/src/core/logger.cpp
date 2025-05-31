@@ -13,7 +13,7 @@ namespace other {
     logger->set_level(level);
     logger->flush_on(level);
 
-    uint64_t id = FNV(name);
+    natural_t id = FNV(name);
     auto [itr, inserted] = loggers.insert({ id, std::move(logger) });
     if (!inserted) {
       log_failure_error(std::format("Logger with name {} already exists.", name));

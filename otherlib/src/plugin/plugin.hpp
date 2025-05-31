@@ -27,7 +27,7 @@ namespace other {
 
    private:
     constexpr static const char* kPluginBindingSymbolName = "bind_plugin_systems";
-    static std::map<uint64_t, library_handle*> loaded_libraries;
+    static std::map<natural_t, library_handle*> loaded_libraries;
 
     static library_handle* create_library_handle(const std::string_view plugin_path);
   };

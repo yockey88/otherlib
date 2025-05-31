@@ -36,12 +36,12 @@ namespace other {
   constexpr static size_t kNumResourceTypes = static_cast<size_t>(resource_type::NUM_RESOURCES);
 
   struct resource_handle {
-    uint64_t id = 0;
-    uint64_t name_hash = 0;
+    natural_t id = 0;
+    natural_t name_hash = 0;
     resource_type type = resource_type::EMPTY;
 
     constexpr resource_handle() = default;
-    constexpr resource_handle(uint64_t id, resource_type type)
+    constexpr resource_handle(natural_t id, resource_type type)
         : id(id), type(type) {}
 
     constexpr auto operator<=>(const resource_handle&) const = default;

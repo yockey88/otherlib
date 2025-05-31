@@ -97,7 +97,7 @@ namespace other {
         return;
       }
 
-      CORE_LOG_DEBUG("calling 'create_driver' from plugin [{}]", name);
+      CORE_LOG_DEBUG("calling 'destroy_driver' from plugin [{}]", name);
       sym.get_function<void (*)(driver*)>()(instance);
       plugin::unload_plugin_library(name);
     }

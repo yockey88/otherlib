@@ -10,7 +10,7 @@
 
 namespace other {
 
-  std::map<uint64_t, library_handle*> plugin::loaded_libraries;
+  std::map<natural_t, library_handle*> plugin::loaded_libraries;
 
   library_handle* plugin::load_plugin_library(const std::string_view plugin_path) {
     if (plugin_path.empty()) {
@@ -22,9 +22,9 @@ namespace other {
     }
 
     std::string name = filepath(plugin_path).filename().stem().string();
-    CORE_LOG_DEBUG("plugin path [{}] exists: {}", name, plugin_path);
+    CORE_LOG_DEBUG("plugin [{}] path: {}", name, plugin_path);
 
-    uint64_t hash = FNV(name);
+    natural_t hash = FNV(name);
     auto it = loaded_libraries.find(hash);
     if (it != loaded_libraries.end()) {
       return it->second;
@@ -79,7 +79,7 @@ namespace other {
       return nullptr;
     }
 
-    uint64_t hash = FNV(plugin_name);
+    natural_t hash = FNV(plugin_name);
     auto it = loaded_libraries.find(hash);
     if (it != loaded_libraries.end()) {
       return it->second;

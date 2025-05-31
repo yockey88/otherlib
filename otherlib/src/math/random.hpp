@@ -6,14 +6,16 @@
 
 #include <glm/glm.hpp>
 
+#include "core/defines.hpp"
+
 namespace other {
 
-  float rand_float();
-  float rand_float(float min, float max);
+  real_t rand_float();
+  real_t rand_float(real_t min, real_t max);
 
   glm::vec3 sample_square();
   glm::vec3 random_vec3();
-  glm::vec3 random_vec3(float min, float max);
+  glm::vec3 random_vec3(real_t min, real_t max);
   glm::vec3 random_unit_vector();
   glm::vec3 random_in_hemisphere(const glm::vec3& normal);
 

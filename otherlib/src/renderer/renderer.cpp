@@ -47,7 +47,7 @@ namespace other {
       return {};
     }
 
-    float x, y;
+    real_t x, y;
     SDL_MouseButtonFlags _ = SDL_GetMouseState(&x, &y);
     return { x, y };
   }

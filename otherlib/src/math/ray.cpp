@@ -5,7 +5,7 @@
 
 namespace other {
 
-  glm::vec3 ray::at(float t) const {
+  glm::vec3 ray::at(real_t t) const {
     return origin + t * direction;
   }
 

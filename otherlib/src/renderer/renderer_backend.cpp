@@ -24,12 +24,12 @@ namespace other {
     static constexpr std::string_view kSoftware = "software";
     static constexpr std::string_view kNull = "null";
 
-    static constexpr uint64_t kOpenGLHash = FNV(kOpenGL);
-    static constexpr uint64_t kVulkanHash = FNV(kVulkan);
-    static constexpr uint64_t kDirectXHash = FNV(kDirectX);
-    static constexpr uint64_t kMetalHash = FNV(kMetal);
-    static constexpr uint64_t kSoftwareHash = FNV(kSoftware);
-    static constexpr uint64_t kNullHash = FNV(kNull);
+    static constexpr natural_t kOpenGLHash = FNV(kOpenGL);
+    static constexpr natural_t kVulkanHash = FNV(kVulkan);
+    static constexpr natural_t kDirectXHash = FNV(kDirectX);
+    static constexpr natural_t kMetalHash = FNV(kMetal);
+    static constexpr natural_t kSoftwareHash = FNV(kSoftware);
+    static constexpr natural_t kNullHash = FNV(kNull);
 
   }  // namespace backend_keys
 
@@ -42,7 +42,7 @@ namespace other {
 
     uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
-    uint64_t hash = FNV(name);
+    natural_t hash = FNV(name);
     switch (hash) {
       case backend_keys::kOpenGLHash: {
         flags |= SDL_WINDOW_OPENGL;
@@ -85,7 +85,10 @@ namespace other {
 
   void renderer_backend::unload_backend() {
     if (rendering_api_instance != nullptr) {
+      CORE_LOG_DEBUG("Shutting down rendering API instance.");
       rendering_api_instance->shutdown_ui_context();
+      ImGui::DestroyContext();
+
       rendering_api_instance->shutdown();
       rendering_api_instance = nullptr;
 

@@ -15,8 +15,8 @@ namespace other {
   class camera {
    public:
     struct clip_planes {
-      float near_plane = 0.01f;
-      float far_plane = 100.f;
+      real_t near_plane = 0.01f;
+      real_t far_plane = 100.f;
     } clip;
 
     glm::vec3 center() const;
@@ -43,19 +43,19 @@ namespace other {
 
     glm::vec2 image_size;
 
-    float defocus_angle = 0;
-    float focus_dist = 10;
+    real_t defocus_angle = 0;
+    real_t focus_dist = 10;
 
     glm::vec3 defocus_disk_u;  /// horizontal
     glm::vec3 defocus_disk_v;  // vertical
 
-    float image_width = 2.f;
-    float aspect_ratio = 16.f / 9.f;
+    real_t image_width = 2.f;
+    real_t aspect_ratio = 16.f / 9.f;
     int samples_per_pixel = 100;
     int max_bounce_depth = 50;
-    float fov;
+    real_t fov;
 
-    float sensitivity = 0.1f;
+    real_t sensitivity = 0.1f;
     bool constrain_pitch = true;
 
    private:
@@ -71,7 +71,7 @@ namespace other {
     glm::mat4 view_matrix;
     glm::mat4 projection_matrix;
 
-    float pixel_samples_scale = 1.f;
+    real_t pixel_samples_scale = 1.f;
     glm::vec3 pixel00_loc;
     glm::vec3 pixel_delta_u;
     glm::vec3 pixel_delta_v;

@@ -54,7 +54,7 @@ namespace other {
   }
 
   glm::mat4& camera::get_projection_matrix(const glm::ivec2& window_size) {
-    projection_matrix = glm::perspective(glm::radians(fov), static_cast<float>(window_size.x) / window_size.y, clip.near_plane, clip.far_plane);
+    projection_matrix = glm::perspective(glm::radians(fov), static_cast<real_t>(window_size.x) / window_size.y, clip.near_plane, clip.far_plane);
     return projection_matrix;
   }
 
@@ -91,23 +91,23 @@ namespace other {
     image_size.y = int(image_size.x / aspect_ratio);
     image_size.y = (image_size.y < 1) ? 1 : image_size.y;
 
-    pixel_samples_scale = 1.f / float(samples_per_pixel);
+    pixel_samples_scale = 1.f / real_t(samples_per_pixel);
 
-    float theta = degrees_to_radians(fov);
-    float h = std::tan(theta / 2);
-    float viewport_height = 2 * h * focus_dist;
-    float viewport_width = viewport_height * (float(image_size.x) / image_size.y);
+    real_t theta = degrees_to_radians(fov);
+    real_t h = std::tan(theta / 2);
+    real_t viewport_height = 2 * h * focus_dist;
+    real_t viewport_width = viewport_height * (real_t(image_size.x) / image_size.y);
 
     glm::vec3 viewport_u = viewport_width * right();
     glm::vec3 viewport_v = viewport_height * -up();
 
-    pixel_delta_u = viewport_u / float(image_size.x);
-    pixel_delta_v = viewport_v / float(image_size.y);
+    pixel_delta_u = viewport_u / real_t(image_size.x);
+    pixel_delta_v = viewport_v / real_t(image_size.y);
 
     glm::vec3 viewport_upper_left = position - (focus_dist * forward()) - viewport_u / 2.f - viewport_v / 2.f;
     pixel00_loc = viewport_upper_left + 0.5f * (pixel_delta_u + pixel_delta_v);
 
-    float defocus_radius = focus_dist * std::tan(degrees_to_radians(defocus_angle / 2));
+    real_t defocus_radius = focus_dist * std::tan(degrees_to_radians(defocus_angle / 2));
     defocus_disk_u = right() * defocus_radius;
     defocus_disk_v = up() * defocus_radius;
   }

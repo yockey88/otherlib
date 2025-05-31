@@ -5,7 +5,7 @@
 
 namespace other {
 
-  render_pass& render_graph::bind_pass(uint64_t id, const glm::ivec2& size) {
+  render_pass& render_graph::bind_pass(natural_t id, const glm::ivec2& size) {
     auto itr = passes.find(id);
     if (itr != passes.end()) {
       if (size != itr->second.size && size != glm::ivec2{ 0, 0 }) {

@@ -19,7 +19,7 @@ namespace other {
    public:
     opengl_api(SDL_Window* native_window_handle)
         : rendering_api(native_window_handle) {}
-    virtual ~opengl_api() override = default;
+    virtual ~opengl_api() override;
 
     void initialize() override;
     void shutdown() override;
@@ -62,28 +62,28 @@ namespace other {
     void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) override;
 
     void set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) override;
-    void set_shader_uniform(const resource_handle& shader, const std::string& name, float value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value) override;
 
    private:
-    std::map<uint64_t, uint32_t> gpu_resources;
-    std::map<uint64_t, resource_type> resource_types;
-    std::map<uint64_t, std::vector<uint32_t>> in_process_resources;
+    std::map<natural_t, uint32_t> gpu_resources;
+    std::map<natural_t, resource_type> resource_types;
+    std::map<natural_t, std::vector<uint32_t>> in_process_resources;
 
-    std::map<uint64_t, shader> shader_resources;
+    std::map<natural_t, shader> shader_resources;
     struct uniform_key {
-      uint64_t resource_id;
-      uint64_t uniform_hash;
+      natural_t resource_id;
+      natural_t uniform_hash;
 
       constexpr auto operator<=>(const uniform_key&) const = default;
     };
     std::map<uniform_key, uint32_t> shader_uniforms;
 
-    std::map<uint64_t, texture> texture_resources;
-    std::map<uint64_t, gpu_buffer> buffer_resources;
-    std::map<uint64_t, mesh> mesh_resources;
+    std::map<natural_t, texture> texture_resources;
+    std::map<natural_t, gpu_buffer> buffer_resources;
+    std::map<natural_t, mesh> mesh_resources;
 
     mesh* create_mesh_resource(const resource_handle& handle, resource_type type) override;
     void destroy_mesh_resource(const resource_handle& handle) override;
@@ -113,7 +113,7 @@ namespace other {
 
     int32_t get_gl_prim_type(mesh::primitive_type type) const;
 
-    int32_t get_resource_handle(uint64_t id) const;
+    int32_t get_resource_handle(natural_t id) const;
     uint32_t get_shader_uniform_location(const resource_handle& shader, const std::string& name);
   };
 

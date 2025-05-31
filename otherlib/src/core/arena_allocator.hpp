@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <new>
+#include <type_traits>
 #include <utility>
 
 #include "core/allocator.hpp"
@@ -32,9 +33,9 @@ namespace other {
       /// TODO: custom alignment
       void* memory = nullptr;
       if (override_arena != nullptr) {
-        memory = override_arena->allocate(type_size, alignof(T));
+        memory = override_arena->allocate(type_size);
       } else {
-        memory = arena::allocate(type_size, alignof(T));
+        memory = subsystem<arena>::get()->allocate(type_size);
       }
 
       if (memory == nullptr) {
@@ -46,7 +47,7 @@ namespace other {
     }
 
     void* allocate_block(size_t size) {
-      return arena::allocate(size, alignof(T));
+      return subsystem<arena>::get()->allocate(size);
     }
 
     void free(T* ptr) {
@@ -54,40 +55,19 @@ namespace other {
 
       if (ptr != nullptr) {
         // PROFILE_DEALLOCATION(ptr);
-        ptr->~T();
-        void* memory = static_cast<void*>(ptr);
-        std::memset(memory, 0, sizeof(T));
+        std::destroy_at(ptr);
       }
       if (override_arena != nullptr) {
         override_arena->free(ptr, type_size);
       } else {
-        arena::free(ptr, type_size);
+        subsystem<arena>::get()->free(ptr, type_size);
       }
     }
 
-    void free(void* ptr) {
-      if (ptr != nullptr) {
-        // PROFILE_DEALLOCATION(ptr);
-        T* t_ptr = static_cast<T*>(ptr);
-        t_ptr->~T();
-
-        void* memory = static_cast<void*>(ptr);
-        std::memset(memory, 0, sizeof(T));
-      }
-      if (override_arena != nullptr) {
-        override_arena->free(ptr, type_size);
-      } else {
-        arena::free(ptr, type_size);
-      }
-    }
-
-    /// cpp standard allocator interface
-    [[nodiscard]] T* allocate(size_t size) {
-      return static_cast<T*>(allocate_block(size));
-    }
-
-    void deallocate(void* ptr, size_t) noexcept {
-      free(static_cast<T*>(ptr));
+    template <typename T2>
+      requires std::is_base_of_v<T, T2>
+    void free(T2* ptr) {
+      free((T*)ptr);
     }
 
     static constexpr size_t type_size = sizeof(T);

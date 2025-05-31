@@ -6,6 +6,8 @@
 
 #include <atomic>
 
+#include "core/defines.hpp"
+
 namespace other {
 
   class ref_counted {
@@ -20,12 +22,12 @@ namespace other {
     void increment();
     void decrement();
 
-    uint64_t view_count() const;
-    uint64_t count() const;
+    natural_t view_count() const;
+    natural_t count() const;
 
    private:
-    mutable std::atomic<uint64_t> views;
-    mutable std::atomic<uint64_t> ref_count;
+    mutable std::atomic<natural_t> views;
+    mutable std::atomic<natural_t> ref_count;
   };
 
 }  // namespace other

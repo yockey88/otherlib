@@ -14,13 +14,13 @@ namespace other {
   class render_graph;
 
   struct render_pass {
-    uint64_t id = 0;
+    natural_t id = 0;
     render_graph* graph = nullptr;
 
     /// all attachments must be same size, if this is 0, then swapchain size is used
     glm::ivec2 size = { 0, 0 };
 
-    std::vector<uint64_t> resources;
+    std::vector<natural_t> resources;
     std::vector<uint32_t> access_flags;
 
     // std::vector<img_attach_info> image_attachments;
@@ -36,18 +36,18 @@ namespace other {
 
     size_t references = 0;
 
-    render_pass(render_graph* graph, uint64_t id)
+    render_pass(render_graph* graph, natural_t id)
         : id(id), graph(graph) {}
   };
 
   class render_graph {
    public:
-    render_pass& bind_pass(uint64_t id, const glm::ivec2& size = { 0, 0 });
+    render_pass& bind_pass(natural_t id, const glm::ivec2& size = { 0, 0 });
 
    private:
     /// resource handles
     /// resource information
-    std::map<uint64_t, render_pass> passes;
+    std::map<natural_t, render_pass> passes;
   };
 
 }  // namespace other

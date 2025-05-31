@@ -8,7 +8,7 @@
 namespace other {
 
   std::expected<symbol, std::nullptr_t> library_handle::get_symbol(const std::string_view sym) {
-    uint64_t hash = FNV(sym);
+    natural_t hash = FNV(sym);
     auto it = symbols.find(hash);
     if (it != symbols.end()) {
       return it->second;

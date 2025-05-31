@@ -11,13 +11,6 @@ namespace other {
     storage = nullptr;
   }
 
-  value value::create_opaque_handle(void* opaque_data) {
-    value v = value();
-    v.storage = nullptr;  // NewRef<ValueStorageImpl<void*>>();
-    v.storage->data() = opaque_data;
-    return v;
-  }
-
   value::value(value&& other) {
     storage = other.storage;
     other.storage = nullptr;
@@ -38,25 +31,23 @@ namespace other {
     return *this;
   }
 
-  bool value::is_empty() const {
-    if (storage == nullptr) {
-      return false;
-    }
+  value value::create_opaque_handle(void* opaque_data) {
+    value v = value();
+    v.storage = make_ref<value_storage_impl<void*>>();
+    v.storage->set_data(opaque_data);
+    return v;
+  }
 
-    bool empty = storage->data() == nullptr;
-    if (empty) {
-      return true;
-      // OE_ASSERT(storage->size == 0, "Size is not zero for empty value!");
-      // OE_ASSERT(storage->value_type == ValueType::EMPTY_TYPE, "Value type is not EMPTY_TYPE for empty value!");
-    }
-    return empty;
+  bool value::is_empty() const {
+    return storage == nullptr ||
+      storage->data() == nullptr ||
+      storage->size() == 0;
   }
 
   void value::clear() {
-    if (is_empty() || storage->type == value_type::OPAQUE_HANDLE) {
+    if (is_empty() || storage->val_type() == value_type::OPAQUE_HANDLE) {
       return;
     }
-    // OE_ASSERT(storage != nullptr, "Storage is null!");
     storage = nullptr;
   }
 
@@ -71,7 +62,7 @@ namespace other {
     if (storage == nullptr) {
       return value_type::EMPTY_TYPE;
     }
-    return storage->type;
+    return storage->val_type();
   }
 
   void value::aquire() {

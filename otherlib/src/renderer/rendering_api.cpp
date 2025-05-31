@@ -5,6 +5,8 @@
 
 #include <imgui/backends/imgui_impl_sdl3.h>
 
+#include "core/defines.hpp"
+#include "core/fnv.hpp"
 #include "core/logger.hpp"
 
 namespace other {
@@ -138,7 +140,7 @@ namespace other {
     }
   }
 
-  resource* rendering_api::get_resource(uint64_t id) {
+  resource* rendering_api::get_resource(natural_t id) {
     auto itr = resources.find(id);
     if (itr != resources.end()) {
       return itr->second;

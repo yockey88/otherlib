@@ -1,0 +1,237 @@
+/**
+ * \file tests/arena/arena_test.cpp
+ * Test suite implementation for the arena memory allocator class
+ */
+#include "arena_test.hpp"
+
+#include <random>
+
+namespace other {
+
+  namespace {
+
+    std::vector<size_t> generate_random_sizes(size_t count, size_t min_size, size_t max_size) {
+      std::random_device rd;
+      std::mt19937 gen{ rd() };
+      std::uniform_int_distribution<size_t> dis(min_size, max_size);
+
+      std::vector<size_t> sizes;
+      sizes.reserve(count);
+      for (size_t i = 0; i < count; ++i) {
+        sizes.push_back(dis(gen));
+      }
+      return sizes;
+    }
+
+  }  // anonymous namespace
+
+  void arena_test::print_current_page() {
+    arena* a = subsystem<arena>::get();
+    arena::page* current_page = a->get_current_page();
+
+    std::stringstream ss;
+    if (current_page) {
+      uint8_t* page_start = static_cast<uint8_t*>(current_page->data());
+      for (size_t i = 0; i < current_page->cursor; ++i) {
+        ss << std::format("0x{:02x} ", page_start[i]);
+      }
+      std::cout << "Current page data: " << ss.str() << std::endl;
+    } else {
+      std::cout << "No current page allocated." << std::endl;
+    }
+  }
+
+  void arena_test::verify_alignment(void* ptr, size_t alignment) {
+    uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+    EXPECT_EQ(addr % alignment, 0) << "Pointer is not aligned to " << alignment << " bytes: " << addr;
+    EXPECT_GE(reinterpret_cast<uint8_t*>(ptr) + kTestBlockSize, reinterpret_cast<uint8_t*>(ptr)) << "Pointer is not within valid memory range.";
+    EXPECT_LE(reinterpret_cast<uint8_t*>(ptr) + kTestBlockSize, reinterpret_cast<uint8_t*>(ptr) + kPageSize) << "Pointer exceeds page size limit.";
+  }
+
+  void arena_test::test_memory_boundaries(void* ptr, size_t size) {
+    uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+
+    arena* a = subsystem<arena>::get();
+    arena::page* page = a->get_current_page();
+    EXPECT_NE(page, nullptr) << "Current page is null during memory boundary test.";
+    EXPECT_GE(addr, reinterpret_cast<uintptr_t>(page->data())) << "Pointer is below page start address.";
+    EXPECT_LT(addr + size, reinterpret_cast<uintptr_t>(page->data()) + arena_storage::kPageSize) << "Pointer exceeds page end address.";
+  }
+
+  void* arena_test::allocate_and_verify(size_t size) {
+    void* ptr = subsystem<arena>::get()->allocate(size);
+    EXPECT_NE(ptr, nullptr) << "Allocation failed for size " << size;
+
+    allocations.push_back({ ptr, size, 0 });
+
+    verify_alignment(ptr, kAlignment);
+    test_memory_boundaries(ptr, size);
+    verify_arena_state();
+
+    return ptr;
+  }
+
+  void arena_test::test_allocation_pattern(const std::vector<size_t>& sizes) {
+    // TODO: Allocate memory blocks according to sizes pattern
+    // TODO: Fill each block with unique test pattern
+    // TODO: Verify all patterns remain intact after all allocations
+    // TODO: Test deallocation in various orders (LIFO, FIFO, random)
+  }
+
+  void arena_test::simulate_memory_pressure() {
+    // TODO: Allocate memory until arena pages are exhausted
+    // TODO: Verify proper handling of out-of-memory conditions
+    // TODO: Test arena behavior under extreme memory pressure
+  }
+
+  void arena_test::verify_arena_state() {
+    size_t total_allocated = 0;
+    for (const auto& alloc : allocations) {
+      total_allocated += alloc.size;
+    }
+
+    arena* a = subsystem<arena>::get();
+
+    ASSERT_EQ(a->total_allocations, allocations.size()) << "Total allocations do not match recorded allocations.";
+    ASSERT_EQ(a->allocated_memory, total_allocated) << "Total allocated memory does not match recorded allocations.";
+    ASSERT_LE(a->allocated_memory, arena_storage::kMaxMemoryAllowed) << "Allocated memory exceeds maximum allowed limit.";
+    ASSERT_LE(a->page_allocation_cursor, a->storage.kMaxPages) << "Page allocation cursor exceeds maximum number pages.";
+    ASSERT_NE(a->get_current_page(), nullptr) << "Current page is null after verification.";
+    ASSERT_GT(a->get_current_page()->cursor, 0) << "Current page cursor is negative.";
+    ASSERT_LT(a->get_current_page()->cursor, arena_storage::kPageSize) << "Current page cursor exceeds page size limit.";
+  }
+
+  TEST_F(arena_test, basic_allocation) {
+    arena* a = subsystem<arena>::get();
+
+    void* ptr = allocate_and_verify(kTestBlockSize);
+    ASSERT_NE(ptr, nullptr) << "Allocation failed for size " << kTestBlockSize;
+
+    arena::page* current_page = a->get_current_page();
+    ASSERT_NE(current_page, nullptr) << "Current page is null after allocation.";
+    ASSERT_EQ(current_page->cursor, kTestBlockSize) << "Current page cursor does not match allocation size.";
+
+    uint64_t& value = *static_cast<uint64_t*>(ptr);
+    value = 0xDEADBEEF;  // Fill with a test pattern
+
+    EXPECT_EQ(a->get_current_page()->get_ptr_at(0), ptr) << "Pointer does not match expected address in current page.";
+    EXPECT_EQ(*(uint64_t*)a->get_current_page()->get_ptr_at(0), value) << "Pointer does not match expected address in current page.";
+  }
+
+  TEST_F(arena_test, alignment_requirements) {
+    void* ptr = allocate_and_verify(kTestBlockSize);
+    ASSERT_NE(ptr, nullptr) << "Allocation failed for size " << kTestBlockSize;
+
+    verify_alignment(ptr, kAlignment);
+    test_memory_boundaries(ptr, kTestBlockSize);
+
+    // Check that the pointer is aligned to the required alignment
+    uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+    EXPECT_EQ(addr % kAlignment, 0) << "Pointer is not aligned to " << kAlignment << " bytes: " << addr;
+  }
+
+  TEST_F(arena_test, null_pointer_deallocation) {
+    arena* a = subsystem<arena>::get();
+    ASSERT_NO_THROW(a->free(nullptr, kTestBlockSize)) << "Deallocating null pointer should not throw an exception.";
+  }
+
+  TEST_F(arena_test, memory_pattern_integrity) {
+    /// TODO;
+  }
+
+  TEST_F(arena_test, sequential_allocation_patterns) {
+    // TODO: Test allocating many small blocks sequentially
+    // TODO: Verify no memory fragmentation issues
+    // TODO: Test allocation efficiency and performance
+  }
+
+  TEST_F(arena_test, interleaved_allocation_deallocation) {
+    // TODO: Test interleaving allocation and deallocation operations
+    // TODO: Verify arena handles complex allocation patterns
+    // TODO: Test for memory fragmentation and efficiency
+  }
+
+  // Boundary and edge case tests
+  TEST_F(arena_test, page_boundary_allocations) {
+    // TODO: Test allocations that cross page boundaries
+    // TODO: Verify proper page management and allocation
+    // TODO: Test edge cases at page size limits
+  }
+
+  TEST_F(arena_test, maximum_allocation_size) {
+    // TODO: Test allocation of maximum allowed size
+    // TODO: Verify behavior at arena capacity limits
+    // TODO: Test allocation failure handling
+  }
+
+  TEST_F(arena_test, arena_exhaustion) {
+    // TODO: Allocate memory until arena is completely full
+    // TODO: Verify proper out-of-memory handling
+    // TODO: Test arena recovery after memory is freed
+  }
+
+  // Concurrency and thread safety tests
+  TEST_F(arena_test, concurrent_allocations) {
+    // TODO: Test allocation from multiple threads simultaneously
+    // TODO: Verify thread safety of arena operations
+    // TODO: Test for race conditions and data corruption
+  }
+
+  TEST_F(arena_test, concurrent_allocation_deallocation) {
+    // TODO: Test mixed allocation/deallocation from multiple threads
+    // TODO: Verify arena mutex protection works correctly
+    // TODO: Test high-contention scenarios
+  }
+
+  // Performance and stress tests
+  TEST_F(arena_test, allocation_performance) {
+    // TODO: Benchmark allocation performance
+    // TODO: Compare with standard malloc/free performance
+    // TODO: Verify arena provides expected performance benefits
+  }
+
+  TEST_F(arena_test, memory_fragmentation_resistance) {
+    // TODO: Test arena's resistance to memory fragmentation
+    // TODO: Simulate fragmentation-inducing allocation patterns
+    // TODO: Verify arena can still allocate efficiently
+  }
+
+  TEST_F(arena_test, long_running_stress_test) {
+    // TODO: Run extended stress test with random allocation patterns
+    // TODO: Verify arena stability over long periods
+    // TODO: Monitor for memory leaks or corruption over time
+  }
+
+  // Subsystem integration tests
+  TEST_F(arena_test, subsystem_initialization) {
+    // TODO: Test arena subsystem initialization
+    // TODO: Verify proper setup of subsystem storage
+    // TODO: Test subsystem ptr() and address() methods
+  }
+
+  TEST_F(arena_test, subsystem_destruction) {
+    // TODO: Test arena subsystem cleanup
+    // TODO: Verify all allocated memory is properly freed
+    // TODO: Test destructor behavior and resource cleanup
+  }
+
+  // Error condition tests
+  TEST_F(arena_test, invalid_pointer_deallocation) {
+    // TODO: Test deallocation of pointers not allocated by arena
+    // TODO: Verify arena can detect invalid pointers
+    // TODO: Test error handling for corrupt pointer addresses
+  }
+
+  TEST_F(arena_test, arena_corruption_detection) {
+    // TODO: Test arena's ability to detect internal corruption
+    // TODO: Simulate various corruption scenarios
+    // TODO: Verify arena fails safely when corrupted
+  }
+
+  TEST_F(arena_test, out_of_bounds_access_protection) {
+    // TODO: Test protection against buffer overruns
+    // TODO: Verify arena can detect out-of-bounds writes
+    // TODO: Test guard pages or other protection mechanisms
+  }
+
+}  // namespace other

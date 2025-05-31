@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 
+#include "core/fnv.hpp"
 #include "core/logger.hpp"
 
 namespace other {

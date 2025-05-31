@@ -1,5 +1,6 @@
 build/
 .vs*/
+.github/
 .cache/
 artifacts/
 wip/

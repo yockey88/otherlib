@@ -21,11 +21,11 @@ namespace other {
     ref_count--;
   }
 
-  uint64_t ref_counted::view_count() const {
+  natural_t ref_counted::view_count() const {
     return views;
   }
 
-  uint64_t ref_counted::count() const {
+  natural_t ref_counted::count() const {
     return ref_count;
   }
 

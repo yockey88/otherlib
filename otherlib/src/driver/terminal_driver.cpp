@@ -18,7 +18,7 @@
 namespace other {
   namespace {
 
-    float linear_to_gamma(float linear_component) {
+    real_t linear_to_gamma(real_t linear_component) {
       if (linear_component > 0) {
         return std::sqrt(linear_component);
       }
@@ -55,7 +55,7 @@ namespace other {
       }
     )";
 
-    constexpr static float quad_vertices[] = {
+    constexpr static real_t quad_vertices[] = {
       -1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
       -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
       1.0, 1.0f, 0.0f, 1.0f, 1.0f,
@@ -457,8 +457,8 @@ namespace other {
   // ray terminal_driver::get_ray(int32_t i, int32_t j) const {
   //   glm::vec3 offset = sample_square();
   //   glm::vec3 pixel_sample = pixel00_loc +
-  //     (float(i) + offset.x) * pixel_delta_u +
-  //     (float(j) + offset.y) * pixel_delta_v;
+  //     (real_t(i) + offset.x) * pixel_delta_u +
+  //     (real_t(j) + offset.y) * pixel_delta_v;
 
   //   glm::vec3 origin = cam.center();
   //   glm::vec3 direction = pixel_sample - origin;
@@ -480,7 +480,7 @@ namespace other {
   //   }
 
   //   glm::vec3 unit_direction = glm::normalize(r.direction);
-  //   float a = 0.5f * (unit_direction.y + 1.f);
+  //   real_t a = 0.5f * (unit_direction.y + 1.f);
   //   return (1.f - a) * glm::vec3(1.f, 1.f, 1.f) + a * glm::vec3(0.5f, 0.7f, 1.f);
   // }
 
@@ -503,7 +503,7 @@ namespace other {
   }
 
   void destroy_terminal_driver(driver* instance) {
-    return arena_allocator<terminal_driver>{}.free(instance);
+    return arena_allocator<terminal_driver>{}.free((terminal_driver*)instance);
   }
 
 }  // namespace other

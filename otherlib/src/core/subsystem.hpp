@@ -101,15 +101,14 @@ namespace other {
       } else {
         return std::format("Subsystem<{}> [no as-string method available]", typeid(T).name());
       }
-      // if constexpr (requires(T t) {})
     }
 
    protected:
     subsystem() = default;
 
+   private:
     static T* instance;
 
-   private:
     subsystem(subsystem&&) = delete;
     subsystem(const subsystem&) = delete;
     subsystem& operator=(subsystem&&) = delete;

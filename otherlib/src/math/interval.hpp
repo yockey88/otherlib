@@ -11,24 +11,24 @@
 namespace other {
 
   struct interval {
-    float min = +infinity;
-    float max = -infinity;
+    real_t min = +infinity;
+    real_t max = -infinity;
 
     constexpr interval() = default;
-    constexpr interval(float min, float max)
+    constexpr interval(real_t min, real_t max)
         : min(min), max(max) {}
 
-    float size() const;
+    real_t size() const;
 
-    bool contains(float t) const;
+    bool contains(real_t t) const;
     bool contains(const interval& other) const;
 
-    bool surrounds(float t) const;
+    bool surrounds(real_t t) const;
     bool surrounds(const interval& other) const;
 
     bool overlaps(const interval& other) const;
 
-    float clamp(float t) const;
+    real_t clamp(real_t t) const;
 
     static interval infinite;
     static interval empty;

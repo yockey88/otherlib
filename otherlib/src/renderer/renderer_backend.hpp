@@ -6,7 +6,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "core/defines.hpp"
+#include "core/scope.hpp"
 #include "core/subsystem.hpp"
 #include "renderer/rendering_api.hpp"
 
