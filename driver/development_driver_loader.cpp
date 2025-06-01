@@ -5,7 +5,7 @@
 
 #include "other.hpp"
 
-int other_main(const command_line& cmd, const config_table& config) {
+exit_code other_main(const command_line& cmd, const config_table& config) {
   CORE_LOG_INFO("Configuration loaded successfully from: {}", cmd.config_file);
   auto [driver_instance, driver_name] = driver::create(config);
 
@@ -19,5 +19,5 @@ int other_main(const command_line& cmd, const config_table& config) {
   driver::destroy(driver_name, driver_instance);
   CORE_LOG_INFO("Other Environment driver '{}' has finished unloading.", driver_name);
 
-  return 0;
+  return exit_code::SUCCESS;
 }

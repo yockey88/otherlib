@@ -4,7 +4,10 @@
 #ifndef OTHER_PLUGIN_PLUGIN_HPP
 #define OTHER_PLUGIN_PLUGIN_HPP
 
+#include <imgui/imgui.h>
+
 #include "core/defines.hpp"
+
 #include "plugin/library_handle.hpp"
 
 namespace other {

@@ -149,95 +149,9 @@ namespace other {
     return data;
   }
 
-  simulation_description simulation_description::parse(const std::vector<uint8_t>& data) {
-    auto root = flexbuffers::GetRoot(data);
-    auto map = root.AsMap();
-
-    simulation_description msg;
-    msg.session_type = map[message_fields[SESSION_TYPE_FIELD].name].AsUInt16();
-    msg.node_id = map[message_fields[NODE_ID_FIELD].name].AsUInt64();
-    msg.status = map[message_fields[STATUS_FIELD].name].AsUInt64();
-
-    auto sim_bp = map[message_fields[SIMULATION_BINDING_POINT_FIELD].name].AsMap();
-    msg.simulation_binding_point.port = sim_bp["port"].AsUInt16();
-    msg.simulation_binding_point.ip = sim_bp["ip"].AsUInt32();
-
-    return msg;
-  }
-
-  std::vector<uint8_t> simulation_description::build() {
-    flexbuffers::Builder builder;
-    builder.Map([&]() {
-      builder.UInt(message_fields[SESSION_TYPE_FIELD].name, session_type);
-      builder.UInt(message_fields[NODE_ID_FIELD].name, node_id);
-      builder.UInt(message_fields[STATUS_FIELD].name, status);
-      builder.Map(message_fields[SIMULATION_BINDING_POINT_FIELD].name, [&]() {
-        builder.UInt(message_fields[PORT_FIELD].name, simulation_binding_point.port);
-        builder.UInt(message_fields[IP_FIELD].name, simulation_binding_point.ip);
-      });
-    });
-    builder.Finish();
-
-    std::vector<uint8_t> data;
-    write_header(data, { category, id });
-    data.insert(data.end(), builder.GetBuffer().begin(), builder.GetBuffer().end());
-
-    return data;
-  }
-
-  std::string simulation_description::write_string(const simulation_description& msg) {
-    std::stringstream ss;
-    ss << std::format("[simulation description]: session_type: {:#06x}, node_id: {}, status: {},\n", msg.session_type, msg.node_id, msg.status);
-    ss << std::format("                                        simulation_binding_point: {{ port: {}, ip: {} }}", msg.simulation_binding_point.port, msg.simulation_binding_point.ip);
-    return ss.str();
-  }
-
   std::string session_status_response::write_string(const session_status_response& msg) {
     std::stringstream ss;
     ss << std::format("[status response]: session_type: {:#06x}, node_id: {}, status: {}", msg.session_type, msg.node_id, msg.status);
-    return ss.str();
-  }
-
-  node_initialization_request node_initialization_request::parse(const std::vector<uint8_t>& data) {
-    auto root = flexbuffers::GetRoot(data);
-    auto map = root.AsMap();
-
-    node_initialization_request msg;
-    msg.session_type = map["session-type"].AsUInt16();
-    msg.node_id = map["node-id"].AsUInt64();
-    // msg.layer_type = map["layer-type"].AsUInt8();
-
-    return msg;
-  }
-
-  std::vector<uint8_t> node_initialization_request::build() {
-    flexbuffers::Builder builder;
-    builder.Map([&]() {
-      builder.UInt(message_fields[SESSION_TYPE_FIELD].name, session_type);
-      builder.UInt(message_fields[NODE_ID_FIELD].name, node_id);
-
-      builder.Map(message_fields[COMM_LAYER_BINDING_POINT_FIELD].name, [&]() {
-        builder.UInt(message_fields[PORT_FIELD].name, comm_layer_endpoint.port);
-        builder.UInt(message_fields[IP_FIELD].name, comm_layer_endpoint.ip);
-      });
-
-      builder.Map(message_fields[ANALYTIC_LAYER_BINDING_POINT_FIELD].name, [&]() {
-        builder.UInt(message_fields[PORT_FIELD].name, analytics_layer_endpoint.port);
-        builder.UInt(message_fields[IP_FIELD].name, analytics_layer_endpoint.ip);
-      });
-    });
-    builder.Finish();
-
-    std::vector<uint8_t> data;
-    write_header(data, { category, id });
-    data.insert(data.end(), builder.GetBuffer().begin(), builder.GetBuffer().end());
-
-    return data;
-  }
-
-  std::string node_initialization_request::write_string(const node_initialization_request& msg) {
-    std::stringstream ss;
-    // ss << "[node initialization request]: session_type: {:#06x}, node_id: {}, layer_type: {:#04x}";
     return ss.str();
   }
 
@@ -274,6 +188,22 @@ namespace other {
     std::stringstream ss;
     ss << std::format("[shutdown request]: session_type: {:#06x}, node_id: {}, status: {}", msg.session_type, msg.node_id, msg.status);
     return ss.str();
+  }
+
+  other_command_msg other_command_msg::parse(const std::vector<uint8_t>& data) {
+    return {};
+  }
+
+  std::vector<uint8_t> other_command_msg::build() {
+    return {};
+  }
+
+  other_command_block_msg other_command_block_msg::parse(const std::vector<uint8_t>& data) {
+    return {};
+  }
+
+  std::vector<uint8_t> other_command_block_msg::build() {
+    return {};
   }
 
 }  // namespace other

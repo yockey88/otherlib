@@ -7,7 +7,8 @@
 
 #include "other.hpp"
 
-int other_main(const command_line& cmd, const config_table& config) { return -1; }
+/// have to define for linking
+exit_code other_main(const command_line& cmd, const config_table& config) { return exit_code::FAILURE; }
 
 namespace other {
 

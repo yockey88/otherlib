@@ -12,3 +12,7 @@ add_dynamic_driver(memory_sandbox
 add_dynamic_driver(serialization_sandbox
   serialization/serialization_sandbox.cpp
 )
+
+add_dynamic_driver(rendering_dev
+  rendering-dev/renderer_driver.cpp
+)

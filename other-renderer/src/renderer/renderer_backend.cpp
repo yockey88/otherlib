@@ -12,6 +12,7 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+
 #include "renderer/backends/opengl_api.hpp"
 
 namespace other {
@@ -77,6 +78,7 @@ namespace other {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
 
+    ui_context = ImGui::GetCurrentContext();
     api()->initialize_ui_context();
   }
 
@@ -84,7 +86,9 @@ namespace other {
     if (rendering_api_instance != nullptr) {
       CORE_LOG_DEBUG("Shutting down rendering API instance.");
       rendering_api_instance->shutdown_ui_context();
+
       ImGui::DestroyContext();
+      ui_context = nullptr;
 
       rendering_api_instance->destroy_windows();
 
@@ -97,11 +101,6 @@ namespace other {
 
   void renderer_backend::handle_event(SDL_Event* event) {
     api()->handle_event(event);
-  }
-
-  void renderer_backend::on_set(renderer_backend* instance) {
-    /// set imgui context on this side of the dll boundary
-    // ImGui::SetCurrentContext((ImGuiContext*)instance->rendering_api_instance->get_context_handle());
   }
 
   void renderer_backend::set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr) {

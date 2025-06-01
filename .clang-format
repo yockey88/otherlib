@@ -64,11 +64,17 @@ IncludeCategories:
   - Regex:           '<([A-Za-z0-9\/-_])+\.h(pp|xx|h)?>'
     Priority:        3
   # test harness headers
-  - Regex:           '"((core|renderer|plugin|driver)\/)'
+  - Regex:           '"((core|command|math|serialization|thread)\/)'
     Priority:        4
   # application/asset/semi-core system headers
-  - Regex:           '"((pbrt)\/)'
+  - Regex:           '"((renderer)\/)'
     Priority:        5
+  # Headers in other-scene
+  - Regex:           '"((scene)\/)'
+    Priority:        6
+  # Headers in the termain driver.
+  - Regex:           '"((terminal)\/)'
+    Priority:        7
 ---
 Language: CSharp
 BreakBeforeBraces: Custom

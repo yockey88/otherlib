@@ -75,6 +75,16 @@
 
 namespace other {
 
+  enum exit_code : uint8_t {
+    SUCCESS = 0,
+    FAILURE = 1,
+
+    /// others
+
+    NUM_EXIT_CODES,
+    INVALID_EXIT_CODE = NUM_EXIT_CODES
+  };
+
 #ifdef OTHER_USE_DOUBLE_FOR_REAL
   using real_t = double;
 #else

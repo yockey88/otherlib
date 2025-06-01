@@ -19,12 +19,16 @@ target_sources(other_core
       src/math/interval.cpp
       src/math/ray.cpp
       src/math/integrator.cpp
+      
+      src/command/command_parser.cpp
+      src/command/command_compiler.cpp
+      src/command/command_executor.cpp
 
       src/serialization/reflection.cpp
       src/serialization/parser_combinators.cpp
-      src/serialization/command_parser.cpp
 
       src/thread/message.cpp
+      src/thread/thread.cpp
 )
 
 target_include_directories(other_core 

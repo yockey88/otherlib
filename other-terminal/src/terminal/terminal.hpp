@@ -4,7 +4,6 @@
 #ifndef OTHER_TERMINAL_TERMINAL_HPP
 #define OTHER_TERMINAL_TERMINAL_HPP
 
-#include <queue>
 #include <string>
 
 #include <SDL3/SDL.h>
@@ -13,14 +12,11 @@
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
 #include "core/defines.hpp"
-#include "core/timer.hpp"
+#include "thread/message.hpp"
 
-// #include <sol/sol.hpp>
+#include "terminal/terminal_thread.hpp"
 
-// #include "environment/command_compiler.hpp"
-// #include "environment/command_executor.hpp"
 // #include "event/key_events.hpp"
-// #include "parsing/command_parser.hpp"
 
 namespace other {
 
@@ -49,7 +45,7 @@ namespace other {
   class terminal {
    public:
     terminal();
-    ~terminal();
+    ~terminal() = default;
 
     void run(const command_line& cmdline, const config_table& config);
     void on_key_down(SDL_Event* event);
@@ -63,14 +59,7 @@ namespace other {
     void push_message(const terminal_message& message, bool save = true);
     void push_command(const terminal_message& command);
 
-    // void source_file(const filepath& file_path);
-    // void clear();
-    // void dispatch();
-
     glm::vec4 get_color_for_filter(terminal_filter filter) const;
-
-    // friend struct Environment;
-    // friend class CommandExecutor;
 
     SDL_WindowID term_window_id = 0;
     bool is_running = true;
@@ -83,21 +72,14 @@ namespace other {
     std::vector<terminal_message> stored_history;
     std::queue<terminal_message> message_buffer;
 
-    // scope<renderer> renderer_instance;
+    command_parser cmd_parser;
+    command_compiler compiler;
 
-    // sol::state lua_state;
-    // CommandParser parser;
-    // CommandCompiler compiler;
-    // CommandExecutor executor;
+    void stop();
 
-    // CommandBlock command_block;
-
-    // void SourceCmdFile(const filepath& file_path);
-    // void SourceLuaFile(const filepath& file_path);
-    // void SourcePythonFile(const filepath& file_path);
-
-    // bool HandleEnterKey(KeyPressed& event);
-    // bool HandleUpDownKey(KeyPressed& event);
+    void handle_input();
+    void handle_received_thread_message(const message& msg);
+    void handle_control_message(const message& msg);
   };
 
 }  // namespace other

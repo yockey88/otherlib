@@ -6,6 +6,7 @@
 #include <SDL3/SDL.h>
 
 #include "core/logger.hpp"
+
 #include "renderer/renderer_backend.hpp"
 
 #include "SDL3/SDL_events.h"
@@ -13,22 +14,11 @@
 namespace other {
 
   void driver::initialize() {
-    /// load necessary resources from config
-    ///  we can be certain that any thread-dependent resources are loaded on the thread they will be used by client driver
-    auto* rendering = subsystem<renderer_backend>::get();
-    if (configuration().rendering_backend.has_value()) {
-      CORE_LOG_INFO("Loading rendering backend: {}", configuration().rendering_backend.value());
-      rendering->load_backend(configuration().rendering_backend.value());
-    }
-
     on_initialize();
   }
 
   void driver::shutdown() {
     on_shutdown();
-
-    auto* rendering = subsystem<renderer_backend>::get();
-    rendering->unload_backend();
   }
 
   std::pair<driver*, std::string> driver::create(const config_table& config) {

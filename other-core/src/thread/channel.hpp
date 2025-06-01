@@ -9,6 +9,7 @@
 #include <queue>
 
 #include "core/defines.hpp"
+#include "core/logger.hpp"
 #include "core/ref.hpp"
 #include "core/ref_counted.hpp"
 #include "core/scope.hpp"
@@ -35,15 +36,20 @@ namespace other {
     ref<channel_queue<T>> queue;
 
     void push(T&& item) {
-      TENSORLIB_ASSERT(queue != nullptr, "Channel queue is invalid!");
+      OTHER_ASSERT(queue != nullptr, "Channel queue is invalid!");
 
       std::lock_guard lck(queue->mutex);
       queue->queue.push(std::forward<T>(item));
       queue->condition.notify_all();
     }
 
+    bool empty() {
+      std::lock_guard lck(queue->mutex);
+      return queue->queue.empty();
+    }
+
     opt<T> await_message(std::chrono::microseconds timeout = std::chrono::microseconds(1000)) {
-      TENSORLIB_ASSERT(queue != nullptr, "Awaiting message on a null queue!");
+      OTHER_ASSERT(queue != nullptr, "Awaiting message on a null queue!");
 
       std::unique_lock lck(queue->mutex);
       queue->condition.wait_for(lck, timeout, [&]() -> bool { return !queue->queue.empty(); });

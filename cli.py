@@ -107,8 +107,8 @@ if __name__ == "__main__":
 
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      # run_command = [f"build/driver/{cfg}/other_driver.exe", "resources/dev-config.toml"] 
-      run_command = [f"build/other-terminal/{cfg}/other_terminal.exe", "resources/term-config.toml"] 
+      run_command = [f"build/driver/{cfg}/other_driver.exe", "resources/dev-config.toml"] 
+      # run_command = [f"build/other-terminal/{cfg}/other_terminal.exe", "resources/term-config.toml"] 
       if args.verbose is not None and args.verbose:
         run_command.append("--verbose")
       subprocess.run(run_command, check=True)

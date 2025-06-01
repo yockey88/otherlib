@@ -1,7 +1,7 @@
 /**
- * \file serialization/command_parser.cpp
+ * \file command/command_parser.cpp
  **/
-#include "serialization/command_parser.hpp"
+#include "command/command_parser.hpp"
 
 #include <fstream>
 
@@ -15,10 +15,11 @@ namespace other {
     auto command_name = skip_spaces() >> build_command_name_parser();
     auto args = skip_spaces() >> many<std::vector<std::string>>(skip_spaces() >> match_any_word());
     parser_obj = parse_multiple(command_name, args);
-    OTHER_ASSERT(parser_obj != nullptr, "Parser is null");
   }
 
   std::vector<raw_command> command_parser::parse_file(const filepath& file_path) const {
+    OTHER_ASSERT(parser_obj != nullptr, "Parser is null");
+
     std::ifstream file{ file_path };
     if (!file.is_open()) {
       CORE_LOG_ERROR("Failed to open command file : {}", file_path.string());
@@ -55,9 +56,9 @@ namespace other {
 
   ref<parser<std::string>> command_parser::build_command_name_parser() {
     std::vector<std::string> command_names;
-    // for (const auto& cmd : kAvailableCommands) {
-    //   command_names.push_back(std::string{ cmd.name });
-    // }
+    for (const auto& cmd : kAvailableCommands) {
+      command_names.push_back(std::string{ cmd.name });
+    }
 
     return match_any_string_from(command_names);
   }

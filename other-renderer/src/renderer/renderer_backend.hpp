@@ -8,8 +8,10 @@
 
 #include "core/scope.hpp"
 #include "core/subsystem.hpp"
+
 #include "renderer/rendering_api.hpp"
 
+struct ImGuiContext;
 namespace other {
 
   class renderer_backend : public subsystem<renderer_backend> {
@@ -17,6 +19,9 @@ namespace other {
     renderer_backend() = default;
 
     SDL_Window* get_main_window() const { return rendering_api_instance->window_handle(); }
+
+    ImGuiContext* get_ui_context() const { return ui_context; }
+
     scope<rendering_api>& api() { return rendering_api_instance; }
     bool has_backend() const { return rendering_api_instance != nullptr; }
 
@@ -25,11 +30,10 @@ namespace other {
 
     void handle_event(SDL_Event* event);
 
-    static void on_set(renderer_backend* instance);
-
    protected:
     friend class renderer;
 
+    ImGuiContext* ui_context = nullptr;
     scope<rendering_api> rendering_api_instance;
 
     void set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr);

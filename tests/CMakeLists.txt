@@ -9,7 +9,8 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ref/ref_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/value/value_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/parser-combinator/parser_combinator_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/other_test_main.cpp
 )
-target_link_libraries(other_tests PRIVATE otherlib gtest)
+target_link_libraries(other_tests PUBLIC otherlib gtest)

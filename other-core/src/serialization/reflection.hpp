@@ -195,6 +195,10 @@ namespace other {
     template <typename T>
       requires reflected_type<T>
     T read_fields_from_bytes(const std::vector<uint8_t>& data) const;
+
+    template <typename T>
+      requires reflected_type<T>
+    T read_from_file(const std::string& file_path) const;
   };
 
   class type_database : public subsystem<type_database> {
@@ -345,6 +349,27 @@ namespace other {
     });
 
     return deserialized_obj;
+  }
+
+  template <typename T>
+    requires reflected_type<T>
+  T serializer::read_from_file(const std::string& file_path) const {
+    std::vector<uint8_t> bytes;
+    {
+      std::ifstream ifs("artifacts/main_cam_data.bin", std::ios::binary);
+      if (!ifs.is_open()) {
+        CORE_LOG_ERROR("Failed to open file '{}'.", file_path);
+        return T{};
+      }
+
+      ifs.seekg(0, std::ios::end);
+      size_t size = ifs.tellg();
+      ifs.seekg(0, std::ios::beg);
+
+      bytes.resize(size);
+      ifs.read(reinterpret_cast<char*>(bytes.data()), size);
+    }
+    return read_fields_from_bytes<T>(bytes);
   }
 
   template <typename T>

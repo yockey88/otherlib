@@ -1,19 +1,13 @@
 /**
- * \file serialization/command_parser.hpp
+ * \file command/command_parser.hpp
  **/
-#ifndef OTHER_CORE_SERIALIZATION_COMMAND_PARSER_HPP
-#define OTHER_CORE_SERIALIZATION_COMMAND_PARSER_HPP
+#ifndef OTHER_CORE_COMMAND_COMMAND_PARSER_HPP
+#define OTHER_CORE_COMMAND_COMMAND_PARSER_HPP
 
-// #include "core/command.hpp"
-
+#include "command/command.hpp"
 #include "serialization/parser_combinators.hpp"
 
 namespace other {
-
-  struct raw_command {
-    std::string name;
-    std::vector<std::string> args;
-  };
 
   class command_parser {
    public:
@@ -30,4 +24,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_SERIALIZATION_COMMAND_PARSER_HPP
+#endif  // OTHER_CORE_COMMAND_COMMAND_PARSER_HPP

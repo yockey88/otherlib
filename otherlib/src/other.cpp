@@ -11,13 +11,18 @@
 #include "core/config_table.hpp"
 #include "core/logger.hpp"
 #include "core/version.hpp"
+#include "serialization/reflection.hpp"
+
 #include "renderer/renderer_backend.hpp"
 
-#include "serialization/reflection.hpp"
 #include "spdlog/common.h"
 
-#ifndef OTHER_APPLICATION
-extern int other_main(const command_line& cmd, const config_table& config);
+#ifndef OTHER_TEST_ENVIRONMENT
+/// if not test environment and this is not an other application then we define the extern main function for the static driver
+/// \todo: check if the other application is a dynamic driver and define other_main as the dynamic driver entry point (prototype sample in driver/development_driver_loader.cpp)
+  #ifndef OTHER_APPLICATION
+extern exit_code other_main(const command_line& cmd, const config_table& config);
+  #endif
 #endif
 
 #if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
@@ -37,7 +42,7 @@ namespace other {
 
     command_line cmd = command_line::parse(&argc, argv);
     if (!cmd.valid) {
-      return (cmd.diagnostics.help || cmd.diagnostics.usage) ? 0 : -1;
+      return (cmd.diagnostics.help || cmd.diagnostics.usage) ? SUCCESS : FAILURE;
     }
     config_table config = config_table::load(cmd.config_file);
     if (!config.valid) {
@@ -54,26 +59,34 @@ namespace other {
 
     config.diagnostics.verbose = cmd.diagnostics.verbose;
 
-    int res = 0;
+    const bool rendering_enabled = config.rendering_backend.has_value() && !config.rendering_backend->empty();
+    if (rendering_enabled) {
+      subsystem<renderer_backend>::get()->load_backend(config.rendering_backend.value());
+    }
+
+    exit_code res = SUCCESS;
     try {
       res = other_main(cmd, config);
     } catch (const std::runtime_error& e) {
       CATCH_RUNTIME_ERROR(e);
-      res = -1;
+      res = FAILURE;
     } catch (const std::exception& e) {
       CATCH_EXCEPTION(e);
-      res = -1;
+      res = FAILURE;
     } catch (...) {
       CATCH_UNKNOWN_EXCEPTION();
-      res = -1;
+      res = FAILURE;
     }
+    if (rendering_enabled) {
+      subsystem<renderer_backend>::get()->unload_backend();
+    }
+
+    /// handle exit code
 
 #ifdef OTHER_APPLICATION
     event_callbacks.clear();
 #endif
-
     shutdown_subsystems();
-
     return res;
   }
 
@@ -101,7 +114,7 @@ namespace other {
     }
 
     log->create_logger("other-core-log", spdlog::level::trace);
-    other::log_sink sink = {
+    log_sink sink = {
       1,
       "console-sink",
       "%^[%l]%$ %v",

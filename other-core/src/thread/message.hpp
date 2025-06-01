@@ -1,22 +1,27 @@
 /**
  * \file thread/message.hpp
  **/
-#ifndef OTHERLIB_THREAD_MESSAGE_HPP
-#define OTHERLIB_THREAD_MESSAGE_HPP
+#ifndef OTHER_CORE_CORE_MESSAGE_HPP
+#define OTHER_CORE_CORE_MESSAGE_HPP
 
 #include <cstdint>
 #include <string>
 #include <vector>
 
-#define ASIO_HAS_STD_INVOKE_RESULT
+#ifndef ASIO_HAS_STD_INVOKE_RESULT
+  #define ASIO_HAS_STD_INVOKE_RESULT
+#endif
 #include <asio/asio.hpp>
 
+#include "command/command.hpp"
+#include "core/registers.hpp"
 #include "thread/channel.hpp"
 
 namespace other {
 
-  enum message_category : uint8_t {
+  enum message_category : uint16_t {
     NOTIFICATION = 0,
+    ACKNOWLEDGEMENT,
 
     CONTROL,
 
@@ -24,39 +29,35 @@ namespace other {
     QUERY,
     RESPONSE,
 
-    ACKNOWLEDGEMENT,
     ERROR_ALERT,
 
     INFO,
-
-    SIMULATION,
-
-    SIMULATION_EVENT,
   };
 
-  enum message_id : uint8_t {
-    NACK = 0x00,
-    ACK = 0x01,
+  enum message_id : uint16_t {
+    /// notification messages
+    /// ack messages
+    ACK = 0x0001,
 
-    PING = 0x02,
-    PONG = 0x03,
+    /// control messages
+    PING,
+    PONG,
+    SESSION_SHUTDOWN_REQUEST,
 
-    SIM_DESCRIPTION,
+    /// command messages
+    OTHER_COMMAND,
+    OTHER_COMMAND_BLOCK,
 
-    SIM_EVENT,
-
-    NODE_INITIALIZATION_REQUEST,
-    NODE_SHUTDOWN_REQUEST,
-
-    /// thread messages
-    THREAD_INITIALIZE,
-    THREAD_START,
-    THREAD_SHUTDOWN,
+    /// query messages
+    /// response messages
+    /// error alert messages
+    /// info messages
   };
 
   struct message_header {
-    message_category category;
-    message_id id;
+    /// use uint16_t for category and id for custom message types
+    uint16_t category;
+    uint16_t id;
   };
 
   struct binding_point {
@@ -124,15 +125,17 @@ namespace other {
     std::vector<uint8_t> data;
 
     void set_category(message_category category) { header.category = category; }
-    message_category get_category() const { return header.category; }
+    message_category get_category() const { return (message_category)header.category; }
 
     void set_id(message_id id) { header.id = id; }
-    message_id get_id() const { return header.id; }
+    message_id get_id() const { return (message_id)header.id; }
 
     message() = default;
     message(message_category category, message_id type) {
       header = { category, type };
     }
+    message(message_category category, uint16_t type)
+        : header{ category, type } {}
 
     message(const message_header& msg_header, const std::vector<uint8_t>& msg_data)
         : header(msg_header), data(msg_data) {}
@@ -174,10 +177,6 @@ namespace other {
 
     { "port", { sizeof(uint16_t), sizeof(uint16_t) } },
     { "ip", { sizeof(uint32_t), sizeof(uint32_t) } },
-
-    { "simulation-binding-point", { sizeof(binding_point), sizeof(binding_point) } },
-    { "comm-layer-binding-point", { sizeof(binding_point), sizeof(binding_point) } },
-    { "analytic-layer-binding-point", { sizeof(binding_point), sizeof(binding_point) } },
   };
 
   enum message_field_idx : uint8_t {
@@ -194,10 +193,6 @@ namespace other {
 
     PORT_FIELD,
     IP_FIELD,
-
-    SIMULATION_BINDING_POINT_FIELD,
-    COMM_LAYER_BINDING_POINT_FIELD,
-    ANALYTIC_LAYER_BINDING_POINT_FIELD,
   };
 
   struct acknowledgement : message_spec_impl<acknowledgement> {
@@ -239,39 +234,9 @@ namespace other {
     static std::string write_string(const session_status_response& msg);
   };
 
-  struct simulation_description : message_spec_impl<simulation_description> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = SIM_DESCRIPTION;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint64_t status = 0;
-
-    binding_point simulation_binding_point;
-
-    static simulation_description parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const simulation_description& msg);
-  };
-
-  struct node_initialization_request : message_spec_impl<node_initialization_request> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = NODE_INITIALIZATION_REQUEST;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    binding_point comm_layer_endpoint;
-    binding_point analytics_layer_endpoint;
-    /// other settings related to bringin a node in the simulation up
-
-    static node_initialization_request parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const node_initialization_request& msg);
-  };
-
   struct session_shutdown_request : message_spec_impl<session_shutdown_request> {
     constexpr static message_category category = CONTROL;
-    constexpr static message_id id = NODE_SHUTDOWN_REQUEST;
+    constexpr static message_id id = SESSION_SHUTDOWN_REQUEST;
 
     uint16_t session_type = 0;
     uint64_t node_id = 0;
@@ -280,6 +245,30 @@ namespace other {
     static session_shutdown_request parse(const std::vector<uint8_t>& data);
     std::vector<uint8_t> build();
     static std::string write_string(const session_shutdown_request& msg);
+  };
+
+  /// thread messages have no messages, they are sort of ad-hoc messages
+
+  struct other_command_msg : message_spec_impl<other_command_msg> {
+    constexpr static message_category category = COMMAND;
+    constexpr static message_id id = OTHER_COMMAND;
+
+    command cmd;
+    std::vector<address_t> args;
+
+    static other_command_msg parse(const std::vector<uint8_t>& data);
+    std::vector<uint8_t> build();
+  };
+
+  struct other_command_block_msg : message_spec_impl<other_command_block_msg> {
+    constexpr static message_category category = COMMAND;
+    constexpr static message_id id = OTHER_COMMAND_BLOCK;
+
+    command_block block;
+    std::vector<address_t> args;
+
+    static other_command_block_msg parse(const std::vector<uint8_t>& data);
+    std::vector<uint8_t> build();
   };
 
 }  // namespace other

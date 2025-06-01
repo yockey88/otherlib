@@ -19,6 +19,15 @@
 #include "serialization/reflection.hpp"
 
 namespace other {
+
+  template <typename T1, typename T2>
+  concept makeable_from =
+    requires(T1 t1, T2 t2) { { std::declval<T2>() } -> std::constructible_from<T1, T2>; } ||
+    requires(T1 t1, T2 t2) { { T1{t2} }; } ||
+    requires(T1 t1, T2 t2) { { t1.append(t2) }; } ||
+    requires(T1 t1, T2 t2) { { t1.insert(t1.end(), t2) }; } ||
+    requires(T1 t1, T2 t2) { { t1.insert(t1.end(), t2.begin(), t2.end()) }; };
+
   std::istream& trim_beginning(std::istream& stream);
   std::string trim_end(const std::string& str);
   std::string trim_beginning_and_end(const std::string& str);
@@ -107,8 +116,11 @@ namespace other {
   inline parse_context::cursor& stream_position(std::istream& s) {
     return static_cast<parse_context*>(s.rdbuf())->curs;
   }
+
   template <typename T>
   struct parser : public ref_counted {
+    parser() = default;
+
     virtual ~parser() = default;
     virtual T operator()(std::istream& stream) const = 0;
   };
@@ -702,14 +714,23 @@ namespace other {
   }
 
   ref<parser<std::vector<std::string>>> split_string_on(char delim);
+
   template <typename T1, typename T2>
-  concept replacable_with =
-    (std::same_as<T1, void> && std::same_as<T2, void>) ||
-    requires(const ref<parser<T1>>& p1, const ref<parser<T2>>& p2) {
-      T1{ (*p1)(std::declval<std::istream&>()) };
+  concept both_void = std::same_as<T1, void> && std::same_as<T2, void>;
+
+  template <typename T1, typename T2>
+  concept equivalent_parsers =
+    makeable_from<T1, T2> &&
+    requires(const parser<T1>& p1, const parser<T2>& p2) {
+      { p1(std::declval<std::istream&>()) } -> std::convertible_to<T1>;
+      { p2(std::declval<std::istream&>()) } -> std::convertible_to<T2>;
     };
+
   template <typename T1, typename T2>
-    requires replacable_with<T1, T2>
+  concept replacable_with = equivalent_parsers<T1, T2>;
+
+  template <typename T1, typename T2>
+    requires replacable_with<T1, T2> || both_void<T1, T2>
   struct parse_or : parser<T1> {
     const ref<parser<T1>> parser_obj;
     const ref<parser<T2>> fallback;
@@ -780,6 +801,7 @@ namespace other {
       return;
     }
   };
+
   template <typename T1, typename T2>
     requires replacable_with<T1, T2>
   ref<parser<T2>> parse_or_fn(const ref<parser<T1>>& parser_obj, const ref<parser<T2>>& fallback) {
@@ -791,6 +813,11 @@ namespace other {
   ref<parser<T1>> operator|(const ref<parser<T1>>& parser_obj, const ref<parser<T2>>& fallback) {
     return parse_or_fn(parser_obj, fallback);
   }
+
+  static inline ref<parser<std::string>> operator|(const ref<parser<std::string>>& parser_obj, const ref<parser<char>>& fallback) {
+    return make_ref<parse_or<std::string, std::string>>(parser_obj, str(fallback));
+  }
+
   template <typename T1, typename F>
   concept parser_filter_fn =
     requires(const parser<T1>& p1, F filter) {

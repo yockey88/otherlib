@@ -17,6 +17,7 @@
 using other::command_line;
 using other::config_table;
 using other::driver;
+using other::exit_code;
 
 namespace other {
 
@@ -30,18 +31,19 @@ namespace other {
 
 }  // namespace other
 
-#ifdef OTHER_APPLICATION
+#ifndef OTHER_TEST_ENVIRONMENT
+  #ifdef OTHER_APPLICATION
+    #ifdef OTHER_ENVIRONMENT_WINDOWS
+      #include <windows.h>
+    #endif
 
-  #ifdef OTHER_ENVIRONMENT_WINDOWS
-    #include <windows.h>
-  #endif
-
-  #ifndef MAIN_DEFINED
-    #define MAIN_DEFINED
+    #ifndef MAIN_DEFINED
+      #define MAIN_DEFINED
 int main(int argc, char* argv[]) {
   return other::entry(argc, argv);
 }
-  #endif  // MAIN_DEFINED
-#endif    // OTHER_APPLICATION
+    #endif  // MAIN_DEFINED
+  #endif    // OTHER_APPLICATION
+#endif      // OTHER_TEST_ENVIRONMENT
 
 #endif  // OTHER_OTHERLIB_OTHER_HPP
