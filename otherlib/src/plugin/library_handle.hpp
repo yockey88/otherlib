@@ -31,7 +31,7 @@ namespace other {
 
     virtual void load() = 0;
     virtual bool is_loaded() const = 0;
-    std::expected<symbol, std::nullptr_t> get_symbol(const std::string_view symbol);
+    opt<symbol> get_symbol(const std::string_view symbol);
 
     virtual void unload() = 0;
 

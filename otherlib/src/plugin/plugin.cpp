@@ -8,6 +8,8 @@
 #include "core/logger.hpp"
 #include "renderer/renderer_backend.hpp"
 
+#include "serialization/reflection.hpp"
+
 namespace other {
 
   std::map<natural_t, library_handle*> plugin::loaded_libraries;
@@ -58,6 +60,7 @@ namespace other {
       subsystem<arena>::get(),
       subsystem<logger>::get(),
       subsystem<renderer_backend>::get(),
+      subsystem<type_database>::get()
     };
     CORE_LOG_DEBUG("Calling plugin binding function '{}' for plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
     sym.get_function<void (*)(other_plugin_argv*)>()(&argv);

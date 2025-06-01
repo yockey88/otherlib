@@ -12,10 +12,12 @@ namespace other {
   class arena;
   class logger;
   class renderer_backend;
+  class type_database;
   struct OTHER_CLASS other_plugin_argv {
     arena* arena = nullptr;
     logger* logger = nullptr;
     renderer_backend* renderer = nullptr;
+    type_database* type_database = nullptr;
   };
 
   class plugin {
@@ -38,6 +40,7 @@ namespace other {
     other::subsystem<other::arena>::set(argv->arena);                  \
     other::subsystem<other::logger>::set(argv->logger);                \
     other::subsystem<other::renderer_backend>::set(argv->renderer);    \
+    other::subsystem<other::type_database>::set(argv->type_database);  \
   }
 
 }  // namespace other

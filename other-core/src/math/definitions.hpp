@@ -1,0 +1,59 @@
+/**
+ * @file math/definitions.hpp
+ */
+#ifndef OTHER_CORE_MATH_DEFINITIONS_HPP
+#define OTHER_CORE_MATH_DEFINITIONS_HPP
+
+#include <glm/glm.hpp>
+
+#include "core/formatting.hpp"
+
+#include "serialization/reflection.hpp"
+
+namespace other {}  // namespace other
+
+OTHER_REFLECT(
+  glm::vec2,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::vec3,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::vec4,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable()),
+  field(w, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::ivec2,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::ivec3,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::ivec4,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable()),
+  field(w, other::attr::serializable())
+)
+
+/// TODO: figure out how to introspect glm::mat2, mat3, and mat4
+
+#endif  // OTHER_CORE_MATH_DEFINITIONS_HPP

@@ -56,7 +56,9 @@ def copy_dlls(cfg):
     if os.path.exists(dll):
       dest = f"build/driver/{cfg}/"
       shutil.copy(dll, dest)
-      print(f"Copied {dll} to {dest}")
+      
+      dest = f"build/other-terminal/{cfg}/"
+      shutil.copy(dll, dest)
     else:
       print(f"Warning: {dll} does not exist.")
 
@@ -68,6 +70,7 @@ if __name__ == "__main__":
   parser.add_argument("--run", "-r", action="store_true", help="Run the main driver.")
   parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Debug-AS", "Profile"])
+  parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
 
   args = parser.parse_args()
   try:
@@ -101,11 +104,11 @@ if __name__ == "__main__":
       else:
         print("All tests passed successfully.")
         sys.exit(0)
-      
 
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_command = [f"build/driver/{cfg}/other_driver.exe", "resources/dev-config.toml"] 
+      # run_command = [f"build/driver/{cfg}/other_driver.exe", "resources/dev-config.toml"] 
+      run_command = [f"build/other-terminal/{cfg}/other_terminal.exe", "resources/term-config.toml"] 
       if args.verbose is not None and args.verbose:
         run_command.append("--verbose")
       subprocess.run(run_command, check=True)

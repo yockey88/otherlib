@@ -19,6 +19,4 @@ class OTHER_CLASS memory_sandbox : public other::driver {
   void on_shutdown() override;
 };
 
-OTHER_DRIVER(memory_sandbox)
-
 #endif  // OTHER_MEMORY_SANDBOX_HPP

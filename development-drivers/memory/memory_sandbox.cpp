@@ -7,7 +7,7 @@
 #include "core/memory_pool.hpp"
 #include "core/ref.hpp"
 
-#include "simulation/scene_object.hpp"
+// #include "simulation/scene_object.hpp"
 
 using other::natural_t;
 
@@ -67,3 +67,5 @@ void memory_sandbox::run() {
 void memory_sandbox::on_shutdown() {
   CORE_LOG_INFO("Memory sandbox shutdown.");
 }
+
+OTHER_DRIVER(memory_sandbox)

@@ -1,28 +1,22 @@
 /**
- * \file other.hpp
- **/
-#ifndef OTHER_HPP
-#define OTHER_HPP
+ * @file other.hpp
+ */
+#ifndef OTHER_OTHERLIB_OTHER_HPP
+#define OTHER_OTHERLIB_OTHER_HPP
+
+#include <iostream>
+#include <print>
 
 #include "core/command_line.hpp"
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "core/version.hpp"
 #include "driver/driver.hpp"
 #include "plugin/plugin.hpp"
 
 using other::command_line;
 using other::config_table;
 using other::driver;
-
-#if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
-  #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what());
-  #define CATCH_EXCEPTION(e) OTHER_ASSERT(false, "Exception: {}", e.what());
-  #define CATCH_UNKNOWN_EXCEPTION() OTHER_ASSERT(false, "Unknown exception occurred.");
-#else
-  #define CATCH_RUNTIME_ERROR(e) CORE_LOG_ERROR("Runtime error: {}", e.what());
-  #define CATCH_EXCEPTION(e) CORE_LOG_ERROR("Exception: {}", e.what());
-  #define CATCH_UNKNOWN_EXCEPTION() CORE_LOG_ERROR("Unknown exception occurred.");
-#endif
 
 namespace other {
 
@@ -37,12 +31,17 @@ namespace other {
 }  // namespace other
 
 #ifdef OTHER_APPLICATION
+
   #ifdef OTHER_ENVIRONMENT_WINDOWS
     #include <windows.h>
   #endif
+
+  #ifndef MAIN_DEFINED
+    #define MAIN_DEFINED
 int main(int argc, char* argv[]) {
   return other::entry(argc, argv);
 }
-#endif
+  #endif  // MAIN_DEFINED
+#endif    // OTHER_APPLICATION
 
-#endif  // OTHER_HPP
+#endif  // OTHER_OTHERLIB_OTHER_HPP

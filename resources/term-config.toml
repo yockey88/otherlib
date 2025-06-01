@@ -1,0 +1,8 @@
+[application]
+core-log-level = "trace"
+
+[environment]
+terminal = "on"
+
+[rendering]
+rendering-api = "opengl"

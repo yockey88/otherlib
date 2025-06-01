@@ -14,7 +14,6 @@ endif()
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(BUILD_CONFIG_MACRO "")
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -29,7 +28,12 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(MSVC)
-  add_compile_definitions("OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "HAS_SEH_EXCEPTIONS" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+  add_compile_definitions("OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "HAS_SEH_EXCEPTIONS" "NOMINMAX")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0A00") # Windows 10+
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWIN32_LEAN_AND_MEAN")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
   add_compile_definitions("/Zc:preprocessor")
 
   if (DISALLOW_OTHER_PLUGINS)
@@ -70,36 +74,65 @@ endif()
 add_subdirectory(extern)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug-AS OR CMAKE_BUILD_TYPE MATCHES Debug)
-  set(OTHER_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug")
+  set(OTHER_LIBRARIES_PATH 
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug"
+  )
 else()
-  set(OTHER_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release")
+  set(OTHER_LIBRARIES_PATH 
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
+  )
 endif()
+set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib")
 
-set(OTHER_EXTERN_INCLUDES
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/magic_enum
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/args
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/tomlplusplus
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/spdlog
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/stb
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/glm
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include
-)
+set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
 
-add_compile_definitions(SPDLOG_USE_STD_FORMAT=1)
+find_package(Threads REQUIRED)
+
+add_subdirectory(other-core)
+add_subdirectory(other-renderer)
+# add_subdirectory(other-scene)
 add_subdirectory(otherlib)
 
+macro(add_driver_target type driver_name)
+  if (${type} STREQUAL "static")
+    add_executable(${driver_name})
+    target_compile_definitions(${driver_name} PRIVATE "OTHER_APPLICATION")
+  elseif (${type} STREQUAL "dynamic")
+    add_library(${driver_name} SHARED)
+    target_compile_definitions(${driver_name} PRIVATE "OTHER_CLIENT")
+  else()
+    message(FATAL_ERROR "Unknown driver type: ${type}. Use 'static' or 'dynamic'.")
+  endif()
+
+  set(driver_src_list "")
+  foreach(src_file ${ARGN})
+    set(src_file_full_path "${CMAKE_CURRENT_SOURCE_DIR}/${src_file}")
+    list(APPEND driver_src_list "${src_file_full_path}")
+  endforeach()
+
+  message(STATUS "Adding [${type}] driver: ${driver_name} w/ include directory: ${CMAKE_CURRENT_SOURCE_DIR}")
+
+  target_include_directories(${driver_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+  target_sources(${driver_name} PUBLIC ${driver_src_list})
+  target_link_libraries(${driver_name} PUBLIC otherlib)
+endmacro()
+
+macro(add_static_driver driver_name)
+  add_driver_target("static" ${driver_name} ${ARGN})
+endmacro()
+
+macro(add_dynamic_driver driver_name)
+  add_driver_target("dynamic" ${driver_name} ${ARGN})
+endmacro()
+
+
 if(EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
-  # Code to execute if the file exists
-  message(STATUS "including development drivers")
   add_subdirectory(development-drivers)
-else()
-  # Code to execute if the file does not exist
-  message(STATUS "not including development drivers")
 endif()
 
+add_subdirectory(other-terminal)
 add_subdirectory(driver)
 
 add_subdirectory(tests)

@@ -10,5 +10,6 @@ target_sources(imgui
         imgui/backends/imgui_impl_sdl3.cpp
         imgui/backends/imgui_impl_opengl3.cpp
         imgui/misc/cpp/imgui_stdlib.cpp       
+        imgui/misc/freetype/imgui_freetype.cpp       
 )
 target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui ${CMAKE_CURRENT_SOURCE_DIR}/../sdl)

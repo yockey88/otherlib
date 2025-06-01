@@ -4,6 +4,7 @@
 #ifndef OTHER_DRIVER_DRIVER_HPP
 #define OTHER_DRIVER_DRIVER_HPP
 
+#include "core/arena_allocator.hpp"
 #include "core/config_table.hpp"
 #include "core/defines.hpp"
 #include "plugin/plugin.hpp"
@@ -49,16 +50,40 @@ namespace other {
   };
 
 #ifndef DRIVER_NEW
-  #define DRIVER_NEW(name, config) new name(*config)
+  #define DRIVER_NEW(name, config) other::arena_allocator<name>{}.allocate(*config)
 #endif
 #ifndef DRIVER_DELETE
-  #define DRIVER_DELETE(instance) delete instance
+  #define DRIVER_DELETE(instance) other::arena_allocator<other::driver>{}.free(instance)
 #endif
 
 #define OTHER_DRIVER(name)                                                                                       \
-  OTHER_PLUGIN(pbrt_sandbox)                                                                                     \
+  OTHER_PLUGIN(name)                                                                                             \
   OTHER_API other::driver* create_driver(const other::config_table* config) { return DRIVER_NEW(name, config); } \
   OTHER_API void destroy_driver(other::driver* instance) { DRIVER_DELETE(instance); }
+
+#ifdef OTHER_APPLICATION
+  static inline std::vector<void (*)(SDL_Event*)> event_callbacks;
+
+  static inline void pump_events() {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      subsystem<renderer_backend>::get()->handle_event(&event);
+      for (auto& callback : event_callbacks) {
+        if (callback) {
+          callback(&event);
+        }
+      }
+    }
+  }
+
+  static inline void add_event_callback(void (*callback)(SDL_Event*)) {
+    if (callback) {
+      event_callbacks.push_back(callback);
+    } else {
+      CORE_LOG_ERROR("Cannot add a null event callback.");
+    }
+  }
+#endif  // OTHER_APPLICATION
 
 }  // namespace other
 

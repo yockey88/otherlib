@@ -1,4 +1,3 @@
-add_executable(other_driver)
-target_compile_definitions(other_driver PRIVATE "OTHER_APPLICATION")
-target_sources(other_driver PRIVATE development_driver_loader.cpp)
-target_link_libraries(other_driver PRIVATE otherlib)
+add_static_driver(other_driver 
+  development_driver_loader.cpp
+)

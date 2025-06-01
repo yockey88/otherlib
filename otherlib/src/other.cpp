@@ -9,21 +9,32 @@
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
-#include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "core/version.hpp"
 #include "renderer/renderer_backend.hpp"
 
+#include "serialization/reflection.hpp"
 #include "spdlog/common.h"
 
 #ifndef OTHER_APPLICATION
-/// console application MUST implement this function to use environment
 extern int other_main(const command_line& cmd, const config_table& config);
+#endif
+
+#if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
+  #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what())
+  #define CATCH_EXCEPTION(e) OTHER_ASSERT(false, "Exception: {}", e.what())
+  #define CATCH_UNKNOWN_EXCEPTION() OTHER_ASSERT(false, "Unknown exception occurred.")
+#else
+  #define CATCH_RUNTIME_ERROR(e) CORE_LOG_ERROR("Runtime error: {}", e.what())
+  #define CATCH_EXCEPTION(e) CORE_LOG_ERROR("Exception: {}", e.what())
+  #define CATCH_UNKNOWN_EXCEPTION() CORE_LOG_ERROR("Unknown exception occurred.")
 #endif
 
 namespace other {
 
   int entry(int argc, char* argv[]) {
     initialize_primary_arena();
+
     command_line cmd = command_line::parse(&argc, argv);
     if (!cmd.valid) {
       return (cmd.diagnostics.help || cmd.diagnostics.usage) ? 0 : -1;
@@ -56,6 +67,11 @@ namespace other {
       CATCH_UNKNOWN_EXCEPTION();
       res = -1;
     }
+
+#ifdef OTHER_APPLICATION
+    event_callbacks.clear();
+#endif
+
     shutdown_subsystems();
 
     return res;
@@ -97,6 +113,7 @@ namespace other {
   }
 
   void shutdown_subsystems() {
+    subsystem<type_database>::get()->shutdown();
     subsystem<renderer_backend>::get()->shutdown();
     subsystem<arena>::get()->shutdown();
     subsystem<logger>::get()->shutdown();
