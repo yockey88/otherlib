@@ -8,6 +8,8 @@
 #include <glm/glm.hpp>
 
 #include "core/logger.hpp"
+
+#include "renderer/render_graph.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "renderer/renderer_resource.hpp"
 
@@ -35,6 +37,8 @@ namespace other {
     T& get_resource(const resource_handle& handle) {
       return *rendering()->api()->get_resource_as<T>(handle);
     }
+
+    void render(const render_graph& graph);
 
    private:
     renderer_backend* rendering();

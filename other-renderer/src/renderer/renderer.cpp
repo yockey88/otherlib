@@ -60,6 +60,15 @@ namespace other {
     rendering()->api()->destroy_resource(handle);
   }
 
+  void renderer::render(const render_graph& graph) {
+    if (graph.passes.empty()) {
+      CORE_LOG_ERROR("Render graph has no passes to render.");
+      return;
+    }
+
+    /// compile graph into executable commands
+  }
+
   renderer_backend* renderer::rendering() {
     return subsystem<renderer_backend>::get();
   }

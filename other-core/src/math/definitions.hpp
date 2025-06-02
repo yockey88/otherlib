@@ -4,10 +4,11 @@
 #ifndef OTHER_CORE_MATH_DEFINITIONS_HPP
 #define OTHER_CORE_MATH_DEFINITIONS_HPP
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include "core/formatting.hpp"
-
 #include "serialization/reflection.hpp"
 
 namespace other {}  // namespace other
@@ -54,6 +55,14 @@ OTHER_REFLECT(
   field(w, other::attr::serializable())
 )
 
-/// TODO: figure out how to introspect glm::mat2, mat3, and mat4
+OTHER_REFLECT(
+  glm::quat,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable()),
+  field(w, other::attr::serializable())
+)
+
+/// TODO: figure out how to reflect glm::mat2, mat3, and mat4
 
 #endif  // OTHER_CORE_MATH_DEFINITIONS_HPP

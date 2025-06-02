@@ -7,7 +7,10 @@
 #include "renderer/camera.hpp"
 #include "renderer/renderer_resource.hpp"
 
+#include "scene/scene.hpp"
+
 #include "driver/driver.hpp"
+#include "model/model.hpp"
 
 // #include "glm/fwd.hpp"
 // #include "math/ray.hpp"
@@ -38,6 +41,8 @@ namespace other {
     mouse_state mouse;
 
     scope<renderer> renderer = nullptr;
+    scene active_scene;
+    model cube;
 
     resource_handle comp_shader_handle;
     resource_handle screen_shader_handle;

@@ -10,6 +10,7 @@
 #include <stb/stb_include.h>
 
 #include "core/logger.hpp"
+
 #include "renderer/renderer_backend.hpp"
 
 namespace other {
@@ -17,9 +18,9 @@ namespace other {
   void shader::setting::define(std::string& str) const {
     str.append("#define ");
     str.append(setting_name);
-    if (value.has_value()) {
+    if (value != "") {
       str.append(" ");
-      str.append(value.value());
+      str.append(value);
     }
     str.append("\n");
   }

@@ -13,6 +13,8 @@
 namespace other {
 
   struct shader : public resource {
+    OTHER_REFLECTABLE(shader);
+
     enum source_type : uint8_t {
       INVALID = 0,
 
@@ -35,14 +37,9 @@ namespace other {
 
     struct setting {
       std::string setting_name;
-      opt<std::string> value;
+      std::string value = "";
       void define(std::string& str) const;
     };
-    /*
-      "#define MAX_SPHERES 100\n"sv,
-      "define MAX_MATERIALSS 2\n"sv,
-      "#define USE_WEIGHT_COSINE_HEMISPHERE\n"sv
-    */
 
     shader() = default;
     shader(resource_handle handle)
@@ -86,5 +83,14 @@ namespace other {
   };
 
 }  // namespace other
+
+OTHER_REFLECT(
+  other::shader::setting,
+  field(setting_name, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  other::shader
+);
 
 #endif  // OTHER_RENDERER_RENDERER_SHADER_HPP

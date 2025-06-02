@@ -92,7 +92,7 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(other-core)
 add_subdirectory(other-renderer)
-# add_subdirectory(other-scene)
+add_subdirectory(other-scene)
 add_subdirectory(otherlib)
 
 macro(add_driver_target type driver_name)

@@ -7,7 +7,6 @@
 #include <cstdint>
 
 #include "core/defines.hpp"
-
 #include "serialization/reflection.hpp"
 
 namespace other {
@@ -36,7 +35,7 @@ namespace other {
   constexpr static size_t kNumResourceTypes = static_cast<size_t>(resource_type::NUM_RESOURCES);
 
   struct resource_handle {
-    // OTHER_REFLECTABLE(resource_handle);
+    OTHER_REFLECTABLE(resource_handle);
 
     natural_t id = 0;
     natural_t name_hash = 0;
@@ -67,5 +66,25 @@ namespace other {
   };
 
 }  // namespace other
+
+OTHER_REFLECT(
+  other::access_flags
+)
+
+OTHER_REFLECT(
+  other::resource_type
+)
+
+OTHER_REFLECT(
+  other::resource_handle,
+  field(id, other::attr::serializable()),
+  field(name_hash, other::attr::serializable()),
+  field(type, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  other::resource,
+  field(res_handle, other::attr::serializable())
+)
 
 #endif  // OTHER_RENDERER_RENDERER_RESOURCE_HPP

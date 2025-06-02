@@ -1,7 +1,7 @@
 /**
- * \file simulation/scene_object.cpp
+ * \file object/scene_object.cpp
  **/
-#include "simulation/scene_object.hpp"
+#include "object/scene_object.hpp"
 
 namespace other {
 

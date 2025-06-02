@@ -6,15 +6,16 @@
 
 #include <glm/glm.hpp>
 
-#include "renderer/renderer_resource.hpp"
-
 #include "math/definitions.hpp"
 #include "serialization/reflection.hpp"
+
+#include "renderer/renderer_resource.hpp"
+
 
 namespace other {
 
   struct texture : public resource {
-    // OTHER_REFLECTABLE(texture);
+    OTHER_REFLECTABLE(texture);
 
     enum tex_type : uint32_t {
       TEXTURE_1D = 0,

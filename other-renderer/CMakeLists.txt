@@ -3,12 +3,13 @@ target_sources(other_renderer
     PRIVATE
       src/renderer/renderer_resource.cpp
       
-      
       src/renderer/rendering_api.cpp
       src/renderer/backends/opengl_api.cpp
       
       src/renderer/window_manager.cpp
       src/renderer/renderer_backend.cpp
+      
+      src/renderer/render_graph.cpp
       src/renderer/renderer.cpp
 
       src/renderer/shader.cpp
@@ -18,6 +19,10 @@ target_sources(other_renderer
       src/renderer/camera.cpp
 
       src/renderer/ui/ui_helpers.cpp
+
+      src/model/vertex.cpp
+      src/model/vertex_buffer.cpp
+      src/model/model.cpp
 )
 if (MSVC)
 else()

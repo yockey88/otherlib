@@ -13,6 +13,7 @@
 
 #include <flatbuffers/flexbuffers.h>
 #include <glm/glm.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <refl/refl.hpp>
 
 #include "core/defines.hpp"
@@ -124,8 +125,12 @@ namespace other {
             os << '"' << value << '"';
           } else if constexpr (std::is_same_v<U, char>) {
             os << '\'' << value << '\'';
-          } else {
+          } else if constexpr (std::is_enum_v<U>) {
+            os << magic_enum::enum_name(value);
+          } else if constexpr (is_streamable_type<U>) {
             os << value;
+          } else {
+            os << "[failed to serialize type: " << typeid(U).name() << "]";
           }
         }
         os << ";\n";
@@ -145,7 +150,7 @@ namespace other {
           std::memcpy(bytes.data(), &value, sizeof(U));
           data.Blob(name.c_str(), bytes);
         }
-        /// strings handled naturally by default case, this is for vectors, arrays, etc...
+        /// strings handled naturally by default case, this is for vectors, arrays, etc... of reflected types
         else if constexpr (is_non_stringlike_container_type<U>) {
           // std::span<typename U::value_type> values{ std::ranges::begin(value), std::ranges::size(value) };
 
@@ -220,22 +225,31 @@ namespace other {
   std::string serializer::write_fields_to_string(const std::string& name, const T& value, int32_t indent_level) const {
     std::stringstream ss;
     std::string indent = std::string((indent_level - 1) * 2, ' ');
+    ss << indent << name;
+    if constexpr (std::is_enum_v<T>) {
+      ss << " = " << magic_enum::enum_name(value) << ";";
+      return ss.str();
+    } else {
+      ss << " = {\n";
+      for_each(refl::reflect(value).members, [&](auto member) {
+        if constexpr (refl::descriptor::has_attribute<attr::serializable>(member)) {
+          std::string name = std::string{ member.name };
+          opt<std::string> friendly_name = {};
 
-    ss << indent << name << " = {\n";
-    for_each(refl::reflect(value).members, [&](auto member) {
-      if constexpr (refl::descriptor::has_attribute<attr::serializable>(member)) {
-        std::string name = std::string{ member.name };
-        opt<std::string> friendly_name = {};
+          if constexpr (refl::descriptor::is_property(member)) {
+            friendly_name = refl::descriptor::get_property(member).friendly_name;
+          }
+          name = friendly_name.value_or(name);
 
-        if constexpr (refl::descriptor::is_property(member)) {
-          friendly_name = refl::descriptor::get_property(member).friendly_name;
+          field_writer{}(ss, member(value), indent_level + 1, name);
         }
-        name = friendly_name.value_or(name);
+      });
+    }
+    ss << indent;
 
-        field_writer{}(ss, member(value), indent_level + 1, name);
-      }
-    });
-    ss << indent << "}";
+    if constexpr (!std::is_enum_v<T>) {
+      ss << "}";
+    }
 
     return ss.str();
   }
@@ -428,6 +442,8 @@ namespace other {
 
 }  // namespace other
 
+#define VA_ARGS(...) , ##__VA_ARGS__
+
 #define OTHER_REFLECTABLE(T)         \
   friend class other::type_database; \
   friend struct other::serializer;   \
@@ -444,12 +460,16 @@ namespace other {
   };                                                                                                                                                        \
   static_assert(other::reflected_type<T>, "Type '" #T "' does not meet the requirements for reflection. Ensure it is default constructible and reflectable.");
 
-#define OTHER_REFLECT(T, ...)       \
-  REFL_AUTO(type(T), ##__VA_ARGS__) \
+#define OTHER_REFLECT(T, ...)             \
+  REFL_AUTO(type(T) VA_ARGS(__VA_ARGS__)) \
   OTHER_TYPE_HANDLER(T)
 
 #define OTHER_REFLECT_DERIVED(T, BT, ...) \
-  REFL_AUTO(T, BT, ##__VA_ARGS__)         \
+  REFL_AUTO(T, BT VA_ARGS(__VA_ARGS__))   \
   OTHER_TYPE_HANDLER(T)
+
+OTHER_REFLECT(
+  other::value_type
+)
 
 #endif  // OTHER_CORE_REFLECTION_HPP
