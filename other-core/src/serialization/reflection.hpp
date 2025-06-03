@@ -370,7 +370,7 @@ namespace other {
   T serializer::read_from_file(const std::string& file_path) const {
     std::vector<uint8_t> bytes;
     {
-      std::ifstream ifs("artifacts/main_cam_data.bin", std::ios::binary);
+      std::ifstream ifs(file_path, std::ios::binary);
       if (!ifs.is_open()) {
         CORE_LOG_ERROR("Failed to open file '{}'.", file_path);
         return T{};

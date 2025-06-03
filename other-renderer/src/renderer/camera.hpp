@@ -16,26 +16,6 @@
 
 namespace other {
 
-  struct camera_specification {
-    glm::vec3 position = glm::vec3(0.f, 0.f, 1.f);
-    glm::vec3 target = glm::vec3(0.f, 0.f, 0.f);
-    glm::vec3 orientation = glm::vec3(0.f, 0.f, 0.f);
-    glm::vec3 world_up = glm::vec3(0.f, 1.f, 0.f);
-    glm::vec2 image_size = glm::vec2(1920.f, 1080.f);
-
-    real_t fov = 45.0f;
-    real_t aspect_ratio = 16.f / 9.f;
-    real_t defocus_angle = 0.f;
-    real_t focus_dist = 10.f;
-    real_t image_width = 2.f;
-    real_t sensitivity = 0.1f;
-
-    int samples_per_pixel = 100;
-    int max_bounce_depth = 50;
-
-    bool constrain_pitch = true;
-  };
-
   class camera {
     OTHER_REFLECTABLE(camera);
 
@@ -46,7 +26,6 @@ namespace other {
     } clip;
 
     glm::vec3 center() const;
-    glm::vec3 direction() const;
 
     float yaw() const;
     float pitch() const;
@@ -55,20 +34,15 @@ namespace other {
 
     /// orthonormal basis vectors
     glm::vec3 forward() const;
-    glm::vec3 backward() const;
     glm::vec3 up() const;
-    glm::vec3 down() const;
     glm::vec3 right() const;
-    glm::vec3 left() const;
     const orthonormal_basis& get_basis() const;
 
     void look_from(const glm::vec3& position);
     void look_at(const glm::vec3& target);
     void look(const glm::vec3& position, const glm::vec3& target);
-    void look();
 
-    void adjust_yaw(real_t angle);
-    void adjust_pitch(real_t angle);
+    void adjust_look_orientation(real_t yaw, real_t pitch);
 
     glm::mat4& get_view_matrix();
     glm::mat4& get_projection_matrix(const glm::ivec2& window_size);
@@ -76,14 +50,11 @@ namespace other {
     gpu::camera_data to_gpu_data();
     gpu::ray_gen_data to_ray_gen_data();
 
-    static camera_specification to_specification(const camera& cam);
-    static camera from_specification(const camera_specification& spec);
-
     glm::vec3 position = glm::vec3(0.f, 0.f, 1.f);
-    glm::vec3 target = glm::vec3(0.f, 0.f, 0.f);
+    glm::vec3 direction = glm::vec3(0.f, 0.f, 0.f);
     glm::vec3 euler_angles = glm::vec3(0.f, 0.f, 0.f);
-    orthonormal_basis basis = orthonormal_basis(glm::vec3(0.f, 0.f, -1.f));
     glm::vec3 world_up = glm::vec3(0.f, 1.f, 0.f);
+    orthonormal_basis basis = orthonormal_basis(glm::vec3(0.f, 0.f, -1.f));
 
     glm::vec2 image_size = { 1920.f, 1080.f };  /// width, height
 
@@ -124,16 +95,20 @@ namespace other {
 OTHER_REFLECT(
   other::camera,
   field(position, other::attr::serializable()),
-  field(target, other::attr::serializable()),
+  field(direction, other::attr::serializable()),
   field(euler_angles, other::attr::serializable()),
+  field(world_up, other::attr::serializable()),
   field(basis, other::attr::serializable()),
+
   field(defocus_angle, other::attr::serializable()),
   field(focus_dist, other::attr::serializable()),
+
   field(image_width, other::attr::serializable()),
   field(aspect_ratio, other::attr::serializable()),
   field(samples_per_pixel, other::attr::serializable()),
   field(max_bounce_depth, other::attr::serializable()),
   field(fov, other::attr::serializable()),
+
   field(sensitivity, other::attr::serializable()),
   field(constrain_pitch, other::attr::serializable())
 )

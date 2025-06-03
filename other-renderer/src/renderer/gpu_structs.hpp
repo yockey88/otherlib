@@ -124,11 +124,6 @@ namespace other {
       int frame_index = 0;
     };
 
-    GPU_ALIGN struct camera_buffer {
-      glm::vec4 camera_position;
-      glm::vec4 camera_forward;
-    };
-
     GPU_ALIGN struct ray_gen_data {
       glm::vec4 pixel00_loc;
       glm::vec4 pixel_delta_u;

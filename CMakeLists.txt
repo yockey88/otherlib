@@ -136,3 +136,7 @@ add_subdirectory(other-terminal)
 add_subdirectory(driver)
 
 add_subdirectory(tests)
+
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
+  add_subdirectory(scratch)
+endif()

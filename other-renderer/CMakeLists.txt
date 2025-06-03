@@ -24,9 +24,6 @@ target_sources(other_renderer
       
       src/renderer/ui/ui_helpers.cpp
 )
-if (MSVC)
-else()
-endif()
 
 target_include_directories(other_renderer 
   PUBLIC 

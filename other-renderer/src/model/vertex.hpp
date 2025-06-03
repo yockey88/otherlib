@@ -73,7 +73,7 @@ namespace other {
     vertex() = default;
 
     static std::vector<uint32_t> layout;
-    static size_t stride;
+    static size_t stride();
 
     static buffer_layout get_buffer_layout();
   };

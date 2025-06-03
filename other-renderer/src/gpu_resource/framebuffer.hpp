@@ -51,13 +51,12 @@ namespace other {
     // texture& set_data(const std::vector<uint8_t>& data);
     // texture& set_data(const uint8_t* data, size_t size);
 
-    framebuffer& add_attachment(const resource_handle& attachment_handle, attachment_type type);
     // clang-format off
     framebuffer& add_attachment(const std::string& text_name, attachment_type type, texture::tex_type tex_type = texture::tex_type::TEXTURE_2D, texture::format format = texture::format::RGBA32F, 
                                 texture::filter min_filter = texture::filter::LINEAR, texture::filter max_filter = texture::filter::LINEAR, 
-                                texture::wrap wrap_s = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap = texture::wrap::CLAMP_TO_EDGE, 
-                                bool writable = false);
+                                texture::wrap wrap_s = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap = texture::wrap::CLAMP_TO_EDGE);
     // clang-format on
+    framebuffer& add_attachment(const resource_handle& attachment_handle, attachment_type type);
 
     void unbind();
     void finalize_framebuffer();

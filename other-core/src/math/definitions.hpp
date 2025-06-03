@@ -11,7 +11,9 @@
 #include "core/formatting.hpp"
 #include "serialization/reflection.hpp"
 
-namespace other {}  // namespace other
+namespace other {
+
+}  // namespace other
 
 OTHER_REFLECT(
   glm::vec2,

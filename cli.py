@@ -59,8 +59,35 @@ def copy_dlls(cfg):
       
       dest = f"build/other-terminal/{cfg}/"
       shutil.copy(dll, dest)
+      
+      dest = f"build/scratch/{cfg}/"
+      shutil.copy(dll, dest)
+
+      dest = f"build/tests/{cfg}/"
+      shutil.copy(dll, dest)
     else:
       print(f"Warning: {dll} does not exist.")
+
+
+def run_subprocess(args):
+  print(f"Running command: {' '.join(args)}")
+  try:
+    subprocess.run(args, check=True)
+  except subprocess.CalledProcessError as e:
+    print(f"Error running command: {e}")
+    sys.exit(1)
+
+def run_project(out_dir, cfg, name, config_file, args, verbose = False):
+  run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}"]
+  if verbose:
+    run_command.append("--verbose")
+  run_subprocess(run_command)
+  
+def validate_args(args, parser):
+  if not args.build and not args.regen_project \
+      and not args.run and not args.run_scratch and not args.run_terminal and not args.run_tests:
+    parser.print_help()
+    sys.exit(1)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="A simple CLI for a Python project.")
@@ -68,15 +95,15 @@ if __name__ == "__main__":
   parser.add_argument("--regen-project", "-rg", action="store_true", help="Regenerate the project files.")
   parser.add_argument("--build", "-b", action="store_true", help="Build the project.")
   parser.add_argument("--run", "-r", action="store_true", help="Run the main driver.")
+  parser.add_argument("--run-scratch", "-rs", action="store_true", help="Run the scratch application.")
+  parser.add_argument("--run-terminal", "-rt", action="store_true", help="Run the other terminal application.")
   parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Debug-AS", "Profile"])
   parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
 
   args = parser.parse_args()
   try:
-    if not args.build and not args.run and not args.run_tests and not args.regen_project:
-      parser.print_help()
-      sys.exit(1)
+    validate_args(args, parser)
 
     cfg = args.cfg
       
@@ -92,26 +119,18 @@ if __name__ == "__main__":
       build_sln_file(filename, cfg)
       copy_dlls(cfg)
       
-    if args.run_tests:
-      print("Running tests...")
-      test_cmd = [f"build/tests/{cfg}/other_tests.exe", "resources/dev-test-config.toml"]
-      if args.verbose is not None and args.verbose:
-        test_cmd.append("--verbose")
-      res = subprocess.run(test_cmd, check=True)
-      if res.returncode != 0:
-        print("Tests failed.")
-        sys.exit(1)
-      else:
-        print("All tests passed successfully.")
-        sys.exit(0)
-
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_command = [f"build/driver/{cfg}/other_driver.exe", "resources/dev-config.toml"] 
-      # run_command = [f"build/other-terminal/{cfg}/other_terminal.exe", "resources/term-config.toml"] 
-      if args.verbose is not None and args.verbose:
-        run_command.append("--verbose")
-      subprocess.run(run_command, check=True)
+      run_project("driver", cfg, "other_driver", "dev-config.toml", args, args.verbose)
+    elif args.run_scratch:
+      print(f"Running Other-Scratch [{cfg}]")
+      run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)
+    elif args.run_terminal:
+      print(f"Running Other-Terminal [{cfg}]")
+      run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args, args.verbose)
+    elif args.run_tests:
+      print("Running tests...")
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose)
       
   except subprocess.CalledProcessError as e:
     print(f"Error: {e}")

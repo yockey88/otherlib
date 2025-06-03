@@ -22,6 +22,29 @@ namespace other {
     return *this;
   }
 
+  // clang-format off
+  framebuffer& framebuffer::add_attachment(const std::string& text_name, attachment_type type, texture::tex_type tex_type, texture::format format, 
+                                            texture::filter min_filter, texture::filter max_filter, 
+                                            texture::wrap wrap_s, texture::wrap wrap_t, texture::wrap wrap) {
+    // clang-format on
+    OTHER_ASSERT(type < attachment_type::NUM_ATTACHMENT_TYPES, "Invalid attachment type: {}", type);
+    if (size.x == 0 || size.y == 0) {
+      CORE_LOG_ERROR("Framebuffer size must be set before adding attachments.");
+      return *this;
+    }
+
+    resource_handle attachment = subsystem<renderer_backend>::get()->api()->create_resource(text_name + std::format("_{}_", type) + "_attach", resource_type::TEXTURE);
+    (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(attachment))
+      .set_type(tex_type)
+      .set_format(format)
+      .set_size(size.x, size.y)
+      .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
+      .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE)
+      .finalize_texture();
+
+    return add_attachment(attachment, type);
+  }
+
   framebuffer& framebuffer::add_attachment(const resource_handle& attachment_handle, attachment_type type) {
     if (attachment_handle.id == 0 || attachment_handle.type != resource_type::TEXTURE) {
       CORE_LOG_ERROR("Invalid attachment handle: must be a valid texture resource.");
@@ -39,29 +62,6 @@ namespace other {
     return *this;
   }
 
-  // clang-format off
-  framebuffer& framebuffer::add_attachment(const std::string& text_name, attachment_type type, texture::tex_type tex_type, texture::format format, 
-                                            texture::filter min_filter, texture::filter max_filter, 
-                                            texture::wrap wrap_s, texture::wrap wrap_t, texture::wrap wrap, bool writable) {
-    // clang-format on
-    OTHER_ASSERT(type < attachment_type::NUM_ATTACHMENT_TYPES, "Invalid attachment type: {}", type);
-    if (size.x == 0 || size.y == 0) {
-      CORE_LOG_ERROR("Framebuffer size must be set before adding attachments.");
-      return *this;
-    }
-
-    resource_handle attachment = subsystem<renderer_backend>::get()->api()->create_resource(text_name + std::format("_{}_", type) + "_attach", resource_type::TEXTURE);
-    (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(attachment))
-      .set_type(tex_type)
-      .set_format(format)
-      .set_size(size.x, size.y)
-      .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
-      .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE)
-      .finalize_image(0, writable);
-
-    return add_attachment(attachment, type);
-  }
-
   void framebuffer::unbind() {
     subsystem<renderer_backend>::get()->api()->unbind_framebuffer_resource(handle());
   }
@@ -70,6 +70,11 @@ namespace other {
     check_build_status();
     if (!ready_to_finalize) {
       CORE_LOG_ERROR("Framebuffer is not complete, cannot finalize.");
+      return;
+    }
+
+    if (size.x == 0 || size.y == 0) {
+      CORE_LOG_ERROR("Framebuffer size is not set, cannot finalize.");
       return;
     }
 

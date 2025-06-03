@@ -8,14 +8,6 @@ namespace other {
 
     static std::vector<uint32_t> actual_layout = { 3, 3, 3, 3, 2 };
 
-    static size_t get_stride() {
-      size_t stride = 0;
-      for (const auto& component : actual_layout) {
-        stride += component;
-      }
-      return stride;
-    }
-
   }  // namespace
 
   size_t vertex_attribute::num_components() {
@@ -120,7 +112,14 @@ namespace other {
   }
 
   std::vector<uint32_t> vertex::layout = actual_layout;
-  size_t vertex::stride = get_stride();
+
+  size_t vertex::stride() {
+    size_t stride = 0;
+    for (const auto& component : actual_layout) {
+      stride += component;
+    }
+    return stride;
+  }
 
   buffer_layout vertex::get_buffer_layout() {
     return {

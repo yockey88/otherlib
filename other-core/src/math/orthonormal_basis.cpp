@@ -3,22 +3,42 @@
  **/
 #include "math/orthonormal_basis.hpp"
 
+#include "math/constants.hpp"
+
 namespace other {
 
-  orthonormal_basis::orthonormal_basis(const glm::vec3& n) {
-    k = glm::normalize(n);
-    i = glm::normalize(glm::cross(find_first_non_zero(k), k));
-    j = glm::normalize(glm::cross(i, k));
-  }
+  namespace {
+
+    void check_negative_zero(glm::vec3& v) {
+      if (v.x == -0.f) {
+        v.x = 0.f;
+      }
+      if (v.y == -0.f) {
+        v.y = 0.f;
+      }
+      if (v.z == -0.f) {
+        v.z = 0.f;
+      }
+    }
+
+  }  // namespace
 
   orthonormal_basis::orthonormal_basis(const glm::vec3& reference_vector, const glm::vec3& n) {
     k = glm::normalize(n);
-    i = glm::normalize(glm::cross(reference_vector, k));
+    i = glm::normalize(glm::cross(k, reference_vector));
     j = glm::normalize(glm::cross(i, k));
+
+    check_negative_zero(i);
+    check_negative_zero(j);
+    check_negative_zero(k);
   }
 
   glm::vec3 orthonormal_basis::to_local(const glm::vec3& v) const {
-    return glm::vec3(glm::dot(v, i), glm::dot(v, j), glm::dot(v, k));
+    return glm::vec3(
+      satisfy_floating_point_tolerance(glm::dot(v, i)),
+      satisfy_floating_point_tolerance(glm::dot(v, j)),
+      satisfy_floating_point_tolerance(glm::dot(v, k))
+    );
   }
 
   glm::vec3 orthonormal_basis::to_world(const glm::vec3& vec) const {

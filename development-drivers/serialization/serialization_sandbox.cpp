@@ -8,10 +8,12 @@
 #include <glm/glm.hpp>
 
 #include "core/defines.hpp"
-#include "driver/driver.hpp"
+#include "serialization/reflection.hpp"
+
 #include "renderer/camera.hpp"
 
-#include "serialization/reflection.hpp"
+#include "driver/driver.hpp"
+
 
 struct my_serializable {
   int a;
@@ -103,8 +105,6 @@ class OTHER_CLASS serialization_sandbox : public other::driver {
       std::vector<uint8_t> serialized_data;
       {
         other::camera cam;
-        cam.look_from({ 0.f, 0.f, 5.f });
-        cam.look_at({ 0.f, 0.f, 0.f });
         cam.euler_angles = glm::vec3(0.f, 0.f, 0.f);
         cam.fov = 45.f;
         cam.image_size = glm::vec2(1920.f, 1080.f);
@@ -117,7 +117,8 @@ class OTHER_CLASS serialization_sandbox : public other::driver {
         cam.image_width = 68.f;
         cam.sensitivity = 0.1f;
         cam.constrain_pitch = true;
-        cam.look();
+        cam.look_from({ 0.f, 0.f, 5.f });
+        cam.look_at({ 0.f, 0.f, 0.f });
 
         CORE_LOG_INFO("Original camera: \n{}", other::type_data_handler<other::camera>::as_string("cam", cam));
         serialized_data = other::type_data_handler<other::camera>::as_bytes(cam);

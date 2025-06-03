@@ -1,9 +1,11 @@
-add_dynamic_driver(pbrt_sandbox
-  pbrt/pbrt_sandbox.cpp 
-  pbrt/shape.cpp
-  pbrt/integrator.cpp
-  pbrt/scene_object.cpp
-)
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/pbrt)
+  add_dynamic_driver(pbrt_sandbox
+    pbrt/pbrt_sandbox.cpp 
+    pbrt/shape.cpp
+    pbrt/integrator.cpp
+    pbrt/scene_object.cpp
+  )
+endif()
 
 add_dynamic_driver(memory_sandbox
   memory/memory_sandbox.cpp

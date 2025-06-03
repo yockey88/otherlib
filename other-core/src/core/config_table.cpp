@@ -12,6 +12,12 @@
 namespace other {
 
   opt<config_table> parse_raw_config(const std::string_view filename) {
+    if (filename.empty()) {
+      config_table c{};
+      c.valid = true;
+      return c;
+    }
+
     toml::table table;
     opt<toml::table> project_table;
 
@@ -86,7 +92,7 @@ namespace other {
       }
 
     } catch (const toml::parse_error& err) {
-      std::println(std::cerr, "Failed to parse configuration file '{}': {}", filename, err.description());
+      std::println(std::cerr, "Failed to parse configuration file '{}' caught a toml-parse-error: {}", filename, err.description());
       return std::nullopt;
     }
 

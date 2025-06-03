@@ -7,23 +7,27 @@
 
 #include "renderer/renderer_backend.hpp"
 
-
 namespace other {
 
-  resource_handle texture::create(const std::string& name, tex_type type, format frmtRGBA8, uint32_t width, uint32_t height, bool writable) {
+  resource_handle texture::create(const std::string& name, tex_type type, format frmtRGBA8, uint32_t width, uint32_t height, bool as_image, bool writable) {
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create texture resource with name: {}", name);
       return { 0, resource_type::EMPTY };
     }
 
-    (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(handle))
-      .set_type(texture::tex_type::TEXTURE_2D)
-      .set_format(texture::format::RGBA32F)
-      .set_size(width, height)
-      .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
-      .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE)
-      .finalize_image(0, writable);
+    auto& text = (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(handle))
+                   .set_type(texture::tex_type::TEXTURE_2D)
+                   .set_format(texture::format::RGBA32F)
+                   .set_size(width, height)
+                   .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
+                   .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE);
+
+    if (as_image) {
+      text.finalize_image(0, writable);
+    } else {
+      text.finalize_texture();
+    }
 
     return handle;
   }

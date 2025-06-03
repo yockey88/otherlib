@@ -162,16 +162,6 @@ namespace other {
       return;
     }
 
-    // // glViewport(0, 0, get_window_size().x, get_window_size().y);
-    // for (const auto& [id, window] : window_mgr->get_all_windows()) {
-    //   if (window == nullptr) {
-    //     CORE_LOG_ERROR("Window handle is null, cannot begin frame.");
-    //     continue;
-    //   }
-
-    //   SDL_GL_MakeCurrent(window, ctx);
-    // }
-
     glm::vec3 clear_color = get_clear_color();
     glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -460,11 +450,9 @@ namespace other {
     }
 
     uint32_t texture_id = gpu_itr->second;
-    // clang-format off
     glBindTexture(get_gl_texture_type(type), texture_id);
     glTexImage2D(get_gl_texture_type(type), 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
-    glBindTexture(get_gl_texture_type(type), 0);  // Unbind the texture
-    // clang-format on
+    glBindTexture(get_gl_texture_type(type), 0);
     CHECKGL();
   }
 
@@ -494,12 +482,7 @@ namespace other {
     }
 
     uint32_t buffer_id = itr->second;
-    if (type == gpu_buffer::buf_type::UNIFORM_BUFFER ||
-        type == gpu_buffer::buf_type::STORAGE_BUFFER) {
-      glBindBufferBase(get_gl_buffer_type(type), 0, buffer_id);
-    } else {
-      glBindBuffer(get_gl_buffer_type(type), buffer_id);
-    }
+    glBindBuffer(get_gl_buffer_type(type), buffer_id);
     CHECKGL();
   }
 
@@ -515,16 +498,17 @@ namespace other {
       return;
     }
 
-    if (buf_itr->second.get_buffer_type() == gpu_buffer::buf_type::UNIFORM_BUFFER ||
-        buf_itr->second.get_buffer_type() == gpu_buffer::buf_type::STORAGE_BUFFER) {
-      glBindBufferBase(get_gl_buffer_type(buf_itr->second.get_buffer_type()), 0, 0);
-    } else {
-      glBindBuffer(get_gl_buffer_type(buf_itr->second.get_buffer_type()), 0);
-    }
+    glBindBuffer(get_gl_buffer_type(buf_itr->second.get_buffer_type()), 0);
     CHECKGL();
   }
 
-  void opengl_api::bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string& name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) {
+  void opengl_api::bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string& name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) {
+    auto buf_itr = buffer_resources.find(handle.id);
+    if (buf_itr == buffer_resources.end()) {
+      CORE_LOG_ERROR("Buffer resource with ID {} not found in buffer resources.", handle.id);
+      return;
+    }
+
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
@@ -540,6 +524,8 @@ namespace other {
     uint32_t shader_id = gpu_itr->second;
 
     glBindBuffer(get_gl_buffer_type(buffer_type), buffer_id);
+    glBufferData(get_gl_buffer_type(buffer_type), size, data, get_gl_buffer_usage(buf_itr->second.get_usage()));
+
     GLuint blockIndex = glGetUniformBlockIndex(shader_id, name.c_str());
     if (blockIndex == 0xffffffff) {
       CORE_LOG_ERROR("Uniform block '{}' not found in shader ID {}.", name, shader_handle.id);
@@ -547,6 +533,7 @@ namespace other {
     }
     glUniformBlockBinding(shader_id, blockIndex, binding_point);
     glBindBufferBase(get_gl_buffer_type(buffer_type), binding_point, buffer_id);
+
     glBindBuffer(get_gl_buffer_type(buffer_type), 0);
   }
 
@@ -638,8 +625,8 @@ namespace other {
     glBindVertexArray(mesh_id);
 
     size_t offset = 0;
+    size_t full_stride = stride * get_gl_attr_size(mesh::FLOAT);
     for (const auto& attr : attributes) {
-      size_t full_stride = stride * get_gl_attr_size(mesh::FLOAT);
       size_t full_offset = offset * get_gl_attr_size(mesh::FLOAT);
 
       glEnableVertexAttribArray(attr.idx);
@@ -684,6 +671,8 @@ namespace other {
 
     uint32_t framebuffer_id = gpu_resources[handle.id];
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
     CHECKGL();
 
     if (!itr->second.complete) {
@@ -693,30 +682,16 @@ namespace other {
     // Set viewport to match framebuffer size
     const auto& fb = itr->second;
     glViewport(0, 0, fb.size.x, fb.size.y);
-    CHECKGL();
-
-    uint32_t clear_flags = 0;
-
-    if (fb.attachment_textures[framebuffer::attachment_type::STENCIL].has_value()) {
-      clear_flags |= GL_STENCIL_BUFFER_BIT;
-    }
-    if (fb.attachment_textures[framebuffer::attachment_type::DEPTH].has_value()) {
-      clear_flags |= GL_DEPTH_BUFFER_BIT;
-    }
-
-    if (fb.attachment_textures[framebuffer::attachment_type::COLOR].has_value()) {
-      clear_flags |= GL_COLOR_BUFFER_BIT;
-    }
-    OTHER_ASSERT(clear_flags != 0, "Framebuffer must have at least one attachment to clear.");
     glClearColor(fb.clear_color.r, fb.clear_color.g, fb.clear_color.b, fb.clear_color.a);
-    CHECKGL();
-
-    glClear(clear_flags);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     CHECKGL();
   }
 
   void opengl_api::unbind_framebuffer_resource(const resource_handle& handle) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
     CHECKGL();
   }
 
@@ -726,20 +701,23 @@ namespace other {
       return;
     }
 
-    auto gpu_itr = gpu_resources.find(texture.id);
-    if (gpu_itr == gpu_resources.end()) {
+    auto fb_gpu_itr = gpu_resources.find(handle.id);
+    if (fb_gpu_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
       return;
     }
 
-    bind_framebuffer_resource(handle);
-    CHECKGL();
+    auto text_gpu_itr = gpu_resources.find(texture.id);
+    if (text_gpu_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      return;
+    }
 
-    glFramebufferTexture2D(GL_FRAMEBUFFER, get_gl_fb_attachment_type(type), GL_TEXTURE_2D, gpu_itr->second, mip_level);
-    CHECKGL();
-
-    unbind_framebuffer_resource(handle);
-    CHECKGL();
+    glBindFramebuffer(GL_FRAMEBUFFER, fb_gpu_itr->second);
+    glBindTexture(GL_TEXTURE_2D, text_gpu_itr->second);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, get_gl_fb_attachment_type(type), GL_TEXTURE_2D, text_gpu_itr->second, mip_level);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
   void opengl_api::finalize_framebuffer(const resource_handle& handle) {
@@ -754,24 +732,34 @@ namespace other {
       return;
     }
 
-    uint32_t framebuffer_id = gpu_resources[handle.id];
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id);
-
     /// create the renderbuffer now
     uint32_t renderbuffer_id = 0;
     glGenRenderbuffers(1, &renderbuffer_id);
     glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, itr->second.size.x, itr->second.size.y);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1280, 720);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     CHECKGL();
 
     auto [rb_itr, rb_inserted] = framebuffer_renderbuffers.emplace(handle.id, renderbuffer_id);
     if (!rb_inserted || rb_itr == framebuffer_renderbuffers.end()) {
       CORE_LOG_ERROR("Failed to create GPU resource for framebuffer renderbuffer ID: {}", handle.id);
-
       glDeleteRenderbuffers(1, &renderbuffer_id);
       return;
     }
+
+    auto fb_itr = gpu_resources.find(handle.id);
+    if (fb_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("GPU resource for framebuffer ID {} not found.", handle.id);
+      glDeleteRenderbuffers(1, &renderbuffer_id);
+      return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fb_itr->second);
+    glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer_id);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    CHECKGL();
 
     // Check if the framebuffer is complete
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -799,9 +787,7 @@ namespace other {
       return;
     }
 
-    glUseProgram(itr->second);
     glUniform1i(shader_id, value);
-    glUseProgram(0);
     CHECKGL();
   }
 
@@ -818,9 +804,7 @@ namespace other {
       return;
     }
 
-    glUseProgram(itr->second);
     glUniform1f(shader_id, value);
-    glUseProgram(0);
     CHECKGL();
   }
 
@@ -837,9 +821,7 @@ namespace other {
       return;
     }
 
-    glUseProgram(itr->second);
     glUniform3fv(shader_id, 1, glm::value_ptr(value));
-    glUseProgram(0);
     CHECKGL();
   }
 
@@ -856,9 +838,7 @@ namespace other {
       return;
     }
 
-    glUseProgram(itr->second);
     glUniform4fv(shader_id, 1, glm::value_ptr(value));
-    glUseProgram(0);
     CHECKGL();
   }
 
@@ -875,9 +855,7 @@ namespace other {
       return;
     }
 
-    glUseProgram(itr->second);
     glUniformMatrix4fv(shader_id, 1, transpose ? GL_TRUE : GL_FALSE, glm::value_ptr(value));
-    glUseProgram(0);
     CHECKGL();
   }
 
@@ -925,9 +903,6 @@ namespace other {
       return;
     }
 
-    itr->second.destroy_resources();
-    framebuffer_resources.erase(itr);
-
     auto rb_itr = framebuffer_renderbuffers.find(handle.id);
     if (rb_itr != framebuffer_renderbuffers.end()) {
       uint32_t renderbuffer_id = rb_itr->second;
@@ -936,6 +911,9 @@ namespace other {
     } else {
       CORE_LOG_ERROR("Renderbuffer resource for framebuffer ID {} not found.", handle.id);
     }
+
+    itr->second.destroy_resources();
+    framebuffer_resources.erase(itr);
 
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr != gpu_resources.end()) {

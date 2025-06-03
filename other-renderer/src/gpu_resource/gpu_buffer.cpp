@@ -5,9 +5,8 @@
 
 #include "core/logger.hpp"
 
-#include "renderer/renderer_backend.hpp"
-
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/renderer_backend.hpp"
 
 namespace other {
 
@@ -133,12 +132,10 @@ namespace other {
   }
 
   void gpu_buffer::finalize_buffer() {
-    upload_buffer();
-    current_size = get_data_size();
-
     if (shader_resource_handle.has_value()) {
-      bind();
-      subsystem<renderer_backend>::get()->api()->bind_shader_buffer_resource(handle(), *shader_resource_handle, *binding_name, binding_point, buffer_type);
+      subsystem<renderer_backend>::get()->api()->bind_shader_buffer_resource(handle(), *shader_resource_handle, *binding_name, binding_point, buffer_type, get_data(), get_data_size());
+    } else {
+      upload_buffer();
     }
   }
 
@@ -147,7 +144,8 @@ namespace other {
   }
 
   size_t gpu_buffer::get_data_size() {
-    return get_data() == nullptr ? 0 : buffer_data.size();
+    current_size = get_data() == nullptr ? 0 : buffer_data.size();
+    return current_size;
   }
 
 }  // namespace other

@@ -6,9 +6,9 @@
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 
+#include "model/vertex.hpp"
 #include "renderer/renderer_backend.hpp"
 
-#include "model/vertex.hpp"
 
 namespace other {
   namespace {
@@ -165,6 +165,7 @@ namespace other {
     CORE_LOG_DEBUG("Adding attribute '{}' of type {} at index {}, size {}, offset {} to mesh with handle {}", attr.name, attr.type, idx, attr.size, attr.offset, handle().id);
 
     attributes.push_back(attr);
+    return *this;
   }
 
   void mesh::draw() {

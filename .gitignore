@@ -10,10 +10,12 @@ cmake/
 # scratch work/local-test-results
 artifacts/
 wip/
+scratch/
 
 # non-public sandboxes
 development-drivers/pbrt
 
 # configuration files
 dev-*.toml
+*-test-*.toml
 *-log-failure.log

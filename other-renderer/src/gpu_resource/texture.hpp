@@ -130,7 +130,7 @@ namespace other {
 
     resource_type type() const override { return resource_type::TEXTURE; }
 
-    static resource_handle create(const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8, uint32_t width = 0, uint32_t height = 0, bool writable = false);
+    static resource_handle create(const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8, uint32_t width = 0, uint32_t height = 0, bool as_image = false, bool writable = false);
 
     texture& bind(uint32_t slot = 0);
     texture& set_type(tex_type type);

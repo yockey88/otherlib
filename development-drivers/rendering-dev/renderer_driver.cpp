@@ -3,14 +3,15 @@
  **/
 #include "renderer_driver.hpp"
 
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_mouse.h>
+#include <glad/glad.h>
+
 #include "math/orthonormal_basis.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
 #include "renderer/render_graph.hpp"
-
-#include "SDL3/SDL_events.h"
-#include "SDL3/SDL_mouse.h"
 
 namespace other {
   namespace {
@@ -26,13 +27,13 @@ namespace other {
     constexpr static const char* vert_shader_source = R"(
       #version 460 core
 
-      layout (location = 0) in vec3 position;
+      layout (location = 0) in vec2 position;
       layout (location = 1) in vec2 tex_coords;
 
       out vec2 frag_tex_coords;
 
       void main() {
-        gl_Position = vec4(position, 1.0);
+        gl_Position = vec4(position, 0.0, 1.0);
         frag_tex_coords = tex_coords;
       }
     )";
@@ -57,6 +58,16 @@ namespace other {
       -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
       1.0, 1.0f, 0.0f, 1.0f, 1.0f,
       1.0, -1.0f, 0.0f, 1.0f, 0.0f
+    };
+
+    constexpr float quad_vertices2[] = {
+      -1.0f, 1.0f, 0.0f, 1.0f,
+      -1.0f, -1.0f, 0.0f, 0.0f,
+      1.0f, -1.0f, 1.0f, 0.0f,
+
+      -1.0f, 1.0f, 0.0f, 1.0f,
+      1.0f, -1.0f, 1.0f, 0.0f,
+      1.0f, 1.0f, 1.0f, 1.0f
     };
 
     std::vector<vertex> get_cube_vertices();
@@ -104,6 +115,10 @@ namespace other {
 
   }  // namespace
 
+  static uint32_t fb_id = 0;
+  static uint32_t fb_color_id = 0;
+  static uint32_t fb_rb_id = 0;
+
   struct render_component {
     model* model = nullptr;
   };
@@ -122,8 +137,8 @@ namespace other {
 
     initialize_gpu();
 
-    scene_object& cube_obj = active_scene.create_object("Cube", glm::vec3(0.f, 0.f, -1.f));
-    scene_object& capsule_obj = active_scene.create_object("Capsule", glm::vec3(0.f, 0.f, 1.f));
+    scene_object& cube_obj = active_scene.create_object("Cube", glm::vec3(-1.f, 0.f, 0.f));
+    scene_object& capsule_obj = active_scene.create_object("Capsule", glm::vec3(1.f, 0.f, 0.f));
     cube_id = cube_obj.id;
     capsule_id = capsule_obj.id;
 
@@ -142,6 +157,7 @@ namespace other {
     auto image_size = renderer->get_window_size();
 
     cam = serializer{}.read_from_file<camera>("artifacts/main_cam_data.bin");
+    cam.look({ 0.f, 0.f, 3.f }, { 0.f, 0.f, 0.f });
     CORE_LOG_INFO("Camera data loaded from file: \n{}", type_data_handler<camera>::as_string("cam", cam));
 
     image_data.resize(image_size.x * image_size.y * kPixelStride);
@@ -239,23 +255,6 @@ namespace other {
         break;
       }
 
-      gpu::scene_metadata metadata;
-      metadata.window_size = glm::vec4(window_size.x, window_size.y, 0, 0);
-      metadata.object_data = {
-        spheres.size(),
-        objects.size(),
-        materials.size(),
-        0
-      };
-      metadata.samples_per_pixel = cam.samples_per_pixel;
-      metadata.max_depth = cam.max_bounce_depth;
-      metadata.frame_index++;
-
-      renderer->get_resource<gpu_buffer>(scene_metadata_handle)
-        .set_shader_resource(3, comp_shader_handle)
-        .set_data(&metadata, sizeof(gpu::scene_metadata))
-        .finalize_buffer();
-
       if (SDL_Window* window = SDL_GetMouseFocus(); window != nullptr) {
         /// udpate camera data
         glm::vec2 mouse_pos = renderer->get_mouse_position();
@@ -267,25 +266,14 @@ namespace other {
         glm::vec2 rel_pos;
         SDL_GetRelativeMouseState(&rel_pos.x, &rel_pos.y);
 
-        cam.adjust_yaw(rel_pos.x);
-        cam.adjust_pitch(rel_pos.y);
-        if (cam.constrain_pitch) {
-          if (cam.pitch() > 89.0f) {
-            cam.euler_angles.y = 89.0f;
-          }
-
-          if (cam.pitch() < -89.0f) {
-            cam.euler_angles.y = -89.0f;
-          }
-        }
-        cam.look();
-
-        gpu::camera_data cam_data = cam.to_gpu_data();
-        renderer->get_resource<gpu_buffer>(camera_buffer_handle)
-          .set_shader_resource(2, comp_shader_handle)
-          .set_data(&cam_data, sizeof(gpu::camera_data))
-          .finalize_buffer();
+        cam.adjust_look_orientation(rel_pos.x, rel_pos.y);
       }
+
+      gpu::camera_data cam_data = cam.to_gpu_data();
+      renderer->get_resource<gpu_buffer>(camera_buffer_handle)
+        .set_shader_resource(1, cube_shader)
+        .set_data(&cam_data, sizeof(gpu::camera_data))
+        .finalize_buffer();
 
       // gpu::ray_gen_data ray_data = cam.to_ray_gen_data();
       // renderer->get_resource<gpu_buffer>(ray_buffer_handle)
@@ -318,13 +306,12 @@ namespace other {
 
       renderer->get_resource<framebuffer>(initial_pass).bind();
       renderer->get_resource<shader>(cube_shader)
-        .set_uniform("model_matrix", active_scene.get_transform(cube_id).world_matrix())
-        .bind();
+        .bind()
+        .set_uniform("model_matrix", active_scene.get_transform(cube_id).world_matrix());
       renderer->get_resource<mesh>(cube.vertex_buffer_handle).draw();
 
       renderer->get_resource<shader>(cube_shader)
-        .set_uniform("model_matrix", active_scene.get_transform(capsule_id).world_matrix())
-        .bind();
+        .set_uniform("model_matrix", active_scene.get_transform(capsule_id).world_matrix());
       renderer->get_resource<mesh>(capsule.vertex_buffer_handle).draw();
 
       renderer->get_resource<shader>(cube_shader).unbind();
@@ -406,24 +393,20 @@ namespace other {
         break;
     }
 
-    glm::vec3 pos = cam.center();
-    glm::vec3 right = cam.right();
-
     if ((flags & CAMERA_MOVE_FORWARD) == CAMERA_MOVE_FORWARD) {
-      glm::vec3 pos = cam.center();
-      cam.look_from(pos - cam.forward() * cam.sensitivity);
+      cam.position += cam.forward() * cam.sensitivity;
     }
 
     if ((flags & CAMERA_MOVE_BACKWARD) == CAMERA_MOVE_BACKWARD) {
-      cam.look_from(pos + cam.forward() * cam.sensitivity);
+      cam.position -= cam.forward() * cam.sensitivity;
     }
 
     if ((flags & CAMERA_MOVE_RIGHT) == CAMERA_MOVE_RIGHT) {
-      cam.look_from(pos - right * cam.sensitivity);
+      cam.position += cam.right() * cam.sensitivity;
     }
 
     if ((flags & CAMERA_MOVE_LEFT) == CAMERA_MOVE_LEFT) {
-      cam.look_from(pos + right * cam.sensitivity);
+      cam.position -= cam.right() * cam.sensitivity;
     }
   }
 
@@ -439,16 +422,18 @@ namespace other {
     quad_mesh_handle = renderer->create_resource("quad_mesh", resource_type::MESH);
     renderer->get_resource<mesh>(quad_mesh_handle)
       .set_primitive_type(mesh::primitive_type::TRIANGLES)
-      .add_attribute("position", mesh::attribute_type::FLOAT, 3, 0)
-      .add_attribute("tex_coords", mesh::attribute_type::FLOAT, 2, 3)
-      .upload_vertex_buffer("quad_vertices", 4, quad_vertices, sizeof(quad_vertices))
+      .add_attribute("position", mesh::attribute_type::FLOAT, 2, 0)
+      .add_attribute("tex_coords", mesh::attribute_type::FLOAT, 2, 2)
+      .upload_vertex_buffer("quad_vertices", 6, quad_vertices2, sizeof(quad_vertices2))
       .finalize_mesh();
 
     auto image_size = renderer->get_window_size();
-    screen_texture_handle = texture::create("screen_texture", texture::tex_type::TEXTURE_2D, texture::format::RGBA32F, image_size.x, image_size.y, true);
+    screen_texture_handle = texture::create("screen_texture", texture::tex_type::TEXTURE_2D, texture::format::RGBA32F, image_size.x, image_size.y);
 
     initial_pass = renderer->create_resource("initial-pass-fb", resource_type::FRAMEBUFFER);
     renderer->get_resource<framebuffer>(initial_pass)
+      .set_size(image_size.x, image_size.y)
+      .set_clear_color({ 0.1f, 0.1f, 0.1f, 1.f })
       .add_attachment(screen_texture_handle, framebuffer::attachment_type::COLOR)
       .finalize_framebuffer();
 

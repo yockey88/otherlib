@@ -16,7 +16,9 @@ namespace other {
 
     orthonormal_basis()
         : orthonormal_basis(glm::vec3(0, 0, 1)) {}
-    orthonormal_basis(const glm::vec3& n);
+    orthonormal_basis(const glm::vec3& n)
+        : other::orthonormal_basis(find_first_non_zero(glm::normalize(n)), n) {}
+
     orthonormal_basis(const glm::vec3& reference_vector, const glm::vec3& n);
 
     glm::vec3 to_local(const glm::vec3& v) const;
