@@ -8,6 +8,10 @@ target_sources(other_core
       src/core/defines.cpp
       src/core/logger.cpp
       src/core/arena.cpp
+
+      src/core/arena_buffer.cpp
+      src/core/arena_vector.cpp
+
       src/core/registers.cpp
       src/core/ref.cpp
       src/core/ref_counted.cpp

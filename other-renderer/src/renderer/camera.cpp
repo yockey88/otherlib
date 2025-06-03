@@ -6,9 +6,9 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
-#include "renderer/gpu_structs.hpp"
-
 #include "math/constants.hpp"
+
+#include "renderer/gpu_structs.hpp"
 
 namespace other {
 
@@ -37,15 +37,28 @@ namespace other {
   }
 
   glm::vec3 camera::forward() const {
+    OTHER_ASSERT(basis.k == glm::normalize(direction()), "Camera basis k vector is not normalized to the camera direction.");
     return basis.k;
+  }
+
+  glm::vec3 camera::backward() const {
+    return -basis.k;
   }
 
   glm::vec3 camera::up() const {
     return basis.j;
   }
 
+  glm::vec3 camera::down() const {
+    return -basis.j;
+  }
+
   glm::vec3 camera::right() const {
     return basis.i;
+  }
+
+  glm::vec3 camera::left() const {
+    return -basis.i;
   }
 
   const orthonormal_basis& camera::get_basis() const {
@@ -73,11 +86,11 @@ namespace other {
   }
 
   void camera::adjust_yaw(real_t angle) {
-    euler_angles.x += angle * sensitivity;
+    euler_angles.x -= angle * sensitivity;
   }
 
   void camera::adjust_pitch(real_t angle) {
-    euler_angles.y -= angle * sensitivity;
+    euler_angles.y += angle * sensitivity;
     euler_angles.y = glm::clamp(euler_angles.y, -89.f, 89.f);  // Prevent gimbal lock
   }
 
@@ -165,12 +178,12 @@ namespace other {
   }
 
   void camera::reset_camera() {
-    // glm::vec3 new_dir;
-    // new_dir.x = cos(glm::radians(yaw())) * cos(glm::radians(pitch()));
-    // new_dir.y = sin(glm::radians(pitch()));
-    // new_dir.z = sin(glm::radians(yaw())) * cos(glm::radians(pitch()));
+    glm::vec3 new_dir;
+    new_dir.x = cos(glm::radians(yaw())) * cos(glm::radians(pitch()));
+    new_dir.y = sin(glm::radians(pitch()));
+    new_dir.z = sin(glm::radians(yaw())) * cos(glm::radians(pitch()));
 
-    // target = position + glm::normalize(new_dir);
+    target = position + glm::normalize(new_dir);
     basis = orthonormal_basis(world_up, direction());
 
     image_size.x = image_width;

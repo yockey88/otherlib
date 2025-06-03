@@ -89,6 +89,10 @@ namespace other {
         res = create_mesh_resource(handle, type);
         break;
 
+      case resource_type::FRAMEBUFFER:
+        res = create_framebuffer_resource(handle, type);
+        break;
+
       default:
         CORE_LOG_ERROR("Unsupported resource type: {}", type);
         return { 0, resource_type::EMPTY };

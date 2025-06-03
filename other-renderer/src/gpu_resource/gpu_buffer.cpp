@@ -1,11 +1,13 @@
 /**
- * \file renderer/gpu_buffer.cpp
+ * \file gpu_resource/gpu_buffer.cpp
  **/
-#include "renderer/gpu_buffer.hpp"
+#include "gpu_resource/gpu_buffer.hpp"
 
 #include "core/logger.hpp"
+
 #include "renderer/renderer_backend.hpp"
-#include "renderer/renderer_resource.hpp"
+
+#include "gpu_resource/renderer_resource.hpp"
 
 namespace other {
 

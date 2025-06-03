@@ -429,6 +429,11 @@ namespace other {
 
       m.value_type = get_value_type<member_t>();
       CORE_LOG_DEBUG("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
+      if (m.value_type == value_type::USER_TYPE) {
+        if constexpr (reflected_type<member_t>) {
+          CORE_LOG_DEBUG("    > type reflected = {}", std::string{ refl::reflect<member_t>().name });
+        }
+      }
       m.size = sizeof(member_t);
 
       CORE_LOG_TRACE("Adding member '{}' [{}] of type '{}' to reflection data for '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", it->second.type_name);

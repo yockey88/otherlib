@@ -63,6 +63,7 @@ namespace other {
     node* target_node = node_at(id);
     OTHER_ASSERT(target_node != nullptr, "Node with ID {} not found in scene tree.", id);
 
+    scene_ptr->unregister_object(target_node->object);
     destroy_object(target_node);
     OTHER_ASSERT(target_node->object == nullptr, "Node object was not cleared after destruction.");
     OTHER_ASSERT(target_node->id == 0, "Node ID was not reset after destruction.");
@@ -100,6 +101,9 @@ namespace other {
     node_ptr->parent = parent_node;
     node_ptr->id = idx;
     node_ptr->object = &obj;
+
+    /// these have to stay in sync with each other because they reference the index in the memory pool
+    node_ptr->object->id = node_ptr->id;
 
     if (parent_node != nullptr) {
       parent_node->children.push_back(node_at(idx));

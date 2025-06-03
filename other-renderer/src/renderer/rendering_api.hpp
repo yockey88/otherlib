@@ -11,11 +11,14 @@
 #include <glm/glm.hpp>
 
 #include "core/scope.hpp"
-#include "renderer/gpu_buffer.hpp"
-#include "renderer/mesh.hpp"
-#include "renderer/renderer_resource.hpp"
-#include "renderer/shader.hpp"
-#include "renderer/texture.hpp"
+
+#include "gpu_resource/framebuffer.hpp"
+#include "gpu_resource/gpu_buffer.hpp"
+#include "gpu_resource/mesh.hpp"
+#include "gpu_resource/renderer_resource.hpp"
+#include "gpu_resource/shader.hpp"
+#include "gpu_resource/texture.hpp"
+#include "model/vertex.hpp"
 #include "renderer/window_manager.hpp"
 
 namespace other {
@@ -82,14 +85,19 @@ namespace other {
 
     virtual void bind_mesh_resource(const resource_handle& handle) = 0;
     virtual void unbind_mesh_resource(const resource_handle& handle) = 0;
-    virtual void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<mesh::attribute>& attributes) = 0;
+    virtual void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) = 0;
     virtual void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) = 0;
+
+    virtual void bind_framebuffer_resource(const resource_handle& handle) = 0;
+    virtual void unbind_framebuffer_resource(const resource_handle& handle) = 0;
+    virtual void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level) = 0;
+    virtual void finalize_framebuffer(const resource_handle& handle) = 0;
 
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) = 0;
-    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value) = 0;
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value, bool transpose = false) = 0;
 
     resource_handle create_resource(const std::string& name, resource_type type);
     void destroy_resource(const resource_handle& handle);
@@ -121,6 +129,9 @@ namespace other {
     }
 
     virtual int32_t get_gpu_api_window_flags() const = 0;
+
+    virtual framebuffer* create_framebuffer_resource(const resource_handle& handle, resource_type type) = 0;
+    virtual void destroy_framebuffer_resource(const resource_handle& handle) = 0;
 
     virtual mesh* create_mesh_resource(const resource_handle& handle, resource_type type) = 0;
     virtual void destroy_mesh_resource(const resource_handle& handle) = 0;

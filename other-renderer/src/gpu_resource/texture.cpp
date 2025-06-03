@@ -1,10 +1,12 @@
 /**
- * \file renderer/texture.cpp
+ * \file gpu_resource/texture.cpp
  **/
-#include "renderer/texture.hpp"
+#include "gpu_resource/texture.hpp"
 
 #include "core/logger.hpp"
+
 #include "renderer/renderer_backend.hpp"
+
 
 namespace other {
 

@@ -30,14 +30,16 @@ namespace other {
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
     void destroy_object(natural_t id);
 
+    constexpr static inline size_t kMaxNodes = memory_pool<scene_object>::kMaxObjects;
+
    private:
+    friend class scene;
+
     scene* scene_ptr = nullptr;
 
     node* root = nullptr;
 
     ref<memory_pool<scene_object>> objects = nullptr;
-    constexpr static inline size_t kMaxNodes = memory_pool<scene_object>::kMaxObjects;
-
     scope<std::array<node, kMaxNodes>> nodes;
 
     node* node_at(size_t idx);

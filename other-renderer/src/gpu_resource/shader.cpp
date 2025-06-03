@@ -1,7 +1,7 @@
 /**
- * \file renderer/shader.cpp
+ * \file gpu_resource/shader.cpp
  **/
-#include "renderer/shader.hpp"
+#include "gpu_resource/shader.hpp"
 
 #include <fstream>
 
@@ -42,6 +42,32 @@ namespace other {
       .finalize_shader();
 
     CORE_LOG_DEBUG("Created shader resource with name: {}, handle ID: {}", name, handle.id);
+    return handle;
+  }
+
+  resource_handle shader::create(const std::string_view name, const filepath& vertpath, const filepath& fragpath, const std::vector<setting>& settings) {
+    resource_handle handle = create_handle(name);
+    if (handle.id == 0) {
+      return { 0, resource_type::EMPTY };
+    }
+
+    std::string vert_source = preprocess_file(vertpath, settings);
+    if (vert_source.empty()) {
+      CORE_LOG_ERROR("Failed to preprocess vertex shader source from file: {}", vertpath.string());
+      return { 0, resource_type::EMPTY };
+    }
+
+    std::string frag_source = preprocess_file(fragpath, settings);
+    if (frag_source.empty()) {
+      CORE_LOG_ERROR("Failed to preprocess fragment shader source from file: {}", fragpath.string());
+      return { 0, resource_type::EMPTY };
+    }
+
+    (*subsystem<renderer_backend>::get()->api()->get_resource_as<shader>(handle))
+      .add_source(vert_source, source_type::VERTEX_SHADER)
+      .add_source(frag_source, source_type::FRAGMENT_SHADER)
+      .finalize_shader();
+
     return handle;
   }
 
@@ -211,8 +237,8 @@ namespace other {
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, const glm::mat4& value) {
-    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+  shader& shader::set_uniform(const std::string& name, const glm::mat4& value, bool transpose) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value, transpose);
     return *this;
   }
 
@@ -253,30 +279,28 @@ namespace other {
       return;
     }
 
-    {
-      bool has_vertex = false;
-      bool has_fragment = false;
-      for (const auto& source : sources_attached) {
-        if (source == source_type::COMPUTE_SHADER) {
-          if (sources_attached.size() == 1) {
-            complete = true;  // Only compute shader, no vertex/fragment
-            final_type = source_type::COMPUTE_SHADER;
-            break;  // Only compute shader, no need for vertex/fragment
-          } else {
-            CORE_LOG_ERROR("Compute shader cannot be combined with other shader types.");
-            return;
-          }
-        } else if (source == source_type::VERTEX_SHADER) {
-          has_vertex = true;
-        } else if (source == source_type::FRAGMENT_SHADER) {
-          has_fragment = true;
+    bool has_vertex = false;
+    bool has_fragment = false;
+    for (const auto& source : sources_attached) {
+      if (source == source_type::COMPUTE_SHADER) {
+        if (sources_attached.size() == 1) {
+          complete = true;  // Only compute shader, no vertex/fragment
+          final_type = source_type::COMPUTE_SHADER;
+          break;  // Only compute shader, no need for vertex/fragment
+        } else {
+          CORE_LOG_ERROR("Compute shader cannot be combined with other shader types.");
+          return;
         }
+      } else if (source == source_type::VERTEX_SHADER) {
+        has_vertex = true;
+      } else if (source == source_type::FRAGMENT_SHADER) {
+        has_fragment = true;
       }
+    }
 
-      if (has_vertex && has_fragment) {
-        complete = true;
-        final_type = source_type::RENDER_SHADER;
-      }
+    if (has_vertex && has_fragment) {
+      complete = true;
+      final_type = source_type::RENDER_SHADER;
     }
   }
 

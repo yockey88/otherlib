@@ -1,10 +1,11 @@
 /**
  * \file renderer/mesh.hpp
  **/
-#ifndef OTHER_RENDERER_MESH_HPP
-#define OTHER_RENDERER_MESH_HPP
+#ifndef OTHER_RENDERER_GPU_RESOURCE_MESH_HPP
+#define OTHER_RENDERER_GPU_RESOURCE_MESH_HPP
 
-#include "renderer/renderer_resource.hpp"
+#include "gpu_resource/renderer_resource.hpp"
+#include "model/vertex.hpp"
 
 namespace other {
 
@@ -59,6 +60,8 @@ namespace other {
     mesh& set_vertex_count(size_t count);
     mesh& set_index_count(size_t count);
     mesh& add_attribute(const std::string& name, attribute_type type, size_t size, size_t offset);
+    mesh& add_attribute(const std::string& name, value_type type, size_t size, size_t offset);
+    mesh& add_attribute(vertex_attribute attr);
 
     void draw();
 
@@ -76,7 +79,7 @@ namespace other {
     size_t vert_count = 0;
     size_t index_count = 0;
 
-    std::vector<attribute> attributes;
+    std::vector<vertex_attribute> attributes;
 
     void destroy_vertex_buffer();
     void destroy_index_buffer();
@@ -94,4 +97,4 @@ namespace other {
 //   field(attributes, other::attr::serializable())
 // )
 
-#endif  // OTHER_RENDERER_MESH_HPP
+#endif  // OTHER_RENDERER_GPU_RESOURCE_MESH_HPP

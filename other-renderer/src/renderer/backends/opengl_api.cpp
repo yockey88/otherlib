@@ -3,8 +3,6 @@
  **/
 #include "renderer/backends/opengl_api.hpp"
 
-#include <iostream>
-
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_video.h>
 #include <glad/glad.h>
@@ -14,8 +12,6 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
-#include "renderer/renderer_resource.hpp"
-#include "renderer/shader.hpp"
 
 namespace other {
   namespace {
@@ -78,8 +74,13 @@ namespace other {
     CORE_LOG_DEBUG("OpenGL Renderer: {}", gl_renderer);
     set_gpu_context(gpu_context);
 
-    glEnable(GL_DEBUG_OUTPUT);
-    CHECKGL();
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+
+    // glEnable(GL_STENCIL_TEST);
+    // glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    // glStencilMask(0xFF);
+    // glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
     SDL_GL_MakeCurrent(window_mgr->get_main_window(), gl_ctx(get_gpu_context()));
     CORE_LOG_INFO("OpenGL API initialized successfully.");
@@ -161,7 +162,16 @@ namespace other {
       return;
     }
 
-    // glViewport(0, 0, get_window_size().x, get_window_size().y);
+    // // glViewport(0, 0, get_window_size().x, get_window_size().y);
+    // for (const auto& [id, window] : window_mgr->get_all_windows()) {
+    //   if (window == nullptr) {
+    //     CORE_LOG_ERROR("Window handle is null, cannot begin frame.");
+    //     continue;
+    //   }
+
+    //   SDL_GL_MakeCurrent(window, ctx);
+    // }
+
     glm::vec3 clear_color = get_clear_color();
     glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -612,7 +622,7 @@ namespace other {
     glBindVertexArray(0);
   }
 
-  void opengl_api::set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<mesh::attribute>& attributes) {
+  void opengl_api::set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) {
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
@@ -621,7 +631,7 @@ namespace other {
 
     size_t stride = 0;
     for (const auto& attr : attributes) {
-      stride += attr.count;
+      stride += attr.size;
     }
 
     uint32_t mesh_id = itr->second;
@@ -629,9 +639,14 @@ namespace other {
 
     size_t offset = 0;
     for (const auto& attr : attributes) {
+      size_t full_stride = stride * get_gl_attr_size(mesh::FLOAT);
+      size_t full_offset = offset * get_gl_attr_size(mesh::FLOAT);
+
       glEnableVertexAttribArray(attr.idx);
-      glVertexAttribPointer(attr.idx, attr.count, get_gl_attr_type(attr.type), GL_FALSE, stride * get_gl_attr_size(attr.type), (void*)(offset * get_gl_attr_size(attr.type)));
-      offset += attr.count;
+      glVertexAttribPointer(attr.idx, attr.size, get_gl_attr_type(mesh::FLOAT), GL_FALSE, full_stride, (void*)full_offset);
+
+      offset += attr.size;
+
       CHECKGL();
     }
 
@@ -657,6 +672,117 @@ namespace other {
     CHECKGL();
 
     glBindVertexArray(0);
+    CHECKGL();
+  }
+
+  void opengl_api::bind_framebuffer_resource(const resource_handle& handle) {
+    auto itr = framebuffer_resources.find(handle.id);
+    if (itr == framebuffer_resources.end()) {
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      return;
+    }
+
+    uint32_t framebuffer_id = gpu_resources[handle.id];
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id);
+    CHECKGL();
+
+    if (!itr->second.complete) {
+      return;
+    }
+
+    // Set viewport to match framebuffer size
+    const auto& fb = itr->second;
+    glViewport(0, 0, fb.size.x, fb.size.y);
+    CHECKGL();
+
+    uint32_t clear_flags = 0;
+
+    if (fb.attachment_textures[framebuffer::attachment_type::STENCIL].has_value()) {
+      clear_flags |= GL_STENCIL_BUFFER_BIT;
+    }
+    if (fb.attachment_textures[framebuffer::attachment_type::DEPTH].has_value()) {
+      clear_flags |= GL_DEPTH_BUFFER_BIT;
+    }
+
+    if (fb.attachment_textures[framebuffer::attachment_type::COLOR].has_value()) {
+      clear_flags |= GL_COLOR_BUFFER_BIT;
+    }
+    OTHER_ASSERT(clear_flags != 0, "Framebuffer must have at least one attachment to clear.");
+    glClearColor(fb.clear_color.r, fb.clear_color.g, fb.clear_color.b, fb.clear_color.a);
+    CHECKGL();
+
+    glClear(clear_flags);
+    CHECKGL();
+  }
+
+  void opengl_api::unbind_framebuffer_resource(const resource_handle& handle) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    CHECKGL();
+  }
+
+  void opengl_api::framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level) {
+    if (get_gpu_context() == nullptr) {
+      CORE_LOG_ERROR("OpenGL context handle is null, cannot bind framebuffer texture.");
+      return;
+    }
+
+    auto gpu_itr = gpu_resources.find(texture.id);
+    if (gpu_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      return;
+    }
+
+    bind_framebuffer_resource(handle);
+    CHECKGL();
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, get_gl_fb_attachment_type(type), GL_TEXTURE_2D, gpu_itr->second, mip_level);
+    CHECKGL();
+
+    unbind_framebuffer_resource(handle);
+    CHECKGL();
+  }
+
+  void opengl_api::finalize_framebuffer(const resource_handle& handle) {
+    auto itr = framebuffer_resources.find(handle.id);
+    if (itr == framebuffer_resources.end()) {
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      return;
+    }
+
+    if (!itr->second.ready_to_finalize) {
+      CORE_LOG_ERROR("Framebuffer with ID {} is not complete.", handle.id);
+      return;
+    }
+
+    uint32_t framebuffer_id = gpu_resources[handle.id];
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id);
+
+    /// create the renderbuffer now
+    uint32_t renderbuffer_id = 0;
+    glGenRenderbuffers(1, &renderbuffer_id);
+    glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, itr->second.size.x, itr->second.size.y);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    CHECKGL();
+
+    auto [rb_itr, rb_inserted] = framebuffer_renderbuffers.emplace(handle.id, renderbuffer_id);
+    if (!rb_inserted || rb_itr == framebuffer_renderbuffers.end()) {
+      CORE_LOG_ERROR("Failed to create GPU resource for framebuffer renderbuffer ID: {}", handle.id);
+
+      glDeleteRenderbuffers(1, &renderbuffer_id);
+      return;
+    }
+
+    // Check if the framebuffer is complete
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+      CORE_LOG_ERROR("Framebuffer with ID {} is not complete: {}", handle.id, status);
+      return;
+    }
+    CHECKGL();
+    itr->second.complete = true;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     CHECKGL();
   }
 
@@ -736,7 +862,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value) {
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value, bool transpose) {
     auto itr = gpu_resources.find(shader.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
@@ -750,13 +876,78 @@ namespace other {
     }
 
     glUseProgram(itr->second);
-    glUniformMatrix4fv(shader_id, 1, GL_FALSE, glm::value_ptr(value));
+    glUniformMatrix4fv(shader_id, 1, transpose ? GL_TRUE : GL_FALSE, glm::value_ptr(value));
     glUseProgram(0);
     CHECKGL();
   }
 
   int32_t opengl_api::get_gpu_api_window_flags() const {
     return SDL_WINDOW_OPENGL;
+  }
+
+  framebuffer* opengl_api::create_framebuffer_resource(const resource_handle& handle, resource_type type) {
+    auto itr = framebuffer_resources.find(handle.id);
+    if (itr != framebuffer_resources.end()) {
+      return &itr->second;
+    }
+
+    auto [itr2, inserted] = framebuffer_resources.emplace(handle.id, framebuffer(handle));
+    if (!inserted || itr2 == framebuffer_resources.end()) {
+      CORE_LOG_ERROR("Failed to create framebuffer resource with ID: {}", handle.id);
+      return nullptr;
+    }
+
+    uint32_t framebuffer_id = 0;
+    glGenFramebuffers(1, &framebuffer_id);
+    if (framebuffer_id == 0) {
+      CORE_LOG_ERROR("Failed to create OpenGL framebuffer resource: {}", glGetError());
+      framebuffer_resources.erase(itr2);
+      return nullptr;
+    }
+    CHECKGL();
+
+    auto [gpu_itr, gpu_inserted] = gpu_resources.emplace(handle.id, framebuffer_id);
+    if (!gpu_inserted || gpu_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Failed to create GPU resource for framebuffer ID: {}", handle.id);
+      glDeleteFramebuffers(1, &framebuffer_id);
+      framebuffer_resources.erase(itr2);
+      return nullptr;
+    }
+
+    resource_types[handle.id] = type;
+    return &itr2->second;
+  }
+
+  void opengl_api::destroy_framebuffer_resource(const resource_handle& handle) {
+    auto itr = framebuffer_resources.find(handle.id);
+    if (itr == framebuffer_resources.end()) {
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      return;
+    }
+
+    itr->second.destroy_resources();
+    framebuffer_resources.erase(itr);
+
+    auto rb_itr = framebuffer_renderbuffers.find(handle.id);
+    if (rb_itr != framebuffer_renderbuffers.end()) {
+      uint32_t renderbuffer_id = rb_itr->second;
+      glDeleteRenderbuffers(1, &renderbuffer_id);
+      framebuffer_renderbuffers.erase(rb_itr);
+    } else {
+      CORE_LOG_ERROR("Renderbuffer resource for framebuffer ID {} not found.", handle.id);
+    }
+
+    auto gpu_itr = gpu_resources.find(handle.id);
+    if (gpu_itr != gpu_resources.end()) {
+      uint32_t framebuffer_id = gpu_itr->second;
+      glDeleteFramebuffers(1, &framebuffer_id);
+      gpu_resources.erase(gpu_itr);
+    } else {
+      CORE_LOG_ERROR("GPU resource with ID {} not found.", handle.id);
+    }
+
+    resource_types.erase(handle.id);
+    CHECKGL();
   }
 
   mesh* opengl_api::create_mesh_resource(const resource_handle& handle, resource_type type) {
@@ -1193,6 +1384,26 @@ namespace other {
     }
   }
 
+  int32_t opengl_api::get_gl_fb_attachment_type(framebuffer::attachment_type type) const {
+    switch (type) {
+      case framebuffer::attachment_type::COLOR:
+        return GL_COLOR_ATTACHMENT0;
+
+      case framebuffer::attachment_type::DEPTH:
+        return GL_DEPTH_ATTACHMENT;
+
+      case framebuffer::attachment_type::STENCIL:
+        return GL_STENCIL_ATTACHMENT;
+
+      case framebuffer::attachment_type::DEPTH_STENCIL:
+        return GL_DEPTH_STENCIL_ATTACHMENT;
+
+      default:
+        CORE_LOG_ERROR("Unsupported framebuffer attachment type: {}", type);
+        return -1;
+    }
+  }
+
   int32_t opengl_api::get_resource_handle(natural_t id) const {
     auto itr = gpu_resources.find(id);
     if (itr != gpu_resources.end()) {
@@ -1258,8 +1469,12 @@ namespace other {
             CORE_LOG_ERROR("OpenGL error in {} at {}:{}: GL_OUT_OF_MEMORY", func_name, file, line);
             break;
 
+          case GL_INVALID_FRAMEBUFFER_OPERATION:
+            CORE_LOG_ERROR("OpenGL error in {} at {}:{}: GL_INVALID_FRAMEBUFFER_OPERATION", func_name, file, line);
+            break;
+
           default:
-            CORE_LOG_ERROR("Unknown OpenGL error code: {}", err);
+            CORE_LOG_ERROR("Unknown OpenGL error code in {} at {}:{}: {}", func_name, file, line, err);
             return;  // Exit on unknown error
         }
         ++error_count;

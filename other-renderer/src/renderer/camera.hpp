@@ -7,10 +7,12 @@
 #include <glm/glm.hpp>
 
 #include "core/defines.hpp"
-#include "renderer/gpu_structs.hpp"
-
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
+
+#include "renderer/gpu_structs.hpp"
+
+#include "glm/fwd.hpp"
 
 namespace other {
 
@@ -53,8 +55,11 @@ namespace other {
 
     /// orthonormal basis vectors
     glm::vec3 forward() const;
+    glm::vec3 backward() const;
     glm::vec3 up() const;
+    glm::vec3 down() const;
     glm::vec3 right() const;
+    glm::vec3 left() const;
     const orthonormal_basis& get_basis() const;
 
     void look_from(const glm::vec3& position);
@@ -122,13 +127,15 @@ OTHER_REFLECT(
   field(target, other::attr::serializable()),
   field(euler_angles, other::attr::serializable()),
   field(basis, other::attr::serializable()),
+  field(defocus_angle, other::attr::serializable()),
+  field(focus_dist, other::attr::serializable()),
   field(image_width, other::attr::serializable()),
   field(aspect_ratio, other::attr::serializable()),
   field(samples_per_pixel, other::attr::serializable()),
   field(max_bounce_depth, other::attr::serializable()),
   field(fov, other::attr::serializable()),
-  field(defocus_angle, other::attr::serializable()),
-  field(focus_dist, other::attr::serializable())
+  field(sensitivity, other::attr::serializable()),
+  field(constrain_pitch, other::attr::serializable())
 )
 
 #endif  // OTHER_RENDERER_RENDERER_CAMERA_HPP

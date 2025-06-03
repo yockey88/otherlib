@@ -12,8 +12,7 @@
 #include "core/defines.hpp"
 #include "serialization/reflection.hpp"
 
-#include "renderer/renderer_resource.hpp"
-#include "renderer/shader.hpp"
+#include "gpu_resource/renderer_resource.hpp"
 
 namespace other {
 

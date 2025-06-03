@@ -1,14 +1,14 @@
 /**
- * @file renderer/shader.hpp
+ * @file gpu_resource/shader.hpp
  */
-#ifndef OTHER_RENDERER_RENDERER_SHADER_HPP
-#define OTHER_RENDERER_RENDERER_SHADER_HPP
+#ifndef OTHER_RENDERER_GPU_RESOURCE_SHADER_HPP
+#define OTHER_RENDERER_GPU_RESOURCE_SHADER_HPP
 
 #include <string>
 
 #include <glm/glm.hpp>
 
-#include "renderer/renderer_resource.hpp"
+#include "gpu_resource/renderer_resource.hpp"
 
 namespace other {
 
@@ -46,10 +46,11 @@ namespace other {
         : resource(handle) {}
     virtual ~shader() = default;
 
-    static resource_handle create(const std::string_view name, const filepath& filepath, const std::vector<setting>& settings = {});
+    static resource_handle create(const std::string_view name, const filepath& filepath, const std::vector<setting>& settings);
+    static resource_handle create(const std::string_view name, const filepath& vertpath, const filepath& fragpath, const std::vector<setting>& settings);
     static resource_handle create(const std::string_view name, const std::string_view source, source_type type);
     static resource_handle create(const std::string_view name, const std::string_view vert_source, const std::string_view frag_source);
-    static std::string preprocess_file(const filepath& file, const std::vector<setting>& settings = {});
+    static std::string preprocess_file(const filepath& file, const std::vector<setting>& settings);
 
     resource_type type() const override { return resource_type::SHADER; }
 
@@ -62,7 +63,7 @@ namespace other {
     shader& set_uniform(const std::string& name, real_t value);
     shader& set_uniform(const std::string& name, const glm::vec3& value);
     shader& set_uniform(const std::string& name, const glm::vec4& value);
-    shader& set_uniform(const std::string& name, const glm::mat4& value);
+    shader& set_uniform(const std::string& name, const glm::mat4& value, bool transpose = false);
     shader& add_setting(const std::string& setting, opt<std::string> value = std::nullopt);
 
     void unbind();
@@ -79,6 +80,7 @@ namespace other {
 
     static resource_handle create_handle(const std::string_view name);
 
+   private:
     void check_build_status();
   };
 
@@ -93,4 +95,4 @@ OTHER_REFLECT(
   other::shader
 );
 
-#endif  // OTHER_RENDERER_RENDERER_SHADER_HPP
+#endif  // OTHER_RENDERER_GPU_RESOURCE_SHADER_HPP

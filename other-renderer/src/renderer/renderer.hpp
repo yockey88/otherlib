@@ -11,7 +11,8 @@
 
 #include "renderer/render_graph.hpp"
 #include "renderer/renderer_backend.hpp"
-#include "renderer/renderer_resource.hpp"
+
+#include "gpu_resource/renderer_resource.hpp"
 
 namespace other {
 

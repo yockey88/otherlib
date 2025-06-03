@@ -4,13 +4,14 @@
 #ifndef OTHER_RENDERER_DRIVER_HPP
 #define OTHER_RENDERER_DRIVER_HPP
 
+#include "gpu_resource/renderer_resource.hpp"
+#include "model/model.hpp"
 #include "renderer/camera.hpp"
-#include "renderer/renderer_resource.hpp"
 
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
-#include "model/model.hpp"
+#include "object/transform.hpp"
 
 // #include "glm/fwd.hpp"
 // #include "math/ray.hpp"
@@ -42,10 +43,19 @@ namespace other {
 
     scope<renderer> renderer = nullptr;
     scene active_scene;
+
+    natural_t cube_id;
+    natural_t capsule_id;
+
     model cube;
+    model capsule;
 
     resource_handle comp_shader_handle;
     resource_handle screen_shader_handle;
+    resource_handle cube_shader;
+
+    resource_handle initial_pass;
+    resource_handle comp_pass;
     resource_handle screen_texture_handle;
     resource_handle quad_mesh_handle;
 

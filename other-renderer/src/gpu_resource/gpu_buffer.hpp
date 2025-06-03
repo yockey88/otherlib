@@ -1,10 +1,10 @@
 /**
- * \file renderer/gpu_buffer.hpp
+ * \file gpu_resource/gpu_buffer.hpp
  **/
-#ifndef OTHER_RENDERER_GPU_BUFFER_HPP
-#define OTHER_RENDERER_GPU_BUFFER_HPP
+#ifndef OTHER_RENDERER_GPU_RESOURCE_GPU_BUFFER_HPP
+#define OTHER_RENDERER_GPU_RESOURCE_GPU_BUFFER_HPP
 
-#include "renderer/renderer_resource.hpp"
+#include "gpu_resource/renderer_resource.hpp"
 
 namespace other {
 
@@ -83,4 +83,4 @@ namespace other {
 //   field(buffer_data, other::attr::serializable())
 // )
 
-#endif  // OTHER_RENDERER_GPU_BUFFER_HPP
+#endif  // OTHER_RENDERER_GPU_RESOURCE_GPU_BUFFER_HPP

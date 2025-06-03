@@ -1,28 +1,28 @@
 add_library(other_renderer STATIC)
 target_sources(other_renderer
     PRIVATE
-      src/renderer/renderer_resource.cpp
+      src/gpu_resource/renderer_resource.cpp
+      src/gpu_resource/shader.cpp
+      src/gpu_resource/texture.cpp
+      src/gpu_resource/gpu_buffer.cpp
+      src/gpu_resource/mesh.cpp
+      src/gpu_resource/framebuffer.cpp
       
-      src/renderer/rendering_api.cpp
-      src/renderer/backends/opengl_api.cpp
-      
-      src/renderer/window_manager.cpp
-      src/renderer/renderer_backend.cpp
-      
-      src/renderer/render_graph.cpp
-      src/renderer/renderer.cpp
-
-      src/renderer/shader.cpp
-      src/renderer/texture.cpp
-      src/renderer/gpu_buffer.cpp
-      src/renderer/mesh.cpp
-      src/renderer/camera.cpp
-
-      src/renderer/ui/ui_helpers.cpp
-
       src/model/vertex.cpp
       src/model/vertex_buffer.cpp
       src/model/model.cpp
+      
+      src/renderer/window_manager.cpp
+      
+      src/renderer/rendering_api.cpp
+      src/renderer/renderer_backend.cpp
+      src/renderer/backends/opengl_api.cpp
+      
+      src/renderer/camera.cpp
+      src/renderer/render_graph.cpp
+      src/renderer/renderer.cpp
+      
+      src/renderer/ui/ui_helpers.cpp
 )
 if (MSVC)
 else()

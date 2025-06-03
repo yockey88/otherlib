@@ -6,12 +6,14 @@
 
 #include <string>
 
-#include "renderer/gpu_buffer.hpp"
-#include "renderer/mesh.hpp"
-#include "renderer/renderer_resource.hpp"
+#include "gpu_resource/framebuffer.hpp"
+#include "gpu_resource/gpu_buffer.hpp"
+#include "gpu_resource/mesh.hpp"
+#include "gpu_resource/renderer_resource.hpp"
+#include "gpu_resource/shader.hpp"
+#include "gpu_resource/texture.hpp"
+#include "model/vertex.hpp"
 #include "renderer/rendering_api.hpp"
-#include "renderer/shader.hpp"
-#include "renderer/texture.hpp"
 
 namespace other {
 
@@ -57,14 +59,19 @@ namespace other {
 
     void bind_mesh_resource(const resource_handle& handle) override;
     void unbind_mesh_resource(const resource_handle& handle) override;
-    void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<mesh::attribute>& attributes) override;
+    void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) override;
     void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) override;
+
+    void bind_framebuffer_resource(const resource_handle& handle) override;
+    void unbind_framebuffer_resource(const resource_handle& handle) override;
+    void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level) override;
+    void finalize_framebuffer(const resource_handle& handle) override;
 
     void set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) override;
-    void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value, bool transpose = false) override;
 
    private:
     std::map<natural_t, uint32_t> gpu_resources;
@@ -83,8 +90,13 @@ namespace other {
     std::map<natural_t, texture> texture_resources;
     std::map<natural_t, gpu_buffer> buffer_resources;
     std::map<natural_t, mesh> mesh_resources;
+    std::map<natural_t, framebuffer> framebuffer_resources;
+    std::map<natural_t, uint32_t> framebuffer_renderbuffers;
 
     int32_t get_gpu_api_window_flags() const override;
+
+    framebuffer* create_framebuffer_resource(const resource_handle& handle, resource_type type) override;
+    void destroy_framebuffer_resource(const resource_handle& handle) override;
 
     mesh* create_mesh_resource(const resource_handle& handle, resource_type type) override;
     void destroy_mesh_resource(const resource_handle& handle) override;
@@ -111,8 +123,9 @@ namespace other {
 
     int32_t get_gl_attr_type(mesh::attribute_type type) const;
     int32_t get_gl_attr_size(mesh::attribute_type type) const;
-
     int32_t get_gl_prim_type(mesh::primitive_type type) const;
+
+    int32_t get_gl_fb_attachment_type(framebuffer::attachment_type type) const;
 
     int32_t get_resource_handle(natural_t id) const;
     uint32_t get_shader_uniform_location(const resource_handle& shader, const std::string& name);

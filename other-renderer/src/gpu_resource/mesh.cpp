@@ -1,12 +1,64 @@
 /**
- * \file renderer/mesh.cpp
+ * \file gpu_resource/mesh.cpp
  **/
-#include "renderer/mesh.hpp"
+#include "gpu_resource/mesh.hpp"
 
+#include "core/defines.hpp"
 #include "core/logger.hpp"
+
 #include "renderer/renderer_backend.hpp"
 
+#include "model/vertex.hpp"
+
 namespace other {
+  namespace {
+
+    value_type get_value_type(mesh::attribute_type type, size_t size) {
+      switch (type) {
+        case mesh::attribute_type::BYTE:
+          return value_type::INT8;
+          break;
+        case mesh::attribute_type::UNSIGNED_BYTE:
+          return value_type::UINT8;
+          break;
+        case mesh::attribute_type::SHORT:
+          return value_type::INT16;
+          break;
+        case mesh::attribute_type::UNSIGNED_SHORT:
+          return value_type::UINT16;
+          break;
+        case mesh::attribute_type::INT:
+          return value_type::INT32;
+          break;
+        case mesh::attribute_type::UNSIGNED_INT:
+          return value_type::UINT32;
+          break;
+
+        case mesh::attribute_type::FLOAT:
+        case mesh::attribute_type::DOUBLE:
+          switch (size) {
+            case 1:
+              return value_type::FLOAT;
+              break;
+            case 2:
+              return value_type::VEC2;
+              break;
+            case 3:
+              return value_type::VEC3;
+              break;
+            case 4:
+              return value_type::VEC4;
+              break;
+            default:
+              OTHER_ASSERT(false, "Invalid size for FLOAT attribute: {}", size);
+          }
+          break;
+        default:
+          OTHER_ASSERT(false, "Unimplemented attribute type: {}", type);
+      }
+    }
+
+  }  // namespace
 
   mesh& mesh::bind() {
     subsystem<renderer_backend>::get()->api()->bind_mesh_resource(handle());
@@ -73,26 +125,46 @@ namespace other {
     return *this;
   }
 
-  mesh& mesh::add_attribute(const std::string& name, attribute_type type, size_t size, size_t offset) {
+  mesh& mesh::add_attribute(const std::string& name, mesh::attribute_type type, size_t size, size_t offset) {
     if (type >= attribute_type::NUM_ATTRIBUTE_TYPES) {
       CORE_LOG_ERROR("Invalid attribute type: out of range.");
       return *this;
     }
     if (size == 0 || offset < 0) {
-      CORE_LOG_ERROR("Invalid attribute parameters: size, stride must be greater than zero and offset must be non-negative.");
+      CORE_LOG_ERROR("Invalid size of offset : size = {} \\ offset = {}.", size, offset);
+      return *this;
+    }
+
+    vertex_attribute attr;
+    value_type vtype = get_value_type(type, size);
+    add_attribute(name, vtype, size, offset);
+    return *this;
+  }
+
+  mesh& mesh::add_attribute(const std::string& name, value_type type, size_t size, size_t offset) {
+    size_t idx = attributes.size();
+    CORE_LOG_DEBUG("Adding attribute '{}' of type {} at index {}, size {}, offset {} to mesh with handle {}", name, static_cast<uint8_t>(type), idx, size, offset, handle().id);
+
+    vertex_attribute& vattr = attributes.emplace_back();
+    vattr.idx = idx;
+    vattr.name = name;
+    vattr.type = type;
+    vattr.size = size;
+    vattr.offset = offset;
+
+    return *this;
+  }
+
+  mesh& mesh::add_attribute(vertex_attribute attr) {
+    if (attr.size == 0 || attr.offset < 0) {
+      CORE_LOG_ERROR("Invalid size of offset : size = {} \\ offset = {}.", attr.size, attr.offset);
       return *this;
     }
 
     size_t idx = attributes.size();
-    CORE_LOG_DEBUG("Adding attribute '{}' of type {} at index {}, size {}, offset {} to mesh with handle {}", name, static_cast<uint8_t>(type), idx, size, offset, handle().id);
-    attributes.push_back({
-      .name = name,
-      .type = type,
-      .idx = idx,
-      .count = size,
-      .offset = offset,
-    });
-    return *this;
+    CORE_LOG_DEBUG("Adding attribute '{}' of type {} at index {}, size {}, offset {} to mesh with handle {}", attr.name, attr.type, idx, attr.size, attr.offset, handle().id);
+
+    attributes.push_back(attr);
   }
 
   void mesh::draw() {

@@ -18,7 +18,7 @@ namespace other {
 
   }  // namespace
 
-  uint32_t vertex_attribute::num_components() {
+  size_t vertex_attribute::num_components() {
     switch (type) {
       case VEC2:
         return 2;
@@ -40,6 +40,38 @@ namespace other {
   buffer_layout::buffer_layout(std::initializer_list<vertex_attribute> attributes) {
     elements = std::vector<vertex_attribute>(attributes);
     calculate_offsets();
+  }
+
+  buffer_layout::buffer_layout(const buffer_layout& layout)
+      : stride(layout.stride), elements(layout.elements) {
+    calculate_offsets();
+  }
+
+  buffer_layout& buffer_layout::operator=(const buffer_layout& layout) {
+    if (this != &layout) {
+      stride = layout.stride;
+      elements = layout.elements;
+      calculate_offsets();
+    }
+    return *this;
+  }
+
+  buffer_layout::buffer_layout(buffer_layout&& layout) noexcept
+      : stride(layout.stride), elements(std::move(layout.elements)) {
+    raw_layout_cache = std::move(layout.raw_layout_cache);
+    layout.raw_layout_cache.clear();
+    calculate_offsets();
+  }
+
+  buffer_layout& buffer_layout::operator=(buffer_layout&& layout) noexcept {
+    if (this != &layout) {
+      stride = layout.stride;
+      elements = std::move(layout.elements);
+      raw_layout_cache = std::move(layout.raw_layout_cache);
+      layout.raw_layout_cache.clear();
+      calculate_offsets();
+    }
+    return *this;
   }
 
   uint32_t buffer_layout::get_stride() const {
@@ -75,10 +107,14 @@ namespace other {
   }
 
   void buffer_layout::calculate_offsets() {
+    size_t idx = 0;
     uint32_t offset = 0;
     for (auto& element : elements) {
+      element.idx = idx++;
       element.offset = offset;
       offset += element.size;
+
+      raw_layout_cache.push_back(element.size);
     }
     stride = offset;
   }

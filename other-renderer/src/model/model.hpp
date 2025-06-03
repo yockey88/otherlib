@@ -4,9 +4,8 @@
 #ifndef OTHER_RENDERER_MODEL_MODEL_HPP
 #define OTHER_RENDERER_MODEL_MODEL_HPP
 
-#include "renderer/mesh.hpp"
-#include "renderer/renderer_resource.hpp"
-
+#include "gpu_resource/mesh.hpp"
+#include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
 #include "model/vertex_buffer.hpp"
 

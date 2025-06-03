@@ -1,8 +1,8 @@
 /**
- * \file renderer/renderer_resource.hpp
+ * \file gpu_resource/renderer_resource.hpp
  **/
-#ifndef OTHER_RENDERER_RENDERER_RESOURCE_HPP
-#define OTHER_RENDERER_RENDERER_RESOURCE_HPP
+#ifndef OTHER_RENDERER_GPU_RESOURCE_RENDERER_RESOURCE_HPP
+#define OTHER_RENDERER_GPU_RESOURCE_RENDERER_RESOURCE_HPP
 
 #include <cstdint>
 
@@ -24,10 +24,9 @@ namespace other {
     BUFFER,
     TEXTURE,
     SAMPLER,
-
     SHADER,
-
     MESH,
+    FRAMEBUFFER,
 
     EMPTY,
     NUM_RESOURCES = EMPTY,
@@ -87,4 +86,4 @@ OTHER_REFLECT(
   field(res_handle, other::attr::serializable())
 )
 
-#endif  // OTHER_RENDERER_RENDERER_RESOURCE_HPP
+#endif  // OTHER_RENDERER_RESOURCE_RENDERER_RESOURCE_HPP

@@ -1,16 +1,15 @@
 /**
  * \file renderer/texture.hpp
  **/
-#ifndef OTHER_RENDERER_TEXTURE_HPP
-#define OTHER_RENDERER_TEXTURE_HPP
+#ifndef OTHER_RENDERER_GPU_RESOURCE_TEXTURE_HPP
+#define OTHER_RENDERER_GPU_RESOURCE_TEXTURE_HPP
 
 #include <glm/glm.hpp>
 
 #include "math/definitions.hpp"
 #include "serialization/reflection.hpp"
 
-#include "renderer/renderer_resource.hpp"
-
+#include "gpu_resource/renderer_resource.hpp"
 
 namespace other {
 
@@ -187,4 +186,4 @@ OTHER_REFLECT(
   field(wrap_r, other::attr::serializable())
 );
 
-#endif  // OTHER_RENDERER_TEXTURE_HPP
+#endif  // OTHER_RENDERER_GPU_RESOURCE_TEXTURE_HPP

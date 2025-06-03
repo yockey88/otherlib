@@ -1,13 +1,16 @@
-// /**
-//  * \file renderer_driver.cpp
-//  **/
+/**
+ * \file renderer_driver.cpp
+ **/
 #include "renderer_driver.hpp"
 
-#include "renderer/render_graph.hpp"
-#include "renderer/renderer_resource.hpp"
+#include "math/orthonormal_basis.hpp"
 
+#include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
-#include "model/vertex_buffer.hpp"
+#include "renderer/render_graph.hpp"
+
+#include "SDL3/SDL_events.h"
+#include "SDL3/SDL_mouse.h"
 
 namespace other {
   namespace {
@@ -49,52 +52,6 @@ namespace other {
       }
     )";
 
-    constexpr static const char* vert_shader_src_cube = R"(
-      #version 460 core
-
-      layout (location = 0) in vec3 position;
-      layout (location = 1) in vec3 normal;
-      layout (location = 2) in vec3 tangent;
-      layout (location = 3) in vec3 bitanget;
-      layout (location = 4) in vec2 tex_coords;
-
-      layout (std140) uniform camera_buffer {
-        vec4 camera_position;
-        vec4 camera_forward;
-
-        /// near & far clip, defocus_angle padding x2
-        vec4 camera_features;
-
-        vec4 defocus_disk_u;
-        vec4 defocus_disk_v;
-
-        mat4 view_matrix;
-        mat4 projection_matrix;
-      };
-
-      uniform mat4 model_matrix;
-
-      out vec3 frag_color;
-
-      void main() {
-        gl_Position = vec4(position, 1.0);
-        frag_color = normal;
-      }
-    )";
-
-    constexpr static const char* frag_shader_src_cube = R"(
-      #version 460 core
-
-      in vec3 frag_color;
-
-      out vec4 color;
-
-      void main() {
-        color = vec4(frag_color, 1.0);
-      }
-    )";
-    static resource_handle cube_shader_handle;
-
     constexpr static real_t quad_vertices[] = {
       -1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
       -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
@@ -104,6 +61,8 @@ namespace other {
 
     std::vector<vertex> get_cube_vertices();
     std::vector<index> get_cube_indices();
+
+    std::pair<std::vector<vertex>, std::vector<index>> get_capsule_mesh(float radius, float height);
 
     constexpr static std::array lambertians = {
       gpu::lambertian{ glm::vec3(0.1f, 0.2f, 0.5f) },
@@ -145,6 +104,10 @@ namespace other {
 
   }  // namespace
 
+  struct render_component {
+    model* model = nullptr;
+  };
+
   void renderer_driver::on_initialize() {
     config_table config = configuration();
     toml::table& project_table = config.get_project_table();
@@ -159,14 +122,28 @@ namespace other {
 
     initialize_gpu();
 
-    cube = model::create_model("Cube", get_cube_vertices(), get_cube_indices());
+    scene_object& cube_obj = active_scene.create_object("Cube", glm::vec3(0.f, 0.f, -1.f));
+    scene_object& capsule_obj = active_scene.create_object("Capsule", glm::vec3(0.f, 0.f, 1.f));
+    cube_id = cube_obj.id;
+    capsule_id = capsule_obj.id;
 
-    cam = serializer{}.read_from_file<camera>("artifacts/main_cam_data.bin");
-    cam.look_from(glm::vec3(0, 0, 0));
-    cam.look_at(glm::vec3(0, 0, -1));
-    CORE_LOG_INFO("Camera data loaded from file: \n{}", type_data_handler<camera>::as_string("cam", cam));
+    CORE_LOG_DEBUG("Cube Object:\n{}", type_data_handler<scene_object>::as_string("cube_obj", cube_obj));
+    CORE_LOG_DEBUG("Capsule Object:\n{}", type_data_handler<scene_object>::as_string("capsule_obj", capsule_obj));
+
+    cube = model::create_model("Cube", get_cube_vertices(), get_cube_indices());
+    render_component& rc = active_scene.add_component<render_component>(&cube_obj);
+    rc.model = &cube;
+
+    auto [cap_verts, cap_indices] = get_capsule_mesh(0.5f, 1.f);
+    capsule = model::create_model("Capsule", cap_verts, cap_indices);
+    render_component& rc2 = active_scene.add_component<render_component>(&capsule_obj);
+    rc2.model = &capsule;
 
     auto image_size = renderer->get_window_size();
+
+    cam = serializer{}.read_from_file<camera>("artifacts/main_cam_data.bin");
+    CORE_LOG_INFO("Camera data loaded from file: \n{}", type_data_handler<camera>::as_string("cam", cam));
+
     image_data.resize(image_size.x * image_size.y * kPixelStride);
 
     running = true;
@@ -241,7 +218,6 @@ namespace other {
 
   void renderer_driver::run() {
     CORE_LOG_INFO("Running terminal driver...");
-
     CORE_LOG_INFO("      ...on gpu");
 
     glm::ivec2 window_size = renderer->get_window_size();
@@ -280,11 +256,36 @@ namespace other {
         .set_data(&metadata, sizeof(gpu::scene_metadata))
         .finalize_buffer();
 
-      gpu::camera_data cam_data = cam.to_gpu_data();
-      renderer->get_resource<gpu_buffer>(camera_buffer_handle)
-        .set_shader_resource(2, comp_shader_handle)
-        .set_data(&cam_data, sizeof(gpu::camera_data))
-        .finalize_buffer();
+      if (SDL_Window* window = SDL_GetMouseFocus(); window != nullptr) {
+        /// udpate camera data
+        glm::vec2 mouse_pos = renderer->get_mouse_position();
+        mouse.delta = mouse_pos - mouse.position;
+        mouse.position = mouse_pos;
+
+        SDL_WarpMouseInWindow(window, window_size.x / 2.f, window_size.y / 2.f);
+
+        glm::vec2 rel_pos;
+        SDL_GetRelativeMouseState(&rel_pos.x, &rel_pos.y);
+
+        cam.adjust_yaw(rel_pos.x);
+        cam.adjust_pitch(rel_pos.y);
+        if (cam.constrain_pitch) {
+          if (cam.pitch() > 89.0f) {
+            cam.euler_angles.y = 89.0f;
+          }
+
+          if (cam.pitch() < -89.0f) {
+            cam.euler_angles.y = -89.0f;
+          }
+        }
+        cam.look();
+
+        gpu::camera_data cam_data = cam.to_gpu_data();
+        renderer->get_resource<gpu_buffer>(camera_buffer_handle)
+          .set_shader_resource(2, comp_shader_handle)
+          .set_data(&cam_data, sizeof(gpu::camera_data))
+          .finalize_buffer();
+      }
 
       // gpu::ray_gen_data ray_data = cam.to_ray_gen_data();
       // renderer->get_resource<gpu_buffer>(ray_buffer_handle)
@@ -315,29 +316,32 @@ namespace other {
 
       renderer->begin_frame();
 
+      renderer->get_resource<framebuffer>(initial_pass).bind();
+      renderer->get_resource<shader>(cube_shader)
+        .set_uniform("model_matrix", active_scene.get_transform(cube_id).world_matrix())
+        .bind();
+      renderer->get_resource<mesh>(cube.vertex_buffer_handle).draw();
+
+      renderer->get_resource<shader>(cube_shader)
+        .set_uniform("model_matrix", active_scene.get_transform(capsule_id).world_matrix())
+        .bind();
+      renderer->get_resource<mesh>(capsule.vertex_buffer_handle).draw();
+
+      renderer->get_resource<shader>(cube_shader).unbind();
+      renderer->get_resource<framebuffer>(initial_pass).unbind();
+
       /// compute pass
       // renderer->get_resource<texture>(screen_texture_handle).bind(0);
       // renderer->get_resource<shader>(comp_shader_handle)
       //   .dispatch({ cam.image_size.x, cam.image_size.y, 1 }, shader::compute_barrier_type::SHADER_IMAGE_ACCESS);
       // renderer->get_resource<texture>(screen_texture_handle).unbind(0);
 
-      glm::vec3 pos = glm::vec3(0.f, 0.f, -1.f);
-      glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f);
-      glm::mat4 model_matrix = glm::translate(glm::mat4(1.0f), pos) * glm::scale(glm::mat4(1.0f), scale);
-
-      renderer->get_resource<shader>(cube_shader_handle)
-        .bind();
-      // .set_uniform("model_matrix", model_matrix);
-
-      renderer->get_resource<mesh>(cube.vertex_buffer_handle).draw();
-      renderer->get_resource<shader>(cube_shader_handle).unbind();
-
       /// final pass (render to screen)
-      // renderer->get_resource<texture>(screen_texture_handle).bind(0);
-      // renderer->get_resource<shader>(screen_shader_handle).bind();
-      // renderer->get_resource<mesh>(quad_mesh_handle).draw();
-      // renderer->get_resource<shader>(screen_shader_handle).unbind();
-      // renderer->get_resource<texture>(screen_texture_handle).unbind(0);
+      renderer->get_resource<texture>(screen_texture_handle).bind(0);
+      renderer->get_resource<shader>(screen_shader_handle).bind();
+      renderer->get_resource<mesh>(quad_mesh_handle).draw();
+      renderer->get_resource<shader>(screen_shader_handle).unbind();
+      renderer->get_resource<texture>(screen_texture_handle).unbind(0);
 
       renderer->end_frame();
     }
@@ -368,12 +372,58 @@ namespace other {
   }
 
   void renderer_driver::on_event(SDL_Event* event) {
+    enum camera_move_flags : uint8_t {
+      NONE = 0,
+      CAMERA_MOVE_FORWARD = 1 << 0,
+      CAMERA_MOVE_BACKWARD = 1 << 1,
+      CAMERA_MOVE_RIGHT = 1 << 2,
+      CAMERA_MOVE_LEFT = 1 << 3,
+      CAMERA_MOVE_UP = 1 << 4,
+      CAMERA_MOVE_DOWN = 1 << 5
+    };
+    uint8_t flags = NONE;
     switch (event->type) {
       case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
         running = false;
         break;
+
+      case SDL_EVENT_KEY_DOWN:
+        if (SDLK_W == event->key.key) {
+          flags |= CAMERA_MOVE_FORWARD;
+        }
+        if (SDLK_S == event->key.key) {
+          flags |= CAMERA_MOVE_BACKWARD;
+        }
+        if (SDLK_A == event->key.key) {
+          flags |= CAMERA_MOVE_LEFT;
+        }
+        if (SDLK_D == event->key.key) {
+          flags |= CAMERA_MOVE_RIGHT;
+        }
+        break;
+
       default:
         break;
+    }
+
+    glm::vec3 pos = cam.center();
+    glm::vec3 right = cam.right();
+
+    if ((flags & CAMERA_MOVE_FORWARD) == CAMERA_MOVE_FORWARD) {
+      glm::vec3 pos = cam.center();
+      cam.look_from(pos - cam.forward() * cam.sensitivity);
+    }
+
+    if ((flags & CAMERA_MOVE_BACKWARD) == CAMERA_MOVE_BACKWARD) {
+      cam.look_from(pos + cam.forward() * cam.sensitivity);
+    }
+
+    if ((flags & CAMERA_MOVE_RIGHT) == CAMERA_MOVE_RIGHT) {
+      cam.look_from(pos - right * cam.sensitivity);
+    }
+
+    if ((flags & CAMERA_MOVE_LEFT) == CAMERA_MOVE_LEFT) {
+      cam.look_from(pos + right * cam.sensitivity);
     }
   }
 
@@ -388,7 +438,7 @@ namespace other {
 
     quad_mesh_handle = renderer->create_resource("quad_mesh", resource_type::MESH);
     renderer->get_resource<mesh>(quad_mesh_handle)
-      .set_primitive_type(mesh::primitive_type::TRIANGLE_STRIP)
+      .set_primitive_type(mesh::primitive_type::TRIANGLES)
       .add_attribute("position", mesh::attribute_type::FLOAT, 3, 0)
       .add_attribute("tex_coords", mesh::attribute_type::FLOAT, 2, 3)
       .upload_vertex_buffer("quad_vertices", 4, quad_vertices, sizeof(quad_vertices))
@@ -396,6 +446,18 @@ namespace other {
 
     auto image_size = renderer->get_window_size();
     screen_texture_handle = texture::create("screen_texture", texture::tex_type::TEXTURE_2D, texture::format::RGBA32F, image_size.x, image_size.y, true);
+
+    initial_pass = renderer->create_resource("initial-pass-fb", resource_type::FRAMEBUFFER);
+    renderer->get_resource<framebuffer>(initial_pass)
+      .add_attachment(screen_texture_handle, framebuffer::attachment_type::COLOR)
+      .finalize_framebuffer();
+
+    // comp_pass = renderer->create_resource("comp-pass-fb", resource_type::FRAMEBUFFER);
+    // renderer->get_resource<framebuffer>(comp_pass)
+    //   .set_size(image_size.x, image_size.y)
+    //   .set_clear_color(glm::vec4(0.f, 0.f, 0.f, 1.f))
+    //   .add_attachment("comp-pass", framebuffer::attachment_type::COLOR)
+    //   .finalize_framebuffer();
 
     const auto settings = {
       shader::setting{ "MAX_MATERIALS", std::to_string(gpu::kMaxMaterials) },
@@ -418,7 +480,7 @@ namespace other {
     };
     comp_shader_handle = shader::create("comp_shader", "resources/raytrace.comp", settings);
     screen_shader_handle = shader::create("screen_shader", vert_shader_source, frag_shader_source);
-    cube_shader_handle = shader::create("cube_shader", vert_shader_src_cube, frag_shader_src_cube);
+    cube_shader = shader::create("cube_shader", "resources/cube.vert", "resources/cube.frag", {});
 
     camera_buffer_handle = gpu_buffer::create("camera_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     scene_metadata_handle = gpu_buffer::create("scene_metadata", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
@@ -477,50 +539,82 @@ namespace other {
 
     std::vector<index> get_cube_indices() {
       std::vector<index> indices;
-      indices.resize(8);
-      /// top face
-      indices[0] = {
-        //   [edges]
-        0, 1,  // (top-front)
-        1      // (top-left.1)
-      };
-      indices[1] = {
-        5,    // (top-left.2)
-        5, 4  // (top-back)
-      };
-      indices[2] = {
-        4, 0,  // (top-right)
 
-        /// bottom face
-        3,  // (bottom-front.1)
-      };
-      indices[3] = {
-        2,    // (bottom-front.2)
-        2, 6  // (bottom-left)
-      };
-      indices[4] = {
-        6, 7,  // (bottom-back)
-        7      // (bottom-right.1)
-      };
-      indices[5] = {
-        3,  // (bottom-right.2)
+      indices.resize(12);
+      indices[0] = { 0, 1, 2 };
+      indices[1] = { 2, 3, 0 };
 
-        /// front face
-        0, 3  // (front-right)
-      };
-      indices[6] = {
-        1, 2,  // (front-left)
+      indices[2] = { 1, 5, 6 };
+      indices[3] = { 6, 2, 1 };
 
-        /// left face
-        5,  // (back-left.1)
-      };
-      indices[7] = {
-        6,  // (back-left.2)
+      indices[4] = { 7, 6, 5 };
+      indices[5] = { 5, 4, 7 };
 
-        /// back face
-        4, 7  // (back-right)
-      };
+      indices[6] = { 4, 0, 3 };
+      indices[7] = { 3, 7, 4 };
+
+      indices[8] = { 4, 5, 1 };
+      indices[9] = { 1, 0, 4 };
+
+      indices[10] = { 3, 2, 6 };
+      indices[11] = { 6, 7, 3 };
+
       return indices;
+    }
+
+    static void calc_ring(size_t segments, float radius, float y, float dy, float height, float actual_radius, std::vector<vertex>& vertices) {
+      float seg_incr = 1.0f / (float)(segments - 1);
+      for (size_t s = 0; s < segments; s++) {
+        float x = glm::cos(float(M_PI * 2) * s * seg_incr) * radius;
+        float z = glm::sin(float(M_PI * 2) * s * seg_incr) * radius;
+
+        vertex& vertex = vertices.emplace_back();
+        vertex.position = glm::vec3(actual_radius * x, actual_radius * y + height * dy, actual_radius * z);
+        vertex.normal = glm::normalize(glm::vec3(x, y, z));
+      }
+    }
+
+    std::pair<std::vector<vertex>, std::vector<index>> get_capsule_mesh(float radius, float height) {
+      constexpr size_t subdivision_height = 8;
+      constexpr size_t rings_body = subdivision_height + 1;
+      constexpr size_t rings_total = subdivision_height + rings_body;
+      constexpr size_t num_segments = 12;
+      // needed to ensure that the wireframe is always visible
+      constexpr float radius_modifier = 0.021f;
+
+      std::vector<vertex> vertices;
+      std::vector<index> indices;
+
+      vertices.reserve(num_segments * rings_total);
+      indices.reserve((num_segments - 1) * (rings_total - 1) * 2);
+
+      float body_incr = 1.0f / (float)(rings_body - 1);
+      float ring_incr = 1.0f / (float)(subdivision_height - 1);
+
+      for (int r = 0; r < subdivision_height / 2; r++)
+        calc_ring(num_segments, glm::sin(float(M_PI) * r * ring_incr), glm::sin(float(M_PI) * (r * ring_incr - 0.5f)), -0.5f, height, radius + radius_modifier, vertices);
+
+      for (int r = 0; r < rings_body; r++)
+        calc_ring(num_segments, 1.0f, 0.0f, r * body_incr - 0.5f, height, radius + radius_modifier, vertices);
+
+      for (int r = subdivision_height / 2; r < subdivision_height; r++)
+        calc_ring(num_segments, glm::sin(float(M_PI) * r * ring_incr), glm::sin(float(M_PI) * (r * ring_incr - 0.5f)), 0.5f, height, radius + radius_modifier, vertices);
+
+      for (int r = 0; r < rings_total - 1; r++) {
+        for (int s = 0; s < num_segments - 1; s++) {
+          index& index1 = indices.emplace_back();
+          index1.v0 = (uint32_t)(r * num_segments + s + 1);
+          index1.v1 = (uint32_t)(r * num_segments + s + 0);
+          index1.v2 = (uint32_t)((r + 1) * num_segments + s + 1);
+
+          index& index2 = indices.emplace_back();
+          index2.v0 = (uint32_t)((r + 1) * num_segments + s + 0);
+          index2.v1 = (uint32_t)((r + 1) * num_segments + s + 1);
+          index2.v2 = (uint32_t)(r * num_segments + s);
+        }
+      }
+
+      return { vertices, indices };
     }
 
   }  // namespace

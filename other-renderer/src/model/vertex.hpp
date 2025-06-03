@@ -16,10 +16,11 @@ namespace other {
     std::string name = "";
     value_type type = value_type::EMPTY_TYPE;
 
-    uint32_t size = 0;
-    uint32_t offset = 0;
+    size_t idx = 0;  // index of the attribute in the vertex buffer
+    size_t size = 0;
+    size_t offset = 0;
 
-    uint32_t num_components();
+    size_t num_components();
 
     vertex_attribute() {}
     vertex_attribute(value_type type, const std::string& name)
@@ -33,7 +34,10 @@ namespace other {
 
     buffer_layout() = default;
     buffer_layout(std::initializer_list<vertex_attribute> attributes);
-    // buffer_layout& operator=(std::initializer_list<vertex_attribute> attributes);
+    buffer_layout(const buffer_layout& layout);
+    buffer_layout& operator=(const buffer_layout& layout);
+    buffer_layout(buffer_layout&& layout) noexcept;
+    buffer_layout& operator=(buffer_layout&& layout) noexcept;
 
     using attribute_list = std::vector<vertex_attribute>;
 
@@ -92,11 +96,11 @@ namespace other {
 
 OTHER_REFLECT(
   other::vertex,
-  field(position, other::attr::serializable()),
-  field(normal, other::attr::serializable()),
-  field(tangent, other::attr::serializable()),
-  field(bitangent, other::attr::serializable()),
-  field(tex_coord, other::attr::serializable())
+  field(position, other::attr::serializable())
+  // field(normal, other::attr::serializable())
+  // field(tangent, other::attr::serializable()),
+  // field(bitangent, other::attr::serializable()),
+  // field(tex_coord, other::attr::serializable())
 )
 
 OTHER_REFLECT(
