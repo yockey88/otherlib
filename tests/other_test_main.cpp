@@ -20,21 +20,22 @@ namespace other {
     ~other_test_environment() override = default;
 
     void SetUp() override {
-      register_log_sinks(config);
-      initialize_primary_arena();
-      CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
       // if (!cmd.valid) {
       //   FAIL() << "Invalid command line!";
       //   return;
       // }
-
       // config_table config = config_table::load(cmd.config_file);
       // ASSERT_EQ(config.valid, true) << "Failed to load configuration file: " << cmd.config_file;
       // config.diagnostics.verbose = cmd.diagnostics.verbose;
+
+      subsystem<arena>::get();
+      register_log_sinks(config);
+      CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
     }
 
     void TearDown() override {
-      shutdown_subsystems();
+      subsystem<logger>::get()->shutdown();
+      subsystem<arena>::get()->shutdown();
     }
 
    private:

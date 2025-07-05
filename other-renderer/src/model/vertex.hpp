@@ -6,6 +6,7 @@
 
 #include <glm/glm.hpp>
 
+#include "math/bounding_box.hpp"
 #include "serialization/reflection.hpp"
 
 namespace other {
@@ -80,9 +81,9 @@ namespace other {
 
   struct index {
     OTHER_REFLECTABLE(index);
-    int32_t v0 = 0;
-    int32_t v1 = 0;
-    int32_t v2 = 0;
+    uint32_t v0 = 0;
+    uint32_t v1 = 0;
+    uint32_t v2 = 0;
   };
 
   struct triangle {
@@ -90,6 +91,47 @@ namespace other {
     vertex v0;
     vertex v1;
     vertex v2;
+
+    glm::vec3 centroid;
+  };
+
+  struct submesh {
+    OTHER_REFLECTABLE(submesh);
+
+    uint32_t base_vertex = 0;
+    uint32_t base_idx = 0;
+
+    uint32_t mat_idx = 0;
+
+    uint32_t idx_cnt = 0;
+    uint32_t vert_cnt = 0;
+
+    glm::mat4 transform{ 0.f };
+    glm::mat4 local_transform{ 0.f };
+
+    bounding_box bounds{};
+    // resource_handle material_handle;
+
+    natural_t sub_mesh_id;
+    natural_t material_id;
+
+    std::string name;
+
+    bool rigged = false;
+  };
+
+  struct mesh_node {
+    OTHER_REFLECTABLE(mesh_node);
+    uint32_t parent = 0xFFFFFFFF;  // 0xFFFFFFFF indicates no parent
+    std::vector<uint32_t> children;
+    std::vector<uint32_t> sub_meshes;
+
+    std::string name;
+    glm::mat4 local_transform;
+
+    inline bool is_root() const {
+      return parent == 0xFFFFFFFF;
+    }
   };
 
 }  // namespace other
@@ -114,7 +156,8 @@ OTHER_REFLECT(
   other::triangle,
   field(v0, other::attr::serializable()),
   field(v1, other::attr::serializable()),
-  field(v2, other::attr::serializable())
+  field(v2, other::attr::serializable()),
+  field(centroid, other::attr::serializable())
 )
 
 OTHER_REFLECT(
@@ -128,6 +171,30 @@ OTHER_REFLECT(
 OTHER_REFLECT(
   other::buffer_layout,
   field(stride, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  other::submesh,
+  field(base_vertex, other::attr::serializable()),
+  field(base_idx, other::attr::serializable()),
+  field(mat_idx, other::attr::serializable()),
+  field(idx_cnt, other::attr::serializable()),
+  field(vert_cnt, other::attr::serializable()),
+  // field(transform, other::attr::serializable()),
+  // field(local_transform, other::attr::serializable()),
+  field(bounds, other::attr::serializable()),
+  field(sub_mesh_id, other::attr::serializable()),
+  field(material_id, other::attr::serializable()),
+  field(rigged, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  other::mesh_node,
+  field(parent, other::attr::serializable()),
+  // field(children, other::attr::serializable()),
+  // field(sub_meshes, other::attr::serializable()),
+  field(name, other::attr::serializable())
+  // field(local_transform, other::attr::serializable())
 )
 
 #endif  // OTHER_RENDERER_MODEL_VERTEX_HPP

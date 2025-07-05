@@ -148,8 +148,7 @@ namespace other {
     }
 
     template <typename... Args>
-      requires std::is_base_of_v<ref_counted, std::remove_cvref_t<T>> &&
-      requires(Args&&... args) { std::declval<arena_allocator<std::remove_cvref_t<T>>>().allocate(std::forward<Args>(args)...); }
+      requires std::is_base_of_v<ref_counted, std::remove_cvref_t<T>>
     static ref<std::remove_cvref_t<T>> create(Args&&... args) {
       return ref<std::remove_cvref_t<T>>(arena_allocator<std::remove_cvref_t<T>>{}.allocate(std::forward<Args>(args)...));
     }

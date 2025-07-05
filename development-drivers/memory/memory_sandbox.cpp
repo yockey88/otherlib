@@ -37,35 +37,110 @@ namespace {
 
 void memory_sandbox::on_initialize() {
   CORE_LOG_INFO("Memory sandbox initialized.");
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 void memory_sandbox::run() {
-  CORE_LOG_INFO("Running memory sandbox...");
+  PROFILE_SECTION("memory_sandbox::run");
 
-  other::ref<test_ref> natural_value = other::make_ref<test_ref>();
-  natural_value->print();
+  constexpr size_t alloc_size = 1024;
+  void* mem = nullptr;
   {
-    other::ref<test_ref> copied_value = natural_value;
-    copied_value->print();
+    PROFILE_SECTION("memory_sandbox::run--malloc-test");
+    {
+      PROFILE_SECTION("memory_sandbox::run--malloc-test-malloc");
+      mem = malloc(alloc_size);
+    }
+    {
+      PROFILE_SECTION("memory_sandbox::run--malloc-test-free");
+      free(mem);
+    }
   }
 
-  ref<value_storage> value_storage = make_ref<value_storage_impl<natural_t>>(42);
-  CORE_LOG_INFO("Value storage created with size: {}", value_storage->size());
-  CORE_LOG_INFO("Value storage type: {}", value_storage->val_type());
+  mem = nullptr;
+  {
+    PROFILE_SECTION("memory_sandbox::run--new-test");
+    {
+      PROFILE_SECTION("memory_sandbox::run--new-test-new");
+      mem = new char[alloc_size];
+    }
+    {
+      PROFILE_SECTION("memory_sandbox::run--new-test-delete");
+      delete[] static_cast<char*>(mem);
+    }
+  }
 
-  natural_t* value_ptr = value_storage->unchecked_ptr_unwrap<natural_t>();
-  CORE_LOG_INFO("Value pointer: {}", (void*)value_ptr);
+  mem = nullptr;
+  {
+    PROFILE_SECTION("memory_sandbox::run--arena-test");
+    other::arena* arena_instance = other::subsystem<other::arena>::get();
+    {
+      PROFILE_SECTION("memory_sandbox::run--arena-test-arena");
+      mem = arena_instance->allocate(alloc_size);
+    }
+    {
+      PROFILE_SECTION("memory_sandbox::run--arena-test-free");
+      arena_instance->free(mem, alloc_size);
+    }
+  }
 
-  natural_t& value_ref = value_storage->unchecked_unwrap<natural_t>();
-  CORE_LOG_INFO("Value reference: {}", value_ref);
+  {
+    PROFILE_SECTION("memory_sandbox::run--lots-of-malloc");
+    std::vector<void*> allocations(100);
+    {
+      PROFILE_SECTION("memory_sandbox::run--lots-of-malloc-allocations");
+      for (size_t i = 0; i < allocations.size(); ++i) {
+        PROFILE_SECTION("memory_sandbox::run--lots-of-malloc-allocations--malloc");
+        allocations[i] = malloc(alloc_size);
+      }
+    }
+    {
+      PROFILE_SECTION("memory_sandbox::run--lots-of-malloc-frees");
+      for (void* ptr : allocations) {
+        PROFILE_SECTION("memory_sandbox::run--lots-of-malloc-frees--free");
+        free(ptr);
+      }
+    }
+  }
 
-  // other::value v1 = other::value{ other::natural_t{ 42 } };
-  // other::natural_t n1 = v1;
-  // CORE_LOG_INFO("Value: {}", n1);
+  // {
+  //   PROFILE_SECTION("memory_sandbox::run--lots-of-new");
+  //   std::vector<void*> allocations(100);
+  //   {
+  //     PROFILE_SECTION("memory_sandbox::run--lots-of-new-allocations");
+  //     for (size_t i = 0; i < allocations.size(); ++i) {
+  //       PROFILE_SECTION("memory_sandbox::run--lots-of-new-allocations--new");
+  //       allocations[i] = new char[alloc_size];
+  //     }
+  //   }
+  //   {
+  //     PROFILE_SECTION("memory_sandbox::run--lots-of-new-deletes");
+  //     for (void* ptr : allocations) {
+  //       PROFILE_SECTION("memory_sandbox::run--lots-of-new-deletes--delete");
+  //       delete[] static_cast<char*>(ptr);
+  //     }
+  //   }
+  // }
+
+  {
+    PROFILE_SECTION("memory_sandbox::run--arena-lots-of-allocations");
+    std::vector<void*> allocations(100);
+    other::arena* arena_instance = other::subsystem<other::arena>::get();
+    {
+      PROFILE_SECTION("memory_sandbox::run--arena-lots-of-allocations-arena");
+      for (size_t i = 0; i < allocations.size(); ++i) {
+        allocations[i] = arena_instance->allocate(alloc_size);
+      }
+    }
+    {
+      PROFILE_SECTION("memory_sandbox::run--arena-lots-of-allocations-frees");
+      for (void* ptr : allocations) {
+        arena_instance->free(ptr, alloc_size);
+      }
+    }
+  }
 }
 
 void memory_sandbox::on_shutdown() {
   CORE_LOG_INFO("Memory sandbox shutdown.");
 }
-
-OTHER_DRIVER(memory_sandbox)

@@ -10,6 +10,7 @@ cmake/
 # scratch work/local-test-results
 artifacts/
 wip/
+analysis/
 scratch/
 
 # non-public sandboxes
@@ -19,3 +20,15 @@ development-drivers/pbrt
 dev-*.toml
 *-test-*.toml
 *-log-failure.log
+
+# otherfiles
+*.fbx
+
+----- required dependencies -----
+----- must find way to get to client bc too large to push to git -----
+assimp-vc143-mtd.lib
+assimp-vc143-mt.lib
+assimp-vc143-mtd.pdb
+assimp-vc143-mt.pdb
+assimp-vc143-mtd.exp
+assimp-vc143-mt.exp

@@ -37,14 +37,22 @@ namespace other {
     static library_handle* create_library_handle(const std::string_view plugin_path);
   };
 
-#define OTHER_PLUGIN(name)                                             \
-  OTHER_API const char* other_plugin_name() { return #name; }          \
-  OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) { \
-    other::subsystem<other::arena>::set(argv->arena);                  \
-    other::subsystem<other::logger>::set(argv->logger);                \
-    other::subsystem<other::renderer_backend>::set(argv->renderer);    \
-    other::subsystem<other::type_database>::set(argv->type_database);  \
-  }
+#ifdef OTHER_CLIENT
+  #define OTHER_PLUGIN(name)                                             \
+    OTHER_API const char* other_plugin_name() { return #name; }          \
+    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) { \
+      other::subsystem<other::arena>::set(argv->arena);                  \
+      other::subsystem<other::logger>::set(argv->logger);                \
+      other::subsystem<other::renderer_backend>::set(argv->renderer);    \
+      other::subsystem<other::type_database>::set(argv->type_database);  \
+    }
+#endif
+
+#ifdef OTHER_APPLICATION
+  #define OTHER_PLUGIN(name)                                      \
+    OTHER_API const char* other_plugin_name() { return nullptr; } \
+    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) {}
+#endif
 
 }  // namespace other
 

@@ -14,10 +14,12 @@
 namespace other {
 
   void driver::initialize() {
+    PROFILE_SECTION("driver::initialize");
     on_initialize();
   }
 
   void driver::shutdown() {
+    PROFILE_SECTION("driver::shutdown");
     on_shutdown();
   }
 
@@ -90,6 +92,7 @@ namespace other {
   }
 
   void driver::pump_events() {
+    PROFILE_SECTION("driver::pump_events");
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       switch (event.type) {

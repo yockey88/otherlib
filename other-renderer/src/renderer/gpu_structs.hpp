@@ -33,7 +33,7 @@ namespace other {
     };
 
     constexpr static inline size_t kGpuAlignment = 16;
-#define GPU_ALIGN __declspec(align(kGpuAlignment))
+#define GPU_ALIGN __declspec(align(gpu::kGpuAlignment))
 
     GPU_ALIGN struct material {
       int type = INVALID_MATERIAL;
@@ -43,6 +43,23 @@ namespace other {
     constexpr size_t kMaxMaterials = 100;
     GPU_ALIGN struct material_buffer {
       material materials[kMaxMaterials];
+    };
+
+    GPU_ALIGN struct graphics_material {
+      glm::vec3 diffuse_color;
+      float diffuse_reflectivity;
+
+      glm::vec3 specular_color;
+      float specular_reflectivity;
+
+      float emissivity;
+      float transparency;
+
+      float shininess;
+    };
+
+    GPU_ALIGN struct graphics_material_buffer {
+      graphics_material materials[kMaxMaterials];
     };
 
     GPU_ALIGN struct lambertian {
@@ -97,6 +114,26 @@ namespace other {
     constexpr size_t kMaxObjects = 100;
     GPU_ALIGN struct object_buffer {
       object objects[kMaxObjects];
+    };
+
+    GPU_ALIGN struct point_light {
+      glm::vec3 light_position;
+      glm::vec3 color;
+    };
+
+    constexpr size_t kMaxPointLights = 100;
+    GPU_ALIGN struct point_light_buffer {
+      point_light lights[kMaxObjects];
+    };
+
+    GPU_ALIGN struct directional_light {
+      glm::vec3 direction;
+      glm::vec3 color;
+    };
+
+    constexpr size_t kMaxDirectionalLights = 100;
+    GPU_ALIGN struct directional_light_buffer {
+      directional_light lights[kMaxDirectionalLights];
     };
 
     GPU_ALIGN struct camera_data {

@@ -35,6 +35,8 @@ namespace other {
     void on_begin_frame(scope<window_manager>& window_mgr) override;
     void on_end_frame(scope<window_manager>& window_mgr) override;
 
+    void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) override;
+
     void begin_ui_frame_backend_newframe() override;
     void end_ui_frame_backend_draw_data() override;
 
@@ -49,7 +51,7 @@ namespace other {
     void set_texture_filter(const resource_handle& handle, texture::filter min_filter, texture::filter mag_filter) override;
     void set_texture_wrap_mode(const resource_handle& handle, texture::wrap wrap_s, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_r = texture::wrap::CLAMP_TO_EDGE) override;
     void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) override;
-    void bind_texture_as_image(const resource_handle& handle, uint32_t index, bool writable = false) override;
+    void bind_image(const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer, texture::format frmt, access_flags flags) override;
 
     void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) override;
     void unbind_buffer_resource(const resource_handle& handle) override;
@@ -61,6 +63,7 @@ namespace other {
     void unbind_mesh_resource(const resource_handle& handle) override;
     void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) override;
     void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) override;
+    void draw_mesh_instanced(const resource_handle& handle, const draw_call& call) override;
 
     void bind_framebuffer_resource(const resource_handle& handle) override;
     void unbind_framebuffer_resource(const resource_handle& handle) override;
@@ -88,8 +91,18 @@ namespace other {
     std::map<uniform_key, uint32_t> shader_uniforms;
 
     std::map<natural_t, texture> texture_resources;
+
+    struct shader_binding {
+      uint32_t buffer_id;
+      uint32_t shader_id;
+
+      constexpr auto operator<=>(const shader_binding&) const = default;
+    };
+    std::map<shader_binding, natural_t> shader_block_bindings;
     std::map<natural_t, gpu_buffer> buffer_resources;
+
     std::map<natural_t, mesh> mesh_resources;
+
     std::map<natural_t, framebuffer> framebuffer_resources;
     std::map<natural_t, uint32_t> framebuffer_renderbuffers;
 
@@ -109,6 +122,8 @@ namespace other {
 
     shader* create_shader_resource(const resource_handle& handle, resource_type type) override;
     void destroy_shader_resource(const resource_handle& handle) override;
+
+    int32_t get_gl_access_flags(access_flags flags) const;
 
     int32_t get_gl_texture_type(texture::tex_type type) const;
     int32_t get_gl_texture_format(texture::format format) const;

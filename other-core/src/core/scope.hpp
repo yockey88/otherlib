@@ -14,7 +14,6 @@ namespace other {
   template <typename T>
   struct scope_deleter {
     void operator()(T* ptr) const {
-      PROFILE_DEALLOCATION(ptr);
       if (ptr != nullptr) {
         arena_allocator<T>{}.free(ptr);
       }
@@ -32,7 +31,6 @@ namespace other {
   template <typename T, typename... Args>
     requires requires(Args&&... args) { std::declval<arena_allocator<T>>().allocate(std::forward<Args>(args)...); }
   scope<T> make_scope(Args&&... args) {
-    PROFILE_ALLOCATION(memory, max_objects * sizeof(T));
     return std::unique_ptr<T, scope_deleter<T>>(arena_allocator<T>{}.allocate(std::forward<Args>(args)...), scope_deleter<T>());
   }
 

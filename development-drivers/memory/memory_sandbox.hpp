@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 
 #include "core/defines.hpp"
+
 #include "driver/driver.hpp"
 
 class OTHER_CLASS memory_sandbox : public other::driver {
@@ -18,5 +19,7 @@ class OTHER_CLASS memory_sandbox : public other::driver {
   void run() override;
   void on_shutdown() override;
 };
+
+OTHER_DRIVER(memory_sandbox)
 
 #endif  // OTHER_MEMORY_SANDBOX_HPP

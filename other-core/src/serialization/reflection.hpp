@@ -70,6 +70,29 @@ namespace other {
     std::is_same_v<T, glm::mat4>;
 
   template <typename T>
+  concept has_iterators = requires(const T& value) {
+    { std::ranges::begin(value) } -> std::same_as<typename T::const_iterator>;
+    { std::ranges::end(value) } -> std::same_as<typename T::const_iterator>;
+  };
+
+  template <typename T>
+  concept has_reverse_iterators = requires(const T& value) {
+    { std::ranges::rbegin(value) } -> std::same_as<typename T::const_reverse_iterator>;
+    { std::ranges::rend(value) } -> std::same_as<typename T::const_reverse_iterator>;
+  };
+
+  template <typename T>
+  concept is_iterable_type = has_iterators<T> && has_reverse_iterators<T>;
+
+  template <typename T>
+  concept is_container =
+    is_iterable_type<T> &&
+    requires(const T& value) {
+      { std::ranges::size(value) } -> std::convertible_to<std::size_t>;
+      typename T::value_type;
+    };
+
+  template <typename T>
   concept streamable_type = requires(std::ostream& os, const T& value) {
     { os << value } -> std::same_as<std::ostream&>;
   };
@@ -114,16 +137,46 @@ namespace other {
   struct serializer {
     struct field_writer {
       template <typename U>
-      constexpr void operator()(std::ostream& os, const U& value, uint32_t indent_level, const std::string& name) const {
+      constexpr void operator()(std::ostream& os, const U& value, uint32_t indent_level, const std::string& name, bool new_line = true) const {
         /// exclude linear algebra types from this because they look gross
         if constexpr (reflected_type<U> && !is_linear_algebra_type<U>) {
           os << serializer{}.write_fields_to_string<U>(name, value, indent_level + 1);
-        } else {
-          os << std::string(indent_level * 2, ' ') << name << " = ";
+        }
+        /// string-like container special case
+        else if constexpr (is_stringlike_type<U>) {
+          os << std::string(indent_level * 2, ' ') << name << " = " << '"' << value << '"';
+        }
+        /// other container types
+        else if constexpr (is_container<U> && !is_stringlike_type<U>) {
+          os << std::string(indent_level * 2, ' ') << name << " = [";
+          using value_t = typename U::value_type;
 
-          if constexpr (std::is_same_v<U, std::string>) {
-            os << '"' << value << '"';
-          } else if constexpr (std::is_same_v<U, char>) {
+          size_t count = 0;
+          for (const auto& val : value) {
+            if constexpr (reflected_type<value_t> && !is_linear_algebra_type<value_t>) {
+              os << "\n";
+              os << serializer{}.write_fields_to_string<value_t>(name + "[" + std::to_string(count) + "]", val, indent_level + 1);
+            } else if constexpr (is_stringlike_type<value_t>) {
+              os << "[" << count++ << "] = \"" << val << "\"";
+            } else if constexpr (is_container<value_t>) {
+              field_writer{}(os, val, indent_level + 1, std::format("[{}]", count++), false);
+            } else if constexpr (is_streamable_type<value_t>) {
+              os << "[" << count++ << "] = " << val;
+            } else {
+              os << "[" << count++ << "] = [failed to serialize type: " << typeid(value_t).name() << "]";
+            }
+
+            if (count < std::ranges::size(value)) {
+              os << ", ";
+            }
+          }
+
+          os << "]";
+        }
+        /// primitive types
+        else {
+          os << std::string(indent_level * 2, ' ') << name << " = ";
+          if constexpr (std::is_same_v<U, char>) {
             os << '\'' << value << '\'';
           } else if constexpr (std::is_enum_v<U>) {
             os << magic_enum::enum_name(value);
@@ -133,7 +186,11 @@ namespace other {
             os << "[failed to serialize type: " << typeid(U).name() << "]";
           }
         }
-        os << ";\n";
+        os << ";";
+
+        if (new_line) {
+          os << '\n';
+        }
       }
 
       template <typename U>
@@ -229,6 +286,17 @@ namespace other {
     if constexpr (std::is_enum_v<T>) {
       ss << " = " << magic_enum::enum_name(value) << ";";
       return ss.str();
+    } else if constexpr (is_stringlike_type<T>) {
+      ss << " = \"" << value << "\";";
+      return ss.str();
+    } else if constexpr (is_container<T> && !is_stringlike_type<T>) {
+      ss << " = [ ";
+      size_t count = 0;
+      for (auto itr = std::ranges::begin(value); itr != std::ranges::end(value); ++itr) {
+        field_writer{}(ss, *itr, indent_level + 1, std::format("[{}]", std::to_string(count++)), false);  // false = no new line
+      }
+      ss << std::string(indent_level * 2, ' ') << " ]";
+      return ss.str();
     } else {
       ss << " = {\n";
       for_each(refl::reflect(value).members, [&](auto member) {
@@ -245,12 +313,7 @@ namespace other {
         }
       });
     }
-    ss << indent;
-
-    if constexpr (!std::is_enum_v<T>) {
-      ss << "}";
-    }
-
+    ss << indent << "}";
     return ss.str();
   }
 

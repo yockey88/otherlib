@@ -9,7 +9,7 @@
 
 namespace other {
 
-  resource_handle texture::create(const std::string& name, tex_type type, format frmtRGBA8, uint32_t width, uint32_t height, bool as_image, bool writable) {
+  resource_handle texture::create(const std::string& name, tex_type type, format frmtRGBA8, uint32_t width, uint32_t height, bool writable) {
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create texture resource with name: {}", name);
@@ -23,17 +23,37 @@ namespace other {
                    .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
                    .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE);
 
-    if (as_image) {
-      text.finalize_image(0, writable);
-    } else {
-      text.finalize_texture();
+    text.finalize_texture();
+
+    return handle;
+  }
+
+  resource_handle texture::create3d(const std::string& name, format frmt, const glm::vec3& dimensions, bool writable) {
+    resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
+    if (handle.id == 0) {
+      CORE_LOG_ERROR("Failed to create 3D texture resource with name: {}", name);
+      return { 0, resource_type::EMPTY };
     }
+
+    auto& text = (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(handle))
+                   .set_type(texture::tex_type::TEXTURE_3D)
+                   .set_format(frmt)
+                   .set_size(static_cast<uint32_t>(dimensions.x), static_cast<uint32_t>(dimensions.y))
+                   .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
+                   .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE);
+
+    text.finalize_texture();
 
     return handle;
   }
 
   texture& texture::bind(uint32_t slot) {
     subsystem<renderer_backend>::get()->api()->bind_texture_resource(handle(), slot);
+    return *this;
+  }
+
+  texture& texture::bind_image(uint32_t index, uint32_t level, bool layered, int32_t layer, format frmt, access_flags flags) {
+    subsystem<renderer_backend>::get()->api()->bind_image(handle(), index, level, layered, layer, frmt, flags);
     return *this;
   }
 
@@ -125,14 +145,6 @@ namespace other {
     uint8_t* data = this->data.empty() ? nullptr : this->data.data();
     size_t data_size = data == nullptr ? 0 : this->data.size();
     subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_type(), get_format(), size, data, data_size);
-  }
-
-  void texture::finalize_image(uint32_t idx, bool writable) {
-    finalize_texture();
-
-    bind();
-    subsystem<renderer_backend>::get()->api()->bind_texture_as_image(handle(), idx, writable);
-    unbind();
   }
 
 }  // namespace other

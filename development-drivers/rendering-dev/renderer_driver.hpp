@@ -4,6 +4,8 @@
 #ifndef OTHER_RENDERER_DRIVER_HPP
 #define OTHER_RENDERER_DRIVER_HPP
 
+#include "core/defines.hpp"
+
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/model.hpp"
 #include "renderer/camera.hpp"
@@ -39,6 +41,8 @@ namespace other {
 
     bool running = true;
     camera cam;
+
+    bool pressing_mouse_wheel = false;
     mouse_state mouse;
 
     scope<renderer> renderer = nullptr;
@@ -46,30 +50,42 @@ namespace other {
 
     natural_t cube_id;
     natural_t capsule_id;
+    natural_t floor_id;
+    natural_t light_id;
+    natural_t suzanne_id;
 
     model cube;
     model capsule;
+    model suzanne;
 
-    resource_handle comp_shader_handle;
     resource_handle screen_shader_handle;
     resource_handle cube_shader;
+    resource_handle light_shader;
+    // resource_handle comp_shader_handle;
 
     resource_handle initial_pass;
-    resource_handle comp_pass;
+    // resource_handle comp_pass;
+
     resource_handle screen_texture_handle;
+    resource_handle voxel_3d_texture_handle;
     resource_handle quad_mesh_handle;
 
     resource_handle camera_buffer_handle;
-    resource_handle scene_metadata_handle;
-    resource_handle ray_buffer_handle;
-
+    resource_handle point_light_buffer_handle;
+    resource_handle dir_light_buffer_handle;
     resource_handle material_buffer_handle;
-    resource_handle lambertian_buffer_handle;
-    resource_handle metal_buffer_handle;
-    resource_handle dielectrics_buffer_handle;
 
-    resource_handle sphere_buffer_handle;
-    resource_handle object_buffer_handle;
+    resource_handle model_buffer_handle;
+
+    // resource_handle scene_metadata_handle;
+    // resource_handle ray_buffer_handle;
+
+    // resource_handle lambertian_buffer_handle;
+    // resource_handle metal_buffer_handle;
+    // resource_handle dielectrics_buffer_handle;
+
+    // resource_handle sphere_buffer_handle;
+    // resource_handle object_buffer_handle;
 
     // ref<compound_object> scene = nullptr;
 

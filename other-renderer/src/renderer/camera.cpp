@@ -6,11 +6,13 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
+#include "core/profiler.hpp"
 #include "math/constants.hpp"
 
 #include "renderer/gpu_structs.hpp"
 
 #include "glm/fwd.hpp"
+
 
 namespace other {
 
@@ -69,6 +71,7 @@ namespace other {
   }
 
   void camera::adjust_look_orientation(real_t yaw_adjust, real_t pitch_adjust) {
+    PROFILE_SECTION("camera::adjust_look_orientation");
     euler_angles.x = yaw() + (yaw_adjust * sensitivity);
     euler_angles.y = pitch() - (pitch_adjust * sensitivity);
     if (constrain_pitch) {

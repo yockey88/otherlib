@@ -15,9 +15,9 @@
 namespace other {
 
   struct arena_storage {
-    static inline constexpr size_t kPageSize = 16 * (4096u * 4096u);
+    static inline constexpr size_t kPageSize = 64 * (4096u * 4096u);  // 64 MB
     static inline constexpr size_t kAlignment = 16;
-    static inline constexpr size_t kMaxPages = 16;
+    static inline constexpr size_t kMaxPages = 64;
     static inline constexpr size_t kMaxMemoryAllowed = kMaxPages * kPageSize;
 
     struct page {
@@ -25,7 +25,6 @@ namespace other {
       alignas(kAlignment) uint8_t storage[kPageSize] = {};
 
       void* data() { return &storage[0]; }
-
       const void* data() const { return &storage[0]; }
 
       void* get_ptr_at(size_t offset);
@@ -45,22 +44,26 @@ namespace other {
 
   class arena : public subsystem<arena> {
    public:
+    using page = arena_storage::page;
+
     arena() = default;
     ~arena();
 
-    void* allocate(size_t size);
-    void free(void* ptr, size_t size);
+    static void* allocate(size_t size);
+    static void free(void* ptr, size_t size);
 
-    using page = arena_storage::page;
     page* get_current_page();
 
    private:
-    std::recursive_mutex mtx;
+    page* current_page = nullptr;
 
+   private:
     arena_storage storage;
     size_t page_allocation_cursor = 0;
     size_t total_allocations = 0;
     size_t allocated_memory = 0;
+
+    size_t live_allocations = 0;
 
     void allocate_page();
 

@@ -21,6 +21,7 @@ namespace other {
   }
 
   arena_buffer::~arena_buffer() {
+    release();
   }
 
   arena_buffer::arena_buffer(arena_buffer&& other) {
@@ -77,19 +78,32 @@ namespace other {
     return *this;
   }
 
+  std::string arena_buffer::dump_buffer() const {
+    std::stringstream ss;
+    ss << std::format("arena-buffer : [capacity: {} bytes, size: {} bytes, num_elements: {}] =\n[", capacity, offset, element_sizes.size());
+    for (size_t i = 0; i < offset; ++i) {
+      ss << std::format("{:#02x}", byte_at(i));
+      if (i < offset - 1) {
+        ss << " ";
+      }
+    }
+    ss << "]";
+    return ss.str();
+  }
+
   void arena_buffer::allocate(uint64_t size) {
     release();
     if (size == 0) {
       return;
     }
     memory_start = subsystem<arena>::get()->allocate(size);
+    memory_cursor = memory_start;
+    capacity = size;
     OTHER_ASSERT(memory_start != nullptr, "Failed to allocate memory for arena buffer.");
   }
 
   void arena_buffer::extend() {
-    size_t saved_offset = offset;
     size_t new_capacity = capacity * 2;
-    std::vector<uint64_t> saved_element_sizes = element_sizes;
 
     void* new_memory = subsystem<arena>::get()->allocate(new_capacity);
     OTHER_ASSERT(new_memory != nullptr, "Failed to extend arena buffer memory.");
@@ -98,11 +112,9 @@ namespace other {
     release();
 
     memory_start = new_memory;
-    memory_cursor = static_cast<uint8_t*>(memory_start) + saved_offset;
+    memory_cursor = static_cast<uint8_t*>(memory_start) + offset;
 
     capacity = new_capacity;
-    offset = saved_offset;
-    element_sizes = std::move(saved_element_sizes);
   }
 
   void arena_buffer::release() {
@@ -119,8 +131,9 @@ namespace other {
   void arena_buffer::zero_mem() {
     if (memory_start != nullptr) {
       std::memset(memory_start, 0, capacity);
-      memory_cursor = memory_start;  // Reset cursor to the start after zeroing
-      offset = 0;                    // Reset offset to zero
+      memory_cursor = memory_start;
+      offset = 0;
+      element_sizes.clear();
     } else {
       OTHER_ASSERT(false, "Memory start is null, cannot zero memory in arena buffer.");
     }
@@ -148,6 +161,21 @@ namespace other {
     std::memcpy(static_cast<uint8_t*>(memory_cursor), data, size);
     memory_cursor = static_cast<uint8_t*>(memory_cursor) + size;
     offset += size;
+  }
+
+  void arena_buffer::shift_cursor(uint64_t size) {
+    OTHER_ASSERT(memory_start != nullptr, "Attempting to shift cursor in uninitialized arena buffer");
+    OTHER_ASSERT(size + offset <= capacity, "Attempting to shift cursor beyond buffer capacity");
+    memory_cursor = static_cast<uint8_t*>(memory_cursor) + size;
+    offset += size;
+  }
+
+  uint8_t& arena_buffer::byte_at(uint64_t offset) {
+    return *static_cast<uint8_t*>(memory_at(offset));
+  }
+
+  const uint8_t& arena_buffer::byte_at(uint64_t offset) const {
+    return *static_cast<const uint8_t*>(memory_at(offset));
   }
 
   void* arena_buffer::memory_at(uint64_t offset) {

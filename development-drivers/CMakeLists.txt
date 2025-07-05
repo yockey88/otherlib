@@ -7,14 +7,16 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/pbrt)
   )
 endif()
 
-add_dynamic_driver(memory_sandbox
-  memory/memory_sandbox.cpp
-)
-
 add_dynamic_driver(serialization_sandbox
   serialization/serialization_sandbox.cpp
 )
 
-add_dynamic_driver(rendering_dev
+add_static_driver(memory_sandbox
+  memory/memory.cpp
+  memory/memory_sandbox.cpp
+)
+
+add_static_driver(rendering_dev
+  rendering-dev/renderer.cpp
   rendering-dev/renderer_driver.cpp
 )

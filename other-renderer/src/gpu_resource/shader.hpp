@@ -19,10 +19,12 @@ namespace other {
       INVALID = 0,
 
       VERTEX_SHADER,
+      GEOMETRY_SHADER,
       FRAGMENT_SHADER,
 
       COMPUTE_SHADER,
       RENDER_SHADER,
+      RENDER_GEOM_SHADER,
 
       NUM_SHADERS
     };
@@ -48,6 +50,7 @@ namespace other {
 
     static resource_handle create(const std::string_view name, const filepath& filepath, const std::vector<setting>& settings);
     static resource_handle create(const std::string_view name, const filepath& vertpath, const filepath& fragpath, const std::vector<setting>& settings);
+    static resource_handle create(const std::string_view name, const filepath& vertpath, const filepath& geompath, const filepath& fragpath, const std::vector<setting>& settings);
     static resource_handle create(const std::string_view name, const std::string_view source, source_type type);
     static resource_handle create(const std::string_view name, const std::string_view vert_source, const std::string_view frag_source);
     static std::string preprocess_file(const filepath& file, const std::vector<setting>& settings);

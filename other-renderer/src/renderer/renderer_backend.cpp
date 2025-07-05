@@ -103,6 +103,34 @@ namespace other {
     api()->handle_event(event);
   }
 
+  void renderer_backend::add_model_source(natural_t handle, ref<model_source> source) {
+    OTHER_ASSERT(source != nullptr, "Model source cannot be null.");
+    OTHER_ASSERT(model_sources.find(handle) == model_sources.end(), "Model source with handle {} already exists.", handle);
+
+    model_sources[handle] = std::move(source);
+    CORE_LOG_DEBUG("Added model source with handle: {}", handle);
+  }
+
+  ref<model_source> renderer_backend::get_model_source(natural_t handle) const {
+    auto it = model_sources.find(handle);
+    if (it != model_sources.end()) {
+      return it->second;
+    }
+
+    CORE_LOG_ERROR("Model source with handle {} not found.", handle);
+    return nullptr;
+  }
+
+  void renderer_backend::remove_model_source(natural_t handle) {
+    auto it = model_sources.find(handle);
+    if (it != model_sources.end()) {
+      model_sources.erase(it);
+      CORE_LOG_DEBUG("Removed model source with handle: {}", handle);
+    } else {
+      CORE_LOG_ERROR("Model source with handle {} not found.", handle);
+    }
+  }
+
   void renderer_backend::set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr) {
     OTHER_ASSERT(api != nullptr, "Rendering API instance cannot be null.");
     OTHER_ASSERT(window_mgr != nullptr, "Window manager instance cannot be null.");

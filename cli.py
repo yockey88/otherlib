@@ -46,25 +46,38 @@ def build_sln_file(sln_file, cfg=None):
     print(f"Error: {e}")
     sys.exit(1)
 
-def copy_dlls(cfg):
-  print(f"Copying DLLs for configuration: {cfg}...")
+def copy_dlls(cfg, dll_cfg):
+  print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
   dlls = [
-    f"extern/sdl/lib/{cfg.lower()}/SDL3.dll",
+    f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
   ]
   
+  assimp_debug = "extern/assimp/lib/debug/assimp-vc143-mtd.dll"
+  assimp_release = "extern/assimp/lib/release/assimp-vc143-mt.dll"
+  if cfg == "Debug" or cfg == "ProfileD":
+    if os.path.exists(assimp_debug):
+      dlls.append(assimp_debug)
+  else:
+    if os.path.exists(assimp_release):
+      dlls.append(assimp_release)
+
   for dll in dlls:
     if os.path.exists(dll):
+      dest = f"build/development-drivers/{cfg}/"
+      shutil.copy(dll, dest)
+
       dest = f"build/driver/{cfg}/"
       shutil.copy(dll, dest)
       
-      dest = f"build/other-terminal/{cfg}/"
-      shutil.copy(dll, dest)
+      # dest = f"build/other-terminal/{cfg}/"
+      # shutil.copy(dll, dest)
       
       dest = f"build/scratch/{cfg}/"
       shutil.copy(dll, dest)
 
       dest = f"build/tests/{cfg}/"
       shutil.copy(dll, dest)
+
     else:
       print(f"Warning: {dll} does not exist.")
 
@@ -98,8 +111,8 @@ if __name__ == "__main__":
   parser.add_argument("--run-scratch", "-rs", action="store_true", help="Run the scratch application.")
   parser.add_argument("--run-terminal", "-rt", action="store_true", help="Run the other terminal application.")
   parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
-  parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Debug-AS", "Profile"])
-  parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
+  parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
+  # parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
 
   args = parser.parse_args()
   try:
@@ -117,11 +130,15 @@ if __name__ == "__main__":
         print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
         sys.exit(1)
       build_sln_file(filename, cfg)
-      copy_dlls(cfg)
+      dll_cfg = "Release"
+      if cfg == "Debug":
+        dll_cfg = "Debug"
+        
+      copy_dlls(cfg, dll_cfg)
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("driver", cfg, "other_driver", "dev-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
       run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)

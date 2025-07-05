@@ -1,6 +1,5 @@
 /**
  * \file tests/arena/arena_test.hpp
- * Test suite for the arena memory allocator class
  */
 #ifndef OTHER_TESTS_ARENA_TEST_HPP
 #define OTHER_TESTS_ARENA_TEST_HPP
@@ -8,13 +7,13 @@
 #include <cstdint>
 #include <vector>
 
-#include <gtest/gtest.h>
-
 #include "core/arena.hpp"
+
+#include "other_test.hpp"
 
 namespace other {
 
-  class arena_test : public ::testing::Test {
+  class arena_test : public other_test {
    protected:
     static constexpr size_t kTestBlockSize = 64;
     static constexpr size_t kLargeBlockSize = 1024;
@@ -29,12 +28,13 @@ namespace other {
     };
 
     void SetUp() override {
+      /// reset because we are testing the arena here
+      subsystem<arena>::get()->shutdown();
       subsystem<arena>::get();
     }
 
     void TearDown() override {
-      allocations.clear();
-      subsystem<arena>::shutdown();
+      subsystem<arena>::get()->shutdown();
     }
 
     std::vector<test_allocation_data> allocations;

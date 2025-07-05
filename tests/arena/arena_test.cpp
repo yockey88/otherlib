@@ -1,6 +1,5 @@
 /**
  * \file tests/arena/arena_test.cpp
- * Test suite implementation for the arena memory allocator class
  */
 #include "arena_test.hpp"
 
@@ -67,7 +66,6 @@ namespace other {
     verify_alignment(ptr, kAlignment);
     test_memory_boundaries(ptr, size);
     verify_arena_state();
-
     return ptr;
   }
 
@@ -132,106 +130,106 @@ namespace other {
 
   TEST_F(arena_test, null_pointer_deallocation) {
     arena* a = subsystem<arena>::get();
-    ASSERT_NO_THROW(a->free(nullptr, kTestBlockSize)) << "Deallocating null pointer should not throw an exception.";
+    ASSERT_NO_THROW(a->free(nullptr, kTestBlockSize)) << "Deallocating null pointer should be perfectly safe.";
   }
 
-  TEST_F(arena_test, memory_pattern_integrity) {
-    /// TODO;
-  }
+  // TEST_F(arena_test, memory_pattern_integrity) {
+  //   /// TODO;
+  // }
 
-  TEST_F(arena_test, sequential_allocation_patterns) {
-    // TODO: Test allocating many small blocks sequentially
-    // TODO: Verify no memory fragmentation issues
-    // TODO: Test allocation efficiency and performance
-  }
+  // TEST_F(arena_test, sequential_allocation_patterns) {
+  //   // TODO: Test allocating many small blocks sequentially
+  //   // TODO: Verify no memory fragmentation issues
+  //   // TODO: Test allocation efficiency and performance
+  // }
 
-  TEST_F(arena_test, interleaved_allocation_deallocation) {
-    // TODO: Test interleaving allocation and deallocation operations
-    // TODO: Verify arena handles complex allocation patterns
-    // TODO: Test for memory fragmentation and efficiency
-  }
+  // TEST_F(arena_test, interleaved_allocation_deallocation) {
+  //   // TODO: Test interleaving allocation and deallocation operations
+  //   // TODO: Verify arena handles complex allocation patterns
+  //   // TODO: Test for memory fragmentation and efficiency
+  // }
 
-  // Boundary and edge case tests
-  TEST_F(arena_test, page_boundary_allocations) {
-    // TODO: Test allocations that cross page boundaries
-    // TODO: Verify proper page management and allocation
-    // TODO: Test edge cases at page size limits
-  }
+  // // Boundary and edge case tests
+  // TEST_F(arena_test, page_boundary_allocations) {
+  //   // TODO: Test allocations that cross page boundaries
+  //   // TODO: Verify proper page management and allocation
+  //   // TODO: Test edge cases at page size limits
+  // }
 
-  TEST_F(arena_test, maximum_allocation_size) {
-    // TODO: Test allocation of maximum allowed size
-    // TODO: Verify behavior at arena capacity limits
-    // TODO: Test allocation failure handling
-  }
+  // TEST_F(arena_test, maximum_allocation_size) {
+  //   // TODO: Test allocation of maximum allowed size
+  //   // TODO: Verify behavior at arena capacity limits
+  //   // TODO: Test allocation failure handling
+  // }
 
-  TEST_F(arena_test, arena_exhaustion) {
-    // TODO: Allocate memory until arena is completely full
-    // TODO: Verify proper out-of-memory handling
-    // TODO: Test arena recovery after memory is freed
-  }
+  // TEST_F(arena_test, arena_exhaustion) {
+  //   // TODO: Allocate memory until arena is completely full
+  //   // TODO: Verify proper out-of-memory handling
+  //   // TODO: Test arena recovery after memory is freed
+  // }
 
-  // Concurrency and thread safety tests
-  TEST_F(arena_test, concurrent_allocations) {
-    // TODO: Test allocation from multiple threads simultaneously
-    // TODO: Verify thread safety of arena operations
-    // TODO: Test for race conditions and data corruption
-  }
+  // // Concurrency and thread safety tests
+  // TEST_F(arena_test, concurrent_allocations) {
+  //   // TODO: Test allocation from multiple threads simultaneously
+  //   // TODO: Verify thread safety of arena operations
+  //   // TODO: Test for race conditions and data corruption
+  // }
 
-  TEST_F(arena_test, concurrent_allocation_deallocation) {
-    // TODO: Test mixed allocation/deallocation from multiple threads
-    // TODO: Verify arena mutex protection works correctly
-    // TODO: Test high-contention scenarios
-  }
+  // TEST_F(arena_test, concurrent_allocation_deallocation) {
+  //   // TODO: Test mixed allocation/deallocation from multiple threads
+  //   // TODO: Verify arena mutex protection works correctly
+  //   // TODO: Test high-contention scenarios
+  // }
 
-  // Performance and stress tests
-  TEST_F(arena_test, allocation_performance) {
-    // TODO: Benchmark allocation performance
-    // TODO: Compare with standard malloc/free performance
-    // TODO: Verify arena provides expected performance benefits
-  }
+  // // Performance and stress tests
+  // TEST_F(arena_test, allocation_performance) {
+  //   // TODO: Benchmark allocation performance
+  //   // TODO: Compare with standard malloc/free performance
+  //   // TODO: Verify arena provides expected performance benefits
+  // }
 
-  TEST_F(arena_test, memory_fragmentation_resistance) {
-    // TODO: Test arena's resistance to memory fragmentation
-    // TODO: Simulate fragmentation-inducing allocation patterns
-    // TODO: Verify arena can still allocate efficiently
-  }
+  // TEST_F(arena_test, memory_fragmentation_resistance) {
+  //   // TODO: Test arena's resistance to memory fragmentation
+  //   // TODO: Simulate fragmentation-inducing allocation patterns
+  //   // TODO: Verify arena can still allocate efficiently
+  // }
 
-  TEST_F(arena_test, long_running_stress_test) {
-    // TODO: Run extended stress test with random allocation patterns
-    // TODO: Verify arena stability over long periods
-    // TODO: Monitor for memory leaks or corruption over time
-  }
+  // TEST_F(arena_test, long_running_stress_test) {
+  //   // TODO: Run extended stress test with random allocation patterns
+  //   // TODO: Verify arena stability over long periods
+  //   // TODO: Monitor for memory leaks or corruption over time
+  // }
 
-  // Subsystem integration tests
-  TEST_F(arena_test, subsystem_initialization) {
-    // TODO: Test arena subsystem initialization
-    // TODO: Verify proper setup of subsystem storage
-    // TODO: Test subsystem ptr() and address() methods
-  }
+  // // Subsystem integration tests
+  // TEST_F(arena_test, subsystem_initialization) {
+  //   // TODO: Test arena subsystem initialization
+  //   // TODO: Verify proper setup of subsystem storage
+  //   // TODO: Test subsystem ptr() and address() methods
+  // }
 
-  TEST_F(arena_test, subsystem_destruction) {
-    // TODO: Test arena subsystem cleanup
-    // TODO: Verify all allocated memory is properly freed
-    // TODO: Test destructor behavior and resource cleanup
-  }
+  // TEST_F(arena_test, subsystem_destruction) {
+  //   // TODO: Test arena subsystem cleanup
+  //   // TODO: Verify all allocated memory is properly freed
+  //   // TODO: Test destructor behavior and resource cleanup
+  // }
 
-  // Error condition tests
-  TEST_F(arena_test, invalid_pointer_deallocation) {
-    // TODO: Test deallocation of pointers not allocated by arena
-    // TODO: Verify arena can detect invalid pointers
-    // TODO: Test error handling for corrupt pointer addresses
-  }
+  // // Error condition tests
+  // TEST_F(arena_test, invalid_pointer_deallocation) {
+  //   // TODO: Test deallocation of pointers not allocated by arena
+  //   // TODO: Verify arena can detect invalid pointers
+  //   // TODO: Test error handling for corrupt pointer addresses
+  // }
 
-  TEST_F(arena_test, arena_corruption_detection) {
-    // TODO: Test arena's ability to detect internal corruption
-    // TODO: Simulate various corruption scenarios
-    // TODO: Verify arena fails safely when corrupted
-  }
+  // TEST_F(arena_test, arena_corruption_detection) {
+  //   // TODO: Test arena's ability to detect internal corruption
+  //   // TODO: Simulate various corruption scenarios
+  //   // TODO: Verify arena fails safely when corrupted
+  // }
 
-  TEST_F(arena_test, out_of_bounds_access_protection) {
-    // TODO: Test protection against buffer overruns
-    // TODO: Verify arena can detect out-of-bounds writes
-    // TODO: Test guard pages or other protection mechanisms
-  }
+  // TEST_F(arena_test, out_of_bounds_access_protection) {
+  //   // TODO: Test protection against buffer overruns
+  //   // TODO: Verify arena can detect out-of-bounds writes
+  //   // TODO: Test guard pages or other protection mechanisms
+  // }
 
 }  // namespace other

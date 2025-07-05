@@ -6,11 +6,11 @@
 
 #include <memory>
 
-#include <gtest/gtest.h>
-
 #include "core/defines.hpp"
 #include "core/ref.hpp"
 #include "core/ref_counted.hpp"
+
+#include "other_test.hpp"
 
 namespace other {
 
@@ -35,7 +35,7 @@ namespace other {
     ~my_thing() override = default;
   };
 
-  class ref_test : public ::testing::Test {
+  class ref_test : public other_test {
    protected:
   };
 

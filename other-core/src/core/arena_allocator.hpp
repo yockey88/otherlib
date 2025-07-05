@@ -29,38 +29,30 @@ namespace other {
 
     template <typename... Args>
     T* allocate(Args&&... args) {
-      // PROFILE_SECTION("ArenaAllocator--Allocate");
       /// TODO: custom alignment
       void* memory = nullptr;
       if (override_arena != nullptr) {
         memory = override_arena->allocate(type_size);
       } else {
-        memory = subsystem<arena>::get()->allocate(type_size);
+        memory = arena::allocate(type_size);
       }
 
-      if (memory == nullptr) {
-        throw std::bad_alloc();
-      }
-      // PROFILE_ALLOCATION(memory, type_size);
       new (memory) T(std::forward<Args>(args)...);
       return std::launder(static_cast<T*>(memory));
     }
 
     void* allocate_block(size_t size) {
-      return subsystem<arena>::get()->allocate(size);
+      return arena::allocate(size);
     }
 
     void free(T* ptr) {
-      // PROFILE_SECTION("ArenaAllocator--Free");
-
       if (ptr != nullptr) {
-        // PROFILE_DEALLOCATION(ptr);
         std::destroy_at(ptr);
       }
       if (override_arena != nullptr) {
         override_arena->free(ptr, type_size);
       } else {
-        subsystem<arena>::get()->free(ptr, type_size);
+        arena::free(ptr, type_size);
       }
     }
 

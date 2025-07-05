@@ -12,6 +12,7 @@
 #include <type_traits>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "core/ref_counted.hpp"
 
 namespace other {
@@ -26,7 +27,11 @@ namespace other {
     static constexpr inline size_t kMaxSize = sizeof(T) * Max;
     using storage_type = std::aligned_storage_t<sizeof(T) * Max, alignof(T)>;
 
-    memory_pool() {}
+    memory_pool(bool allocate_all = false) {
+      if (allocate_all) {
+        allocate_block();
+      }
+    }
     ~memory_pool() {
       free_block();
     }
@@ -72,12 +77,13 @@ namespace other {
     }
 
     void free(size_t idx) {
+      PROFILE_SECTION("memory_pool::free");
       OTHER_ASSERT(idx < max_objects(), "Index out of bounds");
       if (idx >= max_objects() || !object_flags[idx].is_free) {
         return;
       }
 
-      destory_object(idx);
+      destroy_object(idx);
     }
 
     T* at(size_t idx) { return &objects()[idx]; }
@@ -94,6 +100,8 @@ namespace other {
     }
 
     std::pair<T&, size_t> emplace() {
+      PROFILE_SECTION("memory_pool::emplace");
+
       OTHER_ASSERT(!full, "Memory pool is full, cannot allocate more objects.");
       /// save the index before incrementing num_objects
       size_t idx = num_objects++;
@@ -115,13 +123,20 @@ namespace other {
     }
 
     const size_t max_objects() const { return Max; }
+    const size_t object_count() const { return num_objects; }
 
-    std::span<T> objects() { return std::span<T>(get_array(), num_objects); }
-    const std::span<const T> objects() const { return std::span<const T>(get_array(), num_objects); }
+    std::span<T> objects() { return std::span<T>(get_array(), Max); }
+    const std::span<const T> objects() const { return std::span<const T>(get_array(), Max); }
+
+    /// iterators
+    auto begin() { return objects().begin(); }
+    auto end() { return objects().end(); }
+    auto begin() const { return objects().begin(); }
+    auto end() const { return objects().end(); }
 
    private:
     /// consider adding later if scene splits onto it's own simulation thread
-    // std::mutex pool_mutex;
+    std::mutex pool_mutex;
     bool full = false;
 
     storage_type pool;
@@ -134,7 +149,8 @@ namespace other {
     std::array<obj_flags, Max> object_flags;
 
     T& create_object(size_t idx) {
-      // std::lock_guard lock(pool_mutex);
+      PROFILE_SECTION("memory_pool::create_object");
+
       OTHER_ASSERT(idx < max_objects(), "Index out of bounds");
       OTHER_ASSERT(object_flags[idx].is_free, "Object at index {} is already allocated", idx);
 
@@ -145,8 +161,9 @@ namespace other {
       return *obj;
     }
 
-    void destory_object(size_t idx) {
-      // std::lock_guard lock(pool_mutex);
+    void destroy_object(size_t idx) {
+      PROFILE_SECTION("memory_pool::destroy_object");
+
       OTHER_ASSERT(idx < max_objects(), "Index out of bounds");
       OTHER_ASSERT(!object_flags[idx].is_free, "Object at index {} is already free", idx);
 
@@ -192,29 +209,36 @@ namespace other {
     }
 
     void allocate_block() {
-      // std::lock_guard lock(pool_mutex);
+      PROFILE_SECTION("memory_pool::allocate_block");
+      {
+        std::lock_guard lock(pool_mutex);
 
-      std::memset(&pool, 0, sizeof(storage_type));
-      object_flags = std::vector<obj_flags>(max_objects());
-      for (size_t i = 0; i < max_objects(); i++) {
-        object_flags[i].is_free = true;
+        std::memset(&pool, 0, sizeof(storage_type));
+
+        object_flags = {};
+        for (size_t i = 0; i < max_objects(); i++) {
+          object_flags[i].is_free = true;
+        }
+        num_objects = 0;
       }
-      num_objects = 0;
     }
 
     void free_block() {
-      // std::lock_guard lock(pool_mutex);
+      PROFILE_SECTION("memory_pool::free_block");
+      {
+        std::lock_guard lock(pool_mutex);
 
-      for (size_t i = 0; i < num_objects; ++i) {
-        if (!object_flags[i].is_free) {
-          destory_object(i);
+        for (size_t i = 0; i < num_objects; ++i) {
+          if (!object_flags[i].is_free) {
+            destroy_object(i);
+          }
         }
-      }
 
-      std::memset(&pool, 0, sizeof(storage_type));
-      std::ranges::fill(object_flags, obj_flags{ true });
-      num_objects = 0;
-      full = false;
+        std::memset(&pool, 0, sizeof(storage_type));
+        std::ranges::fill(object_flags, obj_flags{ true });
+        num_objects = 0;
+        full = false;
+      }
     }
   };
 

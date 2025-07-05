@@ -12,9 +12,11 @@
 #include "core/defines.hpp"
 #include "core/value.hpp"
 
+#include "other_test.hpp"
+
 namespace other {
 
-  class value_test : public ::testing::Test {
+  class value_test : public other_test {
    protected:
     static constexpr int32_t kTestInt32 = 42;
     static constexpr uint64_t kTestUint64 = 12345ULL;

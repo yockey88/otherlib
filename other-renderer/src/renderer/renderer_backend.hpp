@@ -9,6 +9,7 @@
 #include "core/scope.hpp"
 #include "core/subsystem.hpp"
 
+#include "model/model.hpp"
 #include "renderer/rendering_api.hpp"
 
 struct ImGuiContext;
@@ -30,11 +31,17 @@ namespace other {
 
     void handle_event(SDL_Event* event);
 
+    void add_model_source(natural_t handle, ref<model_source> source);
+    ref<model_source> get_model_source(natural_t handle) const;
+    void remove_model_source(natural_t handle);
+
    protected:
     friend class renderer;
 
     ImGuiContext* ui_context = nullptr;
     scope<rendering_api> rendering_api_instance;
+
+    std::map<natural_t, ref<model_source>> model_sources;
 
     void set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr);
   };

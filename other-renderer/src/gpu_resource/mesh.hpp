@@ -63,6 +63,9 @@ namespace other {
     mesh& add_attribute(const std::string& name, value_type type, size_t size, size_t offset);
     mesh& add_attribute(vertex_attribute attr);
 
+    resource_handle vertex_handle() const { return vertex_buffer_handle; }
+    opt<resource_handle> index_handle() const { return index_buffer_handle; }
+
     void draw();
 
     void unbind();

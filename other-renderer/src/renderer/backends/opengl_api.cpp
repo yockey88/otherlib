@@ -12,6 +12,9 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
+
+#include "renderer/draw_command.hpp"
 
 namespace other {
   namespace {
@@ -26,16 +29,21 @@ namespace other {
 
 }  // namespace other
 
-#define CHECKGL()                                     \
-  do {                                                \
-    check_for_gl_error(__func__, __FILE__, __LINE__); \
-  } while (0)
+#if 0
+  #define CHECKGL()                                     \
+    do {                                                \
+      check_for_gl_error(__func__, __FILE__, __LINE__); \
+    } while (0)
+#else
+  #define CHECKGL() ((void)0)
+#endif
 
 namespace other {
 
   opengl_api::~opengl_api() {}
 
   void opengl_api::on_initialize(scope<window_manager>& window_mgr) {
+    PROFILE_SECTION("opengl_api::on_initialize");
     if (native_window() == nullptr) {
       CORE_LOG_ERROR("Native window handle is null.");
       return;
@@ -52,21 +60,20 @@ namespace other {
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
     SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
-    // SDL_GL_SetSwapInterval(0);
+    SDL_GL_SetSwapInterval(0);
 
     SDL_GLContext gpu_context = SDL_GL_CreateContext(window);
+    if (gpu_context == nullptr) {
+      CORE_LOG_ERROR("Failed to create OpenGL context: {}", SDL_GetError());
+      return;
+    }
+
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
       CORE_LOG_ERROR("Failed to initialize GLAD: {}", SDL_GetError());
       return;
     }
 
-    if (gpu_context == nullptr) {
-      CORE_LOG_ERROR("Failed to create OpenGL context: {}", SDL_GetError());
-      return;
-    }
     CHECKGL();
-
-    // PROFILE_GPU_CONTEXT;
 
     std::string gl_version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     std::string gl_renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
@@ -87,6 +94,7 @@ namespace other {
   }
 
   void opengl_api::on_shutdown(scope<window_manager>& window_mgr) {
+    PROFILE_SECTION("opengl_api::on_shutdown");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot shutdown.");
       return;
@@ -115,6 +123,7 @@ namespace other {
   }
 
   void opengl_api::initialize_ui_context() {
+    PROFILE_SECTION("opengl_api::initialize_ui_context");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot initialize UI context.");
       return;
@@ -125,6 +134,7 @@ namespace other {
   }
 
   void opengl_api::shutdown_ui_context() {
+    PROFILE_SECTION("opengl_api::shutdown_ui_context");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot shutdown UI context.");
       return;
@@ -135,6 +145,7 @@ namespace other {
   }
 
   void opengl_api::handle_event(SDL_Event* event) {
+    PROFILE_SECTION("opengl_api::handle_event");
     if (event->type == SDL_EVENT_WINDOW_RESIZED) {
       SDL_Window* window = native_window();
       int width, height;
@@ -151,47 +162,47 @@ namespace other {
   }
 
   void opengl_api::on_begin_frame(scope<window_manager>& window_mgr) {
-    if (get_gpu_context() == nullptr) {
-      CORE_LOG_ERROR("OpenGL context handle is null, cannot begin frame.");
-      return;
-    }
-
-    SDL_GLContext ctx = gl_ctx(get_gpu_context());
-    if (ctx == nullptr) {
-      CORE_LOG_ERROR("OpenGL context is null, cannot begin frame.");
-      return;
-    }
-
+    PROFILE_SECTION("opengl_api::on_begin_frame");
     glm::vec3 clear_color = get_clear_color();
     glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    CHECKGL();
   }
 
   void opengl_api::on_end_frame(scope<window_manager>& window_mgr) {
-    const auto& windows = window_mgr->get_all_windows();
-    for (const auto& [id, window] : windows) {
-      if (window == nullptr) {
-        CORE_LOG_ERROR("Window handle is null, cannot end frame.");
-        continue;
-      }
+    PROFILE_SECTION("opengl_api::on_end_frame");
+    SDL_GL_MakeCurrent(native_window(), gl_ctx(get_gpu_context()));
+    SDL_GL_SwapWindow(native_window());
+  }
 
-      SDL_GL_MakeCurrent(window, gl_ctx(get_gpu_context()));
-      SDL_GL_SwapWindow(window);
+  void opengl_api::execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) {
+    PROFILE_SECTION("opengl_api::execute_draw_call");
+    if (get_gpu_context() == nullptr) {
+      CORE_LOG_ERROR("OpenGL context handle is null, cannot execute draw call.");
+      return;
     }
 
+    call.mesh->bind();
+    call.shader->bind();
+    glLineWidth(call.line_thickness);
+    glPolygonMode(GL_FRONT_AND_BACK, render_state);
+    glDrawElementsInstancedBaseVertexBaseInstance(draw_mode, call.index_count, GL_UNSIGNED_INT, (void*)0, call.instance_count, call.vertex_offset, 0);
     CHECKGL();
+    call.shader->unbind();
+    call.mesh->unbind();
   }
 
   void opengl_api::begin_ui_frame_backend_newframe() {
+    PROFILE_SECTION("opengl_api::begin_ui_frame_backend_newframe");
     ImGui_ImplOpenGL3_NewFrame();
   }
 
   void opengl_api::end_ui_frame_backend_draw_data() {
+    PROFILE_SECTION("opengl_api::end_ui_frame_backend_draw_data");
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 
   void opengl_api::bind_shader_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::bind_shader_resource");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", handle.id);
@@ -204,12 +215,14 @@ namespace other {
   }
 
   void opengl_api::unbind_shader_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::unbind_shader_resource");
     glUseProgram(0);
 
     CHECKGL();
   }
 
   void opengl_api::compile_and_attach_source(const resource_handle& handle, const std::string& source, shader::source_type type) {
+    PROFILE_SECTION("opengl_api::compile_and_attach_source");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot compile shader.");
       return;
@@ -219,6 +232,10 @@ namespace other {
     switch (type) {
       case shader::source_type::VERTEX_SHADER:
         shader_src_id = glCreateShader(GL_VERTEX_SHADER);
+        break;
+
+      case shader::source_type::GEOMETRY_SHADER:
+        shader_src_id = glCreateShader(GL_GEOMETRY_SHADER);
         break;
 
       case shader::source_type::FRAGMENT_SHADER:
@@ -269,6 +286,7 @@ namespace other {
   }
 
   void opengl_api::finalize_shader(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::finalize_shader");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot finalize shader.");
       return;
@@ -338,6 +356,7 @@ namespace other {
   }
 
   void opengl_api::dispatch_shader(const resource_handle& handle, const glm::ivec3& group_dims, shader::compute_barrier_type barrier_type) {
+    PROFILE_SECTION("opengl_api::dispatch_shader");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot dispatch shader.");
       return;
@@ -362,6 +381,7 @@ namespace other {
   }
 
   void opengl_api::bind_texture_resource(const resource_handle& handle, uint32_t index) {
+    PROFILE_SECTION("opengl_api::bind_texture_resource");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
@@ -380,6 +400,7 @@ namespace other {
   }
 
   void opengl_api::unbind_texture_resource(const resource_handle& handle, uint32_t index) {
+    PROFILE_SECTION("opengl_api::unbind_texture_resource");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
@@ -396,6 +417,7 @@ namespace other {
   }
 
   void opengl_api::set_texture_filter(const resource_handle& handle, texture::filter min_filter, texture::filter mag_filter) {
+    PROFILE_SECTION("opengl_api::set_texture_filter");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
@@ -416,6 +438,7 @@ namespace other {
   }
 
   void opengl_api::set_texture_wrap_mode(const resource_handle& handle, texture::wrap wrap_s, texture::wrap wrap_t, texture::wrap wrap_r) {
+    PROFILE_SECTION("opengl_api::set_texture_wrap_mode");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
@@ -437,6 +460,7 @@ namespace other {
   }
 
   void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) {
+    PROFILE_SECTION("opengl_api::upload_texture");
     auto itr = texture_resources.find(handle.id);
     if (itr == texture_resources.end()) {
       CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
@@ -451,12 +475,42 @@ namespace other {
 
     uint32_t texture_id = gpu_itr->second;
     glBindTexture(get_gl_texture_type(type), texture_id);
-    glTexImage2D(get_gl_texture_type(type), 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+
+    int32_t gl_type = get_gl_texture_type(itr->second.get_type());
+    switch (gl_type) {
+      case GL_TEXTURE_1D:
+        glTexImage1D(gl_type, 0, get_gl_texture_format(format), img_size.x, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+        break;
+
+      case GL_TEXTURE_2D:
+        glTexImage2D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+        break;
+
+      case GL_TEXTURE_3D:
+        glTexImage3D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 1, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+        break;
+
+      case GL_TEXTURE_CUBE_MAP:
+        /// make this seperate resource type
+        break;
+
+      default:
+        CORE_LOG_ERROR("Unsupported texture type for OpenGL: {}", gl_type);
+        return;
+    }
+
+    /**
+      if (generate-mip-maps) {
+        do so
+      }
+    */
+
     glBindTexture(get_gl_texture_type(type), 0);
     CHECKGL();
   }
 
-  void opengl_api::bind_texture_as_image(const resource_handle& handle, uint32_t index, bool writable) {
+  void opengl_api::bind_image(const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer, texture::format frmt, access_flags flags) {
+    PROFILE_SECTION("opengl_api::bind_image");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
@@ -470,11 +524,13 @@ namespace other {
     }
 
     uint32_t texture_id = itr->second;
-    glBindImageTexture(index, texture_id, 0, GL_FALSE, 0, writable ? GL_READ_WRITE : GL_READ_ONLY, get_gl_texture_format(texture_itr->second.get_format()));
+    glBindImageTexture(index, texture_id, level, layered, layer, get_gl_access_flags(flags), get_gl_texture_format(texture_itr->second.get_format()));
     CHECKGL();
   }
 
   void opengl_api::bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) {
+    PROFILE_SECTION("opengl_api::bind_buffer_resource");
+
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
@@ -487,6 +543,8 @@ namespace other {
   }
 
   void opengl_api::unbind_buffer_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::unbind_buffer_resource");
+
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
@@ -503,6 +561,7 @@ namespace other {
   }
 
   void opengl_api::bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string& name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) {
+    PROFILE_SECTION("opengl_api::bind_shader_buffer_resource");
     auto buf_itr = buffer_resources.find(handle.id);
     if (buf_itr == buffer_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found in buffer resources.", handle.id);
@@ -523,21 +582,35 @@ namespace other {
     }
     uint32_t shader_id = gpu_itr->second;
 
+    /// buffer data
     glBindBuffer(get_gl_buffer_type(buffer_type), buffer_id);
     glBufferData(get_gl_buffer_type(buffer_type), size, data, get_gl_buffer_usage(buf_itr->second.get_usage()));
 
-    GLuint blockIndex = glGetUniformBlockIndex(shader_id, name.c_str());
-    if (blockIndex == 0xffffffff) {
-      CORE_LOG_ERROR("Uniform block '{}' not found in shader ID {}.", name, shader_handle.id);
-      return;
+    /// check if shdader binding is hooked up and if not bind it
+    ///     this is expensive so we should cache the binding points
+    shader_binding binding_key = { buffer_id, shader_id };
+    auto binding_itr = shader_block_bindings.find(binding_key);
+    if (binding_itr == shader_block_bindings.end()) {
+      PROFILE_SECTION("opengl_api::bind_shader_buffer_resource--bind-gpu-buffer-to-shader");
+
+      GLuint block_index = glGetUniformBlockIndex(shader_id, name.c_str());
+      if (block_index != 0xffffffff) {
+        glUniformBlockBinding(shader_id, block_index, binding_point);
+        glBindBufferBase(get_gl_buffer_type(buffer_type), binding_point, buffer_id);
+
+        auto [bind_itr, inserted] = shader_block_bindings.emplace(binding_key, handle.id);
+        if (!inserted || bind_itr == shader_block_bindings.end()) {
+          CORE_LOG_ERROR("Failed to create shader block binding for buffer ID {} and shader ID {}.", handle.id, shader_handle.id);
+          return;
+        }
+      }
     }
-    glUniformBlockBinding(shader_id, blockIndex, binding_point);
-    glBindBufferBase(get_gl_buffer_type(buffer_type), binding_point, buffer_id);
 
     glBindBuffer(get_gl_buffer_type(buffer_type), 0);
   }
 
   void opengl_api::buffer_data(const resource_handle& handle, uint32_t binding_point, const void* data, size_t size) {
+    PROFILE_SECTION("opengl_api::buffer_data");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
@@ -561,6 +634,8 @@ namespace other {
   }
 
   void opengl_api::buffer_range(const resource_handle& handle, uint32_t binding_point, size_t start, size_t size, const void* data) {
+    PROFILE_SECTION("opengl_api::buffer_range");
+
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
@@ -594,6 +669,8 @@ namespace other {
   }
 
   void opengl_api::bind_mesh_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::bind_mesh_resource");
+
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
@@ -606,10 +683,12 @@ namespace other {
   }
 
   void opengl_api::unbind_mesh_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::unbind_mesh_resource");
     glBindVertexArray(0);
   }
 
   void opengl_api::set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) {
+    PROFILE_SECTION("opengl_api::set_mesh_vertex_attributes");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
@@ -642,6 +721,7 @@ namespace other {
   }
 
   void opengl_api::draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count, mesh::attribute_type index_type) {
+    PROFILE_SECTION("opengl_api::draw_mesh");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
@@ -662,7 +742,23 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::draw_mesh_instanced(const resource_handle& handle, const draw_call& call) {
+    PROFILE_SECTION("opengl_api::draw_mesh_instanced");
+    auto itr = gpu_resources.find(handle.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
+      return;
+    }
+
+    uint32_t mesh_id = itr->second;
+    glBindVertexArray(mesh_id);
+    // glDrawElementsInstancedBaseVertexBaseInstance(GL_TRIANGLES, command.index_count, GL_UNSIGNED_INT, (void*)0, 1, command.vertex_offset, 0);
+    // glDrawElementsInstancedBaseVertexBaseInstance(get_gl_prim_type(command.draw_mode), command.index_count, GL_UNSIGNED_INT, (void*)0, command.instance_count, command.vertex_offset, 0);
+    glBindVertexArray(0);
+  }
+
   void opengl_api::bind_framebuffer_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::bind_framebuffer_resource");
     auto itr = framebuffer_resources.find(handle.id);
     if (itr == framebuffer_resources.end()) {
       CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
@@ -688,6 +784,8 @@ namespace other {
   }
 
   void opengl_api::unbind_framebuffer_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::unbind_framebuffer_resource");
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -696,6 +794,8 @@ namespace other {
   }
 
   void opengl_api::framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level) {
+    PROFILE_SECTION("opengl_api::framebuffer_texture_2d");
+
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot bind framebuffer texture.");
       return;
@@ -721,6 +821,8 @@ namespace other {
   }
 
   void opengl_api::finalize_framebuffer(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::finalize_framebuffer");
+
     auto itr = framebuffer_resources.find(handle.id);
     if (itr == framebuffer_resources.end()) {
       CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
@@ -775,6 +877,8 @@ namespace other {
   }
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
     auto itr = gpu_resources.find(shader.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
@@ -783,7 +887,6 @@ namespace other {
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
-      CORE_LOG_ERROR("Failed to get uniform location for '{}' in shader with ID {}.", name, shader.id);
       return;
     }
 
@@ -792,6 +895,8 @@ namespace other {
   }
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
     auto itr = gpu_resources.find(shader.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
@@ -800,7 +905,6 @@ namespace other {
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
-      CORE_LOG_ERROR("Failed to get uniform location for '{}' in shader with ID {}.", name, shader.id);
       return;
     }
 
@@ -809,6 +913,8 @@ namespace other {
   }
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
     auto itr = gpu_resources.find(shader.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
@@ -817,7 +923,6 @@ namespace other {
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
-      CORE_LOG_ERROR("Failed to get uniform location for '{}' in shader with ID {}.", name, shader.id);
       return;
     }
 
@@ -826,6 +931,8 @@ namespace other {
   }
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
     auto itr = gpu_resources.find(shader.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
@@ -834,7 +941,6 @@ namespace other {
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
-      CORE_LOG_ERROR("Failed to get uniform location for '{}' in shader with ID {}.", name, shader.id);
       return;
     }
 
@@ -843,6 +949,8 @@ namespace other {
   }
 
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value, bool transpose) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
     auto itr = gpu_resources.find(shader.id);
     if (itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
@@ -851,7 +959,6 @@ namespace other {
 
     uint32_t shader_id = get_shader_uniform_location(shader, name);
     if (shader_id == -1) {
-      CORE_LOG_ERROR("Failed to get uniform location for '{}' in shader with ID {}.", name, shader.id);
       return;
     }
 
@@ -864,6 +971,8 @@ namespace other {
   }
 
   framebuffer* opengl_api::create_framebuffer_resource(const resource_handle& handle, resource_type type) {
+    PROFILE_SECTION("opengl_api::create_framebuffer_resource");
+
     auto itr = framebuffer_resources.find(handle.id);
     if (itr != framebuffer_resources.end()) {
       return &itr->second;
@@ -897,6 +1006,8 @@ namespace other {
   }
 
   void opengl_api::destroy_framebuffer_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::destroy_framebuffer_resource");
+
     auto itr = framebuffer_resources.find(handle.id);
     if (itr == framebuffer_resources.end()) {
       CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
@@ -929,6 +1040,8 @@ namespace other {
   }
 
   mesh* opengl_api::create_mesh_resource(const resource_handle& handle, resource_type type) {
+    PROFILE_SECTION("opengl_api::create_mesh_resource");
+
     auto itr = mesh_resources.find(handle.id);
     if (itr != mesh_resources.end()) {
       return &itr->second;
@@ -964,6 +1077,8 @@ namespace other {
   }
 
   void opengl_api::destroy_mesh_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::destroy_mesh_resource");
+
     auto itr = mesh_resources.find(handle.id);
     if (itr == mesh_resources.end()) {
       CORE_LOG_ERROR("Mesh resource with ID {} not found.", handle.id);
@@ -986,6 +1101,8 @@ namespace other {
   }
 
   gpu_buffer* opengl_api::create_buffer_resource(const resource_handle& handle, resource_type type) {
+    PROFILE_SECTION("opengl_api::create_buffer_resource");
+
     auto itr = buffer_resources.find(handle.id);
     if (itr != buffer_resources.end()) {
       return &itr->second;
@@ -1020,6 +1137,8 @@ namespace other {
   }
 
   void opengl_api::destroy_buffer_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::destroy_buffer_resource");
+
     auto itr = buffer_resources.find(handle.id);
     if (itr == buffer_resources.end()) {
       CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
@@ -1042,6 +1161,8 @@ namespace other {
   }
 
   texture* opengl_api::create_texture_resource(const resource_handle& handle, resource_type type) {
+    PROFILE_SECTION("opengl_api::create_texture_resource");
+
     auto itr = texture_resources.find(handle.id);
     if (itr != texture_resources.end()) {
       return &itr->second;
@@ -1076,6 +1197,8 @@ namespace other {
   }
 
   void opengl_api::destroy_texture_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::destroy_texture_resource");
+
     auto itr = texture_resources.find(handle.id);
     if (itr == texture_resources.end()) {
       CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
@@ -1098,6 +1221,8 @@ namespace other {
   }
 
   shader* opengl_api::create_shader_resource(const resource_handle& handle, resource_type type) {
+    PROFILE_SECTION("opengl_api::create_shader_resource");
+
     auto itr = shader_resources.find(handle.id);
     if (itr != shader_resources.end()) {
       return &itr->second;
@@ -1116,6 +1241,8 @@ namespace other {
   }
 
   void opengl_api::destroy_shader_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::destroy_shader_resource");
+
     auto itr = shader_resources.find(handle.id);
     if (itr == shader_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", handle.id);
@@ -1135,6 +1262,22 @@ namespace other {
 
     resource_types.erase(handle.id);
     CHECKGL();
+  }
+
+  int32_t opengl_api::get_gl_access_flags(access_flags flags) const {
+    int32_t gl_flags = 0;
+
+    if (flags & access_flags::READ) {
+      gl_flags |= GL_READ_ONLY;
+    }
+    if (flags & access_flags::WRITE) {
+      gl_flags |= GL_WRITE_ONLY;
+    }
+    if (flags & access_flags::READ_WRITE) {
+      gl_flags |= GL_READ_WRITE;
+    }
+
+    return gl_flags;
   }
 
   int32_t opengl_api::get_gl_texture_type(texture::tex_type type) const {
@@ -1409,7 +1552,6 @@ namespace other {
     GLint location = glGetUniformLocation(shader_id, name.c_str());
     CHECKGL();
     if (location == -1) {
-      CORE_LOG_ERROR("Uniform '{}' not found in shader with ID {}.", name, shader.id);
       return -1;
     }
 

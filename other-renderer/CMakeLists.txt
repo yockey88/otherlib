@@ -10,6 +10,7 @@ target_sources(other_renderer
       
       src/model/vertex.cpp
       src/model/vertex_buffer.cpp
+      src/model/model_importer.cpp
       src/model/model.cpp
       
       src/renderer/window_manager.cpp
@@ -21,6 +22,8 @@ target_sources(other_renderer
       src/renderer/camera.cpp
       src/renderer/render_graph.cpp
       src/renderer/renderer.cpp
+
+      src/renderer/draw_command.cpp
       
       src/renderer/ui/ui_helpers.cpp
 )
@@ -28,10 +31,12 @@ target_sources(other_renderer
 target_include_directories(other_renderer 
   PUBLIC 
       "${CMAKE_CURRENT_SOURCE_DIR}/src"
+      ${OTHER_EXTERN_DIR}/glad/include
       ${OTHER_EXTERN_DIR}/stb
       ${OTHER_EXTERN_DIR}/imgui
       ${OTHER_EXTERN_DIR}/sdl
-      ${OTHER_EXTERN_DIR}/glad/include
+      ${OTHER_EXTERN_DIR}/assimp
 )
 target_link_directories(other_renderer PUBLIC ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_renderer PUBLIC imgui SDL3 glad other_core)
+
+target_link_libraries(other_renderer PUBLIC imgui SDL3 glad other_core ${ASSIMP_NAME})

@@ -10,6 +10,7 @@
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "core/version.hpp"
 #include "serialization/reflection.hpp"
 
@@ -38,6 +39,7 @@ extern exit_code other_main(const command_line& cmd, const config_table& config)
 namespace other {
 
   int entry(int argc, char* argv[]) {
+    PROFILE_SECTION("other::entry");
     initialize_primary_arena();
 
     command_line cmd = command_line::parse(&argc, argv);
@@ -65,20 +67,23 @@ namespace other {
     }
 
     exit_code res = SUCCESS;
-    try {
-      res = other_main(cmd, config);
-    } catch (const std::runtime_error& e) {
-      CATCH_RUNTIME_ERROR(e);
-      res = FAILURE;
-    } catch (const std::exception& e) {
-      CATCH_EXCEPTION(e);
-      res = FAILURE;
-    } catch (...) {
-      CATCH_UNKNOWN_EXCEPTION();
-      res = FAILURE;
-    }
-    if (rendering_enabled) {
-      subsystem<renderer_backend>::get()->unload_backend();
+    {
+      PROFILE_SECTION("other::main");
+      try {
+        res = other_main(cmd, config);
+      } catch (const std::runtime_error& e) {
+        CATCH_RUNTIME_ERROR(e);
+        res = FAILURE;
+      } catch (const std::exception& e) {
+        CATCH_EXCEPTION(e);
+        res = FAILURE;
+      } catch (...) {
+        CATCH_UNKNOWN_EXCEPTION();
+        res = FAILURE;
+      }
+      if (rendering_enabled) {
+        subsystem<renderer_backend>::get()->unload_backend();
+      }
     }
 
     /// handle exit code

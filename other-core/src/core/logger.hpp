@@ -72,11 +72,7 @@ namespace other {
   /// \todo add automatic enter/exit function logger structs (raii tracing)
 
 #define GET_STACKTRACE (std::stringstream{} << std::stacktrace::current() << "\n").str()
-#ifndef OTHER_TEST_ENVIRONMENT
-  #define OTHER_ABORT std::terminate()
-#else
-  #define OTHER_ABORT throw std::runtime_error("Critical failure in test environment, aborting.");
-#endif
+#define OTHER_ABORT std::terminate()
 
 #define OTHER_CRITICAL_FAILURE(format, ...)                                                           \
   do {                                                                                                \

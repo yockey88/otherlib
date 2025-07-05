@@ -5,6 +5,8 @@
 
 #include <fstream>
 
+#include "renderer/gpu_structs.hpp"
+
 #define STB_INCLUDE_LINE_GLSL
 #define STB_INCLUDE_IMPLEMENTATION
 #include <stb/stb_include.h>
@@ -71,6 +73,39 @@ namespace other {
     return handle;
   }
 
+  resource_handle shader::create(const std::string_view name, const filepath& vertpath, const filepath& geompath, const filepath& fragpath, const std::vector<setting>& settings) {
+    resource_handle handle = create_handle(name);
+    if (handle.id == 0) {
+      return { 0, resource_type::EMPTY };
+    }
+
+    std::string vert_source = preprocess_file(vertpath, settings);
+    if (vert_source.empty()) {
+      CORE_LOG_ERROR("Failed to preprocess vertex shader source from file: {}", vertpath.string());
+      return { 0, resource_type::EMPTY };
+    }
+
+    std::string geom_source = preprocess_file(geompath, settings);
+    if (geom_source.empty()) {
+      CORE_LOG_ERROR("Failed to preprocess geometry shader source from file: {}", geompath.string());
+      return { 0, resource_type::EMPTY };
+    }
+
+    std::string frag_source = preprocess_file(fragpath, settings);
+    if (frag_source.empty()) {
+      CORE_LOG_ERROR("Failed to preprocess fragment shader source from file: {}", fragpath.string());
+      return { 0, resource_type::EMPTY };
+    }
+
+    (*subsystem<renderer_backend>::get()->api()->get_resource_as<shader>(handle))
+      .add_source(vert_source, source_type::VERTEX_SHADER)
+      .add_source(geom_source, source_type::GEOMETRY_SHADER)
+      .add_source(frag_source, source_type::FRAGMENT_SHADER)
+      .finalize_shader();
+
+    return handle;
+  }
+
   resource_handle shader::create(const std::string_view name, const std::string_view source, source_type type) {
     resource_handle handle = create_handle(name);
     if (handle.id == 0) {
@@ -127,10 +162,31 @@ namespace other {
 
     std::string src;
     src.append("#version 460 core\n");
+
+    const auto builtin_settings = std::array{
+      shader::setting{ "MAX_MATERIALS", std::to_string(gpu::kMaxMaterials) },
+      shader::setting{ "MAX_POINT_LIGHTS", std::to_string(gpu::kMaxPointLights) },
+      shader::setting{ "MAX_DIRECTION_LIGHTS", std::to_string(gpu::kMaxDirectionalLights) },
+      shader::setting{ "POINT_LIGHT_INTENSITY", "1" },
+      shader::setting{ "DIST_FACTOR", "1.1f" },
+      shader::setting{ "CONSTANT", "1" },
+      shader::setting{ "LINEAR", "0" },
+      shader::setting{ "QUADRATIC", "1" },
+    };
+
     for (const auto& setting : setting_definitions) {
       setting.define(src);
     }
+    for (const auto& setting : builtin_settings) {
+      setting.define(src);
+    }
     src.append(raw_source);
+
+    src.append(R"(
+      layout (std430) readonly buffer model_matrix_buffer {
+        mat4 model_matrices[];
+      };  
+    )");
 
     std::string dir_path = file.parent_path().string();
     std::string name = file.filename().string();
@@ -280,6 +336,7 @@ namespace other {
     }
 
     bool has_vertex = false;
+    bool has_geometry = false;
     bool has_fragment = false;
     for (const auto& source : sources_attached) {
       if (source == source_type::COMPUTE_SHADER) {
@@ -293,14 +350,19 @@ namespace other {
         }
       } else if (source == source_type::VERTEX_SHADER) {
         has_vertex = true;
+      } else if (source == source_type::GEOMETRY_SHADER) {
+        has_geometry = true;
       } else if (source == source_type::FRAGMENT_SHADER) {
         has_fragment = true;
+      } else {
+        CORE_LOG_ERROR("Unsupported shader type: {}", source);
+        return;
       }
     }
 
     if (has_vertex && has_fragment) {
       complete = true;
-      final_type = source_type::RENDER_SHADER;
+      final_type = has_geometry ? source_type::RENDER_GEOM_SHADER : source_type::RENDER_SHADER;
     }
   }
 

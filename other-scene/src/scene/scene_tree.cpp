@@ -3,6 +3,8 @@
  **/
 #include "scene/scene_tree.hpp"
 
+#include "model/vertex.hpp"
+
 #include "scene/scene.hpp"
 
 #include "object/scene_object.hpp"
@@ -37,7 +39,15 @@ namespace other {
     root = nullptr;  // Clear root pointer
   }
 
+  scene_object& scene_tree::root_object() {
+    OTHER_ASSERT(root != nullptr, "Root node is null, cannot access root object.");
+    OTHER_ASSERT(root->object != nullptr, "Root node object is null, cannot access root object.");
+    return *root->object;
+  }
+
   scene_object& scene_tree::create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object) {
+    PROFILE_SECTION("scene_tree::create_object");
+
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null, cannot create object.");
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
@@ -52,10 +62,14 @@ namespace other {
     OTHER_ASSERT(new_node != nullptr, "Failed to create new node in scene tree.");
 
     scene_ptr->register_object(new_node->object, name, world_position);
+
+    CORE_LOG_DEBUG("Created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
     return *new_node->object;
   }
 
   void scene_tree::destroy_object(natural_t id) {
+    PROFILE_SECTION("scene_tree::destroy_object");
+
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
     OTHER_ASSERT(id < kMaxNodes, "ID out of bounds for scene tree nodes.");
@@ -63,20 +77,31 @@ namespace other {
     node* target_node = node_at(id);
     OTHER_ASSERT(target_node != nullptr, "Node with ID {} not found in scene tree.", id);
 
-    scene_ptr->unregister_object(target_node->object);
     destroy_object(target_node);
-    OTHER_ASSERT(target_node->object == nullptr, "Node object was not cleared after destruction.");
-    OTHER_ASSERT(target_node->id == 0, "Node ID was not reset after destruction.");
-    OTHER_ASSERT(target_node->parent == nullptr, "Node parent was not cleared after destruction.");
-    OTHER_ASSERT(target_node->children.empty(), "Node children were not cleared after destruction.");
+  }
+
+  size_t scene_tree::get_object_count() const {
+    PROFILE_SECTION("scene_tree::get_object_count");
+
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+    return objects->object_count();
   }
 
   scene_tree::node* scene_tree::node_at(size_t idx) {
+    PROFILE_SECTION("scene_tree::node_at");
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+
     OTHER_ASSERT(idx < kMaxNodes, "Index out of bounds for scene tree nodes.");
     return &nodes->at(idx);
   }
 
+  const scene_tree::node* scene_tree::node_at(size_t idx) const {
+    return const_cast<scene_tree*>(this)->node_at(idx);
+  }
+
   scene_tree::node* scene_tree::node_from_scene_object(const scene_object* object) {
+    PROFILE_SECTION("scene_tree::node_from_scene_object");
+
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null, cannot find node.");
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
@@ -89,7 +114,13 @@ namespace other {
     return nullptr;
   }
 
+  const scene_tree::node* scene_tree::node_from_scene_object(const scene_object* object) const {
+    return const_cast<scene_tree*>(this)->node_from_scene_object(object);
+  }
+
   scene_tree::node* scene_tree::create_object(node* parent_node) {
+    PROFILE_SECTION("scene_tree::create_object");
+
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
 
@@ -112,13 +143,15 @@ namespace other {
   }
 
   void scene_tree::destroy_object(node* n) {
+    PROFILE_SECTION("scene_tree::destroy_object");
+
     OTHER_ASSERT(n != nullptr, "Node pointer is null, cannot destroy object.");
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
 
     if (n->parent != nullptr) {
       auto& siblings = n->parent->children;
-      std::ranges::remove_if(siblings, [n](node* child) { return child == n; });
+      std::erase_if(siblings, [n](node* child) { return child == n; });
     }
 
     if (n->object != nullptr) {

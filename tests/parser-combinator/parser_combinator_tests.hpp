@@ -4,11 +4,11 @@
 #ifndef OTHER_CORE_TESTS_PARSER_COMBINATOR_PARSER_COMBINATOR_TESTS_HPP
 #define OTHER_CORE_TESTS_PARSER_COMBINATOR_PARSER_COMBINATOR_TESTS_HPP
 
-#include <gtest/gtest.h>
+#include "other_test.hpp"
 
 namespace other {
 
-  class parser_combinator_tests : public ::testing::Test {
+  class parser_combinator_tests : public other_test {
    protected:
   };
 

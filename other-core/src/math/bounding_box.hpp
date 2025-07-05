@@ -6,6 +6,9 @@
 
 #include <glm/glm.hpp>
 
+#include "math/ray.hpp"
+#include "serialization/reflection.hpp"
+
 namespace other {
 
   struct bounding_box {
@@ -20,8 +23,17 @@ namespace other {
     static bounding_box infinite;
 
     bool contains(const glm::vec3& point) const;
+
+    bool intersects(const bounding_box& other) const;
+    bool intersects(const ray& r) const;
   };
 
 }  // namespace other
+
+OTHER_REFLECT(
+  other::bounding_box,
+  field(min, other::attr::serializable()),
+  field(max, other::attr::serializable())
+)
 
 #endif  // OTHER_CORE_MATH_BOUNDING_BOX_HPP

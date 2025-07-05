@@ -130,9 +130,12 @@ namespace other {
 
     resource_type type() const override { return resource_type::TEXTURE; }
 
-    static resource_handle create(const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8, uint32_t width = 0, uint32_t height = 0, bool as_image = false, bool writable = false);
+    static resource_handle create(const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8, uint32_t width = 0, uint32_t height = 0, bool writable = false);
+    static resource_handle create3d(const std::string& name, format frmt = format::RGBA8, const glm::vec3& dimensions = glm::vec3(0), bool writable = false);
 
     texture& bind(uint32_t slot = 0);
+    texture& bind_image(uint32_t index, uint32_t level, bool layered, int32_t layer = 0, format frmt = format::RGBA32F, access_flags flags = access_flags::READ_WRITE);
+
     texture& set_type(tex_type type);
     texture& set_size(uint32_t width, uint32_t height);
     texture& set_format(format frmt);
@@ -143,7 +146,6 @@ namespace other {
 
     void unbind(uint32_t slot = 0);
     void finalize_texture();
-    void finalize_image(uint32_t idx, bool writable = false);
 
     const uint8_t* get_data() const {
       return data.empty() ? nullptr : data.data();

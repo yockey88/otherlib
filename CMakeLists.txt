@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.27.0..4.0.2)
 project(other VERSION 0.1.0 LANGUAGES CXX)
 
-set(CMAKE_CONFIGURATION_TYPES "Debug;Releas" CACHE STRING "Build types" FORCE)
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
+option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
+option(BUILD_OTHER_TESTS "Build the other tests" OFF)
 option(DISALLOW_OTHER_PLUGINS "Build the library statically and without the framework for loading plugins" OFF)
 if (DISALLOW_OTHER_PLUGINS)
   message(STATUS "Disallowing other plugins")
@@ -14,17 +16,19 @@ endif()
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(BUILD_CONFIG_MACRO "")
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   set(BUILD_CONFIG_MACRO "OTHER_DEBUG_BUILD")
+elseif (CMAKE_BUILD_TYPE MATCHES Profile)
+  set(BUILD_CONFIG_MACRO "OTHER_PROFILE_BUILD")
 else()
   set(BUILD_CONFIG_MACRO "OTHER_RELEASE_BUILD")
 endif()
 
 if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release")
-  message(STATUS "No build type specified, defaulting to Release")
+  message(FATAL_ERROR "CMAKE_BUILD_TYPE is not set. Please specify a build type (Debug, Release).")
 endif()
 
 if(MSVC)
@@ -43,15 +47,16 @@ if(MSVC)
   endif()
 
 
-  if(CMAKE_BUILD_TYPE MATCHES Debug)
+  if(CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
     message(STATUS "Debug build enabled")
-    message(STATUS "ASAN enabled")
-
-    add_compile_options("/Zi" "/Od" "/D_DEBUG" "/EHsc" "/fsanitize=address")
-    add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
-  elseif(CMAKE_BUILD_TYPE MATCHES Release)
-    message(STATUS "Release build enabled")
+    if (CMAKE_BUILD_TYPE STREQUAL Debug-AS)
+      message(STATUS "Address Sanitizer enabled")
+      add_compile_options("/fsanitize=address")
+    endif()
     
+    add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
+  elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
+    message(STATUS "Release build enabled")
     add_compile_options("/DNDEBUG")
   endif()
 
@@ -68,23 +73,34 @@ elseif(UNIX)
     
   #   add_compile_options("-Ox")
   # endif()
-  message(FATAL_ERROR "Unix builds are not supported yet. Please use Windows or MacOS for development.")
+  message(FATAL_ERROR "Unix builds are not supported yet. Please use Windows development.")
 endif()
 
 add_subdirectory(extern)
 
-if (CMAKE_BUILD_TYPE MATCHES Debug-AS OR CMAKE_BUILD_TYPE MATCHES Debug)
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
   set(OTHER_LIBRARIES_PATH 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug"
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib/debug"
   )
-else()
+  set(ASSIMP_NAME "assimp-vc143-mtd")
+elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
   set(OTHER_LIBRARIES_PATH 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib/release"
   )
+  set(ASSIMP_NAME "assimp-vc143-mt")
+endif()
+
+if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+  add_compile_definitions("TRACY_ENABLE" "TRACY_CALLSTACK=10")
 endif()
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib")
+
+message(STATUS "Other libraries path: ${OTHER_LIBRARIES_PATH}")
 
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
 
@@ -104,6 +120,14 @@ macro(add_driver_target type driver_name)
     target_compile_definitions(${driver_name} PRIVATE "OTHER_CLIENT")
   else()
     message(FATAL_ERROR "Unknown driver type: ${type}. Use 'static' or 'dynamic'.")
+  endif()
+  
+  if (MSVC)
+    if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+      target_compile_definitions(${driver_name} PRIVATE "/MDd")
+    else()
+      target_compile_definitions(${driver_name} PRIVATE "/MD")
+    endif()
   endif()
 
   set(driver_src_list "")
@@ -132,10 +156,22 @@ if(EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
   add_subdirectory(development-drivers)
 endif()
 
-add_subdirectory(other-terminal)
+if (BUILD_OTHER_TERMINAL)
+  message(STATUS "Building other terminal application")
+  add_subdirectory(other-terminal)
+else()
+  message(STATUS "Skipping other terminal application build")
+endif()
+
 add_subdirectory(driver)
 
-add_subdirectory(tests)
+if (BUILD_OTHER_TESTS)
+  message(STATUS "Building other tests")
+  enable_testing()
+  add_subdirectory(tests)
+else()
+  message(STATUS "Skipping other tests build")
+endif()
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
   add_subdirectory(scratch)
