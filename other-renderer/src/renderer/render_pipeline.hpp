@@ -7,37 +7,46 @@
 #include <algorithm>
 #include <string_view>
 
+#include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/render_graph.hpp"
 #include "renderer/renderer.hpp"
 
 namespace other {
 
+  struct render_data;
   class renderer;
-  class render_graph;
 
   class render_pipeline {
    public:
     render_pipeline() = default;
-    ~render_pipeline() = default;
+    virtual ~render_pipeline() = default;
 
     void initialize_pipeline(renderer* renderer);
     void shutdown_pipeline();
 
-    void begin_frame(render_data* data);
-    void execute_frame();
-    void end_frame();
+    void upload_buffer(const std::string_view name, const void* data, size_t size);
+
+    virtual void prepare_frame(renderer::frame_resources* resources, render_data* data) {}
+    virtual void render_frame(renderer* renderer_ptr);
+
+    renderer::frame_resources get_frame_resources() const;
+
+    inline const bool is_valid() const { return valid; }
 
    protected:
     virtual void create_resources() = 0;
     virtual void build_render_passes() = 0;
-    virtual void prepare_frame(render_data* data) {}
     virtual void destroy_resources() {}
 
     renderer* get_renderer() { return graph->get_renderer(); }
 
     void set_material_buffer(const std::string_view);
     void set_model_buffer(const std::string_view);
+    void set_point_light_buffer(const std::string_view name);
+    void set_direction_light_buffer(const std::string_view name);
+    void set_camera_buffer(const std::string_view name);
 
     void add_buffer_resource(const std::string_view name, gpu_buffer::buf_type type, gpu_buffer::usage usage);
     void add_texture_resource(const std::string_view name, const glm::vec2& size, framebuffer::attachment_type type);
@@ -53,6 +62,8 @@ namespace other {
       }
       return &get_renderer()->get_resource<T>(itr->second.handle);
     }
+
+    shader* get_pass_shader(const std::string_view name);
 
     struct pass_builder {
       pass_builder(render_pipeline* pipeline, render_graph::pass_builder&& builder)
@@ -83,6 +94,9 @@ namespace other {
 
     opt<resource_handle> material_buffer_handle;
     opt<resource_handle> model_buffer_handle;
+    opt<resource_handle> point_light_buffer_handle;
+    opt<resource_handle> direction_light_buffer_handle;
+    opt<resource_handle> camera_buffer_handle;
 
     struct resource {
       std::string name;
@@ -90,6 +104,9 @@ namespace other {
     };
     std::map<natural_t, resource> buffer_resources;
     std::map<natural_t, resource> texture_resources;
+
+    void set_core_buffer(opt<resource_handle>& handle, const std::string_view name);
+    void validate_pipeline();
   };
 
 }  // namespace other

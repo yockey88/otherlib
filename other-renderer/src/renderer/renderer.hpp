@@ -10,13 +10,13 @@
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/gpu_structs.hpp"
-#include "renderer/render_graph.hpp"
 #include "renderer/renderer_backend.hpp"
 
 namespace other {
 
   class renderer_backend;
 
+  class render_pipeline;
   class camera;
 
   struct render_data {
@@ -37,15 +37,18 @@ namespace other {
     struct frame_resources {
       resource_handle model_buffer;
       resource_handle material_buffer;
+
+      resource_handle point_light_buffer;
+      resource_handle direction_light_buffer;
+      resource_handle camera_buffer;
     };
 
-    renderer();
+    renderer() = default;
+    virtual ~renderer() = default;
 
-    void submit_render_data(render_data* data);
-    void begin_frame(frame_resources* resources);
+    void begin_frame(render_data* data);
+    void render();
     void end_frame();
-
-    void execute_frame(const render_graph& graph, frame_resources* resources);
 
     void begin_ui_frame();
     void end_ui_frame();
@@ -63,18 +66,35 @@ namespace other {
       return *rendering()->api()->get_resource_as<T>(handle);
     }
 
-    void execute_draw_calls();
+    template <typename T>
+    void add_pipeline(const std::string_view name) {
+      uint64_t hash = FNV(name);
+      auto itr = pipelines.find(hash);
+      if (itr != pipelines.end()) {
+        CORE_LOG_ERROR("Pipeline with name [{}] already exists.", name);
+        return;
+      }
+      auto* pipeline = new T();
+      pipeline->initialize_pipeline(this);
+      pipelines.insert({ hash, pipeline });
+    }
 
-    void render(const render_graph& graph);
+    void remove_pipeline(const std::string_view name);
+
+    virtual void execute_draw_calls();
 
     constexpr static inline size_t kMaxDrawCalls = 1024;
 
+   protected:
+    renderer_backend* rendering();
+
    private:
     friend class render_graph;
+
     frame_resources current_frame_resources;
     render_data* scene_data = nullptr;
 
-    renderer_backend* rendering();
+    std::map<natural_t, render_pipeline*> pipelines;
   };
 
 }  // namespace other

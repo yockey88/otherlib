@@ -100,6 +100,15 @@ namespace other {
     return const_cast<scene_tree*>(this)->node_at(idx);
   }
 
+  bool scene_tree::node_has_tag(size_t idx, const std::string_view tag) const {
+    PROFILE_SECTION("scene_tree::node_has_tag");
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+
+    const node* n = node_at(idx);
+    OTHER_ASSERT(n != nullptr, "Node with ID {} not found in scene tree.", idx);
+    return std::any_of(n->tags.begin(), n->tags.end(), [&](const object_tag& t) { return t.name == tag; });
+  }
+
   scene_tree::node* scene_tree::node_from_scene_object(const scene_object* object) {
     PROFILE_SECTION("scene_tree::node_from_scene_object");
 

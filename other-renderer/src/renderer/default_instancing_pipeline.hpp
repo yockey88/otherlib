@@ -13,6 +13,8 @@ namespace other {
     default_instancing_pipeline() = default;
     ~default_instancing_pipeline() = default;
 
+    void prepare_frame(renderer::frame_resources* resources, render_data* data) override;
+
    private:
     resource_handle quad_mesh_handle;
 
@@ -21,8 +23,6 @@ namespace other {
 
     void create_resources() override;
     void build_render_passes() override;
-
-    void prepare_frame(render_data* data) override;
   };
 
 }  // namespace other

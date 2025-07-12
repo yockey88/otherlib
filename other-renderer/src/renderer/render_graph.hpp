@@ -16,14 +16,8 @@
 
 namespace other {
 
-#if 1
-  #define RG_TESTING
-#endif
-
   class renderer;
   class render_graph;
-
-#ifdef RG_TESTING
   struct render_pass {
     enum type {
       RENDER_PASS = 0,
@@ -50,6 +44,9 @@ namespace other {
 
     std::map<natural_t, texture_resource> texture_resources;
     std::map<natural_t, buffer_resource> buffer_resources;
+
+    void bind_pass(renderer* renderer_ptr);
+    void unbind_pass(renderer* renderer_ptr);
   };
 
   class render_graph {
@@ -62,6 +59,9 @@ namespace other {
       std::map<natural_t, render_pass::buffer_resource> output_buffers;
       std::map<natural_t, render_pass::texture_resource> input_textures;
       std::map<natural_t, render_pass::texture_resource> output_textures;
+
+      void start_pass(renderer* renderer_ptr) const;
+      void end_pass(renderer* renderer_ptr) const;
 
       bool operator==(const node& other) const { return id == other.id && pass == other.pass; }
     };
@@ -136,126 +136,12 @@ namespace other {
     inline natural_t get_next_node_id() { return next_node_id++; }
   };
 
-#else
-  struct render_pass {
-    struct key {
-      /// nullopt implies swapchain resource
-      std::optional<resource_handle> framebuffer_handle;
-      resource_handle shader_handle;
-      constexpr auto operator<=>(const key&) const = default;
-    };
-
-    natural_t id = 0;
-    render_graph* graph = nullptr;
-
-    glm::ivec2 size = { 0, 0 };
-
-    std::optional<resource_handle> framebuffer_handle;
-    resource_handle shader_handle;
-
-    std::function<void(renderer&, void*)> execute_callback = nullptr;
-    void* user_data = nullptr;
-
-    render_pass() = default;
-    render_pass(render_graph* graph, natural_t id)
-        : id(id), graph(graph) {}
-
-    key get_key() const { return { framebuffer_handle, shader_handle }; }
-  };
-
-  class render_graph {
-    OTHER_REFLECTABLE(render_graph);
-
-   public:
-    struct resource_binding {
-      access_flags flags = READ_WRITE;
-      natural_t binding_point = 0;
-      resource_handle buffer_id;
-    };
-
-    struct node {
-      natural_t pass_id = 0;
-      std::vector<render_pass::key> input_buffers;
-      std::vector<render_pass::key> input_textures;
-
-      std::vector<render_pass::key> output_buffers;
-      std::vector<render_pass::key> output_textures;
-    };
-
-    std::map<natural_t, std::vector<natural_t>> pass_dependencies;
-
-    struct pass_builder {
-      natural_t id = 0;
-
-      pass_builder(render_pass& pass)
-          : pass(pass) {}
-
-      pass_builder& use_texture_resource(resource_handle texture_id, uint32_t binding, access_flags flags = READ_WRITE);
-      pass_builder& use_buffer_resource(resource_handle buffer_id, uint32_t binding, access_flags flags = READ_WRITE);
-
-      template <typename Fn>
-        requires std::invocable<Fn, renderer&, void*>
-      pass_builder& bind_execute_callback(Fn&& callback, void* user_data = nullptr) {
-        pass.execute_callback = std::forward<Fn>(callback);
-        pass.user_data = user_data;
-        return *this;
-      }
-
-      render_graph& end_pass();
-
-     private:
-      friend struct render_pass;
-      render_pass& pass;
-    };
-
-    render_graph& begin_frame();
-    void end_frame();
-
-    pass_builder start_pass(resource_handle framebuffer, resource_handle shader, const glm::ivec2& size);
-    pass_builder start_pass(resource_handle shader, const glm::ivec2& size);
-
-   private:
-    friend class renderer;
-    friend struct render_pass;
-
-    render_pass* current_pass = nullptr;
-    std::map<render_pass::key, render_pass> passes;
-
-    std::map<render_pass::key, std::vector<resource_binding>> buffer_bindings;
-    std::map<render_pass::key, std::vector<resource_binding>> texture_bindings;
-
-    void build_graph();
-    void validate_graph();
-
-    natural_t next_pass_id = 0;
-    inline natural_t get_next_pass_id() {
-      return next_pass_id++;
-    }
-  };
-#endif
-
 }  // namespace other
 
-namespace std {
-#ifdef RG_TESTING
-#else
-  template <>
-  struct formatter<other::render_pass::key> : formatter<string_view> {
-    template <typename FormatContext>
-    auto format(const other::render_pass::key& key, FormatContext& ctx) const {
-      return formatter<string_view>::format(std::format("[{}:{}]", key.framebuffer_handle.value_or(other::resource_handle{}), key.shader_handle), ctx);
-    }
-  };
-#endif
-}  // namespace std
-
-#ifdef RG_TESTING
-#else
 OTHER_REFLECT(
   other::render_pass,
   field(id, other::attr::serializable())
 )
-#endif
 
 // OTHER_REFLECT(
 //   other::render_graph

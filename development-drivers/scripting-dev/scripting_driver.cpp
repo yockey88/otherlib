@@ -26,7 +26,71 @@
 #define DOTOTHER_UNMANAGED_FUNCTION UNMANAGEDCALLERSONLY_METHOD
 
 namespace other {
+
   using dnet_char = char_t;
+
+  void scripting_driver::on_initialize() {
+    CORE_LOG_DEBUG("Initializing scripting driver...");
+
+    dotnet.load_host();
+    dotnet.call_entry_point();
+  }
+
+  void scripting_driver::run() {
+    CORE_LOG_DEBUG("Running scripting driver...");
+
+    std::ifstream file{ "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll", std::ios::binary };
+    if (!file.is_open()) {
+      CORE_LOG_ERROR("Failed to open DotnetTesting.dll");
+      return;
+    }
+
+    std::vector<uint8_t> assembly_data{};
+    {
+      size_t size = 0;
+      file.seekg(0, std::ios::end);
+      size = file.tellg();
+      file.seekg(0, std::ios::beg);
+
+      assembly_data.resize(size);
+      file.read(reinterpret_cast<char*>(assembly_data.data()), size);
+      file.close();
+    }
+    {
+      std::stringstream ss;
+      ss << "Loaded assembly data size: " << assembly_data.size() << " bytes\n";
+
+      /// print out assembly in classic hexdump format
+      ss << "Assembly Data:\n";
+      ss << std::format("|{:->92}|\n|", "");
+      for (size_t i = 0; i < assembly_data.size(); ++i) {
+        if (i % 16 == 0 && i != 0) {
+          ss << "|\n|";
+        }
+        if (i % 16 == 0) {
+          ss << std::format(" {:0>08x} | ", i);
+        }
+
+        ss << std::format("{:>#04x} ", assembly_data[i]);
+      }
+
+      ss << "|\n";
+      ss << std::format("|{:-<92}|\n", "");
+      ss << "End of assembly data.\n";
+
+      CORE_LOG_DEBUG("{}", ss.str());
+    }
+  }
+
+  void scripting_driver::on_shutdown() {
+    dotnet.unload_host();
+
+    CORE_LOG_DEBUG("Scripting driver shut down.");
+  }
+
+  void scripting_driver::on_event(SDL_Event* event) {
+    // Event handling code here
+  }
 
   // enum class managed_type {
   //   UNKNOWN,
@@ -162,68 +226,5 @@ namespace other {
   //   };
 
   // }  // namespace
-
-  void scripting_driver::on_initialize() {
-    CORE_LOG_DEBUG("Initializing scripting driver...");
-
-    dotnet.load_host();
-    dotnet.call_entry_point();
-  }
-
-  void scripting_driver::run() {
-    CORE_LOG_DEBUG("Running scripting driver...");
-
-    std::ifstream file{ "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll", std::ios::binary };
-    if (!file.is_open()) {
-      CORE_LOG_ERROR("Failed to open DotnetTesting.dll");
-      return;
-    }
-
-    std::vector<uint8_t> assembly_data{};
-    {
-      size_t size = 0;
-      file.seekg(0, std::ios::end);
-      size = file.tellg();
-      file.seekg(0, std::ios::beg);
-
-      assembly_data.resize(size);
-      file.read(reinterpret_cast<char*>(assembly_data.data()), size);
-      file.close();
-    }
-    {
-      std::stringstream ss;
-      ss << "Loaded assembly data size: " << assembly_data.size() << " bytes\n";
-
-      /// print out assembly in classic hexdump format
-      ss << "Assembly Data:\n";
-      ss << std::format("|{:->92}|\n|", "");
-      for (size_t i = 0; i < assembly_data.size(); ++i) {
-        if (i % 16 == 0 && i != 0) {
-          ss << "|\n|";
-        }
-        if (i % 16 == 0) {
-          ss << std::format(" {:0>08x} | ", i);
-        }
-
-        ss << std::format("{:>#04x} ", assembly_data[i]);
-      }
-
-      ss << "|\n";
-      ss << std::format("|{:-<92}|\n", "");
-      ss << "End of assembly data.\n";
-
-      CORE_LOG_DEBUG("{}", ss.str());
-    }
-  }
-
-  void scripting_driver::on_shutdown() {
-    dotnet.unload_host();
-
-    CORE_LOG_DEBUG("Scripting driver shut down.");
-  }
-
-  void scripting_driver::on_event(SDL_Event* event) {
-    // Event handling code here
-  }
 
 }  // namespace other

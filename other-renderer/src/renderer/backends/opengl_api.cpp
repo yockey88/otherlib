@@ -188,20 +188,12 @@ namespace other {
       return;
     }
 
-    auto gpu_shader_handle = gpu_resources.find(call.shader_handle.id);
-    if (gpu_shader_handle == gpu_resources.end()) {
-      CORE_LOG_ERROR("Shader resource with ID {} not found.", call.shader_handle.id);
-      return;
-    }
-
     glLineWidth(call.line_thickness);
     glPolygonMode(GL_FRONT_AND_BACK, get_gl_render_polygon_mode(render_state));
 
-    glUseProgram(gpu_shader_handle->second);
     glBindVertexArray(gpu_mesh_handle->second);
     glDrawElementsInstancedBaseVertexBaseInstance(get_gl_prim_type(draw_mode), call.index_count, GL_UNSIGNED_INT, (void*)0, call.instance_count, call.vertex_offset, 0);
     glBindVertexArray(0);
-    glUseProgram(0);
 
     CHECKGL();
   }

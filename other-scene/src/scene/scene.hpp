@@ -8,7 +8,6 @@
 
 #include "core/defines.hpp"
 
-#include "renderer/camera.hpp"
 #include "renderer/renderer.hpp"
 
 #include "scene/scene_tree.hpp"
@@ -44,7 +43,9 @@ namespace other {
 
     render_data prepare_render_data() const;
 
-    void render(scope<renderer>& renderer) const;
+    bool object_has_tag(natural_t id, const std::string_view tag) const;
+
+    void add_object_tag(natural_t id, const std::string_view tag);
 
     template <typename T>
     T& add_component(scene_object* object) {

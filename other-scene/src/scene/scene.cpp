@@ -7,6 +7,8 @@
 
 #include "core/profiler.hpp"
 
+#include "renderer/camera.hpp"
+
 #include "entt/entity/fwd.hpp"
 #include "object/transform.hpp"
 
@@ -138,6 +140,19 @@ namespace other {
     PROFILE_SECTION("scene::prepare_render_data");
 
     render_data data;
+    const camera* primary_camera = nullptr;
+    registry.view<object_handle, camera>().each([&](const object_handle& handle, const camera& cam) {
+      if (object_has_tag(handle.id, "main-camera")) {
+        primary_camera = &cam;
+      }
+    });
+    if (primary_camera == nullptr) {
+      /// \todo check if there is only one camera and then add main-camera tag to it
+      CORE_LOG_ERROR("No primary camera found in the scene. Cannot prepare render data.");
+      return data;
+    }
+    data.primary_camera = (camera*)primary_camera;
+
     registry.view<object_handle, gpu::point_light>().each([&](const object_handle& handle, const gpu::point_light& light) { data.point_lights.push_back(light); });
     registry.view<object_handle, gpu::directional_light>().each([&](const object_handle& handle, const gpu::directional_light& light) { data.directional_lights.push_back(light); });
     registry.view<object_handle, render_component>().each([&](const object_handle& handle, const render_component& render) {
@@ -165,7 +180,6 @@ namespace other {
         OTHER_ASSERT(sm_idx < submeshes.size(), "Submesh index out of bounds");
         draw_command cmd = {
           .draw_model = draw_model,
-          .shader_handle = render.shader_handle,
           .transform = world_transform * submeshes[sm_idx].local_transform,
           .material = render.material,
           .submesh_index = sm_idx,
@@ -196,7 +210,6 @@ namespace other {
           call.submesh_index = cmd.submesh_index;
 
           call.mesh_handle = cmd.draw_model->source->get_mesh_handle();
-          call.shader_handle = cmd.shader_handle->handle();
           call.submesh_index = cmd.submesh_index;
 
           call.vertex_offset = sm.base_vertex;
@@ -215,10 +228,16 @@ namespace other {
     return data;
   }
 
-  void scene::render(scope<renderer>& renderer) const {
-    PROFILE_SECTION("scene::render");
+  bool scene::object_has_tag(natural_t id, const std::string_view tag) const {
+    PROFILE_SECTION("scene::object_has_tag");
+    return tree.node_has_tag(id, tag);
+  }
 
-    OTHER_ASSERT(renderer != nullptr, "Renderer is null, cannot render scene.");
+  void scene::add_object_tag(natural_t id, const std::string_view tag) {
+    PROFILE_SECTION("scene::add_object_tag");
+    scene_tree::node* n = tree.node_at(id);
+    OTHER_ASSERT(n != nullptr, "Node with the given ID does not exist in the scene tree.");
+    n->tags.push_back(object_tag{ std::string{ tag } });
   }
 
   std::string scene::as_string(const scene& s) {

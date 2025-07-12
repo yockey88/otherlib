@@ -44,7 +44,6 @@ namespace other {
 
   struct draw_command {
     model* draw_model = nullptr;
-    shader* shader_handle = nullptr;
     glm::mat4 transform = glm::mat4(1.f);
 
     gpu::graphics_material material = {};
@@ -60,7 +59,6 @@ namespace other {
 
   struct draw_call {
     resource_handle mesh_handle;
-    resource_handle shader_handle;
 
     uint32_t submesh_index = 0;
 

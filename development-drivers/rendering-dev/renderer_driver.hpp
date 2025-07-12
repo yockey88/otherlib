@@ -15,7 +15,6 @@
 
 #include "driver/driver.hpp"
 
-
 namespace other {
 
   struct mouse_state {
@@ -37,37 +36,19 @@ namespace other {
     bool run_on_gpu = true;
 
     bool running = true;
-    camera cam;
 
     bool pressing_mouse_wheel = false;
     mouse_state mouse;
 
     scope<renderer> renderer = nullptr;
-    scope<render_graph> frame_graph = nullptr;
-    scope<render_pipeline> render_pipeline = nullptr;
     scene active_scene;
 
     natural_t light_id;
     natural_t suzanne_id;
+    natural_t camera_id;
 
     model cube;
     model suzanne;
-
-    resource_handle initial_pass;
-    resource_handle screen_texture_handle;
-
-    resource_handle quad_mesh_handle;
-    resource_handle screen_shader_handle;
-
-    resource_handle instancing_shader;
-
-    resource_handle camera_buffer_handle;
-
-    resource_handle point_light_buffer_handle;
-    resource_handle dir_light_buffer_handle;
-
-    resource_handle material_buffer_handle;
-    resource_handle model_buffer_handle;
 
     void on_event(SDL_Event* event) override;
   };

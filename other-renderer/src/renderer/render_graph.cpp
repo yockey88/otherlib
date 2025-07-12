@@ -11,7 +11,61 @@
 
 namespace other {
 
-#ifdef RG_TESTING
+  void render_pass::bind_pass(renderer* renderer_ptr) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
+
+    if (framebuffer_handle.has_value()) {
+      renderer_ptr->get_resource<framebuffer>(framebuffer_handle.value()).bind();
+    }
+    renderer_ptr->get_resource<shader>(shader_handle).bind();
+  }
+
+  void render_pass::unbind_pass(renderer* renderer_ptr) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
+
+    if (framebuffer_handle.has_value()) {
+      renderer_ptr->get_resource<framebuffer>(framebuffer_handle.value()).unbind();
+    }
+    renderer_ptr->get_resource<shader>(shader_handle).unbind();
+  }
+
+  void render_graph::node::start_pass(renderer* renderer_ptr) const {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
+
+    pass->bind_pass(renderer_ptr);
+    for (const auto& [binding_point, buffer] : input_buffers) {
+      renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
+        .set_shader_resource(binding_point, pass->shader_handle)
+        .bind();
+    }
+    for (const auto& [slot, tex] : input_textures) {
+      renderer_ptr->get_resource<texture>(tex.handle).bind(slot);
+    }
+
+    for (const auto& [binding_point, buffer] : output_buffers) {
+      renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
+        .set_shader_resource(binding_point, pass->shader_handle)
+        .bind();
+    }
+
+    /// set other pipeline state options here
+  }
+
+  void render_graph::node::end_pass(renderer* renderer_ptr) const {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
+
+    for (const auto& [slot, tex] : input_textures) {
+      renderer_ptr->get_resource<texture>(tex.handle).unbind(slot);
+    }
+    for (const auto& [binding_point, buffer] : output_buffers) {
+      renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
+    }
+    for (const auto& [binding_point, buffer] : input_buffers) {
+      renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
+    }
+
+    pass->unbind_pass(renderer_ptr);
+  }
 
   render_graph::pass_builder& render_graph::pass_builder::set_clear_color(const glm::vec4& clear_color) {
     pass.clear_color = clear_color;
@@ -255,177 +309,5 @@ else
       return sorted;
     }
   }
-
-#else
-  render_graph::pass_builder& render_graph::pass_builder::use_texture_resource(resource_handle texture_id, uint32_t binding, access_flags flags) {
-    OTHER_ASSERT(pass.graph != nullptr, "Render pass graph is null.");
-    render_graph& graph = *pass.graph;
-    auto itr = graph.texture_bindings.find(pass.get_key());
-    if (itr == graph.texture_bindings.find(pass.get_key())) {
-      auto [new_itr, inserted] = graph.texture_bindings.insert({ pass.get_key(), {} });
-      OTHER_ASSERT(inserted, "");
-      itr = new_itr;
-    }
-    itr->second.push_back({ flags, binding, texture_id });
-    return *this;
-  }
-
-  render_graph::pass_builder& render_graph::pass_builder::use_buffer_resource(resource_handle buffer_id, uint32_t binding, access_flags flags) {
-    OTHER_ASSERT(pass.graph != nullptr, "Render pass graph is null.");
-    render_graph& graph = *pass.graph;
-    auto itr = graph.buffer_bindings.find(pass.get_key());
-    if (itr == graph.buffer_bindings.end()) {
-      auto [new_itr, inserted] = graph.buffer_bindings.insert({ pass.get_key(), {} });
-      OTHER_ASSERT(inserted, "Failed to insert buffer binding for render pass [{}].", pass.get_key());
-      itr = new_itr;
-    }
-    itr->second.push_back({ flags, binding, buffer_id });
-    return *this;
-  }
-
-  render_graph& render_graph::pass_builder::end_pass() {
-    OTHER_ASSERT(pass.graph != nullptr, "Render pass graph is null.");
-    if (pass.size.x == 0 || pass.size.y == 0) {
-      /// get window size
-      pass.size = { 800, 600 };
-    }
-
-    if (pass.shader_handle.id == 0) {
-      CORE_LOG_ERROR("Render pass shader handle is invalid, cannot finalize pass.");
-    } else {
-      pass.graph->current_pass = nullptr;
-      /// other finalization steps
-    }
-
-    return *pass.graph;
-  }
-
-  render_graph& render_graph::begin_frame() {
-    return *this;
-  }
-
-  void render_graph::end_frame() {
-    build_graph();
-    validate_graph();
-  }
-
-  render_graph::pass_builder render_graph::start_pass(resource_handle framebuffer, resource_handle shader, const glm::ivec2& size) {
-    OTHER_ASSERT(current_pass == nullptr, "Cannot start a new render pass while another one is active.");
-
-    render_pass::key id{ framebuffer, shader };
-    {
-      auto itr = passes.find(id);
-      if (itr != passes.end()) {
-        CORE_LOG_ERROR("Render pass with ID [{}] already exists.", id);
-        if (current_pass == &itr->second) {
-          CORE_LOG_ERROR("Cannot create a pass with the same ID as the current pass.");
-          return pass_builder(itr->second);
-        }
-        OTHER_ASSERT(false, "Render pass with the same ID already exists.");
-      }
-    }
-
-    natural_t pass_id = get_next_pass_id();
-    auto [itr, inserted] = passes.insert({ id, render_pass(this, pass_id) });
-    OTHER_ASSERT(inserted, "Failed to insert render pass with ID [{}].", id);
-
-    auto& pass = itr->second;
-    pass.size = size;
-
-    pass.framebuffer_handle = framebuffer;
-    pass.shader_handle = shader;
-    pass.user_data = nullptr;
-
-    current_pass = &pass;
-
-    return pass_builder{ pass };
-  }
-
-  render_graph::pass_builder render_graph::start_pass(resource_handle shader, const glm::ivec2& size) {
-    OTHER_ASSERT(current_pass == nullptr, "Cannot start a new render pass while another one is active.");
-
-    render_pass::key id{ std::nullopt, shader };
-    {
-      auto itr = passes.find(id);
-      if (itr != passes.end()) {
-        CORE_LOG_ERROR("Render pass with ID [{}] already exists.", id);
-        if (current_pass == &itr->second) {
-          CORE_LOG_ERROR("Cannot create a pass with the same ID as the current pass.");
-          return pass_builder(itr->second);
-        }
-        OTHER_ASSERT(false, "Render pass with the same ID already exists.");
-      }
-    }
-
-    natural_t pass_id = get_next_pass_id();
-    auto [itr, inserted] = passes.insert({ id, render_pass(this, pass_id) });
-    OTHER_ASSERT(inserted, "Failed to insert render pass with ID [{}].", id);
-
-    auto& pass = itr->second;
-    pass.size = size;
-
-    pass.framebuffer_handle = std::nullopt;
-    pass.shader_handle = shader;
-    pass.user_data = nullptr;
-
-    current_pass = &pass;
-    return pass_builder(pass);
-  }
-
-  void render_graph::build_graph() {
-    std::vector<node> pass_nodes;
-    pass_nodes.reserve(passes.size());
-    for (const auto& [key, pass] : passes) {
-      node& n = pass_nodes.emplace_back();
-      n.pass_id = pass.id;
-
-      for (const auto& binding : buffer_bindings[key]) {
-        if (binding.flags & access_flags::READ) {
-          n.input_buffers.push_back(key);
-        } else if (binding.flags & access_flags::WRITE) {
-          n.output_buffers.push_back(key);
-        }
-      }
-
-      for (const auto& binding : texture_bindings[key]) {
-        if (binding.flags & access_flags::READ) {
-          n.input_textures.push_back(key);
-        } else if (binding.flags & access_flags::WRITE) {
-          n.output_textures.push_back(key);
-        }
-      }
-
-      CORE_LOG_INFO("Pass ID: {}, Input Buffers: {}, Input Textures: {}, Output Buffers: {}, Output Textures: {}", n.pass_id, n.input_buffers.size(), n.input_textures.size(), n.output_buffers.size(), n.output_textures.size());
-    }
-
-    // /// connect nodes based on input/output relationships
-    // for (const auto& node1 : pass_nodes) {
-    //   for (const auto& node2 : pass_nodes) {
-    //     if (node1.pass_id == node2.pass_id) {
-    //       continue;  // Skip self-dependency
-    //     }
-
-    //     // Check if node1's output buffers/textures are used by node2's input buffers/textures
-    //     for (const auto& output_buffer : node1.output_buffers) {
-    //       if (std::ranges::find(node2.input_buffers, output_buffer) != node2.input_buffers.end()) {
-    //         pass_dependencies[node1.pass_id].push_back(node2.pass_id);
-    //       }
-    //     }
-
-    //     for (const auto& output_texture : node1.output_textures) {
-    //       if (std::ranges::find(node2.input_textures, output_texture) != node2.input_textures.end()) {
-    //         pass_dependencies[node1.pass_id].push_back(node2.pass_id);
-    //       }
-    //     }
-    //   }
-    // }
-
-    // /// node with no output buffers/textures is a root node
-    // node* root = nullptr;
-  }
-
-  void render_graph::validate_graph() {
-  }
-#endif
 
 }  // namespace other

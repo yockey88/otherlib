@@ -49,6 +49,37 @@ namespace other {
 
   }  // namespace
 
+  void default_instancing_pipeline::prepare_frame(renderer::frame_resources* resources, render_data* data) {
+    gpu::camera_data cam_data = data->primary_camera->to_gpu_data();
+    get_resource<gpu_buffer>("camera_buffer")
+      ->set_data(&cam_data, sizeof(gpu::camera_data))
+      .finalize_buffer();
+
+    gpu::point_light_buffer light_buffer_data;
+    for (size_t i = 0; i < data->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+      light_buffer_data.lights[i] = data->point_lights[i];
+    }
+
+    gpu::directional_light_buffer dir_light_buffer_data;
+    for (size_t i = 0; i < data->directional_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
+      dir_light_buffer_data.lights[i] = data->directional_lights[i];
+    }
+
+    get_resource<gpu_buffer>("point_light_buffer")
+      ->set_data(&light_buffer_data, sizeof(gpu::point_light_buffer))
+      .finalize_buffer();
+
+    get_resource<gpu_buffer>("direction_light_buffer")
+      ->set_data(&dir_light_buffer_data, sizeof(gpu::directional_light_buffer))
+      .finalize_buffer();
+
+    get_pass_shader("geometry-pass")
+      ->bind()
+      .set_uniform("OE_num_point_lights", 1)
+      .set_uniform("OE_num_direction_lights", 1)
+      .unbind();
+  }
+
   void default_instancing_pipeline::create_resources() {
     const auto settings = { shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) } };
     instancing_shader = shader::create("instancing_shader", "resources/basic-instancing.vert", "resources/basic-instancing.frag", settings);
@@ -73,6 +104,9 @@ namespace other {
 
     set_model_buffer("model_buffer");
     set_material_buffer("material_buffer");
+    set_point_light_buffer("point_light_buffer");
+    set_direction_light_buffer("direction_light_buffer");
+    set_camera_buffer("camera_buffer");
   }
 
   void default_instancing_pipeline::build_render_passes() {
@@ -95,39 +129,6 @@ namespace other {
         renderer.get_resource<mesh>(quad_mesh_handle).draw();
       })
       .end_pass();
-  }
-
-  void default_instancing_pipeline::prepare_frame(render_data* data) {
-    OTHER_ASSERT(data != nullptr, "Render data is null in default instancing pipeline.");
-    OTHER_ASSERT(data->primary_camera != nullptr, "Primary camera is null in render data.");
-
-    gpu::camera_data cam_data = data->primary_camera->to_gpu_data();
-    get_resource<gpu_buffer>("camera_buffer")
-      ->set_shader_resource(2, instancing_shader)
-      .set_data(&cam_data, sizeof(gpu::camera_data))
-      .finalize_buffer();
-
-    gpu::point_light_buffer light_buffer_data;
-    gpu::directional_light_buffer dir_light_buffer_data;
-    for (size_t i = 0; i < data->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-      light_buffer_data.lights[i] = data->point_lights[i];
-    }
-    for (size_t i = 0; i < data->directional_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
-      dir_light_buffer_data.lights[i] = data->directional_lights[i];
-    }
-
-    get_resource<gpu_buffer>("point_light_buffer")
-      ->set_data(&light_buffer_data, sizeof(gpu::point_light_buffer))
-      .finalize_buffer();
-    get_resource<gpu_buffer>("direction_light_buffer")
-      ->set_data(&dir_light_buffer_data, sizeof(gpu::directional_light_buffer))
-      .finalize_buffer();
-    get_renderer()
-      ->get_resource<shader>(instancing_shader)
-      .bind()
-      .set_uniform("OE_num_point_lights", 1)
-      .set_uniform("OE_num_direction_lights", 1)
-      .unbind();
   }
 
 }  // namespace other

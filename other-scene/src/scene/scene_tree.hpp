@@ -18,6 +18,18 @@ namespace other {
 
   class scene;
 
+  struct object_tag {
+    // std::string type;
+    std::string name;
+  };
+
+  namespace builtin_tags {
+    namespace types {
+
+    }  // namespace types
+
+  }  // namespace builtin_tags
+
   class scene_tree {
    public:
     struct node {
@@ -29,6 +41,8 @@ namespace other {
       bounding_box bbox = {};
       scene_object* object = nullptr;
       std::vector<node*> children = {};
+
+      std::vector<object_tag> tags = {};
     };
 
     scene_tree(scene* s);
@@ -55,6 +69,7 @@ namespace other {
 
     node* node_at(size_t idx);
     const node* node_at(size_t idx) const;
+    bool node_has_tag(size_t idx, const std::string_view tag) const;
 
     node* node_from_scene_object(const scene_object* object);
     const node* node_from_scene_object(const scene_object* object) const;

@@ -139,7 +139,7 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("development-drivers", cfg, "scripting_dev", "dev-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
       run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)
