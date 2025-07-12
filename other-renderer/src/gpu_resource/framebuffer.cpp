@@ -51,14 +51,22 @@ namespace other {
       return *this;
     }
 
-    opt<resource_handle>& attachment = attachment_textures[static_cast<size_t>(type)];
-    if (attachment.has_value()) {
-      CORE_LOG_ERROR("Attachment of type COLOR already exists in framebuffer, cannot add again.");
-      return *this;
+    if (type == attachment_type::COLOR) {
+      uint32_t color_idx = color_attachments.size();
+      resource_handle& attachment = color_attachments.emplace_back();
+      attachment = attachment_handle;
+      subsystem<renderer_backend>::get()->api()->framebuffer_texture_2d(handle(), attachment, type, 0, color_idx);
+    } else {
+      opt<resource_handle>& attachment = attachment_textures[static_cast<size_t>(type)];
+      if (attachment.has_value()) {
+        CORE_LOG_ERROR("Attachment of type COLOR already exists in framebuffer, cannot add again.");
+        return *this;
+      }
+
+      attachment = attachment_handle;
+      subsystem<renderer_backend>::get()->api()->framebuffer_texture_2d(handle(), *attachment, type, 0);
     }
 
-    attachment = attachment_handle;
-    subsystem<renderer_backend>::get()->api()->framebuffer_texture_2d(handle(), *attachment, type, 0);
     return *this;
   }
 
@@ -101,7 +109,7 @@ namespace other {
     };
 
     uint8_t flags = 0;
-    if (attachment_textures[static_cast<size_t>(attachment_type::COLOR)].has_value()) {
+    if (color_attachments.size() > 0) {
       flags |= COLOR_ATTACHMENT;
     }
     if (attachment_textures[static_cast<size_t>(attachment_type::DEPTH)].has_value()) {
@@ -123,7 +131,7 @@ namespace other {
     } else if ((flags & STENCIL_ATTACHMENT)) {
       final_type = attachment_type::STENCIL;
     } else {
-      CORE_LOG_ERROR("Framebuffer has no valid attachments.", error_msg.value());
+      CORE_LOG_ERROR("Framebuffer has no valid attachments: {}", error_msg.has_value() ? *error_msg : "No attachments added.");
       final_type = attachment_type::NO_ATTACHMENTS;
     }
 

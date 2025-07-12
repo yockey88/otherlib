@@ -7,7 +7,10 @@
 #include <cstdint>
 #include <fstream>
 #include <span>
-#include <stacktrace>
+#if __has_include(<stacktrace>)
+  #define OTHER_STACKTRACE_AVAILABLE
+  #include <stacktrace>
+#endif
 #include <string>
 
 #include <spdlog/sinks/basic_file_sink.h>
@@ -53,31 +56,41 @@ namespace other {
 
   OTHER_SUBSYSTEM(logger);
 
+  /// figure out why I can't compile when using __VA_OPT__(,) instead of this hack
+#define VAR_ARGS(...) , ##__VA_ARGS__
+
 #define LOG(level, logger_name, frmt, ...) \
-  other::subsystem<other::logger>::get()->send_log(level, logger_name, std::format(frmt, ##__VA_ARGS__))
+  other::subsystem<other::logger>::get()->send_log(level, logger_name, std::format(frmt VAR_ARGS(__VA_ARGS__)))
 
-#define LOG_TRACE(logger_name, fmt, ...) LOG(spdlog::level::trace, logger_name, fmt, __VA_ARGS__)
-#define LOG_DEBUG(logger_name, fmt, ...) LOG(spdlog::level::debug, logger_name, fmt, __VA_ARGS__)
-#define LOG_INFO(logger_name, fmt, ...) LOG(spdlog::level::info, logger_name, fmt, __VA_ARGS__)
-#define LOG_WARN(logger_name, fmt, ...) LOG(spdlog::level::warn, logger_name, fmt, __VA_ARGS__)
-#define LOG_ERROR(logger_name, fmt, ...) LOG(spdlog::level::err, logger_name, fmt, __VA_ARGS__)
-#define LOG_CRITICAL(logger_name, fmt, ...) LOG(spdlog::level::critical, logger_name, fmt, __VA_ARGS__)
+#define LOG_TRACE(logger_name, fmt, ...) LOG(spdlog::level::trace, logger_name, fmt VAR_ARGS(__VA_ARGS__))
+#define LOG_DEBUG(logger_name, fmt, ...) LOG(spdlog::level::debug, logger_name, fmt VAR_ARGS(__VA_ARGS__))
+#define LOG_INFO(logger_name, fmt, ...) LOG(spdlog::level::info, logger_name, fmt VAR_ARGS(__VA_ARGS__))
+#define LOG_WARN(logger_name, fmt, ...) LOG(spdlog::level::warn, logger_name, fmt VAR_ARGS(__VA_ARGS__))
+#define LOG_ERROR(logger_name, fmt, ...) LOG(spdlog::level::err, logger_name, fmt VAR_ARGS(__VA_ARGS__))
+#define LOG_CRITICAL(logger_name, fmt, ...) LOG(spdlog::level::critical, logger_name, fmt VAR_ARGS(__VA_ARGS__))
 
-#define CORE_LOG_TRACE(format, ...) LOG_TRACE("other-core-log", format, __VA_ARGS__)
-#define CORE_LOG_DEBUG(format, ...) LOG_DEBUG("other-core-log", format, __VA_ARGS__)
-#define CORE_LOG_INFO(format, ...) LOG_INFO("other-core-log", format, __VA_ARGS__)
-#define CORE_LOG_WARN(format, ...) LOG_WARN("other-core-log", format, __VA_ARGS__)
-#define CORE_LOG_ERROR(format, ...) LOG_ERROR("other-core-log", format, __VA_ARGS__)
-#define CORE_LOG_CRITICAL(format, ...) LOG_CRITICAL("other-core-log", format, __VA_ARGS__)
+#define CORE_LOG_TRACE(format, ...) LOG_TRACE("other-core-log", format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_DEBUG(format, ...) LOG_DEBUG("other-core-log", format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_INFO(format, ...) LOG_INFO("other-core-log", format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_WARN(format, ...) LOG_WARN("other-core-log", format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_ERROR(format, ...) LOG_ERROR("other-core-log", format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_CRITICAL(format, ...) LOG_CRITICAL("other-core-log", format VAR_ARGS(__VA_ARGS__))
   /// \todo add automatic enter/exit function logger structs (raii tracing)
 
-#define GET_STACKTRACE (std::stringstream{} << std::stacktrace::current() << "\n").str()
-#define OTHER_ABORT std::terminate()
+#ifdef OTHER_STACKTRACE_AVAILABLE
+  #define GET_STACKTRACE (std::stringstream{} << std::stacktrace::current() << "\n").str()
+#else
+  #define GET_STACKTRACE "Stacktrace not available (no <stacktrace> support)"
+#endif
 
-#define OTHER_CRITICAL_FAILURE(format, ...)                                                           \
-  do {                                                                                                \
-    CORE_LOG_CRITICAL("Critical failure!\nstacktrace =\n{}\n" format, GET_STACKTRACE, ##__VA_ARGS__); \
-    OTHER_ABORT;                                                                                      \
+#ifndef OTHER_ABORT
+  #define OTHER_ABORT std::terminate()
+#endif
+
+#define OTHER_CRITICAL_FAILURE(format, ...)                                                                  \
+  do {                                                                                                       \
+    CORE_LOG_CRITICAL("Critical failure!\nstacktrace =\n{}\n" format, GET_STACKTRACE VAR_ARGS(__VA_ARGS__)); \
+    OTHER_ABORT;                                                                                             \
   } while (0)
 
 #define OTHER_ASSERT(condition, format, ...)       \

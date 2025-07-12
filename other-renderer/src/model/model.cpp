@@ -111,37 +111,6 @@ namespace other {
 
   }  // namespace
 
-  void model::draw(shader* shader_ptr, const int32_t mat_idx, const glm::mat4& model_matrix) {
-    PROFILE_SECTION("model::draw");
-
-    // mesh* m = subsystem<renderer_backend>::get()->api()->get_resource_as<mesh>(source->get_mesh_handle());
-    // if (m == nullptr) {
-    //   return;
-    // }
-
-    // OTHER_ASSERT(shader_ptr != nullptr, "Shader pointer is null, cannot draw model.");
-
-    // shader_ptr->bind()
-    //   .set_uniform("model_matrix", model_matrix)
-    //   .set_uniform("material_index", mat_idx);
-
-    // m->bind();
-
-    // auto submeshes = source->get_submeshes();
-    // for (const auto& submesh_idx : submesh_indices) {
-    //   draw_command cmd{
-    //     .draw_mode = mesh::TRIANGLES,
-    //     // .instance_count = 1,
-    //     // .index_count = submeshes[submesh_idx].idx_cnt,
-    //     // .vertex_offset = submeshes[submesh_idx].base_vertex,
-    //   };
-    //   subsystem<renderer_backend>::get()->api()->draw_mesh_instanced(m->handle(), cmd);
-    // }
-
-    // m->unbind();
-    // shader_ptr->unbind();
-  }
-
   // clang-format off
   model_source::model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices, const std::unordered_map<uint32_t, std::vector<triangle>>& triangle_map, 
                               const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const bounding_box& bounds)
@@ -150,51 +119,17 @@ namespace other {
     OTHER_ASSERT(!vertices.empty(), "Model source must have at least one vertex.");
     OTHER_ASSERT(!indices.empty(), "Model source must have at least one index.");
     OTHER_ASSERT(!submeshes.empty(), "Model source must have at least one submesh.");
+    OTHER_ASSERT(!name.empty(), "Model source name cannot be empty.");
+
     {
-      std::vector<uint32_t> base_model_submesh_indices;
-      for (uint32_t i = 0; i < submeshes.size(); ++i) {
-        base_model_submesh_indices.push_back(submeshes[i].sub_mesh_id);
-      }
+      std::ranges::iota_view cnt{ 0u, (uint32_t)submeshes.size() };
       base_model = {
         .name = name,
         .source = this,
-        .submesh_indices = std::move(base_model_submesh_indices),
+        .submesh_indices = cnt | std::ranges::to<std::vector<uint32_t>>(),
       };
       OTHER_ASSERT(base_model.submesh_indices.size() == submeshes.size(), "Model source submesh indices size does not match submeshes size.");
     }
-
-    layout = vertex::get_buffer_layout();
-
-    auto [mhandle, vbuff, ibuff] = get_mesh_handles(name, vertices, indices);
-    mesh_handle = mhandle;
-    vertex_buffer_handle = vbuff;
-    index_buffer_handle = ibuff;
-  }
-
-  model_source::model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
-    OTHER_ASSERT(!vertices.empty(), "Model source must have at least one vertex.");
-    OTHER_ASSERT(!indices.empty(), "Model source must have at least one index.");
-
-    this->vertices = vertices;
-    this->indices = indices;
-
-    base_model.name = name;
-    base_model.source = this;
-    base_model.submesh_indices = { 0 };
-
-    submesh& submesh = submeshes.emplace_back();
-    submesh.base_vertex = 0;
-    submesh.base_idx = 0;
-    submesh.mat_idx = 0;
-    submesh.vert_cnt = static_cast<uint32_t>(vertices.size());
-    submesh.idx_cnt = static_cast<uint32_t>(indices.size());
-    // submesh.bounds = bounding_box::from_vertices(vertices);
-    submesh.sub_mesh_id = 0;
-    submesh.material_id = 0;
-    submesh.rigged = false;
-    submesh.transform = glm::mat4(1.0f);
-    submesh.local_transform = glm::mat4(1.0f);
-    submesh.name = name;
 
     layout = vertex::get_buffer_layout();
 
@@ -240,13 +175,23 @@ namespace other {
     }
 
     model_builder builder = model_importer::build_model_data(name, vertices, indices);
+    ref<model_source> src = make_ref<model_source>(name, builder.vertices, builder.indices, builder.triangles, builder.submeshes, builder.nodes, builder.bounds);
 
-    ref<model_source> src = make_ref<model_source>(name, builder.vertices, builder.indices);
     natural_t hash = FNV(name);
     subsystem<renderer_backend>::get()->add_model_source(hash, src);
 
     CORE_LOG_DEBUG("Model source loaded with name: {} and hash: {}", name, hash);
     return { hash, src };
+  }
+
+  void model_source::draw() {
+    for (const auto& submesh : submeshes) {
+      // if (index_buffer_handle.has_value() && index_buffer_handle->id != 0) {
+      //   subsystem<renderer_backend>::get()->api()->draw_mesh(handle(), prim_type, vert_count, index_count, mesh::attribute_type::UNSIGNED_BYTE);
+      // } else {
+      //   subsystem<renderer_backend>::get()->api()->draw_mesh(handle(), prim_type, vert_count);
+      // }
+    }
   }
 
 }  // namespace other

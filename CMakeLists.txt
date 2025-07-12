@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.27.0..4.0.2)
-project(other VERSION 0.1.0 LANGUAGES CXX)
 
+project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
+
+add_subdirectory(other-csharp-bindings)
 
 option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
@@ -18,27 +20,40 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+message(STATUS "using compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} @ [${CMAKE_CXX_COMPILER}]")
+
 set(BUILD_CONFIG_MACRO "")
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-  set(BUILD_CONFIG_MACRO "OTHER_DEBUG_BUILD")
+  set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_DEBUG")
+elseif (CMAKE_BUILD_TYPE MATCHES ProfileD)
+  set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_PROFILED")
 elseif (CMAKE_BUILD_TYPE MATCHES Profile)
-  set(BUILD_CONFIG_MACRO "OTHER_PROFILE_BUILD")
+  set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_PROFILE")
 else()
-  set(BUILD_CONFIG_MACRO "OTHER_RELEASE_BUILD")
+  set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_RELEASE")
 endif()
 
 if (NOT CMAKE_BUILD_TYPE)
   message(FATAL_ERROR "CMAKE_BUILD_TYPE is not set. Please specify a build type (Debug, Release).")
 endif()
 
-if(MSVC)
+set(BUILD_PLATFORM "")
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+  set(BUILD_PLATFORM "WINDOWS")
+elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+  set(BUILD_PLATFORM "LINUX")
+else()
+  message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}. Please use Windows, Linux")
+endif()
+
+set(COMPILE_OPTIONS "")
+if(BUILD_PLATFORM STREQUAL "WINDOWS")
   add_compile_definitions("OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "HAS_SEH_EXCEPTIONS" "NOMINMAX")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0A00") # Windows 10+
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWIN32_LEAN_AND_MEAN")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
-  add_compile_definitions("/Zc:preprocessor")
 
   if (DISALLOW_OTHER_PLUGINS)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -46,21 +61,21 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
   endif()
 
-
-  if(CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+  if(CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
     message(STATUS "Debug build enabled")
     if (CMAKE_BUILD_TYPE STREQUAL Debug-AS)
       message(STATUS "Address Sanitizer enabled")
       add_compile_options("/fsanitize=address")
     endif()
     
-    add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
+    add_compile_options("/D_CRT_SECURE_NO_WARNINGS")
+    add_compile_options("/Od" "/Zi" "/RTC1" "/D_DEBUG")
   elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
     message(STATUS "Release build enabled")
     add_compile_options("/DNDEBUG")
   endif()
 
-elseif(UNIX)
+else()
   # add_compile_definitions("OTHER_ENVIRONMENT_UNIX" ${BUILD_CONFIG_MACRO})
 
   # if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -104,10 +119,15 @@ message(STATUS "Other libraries path: ${OTHER_LIBRARIES_PATH}")
 
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
 
+set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet")
+set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
+set(DOTNET_LIBRARIES nethost)
+
 find_package(Threads REQUIRED)
 
 add_subdirectory(other-core)
 add_subdirectory(other-renderer)
+add_subdirectory(other-scripting)
 add_subdirectory(other-scene)
 add_subdirectory(otherlib)
 

@@ -26,9 +26,10 @@ namespace other {
   };
 
   struct mesh_key {
-    resource_handle model_source_handle;
-    render_polygon_mode render_state;
-    mesh::primitive_type draw_mode;
+    resource_handle model_source_handle = {};
+    resource_handle shader_handle = {};
+    render_polygon_mode render_state = render_polygon_mode::POLYGON_MODE_FILL;
+    mesh::primitive_type draw_mode = mesh::primitive_type::TRIANGLES;
 
     uint32_t submesh_index = 0;
 
@@ -58,8 +59,9 @@ namespace other {
   };
 
   struct draw_call {
-    mesh* mesh = nullptr;
-    shader* shader = nullptr;
+    resource_handle mesh_handle;
+    resource_handle shader_handle;
+
     uint32_t submesh_index = 0;
 
     uint32_t base_instance = 0;
@@ -110,5 +112,35 @@ namespace other {
    */
 
 }  // namespace other
+
+// OTHER_REFLECT(
+//   other::mesh_key,
+//   field(model_source_handle, other::attr::serializable()),
+//   field(render_state, other::attr::serializable()),
+//   field(draw_mode, other::attr::serializable()),
+//   field(submesh_index, other::attr::serializable())
+// )
+
+// OTHER_REFLECT(
+//   other::draw_command,
+//   field(transform, other::attr::serializable()),
+//   // field(material, other::attr::serializable()),
+//   field(submesh_index, other::attr::serializable()),
+//   // field(render_state, other::attr::serializable()),
+//   field(draw_mode, other::attr::serializable()),
+//   field(line_thickness, other::attr::serializable())
+// )
+
+OTHER_REFLECT(
+  other::draw_call,
+  field(submesh_index, other::attr::serializable()),
+  field(base_instance, other::attr::serializable()),
+  field(instance_count, other::attr::serializable()),
+  field(vertex_offset, other::attr::serializable()),
+  field(vertex_count, other::attr::serializable()),
+  field(index_offset, other::attr::serializable()),
+  field(index_count, other::attr::serializable()),
+  field(line_thickness, other::attr::serializable())
+)
 
 #endif  // OTHER_RENDERER_RENDERER_RAW_COMMAND_HPP

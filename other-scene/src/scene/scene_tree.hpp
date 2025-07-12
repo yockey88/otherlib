@@ -49,6 +49,7 @@ namespace other {
 
     node* root = nullptr;
 
+    size_t num_objects = 0;
     ref<memory_pool<scene_object>> objects = nullptr;
     scope<std::array<node, kMaxNodes>> nodes;
 

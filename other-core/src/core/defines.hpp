@@ -9,7 +9,6 @@
 #include <format>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <type_traits>
 
 #include <glm/glm.hpp>
@@ -74,17 +73,17 @@
   #define OTHER_DEBUG_BUILD
 #endif  // !OTHER_DEBUG
 
-#ifdef OTHER_ENVIRONMENT_DEBUG_AS
-  #define OTHER_DEBUG_AS
-#endif  // !OTHER_DEBUG_AS
-
-#ifdef OTHER_ENVIRONMENT_RELEASE
-  #define OTHER_RELEASE_BUILD
-#endif  // !OTHER_RELEASE
+#ifdef OTHER_ENVIRONMENT_PROFILED
+  #define OTHER_PROFILED_BUILD
+#endif  // !OTHER_PROFILED
 
 #ifdef OTHER_ENVIRONMENT_PROFILE
   #define OTHER_PROFILE_BUILD
 #endif  // !OTHER_PROFILE
+
+#ifdef OTHER_ENVIRONMENT_RELEASE
+  #define OTHER_RELEASE_BUILD
+#endif  // !OTHER_RELEASE
 
 #ifndef OTHER_API
   #error "OTHER_API is not defined. Please define it for your platform."

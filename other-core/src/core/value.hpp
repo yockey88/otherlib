@@ -5,8 +5,6 @@
 #define OTHER_CORE_VALUE_HPP
 
 #include <mutex>
-#include <string>
-#include <string_view>
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"

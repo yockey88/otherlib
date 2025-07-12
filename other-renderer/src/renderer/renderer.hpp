@@ -4,14 +4,8 @@
 #ifndef OTHER_RENDERER_RENDERER_RENDERER_HPP
 #define OTHER_RENDERER_RENDERER_RENDERER_HPP
 
-#include <array>
-
 #include <SDL3/SDL.h>
 #include <glm/glm.hpp>
-
-#include "core/defines.hpp"
-#include "core/logger.hpp"
-#include "core/memory_pool.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/draw_command.hpp"
@@ -23,6 +17,21 @@ namespace other {
 
   class renderer_backend;
 
+  class camera;
+
+  struct render_data {
+    camera* primary_camera = nullptr;
+    std::vector<gpu::point_light> point_lights;
+    std::vector<gpu::directional_light> directional_lights;
+
+    size_t num_draw_calls = 0;
+    std::map<mesh_key, size_t> mesh_indices;
+    std::vector<mesh_key> mesh_keys;
+    std::vector<draw_call> draw_calls;
+    std::vector<gpu::graphics_material_buffer> material_buffers;
+    std::vector<gpu::model_matrix_buffer> model_buffers;
+  };
+
   class renderer {
    public:
     struct frame_resources {
@@ -32,8 +41,11 @@ namespace other {
 
     renderer();
 
-    void begin_frame(frame_resources* resources = nullptr);
+    void submit_render_data(render_data* data);
+    void begin_frame(frame_resources* resources);
     void end_frame();
+
+    void execute_frame(const render_graph& graph, frame_resources* resources);
 
     void begin_ui_frame();
     void end_ui_frame();
@@ -51,28 +63,16 @@ namespace other {
       return *rendering()->api()->get_resource_as<T>(handle);
     }
 
-    void submit_model(model* draw_model, shader* shader_handle, const gpu::graphics_material& material, const glm::mat4& root_transform = glm::mat4(1.0f));
-    void submit_draw_command(const draw_command& command);
-
     void execute_draw_calls();
 
     void render(const render_graph& graph);
 
+    constexpr static inline size_t kMaxDrawCalls = 1024;
+
    private:
+    friend class render_graph;
     frame_resources current_frame_resources;
-
-    resource_handle model_buffer_handle;
-    resource_handle material_buffer_handle;
-
-    std::map<mesh_key, integer_t> mesh_indices;
-    memory_pool<mesh_key> mesh_key_pool;
-
-    integer_t num_draw_calls = 0;
-    memory_pool<draw_call> draw_call_pool;
-    memory_pool<arena_buffer> material_buffer_pool;
-    memory_pool<arena_buffer> model_buffer_pool;
-
-    integer_t get_mesh_key_index(const draw_command& key);
+    render_data* scene_data = nullptr;
 
     renderer_backend* rendering();
   };

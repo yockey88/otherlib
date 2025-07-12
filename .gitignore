@@ -13,6 +13,9 @@ wip/
 analysis/
 scratch/
 
+#large local development files
+resources/models/
+
 # non-public sandboxes
 development-drivers/pbrt
 

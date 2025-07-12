@@ -62,6 +62,7 @@ namespace other {
     OTHER_ASSERT(new_node != nullptr, "Failed to create new node in scene tree.");
 
     scene_ptr->register_object(new_node->object, name, world_position);
+    ++num_objects;
 
     CORE_LOG_DEBUG("Created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
     return *new_node->object;
@@ -84,7 +85,7 @@ namespace other {
     PROFILE_SECTION("scene_tree::get_object_count");
 
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
-    return objects->object_count();
+    return num_objects;
   }
 
   scene_tree::node* scene_tree::node_at(size_t idx) {
@@ -158,6 +159,7 @@ namespace other {
       scene_ptr->unregister_object(n->object);
       objects->free(n->object->id);
       *n = node{};  // Reset the node
+      --num_objects;
     }
   }
 

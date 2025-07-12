@@ -106,11 +106,9 @@ namespace other {
     uint32_t idx_cnt = 0;
     uint32_t vert_cnt = 0;
 
-    glm::mat4 transform{ 0.f };
     glm::mat4 local_transform{ 0.f };
 
     bounding_box bounds{};
-    // resource_handle material_handle;
 
     natural_t sub_mesh_id;
     natural_t material_id;

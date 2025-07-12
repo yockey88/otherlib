@@ -76,7 +76,8 @@ def copy_dlls(cfg, dll_cfg):
       shutil.copy(dll, dest)
 
       dest = f"build/tests/{cfg}/"
-      shutil.copy(dll, dest)
+      if os.path.exists(dest):
+        shutil.copy(dll, dest)
 
     else:
       print(f"Warning: {dll} does not exist.")
@@ -124,21 +125,21 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
-      # build fbs first
       filename = "build/other.sln"
       if not os.path.exists(filename):
         print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
         sys.exit(1)
       build_sln_file(filename, cfg)
+
       dll_cfg = "Release"
-      if cfg == "Debug":
+      if cfg == "Debug" or cfg == "ProfileD":
         dll_cfg = "Debug"
-        
       copy_dlls(cfg, dll_cfg)
+        
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "scripting_dev", "dev-config.toml", args, args.verbose)
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
       run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)

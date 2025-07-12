@@ -42,7 +42,7 @@ namespace other {
 
     void bind_shader_resource(const resource_handle& handle) override;
     void unbind_shader_resource(const resource_handle& handle) override;
-    void compile_and_attach_source(const resource_handle& handle, const std::string& source, shader::source_type type) override;
+    void compile_and_attach_source(const resource_handle& handle, const std::string_view source, shader::source_type type) override;
     void finalize_shader(const resource_handle& handle) override;
     void dispatch_shader(const resource_handle& handle, const glm::ivec3& group_dims, shader::compute_barrier_type barrier_type) override;
 
@@ -55,7 +55,7 @@ namespace other {
 
     void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) override;
     void unbind_buffer_resource(const resource_handle& handle) override;
-    void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string& name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) override;
+    void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) override;
     void buffer_data(const resource_handle& handle, uint32_t binding_point, const void* data, size_t size) override;
     void buffer_range(const resource_handle& handle, uint32_t binding_point, size_t start, size_t size, const void* data) override;
 
@@ -67,14 +67,14 @@ namespace other {
 
     void bind_framebuffer_resource(const resource_handle& handle) override;
     void unbind_framebuffer_resource(const resource_handle& handle) override;
-    void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level) override;
+    void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level, uint32_t color_attachment_index = 0) override;
     void finalize_framebuffer(const resource_handle& handle) override;
 
-    void set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) override;
-    void set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) override;
-    void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) override;
-    void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) override;
-    void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value, bool transpose = false) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, int32_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, real_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose = false) override;
 
    private:
     std::map<natural_t, uint32_t> gpu_resources;
@@ -125,6 +125,8 @@ namespace other {
 
     int32_t get_gl_access_flags(access_flags flags) const;
 
+    int32_t get_gl_render_polygon_mode(render_polygon_mode mode) const;
+
     int32_t get_gl_texture_type(texture::tex_type type) const;
     int32_t get_gl_texture_format(texture::format format) const;
     int32_t get_gl_texture_channel_format(texture::format format) const;
@@ -143,7 +145,7 @@ namespace other {
     int32_t get_gl_fb_attachment_type(framebuffer::attachment_type type) const;
 
     int32_t get_resource_handle(natural_t id) const;
-    uint32_t get_shader_uniform_location(const resource_handle& shader, const std::string& name);
+    uint32_t get_shader_uniform_location(const resource_handle& shader, const std::string_view name);
   };
 
 }  // namespace other

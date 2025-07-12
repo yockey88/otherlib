@@ -21,8 +21,6 @@ namespace other {
     std::string name;
     model_source* source = nullptr;
     std::vector<uint32_t> submesh_indices;
-
-    void draw(shader* shader_ptr, const int32_t mat_idx = 0, const glm::mat4& model_matrix = glm::mat4(1.0f));
   };
 
   class model_source : public ref_counted {
@@ -31,7 +29,6 @@ namespace other {
    model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices, const std::unordered_map<uint32_t, std::vector<triangle>>& triangle_map,
                 const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const bounding_box& bounds);
     // clang-format on
-    model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
 
     model produce_model(const std::string& name, const std::vector<uint32_t>& submesh_idxs = {});
 
@@ -46,6 +43,8 @@ namespace other {
     inline const std::vector<submesh>& get_submeshes() const {
       return submeshes;
     }
+
+    void draw();
 
    private:
     friend struct model;

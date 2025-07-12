@@ -9,15 +9,12 @@
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/model.hpp"
 #include "renderer/camera.hpp"
+#include "renderer/render_pipeline.hpp"
 
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
-#include "object/transform.hpp"
 
-// #include "glm/fwd.hpp"
-// #include "math/ray.hpp"
-// #include "simulation/scene_object.hpp"
 
 namespace other {
 
@@ -46,62 +43,33 @@ namespace other {
     mouse_state mouse;
 
     scope<renderer> renderer = nullptr;
+    scope<render_graph> frame_graph = nullptr;
+    scope<render_pipeline> render_pipeline = nullptr;
     scene active_scene;
 
-    natural_t cube_id;
-    natural_t capsule_id;
-    natural_t floor_id;
     natural_t light_id;
     natural_t suzanne_id;
 
     model cube;
-    model capsule;
     model suzanne;
 
-    resource_handle screen_shader_handle;
-    resource_handle cube_shader;
-    resource_handle light_shader;
-    // resource_handle comp_shader_handle;
-
     resource_handle initial_pass;
-    // resource_handle comp_pass;
-
     resource_handle screen_texture_handle;
-    resource_handle voxel_3d_texture_handle;
+
     resource_handle quad_mesh_handle;
+    resource_handle screen_shader_handle;
+
+    resource_handle instancing_shader;
 
     resource_handle camera_buffer_handle;
+
     resource_handle point_light_buffer_handle;
     resource_handle dir_light_buffer_handle;
-    resource_handle material_buffer_handle;
 
+    resource_handle material_buffer_handle;
     resource_handle model_buffer_handle;
 
-    // resource_handle scene_metadata_handle;
-    // resource_handle ray_buffer_handle;
-
-    // resource_handle lambertian_buffer_handle;
-    // resource_handle metal_buffer_handle;
-    // resource_handle dielectrics_buffer_handle;
-
-    // resource_handle sphere_buffer_handle;
-    // resource_handle object_buffer_handle;
-
-    // ref<compound_object> scene = nullptr;
-
-    constexpr static uint8_t kPixelStride = 4;
-
-    glm::vec3 pixel00_loc;
-    glm::vec3 pixel_delta_u;
-    glm::vec3 pixel_delta_v;
-
-    const char* output_path = "artifacts/output.png";
-
-    std::vector<uint8_t> image_data;
-
     void on_event(SDL_Event* event) override;
-
-    void initialize_gpu();
   };
 
 }  // namespace other

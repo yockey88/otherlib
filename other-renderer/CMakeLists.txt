@@ -21,6 +21,8 @@ target_sources(other_renderer
       
       src/renderer/camera.cpp
       src/renderer/render_graph.cpp
+      src/renderer/render_pipeline.cpp
+      src/renderer/default_instancing_pipeline.cpp
       src/renderer/renderer.cpp
 
       src/renderer/draw_command.cpp

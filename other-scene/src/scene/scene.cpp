@@ -6,14 +6,14 @@
 #include <cstdint>
 
 #include "core/profiler.hpp"
-#include "math/morton_codes.hpp"
 
 #include "entt/entity/fwd.hpp"
 #include "object/transform.hpp"
 
 namespace other {
 
-  scene::scene() : tree(this) {
+  scene::scene()
+      : tree(this) {
     PROFILE_SECTION("scene::scene");
     OTHER_ASSERT(tree.nodes != nullptr, "Scene tree nodes are not initialized.");
     OTHER_ASSERT(tree.objects != nullptr, "Memory pool for scene objects is not initialized.");
@@ -36,7 +36,6 @@ namespace other {
 
   scene_object& scene::create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object) {
     PROFILE_SECTION("scene::create_object");
-
     return tree.create_object(name, world_position, parent_object);
   }
 
@@ -101,10 +100,13 @@ namespace other {
     const scene_tree::node* node = tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
 
-    if (scene_tree::node* parent_node = node->parent; parent_node != nullptr) {
-      return get_transform(node->object).world_matrix(get_world_transform(parent_node->id));
-    } else {
-      return get_transform(node->object).world_matrix();
+    {
+      PROFILE_SECTION("scene::get_world_transform--recursive-compute");
+      if (scene_tree::node* parent_node = node->parent; parent_node != nullptr) {
+        return get_transform(node->object).world_matrix(get_world_transform(parent_node->id));
+      } else {
+        return get_transform(node->object).world_matrix();
+      }
     }
   }
 
@@ -132,48 +134,85 @@ namespace other {
     set_transform(node->object, t);
   }
 
-  std::vector<triangle> scene::get_scene_mesh() const {
-    PROFILE_SECTION("scene::get_scene_mesh");
+  render_data scene::prepare_render_data() const {
+    PROFILE_SECTION("scene::prepare_render_data");
 
-    std::vector<triangle> scene_mesh;
-    scene_tree::node* root_node = tree.root;
-    OTHER_ASSERT(root_node != nullptr, "Root node does not exist in the scene tree.");
-
-    {
-      PROFILE_SECTION("scene::get_scene_mesh--collect_mesh_data");
-      registry.view<object_handle, transform, render_component>().each([&](const object_handle h, const transform& t, const render_component& render) {
-        const std::unordered_map<uint32_t, std::vector<triangle>>& mesh_data = render.model->source->get_triangles();
-        for (const auto& [submesh_index, triangles] : mesh_data) {
-          scene_mesh.append_range(triangles);
-        }
-      });
-    }
-
-    struct morton_idx {
-      uint64_t code;
-      size_t index;
-    };
-
-    std::vector<triangle> sorted_mesh;
-    std::vector<morton_idx> morton_codes(scene_mesh.size());
-    {
-      PROFILE_SECTION("scene::get_scene_mesh--compute_morton_codes");
-      for (uint32_t i = 0; i < (int32_t)scene_mesh.size(); ++i) {
-        morton_codes[i].code = morton_encode3d(scene_mesh[i].centroid.x, scene_mesh[i].centroid.y, scene_mesh[i].centroid.z);
-        morton_codes[i].index = i;
+    render_data data;
+    registry.view<object_handle, gpu::point_light>().each([&](const object_handle& handle, const gpu::point_light& light) { data.point_lights.push_back(light); });
+    registry.view<object_handle, gpu::directional_light>().each([&](const object_handle& handle, const gpu::directional_light& light) { data.directional_lights.push_back(light); });
+    registry.view<object_handle, render_component>().each([&](const object_handle& handle, const render_component& render) {
+      if (!render.visible) {
+        return;
       }
-    }
 
-    std::ranges::sort(morton_codes, [](const morton_idx& a, const morton_idx& b) {
-      return a.code < b.code;
+      model* draw_model = render.model;
+      OTHER_ASSERT(draw_model != nullptr, "Draw command model is null");
+      OTHER_ASSERT(draw_model->source != nullptr, "Draw command model source is null");
+      PROFILE_SECTION("scene::prepare_render_data--submit_model");
+
+      model_source* source = draw_model->source;
+      OTHER_ASSERT(source != nullptr, "Model source is null");
+
+      const std::vector<submesh>& submeshes = source->get_submeshes();
+      OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
+
+      const std::vector<uint32_t>& sm_idxs = draw_model->submesh_indices;
+      OTHER_ASSERT(!sm_idxs.empty(), "Model has no submeshes");
+
+      glm::mat4 world_transform = get_world_transform(handle.id);
+
+      for (const auto& sm_idx : sm_idxs) {
+        OTHER_ASSERT(sm_idx < submeshes.size(), "Submesh index out of bounds");
+        draw_command cmd = {
+          .draw_model = draw_model,
+          .shader_handle = render.shader_handle,
+          .transform = world_transform * submeshes[sm_idx].local_transform,
+          .material = render.material,
+          .submesh_index = sm_idx,
+          .render_state = render_polygon_mode::POLYGON_MODE_FILL,
+          .draw_mode = mesh::primitive_type::TRIANGLES,
+          .line_thickness = 1.f,
+        };
+
+        mesh_key key = cmd;
+
+        auto it = data.mesh_indices.find(key);
+        if (it == data.mesh_indices.end()) {
+          auto [itr, inserted] = data.mesh_indices.insert({ key, data.num_draw_calls++ });
+          OTHER_ASSERT(inserted, "Failed to insert mesh key into map");
+
+          data.mesh_keys.emplace_back() = key;
+          data.draw_calls.emplace_back() = draw_call{};
+          data.material_buffers.emplace_back() = gpu::graphics_material_buffer{};
+          data.model_buffers.emplace_back() = gpu::model_matrix_buffer{};
+          it = itr;
+        }
+        size_t mesh_index = it->second;
+
+        draw_call& call = data.draw_calls[mesh_index];
+        const submesh& sm = cmd.draw_model->source->get_submeshes()[cmd.submesh_index];
+        if (call.instance_count == 0) {
+          call.instance_count = 0;
+          call.submesh_index = cmd.submesh_index;
+
+          call.mesh_handle = cmd.draw_model->source->get_mesh_handle();
+          call.shader_handle = cmd.shader_handle->handle();
+          call.submesh_index = cmd.submesh_index;
+
+          call.vertex_offset = sm.base_vertex;
+          call.vertex_count = sm.vert_cnt;
+          call.index_offset = sm.base_idx;
+          call.index_count = sm.idx_cnt;
+
+          call.line_thickness = cmd.line_thickness;
+        }
+
+        size_t index = data.draw_calls[mesh_index].instance_count++;
+        data.material_buffers[mesh_index].materials[index] = cmd.material;
+        data.model_buffers[mesh_index].model_matrices[index] = cmd.transform;
+      }
     });
-
-    sorted_mesh.resize(scene_mesh.size());
-    for (uint32_t i = 0; i < (int32_t)scene_mesh.size(); ++i) {
-      sorted_mesh[i] = scene_mesh[morton_codes[i].index];
-    }
-
-    return sorted_mesh;
+    return data;
   }
 
   void scene::render(scope<renderer>& renderer) const {

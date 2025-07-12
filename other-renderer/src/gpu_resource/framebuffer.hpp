@@ -17,17 +17,17 @@ namespace other {
 
   struct framebuffer : public resource {
     enum attachment_type {
-      COLOR = 0,
-      DEPTH,
+      DEPTH = 0,
       STENCIL,
       DEPTH_STENCIL,
+
+      COLOR,
 
       /// add more here...
 
       NUM_ATTACHMENT_TYPES,
       NO_ATTACHMENTS = NUM_ATTACHMENT_TYPES
     };
-    OTHER_REFLECTABLE(framebuffer);
 
     glm::vec4 clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
     glm::ivec2 size = { 0, 0 };
@@ -43,14 +43,6 @@ namespace other {
     framebuffer& set_size(uint32_t width, uint32_t height);
     framebuffer& set_clear_color(const glm::vec4& color);
 
-    // texture& set_type(tex_type type);
-    // texture& set_size(uint32_t width, uint32_t height);
-    // texture& set_format(format frmt);
-    // texture& set_filter(filter min_filter, filter mag_filter = NEAREST);
-    // texture& set_wrap_mode(wrap wrap_s, wrap wrap_t = CLAMP_TO_EDGE, wrap wrap_r = CLAMP_TO_EDGE);
-    // texture& set_data(const std::vector<uint8_t>& data);
-    // texture& set_data(const uint8_t* data, size_t size);
-
     // clang-format off
     framebuffer& add_attachment(const std::string& text_name, attachment_type type, texture::tex_type tex_type = texture::tex_type::TEXTURE_2D, texture::format format = texture::format::RGBA32F, 
                                 texture::filter min_filter = texture::filter::LINEAR, texture::filter max_filter = texture::filter::LINEAR, 
@@ -62,15 +54,15 @@ namespace other {
     void finalize_framebuffer();
     void destroy_resources();
 
-    // COLOR, DEPTH, STENCIL, DEPTH_STENCIL
-    std::array<opt<resource_handle>, 4> attachment_textures;
+    std::vector<resource_handle> color_attachments;
+    // DEPTH, STENCIL, DEPTH_STENCIL
+    std::array<opt<resource_handle>, 3> attachment_textures;
 
     bool complete = false;
     bool ready_to_finalize = false;
 
    private:
     attachment_type final_type = attachment_type::COLOR;
-
     opt<std::string> error_msg;
 
     void check_build_status();

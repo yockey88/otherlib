@@ -68,6 +68,7 @@ namespace other {
 
     exit_code res = SUCCESS;
     {
+      CORE_LOG_INFO("Running Other Environment driver...");
       PROFILE_SECTION("other::main");
       try {
         res = other_main(cmd, config);
@@ -87,6 +88,7 @@ namespace other {
     }
 
     /// handle exit code
+    CORE_LOG_INFO("Other Environment driver finished with exit code: {}", res);
 
 #ifdef OTHER_APPLICATION
     event_callbacks.clear();

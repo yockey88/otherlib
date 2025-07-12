@@ -69,7 +69,7 @@ namespace other {
 
     virtual void bind_shader_resource(const resource_handle& handle) = 0;
     virtual void unbind_shader_resource(const resource_handle& handle) = 0;
-    virtual void compile_and_attach_source(const resource_handle& handle, const std::string& source, shader::source_type type) = 0;
+    virtual void compile_and_attach_source(const resource_handle& handle, const std::string_view source, shader::source_type type) = 0;
     virtual void finalize_shader(const resource_handle& handle) = 0;
     virtual void dispatch_shader(const resource_handle& handle, const glm::ivec3& group_dims, shader::compute_barrier_type barrier_type) = 0;
 
@@ -82,7 +82,7 @@ namespace other {
 
     virtual void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) = 0;
     virtual void unbind_buffer_resource(const resource_handle& handle) = 0;
-    virtual void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string& name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) = 0;
+    virtual void bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) = 0;
     virtual void buffer_data(const resource_handle& handle, uint32_t binding_point, const void* data, size_t size) = 0;
     virtual void buffer_range(const resource_handle& handle, uint32_t binding_point, size_t start, size_t size, const void* data) = 0;
 
@@ -94,19 +94,19 @@ namespace other {
 
     virtual void bind_framebuffer_resource(const resource_handle& handle) = 0;
     virtual void unbind_framebuffer_resource(const resource_handle& handle) = 0;
-    virtual void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level) = 0;
+    virtual void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level, uint32_t color_attachment_index = 0) = 0;
     virtual void finalize_framebuffer(const resource_handle& handle) = 0;
 
-    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) = 0;
-    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) = 0;
-    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) = 0;
-    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) = 0;
-    virtual void set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value, bool transpose = false) = 0;
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, int32_t value) = 0;
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, real_t value) = 0;
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) = 0;
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) = 0;
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose = false) = 0;
 
-    resource_handle create_resource(const std::string& name, resource_type type);
+    resource_handle create_resource(const std::string_view name, resource_type type);
     void destroy_resource(const resource_handle& handle);
 
-    void set_resource_name(const resource_handle& handle, const std::string& name);
+    void set_resource_name(const resource_handle& handle, const std::string_view name);
 
     template <typename T>
     T* get_resource_as(const resource_handle& handle) {

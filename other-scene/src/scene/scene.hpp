@@ -42,7 +42,7 @@ namespace other {
     const transform& get_transform(natural_t id) const;
     void set_transform(natural_t id, const transform& t);
 
-    std::vector<triangle> get_scene_mesh() const;
+    render_data prepare_render_data() const;
 
     void render(scope<renderer>& renderer) const;
 
@@ -101,6 +101,8 @@ namespace other {
 
     entt::registry registry;
     scene_tree tree;
+
+    std::optional<render_data> render_data_cache = std::nullopt;
   };
 
 }  // namespace other

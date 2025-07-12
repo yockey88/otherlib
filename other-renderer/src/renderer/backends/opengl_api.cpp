@@ -14,6 +14,7 @@
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 
+#include "gpu_resource/framebuffer.hpp"
 #include "renderer/draw_command.hpp"
 
 namespace other {
@@ -181,14 +182,28 @@ namespace other {
       return;
     }
 
-    call.mesh->bind();
-    call.shader->bind();
+    auto gpu_mesh_handle = gpu_resources.find(call.mesh_handle.id);
+    if (gpu_mesh_handle == gpu_resources.end()) {
+      CORE_LOG_ERROR("Mesh resource with ID {} not found.", call.mesh_handle.id);
+      return;
+    }
+
+    auto gpu_shader_handle = gpu_resources.find(call.shader_handle.id);
+    if (gpu_shader_handle == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", call.shader_handle.id);
+      return;
+    }
+
     glLineWidth(call.line_thickness);
-    glPolygonMode(GL_FRONT_AND_BACK, render_state);
-    glDrawElementsInstancedBaseVertexBaseInstance(draw_mode, call.index_count, GL_UNSIGNED_INT, (void*)0, call.instance_count, call.vertex_offset, 0);
+    glPolygonMode(GL_FRONT_AND_BACK, get_gl_render_polygon_mode(render_state));
+
+    glUseProgram(gpu_shader_handle->second);
+    glBindVertexArray(gpu_mesh_handle->second);
+    glDrawElementsInstancedBaseVertexBaseInstance(get_gl_prim_type(draw_mode), call.index_count, GL_UNSIGNED_INT, (void*)0, call.instance_count, call.vertex_offset, 0);
+    glBindVertexArray(0);
+    glUseProgram(0);
+
     CHECKGL();
-    call.shader->unbind();
-    call.mesh->unbind();
   }
 
   void opengl_api::begin_ui_frame_backend_newframe() {
@@ -221,7 +236,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::compile_and_attach_source(const resource_handle& handle, const std::string& source, shader::source_type type) {
+  void opengl_api::compile_and_attach_source(const resource_handle& handle, const std::string_view source, shader::source_type type) {
     PROFILE_SECTION("opengl_api::compile_and_attach_source");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("OpenGL context handle is null, cannot compile shader.");
@@ -256,7 +271,7 @@ namespace other {
     }
     CHECKGL();
 
-    const char* source_cstr = source.c_str();
+    const char* source_cstr = source.data();
     glShaderSource(shader_src_id, 1, &source_cstr, nullptr);
     glCompileShader(shader_src_id);
     CHECKGL();
@@ -560,7 +575,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string& name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) {
+  void opengl_api::bind_shader_buffer_resource(const resource_handle& handle, const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type, const void* data, size_t size) {
     PROFILE_SECTION("opengl_api::bind_shader_buffer_resource");
     auto buf_itr = buffer_resources.find(handle.id);
     if (buf_itr == buffer_resources.end()) {
@@ -593,7 +608,7 @@ namespace other {
     if (binding_itr == shader_block_bindings.end()) {
       PROFILE_SECTION("opengl_api::bind_shader_buffer_resource--bind-gpu-buffer-to-shader");
 
-      GLuint block_index = glGetUniformBlockIndex(shader_id, name.c_str());
+      GLuint block_index = glGetUniformBlockIndex(shader_id, name.data());
       if (block_index != 0xffffffff) {
         glUniformBlockBinding(shader_id, block_index, binding_point);
         glBindBufferBase(get_gl_buffer_type(buffer_type), binding_point, buffer_id);
@@ -761,7 +776,7 @@ namespace other {
     PROFILE_SECTION("opengl_api::bind_framebuffer_resource");
     auto itr = framebuffer_resources.find(handle.id);
     if (itr == framebuffer_resources.end()) {
-      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found. cannot bind", handle.id);
       return;
     }
 
@@ -793,7 +808,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level) {
+  void opengl_api::framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level, uint32_t color_attachment_index) {
     PROFILE_SECTION("opengl_api::framebuffer_texture_2d");
 
     if (get_gpu_context() == nullptr) {
@@ -809,13 +824,21 @@ namespace other {
 
     auto text_gpu_itr = gpu_resources.find(texture.id);
     if (text_gpu_itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Framebuffer texture attachment resource with ID {} not found for framebuffer with ID {}.", texture.id, handle.id);
       return;
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, fb_gpu_itr->second);
     glBindTexture(GL_TEXTURE_2D, text_gpu_itr->second);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, get_gl_fb_attachment_type(type), GL_TEXTURE_2D, text_gpu_itr->second, mip_level);
+
+    int32_t gl_attachment_type = -1;
+    if (type == framebuffer::attachment_type::COLOR) {
+      gl_attachment_type = GL_COLOR_ATTACHMENT0 + color_attachment_index;
+    } else {
+      gl_attachment_type = get_gl_fb_attachment_type(type);
+    }
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, gl_attachment_type, GL_TEXTURE_2D, text_gpu_itr->second, mip_level);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
@@ -825,7 +848,7 @@ namespace other {
 
     auto itr = framebuffer_resources.find(handle.id);
     if (itr == framebuffer_resources.end()) {
-      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found. cannot finalize", handle.id);
       return;
     }
 
@@ -876,7 +899,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, int32_t value) {
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int32_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
     auto itr = gpu_resources.find(shader.id);
@@ -894,7 +917,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, real_t value) {
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, real_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
     auto itr = gpu_resources.find(shader.id);
@@ -912,7 +935,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec3& value) {
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
     auto itr = gpu_resources.find(shader.id);
@@ -930,7 +953,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::vec4& value) {
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
     auto itr = gpu_resources.find(shader.id);
@@ -948,7 +971,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string& name, const glm::mat4& value, bool transpose) {
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
     auto itr = gpu_resources.find(shader.id);
@@ -1010,7 +1033,7 @@ namespace other {
 
     auto itr = framebuffer_resources.find(handle.id);
     if (itr == framebuffer_resources.end()) {
-      CORE_LOG_ERROR("Framebuffer resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found. cannot destroy", handle.id);
       return;
     }
 
@@ -1280,6 +1303,23 @@ namespace other {
     return gl_flags;
   }
 
+  int32_t opengl_api::get_gl_render_polygon_mode(render_polygon_mode mode) const {
+    switch (mode) {
+      case POLYGON_MODE_FILL:
+        return GL_FILL;
+
+      case POLYGON_MODE_LINE:
+        return GL_LINE;
+
+      case POLYGON_MODE_POINT:
+        return GL_POINT;
+
+      default:
+        CORE_LOG_ERROR("Unsupported polygon mode: {}", mode);
+        return -1;
+    }
+  }
+
   int32_t opengl_api::get_gl_texture_type(texture::tex_type type) const {
     switch (type) {
       case texture::tex_type::TEXTURE_1D:
@@ -1535,7 +1575,7 @@ namespace other {
     return -1;  // Resource not found
   }
 
-  uint32_t opengl_api::get_shader_uniform_location(const resource_handle& shader, const std::string& name) {
+  uint32_t opengl_api::get_shader_uniform_location(const resource_handle& shader, const std::string_view name) {
     auto key = uniform_key{ shader.id, FNV(name) };
     auto itr = shader_uniforms.find(key);
     if (itr != shader_uniforms.end()) {
@@ -1549,7 +1589,8 @@ namespace other {
     }
 
     uint32_t shader_id = shader_itr->second;
-    GLint location = glGetUniformLocation(shader_id, name.c_str());
+    std::string name_str{ name };
+    GLint location = glGetUniformLocation(shader_id, name_str.c_str());
     CHECKGL();
     if (location == -1) {
       return -1;

@@ -10,59 +10,179 @@
 #include <glm/glm.hpp>
 
 #include "core/defines.hpp"
-#include "serialization/reflection.hpp"
 
+#include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
 
 namespace other {
 
-  class renderer;
+#if 1
+  #define RG_TESTING
+#endif
 
+  class renderer;
   class render_graph;
 
+#ifdef RG_TESTING
   struct render_pass {
-    OTHER_REFLECTABLE(render_pass);
+    enum type {
+      RENDER_PASS = 0,
+      COMPUTE_PASS,
+    };
+    natural_t id = 0;
+    opt<resource_handle> framebuffer_handle = std::nullopt;
+    resource_handle shader_handle = {};
+    void* user_data = nullptr;
+
+    std::string name;
+    glm::ivec2 size = { 0, 0 };
+    glm::vec4 clear_color = { 0.2, 0.2, 0.2, 1.0 };
+
+    struct texture_resource {
+      framebuffer::attachment_type type;
+      access_flags flags;
+      resource_handle handle;
+    };
+    struct buffer_resource {
+      access_flags flags;
+      resource_handle handle;
+    };
+
+    std::map<natural_t, texture_resource> texture_resources;
+    std::map<natural_t, buffer_resource> buffer_resources;
+  };
+
+  class render_graph {
+   public:
+    struct node {
+      natural_t id;
+      render_pass* pass = nullptr;
+
+      std::map<natural_t, render_pass::buffer_resource> input_buffers;
+      std::map<natural_t, render_pass::buffer_resource> output_buffers;
+      std::map<natural_t, render_pass::texture_resource> input_textures;
+      std::map<natural_t, render_pass::texture_resource> output_textures;
+
+      bool operator==(const node& other) const { return id == other.id && pass == other.pass; }
+    };
+    struct graph {
+      std::map<natural_t, node> nodes;
+      std::map<natural_t, std::vector<natural_t>> edges;
+    };
+
+    /// \todo finish notion of 'other-actions':
+    ///           using pass_executor = action<node*>;
+    using pass_executor = std::function<void(renderer& render, const node*, void*)>;
+
+    struct pass_builder {
+      pass_builder(render_graph& graph, render_pass& pass)
+          : graph(graph), pass(pass) {}
+
+      pass_builder& set_clear_color(const glm::vec4& clear_color);
+      pass_builder& texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags = READ_WRITE);
+      pass_builder& buffer_resource(resource_handle handle, natural_t slot, access_flags flags = READ_WRITE);
+      pass_builder& execution_callback(pass_executor&& executor, void* user_data = nullptr);
+      render_graph& end_pass();
+
+     private:
+      render_graph& graph;
+      render_pass& pass;
+    };
+    struct pass {
+      render_pass::type type;
+      render_pass pass;
+    };
+
+    render_graph(renderer* renderer_ptr)
+        : renderer_ptr(renderer_ptr) {}
+    ~render_graph();
+
+    render_graph& start_pipeline();
+    void end_pipeline();
+
+    pass_builder start_pass(const std::string_view name, resource_handle shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true);
+
+    bool is_valid() const { return graph_valid; }
+
+    const std::map<natural_t, pass>& get_passes() const { return passes; }
+    const std::map<natural_t, pass_executor>& get_executors() const { return executors; }
+
+    const graph& get_graph() const { return pass_graph; }
+    const std::vector<natural_t>& get_topological_sort() const { return topological_sort; }
+
+    renderer* get_renderer() { return renderer_ptr; }
+
+   private:
+    friend struct pass_builder;
+
+    renderer* renderer_ptr = nullptr;
+    bool graph_valid = false;
+
+    std::map<natural_t, pass> passes;
+    std::map<natural_t, pass_executor> executors;
+
+    graph pass_graph;
+    std::vector<natural_t> topological_sort;
+
+    pass& create_pass(render_pass::type rptype);
+
+    void build_graph();
+    std::vector<natural_t> get_topological_sort(const graph& g);
+
+    natural_t next_pass_id = 0;
+    inline natural_t get_next_pass_id() { return ++next_pass_id; }
+
+    natural_t next_node_id = 0;
+    inline natural_t get_next_node_id() { return next_node_id++; }
+  };
+
+#else
+  struct render_pass {
+    struct key {
+      /// nullopt implies swapchain resource
+      std::optional<resource_handle> framebuffer_handle;
+      resource_handle shader_handle;
+      constexpr auto operator<=>(const key&) const = default;
+    };
 
     natural_t id = 0;
     render_graph* graph = nullptr;
 
-    /// all attachments must be same size, if this is 0, then swapchain size is used
     glm::ivec2 size = { 0, 0 };
 
+    std::optional<resource_handle> framebuffer_handle;
     resource_handle shader_handle;
 
-    std::vector<resource_handle> color_attachments;
-    std::vector<uint32_t> color_attachment_binding_points;
-
-    std::vector<resource_handle> buffer_resources;
-    std::vector<uint32_t> buffer_resource_binding_points;
-
-    // std::vector<sampler_info> sampler_infos;
-
-    /// callback shtuff?
-    void (*execute_callback)(renderer&, void*) = nullptr;
+    std::function<void(renderer&, void*)> execute_callback = nullptr;
     void* user_data = nullptr;
 
     render_pass() = default;
     render_pass(render_graph* graph, natural_t id)
         : id(id), graph(graph) {}
+
+    key get_key() const { return { framebuffer_handle, shader_handle }; }
   };
 
   class render_graph {
     OTHER_REFLECTABLE(render_graph);
 
    public:
-    struct node {
-      OTHER_REFLECTABLE(node);
-
-      natural_t id = 0;
-      std::vector<resource_handle> input_resources;
-      std::vector<resource_handle> output_resources;
-
-      node() = default;
-      node(natural_t id, const std::vector<resource_handle>& input_reources, const std::vector<resource_handle>& output_resources)
-          : id(id), input_resources(input_reources), output_resources(output_resources) {}
+    struct resource_binding {
+      access_flags flags = READ_WRITE;
+      natural_t binding_point = 0;
+      resource_handle buffer_id;
     };
+
+    struct node {
+      natural_t pass_id = 0;
+      std::vector<render_pass::key> input_buffers;
+      std::vector<render_pass::key> input_textures;
+
+      std::vector<render_pass::key> output_buffers;
+      std::vector<render_pass::key> output_textures;
+    };
+
+    std::map<natural_t, std::vector<natural_t>> pass_dependencies;
 
     struct pass_builder {
       natural_t id = 0;
@@ -70,8 +190,8 @@ namespace other {
       pass_builder(render_pass& pass)
           : pass(pass) {}
 
-      pass_builder& add_color_attachment(resource_handle texture_id, uint32_t binding);
-      pass_builder& use_buffer_resource(resource_handle buffer_id, uint32_t binding);
+      pass_builder& use_texture_resource(resource_handle texture_id, uint32_t binding, access_flags flags = READ_WRITE);
+      pass_builder& use_buffer_resource(resource_handle buffer_id, uint32_t binding, access_flags flags = READ_WRITE);
 
       template <typename Fn>
         requires std::invocable<Fn, renderer&, void*>
@@ -84,36 +204,61 @@ namespace other {
       render_graph& end_pass();
 
      private:
+      friend struct render_pass;
       render_pass& pass;
     };
 
-    pass_builder start_pass(natural_t id, const glm::ivec2& size, resource_handle shader_handle);
-    render_graph& add_buffer_resource(resource_handle buffer_id, uint32_t binding);
+    render_graph& begin_frame();
+    void end_frame();
+
+    pass_builder start_pass(resource_handle framebuffer, resource_handle shader, const glm::ivec2& size);
+    pass_builder start_pass(resource_handle shader, const glm::ivec2& size);
 
    private:
     friend class renderer;
+    friend struct render_pass;
 
     render_pass* current_pass = nullptr;
+    std::map<render_pass::key, render_pass> passes;
 
-    std::map<natural_t, node> nodes;
-    std::map<natural_t, std::vector<natural_t>> edges;
+    std::map<render_pass::key, std::vector<resource_binding>> buffer_bindings;
+    std::map<render_pass::key, std::vector<resource_binding>> texture_bindings;
 
-    std::map<natural_t, render_pass> passes;
+    void build_graph();
+    void validate_graph();
+
+    natural_t next_pass_id = 0;
+    inline natural_t get_next_pass_id() {
+      return next_pass_id++;
+    }
   };
+#endif
 
 }  // namespace other
 
+namespace std {
+#ifdef RG_TESTING
+#else
+  template <>
+  struct formatter<other::render_pass::key> : formatter<string_view> {
+    template <typename FormatContext>
+    auto format(const other::render_pass::key& key, FormatContext& ctx) const {
+      return formatter<string_view>::format(std::format("[{}:{}]", key.framebuffer_handle.value_or(other::resource_handle{}), key.shader_handle), ctx);
+    }
+  };
+#endif
+}  // namespace std
+
+#ifdef RG_TESTING
+#else
 OTHER_REFLECT(
   other::render_pass,
   field(id, other::attr::serializable())
 )
+#endif
 
-OTHER_REFLECT(
-  other::render_graph
-)
-
-OTHER_REFLECT(
-  other::render_graph::node
-)
+// OTHER_REFLECT(
+//   other::render_graph
+// )
 
 #endif  // OTHER_RENDERER_RENDER_GRAPH_HPP

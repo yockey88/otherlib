@@ -75,6 +75,15 @@ namespace other {
     return mem;
   }
 
+  void* arena::request_region(size_t size, size_t alignment) {
+    PROFILE_SECTION("arena::request_region");
+    void* ptr = malloc(size + alignment - 1);
+    OTHER_ASSERT(ptr != nullptr, "Failed to allocate memory region of size {} with alignment {}.", size, alignment);
+    uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+    uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
+    return reinterpret_cast<void*>(aligned_addr);
+  }
+
   void arena::free(void* ptr, std::size_t size) {
     PROFILE_SECTION("arena::free");
     static arena* instance = subsystem_description<arena>::ptr();
@@ -84,6 +93,12 @@ namespace other {
     /// do nothing for now, allocators handle calling destructors and zeroing memory
     ///   later we can implement a free list or something or register freed chunks for defragmentation
     PROFILE_DEALLOCATION(ptr);
+  }
+
+  void arena::free_region(void* ptr) {
+    PROFILE_SECTION("arena::free_region");
+    OTHER_ASSERT(ptr != nullptr, "Cannot free a null pointer.");
+    ::free(ptr);
   }
 
   arena::page* arena::get_current_page() {

@@ -45,6 +45,10 @@ namespace other {
       material materials[kMaxMaterials];
     };
 
+    GPU_ALIGN struct model_matrix_buffer {
+      glm::mat4 model_matrices[kMaxMaterials];
+    };
+
     GPU_ALIGN struct graphics_material {
       glm::vec3 diffuse_color;
       float diffuse_reflectivity;

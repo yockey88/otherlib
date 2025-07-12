@@ -182,12 +182,6 @@ namespace other {
     }
     src.append(raw_source);
 
-    src.append(R"(
-      layout (std430) readonly buffer model_matrix_buffer {
-        mat4 model_matrices[];
-      };  
-    )");
-
     std::string dir_path = file.parent_path().string();
     std::string name = file.filename().string();
     CORE_LOG_DEBUG("Including shader source from directory: {}, name: {}", dir_path, name);

@@ -67,7 +67,7 @@ namespace other {
     ImGui::RenderPlatformWindowsDefault();
   }
 
-  resource_handle rendering_api::create_resource(const std::string& name, resource_type type) {
+  resource_handle rendering_api::create_resource(const std::string_view name, resource_type type) {
     resource_handle handle = { get_next_resource_id(), type };
     handle.name_hash = FNV(name);
 
@@ -154,13 +154,17 @@ namespace other {
         destroy_mesh_resource(handle);
         break;
 
+      case resource_type::FRAMEBUFFER:
+        destroy_framebuffer_resource(handle);
+        break;
+
       default:
         CORE_LOG_ERROR("Unsupported resource type for destruction: {}", handle.type);
         break;
     }
   }
 
-  void rendering_api::set_resource_name(const resource_handle& handle, const std::string& name) {
+  void rendering_api::set_resource_name(const resource_handle& handle, const std::string_view name) {
     auto itr = std::ranges::find_if(resource_names, [&](const auto& pair) {
       return pair.second == name;
     });

@@ -3,7 +3,9 @@
  **/
 #include "model/model_importer.hpp"
 
+#include <assimp/DefaultLogger.hpp>
 #include <assimp/Importer.hpp>
+#include <assimp/LogStream.hpp>
 #include <assimp/material.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -22,38 +24,52 @@ namespace other {
     model_builder load_model_data(const filepath& file_path) {
       PROFILE_SECTION("model_importer::load_model_data");
 
+      Assimp::Logger::LogSeverity severity = Assimp::Logger::VERBOSE;
+      Assimp::DefaultLogger::create("", severity, aiDefaultLogStream_STDOUT);
+
+      std::string log_file = std::format("logs/{}-import-info.log", file_path.filename().stem().string());
+      Assimp::DefaultLogger::create(log_file.c_str(), severity, aiDefaultLogStream_FILE);
+      Assimp::DefaultLogger::get()->info("begin import of model: ", file_path.string());
+
       OTHER_ASSERT(std::filesystem::exists(file_path), "{} does not exist", file_path.string());
       model_builder builder;
       Assimp::Importer importer;
 
       uint32_t flags =
-        aiProcess_CalcTangentSpace |  // Create binormals/tangents just in case
-        aiProcess_Triangulate |       // Make sure we're triangles
-        aiProcess_SortByPType |       // Split meshes by primitive type
-        aiProcess_GenNormals |        // Make sure we have legit normals
-        aiProcess_GenUVCoords |       // Convert UVs if required
+        aiProcess_CalcTangentSpace |
+        aiProcess_Triangulate |
+        // aiProcess_SortByPType |
+        aiProcess_GenNormals |
+        aiProcess_GenUVCoords |
         aiProcess_OptimizeGraph |
-        aiProcess_RemoveRedundantMaterials |  // remove redundant materials
-        aiProcess_FindDegenerates |           // remove degenerated polygons from the import
-        aiProcess_FindInvalidData |           // detect invalid model data, such as invalid normal vectors
-        aiProcess_TransformUVCoords |         // preprocess UV transformations (scaling, translation ...)
-        aiProcess_FindInstances |             // search for instanced meshes and remove them by references to one master
-        // aiProcess_SplitByBoneCount |          // split meshes with too many bones. Necessary for our (limited) hardware skinning shader
-        aiProcess_OptimizeMeshes |  // Batch draws where possible
+        // // aiProcess_RemoveRedundantMaterials |
+        aiProcess_FindDegenerates |
+        aiProcess_FindInvalidData |
+        // aiProcess_TransformUVCoords |
+        aiProcess_FindInstances |
+        // // aiProcess_SplitByBoneCount |
+        aiProcess_OptimizeMeshes |
         aiProcess_JoinIdenticalVertices |
-        // aiProcess_LimitBoneWeights |       // If more than N (=4) bone weights, discard least influencing bones and renormalise sum to 1
-        aiProcess_ValidateDataStructure |  // Validation
-        aiProcess_GlobalScale;             // e.g. convert cm to m for fbx import (and other formats where cm is native)
-      const aiScene* scene = importer.ReadFile(file_path.string(), flags);
-      if (scene == nullptr) {
-        CORE_LOG_ERROR("Failed to load model : {} [{}]", file_path.string(), importer.GetErrorString());
-        return {};
+        // // aiProcess_LimitBoneWeights |
+        aiProcess_ValidateDataStructure |
+        aiProcess_GlobalScale;  // e.g. convert cm to m for fbx import (and other formats where cm is native)
+      const aiScene* scene = nullptr;
+      {
+        PROFILE_SECTION("model_importer::load_model_data--read-file");
+        scene = importer.ReadFile(file_path.string(), flags);
+        if (scene == nullptr) {
+          CORE_LOG_ERROR("Failed to load model : {} [{}]", file_path.string(), importer.GetErrorString());
+          return {};
+        }
       }
 
       if (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode == nullptr) {
         CORE_LOG_ERROR("Failed to load model : {}\n[ASSIMP ERROR : {}]", file_path.string(), importer.GetErrorString());
         return {};
       }
+
+      CORE_LOG_DEBUG("Model loaded successfully: {}", file_path.string());
+      Assimp::DefaultLogger::get()->info("Model loaded successfully: ", file_path.string());
 
       // ProcessMaterials(scene);
       {
@@ -65,15 +81,6 @@ namespace other {
         for (uint32_t i = 0; i < scene->mNumMeshes; ++i) {
           aiMesh* mesh = scene->mMeshes[i];
           OTHER_ASSERT(mesh != nullptr, "Failed to get mesh");
-          if (!mesh->HasPositions()) {
-            CORE_LOG_ERROR("Mesh has no positions");
-            throw std::runtime_error("Mesh has no positions");
-          }
-
-          if (!mesh->HasNormals()) {
-            CORE_LOG_ERROR("Mesh has no normals");
-            throw std::runtime_error("Mesh has no normals");
-          }
 
           submesh& submesh = builder.submeshes.emplace_back();
           submesh.sub_mesh_id = i;
@@ -87,28 +94,37 @@ namespace other {
 
           submesh.name = mesh->mName.C_Str();
 
-          // OE_DEBUG("Submesh [{}] : submesh id = {} \\ num verts = {} (base = {}) ", submesh.model_name, submesh.sub_mesh_id.Get(), submesh.vert_cnt, submesh.base_vertex);
+          if (!mesh->HasPositions()) {
+            CORE_LOG_WARN("Mesh index {} with name '{}' has no vertex positions - skipping import!", i, mesh->mName.C_Str());
+          }
+          if (!mesh->HasNormals()) {
+            CORE_LOG_WARN("Mesh index {} with name '{}' has no vertex normals, and they could not be computed - skipping import!", i, mesh->mName.C_Str());
+          }
+          bool skip = !mesh->HasPositions() || !mesh->HasNormals();
+          if (skip) {
+            continue;
+          }
 
-          for (uint32_t i = 0; i < mesh->mNumVertices; ++i) {
+          for (uint32_t j = 0; j < mesh->mNumVertices; ++j) {
             vertex& vertex = builder.vertices.emplace_back();
-            vertex.position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
-            vertex.normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
+            vertex.position = { mesh->mVertices[j].x, mesh->mVertices[j].y, mesh->mVertices[j].z };
+            vertex.normal = { mesh->mNormals[j].x, mesh->mNormals[j].y, mesh->mNormals[j].z };
 
             if (mesh->HasTangentsAndBitangents()) {
-              vertex.tangent = { mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z };
-              vertex.bitangent = { mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z };
+              vertex.tangent = { mesh->mTangents[j].x, mesh->mTangents[j].y, mesh->mTangents[j].z };
+              vertex.bitangent = { mesh->mBitangents[j].x, mesh->mBitangents[j].y, mesh->mBitangents[j].z };
             }
 
             if (mesh->HasTextureCoords(0)) {
-              vertex.tex_coord = { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y };
+              vertex.tex_coord = { mesh->mTextureCoords[0][j].x, mesh->mTextureCoords[0][j].y };
             } else {
               vertex.tex_coord = { 0.f, 0.f };
             }
           }
 
-          for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
-            aiFace face = mesh->mFaces[i];
-            OTHER_ASSERT(face.mNumIndices == 3, "Other Engine does not support untriangulated meshes");
+          for (uint32_t j = 0; j < mesh->mNumFaces; ++j) {
+            aiFace& face = mesh->mFaces[j];
+            OTHER_ASSERT(face.mNumIndices == 3, "Other Engine does not support untriangulated meshes. mesh [{}] face [{}] has [{}] indices", i, j, face.mNumIndices);
             index& idx = builder.indices.emplace_back();
             idx = { face.mIndices[0], face.mIndices[1], face.mIndices[2] };
 
@@ -130,8 +146,8 @@ namespace other {
 
       for (const auto& submesh : builder.submeshes) {
         bounding_box submesh_bounds = submesh.bounds;
-        glm::vec3 min = glm::vec3(submesh.transform * glm::vec4(submesh_bounds.min, 1.0f));
-        glm::vec3 max = glm::vec3(submesh.transform * glm::vec4(submesh_bounds.max, 1.0f));
+        glm::vec3 min = glm::vec3(glm::mat4(1.0f) * glm::vec4(submesh_bounds.min, 1.0f));
+        glm::vec3 max = glm::vec3(glm::mat4(1.0f) * glm::vec4(submesh_bounds.max, 1.0f));
 
         builder.bounds.min.x = glm::min(builder.bounds.min.x, min.x);
         builder.bounds.min.y = glm::min(builder.bounds.min.y, min.y);
@@ -162,10 +178,9 @@ namespace other {
       submesh.base_idx = 0;
       submesh.mat_idx = 0;
       submesh.vert_cnt = static_cast<uint32_t>(vertices.size());
-      submesh.idx_cnt = static_cast<uint32_t>(indices.size());
+      submesh.idx_cnt = static_cast<uint32_t>(indices.size() * 3);
       submesh.sub_mesh_id = 0;
       submesh.material_id = 0;
-      submesh.transform = glm::mat4(1.0f);
       submesh.local_transform = glm::mat4(1.0f);
       submesh.name = name;
 
@@ -231,8 +246,7 @@ namespace other {
       for (uint32_t i = 0; i < node->mNumMeshes; i++) {
         uint32_t idx = node->mMeshes[i];
         submesh& submesh = builder.submeshes[idx];
-        // submesh.model_name = node->mName.C_Str();
-        submesh.transform = transform;
+        submesh.name = node->mName.C_Str();
         submesh.local_transform = n.local_transform;
         n.sub_meshes.push_back(idx);
       }

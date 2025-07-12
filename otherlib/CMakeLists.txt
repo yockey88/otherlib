@@ -22,4 +22,4 @@ else()
 endif()
 
 target_include_directories(otherlib PUBLIC ${OTHER_INCLUDES})
-target_link_libraries(otherlib PUBLIC other_core other_renderer other_scene)
+target_link_libraries(otherlib PUBLIC other_core other_renderer other_scripting other_scene)

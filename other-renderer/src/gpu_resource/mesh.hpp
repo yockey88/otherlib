@@ -51,6 +51,8 @@ namespace other {
         : resource(handle) {}
     virtual ~mesh() = default;
 
+    inline bool has_indices() const { return index_buffer_handle.has_value(); }
+
     resource_type type() const override { return resource_type::MESH; }
 
     mesh& bind();
@@ -73,14 +75,14 @@ namespace other {
 
     void destroy_resources();
 
+    size_t vert_count = 0;
+    size_t index_count = 0;
+
    private:
     resource_handle vertex_buffer_handle;
     opt<resource_handle> index_buffer_handle;
 
     primitive_type prim_type = primitive_type::TRIANGLES;
-
-    size_t vert_count = 0;
-    size_t index_count = 0;
 
     std::vector<vertex_attribute> attributes;
 
