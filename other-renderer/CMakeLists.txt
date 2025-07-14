@@ -19,10 +19,11 @@ target_sources(other_renderer
       src/renderer/renderer_backend.cpp
       src/renderer/backends/opengl_api.cpp
       
+      src/renderer/pipelines/default_instancing_pipeline.cpp
+
       src/renderer/camera.cpp
       src/renderer/render_graph.cpp
       src/renderer/render_pipeline.cpp
-      src/renderer/default_instancing_pipeline.cpp
       src/renderer/renderer.cpp
 
       src/renderer/draw_command.cpp

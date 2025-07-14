@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Other
+namespace OtherCsBindings
 {
 
   [StructLayout(LayoutKind.Sequential)]

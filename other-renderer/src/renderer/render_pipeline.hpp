@@ -38,7 +38,7 @@ namespace other {
    protected:
     virtual void create_resources() = 0;
     virtual void build_render_passes() = 0;
-    virtual void destroy_resources() {}
+    void destroy_resources();
 
     renderer* get_renderer() { return graph->get_renderer(); }
 
@@ -49,7 +49,7 @@ namespace other {
     void set_camera_buffer(const std::string_view name);
 
     void add_buffer_resource(const std::string_view name, gpu_buffer::buf_type type, gpu_buffer::usage usage);
-    void add_texture_resource(const std::string_view name, const glm::vec2& size, framebuffer::attachment_type type);
+    void add_texture_resource(const std::string_view name, const glm::vec2& size, framebuffer::attachment_type type, texture::tex_type tex_type = texture::tex_type::TEXTURE_2D, texture::format format = texture::format::RGBA32F);
 
     template <typename T>
     T* get_resource(const std::string_view name) {
@@ -69,10 +69,13 @@ namespace other {
       pass_builder(render_pipeline* pipeline, render_graph::pass_builder&& builder)
           : pipeline(pipeline), builder(std::move(builder)) {}
 
+      pass_builder& clear_color(const glm::vec4& clear_color);
       pass_builder& buffer_resource(const std::string_view name, access_flags flags = READ);
       pass_builder& texture_resource(const std::string_view name, framebuffer::attachment_type type, access_flags flags = READ_WRITE);
       pass_builder& execution_callback(render_graph::pass_executor&& executor, void* user_data = nullptr);
       void end_pass();
+
+      std::string pass_name;
 
      private:
       uint32_t curr_buffer_binding = 0;

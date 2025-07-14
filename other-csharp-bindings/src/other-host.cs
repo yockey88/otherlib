@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Other
+namespace OtherCsBindings
 {
   [StructLayout(LayoutKind.Sequential, Pack = 1)]
   public struct NBool32 {
@@ -25,7 +25,6 @@ namespace Other
     [UnmanagedCallersOnly]
     private static unsafe void Entry(Argv args)
     {
-      Console.WriteLine("-- binding C# environment");
       AssemblyLoader.LoadCoreAssemblies();
     }
   }

@@ -11,8 +11,8 @@
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
-#include "renderer/default_instancing_pipeline.hpp"
 #include "renderer/gpu_structs.hpp"
+#include "renderer/pipelines/default_instancing_pipeline.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
 
@@ -47,8 +47,8 @@ namespace other {
 
     {
       PROFILE_SECTION("renderer_driver::on_initialize--scene-setup");
-      scene_object& suzanne_obj = active_scene.create_object("Suzanne", glm::vec3(0.f, 0.f, 0.f));
-      scene_object& light_obj = active_scene.create_object("Light", glm::vec3(3.5f, 0.f, 0.f));
+      scene_object& suzanne_obj = active_scene.create_object("Suzanne", glm::vec3(0.f, -0.5f, 0.f));
+      scene_object& light_obj = active_scene.create_object("Light", glm::vec3(0.f, 2.f, 0.f));
 
       scene_object& cam_obj = active_scene.create_object("Main Camera", glm::vec3(0.f, 0.f, 0.f));
       active_scene.add_object_tag(cam_obj.id, "main-camera");
@@ -63,21 +63,15 @@ namespace other {
       light_id = light_obj.id;
       camera_id = cam_obj.id;
 
-      // cube
-      auto [cube_hash, cube_src] = model_source::load_model_source("Cube", get_cube_vertices(), get_cube_indices());
-      cube = cube_src->produce_model("Cube");
-
-      running = true;
-
       mouse.position = renderer->get_mouse_position();
       mouse.delta = glm::vec2(0.f, 0.f);
 
       transform& light_transform = active_scene.get_transform(&light_obj);
-      gpu::point_light& light_plight = active_scene.add_component<gpu::point_light>(&light_obj);
-      gpu::directional_light& light_dlight = active_scene.add_component<gpu::directional_light>(&light_obj);
       light_transform.local_scale = glm::vec3(0.1f, 0.1f, 0.1f);
-      light_plight.light_position = light_transform.local_position;
+      gpu::point_light& light_plight = active_scene.add_component<gpu::point_light>(&light_obj);
+      light_plight.light_position = glm::vec3(0.f, 2.f, 0.f);
       light_plight.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
+      gpu::directional_light& light_dlight = active_scene.add_component<gpu::directional_light>(&light_obj);
       light_dlight.direction = glm::vec3(0.f, -1.f, 0.f);
       light_dlight.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 
@@ -97,7 +91,9 @@ namespace other {
       suzanne_render.material.transparency = 0.f;
 
       size_t num_root_children = active_scene.get_object_count();
-      CORE_LOG_INFO("Number of root children in the scene: {}", num_root_children);
+      CORE_LOG_INFO("Number of children in the scene: {}", num_root_children);
+
+      running = true;
     }
   }
 

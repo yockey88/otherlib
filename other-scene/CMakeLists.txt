@@ -16,4 +16,4 @@ target_include_directories(other_scene
       ${OTHER_EXTERN_DIR}/entt
 )
 target_link_directories(other_scene PUBLIC ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_scene PUBLIC other_core other_renderer)
+target_link_libraries(other_scene PUBLIC other_core other_renderer other_scripting)

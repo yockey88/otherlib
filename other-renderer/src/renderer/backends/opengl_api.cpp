@@ -400,8 +400,8 @@ namespace other {
       }
 
       uint32_t texture_id = itr->second;
+      glActiveTexture(GL_TEXTURE0 + index);
       glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), texture_id);
-      glActiveTexture(GL_TEXTURE0 + index);  // Activate the texture unit
       CHECKGL();
     }
   }
@@ -838,11 +838,25 @@ namespace other {
   void opengl_api::finalize_framebuffer(const resource_handle& handle) {
     PROFILE_SECTION("opengl_api::finalize_framebuffer");
 
+    auto fb_itr = gpu_resources.find(handle.id);
+    if (fb_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("GPU resource for framebuffer ID {} not found.", handle.id);
+      return;
+    }
+
     auto itr = framebuffer_resources.find(handle.id);
     if (itr == framebuffer_resources.end()) {
       CORE_LOG_ERROR("Framebuffer resource with ID {} not found. cannot finalize", handle.id);
       return;
     }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fb_itr->second);
+
+    std::vector<uint32_t> draw_buffers;
+    for (size_t i = 0; i < itr->second.color_attachments.size(); ++i) {
+      draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + i);
+    }
+    glDrawBuffers(draw_buffers.size(), draw_buffers.data());
 
     if (!itr->second.ready_to_finalize) {
       CORE_LOG_ERROR("Framebuffer with ID {} is not complete.", handle.id);
@@ -864,14 +878,6 @@ namespace other {
       return;
     }
 
-    auto fb_itr = gpu_resources.find(handle.id);
-    if (fb_itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("GPU resource for framebuffer ID {} not found.", handle.id);
-      glDeleteRenderbuffers(1, &renderbuffer_id);
-      return;
-    }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, fb_itr->second);
     glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer_id);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);

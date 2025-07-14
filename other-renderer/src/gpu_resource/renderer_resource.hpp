@@ -47,20 +47,18 @@ namespace other {
     constexpr auto operator<=>(const resource_handle&) const = default;
   };
 
-  class resource {
-    OTHER_REFLECTABLE(resource);
-
-   public:
+  struct resource {
     resource()
         : res_handle(0, resource_type::EMPTY) {}
     resource(resource_handle handle)
         : res_handle(handle) {}
     virtual ~resource() = default;
-
     virtual resource_type type() const { return res_handle.type; }
 
+    // const std::string get_name() const { return name; }
     const resource_handle& handle() const { return res_handle; }
 
+    std::string name;
     resource_handle res_handle;
   };
 

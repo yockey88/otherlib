@@ -75,7 +75,7 @@ namespace other {
     /// 1 - success, already initialized
     /// 2 - success, different runtime properties
     hostfxr_handle host_fxr = nullptr;
-    int32_t rc = coreclr.init_host_config(DNET_STR("other-csharp-bindings/resources/Other.runtimeconfig.json"), nullptr, &host_fxr);
+    int32_t rc = coreclr.init_host_config(DNET_STR("other-csharp-bindings/resources/OtherCsBindings.runtimeconfig.json"), nullptr, &host_fxr);
     OTHER_ASSERT(rc == 0 && host_fxr != nullptr, "Failed to initialize hostfxr with runtime config : error code [{} : {:#08x}]", rc, rc);
 
     void* delegate = nullptr;
@@ -89,10 +89,10 @@ namespace other {
   }
 
   void dotnet_host::call_entry_point() {
-    const char_t* dotnetlib_path = DNET_STR("build/other-csharp-bindings/Debug/Other.dll");
-    const char_t* dotnet_type = DNET_STR("Other.Host, Other");
+    const char_t* dotnetlib_path = DNET_STR("build/other-csharp-bindings/Debug/OtherCsBindings.dll");
+    const char_t* dotnet_type = DNET_STR("OtherCsBindings.Host, OtherCsBindings");
     const char_t* dotnet_type_method = DNET_STR("Entry");
-    OTHER_ASSERT(std::filesystem::exists("build/other-csharp-bindings/Debug/Other.dll"), "Managed assembly not found: build/other-csharp-bindings/Debug/Other.dll");
+    OTHER_ASSERT(std::filesystem::exists("build/other-csharp-bindings/Debug/OtherCsBindings.dll"), "Managed assembly not found: build/other-csharp-bindings/Debug/OtherCsBindings.dll");
 
     void* entry_point = nullptr;
     int32_t rc = coreclr.get_managed_function_ptr(dotnetlib_path, dotnet_type, dotnet_type_method, OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION, nullptr, &entry_point);

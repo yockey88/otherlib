@@ -34,6 +34,7 @@ namespace other {
 
     struct texture_resource {
       framebuffer::attachment_type type;
+      natural_t slot;
       access_flags flags;
       resource_handle handle;
     };
@@ -70,8 +71,8 @@ namespace other {
       std::map<natural_t, std::vector<natural_t>> edges;
     };
 
-    /// \todo finish notion of 'other-actions':
-    ///           using pass_executor = action<node*>;
+    /// \todo finish scripting and use actions:
+    ///           using pass_executor = action<renderer&, node*, void*>;
     using pass_executor = std::function<void(renderer& render, const node*, void*)>;
 
     struct pass_builder {
@@ -87,6 +88,11 @@ namespace other {
      private:
       render_graph& graph;
       render_pass& pass;
+
+      natural_t curr_texture_if = 0;
+      natural_t get_next_texture_id() {
+        return curr_texture_if++;
+      }
     };
     struct pass {
       render_pass::type type;

@@ -103,6 +103,8 @@ namespace other {
       return { 0, resource_type::EMPTY };
     }
 
+    res->name = std::string{ name };
+
     auto [itr, inserted] = resource_handles.emplace(handle.id, handle);
     if (!inserted || itr == resource_handles.end()) {
       CORE_LOG_ERROR("Failed to create resource handle for ID: {}", handle.id);
@@ -188,6 +190,16 @@ namespace other {
 
     CORE_LOG_ERROR("Resource with ID {} not found.", id);
     return nullptr;
+  }
+
+  std::string rendering_api::get_resource_name(const resource_handle& handle) const {
+    auto itr = resource_names.find(handle.id);
+    if (itr != resource_names.end()) {
+      return itr->second;
+    }
+
+    CORE_LOG_ERROR("Resource name for ID {} not found.", handle.id);
+    return "<unknown>";
   }
 
   SDL_Window* rendering_api::native_window() {

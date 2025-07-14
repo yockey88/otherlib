@@ -113,6 +113,7 @@ namespace other {
       return (T*)get_resource(handle.id);
     }
     resource* get_resource(natural_t id);
+    std::string get_resource_name(const resource_handle& handle) const;
 
    protected:
     SDL_Window* native_window();

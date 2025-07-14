@@ -33,13 +33,14 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
 
     pass->bind_pass(renderer_ptr);
+
     for (const auto& [binding_point, buffer] : input_buffers) {
       renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
         .set_shader_resource(binding_point, pass->shader_handle)
         .bind();
     }
-    for (const auto& [slot, tex] : input_textures) {
-      renderer_ptr->get_resource<texture>(tex.handle).bind(slot);
+    for (const auto& [id, tex] : input_textures) {
+      renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
     }
 
     for (const auto& [binding_point, buffer] : output_buffers) {
@@ -47,15 +48,14 @@ namespace other {
         .set_shader_resource(binding_point, pass->shader_handle)
         .bind();
     }
-
     /// set other pipeline state options here
   }
 
   void render_graph::node::end_pass(renderer* renderer_ptr) const {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
 
-    for (const auto& [slot, tex] : input_textures) {
-      renderer_ptr->get_resource<texture>(tex.handle).unbind(slot);
+    for (const auto& [id, tex] : input_textures) {
+      renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
     }
     for (const auto& [binding_point, buffer] : output_buffers) {
       renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
@@ -63,7 +63,6 @@ namespace other {
     for (const auto& [binding_point, buffer] : input_buffers) {
       renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
     }
-
     pass->unbind_pass(renderer_ptr);
   }
 
@@ -73,7 +72,7 @@ namespace other {
   }
 
   render_graph::pass_builder& render_graph::pass_builder::texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags) {
-    auto [itr, success] = pass.texture_resources.insert({ slot, { .type = type, .flags = flags, .handle = handle } });
+    auto [itr, success] = pass.texture_resources.insert({ get_next_texture_id(), { .type = type, .slot = slot, .flags = flags, .handle = handle } });
     if (!success) {
       CORE_LOG_ERROR("Could not add texture resource [{}]. texture resources already bound at {}", handle, slot);
     }
@@ -132,6 +131,7 @@ namespace other {
   }
 
   render_graph::pass_builder render_graph::start_pass(const std::string_view name, resource_handle shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer) {
+    CORE_LOG_DEBUG("Starting pass [{}] with shader [{}] and size [{}, {}]", name, shader_handle, size.x, size.y);
     pass& pass_data = create_pass(rptype);
     render_pass& rp = pass_data.pass;
 
@@ -183,27 +183,31 @@ namespace other {
         .id = get_next_node_id(),
         .pass = &pass.pass,
       };
+      /**
+       * \todo  handle flags correctly, currently only READ and WRITE are supported
+       **/
 
+      size_t tex_count = 0;
       for (const auto& [slot, texture] : pass.pass.texture_resources) {
-        if ((texture.flags & READ) == READ) {
-          n.input_textures.insert({ slot, texture });
+        if (texture.flags == READ) {
+          n.input_textures.insert({ tex_count++, texture });
         }
-        if ((texture.flags & WRITE) == WRITE) {
-          n.output_textures.insert({ slot, texture });
+        if (texture.flags == WRITE) {
+          n.output_textures.insert({ tex_count++, texture });
         }
       }
 
-      for (const auto& [slot, buffer] : pass.pass.buffer_resources) {
-        if ((buffer.flags & READ) == READ) {
-          n.input_buffers.insert({ slot, buffer });
+      for (const auto& [binding_point, buffer] : pass.pass.buffer_resources) {
+        if (buffer.flags == READ) {
+          n.input_buffers.insert({ binding_point, buffer });
         }
-        if ((buffer.flags & WRITE) == WRITE) {
-          n.output_buffers.insert({ slot, buffer });
+        if (buffer.flags == WRITE) {
+          n.output_buffers.insert({ binding_point, buffer });
         }
       }
     }
 
-    std::vector<std::vector<natural_t>> edges;
+    std::vector<std::set<natural_t>> edges;
     edges.resize(nodes.size());
     for (const auto& n1 : nodes) {
       auto& e1 = edges[n1.id];
@@ -213,14 +217,14 @@ namespace other {
         }
 
         for (const auto& [slot, texture] : n1.output_textures) {
-          if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; }); itr != n2.input_textures.end()) {
-            e1.push_back(n2.id);
+          if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; }); itr != n2.input_textures.end() && !e1.contains(n2.id)) {
+            e1.insert(n2.id);
             CORE_LOG_DEBUG("Adding edge from pass {} to pass {} for texture resource {}", n1.pass->id, n2.pass->id, texture.handle);
           }
         }
         for (const auto& [slot, texture] : n1.output_buffers) {
-          if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; }); itr != n2.input_buffers.end()) {
-            e1.push_back(n2.id);
+          if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; }); itr != n2.input_buffers.end() && !e1.contains(n2.id)) {
+            e1.insert(n2.id);
             CORE_LOG_DEBUG("Adding edge from pass {} to pass {} for buffer resource {}", n1.pass->id, n2.pass->id, texture.handle);
           }
         }
@@ -231,9 +235,8 @@ namespace other {
     for (natural_t i = 0; i < nodes.size(); ++i) {
       const auto& n = nodes[i];
       const auto& e = edges[i];
-
       pass_graph.nodes.insert({ n.id, n });
-      pass_graph.edges.insert({ n.id, std::move(e) });
+      pass_graph.edges.insert({ n.id, std::vector<natural_t>{ e.begin(), e.end() } });
     }
 
     topological_sort = get_topological_sort(pass_graph);

@@ -72,6 +72,23 @@ namespace other {
     };
   }
 
+  void render_pipeline::destroy_resources() {
+    for (const auto& [id, resource] : buffer_resources) {
+      get_renderer()->destroy_resource(resource.handle);
+    }
+    for (const auto& [id, resource] : texture_resources) {
+      get_renderer()->destroy_resource(resource.handle);
+    }
+    buffer_resources.clear();
+    texture_resources.clear();
+
+    model_buffer_handle = std::nullopt;
+    material_buffer_handle = std::nullopt;
+    point_light_buffer_handle = std::nullopt;
+    direction_light_buffer_handle = std::nullopt;
+    camera_buffer_handle = std::nullopt;
+  }
+
   void render_pipeline::set_material_buffer(const std::string_view name) {
     set_core_buffer(material_buffer_handle, name);
   }
@@ -98,8 +115,8 @@ namespace other {
     OTHER_ASSERT(inserted, "Failed to insert buffer resource with name [{}].", name);
   }
 
-  void render_pipeline::add_texture_resource(const std::string_view name, const glm::vec2& size, framebuffer::attachment_type type) {
-    resource_handle handle = texture::create(std::string{ name }, texture::tex_type::TEXTURE_2D, texture::format::RGBA32F, size.x, size.y);
+  void render_pipeline::add_texture_resource(const std::string_view name, const glm::vec2& size, framebuffer::attachment_type type, texture::tex_type tex_type, texture::format format) {
+    resource_handle handle = texture::create(std::string{ name }, tex_type, format, size.x, size.y);
     auto [itr, inserted] = texture_resources.insert({ handle.id, { .name = std::string{ name }, .handle = handle } });
     OTHER_ASSERT(inserted, "Failed to insert texture resource with name [{}].", name);
   }
@@ -113,6 +130,11 @@ namespace other {
       return nullptr;
     }
     return &get_renderer()->get_resource<shader>(itr->second.pass->shader_handle);
+  }
+
+  render_pipeline::pass_builder& render_pipeline::pass_builder::clear_color(const glm::vec4& clear_color) {
+    builder.set_clear_color(clear_color);
+    return *this;
   }
 
   render_pipeline::pass_builder& render_pipeline::pass_builder::buffer_resource(const std::string_view name, access_flags flags) {
@@ -133,7 +155,11 @@ namespace other {
       return *this;
     }
 
-    builder.texture_resource(*handle, curr_texture_slot++, type, flags);
+    uint32_t slot = flags == WRITE ? 0 : curr_texture_slot++;
+    if (!(flags == WRITE)) {
+      CORE_LOG_DEBUG("Binding texture resource [{}] to slot [{}].", name, slot);
+    }
+    builder.texture_resource(*handle, slot, type, flags);
     return *this;
   }
 
@@ -148,7 +174,9 @@ namespace other {
 
   render_pipeline::pass_builder render_pipeline::start_pass(const std::string_view name, resource_handle shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer) {
     OTHER_ASSERT(graph != nullptr, "Render graph is not initialized. Cannot start a new pass.");
-    return { this, graph->start_pass(name, shader_handle, rptype, size, create_framebuffer) };
+    auto builder = render_pipeline::pass_builder{ this, graph->start_pass(name, shader_handle, rptype, size, create_framebuffer) };
+    builder.pass_name = std::string{ name };
+    return builder;
   }
 
   opt<resource_handle> render_pipeline::find_buffer_resource(const std::string_view name) const {

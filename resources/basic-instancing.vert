@@ -5,9 +5,12 @@ out vec3 world_normal;
 
 void main() {
   set_instance_id();
-  mat4 model_matrix = get_instance_model_matrix();
 
-  world_position = (model_matrix * get_local_position()).xyz;
-  world_normal = (model_matrix * get_normal()).xyz;
-  gl_Position = get_camera_matrix() * vec4(world_position, 1.0);
+  mat4 model_mat = get_instance_model_matrix();
+  vec3 world_position = get_world_position().xyz;
+
+  mat3 normal_mat = transpose(inverse(mat3(model_mat)));
+  world_normal = (model_mat * get_normal()).xyz;
+
+  gl_Position = get_camera_matrix() * get_world_position();
 }

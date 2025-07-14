@@ -40,6 +40,10 @@ vec4 get_local_position() {
   return vec4(OE_position, 1.0);
 }
 
+vec4 get_world_position() {
+  return get_instance_model_matrix() * get_local_position();
+}
+
 mat4 get_instance_mvp_matrix() {
   return get_camera_matrix() * get_instance_model_matrix();
 }

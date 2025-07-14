@@ -56,7 +56,7 @@ namespace other {
   size_t scene::get_object_count() const {
     PROFILE_SECTION("scene::get_object_count");
     OTHER_ASSERT(tree.nodes != nullptr, "Scene tree nodes are not initialized.");
-    return tree.nodes->size();
+    return tree.get_object_count();
   }
 
   transform& scene::get_transform(scene_object* object) {
@@ -153,8 +153,13 @@ namespace other {
     }
     data.primary_camera = (camera*)primary_camera;
 
-    registry.view<object_handle, gpu::point_light>().each([&](const object_handle& handle, const gpu::point_light& light) { data.point_lights.push_back(light); });
-    registry.view<object_handle, gpu::directional_light>().each([&](const object_handle& handle, const gpu::directional_light& light) { data.directional_lights.push_back(light); });
+    /// collect lights
+    /// \todo: should we collect these into an owning group?
+    //        pros: faster, faster, faster, and then also a little bit faster
+    //        cons: have to remember to create the groups and two entities can not have one of each light
+    registry.view<gpu::point_light>().each([&](const gpu::point_light& light) { data.point_lights.push_back(light); });
+    registry.view<gpu::directional_light>().each([&](const gpu::directional_light& light) { data.directional_lights.push_back(light); });
+
     registry.view<object_handle, render_component>().each([&](const object_handle& handle, const render_component& render) {
       if (!render.visible) {
         return;
