@@ -137,14 +137,15 @@ namespace other {
     return *this;
   }
 
-  render_pipeline::pass_builder& render_pipeline::pass_builder::buffer_resource(const std::string_view name, access_flags flags) {
+  render_pipeline::pass_builder& render_pipeline::pass_builder::buffer_resource(const std::string_view name, uint32_t binding, access_flags flags) {
     auto handle = pipeline->find_buffer_resource(name);
     if (!handle.has_value()) {
       CORE_LOG_ERROR("Buffer resource [{}] not found in pipeline.", name);
       return *this;
     }
 
-    builder.buffer_resource(*handle, curr_buffer_binding++, flags);
+    CORE_LOG_DEBUG("Adding buffer resource [{}]", name);
+    builder.buffer_resource(*handle, binding, flags);
     return *this;
   }
 
@@ -156,9 +157,7 @@ namespace other {
     }
 
     uint32_t slot = flags == WRITE ? 0 : curr_texture_slot++;
-    if (!(flags == WRITE)) {
-      CORE_LOG_DEBUG("Binding texture resource [{}] to slot [{}].", name, slot);
-    }
+    CORE_LOG_DEBUG("Adding texture resource [{}] with slot [{}]", name, slot);
     builder.texture_resource(*handle, slot, type, flags);
     return *this;
   }

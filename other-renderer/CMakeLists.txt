@@ -18,8 +18,6 @@ target_sources(other_renderer
       src/renderer/rendering_api.cpp
       src/renderer/renderer_backend.cpp
       src/renderer/backends/opengl_api.cpp
-      
-      src/renderer/pipelines/default_instancing_pipeline.cpp
 
       src/renderer/camera.cpp
       src/renderer/render_graph.cpp

@@ -33,21 +33,21 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
 
     pass->bind_pass(renderer_ptr);
-
     for (const auto& [binding_point, buffer] : input_buffers) {
       renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
         .set_shader_resource(binding_point, pass->shader_handle)
         .bind();
     }
-    for (const auto& [id, tex] : input_textures) {
-      renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
-    }
-
     for (const auto& [binding_point, buffer] : output_buffers) {
       renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
         .set_shader_resource(binding_point, pass->shader_handle)
         .bind();
     }
+
+    for (const auto& [id, tex] : input_textures) {
+      renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
+    }
+
     /// set other pipeline state options here
   }
 
@@ -57,6 +57,7 @@ namespace other {
     for (const auto& [id, tex] : input_textures) {
       renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
     }
+
     for (const auto& [binding_point, buffer] : output_buffers) {
       renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
     }
@@ -79,10 +80,10 @@ namespace other {
     return *this;
   }
 
-  render_graph::pass_builder& render_graph::pass_builder::buffer_resource(resource_handle handle, natural_t slot, access_flags flags) {
-    auto [itr, success] = pass.buffer_resources.insert({ slot, { .flags = flags, .handle = handle } });
+  render_graph::pass_builder& render_graph::pass_builder::buffer_resource(resource_handle handle, uint32_t binding, access_flags flags) {
+    auto [itr, success] = pass.buffer_resources.insert({ get_next_buffer_id(), { .binding_point = binding, .flags = flags, .handle = handle } });
     if (!success) {
-      CORE_LOG_ERROR("Could not add buffer resource [{}]. Buffer resources already bound at {}", handle, slot);
+      CORE_LOG_ERROR("Could not add buffer resource [{}]. Buffer resources already bound at {}", handle, binding ? std::to_string(binding) : "0");
     }
     return *this;
   }

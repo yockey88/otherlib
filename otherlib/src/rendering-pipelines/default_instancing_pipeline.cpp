@@ -1,7 +1,7 @@
 /**
- * \file renderer/pipelines/default_instancing_pipeline.cpp
+ * \file rendering-pipelines/default_instancing_pipeline.cpp
  **/
-#include "renderer/pipelines/default_instancing_pipeline.hpp"
+#include "rendering-pipelines/default_instancing_pipeline.hpp"
 
 #include "renderer/camera.hpp"
 
@@ -22,9 +22,7 @@ namespace other {
 
   void default_instancing_pipeline::prepare_frame(renderer::frame_resources* resources, render_data* data) {
     gpu::camera_data cam_data = data->primary_camera->to_gpu_data();
-    get_resource<gpu_buffer>("camera_buffer")
-      ->set_data(&cam_data, sizeof(gpu::camera_data))
-      .finalize_buffer();
+    upload_buffer("camera_buffer", &cam_data, sizeof(gpu::camera_data));
 
     gpu::point_light_buffer light_buffer_data;
     for (size_t i = 0; i < data->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
@@ -36,13 +34,8 @@ namespace other {
       dir_light_buffer_data.lights[i] = data->directional_lights[i];
     }
 
-    get_resource<gpu_buffer>("point_light_buffer")
-      ->set_data(&light_buffer_data, sizeof(gpu::point_light_buffer))
-      .finalize_buffer();
-
-    get_resource<gpu_buffer>("direction_light_buffer")
-      ->set_data(&dir_light_buffer_data, sizeof(gpu::directional_light_buffer))
-      .finalize_buffer();
+    upload_buffer("point_light_buffer", &light_buffer_data, sizeof(gpu::point_light_buffer));
+    upload_buffer("direction_light_buffer", &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
 
     get_pass_shader("shading-pass")
       ->bind()
@@ -72,9 +65,9 @@ namespace other {
 
     auto window_size = get_renderer()->get_window_size();
     add_buffer_resource("camera_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
-    add_buffer_resource("point_light_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
-    add_buffer_resource("direction_light_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
-    add_buffer_resource("material_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+    add_buffer_resource("point_light_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
+    add_buffer_resource("direction_light_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
+    add_buffer_resource("material_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
     add_buffer_resource("model_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
 
     add_texture_resource("color_texture", window_size, framebuffer::attachment_type::COLOR, texture::tex_type::TEXTURE_2D, texture::format::RGBA32U);
@@ -95,12 +88,9 @@ namespace other {
       .texture_resource("color_texture", framebuffer::COLOR, WRITE)
       .texture_resource("normal_texture", framebuffer::COLOR, WRITE)
       .texture_resource("position_texture", framebuffer::COLOR, WRITE)
-      /// geometry buffers/light buffers
-      .buffer_resource("material_buffer", READ)
-      .buffer_resource("model_buffer", READ)
-      .buffer_resource("camera_buffer", READ)
-      .buffer_resource("point_light_buffer", READ)
-      .buffer_resource("direction_light_buffer", READ)
+      .buffer_resource("material_buffer", 0, READ)
+      .buffer_resource("model_buffer", 1, READ)
+      .buffer_resource("camera_buffer", 2, READ)
       .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
         renderer.execute_draw_calls();
       })
@@ -108,16 +98,13 @@ namespace other {
 
     start_pass("shading-pass", shading_pass_shader_handle, render_pass::RENDER_PASS, window_size)
       .clear_color(glm::vec4(0.2f, 0.2f, 0.2f, 1.f))
-      /// lights and uniforms
-      // .buffer_resource("camera_buffer", READ)
-      // .buffer_resource("point_light_buffer", READ)
-      // .buffer_resource("direction_light_buffer", READ)
-      /// framebuffer texture
-      .texture_resource("screen_texture", framebuffer::COLOR, WRITE)
-      /// gbuffer for shading
       .texture_resource("color_texture", framebuffer::COLOR, READ)
       .texture_resource("normal_texture", framebuffer::COLOR, READ)
       .texture_resource("position_texture", framebuffer::COLOR, READ)
+      .texture_resource("screen_texture", framebuffer::COLOR, WRITE)
+      .buffer_resource("direction_light_buffer", 0, READ)
+      .buffer_resource("point_light_buffer", 1, READ)
+      .buffer_resource("camera_buffer", 2, READ)
       .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
         renderer.get_resource<mesh>(quad_mesh_handle).draw();
       })

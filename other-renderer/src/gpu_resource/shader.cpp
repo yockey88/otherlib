@@ -170,8 +170,8 @@ namespace other {
       shader::setting{ "POINT_LIGHT_INTENSITY", "1" },
       shader::setting{ "DIST_FACTOR", "1.1f" },
       shader::setting{ "CONSTANT", "1" },
-      shader::setting{ "LINEAR", "0" },
-      shader::setting{ "QUADRATIC", "1" },
+      shader::setting{ "LINEAR", "1" },
+      shader::setting{ "QUADRATIC", "0" },
     };
 
     for (const auto& setting : setting_definitions) {

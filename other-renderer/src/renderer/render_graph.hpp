@@ -39,6 +39,7 @@ namespace other {
       resource_handle handle;
     };
     struct buffer_resource {
+      natural_t binding_point;
       access_flags flags;
       resource_handle handle;
     };
@@ -81,7 +82,7 @@ namespace other {
 
       pass_builder& set_clear_color(const glm::vec4& clear_color);
       pass_builder& texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags = READ_WRITE);
-      pass_builder& buffer_resource(resource_handle handle, natural_t slot, access_flags flags = READ_WRITE);
+      pass_builder& buffer_resource(resource_handle handle, uint32_t binding, access_flags flags = READ_WRITE);
       pass_builder& execution_callback(pass_executor&& executor, void* user_data = nullptr);
       render_graph& end_pass();
 
@@ -89,9 +90,14 @@ namespace other {
       render_graph& graph;
       render_pass& pass;
 
-      natural_t curr_texture_if = 0;
+      natural_t curr_texture_id = 0;
       natural_t get_next_texture_id() {
-        return curr_texture_if++;
+        return curr_texture_id++;
+      }
+
+      natural_t curr_buffer_id = 0;
+      natural_t get_next_buffer_id() {
+        return curr_buffer_id++;
       }
     };
     struct pass {

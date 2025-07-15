@@ -53,12 +53,24 @@ namespace other {
       entt::entity entity = entt::entity(object->registry_id);
       return registry.emplace<T>(entity);
     }
+    template <typename T>
+    T& add_component(natural_t id) {
+      scene_tree::node* node = tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      return add_component<T>(node->object);
+    }
 
     template <typename T>
     T* get_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot get component from a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
       return registry.try_get<T>(entity);
+    }
+    template <typename T>
+    T* get_component(natural_t id) {
+      scene_tree::node* node = tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      return get_component<T>(node->object);
     }
 
     template <typename T>
@@ -67,6 +79,12 @@ namespace other {
       entt::entity entity = entt::entity(object->registry_id);
       return registry.try_get<T>(entity);
     }
+    template <typename T>
+    const T* get_component(natural_t id) const {
+      const scene_tree::node* node = tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      return get_component<T>(node->object);
+    }
 
     template <typename T>
     void remove_component(scene_object* object) {
@@ -74,11 +92,23 @@ namespace other {
       entt::entity entity = entt::entity(object->registry_id);
       registry.remove<T>(entity);
     }
+    template <typename T>
+    void remove_component(natural_t id) {
+      scene_tree::node* node = tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      remove_component<T>(node->object);
+    }
 
     template <typename T>
     bool has_component(scene_object* object) const {
       OTHER_ASSERT(object != nullptr, "Cannot check component on a null scene object.");
       return get_component<T>(object) != nullptr;
+    }
+    template <typename T>
+    bool has_component(natural_t id) const {
+      const scene_tree::node* node = tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      return has_component<T>(node->object);
     }
 
     static std::string as_string(const scene& s);

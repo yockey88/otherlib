@@ -1,8 +1,8 @@
 /**
- * \file renderer/pipelines/default_instancing_pipeline.hpp
+ * \file rendering-pipelines/default_instancing_pipeline.hpp
  **/
-#ifndef OTHER_RENDERER_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
-#define OTHER_RENDERER_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
+#ifndef RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
+#define RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
 
 #include "renderer/render_pipeline.hpp"
 
@@ -28,4 +28,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_RENDERER_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
+#endif  // RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP

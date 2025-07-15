@@ -70,7 +70,7 @@ namespace other {
           : pipeline(pipeline), builder(std::move(builder)) {}
 
       pass_builder& clear_color(const glm::vec4& clear_color);
-      pass_builder& buffer_resource(const std::string_view name, access_flags flags = READ);
+      pass_builder& buffer_resource(const std::string_view name, uint32_t binding, access_flags flags);
       pass_builder& texture_resource(const std::string_view name, framebuffer::attachment_type type, access_flags flags = READ_WRITE);
       pass_builder& execution_callback(render_graph::pass_executor&& executor, void* user_data = nullptr);
       void end_pass();
@@ -78,7 +78,6 @@ namespace other {
       std::string pass_name;
 
      private:
-      uint32_t curr_buffer_binding = 0;
       uint32_t curr_texture_slot = 0;
 
       render_pipeline* pipeline = nullptr;

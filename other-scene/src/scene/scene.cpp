@@ -159,7 +159,6 @@ namespace other {
     //        cons: have to remember to create the groups and two entities can not have one of each light
     registry.view<gpu::point_light>().each([&](const gpu::point_light& light) { data.point_lights.push_back(light); });
     registry.view<gpu::directional_light>().each([&](const gpu::directional_light& light) { data.directional_lights.push_back(light); });
-
     registry.view<object_handle, render_component>().each([&](const object_handle& handle, const render_component& render) {
       if (!render.visible) {
         return;
@@ -178,14 +177,11 @@ namespace other {
 
       const std::vector<uint32_t>& sm_idxs = draw_model->submesh_indices;
       OTHER_ASSERT(!sm_idxs.empty(), "Model has no submeshes");
-
-      glm::mat4 world_transform = get_world_transform(handle.id);
-
       for (const auto& sm_idx : sm_idxs) {
         OTHER_ASSERT(sm_idx < submeshes.size(), "Submesh index out of bounds");
         draw_command cmd = {
           .draw_model = draw_model,
-          .transform = world_transform * submeshes[sm_idx].local_transform,
+          .transform = get_world_transform(handle.id) * submeshes[sm_idx].local_transform,
           .material = render.material,
           .submesh_index = sm_idx,
           .render_state = render_polygon_mode::POLYGON_MODE_FILL,

@@ -27,13 +27,10 @@ namespace other {
       set_current_state(LAUNCHING);
 
       threadlocal_data threadlocal_data;
-      {
-        /// set up thread local data
-        threadlocal_data.tx_channel = std::move(thread_tx_channel);
-        threadlocal_data.rx_channel = std::move(thread_rx_channel);
-        threadlocal_data.stoken = stoken;
-        thread_data = &threadlocal_data;
-      }
+      threadlocal_data.tx_channel = std::move(thread_tx_channel);
+      threadlocal_data.rx_channel = std::move(thread_rx_channel);
+      threadlocal_data.stoken = stoken;
+      thread_data = &threadlocal_data;
 
       run(stoken, std::move(thread_rx_channel), std::move(thread_tx_channel));
 
@@ -53,7 +50,7 @@ namespace other {
     {
       message init_msg(CONTROL, THREAD_INITIALIZE);
       tx_channel->push(std::move(init_msg));
-      // wait_for_ack();  // Assuming this function is defined elsewhere
+      wait_for_ack();
     }
 
     if (checkpoints.error_occurred) {
@@ -64,7 +61,7 @@ namespace other {
     {
       message start_msg(CONTROL, THREAD_START);
       tx_channel->push(std::move(start_msg));
-      // No ack for start
+      /// no ack to start
     }
   }
 

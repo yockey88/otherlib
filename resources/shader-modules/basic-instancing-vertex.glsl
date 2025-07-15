@@ -4,7 +4,7 @@ layout (location = 2) in vec3 OE_tangent;
 layout (location = 3) in vec3 OE_bitanget;
 layout (location = 4) in vec2 OE_tex_coords;
 
-layout (std140) uniform camera_buffer {
+layout (std140, binding = 2) uniform camera_buffer {
   vec4 camera_position;
   vec4 camera_forward;
 
@@ -18,7 +18,7 @@ layout (std140) uniform camera_buffer {
   mat4 projection_matrix;
 };
 
-layout (std140) uniform model_buffer {
+layout (std140, binding = 1) uniform model_buffer {
   mat4 models[MAX_OBJECTS];
 };
 

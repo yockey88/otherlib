@@ -60,6 +60,7 @@ namespace other {
       float transparency;
 
       float shininess;
+      float padding;
     };
 
     GPU_ALIGN struct graphics_material_buffer {
@@ -122,17 +123,21 @@ namespace other {
 
     GPU_ALIGN struct point_light {
       glm::vec3 light_position;
+      float padding;
       glm::vec3 color;
+      float padding2;
     };
 
     constexpr size_t kMaxPointLights = 100;
     GPU_ALIGN struct point_light_buffer {
-      point_light lights[kMaxObjects];
+      point_light lights[kMaxPointLights];
     };
 
     GPU_ALIGN struct directional_light {
       glm::vec3 direction;
+      float padding;
       glm::vec3 color;
+      float padding2;
     };
 
     constexpr size_t kMaxDirectionalLights = 100;

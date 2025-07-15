@@ -12,12 +12,13 @@
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
 #include "renderer/gpu_structs.hpp"
-#include "renderer/pipelines/default_instancing_pipeline.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
 
+#include "glm/gtc/type_ptr.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
+#include "rendering-pipelines/default_instancing_pipeline.hpp"
 
 namespace other {
   namespace {
@@ -69,13 +70,13 @@ namespace other {
       transform& light_transform = active_scene.get_transform(&light_obj);
       light_transform.local_scale = glm::vec3(0.1f, 0.1f, 0.1f);
       gpu::point_light& light_plight = active_scene.add_component<gpu::point_light>(&light_obj);
-      light_plight.light_position = glm::vec3(0.f, 2.f, 0.f);
-      light_plight.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
+      light_plight.light_position = glm::vec3(0.f, 5.f, 0.f);
+      light_plight.color = glm::vec3(1.f, 1.f, 1.f);
       gpu::directional_light& light_dlight = active_scene.add_component<gpu::directional_light>(&light_obj);
       light_dlight.direction = glm::vec3(0.f, -1.f, 0.f);
       light_dlight.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 
-      auto [hash, suzanne_source] = model_source::load_model_source("resources/models/suzanne.fbx");
+      auto [hash, suzanne_source] = model_source::load_model_source("resources/models/suzanne3.fbx");
       OTHER_ASSERT(suzanne_source != nullptr, "Failed to load Suzanne model source.");
 
       suzanne = suzanne_source->produce_model("Suzanne");
@@ -133,6 +134,15 @@ namespace other {
 
         renderer->begin_frame(&scene_render_data);
         renderer->render();
+
+        renderer->begin_ui_frame();
+        if (ImGui::Begin("Debug Window")) {
+          if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
+          if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}
+        }
+        ImGui::End();
+        renderer->end_ui_frame();
+
         renderer->end_frame();
       }
     }
