@@ -15,6 +15,7 @@
 #include "serialization/reflection.hpp"
 
 #include "renderer/renderer_backend.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "spdlog/common.h"
 
@@ -55,16 +56,14 @@ namespace other {
     register_log_sinks(config);
     CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
 
-    if (cmd.diagnostics.verbose) {
-      CORE_LOG_DEBUG("Loading configuration file: {}", cmd.config_file);
-    }
-
     config.diagnostics.verbose = cmd.diagnostics.verbose;
-
     const bool rendering_enabled = config.rendering_backend.has_value() && !config.rendering_backend->empty();
     if (rendering_enabled) {
-      subsystem<renderer_backend>::get()->load_backend(config.rendering_backend.value());
+      subsystem<renderer_backend>::get()->load_backend(config.rendering_backend.value(), config.window_size);
     }
+
+    bind_primary_scripting_environment();
+    bind_environment_scripts();
 
     exit_code res = SUCCESS;
     {
@@ -87,12 +86,15 @@ namespace other {
       }
     }
 
+    cleanup_scripting_environment();
+
     /// handle exit code
     CORE_LOG_INFO("Other Environment driver finished with exit code: {}", res);
 
 #ifdef OTHER_APPLICATION
     event_callbacks.clear();
 #endif
+
     shutdown_subsystems();
     return res;
   }
@@ -103,6 +105,17 @@ namespace other {
       CORE_LOG_ERROR("Primary arena is null.");
       throw std::runtime_error("Primary arena is null.");
     }
+  }
+
+  void bind_primary_scripting_environment() {
+    subsystem<scripting_environment>::get()->initialize_script_environment();
+  }
+
+  void bind_environment_scripts() {
+  }
+
+  void cleanup_scripting_environment() {
+    subsystem<scripting_environment>::get()->shutdown_script_environment();
   }
 
   spdlog::sink_ptr stdout_sink_fn() {
@@ -133,6 +146,7 @@ namespace other {
   }
 
   void shutdown_subsystems() {
+    subsystem<scripting_environment>::get()->shutdown();
     subsystem<type_database>::get()->shutdown();
     subsystem<renderer_backend>::get()->shutdown();
     subsystem<arena>::get()->shutdown();

@@ -8,22 +8,26 @@
 
 #include "core/defines.hpp"
 
+#include "object/render_component.hpp"
+#include "object/scene_object.hpp"
+#include "object/script_component.hpp"
+#include "object/transform.hpp"
 #include "renderer/renderer.hpp"
 
 #include "scene/scene_tree.hpp"
-
-#include "object/render_component.hpp"
-#include "object/scene_object.hpp"
-#include "object/transform.hpp"
 
 namespace other {
 
   class scene {
    public:
     scene();
+    ~scene();
 
     scene_object& root_object();
+
+    scene_object& create_object(const std::string& name, scene_object* parent_object = nullptr);
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
+
     void destroy_object(natural_t id);
 
     scene_object& get_object(natural_t id);
@@ -126,9 +130,13 @@ namespace other {
     void register_object(scene_object* object, const std::string& name, const glm::vec3& world_position);
     void unregister_object(scene_object* object);
 
-    void on_create_render_component(render_component& render, const entt::registry&, const entt::entity entity);
-    void on_update_render_component(render_component& render, const entt::registry&, const entt::entity entity);
-    void on_destroy_render_component(render_component& render, const entt::registry&, const entt::entity entity);
+    void on_create_render_component(const entt::registry&, const entt::entity entity);
+    void on_update_render_component(const entt::registry&, const entt::entity entity);
+    void on_destroy_render_component(const entt::registry&, const entt::entity entity);
+
+    void on_create_script_component(const entt::registry&, const entt::entity entity);
+    // void on_update_script_component(const entt::registry&, const entt::entity entity);
+    void on_destroy_script_component(const entt::registry&, const entt::entity entity);
 
     entt::registry registry;
     scene_tree tree;

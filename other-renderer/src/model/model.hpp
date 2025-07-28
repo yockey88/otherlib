@@ -21,6 +21,8 @@ namespace other {
     std::string name;
     model_source* source = nullptr;
     std::vector<uint32_t> submesh_indices;
+
+    void draw();
   };
 
   class model_source : public ref_counted {

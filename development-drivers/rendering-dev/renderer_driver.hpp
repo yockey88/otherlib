@@ -1,6 +1,6 @@
-// /**
-//  * \file renderer_driver.hpp
-//  **/
+/**
+ * \file renderer_driver.hpp
+ **/
 #ifndef OTHER_RENDERER_DRIVER_HPP
 #define OTHER_RENDERER_DRIVER_HPP
 

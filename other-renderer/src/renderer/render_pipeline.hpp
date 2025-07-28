@@ -28,7 +28,7 @@ namespace other {
 
     void upload_buffer(const std::string_view name, const void* data, size_t size);
 
-    virtual void prepare_frame(renderer::frame_resources* resources, render_data* data) {}
+    void prepare_frame(renderer::frame_resources* resources, render_data* data);
     virtual void render_frame(renderer* renderer_ptr);
 
     renderer::frame_resources get_frame_resources() const;
@@ -36,11 +36,20 @@ namespace other {
     inline const bool is_valid() const { return valid; }
 
    protected:
+    virtual void on_prepare_frame(renderer::frame_resources* resources, render_data* data) {}
+    virtual void on_render_frame(renderer* renderer_ptr, render_data* data) {}
     virtual void create_resources() = 0;
     virtual void build_render_passes() = 0;
     void destroy_resources();
 
-    renderer* get_renderer() { return graph->get_renderer(); }
+    renderer* get_renderer() {
+      OTHER_ASSERT(graph != nullptr, "Render graph is not initialized. Cannot retrieve renderer.");
+      return graph->get_renderer();
+    }
+    render_data* get_frame_render_data() {
+      OTHER_ASSERT(frame_render_data != nullptr, "Frame render data is not set. Cannot retrieve it.");
+      return frame_render_data;
+    }
 
     void set_material_buffer(const std::string_view);
     void set_model_buffer(const std::string_view);
@@ -49,7 +58,8 @@ namespace other {
     void set_camera_buffer(const std::string_view name);
 
     void add_buffer_resource(const std::string_view name, gpu_buffer::buf_type type, gpu_buffer::usage usage);
-    void add_texture_resource(const std::string_view name, const glm::vec2& size, framebuffer::attachment_type type, texture::tex_type tex_type = texture::tex_type::TEXTURE_2D, texture::format format = texture::format::RGBA32F);
+    void add_texture_resource(const std::string_view name, const glm::vec2& size, texture::tex_type tex_type, texture::format format);
+    void add_texture_resource(const std::string_view name, const glm::vec2& size, texture::tex_type tex_type, texture::format format, const std::pair<texture::filter, texture::filter>& filters, const std::tuple<texture::wrap, texture::wrap, texture::wrap>& wraps);
 
     template <typename T>
     T* get_resource(const std::string_view name) {
@@ -73,6 +83,7 @@ namespace other {
       pass_builder& buffer_resource(const std::string_view name, uint32_t binding, access_flags flags);
       pass_builder& texture_resource(const std::string_view name, framebuffer::attachment_type type, access_flags flags = READ_WRITE);
       pass_builder& execution_callback(render_graph::pass_executor&& executor, void* user_data = nullptr);
+      // pass_builder& set_user_data(void* user_data);
       void end_pass();
 
       std::string pass_name;
@@ -83,7 +94,7 @@ namespace other {
       render_pipeline* pipeline = nullptr;
       render_graph::pass_builder builder;
     };
-    render_pipeline::pass_builder start_pass(const std::string_view name, resource_handle shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true);
+    render_pipeline::pass_builder start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true);
 
     opt<resource_handle> find_buffer_resource(const std::string_view name) const;
     opt<resource_handle> find_texture_resource(const std::string_view name) const;
@@ -92,6 +103,7 @@ namespace other {
     render_graph* graph = nullptr;
     bool valid = false;
 
+    render_data* frame_render_data = nullptr;
     renderer::frame_resources frame_resources;
 
     opt<resource_handle> material_buffer_handle;

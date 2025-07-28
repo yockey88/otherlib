@@ -23,6 +23,7 @@ namespace other {
 
     BUFFER,
     TEXTURE,
+    CUBEMAP,
     SAMPLER,
     SHADER,
     MESH,

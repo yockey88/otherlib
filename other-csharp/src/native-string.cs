@@ -1,14 +1,15 @@
 using System;
 using System.Runtime.InteropServices;
 
+#nullable enable
 namespace OtherCsBindings
 {
 
   [StructLayout(LayoutKind.Sequential)]
-  public struct NString : IDisposable
+  public struct NativeString : IDisposable
   {
     internal IntPtr native_string;
-    private NBool32 disposed;
+    private NativeBool32 disposed;
 
     public void Dispose()
     {
@@ -28,10 +29,11 @@ namespace OtherCsBindings
 
     public override string? ToString() => this;
 
-    public static NString Null() => new NString() { native_string = IntPtr.Zero };
+    public static NativeString Null() => new NativeString() { native_string = IntPtr.Zero };
 
-    public static implicit operator NString(string? str) => new() { native_string = Marshal.StringToCoTaskMemAuto(str) };
-    public static implicit operator string?(NString str) => Marshal.PtrToStringAuto(str.native_string);
+    public static implicit operator NativeString(string? str) => new() { native_string = Marshal.StringToCoTaskMemAuto(str) };
+    public static implicit operator string?(NativeString str) => Marshal.PtrToStringAuto(str.native_string);
   }
 
 }
+#nullable disable

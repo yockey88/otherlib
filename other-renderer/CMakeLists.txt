@@ -4,6 +4,7 @@ target_sources(other_renderer
       src/gpu_resource/renderer_resource.cpp
       src/gpu_resource/shader.cpp
       src/gpu_resource/texture.cpp
+      src/gpu_resource/cube_map.cpp
       src/gpu_resource/gpu_buffer.cpp
       src/gpu_resource/mesh.cpp
       src/gpu_resource/framebuffer.cpp

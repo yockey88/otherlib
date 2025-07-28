@@ -17,6 +17,7 @@ namespace other {
       c.valid = true;
       return c;
     }
+    std::println(std::cout, "Loading Other Environment from configuration: {}", filename);
 
     toml::table table;
     opt<toml::table> project_table;
@@ -27,6 +28,7 @@ namespace other {
     bool open_terminal = false;
 
     std::string rendering = "";
+    glm::uvec2 window_size = { 1280, 720 };
 
     try {
       table = toml::parse_file(filename);
@@ -79,8 +81,17 @@ namespace other {
         }
       }
 
-      toml::node_view rendering_backend = table.at_path("rendering.rendering-api");
+      toml::node_view rendering_backend = table.at_path("rendering.rendering-backend");
       rendering = rendering_backend.as_string() == nullptr ? "" : rendering_backend.as_string()->get();
+
+      toml::node_view window_size_node = table.at_path("rendering.window-size");
+      if (window_size_node.is_table()) {
+        toml::node_view width_node = window_size_node.at_path("width");
+        toml::node_view height_node = window_size_node.at_path("height");
+        if (width_node.is_integer() && height_node.is_integer()) {
+          window_size = { width_node.as_integer()->get(), height_node.as_integer()->get() };
+        }
+      }
 
       {
         toml::node_view ptable = table.at_path("project");
@@ -110,6 +121,7 @@ namespace other {
     if (!rendering.empty()) {
       config.rendering_backend = rendering;
     }
+    config.window_size = window_size;
 
     return config;
   }

@@ -8,6 +8,7 @@
 namespace other {
 
   SDL_Window* window_manager::create_window(const char* title, int width, int height, uint32_t flags) {
+    CORE_LOG_DEBUG("Creating window [{}] : size = {}x{}, flags = {}", title, width, height, flags);
     SDL_Window* window = SDL_CreateWindow(title, width, height, flags);
     if (window == nullptr) {
       CORE_LOG_ERROR("Failed to create window: {}", SDL_GetError());

@@ -52,6 +52,7 @@ namespace other {
     void set_texture_wrap_mode(const resource_handle& handle, texture::wrap wrap_s, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_r = texture::wrap::CLAMP_TO_EDGE) override;
     void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) override;
     void bind_image(const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer, texture::format frmt, access_flags flags) override;
+    void* get_texture_gpu_resource(const resource_handle& handle) override;
 
     void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) override;
     void unbind_buffer_resource(const resource_handle& handle) override;
@@ -91,6 +92,8 @@ namespace other {
     std::map<uniform_key, uint32_t> shader_uniforms;
 
     std::map<natural_t, texture> texture_resources;
+    std::map<natural_t, cube_map> cube_map_resources;
+    std::map<natural_t, std::array<uint32_t, cube_map::kCubeFaces>> cube_map_faces;
 
     struct shader_binding {
       uint32_t buffer_id;
@@ -120,6 +123,9 @@ namespace other {
     texture* create_texture_resource(const resource_handle& handle, resource_type type) override;
     void destroy_texture_resource(const resource_handle& handle) override;
 
+    cube_map* create_cube_map_resource(const resource_handle& handle, resource_type type) override;
+    void destroy_cube_map_resource(const resource_handle& handle) override;
+
     shader* create_shader_resource(const resource_handle& handle, resource_type type) override;
     void destroy_shader_resource(const resource_handle& handle) override;
 
@@ -143,6 +149,7 @@ namespace other {
     int32_t get_gl_prim_type(mesh::primitive_type type) const;
 
     int32_t get_gl_fb_attachment_type(framebuffer::attachment_type type) const;
+    int32_t get_gl_clear_bits(int32_t mask) const;
 
     int32_t get_resource_handle(natural_t id) const;
     uint32_t get_shader_uniform_location(const resource_handle& shader, const std::string_view name);

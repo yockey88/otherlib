@@ -11,6 +11,7 @@
   #define OTHER_STACKTRACE_AVAILABLE
   #include <stacktrace>
 #endif
+#include <source_location>
 #include <string>
 
 #include <spdlog/sinks/basic_file_sink.h>
@@ -54,13 +55,10 @@ namespace other {
     void log_failure_error(const std::string& message);
   };
 
-  OTHER_SUBSYSTEM(logger);
-
   /// figure out why I can't compile when using __VA_OPT__(,) instead of this hack
 #define VAR_ARGS(...) , ##__VA_ARGS__
 
-#define LOG(level, logger_name, frmt, ...) \
-  other::subsystem<other::logger>::get()->send_log(level, logger_name, std::format(frmt VAR_ARGS(__VA_ARGS__)))
+#define LOG(level, logger_name, frmt, ...) other::subsystem<other::logger>::get()->send_log(level, logger_name, std::format(frmt VAR_ARGS(__VA_ARGS__)))
 
 #define LOG_TRACE(logger_name, fmt, ...) LOG(spdlog::level::trace, logger_name, fmt VAR_ARGS(__VA_ARGS__))
 #define LOG_DEBUG(logger_name, fmt, ...) LOG(spdlog::level::debug, logger_name, fmt VAR_ARGS(__VA_ARGS__))
@@ -75,6 +73,7 @@ namespace other {
 #define CORE_LOG_WARN(format, ...) LOG_WARN("other-core-log", format VAR_ARGS(__VA_ARGS__))
 #define CORE_LOG_ERROR(format, ...) LOG_ERROR("other-core-log", format VAR_ARGS(__VA_ARGS__))
 #define CORE_LOG_CRITICAL(format, ...) LOG_CRITICAL("other-core-log", format VAR_ARGS(__VA_ARGS__))
+
   /// \todo add automatic enter/exit function logger structs (raii tracing)
 
 #ifdef OTHER_STACKTRACE_AVAILABLE
@@ -101,6 +100,15 @@ namespace other {
     }                                              \
   } while (0)
 
+#define OTHER_UNIMPLEMENTED_FUNCTION() \
+  OTHER_ASSERT(false, "Calling unimplemented function: {} at {}", std::source_location::current().function_name(), std::source_location::current().line())
+
+#define OTHER_UNIMPLEMENTED_FUNCTION_RETURN(expr)                                                                                                           \
+  OTHER_ASSERT(false, "Calling unimplemented function: {} at {}", std::source_location::current().function_name(), std::source_location::current().line()); \
+  return expr;
+
 }  // namespace other
+
+OTHER_SUBSYSTEM(other::logger);
 
 #endif  // OTHER_CORE_LOGGER_HPP

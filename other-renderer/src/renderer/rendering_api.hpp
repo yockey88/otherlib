@@ -12,6 +12,7 @@
 
 #include "core/scope.hpp"
 
+#include "gpu_resource/cube_map.hpp"
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/mesh.hpp"
@@ -79,6 +80,7 @@ namespace other {
     virtual void set_texture_wrap_mode(const resource_handle& handle, texture::wrap wrap_s, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_r = texture::wrap::CLAMP_TO_EDGE) = 0;
     virtual void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) = 0;
     virtual void bind_image(const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer = 0, texture::format frmt = texture::format::RGBA32F, access_flags flags = access_flags::READ_WRITE) = 0;
+    virtual void* get_texture_gpu_resource(const resource_handle& handle) = 0;
 
     virtual void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) = 0;
     virtual void unbind_buffer_resource(const resource_handle& handle) = 0;
@@ -146,6 +148,9 @@ namespace other {
 
     virtual texture* create_texture_resource(const resource_handle& handle, resource_type type) = 0;
     virtual void destroy_texture_resource(const resource_handle& handle) = 0;
+
+    virtual cube_map* create_cube_map_resource(const resource_handle& handle, resource_type type) = 0;
+    virtual void destroy_cube_map_resource(const resource_handle& handle) = 0;
 
     virtual shader* create_shader_resource(const resource_handle& handle, resource_type type) = 0;
     virtual void destroy_shader_resource(const resource_handle& handle) = 0;

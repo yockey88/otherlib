@@ -70,6 +70,7 @@ namespace other {
   resource_handle rendering_api::create_resource(const std::string_view name, resource_type type) {
     resource_handle handle = { get_next_resource_id(), type };
     handle.name_hash = FNV(name);
+    CORE_LOG_DEBUG("Creating GPU resource [{}] : {}", name, handle);
 
     resource* res = nullptr;
     switch (type) {
@@ -79,6 +80,10 @@ namespace other {
 
       case resource_type::TEXTURE:
         res = create_texture_resource(handle, type);
+        break;
+
+      case resource_type::CUBEMAP:
+        res = create_cube_map_resource(handle, type);
         break;
 
       case resource_type::BUFFER:
@@ -138,6 +143,7 @@ namespace other {
         CORE_LOG_ERROR("Resource name for ID {} not found.", handle.id);
       }
     }
+    CORE_LOG_DEBUG("Destroying resource [{}]", handle);
 
     switch (handle.type) {
       case resource_type::SHADER:
@@ -146,6 +152,10 @@ namespace other {
 
       case resource_type::TEXTURE:
         destroy_texture_resource(handle);
+        break;
+
+      case resource_type::CUBEMAP:
+        destroy_cube_map_resource(handle);
         break;
 
       case resource_type::BUFFER:

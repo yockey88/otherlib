@@ -9,6 +9,8 @@
 #include "core/defines.hpp"
 
 #include "dotnet/host.hpp"
+#include "scene/scene.hpp"
+
 #include "driver/driver.hpp"
 
 namespace other {
@@ -30,6 +32,10 @@ namespace other {
 
    private:
     dotnet_host dotnet;
+    scene active_scene;
+
+    natural_t object_id = 0;
+    ref<assembly> testing_assembly = nullptr;
 
     void on_event(SDL_Event* event) override;
   };

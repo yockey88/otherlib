@@ -46,8 +46,8 @@ namespace other {
   }
 
   framebuffer& framebuffer::add_attachment(const resource_handle& attachment_handle, attachment_type type) {
-    if (attachment_handle.id == 0 || attachment_handle.type != resource_type::TEXTURE) {
-      CORE_LOG_ERROR("Invalid attachment handle: must be a valid texture resource.");
+    if (attachment_handle.id == 0 || !(attachment_handle.type == resource_type::TEXTURE || attachment_handle.type == resource_type::CUBEMAP)) {
+      CORE_LOG_ERROR("Invalid attachment handle: must be a valid texture resource, i.e, a texture or cubemap.");
       return *this;
     }
 
@@ -59,7 +59,7 @@ namespace other {
     } else {
       opt<resource_handle>& attachment = attachment_textures[static_cast<size_t>(type)];
       if (attachment.has_value()) {
-        CORE_LOG_ERROR("Attachment of type COLOR already exists in framebuffer, cannot add again.");
+        CORE_LOG_ERROR("Attachment of type {} already exists in framebuffer, cannot add again.", type);
         return *this;
       }
 
@@ -89,17 +89,6 @@ namespace other {
     subsystem<renderer_backend>::get()->api()->finalize_framebuffer(handle());
   }
 
-  void framebuffer::destroy_resources() {
-    for (auto& attachment : attachment_textures) {
-      if (attachment.has_value()) {
-        subsystem<renderer_backend>::get()->api()->destroy_resource(*attachment);
-        attachment = std::nullopt;
-      }
-    }
-    complete = false;
-    final_type = attachment_type::NO_ATTACHMENTS;
-  }
-
   void framebuffer::check_build_status() {
     enum attachment_flags {
       COLOR_ATTACHMENT = 1 << 0,
@@ -122,21 +111,49 @@ namespace other {
       flags |= DEPTH_STENCIL_ATTACHMENT;
     }
 
-    if ((flags & DEPTH_ATTACHMENT) && (flags & STENCIL_ATTACHMENT)) {
-      final_type = attachment_type::DEPTH_STENCIL;
-    } else if ((flags & COLOR_ATTACHMENT)) {
-      final_type = attachment_type::COLOR;
-    } else if ((flags & DEPTH_ATTACHMENT)) {
-      final_type = attachment_type::DEPTH;
-    } else if ((flags & STENCIL_ATTACHMENT)) {
-      final_type = attachment_type::STENCIL;
-    } else {
-      CORE_LOG_ERROR("Framebuffer has no valid attachments: {}", error_msg.has_value() ? *error_msg : "No attachments added.");
-      final_type = attachment_type::NO_ATTACHMENTS;
+    if (color_attachments.size() > 0) {
+      if ((flags & DEPTH_ATTACHMENT) && (flags & STENCIL_ATTACHMENT)) {
+        final_type = attachment_type::DEPTH_STENCIL;
+      } else if ((flags & COLOR_ATTACHMENT)) {
+        final_type = attachment_type::COLOR;
+      } else if ((flags & DEPTH_ATTACHMENT)) {
+        final_type = attachment_type::DEPTH;
+      } else if ((flags & STENCIL_ATTACHMENT)) {
+        final_type = attachment_type::STENCIL;
+      } else {
+        CORE_LOG_ERROR("Framebuffer has no valid attachments: {}", error_msg.has_value() ? *error_msg : "No attachments added.");
+        final_type = attachment_type::NO_ATTACHMENTS;
+      }
+
+    }
+    /// if no color attachments then can only have ONE depth/stencil attachment
+    else {
+      if ((flags & DEPTH_ATTACHMENT) && (flags & STENCIL_ATTACHMENT)) {
+        final_type = attachment_type::DEPTH_STENCIL;
+      } else if ((flags & DEPTH_ATTACHMENT)) {
+        final_type = attachment_type::DEPTH;
+      } else if ((flags & STENCIL_ATTACHMENT)) {
+        final_type = attachment_type::STENCIL;
+      } else {
+        CORE_LOG_ERROR("Framebuffer has no valid attachments: {}", error_msg.has_value() ? *error_msg : "No attachments added.");
+        final_type = attachment_type::NO_ATTACHMENTS;
+      }
     }
 
     if (final_type != attachment_type::NO_ATTACHMENTS) {
       ready_to_finalize = true;
+
+      if ((flags & COLOR_ATTACHMENT) == COLOR_ATTACHMENT) {
+        clear_mask |= framebuffer::clear_mask_bit::COLOR_BIT;
+      }
+
+      if ((flags & DEPTH_ATTACHMENT) == DEPTH_ATTACHMENT) {
+        clear_mask |= framebuffer::clear_mask_bit::DEPTH_BIT;
+      }
+
+      if ((flags & STENCIL_ATTACHMENT) == STENCIL_ATTACHMENT) {
+        clear_mask |= framebuffer::clear_mask_bit::STENCIL_BIT;
+      }
     }
   }
 

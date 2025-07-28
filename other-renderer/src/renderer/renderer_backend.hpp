@@ -26,7 +26,7 @@ namespace other {
     scope<rendering_api>& api() { return rendering_api_instance; }
     bool has_backend() const { return rendering_api_instance != nullptr; }
 
-    void load_backend(const std::string& name);
+    void load_backend(const std::string& name, const glm::uvec2& window_size);
     void unload_backend();
 
     void handle_event(SDL_Event* event);
@@ -46,8 +46,8 @@ namespace other {
     void set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr);
   };
 
-  OTHER_SUBSYSTEM(renderer_backend);
-
 }  // namespace other
+
+OTHER_SUBSYSTEM(other::renderer_backend);
 
 #endif  // OTHER_RENDERER_RENDERER_RENDERER_BACKEND_HPP

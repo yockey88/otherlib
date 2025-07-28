@@ -4,12 +4,12 @@
 #include "driver/driver.hpp"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
 
 #include "core/logger.hpp"
 
 #include "renderer/renderer_backend.hpp"
-
-#include "SDL3/SDL_events.h"
+#include "script/scripting_environment.hpp"
 
 namespace other {
 
@@ -113,9 +113,24 @@ namespace other {
 
   scope<renderer> driver::get_renderer() const {
     if (auto* rendering = subsystem<renderer_backend>::get(); !rendering->has_backend()) {
-      rendering->load_backend("opengl");
+      rendering->load_backend("opengl", { 1280, 720 });
     }
     return make_scope<renderer>();
+  }
+
+  ref<assembly> driver::load_dotnet_module(const std::string_view module_path) {
+    CORE_LOG_DEBUG("Loading script module from path: {}", module_path);
+    std::filesystem::path path(module_path);
+    if (!std::filesystem::exists(path)) {
+      CORE_LOG_ERROR("Script module path does not exist: {}", module_path);
+      return nullptr;
+    }
+    return subsystem<scripting_environment>::get()->load_dotnet_module(path.string());
+  }
+
+  void driver::unload_dotnet_module(ref<assembly> module) {
+    CORE_LOG_DEBUG("Unloading script module with ID: {}", module->get_handle());
+    subsystem<scripting_environment>::get()->unload_dotnet_module(module);
   }
 
 }  // namespace other

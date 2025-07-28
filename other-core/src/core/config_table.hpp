@@ -45,6 +45,7 @@ namespace other {
 
     /// rendering settings
     opt<std::string> rendering_backend;
+    glm::uvec2 window_size = { 1280, 720 };
     glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
    private:

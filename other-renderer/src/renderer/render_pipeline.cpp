@@ -41,6 +41,14 @@ namespace other {
       .finalize_buffer();
   }
 
+  void render_pipeline::prepare_frame(renderer::frame_resources* resources, render_data* data) {
+    OTHER_ASSERT(resources != nullptr, "Frame resources must not be null.");
+    PROFILE_SECTION("render_pipeline::prepare_frame");
+
+    frame_render_data = data;
+    on_prepare_frame(resources, data);
+  }
+
   void render_pipeline::render_frame(renderer* renderer_ptr) {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
     PROFILE_SECTION("render_pipeline::render_frame");
@@ -115,21 +123,34 @@ namespace other {
     OTHER_ASSERT(inserted, "Failed to insert buffer resource with name [{}].", name);
   }
 
-  void render_pipeline::add_texture_resource(const std::string_view name, const glm::vec2& size, framebuffer::attachment_type type, texture::tex_type tex_type, texture::format format) {
-    resource_handle handle = texture::create(std::string{ name }, tex_type, format, size.x, size.y);
+  void render_pipeline::add_texture_resource(const std::string_view name, const glm::vec2& size, texture::tex_type tex_type, texture::format format) {
+    resource_handle handle;
+    if (tex_type == texture::tex_type::TEXTURE_CUBE) {
+      handle = cube_map::create(std::string{ name }, format, size.x, size.y);
+    } else {
+      handle = texture::create(std::string{ name }, tex_type, format, size.x, size.y);
+    }
+    auto [itr, inserted] = texture_resources.insert({ handle.id, { .name = std::string{ name }, .handle = handle } });
+    OTHER_ASSERT(inserted, "Failed to insert texture resource with name [{}].", name);
+  }
+
+  void render_pipeline::add_texture_resource(const std::string_view name, const glm::vec2& size, texture::tex_type tex_type, texture::format format, const std::pair<texture::filter, texture::filter>& filters, const std::tuple<texture::wrap, texture::wrap, texture::wrap>& wraps) {
+    resource_handle handle = texture::create(std::string{ name }, tex_type, format, filters, wraps, size.x, size.y);
     auto [itr, inserted] = texture_resources.insert({ handle.id, { .name = std::string{ name }, .handle = handle } });
     OTHER_ASSERT(inserted, "Failed to insert texture resource with name [{}].", name);
   }
 
   shader* render_pipeline::get_pass_shader(const std::string_view name) {
-    auto itr = std::ranges::find_if(graph->get_graph().nodes, [&](const auto& pair) {
-      return pair.second.pass->name == name;
-    });
+    auto itr = std::ranges::find_if(graph->get_graph().nodes, [&](const auto& pair) { return pair.second.pass->name == name; });
     if (itr == graph->get_graph().nodes.end()) {
       CORE_LOG_ERROR("Shader pass [{}] not found in graph.", name);
       return nullptr;
     }
-    return &get_renderer()->get_resource<shader>(itr->second.pass->shader_handle);
+
+    if (!itr->second.pass->shader_handle.has_value()) {
+      return nullptr;
+    }
+    return &get_renderer()->get_resource<shader>(*itr->second.pass->shader_handle);
   }
 
   render_pipeline::pass_builder& render_pipeline::pass_builder::clear_color(const glm::vec4& clear_color) {
@@ -156,7 +177,14 @@ namespace other {
       return *this;
     }
 
-    uint32_t slot = flags == WRITE ? 0 : curr_texture_slot++;
+    uint32_t slot = 0;
+    if ((flags & WRITE) != WRITE) {
+      slot = curr_texture_slot++;
+      CORE_LOG_DEBUG("Adding texture resource [{}] with slot [{}]", name, slot);
+    } else {
+      CORE_LOG_DEBUG("Adding texture resource [{}] pass framebuffer", name);
+    }
+
     CORE_LOG_DEBUG("Adding texture resource [{}] with slot [{}]", name, slot);
     builder.texture_resource(*handle, slot, type, flags);
     return *this;
@@ -171,7 +199,7 @@ namespace other {
     (void)builder.end_pass();
   }
 
-  render_pipeline::pass_builder render_pipeline::start_pass(const std::string_view name, resource_handle shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer) {
+  render_pipeline::pass_builder render_pipeline::start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer) {
     OTHER_ASSERT(graph != nullptr, "Render graph is not initialized. Cannot start a new pass.");
     auto builder = render_pipeline::pass_builder{ this, graph->start_pass(name, shader_handle, rptype, size, create_framebuffer) };
     builder.pass_name = std::string{ name };
@@ -231,14 +259,13 @@ namespace other {
     }
     if (!(has_material_buffer && has_model_buffer && has_point_light_buffer && has_direction_light_buffer && has_camera_buffer)) {
       valid = false;
-      CORE_LOG_ERROR("Render pipeline is invalid due to missing required buffers.");
+      CORE_LOG_ERROR("Render pipeline is invalid due to missing buffer bindings.");
     } else {
       valid = graph->is_valid();
     }
 
     if (!valid) {
       CORE_LOG_ERROR("Render pipeline is not valid!");
-      return;
     }
   }
 

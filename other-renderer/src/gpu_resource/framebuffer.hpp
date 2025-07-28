@@ -28,6 +28,13 @@ namespace other {
       NUM_ATTACHMENT_TYPES,
       NO_ATTACHMENTS = NUM_ATTACHMENT_TYPES
     };
+    enum clear_mask_bit {
+      NONE = 0,
+      COLOR_BIT = 1 << 0,
+      DEPTH_BIT = 1 << 1,
+      STENCIL_BIT = 1 << 2,
+      ALL_BITS = COLOR_BIT | DEPTH_BIT | STENCIL_BIT
+    };
 
     glm::vec4 clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
     glm::ivec2 size = { 0, 0 };
@@ -52,7 +59,6 @@ namespace other {
 
     void unbind();
     void finalize_framebuffer();
-    void destroy_resources();
 
     std::vector<resource_handle> color_attachments;
     // DEPTH, STENCIL, DEPTH_STENCIL
@@ -60,6 +66,8 @@ namespace other {
 
     bool complete = false;
     bool ready_to_finalize = false;
+
+    int32_t clear_mask = clear_mask_bit::NONE;
 
    private:
     attachment_type final_type = attachment_type::COLOR;

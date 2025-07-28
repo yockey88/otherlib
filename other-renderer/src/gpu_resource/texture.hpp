@@ -14,13 +14,18 @@
 namespace other {
 
   struct texture : public resource {
-    OTHER_REFLECTABLE(texture);
-
     enum tex_type : uint32_t {
       TEXTURE_1D = 0,
       TEXTURE_2D,
       TEXTURE_3D,
+
       TEXTURE_CUBE,
+      TEXTURE_CUBE_FACE_POSITIVE_X,
+      TEXTURE_CUBE_FACE_NEGATIVE_X,
+      TEXTURE_CUBE_FACE_POSITIVE_Y,
+      TEXTURE_CUBE_FACE_NEGATIVE_Y,
+      TEXTURE_CUBE_FACE_POSITIVE_Z,
+      TEXTURE_CUBE_FACE_NEGATIVE_Z,
 
       /// add more here...
 
@@ -32,6 +37,7 @@ namespace other {
      * format:
           RGBA16S
           ^   ^ ^
+          |   | |
           |   | +-- [ ]Unorm
           |   |     [F]loat
           |   |     [S]norm
@@ -94,6 +100,8 @@ namespace other {
       RGB10A2,
       RG11B10F,
 
+      DEPTHF,
+
       /// add more here...
 
       NUM_FORMATS
@@ -130,8 +138,14 @@ namespace other {
 
     resource_type type() const override { return resource_type::TEXTURE; }
 
-    static resource_handle create(const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8, uint32_t width = 0, uint32_t height = 0, bool writable = false);
-    static resource_handle create3d(const std::string& name, format frmt = format::RGBA8, const glm::vec3& dimensions = glm::vec3(0), bool writable = false);
+    static resource_handle create(const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8, uint32_t width = 0, uint32_t height = 0);
+    static resource_handle create(
+      const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8,
+      const std::pair<filter, filter>& filters = { LINEAR, LINEAR },
+      const std::tuple<wrap, wrap, wrap>& wraps = { CLAMP_TO_EDGE, CLAMP_TO_EDGE, CLAMP_TO_EDGE },
+      uint32_t width = 0, uint32_t height = 0
+    );
+    static resource_handle create3d(const std::string& name, format frmt = format::RGBA8, const glm::vec3& dimensions = glm::vec3(0));
 
     texture& bind(uint32_t slot = 0);
     texture& bind_image(uint32_t index, uint32_t level, bool layered, int32_t layer = 0, format frmt = format::RGBA32F, access_flags flags = access_flags::READ_WRITE);
@@ -141,15 +155,12 @@ namespace other {
     texture& set_format(format frmt);
     texture& set_filter(filter min_filter, filter mag_filter = NEAREST);
     texture& set_wrap_mode(wrap wrap_s, wrap wrap_t = CLAMP_TO_EDGE, wrap wrap_r = CLAMP_TO_EDGE);
-    texture& set_data(const std::vector<uint8_t>& data);
-    texture& set_data(const uint8_t* data, size_t size);
+    texture& set_data(void* data, size_t size);
 
     void unbind(uint32_t slot = 0);
     void finalize_texture();
 
-    const uint8_t* get_data() const {
-      return data.empty() ? nullptr : data.data();
-    }
+    const void* get_data() const { return data; }
     tex_type get_type() const { return (tex_type)texture_type; }
     const glm::ivec2& get_size() const { return size; }
     format get_format() const { return (format)texture_format; }
@@ -159,33 +170,35 @@ namespace other {
     wrap get_wrap_t() const { return (wrap)wrap_t; }
     wrap get_wrap_r() const { return (wrap)wrap_r; }
 
-    uint32_t texture_type = TEXTURE_2D;
+    tex_type texture_type = tex_type::TEXTURE_2D;
 
     glm::ivec2 size = { 0, 0 };
-    std::vector<uint8_t> data;
+    void* data = nullptr;
+    size_t data_size = 0;
 
-    uint32_t texture_format = format::RGBA8;
+    format texture_format = format::RGBA8;
 
-    uint32_t min_filter = filter::LINEAR;
-    uint32_t mag_filter = filter::LINEAR;
+    filter min_filter = filter::LINEAR;
+    filter mag_filter = filter::LINEAR;
 
-    uint32_t wrap_s = wrap::CLAMP_TO_EDGE;
-    uint32_t wrap_t = wrap::CLAMP_TO_EDGE;
-    uint32_t wrap_r = wrap::CLAMP_TO_EDGE;
+    wrap wrap_s = wrap::CLAMP_TO_EDGE;
+    wrap wrap_t = wrap::CLAMP_TO_EDGE;
+    wrap wrap_r = wrap::CLAMP_TO_EDGE;
   };
 
 }  // namespace other
 
 OTHER_REFLECT(
-  other::texture,
-  field(texture_type, other::attr::serializable()),
-  field(size, other::attr::serializable()),
-  field(texture_format, other::attr::serializable()),
-  field(min_filter, other::attr::serializable()),
-  field(mag_filter, other::attr::serializable()),
-  field(wrap_s, other::attr::serializable()),
-  field(wrap_t, other::attr::serializable()),
-  field(wrap_r, other::attr::serializable())
+  other::texture
+  // ,
+  // field(texture_type, other::attr::serializable()),
+  // field(size, other::attr::serializable()),
+  // field(texture_format, other::attr::serializable()),
+  // field(min_filter, other::attr::serializable()),
+  // field(mag_filter, other::attr::serializable()),
+  // field(wrap_s, other::attr::serializable()),
+  // field(wrap_t, other::attr::serializable()),
+  // field(wrap_r, other::attr::serializable())
 );
 
 #endif  // OTHER_RENDERER_GPU_RESOURCE_TEXTURE_HPP

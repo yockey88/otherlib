@@ -1,0 +1,3 @@
+[application]
+driver = "build/development-drivers/Debug/math_physics_dev.dll"
+core-log-level = "debug"

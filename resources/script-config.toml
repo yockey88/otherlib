@@ -1,0 +1,6 @@
+[application]
+driver = "build/development-drivers/Debug/scripting_dev.dll"
+core-log-level = "debug"
+
+# [rendering]
+# rendering-api = "opengl"

@@ -22,10 +22,10 @@ namespace other {
     enum type {
       RENDER_PASS = 0,
       COMPUTE_PASS,
-    };
+    } pass_type = RENDER_PASS;
     natural_t id = 0;
     opt<resource_handle> framebuffer_handle = std::nullopt;
-    resource_handle shader_handle = {};
+    opt<resource_handle> shader_handle = {};
     void* user_data = nullptr;
 
     std::string name;
@@ -112,12 +112,13 @@ namespace other {
     render_graph& start_pipeline();
     void end_pipeline();
 
-    pass_builder start_pass(const std::string_view name, resource_handle shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true);
+    pass_builder start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true);
 
     bool is_valid() const { return graph_valid; }
 
     const std::map<natural_t, pass>& get_passes() const { return passes; }
     const std::map<natural_t, pass_executor>& get_executors() const { return executors; }
+    opt<resource_handle> get_output_texture() const { return output_texture_handle; }
 
     const graph& get_graph() const { return pass_graph; }
     const std::vector<natural_t>& get_topological_sort() const { return topological_sort; }
@@ -132,6 +133,7 @@ namespace other {
 
     std::map<natural_t, pass> passes;
     std::map<natural_t, pass_executor> executors;
+    opt<resource_handle> output_texture_handle = std::nullopt;
 
     graph pass_graph;
     std::vector<natural_t> topological_sort;

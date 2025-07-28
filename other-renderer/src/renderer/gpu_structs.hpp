@@ -33,7 +33,13 @@ namespace other {
     };
 
     constexpr static inline size_t kGpuAlignment = 16;
-#define GPU_ALIGN __declspec(align(gpu::kGpuAlignment))
+#ifdef OTHER_ENVIRONMENT_WINDOWS
+  #define GPU_ALIGN __declspec(align(gpu::kGpuAlignment))
+#elif defined(OTHER_ENVIRONMENT_LINUX) || defined(OTHER_ENVIRONMENT_MACOS)
+  #define GPU_ALIGN alignas(gpu::kGpuAlignment)
+#else
+  #error "Unsupported environment for GPU alignment."
+#endif
 
     GPU_ALIGN struct material {
       int type = INVALID_MATERIAL;

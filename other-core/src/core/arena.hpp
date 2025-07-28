@@ -78,8 +78,8 @@ namespace other {
     // #endif
   };
 
-  OTHER_SUBSYSTEM(arena);
-
 }  // namespace other
+
+OTHER_SUBSYSTEM(other::arena);
 
 #endif  // OTHER_CORE_MEMORY_ARENA_HPP

@@ -13,15 +13,20 @@ namespace other {
     default_instancing_pipeline() = default;
     ~default_instancing_pipeline() = default;
 
-    void prepare_frame(renderer::frame_resources* resources, render_data* data) override;
-
    private:
     resource_handle quad_mesh_handle;
 
+    ref<model_source> debug_cube_model_source;
+    model debug_cube_model;
+
     resource_handle geometry_pass_shader_handle;
+    resource_handle shadow_map_pass_shader_handle;
+    resource_handle point_light_shadow_pass_shader_handle;
     resource_handle shading_pass_shader_handle;
+    resource_handle debug_processing_shader_handle;
     resource_handle screen_shader_handle;
 
+    void on_prepare_frame(renderer::frame_resources* resources, render_data* data) override;
     void create_resources() override;
     void build_render_passes() override;
   };

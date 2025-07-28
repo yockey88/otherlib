@@ -9,7 +9,7 @@
 
 namespace other {
 
-  resource_handle texture::create(const std::string& name, tex_type type, format frmtRGBA8, uint32_t width, uint32_t height, bool writable) {
+  resource_handle texture::create(const std::string& name, tex_type type, format frmt, uint32_t width, uint32_t height) {
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create texture resource with name: {}", name);
@@ -17,8 +17,8 @@ namespace other {
     }
 
     auto& text = (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(handle))
-                   .set_type(texture::tex_type::TEXTURE_2D)
-                   .set_format(texture::format::RGBA32F)
+                   .set_type(type)
+                   .set_format(frmt)
                    .set_size(width, height)
                    .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
                    .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE);
@@ -28,7 +28,26 @@ namespace other {
     return handle;
   }
 
-  resource_handle texture::create3d(const std::string& name, format frmt, const glm::vec3& dimensions, bool writable) {
+  resource_handle texture::create(const std::string& name, tex_type type, format frmt, const std::pair<filter, filter>& filters, const std::tuple<wrap, wrap, wrap>& wraps, uint32_t width, uint32_t height) {
+    resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
+    if (handle.id == 0) {
+      CORE_LOG_ERROR("Failed to create texture resource with name: {}", name);
+      return { 0, resource_type::EMPTY };
+    }
+
+    auto& text = (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(handle))
+                   .set_type(type)
+                   .set_format(frmt)
+                   .set_size(width, height)
+                   .set_filter(filters.first, filters.second)
+                   .set_wrap_mode(std::get<0>(wraps), std::get<1>(wraps), std::get<2>(wraps));
+
+    text.finalize_texture();
+
+    return handle;
+  }
+
+  resource_handle texture::create3d(const std::string& name, format frmt, const glm::vec3& dimensions) {
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create 3D texture resource with name: {}", name);
@@ -109,25 +128,14 @@ namespace other {
     return *this;
   }
 
-  texture& texture::set_data(const std::vector<uint8_t>& data) {
-    if (data.empty()) {
-      CORE_LOG_ERROR("Invalid texture data: data vector is empty.");
-      return *this;
-    }
-
-    this->data.clear();
-    this->data.resize(data.size());
-    std::ranges::copy(data, this->data.begin());
-    return *this;
-  }
-
-  texture& texture::set_data(const uint8_t* data, size_t size) {
+  texture& texture::set_data(void* data, size_t size) {
     if (!data || size == 0) {
       CORE_LOG_ERROR("Invalid texture data: data pointer is null or size is zero.");
       return *this;
     }
 
-    set_data(std::vector<uint8_t>(data, data + size));
+    this->data = data;
+    this->data_size = size;
     return *this;
   }
 
@@ -142,8 +150,6 @@ namespace other {
       return;
     }
 
-    uint8_t* data = this->data.empty() ? nullptr : this->data.data();
-    size_t data_size = data == nullptr ? 0 : this->data.size();
     subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_type(), get_format(), size, data, data_size);
   }
 

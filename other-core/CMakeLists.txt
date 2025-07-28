@@ -21,6 +21,7 @@ target_sources(other_core
 		src/math/morton_codes.cpp
 		src/math/random.cpp
 		src/math/orthonormal_basis.cpp
+		src/math/coordinate_frame.cpp
 		src/math/interval.cpp
 		src/math/bounding_box.cpp
 		src/math/ray.cpp

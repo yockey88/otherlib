@@ -111,6 +111,11 @@ namespace other {
 
   }  // namespace
 
+  void model::draw() {
+    OTHER_ASSERT(source != nullptr, "SOURCE is null!");
+    source->draw();
+  }
+
   // clang-format off
   model_source::model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices, const std::unordered_map<uint32_t, std::vector<triangle>>& triangle_map, 
                               const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const bounding_box& bounds)

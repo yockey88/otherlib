@@ -21,8 +21,8 @@ namespace other {
 
   struct render_data {
     camera* primary_camera = nullptr;
+    const gpu::directional_light* scene_ambient_light = nullptr;
     std::vector<gpu::point_light> point_lights;
-    std::vector<gpu::directional_light> directional_lights;
 
     size_t num_draw_calls = 0;
     std::map<mesh_key, size_t> mesh_indices;
@@ -64,6 +64,10 @@ namespace other {
     template <typename T>
     T& get_resource(const resource_handle& handle) {
       return *rendering()->api()->get_resource_as<T>(handle);
+    }
+
+    void* get_texture_gpu_resource(const resource_handle& handle) {
+      return rendering()->api()->get_texture_gpu_resource(handle);
     }
 
     template <typename T>

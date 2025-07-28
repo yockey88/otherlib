@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.27.0..4.0.2)
 project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
-add_subdirectory(other-csharp-bindings)
+add_subdirectory(other-csharp)
 
 option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)

@@ -10,4 +10,5 @@ set_target_properties(DotnetTesting PROPERTIES
 
 target_sources(DotnetTesting PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ecma-frmt-testing.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/other-object-development.cs
 )

@@ -3,6 +3,8 @@
  **/
 #include "renderer/backends/opengl_api.hpp"
 
+#include <cstdint>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_video.h>
 #include <glad/glad.h>
@@ -391,17 +393,24 @@ namespace other {
     PROFILE_SECTION("opengl_api::bind_texture_resource");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Texture resource with ID {} not found. Can't bind resource", handle.id);
     } else {
+      uint32_t texture_id = itr->second;
+
       auto texture_itr = texture_resources.find(handle.id);
       if (texture_itr == texture_resources.end()) {
-        CORE_LOG_ERROR("Texture resource with ID {} not found in texture resources.", handle.id);
-        return;
+        auto cube_map_itr = cube_map_resources.find(handle.id);
+        if (cube_map_itr == cube_map_resources.end()) {
+          CORE_LOG_ERROR("Texture resource with ID {} not found in texture resources.", handle.id);
+          return;
+        }
+        glActiveTexture(GL_TEXTURE0 + index);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
+      } else {
+        glActiveTexture(GL_TEXTURE0 + index);
+        glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), texture_id);
       }
 
-      uint32_t texture_id = itr->second;
-      glActiveTexture(GL_TEXTURE0 + index);
-      glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), texture_id);
       CHECKGL();
     }
   }
@@ -410,15 +419,20 @@ namespace other {
     PROFILE_SECTION("opengl_api::unbind_texture_resource");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Texture resource with ID {} not found. Can't unbind resource", handle.id);
     } else {
       auto texture_itr = texture_resources.find(handle.id);
       if (texture_itr == texture_resources.end()) {
-        CORE_LOG_ERROR("Texture resource with ID {} not found in texture resources.", handle.id);
-        return;
+        auto cube_map_itr = cube_map_resources.find(handle.id);
+        if (cube_map_itr == cube_map_resources.end()) {
+          CORE_LOG_ERROR("Texture resource with ID {} not found in texture resources.", handle.id);
+          return;
+        }
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+      } else {
+        glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), 0);  // Unbind the texture
       }
 
-      glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), 0);  // Unbind the texture
       CHECKGL();
     }
   }
@@ -427,20 +441,27 @@ namespace other {
     PROFILE_SECTION("opengl_api::set_texture_filter");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Texture resource with ID {} not found. Can't set filter", handle.id);
       return;
     }
 
     auto texture_itr = texture_resources.find(handle.id);
     if (texture_itr == texture_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with ID {} not found in texture resources.", handle.id);
-      return;
+      auto cube_map_itr = cube_map_resources.find(handle.id);
+      if (cube_map_itr == cube_map_resources.end()) {
+        CORE_LOG_ERROR("Texture resource with ID {} not found in texture resources.", handle.id);
+        return;
+      }
+      glBindTexture(GL_TEXTURE_CUBE_MAP, itr->second);
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, get_gl_texture_filter(min_filter));
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, get_gl_texture_filter(mag_filter));
+      glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    } else {
+      glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), itr->second);
+      glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_MIN_FILTER, get_gl_texture_filter(min_filter));
+      glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_MAG_FILTER, get_gl_texture_filter(mag_filter));
+      glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), 0);  // Unbind the texture
     }
-
-    glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), itr->second);
-    glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_MIN_FILTER, get_gl_texture_filter(min_filter));
-    glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_MAG_FILTER, get_gl_texture_filter(mag_filter));
-    glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), 0);  // Unbind the texture
     CHECKGL();
   }
 
@@ -448,79 +469,111 @@ namespace other {
     PROFILE_SECTION("opengl_api::set_texture_wrap_mode");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Texture resource with ID {} not found. Can't set wrap mode", handle.id);
       return;
     }
 
     auto texture_itr = texture_resources.find(handle.id);
     if (texture_itr == texture_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with ID {} not found in texture resources.", handle.id);
-      return;
-    }
+      auto cube_map_itr = cube_map_resources.find(handle.id);
+      if (cube_map_itr == cube_map_resources.end()) {
+        CORE_LOG_ERROR("Texture resource with ID {} not found in texture resources.", handle.id);
+        return;
+      }
 
-    glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), itr->second);
-    glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_WRAP_S, get_gl_texture_wrap_mode(wrap_s));
-    glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_WRAP_T, get_gl_texture_wrap_mode(wrap_t));
-    glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_WRAP_R, get_gl_texture_wrap_mode(wrap_r));
-    glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), 0);  // Unbind the texture
+      glBindTexture(GL_TEXTURE_CUBE_MAP, itr->second);
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, get_gl_texture_wrap_mode(wrap_s));
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, get_gl_texture_wrap_mode(wrap_t));
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, get_gl_texture_wrap_mode(wrap_r));
+      glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    } else {
+      glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), itr->second);
+      glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_WRAP_S, get_gl_texture_wrap_mode(wrap_s));
+      glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_WRAP_T, get_gl_texture_wrap_mode(wrap_t));
+      glTexParameteri(get_gl_texture_type(texture_itr->second.get_type()), GL_TEXTURE_WRAP_R, get_gl_texture_wrap_mode(wrap_r));
+      glBindTexture(get_gl_texture_type(texture_itr->second.get_type()), 0);  // Unbind the texture
+    }
     CHECKGL();
   }
 
   void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) {
     PROFILE_SECTION("opengl_api::upload_texture");
-    auto itr = texture_resources.find(handle.id);
-    if (itr == texture_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
-      return;
-    }
-
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("GPU resource for texture ID {} not found.", handle.id);
+      CORE_LOG_ERROR("GPU resource for texture ID {} not found. Can't upload texture", handle.id);
       return;
     }
 
-    uint32_t texture_id = gpu_itr->second;
-    glBindTexture(get_gl_texture_type(type), texture_id);
-
-    int32_t gl_type = get_gl_texture_type(itr->second.get_type());
-    switch (gl_type) {
-      case GL_TEXTURE_1D:
-        glTexImage1D(gl_type, 0, get_gl_texture_format(format), img_size.x, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
-        break;
-
-      case GL_TEXTURE_2D:
-        glTexImage2D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
-        break;
-
-      case GL_TEXTURE_3D:
-        glTexImage3D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 1, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
-        break;
-
-      case GL_TEXTURE_CUBE_MAP:
-        /// make this seperate resource type
-        break;
-
-      default:
-        CORE_LOG_ERROR("Unsupported texture type for OpenGL: {}", gl_type);
+    auto itr = texture_resources.find(handle.id);
+    if (itr == texture_resources.end()) {
+      auto cube_map_itr = cube_map_resources.find(handle.id);
+      if (cube_map_itr == cube_map_resources.end()) {
+        CORE_LOG_ERROR("Texture resource with ID {} not found. Can't upload texture", handle.id);
         return;
-    }
-
-    /**
-      if (generate-mip-maps) {
-        do so
       }
-    */
 
-    glBindTexture(get_gl_texture_type(type), 0);
-    CHECKGL();
+      uint32_t texture_id = gpu_itr->second;
+      glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
+
+      int32_t gl_type = get_gl_texture_type(type);
+      switch (gl_type) {
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+          glTexImage2D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          break;
+      }
+
+      glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+      CHECKGL();
+    } else {
+      uint32_t texture_id = gpu_itr->second;
+      glBindTexture(get_gl_texture_type(type), texture_id);
+
+      int32_t gl_type = get_gl_texture_type(type);
+      switch (gl_type) {
+        case GL_TEXTURE_1D:
+          glTexImage1D(gl_type, 0, get_gl_texture_format(format), img_size.x, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          break;
+
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+        case GL_TEXTURE_2D:
+          glTexImage2D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          break;
+
+        case GL_TEXTURE_3D:
+          glTexImage3D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 1, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          break;
+
+        default:
+          CORE_LOG_ERROR("Unsupported texture type for OpenGL: {}", gl_type);
+          return;
+      }
+
+      /**
+        if (generate-mip-maps) {
+          do so
+        }
+      */
+
+      glBindTexture(get_gl_texture_type(type), 0);
+      CHECKGL();
+    }
   }
 
   void opengl_api::bind_image(const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer, texture::format frmt, access_flags flags) {
     PROFILE_SECTION("opengl_api::bind_image");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Texture resource with ID {} not found. Can't bind image", handle.id);
       return;
     }
 
@@ -535,12 +588,27 @@ namespace other {
     CHECKGL();
   }
 
+  void* opengl_api::get_texture_gpu_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::get_texture_gpu_resource");
+    auto itr = gpu_resources.find(handle.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Texture resource with ID {} not found. Can't get GPU resource", handle.id);
+      return nullptr;
+    }
+
+    if (texture_resources.find(handle.id) == texture_resources.end()) {
+      CORE_LOG_ERROR("Texture resource with ID {} is not a valid texture or cube map.", handle.id);
+      return nullptr;
+    }
+    return (void*)(uintptr_t)itr->second;
+  }
+
   void opengl_api::bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) {
     PROFILE_SECTION("opengl_api::bind_buffer_resource");
 
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
-      CORE_LOG_ERROR("Buffer resource with ID {} not found.", handle.id);
+      CORE_LOG_ERROR("Buffer resource with ID {} not found. Can't bind buffer", handle.id);
       return;
     }
 
@@ -787,7 +855,7 @@ namespace other {
     const auto& fb = itr->second;
     glViewport(0, 0, fb.size.x, fb.size.y);
     glClearColor(fb.clear_color.r, fb.clear_color.g, fb.clear_color.b, fb.clear_color.a);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(get_gl_clear_bits(fb.clear_mask));
     CHECKGL();
   }
 
@@ -821,19 +889,39 @@ namespace other {
       return;
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fb_gpu_itr->second);
-    glBindTexture(GL_TEXTURE_2D, text_gpu_itr->second);
-
     int32_t gl_attachment_type = -1;
     if (type == framebuffer::attachment_type::COLOR) {
       gl_attachment_type = GL_COLOR_ATTACHMENT0 + color_attachment_index;
     } else {
       gl_attachment_type = get_gl_fb_attachment_type(type);
     }
+    if (gl_attachment_type == -1) {
+      CORE_LOG_ERROR("Invalid framebuffer attachment type for OpenGL: {}", static_cast<int>(type));
+      return;
+    }
 
-    glFramebufferTexture2D(GL_FRAMEBUFFER, gl_attachment_type, GL_TEXTURE_2D, text_gpu_itr->second, mip_level);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, text_gpu_itr->second);
+    glBindFramebuffer(GL_FRAMEBUFFER, fb_gpu_itr->second);
+
+    auto texture_res_itr = texture_resources.find(texture.id);
+    auto cube_map_res_itr = cube_map_resources.find(texture.id);
+
+    bool is_cube_map = texture_res_itr == texture_resources.end() && cube_map_res_itr != cube_map_resources.end();
+
+    if (is_cube_map) {
+      glFramebufferTexture(GL_FRAMEBUFFER, gl_attachment_type, text_gpu_itr->second, mip_level);
+    } else {
+      auto texture_itr = texture_resources.find(texture.id);
+      if (texture_itr != texture_resources.end()) {
+        glFramebufferTexture2D(GL_FRAMEBUFFER, gl_attachment_type, get_gl_texture_type(texture_itr->second.get_type()), text_gpu_itr->second, mip_level);
+      } else {
+        CORE_LOG_ERROR("Texture resource with ID {} not found.", texture.id);
+      }
+    }
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    CHECKGL();
   }
 
   void opengl_api::finalize_framebuffer(const resource_handle& handle) {
@@ -851,48 +939,73 @@ namespace other {
       return;
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fb_itr->second);
-
-    std::vector<uint32_t> draw_buffers;
-    for (size_t i = 0; i < itr->second.color_attachments.size(); ++i) {
-      draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + i);
-    }
-    glDrawBuffers(draw_buffers.size(), draw_buffers.data());
-
     if (!itr->second.ready_to_finalize) {
       CORE_LOG_ERROR("Framebuffer with ID {} is not complete.", handle.id);
       return;
     }
 
-    /// create the renderbuffer now
-    uint32_t renderbuffer_id = 0;
-    glGenRenderbuffers(1, &renderbuffer_id);
-    glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1280, 720);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    CHECKGL();
+    glBindFramebuffer(GL_FRAMEBUFFER, fb_itr->second);
 
-    auto [rb_itr, rb_inserted] = framebuffer_renderbuffers.emplace(handle.id, renderbuffer_id);
-    if (!rb_inserted || rb_itr == framebuffer_renderbuffers.end()) {
-      CORE_LOG_ERROR("Failed to create GPU resource for framebuffer renderbuffer ID: {}", handle.id);
-      glDeleteRenderbuffers(1, &renderbuffer_id);
-      return;
+    if (itr->second.color_attachments.empty()) {
+      glDrawBuffer(GL_NONE);
+      glReadBuffer(GL_NONE);
+    } else {
+      std::vector<uint32_t> draw_buffers;
+      for (size_t i = 0; i < itr->second.color_attachments.size(); ++i) {
+        draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + i);
+      }
+      glDrawBuffers(draw_buffers.size(), draw_buffers.data());
+
+      /// create the renderbuffer now
+      uint32_t renderbuffer_id = 0;
+      glGenRenderbuffers(1, &renderbuffer_id);
+      glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
+      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1280, 720);
+      glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+      auto [rb_itr, rb_inserted] = framebuffer_renderbuffers.emplace(handle.id, renderbuffer_id);
+      if (!rb_inserted || rb_itr == framebuffer_renderbuffers.end()) {
+        CORE_LOG_ERROR("Failed to create GPU resource for framebuffer renderbuffer ID: {}", handle.id);
+        glDeleteRenderbuffers(1, &renderbuffer_id);
+        return;
+      }
+
+      glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
+      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer_id);
+      glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
 
-    glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer_id);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     CHECKGL();
 
     // Check if the framebuffer is complete
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-      CORE_LOG_ERROR("Framebuffer with ID {} is not complete: {}", handle.id, status);
-      return;
-    }
     CHECKGL();
-    itr->second.complete = true;
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+      std::string error_msg;
+      switch (status) {
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+          error_msg = "Framebuffer incomplete: Attachment point is not complete.";
+          break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+          error_msg = "Framebuffer incomplete: No images are attached to the framebuffer.";
+          break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+          error_msg = "Framebuffer incomplete: Draw buffer is not complete.";
+          break;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+          error_msg = "Framebuffer incomplete: Read buffer is not complete.";
+          break;
+        case GL_FRAMEBUFFER_UNSUPPORTED:
+          error_msg = "Framebuffer unsupported: The combination of internal formats is not supported.";
+          break;
+        default:
+          error_msg = "Framebuffer incomplete: Unknown error.";
+          break;
+      }
+      CORE_LOG_ERROR("Failed to finalize framebuffer with ID {}: ({}) {}", handle.id, status, error_msg);
+    } else {
+      itr->second.complete = true;
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     CHECKGL();
@@ -1041,11 +1154,8 @@ namespace other {
       uint32_t renderbuffer_id = rb_itr->second;
       glDeleteRenderbuffers(1, &renderbuffer_id);
       framebuffer_renderbuffers.erase(rb_itr);
-    } else {
-      CORE_LOG_ERROR("Renderbuffer resource for framebuffer ID {} not found.", handle.id);
     }
 
-    itr->second.destroy_resources();
     framebuffer_resources.erase(itr);
 
     auto gpu_itr = gpu_resources.find(handle.id);
@@ -1186,9 +1296,7 @@ namespace other {
     PROFILE_SECTION("opengl_api::create_texture_resource");
 
     auto itr = texture_resources.find(handle.id);
-    if (itr != texture_resources.end()) {
-      return &itr->second;
-    }
+    OTHER_ASSERT(itr == texture_resources.end(), "Texture resource with ID {} already exists.", handle.id);
 
     auto [itr2, inserted] = texture_resources.emplace(handle.id, texture(handle));
     if (!inserted || itr2 == texture_resources.end()) {
@@ -1233,6 +1341,64 @@ namespace other {
     if (gpu_itr != gpu_resources.end()) {
       uint32_t texture_id = gpu_itr->second;
       glDeleteTextures(1, &texture_id);
+      gpu_resources.erase(gpu_itr);
+    } else {
+      CORE_LOG_ERROR("GPU resource with ID {} not found.", handle.id);
+    }
+
+    resource_types.erase(handle.id);
+    CHECKGL();
+  }
+
+  cube_map* opengl_api::create_cube_map_resource(const resource_handle& handle, resource_type type) {
+    PROFILE_SECTION("opengl_api::create_cube_map_resource");
+
+    auto itr = cube_map_resources.find(handle.id);
+    OTHER_ASSERT(itr == cube_map_resources.end(), "Cube map resource with ID {} already exists.", handle.id);
+
+    auto [itr2, inserted] = cube_map_resources.emplace(handle.id, cube_map(handle));
+    if (!inserted || itr2 == cube_map_resources.end()) {
+      CORE_LOG_ERROR("Failed to create cube map resource with ID: {}", handle.id);
+      return nullptr;
+    }
+
+    /// create gpu resource here because cube map does not have same requirements as shader
+    uint32_t cube_map_id = 0;
+    glGenTextures(1, &cube_map_id);
+    if (cube_map_id == 0) {
+      CORE_LOG_ERROR("Failed to create OpenGL cube map resource: {}", glGetError());
+      cube_map_resources.erase(itr2);
+      return nullptr;
+    }
+    CHECKGL();
+
+    auto [gpu_itr, gpu_inserted] = gpu_resources.emplace(handle.id, cube_map_id);
+    if (!gpu_inserted || gpu_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Failed to create GPU resource for cube map ID: {}", handle.id);
+      glDeleteTextures(1, &cube_map_id);
+      cube_map_resources.erase(itr2);
+      return nullptr;
+    }
+
+    resource_types[handle.id] = type;
+    return &itr2->second;
+  }
+
+  void opengl_api::destroy_cube_map_resource(const resource_handle& handle) {
+    PROFILE_SECTION("opengl_api::destroy_cube_map_resource");
+
+    auto itr = cube_map_resources.find(handle.id);
+    if (itr == cube_map_resources.end()) {
+      CORE_LOG_ERROR("Cube map resource with ID {} not found.", handle.id);
+      return;
+    }
+
+    cube_map_resources.erase(itr);
+
+    auto gpu_itr = gpu_resources.find(handle.id);
+    if (gpu_itr != gpu_resources.end()) {
+      uint32_t cube_map_id = gpu_itr->second;
+      glDeleteTextures(1, &cube_map_id);
       gpu_resources.erase(gpu_itr);
     } else {
       CORE_LOG_ERROR("GPU resource with ID {} not found.", handle.id);
@@ -1330,8 +1496,23 @@ namespace other {
       case texture::tex_type::TEXTURE_3D:
         return GL_TEXTURE_3D;
 
-      case texture::tex_type::TEXTURE_CUBE:
-        return GL_TEXTURE_CUBE_MAP;
+      case texture::tex_type::TEXTURE_CUBE_FACE_POSITIVE_X:
+        return GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+
+      case texture::tex_type::TEXTURE_CUBE_FACE_NEGATIVE_X:
+        return GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
+
+      case texture::tex_type::TEXTURE_CUBE_FACE_POSITIVE_Y:
+        return GL_TEXTURE_CUBE_MAP_POSITIVE_Y;
+
+      case texture::tex_type::TEXTURE_CUBE_FACE_NEGATIVE_Y:
+        return GL_TEXTURE_CUBE_MAP_NEGATIVE_Y;
+
+      case texture::tex_type::TEXTURE_CUBE_FACE_POSITIVE_Z:
+        return GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
+
+      case texture::tex_type::TEXTURE_CUBE_FACE_NEGATIVE_Z:
+        return GL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
 
       default:
         CORE_LOG_ERROR("Unsupported texture type: {}", type);
@@ -1341,15 +1522,24 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_format(texture::format format) const {
     switch (format) {
+      case texture::format::RGBA16F:
+        return GL_RGBA16F;
+
+      case texture::format::RGBA32U:
       case texture::format::RGBA32F:
         return GL_RGBA32F;
 
       case texture::format::RGBA8:
+        return GL_RGBA8;
+
       case texture::format::RGBA8U:
-        return GL_RGBA;
+        return GL_RGBA8UI;
 
       case texture::format::RGB8:
         return GL_RGB8;
+
+      case texture::format::DEPTHF:
+        return GL_DEPTH_COMPONENT;
 
       default:
         CORE_LOG_ERROR("Unsupported texture format: {}", format);
@@ -1359,13 +1549,18 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_channel_format(texture::format format) const {
     switch (format) {
+      case texture::format::RGBA16F:
       case texture::format::RGBA32F:
       case texture::format::RGBA8:
       case texture::format::RGBA8U:
+      case texture::format::RGBA32U:
         return GL_RGBA;
 
       case texture::format::RGB8:
         return GL_RGB;
+
+      case texture::format::DEPTHF:
+        return GL_DEPTH_COMPONENT;
 
       default:
         CORE_LOG_ERROR("Unsupported texture channel format: {}", format);
@@ -1375,8 +1570,13 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_format_type(texture::format format) const {
     switch (format) {
+      case texture::format::RGBA16F:
       case texture::format::RGBA32F:
+      case texture::format::DEPTHF:
         return GL_FLOAT;
+
+      case texture::format::RGBA32U:
+        return GL_UNSIGNED_INT;
 
       case texture::format::RGBA8U:
       case texture::format::RGBA8:
@@ -1562,6 +1762,25 @@ namespace other {
         CORE_LOG_ERROR("Unsupported framebuffer attachment type: {}", type);
         return -1;
     }
+  }
+
+  int32_t opengl_api::get_gl_clear_bits(int32_t mask) const {
+    int32_t gl_bits = 0;
+
+    if ((mask & framebuffer::COLOR_BIT) == framebuffer::COLOR_BIT) {
+      gl_bits |= GL_COLOR_BUFFER_BIT;
+      gl_bits |= GL_DEPTH_BUFFER_BIT;
+    } else {
+      if ((mask & framebuffer::DEPTH_BIT) == framebuffer::DEPTH_BIT) {
+        gl_bits |= GL_DEPTH_BUFFER_BIT;
+      }
+    }
+
+    if ((mask & framebuffer::STENCIL_BIT) == framebuffer::STENCIL_BIT) {
+      gl_bits |= GL_STENCIL_BUFFER_BIT;
+    }
+
+    return gl_bits;
   }
 
   int32_t opengl_api::get_resource_handle(natural_t id) const {

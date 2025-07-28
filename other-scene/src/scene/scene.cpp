@@ -7,10 +7,12 @@
 
 #include "core/profiler.hpp"
 
+#include "object/script_component.hpp"
+#include "object/transform.hpp"
 #include "renderer/camera.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "entt/entity/fwd.hpp"
-#include "object/transform.hpp"
 
 namespace other {
 
@@ -24,6 +26,19 @@ namespace other {
     scene_object& root = tree.root_object();
     register_object(&root, "Root", glm::vec3(0.0f));
     root.visible = true;
+
+    registry.on_construct<script_component>().connect<&scene::on_create_script_component>(this);
+    // registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
+    registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
+  }
+
+  scene::~scene() {
+    PROFILE_SECTION("scene::~scene");
+
+    registry.on_construct<script_component>().disconnect<&scene::on_create_script_component>(this);
+    // registry.on_update<script_component>().disconnect<&scene::on_update_script_component>(this);
+    registry.on_destroy<script_component>().disconnect<&scene::on_destroy_script_component>(this);
+    registry.clear();
   }
 
   scene_object& scene::root_object() {
@@ -34,6 +49,10 @@ namespace other {
     OTHER_ASSERT(root_node->object != nullptr, "Root node object is null.");
 
     return *root_node->object;
+  }
+
+  scene_object& scene::create_object(const std::string& name, scene_object* parent_object) {
+    return create_object(name, glm::vec3(0.f), parent_object);
   }
 
   scene_object& scene::create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object) {
@@ -146,19 +165,21 @@ namespace other {
         primary_camera = &cam;
       }
     });
-    if (primary_camera == nullptr) {
-      /// \todo check if there is only one camera and then add main-camera tag to it
-      CORE_LOG_ERROR("No primary camera found in the scene. Cannot prepare render data.");
-      return data;
+    if (primary_camera != nullptr) {
+      /// \todo fix this const cast
+      data.primary_camera = (camera*)primary_camera;
     }
-    data.primary_camera = (camera*)primary_camera;
 
     /// collect lights
     /// \todo: should we collect these into an owning group?
     //        pros: faster, faster, faster, and then also a little bit faster
     //        cons: have to remember to create the groups and two entities can not have one of each light
     registry.view<gpu::point_light>().each([&](const gpu::point_light& light) { data.point_lights.push_back(light); });
-    registry.view<gpu::directional_light>().each([&](const gpu::directional_light& light) { data.directional_lights.push_back(light); });
+    registry.view<object_handle, gpu::directional_light>().each([&](const object_handle& handle, const gpu::directional_light& light) {
+      if (object_has_tag(handle.id, "scene-ambient-light")) {
+        data.scene_ambient_light = &light;
+      }
+    });
     registry.view<object_handle, render_component>().each([&](const object_handle& handle, const render_component& render) {
       if (!render.visible) {
         return;
@@ -270,17 +291,17 @@ namespace other {
     OTHER_ASSERT(object != nullptr, "Cannot register a null scene object.");
 
     entt::entity entity = registry.create();
-    registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
-    transform& t = registry.emplace<transform>(entity);
-    t = {
-      .local_basis = orthonormal_basis(glm::vec3(0, 1, 0)),
-      .local_position = world_position,
-      .local_scale = glm::vec3(1, 1, 1),
-      .local_rotation_quat = glm::quat(1, 0, 0, 0),
-    };
-
     object->name = name;
     object->registry_id = (uint32_t)entity;
+
+    registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
+    registry.emplace<script_component>(entity, script_component{ .object = object });
+    registry.emplace<transform>(entity, transform{
+                                          .local_basis = orthonormal_basis(glm::vec3(0, 1, 0)),
+                                          .local_position = world_position,
+                                          .local_scale = glm::vec3(1, 1, 1),
+                                          .local_rotation_quat = glm::quat(1, 0, 0, 0),
+                                        });
   }
 
   void scene::unregister_object(scene_object* object) {
@@ -292,13 +313,37 @@ namespace other {
     }
   }
 
-  void scene::on_create_render_component(render_component& render, const entt::registry&, const entt::entity entity) {
+  void scene::on_create_render_component(const entt::registry&, const entt::entity entity) {
   }
 
-  void scene::on_update_render_component(render_component& render, const entt::registry&, const entt::entity entity) {
+  void scene::on_update_render_component(const entt::registry&, const entt::entity entity) {
   }
 
-  void scene::on_destroy_render_component(render_component& render, const entt::registry&, const entt::entity entity) {
+  void scene::on_destroy_render_component(const entt::registry&, const entt::entity entity) {
+  }
+
+  void scene::on_create_script_component(const entt::registry&, const entt::entity entity) {
+    PROFILE_SECTION("scene::on_create_script_component");
+
+    auto* script_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
+
+    script_component& script = registry.get<script_component>(entity);
+    std::string script_name = script.object->name;
+    script.script_object_id = script_env->create_object(script_name);
+  }
+
+  // void scene::on_update_script_component(const entt::registry&, const entt::entity entity) {
+  // }
+
+  void scene::on_destroy_script_component(const entt::registry&, const entt::entity entity) {
+    PROFILE_SECTION("scene::on_destroy_script_component");
+
+    auto* script_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
+
+    script_component& script = registry.get<script_component>(entity);
+    // script_env->destroy_object(script.script_object_id);
   }
 
 }  // namespace other

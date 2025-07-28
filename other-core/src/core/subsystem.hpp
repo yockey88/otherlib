@@ -122,7 +122,7 @@ namespace other {
   struct other::subsystem_description<T> {                                   \
     static constexpr size_t size = sizeof(T);                                \
     static constexpr size_t alignment = alignof(T);                          \
-    static inline other::subsystem_storage_t<T> storage;                     \
+    static inline subsystem_storage_t<T> storage;                            \
     static T* ptr() { return std::launder(reinterpret_cast<T*>(&storage)); } \
     static void* address() { return reinterpret_cast<void*>(&storage); }     \
   };

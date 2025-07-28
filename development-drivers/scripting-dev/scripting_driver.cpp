@@ -10,6 +10,10 @@
 // #ifdef DOTOTHER_WINDOWS
 #include <ShlObj_core.h>
 #include <Windows.h>
+
+#include "object/scene_object.hpp"
+#include "object/script_component.hpp"
+
 #define DOTOTHER_CALLTYPE __cdecl
 #define DOTOTHER_HOSTFXR_NAME "hostfxr.dll"
 
@@ -85,13 +89,19 @@ namespace other {
   void scripting_driver::on_initialize() {
     CORE_LOG_DEBUG("Initializing scripting driver...");
 
-    dotnet.load_host();
-    dotnet.call_entry_point();
+    scene_object& scene_obj = active_scene.create_object("scripted-object");
+    object_id = scene_obj.id;
+
+    script_component* script_obj = active_scene.get_component<script_component>(object_id);
+    OTHER_ASSERT(script_obj != nullptr, "Failed to get script component for object ID {}", object_id);
+
+    testing_assembly = load_dotnet_module("build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll");
   }
 
   void scripting_driver::run() {
     CORE_LOG_DEBUG("Running scripting driver...");
 
+#if 0
     std::ifstream file{ "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll" };
     if (!file.is_open()) {
       CORE_LOG_ERROR("Failed to open DotnetTesting.dll");
@@ -164,37 +174,18 @@ namespace other {
 
       CORE_LOG_DEBUG("{}", ss.str());
     }
+#endif
   }
 
   void scripting_driver::on_shutdown() {
-    dotnet.unload_host();
-
     CORE_LOG_DEBUG("Scripting driver shut down.");
+
+    unload_dotnet_module(testing_assembly);
   }
 
   void scripting_driver::on_event(SDL_Event* event) {
     // Event handling code here
   }
-
-  // enum class managed_type {
-  //   UNKNOWN,
-
-  //   SBYTE,
-  //   BYTE,
-  //   SHORT,
-  //   USHORT,
-  //   INT,
-  //   UINT,
-  //   LONG,
-  //   ULONG,
-
-  //   FLOAT,
-  //   DOUBLE,
-
-  //   BOOL,
-
-  //   POINTER,
-  // };
 
   // enum class assembly_load_status {
   //   SUCCESS,
@@ -225,89 +216,6 @@ namespace other {
   //       return std::string((const char*)str);
   //     }
   //   }
-
-  //   enum class MessageLevel {
-  //     TRACE = 0,
-  //     DEBUG = 1,
-  //     INFO = 2,
-  //     WARNING = 3,
-  //     ERR = 4,
-  //     CRITICAL = 5,
-
-  //     MESSAGE = 6,
-  //   };
-
-  //   class NString {
-  //    public:
-  //     static NString New(const char* str) {
-  //       NString result;
-  //       result.Assign(str);
-  //       return result;
-  //     }
-
-  //     static NString New(std::string_view str) {
-  //       NString result;
-  //       result.Assign(str);
-  //       return result;
-  //     }
-
-  //     static void Free(NString& str) {
-  //       if (str.string == nullptr)
-  //         return;
-
-  //       // Memory::FreeCoTaskMem(str.string);
-  //       str.string = nullptr;
-  //     }
-
-  //     static void Assign(std::string_view str) {
-  //       // if (string != nullptr)
-  //       //   Memory::FreeCoTaskMem(string);
-
-  //       // string = Memory::NStringToCoTaskMemAuto(util::CharToWide(str));
-  //     }
-
-  //     operator std::string() const {
-  //       if (string == nullptr) {
-  //         return "";
-  //       }
-
-  //       //         dostring_view str(string);
-  //       //         return
-  //       // #ifdef _WIN32
-  //       //           util::WideToChar(str);
-  //       // #else
-  //       //           std::string(str);
-  //       // #endif  // _WIN32
-  //     }
-
-  //     bool operator==(const NString& InOther) const {
-  //       if (string == InOther.string)
-  //         return true;
-
-  //       if (string == nullptr || InOther.string == nullptr)
-  //         return false;
-
-  //       return wcscmp(string, InOther.string) == 0;
-  //     }
-
-  //     bool operator==(std::string_view InOther) const {
-  //       // auto str = NStringHelper::ConvertUtf8ToWide(InOther);
-  //       // return wcscmp(m_NString, str.data()) == 0;
-  //       return false;
-  //     }
-
-  //     wchar_t* Data() {
-  //       return string;
-  //     }
-
-  //     const wchar_t* Data() const {
-  //       return string;
-  //     }
-
-  //    private:
-  //     wchar_t* string = nullptr;
-  //     uint32_t disposed = false;
-  //   };
 
   // }  // namespace
 

@@ -8,9 +8,3 @@ vec4 get_position() {
 vec2 get_texture_coords() {
   return OE_tex_coords;
 }
-
-out int OE_mat_idx;
-
-void set_mat_idx() {
-  OE_mat_idx = gl_InstanceID;
-}

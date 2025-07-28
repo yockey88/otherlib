@@ -34,7 +34,7 @@ namespace other {
 
   }  // namespace backend_keys
 
-  void renderer_backend::load_backend(const std::string& name) {
+  void renderer_backend::load_backend(const std::string& name, const glm::uvec2& window_size) {
     /// load sdl3
     if (!SDL_Init(SDL_INIT_VIDEO)) {
       CORE_LOG_ERROR("Failed to initialize SDL: {}", SDL_GetError());
@@ -56,7 +56,7 @@ namespace other {
 
     {
       scope<window_manager> window_mgr = make_scope<window_manager>();
-      SDL_Window* window = window_mgr->create_window("Other Environment", 1280, 720, flags);
+      SDL_Window* window = window_mgr->create_window("Other Environment", window_size.x, window_size.y, flags);
       OTHER_ASSERT(window != nullptr, "Failed to create main window: {}", SDL_GetError());
 
       switch (hash) {

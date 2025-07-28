@@ -99,12 +99,13 @@ def run_project(out_dir, cfg, name, config_file, args, verbose = False):
   
 def validate_args(args, parser):
   if not args.build and not args.regen_project \
-      and not args.run and not args.run_scratch and not args.run_terminal and not args.run_tests:
+      and not args.run and not args.run_scratch and not args.run_terminal and not args.run_tests and not args.compile_serialization_schema and not args.compile_object:
     parser.print_help()
     sys.exit(1)
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser(description="A simple CLI for a Python project.")
+  parser = argparse.ArgumentParser(description='''Other Environment CLI Tool.\n
+                                   This tool helps manage the Other Environment project, including building, running, and testing various components, as well as providing user interfaces for Other Environment projects''')
   parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output.")
   parser.add_argument("--regen-project", "-rg", action="store_true", help="Regenerate the project files.")
   parser.add_argument("--build", "-b", action="store_true", help="Build the project.")
@@ -112,6 +113,8 @@ if __name__ == "__main__":
   parser.add_argument("--run-scratch", "-rs", action="store_true", help="Run the scratch application.")
   parser.add_argument("--run-terminal", "-rt", action="store_true", help="Run the other terminal application.")
   parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
+  parser.add_argument("--compile-serialization-schema", "-css", type=str, help="Compile the serialization schema.")
+  parser.add_argument("--compile-object", "-co", nargs = 2, type=str, metavar=("SCHEMA_FILE", "OBJECT_FILE"), help="Compile a binary object using the <object_file> and the <schema_file>")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
   # parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
 
@@ -120,7 +123,35 @@ if __name__ == "__main__":
     validate_args(args, parser)
 
     cfg = args.cfg
-      
+
+    if args.compile_serialization_schema is not None and os.path.exists(args.compile_serialization_schema):
+      if not args.compile_serialization_schema.endswith(".fbs"):
+        print(f"Error: The file {args.compile_serialization_schema} is not a valid FlatBuffers schema file.")
+        sys.exit(1)
+
+      if not os.path.exists("resources/simulation-configs/"):
+        os.makedirs("resources/simulation-configs/")
+
+      print(f"Compiling serialization schema: {args.compile_serialization_schema}")
+      run_subprocess(["tools/flatc.exe", "--cpp",
+                      "-o", "resources/simulation-configs/", 
+                      args.compile_serialization_schema])
+                      #  "--gen-object-api", "--gen-mutable", "--gen-all", 
+      print("Serialization schema compiled successfully.")
+
+    if args.compile_object is not None and len(args.compile_object) == 2:
+      schema_file, object_file = args.compile_object
+      if not os.path.exists(object_file) or not os.path.exists(schema_file):
+        print(f"Error: The object file {object_file} or schema file {schema_file} does not exist.")
+        sys.exit(1)
+
+      print(f"Compiling object file: {object_file} with schema: {schema_file}")
+      run_subprocess(["tools/flatc.exe", "--binary", schema_file, object_file])
+      print("Object file compiled successfully.")
+    elif args.compile_object is not None and len(args.compile_object) != 2:
+      print("Error: --compile-object requires two arguments: <object_file> and <schema_file>.")
+      sys.exit(1)
+
     if args.regen_project:
       regen_project()
 
@@ -135,11 +166,14 @@ if __name__ == "__main__":
       if cfg == "Debug" or cfg == "ProfileD":
         dll_cfg = "Debug"
       copy_dlls(cfg, dll_cfg)
-        
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
+      run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "resources/script-config.toml"])
+      # run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
+      # run_project("driver", cfg, "other_driver", "math-physics.toml", args, args.verbose)
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
       run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)

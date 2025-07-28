@@ -6,9 +6,10 @@
 #include "core/arena.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
-#include "renderer/renderer_backend.hpp"
-
 #include "serialization/reflection.hpp"
+
+#include "renderer/renderer_backend.hpp"
+#include "script/scripting_environment.hpp"
 
 namespace other {
 
@@ -45,7 +46,7 @@ namespace other {
       return nullptr;
     }
 
-    auto sym_res = lib_handle->get_symbol("bind_plugin_systems");
+    auto sym_res = lib_handle->get_symbol(plugin::kPluginBindingSymbolName);
     if (!sym_res.has_value()) {
       CORE_LOG_ERROR("Failed to load symbol '{}' from plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
       return nullptr;
@@ -60,7 +61,8 @@ namespace other {
       subsystem<arena>::get(),
       subsystem<logger>::get(),
       subsystem<renderer_backend>::get(),
-      subsystem<type_database>::get()
+      subsystem<type_database>::get(),
+      subsystem<scripting_environment>::get()
     };
     CORE_LOG_DEBUG("Calling plugin binding function '{}' for plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
     sym.get_function<void (*)(other_plugin_argv*)>()(&argv);

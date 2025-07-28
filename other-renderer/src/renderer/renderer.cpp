@@ -24,7 +24,6 @@ namespace other {
   void renderer::render() {
     PROFILE_SECTION("renderer::render");
     if (scene_data == nullptr || scene_data->draw_calls.empty()) {
-      CORE_LOG_WARN("No render data submitted for this frame, skipping draw calls.");
       return;
     }
 

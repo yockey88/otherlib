@@ -50,6 +50,7 @@ namespace other {
       PROFILE_SECTION("renderer_driver::on_initialize--scene-setup");
       scene_object& suzanne_obj = active_scene.create_object("Suzanne", glm::vec3(0.f, -0.5f, 0.f));
       scene_object& light_obj = active_scene.create_object("Light", glm::vec3(0.f, 2.f, 0.f));
+      active_scene.add_object_tag(light_obj.id, "scene-ambient-light");
 
       scene_object& cam_obj = active_scene.create_object("Main Camera", glm::vec3(0.f, 0.f, 0.f));
       active_scene.add_object_tag(cam_obj.id, "main-camera");
@@ -57,7 +58,7 @@ namespace other {
       other::camera& cam = active_scene.add_component<camera>(&cam_obj);
       cam = serializer{}.read_from_file<camera>("artifacts/main_cam_data.bin");
       cam.sensitivity = 0.35f;
-      cam.look({ 0.f, 0.f, 3.f }, { 0.f, 0.f, 0.f });
+      cam.look({ 0.f, 1.f, 4.5f }, { 0.f, 0.f, 0.f });
       CORE_LOG_INFO("Camera data loaded from file: \n{}", type_data_handler<camera>::as_string("cam", cam));
 
       suzanne_id = suzanne_obj.id;
@@ -74,7 +75,7 @@ namespace other {
       light_plight.color = glm::vec3(1.f, 1.f, 1.f);
       gpu::directional_light& light_dlight = active_scene.add_component<gpu::directional_light>(&light_obj);
       light_dlight.direction = glm::vec3(0.f, -1.f, 0.f);
-      light_dlight.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
+      light_dlight.color = glm::vec3(1.f, 1.f, 1.f);
 
       auto [hash, suzanne_source] = model_source::load_model_source("resources/models/suzanne3.fbx");
       OTHER_ASSERT(suzanne_source != nullptr, "Failed to load Suzanne model source.");
@@ -137,6 +138,8 @@ namespace other {
 
         renderer->begin_ui_frame();
         if (ImGui::Begin("Debug Window")) {
+          if (ImGui::DragFloat3("Suzanne Color", glm::value_ptr(active_scene.get_component<render_component>(suzanne_id)->material.diffuse_color), 0.01f, 0.f, 1.0f)) {}
+
           if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
           if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}
         }
@@ -233,70 +236,6 @@ namespace other {
   }
 
   namespace {
-
-    std::vector<vertex> get_cube_vertices() {
-      std::vector<vertex> vertices;
-      vertices.resize(8);
-
-      /* (-,-,+) */ vertices[0].position = { -1.f / 2.0f, -1.f / 2.0f, 1.f / 2.0f };
-      /* (-,-,+) */ vertices[0].normal = { -1.0f, -1.0f, 1.0f };
-      /* (-,-,+) */ vertices[0].tex_coord = { 0.f, 1.f };
-
-      /* (+,-,+) */ vertices[1].position = { 1.f / 2.0f, -1.f / 2.0f, 1.f / 2.0f };
-      /* (+,-,+) */ vertices[1].normal = { 1.0f, -1.0f, 1.0f };
-      /* (+,-,+) */ vertices[1].tex_coord = { 1.f, 1.f };
-
-      /* (+,+,+) */ vertices[2].position = { 1.f / 2.0f, 1.f / 2.0f, 1.f / 2.0f };
-      /* (+,+,+) */ vertices[2].normal = { 1.0f, 1.0f, 1.0f };
-      /* (+,+,+) */ vertices[2].tex_coord = { 1.f, 0.f };
-
-      /* (-,+,+) */ vertices[3].position = { -1.f / 2.0f, 1.f / 2.0f, 1.f / 2.0f };
-      /* (-,+,+) */ vertices[3].normal = { -1.0f, 1.0f, 1.0f };
-      /* (-,+,+) */ vertices[3].tex_coord = { 0.f, 0.f };
-
-      /* (-,-,-) */ vertices[4].position = { -1.f / 2.0f, -1.f / 2.0f, -1.f / 2.0f };
-      /* (-,-,-) */ vertices[4].normal = { -1.0f, -1.0f, -1.0f };
-      /* (-,-,-) */ vertices[4].tex_coord = { 0.f, 1.f };
-
-      /* (+,-,-) */ vertices[5].position = { 1.f / 2.0f, -1.f / 2.0f, -1.f / 2.0f };
-      /* (+,-,-) */ vertices[5].normal = { 1.0f, -1.0f, -1.0f };
-      /* (+,-,-) */ vertices[5].tex_coord = { 1.f, 1.f };
-
-      /* (+,+,-) */ vertices[6].position = { 1.f / 2.0f, 1.f / 2.0f, -1.f / 2.0f };
-      /* (+,+,-) */ vertices[6].normal = { 1.0f, 1.0f, -1.0f };
-      /* (+,+,-) */ vertices[6].tex_coord = { 1.f, 0.f };
-
-      /* (-,+,-) */ vertices[7].position = { -1.f / 2.0f, 1.f / 2.0f, -1.f / 2.0f };
-      /* (-,+,-) */ vertices[7].normal = { -1.0f, 1.0f, -1.0f };
-      /* (-,+,-) */ vertices[7].tex_coord = { 0.f, 0.f };
-
-      return vertices;
-    }
-
-    std::vector<index> get_cube_indices() {
-      std::vector<index> indices;
-
-      indices.resize(12);
-      indices[0] = { 0, 1, 2 };
-      indices[1] = { 2, 3, 0 };
-
-      indices[2] = { 1, 5, 6 };
-      indices[3] = { 6, 2, 1 };
-
-      indices[4] = { 7, 6, 5 };
-      indices[5] = { 5, 4, 7 };
-
-      indices[6] = { 4, 0, 3 };
-      indices[7] = { 3, 7, 4 };
-
-      indices[8] = { 4, 5, 1 };
-      indices[9] = { 1, 0, 4 };
-
-      indices[10] = { 3, 2, 6 };
-      indices[11] = { 6, 7, 3 };
-
-      return indices;
-    }
 
     static void calc_ring(size_t segments, float radius, float y, float dy, float height, float actual_radius, std::vector<vertex>& vertices) {
       float seg_incr = 1.0f / (float)(segments - 1);

@@ -275,8 +275,6 @@ namespace other {
     std::map<uint64_t, reflection_data> data_map;
   };
 
-  OTHER_SUBSYSTEM(type_database);
-
   template <typename T>
     requires reflected_type<T>
   std::string serializer::write_fields_to_string(const std::string& name, const T& value, int32_t indent_level) const {
@@ -509,6 +507,21 @@ namespace other {
   }
 
 }  // namespace other
+
+OTHER_SUBSYSTEM(other::type_database);
+
+namespace std {
+
+  // template <typename T>
+  //   requires other::reflected_type<T>
+  // struct formatter<T> : public formatter<std::string_view> {
+  //   auto format(const T& value, format_context& ctx) const {
+  //     std::string str = other::serializer{}.write_fields_to_string<T>(std::string{ refl::reflect(value).name }, value);
+  //     return formatter<std::string_view>::format(str, ctx);
+  //   }
+  // };
+
+}  // namespace std
 
 #define VA_ARGS(...) , ##__VA_ARGS__
 

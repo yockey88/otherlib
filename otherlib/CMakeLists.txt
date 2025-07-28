@@ -7,6 +7,7 @@ target_sources(otherlib
         
         src/driver/driver.cpp
 
+        src/rendering-pipelines/empty_pipeline.cpp
         src/rendering-pipelines/default_instancing_pipeline.cpp
         src/rendering-pipelines/scriptable_pipeline.cpp
 

@@ -4,7 +4,7 @@ in vec2 frag_tex_coords;
 
 out vec4 frag_color;
 
-void main() {     
+void main() {
   vec4 albedo = texture(OE_gbuff_albedo, frag_tex_coords);        
   vec3 diffuse = albedo.rgb;
   float specular_reflect = albedo.a;

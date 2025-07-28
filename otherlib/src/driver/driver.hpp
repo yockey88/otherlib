@@ -7,8 +7,12 @@
 #include "core/arena_allocator.hpp"
 #include "core/config_table.hpp"
 #include "core/defines.hpp"
-#include "plugin/plugin.hpp"
+
 #include "renderer/renderer.hpp"
+
+#include "dotnet/dotnet_assembly.hpp"
+
+#include "plugin/plugin.hpp"
 
 namespace other {
 
@@ -43,6 +47,9 @@ namespace other {
     virtual void on_event(SDL_Event* event) {}
 
     scope<renderer> get_renderer() const;
+
+    ref<assembly> load_dotnet_module(const std::string_view module_path);
+    void unload_dotnet_module(ref<assembly> module_id);
 
    private:
     bool shutdown_requested = false;

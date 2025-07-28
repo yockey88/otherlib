@@ -2,6 +2,7 @@ add_library(other_scene STATIC)
 target_sources(other_scene
     PRIVATE
       src/object/scene_object.cpp
+      src/object/script_component.cpp
       
       src/scene/scene_tree.cpp
       src/scene/scene.cpp

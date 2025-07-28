@@ -4,7 +4,6 @@
 #ifndef OTHER_CORE_MEMORY_POOL_HPP
 #define OTHER_CORE_MEMORY_POOL_HPP
 
-#include <concepts>
 #include <cstddef>
 #include <cstring>
 #include <new>
@@ -22,10 +21,15 @@ namespace other {
   class memory_pool : public ref_counted {
    public:
     static_assert(Max > 0, "Memory pool size must be greater than 0");
-
     static constexpr inline size_t kMaxObjects = Max;
     static constexpr inline size_t kMaxSize = sizeof(T) * Max;
-    using storage_type = std::aligned_storage_t<sizeof(T) * Max, alignof(T)>;
+
+#pragma pack(push, 1)
+    struct storage_type {
+      static constexpr size_t storage_size = kMaxSize;
+      alignas(alignof(T)) uint8_t data[kMaxSize] = {};
+    };
+#pragma pack(pop)
 
     memory_pool(bool allocate_all = false) {
       if (allocate_all) {
@@ -45,7 +49,6 @@ namespace other {
       object_flags = std::move(other.object_flags);
 
       other.num_objects = 0;
-      other.capacity = 0;
       other.full = false;
       other.object_flags.clear();
       other.pool = storage_type();
@@ -60,7 +63,6 @@ namespace other {
         object_flags = std::move(other.object_flags);
 
         other.num_objects = 0;
-        other.capacity = 0;
         other.full = false;
         other.object_flags.clear();
         other.pool = storage_type();
@@ -201,19 +203,18 @@ namespace other {
 
     void* get_memory_raw_at(size_t idx) {
       OTHER_ASSERT(idx < max_objects(), "Index out of bounds");
-      return reinterpret_cast<void*>((&pool) + (idx * sizeof(T)));
+      return reinterpret_cast<void*>((pool.data) + (idx * sizeof(T)));
     }
     const void* get_memory_raw_at(size_t idx) const {
       OTHER_ASSERT(idx < max_objects(), "Index out of bounds");
-      return reinterpret_cast<const void*>((&pool) + (idx * sizeof(T)));
+      return reinterpret_cast<const void*>((pool.data) + (idx * sizeof(T)));
     }
 
     void allocate_block() {
       PROFILE_SECTION("memory_pool::allocate_block");
       {
         std::lock_guard lock(pool_mutex);
-
-        std::memset(&pool, 0, sizeof(storage_type));
+        std::memset(pool.data, 0, storage_type::storage_size);
 
         object_flags = {};
         for (size_t i = 0; i < max_objects(); i++) {
@@ -234,7 +235,7 @@ namespace other {
           }
         }
 
-        std::memset(&pool, 0, sizeof(storage_type));
+        std::memset(pool.data, 0, storage_type::storage_size);
         std::ranges::fill(object_flags, obj_flags{ true });
         num_objects = 0;
         full = false;

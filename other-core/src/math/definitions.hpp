@@ -22,7 +22,45 @@ OTHER_REFLECT(
 )
 
 OTHER_REFLECT(
+  glm::dvec2,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::uvec2,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::ivec2,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable())
+)
+
+OTHER_REFLECT(
   glm::vec3,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::dvec3,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable())
+)
+OTHER_REFLECT(
+  glm::uvec3,
+  field(x, other::attr::serializable()),
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable())
+)
+
+OTHER_REFLECT(
+  glm::ivec3,
   field(x, other::attr::serializable()),
   field(y, other::attr::serializable()),
   field(z, other::attr::serializable())
@@ -37,16 +75,19 @@ OTHER_REFLECT(
 )
 
 OTHER_REFLECT(
-  glm::ivec2,
+  glm::dvec4,
   field(x, other::attr::serializable()),
-  field(y, other::attr::serializable())
+  field(y, other::attr::serializable()),
+  field(z, other::attr::serializable()),
+  field(w, other::attr::serializable())
 )
 
 OTHER_REFLECT(
-  glm::ivec3,
+  glm::uvec4,
   field(x, other::attr::serializable()),
   field(y, other::attr::serializable()),
-  field(z, other::attr::serializable())
+  field(z, other::attr::serializable()),
+  field(w, other::attr::serializable())
 )
 
 OTHER_REFLECT(

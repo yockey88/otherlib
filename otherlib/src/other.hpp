@@ -11,7 +11,9 @@
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 #include "core/version.hpp"
+
 #include "driver/driver.hpp"
+
 #include "plugin/plugin.hpp"
 
 using other::command_line;
@@ -24,6 +26,11 @@ namespace other {
   struct other_plugin_argv;
 
   void initialize_primary_arena();
+
+  void bind_primary_scripting_environment();
+  void bind_environment_scripts();
+  void cleanup_scripting_environment();
+
   void register_log_sinks(const config_table& config);
   void shutdown_subsystems();
 
