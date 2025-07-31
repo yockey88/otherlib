@@ -12,9 +12,13 @@
 
 #include "core/defines.hpp"
 
+#include "script/script_object.hpp"
+
 #include "dotnet/dotnet_assembly.hpp"
 #include "dotnet/interop_interface.hpp"
 #include "dotnet/type_cache.hpp"
+
+#include "interop_interface.hpp"
 
 #ifdef OTHER_ENVIRONMENT_WINDOWS
   #include <ShlObj_core.h>
@@ -57,17 +61,55 @@ namespace other {
       /// NativeFunctionManager
       register_internal_call register_internal_call = nullptr;
 
-      /// InteropInterface
-      get_assembly_types get_assembly_types = nullptr;
+      /// TypeInterface
+      get_type_information get_assembly_types = nullptr;
       get_net_core_types get_net_core_types = nullptr;
       get_type_id get_type_id = nullptr;
-      get_full_type_name get_full_type_name = nullptr;
+      get_type_name get_full_type_name = nullptr;
 
-      get_type_methods get_type_methods = nullptr;
-      get_type_fields get_type_fields = nullptr;
-      get_type_properties get_type_properties = nullptr;
-      has_attribute has_attribute = nullptr;
-      get_attributes get_attributes = nullptr;
+      get_type_information get_type_methods = nullptr;
+      get_type_information get_type_fields = nullptr;
+      get_type_information get_type_properties = nullptr;
+      get_type_information get_attributes = nullptr;
+      check_type_characteristic has_attribute = nullptr;
+
+      //        method
+      get_method_name get_method_name = nullptr;
+      get_method_return_type get_method_return_type = nullptr;
+      get_method_accessibility get_method_accessibility = nullptr;
+      get_type_information get_method_parameter_types = nullptr;
+      get_type_information get_method_attributes = nullptr;
+
+      //       field
+      field_property_checker has_field = nullptr;
+      get_field_name get_field_name = nullptr;
+      get_field_type get_field_type = nullptr;
+      get_field_accessibility get_field_accessibility = nullptr;
+      get_field_attributes get_field_attributes = nullptr;
+
+      //       property
+      get_property_name get_property_name = nullptr;
+      get_property_type get_property_type = nullptr;
+      get_property_attributes get_property_attributes = nullptr;
+
+      //       attribute
+      get_attribute_type get_attribute_type = nullptr;
+
+      /// ManagedObject
+      create_object create_object = nullptr;
+      destroy_object destroy_object = nullptr;
+      invoke_method invoke_method = nullptr;
+      invoke_method_ret invoke_method_ret = nullptr;
+      // invoke_method invoke_static_method = nullptr;
+      // invoke_method_ret invoke_static_method_ret = nullptr;
+      field_setter_getter set_field = nullptr;
+      field_setter_getter get_field = nullptr;
+      field_setter_getter set_property = nullptr;
+      field_setter_getter get_property = nullptr;
+
+      /// GarbageCollector
+      collect_garbage collect_garbage = nullptr;
+      wait_for_pending_finalizers wait_for_pending_finalizers = nullptr;
     };
 
     dotnet_host();
@@ -86,6 +128,32 @@ namespace other {
     assembly_context* create_assembly_context(const std::string_view name);
     void destroy_assembly_context(natural_t context_id);
 
+    template <typename... Args>
+    dotnet_object* instantiate_managed_object(const std::string_view type_name, const std::string_view name, Args&&... args) {
+      dotnet_type* type = get_type_cache()->get_type(type_name);
+      if (type == nullptr) {
+        CORE_LOG_ERROR("Failed to find .NET type: {}", type_name);
+        return nullptr;
+      }
+
+      dotnet_object* res = nullptr;
+      constexpr size_t argc = sizeof...(args);
+
+      if constexpr (argc > 0) {
+        const void* argv[argc] = {};
+        managed_type arg_ts[argc] = {};
+        detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
+        res = instantiate_managed_object_of_type(name, type, argv, arg_ts, argc);
+      } else {
+        res = instantiate_managed_object_of_type(name, type, nullptr, nullptr, 0);
+      }
+
+      return res;
+    }
+
+    dotnet_object* instantiate_managed_object_of_type(const std::string_view name, dotnet_type* type, const void** argv, const managed_type* arg_ts, size_t argc);
+    void destroy_managed_object(dotnet_object* obj);
+
     interop_table& interop() {
       return interop_functions;
     }
@@ -101,6 +169,11 @@ namespace other {
     type_cache loaded_types;
 
     std::map<natural_t, assembly_context> assembly_contexts;
+
+    std::map<uint64_t, dotnet_object> managed_objects;
+
+    dotnet_object* new_object(const std::string_view name, dotnet_type* type);
+    void remove_object(const std::string_view name);
 
     void bind_interop_table();
     void bind_native_functions();

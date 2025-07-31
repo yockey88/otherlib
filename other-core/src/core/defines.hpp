@@ -222,6 +222,32 @@ namespace other {
     }
   }
 
+  static inline size_t get_value_type_size(value_type type) {
+    switch (type) {
+      case value_type::OEBOOL: return sizeof(bool);
+      case value_type::CHAR: return sizeof(char);
+      case value_type::STRING: return 0;  /// string size is dynamic
+      case value_type::INT8: return sizeof(int8_t);
+      case value_type::INT16: return sizeof(int16_t);
+      case value_type::INT32: return sizeof(int32_t);
+      case value_type::INT64: return sizeof(int64_t);
+      case value_type::UINT8: return sizeof(uint8_t);
+      case value_type::UINT16: return sizeof(uint16_t);
+      case value_type::UINT32: return sizeof(uint32_t);
+      case value_type::UINT64: return sizeof(uint64_t);
+      case value_type::FLOAT: return sizeof(float);
+      case value_type::DOUBLE: return sizeof(double);
+      case value_type::VEC2: return sizeof(glm::vec2);
+      case value_type::VEC3: return sizeof(glm::vec3);
+      case value_type::VEC4: return sizeof(glm::vec4);
+      case value_type::MAT2: return sizeof(glm::mat2);
+      case value_type::MAT3: return sizeof(glm::mat3);
+      case value_type::MAT4: return sizeof(glm::mat4);
+      case value_type::OPAQUE_HANDLE: return sizeof(void*);
+      default: return sizeof(void*);
+    }
+  }
+
 }  // namespace other
 
 namespace std {

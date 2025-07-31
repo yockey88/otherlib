@@ -46,6 +46,7 @@ namespace OtherCsBindings
     public IntPtr scripting_environment_native_handle;
   }
 
+  [InteropBinding("Host")]
   internal static class Host
   {
     public static void HandleException(Exception ex)
@@ -56,7 +57,7 @@ namespace OtherCsBindings
         Logger.LogError($"Inner exception: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}");
       }
     }
-    
+
     [UnmanagedCallersOnly]
     private static unsafe void Entry(Argv args)
     {

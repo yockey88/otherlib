@@ -41,4 +41,4 @@ target_include_directories(other_renderer
 )
 target_link_directories(other_renderer PUBLIC ${OTHER_LIBRARIES_PATH})
 
-target_link_libraries(other_renderer PUBLIC imgui SDL3 glad other_core ${ASSIMP_NAME})
+target_link_libraries(other_renderer PUBLIC imgui SDL3 glad ${ASSIMP_NAME} PRIVATE other_core)

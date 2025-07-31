@@ -22,8 +22,14 @@ namespace other {
 
     dotnet_type* cache_type(dotnet_host* host, int32_t dotnet_handle);
 
+    dotnet_type* get_type(const std::string_view name);
+    dotnet_type* get_type(int32_t id);
+
    private:
     std::map<int32_t, dotnet_type> cached_types;
+
+    std::unordered_map<uint64_t, dotnet_type*> name_cache;
+    std::unordered_map<int32_t, dotnet_type*> id_cache;
   };
 
 }  // namespace other

@@ -13,21 +13,8 @@
 
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
-
-#define DOTOTHER_CALLTYPE __cdecl
-#define DOTOTHER_HOSTFXR_NAME "hostfxr.dll"
-
-#ifdef _WCHAR_T_DEFINED
-  #define DOTOTHER_WIDE_CHARS
-  #define DNET_STR(s) L##s
-#else
-  #define DNET_STR(s) s
-#endif  // _WCHAR_T_DEFINED
-// #endif
-
-#define DOTOTHER_DOTNET_TARGET_VERSION_MAJOR 9
-#define DOTOTHER_DOTNET_TARGET_VERSION_MAJOR_STR '9'
-#define DOTOTHER_UNMANAGED_FUNCTION UNMANAGEDCALLERSONLY_METHOD
+#include "script/script_object.hpp"
+#include "script/scripting_environment.hpp"
 
 namespace other {
 
@@ -100,6 +87,31 @@ namespace other {
 
   void scripting_driver::run() {
     CORE_LOG_DEBUG("Running scripting driver...");
+
+    auto script_system = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(script_system != nullptr, "Scripting environment subsystem is not initialized.");
+
+    integer_t object_id = script_system->create_object("TestObject");
+    script_system->attach_dotnet_object(object_id, "Other.TestObject");
+
+    script_system->call_dotnet_method<>(object_id, "DisplayInfo");
+    int val = script_system->call_dotnet_method<int>(object_id, "GetValue", 42);
+    CORE_LOG_DEBUG("Value returned from GetValue: {}", val);
+
+    int fval = script_system->get_dotnet_field<int>(object_id, "field_value");
+    CORE_LOG_DEBUG("Field value: {}", fval);
+
+    fval = script_system->get_dotnet_property<int>(object_id, "PropertyValue");
+    CORE_LOG_DEBUG("Property value: {}", fval);
+
+    for (const auto& attr_name : script_system->get_object(object_id)->dotnet_object->get_attribute_names()) {
+      CORE_LOG_DEBUG("Object has attribute: {}", attr_name);
+    }
+
+    bool has_attr = script_system->object_has_attribute(object_id, "Other.TestAttrAttribute");
+    CORE_LOG_DEBUG("Object has TestAttr: {}", has_attr);
+
+    script_system->detach_dotnet_object(object_id);
 
 #if 0
     std::ifstream file{ "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll" };
@@ -186,37 +198,5 @@ namespace other {
   void scripting_driver::on_event(SDL_Event* event) {
     // Event handling code here
   }
-
-  // enum class assembly_load_status {
-  //   SUCCESS,
-  //   FILE_NOT_FOUND,
-  //   FILE_LOAD_FAILED,
-  //   INVALID_FILE_PATH,
-  //   INVALID_ASSEMBLY,
-  //   CORRUPT_ASSEMBLY,
-  //   UNKNOWN_ERROR,
-  // };
-
-  // enum class type_accessibility {
-  //   PUBLIC,
-  //   PRIVATE,
-  //   PROTECTED,
-  //   INTERNAL,
-  //   PROTECTED_PUBLIC,
-  //   PRIVATE_PROTECTED
-  // };
-
-  // namespace {
-
-  //   std::string wstr_to_str(const dnet_char* str) {
-  //     if constexpr (std::is_same_v<dnet_char, wchar_t>) {
-  //       std::wstring wstr(str);
-  //       return std::string(wstr.begin(), wstr.end());
-  //     } else {
-  //       return std::string((const char*)str);
-  //     }
-  //   }
-
-  // }  // namespace
 
 }  // namespace other

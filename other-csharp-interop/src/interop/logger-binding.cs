@@ -1,12 +1,12 @@
 using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+
 
 namespace OtherCsBindings
 {
   public class Logger
   {
-    internal enum LogLevel
+    public enum LogLevel
     {
       Trace = 0,
       Debug = 1,
@@ -46,6 +46,16 @@ namespace OtherCsBindings
     public static void LogError(string message, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
     {
       LogMessage(message, LogLevel.Error, memberName, filePath, lineNumber);
+    }
+
+    public static void LogCritical(string message, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+    {
+      LogMessage(message, LogLevel.Critical, memberName, filePath, lineNumber);
+    }
+
+    public static void Log(string message, LogLevel level, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+    {
+      LogMessage(message, level, memberName, filePath, lineNumber);
     }
 
     private static void LogMessage(string message, LogLevel level, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)

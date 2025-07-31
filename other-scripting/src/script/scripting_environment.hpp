@@ -30,6 +30,67 @@ namespace other {
     ref<assembly> load_dotnet_module(const std::string_view module_path);
     void unload_dotnet_module(ref<assembly> module_id);
 
+    bool object_has_attribute(integer_t id, const std::string_view attr_name);
+
+    template <typename... Args>
+    void attach_dotnet_object(integer_t id, const std::string_view type_name, Args&&... ctor_args) {
+      script_object* obj = get_object(id);
+      OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+
+      /// TODO: handle already attached object
+      // if (obj->dotnet_object != nullptr) {
+      //   CORE_LOG_WARN("Script object with ID {} already has a .NET object attached. Detaching previous object.", id);
+      //   dotnet.interop().destroy_object(obj->dotnet_object);
+      // }
+
+      CORE_LOG_DEBUG("[script {}] creating .NET object [{} {}]'", id, type_name, obj->name);
+      obj->dotnet_object = dotnet.instantiate_managed_object(type_name, obj->name, std::forward<Args>(ctor_args)...);
+      if (obj->dotnet_object == nullptr) {
+        CORE_LOG_ERROR("Failed to attach .NET object of type {} to script object with ID {}", type_name, id);
+      }
+    }
+
+    template <typename R = void, typename... Args>
+      requires std::is_same_v<R, void> || std::is_pointer_v<R> || std::is_trivial_v<R>
+    R call_dotnet_method(integer_t id, const std::string_view function_name, Args&&... ctor_args) {
+      script_object* obj = get_object(id);
+      OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+      if (obj->dotnet_object != nullptr) {
+        return call_method_impl<R>(obj, function_name, std::forward<Args>(ctor_args)...);
+      } else {
+        CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+        return default_return_value<R>();
+      }
+    }
+
+    template <typename FT>
+      requires std::is_copy_constructible_v<FT>
+    FT get_dotnet_field(integer_t id, const std::string_view field_name) {
+      script_object* obj = get_object(id);
+      OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+      if (obj->dotnet_object != nullptr) {
+        return obj->dotnet_object->get_field<FT>(field_name);
+      } else {
+        CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+        return FT{};
+      }
+    }
+
+    template <typename FT>
+      requires std::is_copy_constructible_v<FT>
+    FT get_dotnet_property(integer_t id, const std::string_view property_name) {
+      script_object* obj = get_object(id);
+      OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+      if (obj->dotnet_object != nullptr) {
+        return obj->dotnet_object->get_property<FT>(property_name);
+      } else {
+        CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+        return FT{};
+      }
+    }
+
+    void detach_dotnet_object(integer_t id);
+
     constexpr static inline size_t kMaxScriptObjects = memory_pool<script_object>::kMaxObjects;
 
    private:
@@ -43,6 +104,31 @@ namespace other {
 
     std::array<live_script_object, kMaxScriptObjects> live_objects = {};
     ref<memory_pool<script_object>> script_object_pool = nullptr;
+
+    template <typename R, typename... Args>
+      requires std::is_same_v<R, void>
+    void call_method_impl(script_object* object, const std::string_view method_name, Args&&... args) {
+      OTHER_ASSERT(object != nullptr, "Script object is null");
+      object->dotnet_object->invoke<>(method_name, std::forward<Args>(args)...);
+    }
+
+    template <typename R, typename... Args>
+      requires std::is_pointer_v<R> || std::is_trivial_v<R>
+    R call_method_impl(script_object* object, const std::string_view method_name, Args&&... args) {
+      OTHER_ASSERT(object != nullptr, "Script object is null");
+      return object->dotnet_object->invoke<R>(method_name, std::forward<Args>(args)...);
+    }
+
+    template <typename R>
+    R default_return_value() {
+      if constexpr (std::is_same_v<R, void>) {
+        return;
+      } else if constexpr (std::is_pointer_v<R>) {
+        return nullptr;
+      } else {
+        return R{};
+      }
+    }
   };
 
 }  // namespace other

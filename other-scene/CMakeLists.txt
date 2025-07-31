@@ -7,9 +7,6 @@ target_sources(other_scene
       src/scene/scene_tree.cpp
       src/scene/scene.cpp
 )
-if (MSVC)
-else()
-endif()
 
 target_include_directories(other_scene 
   PUBLIC 

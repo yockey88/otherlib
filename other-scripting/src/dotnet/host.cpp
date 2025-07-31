@@ -77,7 +77,7 @@ namespace other {
     /// 1 - success, already initialized
     /// 2 - success, different runtime properties
     hostfxr_handle host_fxr = nullptr;
-    int32_t rc = coreclr.init_host_config(DNET_STR("other-csharp/resources/OtherCsBindings.runtimeconfig.json"), nullptr, &host_fxr);
+    int32_t rc = coreclr.init_host_config(DNET_STR("other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"), nullptr, &host_fxr);
     OTHER_ASSERT(rc == 0 && host_fxr != nullptr, "Failed to initialize hostfxr with runtime config : error code [{} : {:#08x}]", rc, rc);
 
     void* delegate = nullptr;
@@ -91,6 +91,13 @@ namespace other {
   }
 
   void dotnet_host::unload_host() {
+    /// gc
+    if (interop_functions.collect_garbage != nullptr) {
+      OTHER_ASSERT(interop_functions.wait_for_pending_finalizers != nullptr, "Interop function wait_for_pending_finalizers is not initialized");
+      interop_functions.collect_garbage(0, gc_mode::DEFAULT, true, true);
+      interop_functions.wait_for_pending_finalizers();
+    }
+
     coreclr.init_host_cmd_line = nullptr;
     coreclr.init_host_config = nullptr;
     coreclr.get_runtime_delegate = nullptr;
@@ -102,7 +109,7 @@ namespace other {
   void dotnet_host::call_entry_point() {
     const char_t* dotnet_type = DNET_STR("OtherCsBindings.Host, OtherCsBindings");
     const char_t* dotnet_type_method = DNET_STR("Entry");
-    OTHER_ASSERT(std::filesystem::exists("build/other-csharp/Debug/OtherCsBindings.dll"), "Managed assembly not found: build/other-csharp/Debug/OtherCsBindings.dll");
+    OTHER_ASSERT(std::filesystem::exists("build/other-csharp-interop/Debug/OtherCsBindings.dll"), "Managed assembly not found: build/other-csharp-interop/Debug/OtherCsBindings.dll");
 
     bind_interop_table();
     bind_native_functions();
@@ -164,12 +171,65 @@ namespace other {
     }
   }
 
+  dotnet_object* dotnet_host::instantiate_managed_object_of_type(const std::string_view name, dotnet_type* type, const void** argv, const managed_type* arg_ts, size_t argc) {
+    OTHER_ASSERT(type != nullptr, "Type cannot be null");
+    OTHER_ASSERT(type->dotnet_id != -1, "Type ID is invalid: {}", type->dotnet_id);
+    OTHER_ASSERT(interop_functions.create_object != nullptr, "Interop function create_object is not initialized");
+
+    dotnet_object* obj = new_object(name, type);
+    obj->managed_object = interop_functions.create_object(type->dotnet_id, false, argv, arg_ts, argc);
+    if (obj->managed_object == nullptr) {
+      CORE_LOG_ERROR("Failed to create managed object of type [{}]", type->full_name());
+    } else {
+      CORE_LOG_DEBUG("Created managed object [{}] of type [{}]", name, type->full_name());
+    }
+    return obj;
+  }
+
+  void dotnet_host::destroy_managed_object(dotnet_object* obj) {
+    OTHER_ASSERT(obj != nullptr, "dotnet_object is null");
+    if (obj->managed_object == nullptr) {
+      CORE_LOG_ERROR("Cannot destroy object: managed_object is null");
+      return;
+    }
+
+    interop_functions.destroy_object(obj->managed_object);
+    obj->managed_object = nullptr;
+
+    remove_object(obj->object_name);
+  }
+
+  dotnet_object* dotnet_host::new_object(const std::string_view name, dotnet_type* type) {
+    OTHER_ASSERT(!name.empty(), "Object name cannot be empty.");
+    OTHER_ASSERT(type != nullptr, "Type cannot be null");
+
+    auto [itr, success] = managed_objects.emplace(FNV(name), dotnet_object{ this });
+    if (!success) {
+      CORE_LOG_ERROR("Failed to create new managed object: Object with name '{}' already exists.", name);
+      return &managed_objects.at(FNV(name));
+    }
+    itr->second.object_name = name;
+    itr->second.dn_type = type;
+    return &itr->second;
+  }
+
+  void dotnet_host::remove_object(const std::string_view name) {
+    auto it = managed_objects.find(FNV(name));
+    if (it != managed_objects.end()) {
+      managed_objects.erase(it);
+    } else {
+      CORE_LOG_ERROR("Failed to remove managed object: Object with name '{}' not found.", name);
+    }
+  }
+
   void dotnet_host::bind_interop_table() {
     CORE_LOG_DEBUG("Binding interop table...");
 
     const char_t* assembly_loader_type_str = DNET_STR("OtherCsBindings.AssemblyLoader, OtherCsBindings");
     const char_t* native_function_manager_type_str = DNET_STR("OtherCsBindings.NativeFunctionManager, OtherCsBindings");
-    const char_t* interop_interface_type_str = DNET_STR("OtherCsBindings.InteropInterface, OtherCsBindings");
+    const char_t* type_interface_type_str = DNET_STR("OtherCsBindings.TypeInterface, OtherCsBindings");
+    const char_t* managed_object_type_str = DNET_STR("OtherCsBindings.ManagedObject, OtherCsBindings");
+    const char_t* garbage_collector_type_str = DNET_STR("OtherCsBindings.GarbageCollector, OtherCsBindings");
 
     /// AssemblyLoader
     interop_functions.create_assembly_load_context = load_managed_function<create_assembly_load_context>(assembly_loader_type_str, DNET_STR("CreateAssemblyLoadContext"));
@@ -191,33 +251,116 @@ namespace other {
     interop_functions.register_internal_call = load_managed_function<register_internal_call>(native_function_manager_type_str, DNET_STR("RegisterInternalCall"));
     OTHER_ASSERT(interop_functions.register_internal_call != nullptr, "Failed to load RegisterInternalCall function from managed assembly.");
 
-    /// InteropInterface
-    interop_functions.get_assembly_types = load_managed_function<get_assembly_types>(interop_interface_type_str, DNET_STR("GetAssemblyTypes"));
+    /// TypeInterface
+    interop_functions.get_assembly_types = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetAssemblyTypes"));
     OTHER_ASSERT(interop_functions.get_assembly_types != nullptr, "Failed to load GetAssemblyTypes function from managed assembly.");
 
-    interop_functions.get_net_core_types = load_managed_function<get_net_core_types>(interop_interface_type_str, DNET_STR("GetNetCoreTypes"));
+    interop_functions.get_net_core_types = load_managed_function<get_net_core_types>(type_interface_type_str, DNET_STR("GetNetCoreTypes"));
     OTHER_ASSERT(interop_functions.get_net_core_types != nullptr, "Failed to load GetNetCoreTypes function from managed assembly.");
 
-    interop_functions.get_type_id = load_managed_function<get_type_id>(interop_interface_type_str, DNET_STR("GetTypeId"));
+    interop_functions.get_type_id = load_managed_function<get_type_id>(type_interface_type_str, DNET_STR("GetTypeId"));
     OTHER_ASSERT(interop_functions.get_type_id != nullptr, "Failed to load function from managed assembly.");
 
-    interop_functions.get_full_type_name = load_managed_function<get_full_type_name>(interop_interface_type_str, DNET_STR("GetFullTypeName"));
+    interop_functions.get_full_type_name = load_managed_function<get_type_name>(type_interface_type_str, DNET_STR("GetFullTypeName"));
     OTHER_ASSERT(interop_functions.get_full_type_name != nullptr, "Failed to load function from managed assembly.");
 
-    interop_functions.get_type_methods = load_managed_function<get_type_methods>(interop_interface_type_str, DNET_STR("GetTypeMethods"));
+    interop_functions.get_type_methods = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetTypeMethods"));
     OTHER_ASSERT(interop_functions.get_type_methods != nullptr, "Failed to load GetTypeMethods from managed assembly.");
 
-    interop_functions.get_type_fields = load_managed_function<get_type_fields>(interop_interface_type_str, DNET_STR("GetTypeFields"));
+    interop_functions.get_type_fields = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetTypeFields"));
     OTHER_ASSERT(interop_functions.get_type_fields != nullptr, "Failed to load GetTypeFields from managed assembly.");
 
-    interop_functions.get_type_properties = load_managed_function<get_type_properties>(interop_interface_type_str, DNET_STR("GetTypeProperties"));
+    interop_functions.get_type_properties = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetTypeProperties"));
     OTHER_ASSERT(interop_functions.get_type_properties != nullptr, "Failed to load GetTypeProperties from managed assembly.");
 
-    interop_functions.has_attribute = load_managed_function<has_attribute>(interop_interface_type_str, DNET_STR("HasAttribute"));
+    interop_functions.get_attributes = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetAttributes"));
+    OTHER_ASSERT(interop_functions.get_attributes != nullptr, "Failed to load GetAttributes from managed assembly.");
+
+    interop_functions.has_attribute = load_managed_function<check_type_characteristic>(type_interface_type_str, DNET_STR("HasAttribute"));
     OTHER_ASSERT(interop_functions.has_attribute != nullptr, "Failed to load HasAttribute from managed assembly.");
 
-    interop_functions.get_attributes = load_managed_function<get_attributes>(interop_interface_type_str, DNET_STR("GetAttributes"));
-    OTHER_ASSERT(interop_functions.get_attributes != nullptr, "Failed to load GetAttributes from managed assembly.");
+    //        method
+    interop_functions.get_method_name = load_managed_function<get_method_name>(type_interface_type_str, DNET_STR("GetMethodName"));
+    OTHER_ASSERT(interop_functions.get_method_name != nullptr, "Failed to load GetMethodName from managed assembly.");
+
+    interop_functions.get_method_return_type = load_managed_function<get_method_return_type>(type_interface_type_str, DNET_STR("GetMethodReturnType"));
+    OTHER_ASSERT(interop_functions.get_method_return_type != nullptr, "Failed to load GetMethodReturnType from managed assembly.");
+
+    interop_functions.get_method_accessibility = load_managed_function<get_method_accessibility>(type_interface_type_str, DNET_STR("GetMethodAccessibility"));
+    OTHER_ASSERT(interop_functions.get_method_accessibility != nullptr, "Failed to load GetMethodAccessibility from managed assembly.");
+
+    interop_functions.get_method_parameter_types = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetMethodParameterTypes"));
+    OTHER_ASSERT(interop_functions.get_method_parameter_types != nullptr, "Failed to load GetMethodParameterTypes from managed assembly.");
+
+    interop_functions.get_method_attributes = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetMethodAttributes"));
+    OTHER_ASSERT(interop_functions.get_method_attributes != nullptr, "Failed to load GetMethodAttributes from managed assembly.");
+
+    //       field
+    interop_functions.has_field = load_managed_function<field_property_checker>(type_interface_type_str, DNET_STR("HasField"));
+    OTHER_ASSERT(interop_functions.has_field != nullptr, "Failed to load HasField from managed assembly.");
+
+    interop_functions.get_field_name = load_managed_function<get_field_name>(type_interface_type_str, DNET_STR("GetFieldName"));
+    OTHER_ASSERT(interop_functions.get_field_name != nullptr, "Failed to load GetFieldName from managed assembly.");
+
+    interop_functions.get_field_type = load_managed_function<get_field_type>(type_interface_type_str, DNET_STR("GetFieldType"));
+    OTHER_ASSERT(interop_functions.get_field_type != nullptr, "Failed to load GetFieldType from managed assembly.");
+
+    interop_functions.get_field_accessibility = load_managed_function<get_field_accessibility>(type_interface_type_str, DNET_STR("GetFieldAccessibility"));
+    OTHER_ASSERT(interop_functions.get_field_accessibility != nullptr, "Failed to load GetFieldAccessibility from managed assembly.");
+
+    interop_functions.get_field_attributes = load_managed_function<get_field_attributes>(type_interface_type_str, DNET_STR("GetFieldAttributes"));
+    OTHER_ASSERT(interop_functions.get_field_attributes != nullptr, "Failed to load GetFieldAttributes from managed assembly.");
+
+    //       property
+    interop_functions.get_property_name = load_managed_function<get_property_name>(type_interface_type_str, DNET_STR("GetPropertyName"));
+    OTHER_ASSERT(interop_functions.get_property_name != nullptr, "Failed to load GetPropertyName from managed assembly.");
+
+    interop_functions.get_property_type = load_managed_function<get_property_type>(type_interface_type_str, DNET_STR("GetPropertyType"));
+    OTHER_ASSERT(interop_functions.get_property_type != nullptr, "Failed to load GetPropertyType from managed assembly.");
+
+    interop_functions.get_property_attributes = load_managed_function<get_property_attributes>(type_interface_type_str, DNET_STR("GetPropertyAttributes"));
+    OTHER_ASSERT(interop_functions.get_property_attributes != nullptr, "Failed to load GetPropertyAttributes from managed assembly.");
+
+    //       attribute
+    interop_functions.get_attribute_type = load_managed_function<get_attribute_type>(type_interface_type_str, DNET_STR("GetAttributeType"));
+    OTHER_ASSERT(interop_functions.get_attribute_type != nullptr, "Failed to load GetAttributeType from managed assembly.");
+
+    /// ManagedObject
+    interop_functions.create_object = load_managed_function<create_object>(managed_object_type_str, DNET_STR("CreateObject"));
+    OTHER_ASSERT(interop_functions.create_object != nullptr, "Failed to load CreateObject from managed assembly.");
+
+    interop_functions.destroy_object = load_managed_function<destroy_object>(managed_object_type_str, DNET_STR("DestroyObject"));
+    OTHER_ASSERT(interop_functions.destroy_object != nullptr, "Failed to load DestroyObject from managed assembly.");
+
+    interop_functions.invoke_method = load_managed_function<invoke_method>(managed_object_type_str, DNET_STR("InvokeMethod"));
+    OTHER_ASSERT(interop_functions.invoke_method != nullptr, "Failed to load InvokeMethod from managed assembly.");
+
+    interop_functions.invoke_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeMethodRet"));
+    OTHER_ASSERT(interop_functions.invoke_method_ret != nullptr, "Failed to load InvokeMethodRet from managed assembly.");
+
+    // interop_functions.invoke_static_method = load_managed_function<invoke_method>(managed_object_type_str, DNET_STR("InvokeStaticMethod"));
+    // OTHER_ASSERT(interop_functions.invoke_static_method != nullptr, "Failed to load InvokeStaticMethod from managed assembly.");
+    // interop_functions.invoke_static_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeStaticMethodRet"));
+    // OTHER_ASSERT(interop_functions.invoke_static_method_ret != nullptr, "Failed to load InvokeStaticMethodRet from managed assembly.");
+
+    interop_functions.set_field = load_managed_function<field_setter_getter>(managed_object_type_str, DNET_STR("SetField"));
+    OTHER_ASSERT(interop_functions.set_field != nullptr, "Failed to load SetField from managed assembly.");
+
+    interop_functions.get_field = load_managed_function<field_setter_getter>(managed_object_type_str, DNET_STR("GetField"));
+    OTHER_ASSERT(interop_functions.get_field != nullptr, "Failed to load GetField from managed assembly.");
+
+    interop_functions.set_property = load_managed_function<field_setter_getter>(managed_object_type_str, DNET_STR("SetProperty"));
+    OTHER_ASSERT(interop_functions.set_property != nullptr, "Failed to load SetProperty from managed assembly.");
+
+    interop_functions.get_property = load_managed_function<field_setter_getter>(managed_object_type_str, DNET_STR("GetProperty"));
+    OTHER_ASSERT(interop_functions.get_property != nullptr, "Failed to load GetProperty from managed assembly.");
+
+    /// GarbageCollector
+    interop_functions.collect_garbage = load_managed_function<collect_garbage>(garbage_collector_type_str, DNET_STR("CollectGarbage"));
+    OTHER_ASSERT(interop_functions.collect_garbage != nullptr, "Failed to load CollectGarbage from managed assembly.");
+
+    interop_functions.wait_for_pending_finalizers = load_managed_function<wait_for_pending_finalizers>(garbage_collector_type_str, DNET_STR("WaitForPendingFinalizers"));
+    OTHER_ASSERT(interop_functions.wait_for_pending_finalizers != nullptr, "Failed to load WaitForPendingFinalizers from managed assembly.");
   }
 
   void dotnet_host::bind_native_functions() {

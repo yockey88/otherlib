@@ -4,9 +4,12 @@
 #ifndef OTHER_SCRIPTING_DOTNET_INTEROP_INTERFACE_HPP
 #define OTHER_SCRIPTING_DOTNET_INTEROP_INTERFACE_HPP
 
+#include <cstdint>
+
 #include "core/defines.hpp"
 
 #include "dotnet/dotnet_assembly.hpp"
+#include "dotnet/garbage_collector.hpp"
 #include "dotnet/native_string.hpp"
 #include "dotnet/types.hpp"
 
@@ -22,25 +25,48 @@ namespace other {
   /// NativeFunctionManager
   using register_internal_call = void (*)(native_string, void*);
 
-  /// InteropInterface
+  /// TypeInterface
   using get_net_core_types = void (*)(int32_t*, int32_t*);
-  using get_assembly_types = void (*)(int32_t, int32_t*, int32_t*);
   using get_type_id = void (*)(native_string, int32_t*);
-  using get_full_type_name = native_string (*)(int32_t);
-  using get_asm_qualified_name = native_string (*)(int32_t);
+  using get_type_name = native_string (*)(int32_t);
   using get_base_type = void (*)(int32_t, int32_t*);
   using get_type_size = int32_t (*)(int32_t);
-  using is_type_derived_from = nbool32 (*)(int32_t, int32_t);
-  using is_assignable_to = nbool32 (*)(int32_t, int32_t);
-  using is_assignable_from = nbool32 (*)(int32_t, int32_t);
+  using check_type_characteristic = nbool32 (*)(int32_t, int32_t);
   using is_type_sz_array = nbool32 (*)(int32_t);
   using get_element_type = void (*)(int32_t, int32_t*);
-  using get_type_methods = void (*)(int32_t, int32_t*, int32_t*);
-  using get_type_fields = void (*)(int32_t, int32_t*, int32_t*);
-  using get_type_properties = void (*)(int32_t, int32_t*, int32_t*);
-  using has_attribute = nbool32 (*)(int32_t, int32_t);
-  using get_attributes = void (*)(int32_t, int32_t*, int32_t*);
+  using get_type_information = void (*)(int32_t, int32_t*, int32_t*);
   using get_type_managed_type = managed_type (*)(int32_t);
+
+  /// method
+  using get_method_name = native_string (*)(int32_t);
+  using get_method_return_type = void (*)(int32_t, int32_t*);
+  using get_method_accessibility = type_accessibility (*)(int32_t);
+
+  /// field
+  using field_property_checker = nbool32 (*)(int32_t, native_string);
+  using get_field_name = native_string (*)(int32_t);
+  using get_field_type = void (*)(int32_t, int32_t*);
+  using get_field_accessibility = type_accessibility (*)(int32_t);
+  using get_field_attributes = void (*)(int32_t, int32_t*, int32_t*);
+
+  /// property
+  using get_property_name = native_string (*)(int32_t);
+  using get_property_type = void (*)(int32_t, int32_t*);
+  using get_property_attributes = void (*)(int32_t, int32_t*, int32_t*);
+
+  /// attribute
+  using get_attribute_type = void (*)(int32_t, int32_t*);
+
+  /// ManagedObject
+  using create_object = void* (*)(int32_t, nbool32, const void**, const managed_type*, int32_t);
+  using destroy_object = void (*)(void*);
+  using invoke_method = void (*)(void*, native_string, const void**, const managed_type*, int32_t);
+  using invoke_method_ret = void (*)(void*, native_string, const void**, const managed_type*, int32_t, void*);
+  using field_setter_getter = void (*)(void*, native_string, void*);
+
+  /// GarbageCollector
+  using collect_garbage = void (*)(int32_t, gc_mode, nbool32, nbool32);
+  using wait_for_pending_finalizers = void (*)();
 
 }  // namespace other
 

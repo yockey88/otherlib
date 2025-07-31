@@ -8,14 +8,16 @@
 
 namespace other {
 
-  class script_object {
-   public:
+  class dotnet_object;
+
+  struct script_object {
     script_object() = default;
     ~script_object() = default;
 
+    std::string name;
     integer_t id = -1;
 
-   private:
+    dotnet_object* dotnet_object = nullptr;
   };
 
 }  // namespace other

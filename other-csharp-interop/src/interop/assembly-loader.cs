@@ -10,7 +10,8 @@ using System.Runtime.Loader;
 namespace OtherCsBindings
 {
 
-  public class AssemblyLoader
+  [InteropBinding("AssemblyLoader")]
+  internal static class AssemblyLoader
   {
     private enum CoreAssembly
     {
@@ -25,12 +26,13 @@ namespace OtherCsBindings
       NumCoreAssemblies
     }
 
-    public enum AssemblyLoadStatus {
-      Success ,
-      NotFound , 
-      Failed ,
-      InvalidPath ,
-      InvalidAssembly ,
+    public enum AssemblyLoadStatus
+    {
+      Success,
+      NotFound,
+      Failed,
+      InvalidPath,
+      InvalidAssembly,
       CorruptContext,
       UnknownError
     }
@@ -54,7 +56,7 @@ namespace OtherCsBindings
     public static ReadOnlySpan<Type> CoreTypes => core_types.ToArray();
 
     private static AssemblyLoadStatus last_load_status = AssemblyLoadStatus.Success;
-  
+
     private static readonly Dictionary<Type, AssemblyLoadStatus> load_errors = new();
     private static readonly Dictionary<Int32, AssemblyLoadContext> contexts = new();
     private static readonly Dictionary<Int32, Assembly> assemblies = new();
@@ -156,13 +158,14 @@ namespace OtherCsBindings
       }
       return null;
     }
-    internal static bool TryGetAssembly(Int32 id , out Assembly? asm)
+    internal static bool TryGetAssembly(Int32 id, out Assembly? asm)
     {
       return assemblies.TryGetValue(id, out asm);
     }
 
     [UnmanagedCallersOnly]
-    private static Int32 CreateAssemblyLoadContext(NativeString context_name) {
+    private static Int32 CreateAssemblyLoadContext(NativeString context_name)
+    {
       string? name = context_name;
       if (name == null)
       {
@@ -173,8 +176,10 @@ namespace OtherCsBindings
       var alc = new AssemblyLoadContext(name, true);
 
       alc.Resolving += ResolveAssembly;
-      alc.Unloading += ctx => {
-        foreach (var asm in ctx.Assemblies) {
+      alc.Unloading += ctx =>
+      {
+        foreach (var asm in ctx.Assemblies)
+        {
           var asm_name = asm.GetName();
           Int32 asm_id = asm_name.Name!.GetHashCode();
           assemblies.Remove(asm_id);
@@ -186,40 +191,47 @@ namespace OtherCsBindings
       return ctx_id;
     }
 
-    
-	  [UnmanagedCallersOnly]
-	  private static void UnloadAssemblyLoadContext(Int32 context_id) {
-      if (!contexts.TryGetValue(context_id, out var alc)) {
+
+    [UnmanagedCallersOnly]
+    private static void UnloadAssemblyLoadContext(Int32 context_id)
+    {
+      if (!contexts.TryGetValue(context_id, out var alc))
+      {
         Logger.LogError($"Cannot unload AssemblyLoadContext '{context_id}', it was either never loaded or already unloaded.");
         return;
       }
 
-      if (alc == null) {
+      if (alc == null)
+      {
         Logger.LogError($"Cannot unload AssemblyLoadContext '{context_id}', it is null.");
         return;
       }
 
-      foreach (var assembly in alc.Assemblies) {
+      foreach (var assembly in alc.Assemblies)
+      {
         var asm_name = assembly.GetName();
         int asm_id = asm_name.Name!.GetHashCode();
 
-        if (!handles.TryGetValue(asm_id, out var hs)) {
+        if (!handles.TryGetValue(asm_id, out var hs))
+        {
           continue;
         }
 
-        foreach (var h in hs) {
-          if (!h.IsAllocated || h.Target == null) {
+        foreach (var h in hs)
+        {
+          if (!h.IsAllocated || h.Target == null)
+          {
             continue;
           }
           h.Free();
         }
       }
 
-      // InteropInterface.cached_types.Clear();
-      // InteropInterface.cached_methods.Clear();
-      // InteropInterface.cached_fields.Clear();
-      // InteropInterface.cached_properties.Clear();
-      // InteropInterface.cached_attributes.Clear();
+      // TypeInterface.cached_types.Clear();
+      // TypeInterface.cached_methods.Clear();
+      // TypeInterface.cached_fields.Clear();
+      // TypeInterface.cached_properties.Clear();
+      // TypeInterface.cached_attributes.Clear();
 
       contexts.Remove(context_id);
       alc.Unload();
@@ -228,7 +240,8 @@ namespace OtherCsBindings
     [UnmanagedCallersOnly]
     private static Int32 LoadManagedAssembly(Int32 context_id, NativeString file_path)
     {
-      try {
+      try
+      {
         string path = file_path.ToString()!;
         Logger.LogDebug($"Loading assembly '{path}' [{context_id}]");
 
@@ -298,8 +311,10 @@ namespace OtherCsBindings
     private static AssemblyLoadStatus GetLastLoadStatus() => last_load_status;
 
     [UnmanagedCallersOnly]
-    private static NativeString GetAssemblyName(Int32 asm_id) {
-      if (!assemblies.TryGetValue(asm_id, out var asm)) {
+    private static NativeString GetAssemblyName(Int32 asm_id)
+    {
+      if (!assemblies.TryGetValue(asm_id, out var asm))
+      {
         Logger.LogError($"Couldn't get assembly name for assembly '{asm_id}', assembly not found!");
         return "<unknown>";
       }
@@ -308,11 +323,13 @@ namespace OtherCsBindings
       return asm_name.Name;
     }
 
-    internal static void RegisterHandle(Assembly asm , GCHandle handle) {
+    internal static void RegisterHandle(Assembly asm, GCHandle handle)
+    {
       var asm_name = asm.GetName();
       Int32 asm_id = asm_name.Name!.GetHashCode();
 
-      if (!handles.TryGetValue(asm_id , out var hs)) {
+      if (!handles.TryGetValue(asm_id, out var hs))
+      {
         handles.Add(asm_id, new List<GCHandle>());
         hs = handles[asm_id];
       }
@@ -344,11 +361,9 @@ namespace OtherCsBindings
             Logger.LogError("Failed to get current executing assembly, it is null.");
             return;
           }
-
-          ReadOnlySpan<Type> types = current_executing_assembly.GetTypes();
-          foreach (var type in types)
+          else
           {
-            Logger.LogDebug($"Other Environment C# Types in {current_executing_assembly.FullName} : {type.FullName}");
+            Logger.LogDebug($"Bindings Assembly Loaded : [{current_executing_assembly.FullName}]");
           }
         }
 
@@ -395,7 +410,7 @@ namespace OtherCsBindings
         Host.HandleException(e);
         return null;
       }
-    }    
+    }
   }
 
 }

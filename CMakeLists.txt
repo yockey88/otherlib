@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.27.0..4.0.2)
 project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
-add_subdirectory(other-csharp)
-
 option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
 option(DISALLOW_OTHER_PLUGINS "Build the library statically and without the framework for loading plugins" OFF)
@@ -126,9 +124,15 @@ set(DOTNET_LIBRARIES nethost)
 find_package(Threads REQUIRED)
 
 add_subdirectory(other-core)
+
 add_subdirectory(other-renderer)
+
 add_subdirectory(other-scripting)
+add_subdirectory(other-csharp-interop)
+
 add_subdirectory(other-scene)
+add_subdirectory(other-csharp)
+
 add_subdirectory(otherlib)
 
 macro(add_driver_target type driver_name)

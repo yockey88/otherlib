@@ -38,6 +38,9 @@ namespace other {
     auto& live_obj = live_objects[idx];
     OTHER_ASSERT(live_obj.object == nullptr, "Script object at index {} is already allocated.", idx);
     live_obj.index = idx;
+
+    obj.id = idx;
+    obj.name = name;
     live_obj.object = &obj;
 
     return idx;
@@ -79,6 +82,31 @@ namespace other {
   void scripting_environment::unload_dotnet_module(ref<assembly> module) {
     OTHER_ASSERT(dotnet_load_context != nullptr, "DotNet load context is not initialized.");
     dotnet_load_context->unload_assembly(module->get_handle());
+  }
+
+  bool scripting_environment::object_has_attribute(integer_t id, const std::string_view attr_name) {
+    script_object* obj = get_object(id);
+    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+    if (obj->dotnet_object != nullptr) {
+      return obj->dotnet_object->has_attribute(attr_name);
+    } else {
+      CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+      return false;
+    }
+  }
+
+  void scripting_environment::detach_dotnet_object(integer_t id) {
+    script_object* obj = get_object(id);
+    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+
+    if (obj->dotnet_object == nullptr) {
+      CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+      return;
+    }
+
+    CORE_LOG_DEBUG("[script {}] destroying .NET object [{}]", id, obj->name);
+    dotnet.destroy_managed_object(obj->dotnet_object);
+    obj->dotnet_object = nullptr;
   }
 
 }  // namespace other

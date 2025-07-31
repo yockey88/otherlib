@@ -7,7 +7,8 @@ using System.Net.Security;
 #nullable enable
 namespace OtherCsBindings
 {
-  public class NativeFunctionManager
+  [InteropBinding("NativeFunctionManager")]
+  internal static class NativeFunctionManager
   {
     [UnmanagedCallersOnly]
     private static void RegisterInternalCall(NativeString name_str, IntPtr target)
@@ -21,7 +22,7 @@ namespace OtherCsBindings
         var field_name = name!.Substring(name_start + 1, name_end - name_start - 1);
         var containing_type_name = name!.Remove(name_start, name_end - name_start);
 
-        var type = InteropInterface.FindType(containing_type_name);
+        var type = TypeInterface.FindType(containing_type_name);
 
         if (type == null)
         {

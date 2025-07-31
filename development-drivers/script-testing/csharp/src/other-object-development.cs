@@ -2,22 +2,44 @@ using System;
 
 namespace Other
 {
-  class Object
+  class TestAttrAttribute : Attribute
   {
     public string Name { get; set; }
-    public int Id { get; set; }
-    public IntPtr NativeHandle { get; set; }
+    public int Value { get; set; }
 
-    public Object(string name, int id, IntPtr nativeHandle)
+    public TestAttrAttribute(string name, int value)
     {
+      Console.WriteLine($"TestAttrAttribute created with Name: {name}, Value: {value}");
       Name = name;
-      Id = id;
-      NativeHandle = nativeHandle;
+      Value = value;
+    }
+  }
+
+  [TestAttr("TestObject", 42)]
+  class TestObject
+  {
+    int field_value = 10;
+    public int PropertyValue { get; set; } = 20;
+
+    public TestObject()
+    {
+      Console.WriteLine("TestObject instantiated");
+    }
+
+    ~TestObject()
+    {
+      Console.WriteLine("TestObject finalized");
     }
 
     public void DisplayInfo()
     {
-      Console.WriteLine($"Object Name: {Name}, ID: {Id}, Native Handle: {NativeHandle}");
+      Console.WriteLine($"Hello There! I am an instance of {GetType().Name}.");
+    }
+
+    public int GetValue(int value)
+    {
+      Console.WriteLine($"Received value: {value}");
+      return value * 2;
     }
   }
 } 
