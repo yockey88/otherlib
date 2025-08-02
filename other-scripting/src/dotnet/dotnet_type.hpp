@@ -11,7 +11,6 @@
 #include "dotnet/dotnet_attribute.hpp"
 #include "dotnet/dotnet_field.hpp"
 #include "dotnet/dotnet_method.hpp"
-#include "dotnet/dotnet_object.hpp"
 #include "dotnet/types.hpp"
 
 #include "interop_interface.hpp"
@@ -19,6 +18,7 @@
 namespace other {
 
   class dotnet_host;
+  class dotnet_object;
 
   class dotnet_type {
    public:
@@ -31,6 +31,18 @@ namespace other {
 
     bool has_attribute(const std::string_view attr_name) const;
     std::vector<std::string> get_attribute_names() const;
+
+    template <typename T>
+    T get_attribute(const std::string_view attr_name, const std::string_view field_name) {
+      OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+      T val{};
+      if (std::is_pointer_v<T>) {
+        get_attribute_object(attr_name, field_name, (void*)val);
+      } else {
+        get_attribute_object(attr_name, field_name, &val);
+      }
+      return val;
+    }
 
     bool has_field(const std::string_view field_name) const;
     bool is_field_property(const std::string_view field_name) const;
@@ -57,6 +69,8 @@ namespace other {
     bool type_interface_initialized = false;
 
     void fill_out_type_information(std::vector<int32_t>& dotnet_ids, get_type_information fn);
+
+    void get_attribute_object(const std::string_view name, const std::string_view field_name, void* out) const;
   };
 
 }  // namespace other

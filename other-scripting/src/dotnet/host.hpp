@@ -94,6 +94,7 @@ namespace other {
 
       //       attribute
       get_attribute_type get_attribute_type = nullptr;
+      get_managed_object_from_object get_attribute_object = nullptr;
 
       /// ManagedObject
       create_object create_object = nullptr;
@@ -106,6 +107,14 @@ namespace other {
       field_setter_getter get_field = nullptr;
       field_setter_getter set_property = nullptr;
       field_setter_getter get_property = nullptr;
+
+      string_field_setter_getter set_string_field = nullptr;
+      string_field_setter_getter get_string_field = nullptr;
+      string_field_setter_getter set_string_property = nullptr;
+      string_field_setter_getter get_string_property = nullptr;
+
+      managed_strlen get_string_field_length = nullptr;
+      managed_strlen get_string_property_length = nullptr;
 
       /// GarbageCollector
       collect_garbage collect_garbage = nullptr;

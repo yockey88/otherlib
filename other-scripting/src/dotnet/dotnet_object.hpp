@@ -12,14 +12,15 @@
 #include "core/arena.hpp"
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
+#include "serialization/reflection.hpp"
 
 #include "dotnet/dotnet_field.hpp"
+#include "dotnet/dotnet_type.hpp"
 #include "dotnet/types.hpp"
 
 namespace other {
 
   class dotnet_host;
-  class dotnet_type;
 
   class dotnet_object {
    public:
@@ -29,6 +30,14 @@ namespace other {
 
     bool has_attribute(const std::string_view attr_name);
     std::vector<std::string> get_attribute_names() const;
+
+    template <typename T>
+    T get_attribute(const std::string_view attr_name, const std::string_view field_name) {
+      OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+      OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
+
+      return dn_type->get_attribute<T>(attr_name, field_name);
+    }
 
     template <typename R = void, typename... Args>
       requires std::is_same_v<R, void> || std::is_pointer_v<R> || std::is_trivial_v<R>
@@ -43,6 +52,7 @@ namespace other {
     template <typename FT>
       requires std::is_copy_constructible_v<FT>
     void set_field(const std::string_view field_name, const FT& value) {
+      set_field_or_property<FT>(field_name, value);
     }
 
     template <typename FT>
@@ -54,6 +64,7 @@ namespace other {
     template <typename FT>
       requires std::is_copy_constructible_v<FT>
     void set_property(const std::string_view property_name, const FT& value) {
+      set_field_or_property<FT>(property_name, value);
     }
 
     template <typename FT>
@@ -85,7 +96,19 @@ namespace other {
     }
 
     template <typename FT>
-    std::map<uint64_t, dotnet_field::storage>::const_iterator load_field(const std::string_view field_name) {
+      requires std::is_copy_constructible_v<FT>
+    void set_field_or_property(const std::string_view field_name, const FT& value) {
+      auto itr = load_field<FT>(field_name);
+      if (itr != field_storage.end()) {
+        itr->second.template set_as<FT>(value);
+      } else {
+        CORE_LOG_ERROR("Field '{}' not found", field_name);
+      }
+      write_storage_to_field(itr, field_name);
+    }
+
+    template <typename FT>
+    std::map<uint64_t, dotnet_field::storage>::iterator load_field(const std::string_view field_name) {
       OTHER_ASSERT(host != nullptr, "dotnet_host is null");
       OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
 
@@ -107,19 +130,33 @@ namespace other {
 
       if (itr->second.data == nullptr) {
         itr->second.stored_type = get_value_type<FT>();
-        itr->second.size = get_value_type_size(itr->second.stored_type);
-        itr->second.data = (uint8_t*)arena::allocate(itr->second.size);
-      }
+        if (itr->second.stored_type == value_type::STRING) {
+          itr->second.size = managed_strlen(field_name) + 1;
+        } else {
+          itr->second.size = get_value_type_size(itr->second.stored_type);
+          itr->second.data = (uint8_t*)arena::allocate(itr->second.size);
+        }
 
-      load_field_into_storage(field_name, itr->second);
+        load_field_into_storage(field_name, itr->second);
+        if (itr->second.stored_type == value_type::STRING) {
+          /// add null terminator for string types
+          itr->second.data[itr->second.size - 1] = '\0';
+        }
+      }
       return itr;
     }
+
+    void write_storage_to_field(std::map<uint64_t, dotnet_field::storage>::const_iterator itr, const std::string_view field_name);
+
+    size_t managed_strlen(const std::string_view field_name);
     bool type_has_field(const std::string_view field_name);
     void load_field_into_storage(const std::string_view field_name, dotnet_field::storage& storage);
+    void load_string_field_into_storage(const std::string_view field_name, dotnet_field::storage& storage);
 
     std::map<uint64_t, dotnet_field::storage> field_storage;
 
-    void invoke_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, opt<void*> ret);
+    void invoke_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc);
+    void invoke_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out);
 
     template <typename... Args>
     void invoke_void(const std::string_view method_name, Args&&... args) {
@@ -128,9 +165,9 @@ namespace other {
         const void* argv[argc] = {};
         managed_type arg_ts[argc] = {};
         detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
-        invoke_method_with_args(method_name, argv, arg_ts, argc, std::nullopt);
+        invoke_method_with_args(method_name, argv, arg_ts, argc);
       } else {
-        invoke_method_with_args(method_name, nullptr, nullptr, 0, std::nullopt);
+        invoke_method_with_args(method_name, nullptr, nullptr, 0);
       }
     }
 
@@ -144,15 +181,15 @@ namespace other {
         managed_type arg_ts[argc] = {};
         detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
         if constexpr (std::is_pointer_v<R>) {
-          invoke_method_with_args(method_name, argv, arg_ts, argc, (void*)ret);
+          invoke_returning_method_args(method_name, argv, arg_ts, argc, (void*)ret);
         } else {
-          invoke_method_with_args(method_name, argv, arg_ts, argc, &ret);
+          invoke_returning_method_args(method_name, argv, arg_ts, argc, &ret);
         }
       } else {
         if constexpr (std::is_pointer_v<R>) {
-          invoke_method_with_args(method_name, nullptr, nullptr, 0, (void*)ret);
+          invoke_returning_method_args(method_name, nullptr, nullptr, 0, (void*)ret);
         } else {
-          invoke_method_with_args(method_name, nullptr, nullptr, 0, &ret);
+          invoke_returning_method_args(method_name, nullptr, nullptr, 0, &ret);
         }
       }
       return std::move(ret);

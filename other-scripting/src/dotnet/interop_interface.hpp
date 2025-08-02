@@ -56,6 +56,7 @@ namespace other {
 
   /// attribute
   using get_attribute_type = void (*)(int32_t, int32_t*);
+  using get_managed_object_from_object = void (*)(int32_t, native_string, void*);
 
   /// ManagedObject
   using create_object = void* (*)(int32_t, nbool32, const void**, const managed_type*, int32_t);
@@ -63,6 +64,8 @@ namespace other {
   using invoke_method = void (*)(void*, native_string, const void**, const managed_type*, int32_t);
   using invoke_method_ret = void (*)(void*, native_string, const void**, const managed_type*, int32_t, void*);
   using field_setter_getter = void (*)(void*, native_string, void*);
+  using string_field_setter_getter = void (*)(void*, native_string, native_string*);
+  using managed_strlen = size_t (*)(void*, native_string);
 
   /// GarbageCollector
   using collect_garbage = void (*)(int32_t, gc_mode, nbool32, nbool32);

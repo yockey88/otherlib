@@ -20,10 +20,7 @@ namespace other {
     std::string name() const;
 
     dotnet_type* type = nullptr;
-
-   private:
     dotnet_host* host = nullptr;
-
     int32_t type_dotnet_id = -1;
     int32_t dotnet_id = 0;
   };

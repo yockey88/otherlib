@@ -9,6 +9,9 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "serialization/reflection.hpp"
+
+#include "dotnet/native_string.hpp"
 
 namespace other {
 
@@ -26,9 +29,30 @@ namespace other {
         requires std::is_copy_constructible_v<FT>
       FT get_as() const {
         OTHER_ASSERT(data != nullptr, "Field data is null");
-        OTHER_ASSERT(size == sizeof(FT), "Field data size is not equal to requested type size");
-        return *reinterpret_cast<const FT*>(data);
+        OTHER_ASSERT(stored_type == get_value_type<FT>(), "Field type mismatch: expected {}, got {}", get_value_type<FT>(), stored_type);
+
+        if constexpr (is_stringlike_type<FT>) {
+          return std::string(reinterpret_cast<const char*>(data), size - 1);
+        } else {
+          return *reinterpret_cast<const FT*>(data);
+        }
       }
+
+      template <typename FT>
+        requires std::is_copy_constructible_v<FT>
+      void set_as(const FT& value) {
+        OTHER_ASSERT(data != nullptr, "Field data is null");
+        OTHER_ASSERT(stored_type == get_value_type<FT>(), "Field type mismatch: expected {}, got {}", get_value_type<FT>(), stored_type);
+
+        if constexpr (is_stringlike_type<FT>) {
+          copy_string_to_storage(value);
+        } else {
+          *reinterpret_cast<FT*>(data) = value;
+        }
+      }
+
+     private:
+      void copy_string_to_storage(const std::string& value);
     };
     dotnet_field(dotnet_host* host, dotnet_type* type, int32_t dotnet_id, bool is_property = false)
         : host(host), type(type), dotnet_id(dotnet_id), flags{ is_property } {}

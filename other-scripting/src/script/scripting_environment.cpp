@@ -84,7 +84,7 @@ namespace other {
     dotnet_load_context->unload_assembly(module->get_handle());
   }
 
-  bool scripting_environment::object_has_attribute(integer_t id, const std::string_view attr_name) {
+  bool scripting_environment::dotnet_object_has_attribute(integer_t id, const std::string_view attr_name) {
     script_object* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
     if (obj->dotnet_object != nullptr) {

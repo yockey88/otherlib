@@ -5,11 +5,10 @@ namespace Other
   class TestAttrAttribute : Attribute
   {
     public string Name { get; set; }
-    public int Value { get; set; }
+    public int Value = 0;
 
     public TestAttrAttribute(string name, int value)
     {
-      Console.WriteLine($"TestAttrAttribute created with Name: {name}, Value: {value}");
       Name = name;
       Value = value;
     }
@@ -21,14 +20,15 @@ namespace Other
     int field_value = 10;
     public int PropertyValue { get; set; } = 20;
 
+    string field_string = "Hello World";
+    string PropertyString { get; set; } = "Hello Property";
+
     public TestObject()
     {
-      Console.WriteLine("TestObject instantiated");
     }
 
     ~TestObject()
     {
-      Console.WriteLine("TestObject finalized");
     }
 
     public void DisplayInfo()

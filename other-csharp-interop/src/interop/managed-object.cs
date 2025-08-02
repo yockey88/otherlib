@@ -256,112 +256,326 @@ namespace OtherCsBindings
     }
 
     [UnmanagedCallersOnly]
-		private static unsafe void SetField(IntPtr target , NativeString name, IntPtr value) {
-			try
+    private static unsafe void SetField(IntPtr target, NativeString name, IntPtr value)
+    {
+      try
       {
-				var obj = GCHandle.FromIntPtr(target).Target;
-				if (obj == null) {
-					Logger.LogError("Target object is null.");
-					return;
-				}
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
+        {
+          Logger.LogError("Target object is null.");
+          return;
+        }
 
-				var type = obj.GetType();
-				var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-				if (field == null)
+        var type = obj.GetType();
+        var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
         {
           Logger.LogError($"Field '{name}' not found in type '{type.FullName}'.");
-					return;
-				}
+          return;
+        }
 
-				var marshalled_value = OtherMemory.MarshalPointer(value , field.FieldType);
-				field.SetValue(obj, marshalled_value);
-			}
+        var marshalled_value = OtherMemory.MarshalPointer(value, field.FieldType);
+        field.SetValue(obj, marshalled_value);
+      }
       catch (Exception e)
       {
         Host.HandleException(e);
       }
-		}
+    }
 
-		[UnmanagedCallersOnly]
-		private static unsafe void GetField(IntPtr target, NativeString name, IntPtr res)
+    [UnmanagedCallersOnly]
+    private static unsafe void GetField(IntPtr target, NativeString name, IntPtr res)
     {
-			try
+      try
       {
-				var obj = GCHandle.FromIntPtr(target).Target;
+        var obj = GCHandle.FromIntPtr(target).Target;
         if (obj == null)
         {
           throw new NullReferenceException("Target object is null.");
-				}
+        }
 
-				var type = obj.GetType();
-				var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var type = obj.GetType();
+        var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         if (field == null)
         {
           throw new MissingMemberException($"Field '{name}' not found in type '{type.FullName}'.");
-				}
+        }
 
-				var value = field.GetValue(obj);
-				OtherMemory.MarshalReturn(value, field.FieldType, res);
-			}
+        var value = field.GetValue(obj);
+        OtherMemory.MarshalReturn(value, field.FieldType, res);
+      }
       catch (Exception e)
       {
         Host.HandleException(e);
       }
-		}
+    }
 
-		[UnmanagedCallersOnly]
-		private static unsafe void SetProperty(IntPtr target, NativeString name, IntPtr value)
+    [UnmanagedCallersOnly]
+    private static unsafe void SetProperty(IntPtr target, NativeString name, IntPtr value)
     {
-			try
+      try
       {
-				var obj = GCHandle.FromIntPtr(target).Target;
-				if (obj == null)
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
         {
           throw new NullReferenceException("Target object is null.");
-				}
+        }
 
-				var type = obj.GetType();
-				var prop = type.GetProperty(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var type = obj.GetType();
+        var prop = type.GetProperty(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         if (prop == null)
         {
           throw new MissingMemberException($"Property '{name}' not found in type '{type.FullName}'.");
-				}
+        }
 
-				var marshalled_value = OtherMemory.MarshalPointer(value, prop.PropertyType);
-				prop.SetValue(obj, marshalled_value);
-			}
+        var marshalled_value = OtherMemory.MarshalPointer(value, prop.PropertyType);
+        prop.SetValue(obj, marshalled_value);
+      }
       catch (Exception e)
       {
         Host.HandleException(e);
       }
-		}
+    }
 
-		[UnmanagedCallersOnly]
-		private static unsafe void GetProperty(IntPtr target, NativeString name, IntPtr res)
+    [UnmanagedCallersOnly]
+    private static unsafe void GetProperty(IntPtr target, NativeString name, IntPtr res)
     {
-			try
+      try
       {
-				var obj = GCHandle.FromIntPtr(target).Target;
-				if (obj == null)
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
         {
-					throw new NullReferenceException("Target object is null.");
-				}
+          throw new NullReferenceException("Target object is null.");
+        }
 
-				var type = obj.GetType();
-				var prop = type.GetProperty(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var type = obj.GetType();
+        var prop = type.GetProperty(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         if (prop == null)
         {
           throw new MissingMemberException($"Property '{name}' not found in type '{type.FullName}'.");
-				}
+        }
 
-				var value = prop.GetValue(obj);
-				OtherMemory.MarshalReturn(value, prop.PropertyType, res);
-			}
+        var value = prop.GetValue(obj);
+        OtherMemory.MarshalReturn(value, prop.PropertyType, res);
+      }
       catch (Exception e)
       {
         Host.HandleException(e);
       }
-		}
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe void SetStringField(IntPtr target, NativeString name, NativeString* value)
+    {
+      try
+      {
+        if (value == null)
+        {
+          throw new ArgumentNullException(nameof(value), "Value pointer cannot be null.");
+        }
+
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
+        {
+          throw new NullReferenceException("Target object is null.");
+        }
+
+        var type = obj.GetType();
+        var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
+        {
+          throw new MissingMemberException($"Field '{name}' not found in type '{type.FullName}'.");
+        }
+
+        if (field.FieldType != typeof(string))
+        {
+          throw new InvalidOperationException($"Field '{name}' is not a string.");
+        }
+
+        field.SetValue(obj, value->ToString());
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+      }
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe void GetStringField(IntPtr target, NativeString name, NativeString* res)
+    {
+      try
+      {
+        if (res == null)
+        {
+          throw new ArgumentNullException(nameof(res), "Result pointer cannot be null.");
+        }
+
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
+        {
+          throw new NullReferenceException("Target object is null.");
+        }
+
+        var type = obj.GetType();
+        var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
+        {
+          throw new MissingMemberException($"Field '{name}' not found in type '{type.FullName}'.");
+        }
+
+        if (field.FieldType != typeof(string))
+        {
+          throw new InvalidOperationException($"Field '{name}' is not a string.");
+        }
+
+        var value = (string?)field.GetValue(obj);
+        res->Assign(value!);
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+      }
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe void SetStringProperty(IntPtr target, NativeString name, NativeString* value)
+    {
+      try
+      {
+        if (value == null)
+        {
+          throw new ArgumentNullException(nameof(value), "Value pointer cannot be null.");
+        }
+
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
+        {
+          throw new NullReferenceException("Target object is null.");
+        }
+
+        var type = obj.GetType();
+        var property = type.GetProperty(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (property == null)
+        {
+          throw new MissingMemberException($"Property '{name}' not found in type '{type.FullName}'.");
+        }
+
+        if (property.PropertyType != typeof(string))
+        {
+          throw new InvalidOperationException($"Property '{name}' is not a string.");
+        }
+
+        property.SetValue(obj, value->ToString());
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+      }
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe void GetStringProperty(IntPtr target, NativeString name, NativeString* res)
+    {
+      try
+      {
+        if (res == null)
+        {
+          throw new ArgumentNullException(nameof(res), "Result pointer cannot be null.");
+        }
+
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
+        {
+          throw new NullReferenceException("Target object is null.");
+        }
+
+        var type = obj.GetType();
+        var prop = type.GetProperty(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (prop == null)
+        {
+          throw new MissingMemberException($"Property '{name}' not found in type '{type.FullName}'.");
+        }
+
+        if (prop.PropertyType != typeof(string))
+        {
+          throw new InvalidOperationException($"Property '{name}' is not a string.");
+        }
+
+        var value = (string?)prop.GetValue(obj);
+        res->Assign(value!);
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+      }
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe UInt64 GetStringFieldLength(IntPtr target, NativeString name)
+    {
+      try
+      {
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
+        {
+          throw new NullReferenceException("Target object is null.");
+        }
+
+        var type = obj.GetType();
+        var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
+        {
+          throw new MissingMemberException($"Field '{name}' not found in type '{type.FullName}'.");
+        }
+
+        if (field.FieldType != typeof(string))
+        {
+          throw new InvalidOperationException($"Field '{name}' is not a string.");
+        }
+
+        var value = (string?)field.GetValue(obj);
+        return (UInt64)(value?.Length ?? 0);
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+        return 0;
+      }
+    }
+    
+    [UnmanagedCallersOnly]
+    private static unsafe UInt64 GetStringPropertyLength(IntPtr target, NativeString name)
+    {
+      try
+      {
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
+        {
+          throw new NullReferenceException("Target object is null.");
+        }
+
+        var type = obj.GetType();
+        var property = type.GetProperty(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (property == null)
+        {
+          throw new MissingMemberException($"Field '{name}' not found in type '{type.FullName}'.");
+        }
+
+        if (property.PropertyType != typeof(string))
+        {
+          throw new InvalidOperationException($"Field '{name}' is not a string.");
+        }
+
+        var value = (string?)property.GetValue(obj);
+        return (UInt64)(value?.Length ?? 0);
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+        return 0;
+      }
+    }
   }
 }
 #nullable disable

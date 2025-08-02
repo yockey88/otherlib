@@ -467,6 +467,7 @@ namespace OtherCsBindings
         {
           Attribute attr = (Attribute)attrs[i];
           attributes[i] = cached_attributes.Add(attr);
+          Logger.LogDebug($"Adding attribute with ID : {attributes[i]} {attr.GetType().FullName} to cache for type {t.FullName}");
         }
       }
       catch (Exception ex)
@@ -814,6 +815,40 @@ namespace OtherCsBindings
       catch (Exception e)
       {
         Host.HandleException(e);
+      }
+		}
+
+    [UnmanagedCallersOnly]
+		private static unsafe void GetAttributeValue(Int32 attr, NativeString field, IntPtr out_val)
+    {
+      try
+      {
+        if (!cached_attributes.TryGet(attr, out var attribute))
+        {
+          Logger.LogError($"Attribute with ID {attr} not found in cache.");
+          return;
+        }
+
+        var target = attribute!.GetType();
+        var f = target!.GetField(field!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (f == null)
+        {
+          Logger.LogError($"Field '{field}' not found in attribute type '{target.FullName}'.");
+          return;
+        }
+
+        var value = f.GetValue(attribute);
+        if (value == null)
+        {
+          Logger.LogError($"Field '{f.Name}' in attribute '{target.FullName}' is null.");
+          return;
+        }
+        
+        OtherMemory.MarshalReturn(value, value.GetType(), out_val);
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
       }
 		}
 

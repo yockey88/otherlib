@@ -10,6 +10,7 @@
 
 #include "script/script_object.hpp"
 
+#include "dotnet/dotnet_object.hpp"
 #include "dotnet/host.hpp"
 
 namespace other {
@@ -30,7 +31,7 @@ namespace other {
     ref<assembly> load_dotnet_module(const std::string_view module_path);
     void unload_dotnet_module(ref<assembly> module_id);
 
-    bool object_has_attribute(integer_t id, const std::string_view attr_name);
+    bool dotnet_object_has_attribute(integer_t id, const std::string_view attr_name);
 
     template <typename... Args>
     void attach_dotnet_object(integer_t id, const std::string_view type_name, Args&&... ctor_args) {
@@ -78,6 +79,18 @@ namespace other {
 
     template <typename FT>
       requires std::is_copy_constructible_v<FT>
+    void set_dotnet_field(integer_t id, const std::string_view field_name, const FT& value) {
+      script_object* obj = get_object(id);
+      OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+      if (obj->dotnet_object != nullptr) {
+        obj->dotnet_object->set_field(field_name, value);
+      } else {
+        CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+      }
+    }
+
+    template <typename FT>
+      requires std::is_copy_constructible_v<FT>
     FT get_dotnet_property(integer_t id, const std::string_view property_name) {
       script_object* obj = get_object(id);
       OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
@@ -86,6 +99,18 @@ namespace other {
       } else {
         CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
         return FT{};
+      }
+    }
+
+    template <typename T>
+    T get_dotnet_attribute(integer_t id, const std::string_view attr_name, const std::string_view field_name) {
+      script_object* obj = get_object(id);
+      OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+      if (obj->dotnet_object != nullptr) {
+        return obj->dotnet_object->get_attribute<T>(attr_name, field_name);
+      } else {
+        CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+        return T{};
       }
     }
 

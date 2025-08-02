@@ -27,6 +27,17 @@ namespace OtherCsBindings
       GC.SuppressFinalize(this);
     }
 
+    public void Assign(string str)
+    {
+      if (native_string != IntPtr.Zero)
+      {
+        Marshal.FreeCoTaskMem(native_string);
+      }
+
+      native_string = Marshal.StringToCoTaskMemAuto(str);
+      disposed = false;
+    }
+
     public override string? ToString() => this;
 
     public static NativeString Null() => new NativeString() { native_string = IntPtr.Zero };

@@ -78,7 +78,10 @@ namespace other {
     /// 2 - success, different runtime properties
     hostfxr_handle host_fxr = nullptr;
     int32_t rc = coreclr.init_host_config(DNET_STR("other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"), nullptr, &host_fxr);
-    OTHER_ASSERT(rc == 0 && host_fxr != nullptr, "Failed to initialize hostfxr with runtime config : error code [{} : {:#08x}]", rc, rc);
+    OTHER_ASSERT(host_fxr != nullptr, "Failed to initialize hostfxr with runtime config : error code [{} : {:#08x}]", rc, rc);
+    if (rc < 0 || rc > 2) {
+      OTHER_ASSERT(false, "Failed to initialize hostfxr with runtime config: error code [{} : {:#08x}]", rc, rc);
+    }
 
     void* delegate = nullptr;
     rc = coreclr.get_runtime_delegate(host_fxr, hdt_load_assembly_and_get_function_pointer, &delegate);
@@ -325,6 +328,9 @@ namespace other {
     interop_functions.get_attribute_type = load_managed_function<get_attribute_type>(type_interface_type_str, DNET_STR("GetAttributeType"));
     OTHER_ASSERT(interop_functions.get_attribute_type != nullptr, "Failed to load GetAttributeType from managed assembly.");
 
+    interop_functions.get_attribute_object = load_managed_function<get_managed_object_from_object>(type_interface_type_str, DNET_STR("GetAttributeValue"));
+    OTHER_ASSERT(interop_functions.get_attribute_object != nullptr, "Failed to load GetAttributeValue from managed assembly.");
+
     /// ManagedObject
     interop_functions.create_object = load_managed_function<create_object>(managed_object_type_str, DNET_STR("CreateObject"));
     OTHER_ASSERT(interop_functions.create_object != nullptr, "Failed to load CreateObject from managed assembly.");
@@ -354,6 +360,24 @@ namespace other {
 
     interop_functions.get_property = load_managed_function<field_setter_getter>(managed_object_type_str, DNET_STR("GetProperty"));
     OTHER_ASSERT(interop_functions.get_property != nullptr, "Failed to load GetProperty from managed assembly.");
+
+    interop_functions.set_string_field = load_managed_function<string_field_setter_getter>(managed_object_type_str, DNET_STR("SetStringField"));
+    OTHER_ASSERT(interop_functions.set_string_field != nullptr, "Failed to load SetStringField from managed assembly.");
+
+    interop_functions.get_string_field = load_managed_function<string_field_setter_getter>(managed_object_type_str, DNET_STR("GetStringField"));
+    OTHER_ASSERT(interop_functions.get_string_field != nullptr, "Failed to load GetStringField from managed assembly.");
+
+    interop_functions.set_string_property = load_managed_function<string_field_setter_getter>(managed_object_type_str, DNET_STR("SetStringProperty"));
+    OTHER_ASSERT(interop_functions.set_string_property != nullptr, "Failed to load SetStringProperty from managed assembly.");
+
+    interop_functions.get_string_property = load_managed_function<string_field_setter_getter>(managed_object_type_str, DNET_STR("GetStringProperty"));
+    OTHER_ASSERT(interop_functions.get_string_property != nullptr, "Failed to load GetStringProperty from managed assembly.");
+
+    interop_functions.get_string_field_length = load_managed_function<managed_strlen>(managed_object_type_str, DNET_STR("GetStringFieldLength"));
+    OTHER_ASSERT(interop_functions.get_string_field_length != nullptr, "Failed to load GetStringFieldLength from managed assembly.");
+
+    interop_functions.get_string_property_length = load_managed_function<managed_strlen>(managed_object_type_str, DNET_STR("GetStringPropertyLength"));
+    OTHER_ASSERT(interop_functions.get_string_property_length != nullptr, "Failed to load GetStringPropertyLength from managed assembly.");
 
     /// GarbageCollector
     interop_functions.collect_garbage = load_managed_function<collect_garbage>(garbage_collector_type_str, DNET_STR("CollectGarbage"));

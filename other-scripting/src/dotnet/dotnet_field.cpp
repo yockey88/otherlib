@@ -3,14 +3,28 @@
  **/
 #include "dotnet/dotnet_field.hpp"
 
+#include <cstring>
+
 #include "core/arena.hpp"
-#include "core/defines.hpp"
 #include "core/logger.hpp"
 
 #include "dotnet/host.hpp"
 #include "dotnet/native_string.hpp"
 
 namespace other {
+
+  void dotnet_field::storage::copy_string_to_storage(const std::string& value) {
+    size_t new_size = value.size() + 1;
+    if (new_size > size) {
+      arena::free(data, size);
+      size = new_size;
+      data = (uint8_t*)arena::allocate(size);
+    } else {
+      std::memset(data, 0, size);
+    }
+    std::memcpy(data, value.data(), size);
+    data[size - 1] = '\0';  // Ensure null termination
+  }
 
   std::string dotnet_field::name() const {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");

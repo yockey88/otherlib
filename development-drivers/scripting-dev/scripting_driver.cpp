@@ -100,18 +100,39 @@ namespace other {
 
     int fval = script_system->get_dotnet_field<int>(object_id, "field_value");
     CORE_LOG_DEBUG("Field value: {}", fval);
+    script_system->set_dotnet_field<int>(object_id, "field_value", 100);
+    fval = script_system->get_dotnet_field<int>(object_id, "field_value");
+    CORE_LOG_DEBUG("Updated field value: {}", fval);
 
     fval = script_system->get_dotnet_property<int>(object_id, "PropertyValue");
     CORE_LOG_DEBUG("Property value: {}", fval);
+    script_system->set_dotnet_field<int>(object_id, "PropertyValue", 200);
+    fval = script_system->get_dotnet_property<int>(object_id, "PropertyValue");
+    CORE_LOG_DEBUG("Updated property value: {}", fval);
 
-    for (const auto& attr_name : script_system->get_object(object_id)->dotnet_object->get_attribute_names()) {
-      CORE_LOG_DEBUG("Object has attribute: {}", attr_name);
-    }
+    std::string str_field = script_system->get_dotnet_field<std::string>(object_id, "field_string");
+    CORE_LOG_DEBUG("Field string: {}", str_field);
 
-    bool has_attr = script_system->object_has_attribute(object_id, "Other.TestAttrAttribute");
+    script_system->set_dotnet_field<std::string>(object_id, "field_string", "New String Value");
+    str_field = script_system->get_dotnet_field<std::string>(object_id, "field_string");
+    CORE_LOG_DEBUG("Updated field string: {}", str_field);
+
+    str_field = script_system->get_dotnet_property<std::string>(object_id, "PropertyString");
+    CORE_LOG_DEBUG("Property string: {}", str_field);
+
+    script_system->set_dotnet_field<std::string>(object_id, "PropertyString", "New Property String Value");
+    str_field = script_system->get_dotnet_property<std::string>(object_id, "PropertyString");
+    CORE_LOG_DEBUG("Updated property string: {}", str_field);
+
+    bool has_attr = script_system->dotnet_object_has_attribute(object_id, "Other.TestAttrAttribute");
     CORE_LOG_DEBUG("Object has TestAttr: {}", has_attr);
 
+    int attr = script_system->get_dotnet_attribute<int>(object_id, "Other.TestAttrAttribute", "Value");
+    CORE_LOG_DEBUG("Attribute TestAttr has value: {}", attr);
+
     script_system->detach_dotnet_object(object_id);
+
+    // script_system->reload_dotnet_environment();
 
 #if 0
     std::ifstream file{ "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll" };
