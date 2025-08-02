@@ -82,6 +82,7 @@ namespace other {
     script_component* script_obj = active_scene.get_component<script_component>(object_id);
     OTHER_ASSERT(script_obj != nullptr, "Failed to get script component for object ID {}", object_id);
 
+    other_assembly = load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
     testing_assembly = load_dotnet_module("build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll");
   }
 
@@ -91,8 +92,8 @@ namespace other {
     auto script_system = subsystem<scripting_environment>::get();
     OTHER_ASSERT(script_system != nullptr, "Scripting environment subsystem is not initialized.");
 
-    integer_t object_id = script_system->create_object("TestObject");
-    script_system->attach_dotnet_object(object_id, "Other.TestObject");
+    integer_t object_id = script_system->create_object("MyObject");
+    script_system->attach_dotnet_object(object_id, "TestObject");
 
     script_system->call_dotnet_method<>(object_id, "DisplayInfo");
     int val = script_system->call_dotnet_method<int>(object_id, "GetValue", 42);
@@ -124,15 +125,15 @@ namespace other {
     str_field = script_system->get_dotnet_property<std::string>(object_id, "PropertyString");
     CORE_LOG_DEBUG("Updated property string: {}", str_field);
 
-    bool has_attr = script_system->dotnet_object_has_attribute(object_id, "Other.TestAttrAttribute");
+    bool has_attr = script_system->dotnet_object_has_attribute(object_id, "TestAttrAttribute");
     CORE_LOG_DEBUG("Object has TestAttr: {}", has_attr);
 
-    int attr = script_system->get_dotnet_attribute<int>(object_id, "Other.TestAttrAttribute", "Value");
+    int attr = script_system->get_dotnet_attribute<int>(object_id, "TestAttrAttribute", "Value");
     CORE_LOG_DEBUG("Attribute TestAttr has value: {}", attr);
 
-    script_system->detach_dotnet_object(object_id);
-
     // script_system->reload_dotnet_environment();
+
+    script_system->detach_dotnet_object(object_id);
 
 #if 0
     std::ifstream file{ "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll" };
@@ -214,6 +215,7 @@ namespace other {
     CORE_LOG_DEBUG("Scripting driver shut down.");
 
     unload_dotnet_module(testing_assembly);
+    unload_dotnet_module(other_assembly);
   }
 
   void scripting_driver::on_event(SDL_Event* event) {

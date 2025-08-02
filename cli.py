@@ -97,9 +97,13 @@ def run_project(out_dir, cfg, name, config_file, args, verbose = False):
     run_command.append("--verbose")
   run_subprocess(run_command)
   
+## TODO: this is ugly, fix this
 def validate_args(args, parser):
   if not args.build and not args.regen_project \
-      and not args.run and not args.run_scratch and not args.run_terminal and not args.run_tests and not args.compile_serialization_schema and not args.compile_object:
+      and not args.run and not args.run_scratch \
+      and not args.run_terminal and not args.run_tests \
+      and not args.compile_serialization_schema \
+      and not args.compile_object and not args.generate_cs_bindings:
     parser.print_help()
     sys.exit(1)
 
@@ -116,6 +120,7 @@ if __name__ == "__main__":
   parser.add_argument("--compile-serialization-schema", "-css", type=str, help="Compile the serialization schema.")
   parser.add_argument("--compile-object", "-co", nargs = 2, type=str, metavar=("SCHEMA_FILE", "OBJECT_FILE"), help="Compile a binary object using the <object_file> and the <schema_file>")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
+  parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
   # parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
 
   args = parser.parse_args()
@@ -123,6 +128,10 @@ if __name__ == "__main__":
     validate_args(args, parser)
 
     cfg = args.cfg
+
+    if args.generate_cs_bindings:
+      print("Generating C# bindings...")
+      run_subprocess([f"build/code-generator/{cfg}/OtherCsBindingsGenerator.exe"])
 
     if args.compile_serialization_schema is not None and os.path.exists(args.compile_serialization_schema):
       if not args.compile_serialization_schema.endswith(".fbs"):
@@ -169,8 +178,8 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "resources/script-config.toml"])
-      # run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
+      # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "resources/script-config.toml"])
+      run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
       # run_project("driver", cfg, "other_driver", "math-physics.toml", args, args.verbose)

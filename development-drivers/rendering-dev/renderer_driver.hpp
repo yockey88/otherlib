@@ -50,6 +50,8 @@ namespace other {
     model cube;
     model suzanne;
 
+    ref<assembly> other_assembly = nullptr;
+
     void on_event(SDL_Event* event) override;
   };
 

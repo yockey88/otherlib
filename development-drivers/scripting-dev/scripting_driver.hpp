@@ -35,6 +35,7 @@ namespace other {
     scene active_scene;
 
     natural_t object_id = 0;
+    ref<assembly> other_assembly = nullptr;
     ref<assembly> testing_assembly = nullptr;
 
     void on_event(SDL_Event* event) override;

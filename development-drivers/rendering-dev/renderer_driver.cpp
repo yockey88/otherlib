@@ -11,14 +11,15 @@
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
+#include "object/render_component.hpp"
+#include "object/scene_object.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
 
-#include "glm/gtc/type_ptr.hpp"
-#include "object/render_component.hpp"
-#include "object/scene_object.hpp"
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
+
+#include "glm/gtc/type_ptr.hpp"
 
 namespace other {
   namespace {
@@ -96,6 +97,8 @@ namespace other {
       CORE_LOG_INFO("Number of children in the scene: {}", num_root_children);
 
       running = true;
+
+      other_assembly = load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
     }
   }
 
@@ -155,6 +158,8 @@ namespace other {
     OTHER_ASSERT(renderer != nullptr, "Renderer is not initialized.");
     PROFILE_SECTION("renderer_driver::on_shutdown");
     CORE_LOG_INFO("Shutting down terminal driver...");
+
+    unload_dotnet_module(other_assembly);
 
     renderer->remove_pipeline("Default Instancing Pipeline");
     renderer = nullptr;

@@ -12,6 +12,7 @@ artifacts/
 wip/
 analysis/
 scratch/
+code-generator/
 
 #large local development files
 resources/models/
