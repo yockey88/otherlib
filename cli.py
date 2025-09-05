@@ -48,12 +48,14 @@ def build_sln_file(sln_file, cfg=None):
 
 def copy_dlls(cfg, dll_cfg):
   print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
-  dlls = [
-    f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
-  ]
-  
   assimp_debug = "extern/assimp/lib/debug/assimp-vc143-mtd.dll"
   assimp_release = "extern/assimp/lib/release/assimp-vc143-mt.dll"
+  dlls = [
+    f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
+    assimp_debug if cfg == "Debug" else assimp_release,
+    f"extern/python312/python312.dll",
+  ]
+  
   if cfg == "Debug" or cfg == "ProfileD":
     if os.path.exists(assimp_debug):
       dlls.append(assimp_debug)
@@ -179,9 +181,8 @@ if __name__ == "__main__":
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
       # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "resources/script-config.toml"])
-      run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
-      # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
-      # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
       # run_project("driver", cfg, "other_driver", "math-physics.toml", args, args.verbose)
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")

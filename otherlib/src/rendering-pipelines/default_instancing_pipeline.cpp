@@ -5,9 +5,9 @@
 
 #include <minwindef.h>
 
-#include "core/formatting.hpp"
-#include "math/orthonormal_basis.hpp"
-#include "serialization/reflection.hpp"
+// #include "core/formatting.hpp"
+// #include "math/orthonormal_basis.hpp"
+// #include "serialization/reflection.hpp"
 
 #include "model/model.hpp"
 #include "renderer/camera.hpp"

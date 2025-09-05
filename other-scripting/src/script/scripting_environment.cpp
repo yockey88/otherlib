@@ -5,6 +5,8 @@
 
 #include "core/logger.hpp"
 
+#include "script/script_object.hpp"
+
 namespace other {
 
   void scripting_environment::initialize_script_environment() {
@@ -112,6 +114,22 @@ namespace other {
     CORE_LOG_DEBUG("[script {}] destroying .NET object [{}]", id, obj->name);
     dotnet.destroy_managed_object(obj->dotnet_object);
     obj->dotnet_object = nullptr;
+  }
+
+  void scripting_environment::attach_python_object(integer_t id, const std::string_view type_name) {
+    script_object* obj = get_object(id);
+    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+
+    if (obj->python_object != nullptr) {
+      CORE_LOG_ERROR("Script object with ID {} already has a Python object attached.", id);
+      return;
+    }
+
+    CORE_LOG_DEBUG("[script {}] creating Python object [{}] of type [{}]", id, obj->name, type_name);
+    // obj->python_object = python.create_script_context(type_name);
+  }
+
+  void scripting_environment::detach_python_object(integer_t id) {
   }
 
 }  // namespace other

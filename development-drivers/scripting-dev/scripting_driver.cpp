@@ -95,7 +95,7 @@ namespace other {
     integer_t object_id = script_system->create_object("MyObject");
 
     {
-      script_system->attach_dotnet_object(object_id, "TestDotnetObject");
+      script_system->attach_dotnet_object(object_id, "TestObject");
       script_system->call_dotnet_method<>(object_id, "DisplayInfo");
       int val = script_system->call_dotnet_method<int>(object_id, "GetValue", 42);
       CORE_LOG_DEBUG("Value returned from GetValue: {}", val);
@@ -137,10 +137,10 @@ namespace other {
       script_system->detach_dotnet_object(object_id);
     }
 
-    {
-      script_system->attach_python_object(object_id, "TestPythonObject");
-      script_system->call_python_method<>(object_id, "DisplayInfo");
-    }
+    // {
+    //   script_system->attach_python_object(object_id, "TestPythonObject");
+    //   script_system->call_python_method<>(object_id, "DisplayInfo");
+    // }
 
 #if 0
     std::ifstream file{ "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll" };

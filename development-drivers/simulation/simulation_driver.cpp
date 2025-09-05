@@ -47,8 +47,7 @@ namespace other {
 
     static constexpr simulation::evaluation_rules cgol_rules = {
       .birth_condition = [](simulation* sim, const simulation::cell& cell, const simulation::cell_neighbors& neighbors) -> bool {
-        size_t living_neighbors = neighbors.num_living_neighbors();
-        return living_neighbors == 3;
+        return neighbors.num_living_neighbors() == 3;
       },
       .death_condition = [](simulation* sim, const simulation::cell& cell, const simulation::cell_neighbors& neighbors) -> bool {
         size_t living_neighbors = neighbors.num_living_neighbors();

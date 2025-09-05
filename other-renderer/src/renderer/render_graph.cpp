@@ -249,6 +249,15 @@ namespace other {
 
     topological_sort = get_topological_sort(pass_graph);
     if (topological_sort.empty()) {
+      CORE_LOG_ERROR("Render graph is not a valid DAG, cannot execute.");
+      output_texture_handle = std::nullopt;
+      graph_valid = false;
+      return;
+    }
+    if (topological_sort.size() == 1 && topological_sort[0] == static_cast<natural_t>(-1)) {
+      CORE_LOG_WARN("Render graph is empty. An empty graph is valid, but if this is unexpected, please check your render passes.");
+      output_texture_handle = std::nullopt;
+      graph_valid = true;
       return;
     }
 
@@ -292,6 +301,12 @@ else
   */
 
   std::vector<natural_t> render_graph::get_topological_sort(const graph& g) {
+    /// if graph is empty (i.e. no passes), return a vector with -1 to signal that this
+    ///   is a valid but empty graph (the -1 is to differentiate from an invalid graph which returns {})
+    if (g.nodes.empty()) {
+      return { static_cast<natural_t>(-1) };
+    }
+
     std::vector<natural_t> sorted;
     sorted.reserve(g.nodes.size());
 

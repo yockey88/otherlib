@@ -196,6 +196,7 @@ namespace other {
   }
 
   void render_pipeline::pass_builder::end_pass() {
+    CORE_LOG_DEBUG("Finalizing pass [{}]", pass_name);
     (void)builder.end_pass();
   }
 
@@ -262,10 +263,9 @@ namespace other {
       CORE_LOG_ERROR("Render pipeline is invalid due to missing buffer bindings.");
     } else {
       valid = graph->is_valid();
-    }
-
-    if (!valid) {
-      CORE_LOG_ERROR("Render pipeline is not valid!");
+      if (!valid) {
+        CORE_LOG_ERROR("Render pipeline has necessary resources but render graph is not valid!");
+      }
     }
   }
 

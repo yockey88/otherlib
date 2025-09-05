@@ -40,11 +40,12 @@ namespace other {
       script_object* obj = get_object(id);
       OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
 
-      /// TODO: handle already attached object
-      // if (obj->dotnet_object != nullptr) {
-      //   CORE_LOG_WARN("Script object with ID {} already has a .NET object attached. Detaching previous object.", id);
-      //   dotnet.interop().destroy_object(obj->dotnet_object);
-      // }
+      // handle already attached object
+      if (obj->dotnet_object != nullptr) {
+        CORE_LOG_WARN("Script object with ID {} already has a .NET object attached. Detaching previous object.", id);
+        detach_dotnet_object(id);
+      }
+      OTHER_ASSERT(obj->dotnet_object == nullptr, "Script object with ID {} already has a .NET object attached.", id);
 
       CORE_LOG_DEBUG("[script {}] creating .NET object [{} {}]'", id, type_name, obj->name);
       obj->dotnet_object = dotnet.instantiate_managed_object(type_name, obj->name, std::forward<Args>(ctor_args)...);
@@ -124,8 +125,11 @@ namespace other {
     void detach_python_object(integer_t id);
     template <typename R = void, typename... Args>
       requires std::is_same_v<R, void> || std::is_pointer_v<R> || std::is_trivial_v<R>
-    R call_python_method(integer_t id, const std::string_view function_name, Args&&... ctor_args);
+    R call_python_method(integer_t id, const std::string_view function_name, Args&&... ctor_args) {
+      return default_return_value<R>();
+    }
     /// END PYTHON
+
     constexpr static inline size_t kMaxScriptObjects = memory_pool<script_object>::kMaxObjects;
 
    private:

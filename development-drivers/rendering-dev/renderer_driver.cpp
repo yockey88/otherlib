@@ -9,7 +9,6 @@
 
 #include "core/profiler.hpp"
 
-#include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
@@ -142,7 +141,6 @@ namespace other {
         renderer->begin_ui_frame();
         if (ImGui::Begin("Debug Window")) {
           if (ImGui::DragFloat3("Suzanne Color", glm::value_ptr(active_scene.get_component<render_component>(suzanne_id)->material.diffuse_color), 0.01f, 0.f, 1.0f)) {}
-
           if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
           if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}
         }
