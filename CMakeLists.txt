@@ -113,13 +113,16 @@ if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
 endif()
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib")
 
-message(STATUS "Other libraries path: ${OTHER_LIBRARIES_PATH}")
-
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
 
-set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet")
+set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
+                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include")
 set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
 set(DOTNET_LIBRARIES nethost)
+
+set(PYTHON_EXECUTABLE "C:\\Python313\\python")
+set(PYBIND11_FINDPYTHON ON) 
+set(PYBIND11_PYTHON_VERSION "3.13")
 
 find_package(Threads REQUIRED)
 

@@ -19,7 +19,9 @@ namespace other {
     if (plugin_path.empty()) {
       CORE_LOG_ERROR("Plugin path is empty");
       return nullptr;
-    } else if (!std::filesystem::exists(plugin_path)) {
+    }
+
+    if (!std::filesystem::exists(plugin_path)) {
       CORE_LOG_ERROR("Plugin path does not exist: {}", plugin_path);
       return nullptr;
     }

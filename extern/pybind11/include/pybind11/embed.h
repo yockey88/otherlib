@@ -37,31 +37,24 @@
                 return "Hello, World!";
             });
         }
-
-    The third and subsequent macro arguments are optional, and can be used to
-    mark the module as supporting various Python features.
-
-    - ``mod_gil_not_used()``
-    - ``multiple_interpreters::per_interpreter_gil()``
-    - ``multiple_interpreters::per_interprshareeter_gil()``
-
-    .. code-block:: cpp
-
-        PYBIND11_EMBEDDED_MODULE(example, m, py::mod_gil_not_used()) {
-            m.def("foo", []() {
-                return "Hello, Free-threaded World!";
-            });
-        }
-
  \endrst */
-PYBIND11_WARNING_PUSH
-PYBIND11_WARNING_DISABLE_CLANG("-Wgnu-zero-variadic-macro-arguments")
-#define PYBIND11_EMBEDDED_MODULE(name, variable, ...)                                             \
-    PYBIND11_MODULE_PYINIT(name, {}, ##__VA_ARGS__)                                               \
+#define PYBIND11_EMBEDDED_MODULE(name, variable)                                                  \
+    static ::pybind11::module_::module_def PYBIND11_CONCAT(pybind11_module_def_, name);           \
+    static void PYBIND11_CONCAT(pybind11_init_, name)(::pybind11::module_ &);                     \
+    static PyObject PYBIND11_CONCAT(*pybind11_init_wrapper_, name)() {                            \
+        auto m = ::pybind11::module_::create_extension_module(                                    \
+            PYBIND11_TOSTRING(name), nullptr, &PYBIND11_CONCAT(pybind11_module_def_, name));      \
+        try {                                                                                     \
+            PYBIND11_CONCAT(pybind11_init_, name)(m);                                             \
+            return m.ptr();                                                                       \
+        }                                                                                         \
+        PYBIND11_CATCH_INIT_EXCEPTIONS                                                            \
+    }                                                                                             \
+    PYBIND11_EMBEDDED_MODULE_IMPL(name)                                                           \
     ::pybind11::detail::embedded_module PYBIND11_CONCAT(pybind11_module_, name)(                  \
-        PYBIND11_TOSTRING(name), PYBIND11_CONCAT(PyInit_, name));                                 \
-    PYBIND11_MODULE_EXEC(name, variable)
-PYBIND11_WARNING_POP
+        PYBIND11_TOSTRING(name), PYBIND11_CONCAT(pybind11_init_impl_, name));                     \
+    void PYBIND11_CONCAT(pybind11_init_, name)(::pybind11::module_                                \
+                                               & variable) // NOLINT(bugprone-macro-parentheses)
 
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
 PYBIND11_NAMESPACE_BEGIN(detail)
@@ -199,9 +192,6 @@ inline void initialize_interpreter(bool init_signal_handlers = true,
     config.install_signal_handlers = init_signal_handlers ? 1 : 0;
     initialize_interpreter(&config, argc, argv, add_program_dir_to_path);
 #endif
-
-    // There is exactly one interpreter alive currently.
-    detail::get_num_interpreters_seen() = 1;
 }
 
 /** \rst
@@ -243,31 +233,23 @@ inline void finalize_interpreter() {
     // Get the internals pointer (without creating it if it doesn't exist).  It's possible for the
     // internals to be created during Py_Finalize() (e.g. if a py::capsule calls `get_internals()`
     // during destruction), so we get the pointer-pointer here and check it after Py_Finalize().
-    auto *&internals_ptr_ptr = detail::get_internals_pp<detail::internals>();
-    auto *&local_internals_ptr_ptr = detail::get_internals_pp<detail::local_internals>();
-    {
-        dict state_dict = detail::get_python_state_dict();
-        internals_ptr_ptr = detail::get_internals_pp_from_capsule_in_state_dict<detail::internals>(
-            state_dict, PYBIND11_INTERNALS_ID);
-        local_internals_ptr_ptr
-            = detail::get_internals_pp_from_capsule_in_state_dict<detail::local_internals>(
-                state_dict, detail::get_local_internals_id());
+    detail::internals **internals_ptr_ptr = detail::get_internals_pp();
+    // It could also be stashed in state_dict, so look there too:
+    if (object internals_obj
+        = get_internals_obj_from_state_dict(detail::get_python_state_dict())) {
+        internals_ptr_ptr = detail::get_internals_pp_from_capsule(internals_obj);
     }
+    // Local internals contains data managed by the current interpreter, so we must clear them to
+    // avoid undefined behaviors when initializing another interpreter
+    detail::get_local_internals().registered_types_cpp.clear();
+    detail::get_local_internals().registered_exception_translators.clear();
 
     Py_Finalize();
 
     if (internals_ptr_ptr) {
-        internals_ptr_ptr->reset();
+        delete *internals_ptr_ptr;
+        *internals_ptr_ptr = nullptr;
     }
-
-    // Local internals contains data managed by the current interpreter, so we must clear them to
-    // avoid undefined behaviors when initializing another interpreter
-    if (local_internals_ptr_ptr) {
-        local_internals_ptr_ptr->reset();
-    }
-
-    // We know there is no interpreter alive now, so we can reset the count
-    detail::get_num_interpreters_seen() = 0;
 }
 
 /** \rst

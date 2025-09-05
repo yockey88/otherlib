@@ -16,9 +16,14 @@ namespace other {
 
     dotnet_load_context = dotnet.create_assembly_context("Other-DotNet-Assembly-Context");
     OTHER_ASSERT(dotnet_load_context != nullptr, "Failed to create assembly context for .NET assemblies.");
+
+    python.load_host();
+    python.call_entry_point();
   }
 
   void scripting_environment::shutdown_script_environment() {
+    python.unload_host();
+
     {
       natural_t context_handle = dotnet_load_context ? dotnet_load_context->get_handle() : 0;
       dotnet_load_context = nullptr;

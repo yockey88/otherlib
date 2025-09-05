@@ -36,3 +36,5 @@ assimp-vc143-mtd.pdb
 assimp-vc143-mt.pdb
 assimp-vc143-mtd.exp
 assimp-vc143-mt.exp
+
+extern/python312

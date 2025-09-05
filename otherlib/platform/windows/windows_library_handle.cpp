@@ -14,6 +14,7 @@ namespace other {
   void windows_library_handle::load() {
     std::wstring wpath = std::wstring(std::begin(filepath), std::end(filepath));
 
+    CORE_LOG_DEBUG("Loading library '{}' [cwd : {}]", filepath, std::filesystem::current_path().string());
     handle = LoadLibraryW(wpath.c_str());
     if (handle == nullptr) {
       CORE_LOG_ERROR("Failed to load library '{}'", filepath);

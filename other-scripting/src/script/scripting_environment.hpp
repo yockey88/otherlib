@@ -12,6 +12,7 @@
 
 #include "dotnet/dotnet_object.hpp"
 #include "dotnet/host.hpp"
+#include "python/interpreter.hpp"
 
 namespace other {
 
@@ -28,6 +29,7 @@ namespace other {
 
     script_object* get_object(integer_t id);
 
+    /// DOTNET
     ref<assembly> load_dotnet_module(const std::string_view module_path);
     void unload_dotnet_module(ref<assembly> module_id);
 
@@ -115,7 +117,15 @@ namespace other {
     }
 
     void detach_dotnet_object(integer_t id);
+    /// END DOTNET
 
+    /// PYTHON
+    void attach_python_object(integer_t id, const std::string_view type_name);
+    void detach_python_object(integer_t id);
+    template <typename R = void, typename... Args>
+      requires std::is_same_v<R, void> || std::is_pointer_v<R> || std::is_trivial_v<R>
+    R call_python_method(integer_t id, const std::string_view function_name, Args&&... ctor_args);
+    /// END PYTHON
     constexpr static inline size_t kMaxScriptObjects = memory_pool<script_object>::kMaxObjects;
 
    private:
@@ -126,6 +136,8 @@ namespace other {
 
     assembly_context* dotnet_load_context = nullptr;
     dotnet_host dotnet;
+
+    python_interpreter python;
 
     std::array<live_script_object, kMaxScriptObjects> live_objects = {};
     ref<memory_pool<script_object>> script_object_pool = nullptr;

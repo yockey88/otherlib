@@ -64,7 +64,7 @@ IncludeCategories:
     Priority:        4
   - Regex:           '"((renderer|model|gpu_resource|script|object)\/)'
     Priority:        5
-  - Regex:           '"((scene|dotnet)\/)'
+  - Regex:           '"((scene|dotnet|python|lua)\/)'
     Priority:        6
   - Regex:           '"((terminal|rendering-pipelines|driver)\/)'
     Priority:        7

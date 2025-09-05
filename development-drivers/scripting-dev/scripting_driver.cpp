@@ -93,47 +93,54 @@ namespace other {
     OTHER_ASSERT(script_system != nullptr, "Scripting environment subsystem is not initialized.");
 
     integer_t object_id = script_system->create_object("MyObject");
-    script_system->attach_dotnet_object(object_id, "TestObject");
 
-    script_system->call_dotnet_method<>(object_id, "DisplayInfo");
-    int val = script_system->call_dotnet_method<int>(object_id, "GetValue", 42);
-    CORE_LOG_DEBUG("Value returned from GetValue: {}", val);
+    {
+      script_system->attach_dotnet_object(object_id, "TestDotnetObject");
+      script_system->call_dotnet_method<>(object_id, "DisplayInfo");
+      int val = script_system->call_dotnet_method<int>(object_id, "GetValue", 42);
+      CORE_LOG_DEBUG("Value returned from GetValue: {}", val);
 
-    int fval = script_system->get_dotnet_field<int>(object_id, "field_value");
-    CORE_LOG_DEBUG("Field value: {}", fval);
-    script_system->set_dotnet_field<int>(object_id, "field_value", 100);
-    fval = script_system->get_dotnet_field<int>(object_id, "field_value");
-    CORE_LOG_DEBUG("Updated field value: {}", fval);
+      int fval = script_system->get_dotnet_field<int>(object_id, "field_value");
+      CORE_LOG_DEBUG("Field value: {}", fval);
+      script_system->set_dotnet_field<int>(object_id, "field_value", 100);
+      fval = script_system->get_dotnet_field<int>(object_id, "field_value");
+      CORE_LOG_DEBUG("Updated field value: {}", fval);
 
-    fval = script_system->get_dotnet_property<int>(object_id, "PropertyValue");
-    CORE_LOG_DEBUG("Property value: {}", fval);
-    script_system->set_dotnet_field<int>(object_id, "PropertyValue", 200);
-    fval = script_system->get_dotnet_property<int>(object_id, "PropertyValue");
-    CORE_LOG_DEBUG("Updated property value: {}", fval);
+      fval = script_system->get_dotnet_property<int>(object_id, "PropertyValue");
+      CORE_LOG_DEBUG("Property value: {}", fval);
+      script_system->set_dotnet_field<int>(object_id, "PropertyValue", 200);
+      fval = script_system->get_dotnet_property<int>(object_id, "PropertyValue");
+      CORE_LOG_DEBUG("Updated property value: {}", fval);
 
-    std::string str_field = script_system->get_dotnet_field<std::string>(object_id, "field_string");
-    CORE_LOG_DEBUG("Field string: {}", str_field);
+      std::string str_field = script_system->get_dotnet_field<std::string>(object_id, "field_string");
+      CORE_LOG_DEBUG("Field string: {}", str_field);
 
-    script_system->set_dotnet_field<std::string>(object_id, "field_string", "New String Value");
-    str_field = script_system->get_dotnet_field<std::string>(object_id, "field_string");
-    CORE_LOG_DEBUG("Updated field string: {}", str_field);
+      script_system->set_dotnet_field<std::string>(object_id, "field_string", "New String Value");
+      str_field = script_system->get_dotnet_field<std::string>(object_id, "field_string");
+      CORE_LOG_DEBUG("Updated field string: {}", str_field);
 
-    str_field = script_system->get_dotnet_property<std::string>(object_id, "PropertyString");
-    CORE_LOG_DEBUG("Property string: {}", str_field);
+      str_field = script_system->get_dotnet_property<std::string>(object_id, "PropertyString");
+      CORE_LOG_DEBUG("Property string: {}", str_field);
 
-    script_system->set_dotnet_field<std::string>(object_id, "PropertyString", "New Property String Value");
-    str_field = script_system->get_dotnet_property<std::string>(object_id, "PropertyString");
-    CORE_LOG_DEBUG("Updated property string: {}", str_field);
+      script_system->set_dotnet_field<std::string>(object_id, "PropertyString", "New Property String Value");
+      str_field = script_system->get_dotnet_property<std::string>(object_id, "PropertyString");
+      CORE_LOG_DEBUG("Updated property string: {}", str_field);
 
-    bool has_attr = script_system->dotnet_object_has_attribute(object_id, "TestAttrAttribute");
-    CORE_LOG_DEBUG("Object has TestAttr: {}", has_attr);
+      bool has_attr = script_system->dotnet_object_has_attribute(object_id, "TestAttrAttribute");
+      CORE_LOG_DEBUG("Object has TestAttr: {}", has_attr);
 
-    int attr = script_system->get_dotnet_attribute<int>(object_id, "TestAttrAttribute", "Value");
-    CORE_LOG_DEBUG("Attribute TestAttr has value: {}", attr);
+      int attr = script_system->get_dotnet_attribute<int>(object_id, "TestAttrAttribute", "Value");
+      CORE_LOG_DEBUG("Attribute TestAttr has value: {}", attr);
 
-    // script_system->reload_dotnet_environment();
+      // script_system->reload_dotnet_environment();
 
-    script_system->detach_dotnet_object(object_id);
+      script_system->detach_dotnet_object(object_id);
+    }
+
+    {
+      script_system->attach_python_object(object_id, "TestPythonObject");
+      script_system->call_python_method<>(object_id, "DisplayInfo");
+    }
 
 #if 0
     std::ifstream file{ "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll" };
