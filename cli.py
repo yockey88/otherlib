@@ -71,8 +71,8 @@ def copy_dlls(cfg, dll_cfg):
       dest = f"build/driver/{cfg}/"
       shutil.copy(dll, dest)
       
-      # dest = f"build/other-terminal/{cfg}/"
-      # shutil.copy(dll, dest)
+      dest = f"build/other-terminal/src/{cfg}/"
+      shutil.copy(dll, dest)
       
       dest = f"build/scratch/{cfg}/"
       shutil.copy(dll, dest)
@@ -93,8 +93,10 @@ def run_subprocess(args):
     print(f"Error running command: {e}")
     sys.exit(1)
 
-def run_project(out_dir, cfg, name, config_file, args, verbose = False):
+def run_project(out_dir, cfg, name, config_file, args, verbose = False, extra_args=None):
   run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}"]
+  if extra_args:
+    run_command.extend(extra_args)
   if verbose:
     run_command.append("--verbose")
   run_subprocess(run_command)
@@ -105,7 +107,8 @@ def validate_args(args, parser):
       and not args.run and not args.run_scratch \
       and not args.run_terminal and not args.run_tests \
       and not args.compile_serialization_schema \
-      and not args.compile_object and not args.generate_cs_bindings:
+      and not args.compile_object and not args.generate_cs_bindings \
+      and not args.run_test_suite:
     parser.print_help()
     sys.exit(1)
 
@@ -119,6 +122,7 @@ if __name__ == "__main__":
   parser.add_argument("--run-scratch", "-rs", action="store_true", help="Run the scratch application.")
   parser.add_argument("--run-terminal", "-rt", action="store_true", help="Run the other terminal application.")
   parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
+  parser.add_argument("--run-test-suite", "-ts", nargs=1, type=str, metavar="TEST_FILTER", help="Runs the test suites by passing the argument to GTests's --gtest-filter=<arg> flag.")
   parser.add_argument("--compile-serialization-schema", "-css", type=str, help="Compile the serialization schema.")
   parser.add_argument("--compile-object", "-co", nargs = 2, type=str, metavar=("SCHEMA_FILE", "OBJECT_FILE"), help="Compile a binary object using the <object_file> and the <schema_file>")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
@@ -180,9 +184,12 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "resources/script-config.toml"])
-      # run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
-      run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
+      # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "script-config.toml"])
+      # run_project("development-drivers", cfg, "editor_dev", "dev-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
+      # run_project("other-terminal/src", cfg , "other-terminal", "term-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "rendering_dev", "rendering-dev-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
       # run_project("driver", cfg, "other_driver", "math-physics.toml", args, args.verbose)
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
@@ -193,6 +200,10 @@ if __name__ == "__main__":
     elif args.run_tests:
       print("Running tests...")
       run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose)
+    elif args.run_test_suite is not None and len(args.run_test_suite) == 1:
+      test_filter = args.run_test_suite[0]
+      print(f"Running test suite with filter: {test_filter}")
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=[f"--gtest_filter={test_filter}"])
       
   except subprocess.CalledProcessError as e:
     print(f"Error: {e}")

@@ -10,9 +10,10 @@
 #include "math/bounding_box.hpp"
 
 #include "model/vertex.hpp"
+#include "object/scene_object.hpp"
+#include "object/transform.hpp"
 
 #include "glm/fwd.hpp"
-#include "object/scene_object.hpp"
 
 namespace other {
 
@@ -45,12 +46,30 @@ namespace other {
       std::vector<object_tag> tags = {};
     };
 
+    scene_tree();
     scene_tree(scene* s);
+
+    scene_tree(scene_tree&&);
+    scene_tree& operator=(scene_tree&&);
+
+    scene_tree(const scene_tree&) = delete;
+    scene_tree& operator=(const scene_tree&) = delete;
+
     ~scene_tree();
 
     scene_object& root_object();
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
+
+    scene_object& add_object(scene_object* object, const transform& transformation, scene_object* parent_object = nullptr);
+
+    scene_object* get_parent(natural_t id);
+    const scene_object* get_parent(natural_t id) const;
+    scene_object* get_parent(scene_object* object);
+    const scene_object* get_parent(const scene_object* object) const;
+
     void destroy_object(natural_t id);
+
+    std::vector<uint64_t> get_all_object_ids() const;
 
     size_t get_object_count() const;
 

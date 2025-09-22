@@ -41,7 +41,6 @@ namespace other {
   ///         look into using the fields defined in the header to make it better
 
   void message_spec::write_header(std::vector<uint8_t>& data, const message_header& header) {
-    data.resize(2);
     data[0] = static_cast<uint8_t>(header.category);
     data[1] = static_cast<uint8_t>(header.id);
   }
@@ -54,7 +53,7 @@ namespace other {
     acknowledgement msg;
     msg.acked_header.category = static_cast<message_category>(header[message_fields[MSG_CATEGORY_FIELD].name].AsUInt8());
     msg.acked_header.id = static_cast<message_id>(header[message_fields[MSG_ID_FIELD].name].AsUInt8());
-    msg.ack_nack = map[message_fields[STATUS_FIELD].name].AsUInt8();
+    msg.ack_nack = map[message_fields[ACK_NACK_FIELD].name].AsUInt8();
 
     return msg;
   }
@@ -71,6 +70,9 @@ namespace other {
     builder.Finish();
 
     std::vector<uint8_t> data;
+    auto& buffer = builder.GetBuffer();
+    data.resize(2 + buffer.size());
+
     write_header(data, { category, id });
     data.insert(data.end(), builder.GetBuffer().begin(), builder.GetBuffer().end());
 
@@ -108,8 +110,11 @@ namespace other {
     builder.Finish();
 
     std::vector<uint8_t> data;
+    auto& buffer = builder.GetBuffer();
+    data.resize(2 + buffer.size());
+
     write_header(data, { category, id });
-    data.insert(data.end(), builder.GetBuffer().begin(), builder.GetBuffer().end());
+    data.insert(data.end(), buffer.begin(), buffer.end());
 
     return data;
   }
@@ -143,8 +148,11 @@ namespace other {
     builder.Finish();
 
     std::vector<uint8_t> data;
+    auto& buffer = builder.GetBuffer();
+    data.resize(2 + buffer.size());
+
     write_header(data, { category, id });
-    data.insert(data.end(), builder.GetBuffer().begin(), builder.GetBuffer().end());
+    data.insert(data.end(), buffer.begin(), buffer.end());
 
     return data;
   }
@@ -178,8 +186,11 @@ namespace other {
     builder.Finish();
 
     std::vector<uint8_t> data;
+    auto& buffer = builder.GetBuffer();
+    data.resize(2 + buffer.size());
+
     write_header(data, { category, id });
-    data.insert(data.end(), builder.GetBuffer().begin(), builder.GetBuffer().end());
+    data.insert(data.end(), buffer.begin(), buffer.end());
 
     return data;
   }
@@ -191,11 +202,46 @@ namespace other {
   }
 
   other_command_msg other_command_msg::parse(const std::vector<uint8_t>& data) {
-    return {};
+    auto root = flexbuffers::GetRoot(data);
+    auto map = root.AsMap();
+
+    other_command_msg msg;
+    msg.cmd.opcode = static_cast<op_code>(map[message_fields[OPCODE_FIELD].name].AsUInt8());
+    auto argc = map[message_fields[ARGC_FIELD].name].AsUInt8();
+    if (argc > 0) {
+      auto argv = map[message_fields[ARGV_FIELD].name].AsTypedVector();
+      msg.args.reserve(argc);
+      for (size_t i = 0; i < argc; ++i) {
+        msg.args.push_back(static_cast<address_t>(argv[i].AsUInt64()));
+      }
+    }
+    return msg;
   }
 
   std::vector<uint8_t> other_command_msg::build() {
-    return {};
+    flexbuffers::Builder builder;
+    builder.Map([&]() {
+      builder.UInt(message_fields[OPCODE_FIELD].name, static_cast<uint8_t>(cmd.opcode));
+      if (!args.empty()) {
+        builder.UInt(message_fields[ARGC_FIELD].name, args.size());
+        builder.Vector(message_fields[ARGV_FIELD].name, [&]() {
+          for (const auto& arg : args) {
+            builder.UInt(arg);
+          }
+        });
+      } else {
+        builder.UInt(message_fields[ARGC_FIELD].name, 0);
+      }
+    });
+    builder.Finish();
+
+    std::vector<uint8_t> data;
+    auto& buffer = builder.GetBuffer();
+    data.resize(2 + buffer.size());
+
+    write_header(data, { category, id });
+    data.insert(data.end(), buffer.begin(), buffer.end());
+    return data;
   }
 
   other_command_block_msg other_command_block_msg::parse(const std::vector<uint8_t>& data) {
@@ -204,6 +250,34 @@ namespace other {
 
   std::vector<uint8_t> other_command_block_msg::build() {
     return {};
+  }
+
+  error_alert_msg error_alert_msg::parse(const std::vector<uint8_t>& data) {
+    auto root = flexbuffers::GetRoot(data);
+    auto map = root.AsMap();
+
+    error_alert_msg msg;
+    msg.error_code = map[message_fields[ERROR_CODE_FIELD].name].AsUInt16();
+    msg.error_message = map[message_fields[ERROR_MESSAGE_FIELD].name].AsString().str();
+
+    return msg;
+  }
+
+  std::vector<uint8_t> error_alert_msg::build() {
+    flexbuffers::Builder builder;
+    builder.Map([&]() {
+      builder.UInt(message_fields[ERROR_CODE_FIELD].name, error_code);
+      builder.String(message_fields[ERROR_MESSAGE_FIELD].name, error_message);
+    });
+    builder.Finish();
+
+    std::vector<uint8_t> data;
+    auto& buffer = builder.GetBuffer();
+    data.resize(2 + buffer.size());
+
+    write_header(data, { category, id });
+    data.insert(data.end(), buffer.begin(), buffer.end());
+    return data;
   }
 
 }  // namespace other

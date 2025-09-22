@@ -4,12 +4,19 @@
 #include "scene/scene_tree.hpp"
 
 #include "model/vertex.hpp"
+#include "object/scene_object.hpp"
 
 #include "scene/scene.hpp"
 
-#include "object/scene_object.hpp"
-
 namespace other {
+
+  scene_tree::scene_tree()
+      : scene_ptr(nullptr), objects(make_ref<memory_pool<scene_object>>()), nodes(make_scope<std::array<node, kMaxNodes>>()) {
+    OTHER_ASSERT(objects != nullptr, "Failed to allocate memory pool for scene objects.");
+
+    root = create_object();
+    OTHER_ASSERT(root != nullptr, "Failed to create root node in scene tree.");
+  }
 
   scene_tree::scene_tree(scene* s)
       : scene_ptr(s), objects(make_ref<memory_pool<scene_object>>()), nodes(make_scope<std::array<node, kMaxNodes>>()) {
@@ -19,21 +26,44 @@ namespace other {
     OTHER_ASSERT(root != nullptr, "Failed to create root node in scene tree.");
   }
 
-  scene_tree::~scene_tree() {
-    OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
-    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+  scene_tree::scene_tree(scene_tree&& other) {
+    *this = std::move(other);
+  }
 
+  scene_tree& scene_tree::operator=(scene_tree&& other) {
+    this->scene_ptr = other.scene_ptr;
+    other.scene_ptr = nullptr;
+
+    this->objects = other.objects;
+    other.objects = nullptr;
+
+    this->nodes = std::move(other.nodes);
+    other.nodes = nullptr;
+
+    this->root = other.root;
+    other.root = nullptr;
+
+    this->num_objects = other.num_objects;
+    other.num_objects = 0;
+
+    return *this;
+  }
+
+  scene_tree::~scene_tree() {
     if (objects != nullptr) {
       objects->clear();
       objects = nullptr;
     }
 
-    // Clear nodes
-    for (auto& node : *nodes) {
-      node.parent = nullptr;
-      node.id = 0;
-      node.object = nullptr;
-      node.children.clear();
+    if (nodes != nullptr) {
+      // Clear nodes
+      for (auto& node : *nodes) {
+        node.parent = nullptr;
+        node.id = 0;
+        node.object = nullptr;
+        node.children.clear();
+      }
+      nodes = nullptr;
     }
 
     root = nullptr;  // Clear root pointer
@@ -68,6 +98,66 @@ namespace other {
     return *new_node->object;
   }
 
+  scene_object& scene_tree::add_object(scene_object* object, const transform& transformation, scene_object* parent_object) {
+    PROFILE_SECTION("scene_tree::add_object");
+
+    OTHER_ASSERT(object != nullptr, "Cannot add a null scene object.");
+    OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null, cannot add object.");
+    OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+
+    node* parent_node = nullptr;
+    if (parent_object != nullptr) {
+      parent_node = node_from_scene_object(parent_object);
+      OTHER_ASSERT(parent_node != nullptr, "Parent object not found in scene tree.");
+    }
+
+    node* new_node = create_object(parent_node);
+    OTHER_ASSERT(new_node != nullptr, "Failed to create new node in scene tree.");
+
+    *new_node->object = *object;
+    scene_ptr->register_object(new_node->object, object->name, transformation);
+    ++num_objects;
+
+    CORE_LOG_DEBUG("Added scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
+    return *new_node->object;
+  }
+
+  scene_object* scene_tree::get_parent(natural_t id) {
+    PROFILE_SECTION("scene_tree::get_parent");
+    OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+    OTHER_ASSERT(id < kMaxNodes, "ID out of bounds for scene tree nodes.");
+
+    node* target_node = node_at(id);
+    OTHER_ASSERT(target_node != nullptr, "Node with ID {} not found in scene tree.", id);
+
+    if (target_node->parent != nullptr && target_node->parent->object != nullptr) {
+      return target_node->parent->object;
+    }
+    return nullptr;
+  }
+
+  const scene_object* scene_tree::get_parent(natural_t id) const {
+    return const_cast<scene_tree*>(this)->get_parent(id);
+  }
+
+  scene_object* scene_tree::get_parent(scene_object* object) {
+    PROFILE_SECTION("scene_tree::get_parent");
+    if (object == nullptr) {
+      return nullptr;
+    }
+    return get_parent(object->id);
+  }
+
+  const scene_object* scene_tree::get_parent(const scene_object* object) const {
+    PROFILE_SECTION("scene_tree::get_parent_const");
+    if (object == nullptr) {
+      return nullptr;
+    }
+    return get_parent(object->id);
+  }
+
   void scene_tree::destroy_object(natural_t id) {
     PROFILE_SECTION("scene_tree::destroy_object");
 
@@ -79,6 +169,19 @@ namespace other {
     OTHER_ASSERT(target_node != nullptr, "Node with ID {} not found in scene tree.", id);
 
     destroy_object(target_node);
+  }
+
+  std::vector<uint64_t> scene_tree::get_all_object_ids() const {
+    PROFILE_SECTION("scene_tree::get_all_object_ids");
+
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+    std::vector<uint64_t> ids;
+    for (const auto& node : *nodes) {
+      if (node.object != nullptr && node.object->id != 0) {
+        ids.push_back(node.object->id);
+      }
+    }
+    return ids;
   }
 
   size_t scene_tree::get_object_count() const {

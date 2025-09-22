@@ -41,8 +41,22 @@ namespace other {
       return std::launder(static_cast<T*>(memory));
     }
 
-    void* allocate_block(size_t size) {
-      return arena::allocate(size);
+    T* allocate_block(size_t size) {
+      T* ptr = (T*)arena::allocate(size * sizeof(T));
+      for (size_t i = 0; i < size; i++) {
+        new (&ptr[i]) T();
+      }
+      return ptr;
+    }
+    void free_block(T* ptr, size_t size) {
+      if (ptr != nullptr) {
+        std::destroy_at(ptr);
+      }
+      if (override_arena != nullptr) {
+        override_arena->free(ptr, size * sizeof(T));
+      } else {
+        arena::free(ptr, size * sizeof(T));
+      }
     }
 
     void free(T* ptr) {

@@ -36,3 +36,12 @@ add_static_driver(simulation_driver
 add_dynamic_driver(scripting_dev
   scripting-dev/scripting_driver.cpp
 )
+
+add_static_driver(editor_dev
+  editor-dev/editor.cpp
+  editor-dev/main.cpp
+)
+add_static_driver(runtime_dev
+  runtime-dev/runtime.cpp
+  runtime-dev/main.cpp
+)

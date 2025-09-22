@@ -17,45 +17,45 @@ namespace other {
 
   using namespace std::literals::string_view_literals;
 
-  // template <typename... Args>
-  // static inline void println(const std::string_view format, Args&&... args) {
-  //   std::println(std::cout, format, std::forward<Args>(args)...);
-  // }
+  template <typename... Args>
+  static inline void println(const std::string_view format, Args&&... args) {
+    std::println(std::cout, format, std::forward<Args>(args)...);
+  }
 
-  // template <>
-  // inline void println(const std::string_view line) {
-  //   println(line);
-  // }
+  template <>
+  inline void println(const std::string_view line) {
+    println(line);
+  }
 
-  // template <typename... Args>
-  // constexpr static inline auto fmtstr(const std::string_view format, Args&&... args) {
-  //   return std::format(std::format("{}", format), std::forward<Args>(args)...);
-  // }
+  template <typename... Args>
+  static inline auto fmtstr(const std::string_view format, Args&&... args) {
+    return std::format(std::format("{}", format), std::forward<Args>(args)...);
+  }
 
-  // template <>
-  // constexpr inline auto fmtstr(const std::string_view line) {
-  //   return std::string{ line };
-  // }
+  template <>
+  inline auto fmtstr(const std::string_view line) {
+    return std::string{ line };
+  }
 
-  // template <typename... Args>
-  // static inline auto fmterr(const std::string_view format, Args&&... args) {
-  //   /// TODO: something else...
-  //   return fmtstr(format, std::forward<Args>(args)...);
-  // }
+  template <typename... Args>
+  static inline auto fmterr(const std::string_view format, Args&&... args) {
+    /// TODO: something else...
+    return fmtstr(format, std::forward<Args>(args)...);
+  }
 
-  // template <>
-  // inline auto fmterr(const std::string_view line) {
-  //   return fmtstr(line);
-  // }
+  template <>
+  inline auto fmterr(const std::string_view line) {
+    return fmtstr(line);
+  }
 
-  // template <typename T>
-  // static inline auto fmtopt(const std::string_view format, const opt<T>& opt) {
-  //   if (opt.has_value()) {
-  //     return fmtstr(format, opt.value());
-  //   } else {
-  //     return fmtstr("ERR");
-  //   }
-  // }
+  template <typename T>
+  static inline auto fmtopt(const std::string_view format, const opt<T>& opt) {
+    if (opt.has_value()) {
+      return fmtstr(format, opt.value());
+    } else {
+      return fmtstr("ERR");
+    }
+  }
 
 }  // namespace other
 

@@ -99,7 +99,7 @@ namespace other {
       return;
     }
 
-    auto sim = GetSimulation(buffer.data());
+    const auto* sim = GetSimulation(buffer.data());
     if (sim == nullptr) {
       invalidate();
       CORE_LOG_ERROR("Failed to parse simulation config file: {}", path.string());

@@ -10,6 +10,8 @@ set_target_properties(OtherCs PROPERTIES
 target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/debug/logger.cs
 
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/attribute/serializable-field.cs
+
   ${CMAKE_CURRENT_SOURCE_DIR}/src/object/other-object.cs
 )
 target_link_libraries(OtherCs PUBLIC OtherCsBindings)

@@ -5,12 +5,16 @@
 
 #include <cstdint>
 
+#include "core/logger.hpp"
 #include "core/profiler.hpp"
 
-#include "object/script_component.hpp"
-#include "object/transform.hpp"
 #include "renderer/camera.hpp"
 #include "script/scripting_environment.hpp"
+
+#include "object/object_serialization_data.hpp"
+#include "object/render_component.hpp"
+#include "object/script_component.hpp"
+#include "object/transform.hpp"
 
 #include "entt/entity/fwd.hpp"
 
@@ -32,6 +36,28 @@ namespace other {
     registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
   }
 
+  scene::scene(const std::string& name)
+      : scene() {
+    this->name = name;
+    this->id = FNV(name);
+  }
+
+  scene::scene(scene&& other) {
+    *this = std::move(other);
+  }
+
+  scene& scene::operator=(scene&& other) {
+    this->registry = std::move(other.registry);
+    this->tree = std::move(other.tree);
+    this->name = std::move(other.name);
+    this->id = other.id;
+
+    other.id = 0;
+    other.name = "Untitled Scene";
+
+    return *this;
+  }
+
   scene::~scene() {
     PROFILE_SECTION("scene::~scene");
 
@@ -39,6 +65,10 @@ namespace other {
     // registry.on_update<script_component>().disconnect<&scene::on_update_script_component>(this);
     registry.on_destroy<script_component>().disconnect<&scene::on_destroy_script_component>(this);
     registry.clear();
+  }
+
+  scene scene::create_scene(const std::string& name) {
+    return scene(name);
   }
 
   scene_object& scene::root_object() {
@@ -51,6 +81,12 @@ namespace other {
     return *root_node->object;
   }
 
+  scene_object& scene::create_object(scene_object* object) {
+    PROFILE_SECTION("scene::create_object_from_existing");
+    OTHER_ASSERT(object != nullptr, "Cannot create a scene object from a null pointer.");
+    return tree.create_object(object->name, glm::vec3(0.f), nullptr);
+  }
+
   scene_object& scene::create_object(const std::string& name, scene_object* parent_object) {
     return create_object(name, glm::vec3(0.f), parent_object);
   }
@@ -58,6 +94,115 @@ namespace other {
   scene_object& scene::create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object) {
     PROFILE_SECTION("scene::create_object");
     return tree.create_object(name, world_position, parent_object);
+  }
+
+  scene_object& scene::add_object(scene_object* object, const transform& transformation, scene_object* parent_object) {
+    PROFILE_SECTION("scene::add_object");
+    return tree.add_object(object, transformation, parent_object);
+  }
+
+  void scene::add_objects(const std::span<serialization::parsed_scene_object> objects) {
+    PROFILE_SECTION("scene::add_objects");
+    for (serialization::parsed_scene_object& obj : objects) {
+      add_object(&obj.object, obj.obj_transform, &get_object(obj.parent_id));
+
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Failed to retrieve scripting environment");
+
+      script_component* comp = get_component<script_component>(&obj.object);
+      OTHER_ASSERT(comp != nullptr, "Failed to retrieve script component for object w/ id {}", obj.object.id);
+
+      for (const auto& attached_script : obj.attached_scripts) {
+        switch (attached_script.type) {
+          case serialization::parsed_scene_object::attached_script::DOTNET:
+            env->attach_dotnet_object(comp->script_object_id, attached_script.name);
+            break;
+
+          case serialization::parsed_scene_object::attached_script::PYTHON:
+            env->attach_python_object(comp->script_object_id, attached_script.name);
+            break;
+
+          case serialization::parsed_scene_object::attached_script::LUA:
+            OTHER_ASSERT(false, "LUA unimplemented!");
+            break;
+
+          default:
+            OTHER_ASSERT(false, "UNKNOWN script type!");
+            break;
+        }
+
+        script_object* script_obj = env->get_object(comp->script_object_id);
+        switch (attached_script.type) {
+          case serialization::parsed_scene_object::attached_script::DOTNET:
+            script_obj->dotnet_object->load_from_bytes(attached_script.data);
+            break;
+
+          case serialization::parsed_scene_object::attached_script::PYTHON:
+            // script_obj->python_object->load_from_bytes(attached_script.data);
+            break;
+
+          case serialization::parsed_scene_object::attached_script::LUA:
+            OTHER_ASSERT(false, "LUA unimplemented!");
+            break;
+
+          default:
+            OTHER_ASSERT(false, "UNKNOWN script type!");
+            break;
+        }
+      }
+    }
+  }
+
+  scene_object* scene::get_parent(natural_t id) {
+    PROFILE_SECTION("scene::get_parent");
+    return tree.get_parent(id);
+  }
+
+  const scene_object* scene::get_parent(natural_t id) const {
+    PROFILE_SECTION("scene::get_parent_const");
+    return const_cast<scene*>(this)->get_parent(id);
+  }
+
+  scene_object* scene::get_parent(scene_object* object) {
+    PROFILE_SECTION("scene::get_parent");
+    if (object == nullptr) {
+      return nullptr;
+    }
+    return get_parent(object->id);
+  }
+
+  const scene_object* scene::get_parent(const scene_object* object) const {
+    PROFILE_SECTION("scene::get_parent_const");
+    if (object == nullptr) {
+      return nullptr;
+    }
+    return get_parent(object->id);
+  }
+
+  std::vector<uint64_t> scene::get_children_ids(natural_t id) const {
+    PROFILE_SECTION("scene::get_children_ids");
+    const scene_tree::node* node = tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    std::vector<uint64_t> children_ids;
+    for (const scene_tree::node* child : node->children) {
+      if (child != nullptr && child->object != nullptr) {
+        children_ids.push_back(child->object->id);
+      }
+    }
+    return children_ids;
+  }
+
+  std::vector<uint64_t> scene::get_children_ids(const scene_object* object) const {
+    PROFILE_SECTION("scene::get_children_ids");
+    if (object == nullptr) {
+      return {};
+    }
+    return get_children_ids(object->id);
+  }
+
+  std::vector<uint64_t> scene::get_all_object_ids() const {
+    PROFILE_SECTION("scene::get_all_object_ids");
+    return tree.get_all_object_ids();
   }
 
   void scene::destroy_object(natural_t id) {
@@ -68,6 +213,13 @@ namespace other {
   scene_object& scene::get_object(natural_t id) {
     PROFILE_SECTION("scene::get_object");
     scene_tree::node* node = tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    return *node->object;
+  }
+
+  const scene_object& scene::get_object(natural_t id) const {
+    PROFILE_SECTION("scene::get_object_const");
+    const scene_tree::node* node = tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
     return *node->object;
   }
@@ -295,13 +447,23 @@ namespace other {
     object->registry_id = (uint32_t)entity;
 
     registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
-    registry.emplace<script_component>(entity, script_component{ .object = object });
     registry.emplace<transform>(entity, transform{
                                           .local_basis = orthonormal_basis(glm::vec3(0, 1, 0)),
                                           .local_position = world_position,
                                           .local_scale = glm::vec3(1, 1, 1),
                                           .local_rotation_quat = glm::quat(1, 0, 0, 0),
                                         });
+
+    auto* script_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
+
+    auto& script_comp = registry.emplace<script_component>(entity, script_component{ .object = object });
+    script_comp.script_object_id = script_env->create_object(name);
+  }
+
+  void scene::register_object(scene_object* object, const std::string& name, const transform& transformation) {
+    register_object(object, name, transformation.local_position);
+    set_transform(object, transformation);
   }
 
   void scene::unregister_object(scene_object* object) {

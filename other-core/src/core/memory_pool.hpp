@@ -41,17 +41,7 @@ namespace other {
     }
 
     memory_pool(memory_pool&& other) {
-      free_block();
-      allocate_block();
-
-      pool = std::move(other.pool);
-      num_objects = other.num_objects;
-      object_flags = std::move(other.object_flags);
-
-      other.num_objects = 0;
-      other.full = false;
-      other.object_flags.clear();
-      other.pool = storage_type();
+      *this = std::move(other);
     }
     memory_pool& operator=(memory_pool&& other) {
       if (this != &other) {

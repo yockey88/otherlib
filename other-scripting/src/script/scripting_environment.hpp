@@ -8,11 +8,10 @@
 #include "core/ref.hpp"
 #include "core/subsystem.hpp"
 
-#include "script/script_object.hpp"
-
 #include "dotnet/dotnet_object.hpp"
 #include "dotnet/host.hpp"
 #include "python/interpreter.hpp"
+#include "script/script_object.hpp"
 
 namespace other {
 

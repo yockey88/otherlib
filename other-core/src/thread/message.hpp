@@ -52,6 +52,8 @@ namespace other {
     /// response messages
     /// error alert messages
     /// info messages
+
+    ERROR_ALERT_ID = 0xFFFF,
   };
 
   struct message_header {
@@ -177,6 +179,13 @@ namespace other {
 
     { "port", { sizeof(uint16_t), sizeof(uint16_t) } },
     { "ip", { sizeof(uint32_t), sizeof(uint32_t) } },
+
+    { "opcode", { sizeof(uint8_t), sizeof(uint8_t) } },
+    { "argc", { sizeof(uint8_t), sizeof(uint8_t) } },
+    { "argv", { 0, 0 } },
+
+    { "error-code", { sizeof(uint16_t), sizeof(uint16_t) } },
+    { "error-message", { 0, 0 } },
   };
 
   enum message_field_idx : uint8_t {
@@ -193,6 +202,13 @@ namespace other {
 
     PORT_FIELD,
     IP_FIELD,
+
+    OPCODE_FIELD,
+    ARGC_FIELD,
+    ARGV_FIELD,
+
+    ERROR_CODE_FIELD,
+    ERROR_MESSAGE_FIELD,
   };
 
   struct acknowledgement : message_spec_impl<acknowledgement> {
@@ -268,6 +284,19 @@ namespace other {
     std::vector<address_t> args;
 
     static other_command_block_msg parse(const std::vector<uint8_t>& data);
+    std::vector<uint8_t> build();
+  };
+
+  /// various error messages
+
+  struct error_alert_msg : message_spec_impl<error_alert_msg> {
+    constexpr static message_category category = ERROR_ALERT;
+    constexpr static message_id id = ERROR_ALERT_ID;
+
+    uint64_t error_code = 0;
+    std::string error_message;
+
+    static error_alert_msg parse(const std::vector<uint8_t>& data);
     std::vector<uint8_t> build();
   };
 

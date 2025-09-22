@@ -12,75 +12,91 @@
 #include "core/string_utils.hpp"
 #include "core/timer.hpp"
 
-#include "renderer/renderer_backend.hpp"
 #include "renderer/ui/ui_helpers.hpp"
 
 #include "driver/driver.hpp"
+#include "rendering-pipelines/empty_pipeline.hpp"
 
 namespace other {
   namespace {
 
-    terminal* terminal_instance = nullptr;
-
-    void handle_event(SDL_Event* event) {
-      terminal_instance->on_key_down(event);
-    }
+    static terminal* terminal_instance = nullptr;
 
     // void BindLuaTerminal(sol::state& lua_state, Terminal* terminal);
 
   }  // anonymous  namespace
 
-  terminal::terminal() {
-    std::ranges::fill(input_buffer, '\0');
+  terminal::terminal(const config_table& config)
+      : driver(config) {
+    // std::ranges::fill(input_buffer, '\0');
   }
 
-  void terminal::run(const command_line& cmdline, const config_table& config) {
+  void terminal::on_initialize() {
     terminal_instance = this;
+    control_thread = other::make_scope<terminal_thread>(this);
 
-    term_window_id = SDL_GetWindowID(other::subsystem<other::renderer_backend>::get()->get_main_window());
-    other::add_event_callback(handle_event);
+    renderer = get_renderer();
+    renderer->set_clear_color(glm::vec4(0.2f, 0.2f, 0.2f, 1.0f));
+    renderer->add_pipeline<empty_pipeline>("Empty Pipeline");
+  }
 
-    initialize(cmdline, config);
+  void terminal::run() {
+    PROFILE_SECTION("terminal::run");
 
-    other::scope<other::renderer> renderer = other::make_scope<other::renderer>();
+    control_thread->launch();
+
+    is_running = true;
+
     other::frame_rate_enforcer<60> fps_enforcer;
     while (is_running) {
-      other::pump_events();
+      MARK_NAMED_FRAME("Main Frame");
+      PROFILE_SECTION("terminal::main-loop");
+
+      pump_events();
+      if (!is_running) {
+        break;
+      }
       update();
 
-      renderer->begin_frame();
+      auto frame_data = active_scene.prepare_render_data();
+      renderer->begin_frame(&frame_data);
+      renderer->render();
       renderer->begin_ui_frame();
-
       draw();
-
       renderer->end_ui_frame();
       renderer->end_frame();
+
       fps_enforcer.wait();
     }
 
-    shutdown();
+    control_thread->shutdown();
+    control_thread = nullptr;
+  }
+
+  void terminal::on_shutdown() {
+    renderer->remove_pipeline("Empty Pipeline");
     renderer = nullptr;
-
-    CORE_LOG_INFO("Terminal shutdown complete. Goodbye.");
   }
 
-  void terminal::on_key_down(SDL_Event* event) {
-    if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event->window.windowID == term_window_id) {
-      stop();
+  void terminal::on_event(SDL_Event* event) {
+    OTHER_ASSERT(event != nullptr, "Event is null.");
+    switch (event->type) {
+      case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+        is_running = false;
+        // if (event->window.windowID == term_window_id) {
+        // }
+        break;
+
+      default:
+        break;
     }
-  }
-
-  void terminal::initialize(const command_line& cmdline, const config_table& config) {
-    // control_thread = other::make_scope<terminal_thread>(this);
-    // control_thread->launch();
-    is_running = true;
   }
 
   using namespace std::chrono_literals;
   void terminal::update() {
-    // if (auto opt = control_thread->receive_message(0us); opt.has_value()) {
-    //   handle_received_thread_message(*opt);
-    // }
+    if (auto opt = control_thread->receive_message(0us); opt.has_value()) {
+      handle_received_thread_message(*opt);
+    }
   }
 
   namespace {
@@ -116,28 +132,28 @@ namespace other {
         // } else {
         //   term->push_message({ terminal_filter::ERROR_FILTER, "No matches found" }, false);
         // }
-        // return 0;
+        return 0;
       }
       /// history navigation
       else if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory) {
-        // if (term->history_cursor.has_value()) {
-        //   if (data->EventKey == ImGuiKey_UpArrow) {
-        //     if (*term->history_cursor > 0) {
-        //       --(*term->history_cursor);
-        //     }
-        //   } else if (data->EventKey == ImGuiKey_DownArrow) {
-        //     if (*term->history_cursor < term->terminal_history.size() - 1) {
-        //       ++(*term->history_cursor);
-        //     }
-        //   }
+        if (term->history_cursor.has_value()) {
+          if (data->EventKey == ImGuiKey_UpArrow) {
+            if (*term->history_cursor > 0) {
+              --(*term->history_cursor);
+            }
+          } else if (data->EventKey == ImGuiKey_DownArrow) {
+            if (*term->history_cursor < term->terminal_history.size() - 1) {
+              ++(*term->history_cursor);
+            }
+          }
 
-        //   const terminal_message& m = term->terminal_history[*term->history_cursor];
-        //   std::ranges::fill(term->input_buffer, '\0');
-        //   std::ranges::copy(m.message, term->input_buffer.begin());
-        //   data->BufTextLen = m.message.size();
-        //   data->BufDirty = true;
-        // }
-        // return 0;
+          const terminal_message& m = term->terminal_history[*term->history_cursor];
+          std::ranges::fill(term->input_buffer, '\0');
+          std::ranges::copy(m.message, term->input_buffer.begin());
+          data->BufTextLen = m.message.size();
+          data->BufDirty = true;
+        }
+        return 0;
       }
 
       return 0;
@@ -200,24 +216,19 @@ namespace other {
     ImGui::End();
   }
 
-  void terminal::shutdown() {
-    // control_thread->shutdown();
-    // control_thread = nullptr;
-  }
-
   void terminal::push_message(const terminal_message& message, bool save) {
-    // message_buffer.push(message);
-    // terminal_history.push_back(message);
-    // if (save) {
-    //   stored_history.push_back(message);
-    // }
+    message_buffer.push(message);
+    terminal_history.push_back(message);
+    if (save) {
+      stored_history.push_back(message);
+    }
     history_cursor = std::nullopt;
   }
 
   void terminal::push_command(const terminal_message& command) {
     raw_command cmd = cmd_parser.parse(command.message);
     if (cmd.name == "invalid") {
-      push_message({ terminal_filter::ERROR_FILTER, std::format("Command not recognized : '{}'", command.message) }, false);
+      push_message(command);
       return;
     }
 
@@ -237,7 +248,7 @@ namespace other {
     msg.header = { cmd_msg.category, cmd_msg.id };
     msg.data = cmd_msg.build();
 
-    // control_thread->send_message(std::move(msg));
+    control_thread->send_message(std::move(msg));
   }
 
   glm::vec4 terminal::get_color_for_filter(terminal_filter filter) const {
@@ -252,11 +263,6 @@ namespace other {
     } else {
       return { 1.f, 1.f, 1.f, 1.f };
     }
-  }
-
-  void terminal::stop() {
-    CORE_LOG_INFO("Terminal shutting down...");
-    is_running = false;
   }
 
   void terminal::handle_input() {
@@ -304,7 +310,9 @@ namespace other {
         break;
 
       case message_category::ERROR_ALERT: {
-        CORE_LOG_ERROR("Terminal received error alert: {}", msg.get_id());
+        error_alert_msg error = error_alert_msg::parse(msg.data);
+        terminal_message msg{ terminal_filter::ERROR_FILTER, std::format("{}", error.error_message) };
+        push_message(msg, false);
       } break;
 
       default:
@@ -322,7 +330,7 @@ namespace other {
 
       case message_id::SESSION_SHUTDOWN_REQUEST: {
         /// this is sent to terminal if the command executor executes an 'exit' command
-        stop();
+        is_running = false;
       } break;
 
       default:

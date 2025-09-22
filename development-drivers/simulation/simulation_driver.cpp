@@ -3,7 +3,6 @@
  **/
 #include "simulation_driver.hpp"
 
-#include <chrono>
 #include <cmath>
 
 #include "gpu_resource/texture.hpp"

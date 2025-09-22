@@ -28,8 +28,13 @@ namespace other {
         : host(host) {}
     ~dotnet_object() {}
 
+    std::string get_type_name() const;
+
     bool has_attribute(const std::string_view attr_name);
     std::vector<std::string> get_attribute_names() const;
+
+    std::vector<uint8_t> serialize_to_bytes();
+    void load_from_bytes(const std::span<const uint8_t> buffer);
 
     template <typename T>
     T get_attribute(const std::string_view attr_name, const std::string_view field_name) {
@@ -80,6 +85,8 @@ namespace other {
 
    private:
     dotnet_host* host = nullptr;
+
+    std::map<uint64_t, dotnet_field::storage> field_storage;
     // scope<object_proxy<dotnet_object>> object_proxy = nullptr;
 
     template <typename FT>
@@ -146,14 +153,14 @@ namespace other {
       return itr;
     }
 
+    std::map<uint64_t, dotnet_field::storage>::iterator load_field(const std::string_view field_name, value_type type);
+
     void write_storage_to_field(std::map<uint64_t, dotnet_field::storage>::const_iterator itr, const std::string_view field_name);
 
     size_t managed_strlen(const std::string_view field_name);
     bool type_has_field(const std::string_view field_name);
     void load_field_into_storage(const std::string_view field_name, dotnet_field::storage& storage);
     void load_string_field_into_storage(const std::string_view field_name, dotnet_field::storage& storage);
-
-    std::map<uint64_t, dotnet_field::storage> field_storage;
 
     void invoke_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc);
     void invoke_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out);

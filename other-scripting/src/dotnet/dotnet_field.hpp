@@ -51,6 +51,8 @@ namespace other {
         }
       }
 
+      void load_from_bytes(const uint8_t* data, uint64_t size);
+
      private:
       void copy_string_to_storage(const std::string& value);
     };
@@ -58,18 +60,23 @@ namespace other {
         : host(host), type(type), dotnet_id(dotnet_id), flags{ is_property } {}
     ~dotnet_field() {}
 
+    void initialize_field();
+
     inline bool is_property() const {
       return flags.is_property;
     }
 
     std::string name() const;
 
+    value_type get_type() const;
+
    private:
     dotnet_host* host = nullptr;
     dotnet_type* type = nullptr;
-    dotnet_type* field_type = nullptr;
 
     int32_t dotnet_id = 0;
+
+    value_type valtype = value_type::EMPTY_TYPE;
 
     struct field_flags {
       bool is_property = false;

@@ -11,10 +11,9 @@
 #include "core/logger.hpp"
 #include "serialization/reflection.hpp"
 
-#include "script/scripting_environment.hpp"
-
 #include "dotnet/interop_interface.hpp"
 #include "dotnet/native_string.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "bindings/native_logger.hpp"
 
@@ -58,7 +57,7 @@ namespace other {
     if (hostfxr_lib == nullptr) {
       std::optional<std::filesystem::path> host_path = GetHostPath();
       OTHER_ASSERT(host_path.has_value(), "Failed to find hostfxr library. Please ensure .NET SDK is installed and the path is correct.");
-      CORE_LOG_INFO("Found hostfxr library at: {}", host_path->string());
+      CORE_LOG_DEBUG("Found hostfxr library at: {}", host_path->string());
 
       hostfxr_lib = LoadLibraryW(host_path->wstring().c_str());
       OTHER_ASSERT(hostfxr_lib != nullptr, "Failed to load hostfxr library: {}", host_path->string());
@@ -307,6 +306,9 @@ namespace other {
 
     interop_functions.get_field_type = load_managed_function<get_field_type>(type_interface_type_str, DNET_STR("GetFieldType"));
     OTHER_ASSERT(interop_functions.get_field_type != nullptr, "Failed to load GetFieldType from managed assembly.");
+
+    interop_functions.get_field_value_type = load_managed_function<get_field_value_type>(type_interface_type_str, DNET_STR("GetFieldValueType"));
+    OTHER_ASSERT(interop_functions.get_field_value_type != nullptr, "Failed to load GetFieldValueType from managed assembly.");
 
     interop_functions.get_field_accessibility = load_managed_function<get_field_accessibility>(type_interface_type_str, DNET_STR("GetFieldAccessibility"));
     OTHER_ASSERT(interop_functions.get_field_accessibility != nullptr, "Failed to load GetFieldAccessibility from managed assembly.");

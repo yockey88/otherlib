@@ -5,4 +5,5 @@ core-log-level = "trace"
 terminal = "on"
 
 [rendering]
-rendering-api = "opengl"
+rendering-backend = "opengl"
+window-size = { width = 1920, height = 1080 }

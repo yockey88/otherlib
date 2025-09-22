@@ -26,30 +26,30 @@ namespace other {
 
     exit_code execute_command(const command& command);
 
-    // void HandleControl(uint8_t value);
-    // void HandleFile(uint8_t value);
+    exit_code handle_control(uint8_t value);
+    exit_code handle_file(uint8_t value);
     // void HandleModule(uint8_t value);
     // void HandleNet(uint8_t value);
     // void HandleDebug(uint8_t value);
-    // void HandleOther(uint8_t value);
+    // void handle_other(uint8_t value);
 
-    // void PrintHelp();
-    // void HandleCall();
-    // void HandleLuaCall();
+    exit_code print_help();
+    // void handle_call();
+    // void handle_lua_call();
 
-    // void HandleLs();
-    // void HandlePwd();
-    // void HandleSource();
-    // void HandleMount();
+    exit_code handle_ls();
+    exit_code handle_pwd();
+    exit_code handle_source();
+    exit_code handle_mount();
 
-    // void HandleLoad();
+    // void handle_load();
 
-    // void HandleListen();
-    // void HandleConnect();
+    // void handle_listen();
+    // void handle_connect();
 
-    // void HandleEcho();
+    // void handle_echo();
 
-    // void PushErrorMessage(const std::string_view message);
+    // void push_error_message(const std::string_view message);
 
     // template <typename T>
     // T GetArgument() {

@@ -46,6 +46,7 @@ namespace other {
   using field_property_checker = nbool32 (*)(int32_t, native_string);
   using get_field_name = native_string (*)(int32_t);
   using get_field_type = void (*)(int32_t, int32_t*);
+  using get_field_value_type = void (*)(int32_t, uint8_t*);
   using get_field_accessibility = type_accessibility (*)(int32_t);
   using get_field_attributes = void (*)(int32_t, int32_t*, int32_t*);
 

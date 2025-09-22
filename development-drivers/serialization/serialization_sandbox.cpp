@@ -14,7 +14,6 @@
 
 #include "driver/driver.hpp"
 
-
 struct my_serializable {
   int a;
   float b;

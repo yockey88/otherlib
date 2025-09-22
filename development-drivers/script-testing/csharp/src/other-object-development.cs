@@ -16,6 +16,7 @@ class TestAttrAttribute : Attribute
 [TestAttr("TestObject", 42)]
 class TestObject
 {
+  [SerializableField]
   int field_value = 10;
   public int PropertyValue { get; set; } = 20;
 
@@ -33,6 +34,9 @@ class TestObject
   public void DisplayInfo()
   {
     Debug.Log($"Field Value: {field_value}");
+    Debug.Log($"Property Value: {PropertyValue}");
+    Debug.Log($"Field String: {field_string}");
+    Debug.Log($"Property String: {PropertyString}");
   }
 
   public int GetValue(int value)

@@ -4,6 +4,7 @@
 #include "core/config_table.hpp"
 
 #include <iostream>
+#include <print>
 #include <string>
 
 #include "core/fnv.hpp"
@@ -80,9 +81,15 @@ namespace other {
           std::println(std::cerr, "Invalid value for 'environment.terminal', not opening.");
         }
       }
+      if (log_level == 0) {
+        std::print("Terminal open: {}\n", open_terminal);
+      }
 
       toml::node_view rendering_backend = table.at_path("rendering.rendering-backend");
       rendering = rendering_backend.as_string() == nullptr ? "" : rendering_backend.as_string()->get();
+      if (log_level == 0) {
+        std::print("Rendering backend: '{}'\n", rendering);
+      }
 
       toml::node_view window_size_node = table.at_path("rendering.window-size");
       if (window_size_node.is_table()) {
@@ -91,6 +98,10 @@ namespace other {
         if (width_node.is_integer() && height_node.is_integer()) {
           window_size = { width_node.as_integer()->get(), height_node.as_integer()->get() };
         }
+
+        if (log_level == 0) {
+          std::print("Window size: {}x{}\n", window_size.x, window_size.y);
+        }
       }
 
       {
@@ -98,6 +109,10 @@ namespace other {
         if (ptable.is_table()) {
           if (auto* p = ptable.as_table(); p != nullptr) {
             project_table.emplace(std::move(*p));
+          }
+
+          if (log_level == 0) {
+            std::print("Loaded project table with {} entries.\n", project_table->size());
           }
         }
       }

@@ -12,11 +12,10 @@
 
 #include "core/defines.hpp"
 
-#include "script/script_object.hpp"
-
 #include "dotnet/dotnet_assembly.hpp"
 #include "dotnet/interop_interface.hpp"
 #include "dotnet/type_cache.hpp"
+#include "script/script_object.hpp"
 
 #include "interop_interface.hpp"
 
@@ -84,6 +83,7 @@ namespace other {
       field_property_checker has_field = nullptr;
       get_field_name get_field_name = nullptr;
       get_field_type get_field_type = nullptr;
+      get_field_value_type get_field_value_type = nullptr;
       get_field_accessibility get_field_accessibility = nullptr;
       get_field_attributes get_field_attributes = nullptr;
 

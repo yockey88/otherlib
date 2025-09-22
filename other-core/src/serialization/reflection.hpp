@@ -400,9 +400,9 @@ namespace other {
     requires reflected_type<T>
   T serializer::read_fields_from_bytes(const std::vector<uint8_t>& data) const {
     auto outer_map = flexbuffers::GetRoot(data).AsMap();
-    CORE_LOG_INFO("Deserialized type hash: {}", outer_map["type-hash"].AsUInt64());
-    CORE_LOG_INFO("Deserialized type name: {}", outer_map["type-name"].AsString().str());
-    CORE_LOG_INFO("Deserialized number of fields: {}", outer_map["num-fields"].AsUInt64());
+    CORE_LOG_DEBUG("Deserialized type hash: {}", outer_map["type-hash"].AsUInt64());
+    CORE_LOG_DEBUG("Deserialized type name: {}", outer_map["type-name"].AsString().str());
+    CORE_LOG_DEBUG("Deserialized number of fields: {}", outer_map["num-fields"].AsUInt64());
     /**
      * \todo: check num fields and type-hash against version requirements to validate version compatibility
      **/
@@ -467,7 +467,7 @@ namespace other {
       CORE_LOG_ERROR("Failed to insert reflection data for type '{}'.", refl_type_name);
       return nullptr;
     }
-    CORE_LOG_DEBUG("Inserting reflection data for type '{}'.", refl_type_name);
+    CORE_LOG_DEBUG("Stashing reflection data for type '{}'.", refl_type_name);
 
     it->second.type_hash = type_hash;
     it->second.type_name = refl_type_name;

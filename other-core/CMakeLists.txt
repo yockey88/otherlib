@@ -8,15 +8,15 @@ target_sources(other_core
 		src/core/defines.cpp
 		src/core/logger.cpp
 		src/core/arena.cpp
-
 		src/core/arena_buffer.cpp
-		src/core/arena_vector.cpp
-
 		src/core/registers.cpp
 		src/core/ref.cpp
 		src/core/ref_counted.cpp
 		src/core/value.cpp
 		src/core/formatting.cpp
+
+		src/data-structures/arena_vector.cpp
+		src/data-structures/graph.cpp
 
 		src/math/morton_codes.cpp
 		src/math/random.cpp
@@ -26,6 +26,10 @@ target_sources(other_core
 		src/math/bounding_box.cpp
 		src/math/ray.cpp
 		src/math/integrator.cpp
+		src/math/vector.cpp
+		src/math/matrix.cpp
+		src/math/dynamic_vector.cpp
+		src/math/dynamic_matrix.cpp
 		
 		src/command/command_parser.cpp
 		src/command/command_compiler.cpp
@@ -33,6 +37,7 @@ target_sources(other_core
 
 		src/serialization/reflection.cpp
 		src/serialization/parser_combinators.cpp
+		src/serialization/serialization.cpp
 
 		src/thread/message.cpp
 		src/thread/thread.cpp

@@ -14,7 +14,12 @@
 #include "core/defines.hpp"
 #include "thread/message.hpp"
 
-#include "terminal/terminal_thread.hpp"
+#include "renderer/render_pipeline.hpp"
+
+#include "scene/scene.hpp"
+
+#include "driver/driver.hpp"
+#include "terminal/terminal-thread.hpp"
 
 // #include "event/key_events.hpp"
 
@@ -42,40 +47,46 @@ namespace other {
     std::string message;
   };
 
-  class terminal {
+  class OTHER_CLASS terminal : public driver {
    public:
-    terminal();
-    ~terminal() = default;
+    terminal(const config_table& config);
+    virtual ~terminal() = default;
 
-    void run(const command_line& cmdline, const config_table& config);
-    void on_key_down(SDL_Event* event);
+    void on_initialize() override;
+    void run() override;
+    void on_shutdown() override;
 
-   private:
-    void initialize(const command_line& cmdline, const config_table& config);
+    command_parser cmd_parser;
+    opt<uint32_t> history_cursor = std::nullopt;
+
+    static constexpr size_t kInputBufferSize = 1024;
+    std::array<char, kInputBufferSize> input_buffer;
+    std::vector<terminal_message> terminal_history;
+
+    void on_event(SDL_Event* event) override;
+
     void update();
     void draw();
-    void shutdown();
 
     void push_message(const terminal_message& message, bool save = true);
     void push_command(const terminal_message& command);
 
+   private:
     glm::vec4 get_color_for_filter(terminal_filter filter) const;
 
-    SDL_WindowID term_window_id = 0;
-    bool is_running = true;
+    scene active_scene;
+    scope<renderer> renderer = nullptr;
 
-    static constexpr size_t kInputBufferSize = 1024;
-    std::array<char, kInputBufferSize> input_buffer;
+    scope<terminal_thread> control_thread = nullptr;
 
-    opt<uint32_t> history_cursor = std::nullopt;
-    std::vector<terminal_message> terminal_history;
+    bool is_running = false;
+
     std::vector<terminal_message> stored_history;
     std::queue<terminal_message> message_buffer;
 
-    command_parser cmd_parser;
     command_compiler compiler;
 
-    void stop();
+    // void stop();
 
     void handle_input();
     void handle_received_thread_message(const message& msg);
@@ -83,5 +94,7 @@ namespace other {
   };
 
 }  // namespace other
+
+OTHER_DRIVER(other::terminal)
 
 #endif  // OTHER_TERMINAL_TERMINAL_HPP

@@ -47,13 +47,15 @@ namespace other {
       fill_out_type_information(dotnet_field_ids, host->interop().get_type_fields);
       dotnet_fields.reserve(dotnet_field_ids.size());
       for (int32_t field_id : dotnet_field_ids) {
-        dotnet_fields.emplace_back(host, this, field_id);
+        auto& f = dotnet_fields.emplace_back(host, this, field_id);
+        f.initialize_field();
       }
 
       std::vector<int32_t> dotnet_property_ids;
       fill_out_type_information(dotnet_property_ids, host->interop().get_type_properties);
       for (int32_t property_id : dotnet_property_ids) {
-        dotnet_fields.emplace_back(host, this, property_id, true);
+        auto& p = dotnet_fields.emplace_back(host, this, property_id, true);
+        p.initialize_field();
       }
     }
 

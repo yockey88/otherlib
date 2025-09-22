@@ -34,9 +34,6 @@ namespace OtherCsBindings
 		Pointer
 	};
 
-
-
-
   [StructLayout(LayoutKind.Sequential, Pack = 1)]
   struct Argv
   {

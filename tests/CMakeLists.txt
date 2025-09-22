@@ -8,6 +8,8 @@ target_sources(other_tests
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_buffer_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/arena_vector_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/arena_array_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ref/ref_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/value/value_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/parser-combinator/parser_combinator_tests.cpp

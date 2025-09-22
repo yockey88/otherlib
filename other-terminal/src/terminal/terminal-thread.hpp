@@ -1,5 +1,5 @@
 /**
- * \file terminal/terminal_thread.hpp
+ * \file terminal/terminal-thread.hpp
  **/
 #ifndef OTHER_TERMINAL_TERMINAL_THREAD_HPP
 #define OTHER_TERMINAL_TERMINAL_THREAD_HPP
@@ -33,6 +33,8 @@ namespace other {
     // void SourceCmdFile(const filepath& file_path);
     // void SourceLuaFile(const filepath& file_path);
     // void SourcePythonFile(const filepath& file_path);
+
+    void send_message_to_terminal(const message& msg);
 
     void pump_thread() override;
 

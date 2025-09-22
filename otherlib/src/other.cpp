@@ -4,7 +4,6 @@
 #include "other.hpp"
 
 #include <iostream>
-#include <print>
 
 #include "core/arena.hpp"
 #include "core/command_line.hpp"

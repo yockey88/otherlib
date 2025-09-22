@@ -6,9 +6,7 @@
 
 #include "core/defines.hpp"
 
-#include "gpu_resource/renderer_resource.hpp"
 #include "model/model.hpp"
-#include "renderer/camera.hpp"
 #include "renderer/render_pipeline.hpp"
 
 #include "scene/scene.hpp"

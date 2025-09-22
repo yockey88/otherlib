@@ -11,10 +11,12 @@
 #include <ShlObj_core.h>
 #include <Windows.h>
 
-#include "object/scene_object.hpp"
-#include "object/script_component.hpp"
 #include "script/script_object.hpp"
 #include "script/scripting_environment.hpp"
+
+#include "object/scene_object.hpp"
+#include "object/script_component.hpp"
+
 
 namespace other {
 

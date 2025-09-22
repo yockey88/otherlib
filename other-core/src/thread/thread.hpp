@@ -60,6 +60,8 @@ namespace other {
 
     std::string get_thread_name();
 
+    void thread_send_message(message&& msg);
+
     virtual void pump_thread() {}
     virtual void handle_acknowledgement(const acknowledgement& ack) {}
     virtual void handle_ping(const session_status_request& ping) {}

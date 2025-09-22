@@ -8,29 +8,56 @@
 
 #include "core/defines.hpp"
 
-#include "object/render_component.hpp"
+#include "renderer/renderer.hpp"
+
+#include "object/object_serialization_data.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
-#include "renderer/renderer.hpp"
-
 #include "scene/scene_tree.hpp"
+
 
 namespace other {
 
   class scene {
    public:
     scene();
+    scene(const std::string& name);
+
+    scene(scene&& other);
+    scene& operator=(scene&& other);
+
+    scene(const scene&) = delete;
+    scene& operator=(const scene&) = delete;
+
     ~scene();
+
+    static scene create_scene(const std::string& name);
 
     scene_object& root_object();
 
+    scene_object& create_object(scene_object* object);
     scene_object& create_object(const std::string& name, scene_object* parent_object = nullptr);
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
+
+    scene_object& add_object(scene_object* object, const transform& transformation, scene_object* parent_object = nullptr);
+    void add_objects(const std::span<serialization::parsed_scene_object> objects);
+
+    scene_object* get_parent(natural_t id);
+    const scene_object* get_parent(natural_t id) const;
+
+    scene_object* get_parent(scene_object* object);
+    const scene_object* get_parent(const scene_object* object) const;
+
+    std::vector<uint64_t> get_children_ids(natural_t id) const;
+    std::vector<uint64_t> get_children_ids(const scene_object* object) const;
+
+    std::vector<uint64_t> get_all_object_ids() const;
 
     void destroy_object(natural_t id);
 
     scene_object& get_object(natural_t id);
+    const scene_object& get_object(natural_t id) const;
 
     size_t get_object_count() const;
 
@@ -48,7 +75,6 @@ namespace other {
     render_data prepare_render_data() const;
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;
-
     void add_object_tag(natural_t id, const std::string_view tag);
 
     template <typename T>
@@ -117,6 +143,9 @@ namespace other {
 
     static std::string as_string(const scene& s);
 
+    std::string name = "Untitled Scene";
+    natural_t id = 0;
+
    private:
     struct object_handle {
       natural_t id = 0;
@@ -128,6 +157,7 @@ namespace other {
     friend class scene_tree;
 
     void register_object(scene_object* object, const std::string& name, const glm::vec3& world_position);
+    void register_object(scene_object* object, const std::string& name, const transform& transformation);
     void unregister_object(scene_object* object);
 
     void on_create_render_component(const entt::registry&, const entt::entity entity);

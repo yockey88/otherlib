@@ -16,10 +16,10 @@
 
 #define bit(x) (1ll << x)
 
-#ifdef OTHER_MODULE
-  #define OTHER_CLIENT
+#ifdef OTHER_APPLICATION
+  #define OTHER_STATIC_DRIVER
 #else
-  #define OTHER_CORE
+  #define OTHER_DYNAMIC_DRIVER
 #endif
 
 #ifdef OTHER_ENVIRONMENT_WINDOWS
@@ -102,6 +102,12 @@ namespace other {
     FAILURE = 1,
 
     /// others
+    /// @note these are used for command exit codes as well in the other-command executor
+    INVALID_COMMAND,
+    INVALID_OPCODE,
+
+    INVALID_ARGUMENT,
+    MISSING_ARGUMENT,
 
     NUM_EXIT_CODES,
     INVALID_EXIT_CODE = NUM_EXIT_CODES
@@ -112,6 +118,8 @@ namespace other {
 #else
   using real_t = float;
 #endif  // OTHER_USE_DOUBLE_FOR_REAL
+
+  using index_t = uint64_t;
 
   using natural_t = uint64_t;
   using integer_t = int64_t;
@@ -135,7 +143,7 @@ namespace other {
     opt<std::string> err;
   };
 
-  enum value_type {
+  enum value_type : uint8_t {
     /// primitive types
     OEBOOL,
     CHAR,

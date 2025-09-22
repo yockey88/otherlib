@@ -9,9 +9,11 @@
 
 #include "core/profiler.hpp"
 
+// #include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
+#include "renderer/camera.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"

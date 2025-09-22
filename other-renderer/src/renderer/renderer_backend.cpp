@@ -56,6 +56,7 @@ namespace other {
 
     {
       scope<window_manager> window_mgr = make_scope<window_manager>();
+      CORE_LOG_DEBUG("Creating main window with size: {}x{}", window_size.x, window_size.y);
       SDL_Window* window = window_mgr->create_window("Other Environment", window_size.x, window_size.y, flags);
       OTHER_ASSERT(window != nullptr, "Failed to create main window: {}", SDL_GetError());
 

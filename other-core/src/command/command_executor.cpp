@@ -5,6 +5,7 @@
 
 // #include "core/directory.hpp"
 // #include "core/filesystem.hpp"
+#include "core/defines.hpp"
 #include "core/logger.hpp"
 // #include "thread/thread_manager.hpp"
 
@@ -43,9 +44,8 @@ namespace other {
     /// FIXME: handle commands better, maybe have some sort of command handler class or dynamic command registration?
     ///       that would allow users to replace default handlers
     switch (CATEGORY(command.opcode)) {
-        // case CommandCategory::CONTROL_CMD:
-        //   HandleControl(VALUE(command.opcode));
-        //   break;
+      case CONTROL_CMD:
+        return handle_control(VALUE(command.opcode));
 
         // case CommandCategory::FILE_CMD:
         //   HandleFile(VALUE(command.opcode));
@@ -68,66 +68,48 @@ namespace other {
         //   break;
 
       default:
-        CORE_LOG_ERROR("Invalid opcode [{}], command not recognized", command.opcode);
         current_command = nullptr;
-        return exit_code::FAILURE;
+        return exit_code::INVALID_COMMAND;
     }
 
     current_command = nullptr;
     return exit_code::SUCCESS;
   }
 
-  // void CommandExecutor::HandleControl(uint8_t value) {
-  //   switch (value) {
-  //     case HELP_CMD:
-  //       PrintHelp();
-  //       break;
+  exit_code command_executor::handle_control(uint8_t value) {
+    switch (value) {
+      case HELP_CMD: return print_help();
+      default:
+        return exit_code::INVALID_COMMAND;
 
-  //     case CLEAR_CMD:
-  //       terminal->Clear();
-  //       break;
+        // case CLEAR_CMD:
+        //   // terminal->Clear();
+        //   break;
 
-  //     case EXIT_CMD:
-  //       EventQueue::PushEvent<ShutdownEvent>({ ExitCode::SUCCESS });
-  //       break;
+        // case EXIT_CMD:
+        //   EventQueue::PushEvent<ShutdownEvent>({ ExitCode::SUCCESS });
+        //   break;
 
-  //     case CALL_CMD:
-  //       HandleCall();
-  //       break;
+        // case CALL_CMD:
+        //   handle_call();
+        //   break;
 
-  //     case LUA_CALL_CMD:
-  //       HandleLuaCall();
-  //       break;
+        // case LUA_CALL_CMD:
+        //   handle_lua_call();
+        //   break;
+    }
+  }
 
-  //     default:
-  //       PushErrorMessage(fmtstr("Invalid control command : {}", value));
-  //       break;
-  //   }
-  // }
-
-  // void CommandExecutor::HandleFile(uint8_t value) {
-  //   switch (value) {
-  //     case LS_CMD:
-  //       HandleLs();
-  //       break;
-
-  //     case PWD_CMD:
-  //       HandlePwd();
-  //       break;
-
-  //     case SOURCE_CMD:
-  //       HandleSource();
-  //       break;
-
-  //     case MOUNT_CMD:
-  //       HandleMount();
-  //       break;
-
-  //     default:
-  //       PushErrorMessage(fmtstr("Invalid file command : {}", value));
-  //       break;
-  //   }
-  // }
+  exit_code command_executor::handle_file(uint8_t value) {
+    switch (value) {
+      case LS_CMD: return handle_ls();
+      case PWD_CMD: return handle_pwd();
+      case SOURCE_CMD: return handle_source();
+      case MOUNT_CMD: return handle_mount();
+      default:
+        return exit_code::INVALID_COMMAND;
+    }
+  }
 
   // void CommandExecutor::HandleModule(uint8_t value) {
   //   switch (value) {
@@ -185,19 +167,20 @@ namespace other {
   //   }
   // }
 
-  // void CommandExecutor::PrintHelp() {
-  //   for (const auto& command : kAvailableCommands) {
-  //     if (command.num_args.max == 0) {
-  //       terminal->PushMessage({ TerminalFilter::INFO_FILTER, fmtstr("  - {} : {}", command.name, command.description) }, false);
-  //     } else if (command.num_args.min == command.num_args.max) {
-  //       terminal->PushMessage({ TerminalFilter::INFO_FILTER, fmtstr("  - {} <{}> : {}", command.name, command.meta_var_name, command.description) }, false);
-  //     } else if (command.num_args.min == 0 && command.num_args.max == 1) {
-  //       terminal->PushMessage({ TerminalFilter::INFO_FILTER, fmtstr("  - {} <{}>? : {}", command.name, command.meta_var_name, command.description) }, false);
-  //     } else {
-  //       terminal->PushMessage({ TerminalFilter::INFO_FILTER, fmtstr("  - {} <{}>... : {}", command.name, command.meta_var_name, command.description) }, false);
-  //     }
-  //   }
-  // }
+  exit_code command_executor::print_help() {
+    for (const auto& command : kAvailableCommands) {
+      // if (command.num_args.max == 0) {
+      //   terminal->PushMessage({ TerminalFilter::INFO_FILTER, fmtstr("  - {} : {}", command.name, command.description) }, false);
+      // } else if (command.num_args.min == command.num_args.max) {
+      //   terminal->PushMessage({ TerminalFilter::INFO_FILTER, fmtstr("  - {} <{}> : {}", command.name, command.meta_var_name, command.description) }, false);
+      // } else if (command.num_args.min == 0 && command.num_args.max == 1) {
+      //   terminal->PushMessage({ TerminalFilter::INFO_FILTER, fmtstr("  - {} <{}>? : {}", command.name, command.meta_var_name, command.description) }, false);
+      // } else {
+      //   terminal->PushMessage({ TerminalFilter::INFO_FILTER, fmtstr("  - {} <{}>... : {}", command.name, command.meta_var_name, command.description) }, false);
+      // }
+    }
+    return exit_code::SUCCESS;
+  }
 
   // void CommandExecutor::HandleCall() {
   //   std::string function = GetArgument<std::string>();
@@ -221,6 +204,22 @@ namespace other {
   //     PushErrorMessage(fmtstr("Failed to call lua function : {}", e.what()));
   //   }
   // }
+
+  exit_code command_executor::handle_ls() {
+    return exit_code::SUCCESS;
+  }
+
+  exit_code command_executor::handle_pwd() {
+    return exit_code::SUCCESS;
+  }
+
+  exit_code command_executor::handle_source() {
+    return exit_code::SUCCESS;
+  }
+
+  exit_code command_executor::handle_mount() {
+    return exit_code::SUCCESS;
+  }
 
   // void CommandExecutor::HandleLs() {
   //   std::vector<Path> dirs = Filesystem::MountedDirectories();
