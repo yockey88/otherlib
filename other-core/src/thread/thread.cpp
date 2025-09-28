@@ -65,7 +65,17 @@ namespace other {
   }
 
   void thread::shutdown() {
+    CORE_LOG_DEBUG("Thread [{}] starting shutdown", thread_name);
     thread_handle.request_stop();
+
+    while (!is_in_state(SHUTTING_DOWN)) {
+      std::this_thread::yield();
+    }
+
+    {
+      message shutdown_msg(CONTROL, THREAD_SHUTDOWN);
+      tx_channel->push(std::move(shutdown_msg));
+    }
 
     while (!is_in_state(STOPPED)) {
       std::this_thread::yield();
@@ -160,7 +170,7 @@ namespace other {
     do {
       try {
         set_current_state(WAITING);
-        opt<message> msg = thread_data->rx_channel->await_message(std::chrono::milliseconds(100));
+        opt<message> msg = thread_data->rx_channel->await_message(get_message_timeout());
         set_current_state(PROCESSING);
         if (msg) {
           handle_message(*msg);
@@ -181,18 +191,18 @@ namespace other {
         CORE_LOG_ERROR("Unknown exception occurred in thread [{}]", get_thread_name());
       }
     } while (checkpoints.running && !stoken.stop_requested() && !checkpoints.error_occurred);
+
+    set_current_state(SHUTTING_DOWN);
     if (checkpoints.error_occurred) {
       CORE_LOG_ERROR("Thread error occurred, exiting thread");
       /// handle error
       return;
     }
 
-    set_current_state(SHUTTING_DOWN);
+    wait_for_shutdown();
     if (checkpoints.error_occurred) {
       /// do something with errors, report them, attempt recovery?, etc...
     }
-
-    set_current_state(STOPPED);
   }
 
   void thread::wait_for_initialization() {
@@ -226,6 +236,7 @@ namespace other {
     /// use raw header bc custom message type
     if (msg.header.category == CONTROL && msg.header.id == THREAD_INITIALIZE) {
       checkpoints.initialized = true;
+      on_initialize();
     } else {
       CORE_LOG_ERROR("Invalid message type for thread initialization : {}:{}\n", msg.get_category(), msg.get_id());
       thread_exit_code = -1;
@@ -252,6 +263,9 @@ namespace other {
       CORE_LOG_DEBUG("Thread [{}] started", get_thread_name());
       checkpoints.running = true;
       checkpoints.error_occurred = false;
+
+      set_current_state(STARTED);
+      on_start();
     } else {
       CORE_LOG_ERROR("Invalid message type for thread start : {}:{}\n", msg.get_category(), msg.get_id());
       checkpoints.error_occurred = true;
@@ -261,23 +275,26 @@ namespace other {
 
   void thread::wait_for_shutdown() {
     OTHER_ASSERT(thread_data != nullptr, "Thread data is null");
+    CORE_LOG_DEBUG("Thread [{}] waiting for shutdown...", get_thread_name());
 
-    acknowledgement ackmsg;
-    ackmsg.acked_header = { CONTROL, THREAD_SHUTDOWN };
-    ackmsg.ack_nack = checkpoints.finalized ? 1 : 0;
-    ackmsg.node_id = 0;  // not used here
+    do {
+      opt<message> msg = thread_data->rx_channel->await_message(std::chrono::milliseconds(200));
+      if (!msg.has_value()) {
+        continue;
+      }
 
-    message ack;
-    ack.header = { ACKNOWLEDGEMENT, ACK };
-    ack.data = ackmsg.build();
-
-    thread_data->tx_channel->push(std::move(ack));
+      handle_shutdown_msg(*msg);
+    } while (!checkpoints.initialized && !checkpoints.error_occurred && !thread_data->stoken.stop_requested());
   }
 
   void thread::handle_shutdown_msg(const message& msg) {
     /// use raw header bc custom message type
     if (msg.header.id == THREAD_SHUTDOWN) {
+      CORE_LOG_DEBUG("Thread [{}] shutting down", get_thread_name());
       checkpoints.running = false;
+
+      on_shutdown();
+      checkpoints.finalized = true;
     } else {
       CORE_LOG_DEBUG("Invalid message type for thread shutdown : {}:{}", msg.get_category(), msg.get_id());
       checkpoints.error_occurred = true;

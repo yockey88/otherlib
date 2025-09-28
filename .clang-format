@@ -56,7 +56,7 @@ BraceWrapping:
 IncludeCategories:
   - Regex:           '<([A-Za-z0-9\/-_])+>'
     Priority:        1
-  - Regex:           '<((glm|spdlog|entt|glad|gtest|imgui(zmo)?|json|toml++|magic_enum|refl|nlohmann|assimp|SDL3|steam|asio|dotnet)\/ | SDL*)>'
+  - Regex:           '<((glm|spdlog|entt|glad|gtest|gmock|imgui(zmo)?|json|toml++|magic_enum|refl|nlohmann|assimp|SDL3|steam|asio|dotnet)\/ | SDL*)>'
     Priority:        2
   - Regex:           '<([A-Za-z0-9\/-_])+\.h(pp|xx|h)?>'
     Priority:        3

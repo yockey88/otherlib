@@ -8,9 +8,8 @@
 #include "core/config_table.hpp"
 #include "core/defines.hpp"
 
-#include "renderer/renderer.hpp"
-
 #include "dotnet/dotnet_assembly.hpp"
+#include "renderer/renderer.hpp"
 
 #include "plugin/plugin.hpp"
 
@@ -38,6 +37,11 @@ namespace other {
 
     virtual void on_initialize() = 0;
     virtual void on_shutdown() = 0;
+
+    bool rendering_enabled() const {
+      auto* renderer_backend_subsystem = subsystem<renderer_backend>::get();
+      return renderer_backend_subsystem != nullptr && renderer_backend_subsystem->has_backend();
+    }
 
     bool should_shutdown() const {
       return shutdown_requested;

@@ -46,6 +46,9 @@ add_static_driver(runtime_dev
   runtime-dev/main.cpp
 )
 add_static_driver(server_dev
+  server-dev/network_thread.cpp
+  server-dev/other_client.cpp
+  
   server-dev/server.cpp
   server-dev/main.cpp
 )

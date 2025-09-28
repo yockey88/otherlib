@@ -58,6 +58,7 @@ namespace other {
     page* get_current_page();
 
    private:
+    std::mutex arena_mutex;
     page* current_page = nullptr;
 
    private:

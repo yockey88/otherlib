@@ -8,7 +8,7 @@
 
 namespace other {
 
-  class thread_tests : public other_test {
+  class thread_tests : public other::other_test {
    public:
   };
 

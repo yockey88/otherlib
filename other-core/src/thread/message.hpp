@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <spdlog/fmt/fmt.h>
+
 #ifndef ASIO_HAS_STD_INVOKE_RESULT
   #define ASIO_HAS_STD_INVOKE_RESULT
 #endif
@@ -68,6 +70,9 @@ namespace other {
       uint32_t ip;
       uint8_t bytes[4] = { 0, 0, 0, 0 };
     };
+
+    constexpr binding_point() = default;
+    constexpr binding_point(uint32_t ip, uint16_t port) : ip(ip), port(port) {}
 
     static std::string write_string(const binding_point& bp);
     static binding_point from_asio(const asio::ip::address& addr, uint16_t port);
@@ -301,5 +306,18 @@ namespace other {
   };
 
 }  // namespace other
+
+namespace std {
+
+  template <>
+  struct formatter<other::binding_point> : public formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(const other::binding_point& bp, FormatContext& ctx) const {
+      const std::string fmt = std::format("{}.{}.{}.{}:{}", bp.bytes[0], bp.bytes[1], bp.bytes[2], bp.bytes[3], bp.port);
+      return formatter<std::string_view>::format(fmt, ctx);
+    }
+  };
+
+}  // namespace std
 
 #endif  // OTHERLIB_THREAD_MESSAGE_HPP

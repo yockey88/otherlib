@@ -105,7 +105,7 @@ def validate_args(args, parser):
       and not args.run_terminal and not args.run_tests \
       and not args.compile_serialization_schema \
       and not args.compile_object and not args.generate_cs_bindings \
-      and not args.run_test_suite:
+      and not args.run_test_suite and not args.run_server:
     parser.print_help()
     sys.exit(1)
 
@@ -116,6 +116,7 @@ if __name__ == "__main__":
   parser.add_argument("--regen-project", "-rg", action="store_true", help="Regenerate the project files.")
   parser.add_argument("--build", "-b", action="store_true", help="Build the project.")
   parser.add_argument("--run", "-r", action="store_true", help="Run the main driver.")
+  parser.add_argument("--run-server", "-srv", action="store_true", help="Run the server driver.")
   parser.add_argument("--run-scratch", "-rs", action="store_true", help="Run the scratch application.")
   parser.add_argument("--run-terminal", "-rt", action="store_true", help="Run the other terminal application.")
   parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
@@ -183,12 +184,13 @@ if __name__ == "__main__":
       print(f"Running Other-Driver [{cfg}]")
       # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "script-config.toml"])
       # run_project("development-drivers", cfg, "editor_dev", "dev-config.toml", args, args.verbose)
-      # run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
-      run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
       # run_project("other-terminal/src", cfg , "other-terminal", "term-config.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "rendering_dev", "rendering-dev-config.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
       # run_project("driver", cfg, "other_driver", "math-physics.toml", args, args.verbose)
+    elif args.run_server:
+      run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
       run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)

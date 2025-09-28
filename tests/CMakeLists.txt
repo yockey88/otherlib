@@ -26,4 +26,4 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/other_test_main.cpp
 )
 target_include_directories(other_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(other_tests PUBLIC otherlib gtest)
+target_link_libraries(other_tests PUBLIC otherlib gmock)

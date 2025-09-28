@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_THREAD_THREAD_HPP
 #define OTHER_CORE_THREAD_THREAD_HPP
 
+#include <chrono>
 #include <thread>
 
 #include "core/defines.hpp"
@@ -48,6 +49,17 @@ namespace other {
       std::stop_token stoken;
     };
 
+    virtual void on_initialize() {}
+    virtual void on_start() {}
+    virtual void on_shutdown() {}
+    virtual void pump_thread() {}
+    virtual void handle_acknowledgement(const acknowledgement& ack) {}
+    virtual void handle_ping(const session_status_request& ping) {}
+    virtual void handle_pong(const session_status_response& pong) {}
+    virtual void handle_shutdown_request(const session_shutdown_request& shutdown_request) {}
+    virtual void handle_command(const other_command_msg& cmd) {}
+    virtual void handle_command_block(const other_command_block_msg& cmd_block) {}
+
    protected:
     enum message_id {
       THREAD_INITIALIZE = 0,
@@ -62,13 +74,6 @@ namespace other {
 
     void thread_send_message(message&& msg);
 
-    virtual void pump_thread() {}
-    virtual void handle_acknowledgement(const acknowledgement& ack) {}
-    virtual void handle_ping(const session_status_request& ping) {}
-    virtual void handle_pong(const session_status_response& pong) {}
-    virtual void handle_shutdown_request(const session_shutdown_request& shutdown_request) {}
-    virtual void handle_command(const other_command_msg& cmd) {}
-    virtual void handle_command_block(const other_command_block_msg& cmd_block) {}
     /// add more here as needed
 
    private:
@@ -116,6 +121,10 @@ namespace other {
     void handle_response_message(const message& msg);
     void handle_error_alert_message(const message& msg);
     void handle_info_message(const message& msg);
+
+    virtual inline std::chrono::microseconds get_message_timeout() {
+      return std::chrono::microseconds(100);
+    }
   };
 
 }  // namespace other

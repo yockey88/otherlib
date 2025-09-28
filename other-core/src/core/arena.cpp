@@ -48,6 +48,7 @@ namespace other {
     PROFILE_SECTION("arena::allocate");
     OTHER_ASSERT(size <= arena_storage::kPageSize, "Allocation size is too large for Arena.");
     static arena* instance = subsystem_description<arena>::ptr();
+    std::lock_guard lock(instance->arena_mutex);
 
     if (instance->page_allocation_cursor == 0 ||
         instance->current_page == nullptr || instance->current_page->cursor + size >= arena_storage::kPageSize) {
@@ -87,6 +88,7 @@ namespace other {
   void arena::free(void* ptr, std::size_t size) {
     PROFILE_SECTION("arena::free");
     static arena* instance = subsystem_description<arena>::ptr();
+    std::lock_guard lock(instance->arena_mutex);
 
     instance->allocated_memory -= size;
     instance->live_allocations--;
