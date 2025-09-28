@@ -34,7 +34,7 @@ namespace other {
       }
       set_current_state(STOPPED);
     });
-    while (is_in_state(WAITING)) {
+    while (!is_in_state(LAUNCHING)) {
       std::this_thread::yield();
     }
 
@@ -61,9 +61,6 @@ namespace other {
     if (checkpoints.error_occurred) {
       CORE_LOG_ERROR("Thread start error");
       return;
-    }
-    while (is_in_state(LAUNCHING)) {
-      std::this_thread::yield();
     }
   }
 
@@ -159,6 +156,7 @@ namespace other {
     wait_for_initialization();
     wait_for_start();
 
+    CORE_LOG_DEBUG("Thread [{}] start successful", get_thread_name());
     do {
       try {
         set_current_state(WAITING);

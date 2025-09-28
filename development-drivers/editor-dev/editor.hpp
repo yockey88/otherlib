@@ -4,6 +4,8 @@
 #ifndef OTHER_EDITOR_HPP
 #define OTHER_EDITOR_HPP
 
+#include "thread/thread.hpp"
+
 #include "driver/driver.hpp"
 
 namespace other {
@@ -17,6 +19,9 @@ namespace other {
     void on_initialize() override;
     void run() override;
     void on_shutdown() override;
+
+   private:
+    scope<thread> editor_thread = nullptr;
   };
 
 }  // namespace other

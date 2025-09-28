@@ -1,11 +1,14 @@
 add_library(other_scene STATIC)
 target_sources(other_scene
     PRIVATE
+      src/asset/asset_serialization.cpp
+
       src/object/scene_object.cpp
       src/object/script_component.cpp
       src/object/object_serialization.cpp
       
       src/scene/scene_tree.cpp
+      src/scene/scene_storage.cpp
       src/scene/scene.cpp
       src/scene/scene_graph.cpp
       src/scene/scene_serialization.cpp

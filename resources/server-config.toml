@@ -1,0 +1,8 @@
+[application]
+core-log-level = "debug"
+project = "dev-project.other"
+core-log-file = "logs/server.log"
+
+# [rendering]
+# rendering-backend = "opengl"
+# window-size = { width = 1920, height = 1080 }

@@ -24,7 +24,9 @@
 
 namespace other {
 
-  using sink_fn = spdlog::sink_ptr (*)();
+  class config_table;
+
+  using sink_fn = spdlog::sink_ptr (*)(const config_table& config);
   struct log_sink {
     uint16_t id;
     std::string sink_name;
@@ -44,10 +46,14 @@ namespace other {
 
     void send_log(spdlog::level::level_enum level, const std::string_view log_name, const std::string_view msg);
 
+    void set_config(const config_table* config);
+
    private:
     constexpr static std::string_view kFallbackFile = "other.log";
     constexpr static std::string_view kLogFailureFile = "other-log-failure.log";
     std::unique_ptr<std::ofstream> error_log_file = nullptr;
+
+    const config_table* current_config_table = nullptr;
 
     std::map<uint16_t, spdlog::sink_ptr> sinks;
     std::map<natural_t, std::shared_ptr<spdlog::logger>> loggers;

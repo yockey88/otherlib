@@ -82,6 +82,13 @@ namespace other {
     auto itr = assemblies.find(assembly_id);
     if (itr != assemblies.end()) {
       CORE_LOG_INFO("Unloading assembly [{}:{}]", itr->second->get_handle(), itr->second->get_name());
+
+      /// remove types from type cache
+      for (auto* type : itr->second->types) {
+        host->get_type_cache()->remove_type(type->dotnet_id);
+      }
+
+      host->interop().unload_managed_assembly(itr->second->dotnet_id);
       assemblies.erase(itr);
     } else {
       CORE_LOG_ERROR("Failed to unload assembly: ID {} not found", assembly_id);

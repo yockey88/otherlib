@@ -19,6 +19,7 @@ namespace other {
   using create_assembly_load_context = int32_t (*)(native_string);
   using unload_assembly_load_context = void (*)(int32_t);
   using load_managed_assembly = int32_t (*)(int32_t, native_string);
+  using unload_managed_assembly = void (*)(int32_t);
   using get_last_load_status = assembly_load_status (*)();
   using get_assembly_name = native_string (*)(int32_t);
 

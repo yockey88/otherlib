@@ -16,6 +16,7 @@ namespace other {
     void operator()(T* ptr) const {
       if (ptr != nullptr) {
         arena_allocator<T>{}.free(ptr);
+        ptr = nullptr;
       }
     }
 

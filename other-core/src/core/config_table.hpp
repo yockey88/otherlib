@@ -12,6 +12,8 @@
 #include "core/defines.hpp"
 #include "core/value.hpp"
 
+#include "spdlog/common.h"
+
 #include <toml++/toml.h>
 
 namespace other {
@@ -29,14 +31,15 @@ namespace other {
     /// for debugging only, returns the entire project table
     toml::table& get_project_table();
 
-    bool valid = false;
+    bool valid = true;
     struct {
       bool verbose = false;
     } diagnostics;
 
     //// application settings
     opt<std::string> dynamic_driver_rel_path;
-    uint32_t core_log_level = 2;
+    uint32_t core_log_level = (spdlog::level::level_enum)spdlog::level::warn;
+    std::string core_log_file = "logs/other_env.log";
 
     /// environment settings
     bool open_terminal = false;

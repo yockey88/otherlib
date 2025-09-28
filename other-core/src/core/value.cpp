@@ -3,6 +3,8 @@
  **/
 #include "core/value.hpp"
 
+#include "core/logger.hpp"
+
 #include "value.hpp"
 
 namespace other {

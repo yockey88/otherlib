@@ -21,6 +21,9 @@ namespace other {
     ~type_cache() = default;
 
     dotnet_type* cache_type(dotnet_host* host, int32_t dotnet_handle);
+    void remove_type(int32_t dotnet_handle);
+
+    void clear_cache(dotnet_host* interop);
 
     dotnet_type* get_type(const std::string_view name);
     dotnet_type* get_type(int32_t id);

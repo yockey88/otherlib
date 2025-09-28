@@ -17,23 +17,27 @@
 #include "object/transform.hpp"
 
 #include "entt/entity/fwd.hpp"
+#include "scene_storage.hpp"
 
 namespace other {
 
-  scene::scene()
-      : tree(this) {
-    PROFILE_SECTION("scene::scene");
-    OTHER_ASSERT(tree.nodes != nullptr, "Scene tree nodes are not initialized.");
-    OTHER_ASSERT(tree.objects != nullptr, "Memory pool for scene objects is not initialized.");
+  void scene::do_scene_initialization() {
+    storage = make_scene_storage(this);
+    OTHER_ASSERT(storage != nullptr, "Failed to allocate scene storage->");
 
     // Create the root object
-    scene_object& root = tree.root_object();
+    scene_object& root = storage->tree.root_object();
     register_object(&root, "Root", glm::vec3(0.0f));
     root.visible = true;
 
-    registry.on_construct<script_component>().connect<&scene::on_create_script_component>(this);
-    // registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
-    registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
+    storage->registry.on_construct<script_component>().connect<&scene::on_create_script_component>(this);
+    // storage->registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
+    storage->registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
+  }
+
+  scene::scene() {
+    PROFILE_SECTION("scene::scene");
+    do_scene_initialization();
   }
 
   scene::scene(const std::string& name)
@@ -47,24 +51,30 @@ namespace other {
   }
 
   scene& scene::operator=(scene&& other) {
-    this->registry = std::move(other.registry);
-    this->tree = std::move(other.tree);
     this->name = std::move(other.name);
     this->id = other.id;
-
     other.id = 0;
     other.name = "Untitled Scene";
+
+    this->storage = std::move(other.storage);
+    other.storage = nullptr;
+
+    this->storage->tree.scene_ptr = this;
 
     return *this;
   }
 
   scene::~scene() {
-    PROFILE_SECTION("scene::~scene");
+    if (storage != nullptr) {
+      storage->tree.destroy_all_objects();
+      storage->registry.on_construct<script_component>().disconnect<&scene::on_create_script_component>(this);
+      // storage->registry.on_update<script_component>().disconnect<&scene::on_update_script_component>(this);
+      storage->registry.on_destroy<script_component>().disconnect<&scene::on_destroy_script_component>(this);
+      storage = nullptr;
+    }
+  }
 
-    registry.on_construct<script_component>().disconnect<&scene::on_create_script_component>(this);
-    // registry.on_update<script_component>().disconnect<&scene::on_update_script_component>(this);
-    registry.on_destroy<script_component>().disconnect<&scene::on_destroy_script_component>(this);
-    registry.clear();
+  void scene::reset() {
   }
 
   scene scene::create_scene(const std::string& name) {
@@ -74,8 +84,8 @@ namespace other {
   scene_object& scene::root_object() {
     PROFILE_SECTION("scene::get_root_object");
 
-    scene_tree::node* root_node = tree.node_at(0);
-    OTHER_ASSERT(root_node != nullptr, "Root node does not exist in the scene tree.");
+    scene_tree::node* root_node = storage->tree.node_at(0);
+    OTHER_ASSERT(root_node != nullptr, "Root node does not exist in the scene storage->tree.");
     OTHER_ASSERT(root_node->object != nullptr, "Root node object is null.");
 
     return *root_node->object;
@@ -84,7 +94,7 @@ namespace other {
   scene_object& scene::create_object(scene_object* object) {
     PROFILE_SECTION("scene::create_object_from_existing");
     OTHER_ASSERT(object != nullptr, "Cannot create a scene object from a null pointer.");
-    return tree.create_object(object->name, glm::vec3(0.f), nullptr);
+    return storage->tree.create_object(object->name, glm::vec3(0.f), nullptr);
   }
 
   scene_object& scene::create_object(const std::string& name, scene_object* parent_object) {
@@ -93,12 +103,12 @@ namespace other {
 
   scene_object& scene::create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object) {
     PROFILE_SECTION("scene::create_object");
-    return tree.create_object(name, world_position, parent_object);
+    return storage->tree.create_object(name, world_position, parent_object);
   }
 
   scene_object& scene::add_object(scene_object* object, const transform& transformation, scene_object* parent_object) {
     PROFILE_SECTION("scene::add_object");
-    return tree.add_object(object, transformation, parent_object);
+    return storage->tree.add_object(object, transformation, parent_object);
   }
 
   void scene::add_objects(const std::span<serialization::parsed_scene_object> objects) {
@@ -112,50 +122,16 @@ namespace other {
       script_component* comp = get_component<script_component>(&obj.object);
       OTHER_ASSERT(comp != nullptr, "Failed to retrieve script component for object w/ id {}", obj.object.id);
 
-      for (const auto& attached_script : obj.attached_scripts) {
-        switch (attached_script.type) {
-          case serialization::parsed_scene_object::attached_script::DOTNET:
-            env->attach_dotnet_object(comp->script_object_id, attached_script.name);
-            break;
-
-          case serialization::parsed_scene_object::attached_script::PYTHON:
-            env->attach_python_object(comp->script_object_id, attached_script.name);
-            break;
-
-          case serialization::parsed_scene_object::attached_script::LUA:
-            OTHER_ASSERT(false, "LUA unimplemented!");
-            break;
-
-          default:
-            OTHER_ASSERT(false, "UNKNOWN script type!");
-            break;
-        }
-
-        script_object* script_obj = env->get_object(comp->script_object_id);
-        switch (attached_script.type) {
-          case serialization::parsed_scene_object::attached_script::DOTNET:
-            script_obj->dotnet_object->load_from_bytes(attached_script.data);
-            break;
-
-          case serialization::parsed_scene_object::attached_script::PYTHON:
-            // script_obj->python_object->load_from_bytes(attached_script.data);
-            break;
-
-          case serialization::parsed_scene_object::attached_script::LUA:
-            OTHER_ASSERT(false, "LUA unimplemented!");
-            break;
-
-          default:
-            OTHER_ASSERT(false, "UNKNOWN script type!");
-            break;
-        }
+      if (obj.dotnet_obj.name != "" && obj.dotnet_obj.dotnet_blob.size() > 0) {
+        CORE_LOG_DEBUG(" - attaching serialized .NET object '{}' to script object ID {}", obj.dotnet_obj.name, comp->script_object_id);
+        env->attach_serialized_dotnet_object(comp->script_object_id, obj.dotnet_obj.name, obj.dotnet_obj.dotnet_blob);
       }
     }
   }
 
   scene_object* scene::get_parent(natural_t id) {
     PROFILE_SECTION("scene::get_parent");
-    return tree.get_parent(id);
+    return storage->tree.get_parent(id);
   }
 
   const scene_object* scene::get_parent(natural_t id) const {
@@ -181,8 +157,8 @@ namespace other {
 
   std::vector<uint64_t> scene::get_children_ids(natural_t id) const {
     PROFILE_SECTION("scene::get_children_ids");
-    const scene_tree::node* node = tree.node_at(id);
-    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    const scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     std::vector<uint64_t> children_ids;
     for (const scene_tree::node* child : node->children) {
       if (child != nullptr && child->object != nullptr) {
@@ -202,32 +178,32 @@ namespace other {
 
   std::vector<uint64_t> scene::get_all_object_ids() const {
     PROFILE_SECTION("scene::get_all_object_ids");
-    return tree.get_all_object_ids();
+    return storage->tree.get_all_object_ids();
   }
 
   void scene::destroy_object(natural_t id) {
     PROFILE_SECTION("scene::destroy_object");
-    tree.destroy_object(id);
+    storage->tree.destroy_object(id);
   }
 
   scene_object& scene::get_object(natural_t id) {
     PROFILE_SECTION("scene::get_object");
-    scene_tree::node* node = tree.node_at(id);
-    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     return *node->object;
   }
 
   const scene_object& scene::get_object(natural_t id) const {
     PROFILE_SECTION("scene::get_object_const");
-    const scene_tree::node* node = tree.node_at(id);
-    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    const scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     return *node->object;
   }
 
   size_t scene::get_object_count() const {
     PROFILE_SECTION("scene::get_object_count");
-    OTHER_ASSERT(tree.nodes != nullptr, "Scene tree nodes are not initialized.");
-    return tree.get_object_count();
+    OTHER_ASSERT(storage->tree.nodes != nullptr, "Scene tree nodes are not initialized.");
+    return storage->tree.get_object_count();
   }
 
   transform& scene::get_transform(scene_object* object) {
@@ -235,7 +211,7 @@ namespace other {
     OTHER_ASSERT(object != nullptr, "Cannot get transform from a null scene object.");
 
     entt::entity entity = entt::entity(object->registry_id);
-    transform* t = registry.try_get<transform>(entity);
+    transform* t = storage->registry.try_get<transform>(entity);
     OTHER_ASSERT(t != nullptr, "Transform component does not exist for the given scene object.");
 
     return *t;
@@ -246,7 +222,7 @@ namespace other {
     OTHER_ASSERT(object != nullptr, "Cannot get transform from a null scene object.");
 
     entt::entity entity = entt::entity(object->registry_id);
-    const transform* t = registry.try_get<transform>(entity);
+    const transform* t = storage->registry.try_get<transform>(entity);
     OTHER_ASSERT(t != nullptr, "Transform component does not exist for the given scene object.");
 
     return *t;
@@ -257,7 +233,7 @@ namespace other {
     OTHER_ASSERT(object != nullptr, "Cannot set transform on a null scene object.");
 
     entt::entity entity = entt::entity(object->registry_id);
-    registry.replace<transform>(entity, t);
+    storage->registry.replace<transform>(entity, t);
   }
 
   glm::mat4 scene::get_world_transform(scene_object* obj) const {
@@ -270,8 +246,8 @@ namespace other {
   glm::mat4 scene::get_world_transform(natural_t id) const {
     PROFILE_SECTION("scene::get_world_transform");
 
-    const scene_tree::node* node = tree.node_at(id);
-    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    const scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
 
     {
       PROFILE_SECTION("scene::get_world_transform--recursive-compute");
@@ -286,24 +262,24 @@ namespace other {
   transform& scene::get_transform(natural_t id) {
     PROFILE_SECTION("scene::get_transform_by_id");
 
-    scene_tree::node* node = tree.node_at(id);
-    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     return get_transform(node->object);
   }
 
   const transform& scene::get_transform(natural_t id) const {
     PROFILE_SECTION("scene::get_transform_by_id");
 
-    const scene_tree::node* node = tree.node_at(id);
-    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    const scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     return get_transform(node->object);
   }
 
   void scene::set_transform(natural_t id, const transform& t) {
     PROFILE_SECTION("scene::set_transform_by_id");
 
-    scene_tree::node* node = tree.node_at(id);
-    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+    scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     set_transform(node->object, t);
   }
 
@@ -312,7 +288,7 @@ namespace other {
 
     render_data data;
     const camera* primary_camera = nullptr;
-    registry.view<object_handle, camera>().each([&](const object_handle& handle, const camera& cam) {
+    storage->registry.view<object_handle, camera>().each([&](const object_handle& handle, const camera& cam) {
       if (object_has_tag(handle.id, "main-camera")) {
         primary_camera = &cam;
       }
@@ -326,13 +302,13 @@ namespace other {
     /// \todo: should we collect these into an owning group?
     //        pros: faster, faster, faster, and then also a little bit faster
     //        cons: have to remember to create the groups and two entities can not have one of each light
-    registry.view<gpu::point_light>().each([&](const gpu::point_light& light) { data.point_lights.push_back(light); });
-    registry.view<object_handle, gpu::directional_light>().each([&](const object_handle& handle, const gpu::directional_light& light) {
+    storage->registry.view<gpu::point_light>().each([&](const gpu::point_light& light) { data.point_lights.push_back(light); });
+    storage->registry.view<object_handle, gpu::directional_light>().each([&](const object_handle& handle, const gpu::directional_light& light) {
       if (object_has_tag(handle.id, "scene-ambient-light")) {
         data.scene_ambient_light = &light;
       }
     });
-    registry.view<object_handle, render_component>().each([&](const object_handle& handle, const render_component& render) {
+    storage->registry.view<object_handle, render_component>().each([&](const object_handle& handle, const render_component& render) {
       if (!render.visible) {
         return;
       }
@@ -404,13 +380,13 @@ namespace other {
 
   bool scene::object_has_tag(natural_t id, const std::string_view tag) const {
     PROFILE_SECTION("scene::object_has_tag");
-    return tree.node_has_tag(id, tag);
+    return storage->tree.node_has_tag(id, tag);
   }
 
   void scene::add_object_tag(natural_t id, const std::string_view tag) {
     PROFILE_SECTION("scene::add_object_tag");
-    scene_tree::node* n = tree.node_at(id);
-    OTHER_ASSERT(n != nullptr, "Node with the given ID does not exist in the scene tree.");
+    scene_tree::node* n = storage->tree.node_at(id);
+    OTHER_ASSERT(n != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     n->tags.push_back(object_tag{ std::string{ tag } });
   }
 
@@ -419,8 +395,8 @@ namespace other {
 
     std::string result = "Scene Object Count: " + std::to_string(s.get_object_count()) + "\n";
     result += "Scene Tree:\n";
-    for (size_t i = 0; i < s.tree.nodes->size(); ++i) {
-      const scene_tree::node* n = s.tree.node_at(i);
+    for (size_t i = 0; i < s.storage->tree.nodes->size(); ++i) {
+      const scene_tree::node* n = s.storage->tree.node_at(i);
       if (n != nullptr && n->object != nullptr) {
         result += "Node ID: " + std::to_string(n->id) + ", Object Name: " + n->object->name + "\n";
       }
@@ -442,23 +418,18 @@ namespace other {
 
     OTHER_ASSERT(object != nullptr, "Cannot register a null scene object.");
 
-    entt::entity entity = registry.create();
+    entt::entity entity = storage->registry.create();
     object->name = name;
     object->registry_id = (uint32_t)entity;
 
-    registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
-    registry.emplace<transform>(entity, transform{
-                                          .local_basis = orthonormal_basis(glm::vec3(0, 1, 0)),
-                                          .local_position = world_position,
-                                          .local_scale = glm::vec3(1, 1, 1),
-                                          .local_rotation_quat = glm::quat(1, 0, 0, 0),
-                                        });
-
-    auto* script_env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
-
-    auto& script_comp = registry.emplace<script_component>(entity, script_component{ .object = object });
-    script_comp.script_object_id = script_env->create_object(name);
+    storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
+    storage->registry.emplace<transform>(entity, transform{
+                                                   .local_basis = orthonormal_basis(glm::vec3(0, 1, 0)),
+                                                   .local_position = world_position,
+                                                   .local_scale = glm::vec3(1, 1, 1),
+                                                   .local_rotation_quat = glm::quat(1, 0, 0, 0),
+                                                 });
+    storage->registry.emplace<script_component>(entity, script_component{ .object = object });
   }
 
   void scene::register_object(scene_object* object, const std::string& name, const transform& transformation) {
@@ -469,10 +440,11 @@ namespace other {
   void scene::unregister_object(scene_object* object) {
     PROFILE_SECTION("scene::unregister_object");
 
-    OTHER_ASSERT(object != nullptr, "Cannot unregister a null scene object.");
-    if (object->registry_id != 0) {
-      registry.destroy(entt::entity(object->registry_id));
-    }
+    auto* script_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
+
+    script_component& script = storage->registry.get<script_component>(entt::entity(object->registry_id));
+    script_env->destroy_object(script.script_object_id);
   }
 
   void scene::on_create_render_component(const entt::registry&, const entt::entity entity) {
@@ -490,7 +462,7 @@ namespace other {
     auto* script_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
-    script_component& script = registry.get<script_component>(entity);
+    script_component& script = storage->registry.get<script_component>(entity);
     std::string script_name = script.object->name;
     script.script_object_id = script_env->create_object(script_name);
   }
@@ -504,8 +476,8 @@ namespace other {
     auto* script_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
-    script_component& script = registry.get<script_component>(entity);
-    // script_env->destroy_object(script.script_object_id);
+    script_component& script = storage->registry.get<script_component>(entity);
+    script_env->destroy_object(script.script_object_id);
   }
 
 }  // namespace other

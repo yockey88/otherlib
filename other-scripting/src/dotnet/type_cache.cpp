@@ -19,6 +19,21 @@ namespace other {
     return &itr->second;
   }
 
+  void type_cache::remove_type(int32_t dotnet_handle) {
+    auto itr = cached_types.find(dotnet_handle);
+    if (itr != cached_types.end()) {
+      name_cache.erase(FNV(itr->second.full_name()));
+      id_cache.erase(dotnet_handle);
+      cached_types.erase(itr);
+    }
+  }
+
+  void type_cache::clear_cache(dotnet_host* host) {
+    cached_types.clear();
+    name_cache.clear();
+    id_cache.clear();
+  }
+
   dotnet_type* type_cache::get_type(const std::string_view name) {
     bool contains = name_cache.contains(FNV(name));
     dotnet_type* res = nullptr;

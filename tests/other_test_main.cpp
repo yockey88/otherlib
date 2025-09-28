@@ -29,6 +29,7 @@ namespace other {
       // config.diagnostics.verbose = cmd.diagnostics.verbose;
 
       subsystem<arena>::get();
+      config.core_log_level = spdlog::level::debug;
       register_log_sinks(config);
       CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
     }

@@ -25,6 +25,7 @@ namespace other {
 
     std::string driver = "";
     int32_t log_level = 0;
+    std::string core_log_file = "logs/other_env.log";
 
     bool open_terminal = false;
 
@@ -66,6 +67,11 @@ namespace other {
         }
       } else {
         log_level = 2;
+      }
+
+      toml::node_view log_file_node = table.at_path("application.core-log-file");
+      if (log_file_node.is_string()) {
+        core_log_file = log_file_node.as_string()->get();
       }
 
       toml::node_view environment = table.at_path("environment");
@@ -130,6 +136,7 @@ namespace other {
       config.dynamic_driver_rel_path = driver;
     }
     config.core_log_level = log_level;
+    config.core_log_file = core_log_file;
 
     config.open_terminal = open_terminal;
 

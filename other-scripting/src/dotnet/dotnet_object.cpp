@@ -14,6 +14,23 @@
 
 namespace other {
 
+  void dotnet_object::load_fields() {
+    OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
+
+    const auto& fields = dn_type->get_fields();
+    for (const auto& f : fields) {
+      // skip C# property backing fields
+      if (f.name().ends_with("k__BackingField")) {
+        continue;
+      }
+
+      auto itr = load_field(f.name(), f.get_type());
+      OTHER_ASSERT(itr != field_storage.end(), "Failed to load field storage for field '{}'", f.name());
+      CORE_LOG_DEBUG("Loading field '{}' of type '{}' for dotnet object '{}'", f.name(), itr->second.stored_type, object_name);
+    }
+  }
+
   std::string dotnet_object::get_type_name() const {
     OTHER_ASSERT(dn_type != nullptr, "Type is not initialized for dotnet_object '{}'", object_name);
     return dn_type->full_name();
@@ -28,6 +45,14 @@ namespace other {
     return dn_type->get_attribute_names();
   }
 
+  namespace detail {
+
+    static bool is_dotnet_builtin(const std::string_view name) {
+      return name.ends_with("k__BackingField");
+    }
+
+  }  // namespace detail
+
   std::vector<uint8_t> dotnet_object::serialize_to_bytes() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
@@ -35,20 +60,26 @@ namespace other {
     std::vector<uint8_t> bytes = {};
 
     /**
-    | num fields | fields |
-    |---------------------|
-    | 2 bytes    |        |
-    **/
-    /**
-    | field name len | field name | field type | field data len | field data |
-    |------------------------------------------------------------------------|
-    | 2 byte         |            | 1 byte     | 8 bytes        |            |
+     | num fields | fields |
+     |---------------------|
+     | 2 bytes    |        |
+
+    fields:
+     | field name len | field name | field type | field data len | field data |
+     |------------------------------------------------------------------------|
+     | 2 byte         |            | 1 byte     | 8 bytes        |            |
     **/
 
     const auto& fields = dn_type->get_fields();
 
-    serialization::write_value<uint16_t>((uint16_t)fields.size(), bytes);
+    size_t num_fields = std::ranges::count_if(fields, [](const dotnet_field& f) { return !detail::is_dotnet_builtin(f.name()); });
+    serialization::write_value<uint16_t>((uint16_t)num_fields, bytes);
+
     for (const auto& f : fields) {
+      if (detail::is_dotnet_builtin(f.name())) {
+        continue;
+      }
+
       auto storage_itr = load_field(f.name(), f.get_type());
       OTHER_ASSERT(storage_itr != field_storage.end(), "Failed to load field storage for field '{}'", f.name());
       serialization::write_value<uint16_t>((uint16_t)f.name().size(), bytes);
@@ -70,7 +101,7 @@ namespace other {
     uint16_t num_fields = serialization::read_value<uint16_t>(buffer, cursor);
     const auto& fields = dn_type->get_fields();
 
-    OTHER_ASSERT(num_fields <= fields.size(), "Invalid number of fields!");
+    OTHER_ASSERT(num_fields == fields.size() - std::ranges::count_if(fields, [](const dotnet_field& f) { return detail::is_dotnet_builtin(f.name()); }), "Invalid number of fields!");
 
     for (uint64_t i = 0; i < num_fields; ++i) {
       uint16_t field_name_len = serialization::read_value<uint16_t>(buffer, cursor);
@@ -85,25 +116,37 @@ namespace other {
       std::span<const uint8_t> field_blob = buffer.subspan(cursor, data_len);
       cursor += data_len;
 
-      {
-        std::stringstream ss;
-        for (uint32_t i = 0; i < field_blob.size(); ++i) {
-          ss << std::format("{:02X} ", field_blob[i]);
-          if ((i + 1) % 16 == 0 && i > 0) {
-            ss << "\n";
-          }
-        }
-        std::println("Deserializing field '{}' of type {} with data ({} bytes):\n{}", name, (int)type, field_blob.size(), ss.str());
-      }
-
       storage_itr->second.load_from_bytes(field_blob.data(), field_blob.size());
+      write_storage_to_field(storage_itr, name);
     }
+  }
+
+  std::vector<uint8_t> dotnet_object::serialize_field_to_bytes(const std::string_view name) {
+    const auto& fields = dn_type->get_fields();
+    auto itr = std::ranges::find_if(fields, [&](const dotnet_field& f) { return f.name() == name; });
+
+    std::vector<uint8_t> bytes = {};
+    if (itr == fields.end()) {
+      CORE_LOG_ERROR("Failed to find field {} on type {}", name, dn_type->full_name());
+      return bytes;
+    }
+
+    auto storage_itr = load_field(itr->name(), itr->get_type());
+    OTHER_ASSERT(storage_itr != field_storage.end(), "Failed to load field storage for field '{}'", itr->name());
+    serialization::write_value<uint16_t>((uint16_t)itr->name().size(), bytes);
+    serialization::write_string_value(itr->name(), bytes);
+    serialization::write_value<uint8_t>((uint8_t)storage_itr->second.stored_type, bytes);
+    serialization::write_value<uint64_t>(storage_itr->second.size, bytes);
+    serialization::write_bytes(storage_itr->second.data, storage_itr->second.size, bytes);
+
+    return bytes;
   }
 
   std::map<uint64_t, dotnet_field::storage>::iterator dotnet_object::load_field(const std::string_view field_name, value_type type) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
 
+    CORE_LOG_TRACE("Loading field '{}' of type '{}' for dotnet object '{}'", field_name, type, object_name);
     auto itr = field_storage.find(FNV(field_name));
     if (itr == field_storage.end()) {
       if (type_has_field(field_name)) {

@@ -4,10 +4,12 @@
 #ifndef OTHER_CORE_CORE_DEFINES_HPP
 #define OTHER_CORE_CORE_DEFINES_HPP
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <format>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <type_traits>
 
@@ -255,6 +257,56 @@ namespace other {
       default: return sizeof(void*);
     }
   }
+
+  static inline value_type get_value_type_from_string(const std::string_view type_str) {
+    std::string lc_str = std::string{ type_str };
+    std::ranges::transform(lc_str, lc_str.begin(), [](unsigned char c) { return std::tolower(c); });
+
+    if (lc_str == "bool") {
+      return value_type::OEBOOL;
+    } else if (lc_str == "char") {
+      return value_type::CHAR;
+    } else if (lc_str == "string") {
+      return value_type::STRING;
+    } else if (lc_str == "int8") {
+      return value_type::INT8;
+    } else if (lc_str == "int16") {
+      return value_type::INT16;
+    } else if (lc_str == "int32") {
+      return value_type::INT32;
+    } else if (lc_str == "int64") {
+      return value_type::INT64;
+    } else if (lc_str == "uint8") {
+      return value_type::UINT8;
+    } else if (lc_str == "uint16") {
+      return value_type::UINT16;
+    } else if (lc_str == "uint32") {
+      return value_type::UINT32;
+    } else if (lc_str == "uint64") {
+      return value_type::UINT64;
+    } else if (lc_str == "float") {
+      return value_type::FLOAT;
+    } else if (lc_str == "double") {
+      return value_type::DOUBLE;
+    } else if (lc_str == "vec2") {
+      return value_type::VEC2;
+    } else if (lc_str == "vec3") {
+      return value_type::VEC3;
+    } else if (lc_str == "vec4") {
+      return value_type::VEC4;
+    } else if (lc_str == "mat2") {
+      return value_type::MAT2;
+    } else if (lc_str == "mat3") {
+      return value_type::MAT3;
+    } else if (lc_str == "mat4") {
+      return value_type::MAT4;
+    } else {
+      return value_type::USER_TYPE;
+    }
+  }
+
+  filepath get_app_data_folder(const std::string_view app_name);
+  filepath get_project_cache(const std::string_view other_folder);
 
 }  // namespace other
 

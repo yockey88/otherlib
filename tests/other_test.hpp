@@ -5,6 +5,8 @@
 
 #include "core/arena.hpp"
 
+#include "script/scripting_environment.hpp"
+
 namespace other {
 
   class other_test : public ::testing::Test {

@@ -1,0 +1,19 @@
+{
+  "name": "Test Scene",
+  "dotnet-modules": [ { "path": "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll" } ],
+  "objects": [
+    { 
+      "name": "Test Object",
+      "dotnet": {
+        "type-name": "TestObject",
+        "fields": [
+          {
+            "name": "field_value",
+            "type": "Int32",
+            "value": 42
+          }
+        ]
+      }
+    }
+  ]
+}

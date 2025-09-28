@@ -19,6 +19,7 @@ namespace other {
       size = data_size;
       data = (uint8_t*)arena::allocate(size);
     }
+    std::memset(data, 0, size);
     std::memcpy(data, new_data, data_size);
   }
 

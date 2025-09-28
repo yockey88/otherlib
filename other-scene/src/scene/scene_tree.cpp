@@ -4,14 +4,14 @@
 #include "scene/scene_tree.hpp"
 
 #include "model/vertex.hpp"
-#include "object/scene_object.hpp"
 
+#include "object/scene_object.hpp"
 #include "scene/scene.hpp"
 
 namespace other {
 
   scene_tree::scene_tree()
-      : scene_ptr(nullptr), objects(make_ref<memory_pool<scene_object>>()), nodes(make_scope<std::array<node, kMaxNodes>>()) {
+      : scene_ptr(nullptr), objects(make_scope<memory_pool<scene_object>>()), nodes(make_scope<std::array<node, kMaxNodes>>()) {
     OTHER_ASSERT(objects != nullptr, "Failed to allocate memory pool for scene objects.");
 
     root = create_object();
@@ -19,7 +19,7 @@ namespace other {
   }
 
   scene_tree::scene_tree(scene* s)
-      : scene_ptr(s), objects(make_ref<memory_pool<scene_object>>()), nodes(make_scope<std::array<node, kMaxNodes>>()) {
+      : scene_ptr(s), objects(make_scope<memory_pool<scene_object>>()), nodes(make_scope<std::array<node, kMaxNodes>>()) {
     OTHER_ASSERT(objects != nullptr, "Failed to allocate memory pool for scene objects.");
 
     root = create_object();
@@ -34,39 +34,49 @@ namespace other {
     this->scene_ptr = other.scene_ptr;
     other.scene_ptr = nullptr;
 
-    this->objects = other.objects;
+    this->objects = std::move(other.objects);
     other.objects = nullptr;
 
     this->nodes = std::move(other.nodes);
     other.nodes = nullptr;
 
     this->root = other.root;
-    other.root = nullptr;
-
     this->num_objects = other.num_objects;
+
+    other.root = nullptr;
     other.num_objects = 0;
 
     return *this;
   }
 
   scene_tree::~scene_tree() {
-    if (objects != nullptr) {
-      objects->clear();
-      objects = nullptr;
-    }
+    scene_ptr = nullptr;
+    objects = nullptr;
+    nodes = nullptr;
+    root = nullptr;
+  }
 
+  void scene_tree::destroy_all_objects() {
+    if (objects != nullptr) {
+      for (auto& obj : *objects) {
+        if (obj.id != 0 && scene_ptr != nullptr) {
+          destroy_object(obj.id);
+        }
+      }
+    }
     if (nodes != nullptr) {
       // Clear nodes
       for (auto& node : *nodes) {
-        node.parent = nullptr;
         node.id = 0;
         node.object = nullptr;
+        node.parent = nullptr;
         node.children.clear();
+        node.tags.clear();
       }
       nodes = nullptr;
     }
-
-    root = nullptr;  // Clear root pointer
+    objects = nullptr;
+    root = nullptr;
   }
 
   scene_object& scene_tree::root_object() {
@@ -262,16 +272,16 @@ namespace other {
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
 
-    if (n->parent != nullptr) {
-      auto& siblings = n->parent->children;
-      std::erase_if(siblings, [n](node* child) { return child == n; });
-    }
-
     if (n->object != nullptr) {
       scene_ptr->unregister_object(n->object);
       objects->free(n->object->id);
       *n = node{};  // Reset the node
       --num_objects;
+    }
+
+    if (n->parent != nullptr) {
+      auto& siblings = n->parent->children;
+      std::erase_if(siblings, [n](node* child) { return child == n; });
     }
   }
 

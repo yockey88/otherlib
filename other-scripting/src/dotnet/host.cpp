@@ -20,7 +20,7 @@
 namespace other {
   namespace {
 
-    std::optional<std::filesystem::path> GetHostPath();
+    std::optional<filepath> GetHostPath();
 
     template <typename Fn>
     Fn load_function(void* handle, const char* name) {
@@ -55,7 +55,7 @@ namespace other {
 
   void dotnet_host::load_host() {
     if (hostfxr_lib == nullptr) {
-      std::optional<std::filesystem::path> host_path = GetHostPath();
+      std::optional<filepath> host_path = GetHostPath();
       OTHER_ASSERT(host_path.has_value(), "Failed to find hostfxr library. Please ensure .NET SDK is installed and the path is correct.");
       CORE_LOG_DEBUG("Found hostfxr library at: {}", host_path->string());
 
@@ -99,6 +99,11 @@ namespace other {
       interop_functions.collect_garbage(0, gc_mode::DEFAULT, true, true);
       interop_functions.wait_for_pending_finalizers();
     }
+
+    auto* type_cache = get_type_cache();
+    OTHER_ASSERT(type_cache != nullptr, "Type cache is null");
+
+    type_cache->clear_cache(this);
 
     coreclr.init_host_cmd_line = nullptr;
     coreclr.init_host_config = nullptr;
@@ -182,6 +187,8 @@ namespace other {
     obj->managed_object = interop_functions.create_object(type->dotnet_id, false, argv, arg_ts, argc);
     if (obj->managed_object == nullptr) {
       CORE_LOG_ERROR("Failed to create managed object of type [{}]", type->full_name());
+      remove_object(name);
+      return nullptr;
     } else {
       CORE_LOG_DEBUG("Created managed object [{}] of type [{}]", name, type->full_name());
     }
@@ -216,6 +223,7 @@ namespace other {
   }
 
   void dotnet_host::remove_object(const std::string_view name) {
+    CORE_LOG_DEBUG("Removing managed object '{}'", name);
     auto it = managed_objects.find(FNV(name));
     if (it != managed_objects.end()) {
       managed_objects.erase(it);
@@ -245,6 +253,9 @@ namespace other {
 
     interop_functions.load_managed_assembly = load_managed_function<load_managed_assembly>(assembly_loader_type_str, DNET_STR("LoadManagedAssembly"));
     OTHER_ASSERT(interop_functions.load_managed_assembly != nullptr, "Failed to load LoadManagedAssembly function from managed assembly.");
+
+    interop_functions.unload_managed_assembly = load_managed_function<unload_managed_assembly>(assembly_loader_type_str, DNET_STR("UnloadManagedAssembly"));
+    OTHER_ASSERT(interop_functions.unload_managed_assembly != nullptr, "Failed to load UnloadManagedAssembly function from managed assembly.");
 
     interop_functions.get_assembly_name = load_managed_function<get_assembly_name>(assembly_loader_type_str, DNET_STR("GetAssemblyName"));
     OTHER_ASSERT(interop_functions.get_assembly_name != nullptr, "Failed to load GetAssemblyName function from managed assembly.");
@@ -396,7 +407,7 @@ namespace other {
     }
   }
 
-  void* dotnet_host::load_managed_function(const std::filesystem::path& asm_path, const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type) const {
+  void* dotnet_host::load_managed_function(const filepath& asm_path, const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type) const {
     if (!std::filesystem::exists(asm_path)) {
       CORE_LOG_ERROR("Assembly {} does not exist!", asm_path.string());
       return nullptr;
@@ -416,9 +427,9 @@ namespace other {
 
   namespace {
 
-    std::optional<std::filesystem::path> GetHostPath() {
+    std::optional<filepath> GetHostPath() {
 #ifdef OTHER_ENVIRONMENT_WINDOWS
-      std::filesystem::path base_path = "";
+      filepath base_path = "";
 
       TCHAR buffer[MAX_PATH];
       SHGetSpecialFolderPath(nullptr, buffer, CSIDL_PROGRAM_FILES, FALSE);

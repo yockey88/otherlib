@@ -61,6 +61,7 @@ namespace other {
     }
 
     std::string read_string_value(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor);
+    std::vector<uint8_t> read_bytes(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor);
 
     template <typename T>
     static inline std::vector<T> read_list_with_2B_count(const std::span<const uint8_t> buffer, size_t& cursor) {

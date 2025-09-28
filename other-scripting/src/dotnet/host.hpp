@@ -54,6 +54,7 @@ namespace other {
       create_assembly_load_context create_assembly_load_context = nullptr;
       unload_assembly_load_context unload_assembly_load_context = nullptr;
       load_managed_assembly load_managed_assembly = nullptr;
+      unload_managed_assembly unload_managed_assembly = nullptr;
       get_last_load_status get_last_load_status = nullptr;
       get_assembly_name get_assembly_name = nullptr;
 
@@ -125,8 +126,8 @@ namespace other {
     ~dotnet_host() = default;
 
 #if 0
-    void load_host_runtime_config(const std::filesystem::path& runtime_config_path);
-    void load_host_command_line(const std::filesystem::path& command_line_path);
+    void load_host_runtime_config(const filepath& runtime_config_path);
+    void load_host_command_line(const filepath& command_line_path);
 #else
     void load_host();
 #endif
@@ -144,6 +145,7 @@ namespace other {
         CORE_LOG_ERROR("Failed to find .NET type: {}", type_name);
         return nullptr;
       }
+      CORE_LOG_DEBUG("Instantiating managed object of type [{}] with name [{}]", type_name, name);
 
       dotnet_object* res = nullptr;
       constexpr size_t argc = sizeof...(args);
@@ -187,7 +189,7 @@ namespace other {
     void bind_interop_table();
     void bind_native_functions();
 
-    void* load_managed_function(const std::filesystem::path& asm_path, const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type = OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION) const;
+    void* load_managed_function(const filepath& asm_path, const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type = OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION) const;
 
     /// \todo fix hardcoded path
     template <typename Fn>

@@ -38,7 +38,8 @@ namespace other {
           continue;
         }
 
-        data.append_range(write_object_to_bytes(s, s.get_object(id)));
+        std::vector<uint8_t> object_data = write_object_to_bytes(s, s.get_object(id));
+        data.append_range(object_data);
       }
 
       return data;
@@ -58,22 +59,31 @@ namespace other {
       return { scene_desc, name, cursor };
     }
 
+    std::pair<scene, natural_t> parse_scene(const std::span<const uint8_t> buffer) {
+      size_t cur = 0;
+      auto [scene_desc, scene_name, bytes_read] = parse_single_scene(buffer);
+      cur += bytes_read;
+
+      scene scene1;
+      scene1.name = scene_name;
+      scene1.id = scene_desc.scene_id;
+
+      auto [objects, obj_bytes_read] = parse_object_list(buffer.subspan(cur), scene_desc.num_objects);
+      cur += obj_bytes_read;
+
+      scene1.add_objects(objects);
+
+      return { std::move(scene1), cur };
+    }
+
     std::pair<std::vector<scene>, natural_t> parse_scene_list(const std::span<const uint8_t> buffer, natural_t num_scenes) {
       std::vector<scene> scenes = {};
       size_t cur = 0;
 
       for (uint16_t i = 0; i < num_scenes && cur < buffer.size(); ++i) {
-        auto [scene_desc, scene_name, bytes_read] = parse_single_scene(buffer.subspan(cur));
+        auto [scene1, bytes_read] = parse_scene(buffer.subspan(cur));
         cur += bytes_read;
-
-        scene& scene1 = scenes.emplace_back();
-        scene1.name = scene_name;
-        scene1.id = scene_desc.scene_id;
-
-        auto [objects, obj_bytes_read] = parse_object_list(buffer.subspan(cur), scene_desc.num_objects);
-        cur += obj_bytes_read;
-
-        scene1.add_objects(objects);
+        scenes.push_back(std::move(scene1));
       }
 
       return { std::move(scenes), cur };

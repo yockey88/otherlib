@@ -19,7 +19,7 @@ namespace other {
       args::HelpFlag help(parser, "help", "Display this help message", { 'h', "help" });
       args::Flag verbose(parser, "verbose", "Enable verbose output", { 'v', "verbose" });
 
-      args::Positional<std::string> config_file(parser, "config-file", "Configuration file", args::Options::Required);
+      args::Positional<std::string> config_file(parser, "config-file", "Configuration file");
       args::PositionalList<std::string> positional_args(parser, "driver-args", "Command line arguments to forward to the linked driver executable");
 
       parser.ParseCLI(*argc, argv);

@@ -22,8 +22,7 @@ namespace other {
     std::pair<std::vector<parsed_scene_object>, natural_t> parse_object_list(const std::span<const uint8_t> buffer, natural_t num_objects);
 
     std::vector<uint8_t> write_attached_scripts_to_bytes(const script_component* obj);
-    std::pair<parsed_scene_object::attached_script, natural_t> parse_single_attached_script(const std::span<const uint8_t> buffer);
-    std::pair<std::vector<parsed_scene_object::attached_script>, natural_t> parse_attached_script_list(const std::span<const uint8_t> buffer, natural_t num_scripts);
+    natural_t parse_attached_scripts_into_object(const std::span<const uint8_t> buffer, parsed_scene_object& object);
 
   }  // namespace serialization
 }  // namespace other

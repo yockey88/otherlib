@@ -12,9 +12,14 @@
 #include "core/logger.hpp"
 #include "core/version.hpp"
 
-#include "driver/driver.hpp"
+#include "script/scripting_environment.hpp"
 
+#include "scene/scene.hpp"
+#include "scene/scene_serialization.hpp"
+
+#include "driver/driver.hpp"
 #include "plugin/plugin.hpp"
+#include "project/project_serialization.hpp"
 
 using other::command_line;
 using other::config_table;
@@ -34,9 +39,17 @@ namespace other {
   void register_log_sinks(const config_table& config);
   void shutdown_subsystems();
 
+  void initialize_other_environment();
+  void initialize_other_environment(int argc, char* argv[]);
+  void shutdown_other_environment();
+
   int entry(int argc, char* argv[]);
 
 }  // namespace other
+
+#ifdef OTHER_IMPLEMENTATION
+other::exit_code other_main(const command_line& cmd, const config_table& config) { return other::exit_code::SUCCESS; }
+#endif
 
 #ifndef OTHER_TEST_ENVIRONMENT
   #ifdef OTHER_APPLICATION
@@ -48,9 +61,9 @@ namespace other {
       #define MAIN_DEFINED
 int main(int argc, char* argv[]) {
   return other::entry(argc, argv);
-}
     #endif  // MAIN_DEFINED
-  #endif    // OTHER_APPLICATION
-#endif      // OTHER_TEST_ENVIRONMENT
+}
+  #endif  // OTHER_APPLICATION
+#endif    // OTHER_TEST_ENVIRONMENT
 
 #endif  // OTHER_OTHERLIB_OTHER_HPP

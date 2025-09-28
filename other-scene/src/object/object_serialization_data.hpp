@@ -25,19 +25,14 @@ namespace other {
 
       integer_t script_object_id = -1;
 
-      struct attached_script {
-        enum script_type : uint8_t {
-          NONE = 0,
-          DOTNET = 1,
-          PYTHON = 2,
-          LUA = 3
-        };
-
-        uint8_t type = NONE;
-        std::string name = {};
-        std::vector<uint8_t> data = {};
-      };
-      std::vector<attached_script> attached_scripts = {};
+      struct dotnet_object {
+        std::string name = "";
+        std::vector<uint8_t> dotnet_blob = {};
+      } dotnet_obj;
+      struct python_object {
+      } python_obj;
+      struct lua_object {
+      } lua_obj;
     };
 
 #pragma pack(pop)

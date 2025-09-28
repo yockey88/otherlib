@@ -10,6 +10,7 @@
 #include "math/bounding_box.hpp"
 
 #include "model/vertex.hpp"
+
 #include "object/scene_object.hpp"
 #include "object/transform.hpp"
 
@@ -57,6 +58,8 @@ namespace other {
 
     ~scene_tree();
 
+    void destroy_all_objects();
+
     scene_object& root_object();
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
 
@@ -83,8 +86,8 @@ namespace other {
     node* root = nullptr;
 
     size_t num_objects = 0;
-    ref<memory_pool<scene_object>> objects = nullptr;
-    scope<std::array<node, kMaxNodes>> nodes;
+    scope<memory_pool<scene_object>> objects = nullptr;
+    scope<std::array<node, kMaxNodes>> nodes = nullptr;
 
     node* node_at(size_t idx);
     const node* node_at(size_t idx) const;

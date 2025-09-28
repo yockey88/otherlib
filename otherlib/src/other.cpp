@@ -46,10 +46,16 @@ namespace other {
     if (!cmd.valid) {
       return (cmd.diagnostics.help || cmd.diagnostics.usage) ? SUCCESS : FAILURE;
     }
-    config_table config = config_table::load(cmd.config_file);
-    if (!config.valid) {
-      std::cerr << "Failed to load configuration file: " << cmd.config_file << std::endl;
-      return -1;
+
+    config_table config = {};
+    if (std::filesystem::exists(cmd.config_file)) {
+      config = config_table::load(cmd.config_file);
+      if (!config.valid) {
+        std::cerr << "Failed to load configuration file: " << cmd.config_file << std::endl;
+        return -1;
+      }
+    } else if (!cmd.config_file.empty()) {
+      CORE_LOG_WARN("Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
     }
 
     register_log_sinks(config);
@@ -117,7 +123,7 @@ namespace other {
     subsystem<scripting_environment>::get()->shutdown_script_environment();
   }
 
-  spdlog::sink_ptr stdout_sink_fn() {
+  spdlog::sink_ptr stdout_sink_fn(const config_table& config) {
 #ifdef OTHER_ENVIRONMENT_WINDOWS
     return std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
 #else
@@ -125,12 +131,12 @@ namespace other {
 #endif
   }
 
-  spdlog::sink_ptr stdout_sink_fn();
   void register_log_sinks(const config_table& config) {
     logger* log = subsystem<logger>::get();
     if (log == nullptr) {
       throw std::runtime_error("Logger subsystem is null.");
     }
+    log->set_config(&config);
 
     log->create_logger("other-core-log", spdlog::level::trace);
     log_sink sink = {
@@ -140,8 +146,18 @@ namespace other {
       (spdlog::level::level_enum)config.core_log_level,
       stdout_sink_fn,
     };
+    log_sink file_sink = {
+      2,
+      "file-sink",
+      "[%Y-%m-%d %H:%M:%S] [%l] %v",
+      spdlog::level::trace,
+      [](const config_table& config) -> spdlog::sink_ptr {
+        return std::make_shared<spdlog::sinks::basic_file_sink_mt>(config.core_log_file, true);
+      },
+    };
     std::string loggers[] = { "other-core-log" };
     log->register_sink(loggers, sink);
+    log->register_sink(loggers, file_sink);
   }
 
   void shutdown_subsystems() {
@@ -150,6 +166,32 @@ namespace other {
     subsystem<renderer_backend>::get()->shutdown();
     subsystem<arena>::get()->shutdown();
     subsystem<logger>::get()->shutdown();
+  }
+
+  namespace {
+
+    void initialize_other_environment_impl(int argc, char* argv[]) {
+      config_table config = {};
+
+      other::initialize_primary_arena();
+      other::register_log_sinks(config);
+      other::bind_primary_scripting_environment();
+      other::bind_environment_scripts();
+    }
+
+  }  // namespace
+
+  void initialize_other_environment() {
+    initialize_other_environment_impl(0, nullptr);
+  }
+
+  void initialize_other_environment(int argc, char* argv[]) {
+    initialize_other_environment_impl(argc, argv);
+  }
+
+  void shutdown_other_environment() {
+    other::cleanup_scripting_environment();
+    other::shutdown_subsystems();
   }
 
 }  // namespace other

@@ -55,6 +55,14 @@ def copy_dlls(cfg, dll_cfg):
     assimp_debug if cfg == "Debug" else assimp_release,
     f"extern/python312/python312.dll",
   ]
+  destinations = [
+    f"build/development-drivers/{cfg}/",
+    f"build/driver/{cfg}/",
+    f"build/other-terminal/src/{cfg}/",
+    f"build/scratch/{cfg}/",
+    f"build/tests/{cfg}/",
+    f"build/tools/{cfg}/",
+  ]
   
   if cfg == "Debug" or cfg == "ProfileD":
     if os.path.exists(assimp_debug):
@@ -65,21 +73,10 @@ def copy_dlls(cfg, dll_cfg):
 
   for dll in dlls:
     if os.path.exists(dll):
-      dest = f"build/development-drivers/{cfg}/"
-      shutil.copy(dll, dest)
-
-      dest = f"build/driver/{cfg}/"
-      shutil.copy(dll, dest)
-      
-      dest = f"build/other-terminal/src/{cfg}/"
-      shutil.copy(dll, dest)
-      
-      dest = f"build/scratch/{cfg}/"
-      shutil.copy(dll, dest)
-
-      dest = f"build/tests/{cfg}/"
-      if os.path.exists(dest):
-        shutil.copy(dll, dest)
+      for dest in destinations:
+        if os.path.exists(dest):
+          shutil.copy(dll, dest)
+          # print(f"Copied {dll} to {dest}")
 
     else:
       print(f"Warning: {dll} does not exist.")
@@ -186,7 +183,8 @@ if __name__ == "__main__":
       print(f"Running Other-Driver [{cfg}]")
       # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "script-config.toml"])
       # run_project("development-drivers", cfg, "editor_dev", "dev-config.toml", args, args.verbose)
-      run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)
       # run_project("other-terminal/src", cfg , "other-terminal", "term-config.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "rendering_dev", "rendering-dev-config.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
@@ -199,11 +197,11 @@ if __name__ == "__main__":
       run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args, args.verbose)
     elif args.run_tests:
       print("Running tests...")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose)
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=["--gtest_shuffle"])
     elif args.run_test_suite is not None and len(args.run_test_suite) == 1:
       test_filter = args.run_test_suite[0]
       print(f"Running test suite with filter: {test_filter}")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=[f"--gtest_filter={test_filter}"])
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=[f"--gtest_filter={test_filter}", "--gtest_shuffle"])
       
   except subprocess.CalledProcessError as e:
     print(f"Error: {e}")

@@ -703,8 +703,139 @@ namespace OtherCsBindings
       }
 		}
 
+    static bool IsProperty(Int32 id)
+    {
+      return cached_properties.Contains(id);
+    }
+
+    static unsafe void GetPropertyValueType(Int32 id, Byte* out_byte)
+    {
+      try
+      {
+        if (!cached_properties.TryGet(id, out var pinfo) || out_byte == null)
+        {
+          return;
+        }
+
+        var t = pinfo!.PropertyType;
+        InternalValueType value_type = InternalValueType.EMPTY_TYPE;
+
+        if (t == typeof(bool) || t == typeof(NativeBool32))
+        {
+          value_type = InternalValueType.OEBOOL;
+        }
+        else if (t == typeof(char))
+        {
+          value_type = InternalValueType.CHAR;
+        }
+        else if (t == typeof(sbyte))
+        {
+          value_type = InternalValueType.INT8;
+        }
+        else if (t == typeof(short))
+        {
+          value_type = InternalValueType.INT16;
+        }
+        else if (t == typeof(int))
+        {
+          value_type = InternalValueType.INT32;
+        }
+        else if (t == typeof(long))
+        {
+          value_type = InternalValueType.INT64;
+        }
+        else if (t == typeof(byte))
+        {
+          value_type = InternalValueType.UINT8;
+        }
+        else if (t == typeof(ushort))
+        {
+          value_type = InternalValueType.UINT16;
+        }
+        else if (t == typeof(uint))
+        {
+          value_type = InternalValueType.UINT32;
+        }
+        else if (t == typeof(ulong))
+        {
+          value_type = InternalValueType.UINT64;
+        }
+        else if (t == typeof(float))
+        {
+          value_type = InternalValueType.FLOAT;
+        }
+        else if (t == typeof(double))
+        {
+          value_type = InternalValueType.DOUBLE;
+        }
+        else if (t == typeof(string))
+        {
+          value_type = InternalValueType.STRING;
+        }
+        else if (t == typeof(IntPtr) || t.IsPointer)
+        {
+          value_type = InternalValueType.OPAQUE_HANDLE;
+        }
+        else if (t.FullName == "OtherEngine.Vec2")
+        {
+          value_type = InternalValueType.VEC2;
+        }
+        else if (t.FullName == "OtherEngine.Vec3")
+        {
+          value_type = InternalValueType.VEC3;
+        }
+        else if (t.FullName == "OtherEngine.Vec4")
+        {
+          value_type = InternalValueType.VEC4;
+        }
+        else if (t.FullName == "OtherEngine.Mat2")
+        {
+          value_type = InternalValueType.MAT2;
+        }
+        else if (t.FullName == "OtherEngine.Mat3")
+        {
+          value_type = InternalValueType.MAT3;
+        }
+        else if (t.FullName == "OtherEngine.Mat4")
+        {
+          value_type = InternalValueType.MAT4;
+        }
+        else if (t.FullName == "OtherEngine.Sampler2D")
+        {
+          value_type = InternalValueType.SAMPLER2D;
+        }
+        else if (t.FullName == "OtherEngine.Sampler2DArray")
+        {
+          value_type = InternalValueType.SAMPLER2D_ARRAY;
+        }
+        else if (t.FullName == "OtherEngine.Asset")
+        {
+          value_type = InternalValueType.ASSET;
+        }
+        else if (t.FullName == "OtherEngine.Entity")
+        {
+          value_type = InternalValueType.ENTITY;
+        }
+        else
+        {
+          value_type = InternalValueType.USER_TYPE;
+        }
+
+        *out_byte = (Byte)value_type;
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+      }
+    }
+
     [UnmanagedCallersOnly]
     private static unsafe void GetFieldValueType(Int32 id, Byte* out_byte) {
+      if (IsProperty(id)) {
+        GetPropertyValueType(id, out_byte);
+        return;
+      }
+
       try
       {
         if (!cached_fields.TryGet(id, out var finfo) || out_byte == null)

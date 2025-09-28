@@ -3,7 +3,9 @@
  **/
 #include "core/logger.hpp"
 
+#include "core/config_table.hpp"
 #include "core/fnv.hpp"
+
 
 namespace other {
 
@@ -44,7 +46,7 @@ namespace other {
       return;
     }
 
-    auto sink_ptr = sink.sink_factory();
+    auto sink_ptr = sink.sink_factory(*current_config_table);
     if (sink_ptr == nullptr) {
       log_failure_error(std::format("Failed to create sink for {}.", sink.sink_name));
       return;
@@ -110,6 +112,10 @@ namespace other {
       default:
         log_failure_error(std::format("Logger {} has invalid level. Dropped Log :\n{}", log_name, msg));
     }
+  }
+
+  void logger::set_config(const config_table* config) {
+    this->current_config_table = config;
   }
 
   void logger::log_failure_error(const std::string& message) {

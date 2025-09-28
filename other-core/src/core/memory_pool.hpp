@@ -54,8 +54,8 @@ namespace other {
 
         other.num_objects = 0;
         other.full = false;
-        other.object_flags.clear();
-        other.pool = storage_type();
+        other.object_flags = {};
+        other.pool = {};
       }
       return *this;
     }

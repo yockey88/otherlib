@@ -120,7 +120,7 @@ namespace other {
 
   ref<assembly> driver::load_dotnet_module(const std::string_view module_path) {
     CORE_LOG_DEBUG("Loading script module from path: {}", module_path);
-    std::filesystem::path path(module_path);
+    filepath path(module_path);
     if (!std::filesystem::exists(path)) {
       CORE_LOG_ERROR("Script module path does not exist: {}", module_path);
       return nullptr;

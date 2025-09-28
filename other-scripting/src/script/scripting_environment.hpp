@@ -5,7 +5,7 @@
 #define OTHER_SCRIPTING_SCRIPT_SCRIPTING_ENVIRONMENT_HPP
 
 #include "core/memory_pool.hpp"
-#include "core/ref.hpp"
+#include "core/scope.hpp"
 #include "core/subsystem.hpp"
 
 #include "dotnet/dotnet_object.hpp"
@@ -31,6 +31,7 @@ namespace other {
     /// DOTNET
     ref<assembly> load_dotnet_module(const std::string_view module_path);
     void unload_dotnet_module(ref<assembly> module_id);
+    void reset_dotnet_environment();
 
     bool dotnet_object_has_attribute(integer_t id, const std::string_view attr_name);
 
@@ -50,7 +51,18 @@ namespace other {
       obj->dotnet_object = dotnet.instantiate_managed_object(type_name, obj->name, std::forward<Args>(ctor_args)...);
       if (obj->dotnet_object == nullptr) {
         CORE_LOG_ERROR("Failed to attach .NET object of type {} to script object with ID {}", type_name, id);
+        return;
       }
+      obj->dotnet_object->load_fields();
+    }
+
+    template <typename... Args>
+    void attach_serialized_dotnet_object(integer_t id, const std::string_view type_name, const std::span<const uint8_t> buffer, Args&&... ctor_args) {
+      attach_dotnet_object(id, type_name, std::forward<Args>(ctor_args)...);
+
+      script_object* obj = get_object(id);
+      OTHER_ASSERT(obj != nullptr, "Failed to retrieve script object to deserialize dotnet object!");
+      obj->dotnet_object->load_from_bytes(buffer);
     }
 
     template <typename R = void, typename... Args>
@@ -143,7 +155,7 @@ namespace other {
     python_interpreter python;
 
     std::array<live_script_object, kMaxScriptObjects> live_objects = {};
-    ref<memory_pool<script_object>> script_object_pool = nullptr;
+    scope<memory_pool<script_object>> script_object_pool = nullptr;
 
     template <typename R, typename... Args>
       requires std::is_same_v<R, void>

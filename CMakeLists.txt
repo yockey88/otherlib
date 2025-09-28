@@ -116,7 +116,8 @@ set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/ex
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
 
 set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include")
+                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/json")
 set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
 set(DOTNET_LIBRARIES nethost)
 
@@ -155,6 +156,14 @@ macro(add_driver_target type driver_name)
     else()
       target_compile_definitions(${driver_name} PRIVATE "/MD")
     endif()
+  endif()
+
+  if (${BUILD_PLATFORM} STREQUAL "WINDOWS")
+    target_compile_definitions(${driver_name} PRIVATE "OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "NOMINMAX" "WIN32_LEAN_AND_MEAN" "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+  endif()
+
+  if (${BUILD_PLATFORM} STREQUAL "LINUX")
+    target_compile_definitions(${driver_name} PRIVATE "OTHER_ENVIRONMENT_UNIX" ${BUILD_CONFIG_MACRO})
   endif()
 
   set(driver_src_list "")
@@ -199,6 +208,8 @@ if (BUILD_OTHER_TESTS)
 else()
   message(STATUS "Skipping other tests build")
 endif()
+
+add_subdirectory(tools)
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
   add_subdirectory(scratch)

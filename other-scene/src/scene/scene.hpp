@@ -14,12 +14,15 @@
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
+#include "scene/scene_storage.hpp"
 #include "scene/scene_tree.hpp"
-
 
 namespace other {
 
   class scene {
+   private:
+    void do_scene_initialization();
+
    public:
     scene();
     scene(const std::string& name);
@@ -31,6 +34,13 @@ namespace other {
     scene& operator=(const scene&) = delete;
 
     ~scene();
+
+    void reset();
+
+    inline scene_storage& get_storage() {
+      OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
+      return *storage;
+    }
 
     static scene create_scene(const std::string& name);
 
@@ -81,12 +91,12 @@ namespace other {
     T& add_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
-      return registry.emplace<T>(entity);
+      return storage->registry.emplace<T>(entity);
     }
     template <typename T>
     T& add_component(natural_t id) {
-      scene_tree::node* node = tree.node_at(id);
-      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       return add_component<T>(node->object);
     }
 
@@ -94,12 +104,12 @@ namespace other {
     T* get_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot get component from a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
-      return registry.try_get<T>(entity);
+      return storage->registry.try_get<T>(entity);
     }
     template <typename T>
     T* get_component(natural_t id) {
-      scene_tree::node* node = tree.node_at(id);
-      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       return get_component<T>(node->object);
     }
 
@@ -107,12 +117,12 @@ namespace other {
     const T* get_component(const scene_object* object) const {
       OTHER_ASSERT(object != nullptr, "Cannot get component from a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
-      return registry.try_get<T>(entity);
+      return storage->registry.try_get<T>(entity);
     }
     template <typename T>
     const T* get_component(natural_t id) const {
-      const scene_tree::node* node = tree.node_at(id);
-      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      const scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       return get_component<T>(node->object);
     }
 
@@ -120,12 +130,12 @@ namespace other {
     void remove_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot remove component from a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
-      registry.remove<T>(entity);
+      storage->registry.remove<T>(entity);
     }
     template <typename T>
     void remove_component(natural_t id) {
-      scene_tree::node* node = tree.node_at(id);
-      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       remove_component<T>(node->object);
     }
 
@@ -136,8 +146,8 @@ namespace other {
     }
     template <typename T>
     bool has_component(natural_t id) const {
-      const scene_tree::node* node = tree.node_at(id);
-      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene tree.");
+      const scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       return has_component<T>(node->object);
     }
 
@@ -168,10 +178,7 @@ namespace other {
     // void on_update_script_component(const entt::registry&, const entt::entity entity);
     void on_destroy_script_component(const entt::registry&, const entt::entity entity);
 
-    entt::registry registry;
-    scene_tree tree;
-
-    std::optional<render_data> render_data_cache = std::nullopt;
+    scope<scene_storage> storage = nullptr;
   };
 
 }  // namespace other

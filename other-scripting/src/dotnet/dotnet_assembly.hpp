@@ -51,6 +51,8 @@ namespace other {
     assembly_load_status load_status = assembly_load_status::UNKNOWN_ERROR;
 
    private:
+    friend class assembly_context;
+
     std::string name;
     natural_t handle = 0;
 
@@ -81,6 +83,9 @@ namespace other {
     }
     const std::string& get_name() const {
       return name;
+    }
+    size_t num_assemblies() const {
+      return assemblies.size();
     }
 
     int32_t dotnet_id = -1;

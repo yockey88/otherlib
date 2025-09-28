@@ -227,11 +227,11 @@ namespace OtherCsBindings
         }
       }
 
-      // TypeInterface.cached_types.Clear();
-      // TypeInterface.cached_methods.Clear();
-      // TypeInterface.cached_fields.Clear();
-      // TypeInterface.cached_properties.Clear();
-      // TypeInterface.cached_attributes.Clear();
+      TypeInterface.cached_types.Clear();
+      TypeInterface.cached_methods.Clear();
+      TypeInterface.cached_fields.Clear();
+      TypeInterface.cached_properties.Clear();
+      TypeInterface.cached_attributes.Clear();
 
       contexts.Remove(context_id);
       alc.Unload();
@@ -305,6 +305,18 @@ namespace OtherCsBindings
         Host.HandleException(e);
         return -1;
       }
+    }
+
+    [UnmanagedCallersOnly]
+    private static void UnloadManagedAssembly(Int32 asm_id)
+    {
+      if (!assemblies.TryGetValue(asm_id, out var asm))
+      {
+        Logger.LogError($"Couldn't unload assembly '{asm_id}', assembly not found!");
+        return;
+      }
+
+      assemblies.Remove(asm_id);
     }
 
     [UnmanagedCallersOnly]

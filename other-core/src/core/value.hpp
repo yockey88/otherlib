@@ -13,6 +13,7 @@
 
 #include "arena_allocator.hpp"
 
+
 namespace other {
 
   class value_storage : public ref_counted {
@@ -102,13 +103,13 @@ namespace other {
 
     value_storage_impl(value_storage_impl&& other) = delete;
     value_storage_impl(const value_storage_impl& other) {
-      object = other.data;
-      type_size = other.size;
+      object = other.data();
+      type_size = other.size();
     }
     value_storage_impl& operator=(value_storage_impl&& other) = delete;
     value_storage_impl& operator=(const value_storage_impl& other) {
-      object = other.data;
-      type_size = other.size;
+      object = other.data();
+      type_size = other.size();
       return *this;
     }
 

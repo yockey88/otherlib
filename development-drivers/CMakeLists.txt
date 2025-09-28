@@ -45,3 +45,7 @@ add_static_driver(runtime_dev
   runtime-dev/runtime.cpp
   runtime-dev/main.cpp
 )
+add_static_driver(server_dev
+  server-dev/server.cpp
+  server-dev/main.cpp
+)

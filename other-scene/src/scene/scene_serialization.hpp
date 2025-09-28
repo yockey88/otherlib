@@ -14,6 +14,8 @@ namespace other {
 
     std::vector<uint8_t> write_scene_to_bytes(const scene& s, uint8_t scene_index = 0);
     std::tuple<parsed_scene, std::string, natural_t> parse_single_scene(const std::span<const uint8_t> buffer);
+    std::pair<scene, natural_t> parse_scene(const std::span<const uint8_t> buffer);
+
     std::pair<std::vector<scene>, natural_t> parse_scene_list(const std::span<const uint8_t> buffer, natural_t num_scenes);
 
     std::string get_entity_tree_string(const std::span<const uint8_t> buffer);
