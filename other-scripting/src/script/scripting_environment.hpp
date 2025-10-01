@@ -142,6 +142,7 @@ namespace other {
     /// END PYTHON
 
     constexpr static inline size_t kMaxScriptObjects = memory_pool<script_object>::kMaxObjects;
+    ref<assembly> dotnet_binding_assembly = nullptr;
 
    private:
     struct live_script_object {

@@ -1,70 +1,150 @@
-[2025-09-28 01:19:01] [info] Other Environment version 0.0.1
-[2025-09-28 01:19:01] [debug] Found hostfxr library at: C:\Program Files\dotnet/host/fxr\9.0.6\hostfxr.dll
-[2025-09-28 01:19:01] [debug] Binding interop table...
-[2025-09-28 01:19:01] [trace] Loaded managed function CreateAssemblyLoadContext (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ff93c833870
-[2025-09-28 01:19:01] [trace] Loaded managed function UnloadAssemblyLoadContext (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ff93c833918
-[2025-09-28 01:19:01] [trace] Loaded managed function GetLastLoadStatus (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ff93c833948
-[2025-09-28 01:19:01] [trace] Loaded managed function LoadManagedAssembly (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ff93c833960
-[2025-09-28 01:19:01] [trace] Loaded managed function UnloadManagedAssembly (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ff93c833978
-[2025-09-28 01:19:01] [trace] Loaded managed function GetAssemblyName (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ff93c833990
-[2025-09-28 01:19:01] [trace] Loaded managed function RegisterInternalCall (OtherCsBindings.NativeFunctionManager, OtherCsBindings) | handle: 0x7ff93c8339a8
-[2025-09-28 01:19:01] [trace] Loaded managed function GetAssemblyTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c8339c0
-[2025-09-28 01:19:01] [trace] Loaded managed function GetNetCoreTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c8339d8
-[2025-09-28 01:19:01] [trace] Loaded managed function GetTypeId (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c8339f0
-[2025-09-28 01:19:01] [trace] Loaded managed function GetFullTypeName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833a08
-[2025-09-28 01:19:01] [trace] Loaded managed function GetTypeMethods (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833a20
-[2025-09-28 01:19:01] [trace] Loaded managed function GetTypeFields (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833a38
-[2025-09-28 01:19:01] [trace] Loaded managed function GetTypeProperties (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833a50
-[2025-09-28 01:19:01] [trace] Loaded managed function GetAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833a68
-[2025-09-28 01:19:01] [trace] Loaded managed function HasAttribute (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833a80
-[2025-09-28 01:19:01] [trace] Loaded managed function GetMethodName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833a98
-[2025-09-28 01:19:01] [trace] Loaded managed function GetMethodReturnType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833ab0
-[2025-09-28 01:19:01] [trace] Loaded managed function GetMethodAccessibility (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833ac8
-[2025-09-28 01:19:01] [trace] Loaded managed function GetMethodParameterTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833ae0
-[2025-09-28 01:19:01] [trace] Loaded managed function GetMethodAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833af8
-[2025-09-28 01:19:01] [trace] Loaded managed function HasField (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833b10
-[2025-09-28 01:19:01] [trace] Loaded managed function GetFieldName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833b28
-[2025-09-28 01:19:01] [trace] Loaded managed function GetFieldType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833b40
-[2025-09-28 01:19:01] [trace] Loaded managed function GetFieldValueType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833b58
-[2025-09-28 01:19:01] [trace] Loaded managed function GetFieldAccessibility (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833b70
-[2025-09-28 01:19:01] [trace] Loaded managed function GetFieldAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833b88
-[2025-09-28 01:19:01] [trace] Loaded managed function GetPropertyName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833ba0
-[2025-09-28 01:19:01] [trace] Loaded managed function GetPropertyType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833bb8
-[2025-09-28 01:19:01] [trace] Loaded managed function GetPropertyAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833bd0
-[2025-09-28 01:19:01] [trace] Loaded managed function GetAttributeType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833be8
-[2025-09-28 01:19:01] [trace] Loaded managed function GetAttributeValue (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ff93c833c00
-[2025-09-28 01:19:01] [trace] Loaded managed function CreateObject (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833c18
-[2025-09-28 01:19:01] [trace] Loaded managed function DestroyObject (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833c30
-[2025-09-28 01:19:01] [trace] Loaded managed function InvokeMethod (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833c48
-[2025-09-28 01:19:01] [trace] Loaded managed function InvokeMethodRet (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833c60
-[2025-09-28 01:19:01] [trace] Loaded managed function SetField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833c78
-[2025-09-28 01:19:01] [trace] Loaded managed function GetField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833c90
-[2025-09-28 01:19:01] [trace] Loaded managed function SetProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833ca8
-[2025-09-28 01:19:01] [trace] Loaded managed function GetProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833cc0
-[2025-09-28 01:19:01] [trace] Loaded managed function SetStringField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833cd8
-[2025-09-28 01:19:01] [trace] Loaded managed function GetStringField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833cf0
-[2025-09-28 01:19:01] [trace] Loaded managed function SetStringProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833d08
-[2025-09-28 01:19:01] [trace] Loaded managed function GetStringProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833d20
-[2025-09-28 01:19:01] [trace] Loaded managed function GetStringFieldLength (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833d38
-[2025-09-28 01:19:01] [trace] Loaded managed function GetStringPropertyLength (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ff93c833d50
-[2025-09-28 01:19:01] [trace] Loaded managed function CollectGarbage (OtherCsBindings.GarbageCollector, OtherCsBindings) | handle: 0x7ff93c833d68
-[2025-09-28 01:19:01] [trace] Loaded managed function WaitForPendingFinalizers (OtherCsBindings.GarbageCollector, OtherCsBindings) | handle: 0x7ff93c833d80
-[2025-09-28 01:19:01] [trace] Loaded managed function Entry (OtherCsBindings.Host, OtherCsBindings) | handle: 0x7ff93c839608
-[2025-09-28 01:19:01] [info]  [C#] Initializing Other Environment .NET Host | Entry | 62
-[2025-09-28 01:19:01] [debug]  [C#] Loaded core assembly : System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e | LoadNetCoreAssembly | 407
-[2025-09-28 01:19:01] [debug]  [C#] Loaded core assembly : System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-09-28 01:19:01] [debug]  [C#] Loaded core assembly : System.Console, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-09-28 01:19:01] [debug]  [C#] Loaded core assembly : System.Linq, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-09-28 01:19:01] [debug]  [C#] Loaded core assembly : System.Collections, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-09-28 01:19:01] [debug]  [C#] Loaded core assembly : System.Net.Http, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-09-28 01:19:01] [debug]  [C#] Loaded core assembly : System.IO, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-09-28 01:19:01] [debug]  [C#] Loaded core assembly : System.Threading, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-09-28 01:19:01] [debug]  [C#] Bindings Assembly Loaded : [OtherCsBindings, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null] | LoadCoreAssemblies | 378
-[2025-09-28 01:19:01] [info] Created assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
-[2025-09-28 01:19:01] [info] Creating Python interpreter...
-[2025-09-28 01:19:01] [info] Running Other Environment driver...
-[2025-09-28 01:19:01] [info] Connected to server at 127.0.0.1
-[2025-09-28 01:19:01] [info] Destroying Python interpreter...
-[2025-09-28 01:19:01] [info] Destroying assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
-[2025-09-28 01:19:01] [info] Destroyed assembly context with ID 17414871673219451418
-[2025-09-28 01:19:01] [info] Other Environment driver finished with exit code: SUCCESS
+[2025-09-30 20:02:26 -  83224] [info] Other Environment version 0.0.1
+[2025-09-30 20:02:26 -  83224] [debug] Creating main window with size: 1920x1080
+[2025-09-30 20:02:26 -  83224] [debug] Creating window [Other Environment] : size = 1920x1080, flags = 8226
+[2025-09-30 20:02:26 -  83224] [debug] OpenGL Version: 4.6.0 NVIDIA 576.88
+[2025-09-30 20:02:26 -  83224] [debug] OpenGL Renderer: NVIDIA GeForce RTX 4080/PCIe/SSE2
+[2025-09-30 20:02:26 -  83224] [info] OpenGL API initialized successfully.
+[2025-09-30 20:02:26 -  83224] [debug] Found hostfxr library at: C:\Program Files\dotnet/host/fxr\9.0.6\hostfxr.dll
+[2025-09-30 20:02:26 -  83224] [debug] Binding interop table...
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function CreateAssemblyLoadContext (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa37313870
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function UnloadAssemblyLoadContext (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa37313918
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetLastLoadStatus (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa37313948
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function LoadManagedAssembly (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa37313960
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function UnloadManagedAssembly (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa37313978
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetAssemblyName (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa37313990
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function RegisterInternalCall (OtherCsBindings.NativeFunctionManager, OtherCsBindings) | handle: 0x7ffa373139a8
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetAssemblyTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa373139c0
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetNetCoreTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa373139d8
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetTypeId (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa373139f0
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetFullTypeName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313a08
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetTypeMethods (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313a20
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetTypeFields (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313a38
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetTypeProperties (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313a50
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313a68
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function HasAttribute (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313a80
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetMethodName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313a98
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetMethodReturnType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313ab0
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetMethodAccessibility (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313ac8
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetMethodParameterTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313ae0
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetMethodAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313af8
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function HasField (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313b10
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetFieldName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313b28
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetFieldType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313b40
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetFieldValueType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313b58
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetFieldAccessibility (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313b70
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetFieldAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313b88
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetPropertyName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313ba0
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetPropertyType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313bb8
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetPropertyAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313bd0
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetAttributeType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313be8
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetAttributeValue (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa37313c00
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function CreateObject (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313c18
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function DestroyObject (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313c30
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function InvokeMethod (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313c48
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function InvokeMethodRet (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313c60
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function SetField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313c78
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313c90
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function SetProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313ca8
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313cc0
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function SetStringField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313cd8
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetStringField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313cf0
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function SetStringProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313d08
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetStringProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313d20
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetStringFieldLength (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313d38
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function GetStringPropertyLength (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa37313d50
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function CollectGarbage (OtherCsBindings.GarbageCollector, OtherCsBindings) | handle: 0x7ffa37313d68
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function WaitForPendingFinalizers (OtherCsBindings.GarbageCollector, OtherCsBindings) | handle: 0x7ffa37313d80
+[2025-09-30 20:02:26 -  83224] [trace] Loaded managed function Entry (OtherCsBindings.Host, OtherCsBindings) | handle: 0x7ffa37319608
+[2025-09-30 20:02:26 -  83224] [info]  [C#] Initializing Other Environment .NET Host | Entry | 62
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loaded core assembly : System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e | LoadNetCoreAssembly | 407
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loaded core assembly : System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loaded core assembly : System.Console, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loaded core assembly : System.Linq, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loaded core assembly : System.Collections, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loaded core assembly : System.Net.Http, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loaded core assembly : System.IO, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loaded core assembly : System.Threading, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Bindings Assembly Loaded : [OtherCsBindings, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null] | LoadCoreAssemblies | 378
+[2025-09-30 20:02:26 -  83224] [info] Created assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-09-30 20:02:26 -  83224] [info] Creating Python interpreter...
+[2025-09-30 20:02:26 -  83224] [info] Loading assembly [2966715978935577213:OtherCs] from path: build/other-csharp/Debug/OtherCs.dll
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loading assembly 'build/other-csharp/Debug/OtherCs.dll' [46560374] | LoadManagedAssembly | 246
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Successfully loaded assembly : 'OtherCs, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null' [46560374] | LoadManagedAssembly | 286
+[2025-09-30 20:02:26 -  83224] [trace]  [C#]   > Adding type Other.Debug to cache | GetAssemblyTypes | 164
+[2025-09-30 20:02:26 -  83224] [trace]  [C#]   > Adding type Other.SerializableFieldAttribute to cache | GetAssemblyTypes | 164
+[2025-09-30 20:02:26 -  83224] [trace]  [C#]   > Adding type Other.OtherObject to cache | GetAssemblyTypes | 164
+[2025-09-30 20:02:26 -  83224] [debug] Initializing dotnet_type[Other.Debug] interface
+[2025-09-30 20:02:26 -  83224] [debug] dotnet_type[Other.Debug] initialized
+[2025-09-30 20:02:26 -  83224] [debug] Initializing dotnet_type[Other.SerializableFieldAttribute] interface
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Adding attribute with ID : 8449953 System.AttributeUsageAttribute to cache for type Other.SerializableFieldAttribute | GetAttributes | 510
+[2025-09-30 20:02:26 -  83224] [debug] Found attribute with ID 8449953 and type ID 42740526
+[2025-09-30 20:02:26 -  83224] [debug] dotnet_type[Other.SerializableFieldAttribute] initialized
+[2025-09-30 20:02:26 -  83224] [debug] Initializing dotnet_type[Other.OtherObject] interface
+[2025-09-30 20:02:26 -  83224] [debug] dotnet_type[Other.OtherObject] initialized
+[2025-09-30 20:02:26 -  83224] [debug] Loaded [3] types from assembly 2966715978935577213
+[2025-09-30 20:02:26 -  83224] [info] Loaded assembly [2966715978935577213:OtherCs]
+[2025-09-30 20:02:26 -  83224] [debug] Loaded assembly [2966715978935577213:OtherCs] from path: build/other-csharp/Debug/OtherCs.dll
+[2025-09-30 20:02:26 -  83224] [info] Running Other Environment driver...
+[2025-09-30 20:02:26 -  83224] [debug] Starting Other Runtime Driver...
+[2025-09-30 20:02:26 -  83224] [debug]    - SESSION : 1
+[2025-09-30 20:02:26 -  83224] [debug]    - PORT    : 49222
+[2025-09-30 20:02:26 -  83224] [trace] Found config key 'scripting.dotnet-modules'
+[2025-09-30 20:02:26 -  83224] [trace] Parsing config array for key 'scripting.dotnet-modules' (1 items)
+[2025-09-30 20:02:26 -  83224] [trace]  - Parsed element in config array 'scripting.dotnet-modules'
+[2025-09-30 20:02:26 -  83224] [debug]  - .NET module to load: build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll
+[2025-09-30 20:02:26 -  83224] [debug] Loading script module from path: build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll
+[2025-09-30 20:02:26 -  83224] [info] Loading assembly [17502670893157682816:DotnetTesting] from path: build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Loading assembly 'build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll' [46560374] | LoadManagedAssembly | 246
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Successfully loaded assembly : 'DotnetTesting, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null' [46560374] | LoadManagedAssembly | 286
+[2025-09-30 20:02:26 -  83224] [trace]  [C#]   > Adding type TestAttrAttribute to cache | GetAssemblyTypes | 164
+[2025-09-30 20:02:26 -  83224] [trace]  [C#]   > Adding type TestObject to cache | GetAssemblyTypes | 164
+[2025-09-30 20:02:26 -  83224] [trace]  [C#]   > Adding type Testing.EcmaFrmtTesting to cache | GetAssemblyTypes | 164
+[2025-09-30 20:02:26 -  83224] [debug] Initializing dotnet_type[TestAttrAttribute] interface
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Adding attribute with ID : 16201697 System.AttributeUsageAttribute to cache for type TestAttrAttribute | GetAttributes | 510
+[2025-09-30 20:02:26 -  83224] [debug] Found attribute with ID 16201697 and type ID 42740526
+[2025-09-30 20:02:26 -  83224] [debug] dotnet_type[TestAttrAttribute] initialized
+[2025-09-30 20:02:26 -  83224] [debug] Initializing dotnet_type[TestObject] interface
+[2025-09-30 20:02:26 -  83224] [debug]  [C#] Adding attribute with ID : 32612976 TestAttrAttribute to cache for type TestObject | GetAttributes | 510
+[2025-09-30 20:02:26 -  83224] [debug] Found attribute with ID 32612976 and type ID 11064911
+[2025-09-30 20:02:26 -  83224] [debug] dotnet_type[TestObject] initialized
+[2025-09-30 20:02:26 -  83224] [debug] Initializing dotnet_type[Testing.EcmaFrmtTesting] interface
+[2025-09-30 20:02:26 -  83224] [debug] dotnet_type[Testing.EcmaFrmtTesting] initialized
+[2025-09-30 20:02:26 -  83224] [debug] Loaded [3] types from assembly 17502670893157682816
+[2025-09-30 20:02:26 -  83224] [info] Loaded assembly [17502670893157682816:DotnetTesting]
+[2025-09-30 20:02:26 -  83224] [debug] Loaded assembly [17502670893157682816:DotnetTesting] from path: build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll
+[2025-09-30 20:02:26 -  83224] [debug] Runtime...
+[2025-09-30 20:02:26 -  60832] [debug] Thread [OtherServer-Network-Thread] waiting for initialization...
+[2025-09-30 20:02:26 -  60832] [debug] Thread [OtherServer-Network-Thread] initialization successful
+[2025-09-30 20:02:26 -  60832] [debug] Thread [OtherServer-Network-Thread] waiting to start...
+[2025-09-30 20:02:26 -  60832] [debug] Thread [OtherServer-Network-Thread] started
+[2025-09-30 20:02:26 -  60832] [debug] Thread [OtherServer-Network-Thread] start successful
+[2025-09-30 20:02:26 -  60832] [debug] CHECK-IN [1 @ 49222]
+[2025-09-30 20:02:26 -  60832] [trace] Attempting to connect to other application at port 49222 for session ID 1
+[2025-09-30 20:02:26 -  60832] [info] Successfully connected to other application with session ID 1
+[2025-09-30 20:02:26 -  60832] [debug] Session 1 checking in
+[2025-09-30 20:02:26 -  60832] [trace] 
+MESSAGE [0x0002:0x0002]:
+0x1 0x0 0x0 0x0 0x0 0x0 0x0 0x0 
+[2025-09-30 20:02:26 -  60832] [trace] 
+[session 1]:
+[writing 12 bytes]
+0x2 0x0 0x2 0x0 0x1 0x0 0x0 0x0 0x0 0x0 0x0 0x0 
+[2025-09-30 20:02:30 -  83224] [debug] Thread [OtherServer-Network-Thread] starting shutdown
+[2025-09-30 20:02:30 -  60832] [debug] Thread [OtherServer-Network-Thread] waiting for shutdown...
+[2025-09-30 20:02:30 -  60832] [debug] Thread [OtherServer-Network-Thread] shutting down
+[2025-09-30 20:02:30 -  60832] [debug] Network thread shutdown complete.
+[2025-09-30 20:02:30 -  83224] [debug] Thread [OtherServer-Network-Thread] stopped
+[2025-09-30 20:02:30 -  83224] [debug] Unloading script module with ID: 17502670893157682816
+[2025-09-30 20:02:30 -  83224] [info] Unloading assembly [17502670893157682816:DotnetTesting]
+[2025-09-30 20:02:30 -  83224] [debug] Shutting down rendering API instance.
+[2025-09-30 20:02:30 -  83224] [info] OpenGL API shutdown successfully.
+[2025-09-30 20:02:30 -  83224] [info] Unloading assembly [2966715978935577213:OtherCs]
+[2025-09-30 20:02:30 -  83224] [debug] All assemblies unloaded from .NET context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-09-30 20:02:30 -  83224] [info] Destroying assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-09-30 20:02:30 -  83224] [info] Destroyed assembly context with ID 17414871673219451418
+[2025-09-30 20:02:30 -  83224] [info] Created assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-09-30 20:02:30 -  83224] [info] Destroying Python interpreter...
+[2025-09-30 20:02:30 -  83224] [debug] Unloading all assemblies from context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-09-30 20:02:30 -  83224] [info] Destroying assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-09-30 20:02:30 -  83224] [info] Destroyed assembly context with ID 17414871673219451418
+[2025-09-30 20:02:30 -  83224] [info] Other Environment driver finished with exit code: SUCCESS

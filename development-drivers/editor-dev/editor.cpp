@@ -5,7 +5,7 @@
 
 namespace other {
 
-  void editor::on_initialize() {
+  void editor::on_initialize(const command_line& cmd) {
   }
 
   void editor::run() {

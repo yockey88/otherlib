@@ -26,7 +26,7 @@ namespace other {
         : driver(config) {}
     virtual ~renderer_driver() = default;
 
-    void on_initialize() override;
+    void on_initialize(const command_line& cmd) override;
     void run() override;
     void on_shutdown() override;
 
@@ -47,8 +47,6 @@ namespace other {
 
     model cube;
     model suzanne;
-
-    ref<assembly> other_assembly = nullptr;
 
     void on_event(SDL_Event* event) override;
   };

@@ -67,4 +67,34 @@ namespace other {
     EXPECT_EQ(thread_ptr->get_current_state(), thread::STOPPED);
   }
 
+  class thread_test_unjoinable_thread : public thread {
+   public:
+    thread_test_unjoinable_thread()
+        : thread("Thread-Test-Unjoinable-Thread") {}
+    virtual ~thread_test_unjoinable_thread() = default;
+
+    MOCK_METHOD(void, pump_thread, (), (override));
+    MOCK_METHOD(void, on_initialize, (), (override));
+    MOCK_METHOD(void, on_start, (), (override));
+    // Note: on_shutdown is not mocked to simulate unjoinable behavior
+  };
+
+  TEST_F(thread_tests, thread_force_shutdown) {
+    thread_test_thread test_thread;
+
+    EXPECT_CALL(test_thread, on_initialize()).Times(1);
+    EXPECT_CALL(test_thread, on_start()).Times(1);
+    EXPECT_CALL(test_thread, on_shutdown()).Times(0);  /// should not be called
+    EXPECT_CALL(test_thread, pump_thread()).Times(testing::AtLeast(1));
+
+    thread* thread_ptr = &test_thread;
+
+    thread_ptr->launch();
+    /// let it get to the waiting state
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    thread_ptr->force_shutdown();
+    EXPECT_EQ(thread_ptr->get_current_state(), thread::STOPPED);
+  }
+
 }  // namespace other

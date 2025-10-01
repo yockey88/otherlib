@@ -16,11 +16,12 @@ namespace other {
 
     opt<command_line> parse_raw_args(int* argc, char* argv[]) {
       args::ArgumentParser parser("Other-Environment Options", "");
+      args::Positional<std::string> config_file(parser, "config-file", "Configuration file");
+
       args::HelpFlag help(parser, "help", "Display this help message", { 'h', "help" });
       args::Flag verbose(parser, "verbose", "Enable verbose output", { 'v', "verbose" });
-
-      args::Positional<std::string> config_file(parser, "config-file", "Configuration file");
-      args::PositionalList<std::string> positional_args(parser, "driver-args", "Command line arguments to forward to the linked driver executable");
+      args::ValueFlag<integer_t> session_id(parser, "session-id", "Session ID to use when checking in with the server", { 's', "session-id", "sid" });
+      args::ValueFlag<uint16_t> port(parser, "port", "Port to use to check in with the server, if not used, then check-in is attempted at port 49222", { 'p', "port" }, 49222);
 
       parser.ParseCLI(*argc, argv);
       args::Error err = parser.GetError();
@@ -46,9 +47,11 @@ namespace other {
       cmd.diagnostics.verbose = verbose.Get();
       cmd.config_file = config_file.Get();
 
-      cmd.args.reserve(positional_args->size());
-      for (const auto& arg : positional_args) {
-        cmd.args.emplace_back(arg);
+      if (session_id) {
+        cmd.session_id = session_id.Get();
+      }
+      if (port) {
+        cmd.port = port.Get();
       }
 
       cmd.valid = true;

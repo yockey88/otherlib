@@ -11,6 +11,7 @@
 
 #include "core/defines.hpp"
 #include "core/value.hpp"
+#include "serialization/reflection.hpp"
 
 #include "spdlog/common.h"
 
@@ -21,8 +22,12 @@ namespace other {
   class config_table {
    public:
     static config_table load(const std::string_view filename);
+    static config_table load_from_source(const std::string_view text);
 
     config_table() = default;
+    config_table(const config_table& other);
+    config_table& operator=(const config_table& other);
+
     ~config_table() = default;
 
     /// for retrieving user-defined settings in 'project' section
@@ -30,6 +35,9 @@ namespace other {
 
     /// for debugging only, returns the entire project table
     toml::table& get_project_table();
+    const toml::table& get_project_table() const;
+
+    std::string format_table_string(const std::string_view section, const std::string_view key) const;
 
     bool valid = true;
     struct {
@@ -54,7 +62,6 @@ namespace other {
    private:
     friend opt<config_table> parse_raw_config(const std::string_view filename);
     toml::table table;
-    opt<toml::table> project_table;
   };
 
 }  // namespace other

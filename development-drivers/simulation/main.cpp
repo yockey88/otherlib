@@ -12,7 +12,7 @@ other::exit_code other_main(const other::command_line& cmd, const other::config_
     return other::exit_code::FAILURE;
   }
 
-  simulation_driver->initialize();
+  simulation_driver->initialize(cmd);
   simulation_driver->run();
   simulation_driver->shutdown();
 

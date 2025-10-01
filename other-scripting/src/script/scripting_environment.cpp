@@ -26,12 +26,23 @@ namespace other {
   }
 
   void scripting_environment::shutdown_script_environment() {
+    for (const auto& [id, live_obj] : live_objects) {
+      // if (live_obj.object != nullptr) {
+      //   CORE_LOG_DEBUG("Destroying script object [{}:{}]", live_obj.object->name, id);
+      //   destroy_object(id);
+      // }
+    }
+
     python.unload_host();
 
     {
-      natural_t context_handle = dotnet_load_context ? dotnet_load_context->get_handle() : 0;
+      if (dotnet_load_context == nullptr) {
+        CORE_LOG_ERROR("DotNet load context is not initialized.");
+      } else {
+        dotnet_load_context->unload_all();
+        dotnet.destroy_assembly_context(dotnet_load_context->get_handle());
+      }
       dotnet_load_context = nullptr;
-      dotnet.destroy_assembly_context(context_handle);
     }
     dotnet.unload_host();
 

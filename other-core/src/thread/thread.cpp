@@ -83,6 +83,15 @@ namespace other {
     CORE_LOG_DEBUG("Thread [{}] stopped", thread_name);
   }
 
+  void thread::force_shutdown() {
+    CORE_LOG_WARN("Forcing shutdown of thread [{}]", thread_name);
+    if (thread_handle.joinable()) {
+      checkpoints.force_exit = true;
+      thread_handle.request_stop();
+      thread_handle.join();
+    }
+  }
+
   opt<message> thread::receive_message(std::chrono::microseconds timeout) {
     if (timeout.count() == 0 && rx_channel->empty()) {
       return std::nullopt;
@@ -190,7 +199,13 @@ namespace other {
       } catch (...) {
         CORE_LOG_ERROR("Unknown exception occurred in thread [{}]", get_thread_name());
       }
+      if (checkpoints.force_exit) {
+        break;
+      }
     } while (checkpoints.running && !stoken.stop_requested() && !checkpoints.error_occurred);
+    if (checkpoints.force_exit) {
+      CORE_LOG_WARN("Thread [{}] exiting due to force exit flag", get_thread_name());
+    }
 
     set_current_state(SHUTTING_DOWN);
     if (checkpoints.error_occurred) {
@@ -321,8 +336,8 @@ namespace other {
         handle_command_message(msg);
         break;
 
-      case message_category::QUERY:
-        handle_query_message(msg);
+      case message_category::REQUEST:
+        handle_request_message(msg);
         break;
 
       case message_category::RESPONSE:
@@ -394,10 +409,10 @@ namespace other {
     }
   }
 
-  void thread::handle_query_message(const message& msg) {
+  void thread::handle_request_message(const message& msg) {
     switch (msg.get_id()) {
       default:
-        CORE_LOG_WARN("Thread received unsupported query message: {}", msg.get_id());
+        CORE_LOG_WARN("Thread received unsupported request message: {}", msg.get_id());
         break;
     }
   }

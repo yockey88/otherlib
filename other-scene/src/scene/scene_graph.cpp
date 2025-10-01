@@ -5,7 +5,14 @@
 
 namespace other {
 
+  scene_graph::scene_graph(std::vector<scene>& scenes) {
+    for (auto& s : scenes) {
+      g.add_node(std::move(s));
+    }
+  }
+
   scene_graph::~scene_graph() {
+    g.clear();
   }
 
   std::pair<uint64_t, scene*> scene_graph::create_new_scene(const std::string& name) {

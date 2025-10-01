@@ -64,7 +64,7 @@ class OTHER_CLASS serialization_sandbox : public other::driver {
   serialization_sandbox(const other::config_table& config)
       : other::driver(config) {}
 
-  void on_initialize() override {
+  void on_initialize(const other::command_line& cmd) override {
   }
 
   void run() override {

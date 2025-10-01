@@ -14,7 +14,7 @@ other::exit_code other_main(const other::command_line& cmd, const other::config_
     return other::exit_code::FAILURE;
   }
 
-  server->initialize();
+  server->initialize(cmd);
   server->run();
   server->shutdown();
 

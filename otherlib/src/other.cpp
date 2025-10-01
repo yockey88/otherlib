@@ -47,13 +47,29 @@ namespace other {
       return (cmd.diagnostics.help || cmd.diagnostics.usage) ? SUCCESS : FAILURE;
     }
 
+    if (cmd.working_directory.has_value()) {
+      filepath cwd = cmd.working_directory.value();
+      if (!std::filesystem::exists(cwd) || !std::filesystem::is_directory(cwd)) {
+        std::println(std::cerr, "Invalid working directory specified: '{}'", cwd.string());
+        return FAILURE;
+      }
+
+      std::error_code ec;
+      std::filesystem::current_path(cmd.working_directory.value(), ec);
+      if (ec) {
+        std::println(std::cerr, "Failed to set working directory to '{}': {}", cwd.string(), ec.message());
+        return FAILURE;
+      }
+    }
+
     config_table config = {};
     if (std::filesystem::exists(cmd.config_file)) {
       config = config_table::load(cmd.config_file);
       if (!config.valid) {
-        std::cerr << "Failed to load configuration file: " << cmd.config_file << std::endl;
+        std::println(std::cerr, "Failed to load configuration file: '{}'", cmd.config_file);
         return -1;
       }
+
     } else if (!cmd.config_file.empty()) {
       CORE_LOG_WARN("Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
     }
@@ -113,14 +129,19 @@ namespace other {
   }
 
   void bind_primary_scripting_environment() {
-    subsystem<scripting_environment>::get()->initialize_script_environment();
+    auto* env = subsystem<scripting_environment>::get();
+    env->initialize_script_environment();
+    env->dotnet_binding_assembly = env->load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
   }
 
   void bind_environment_scripts() {
   }
 
   void cleanup_scripting_environment() {
-    subsystem<scripting_environment>::get()->shutdown_script_environment();
+    auto* env = subsystem<scripting_environment>::get();
+    env->unload_dotnet_module(env->dotnet_binding_assembly);
+    env->dotnet_binding_assembly = nullptr;
+    env->shutdown_script_environment();
   }
 
   spdlog::sink_ptr stdout_sink_fn(const config_table& config) {
@@ -142,14 +163,14 @@ namespace other {
     log_sink sink = {
       1,
       "console-sink",
-      "%^[%l]%$ %v",
+      "%^[%l]%$ %v (%t)",
       (spdlog::level::level_enum)config.core_log_level,
       stdout_sink_fn,
     };
     log_sink file_sink = {
       2,
       "file-sink",
-      "[%Y-%m-%d %H:%M:%S] [%l] %v",
+      "[%Y-%m-%d %H:%M:%S -  %t] [%l] %v",
       spdlog::level::trace,
       [](const config_table& config) -> spdlog::sink_ptr {
         return std::make_shared<spdlog::sinks::basic_file_sink_mt>(config.core_log_file, true);

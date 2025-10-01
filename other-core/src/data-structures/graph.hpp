@@ -14,7 +14,11 @@ namespace other {
   class graph {
    public:
     graph() = default;
-    ~graph() = default;
+    ~graph() { clear(); }
+
+    void clear() {
+      nodes.clear();
+    }
 
     uint64_t add_node(T&& value) {
       return nodes.emplace_back(node{ get_next_id(), std::move(value) }).id;

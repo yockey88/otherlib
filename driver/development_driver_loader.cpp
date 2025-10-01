@@ -11,7 +11,7 @@ exit_code other_main(const command_line& cmd, const config_table& config) {
 
   if (driver_instance != nullptr) {
     CORE_LOG_INFO("Running Other Environment driver '{}'", driver_name);
-    driver_instance->initialize();
+    driver_instance->initialize(cmd);
     driver_instance->run();
     driver_instance->shutdown();
   }

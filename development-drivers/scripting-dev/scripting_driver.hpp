@@ -9,6 +9,7 @@
 #include "core/defines.hpp"
 
 #include "dotnet/host.hpp"
+
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
@@ -26,7 +27,7 @@ namespace other {
         : driver(config) {}
     virtual ~scripting_driver() = default;
 
-    void on_initialize() override;
+    void on_initialize(const command_line& cmd) override;
     void run() override;
     void on_shutdown() override;
 
@@ -35,7 +36,6 @@ namespace other {
     scene active_scene;
 
     natural_t object_id = 0;
-    ref<assembly> other_assembly = nullptr;
     ref<assembly> testing_assembly = nullptr;
 
     void on_event(SDL_Event* event) override;

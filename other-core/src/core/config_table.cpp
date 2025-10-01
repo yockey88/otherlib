@@ -12,16 +12,42 @@
 
 namespace other {
 
+  config_table::config_table(const config_table& other) {
+    this->table = other.table;
+    this->valid = other.valid;
+    this->diagnostics = other.diagnostics;
+    this->dynamic_driver_rel_path = other.dynamic_driver_rel_path;
+    this->core_log_level = other.core_log_level;
+    this->core_log_file = other.core_log_file;
+    this->open_terminal = other.open_terminal;
+    this->rendering_backend = other.rendering_backend;
+    this->window_size = other.window_size;
+    this->clear_color = other.clear_color;
+  }
+
+  config_table& config_table::operator=(const config_table& other) {
+    if (this != &other) {
+      this->table = other.table;
+      this->valid = other.valid;
+      this->diagnostics = other.diagnostics;
+      this->dynamic_driver_rel_path = other.dynamic_driver_rel_path;
+      this->core_log_level = other.core_log_level;
+      this->core_log_file = other.core_log_file;
+      this->open_terminal = other.open_terminal;
+      this->rendering_backend = other.rendering_backend;
+      this->window_size = other.window_size;
+      this->clear_color = other.clear_color;
+    }
+    return *this;
+  }
+
   opt<config_table> parse_raw_config(const std::string_view filename) {
     if (filename.empty()) {
       config_table c{};
       c.valid = true;
       return c;
     }
-    std::println(std::cout, "Loading Other Environment from configuration: {}", filename);
-
-    toml::table table;
-    opt<toml::table> project_table;
+    std::println(std::cout, "Loading Other Environment from configuration: {}", std::filesystem::absolute(filepath(filename)).string());
 
     std::string driver = "";
     int32_t log_level = 0;
@@ -32,13 +58,43 @@ namespace other {
     std::string rendering = "";
     glm::uvec2 window_size = { 1280, 720 };
 
+    config_table config = {};
     try {
-      table = toml::parse_file(filename);
+      std::string contents;
+      {
+        std::stringstream ss;
+        std::ifstream file(std::string{ filename });
+        if (!file.is_open()) {
+          std::println(std::cerr, "Failed to open configuration file: '{}'", filename);
+          return std::nullopt;
+        }
+        ss << file.rdbuf();
+        contents = ss.str();
+      }
+#if 0
+      std::println(std::cout, "Parsing configuration file...");
+      std::println(std::cout, "----------------------------------------");
+      std::println(std::cout, "{}", contents);
+      std::println(std::cout, "----------------------------------------");
+#endif
+      config.table = toml::parse(contents);
 
-      toml::node_view driver_path = table.at_path("application.driver");
+      toml::node_view driver_path = config.table.at_path("application.driver");
       driver = driver_path.as_string() == nullptr ? "" : driver_path.as_string()->get();
 
-      toml::node_view log_level_node = table.at_path("application.core-log-level");
+      toml::node_view dotnet_modules = config.table.at_path("scripting.dotnet-modules");
+      if (dotnet_modules.is_array()) {
+        dotnet_modules.as_array()->for_each([&](auto&& elem) {
+          if (elem.is_string()) {
+            std::string module_path = elem.as_string()->get();
+            std::println(" - .NET module to load from config: {}", module_path);
+          }
+        });
+      } else {
+        std::println("No .NET modules specified in configuration.");
+      }
+
+      toml::node_view log_level_node = config.table.at_path("application.core-log-level");
       if (log_level_node.is_integer()) {
         log_level = log_level_node.as_integer()->get();
       } else if (log_level_node.is_string()) {
@@ -69,12 +125,12 @@ namespace other {
         log_level = 2;
       }
 
-      toml::node_view log_file_node = table.at_path("application.core-log-file");
+      toml::node_view log_file_node = config.table.at_path("application.core-log-file");
       if (log_file_node.is_string()) {
         core_log_file = log_file_node.as_string()->get();
       }
 
-      toml::node_view environment = table.at_path("environment");
+      toml::node_view environment = config.table.at_path("environment");
       if (environment.is_table()) {
         toml::node_view open_terminal_node = environment.at_path("terminal");
         if ((open_terminal_node.is_boolean() && *open_terminal_node.as_boolean()) ||
@@ -91,13 +147,13 @@ namespace other {
         std::print("Terminal open: {}\n", open_terminal);
       }
 
-      toml::node_view rendering_backend = table.at_path("rendering.rendering-backend");
+      toml::node_view rendering_backend = config.table.at_path("rendering.rendering-backend");
       rendering = rendering_backend.as_string() == nullptr ? "" : rendering_backend.as_string()->get();
       if (log_level == 0) {
         std::print("Rendering backend: '{}'\n", rendering);
       }
 
-      toml::node_view window_size_node = table.at_path("rendering.window-size");
+      toml::node_view window_size_node = config.table.at_path("rendering.window-size");
       if (window_size_node.is_table()) {
         toml::node_view width_node = window_size_node.at_path("width");
         toml::node_view height_node = window_size_node.at_path("height");
@@ -110,26 +166,22 @@ namespace other {
         }
       }
 
-      {
-        toml::node_view ptable = table.at_path("project");
-        if (ptable.is_table()) {
-          if (auto* p = ptable.as_table(); p != nullptr) {
-            project_table.emplace(std::move(*p));
-          }
+      // {
+      //   toml::node_view ptable = config.table.at_path("project");
+      //   if (pconfig.table.is_table()) {
+      //     if (auto* p = pconfig.table.as_table(); p != nullptr) {
+      //       project_config.table.emplace(std::move(*p));
+      //     }
 
-          if (log_level == 0) {
-            std::print("Loaded project table with {} entries.\n", project_table->size());
-          }
-        }
-      }
-
+      //     if (log_level == 0) {
+      //       std::print("Loaded project table with {} entries.\n", project_table->size());
+      //     }
+      //   }
+      // }
     } catch (const toml::parse_error& err) {
       std::println(std::cerr, "Failed to parse configuration file '{}' caught a toml-parse-error: {}", filename, err.description());
       return std::nullopt;
     }
-
-    config_table config;
-    config.table = std::move(table);
 
     config.valid = true;
     if (!driver.empty()) {
@@ -149,7 +201,14 @@ namespace other {
   }
 
   config_table config_table::load(const std::string_view filename) {
-    return std::move(parse_raw_config(filename).value_or(config_table{}));
+    return parse_raw_config(filename).value_or(config_table{});
+  }
+
+  config_table config_table::load_from_source(const std::string_view text) {
+    try {
+    } catch (const toml::parse_error& err) {
+    }
+    return config_table{};
   }
 
   value config_table::get_project_value(const std::string_view section, const std::string_view key) const {
@@ -157,12 +216,15 @@ namespace other {
   }
 
   toml::table& config_table::get_project_table() {
-    if (project_table.has_value()) {
-      return project_table.value();
-    }
+    return table;
+  }
 
-    static toml::table empty_table;
-    return empty_table;
+  const toml::table& config_table::get_project_table() const {
+    return table;
+  }
+
+  std::string config_table::format_table_string(const std::string_view section, const std::string_view key) const {
+    return std::format("{}.{}", section, key);
   }
 
 }  // namespace other

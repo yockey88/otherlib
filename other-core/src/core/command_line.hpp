@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "core/defines.hpp"
+
 namespace other {
 
   struct command_line {
@@ -20,6 +22,10 @@ namespace other {
     diangostic_flags diagnostics;
 
     std::string config_file = "";
+    opt<filepath> working_directory = std::nullopt;
+
+    opt<integer_t> session_id = std::nullopt;  // Session ID for the server, if applicable
+    opt<uint16_t> port = 49222;                // Port to use for server communication, default is 49222
 
     /// rest of command line arguments without specific options
     std::vector<std::string> args;

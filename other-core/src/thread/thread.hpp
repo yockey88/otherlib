@@ -33,6 +33,7 @@ namespace other {
 
     void launch();
     void shutdown();
+    void force_shutdown();
 
     opt<message> receive_message(std::chrono::microseconds timeout = std::chrono::microseconds(100));
     void send_message(message&& msg);
@@ -87,6 +88,8 @@ namespace other {
 
       std::atomic<bool> error_occurred = false;
 
+      std::atomic<bool> force_exit = false;
+
       /// thread used
       bool initialized = false;
     } checkpoints;
@@ -117,7 +120,7 @@ namespace other {
     void handle_acknowledgement_message(const message& msg);
     void handle_control_message(const message& msg);
     void handle_command_message(const message& msg);
-    void handle_query_message(const message& msg);
+    void handle_request_message(const message& msg);
     void handle_response_message(const message& msg);
     void handle_error_alert_message(const message& msg);
     void handle_info_message(const message& msg);

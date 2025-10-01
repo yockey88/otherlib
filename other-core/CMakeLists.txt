@@ -40,6 +40,7 @@ target_sources(other_core
 		src/serialization/serialization.cpp
 
 		src/thread/message.cpp
+		src/thread/message_bus.cpp
 		src/thread/thread.cpp
 )
 

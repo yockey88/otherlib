@@ -14,7 +14,7 @@ namespace other {
 
   class scene_graph {
    public:
-    scene_graph() = default;
+    scene_graph(std::vector<scene>& scenes);
     ~scene_graph();
 
     std::pair<uint64_t, scene*> create_new_scene(const std::string& name);

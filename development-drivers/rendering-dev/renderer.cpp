@@ -14,7 +14,7 @@ exit_code other_main(const command_line& cmd, const config_table& config) {
     return exit_code::FAILURE;
   }
 
-  renderer_driver->initialize();
+  renderer_driver->initialize(cmd);
   renderer_driver->run();
   renderer_driver->shutdown();
 

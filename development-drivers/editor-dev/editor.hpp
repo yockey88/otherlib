@@ -16,7 +16,7 @@ namespace other {
         : driver(config) {}
     virtual ~editor() = default;
 
-    void on_initialize() override;
+    void on_initialize(const command_line& cmd) override;
     void run() override;
     void on_shutdown() override;
 

@@ -17,7 +17,6 @@
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
 
-
 namespace other {
 
   using dnet_char = char_t;
@@ -75,7 +74,7 @@ namespace other {
 
   static_assert(sizeof(cli_header) == 72, "Header size must be 72 bytes for common language interface assemblies.");
 
-  void scripting_driver::on_initialize() {
+  void scripting_driver::on_initialize(const command_line& cmd) {
     CORE_LOG_DEBUG("Initializing scripting driver...");
 
     scene_object& scene_obj = active_scene.create_object("scripted-object");
@@ -84,7 +83,6 @@ namespace other {
     script_component* script_obj = active_scene.get_component<script_component>(object_id);
     OTHER_ASSERT(script_obj != nullptr, "Failed to get script component for object ID {}", object_id);
 
-    other_assembly = load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
     testing_assembly = load_dotnet_module("build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll");
   }
 
@@ -224,7 +222,6 @@ namespace other {
     CORE_LOG_DEBUG("Scripting driver shut down.");
 
     unload_dotnet_module(testing_assembly);
-    unload_dotnet_module(other_assembly);
   }
 
   void scripting_driver::on_event(SDL_Event* event) {

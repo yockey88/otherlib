@@ -13,14 +13,48 @@
 
 namespace other {
 
-  void driver::initialize() {
+  void driver::initialize(const command_line& cmd) {
     PROFILE_SECTION("driver::initialize");
-    on_initialize();
+
+    /// set signal catchers
+
+    net_context = std::make_unique<network_context>();
+    net_context->signals.async_wait([this](std::error_code ec, int signum) {
+      if (!ec) {
+        catch_signal(signum);
+      } else {
+        CORE_LOG_ERROR("Error while waiting for signal: {}", ec.message());
+      }
+    });
+
+    std::vector<std::string> dotnet_modules = get_config_value<std::vector<std::string>>("scripting", "dotnet-modules");
+    for (const auto& module : dotnet_modules) {
+      CORE_LOG_DEBUG(" - .NET module to load: {}", module);
+      auto assembly = load_dotnet_module(module);
+      if (assembly == nullptr) {
+        CORE_LOG_ERROR("Failed to load .NET module: {}", module);
+      }
+
+      loaded_dotnet_modules.push_back(assembly);
+    }
+
+    on_initialize(cmd);
   }
 
   void driver::shutdown() {
     PROFILE_SECTION("driver::shutdown");
     on_shutdown();
+
+    for (auto& module : loaded_dotnet_modules) {
+      unload_dotnet_module(module);
+    }
+    loaded_dotnet_modules.clear();
+
+    net_context->signals.cancel();
+    if (!net_context->io_context.stopped()) {
+      net_context->io_context.stop();
+    }
+    net_context = nullptr;
   }
 
   std::pair<driver*, std::string> driver::create(const config_table& config) {
@@ -93,6 +127,7 @@ namespace other {
 
   void driver::pump_events() {
     PROFILE_SECTION("driver::pump_events");
+
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
@@ -129,8 +164,70 @@ namespace other {
   }
 
   void driver::unload_dotnet_module(ref<assembly> module) {
+    if (module == nullptr) {
+      CORE_LOG_ERROR("Cannot unload a null module.");
+      return;
+    }
+
     CORE_LOG_DEBUG("Unloading script module with ID: {}", module->get_handle());
     subsystem<scripting_environment>::get()->unload_dotnet_module(module);
+  }
+
+  void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
+    if (!std::filesystem::exists(working_dir) || !std::filesystem::is_directory(working_dir)) {
+      CORE_LOG_ERROR("Working directory does not exist or is not a directory: {}", working_dir.string());
+      return;
+    }
+#ifdef OTHER_ENVIRONMENT_WINDOWS
+    STARTUPINFOW si;
+    PROCESS_INFORMATION pi;
+
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    auto working_dir_str = working_dir.string();
+    std::wstring wworking_dir = std::wstring(working_dir_str.begin(), working_dir_str.end());
+
+    auto exe_name_str = exe_name.string();
+    std::wstring wexe_name = std::wstring(exe_name_str.begin(), exe_name_str.end());
+
+    std::vector<std::wstring> wargs;
+    for (const auto& arg : args) {
+      wargs.push_back(std::wstring(arg.begin(), arg.end()));
+    }
+
+    std::wstring full_command = wexe_name;
+    for (const auto& warg : wargs) {
+      full_command += L" " + warg;
+    }
+    std::string str_full_command(full_command.begin(), full_command.end());
+
+    // Start the child process.
+    if (!CreateProcessW(
+          // no name, use command line
+          nullptr, full_command.data(),
+          // make nothing inheritable
+          nullptr, nullptr, FALSE,
+          /// completely new, NEW_CONSOLE is only for dev
+          CREATE_NEW_PROCESS_GROUP | CREATE_NEW_CONSOLE,
+          /// Use parent's environment block
+          nullptr,
+          /// Set working directory
+          wworking_dir.data(),
+          // Pointer to STARTUPINFOW structure and PROCESS_INFORMATION structure
+          &si, &pi
+        )) {
+      CORE_LOG_ERROR("CreateProcess failed (error {}): \n   [command: {}]\n", GetLastError(), str_full_command);
+      return;
+    }
+
+    // Close process and thread handles.
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+#else
+  #error "UNIMPLEMENTED PLATFORM
+#endif
   }
 
 }  // namespace other

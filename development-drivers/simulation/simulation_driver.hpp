@@ -14,7 +14,6 @@
 
 #include "sim-config-spec_generated.h"
 
-
 namespace other {
 
   class OTHER_CLASS simulation_driver : public driver {
@@ -23,7 +22,7 @@ namespace other {
         : driver(config) {}
     virtual ~simulation_driver() = default;
 
-    void on_initialize() override;
+    void on_initialize(const command_line& cmd) override;
     void run() override;
     void on_shutdown() override;
 

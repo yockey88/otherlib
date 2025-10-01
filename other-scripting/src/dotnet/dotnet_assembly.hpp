@@ -77,6 +77,7 @@ namespace other {
 
     ref<assembly> load_assembly(const std::string_view path);
     void unload_assembly(natural_t assembly_id);
+    void unload_all();
 
     natural_t get_handle() const {
       return handle;

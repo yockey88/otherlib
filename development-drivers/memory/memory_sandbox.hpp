@@ -15,7 +15,7 @@ class OTHER_CLASS memory_sandbox : public other::driver {
   memory_sandbox(const other::config_table& config)
       : other::driver(config) {}
 
-  void on_initialize() override;
+  void on_initialize(const other::command_line& cmd) override;
   void run() override;
   void on_shutdown() override;
 };

@@ -12,7 +12,7 @@ other::exit_code other_main(const other::command_line& cmd, const other::config_
     return other::exit_code::FAILURE;
   }
 
-  editor->initialize();
+  editor->initialize(cmd);
   editor->run();
   editor->shutdown();
 

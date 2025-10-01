@@ -6,12 +6,14 @@
 #include <cmath>
 
 #include "gpu_resource/texture.hpp"
+
 #include "object/scene_object.hpp"
 
 #include "rendering-pipelines/empty_pipeline.hpp"
 
 #include "imgui.h"
 #include "simulation.hpp"
+
 
 namespace other {
 
@@ -66,7 +68,7 @@ namespace other {
     CHANNEL_A = 3
   };
 
-  void simulation_driver::on_initialize() {
+  void simulation_driver::on_initialize(const command_line& cmd) {
     config_table config = configuration();
 
     {

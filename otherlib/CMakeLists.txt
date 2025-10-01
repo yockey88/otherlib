@@ -2,8 +2,6 @@
 add_library(otherlib)
 target_sources(otherlib 
     PRIVATE 
-        src/util/message_passing.cpp
-
         src/plugin/library_handle.cpp
         src/plugin/plugin.cpp
           

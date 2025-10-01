@@ -28,7 +28,7 @@ namespace other {
     CONTROL,
 
     COMMAND,
-    QUERY,
+    REQUEST,
     RESPONSE,
 
     ERROR_ALERT,
@@ -44,9 +44,13 @@ namespace other {
     /// control messages
     PING,
     PONG,
+
+    SESSION_LISTEN_FOR,
+
+    SESSION_CHECK_IN,
+    SESSION_CLOSED,
     SESSION_SHUTDOWN_REQUEST,
 
-    /// command messages
     OTHER_COMMAND,
     OTHER_COMMAND_BLOCK,
 
@@ -55,14 +59,20 @@ namespace other {
     /// error alert messages
     /// info messages
 
+    SHUTDOWN_REQUEST,
+
     ERROR_ALERT_ID = 0xFFFF,
   };
 
+#pragma pack(push, 1)
   struct message_header {
     /// use uint16_t for category and id for custom message types
     uint16_t category;
     uint16_t id;
+
+    constexpr auto operator<=>(const message_header& other) const = default;
   };
+#pragma pack(pop)
 
   struct binding_point {
     uint16_t port = 0;
@@ -72,7 +82,7 @@ namespace other {
     };
 
     constexpr binding_point() = default;
-    constexpr binding_point(uint32_t ip, uint16_t port) : ip(ip), port(port) {}
+    constexpr binding_point(uint32_t ip, uint16_t port) : port(port), ip(ip) {}
 
     static std::string write_string(const binding_point& bp);
     static binding_point from_asio(const asio::ip::address& addr, uint16_t port);
@@ -126,6 +136,8 @@ namespace other {
   struct message_spec_impl : message_spec {
     std::vector<uint8_t> build_message() override;
   };
+
+  using network_packet_parse_error = std::runtime_error;
 
   struct message {
     message_header header;
@@ -314,6 +326,15 @@ namespace std {
     template <typename FormatContext>
     auto format(const other::binding_point& bp, FormatContext& ctx) const {
       const std::string fmt = std::format("{}.{}.{}.{}:{}", bp.bytes[0], bp.bytes[1], bp.bytes[2], bp.bytes[3], bp.port);
+      return formatter<std::string_view>::format(fmt, ctx);
+    }
+  };
+
+  template <>
+  struct formatter<other::message_header> : public formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(const other::message_header& header, FormatContext& ctx) const {
+      const std::string fmt = std::format("[{:#06x}:{:#06x}]", header.category, header.id);
       return formatter<std::string_view>::format(fmt, ctx);
     }
   };

@@ -4,6 +4,10 @@
 #ifndef OTHER_RUNTIME_HPP
 #define OTHER_RUNTIME_HPP
 
+#include "thread/message_bus.hpp"
+
+#include "network/network_thread.hpp"
+
 #include "scene/scene_graph.hpp"
 
 #include "driver/driver.hpp"
@@ -16,16 +20,18 @@ namespace other {
         : driver(config) {}
     virtual ~runtime() = default;
 
-    void on_initialize() override;
+    void on_initialize(const command_line& cmd) override;
     void run() override;
     void on_shutdown() override;
 
+    void catch_signal(int signal) override;
+
    private:
     bool running = false;
-    scene_graph scenes;
+    scope<scene_graph> project_scene_graph = nullptr;
 
-    ref<assembly> other_assembly = nullptr;
-    ref<assembly> testing_assembly = nullptr;
+    message_bus net_thread_message_bus;
+    scope<network_thread> net_thread = nullptr;
 
     // void initialize_subsystems();
     // void load_project_configuration();

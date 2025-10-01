@@ -5,7 +5,7 @@
 
 namespace other {
 
-  void math_physics_driver::on_initialize() {
+  void math_physics_driver::on_initialize(const command_line& cmd) {
   }
 
   void math_physics_driver::run() {

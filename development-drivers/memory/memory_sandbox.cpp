@@ -35,7 +35,7 @@ namespace {
 
 }  // namespace
 
-void memory_sandbox::on_initialize() {
+void memory_sandbox::on_initialize(const other::command_line& cmd) {
   CORE_LOG_INFO("Memory sandbox initialized.");
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }

@@ -48,31 +48,49 @@ namespace other {
 
   }  // namespace detail
 
-  void runtime::on_initialize() {
-    other_assembly = load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
-    testing_assembly = load_dotnet_module("build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll");
+  void runtime::on_initialize(const command_line& cmd) {
+    CORE_LOG_DEBUG("Runtime...");
 
-    std::vector<uint8_t> buffer = detail::read_file("resources/scenes/test-scene.oscn");
-    std::println("Read {} bytes from project file", buffer.size());
-    size_t cur = 0;
-    std::span<const uint8_t> buf{ buffer.data(), buffer.size() };
-    auto [scene1, bytes_read] = serialization::parse_scene(buf);
-    cur += bytes_read;
+    integer_t session_id = cmd.session_id.value_or(-1);
+    uint16_t port = cmd.port.value_or(49222);
 
-    std::println("{}", serialization::get_entity_tree_string(buf));
+    net_thread = make_scope<network_thread>(net_thread_message_bus);
+    net_thread->launch();
+    net_thread_message_bus.register_thread();
 
-    scene_object& obj1 = scene1.get_object(1);
-    script_component* comp = scene1.get_component<script_component>(&obj1);
+    if (session_id == -1) {
+      CORE_LOG_WARN("No session ID provided to runtime");
+    } else {
+      message msg;
+      msg.header = {
+        .category = COMMAND,
+        .id = SESSION_CHECK_IN,
+      };
 
-    scripting_environment* env = subsystem<scripting_environment>::get();
-    {
-      script_object* script_obj = env->get_object(comp->script_object_id);
-      OTHER_ASSERT(script_obj != nullptr, "Script object with ID {} not found in scripting environment", comp->script_object_id);
-      OTHER_ASSERT(script_obj->dotnet_object != nullptr, "Dotnet object is null for script object ID {}", comp->script_object_id);
-
-      /// should have the values we set before
-      script_obj->dotnet_object->invoke("DisplayInfo");
+      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+      const uint8_t* port_bytes = reinterpret_cast<const uint8_t*>(&port);
+      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
+      msg.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
+      net_thread_message_bus.send_message(std::move(msg));
     }
+
+    // std::vector<uint8_t> buffer = detail::read_file("resources/dev-project1.other");
+    // std::println("Read {} bytes from project file", buffer.size());
+
+    // size_t cur = 0;
+    // std::span<const uint8_t> buf{ buffer.data(), buffer.size() };
+    // {
+    //   auto proj_description = detail::parse_project_description(buf);
+    //   cur = kSceneListOffset;
+    //   CORE_LOG_DEBUG("Project version : [{}.{}.{}]", proj_description.version[0], proj_description.version[1], proj_description.version[2]);
+    //   CORE_LOG_DEBUG("     - {} scenes", proj_description.num_scenes);
+
+    //   auto [scenes, scene_list_bytes_read] = serialization::parse_scene_list(buf.subspan(cur), proj_description.num_scenes);
+    //   cur += scene_list_bytes_read;
+
+    //   // CORE_LOG_DEBUG("Parsed project description: name='{}', num_scenes={}", std::string{ proj_description.project_name }, proj_description.num_scenes);
+    //   project_scene_graph = make_scope<scene_graph>(scenes);
+    // }
 
     // initialize_subsystems();
     // load_project_configuration();
@@ -81,14 +99,29 @@ namespace other {
   }
 
   void runtime::run() {
-    // do {
-    //   pump_events();
-    //   update();
-    //   draw();
-    // } while (running);
+    do {
+      pump_events();
+      // update();
+      // draw();
+    } while (running);
   }
 
   void runtime::on_shutdown() {
+    running = false;
+    project_scene_graph = nullptr;
+
+    net_thread->shutdown();
+    net_thread = nullptr;
+  }
+
+  void runtime::catch_signal(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+      CORE_LOG_INFO("Received signal {}, shutting down runtime...", signal);
+      running = false;
+      net_context->io_context.stop();
+    } else {
+      CORE_LOG_WARN("Received unhandled signal {}", signal);
+    }
   }
 
   // void runtime::initialize_subsystems() {

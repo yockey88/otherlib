@@ -95,4 +95,12 @@ namespace other {
     }
   }
 
+  void assembly_context::unload_all() {
+    CORE_LOG_DEBUG("Unloading all assemblies from context [{}:{}]", handle, name);
+    for (auto& [id, asm_ref] : assemblies) {
+      unload_assembly(id);
+    }
+    assemblies.clear();
+  }
+
 }  // namespace other
