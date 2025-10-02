@@ -12,6 +12,8 @@
 namespace other {
   namespace serialization {
 
+    std::vector<uint8_t> read_file_to_bytes(const filepath& file_path);
+
     template <typename T>
       requires(!std::same_as<T, std::string>)
     static inline void write_value(T value, std::vector<uint8_t>& out_bytes) {

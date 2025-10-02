@@ -1,0 +1,38 @@
+Info,  T303228: begin import of model: tests/resources/models/suzanne3.fbx
+Info,  T303228: Load tests/resources/models/suzanne3.fbx
+Debug, T303228: Assimp 6.0.3674988149 amd64 msvc debug shared singlethreadedsingle : 
+Info,  T303228: Found a matching importer for this file format: Autodesk FBX Importer.
+Info,  T303228: Import root directory is 'tests/resources/models\'
+Debug, T303228: Reading FBX file
+Debug, T303228: Tokenizing binary FBX file
+Debug, T303228: FBX version: 7400
+Debug, T303228: Parsing FBX tokens
+Debug, T303228: Creating FBX Document
+Debug, T303228: FBX Version: 7400
+Error, T303228: FBX: no material assigned to mesh, setting default material
+Debug, T303228: UpdateImporterScale scale set: 0.01
+Debug, T303228: ValidateDataStructureProcess begin
+Debug, T303228: ValidateDataStructureProcess end
+Info,  T303228: Entering post processing pipeline
+Debug, T303228: FindInstancesProcess begin
+Debug, T303228: FindInstancesProcess finished. No instanced meshes found
+Debug, T303228: OptimizeGraphProcess begin
+Info,  T303228: OptimizeGraphProcess finished; Input nodes: 4, Output nodes: 1
+Debug, T303228: GenUVCoordsProcess begin
+Debug, T303228: GenUVCoordsProcess finished
+Debug, T303228: TriangulateProcess begin
+Debug, T303228: TriangulateProcess finished. There was nothing to be done.
+Debug, T303228: FindDegeneratesProcess begin
+Debug, T303228: FindDegeneratesProcess finished
+Debug, T303228: FindInvalidDataProcess begin
+Info,  T303228: FindInvalidDataProcess finished. Found issues ...
+Debug, T303228: OptimizeMeshesProcess begin
+Debug, T303228: OptimizeMeshesProcess finished. Input meshes: 3, Output meshes: 1
+Debug, T303228: Generate spatially-sorted vertex cache
+Debug, T303228: CalcTangentsProcess begin
+Debug, T303228: CalcTangentsProcess finished
+Debug, T303228: JoinVerticesProcess begin
+Debug, T303228: Mesh 0 (Torus.002.Cube.001.Suzanne.001) | Verts in: 6393 out: 5163 | ~19.2398%
+Info,  T303228: JoinVerticesProcess finished | Verts in: 6393 out: 5163 | ~19.2398
+Info,  T303228: Leaving post processing pipeline
+Info,  T303228: Model loaded successfully: tests/resources/models/suzanne3.fbx

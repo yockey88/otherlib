@@ -2,6 +2,8 @@
  * \file thread/message_bus_tests.cpp
  **/
 #include <barrier>
+#include <chrono>
+#include <ratio>
 
 #include "thread/message_bus.hpp"
 
@@ -18,7 +20,7 @@ namespace other {
       bus.register_thread();
       sync_point.arrive_and_wait();
 
-      opt<message> msg = bus.receive_message();
+      opt<message> msg = bus.receive_message(std::chrono::milliseconds(500));
       ASSERT_TRUE(msg.has_value());
 
       ASSERT_EQ(msg->header.category, 0xBEEF);
@@ -43,7 +45,7 @@ namespace other {
       msg.data = { 0x01, 0x02, 0x03 };
       bus.send_message(std::move(msg));
 
-      opt<message> recv_msg = bus.receive_message();
+      opt<message> recv_msg = bus.receive_message(std::chrono::milliseconds(500));
       ASSERT_TRUE(recv_msg.has_value());
       ASSERT_EQ(recv_msg->header.category, 0xCAFE);
       ASSERT_EQ(recv_msg->header.id, 0xFACE);

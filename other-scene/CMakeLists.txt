@@ -2,6 +2,11 @@ add_library(other_scene STATIC)
 target_sources(other_scene
     PRIVATE
       src/asset/asset_serialization.cpp
+      src/asset/asset.cpp
+      src/asset/asset_pipeline.cpp
+      src/asset/model_source_pipeline.cpp
+      src/asset/asset_loader.cpp
+      src/asset/asset_handler.cpp
 
       src/object/scene_object.cpp
       src/object/script_component.cpp

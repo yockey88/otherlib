@@ -27,6 +27,7 @@ namespace other {
     bool has_backend() const { return rendering_api_instance != nullptr; }
 
     void load_backend(const std::string& name, const glm::uvec2& window_size);
+    void force_set_backend(scope<rendering_api> api);
     void unload_backend();
 
     void handle_event(SDL_Event* event);
@@ -42,6 +43,11 @@ namespace other {
     scope<rendering_api> rendering_api_instance;
 
     std::map<natural_t, ref<model_source>> model_sources;
+
+    struct {
+      bool full_initialization : 1 = false;
+      bool forced_api_set      : 1 = false;
+    } state_flags;
 
     void set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr);
   };

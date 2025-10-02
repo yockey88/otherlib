@@ -23,6 +23,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/script_serialization.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/scene_serialization.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/config_table_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/serialization/asset_serialization.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/parser-combinator/parser_combinator_tests.cpp
     
@@ -32,6 +33,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/script_environment_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/scene_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/asset_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/other_test_main.cpp
 )

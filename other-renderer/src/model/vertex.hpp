@@ -80,14 +80,12 @@ namespace other {
   };
 
   struct index {
-    OTHER_REFLECTABLE(index);
     uint32_t v0 = 0;
     uint32_t v1 = 0;
     uint32_t v2 = 0;
   };
 
   struct triangle {
-    OTHER_REFLECTABLE(triangle);
     vertex v0;
     vertex v1;
     vertex v2;
@@ -96,8 +94,6 @@ namespace other {
   };
 
   struct submesh {
-    OTHER_REFLECTABLE(submesh);
-
     uint32_t base_vertex = 0;
     uint32_t base_idx = 0;
 
@@ -119,7 +115,6 @@ namespace other {
   };
 
   struct mesh_node {
-    OTHER_REFLECTABLE(mesh_node);
     uint32_t parent = 0xFFFFFFFF;  // 0xFFFFFFFF indicates no parent
     std::vector<uint32_t> children;
     std::vector<uint32_t> sub_meshes;

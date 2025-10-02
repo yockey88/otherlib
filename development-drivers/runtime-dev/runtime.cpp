@@ -124,15 +124,6 @@ namespace other {
     }
   }
 
-  // void runtime::initialize_subsystems() {
-  // }
-
-  // void runtime::load_project_configuration() {
-  // }
-
-  // void runtime::load_scenes_and_play() {
-  // }
-
   void runtime::update() {
   }
 

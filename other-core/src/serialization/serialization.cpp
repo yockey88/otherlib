@@ -3,8 +3,30 @@
  **/
 #include "serialization/serialization.hpp"
 
+#include <fstream>
+#include <string>
+
 namespace other {
   namespace serialization {
+
+    std::vector<uint8_t> read_file_to_bytes(const filepath& file_path) {
+      std::ifstream file(file_path, std::ios::binary);
+      OTHER_ASSERT(file.is_open(), "Failed to open project file");
+
+      std::vector<uint8_t> buffer = {};
+
+      size_t num_bytes = 0;
+      file.seekg(0, std::ios::end);
+      num_bytes = static_cast<size_t>(file.tellg());
+      file.seekg(0, std::ios::beg);
+      OTHER_ASSERT(num_bytes > 0, "Project file is empty");
+      CORE_LOG_DEBUG("Reading file of size: {} bytes", num_bytes);
+
+      buffer.resize(num_bytes);
+      file.read(reinterpret_cast<char*>(buffer.data()), num_bytes);
+
+      return buffer;
+    }
 
     void write_string_value(const std::string& str, std::vector<uint8_t>& out_bytes) {
       const uint8_t* str_bytes = reinterpret_cast<const uint8_t*>(str.data());

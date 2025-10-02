@@ -147,6 +147,11 @@ namespace other {
         std::print("Terminal open: {}\n", open_terminal);
       }
 
+      toml::node_view force_no_window = config.table.at_path("rendering.force-no-window");
+      if (force_no_window.is_boolean()) {
+        config.force_no_window = force_no_window.as_boolean();
+      }
+
       toml::node_view rendering_backend = config.table.at_path("rendering.rendering-backend");
       rendering = rendering_backend.as_string() == nullptr ? "" : rendering_backend.as_string()->get();
       if (log_level == 0) {

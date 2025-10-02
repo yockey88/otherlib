@@ -81,15 +81,27 @@ namespace other {
 
     ui_context = ImGui::GetCurrentContext();
     api()->initialize_ui_context();
+
+    state_flags.full_initialization = true;
+  }
+
+  void renderer_backend::force_set_backend(scope<rendering_api> api) {
+    scope<window_manager> window_mgr = make_scope<window_manager>();
+    set_rendering_api(std::move(api), std::move(window_mgr));
+    state_flags.forced_api_set = true;
   }
 
   void renderer_backend::unload_backend() {
     if (rendering_api_instance != nullptr) {
       CORE_LOG_DEBUG("Shutting down rendering API instance.");
+
+      bool should_shutdown_imgui = !state_flags.forced_api_set;
       rendering_api_instance->shutdown_ui_context();
 
-      ImGui::DestroyContext();
-      ui_context = nullptr;
+      if (should_shutdown_imgui) {
+        ImGui::DestroyContext();
+        ui_context = nullptr;
+      }
 
       rendering_api_instance->destroy_windows();
 
@@ -98,6 +110,9 @@ namespace other {
 
       SDL_Quit();
     }
+
+    state_flags.full_initialization = false;
+    state_flags.forced_api_set = false;
   }
 
   void renderer_backend::handle_event(SDL_Event* event) {

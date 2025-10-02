@@ -54,6 +54,8 @@ namespace other {
     /// let it get to the waiting state
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
+    EXPECT_THAT(thread_ptr->get_current_state(), IsLaunchingOrWaiting());
+
     session_status_request ping_msg;
     ping_msg.session_type = 1;
     ping_msg.node_id = 42;

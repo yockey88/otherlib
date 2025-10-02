@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
   other::ref<other::assembly> other_assembly = other::subsystem<other::scripting_environment>::get()->load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
 
   exit_code res = other::SUCCESS;
-  std::vector<other::ref<other::assembly>> testing_assemblies = {};
+  std::vector<other::ref<other::assembly>> required_assemblies = {};
   try {
     if (argc < 2) {
       std::println(kUsageString);
@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
       file_stream >> project_json;
     }
 
-    testing_assemblies = load_assemblies(project_json);
+    required_assemblies = load_assemblies(project_json);
     auto bytes = write_json_to_bytes(project_json);
 
     other::filepath output_dir = project_file.parent_path();
@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
     res = other::FAILURE;
   }
 
-  unload_assemblies(testing_assemblies);
+  unload_assemblies(required_assemblies);
 
   other::subsystem<other::scripting_environment>::get()->unload_dotnet_module(other_assembly);
   other::shutdown_other_environment();

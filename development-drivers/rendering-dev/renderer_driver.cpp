@@ -3,6 +3,8 @@
  **/
 #include "renderer_driver.hpp"
 
+#include <chrono>
+
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_mouse.h>
 #include <glad/glad.h>
@@ -80,8 +82,12 @@ namespace other {
       light_dlight.direction = glm::vec3(0.f, -1.f, 0.f);
       light_dlight.color = glm::vec3(1.f, 1.f, 1.f);
 
-      auto [hash, suzanne_source] = model_source::load_model_source("resources/models/suzanne3.fbx");
+      auto now = std::chrono::steady_clock::now();
+      auto [hash, suzanne_source] = model_source::load_model_source("resources/models/suzanne3.omesh");
       OTHER_ASSERT(suzanne_source != nullptr, "Failed to load Suzanne model source.");
+      auto later = std::chrono::steady_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(later - now).count();
+      CORE_LOG_INFO("Loaded Suzanne model source in {} ms", duration);
 
       suzanne = suzanne_source->produce_model("Suzanne");
       CORE_LOG_DEBUG("created model : {}", other::type_data_handler<model>::as_string("suzanne", suzanne));

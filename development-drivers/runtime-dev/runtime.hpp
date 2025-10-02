@@ -33,10 +33,6 @@ namespace other {
     message_bus net_thread_message_bus;
     scope<network_thread> net_thread = nullptr;
 
-    // void initialize_subsystems();
-    // void load_project_configuration();
-    // void load_scenes_and_play();
-
     void update();
     void draw();
 

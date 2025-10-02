@@ -1,0 +1,152 @@
+Info,  T207920: begin import of model: tests/resources/models/NewSponza_Curtains_FBX_YUp_fbx7binary.fbx
+Info,  T207920: Load tests/resources/models/NewSponza_Curtains_FBX_YUp_fbx7binary.fbx
+Debug, T207920: Assimp 6.0.3674988149 amd64 msvc debug shared singlethreadedsingle : 
+Info,  T207920: Found a matching importer for this file format: Autodesk FBX Importer.
+Info,  T207920: Import root directory is 'tests/resources/models\'
+Debug, T207920: Reading FBX file
+Debug, T207920: Tokenizing binary FBX file
+Debug, T207920: FBX version: 7700
+Debug, T207920: Parsing FBX tokens
+Debug, T207920: Creating FBX Document
+Debug, T207920: FBX Version: 7700
+Warn,  T207920: FBX-DOM: unsupported, newer format version, supported are only FBX 2011, FBX 2012 and FBX 2013, trying to read it nevertheless
+Warn,  T207920: FBX-DOM (TOK_KEY, offset 0x5b01f68) shading mode not recognized: unknown
+Warn,  T207920: FBX-DOM (TOK_KEY, offset 0x5b048bc) shading mode not recognized: unknown
+Warn,  T207920: FBX-DOM (TOK_KEY, offset 0x5b07217) shading mode not recognized: unknown
+Warn,  T207920: FBX-DOM (TOK_KEY, offset 0x5b09b72) shading mode not recognized: unknown
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Warn,  T207920: FBX-DOM (TOK_KEY, offset 0x5b25746) failed to resolve target Model/NodeAttribute/Constraint for AnimationCurveNode
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementTexture, index: 0
+Error, T207920: FBX: failed to resolve vertex layer element: LayerElementShininessTextures, index: 0
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Debug, T207920: FBX: dropping redundant animation channel for node Model::curtain_02
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Debug, T207920: FBX: dropping redundant animation channel for node Model::curtain_03
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Debug, T207920: FBX: dropping redundant animation channel for node Model::curtain_05
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Debug, T207920: FBX: dropping redundant animation channel for node Model::curtain_06
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Debug, T207920: FBX: dropping redundant animation channel for node Model::curtain_07
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Debug, T207920: FBX: dropping redundant animation channel for node Model::curtain_09
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::T
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::R
+Warn,  T207920: FBX: no animation curves assigned to AnimationCurveNode: AnimCurveNode::S
+Warn,  T207920: FBX: ignoring node animation, did not find any transformation key frames
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Warn,  T207920: FBX: did not find UV channel named UVChannel_1 in a mesh using this material
+Warn,  T207920: FBX: failed to resolve UV channel UVChannel_1, using first UV channel
+Debug, T207920: UpdateImporterScale scale set: 0.01
+Info,  T207920: Entering post processing pipeline
+Debug, T207920: TriangulateProcess begin
+Debug, T207920: TriangulateProcess finished. There was nothing to be done.
+Debug, T207920: Generate spatially-sorted vertex cache
+Debug, T207920: CalcTangentsProcess begin
+Info,  T207920: CalcTangentsProcess finished. Tangents have been calculated
+Info,  T207920: Leaving post processing pipeline
+Info,  T207920: Model loaded successfully: tests/resources/models/NewSponza_Curtains_FBX_YUp_fbx7binary.fbx

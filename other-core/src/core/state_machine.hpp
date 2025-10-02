@@ -41,7 +41,7 @@ namespace other {
    public:
     ST get_current_state() const { return current_state; }
 
-    virtual void handle_event(ET event, void* data) {
+    virtual void handle_event(ET event, void* data = nullptr) {
       ST current = get_current_state();
       OTHER_ASSERT(current < ST::NUM_STATES, "Current state is invalid");
 
@@ -70,8 +70,8 @@ namespace other {
     std::array<std::vector<transition>, static_cast<size_t>(ST::NUM_STATES)> transition_table = {};
 
     void add_transition(ST from, ET event, ST to, action on_transition = nullptr) {
-      OTHER_ASSERT(from < ST::NUM_STATES, "Invalid 'from' state");
-      OTHER_ASSERT(event < ET::NUM_EVENTS, "Invalid 'event'");
+      OTHER_ASSERT(from <= ST::NUM_STATES, "Invalid 'from' state");
+      OTHER_ASSERT(event <= ET::NUM_EVENTS, "Invalid 'event'");
 
       auto itr = std::ranges::find_if(transition_table[static_cast<size_t>(from)], [event](const transition& t) { return t.event == event; });
       OTHER_ASSERT(itr == transition_table[static_cast<size_t>(from)].end(), "Transition already exists");
