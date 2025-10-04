@@ -23,7 +23,10 @@
 
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
 
+#include "asset/asset.hpp"
 #include "glm/gtc/type_ptr.hpp"
+
+#define UI_ON 1
 
 namespace other {
   namespace {
@@ -39,6 +42,10 @@ namespace other {
     PROFILE_SECTION("renderer_driver::on_initialize");
 
     config_table config = configuration();
+
+    io_context = std::make_unique<asio::io_context>();
+    asset_mgr = make_scope<asset_handler>(*io_context);
+    OTHER_ASSERT(asset_mgr != nullptr, "Failed to create asset handler in renderer_driver");
 
     {
       PROFILE_SECTION("renderer_driver::on_initialize--initialize-renderer");
@@ -82,30 +89,25 @@ namespace other {
       light_dlight.direction = glm::vec3(0.f, -1.f, 0.f);
       light_dlight.color = glm::vec3(1.f, 1.f, 1.f);
 
-      auto now = std::chrono::steady_clock::now();
-      auto [hash, suzanne_source] = model_source::load_model_source("resources/models/suzanne3.omesh");
-      OTHER_ASSERT(suzanne_source != nullptr, "Failed to load Suzanne model source.");
-      auto later = std::chrono::steady_clock::now();
-      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(later - now).count();
-      CORE_LOG_INFO("Loaded Suzanne model source in {} ms", duration);
+      {
+        auto now = std::chrono::steady_clock::now();
+        PROFILE_SECTION("renderer_driver::on_initialize--load-assets");
+        // auto [hash, suzanne_source] = model_source::load_model_source("resources/models/NewSponza_Curtains_FBX_YUp_fbx7binary.omesh");
+        suzanne_asset_id = asset_mgr->load_asset("resources/models/suzanne3.omesh");
+        auto later = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(later - now).count();
+        CORE_LOG_INFO("loaded model source in {} ms", duration);
+      }
 
-      suzanne = suzanne_source->produce_model("Suzanne");
-      CORE_LOG_DEBUG("created model : {}", other::type_data_handler<model>::as_string("suzanne", suzanne));
-      render_component& suzanne_render = active_scene.add_component<render_component>(&suzanne_obj);
-      suzanne_render.model = &suzanne;
-      suzanne_render.material.diffuse_color = glm::vec3(0.4f, 0.6f, 0.8f);
-      suzanne_render.material.diffuse_reflectivity = 0.5f;
-      suzanne_render.material.specular_color = glm::vec3(0.8f, 0.8f, 0.8f);
-      suzanne_render.material.specular_reflectivity = 0.5f;
-      suzanne_render.material.emissivity = 0.1f;
-      suzanne_render.material.shininess = 16.f;
-      suzanne_render.material.transparency = 0.f;
+      // OTHER_ASSERT(suzanne_source != nullptr, "Failed to load Suzanne model source.");
 
-      size_t num_root_children = active_scene.get_object_count();
-      CORE_LOG_INFO("Number of children in the scene: {}", num_root_children);
+      // size_t num_root_children = active_scene.get_object_count();
+      // CORE_LOG_INFO("Number of children in the scene: {}", num_root_children);
 
-      running = true;
+      // running = true;
     }
+
+    CORE_LOG_INFO("Renderer driver initialized successfully.");
   }
 
   void renderer_driver::run() {
@@ -118,6 +120,34 @@ namespace other {
       pump_events();
       if (!running) {
         break;
+      }
+      io_context->poll();
+      asset_mgr->update_pipelines();
+
+      if (!loaded_suzanne && asset_mgr->get_asset_state(suzanne_asset_id) == asset_state::LOADED) {
+        uint64_t hash = asset_mgr->get_asset_hash(suzanne_asset_id);
+        ref<model_source> suzanne_source = subsystem<renderer_backend>::get()->get_model_source(hash);
+        if (suzanne_source != nullptr) {
+          scene_object& suzanne_obj = active_scene.get_object(suzanne_id);
+
+          suzanne = suzanne_source->produce_model("Suzanne");
+          CORE_LOG_DEBUG("created model : {}", other::type_data_handler<model>::as_string("suzanne", suzanne));
+
+          const submesh& suzanne_submesh = suzanne.source->get_submeshes()[0];
+          std::println("Suzanne [0] submesh local transform :\n{}", suzanne_submesh.local_transform);
+
+          render_component& suzanne_render = active_scene.add_component<render_component>(&suzanne_obj);
+          suzanne_render.model = &suzanne;
+          suzanne_render.material.diffuse_color = glm::vec3(0.4f, 0.6f, 0.8f);
+          suzanne_render.material.diffuse_reflectivity = 0.5f;
+          suzanne_render.material.specular_color = glm::vec3(0.8f, 0.8f, 0.8f);
+          suzanne_render.material.specular_reflectivity = 0.5f;
+          suzanne_render.material.emissivity = 0.1f;
+          suzanne_render.material.shininess = 16.f;
+          suzanne_render.material.transparency = 0.f;
+
+          loaded_suzanne = true;
+        }
       }
 
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), pressing_mouse_wheel);
@@ -146,12 +176,18 @@ namespace other {
         renderer->render();
 
         renderer->begin_ui_frame();
-        if (ImGui::Begin("Debug Window")) {
-          if (ImGui::DragFloat3("Suzanne Color", glm::value_ptr(active_scene.get_component<render_component>(suzanne_id)->material.diffuse_color), 0.01f, 0.f, 1.0f)) {}
-          if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
-          if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}
+
+#if UI_ON
+        auto* render_comp = active_scene.get_component<render_component>(suzanne_id);
+        if (render_comp != nullptr) {
+          if (ImGui::Begin("Debug Window")) {
+            if (ImGui::DragFloat3("Suzanne Color", glm::value_ptr(render_comp->material.diffuse_color), 0.01f, 0.f, 1.0f)) {}
+            if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
+            if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}
+          }
+          ImGui::End();
         }
-        ImGui::End();
+#endif
         renderer->end_ui_frame();
 
         renderer->end_frame();
@@ -163,6 +199,13 @@ namespace other {
     OTHER_ASSERT(renderer != nullptr, "Renderer is not initialized.");
     PROFILE_SECTION("renderer_driver::on_shutdown");
     CORE_LOG_INFO("Shutting down terminal driver...");
+
+    asset_mgr->unload_asset(suzanne_asset_id);
+    while (asset_mgr->get_num_pending_unloads() > 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    asset_mgr->purge_stores();
+    asset_mgr = nullptr;
 
     renderer->remove_pipeline("Default Instancing Pipeline");
     renderer = nullptr;

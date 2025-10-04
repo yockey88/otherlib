@@ -102,13 +102,6 @@ namespace other {
       .upload_vertex_buffer("quad_vertices", 6, quad_vertices2, sizeof(quad_vertices2))
       .finalize_mesh();
 
-    {
-      auto [idx, cube_src] = model_source::load_model_source("debug-cube-source", get_cube_vertices(), get_cube_indices());
-      debug_cube_model_source = cube_src;
-    }
-
-    debug_cube_model = debug_cube_model_source->produce_model("debug-cube");
-
     auto window_size = get_renderer()->get_window_size();
     add_buffer_resource("camera_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     add_buffer_resource("point_light_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
@@ -157,42 +150,42 @@ namespace other {
       })
       .end_pass();
 
-    start_pass("point-light-shadow-pass", shadow_map_pass_shader_handle, render_pass::RENDER_PASS, window_size)
-      .texture_resource("pl_shadow_map", framebuffer::DEPTH, WRITE)
-      .buffer_resource("model_buffer", 1, READ)
-      .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
-        shader* point_light_shader = get_pass_shader("point-light-shadow-pass");
-        OTHER_ASSERT(point_light_shader != nullptr, "Point light shadow pass shader not found.");
+    // start_pass("point-light-shadow-pass", shadow_map_pass_shader_handle, render_pass::RENDER_PASS, window_size)
+    //   .texture_resource("pl_shadow_map", framebuffer::DEPTH, WRITE)
+    //   .buffer_resource("model_buffer", 1, READ)
+    //   .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
+    //     shader* point_light_shader = get_pass_shader("point-light-shadow-pass");
+    //     OTHER_ASSERT(point_light_shader != nullptr, "Point light shadow pass shader not found.");
 
-        float near_plane = 1.0f;
-        float far_plane = 10.f;
-        auto window_size = renderer.get_window_size();
-        glm::mat4 shadow_projection = glm::perspective(glm::radians(90.0f), (float)window_size.x / window_size.y, near_plane, far_plane);
+    //     float near_plane = 1.0f;
+    //     float far_plane = 10.f;
+    //     auto window_size = renderer.get_window_size();
+    //     glm::mat4 shadow_projection = glm::perspective(glm::radians(90.0f), (float)window_size.x / window_size.y, near_plane, far_plane);
 
-        point_light_shader->set_uniform("far_plane", far_plane);
+    //     point_light_shader->set_uniform("far_plane", far_plane);
 
-        for (size_t i = 0; i < get_frame_render_data()->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-          const auto& light = get_frame_render_data()->point_lights[i];
-          glm::vec3 light_pos = light.light_position;
+    //     for (size_t i = 0; i < get_frame_render_data()->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+    //       const auto& light = get_frame_render_data()->point_lights[i];
+    //       glm::vec3 light_pos = light.light_position;
 
-          std::vector<glm::mat4> light_matrices;
-          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
-          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
-          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)));
-          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
-          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+    //       std::vector<glm::mat4> light_matrices;
+    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)));
+    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
 
-          OTHER_ASSERT(light_matrices.size() == 6, "Point light shadow matrices should have 6 faces.");
-          for (size_t i = 0; i < light_matrices.size(); ++i) {
-            point_light_shader->set_uniform("shadow_matrices[" + std::to_string(i) + "]", light_matrices[i]);
-          }
-          point_light_shader->set_uniform("light_pos", light_pos);
+    //       OTHER_ASSERT(light_matrices.size() == 6, "Point light shadow matrices should have 6 faces.");
+    //       for (size_t i = 0; i < light_matrices.size(); ++i) {
+    //         point_light_shader->set_uniform("shadow_matrices[" + std::to_string(i) + "]", light_matrices[i]);
+    //       }
+    //       point_light_shader->set_uniform("light_pos", light_pos);
 
-          renderer.execute_draw_calls();
-        }
-      })
-      .end_pass();
+    //       renderer.execute_draw_calls();
+    //     }
+    //   })
+    //   .end_pass();
 
     start_pass("shading-pass", shading_pass_shader_handle, render_pass::RENDER_PASS, window_size)
       .clear_color(glm::vec4(0.2f, 0.2f, 0.2f, 1.f))

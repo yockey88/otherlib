@@ -45,11 +45,11 @@ namespace other {
       return std::string{ reinterpret_cast<const char*>(str_span.data()), length };
     }
 
-    std::vector<uint8_t> read_bytes(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor) {
+    std::span<const uint8_t> read_bytes(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor) {
       OTHER_ASSERT(buffer.size() >= cursor + length, "Buffer to small to read {} bytes", length);
       auto sp = buffer.subspan(cursor, length);
       cursor += length;
-      return { sp.begin(), sp.end() };
+      return sp;
     }
 
   }  // namespace serialization

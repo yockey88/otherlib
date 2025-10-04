@@ -48,7 +48,7 @@ namespace other {
     template <typename T>
       requires(!std::same_as<T, std::string>)
     static inline T read_value(const std::span<const uint8_t> buffer, size_t& cursor) {
-      OTHER_ASSERT(buffer.size() >= sizeof(T), "Buffer too small to read value of size {}", sizeof(T));
+      OTHER_ASSERT(buffer.size() > cursor + sizeof(T), "Buffer too small to read value of size {} at cursor {}", sizeof(T), cursor);
       std::span<const uint8_t> value_span = buffer.subspan(cursor, sizeof(T));
       cursor += sizeof(T);
       return *reinterpret_cast<const T*>(value_span.data());
@@ -57,13 +57,13 @@ namespace other {
     template <typename T>
       requires(!std::same_as<T, std::string>)
     static inline T peek_at_value(const std::span<const uint8_t> buffer, size_t cursor) {
-      OTHER_ASSERT(buffer.size() >= sizeof(T), "Buffer too small to read value of size {}", sizeof(T));
+      OTHER_ASSERT(buffer.size() > cursor + sizeof(T), "Buffer too small to read value of size {} at cursor {}", sizeof(T), cursor);
       std::span<const uint8_t> value_span = buffer.subspan(cursor, sizeof(T));
       return *reinterpret_cast<const T*>(value_span.data());
     }
 
     std::string read_string_value(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor);
-    std::vector<uint8_t> read_bytes(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor);
+    std::span<const uint8_t> read_bytes(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor);
 
     template <typename T>
     static inline std::vector<T> read_list_with_2B_count(const std::span<const uint8_t> buffer, size_t& cursor) {

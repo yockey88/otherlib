@@ -32,6 +32,8 @@ namespace other {
     std::vector<uint64_t> loaded_texture_hashes;
     std::vector<UUID> material_ids;
     */
+
+    void dump_model_info() const;
   };
 
   namespace model_importer {

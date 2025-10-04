@@ -38,6 +38,7 @@ target_include_directories(other_renderer
       ${OTHER_EXTERN_DIR}/imgui
       ${OTHER_EXTERN_DIR}/sdl
       ${OTHER_EXTERN_DIR}/assimp
+      ${OTHER_EXTERN_DIR}/mio
 )
 target_link_directories(other_renderer PUBLIC ${OTHER_LIBRARIES_PATH})
 

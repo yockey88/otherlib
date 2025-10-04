@@ -293,6 +293,7 @@ namespace other {
         primary_camera = &cam;
       }
     });
+
     if (primary_camera != nullptr) {
       /// \todo fix this const cast
       data.primary_camera = (camera*)primary_camera;

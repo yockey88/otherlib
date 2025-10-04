@@ -16,9 +16,6 @@ namespace other {
    private:
     resource_handle quad_mesh_handle;
 
-    ref<model_source> debug_cube_model_source;
-    model debug_cube_model;
-
     resource_handle geometry_pass_shader_handle;
     resource_handle shadow_map_pass_shader_handle;
     resource_handle point_light_shadow_pass_shader_handle;

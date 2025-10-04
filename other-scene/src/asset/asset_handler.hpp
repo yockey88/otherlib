@@ -13,8 +13,14 @@
 #include "core/state_machine.hpp"
 
 #include "asset/asset.hpp"
+#include "asset/asset_pipeline.hpp"
 
 namespace other {
+  namespace detail {
+
+    struct load_context;
+
+  }  // namespace detail
 
   enum asset_state {
     UNLOADED = 0,
@@ -71,38 +77,46 @@ namespace other {
     ~asset_handler() = default;
 
     void purge_stores();
+    void update_pipelines();
 
     natural_t load_asset(const filepath& file_path);
     void unload_asset(natural_t asset_id);
 
     asset_state get_asset_state(natural_t asset_id) const;
+    natural_t get_asset_hash(natural_t asset_id) const;
 
-    size_t get_num_loading_assets() const { return loading_assets.size(); }
+    asio::io_context& get_io_context() { return io_context; }
+    asio::thread_pool& get_thread_pool() { return thread_pool; }
+
+    size_t get_num_loading_assets() const { return asset_pipelines.size(); }
     size_t get_num_loaded_assets() const { return loaded_assets.size(); }
-    size_t get_num_assets_in_flight() const { return loading_assets.size() + loaded_assets.size(); }
+    size_t get_num_assets_in_flight() const { return asset_pipelines.size() + loaded_assets.size(); }
 
     size_t get_num_pending_unloads() const { return pending_unloads.size(); }
     // size_t process_pending_unloads(size_t max_to_process = SIZE_MAX);
 
    private:
     asio::io_context& io_context;
+    asio::thread_pool thread_pool{ 4 };
 
-    std::deque<asset> loading_assets;
+    struct pipeline_context {
+      scope<asset_pipeline> pipeline = nullptr;
+      asset loading_asset;
+    };
+    std::deque<pipeline_context> asset_pipelines;
+
     std::unordered_map<natural_t, asset> loaded_assets;
     std::unordered_map<natural_t, asset_state_machine> asset_states;
 
     std::queue<natural_t> pending_unloads;
 
-    struct loading_table {
-      using loader_fn_t = std::function<void(asset*, std::function<void()>, std::function<void(const std::string&)>)>;
-      static std::array<loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> loaders;
-      static std::array<loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> unloaders;
-    };
-
     static inline natural_t next_asset_id = 1;
     static inline natural_t get_next_asset_id() {
       return next_asset_id++;
     }
+
+    friend struct detail::load_context;
+    friend class asset_pipeline;
 
     void on_asset_loaded(asset* asset_ptr);
     void on_asset_load_failed(asset* asset_ptr, const std::string& error_message);

@@ -131,11 +131,11 @@ namespace other {
 
 OTHER_REFLECT(
   other::vertex,
-  field(position, other::attr::serializable())
-  // field(normal, other::attr::serializable())
-  // field(tangent, other::attr::serializable()),
-  // field(bitangent, other::attr::serializable()),
-  // field(tex_coord, other::attr::serializable())
+  field(position, other::attr::serializable()),
+  field(normal, other::attr::serializable()),
+  field(tangent, other::attr::serializable()),
+  field(bitangent, other::attr::serializable()),
+  field(tex_coord, other::attr::serializable())
 )
 
 OTHER_REFLECT(

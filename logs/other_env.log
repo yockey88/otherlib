@@ -1,101 +1,342 @@
-[2025-10-01 22:25:40 -  300024] [info] Other Environment version 0.0.1
-[2025-10-01 22:25:41 -  300024] [debug] Found hostfxr library at: C:\Program Files\dotnet/host/fxr\9.0.6\hostfxr.dll
-[2025-10-01 22:25:41 -  300024] [debug] Binding interop table...
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function CreateAssemblyLoadContext (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa5e803870
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function UnloadAssemblyLoadContext (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa5e803918
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetLastLoadStatus (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa5e803948
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function LoadManagedAssembly (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa5e803960
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function UnloadManagedAssembly (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa5e803978
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetAssemblyName (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa5e803990
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function RegisterInternalCall (OtherCsBindings.NativeFunctionManager, OtherCsBindings) | handle: 0x7ffa5e8039a8
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetAssemblyTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e8039c0
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetNetCoreTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e8039d8
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetTypeId (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e8039f0
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetFullTypeName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803a08
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetTypeMethods (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803a20
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetTypeFields (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803a38
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetTypeProperties (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803a50
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803a68
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function HasAttribute (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803a80
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetMethodName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803a98
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetMethodReturnType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803ab0
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetMethodAccessibility (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803ac8
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetMethodParameterTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803ae0
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetMethodAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803af8
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function HasField (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803b10
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetFieldName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803b28
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetFieldType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803b40
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetFieldValueType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803b58
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetFieldAccessibility (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803b70
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetFieldAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803b88
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetPropertyName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803ba0
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetPropertyType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803bb8
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetPropertyAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803bd0
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetAttributeType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803be8
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetAttributeValue (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa5e803c00
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function CreateObject (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803c18
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function DestroyObject (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803c30
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function InvokeMethod (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803c48
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function InvokeMethodRet (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803c60
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function SetField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803c78
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803c90
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function SetProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803ca8
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803cc0
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function SetStringField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803cd8
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetStringField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803cf0
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function SetStringProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803d08
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetStringProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803d20
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetStringFieldLength (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803d38
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function GetStringPropertyLength (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa5e803d50
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function CollectGarbage (OtherCsBindings.GarbageCollector, OtherCsBindings) | handle: 0x7ffa5e803d68
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function WaitForPendingFinalizers (OtherCsBindings.GarbageCollector, OtherCsBindings) | handle: 0x7ffa5e803d80
-[2025-10-01 22:25:41 -  300024] [trace] Loaded managed function Entry (OtherCsBindings.Host, OtherCsBindings) | handle: 0x7ffa5e809608
-[2025-10-01 22:25:41 -  300024] [info]  [C#] Initializing Other Environment .NET Host | Entry | 62
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loaded core assembly : System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e | LoadNetCoreAssembly | 407
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loaded core assembly : System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loaded core assembly : System.Console, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loaded core assembly : System.Linq, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loaded core assembly : System.Collections, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loaded core assembly : System.Net.Http, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loaded core assembly : System.IO, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loaded core assembly : System.Threading, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Bindings Assembly Loaded : [OtherCsBindings, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null] | LoadCoreAssemblies | 378
-[2025-10-01 22:25:41 -  300024] [info] Created assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
-[2025-10-01 22:25:41 -  300024] [info] Creating Python interpreter...
-[2025-10-01 22:25:41 -  300024] [info] Loading assembly [2966715978935577213:OtherCs] from path: build/other-csharp/Debug/OtherCs.dll
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loading assembly 'build/other-csharp/Debug/OtherCs.dll' [-888474904] | LoadManagedAssembly | 246
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Successfully loaded assembly : 'OtherCs, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null' [-888474904] | LoadManagedAssembly | 286
-[2025-10-01 22:25:41 -  300024] [trace]  [C#]   > Adding type Other.Debug to cache | GetAssemblyTypes | 164
-[2025-10-01 22:25:41 -  300024] [trace]  [C#]   > Adding type Other.SerializableFieldAttribute to cache | GetAssemblyTypes | 164
-[2025-10-01 22:25:41 -  300024] [trace]  [C#]   > Adding type Other.OtherObject to cache | GetAssemblyTypes | 164
-[2025-10-01 22:25:41 -  300024] [debug] Initializing dotnet_type[Other.Debug] interface
-[2025-10-01 22:25:41 -  300024] [debug] dotnet_type[Other.Debug] initialized
-[2025-10-01 22:25:41 -  300024] [debug] Initializing dotnet_type[Other.SerializableFieldAttribute] interface
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Adding attribute with ID : 8449953 System.AttributeUsageAttribute to cache for type Other.SerializableFieldAttribute | GetAttributes | 510
-[2025-10-01 22:25:41 -  300024] [debug] Found attribute with ID 8449953 and type ID 42740526
-[2025-10-01 22:25:41 -  300024] [debug] dotnet_type[Other.SerializableFieldAttribute] initialized
-[2025-10-01 22:25:41 -  300024] [debug] Initializing dotnet_type[Other.OtherObject] interface
-[2025-10-01 22:25:41 -  300024] [debug] dotnet_type[Other.OtherObject] initialized
-[2025-10-01 22:25:41 -  300024] [debug] Loaded [3] types from assembly 2966715978935577213
-[2025-10-01 22:25:41 -  300024] [info] Loaded assembly [2966715978935577213:OtherCs]
-[2025-10-01 22:25:41 -  300024] [debug] Loaded assembly [2966715978935577213:OtherCs] from path: build/other-csharp/Debug/OtherCs.dll
-[2025-10-01 22:25:41 -  300024] [info] Loading assembly [17502670893157682816:DotnetTesting] from path: build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Loading assembly 'build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll' [-888474904] | LoadManagedAssembly | 246
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Successfully loaded assembly : 'DotnetTesting, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null' [-888474904] | LoadManagedAssembly | 286
-[2025-10-01 22:25:41 -  300024] [trace]  [C#]   > Adding type TestAttrAttribute to cache | GetAssemblyTypes | 164
-[2025-10-01 22:25:41 -  300024] [trace]  [C#]   > Adding type TestObject to cache | GetAssemblyTypes | 164
-[2025-10-01 22:25:41 -  300024] [trace]  [C#]   > Adding type Testing.EcmaFrmtTesting to cache | GetAssemblyTypes | 164
-[2025-10-01 22:25:41 -  300024] [debug] Initializing dotnet_type[TestAttrAttribute] interface
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Adding attribute with ID : 16201697 System.AttributeUsageAttribute to cache for type TestAttrAttribute | GetAttributes | 510
-[2025-10-01 22:25:41 -  300024] [debug] Found attribute with ID 16201697 and type ID 42740526
-[2025-10-01 22:25:41 -  300024] [debug] dotnet_type[TestAttrAttribute] initialized
-[2025-10-01 22:25:41 -  300024] [debug] Initializing dotnet_type[TestObject] interface
-[2025-10-01 22:25:41 -  300024] [debug]  [C#] Adding attribute with ID : 32612976 TestAttrAttribute to cache for type TestObject | GetAttributes | 510
-[2025-10-01 22:25:41 -  300024] [debug] Found attribute with ID 32612976 and type ID 11064911
-[2025-10-01 22:25:41 -  300024] [debug] dotnet_type[TestObject] initialized
-[2025-10-01 22:25:41 -  300024] [debug] Initializing dotnet_type[Testing.EcmaFrmtTesting] interface
-[2025-10-01 22:25:41 -  300024] [debug] dotnet_type[Testing.EcmaFrmtTesting] initialized
-[2025-10-01 22:25:41 -  300024] [debug] Loaded [3] types from assembly 17502670893157682816
-[2025-10-01 22:25:41 -  300024] [info] Loaded assembly [17502670893157682816:DotnetTesting]
-[2025-10-01 22:25:41 -  300024] [debug] Loaded assembly [17502670893157682816:DotnetTesting] from path: build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll
-[2025-10-01 22:25:41 -  300024] [debug] Reading file of size: 604091 bytes
+[2025-10-03 17:36:10 -  668840] [info] Other Environment version 0.0.1
+[2025-10-03 17:36:11 -  668840] [debug] Found hostfxr library at: C:\Program Files\dotnet/host/fxr\9.0.6\hostfxr.dll
+[2025-10-03 17:36:11 -  668840] [debug] Binding interop table...
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function CreateAssemblyLoadContext (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa6bdb3870
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function UnloadAssemblyLoadContext (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa6bdb3918
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetLastLoadStatus (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa6bdb3948
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function LoadManagedAssembly (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa6bdb3960
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function UnloadManagedAssembly (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa6bdb3978
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetAssemblyName (OtherCsBindings.AssemblyLoader, OtherCsBindings) | handle: 0x7ffa6bdb3990
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function RegisterInternalCall (OtherCsBindings.NativeFunctionManager, OtherCsBindings) | handle: 0x7ffa6bdb39a8
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetAssemblyTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb39c0
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetNetCoreTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb39d8
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetTypeId (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb39f0
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetFullTypeName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3a08
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetTypeMethods (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3a20
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetTypeFields (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3a38
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetTypeProperties (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3a50
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3a68
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function HasAttribute (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3a80
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetMethodName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3a98
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetMethodReturnType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3ab0
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetMethodAccessibility (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3ac8
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetMethodParameterTypes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3ae0
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetMethodAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3af8
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function HasField (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3b10
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetFieldName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3b28
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetFieldType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3b40
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetFieldValueType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3b58
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetFieldAccessibility (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3b70
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetFieldAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3b88
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetPropertyName (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3ba0
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetPropertyType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3bb8
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetPropertyAttributes (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3bd0
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetAttributeType (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3be8
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetAttributeValue (OtherCsBindings.TypeInterface, OtherCsBindings) | handle: 0x7ffa6bdb3c00
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function CreateObject (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3c18
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function DestroyObject (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3c30
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function InvokeMethod (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3c48
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function InvokeMethodRet (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3c60
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function SetField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3c78
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3c90
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function SetProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3ca8
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3cc0
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function SetStringField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3cd8
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetStringField (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3cf0
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function SetStringProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3d08
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetStringProperty (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3d20
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetStringFieldLength (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3d38
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function GetStringPropertyLength (OtherCsBindings.ManagedObject, OtherCsBindings) | handle: 0x7ffa6bdb3d50
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function CollectGarbage (OtherCsBindings.GarbageCollector, OtherCsBindings) | handle: 0x7ffa6bdb3d68
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function WaitForPendingFinalizers (OtherCsBindings.GarbageCollector, OtherCsBindings) | handle: 0x7ffa6bdb3d80
+[2025-10-03 17:36:11 -  668840] [trace] Loaded managed function Entry (OtherCsBindings.Host, OtherCsBindings) | handle: 0x7ffa6bdb9608
+[2025-10-03 17:36:11 -  668840] [info]  [C#] Initializing Other Environment .NET Host | Entry | 62
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loaded core assembly : System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e | LoadNetCoreAssembly | 407
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loaded core assembly : System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loaded core assembly : System.Console, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loaded core assembly : System.Linq, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loaded core assembly : System.Collections, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loaded core assembly : System.Net.Http, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loaded core assembly : System.IO, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loaded core assembly : System.Threading, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a | LoadNetCoreAssembly | 407
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Bindings Assembly Loaded : [OtherCsBindings, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null] | LoadCoreAssemblies | 378
+[2025-10-03 17:36:11 -  668840] [info] Created assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-10-03 17:36:11 -  668840] [info] Creating Python interpreter...
+[2025-10-03 17:36:11 -  668840] [info] Loading assembly [2966715978935577213:OtherCs] from path: build/other-csharp/Debug/OtherCs.dll
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Loading assembly 'build/other-csharp/Debug/OtherCs.dll' [-90624082] | LoadManagedAssembly | 246
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Successfully loaded assembly : 'OtherCs, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null' [-90624082] | LoadManagedAssembly | 286
+[2025-10-03 17:36:11 -  668840] [trace]  [C#]   > Adding type Other.Debug to cache | GetAssemblyTypes | 164
+[2025-10-03 17:36:11 -  668840] [trace]  [C#]   > Adding type Other.SerializableFieldAttribute to cache | GetAssemblyTypes | 164
+[2025-10-03 17:36:11 -  668840] [trace]  [C#]   > Adding type Other.OtherObject to cache | GetAssemblyTypes | 164
+[2025-10-03 17:36:11 -  668840] [debug] Initializing dotnet_type[Other.Debug] interface
+[2025-10-03 17:36:11 -  668840] [debug] dotnet_type[Other.Debug] initialized
+[2025-10-03 17:36:11 -  668840] [debug] Initializing dotnet_type[Other.SerializableFieldAttribute] interface
+[2025-10-03 17:36:11 -  668840] [debug]  [C#] Adding attribute with ID : 8449953 System.AttributeUsageAttribute to cache for type Other.SerializableFieldAttribute | GetAttributes | 510
+[2025-10-03 17:36:11 -  668840] [debug] Found attribute with ID 8449953 and type ID 42740526
+[2025-10-03 17:36:11 -  668840] [debug] dotnet_type[Other.SerializableFieldAttribute] initialized
+[2025-10-03 17:36:11 -  668840] [debug] Initializing dotnet_type[Other.OtherObject] interface
+[2025-10-03 17:36:11 -  668840] [debug] dotnet_type[Other.OtherObject] initialized
+[2025-10-03 17:36:11 -  668840] [debug] Loaded [3] types from assembly 2966715978935577213
+[2025-10-03 17:36:11 -  668840] [info] Loaded assembly [2966715978935577213:OtherCs]
+[2025-10-03 17:36:11 -  668840] [debug] Loaded assembly [2966715978935577213:OtherCs] from path: build/other-csharp/Debug/OtherCs.dll
+[2025-10-03 17:36:11 -  668840] [info] Running Other Environment driver...
+[2025-10-03 17:36:11 -  668840] [warning] Config key 'scripting.dotnet-modules' not found, returning default value.
+[2025-10-03 17:36:11 -  668840] [debug] Creating main window with size: 1280x720
+[2025-10-03 17:36:11 -  668840] [debug] Creating window [Other Environment] : size = 1280x720, flags = 8226
+[2025-10-03 17:36:11 -  668840] [debug] OpenGL Version: 4.6.0 NVIDIA 576.88
+[2025-10-03 17:36:11 -  668840] [debug] OpenGL Renderer: NVIDIA GeForce RTX 4080/PCIe/SSE2
+[2025-10-03 17:36:11 -  668840] [info] OpenGL API initialized successfully.
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [geometry_pass_shader_handle] : [1:SHADER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: SHADER, ID: 1
+[2025-10-03 17:36:11 -  668840] [debug] Created shader handle with name: geometry_pass_shader_handle, ID: 1
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-instancing-gbuffer.vert
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-instancing-gbuffer.vert
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-instancing-gbuffer.frag
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-instancing-gbuffer.frag
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [VERTEX_SHADER], resource-handle = 1
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [FRAGMENT_SHADER], resource-handle = 1
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [shadow_map_pass_shader_handle] : [2:SHADER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: SHADER, ID: 2
+[2025-10-03 17:36:11 -  668840] [debug] Created shader handle with name: shadow_map_pass_shader_handle, ID: 2
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-instancing-shadow-map.vert
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-instancing-shadow-map.vert
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-instancing-shadow-map.frag
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-instancing-shadow-map.frag
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [VERTEX_SHADER], resource-handle = 2
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [FRAGMENT_SHADER], resource-handle = 2
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [point_light_shadow_pass_shader_handle] : [3:SHADER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: SHADER, ID: 3
+[2025-10-03 17:36:11 -  668840] [debug] Created shader handle with name: point_light_shadow_pass_shader_handle, ID: 3
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-instancing-point-light-shadow-map.vert
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-instancing-point-light-shadow-map.vert
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-instancing-point-light-shadow-map.geom
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-instancing-point-light-shadow-map.geom
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-instancing-point-light-shadow-map.frag
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-instancing-point-light-shadow-map.frag
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [VERTEX_SHADER], resource-handle = 3
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [GEOMETRY_SHADER], resource-handle = 3
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [FRAGMENT_SHADER], resource-handle = 3
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [shading_pass_shader_handle] : [4:SHADER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: SHADER, ID: 4
+[2025-10-03 17:36:11 -  668840] [debug] Created shader handle with name: shading_pass_shader_handle, ID: 4
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-shading.vert
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-shading.vert
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-shading.frag
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-shading.frag
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [VERTEX_SHADER], resource-handle = 4
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [FRAGMENT_SHADER], resource-handle = 4
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [screen_shader] : [5:SHADER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: SHADER, ID: 5
+[2025-10-03 17:36:11 -  668840] [debug] Created shader handle with name: screen_shader, ID: 5
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-textured-quad.vert
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-textured-quad.vert
+[2025-10-03 17:36:11 -  668840] [debug] Attempting to preprocess shader source from file: resources/basic-textured-quad.frag
+[2025-10-03 17:36:11 -  668840] [debug] Including shader source from directory: resources, name: basic-textured-quad.frag
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [VERTEX_SHADER], resource-handle = 5
+[2025-10-03 17:36:11 -  668840] [debug] Attaching shader source [FRAGMENT_SHADER], resource-handle = 5
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [quad_mesh] : [6:MESH]
+[2025-10-03 17:36:11 -  668840] [debug] Created OpenGL mesh resource with ID: 6
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: MESH, ID: 6
+[2025-10-03 17:36:11 -  668840] [debug] Adding attribute 'position' of type 13 at index 0, size 2, offset 0 to mesh with handle 6
+[2025-10-03 17:36:11 -  668840] [debug] Adding attribute 'tex_coords' of type 13 at index 1, size 2, offset 2 to mesh with handle 6
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [quad_vertices] : [7:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 7
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [camera_buffer] : [8:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 8
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [point_light_buffer] : [9:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 9
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [direction_light_buffer] : [10:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 10
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [light_matrix_buffer] : [11:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 11
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [material_buffer] : [12:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 12
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [model_buffer] : [13:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 13
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [color_texture] : [14:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: TEXTURE, ID: 14
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [normal_texture] : [15:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: TEXTURE, ID: 15
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [position_texture] : [16:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: TEXTURE, ID: 16
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [ambient_shadow_map] : [17:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: TEXTURE, ID: 17
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [pl_shadow_map] : [18:CUBEMAP]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: CUBEMAP, ID: 18
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [debug_processed_texture] : [19:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: TEXTURE, ID: 19
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [screen_texture] : [20:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: TEXTURE, ID: 20
+[2025-10-03 17:36:11 -  668840] [debug] Starting pass [geometry-pass] with shader [[1:SHADER]] and size [1280, 720]
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [geometry-pass] : [21:FRAMEBUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: FRAMEBUFFER, ID: 21
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [color_texture] pass framebuffer
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [color_texture] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [normal_texture] pass framebuffer
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [normal_texture] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [position_texture] pass framebuffer
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [position_texture] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Adding buffer resource [material_buffer]
+[2025-10-03 17:36:11 -  668840] [debug] Adding buffer resource [model_buffer]
+[2025-10-03 17:36:11 -  668840] [debug] Adding buffer resource [camera_buffer]
+[2025-10-03 17:36:11 -  668840] [debug] Finalizing pass [geometry-pass]
+[2025-10-03 17:36:11 -  668840] [debug] Starting pass [shadow-map-pass] with shader [[2:SHADER]] and size [1280, 720]
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [shadow-map-pass] : [22:FRAMEBUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: FRAMEBUFFER, ID: 22
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [ambient_shadow_map] pass framebuffer
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [ambient_shadow_map] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Adding buffer resource [model_buffer]
+[2025-10-03 17:36:11 -  668840] [debug] Finalizing pass [shadow-map-pass]
+[2025-10-03 17:36:11 -  668840] [debug] Starting pass [shading-pass] with shader [[4:SHADER]] and size [1280, 720]
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [shading-pass] : [23:FRAMEBUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: FRAMEBUFFER, ID: 23
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [color_texture] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [color_texture] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [normal_texture] with slot [1]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [normal_texture] with slot [1]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [position_texture] with slot [2]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [position_texture] with slot [2]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [ambient_shadow_map] with slot [3]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [ambient_shadow_map] with slot [3]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [screen_texture] pass framebuffer
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [screen_texture] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Adding buffer resource [direction_light_buffer]
+[2025-10-03 17:36:11 -  668840] [debug] Adding buffer resource [point_light_buffer]
+[2025-10-03 17:36:11 -  668840] [debug] Adding buffer resource [camera_buffer]
+[2025-10-03 17:36:11 -  668840] [debug] Finalizing pass [shading-pass]
+[2025-10-03 17:36:11 -  668840] [debug] Starting pass [to-screen] with shader [[5:SHADER]] and size [1280, 720]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [screen_texture] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Adding texture resource [screen_texture] with slot [0]
+[2025-10-03 17:36:11 -  668840] [debug] Finalizing pass [to-screen]
+[2025-10-03 17:36:11 -  668840] [debug] Adding edge from pass 1 to pass 3 for texture resource [14:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Adding edge from pass 2 to pass 3 for texture resource [17:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Adding edge from pass 3 to pass 4 for texture resource [20:TEXTURE]
+[2025-10-03 17:36:11 -  668840] [debug] Created script object [Suzanne:0] with ID 0
+[2025-10-03 17:36:11 -  668840] [debug] Created scene object : 
+object = {
+    id = 1;
+    registry_id = 1;
+    name = "Suzanne";
+    visible = 1;
+}
+[2025-10-03 17:36:11 -  668840] [debug] Created script object [Light:1] with ID 1
+[2025-10-03 17:36:11 -  668840] [debug] Created scene object : 
+object = {
+    id = 2;
+    registry_id = 2;
+    name = "Light";
+    visible = 1;
+}
+[2025-10-03 17:36:11 -  668840] [debug] Created script object [Main Camera:2] with ID 2
+[2025-10-03 17:36:11 -  668840] [debug] Created scene object : 
+object = {
+    id = 3;
+    registry_id = 3;
+    name = "Main Camera";
+    visible = 1;
+}
+[2025-10-03 17:36:11 -  668840] [debug] Deserialized type hash: 12842815543221926329
+[2025-10-03 17:36:11 -  668840] [debug] Deserialized type name: other::camera
+[2025-10-03 17:36:11 -  668840] [debug] Deserialized number of fields: 14
+[2025-10-03 17:36:11 -  668840] [debug] Deserialized type hash: 5225258134543592069
+[2025-10-03 17:36:11 -  668840] [debug] Deserialized type name: other::orthonormal_basis
+[2025-10-03 17:36:11 -  668840] [debug] Deserialized number of fields: 3
+[2025-10-03 17:36:11 -  668840] [info] Camera data loaded from file: 
+cam = {
+    position = vec3(0, 1, 4.5);
+    direction = vec3(0, -0.21693, -0.976187);
+    euler_angles = vec3(0, 0, 0);
+    world_up = vec3(0, 1, 0);
+    basis = {
+        i = vec3(1, 0, 0);
+        j = vec3(0, 0.976187, -0.21693);
+        k = vec3(0, -0.21693, -0.976187);
+    };
+    defocus_angle = 0;
+    focus_dist = 10;
+    image_width = 2;
+    aspect_ratio = 1.77778;
+    samples_per_pixel = 100;
+    max_bounce_depth = 50;
+    fov = 90;
+    sensitivity = 0.35;
+    constrain_pitch = 1;
+}
+[2025-10-03 17:36:11 -  668840] [trace] Executing load operation for asset ID: 1
+[2025-10-03 17:36:11 -  668840] [debug] Starting load pipeline for asset ID: 1
+[2025-10-03 17:36:11 -  668840] [trace] Posting load operation for asset ID: 1 to execution pool
+[2025-10-03 17:36:11 -  668840] [info] loaded model source in 0 ms
+[2025-10-03 17:36:11 -  668904] [debug] Loading model source from file: resources/models/suzanne3.omesh
+[2025-10-03 17:36:11 -  668840] [info] Renderer driver initialized successfully.
+[2025-10-03 17:36:11 -  668904] [debug] Model source loaded
+[2025-10-03 17:36:11 -  668904] [trace]     pipeline_state.success = true
+[2025-10-03 17:36:11 -  668904] [trace] Load operation for asset ID: 1 completed
+[2025-10-03 17:36:11 -  668840] [trace] Pipeline complete for asset ID: 1
+[2025-10-03 17:36:11 -  668840] [debug] Pipeline finished successfully for asset ID: 1
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [suzanne3_vertex_buffer] : [24:MESH]
+[2025-10-03 17:36:11 -  668840] [debug] Created OpenGL mesh resource with ID: 24
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: MESH, ID: 24
+[2025-10-03 17:36:11 -  668840] [debug] Adding attribute 'position' of type VEC3 at index 0, size 3, offset 0 to mesh with handle 24
+[2025-10-03 17:36:11 -  668840] [debug] Adding attribute 'normal' of type VEC3 at index 1, size 3, offset 3 to mesh with handle 24
+[2025-10-03 17:36:11 -  668840] [debug] Adding attribute 'tangent' of type VEC3 at index 2, size 3, offset 6 to mesh with handle 24
+[2025-10-03 17:36:11 -  668840] [debug] Adding attribute 'bitangent' of type VEC3 at index 3, size 3, offset 9 to mesh with handle 24
+[2025-10-03 17:36:11 -  668840] [debug] Adding attribute 'tex_coord' of type VEC2 at index 4, size 2, offset 12 to mesh with handle 24
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [suzanne3_model_vertices] : [25:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 25
+[2025-10-03 17:36:11 -  668840] [debug] Creating GPU resource [suzanne3_model_indices] : [26:BUFFER]
+[2025-10-03 17:36:11 -  668840] [debug] Created resource of type: BUFFER, ID: 26
+[2025-10-03 17:36:11 -  668840] [debug] Added model source with handle: 80367960558668866
+[2025-10-03 17:36:11 -  668840] [debug] Model source loaded and registered: resources/models/suzanne3.omesh with hash 80367960558668866
+[2025-10-03 17:36:11 -  668840] [debug] Asset loaded successfully (ID: 1)
+[2025-10-03 17:36:11 -  668840] [debug] created model : suzanne = {
+    name = "Suzanne";
+    submesh_indices = [[0] = 0];
+}
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_light_space_matrix' in shader with ID 2 at location 0
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_light_space_matrix' in shader with ID 4 at location 4
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_light_position' in shader with ID 4 at location 3
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_num_point_lights' in shader with ID 4 at location 6
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_num_direction_lights' in shader with ID 4 at location 5
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_gbuff_albedo' in shader with ID 4 at location 0
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_gbuff_normal' in shader with ID 4 at location 1
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_gbuff_position' in shader with ID 4 at location 2
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_shadow_map' in shader with ID 4 at location 7
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_exposure' in shader with ID 5 at location 0
+[2025-10-03 17:36:11 -  668840] [debug] Found uniform 'OE_texture' in shader with ID 5 at location 1
+[2025-10-03 17:36:16 -  668840] [info] Shutting down terminal driver...
+[2025-10-03 17:36:16 -  668840] [debug] Unloading asset ID: 1
+[2025-10-03 17:36:16 -  668840] [trace] Executing unload operation for asset ID: 1
+[2025-10-03 17:36:16 -  668840] [debug] Starting unload pipeline for asset ID: 1
+[2025-10-03 17:36:16 -  668840] [trace] Posting load operation for asset ID: 1 to execution pool
+[2025-10-03 17:36:16 -  668908] [debug] Unloading model source (ID: 1)
+[2025-10-03 17:36:16 -  668908] [trace]     pipeline_state.success = true
+[2025-10-03 17:36:16 -  668908] [trace] Load operation for asset ID: 15987178197214944733 completed
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[8:BUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[9:BUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[10:BUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[11:BUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[12:BUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[13:BUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[14:TEXTURE]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[15:TEXTURE]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[16:TEXTURE]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[17:TEXTURE]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[18:CUBEMAP]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[19:TEXTURE]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[20:TEXTURE]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[21:FRAMEBUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[22:FRAMEBUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying resource [[23:FRAMEBUFFER]]
+[2025-10-03 17:36:16 -  668840] [debug] Destroying script object with ID 0
+[2025-10-03 17:36:16 -  668840] [debug] Destroying script object with ID 1
+[2025-10-03 17:36:16 -  668840] [debug] Destroying script object with ID 2
+[2025-10-03 17:36:16 -  668840] [info] Unloading assembly [2966715978935577213:OtherCs]
+[2025-10-03 17:36:16 -  668840] [debug] All assemblies unloaded from .NET context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-10-03 17:36:16 -  668840] [info] Destroying assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-10-03 17:36:16 -  668840] [info] Destroyed assembly context with ID 17414871673219451418
+[2025-10-03 17:36:16 -  668840] [info] Created assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-10-03 17:36:16 -  668840] [info] Destroying Python interpreter...
+[2025-10-03 17:36:16 -  668840] [debug] Unloading all assemblies from context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-10-03 17:36:16 -  668840] [info] Destroying assembly context [17414871673219451418:Other-DotNet-Assembly-Context]
+[2025-10-03 17:36:16 -  668840] [info] Destroyed assembly context with ID 17414871673219451418
+[2025-10-03 17:36:16 -  668840] [info] Other Environment driver finished with exit code: SUCCESS

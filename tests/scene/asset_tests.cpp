@@ -109,9 +109,16 @@ namespace other {
 
     set_up_mock_rendering_api_and_expect_mesh_creation();
 
+    struct dtor {
+      ~dtor() {
+        shutdown_mock_rendering_api();
+      }
+    } ___destructor_guard;
+
     filepath test_file_path = "tests/resources/models/suzanne3.fbx";
     ASSERT_EQ(std::filesystem::exists(test_file_path), true)
-      << "Test asset file does not exist: " << test_file_path.string();
+      << "Test asset file does not exist: "
+      << test_file_path.string();
 
     natural_t asset_id = handler->load_asset(test_file_path);
     EXPECT_NE(asset_id, 0);
@@ -123,11 +130,14 @@ namespace other {
     /// no io-context polling yet so should still be loading
     EXPECT_THAT(handler->get_asset_state(asset_id), asset_state::LOADING);
 
-    int max_polls = 10000;
-    while (handler->get_asset_state(asset_id) == asset_state::LOADING && max_polls-- > 0) {
+    std::chrono::seconds load_timeout{ 5 };
+
+    auto start_time = std::chrono::steady_clock::now();
+    while (handler->get_asset_state(asset_id) == asset_state::LOADING &&
+           std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
     }
-    ASSERT_GT(max_polls, 0) << "Timed out waiting for asset to load";
+    ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to load";
 
     EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
     ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
@@ -138,11 +148,11 @@ namespace other {
     handler->unload_asset(asset_id);
     EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADING);
 
-    int unload_polls = 10000;
-    while (handler->get_asset_state(asset_id) == asset_state::UNLOADING && unload_polls-- > 0) {
+    while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
+           std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
     }
-    ASSERT_GT(unload_polls, 0) << "Timed out waiting for asset to unload";
+    ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to unload";
 
     EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
     ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
@@ -156,53 +166,76 @@ namespace other {
     EXPECT_EQ(handler->get_num_loaded_assets(), 0);
     EXPECT_EQ(handler->get_num_pending_unloads(), 0);
 
-    shutdown_mock_rendering_api();
-
     handler = nullptr;
   }
 
-  // TEST_F(asset_tests, cancel_load_of_large_asset) {
-  //   asio::io_context io_context;
-  //   scope<asset_handler> handler = make_scope<asset_handler>(io_context);
+  TEST_F(asset_tests, longer_async_load) {
+    asio::io_context io_context;
+    scope<asset_handler> handler = make_scope<asset_handler>(io_context);
 
-  //   set_up_mock_rendering_api_and_expect_mesh_creation();
+    set_up_mock_rendering_api_and_expect_mesh_creation();
 
-  //   filepath test_file_path = "tests/resources/models/NewSponza_Curtains_FBX_YUp_fbx7binary.fbx";
-  //   ASSERT_EQ(std::filesystem::exists(test_file_path), true)
-  //     << "Test asset file does not exist: " << test_file_path.string();
+    struct dtor {
+      ~dtor() {
+        shutdown_mock_rendering_api();
+      }
+    } ___destructor_guard;
 
-  //   natural_t asset_id = handler->load_asset(test_file_path);
-  //   EXPECT_NE(asset_id, 0);
-  //   ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
-  //   EXPECT_EQ(handler->get_num_loading_assets(), 1);
-  //   EXPECT_EQ(handler->get_num_loaded_assets(), 0);
-  //   EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    filepath test_file_path = "tests/resources/models/NewSponza_Curtains_FBX_YUp_fbx7binary.omesh";
+    ASSERT_EQ(std::filesystem::exists(test_file_path), true)
+      << "Test asset file does not exist: "
+      << test_file_path.string();
 
-  //   /// immediately cancel the load
-  //   handler->unload_asset(asset_id);
-  //   EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADING);
+    natural_t asset_id = handler->load_asset(test_file_path);
+    EXPECT_NE(asset_id, 0);
+    ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
+    EXPECT_EQ(handler->get_num_loading_assets(), 1);
+    EXPECT_EQ(handler->get_num_loaded_assets(), 0);
+    EXPECT_EQ(handler->get_num_pending_unloads(), 0);
 
-  //   int unload_polls = 10000;
-  //   while (handler->get_asset_state(asset_id) == asset_state::UNLOADING && unload_polls-- > 0) {
-  //     io_context.poll();
-  //   }
-  //   ASSERT_GT(unload_polls, 0) << "Timed out waiting for asset to unload";
+    /// no io-context polling yet so should still be loading
+    EXPECT_THAT(handler->get_asset_state(asset_id), asset_state::LOADING);
 
-  //   EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
-  //   ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
-  //   EXPECT_EQ(handler->get_num_loading_assets(), 0);
-  //   EXPECT_EQ(handler->get_num_loaded_assets(), 0);
-  //   EXPECT_EQ(handler->get_num_pending_unloads(), 1);
+    std::chrono::seconds load_timeout{ 10 };
 
-  //   ASSERT_NO_FATAL_FAILURE(handler->purge_stores());
-  //   EXPECT_EQ(handler->get_num_assets_in_flight(), 0);
-  //   EXPECT_EQ(handler->get_num_loading_assets(), 0);
-  //   EXPECT_EQ(handler->get_num_loaded_assets(), 0);
-  //   EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    auto start_time = std::chrono::steady_clock::now();
+    while (handler->get_asset_state(asset_id) == asset_state::LOADING &&
+           std::chrono::steady_clock::now() - start_time < load_timeout) {
+      io_context.poll();
+    }
+    std::chrono::seconds duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
+    ASSERT_LT(duration, load_timeout) << "Timed out waiting for asset to load";
 
-  //   shutdown_mock_rendering_api();
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
+    ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
+    EXPECT_EQ(handler->get_num_loading_assets(), 0);
+    EXPECT_EQ(handler->get_num_loaded_assets(), 1);
+    EXPECT_EQ(handler->get_num_pending_unloads(), 0);
 
-  //   handler = nullptr;
-  // }
+    handler->unload_asset(asset_id);
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADING);
+
+    start_time = std::chrono::steady_clock::now();
+    while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
+           std::chrono::steady_clock::now() - start_time < load_timeout) {
+      io_context.poll();
+    }
+    duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
+    ASSERT_LT(duration, load_timeout) << "Timed out waiting for asset to unload";
+
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
+    ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
+    EXPECT_EQ(handler->get_num_loading_assets(), 0);
+    EXPECT_EQ(handler->get_num_loaded_assets(), 1);
+    EXPECT_EQ(handler->get_num_pending_unloads(), 1);
+
+    ASSERT_NO_FATAL_FAILURE(handler->purge_stores());
+    EXPECT_EQ(handler->get_num_assets_in_flight(), 0);
+    EXPECT_EQ(handler->get_num_loading_assets(), 0);
+    EXPECT_EQ(handler->get_num_loaded_assets(), 0);
+    EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+
+    handler = nullptr;
+  }
 
 }  // namespace other

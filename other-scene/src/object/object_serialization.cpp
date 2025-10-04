@@ -107,7 +107,7 @@ namespace other {
 
         uint16_t data_len = read_value<uint16_t>(buffer, cursor);
         if (data_len > 0) {
-          obj.dotnet_blob = read_bytes(buffer, data_len, cursor);
+          obj.dotnet_blob = read_bytes(buffer, data_len, cursor) | std::ranges::to<std::vector<uint8_t>>();
         }
 
         return { obj, cursor };

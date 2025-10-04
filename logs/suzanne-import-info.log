@@ -1,0 +1,37 @@
+Info,  T392496: begin import of model: resources/models/suzanne.fbx
+Info,  T392496: Load resources/models/suzanne.fbx
+Debug, T392496: Assimp 6.0.3674988149 amd64 msvc debug shared singlethreadedsingle : 
+Info,  T392496: Found a matching importer for this file format: Autodesk FBX Importer.
+Info,  T392496: Import root directory is 'resources/models\'
+Debug, T392496: Reading FBX file
+Debug, T392496: Tokenizing binary FBX file
+Debug, T392496: FBX version: 7400
+Debug, T392496: Parsing FBX tokens
+Debug, T392496: Creating FBX Document
+Debug, T392496: FBX Version: 7400
+Error, T392496: FBX: no material assigned to mesh, setting default material
+Debug, T392496: UpdateImporterScale scale set: 0.01
+Debug, T392496: ValidateDataStructureProcess begin
+Debug, T392496: ValidateDataStructureProcess end
+Info,  T392496: Entering post processing pipeline
+Debug, T392496: FindInstancesProcess begin
+Debug, T392496: FindInstancesProcess finished. No instanced meshes found
+Debug, T392496: OptimizeGraphProcess begin
+Info,  T392496: OptimizeGraphProcess finished; Input nodes: 2, Output nodes: 1
+Debug, T392496: GenUVCoordsProcess begin
+Debug, T392496: GenUVCoordsProcess finished
+Debug, T392496: TriangulateProcess begin
+Debug, T392496: TriangulateProcess finished. There was nothing to be done.
+Debug, T392496: FindDegeneratesProcess begin
+Debug, T392496: FindDegeneratesProcess finished
+Debug, T392496: FindInvalidDataProcess begin
+Info,  T392496: FindInvalidDataProcess finished. Found issues ...
+Debug, T392496: Skipping OptimizeMeshesProcess
+Debug, T392496: Generate spatially-sorted vertex cache
+Debug, T392496: CalcTangentsProcess begin
+Debug, T392496: CalcTangentsProcess finished
+Debug, T392496: JoinVerticesProcess begin
+Debug, T392496: Mesh 0 (Suzanne.001) | Verts in: 2904 out: 2875 | ~0.998623%
+Info,  T392496: JoinVerticesProcess finished | Verts in: 2904 out: 2875 | ~0.998623
+Info,  T392496: Leaving post processing pipeline
+Info,  T392496: Model loaded successfully: resources/models/suzanne.fbx

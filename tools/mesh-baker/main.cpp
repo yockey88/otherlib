@@ -6,15 +6,32 @@
 #include <print>
 
 #include "core/defines.hpp"
+#include "core/formatting.hpp"
 
 #include "model/model_importer.hpp"
 
 using namespace other;
 
+static constexpr auto kUsage = R"(Usage: mesh-baker <input-model-file>)";
+
 int main(int argc, char** argv) {
+  if (argc < 2) {
+    std::println(kUsage);
+    return 1;
+  }
+
+  filepath input_path = argv[1];
+  if (!std::filesystem::exists(input_path)) {
+    std::println(std::cerr, "Input file does not exist: {}", input_path.string());
+    return 1;
+  }
+
+  std::string filename = input_path.stem().string();
+  std::string output_path = "resources/models/" + filename + ".omesh";
+
   /// \todo command line
-  filepath input_path = "tests/resources/models/suzanne3.fbx";
   std::println("Input path: {}", input_path.string());
+  std::println("Output path: {}", output_path);
 
   if (!std::filesystem::exists(input_path)) {
     std::println(std::cerr, "Input file does not exist: {}", input_path.string());
@@ -23,6 +40,26 @@ int main(int argc, char** argv) {
 
   model_builder builder = model_importer::load_model_data(input_path);
   std::println("Loaded model with {} vertices, {} indices, {} submeshes", builder.vertices.size(), builder.indices.size(), builder.submeshes.size());
+
+  builder.dump_model_info();
+  for (uint32_t v = 0; v < builder.vertices.size(); ++v) {
+    const vertex& vert = builder.vertices[v];
+    std::println("Vertex[{}] -- pos: {}, normal: {}, tangent: {}, bitangent: {}, tex_coord: {}", v, vert.position, vert.normal, vert.tangent, vert.bitangent, vert.tex_coord);
+  }
+  for (uint32_t i = 0; i < builder.indices.size(); ++i) {
+    const index& idx = builder.indices[i];
+    std::println("Index[{}] -- v0: {}, v1: {}, v2: {}", i, idx.v0, idx.v1, idx.v2);
+  }
+  for (uint32_t s = 0; s < builder.submeshes.size(); ++s) {
+    const submesh& submesh = builder.submeshes[s];
+    std::println("Submesh[{}] -- base_vertex: {}, base_idx: {}, mat_idx: {}, idx_cnt: {}, vert_cnt: {}, name: {}", s, submesh.base_vertex, submesh.base_idx, submesh.mat_idx, submesh.idx_cnt, submesh.vert_cnt, submesh.name);
+    std::println("-- local_transform:\n{}", submesh.local_transform);
+  }
+  for (uint32_t n = 0; n < builder.nodes.size(); ++n) {
+    const mesh_node& node = builder.nodes[n];
+    std::println("Node[{}] -- parent: {}, num_children: {}, num_submeshes: {}, name: {}", n, node.parent, node.children.size(), node.sub_meshes.size(), node.name);
+    std::println("-- local_transform:\n{}", node.local_transform);
+  }
 
   std::vector<double> vertex_data;
   for (const auto& v : builder.vertices) {
@@ -95,6 +132,9 @@ int main(int argc, char** argv) {
     | 4 bytes  | 4 bytes        | 4 * <num-children> | 4 bytes         | 4 * <num-submeshes> | 64 bytes          | 4 bytes       |        |
    **/
 
+  std::stringstream ss;
+  ss << std::format("Writing OMESH from FBX file : {}", input_path.string());
+
   size_t vertex_size = vertex_data.size() * sizeof(double);
   size_t index_size = indices_data.size() * sizeof(uint32_t);
 
@@ -108,6 +148,9 @@ int main(int argc, char** argv) {
 
   uint32_t num_submeshes = builder.submeshes.size();
   const uint8_t* num_submeshes_bytes = reinterpret_cast<const uint8_t*>(&num_submeshes);
+
+  ss << std::format("\n - num vertices: {} ({} +4 bytes)", num_vertices, vertex_size);
+  ss << std::format("\n - num indices: {} ({} +4 bytes)", num_indices, index_size);
 
   std::vector<uint8_t> submesh_buffer;
   for (const auto& submesh : builder.submeshes) {
@@ -128,6 +171,9 @@ int main(int argc, char** argv) {
 
     uint8_t rigged_byte = submesh.rigged ? 1 : 0;
     const uint8_t* rigged_bytes = reinterpret_cast<const uint8_t*>(&rigged_byte);
+
+    std::println("Submesh '{}' id: {}, material id: {}", submesh.name, submesh.sub_mesh_id, submesh.material_id);
+    std::println("Submesh '{}' bounds :\n[min: {}, max: {}]", submesh.name, submesh.bounds.min, submesh.bounds.max);
 
     submesh_buffer.append_range(std::span(base_vertex_bytes, sizeof(uint32_t)));
     submesh_buffer.append_range(std::span(base_idx_bytes, sizeof(uint32_t)));
@@ -169,6 +215,7 @@ int main(int argc, char** argv) {
       submesh_ids_bytes_vec.append_range(std::span(submesh_id_bytes, sizeof(uint32_t)));
     }
 
+    std::println("Node '{}' local transform :\n{}", node.name, node.local_transform);
     const uint8_t* local_transform_bytes = reinterpret_cast<const uint8_t*>(&node.local_transform);
 
     uint32_t name_length = static_cast<uint32_t>(node.name.size());
@@ -185,11 +232,15 @@ int main(int argc, char** argv) {
     node_buffer.append_range(std::span(name_bytes, name_length));
   }
 
+  ss << std::format("\n - num submeshes: {} ({} +4 bytes)", num_submeshes, submesh_buffer.size());
+  ss << std::format("\n - num nodes: {} ({} +4 bytes)", num_nodes, node_buffer.size());
+
   size_t vertex_index_size = sizeof(uint32_t) + vertex_size + sizeof(uint32_t) + index_size;
   size_t submeshes_size = sizeof(uint32_t) + submesh_buffer.size();
   size_t nodes_size = sizeof(uint32_t) + node_buffer.size();
 
   uint32_t mesh_length = static_cast<uint32_t>(vertex_index_size + submeshes_size + nodes_size);
+  std::println("Calculated mesh length: {} bytes", mesh_length);
   const uint8_t* mesh_length_bytes = reinterpret_cast<const uint8_t*>(&mesh_length);
 
   /// header
@@ -207,10 +258,11 @@ int main(int argc, char** argv) {
   buffer.append_range(std::span(num_nodes_bytes, sizeof(uint32_t)));
   buffer.append_range(std::span(node_buffer.data(), node_buffer.size()));
 
-  filepath output_path = "resources/models/suzanne3.omesh";
+  ss << std::format("\nWriting output mesh to: {}", output_path);
+  ss << std::format("\n     - file size: {} bytes", buffer.size());
+  std::println("{}", ss.str());
+
   {
-    std::println("Writing output mesh to: {}", output_path.string());
-    std::println("     - file size: {} bytes", buffer.size());
     std::ofstream output_file(output_path, std::ios::binary | std::ios::trunc);
     output_file.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
   }
