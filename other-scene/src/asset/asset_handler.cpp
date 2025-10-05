@@ -154,10 +154,6 @@ namespace other {
         asset_pipelines.erase(it);
       }
     );
-
-    asio::post(io_context, [this]() {
-      update_pipelines();
-    });
   }
 
   asset_state asset_handler::get_asset_state(natural_t asset_id) const {

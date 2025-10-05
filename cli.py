@@ -184,9 +184,9 @@ if __name__ == "__main__":
       print(f"Running Other-Driver [{cfg}]")
       # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "script-config.toml"])
       # run_project("development-drivers", cfg, "editor_dev", "dev-config.toml", args, args.verbose)
-      # run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
       # run_project("other-terminal/src", cfg , "other-terminal", "term-config.toml", args, args.verbose)
-      run_project("development-drivers", cfg, "rendering_dev", "rendering-dev-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "rendering_dev", "rendering-dev-config.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "simulation_driver", "simulation-config.toml", args, args.verbose)
       # run_project("driver", cfg, "other_driver", "math-physics.toml", args, args.verbose)
     elif args.run_server:

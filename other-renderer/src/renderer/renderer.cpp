@@ -16,8 +16,9 @@
 namespace other {
 
   void renderer::begin_frame(render_data* data) {
-    OTHER_ASSERT(data != nullptr, "Render data must not be null");
-    scene_data = data;
+    if (data != nullptr) {
+      scene_data = data;
+    }
     rendering()->api()->begin_frame();
   }
 

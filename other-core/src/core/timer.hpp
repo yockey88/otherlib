@@ -10,6 +10,14 @@
 
 namespace other {
 
+  using microsecond = std::chrono::microseconds;
+  using millisecond = std::chrono::milliseconds;
+  using second = std::chrono::seconds;
+
+  /// 10,000 ticks per second
+  using tick_conversion = std::ratio<1, 10000>;
+  using tick_duration = std::chrono::duration<natural_t, tick_conversion>;
+
   template <integer_t FPS = 60>
   struct frame_rate_enforcer {
     /// ms

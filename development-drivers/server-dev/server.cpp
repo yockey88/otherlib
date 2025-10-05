@@ -16,7 +16,7 @@ namespace other {
 
   void server::on_initialize(const command_line& cmd) {
     state_machine.handle_event(server_event::SERVER_EVENT_START, this);
-    filepath app_folder = get_project_cache("OtherServer");
+    filepath app_folder = get_project_cache();
 
     std::ifstream file(app_folder);
     if (file.is_open()) {
@@ -26,20 +26,14 @@ namespace other {
       CORE_LOG_WARN("Failed to open project cache file at {}", app_folder.string());
     }
 
+    /// create event system
+    events = make_scope<event_system>(net_context->io_context);
+
     /// launch threads
     ///  - networking thread
     net_thread = make_scope<network_thread>(net_thread_message_bus);
     net_thread->launch();
     net_thread_message_bus.register_thread();
-
-    // auto dev_project = project_cache["projects"][0];
-    // std::string name = dev_project["name"].get<std::string>();
-    // filepath working_directory = dev_project["working-directory"].get<std::string>();
-    // filepath config_path = dev_project["project-file"].get<std::string>();
-
-    // CORE_LOG_DEBUG("Auto-Launching [{}]", dev_project["name"].get<std::string>());
-    // CORE_LOG_DEBUG("    - Project File : [{}] @ {}", config_path.string(), working_directory.string());
-    // begin_other_application(std::filesystem::current_path(), "build/development-drivers/Debug/runtime_dev.exe", { "resources/dev-config.toml" });
 
     {
       message msg;
@@ -58,18 +52,13 @@ namespace other {
       );
     }
 
-    ///  - control thread
-
-    /// \todo once engine development is further along, this will be updated to render other-hub or project management UI
-    ///         for now we just launch the development driver
-#ifdef OTHER_SERVER_ENABLE_HUB
-    ///  - UI thread
     if (rendering_enabled()) {
       renderer = get_renderer();
       renderer->add_pipeline<empty_pipeline>("UI Pipeline");
+
+      ui_ptr = make_scope<server_ui>(renderer, project_cache);
     }
-#else
-#endif
+    active_scene = scene("Server-Scene");
 
     running = true;
   }
@@ -90,25 +79,26 @@ namespace other {
           break;
       }
 
-#ifdef OTHER_SERVER_ENABLE_HUB
-      render_data scene_render_data = active_scene.prepare_render_data();
-      renderer->begin_frame(&scene_render_data);
-      renderer->render();
-      renderer->begin_ui_frame();
-      renderer_server_ui();
-      renderer->end_ui_frame();
-      renderer->end_frame();
-#endif
+      if (rendering_enabled()) {
+        render_data data = active_scene.prepare_render_data();
+        renderer->begin_frame(&data);
+        renderer->render();
+        ui_ptr->render();
+        renderer->end_frame();
+      }
     }
   }
 
   void server::on_shutdown() {
-#ifdef OTHER_SERVER_ENABLE_HUB
+    events->poll();
+    events = nullptr;
+
     if (rendering_enabled()) {
+      ui_ptr = nullptr;
       renderer->remove_pipeline("UI Pipeline");
       renderer = nullptr;
     }
-#endif
+
     net_thread = nullptr;
     CORE_LOG_INFO("Server shutdown complete.");
   }
@@ -120,6 +110,16 @@ namespace other {
     } else {
       CORE_LOG_WARN("Received unhandled signal {}", signum);
     }
+  }
+
+  filepath server::get_project_cache() {
+    filepath cache_file = get_app_data_folder("OtherEngine/OtherServer") / filepath("project_cache.json");
+    if (!std::filesystem::exists(cache_file)) {
+      std::ofstream file(cache_file);
+      file << "{}";
+      file.close();
+    }
+    return cache_file;
   }
 
   void server::send_message_no_acknowledgment(message&& msg, pending_response::on_response response_callback) {
@@ -185,69 +185,6 @@ namespace other {
     });
   }
 
-  natural_t server::register_event(server_time_unit duration, event::handler callback, bool recurring) {
-    static natural_t next_id = 1;
-    natural_t id = next_id++;
-
-    event ev{
-      .id = id,
-      .callback = callback,
-      .recurring = recurring,
-      .duration = duration,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-    auto itr = pending_events.insert(pending_events.end(), std::move(ev));
-    OTHER_ASSERT(itr != pending_events.end(), "Failed to register event");
-
-    itr->timer.expires_after(std::chrono::duration_cast<std::chrono::microseconds>(duration));
-    itr->timer.async_wait(std::bind_front(&server::handle_event, this, id));
-
-    return id;
-  }
-
-  void server::cancel_event(natural_t event_id) {}
-
-  void server::handle_event(natural_t event_id, const asio::error_code& ec) {
-    if (!ec) {
-      CORE_LOG_DEBUG("Handling event {}", event_id);
-      auto itr = std::ranges::find_if(pending_events, [&](const event& ev) { return ev.id == event_id; });
-      if (itr == pending_events.end()) {
-        CORE_LOG_ERROR("Failed to find event for callback!");
-        return;
-      }
-
-      if (itr->callback) {
-        itr->callback();
-      }
-
-      if (itr->recurring) {
-        CORE_LOG_DEBUG(" - rescheduling recurring event {}", event_id);
-        itr->timer.expires_after(std::chrono::duration_cast<std::chrono::microseconds>(itr->duration));
-        itr->timer.async_wait([this, id = event_id](const asio::error_code& ec) {
-          if (!ec) {
-            auto itr = std::ranges::find_if(pending_events, [&](const event& ev) { return ev.id == id; });
-            if (itr == pending_events.end()) {
-              CORE_LOG_ERROR("Failed to find event for callback!");
-              return;
-            }
-
-            if (itr->callback) {
-              itr->callback();
-            }
-          }
-        });
-      } else {
-        auto remove_itr = std::ranges::find_if(pending_events, [&](const event& ev) { return ev.id == event_id; });
-        if (remove_itr != pending_events.end()) {
-          pending_events.erase(remove_itr);
-        }
-      }
-    } else {
-      CORE_LOG_ERROR("Event {} error: {}", event_id, ec.message());
-      // Handle error case
-    }
-  }
-
   void server::begin_other_application(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
     /// launch other application with command line args specifying the server's current command port, the project configuration
     ///   and the working directory
@@ -275,6 +212,9 @@ namespace other {
     itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
     itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(main_binding_point.port) });
     launch_detached_process(itr->working_directory, itr->executable, itr->args);
+
+    std::string ping_session_ev_name = "ping-session:[" + std::to_string(itr->id) + "]";
+    // natural_t ping_event_id = register_event(
   }
 
   void server::core_update() {
@@ -282,6 +222,7 @@ namespace other {
     if (net_context->io_context.stopped()) {
       net_context->io_context.restart();
     }
+    events->poll();
 
     auto msg_opt = net_thread_message_bus.receive_message();
     if (msg_opt.has_value()) {
@@ -289,126 +230,11 @@ namespace other {
     }
   }
 
-  void server::on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data) {
-    CORE_LOG_INFO("Network thread acknowledged event request at session check in for session [{}]", header.id);
-    state_machine.handle_event(server_event::SERVER_EVENT_READY, this);
-
-    /// register event for thread check in
-    // natural_t event_id = register_event(
-    //   std::chrono::seconds(1),
-    //   [this]() { net_thread_message_bus.send_message(message(CONTROL, PING)); },
-    //   true
-    // );
-
-    begin_other_application(std::filesystem::current_path(), "build/development-drivers/Debug/runtime_dev.exe", { "resources/dev-config.toml" });
-  }
-
-  void server::on_timeout_session_listen_for_network_thread(message_header header) {
-    CORE_LOG_WARN("Network thread timed out waiting for event request at session check in for session [{}]", header.id);
-  }
-
   void server::update_initializing() {}
-
-  void server::on_respond_session_check_in_network_thread(message_header header, const std::vector<uint8_t>& data) {
-    OTHER_ASSERT(data.size() >= sizeof(integer_t), "Invalid session check in packet!");
-
-    integer_t session_id = *reinterpret_cast<const integer_t*>(data.data());
-
-    auto itr = std::ranges::find_if(pending_apps, [&](const other_application& app) { return session_id == app.id; });
-    if (itr == pending_apps.end()) {
-      CORE_LOG_ERROR("Server received a session check in for an unknown Other application : {}", session_id);
-      return;
-    }
-
-    CORE_LOG_DEBUG("finalizing connection to pending application : {}", session_id);
-    auto [app_itr, success] = other_apps.insert({ session_id, std::move(*itr) });
-    if (!success || app_itr == other_apps.end()) {
-      CORE_LOG_ERROR("Failed to save Other application session ID from check-in : {}", session_id);
-      return;
-    }
-    pending_apps.erase(itr);
-
-    CORE_LOG_DEBUG("Session {} connection finalized", session_id);
-    app_itr->second.connected = true;
-  }
 
   void server::update_running() {}
 
-  void server::on_shutdown_request() {
-    state_machine.handle_event(server_event::SERVER_EVENT_STOP, this);
-
-    CORE_LOG_DEBUG("Sending shutdown request to network thread...");
-    {
-      message msg;
-      msg.header = {
-        .category = COMMAND,
-        .id = SHUTDOWN_REQUEST,
-      };
-      const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&msg.header);
-      msg.data.append_range(std::span(bytes, sizeof(message_header)));
-
-      send_message_and_wait_acknowledgment(
-        std::move(msg), std::chrono::seconds(3),
-        std::bind_front(&server::on_ack_shutdown_request_network_thread, this),
-        std::bind_front(&server::on_timeout_shutdown_request_network_thread, this)
-      );
-    }
-
-    if (!net_context->io_context.stopped()) {
-      net_context->io_context.stop();
-    }
-
-    // for (auto itr = other_apps.begin(); itr != other_apps.end();) {
-    //   CORE_LOG_DEBUG(" - clearing other application session {}", itr->first);
-    //   itr = other_apps.erase(itr);
-    // }
-    // for (auto itr = pending_apps.begin(); itr != pending_apps.end();) {
-    //   CORE_LOG_DEBUG(" - clearing pending other application session {}", itr->id);
-    //   itr = pending_apps.erase(itr);
-    // }
-
-    // for (auto itr = pending_events.begin(); itr != pending_events.end();) {
-    //   itr->timer.cancel();
-    //   itr = pending_events.erase(itr);
-    // }
-    // for (auto itr = pending_acks.begin(); itr != pending_acks.end();) {
-    //   itr->timer.cancel();
-    //   itr = pending_acks.erase(itr);
-    // }
-    // pending_responses.clear();
-  }
-
   void server::update_shutting_down() {}
-
-  void server::on_ack_shutdown_request_network_thread(message_header header, const std::vector<uint8_t>& data) {
-    CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
-
-    net_thread->shutdown();
-    state_machine.handle_event(server_event::SERVER_EVENT_SHUT_DOWN, this);
-  }
-
-  void server::on_timeout_shutdown_request_network_thread(message_header header) {
-    CORE_LOG_WARN("Network thread timed out waiting for shutdown acknowledgment");
-
-    /// force stop this time
-    net_context->io_context.stop();
-
-    static size_t attempts = 0;
-    attempts++;
-    if (attempts >= 3) {
-      CORE_LOG_ERROR("Network thread failed to shutdown after {} attempts, forcing exit", attempts);
-      try {
-        net_thread->force_shutdown();
-        state_machine.handle_event(server_event::SERVER_EVENT_SHUT_DOWN, this);
-        return;
-      } catch (const std::exception& e) {
-        CORE_LOG_ERROR("Error occurred while shutting down network thread: {}", e.what());
-      }
-    }
-
-    CORE_LOG_TRACE("Retrying network thread shutdown...");
-    on_shutdown_request();
-  }
 
   void server::update_shut_down() {
     running = false;
@@ -461,6 +287,126 @@ namespace other {
         CORE_LOG_ERROR("Server received unknown message category {}", msg.header.category);
         break;
     }
+  }
+
+  void server::on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data) {
+    CORE_LOG_INFO("Network thread acknowledged event request at session check in for session [{}]", header.id);
+    state_machine.handle_event(server_event::SERVER_EVENT_READY, this);
+
+    /// register event for thread check in
+    natural_t event_id = events->register_event("status-check:[network-thread]", std::chrono::seconds(1), /* recurring = */ true);
+    if (event_id == 0) {
+      CORE_LOG_ERROR("Failed to register event for network thread check-in");
+      return;
+    }
+    events->add_listener(event_id, [this](const value& ec) {
+      CORE_LOG_DEBUG("Network thread check-in event fired, checking for network thread status...");
+    });
+
+    // begin_other_application(std::filesystem::current_path(), "build/development-drivers/Debug/runtime_dev.exe", { "resources/dev-config.toml" });
+  }
+
+  void server::on_timeout_session_listen_for_network_thread(message_header header) {
+    CORE_LOG_WARN("Network thread timed out waiting for event request at session check in for session [{}]", header.id);
+  }
+
+  void server::on_ack_shutdown_request_network_thread(message_header header, const std::vector<uint8_t>& data) {
+    CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
+
+    net_thread->shutdown();
+    state_machine.handle_event(server_event::SERVER_EVENT_SHUT_DOWN, this);
+  }
+
+  void server::on_timeout_shutdown_request_network_thread(message_header header) {
+    CORE_LOG_WARN("Network thread timed out waiting for shutdown acknowledgment");
+
+    /// force stop this time
+    net_context->io_context.stop();
+
+    static size_t attempts = 0;
+    attempts++;
+    if (attempts >= 3) {
+      CORE_LOG_ERROR("Network thread failed to shutdown after {} attempts, forcing exit", attempts);
+      try {
+        net_thread->force_shutdown();
+        state_machine.handle_event(server_event::SERVER_EVENT_SHUT_DOWN, this);
+        return;
+      } catch (const std::exception& e) {
+        CORE_LOG_ERROR("Error occurred while shutting down network thread: {}", e.what());
+      }
+    }
+
+    CORE_LOG_TRACE("Retrying network thread shutdown...");
+    on_shutdown_request();
+  }
+
+  void server::on_respond_session_check_in_network_thread(message_header header, const std::vector<uint8_t>& data) {
+    OTHER_ASSERT(data.size() >= sizeof(integer_t), "Invalid session check in packet!");
+
+    integer_t session_id = *reinterpret_cast<const integer_t*>(data.data());
+
+    auto itr = std::ranges::find_if(pending_apps, [&](const other_application& app) { return session_id == app.id; });
+    if (itr == pending_apps.end()) {
+      CORE_LOG_ERROR("Server received a session check in for an unknown Other application : {}", session_id);
+      return;
+    }
+
+    CORE_LOG_DEBUG("finalizing connection to pending application : {}", session_id);
+    auto [app_itr, success] = other_apps.insert({ session_id, std::move(*itr) });
+    if (!success || app_itr == other_apps.end()) {
+      CORE_LOG_ERROR("Failed to save Other application session ID from check-in : {}", session_id);
+      return;
+    }
+    pending_apps.erase(itr);
+
+    CORE_LOG_DEBUG("Session {} connection finalized", session_id);
+    app_itr->second.connected = true;
+  }
+
+  void server::on_shutdown_request() {
+    state_machine.handle_event(server_event::SERVER_EVENT_STOP, this);
+
+    CORE_LOG_DEBUG("Sending shutdown request to network thread...");
+    {
+      message msg;
+      msg.header = {
+        .category = COMMAND,
+        .id = SHUTDOWN_REQUEST,
+      };
+      const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&msg.header);
+      msg.data.append_range(std::span(bytes, sizeof(message_header)));
+
+      send_message_and_wait_acknowledgment(
+        std::move(msg), std::chrono::seconds(3),
+        std::bind_front(&server::on_ack_shutdown_request_network_thread, this),
+        std::bind_front(&server::on_timeout_shutdown_request_network_thread, this)
+      );
+    }
+
+    events->cancel_all();
+
+    if (!net_context->io_context.stopped()) {
+      net_context->io_context.stop();
+    }
+
+    // for (auto itr = other_apps.begin(); itr != other_apps.end();) {
+    //   CORE_LOG_DEBUG(" - clearing other application session {}", itr->first);
+    //   itr = other_apps.erase(itr);
+    // }
+    // for (auto itr = pending_apps.begin(); itr != pending_apps.end();) {
+    //   CORE_LOG_DEBUG(" - clearing pending other application session {}", itr->id);
+    //   itr = pending_apps.erase(itr);
+    // }
+
+    // for (auto itr = pending_events.begin(); itr != pending_events.end();) {
+    //   itr->timer.cancel();
+    //   itr = pending_events.erase(itr);
+    // }
+    // for (auto itr = pending_acks.begin(); itr != pending_acks.end();) {
+    //   itr->timer.cancel();
+    //   itr = pending_acks.erase(itr);
+    // }
+    // pending_responses.clear();
   }
 
   void server::handle_notification_session_closed(message&& msg) {
@@ -525,44 +471,6 @@ namespace other {
       pending_responses.erase(itr);
     } else {
       CORE_LOG_ERROR("Received response for unknown message {}", msg.header);
-    }
-  }
-
-  void server::renderer_server_ui() {
-    if (!ImGui::Begin("Projects")) {
-      ImGui::End();
-      return;
-    }
-    if (ImGui::Button("Create New Project")) {
-    }
-
-    if (project_cache.contains("projects") && project_cache["projects"].is_array()) {
-      for (const auto& json_obj : project_cache["projects"]) {
-        validate_object_and_render_project(json_obj);
-      }
-    }
-
-    ImGui::End();
-  }
-
-  void server::validate_object_and_render_project(const json::json& json_obj) {
-    if (!(json_obj.contains("name") && json_obj.contains("path"))) {
-      scoped_color error(ImGuiCol_Text, IM_COL32(255, 100, 100, 255));
-      ImGui::Text("Invalid project entry in cache");
-      return;
-    }
-
-    std::string project_name = json_obj["name"].get<std::string>();
-    std::string project_path = json_obj["path"].get<std::string>();
-
-    if (ImGui::TreeNode(project_name.c_str())) {
-      ImGui::Text("Path: %s", project_path.c_str());
-
-      if (ImGui::Button(("Open " + project_name).c_str())) {
-        CORE_LOG_INFO("Request to open project '{}' at path '{}'", project_name, project_path);
-      }
-
-      ImGui::TreePop();
     }
   }
 

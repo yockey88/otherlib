@@ -42,6 +42,8 @@ target_sources(other_core
 		src/thread/message.cpp
 		src/thread/message_bus.cpp
 		src/thread/thread.cpp
+
+		src/event/event_system.cpp
 )
 
 target_include_directories(other_core 

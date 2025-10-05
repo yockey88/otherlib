@@ -97,6 +97,7 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib/debug"
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/debug"
   )
   set(ASSIMP_NAME "assimp-vc143-mtd")
 elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
@@ -104,6 +105,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib/release"
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/release"
   )
   set(ASSIMP_NAME "assimp-vc143-mt")
 endif()
@@ -119,6 +121,7 @@ set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet"
                              "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
                              "${CMAKE_CURRENT_SOURCE_DIR}/extern/json"
                              "${CMAKE_CURRENT_SOURCE_DIR}/extern/mio"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/src"
 )
 set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
 set(DOTNET_LIBRARIES nethost)

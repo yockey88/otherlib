@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 
 #include "core/state_machine.hpp"
+#include "event/event_system.hpp"
 #include "thread/message_bus.hpp"
 
 #include "network/network_thread.hpp"
@@ -20,9 +21,16 @@
 
 #include "asio/asio/steady_timer.hpp"
 
+#include "server-ui/server-ui.hpp"
+
 namespace json = nlohmann;
 
 namespace other {
+  namespace detail {
+
+    class message_handler;
+
+  }  // namespace detail
 
   constexpr static binding_point main_binding_point{ 0x7f000001, 49222 };
 
@@ -82,20 +90,9 @@ namespace other {
     void catch_signal(int signum) override;
 
    private:
+    friend class detail::message_handler;
+
     server_state_machine state_machine;
-
-    struct event {
-      using handler = std::function<void()>;
-
-      natural_t id = 0;
-      handler callback = nullptr;
-      bool recurring = false;
-
-      server_time_unit duration = server_time_unit::zero();
-
-      asio::steady_timer timer;
-    };
-    std::deque<event> pending_events;
 
     struct other_application {
       integer_t id = 0;
@@ -142,57 +139,53 @@ namespace other {
     std::deque<pending_response> pending_responses;
     std::queue<std::chrono::time_point<std::chrono::steady_clock>> response_removal_queue;
 
+    filepath get_project_cache();
+
     void send_message_no_acknowledgment(message&& msg, pending_response::on_response response_callback);
     void send_message_and_wait_acknowledgment(message&& msg, std::chrono::microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback);
-
-    natural_t register_event(server_time_unit duration, event::handler callback, bool recurring = false);
-    void cancel_event(natural_t event_id);
-    void handle_event(natural_t event_id, const asio::error_code& ec);
 
     void begin_other_application(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
     json::json project_cache;
 
-#ifdef OTHER_SERVER_ENABLE_HUB
     scope<renderer> renderer;
-#endif
+    scene active_scene;
+
+    scope<event_system> events = nullptr;
 
     message_bus net_thread_message_bus;
     scope<network_thread> net_thread = nullptr;
+
+    scope<server_ui> ui_ptr = nullptr;
 
     bool running = false;
 
     void core_update();
 
-    void on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data);
-    void on_timeout_session_listen_for_network_thread(message_header header);
     void update_initializing();
-
-    void on_respond_session_check_in_network_thread(message_header header, const std::vector<uint8_t>& data);
     void update_running();
-
-    void on_shutdown_request();
     void update_shutting_down();
-
-    void on_ack_shutdown_request_network_thread(message_header header, const std::vector<uint8_t>& data);
-    void on_timeout_shutdown_request_network_thread(message_header header);
     void update_shut_down();
 
     void on_event(SDL_Event* event) override;
 
     void process_network_thread_messages(message&& msg);
 
+    void on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data);
+    void on_timeout_session_listen_for_network_thread(message_header header);
+
+    void on_ack_shutdown_request_network_thread(message_header header, const std::vector<uint8_t>& data);
+    void on_timeout_shutdown_request_network_thread(message_header header);
+
+    void on_respond_session_check_in_network_thread(message_header header, const std::vector<uint8_t>& data);
+
+    void on_shutdown_request();
+
     void handle_notification_session_closed(message&& msg);
-
     void handle_acknowledgement_ack(message&& msg);
-
     // void handle_control_ping(message&& msg);
     void handle_control_pong(message&& msg);
-
     void handle_response(message&& msg);
-
-    void renderer_server_ui();
-    void validate_object_and_render_project(const json::json& json_obj);
   };
 
 }  // namespace other

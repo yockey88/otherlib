@@ -11,4 +11,4 @@ target_include_directories(other_network
 )
 target_link_directories(other_network PUBLIC ${OTHER_LIBRARIES_PATH})
 
-target_link_libraries(other_network PRIVATE other_core)
+target_link_libraries(other_network PUBLIC other_core)

@@ -64,9 +64,4 @@ PUBLIC
   ${PYTHON_LIB_DIR}
 )
 
-target_link_libraries(other_scripting 
-PUBLIC
-  ${PYTHON_LIB}
-PRIVATE 
-  other_core 
-)
+target_link_libraries(other_scripting PUBLIC ${PYTHON_LIB} other_core)

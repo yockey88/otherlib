@@ -7,6 +7,33 @@
 
 namespace other {
 
+  filepath get_program_files_folder(const std::string_view app_name) {
+    /// get program files folder
+    ///   windows: PROGRAMFILES/OtherEngine
+    ///   linux: /usr/local/OtherEngine
+    /// \todo mac
+
+    filepath folder_path = "";
+#ifdef OTHER_ENVIRONMENT_WINDOWS
+    char* program_files = nullptr;
+    size_t len = 0;
+    errno_t err = _dupenv_s(&program_files, &len, "PROGRAMFILES");
+    OTHER_ASSERT(err == 0 && program_files != nullptr, "Failed to get PROGRAMFILES environment variable.");
+    folder_path = filepath(program_files) / filepath(app_name);
+    free(program_files);
+#elif defined(OTHER_ENVIRONMENT_UNIX)
+  #error "Unimplemented"
+#else
+  #error "Unsupported platform"
+#endif
+
+    if (!std::filesystem::exists(folder_path)) {
+      std::filesystem::create_directories(folder_path);
+    }
+
+    return folder_path;
+  }
+
   filepath get_app_data_folder(const std::string_view app_name) {
     /// get app folder
     ///   windows: APPDATA/OtherServer
@@ -35,17 +62,6 @@ namespace other {
     }
 
     return folder_path;
-  }
-
-  filepath get_project_cache(const std::string_view other_folder) {
-    filepath cache_path = get_app_data_folder(other_folder) / "project_cache.json";
-    if (!std::filesystem::exists(cache_path)) {
-      std::ofstream file(cache_path);
-      OTHER_ASSERT(file.is_open(), "Failed to create project cache file at {}", cache_path.string());
-      file << "{}";
-      file.close();
-    }
-    return cache_path;
   }
 
 }  // namespace other
