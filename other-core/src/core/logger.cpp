@@ -6,7 +6,6 @@
 #include "core/config_table.hpp"
 #include "core/fnv.hpp"
 
-
 namespace other {
 
   void logger::create_logger(const std::string& name, spdlog::level::level_enum level) {

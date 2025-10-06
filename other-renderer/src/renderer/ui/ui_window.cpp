@@ -20,11 +20,11 @@ namespace other {
 
   }  // namespace detail
 
-  ui_window::ui_window(const std::string_view title, bool open, int32_t flags)
-      : id(FNV(title)), title(title), window_flags(flags) {
+  ui_window::ui_window(event_system& events, const std::string_view title, bool open, int32_t flags)
+      : id(FNV(title)), title(title), window_flags(flags), events(events) {
     /// add root
     {
-      auto [itr, inserted] = node_map.emplace(0, make_scope<window_root>());
+      auto [itr, inserted] = node_map.emplace(0, make_scope<window_root>(this));
       OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
       itr->second->parent = 0xFFFFFFFF;
     }
@@ -33,6 +33,14 @@ namespace other {
     state.just_closed = false;
     state.just_opened = false;
     state.is_focused = false;
+  }
+
+  void ui_window::initialize() {
+    on_initialize();
+  }
+
+  void ui_window::shutdown() {
+    on_shutdown();
   }
 
   void ui_window::render() {
@@ -61,20 +69,28 @@ namespace other {
   }
 
   void ui_window::add_node(scope<ui_node> node) {
-    add_node_to(node /* this-window */);
+    natural_t id = node->id;
+    auto [itr, inserted] = node_map.emplace(id, std::move(node));
+    OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
+
+    add_node_to(itr->second /* this-window */);
+  }
+
+  void ui_window::add_node(scope<ui_node> node, const std::string_view parent_search_pattern) {
+    natural_t id = node->id;
+    auto [itr, inserted] = node_map.emplace(id, std::move(node));
+    OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
+
+    add_node_to(itr->second /* this-window */, parent_search_pattern);
   }
 
   void ui_window::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
     OTHER_ASSERT(node != nullptr, "Cannot add null node to UI window {}", title);
     if (remaining_search_pattern.empty()) {
-      auto [itr, inserted] = node_map.emplace(node->id, std::move(node));
-      OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
-
-      itr->second->parent = 0;
+      node->parent = 0;
       auto root = node_map.find(0);
       OTHER_ASSERT(root != node_map.end(), "UI window {} has no root node", title);
-      root->second->add_child_node(itr->second);
-
+      root->second->add_child_node(node);
       return;
     }
 

@@ -1,6 +1,6 @@
 using System;
 
-namespace Other
+namespace Other.Core
 {
 
   [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]

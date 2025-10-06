@@ -29,7 +29,11 @@ namespace other {
     script_object* get_object(integer_t id);
 
     /// DOTNET
+    dotnet_host& get_dotnet_host() { return dotnet; }
+    const dotnet_host& get_dotnet_host() const { return dotnet; }
+
     ref<assembly> load_dotnet_module(const std::string_view module_path);
+    ref<assembly> get_dotnet_module(const std::string_view module_name);
     void unload_dotnet_module(ref<assembly> module_id);
     void reset_dotnet_environment();
 

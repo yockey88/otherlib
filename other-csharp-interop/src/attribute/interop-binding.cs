@@ -7,10 +7,6 @@ namespace OtherCsBindings
   {
     public string Name { get; set; }
 
-    public InteropBindingAttribute()
-    {
-    }
-
     public InteropBindingAttribute(string name)
     {
       Name = name;

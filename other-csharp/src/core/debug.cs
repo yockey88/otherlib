@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Other
+namespace Other.Core
 {
   public class Debug
   {

@@ -10,9 +10,9 @@
 
 namespace other {
 
-  using microsecond = std::chrono::microseconds;
-  using millisecond = std::chrono::milliseconds;
-  using second = std::chrono::seconds;
+  using microseconds = std::chrono::microseconds;
+  using milliseconds = std::chrono::milliseconds;
+  using seconds = std::chrono::seconds;
 
   /// 10,000 ticks per second
   using tick_conversion = std::ratio<1, 10000>;

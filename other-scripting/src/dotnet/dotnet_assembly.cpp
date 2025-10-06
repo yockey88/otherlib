@@ -78,6 +78,18 @@ namespace other {
     return itr->second;
   }
 
+  ref<assembly> assembly_context::get_assembly_by_name(const std::string_view name) {
+    CORE_LOG_TRACE("Searching for assembly by name: {}", name);
+    for (const auto& [id, asm_ref] : assemblies) {
+      if (asm_ref->get_name() == name) {
+        CORE_LOG_TRACE("Found assembly [{}:{}]", asm_ref->get_handle(), asm_ref->get_name());
+        return asm_ref;
+      }
+    }
+    CORE_LOG_ERROR("Assembly with name '{}' not found in context [{}:{}]", name, handle, this->name);
+    return nullptr;
+  }
+
   void assembly_context::unload_assembly(natural_t assembly_id) {
     auto itr = assemblies.find(assembly_id);
     if (itr != assemblies.end()) {

@@ -13,6 +13,8 @@
 #include "core/ref.hpp"
 #include "core/ref_counted.hpp"
 #include "core/scope.hpp"
+#include "core/timer.hpp"
+
 
 namespace other {
 
@@ -48,7 +50,7 @@ namespace other {
       return queue->queue.empty();
     }
 
-    opt<T> await_message(std::chrono::microseconds timeout = std::chrono::microseconds(1000)) {
+    opt<T> await_message(microseconds timeout = microseconds(1000)) {
       OTHER_ASSERT(queue != nullptr, "Awaiting message on a null queue!");
 
       std::unique_lock lck(queue->mutex);

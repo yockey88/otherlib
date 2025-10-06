@@ -306,7 +306,8 @@ namespace other {
   }
 
   filepath get_program_files_folder(const std::string_view app_name);
-  filepath get_app_data_folder(const std::string_view app_name);
+  filepath get_app_data_folder(const std::string_view app_name, bool create = false);
+  filepath get_system_default_working_directory();
 
 }  // namespace other
 

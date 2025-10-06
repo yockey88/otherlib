@@ -27,14 +27,10 @@ namespace other {
   #error "Unsupported platform"
 #endif
 
-    if (!std::filesystem::exists(folder_path)) {
-      std::filesystem::create_directories(folder_path);
-    }
-
     return folder_path;
   }
 
-  filepath get_app_data_folder(const std::string_view app_name) {
+  filepath get_app_data_folder(const std::string_view app_name, bool create) {
     /// get app folder
     ///   windows: APPDATA/OtherServer
     ///   linux: ~/.otherserver
@@ -53,6 +49,35 @@ namespace other {
     OTHER_ASSERT(home != nullptr, "Failed to get HOME environment variable.");
     folder_path = filepath(home);
     folder_path /= filepath("." + std::string{ app_name } | std::views::transform([](char c) { return std::tolower(c); }) | std::ranges::to<std::string>());
+#else
+  #error "Unsupported platform"
+#endif
+
+    if (create && !std::filesystem::exists(folder_path)) {
+      std::filesystem::create_directories(folder_path);
+    }
+
+    return folder_path;
+  }
+
+  filepath get_system_default_working_directory() {
+    /// get system default working directory
+    ///   windows: C:/Users/<username>/Documents/OtherEngine
+    ///   linux: /home/<username>/OtherEngine
+    /// \todo mac
+
+    filepath folder_path = "";
+#ifdef OTHER_ENVIRONMENT_WINDOWS
+    char* documents = nullptr;
+    size_t len = 0;
+    errno_t err = _dupenv_s(&documents, &len, "USERPROFILE");
+    OTHER_ASSERT(err == 0 && documents != nullptr, "Failed to get USERPROFILE environment variable.");
+    folder_path = filepath(documents) / "Documents" / "OtherEngine";
+    free(documents);
+#elif defined(OTHER_ENVIRONMENT_UNIX)
+    const char* home = std::getenv("HOME");
+    OTHER_ASSERT(home != nullptr, "Failed to get HOME environment variable.");
+    folder_path = filepath(home) / "OtherEngine";
 #else
   #error "Unsupported platform"
 #endif

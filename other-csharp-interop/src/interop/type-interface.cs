@@ -130,6 +130,70 @@ namespace OtherCsBindings
       return type;
     }
 
+    internal static List<Type> GetAllTypesWithAttribute<T>() where T : Attribute
+    {
+      List<Type> types_with_attribute = new();
+
+      foreach (var asm in AssemblyLoader.GetFullLoadedAssemblyContext())
+      {
+        Type[] types;
+        try
+        {
+          types = asm.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+          types = ex.Types;
+        }
+
+        foreach (var type in types)
+        {
+          if (type == null)
+          {
+            continue;
+          }
+
+          var attrs = type.GetCustomAttributes(typeof(T), false);
+          if (attrs.Length > 0)
+          {
+            types_with_attribute.Add(type);
+          }
+        }
+      }
+
+      return types_with_attribute;
+    }
+
+    internal static List<Type> GetAllTypes()
+    {
+      List<Type> all_types = new();
+
+      foreach (var asm in AssemblyLoader.GetFullLoadedAssemblyContext())
+      {
+        Type[] types;
+        try
+        {
+          types = asm.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+          types = ex.Types;
+        }
+
+        foreach (var type in types)
+        {
+          if (type == null)
+          {
+            continue;
+          }
+
+          all_types.Add(type);
+        }
+      }
+
+      return all_types;
+    }
+
     [UnmanagedCallersOnly]
     private static unsafe void GetAssemblyTypes(Int32 asm_id, Int32* out_types, Int32* out_type_count)
     {

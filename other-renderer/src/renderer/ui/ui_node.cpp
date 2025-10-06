@@ -9,6 +9,8 @@
 
 #include "core/logger.hpp"
 
+#include "renderer/ui/ui_window.hpp"
+
 namespace other {
   namespace detail {
 
@@ -22,10 +24,12 @@ namespace other {
     detail::ui_node_render_end_helper ___ui_node_render_end_helper_instance{};
 
     bool current_state = state.open;
-    if (!ImGui::BeginChild(std::to_string(id).c_str())) {
+    if (!ImGui::BeginChild(std::to_string(id).c_str(), ImVec2{ size.x, size.y }, flags, window_flags)) {
       return;
     }
+
     try {
+      push_themes();
       refresh(current_state);
       if (!state.open) {
         return;
@@ -33,11 +37,17 @@ namespace other {
 
       on_render_start();
       render_node();
-      for (auto* child : children) {
-        OTHER_ASSERT(child != nullptr, "Null child node in UI node {}", node_title);
-        child->render();
+      if (state.override_child_rendering) {
+        override_child_rendering();
+      } else {
+        for (auto* child : children) {
+          OTHER_ASSERT(child != nullptr, "Null child node in UI node {}", node_title);
+          child->render();
+        }
       }
       on_render_end();
+
+      pop_themes();
     } catch (const std::exception& e) {
       CORE_LOG_ERROR("Exception during UI node render: {}", e.what());
     }
@@ -50,44 +60,39 @@ namespace other {
   void ui_node::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
     OTHER_ASSERT(node != nullptr, "Cannot add null child node to UI node {}", node_title);
     if (remaining_search_pattern.empty()) {
+      node->containing_window = containing_window;
       children.push_back(node.get());
       node->parent = id;
       return;
     }
 
-    // std::string pattern_str(remaining_search_pattern);
-    // auto colon = pattern_str.find_first_of(':');
-    // /// this is the case when the name is a single name with no colon
-    // if (colon == std::string::npos) {
-    //   auto itr = std::ranges::find_if(children, [&pattern_str](const ui_node* child) { return child->node_title == pattern_str; });
-    //   if (itr != children.end()) {
-    //     (*itr)->add_child_node(node);
-    //   } else {
-    //     CORE_LOG_ERROR("Failed to find child node '{}' under parent node '{}' to add node '{}'", pattern_str, node_title, node->node_title);
-    //   }
-    //   return;
-    // }
+    std::string pattern_str(remaining_search_pattern);
+    std::string first_search_name;
 
-    // /// now we have at least one colon, verify the first half is us and continue down
-    // std::string current_name = pattern_str.substr(0, colon);
-    // OTHER_ASSERT(current_name == node_title, "Mismatched node name '{}' when adding to parent node '{}'", current_name, node_title);
+    auto colon = pattern_str.find_first_of(':');
+    if (colon == std::string::npos) {
+      first_search_name = pattern_str;
+      pattern_str = "";
+    } else {
+      first_search_name = pattern_str.substr(0, colon);
+      pattern_str = pattern_str.substr(colon + 1);
+    }
 
-    // if (colon + 1 >= pattern_str.size()) {
-    //   CORE_LOG_ERROR("Invalid node search pattern '{}' when adding node '{}'", pattern_str, node->node_title);
-    //   return;
-    // }
+    auto itr = std::find_if(children.begin(), children.end(), [&first_search_name](const ui_node* child) {
+      return child->node_title == first_search_name;
+    });
+    if (itr == children.end()) {
+      CORE_LOG_ERROR("No child node found with name '{}' in UI node '{}'", first_search_name, node_title);
+      return;
+    }
 
-    // std::string next_pattern = pattern_str.substr(colon + 1);
-    // /// no check if we have to strip further to find and pass the pattern on, or if the child is expected here
-    // auto colon2 = next_pattern.find_first_of(':');
+    (*itr)->add_node_to(node, pattern_str);
+  }
 
-    // std::string next_name = (colon2 == std::string::npos) ? next_pattern : next_pattern.substr(0, colon2);
-    // auto itr = std::ranges::find_if(children, [&next_name](const ui_node* child) { return child->node_title == next_name; });
-    // if (itr != children.end()) {
-    //   (*itr)->add_node_to(node, next_pattern);
-    // } else {
-    //   CORE_LOG_ERROR("Failed to find child node '{}' under parent node '{}' to add node '{}'", next_name, node_title, node->node_title);
-    // }
+  void ui_node::trigger_event(const std::string_view name) {
+    if (containing_window) {
+      containing_window->get_event_system().trigger_event(name);
+    }
   }
 
   void ui_node::refresh(bool current_state) {

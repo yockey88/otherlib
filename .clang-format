@@ -62,11 +62,11 @@ IncludeCategories:
     Priority:        3
   - Regex:           '"((core|event|command|math|serialization|thread)\/)'
     Priority:        4
-  - Regex:           '"((renderer|model|gpu_resource|script|dotnet|python|lua|network)\/)'
+  - Regex:           '"((renderer|model|gpu_resource|script|bindings|dotnet|python|lua|network)\/)'
     Priority:        5
   - Regex:           '"((object|scene)\/)'
     Priority:        6
-  - Regex:           '"((terminal|rendering-pipelines|driver|project|plugin)\/)'
+  - Regex:           '"((terminal|rendering-pipelines|driver|project|plugin|scripting)\/)'
     Priority:        7
   - Regex:           '"([A-Za-z0-9\/-_])+\.h(pp|xx|h)?"'
     Priority:        8

@@ -4,8 +4,10 @@
 #ifndef OTHER_CORE_THREAD_MESSAGE_BUS_HPP
 #define OTHER_CORE_THREAD_MESSAGE_BUS_HPP
 
+#include "core/timer.hpp"
 #include "thread/channel.hpp"
 #include "thread/message.hpp"
+
 
 namespace other {
 
@@ -21,7 +23,7 @@ namespace other {
 
     void register_thread();
 
-    opt<message> receive_message(std::chrono::microseconds timeout = std::chrono::microseconds(10));
+    opt<message> receive_message(microseconds timeout = microseconds(10));
     void send_message(message&& msg);
 
    private:

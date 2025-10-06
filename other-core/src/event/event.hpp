@@ -18,7 +18,7 @@ namespace other {
 
     value data;
 
-    microsecond duration = microsecond::zero();
+    microseconds duration = microseconds::zero();
     bool recurring = false;
 
     using handler = std::function<void(const value&)>;

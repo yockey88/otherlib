@@ -54,7 +54,7 @@ namespace other {
 
   class server_ui {
    public:
-    server_ui(scope<renderer>& renderer_ptr, json::json& project_cache);
+    server_ui(scope<renderer>& renderer_ptr, scope<event_system>& events, json::json& project_cache);
     ~server_ui() = default;
 
     void render();
@@ -62,25 +62,12 @@ namespace other {
    private:
     ui_state_machine state_machine;
 
-    struct project_context {
-      filepath project_path;
-      filepath working_directory;
-      std::string project_name;
-
-      constexpr static inline size_t kMaxProjectNameLength = 128;
-      constexpr static inline size_t kMaxProjectPathLength = 512;
-      std::array<char, kMaxProjectNameLength> project_name_buffer;
-      std::array<char, kMaxProjectPathLength> project_path_buffer;
-      std::array<char, kMaxProjectPathLength> working_directory_buffer;
-
-      nfdchar_t* selected_path = nullptr;
-    };
-    std::optional<project_context> active_project;
-
     scope<renderer>& renderer_ptr;
+    scope<event_system>& events;
     json::json& project_cache;
 
     scope<ui_window> project_win;
+    scope<ui_window> create_project_win;
 
     void render_all();
 

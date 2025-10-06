@@ -1,5 +1,6 @@
 using System;
 using Other;
+using Other.Core;
 
 class TestAttrAttribute : Attribute
 {
@@ -33,10 +34,12 @@ class TestObject
 
   public void DisplayInfo()
   {
-    Debug.Log($"Field Value: {field_value}");
-    Debug.Log($"Property Value: {PropertyValue}");
-    Debug.Log($"Field String: {field_string}");
-    Debug.Log($"Property String: {PropertyString}");
+    Debug.Log($"Filesystem.GetProgramFilesFolder(): {Filesystem.GetProgramFilesFolder("MyApp")}");
+    Debug.Log($"Filesystem.GetAppDataFolder(): {Filesystem.GetAppDataFolder("MyApp")}");
+    // Debug.Log($"Field Value: {field_value}");
+    // Debug.Log($"Property Value: {PropertyValue}");
+    // Debug.Log($"Field String: {field_string}");
+    // Debug.Log($"Property String: {PropertyString}");
   }
 
   public int GetValue(int value)

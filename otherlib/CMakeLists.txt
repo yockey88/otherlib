@@ -11,6 +11,8 @@ target_sources(otherlib
         src/rendering-pipelines/default_instancing_pipeline.cpp
         src/rendering-pipelines/scriptable_pipeline.cpp
 
+        src/scripting/dotnet_bindings.cpp
+
         src/other.cpp
 )
 

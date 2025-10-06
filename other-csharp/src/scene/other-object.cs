@@ -2,7 +2,7 @@ using System;
 
 using OtherCsBindings;
 
-namespace Other
+namespace Other.Scene
 {
   public class OtherObject
   {

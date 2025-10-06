@@ -59,6 +59,8 @@ namespace other {
       get_assembly_name get_assembly_name = nullptr;
 
       /// NativeFunctionManager
+      discover_binding_points discover_binding_points = nullptr;
+      bind_native_function bind_native_function = nullptr;
       register_internal_call register_internal_call = nullptr;
 
       /// TypeInterface
@@ -134,6 +136,7 @@ namespace other {
     void unload_host();
 
     void call_entry_point();
+    void rediscover_binding_points();
 
     assembly_context* create_assembly_context(const std::string_view name);
     void destroy_assembly_context(natural_t context_id);

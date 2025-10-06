@@ -28,6 +28,7 @@ namespace other {
 
    private:
     bool running = false;
+    scene active_scene{ "Runtime-Scene" };
     scope<scene_graph> project_scene_graph = nullptr;
 
     message_bus net_thread_message_bus;

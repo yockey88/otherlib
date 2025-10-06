@@ -158,6 +158,17 @@ namespace OtherCsBindings
       }
       return null;
     }
+
+    internal static List<Assembly> GetFullLoadedAssemblyContext()
+    {
+      List<Assembly> loaded_assemblies = new List<Assembly>();
+      foreach (var asm in assemblies.Values)
+      {
+        loaded_assemblies.Add(asm);
+      }
+      return loaded_assemblies;
+    }
+
     internal static bool TryGetAssembly(Int32 id, out Assembly? asm)
     {
       return assemblies.TryGetValue(id, out asm);

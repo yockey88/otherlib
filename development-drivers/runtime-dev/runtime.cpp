@@ -20,6 +20,18 @@
 
 namespace other {
 
+  /// goal 1: bind this and call from C#
+  void hello_cs() {
+    std::println("Hello There!");
+  }
+
+  /// goal 2: bind and call from C#
+  struct my_foo {
+    void hello_cs() {
+      std::println("Hello There! {:p}", (void*)this);
+    }
+  };
+
   namespace detail {
 
     project_description parse_project_description(const std::span<const uint8_t> buffer) {
@@ -51,28 +63,42 @@ namespace other {
   void runtime::on_initialize(const command_line& cmd) {
     CORE_LOG_DEBUG("Runtime...");
 
-    integer_t session_id = cmd.session_id.value_or(-1);
-    uint16_t port = cmd.port.value_or(49222);
+    scene_object& obj = active_scene.create_object("Runtime-Test-Object");
+    script_component* comp = active_scene.get_component<script_component>(&obj);
+    OTHER_ASSERT(comp != nullptr, "Failed to create script component on test object");
 
-    net_thread = make_scope<network_thread>(net_thread_message_bus);
-    net_thread->launch();
-    net_thread_message_bus.register_thread();
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
 
-    if (session_id == -1) {
-      CORE_LOG_WARN("No session ID provided to runtime");
-    } else {
-      message msg;
-      msg.header = {
-        .category = COMMAND,
-        .id = SESSION_CHECK_IN,
-      };
+    env->attach_dotnet_object(comp->script_object_id, "TestObject");
 
-      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
-      const uint8_t* port_bytes = reinterpret_cast<const uint8_t*>(&port);
-      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
-      msg.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
-      net_thread_message_bus.send_message(std::move(msg));
-    }
+    script_object* script_obj = env->get_object(comp->script_object_id);
+    OTHER_ASSERT(script_obj != nullptr, "Failed to retrieve script object from scripting environment");
+
+    script_obj->dotnet_object->invoke("DisplayInfo");
+
+    // integer_t session_id = cmd.session_id.value_or(-1);
+    // uint16_t port = cmd.port.value_or(49222);
+
+    // net_thread = make_scope<network_thread>(net_thread_message_bus);
+    // net_thread->launch();
+    // net_thread_message_bus.register_thread();
+
+    // if (session_id == -1) {
+    //   CORE_LOG_WARN("No session ID provided to runtime");
+    // } else {
+    //   message msg;
+    //   msg.header = {
+    //     .category = COMMAND,
+    //     .id = SESSION_CHECK_IN,
+    //   };
+
+    //   const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+    //   const uint8_t* port_bytes = reinterpret_cast<const uint8_t*>(&port);
+    //   msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
+    //   msg.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
+    //   net_thread_message_bus.send_message(std::move(msg));
+    // }
 
     // std::vector<uint8_t> buffer = detail::read_file("resources/dev-project1.other");
     // std::println("Read {} bytes from project file", buffer.size());
@@ -99,26 +125,26 @@ namespace other {
   }
 
   void runtime::run() {
-    do {
-      pump_events();
-      // update();
-      // draw();
-    } while (running);
+    // do {
+    //   pump_events();
+    //   // update();
+    //   // draw();
+    // } while (running);
   }
 
   void runtime::on_shutdown() {
     running = false;
     project_scene_graph = nullptr;
 
-    net_thread->shutdown();
-    net_thread = nullptr;
+    // net_thread->shutdown();
+    // net_thread = nullptr;
   }
 
   void runtime::catch_signal(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
       CORE_LOG_INFO("Received signal {}, shutting down runtime...", signal);
       running = false;
-      net_context->io_context.stop();
+      // net_context->io_context.stop();
     } else {
       CORE_LOG_WARN("Received unhandled signal {}", signal);
     }

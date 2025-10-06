@@ -26,11 +26,10 @@ namespace other {
   }
 
   void scripting_environment::shutdown_script_environment() {
-    for (const auto& [id, live_obj] : live_objects) {
-      // if (live_obj.object != nullptr) {
-      //   CORE_LOG_DEBUG("Destroying script object [{}:{}]", live_obj.object->name, id);
-      //   destroy_object(id);
-      // }
+    for (auto& obj : live_objects) {
+      if (obj.object != nullptr) {
+        destroy_object(obj.index);
+      }
     }
 
     python.unload_host();
@@ -117,6 +116,12 @@ namespace other {
       CORE_LOG_DEBUG("Loaded assembly [{}:{}] from path: {}", asm_ref->get_handle(), asm_ref->get_name(), module_path);
     }
     return asm_ref;
+  }
+
+  ref<assembly> scripting_environment::get_dotnet_module(const std::string_view module_name) {
+    OTHER_ASSERT(dotnet_load_context != nullptr, "DotNet load context is not initialized.");
+    OTHER_ASSERT(!module_name.empty(), "Module name cannot be empty.");
+    return dotnet_load_context->get_assembly_by_name(module_name);
   }
 
   void scripting_environment::unload_dotnet_module(ref<assembly> module) {

@@ -14,7 +14,7 @@ namespace other {
 
   class project_window : public ui_window {
    public:
-    project_window(json::json& project_cache);
+    project_window(event_system& events, json::json& project_cache);
     ~project_window() = default;
 
    private:

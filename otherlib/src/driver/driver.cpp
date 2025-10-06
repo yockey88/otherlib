@@ -17,7 +17,6 @@ namespace other {
     PROFILE_SECTION("driver::initialize");
 
     /// set signal catchers
-
     net_context = std::make_unique<network_context>();
     net_context->signals.async_wait([this](std::error_code ec, int signum) {
       if (!ec) {

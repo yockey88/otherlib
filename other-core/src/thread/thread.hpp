@@ -35,7 +35,7 @@ namespace other {
     void shutdown();
     void force_shutdown();
 
-    opt<message> receive_message(std::chrono::microseconds timeout = std::chrono::microseconds(100));
+    opt<message> receive_message(microseconds timeout = microseconds(100));
     void send_message(message&& msg);
 
     state get_current_state();
@@ -125,8 +125,8 @@ namespace other {
     void handle_error_alert_message(const message& msg);
     void handle_info_message(const message& msg);
 
-    virtual inline std::chrono::microseconds get_message_timeout() {
-      return std::chrono::microseconds(100);
+    virtual inline microseconds get_message_timeout() {
+      return microseconds(100);
     }
   };
 

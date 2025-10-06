@@ -3,6 +3,7 @@
  **/
 #include "network/network_thread.hpp"
 
+#include "core/defines.hpp"
 #include "thread/message.hpp"
 
 #include "asio/asio/ip/address_v4.hpp"
@@ -97,6 +98,7 @@ namespace other {
               break;
           }
           break;
+
         case COMMAND:
           switch (msg->header.id) {
             case SHUTDOWN_REQUEST: handle_command_shutdown_request(std::move(*msg)); break;
@@ -236,9 +238,11 @@ namespace other {
       .id = PONG,
     };
 
-    // const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data.data());
-    // pong_msg.data.append_range(std::span(bytes, data.size()));
-    // bus.send_message(std::move(pong_msg));
+    integer_t session_id = 0;  // network thread uses session id 0
+    const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+    pong_msg.data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
+
+    bus.send_message(std::move(pong_msg));
   }
 
   void network_thread::handle_command_shutdown_request(message&& msg) {

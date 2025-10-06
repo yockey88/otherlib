@@ -23,9 +23,14 @@ namespace other {
         : io_context(io_ctx) {}
     virtual ~event_system() = default;
 
-    void poll();
+    void clear();
 
-    natural_t register_event(const std::string_view name, microsecond duration, bool recurring = false);
+    void trigger_event(const std::string_view name);
+    void trigger_event(natural_t event_id);
+
+    natural_t register_timed_event(const std::string_view name, microseconds duration, bool recurring = false);
+    natural_t register_event(const std::string_view name);
+
     void cancel_event(const std::string_view name);
     void cancel_event(natural_t event_id);
 
@@ -36,8 +41,8 @@ namespace other {
       set_user_data(event_id, value{ data });
     }
 
-    void add_listener(const std::string_view name, std::function<void(const value&)> callback);
-    void add_listener(natural_t id, std::function<void(const value&)> callback);
+    void add_listener(const std::string_view name, event::handler callback);
+    void add_listener(natural_t id, event::handler callback);
 
     void cancel_all();
 
@@ -46,16 +51,16 @@ namespace other {
 
     struct event_ctx {
       event ev;
+      std::vector<event::handler> listeners;
+    };
+    struct event_timer {
+      natural_t event_id;
       asio::steady_timer timer;
     };
-    std::unordered_map<natural_t, event_ctx> registered_events;
-    std::unordered_map<natural_t, std::vector<std::function<void(const value&)>>> event_listeners;
+    std::vector<event_ctx> registered_events;
+    std::vector<event_timer> event_timers;
 
-    std::queue<natural_t> pending_event_cancellations;
-
-    void queue_event_removal(natural_t event_id);
-
-    void post_event_callback(natural_t event_id, microsecond duration);
+    void post_event_callback(natural_t event_id, microseconds duration);
   };
 
 }  // namespace other

@@ -49,6 +49,7 @@ add_static_driver(server_dev
   server-dev/server.cpp
 
   server-dev/server-ui/project-window.cpp
+  server-dev/server-ui/project-creator.cpp
   server-dev/server-ui/server-ui.cpp
 
   server-dev/main.cpp

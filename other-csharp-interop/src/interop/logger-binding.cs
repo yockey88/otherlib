@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 
 namespace OtherCsBindings
@@ -73,6 +74,10 @@ namespace OtherCsBindings
       }
     }
 
+    [NativeFunction("LogMessage", false)] // this is manually bound by host before entry
     internal static unsafe delegate*<IntPtr, NativeString, Int32, void> NativeLogMessage;
+
+
+    // private NativeFunction
   }
 }

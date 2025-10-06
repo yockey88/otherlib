@@ -24,6 +24,8 @@ namespace other {
   using get_assembly_name = native_string (*)(int32_t);
 
   /// NativeFunctionManager
+  using discover_binding_points = void (*)();
+  using bind_native_function = void (*)(native_string, void*);
   using register_internal_call = void (*)(native_string, void*);
 
   /// TypeInterface

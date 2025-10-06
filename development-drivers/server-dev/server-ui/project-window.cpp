@@ -8,25 +8,21 @@
 #include "renderer/ui/ui_helpers.hpp"
 #include "renderer/ui/ui_node.hpp"
 
+#include "imgui.h"
+
 namespace other {
   namespace {
 
     struct project_list_node : public ui_node {
-      project_list_node(json::json& project_cache)
-          : ui_node("project-list"), project_cache(project_cache) {}
+      project_list_node(ui_window* parent, json::json& project_cache)
+          : ui_node(parent, "project-list"), project_cache(project_cache) {
+      }
       virtual ~project_list_node() = default;
 
       void render_node() override {
         if (ImGui::Button("Create New Project")) {
-          //   project_context new_project;
-          //   new_project.project_name = "Untitled Project";
-          //   new_project.project_path = "path/to/project";
-          //   new_project.working_directory = "path/to/working/directory";
-          //   active_project = new_project;
-
-          //   state_machine.handle_event(ui_event::UI_EVENT_GO_TO_CREATE_PROJECT_PAGE);
-          // return;
-          CORE_LOG_DEBUG("Create New Project button clicked");
+          trigger_event("create-project");
+          return;
         }
 
         if (project_cache.contains("projects") && project_cache["projects"].is_array()) {
@@ -77,9 +73,9 @@ namespace other {
 
   }  // namespace
 
-  project_window::project_window(json::json& project_cache)
-      : ui_window("Projects"), project_cache(project_cache) {
-    add_node(make_scope<project_list_node>(project_cache));
+  project_window::project_window(event_system& events, json::json& project_cache)
+      : ui_window(events, "Projects"), project_cache(project_cache) {
+    add_node(make_scope<project_list_node>(this, project_cache));
   }
 
 }  // namespace other

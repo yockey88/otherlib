@@ -45,7 +45,7 @@ namespace other {
     td.thread_id = std::this_thread::get_id();
   }
 
-  opt<message> message_bus::receive_message(std::chrono::microseconds timeout) {
+  opt<message> message_bus::receive_message(microseconds timeout) {
     uint8_t index = 0;
     {
       std::lock_guard lock(thread_data_mutex);

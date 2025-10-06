@@ -6,6 +6,7 @@
 #include <filesystem>
 
 #include "core/defines.hpp"
+#include "serialization/serialization.hpp"
 #include "thread/message.hpp"
 
 #include "renderer/ui/ui_helpers.hpp"
@@ -56,7 +57,7 @@ namespace other {
       renderer = get_renderer();
       renderer->add_pipeline<empty_pipeline>("UI Pipeline");
 
-      ui_ptr = make_scope<server_ui>(renderer, project_cache);
+      ui_ptr = make_scope<server_ui>(renderer, events, project_cache);
     }
     active_scene = scene("Server-Scene");
 
@@ -90,7 +91,6 @@ namespace other {
   }
 
   void server::on_shutdown() {
-    events->poll();
     events = nullptr;
 
     if (rendering_enabled()) {
@@ -122,107 +122,11 @@ namespace other {
     return cache_file;
   }
 
-  void server::send_message_no_acknowledgment(message&& msg, pending_response::on_response response_callback) {
-    if (msg.header.category == CONTROL || msg.header.category == COMMAND || msg.header.category == ACKNOWLEDGEMENT) {
-      CORE_LOG_ERROR("Attempting to send message {} which requires acknowledgment without acknowledgment handling", msg.header);
-      return;
-    }
-
-    pending_response response{
-      .header = msg.header,
-      .sent_time = std::chrono::steady_clock::now(),
-      .response_callback = response_callback,
-    };
-    CORE_LOG_DEBUG("PENDING-RESPONSE {}", response.header);
-
-    {
-      auto itr = std::find_if(pending_responses.begin(), pending_responses.end(), [&response](const pending_response& existing_response) {
-        return existing_response.header == response.header;
-      });
-      OTHER_ASSERT(itr == pending_responses.end(), "Response for message ID {} already pending", response.header.id);
-    }
-
-    net_thread_message_bus.send_message(std::move(msg));
-    auto resp_itr = pending_responses.insert(pending_responses.end(), std::move(response));
-    OTHER_ASSERT(resp_itr != pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
-  }
-
-  void server::send_message_and_wait_acknowledgment(message&& msg, std::chrono::microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback) {
-    pending_ack ack{
-      .header = msg.header,
-      .timeout_duration = timeout,
-      .ack_callback = ack_callback,
-      .timeout_callback = timeout_callback,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-    CORE_LOG_DEBUG("PENDING-ACK {} (timeout: {} us)", ack.header, ack.timeout_duration.count());
-
-    {
-      auto itr = std::find_if(pending_acks.begin(), pending_acks.end(), [&ack](const pending_ack& existing_ack) {
-        return existing_ack.header == ack.header;
-      });
-      OTHER_ASSERT(itr == pending_acks.end(), "Acknowledgment for message ID {} already pending", ack.header.id);
-    }
-
-    ack.sent_time = std::chrono::steady_clock::now();
-    net_thread_message_bus.send_message(std::move(msg));
-    auto ack_itr = pending_acks.insert(pending_acks.end(), std::move(ack));
-    OTHER_ASSERT(ack_itr != pending_acks.end(), "Failed to insert pending acknowledgment for message ID {}", ack.header.id);
-
-    ack_itr->timer.expires_after(timeout);
-    ack_itr->timer.async_wait([this, stime = ack.sent_time](const asio::error_code& ec) {
-      if (!ec) {
-        auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
-        if (itr == pending_acks.end()) {
-          CORE_LOG_ERROR("Failed to find ack for timeout callback!");
-        }
-
-        CORE_LOG_WARN("Acknowledgment timeout for message {}", itr->header);
-        if (itr->timeout_callback) {
-          itr->timeout_callback(itr->header);
-        }
-      }
-    });
-  }
-
-  void server::begin_other_application(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
-    /// launch other application with command line args specifying the server's current command port, the project configuration
-    ///   and the working directory
-    /// set an event listener for 'session-initial-check-in' to register other-application with the server
-    /// respond to the ping with server data
-
-    static integer_t next_id = 1;
-    integer_t id = next_id++;
-    auto itr = pending_apps.insert(pending_apps.end(), other_application{ .id = id, .working_directory = working_dir, .executable = exe_name, .args = args });
-    OTHER_ASSERT(itr != pending_apps.end(), "Failed to begin Other application : {}  [{}]", id, exe_name.string());
-    CORE_LOG_DEBUG("Starting Other application : {}", id);
-
-    {
-      message msg;
-      msg.header = {
-        .category = REQUEST,
-        .id = SESSION_CHECK_IN,
-      };
-
-      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&id);
-      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
-      send_message_no_acknowledgment(std::move(msg), std::bind_front(&server::on_respond_session_check_in_network_thread, this));
-    }
-
-    itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
-    itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(main_binding_point.port) });
-    launch_detached_process(itr->working_directory, itr->executable, itr->args);
-
-    std::string ping_session_ev_name = "ping-session:[" + std::to_string(itr->id) + "]";
-    // natural_t ping_event_id = register_event(
-  }
-
   void server::core_update() {
     net_context->io_context.poll();
     if (net_context->io_context.stopped()) {
       net_context->io_context.restart();
     }
-    events->poll();
 
     auto msg_opt = net_thread_message_bus.receive_message();
     if (msg_opt.has_value()) {
@@ -247,6 +151,179 @@ namespace other {
       case SDL_EVENT_WINDOW_CLOSE_REQUESTED: on_shutdown_request(); break;
       default: break;
     }
+  }
+
+  void server::send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback) {
+    pending_ack ack{
+      .header = msg.header,
+      .timeout_duration = timeout,
+      .ack_callback = ack_callback,
+      .timeout_callback = timeout_callback,
+      .timer = asio::steady_timer(net_context->io_context),
+    };
+    CORE_LOG_DEBUG("PENDING-ACK {} (timeout: {} us)", ack.header, ack.timeout_duration.count());
+
+    {
+      auto itr = std::find_if(pending_acks.begin(), pending_acks.end(), [&ack](const pending_ack& existing_ack) {
+        return existing_ack.header == ack.header;
+      });
+      OTHER_ASSERT(itr == pending_acks.end(), "Acknowledgment for message ID {} already pending", ack.header);
+    }
+
+    ack.sent_time = std::chrono::steady_clock::now();
+    net_thread_message_bus.send_message(std::move(msg));
+    auto ack_itr = pending_acks.insert(pending_acks.end(), std::move(ack));
+    OTHER_ASSERT(ack_itr != pending_acks.end(), "Failed to insert pending acknowledgment for message ID {}", ack.header.id);
+
+    ack_itr->timer.expires_after(timeout);
+    ack_itr->timer.async_wait([this, stime = ack.sent_time](const asio::error_code& ec) {
+      if (!ec) {
+        auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
+        if (itr == pending_acks.end()) {
+          CORE_LOG_ERROR("Failed to find ack for timeout callback!");
+        }
+
+        CORE_LOG_WARN("Acknowledgment timeout for message {}", itr->header);
+        if (itr->timeout_callback) {
+          itr->timeout_callback(itr->header);
+        }
+      }
+
+      // remove from pending acks
+      auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
+      if (itr != pending_acks.end()) {
+        CORE_LOG_DEBUG("Removing pending acknowledgment for message ID {}", itr->header.id);
+        pending_acks.erase(itr);
+      }
+    });
+  }
+
+  void server::send_message_and_detach_response(message&& msg, pending_response::on_response response_callback) {
+    if (msg.header.category == CONTROL || msg.header.category == COMMAND || msg.header.category == ACKNOWLEDGEMENT) {
+      CORE_LOG_ERROR("Attempting to send message {} which requires acknowledgment without acknowledgment handling", msg.header);
+      return;
+    }
+
+    pending_response response{
+      .header = msg.header,
+      .sent_time = std::chrono::steady_clock::now(),
+      .response_callback = response_callback,
+      .timeout_callback = nullptr,
+      .timer = asio::steady_timer(net_context->io_context),
+    };
+    CORE_LOG_DEBUG("PENDING-RESPONSE {}", response.header);
+
+    {
+      auto itr = std::find_if(pending_responses.begin(), pending_responses.end(), [&response](const pending_response& existing_response) {
+        return existing_response.header == response.header;
+      });
+      OTHER_ASSERT(itr == pending_responses.end(), "Response for message ID {} already pending", response.header.id);
+    }
+
+    net_thread_message_bus.send_message(std::move(msg));
+    auto resp_itr = pending_responses.insert(pending_responses.end(), std::move(response));
+    OTHER_ASSERT(resp_itr != pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
+  }
+
+  void server::send_message_and_wait_response(message&& msg, microseconds timeout, pending_response::on_response response_callback, pending_response::on_timeout timeout_callback) {
+    pending_response response{
+      .header = msg.header,
+      .sent_time = std::chrono::steady_clock::now(),
+      .response_callback = response_callback,
+      .timeout_callback = timeout_callback,
+      .timer = asio::steady_timer(net_context->io_context),
+    };
+    CORE_LOG_DEBUG("PENDING-RESPONSE {} (timeout: {} us)", response.header, timeout.count());
+
+    {
+      auto itr = std::find_if(pending_responses.begin(), pending_responses.end(), [&response](const pending_response& existing_response) {
+        return existing_response.header == response.header;
+      });
+      OTHER_ASSERT(itr == pending_responses.end(), "Response for message ID {} already pending", response.header.id);
+    }
+
+    net_thread_message_bus.send_message(std::move(msg));
+    auto resp_itr = pending_responses.insert(pending_responses.end(), std::move(response));
+    OTHER_ASSERT(resp_itr != pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
+
+    // set up timeout
+    resp_itr->timer.expires_after(timeout);
+    resp_itr->timer.async_wait([this, stime = resp_itr->sent_time](const asio::error_code& ec) {
+      if (ec) {
+        return;
+      }
+
+      auto itr = std::ranges::find_if(pending_responses, [&](const pending_response& resp) { return resp.sent_time == stime; });
+      OTHER_ASSERT(itr != pending_responses.end(), "Failed to find response for timeout callback!");
+      OTHER_ASSERT(itr->timeout_callback != nullptr, "Timeout callback is null for message ID {}", itr->header.id);
+
+      CORE_LOG_WARN("Response timeout for message {}", itr->header);
+      itr->timeout_callback(itr->header);
+
+      pending_responses.erase(itr);
+    });
+  }
+
+  natural_t server::set_timeout(microseconds duration, timeout::on_timeout timeout_callback) {
+    timeout new_timeout{
+      .id = next_timeout_id++,
+      .timer = asio::steady_timer(net_context->io_context),
+    };
+    new_timeout.timer.expires_after(duration);
+    new_timeout.timer.async_wait([this, timeout_id = new_timeout.id, timeout_callback](const asio::error_code& ec) {
+      if (ec) {
+        return;
+      }
+
+      timeout_callback(timeout_id);
+
+      auto itr = std::ranges::find_if(pending_timeouts, [&](const timeout& t) { return t.id == timeout_id; });
+      if (itr != pending_timeouts.end()) {
+        pending_timeouts.erase(itr);
+      }
+    });
+    pending_timeouts.insert(pending_timeouts.end(), std::move(new_timeout));
+
+    return new_timeout.id;
+  }
+
+  void server::clear_timeout(natural_t timeout_id) {
+    auto itr = std::ranges::find_if(pending_timeouts, [&](const timeout& t) { return t.id == timeout_id; });
+    if (itr != pending_timeouts.end()) {
+      itr->timer.cancel();
+      pending_timeouts.erase(itr);
+    }
+  }
+
+  void server::begin_other_application(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
+    /// launch other application with command line args specifying the server's current command port, the project configuration
+    ///   and the working directory
+    /// set an event listener for 'session-initial-check-in' to register other-application with the server
+    /// respond to the ping with server data
+
+    static integer_t next_id = 1;
+    integer_t id = next_id++;
+    auto itr = pending_apps.insert(pending_apps.end(), other_application{ .id = id, .working_directory = working_dir, .executable = exe_name, .args = args });
+    OTHER_ASSERT(itr != pending_apps.end(), "Failed to begin Other application : {}  [{}]", id, exe_name.string());
+    CORE_LOG_DEBUG("Starting Other application : {}", id);
+
+    {
+      message msg;
+      msg.header = {
+        .category = REQUEST,
+        .id = SESSION_CHECK_IN,
+      };
+
+      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&id);
+      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
+      send_message_and_detach_response(std::move(msg), std::bind_front(&server::on_respond_session_check_in_network_thread, this));
+    }
+
+    itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
+    itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(main_binding_point.port) });
+    launch_detached_process(itr->working_directory, itr->executable, itr->args);
+
+    std::string ping_session_ev_name = "ping-session:[" + std::to_string(itr->id) + "]";
   }
 
   void server::process_network_thread_messages(message&& msg) {
@@ -289,21 +366,38 @@ namespace other {
     }
   }
 
+  void server::on_ack_control_ping_network_thread(message_header header, const std::vector<uint8_t>& data) {
+    /// all good
+  }
+
+  void server::on_timeout_control_ping_network_thread(message_header header) {
+    /// handle thread no response case
+    CORE_LOG_WARN("Network thread timed out waiting for PONG response");
+  }
+
   void server::on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data) {
     CORE_LOG_INFO("Network thread acknowledged event request at session check in for session [{}]", header.id);
     state_machine.handle_event(server_event::SERVER_EVENT_READY, this);
 
     /// register event for thread check in
-    natural_t event_id = events->register_event("status-check:[network-thread]", std::chrono::seconds(1), /* recurring = */ true);
+    natural_t event_id = events->register_timed_event("status-check:[network-thread]", seconds(1), /* recurring = */ true);
     if (event_id == 0) {
       CORE_LOG_ERROR("Failed to register event for network thread check-in");
       return;
     }
     events->add_listener(event_id, [this](const value& ec) {
-      CORE_LOG_DEBUG("Network thread check-in event fired, checking for network thread status...");
-    });
+      message msg;
+      msg.header = {
+        .category = CONTROL,
+        .id = PING,
+      };
+      netw_thread_heartbeat_timeout_id = set_timeout(milliseconds(250), [this](natural_t timeout_id) {
+        CORE_LOG_ERROR("Network thread failed to respond to PING within timeout period");
+        /// handle_network_thread_unresponsive();
+      });
 
-    // begin_other_application(std::filesystem::current_path(), "build/development-drivers/Debug/runtime_dev.exe", { "resources/dev-config.toml" });
+      net_thread_message_bus.send_message(std::move(msg));
+    });
   }
 
   void server::on_timeout_session_listen_for_network_thread(message_header header) {
@@ -366,6 +460,17 @@ namespace other {
   void server::on_shutdown_request() {
     state_machine.handle_event(server_event::SERVER_EVENT_STOP, this);
 
+    /// clear all pending acks
+    for (auto& ack : pending_acks) {
+      ack.timer.cancel();
+    }
+    pending_acks.clear();
+
+    for (auto& response : pending_responses) {
+      response.timer.cancel();
+    }
+    pending_responses.clear();
+
     CORE_LOG_DEBUG("Sending shutdown request to network thread...");
     {
       message msg;
@@ -383,30 +488,10 @@ namespace other {
       );
     }
 
-    events->cancel_all();
-
+    events->clear();
     if (!net_context->io_context.stopped()) {
       net_context->io_context.stop();
     }
-
-    // for (auto itr = other_apps.begin(); itr != other_apps.end();) {
-    //   CORE_LOG_DEBUG(" - clearing other application session {}", itr->first);
-    //   itr = other_apps.erase(itr);
-    // }
-    // for (auto itr = pending_apps.begin(); itr != pending_apps.end();) {
-    //   CORE_LOG_DEBUG(" - clearing pending other application session {}", itr->id);
-    //   itr = pending_apps.erase(itr);
-    // }
-
-    // for (auto itr = pending_events.begin(); itr != pending_events.end();) {
-    //   itr->timer.cancel();
-    //   itr = pending_events.erase(itr);
-    // }
-    // for (auto itr = pending_acks.begin(); itr != pending_acks.end();) {
-    //   itr->timer.cancel();
-    //   itr = pending_acks.erase(itr);
-    // }
-    // pending_responses.clear();
   }
 
   void server::handle_notification_session_closed(message&& msg) {
@@ -446,16 +531,16 @@ namespace other {
   }
 
   void server::handle_control_pong(message&& msg) {
-    // CORE_LOG_DEBUG("Received PONG from network thread");
+    size_t cursor = 0;
+    integer_t session = serialization::read_value<integer_t>(msg.data, cursor);
 
-    // switch (state_machine.get_current_state()) {
-    //   case server_state::SERVER_STATE_INITIALIZING:
-    //     state_machine.handle_event(server_event::SERVER_EVENT_THREAD_CHECK_IN, this);
-    //     break;
-    //   default:
-    //     CORE_LOG_WARN("Received PONG in unexpected state {}", static_cast<int>(state_machine.get_current_state()));
-    //     break;
-    // }
+    if (session == 0) {
+      clear_timeout(netw_thread_heartbeat_timeout_id);
+    }
+    /// else handle real session
+    else {
+      /// \todo
+    }
   }
 
   void server::handle_response(message&& msg) {

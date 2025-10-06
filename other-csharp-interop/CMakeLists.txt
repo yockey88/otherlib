@@ -18,6 +18,7 @@ target_sources(OtherCsBindings PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/attribute/interop-binding.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/attribute/native-class.cs
 
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-function.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/logger-binding.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-string.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-array.cs

@@ -92,7 +92,7 @@ namespace other {
     }
   }
 
-  opt<message> thread::receive_message(std::chrono::microseconds timeout) {
+  opt<message> thread::receive_message(microseconds timeout) {
     if (timeout.count() == 0 && rx_channel->empty()) {
       return std::nullopt;
     }

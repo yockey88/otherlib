@@ -62,6 +62,8 @@ namespace OtherCsBindings
       Logger.LogInfo("Initializing Other Environment .NET Host");
 
       AssemblyLoader.LoadCoreAssemblies();
+
+      NativeFunctionManager.DiscoverAndRegisterFunctions();
     }
 
   }

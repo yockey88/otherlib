@@ -134,6 +134,10 @@ namespace other {
     entry_point(args);
   }
 
+  void dotnet_host::rediscover_binding_points() {
+    interop().discover_binding_points();
+  }
+
   assembly_context* dotnet_host::create_assembly_context(const std::string_view name) {
     OTHER_ASSERT(!name.empty(), "Assembly context name cannot be empty.");
     int32_t context_handle = -1;
@@ -261,6 +265,12 @@ namespace other {
     OTHER_ASSERT(interop_functions.get_assembly_name != nullptr, "Failed to load GetAssemblyName function from managed assembly.");
 
     /// NativeFunctionManager
+    interop_functions.discover_binding_points = load_managed_function<discover_binding_points>(native_function_manager_type_str, DNET_STR("RediscoverBindingPoints"));
+    OTHER_ASSERT(interop_functions.discover_binding_points != nullptr, "Failed to load DiscoverBindingPoints function from managed assembly.");
+
+    interop_functions.bind_native_function = load_managed_function<bind_native_function>(native_function_manager_type_str, DNET_STR("BindNativeFunction"));
+    OTHER_ASSERT(interop_functions.bind_native_function != nullptr, "Failed to load BindNativeFunction function from managed assembly.");
+
     interop_functions.register_internal_call = load_managed_function<register_internal_call>(native_function_manager_type_str, DNET_STR("RegisterInternalCall"));
     OTHER_ASSERT(interop_functions.register_internal_call != nullptr, "Failed to load RegisterInternalCall function from managed assembly.");
 
@@ -402,6 +412,7 @@ namespace other {
 
   void dotnet_host::bind_native_functions() {
     {
+      /// logging has to happen first
       native_scoped_string function_name = native_string::new_str("OtherCsBindings.Logger+NativeLogMessage, OtherCsBindings");
       interop_functions.register_internal_call(function_name, (void*)&bindings::native_log_message);
     }

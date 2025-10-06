@@ -8,6 +8,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "core/defines.hpp"
 #include "core/state_machine.hpp"
 #include "event/event_system.hpp"
 #include "thread/message_bus.hpp"
@@ -109,7 +110,7 @@ namespace other {
       using on_timeout = std::function<void(message_header)>;
 
       message_header header;
-      std::chrono::microseconds timeout_duration = std::chrono::microseconds(0);
+      microseconds timeout_duration = microseconds(0);
       std::chrono::time_point<std::chrono::steady_clock> sent_time;
 
       on_ack ack_callback = nullptr;
@@ -122,29 +123,35 @@ namespace other {
       }
     };
     std::deque<pending_ack> pending_acks;
-    std::queue<std::chrono::time_point<std::chrono::steady_clock>> ack_removal_queue;
 
     struct pending_response {
       using on_response = std::function<void(message_header, const std::vector<uint8_t>&)>;
+      using on_timeout = std::function<void(message_header)>;
 
       message_header header;
       std::chrono::time_point<std::chrono::steady_clock> sent_time;
 
       on_response response_callback = nullptr;
+      on_timeout timeout_callback = nullptr;
+
+      asio::steady_timer timer;
 
       constexpr auto operator<=>(const pending_response& other) const {
         return header <=> other.header;
       }
     };
     std::deque<pending_response> pending_responses;
-    std::queue<std::chrono::time_point<std::chrono::steady_clock>> response_removal_queue;
+
+    struct timeout {
+      using on_timeout = std::function<void(natural_t)>;
+
+      natural_t id = 0;
+      asio::steady_timer timer;
+    };
+    natural_t next_timeout_id = 1;
+    std::deque<timeout> pending_timeouts;
 
     filepath get_project_cache();
-
-    void send_message_no_acknowledgment(message&& msg, pending_response::on_response response_callback);
-    void send_message_and_wait_acknowledgment(message&& msg, std::chrono::microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback);
-
-    void begin_other_application(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
     json::json project_cache;
 
@@ -152,6 +159,7 @@ namespace other {
     scene active_scene;
 
     scope<event_system> events = nullptr;
+    natural_t netw_thread_heartbeat_timeout_id = 0;
 
     message_bus net_thread_message_bus;
     scope<network_thread> net_thread = nullptr;
@@ -169,7 +177,20 @@ namespace other {
 
     void on_event(SDL_Event* event) override;
 
+    void send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback);
+
+    void send_message_and_detach_response(message&& msg, pending_response::on_response response_callback);
+    void send_message_and_wait_response(message&& msg, microseconds timeout, pending_response::on_response response_callback, pending_response::on_timeout timeout_callback);
+
+    natural_t set_timeout(microseconds duration, timeout::on_timeout timeout_callback);
+    void clear_timeout(natural_t timeout_id);
+
+    void begin_other_application(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
+
     void process_network_thread_messages(message&& msg);
+
+    void on_ack_control_ping_network_thread(message_header header, const std::vector<uint8_t>& data);
+    void on_timeout_control_ping_network_thread(message_header header);
 
     void on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data);
     void on_timeout_session_listen_for_network_thread(message_header header);

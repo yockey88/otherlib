@@ -8,6 +8,7 @@
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
+#include "core/defines.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 #include "core/version.hpp"
@@ -15,6 +16,8 @@
 
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
+
+#include "scripting/dotnet_bindings.hpp"
 
 #include "spdlog/common.h"
 
@@ -135,7 +138,19 @@ namespace other {
     env->dotnet_binding_assembly = env->load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
   }
 
+  native_string native_get_app_data_folder(native_string app_name_str, int32_t create_flag) {
+    std::string app_name = app_name_str;
+    filepath app_data_folder = get_app_data_folder(app_name, create_flag != 0);
+    return native_string::new_str(app_data_folder.string());
+  }
+
   void bind_environment_scripts() {
+    auto* env = subsystem<scripting_environment>::get();
+    /// dotnet binding
+    /// we've already loaded OtherCs, so now we bind core functionality, start with the platform directory
+    /// functions
+    dotnet_host& dn_host = env->get_dotnet_host();
+    bind_otherlib_dotnet_functions(dn_host);
   }
 
   void cleanup_scripting_environment() {
