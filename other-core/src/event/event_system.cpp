@@ -29,7 +29,6 @@ namespace other {
       return ctx.ev.id == event_id;
     });
     if (itr == registered_events.end()) {
-      CORE_LOG_ERROR("Attempted to trigger unregistered event ID {}", event_id);
       return;
     }
 
@@ -84,7 +83,17 @@ namespace other {
       ///  usually will occur if clear is called before the events are fully purged
       return;
     }
+    itr->listeners.clear();
+    itr->ev.data = value{};
     registered_events.erase(itr);
+
+    auto timer_itr = std::find_if(event_timers.begin(), event_timers.end(), [event_id](const event_timer& et) {
+      return et.event_id == event_id;
+    });
+    if (timer_itr != event_timers.end()) {
+      timer_itr->timer.cancel();
+      event_timers.erase(timer_itr);
+    }
 
     CORE_LOG_INFO("Cancelled event with ID {}", event_id);
   }
@@ -141,6 +150,11 @@ namespace other {
         trigger_event(event_id);
 
         auto event_itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) { return ctx.ev.id == event_id; });
+        if (event_itr == registered_events.end()) {
+          /// this can happen if the event was cancelled in between the timer being set and the callback being invoked
+          return;
+        }
+
         if (event_itr->ev.recurring) {
           post_event_callback(event_id, event_itr->ev.duration);
         } else {

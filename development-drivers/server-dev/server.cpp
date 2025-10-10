@@ -3,15 +3,21 @@
  **/
 #include "server.hpp"
 
+#include <coroutine>
 #include <filesystem>
 
+#include "core/coroutine.hpp"
 #include "core/defines.hpp"
 #include "serialization/serialization.hpp"
 #include "thread/message.hpp"
 
 #include "renderer/ui/ui_helpers.hpp"
+#include "script/scripting_environment.hpp"
 
+#include "driver/driver.hpp"
 #include "rendering-pipelines/empty_pipeline.hpp"
+
+#include "tools/build_tool.hpp"
 
 namespace other {
 
@@ -29,6 +35,34 @@ namespace other {
 
     /// create event system
     events = make_scope<event_system>(net_context->io_context);
+    events->register_event("open-project");
+    events->add_listener("open-project", [this](const value& data) {
+      /// \todo open project
+      CORE_LOG_DEBUG("Received request to open project");
+      std::string name = data;
+
+      filepath project_path;
+      filepath working_dir;
+
+      auto projects = project_cache["projects"];
+      json::json project_entry;
+      for (const auto& p : projects.items()) {
+        if (p.value().contains("name") && p.value()["name"].get<std::string>() == name) {
+          project_entry = p.value();
+          break;
+        }
+      }
+
+      if (project_entry.is_null()) {
+        CORE_LOG_ERROR("Project '{}' not found in project cache", name);
+        return;
+      }
+
+      std::string file = project_entry.contains("project-file") ? project_entry["project-file"].get<std::string>() : "";
+
+      CORE_LOG_DEBUG("Opening project '{}' at path '{}' with working directory '{}'", name, file, project_entry.at("working-directory").get<std::string>());
+      validate_project_and_launch(project_entry);
+    });
 
     /// launch threads
     ///  - networking thread
@@ -295,17 +329,108 @@ namespace other {
     }
   }
 
-  void server::begin_other_application(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
+  void server::validate_project_and_launch(const json::json& project_entry) {
+    std::string name = project_entry.at("name").get<std::string>();
+
+    json::json launch_info = project_entry.at("build");
+    std::string type = launch_info.at("type").get<std::string>();
+
+    enum class launch_type {
+      OTHER_APPLICATION_EXE,
+      UNKNOWN,
+    };
+
+    launch_type ltype = launch_type::UNKNOWN;
+    if (type == "other-application") {
+      ltype = launch_type::OTHER_APPLICATION_EXE;
+    } else {
+      CORE_LOG_ERROR("Unknown launch type '{}' for project '{}'", type, name);
+      return;
+    }
+
+    switch (ltype) {
+      case launch_type::OTHER_APPLICATION_EXE: {
+        begin_other_application(project_entry);
+      } break;
+
+      case launch_type::UNKNOWN:
+      default:
+        CORE_LOG_ERROR("Unhandled launch type for project '{}'", name);
+        break;
+    }
+  }
+
+  task test_coroutine() {
+    for (uint32_t i = 0; i < 3; ++i) {
+      std::println("Coroutine tick {}", i);
+      co_await std::suspend_always{};
+    }
+    co_return;
+  }
+
+  std::string replace_all_substrings_with(std::string str, const std::string& from, const std::string& to) {
+    size_t start_pos = 0;
+    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+      str.replace(start_pos, from.length(), to);
+      start_pos += to.length();  // Move past the replaced substring to avoid infinite loops if 'to' contains 'from'
+    }
+    return str;
+  }
+
+  void server::begin_other_application(const json::json& project_entry) {
     /// launch other application with command line args specifying the server's current command port, the project configuration
     ///   and the working directory
     /// set an event listener for 'session-initial-check-in' to register other-application with the server
     /// respond to the ping with server data
+
+#if 0
+  #define TESTING_COROS
+#endif
+    // post_coroutine(validate_and_build_other_application("OtherApp", working_dir, exe_name));
+#ifdef TESTING_COROS
+#else
+
+    std::string name = project_entry.at("name").get<std::string>();
+    filepath project_file = filepath(project_entry.at("project-file").get<std::string>());
+    filepath working_dir = project_entry.at("working-directory").get<std::string>();
+    json::json build_info = project_entry.at("build");
+
+    opt<filepath> output_file = build_info.contains("output-file") ? filepath(build_info.at("output-file").get<std::string>()) : opt<filepath>{};
+    filepath exe_name = build_info.contains("executable") ? filepath(build_info.at("executable").get<std::string>()) : filepath("OtherApp.exe");
+    std::vector<std::string> args = build_info.contains("args") ? build_info.at("args").get<std::vector<std::string> >() : std::vector<std::string>{};
 
     static integer_t next_id = 1;
     integer_t id = next_id++;
     auto itr = pending_apps.insert(pending_apps.end(), other_application{ .id = id, .working_directory = working_dir, .executable = exe_name, .args = args });
     OTHER_ASSERT(itr != pending_apps.end(), "Failed to begin Other application : {}  [{}]", id, exe_name.string());
     CORE_LOG_DEBUG("Starting Other application : {}", id);
+
+    itr->executable = replace_all_substrings_with(itr->executable.string(), "${configuration}", "Debug");
+    CORE_LOG_DEBUG("Launching Other application executable '{}' @ [{}]:", itr->executable.string(), working_dir.string());
+    for (const auto& arg : itr->args) {
+      CORE_LOG_DEBUG("   - {}", arg);
+    }
+
+    /// \todo: build the project and validate it is correct first
+    // project_description proj_desc = {
+    //   .project_type = project_description::APPLICATION,
+    //   .name = name,
+    //   .working_directory = working_dir,
+    //   .output_directory = output_file.has_value() ? output_file->parent_path() : working_dir / filepath("build"),
+    //   .exe_name = output_file.has_value() ? *output_file : working_dir / filepath("build") / exe_name,
+    //   .configurations = { "Debug", "Release" },
+    //   .active_configuration = 0,
+    //   .cmd_args = args,
+    //   .version = "0.1.0",
+    //   .description = "An Other application.",
+    //   .author = "Author Name",
+    //   .license = "MIT",
+    // };
+    // if (project_entry.contains("project-file")) {
+    //   proj_desc.override_file_name = project_entry.at("project-file").get<std::string>();
+    // }
+    // build_tool bt;
+    // bt.start_build(proj_desc);
 
     {
       message msg;
@@ -319,11 +444,31 @@ namespace other {
       send_message_and_detach_response(std::move(msg), std::bind_front(&server::on_respond_session_check_in_network_thread, this));
     }
 
+    itr->args.insert(itr->args.begin(), project_file.string());
     itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
     itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(main_binding_point.port) });
     launch_detached_process(itr->working_directory, itr->executable, itr->args);
 
     std::string ping_session_ev_name = "ping-session:[" + std::to_string(itr->id) + "]";
+    events->register_timed_event(ping_session_ev_name, seconds(10), true);
+    events->add_listener(ping_session_ev_name, [this, session_id = itr->id](const value& ec) {
+      CORE_LOG_DEBUG("Pinging session [{}] to check connectivity", session_id);
+      message msg;
+      msg.header = {
+        .category = CONTROL,
+        .id = PING,
+      };
+      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
+
+      send_message_and_wait_acknowledgment(
+        std::move(msg), seconds(1),
+        std::bind_front(&server::on_ack_control_ping_network_thread, this),
+        std::bind_front(&server::on_timeout_control_ping_network_thread, this)
+      );
+    });
+
+#endif
   }
 
   void server::process_network_thread_messages(message&& msg) {
@@ -367,12 +512,12 @@ namespace other {
   }
 
   void server::on_ack_control_ping_network_thread(message_header header, const std::vector<uint8_t>& data) {
-    /// all good
+    // all good
   }
 
   void server::on_timeout_control_ping_network_thread(message_header header) {
-    /// handle thread no response case
     CORE_LOG_WARN("Network thread timed out waiting for PONG response");
+    /// handle_network_thread_unresponsive();
   }
 
   void server::on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data) {
@@ -502,6 +647,11 @@ namespace other {
     auto app_itr = other_apps.find(session_id);
     if (app_itr != other_apps.end()) {
       CORE_LOG_INFO("Other application [{}] has disconnected", app_itr->second.executable.string());
+
+      /// cancel event
+      std::string ping_session_ev_name = "ping-session:[" + std::to_string(session_id) + "]";
+      events->cancel_event(ping_session_ev_name);
+
       app_itr->second.connected = false;
     } else {
       CORE_LOG_WARN("Received session closed notification for unknown other application with session ID {}", session_id);
@@ -557,6 +707,26 @@ namespace other {
     } else {
       CORE_LOG_ERROR("Received response for unknown message {}", msg.header);
     }
+  }
+
+  task server::validate_and_build_other_application(const std::string& name, const filepath& folder, const filepath& env_config_path) {
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
+
+    integer_t builder_obj_id = env->create_object("Builder");
+    OTHER_ASSERT(builder_obj_id != -1, "Failed to create Builder object in scripting environment");
+
+    env->attach_dotnet_object(builder_obj_id, "Other.BuildTool");
+    // co_await task::awaiter{};
+
+    CORE_LOG_DEBUG("Validating and building Other application '{}' in folder '{}'", name, folder.string());
+    script_object* builder_obj = env->get_object(builder_obj_id);
+    OTHER_ASSERT(builder_obj != nullptr, "Failed to retrieve Builder object from scripting environment");
+
+    builder_obj->dotnet_object->invoke("ValidateAndBuildOtherApplication");  //, name, folder.string(), env_config_path.string());
+
+    env->destroy_object(builder_obj_id);
+    co_return;
   }
 
 }  // namespace other

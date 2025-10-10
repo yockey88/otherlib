@@ -27,6 +27,21 @@ namespace other {
     template <typename U>
     constexpr arena_allocator(const arena_allocator<U>&) noexcept {}
 
+    void* allocate_bytes(size_t size) {
+      if (override_arena != nullptr) {
+        return override_arena->allocate(size);
+      } else {
+        return arena::allocate(size);
+      }
+    }
+    void free_bytes(void* ptr, size_t size) {
+      if (override_arena != nullptr) {
+        override_arena->free(ptr, size);
+      } else {
+        arena::free(ptr, size);
+      }
+    }
+
     template <typename... Args>
     T* allocate(Args&&... args) {
       /// TODO: custom alignment

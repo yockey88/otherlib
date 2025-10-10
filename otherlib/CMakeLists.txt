@@ -13,6 +13,8 @@ target_sources(otherlib
 
         src/scripting/dotnet_bindings.cpp
 
+        src/tools/build_tool.cpp
+
         src/other.cpp
 )
 

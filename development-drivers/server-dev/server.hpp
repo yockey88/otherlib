@@ -185,7 +185,8 @@ namespace other {
     natural_t set_timeout(microseconds duration, timeout::on_timeout timeout_callback);
     void clear_timeout(natural_t timeout_id);
 
-    void begin_other_application(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
+    void validate_project_and_launch(const json::json& project_entry);
+    void begin_other_application(const json::json& project_entry);
 
     void process_network_thread_messages(message&& msg);
 
@@ -207,6 +208,8 @@ namespace other {
     // void handle_control_ping(message&& msg);
     void handle_control_pong(message&& msg);
     void handle_response(message&& msg);
+
+    task validate_and_build_other_application(const std::string& name, const filepath& folder, const filepath& env_config_path);
   };
 
 }  // namespace other

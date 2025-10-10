@@ -13,6 +13,7 @@
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
 #include "core/scope.hpp"
+#include "event/event_system.hpp"
 
 #include "renderer/ui/ui_helpers.hpp"
 
@@ -56,6 +57,8 @@ namespace other {
 
     virtual void render_node() {}
     virtual void override_child_rendering() {}
+
+    event_system& events();
 
     void set_overriding_child_rendering(bool override) { state.override_child_rendering = override; }
 

@@ -14,5 +14,15 @@ namespace Other.Core
     {
       OtherCsBindings.Logger.Log(message, level, memberName, lineNumber);
     }
+
+    public static void LogWarning(string message, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
+    {
+      OtherCsBindings.Logger.LogWarning(message, memberName, lineNumber);
+    }
+
+    public static void LogError(string message, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
+    {
+      OtherCsBindings.Logger.LogError(message, memberName, lineNumber);
+    }
   }
 }

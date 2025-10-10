@@ -34,10 +34,10 @@ namespace other {
 
   namespace detail {
 
-    project_description parse_project_description(const std::span<const uint8_t> buffer) {
-      project_description proj = *reinterpret_cast<const project_description*>(buffer.data());
-      return proj;
-    }
+    // project_description parse_project_description(const std::span<const uint8_t> buffer) {
+    //   project_description proj = *reinterpret_cast<const project_description*>(buffer.data());
+    //   return proj;
+    // }
 
     std::vector<uint8_t> read_file(const std::string_view filepath) {
       std::ifstream file(std::string{ filepath }, std::ios::binary);
@@ -63,42 +63,50 @@ namespace other {
   void runtime::on_initialize(const command_line& cmd) {
     CORE_LOG_DEBUG("Runtime...");
 
-    scene_object& obj = active_scene.create_object("Runtime-Test-Object");
-    script_component* comp = active_scene.get_component<script_component>(&obj);
-    OTHER_ASSERT(comp != nullptr, "Failed to create script component on test object");
+    // scene_object& obj = active_scene.create_object("Runtime-Test-Object");
+    // script_component* comp = active_scene.get_component<script_component>(&obj);
+    // OTHER_ASSERT(comp != nullptr, "Failed to create script component on test object");
+
+    // auto* env = subsystem<scripting_environment>::get();
+    // OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
+
+    // env->attach_dotnet_object(comp->script_object_id, "TestObject");
+
+    // script_object* script_obj = env->get_object(comp->script_object_id);
+    // OTHER_ASSERT(script_obj != nullptr, "Failed to retrieve script object from scripting environment");
+
+    // script_obj->dotnet_object->invoke("DisplayInfo");
+
+    integer_t session_id = cmd.session_id.value_or(-1);
+    uint16_t port = cmd.port.value_or(49222);
+
+    net_thread = make_scope<network_thread>(net_thread_message_bus);
+    net_thread->launch();
+    net_thread_message_bus.register_thread();
+
+    if (session_id == -1) {
+      CORE_LOG_WARN("No session ID provided to runtime");
+    } else {
+      message msg;
+      msg.header = {
+        .category = COMMAND,
+        .id = SESSION_CHECK_IN,
+      };
+
+      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+      const uint8_t* port_bytes = reinterpret_cast<const uint8_t*>(&port);
+      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
+      msg.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
+      net_thread_message_bus.send_message(std::move(msg));
+    }
 
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
 
-    env->attach_dotnet_object(comp->script_object_id, "TestObject");
+    builder_obj_id = env->create_object("Builder");
+    OTHER_ASSERT(builder_obj_id != -1, "Failed to create Builder object in scripting environment");
 
-    script_object* script_obj = env->get_object(comp->script_object_id);
-    OTHER_ASSERT(script_obj != nullptr, "Failed to retrieve script object from scripting environment");
-
-    script_obj->dotnet_object->invoke("DisplayInfo");
-
-    // integer_t session_id = cmd.session_id.value_or(-1);
-    // uint16_t port = cmd.port.value_or(49222);
-
-    // net_thread = make_scope<network_thread>(net_thread_message_bus);
-    // net_thread->launch();
-    // net_thread_message_bus.register_thread();
-
-    // if (session_id == -1) {
-    //   CORE_LOG_WARN("No session ID provided to runtime");
-    // } else {
-    //   message msg;
-    //   msg.header = {
-    //     .category = COMMAND,
-    //     .id = SESSION_CHECK_IN,
-    //   };
-
-    //   const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
-    //   const uint8_t* port_bytes = reinterpret_cast<const uint8_t*>(&port);
-    //   msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
-    //   msg.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
-    //   net_thread_message_bus.send_message(std::move(msg));
-    // }
+    env->attach_dotnet_object(builder_obj_id, "Other.BuildTool");
 
     // std::vector<uint8_t> buffer = detail::read_file("resources/dev-project1.other");
     // std::println("Read {} bytes from project file", buffer.size());
@@ -125,26 +133,32 @@ namespace other {
   }
 
   void runtime::run() {
-    // do {
-    //   pump_events();
-    //   // update();
-    //   // draw();
-    // } while (running);
+    do {
+      pump_events();
+      // update();
+      // draw();
+    } while (running);
   }
 
   void runtime::on_shutdown() {
+    CORE_LOG_DEBUG("Shutting down runtime...");
+    auto* env = subsystem<scripting_environment>::get();
+    if (env && builder_obj_id != -1) {
+      env->destroy_object(builder_obj_id);
+      builder_obj_id = -1;
+    }
+
     running = false;
     project_scene_graph = nullptr;
 
-    // net_thread->shutdown();
-    // net_thread = nullptr;
+    net_thread->shutdown();
+    net_thread = nullptr;
   }
 
   void runtime::catch_signal(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
       CORE_LOG_INFO("Received signal {}, shutting down runtime...", signal);
       running = false;
-      // net_context->io_context.stop();
     } else {
       CORE_LOG_WARN("Received unhandled signal {}", signal);
     }

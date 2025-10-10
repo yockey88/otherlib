@@ -143,6 +143,8 @@ namespace other {
       subsystem<renderer_backend>::get()->handle_event(&event);
       on_event(&event);
     }
+
+    poll_coroutines();
   }
 
   scope<renderer> driver::get_renderer() const {
@@ -227,6 +229,23 @@ namespace other {
 #else
   #error "UNIMPLEMENTED PLATFORM
 #endif
+  }
+
+  void driver::add_live_coroutine(task handle) {
+    live_coroutines.push_back({ handle });
+  }
+
+  void driver::poll_coroutines() {
+    for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
+      it->handle();
+      if (it->handle.coro_handle.done()) {
+        std::println("Cleaning up finished coroutine, remaining live coroutines: {}", live_coroutines.size() - 1);
+        it->handle.coro_handle.destroy();
+        it = live_coroutines.erase(it);
+      } else {
+        ++it;
+      }
+    }
   }
 
 }  // namespace other

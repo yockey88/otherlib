@@ -296,7 +296,7 @@ namespace OtherCsBindings
         }
 
         var type = obj.GetType();
-        var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var field = type.GetField(name!, BindingFlags.Public | BindingFlags.Instance);
         if (field == null)
         {
           throw new MissingMemberException($"Field '{name}' not found in type '{type.FullName}'.");
@@ -307,6 +307,7 @@ namespace OtherCsBindings
       }
       catch (Exception e)
       {
+        Logger.LogError($"Error occurred while getting field '{name}' from target object: {e.Message}");
         Host.HandleException(e);
       }
     }

@@ -24,11 +24,11 @@ namespace other {
   TEST_F(value_test, constructor_with_uint64) {
     value uint_val(kTestUint64);
 
-    // ASSERT_FALSE(uint_val.is_empty());
+    ASSERT_FALSE(uint_val.is_empty());
     ASSERT_EQ(uint_val.size(), sizeof(uint64_t));
-    // ASSERT_EQ(uint_val.type(), value_type::UINT64);
+    ASSERT_EQ(uint_val.type(), value_type::UINT64);
 
-    // ASSERT_EQ(static_cast<uint64_t>(uint_val), kTestUint64);
+    ASSERT_EQ(static_cast<uint64_t>(uint_val), kTestUint64);
   }
 
   TEST_F(value_test, constructor_with_float) {
@@ -41,37 +41,39 @@ namespace other {
     ASSERT_EQ(static_cast<real_t>(float_val), kTestFloat);
   }
 
-  // TEST_F(value_test, constructor_with_double) {
-  //   value double_val(kTestDouble);
-  //   ASSERT_FALSE(double_val.is_empty());
-  //   ASSERT_EQ(double_val.size(), sizeof(double));
-  //   ASSERT_EQ(double_val.type(), value_type::DOUBLE);
-  //   assert_value_equals(double_val, kTestDouble);
-  // }
+  TEST_F(value_test, constructor_with_double) {
+    value double_val(kTestDouble);
+    ASSERT_FALSE(double_val.is_empty());
+    ASSERT_EQ(double_val.size(), sizeof(double));
+    ASSERT_EQ(double_val.type(), value_type::DOUBLE);
+    ASSERT_EQ(static_cast<double>(double_val), kTestDouble);
+  }
 
-  // TEST_F(value_test, constructor_with_bool) {
-  //   value bool_val(kTestBool);
-  //   ASSERT_FALSE(bool_val.is_empty());
-  //   ASSERT_EQ(bool_val.size(), sizeof(bool));
-  //   ASSERT_EQ(bool_val.type(), value_type::OEBOOL);
-  //   assert_value_equals(bool_val, kTestBool);
-  // }
+  TEST_F(value_test, constructor_with_bool) {
+    value bool_val(kTestBool);
+    ASSERT_FALSE(bool_val.is_empty());
+    ASSERT_EQ(bool_val.size(), sizeof(bool));
+    ASSERT_EQ(bool_val.type(), value_type::OEBOOL);
+    ASSERT_EQ(static_cast<bool>(bool_val), kTestBool);
+  }
 
-  // TEST_F(value_test, constructor_with_char) {
-  //   value char_val(kTestChar);
-  //   ASSERT_FALSE(char_val.is_empty());
-  //   ASSERT_EQ(char_val.size(), sizeof(char));
-  //   ASSERT_EQ(char_val.type(), value_type::CHAR);
-  //   assert_value_equals(char_val, kTestChar);
-  // }
+  TEST_F(value_test, constructor_with_char) {
+    value char_val(kTestChar);
+    ASSERT_FALSE(char_val.is_empty());
+    ASSERT_EQ(char_val.size(), sizeof(char));
+    ASSERT_EQ(char_val.type(), value_type::CHAR);
+    ASSERT_EQ(static_cast<char>(char_val), kTestChar);
+  }
 
-  // TEST_F(value_test, constructor_with_string) {
-  //   value string_val(kTestString);
-  //   ASSERT_FALSE(string_val.is_empty());
-  //   ASSERT_EQ(string_val.size(), kTestString.size());
-  //   ASSERT_EQ(string_val.type(), value_type::STRING);
-  //   assert_value_equals(string_val, kTestString);
-  // }
+  TEST_F(value_test, constructor_with_string) {
+    value string_val(kTestString);
+    ASSERT_FALSE(string_val.is_empty());
+    ASSERT_EQ(string_val.size(), kTestString.size());
+    ASSERT_EQ(string_val.type(), value_type::STRING);
+
+    std::string str = string_val;
+    ASSERT_EQ(str, kTestString);
+  }
 
   // TEST_F(value_test, move_constructor) {
   //   value original_val(kTestInt32);

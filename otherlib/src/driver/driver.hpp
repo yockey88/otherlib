@@ -7,9 +7,9 @@
 #include <asio/asio.hpp>
 #include <asio/asio/signal_set.hpp>
 
-#include "core/arena_allocator.hpp"
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
+#include "core/coroutine.hpp"
 #include "core/defines.hpp"
 
 #include "dotnet/dotnet_assembly.hpp"
@@ -77,6 +77,11 @@ namespace other {
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
+    void post_coroutine(task coro) {
+      add_live_coroutine(std::move(coro));
+      std::println("Posted new coroutine, total live coroutines: {}", live_coroutines.size());
+    }
+
     template <typename T>
       requires requires(T t) { T{}; }
     decltype(auto) get_config_value(const std::string_view section, const std::string_view key, T default_value = {}) {
@@ -129,6 +134,14 @@ namespace other {
     config_table config;
 
     std::vector<ref<assembly>> loaded_dotnet_modules;
+
+    struct live_coroutine {
+      task handle;
+    };
+    std::vector<live_coroutine> live_coroutines;
+
+    void add_live_coroutine(task handle);
+    void poll_coroutines();
 
     template <typename T>
     T get_value_from_node(const toml::node& node, const T& default_value) const {

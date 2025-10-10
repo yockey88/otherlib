@@ -79,6 +79,8 @@ namespace other {
 
     register_log_sinks(config);
     CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
+    CORE_LOG_DEBUG("Environment Config File: {}", cmd.config_file);
+    CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
 
     config.diagnostics.verbose = cmd.diagnostics.verbose;
     const bool rendering_enabled = config.rendering_backend.has_value() && !config.rendering_backend->empty();

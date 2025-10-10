@@ -1,0 +1,6 @@
+[application]
+core-log-level = "info"
+
+[rendering]
+rendering-backend = "opengl"
+window-size = { width = 1920, height = 1080 }

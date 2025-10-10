@@ -31,6 +31,8 @@ target_sources(OtherCs PRIVATE
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/other-object.cs
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/project-builder.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/project-configuration.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/other-tool.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/build-tool/build-tool.cs
 )
 target_link_libraries(OtherCs PUBLIC OtherCsBindings)

@@ -7,7 +7,9 @@
 #include <concepts>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 
+#include "serialization/reflection.hpp"
 
 namespace other {
 
@@ -76,6 +78,7 @@ namespace other {
     }
 
     template <typename A, size_t I>
+      requires(!is_stringlike_type<std::remove_cvref_t<A>>)
     inline void add_to_array_at_index(const void** args_arr, managed_type* param_types, A&& in_arg) {
       param_types[I] = get_managed_type<A>();
       if constexpr (std::is_pointer_v<std::remove_reference_t<A>>) {

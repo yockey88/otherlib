@@ -13,7 +13,6 @@
 
 #include "arena_allocator.hpp"
 
-
 namespace other {
 
   class value_storage : public ref_counted {
@@ -30,9 +29,24 @@ namespace other {
     const T* unchecked_ptr_unwrap() const { return reinterpret_cast<const T*>(data()); }
 
     template <typename T>
+      requires(!std::is_same_v<T, std::string> && !std::is_same_v<T, std::string_view>)
     T& unchecked_unwrap() { return *unchecked_ptr_unwrap<T>(); }
     template <typename T>
+      requires(!std::is_same_v<T, std::string> && !std::is_same_v<T, std::string_view>)
     const T& unchecked_unwrap() const { return *unchecked_ptr_unwrap<const T>(); }
+
+    template <typename T>
+      requires(std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
+    std::string unchecked_unwrap() { return unchecked_string_unwrap(); }
+    template <typename T>
+      requires(std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
+    std::string unchecked_unwrap() const { return unchecked_string_unwrap(); }
+
+    std::string unchecked_string_unwrap() const {
+      const char* str_data = reinterpret_cast<const char*>(memory());
+      OTHER_ASSERT(str_data != nullptr, "String data pointer is null!");
+      return std::string(str_data, size());
+    }
 
    protected:
     friend class value;
@@ -41,6 +55,7 @@ namespace other {
 
     virtual void* data() = 0;
     virtual const void* data() const = 0;
+    virtual const void* memory() const = 0;
     virtual void set_data(void* data) = 0;
   };
 
@@ -57,6 +72,7 @@ namespace other {
       type_size = sizeof(void*);
 
       object = opaque_data;
+      raw_data = opaque_data;
 
       if (object == nullptr) {
         // OE_ASSERT(data != nullptr, "Opaque data pointer is null!");
@@ -64,70 +80,95 @@ namespace other {
     }
 
     value_storage_impl(const T& value) {
-      object = allocator.allocate(value);
-
       if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
+        raw_data = allocator.allocate_bytes(value.size());
+        std::memcpy(raw_data, value.data(), value.size());
         type_size = value.size();
       } else {
+        object = allocator.allocate(value);
         type_size = sizeof(T);
       }
     }
-    value_storage_impl(T&& value) {
-      object = allocator.allocate(std::move(value));
 
+    value_storage_impl(T&& value) {
       if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
+        raw_data = allocator.allocate_bytes(value.size());
+        std::memcpy(raw_data, value.data(), value.size());
         type_size = value.size();
       } else {
+        object = allocator.allocate(std::move(value));
         type_size = sizeof(T);
       }
     }
 
     value_storage_impl(T* value_ptr) {
       OTHER_ASSERT(value_ptr != nullptr, "Value pointer is null!");
-      object = allocator.allocate(*value_ptr);
 
       if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
+        raw_data = allocator.allocate_bytes(value_ptr->size());
+        std::memcpy(raw_data, value_ptr->data(), value_ptr->size());
         type_size = value_ptr->size();
       } else {
+        object = allocator.allocate(*value_ptr);
         type_size = sizeof(T);
       }
     }
 
     ~value_storage_impl() {
       if (val_type() != value_type::OPAQUE_HANDLE) {
-        allocator.free(object);
+        if (val_type() == value_type::STRING) {
+          allocator.free_bytes(raw_data, type_size);
+        } else {
+          allocator.free(object);
+        }
       }
+      raw_data = nullptr;
       object = nullptr;
       type_size = 0;
     }
 
     value_storage_impl(value_storage_impl&& other) = delete;
-    value_storage_impl(const value_storage_impl& other) {
-      object = other.data();
-      type_size = other.size();
-    }
+    value_storage_impl(const value_storage_impl& other) = delete;
     value_storage_impl& operator=(value_storage_impl&& other) = delete;
-    value_storage_impl& operator=(const value_storage_impl& other) {
-      object = other.data();
-      type_size = other.size();
-      return *this;
-    }
+    value_storage_impl& operator=(const value_storage_impl& other) = delete;
 
    private:
-    void* data() override { return this->object; }
-    const void* data() const override { return this->object; }
+    void* data() override {
+      if (val_type() == value_type::STRING) {
+        return raw_data;
+      }
+      return this->object;
+    }
+    const void* data() const override {
+      if (val_type() == value_type::STRING) {
+        return raw_data;
+      }
+      return this->object;
+    }
+    const void* memory() const override {
+      return raw_data;
+    }
 
     void set_data(void* data) override {
       if (val_type() != value_type::OPAQUE_HANDLE) {
         if (T* old_object = object; old_object != nullptr) {
           allocator.free(old_object);
         }
+      } else if (val_type() == value_type::STRING) {
+        if (raw_data != nullptr) {
+          allocator.free_bytes(raw_data, type_size);
+        }
       }
 
       if (data == nullptr) {
         object = nullptr;
       } else {
-        object = static_cast<T*>(data);
+        if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>) {
+          raw_data = data;
+          type_size = std::strlen(reinterpret_cast<const char*>(data));
+        } else {
+          object = static_cast<T*>(data);
+        }
       }
     }
 
@@ -142,6 +183,9 @@ namespace other {
 
     arena_allocator<T> allocator;
 
+    /// used only for string types and opaque handles,
+    ///   SHOULD BE TREATED WITH CARE !
+    void* raw_data = nullptr;
     T* object = nullptr;
     size_t type_size = 0;
   };
@@ -205,10 +249,26 @@ namespace other {
       return storage->unchecked_unwrap<T>();
     }
 
+    template <>
+    std::string& unwrap_as<std::string>() {
+      check<std::string>();
+      static thread_local std::string temp_string;
+      temp_string = storage->unchecked_string_unwrap();
+      return temp_string;
+    }
+
     template <typename T>
     const T& unwrap_as() const {
       check<T>();
       return storage->unchecked_unwrap<const T>();
+    }
+
+    template <>
+    const std::string& unwrap_as<std::string>() const {
+      check<std::string>();
+      static thread_local std::string temp_string;
+      temp_string = storage->unchecked_string_unwrap();
+      return temp_string;
     }
 
     template <typename T>
@@ -230,7 +290,14 @@ namespace other {
     template <typename T>
     void check() const {
       OTHER_ASSERT(storage != nullptr, "Storage is null!");
-      OTHER_ASSERT(storage->size() >= sizeof(T), "Size mismatch! stored type: {}, requested type: {}", storage->size(), sizeof(T));
+      if constexpr (std::is_same_v<T, std::string>) {
+        OTHER_ASSERT(storage->val_type() == value_type::STRING, "Value type mismatch! stored type: {}, requested type: {}", storage->val_type(), get_value_type<T>());
+        const char* str_data = reinterpret_cast<const char*>(storage->data());
+        OTHER_ASSERT(str_data != nullptr, "String data pointer is null!");
+        OTHER_ASSERT(std::strlen(str_data) == storage->size(), "String size mismatch! stored size: {}, requested size: {}", storage->size(), std::strlen(str_data));
+      } else {
+        OTHER_ASSERT(storage->size() >= sizeof(T), "Size mismatch! stored type: {}, requested type: {}", storage->size(), sizeof(T));
+      }
       OTHER_ASSERT(storage->val_type() == get_value_type<T>(), "Value type mismatch! stored type: {}, requested type: {}", storage->val_type(), get_value_type<T>());
     }
   };

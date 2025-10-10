@@ -59,4 +59,46 @@ namespace other {
     ImGui::PopStyleColor(count);
   }
 
+  void shift_cursor(float x, float y) {
+    const ImVec2 cursor_pos = ImGui::GetCursorPos();
+    ImGui::SetCursorPos(ImVec2(cursor_pos.x + x, cursor_pos.y + y));
+  }
+
+  void shift_cursor_x(float x) {
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + x);
+  }
+
+  void shift_cursor_y(float y) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y);
+  }
+
+  void underline(bool full_width, float offx, float offy) {
+    if (full_width) {
+      if (ImGui::GetCurrentWindow()->DC.CurrentColumns != nullptr) {
+        ImGui::PushColumnsBackground();
+      } else if (ImGui::GetCurrentTable() != nullptr) {
+        ImGui::TablePushBackgroundChannel();
+      }
+    }
+
+    const float width = full_width ?
+      ImGui::GetWindowWidth() :
+      ImGui::GetContentRegionAvail().x;
+
+    const ImVec2 cursor = ImGui::GetCursorScreenPos();
+    ImGui::GetWindowDrawList()->AddLine(
+      ImVec2(cursor.x + offx, cursor.y + offy),
+      ImVec2(cursor.x + width, cursor.y + offy),
+      IM_COL32(26, 26, 26, 255) /* dark background */, 1.0f
+    );
+
+    if (full_width) {
+      if (ImGui::GetCurrentWindow()->DC.CurrentColumns != nullptr) {
+        ImGui::PopColumnsBackground();
+      } else if (ImGui::GetCurrentTable() != nullptr) {
+        ImGui::TablePopBackgroundChannel();
+      }
+    }
+  }
+
 }  // namespace other

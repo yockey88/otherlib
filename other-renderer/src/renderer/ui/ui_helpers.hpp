@@ -81,6 +81,12 @@ namespace other {
     ~scoped_color_stack();
   };
 
+  void shift_cursor(float x, float y);
+  void shift_cursor_x(float x);
+  void shift_cursor_y(float y);
+
+  void underline(bool full_width, float offx, float offy);
+
 }  // namespace other
 
 #endif  // OTHERLIB_RENDERER_UI_HELPERS_HPP

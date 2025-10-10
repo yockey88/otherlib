@@ -25,6 +25,13 @@ namespace other {
         continue;
       }
 
+      /// \todo find a way to deserialize the user types into storage
+      ///        class SerializedAttribute : Attribute {}
+      ///        [Serialized]
+      if (f.get_type() == value_type::USER_TYPE) {
+        continue;
+      }
+
       auto itr = load_field(f.name(), f.get_type());
       OTHER_ASSERT(itr != field_storage.end(), "Failed to load field storage for field '{}'", f.name());
       CORE_LOG_DEBUG("Loading field '{}' of type '{}' for dotnet object '{}'", f.name(), itr->second.stored_type, object_name);

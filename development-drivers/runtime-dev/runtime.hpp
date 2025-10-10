@@ -27,6 +27,8 @@ namespace other {
     void catch_signal(int signal) override;
 
    private:
+    integer_t builder_obj_id = -1;
+
     bool running = false;
     scene active_scene{ "Runtime-Scene" };
     scope<scene_graph> project_scene_graph = nullptr;

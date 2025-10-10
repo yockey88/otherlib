@@ -4,13 +4,12 @@
 #ifndef OTHER_CORE_EVENT_EVENT_SYSTEM_HPP
 #define OTHER_CORE_EVENT_EVENT_SYSTEM_HPP
 
-#include <queue>
 #include <string_view>
-#include <unordered_map>
 
 #include <asio/asio.hpp>
 
 #include "core/defines.hpp"
+#include "core/fnv.hpp"
 #include "core/timer.hpp"
 #include "core/value.hpp"
 #include "event/event.hpp"
@@ -28,6 +27,12 @@ namespace other {
     void trigger_event(const std::string_view name);
     void trigger_event(natural_t event_id);
 
+    template <typename T>
+    void trigger_event(const std::string_view name, const T& data) {
+      set_user_data(FNV(name), data);
+      trigger_event(name);
+    }
+
     natural_t register_timed_event(const std::string_view name, microseconds duration, bool recurring = false);
     natural_t register_event(const std::string_view name);
 
@@ -36,6 +41,10 @@ namespace other {
 
     void set_user_data(natural_t event_id, const value& data);
 
+    template <typename T>
+    void set_user_data(const std::string_view name, const T& data) {
+      set_user_data(FNV(name), value{ data });
+    }
     template <typename T>
     void set_user_data(natural_t event_id, const T& data) {
       set_user_data(event_id, value{ data });

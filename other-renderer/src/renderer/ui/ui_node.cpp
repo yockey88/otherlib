@@ -11,6 +11,8 @@
 
 #include "renderer/ui/ui_window.hpp"
 
+#include "imgui_internal.h"
+
 namespace other {
   namespace detail {
 
@@ -27,6 +29,10 @@ namespace other {
     if (!ImGui::BeginChild(std::to_string(id).c_str(), ImVec2{ size.x, size.y }, flags, window_flags)) {
       return;
     }
+
+    /// save imgui state
+    ImGuiErrorRecoveryState imgui_state{};
+    ImGui::ErrorRecoveryStoreState(&imgui_state);
 
     try {
       push_themes();
@@ -50,11 +56,16 @@ namespace other {
       pop_themes();
     } catch (const std::exception& e) {
       CORE_LOG_ERROR("Exception during UI node render: {}", e.what());
+      ImGui::ErrorRecoveryTryToRecoverState(&imgui_state);
     }
   }
 
   void ui_node::add_child_node(scope<ui_node>& node) {
     add_node_to(node /* this-node */);
+  }
+
+  event_system& ui_node::events() {
+    return containing_window->get_event_system();
   }
 
   void ui_node::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
