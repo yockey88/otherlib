@@ -64,6 +64,11 @@ namespace other {
       validate_project_and_launch(project_entry);
     });
 
+    events->register_event("create-project");
+    events->add_listener("create-project", [this](const value& data) {
+
+    });
+
     /// launch threads
     ///  - networking thread
     net_thread = make_scope<network_thread>(net_thread_message_bus);

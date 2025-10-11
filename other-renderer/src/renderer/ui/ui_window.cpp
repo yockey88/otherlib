@@ -7,6 +7,7 @@
 #include <stack>
 
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
@@ -50,6 +51,10 @@ namespace other {
       return;
     }
 
+    /// save imgui state
+    ImGuiErrorRecoveryState imgui_state{};
+    ImGui::ErrorRecoveryStoreState(&imgui_state);
+
     try {
       refresh(is_open);
       if (!state.open) {
@@ -65,6 +70,8 @@ namespace other {
       on_render_end();
     } catch (const std::exception& e) {
       CORE_LOG_ERROR("Exception during UI window render: {}", e.what());
+
+      ImGui::ErrorRecoveryTryToRecoverState(&imgui_state);
     }
   }
 

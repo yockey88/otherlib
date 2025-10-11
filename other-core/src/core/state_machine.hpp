@@ -6,9 +6,9 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <ranges>
 #include <unordered_map>
 
+#include "core/formatting.hpp"
 #include "core/logger.hpp"
 
 namespace other {
@@ -34,7 +34,7 @@ namespace other {
       action on_transition;
 
       constexpr auto operator<=>(const transition& other) const {
-        return std::tie(from, event) <=> std::tie(other.from, other.event);
+        return std::tie(from, event, to) <=> std::tie(other.from, other.event, other.to);
       }
     };
 
@@ -60,15 +60,15 @@ namespace other {
         return;
       }
 
-      CORE_LOG_WARN("No valid transition for event '{}' in state '{}'", static_cast<int>(event), static_cast<int>(get_current_state()));
+      CORE_LOG_WARN("No valid transition for event '{}' in state '{}'", event, get_current_state());
     }
 
     virtual void on_enter_state(ST state) {}
     virtual void on_exit_state(ST state) {}
 
-   protected:
     std::array<std::vector<transition>, static_cast<size_t>(ST::NUM_STATES)> transition_table = {};
 
+   protected:
     void add_transition(ST from, ET event, ST to, action on_transition = nullptr) {
       OTHER_ASSERT(from <= ST::NUM_STATES, "Invalid 'from' state");
       OTHER_ASSERT(event <= ET::NUM_EVENTS, "Invalid 'event'");

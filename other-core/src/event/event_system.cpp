@@ -112,7 +112,6 @@ namespace other {
 
   void event_system::add_listener(const std::string_view name, event::handler callback) {
     natural_t id = FNV(name);
-    CORE_LOG_INFO("Adding listener for event '{}'", name);
     add_listener(id, std::move(callback));
   }
 

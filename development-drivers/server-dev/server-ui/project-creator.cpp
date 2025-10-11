@@ -57,44 +57,55 @@ namespace other {
         return;
       }
 
-      std::string disp_name = creator.context.project_name.empty() ? "Untitled" : creator.context.project_name;
-      std::string disp_path = (creator.context.working_directory / disp_name / (disp_name + ".otherproj")).string();
-      std::string disp_working_dir = (creator.context.working_directory / disp_name).string();
-
-      ImGui::Text("Project Name: %s", disp_name.c_str());
-      ImGui::Text("Project File: %s", disp_path.c_str());
-      ImGui::Text("Working Directory: %s", disp_working_dir.c_str());
-
-      if (ImGui::Button("Select Location")) {
-        nfdchar_t* outPath = nullptr;
-        nfdresult_t result = NFD_PickFolder(nullptr, &outPath);
-
-        std::string selected_path;
-        if (result == NFD_OKAY) {
-          selected_path = std::string(outPath);
-          NFDi_Free(outPath);
-
-          filepath project_directory = selected_path / filepath(creator.context.project_name);
-          if (!creator.context.project_name.empty()) {
-            creator.context.project_path = project_directory / filepath(creator.context.project_name + ".otherproj");
-
-            if (std::filesystem::exists(project_directory)) {
-              CORE_LOG_WARN("Project directory already exists: {}", project_directory.string());
-            } else {
-              std::filesystem::create_directories(project_directory);
-            }
-          }
-          creator.context.working_directory = project_directory;
-
-          CORE_LOG_INFO("User selected project path: {}", selected_path);
-        } else if (result == NFD_CANCEL) {
-        } else {
-          CORE_LOG_ERROR("Error selecting folder: {}", NFD_GetError());
-        }
-      }
+      /// two subwindows
+      ///   1- environment config: options for other-env .toml that sets up environment for other application
+      ///   2- project config: options for project file (.otherproj) that sets up project-specific settings
+      ImGui::Text("Create New Project");
+      ImGui::Separator();
+      ImGui::Spacing();
+      ImGui::Spacing();
 
       ImGui::InputText("Project Name", creator.context.project_name_buffer.data(), creator.context.kMaxProjectNameLength);
       creator.context.project_name = std::string(creator.context.project_name_buffer.data());
+
+      // std::string disp_name = creator.context.project_name.empty() ? "Untitled" : creator.context.project_name;
+      // std::string disp_path = (creator.context.working_directory / disp_name / (disp_name + ".otherproj")).string();
+      // std::string disp_working_dir = (creator.context.working_directory / disp_name).string();
+
+      // ImGui::Text("Project Name: %s", disp_name.c_str());
+      // ImGui::Text("Project File: %s", disp_path.c_str());
+      // ImGui::Text("Working Directory: %s", disp_working_dir.c_str());
+
+      // if (ImGui::Button("Select Location")) {
+      //   nfdchar_t* outPath = nullptr;
+      //   nfdresult_t result = NFD_PickFolder(nullptr, &outPath);
+
+      //   std::string selected_path;
+      //   if (result == NFD_OKAY) {
+      //     selected_path = std::string(outPath);
+      //     NFDi_Free(outPath);
+
+      //     filepath project_directory = selected_path / filepath(creator.context.project_name);
+      //     if (!creator.context.project_name.empty()) {
+      //       creator.context.project_path = project_directory / filepath(creator.context.project_name + ".otherproj");
+
+      //       if (std::filesystem::exists(project_directory)) {
+      //         CORE_LOG_WARN("Project directory already exists: {}", project_directory.string());
+      //       } else {
+      //         std::filesystem::create_directories(project_directory);
+      //       }
+      //     }
+      //     creator.context.working_directory = project_directory;
+
+      //     CORE_LOG_INFO("User selected project path: {}", selected_path);
+      //   } else if (result == NFD_CANCEL) {
+      //   } else {
+      //     CORE_LOG_ERROR("Error selecting folder: {}", NFD_GetError());
+      //   }
+      // }
+
+      // ImGui::InputText("Project Name", creator.context.project_name_buffer.data(), creator.context.kMaxProjectNameLength);
+      // creator.context.project_name = std::string(creator.context.project_name_buffer.data());
     }
 
   }  // namespace detail
