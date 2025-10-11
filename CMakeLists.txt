@@ -5,6 +5,20 @@ include(cmake/add_other_driver.cmake)
 project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
+if (NOT CMAKE_SHARED_LINKER_FLAGS_PROFILE)
+  set(CMAKE_SHARED_LINKER_FLAGS_PROFILE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE}" CACHE STRING "Flags used by the linker during all build types." FORCE)
+endif()
+if (NOT CMAKE_SHARED_LINKER_FLAGS_PROFILED)
+  set(CMAKE_SHARED_LINKER_FLAGS_PROFILED "${CMAKE_SHARED_LINKER_FLAGS_DEBUG}" CACHE STRING "Flags used by the linker during all build types." FORCE)
+endif()
+
+if (NOT CMAKE_EXE_LINKER_FLAGS_PROFILE)
+  set(CMAKE_EXE_LINKER_FLAGS_PROFILE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}" CACHE STRING "Flags used by the linker during all build types." FORCE)
+endif()
+if (NOT CMAKE_EXE_LINKER_FLAGS_PROFILED)
+  set(CMAKE_EXE_LINKER_FLAGS_PROFILED "${CMAKE_EXE_LINKER_FLAGS_DEBUG}" CACHE STRING "Flags used by the linker during all build types." FORCE)
+endif()
+
 ## default to Release build type
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
