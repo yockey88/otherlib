@@ -1,6 +1,5 @@
 # build artifacts/things not ready yet (cmake configuration for versioning etc)
 build/
-cmake/
 logs/
 */logs/*
 

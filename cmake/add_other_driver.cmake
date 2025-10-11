@@ -1,0 +1,47 @@
+macro(add_driver_target type driver_name)
+  if (${type} STREQUAL "static")
+    add_executable(${driver_name})
+    target_compile_definitions(${driver_name} PRIVATE "OTHER_APPLICATION")
+  elseif (${type} STREQUAL "dynamic")
+    add_library(${driver_name} SHARED)
+    target_compile_definitions(${driver_name} PRIVATE "OTHER_CLIENT")
+  else()
+    message(FATAL_ERROR "Unknown driver type: ${type}. Use 'static' or 'dynamic'.")
+  endif()
+  
+  if (MSVC)
+    if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+      target_compile_definitions(${driver_name} PRIVATE "/MDd")
+    else()
+      target_compile_definitions(${driver_name} PRIVATE "/MD")
+    endif()
+  endif()
+
+  if (${BUILD_PLATFORM} STREQUAL "WINDOWS")
+    target_compile_definitions(${driver_name} PRIVATE "OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "NOMINMAX" "WIN32_LEAN_AND_MEAN" "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+  endif()
+
+  if (${BUILD_PLATFORM} STREQUAL "LINUX")
+    target_compile_definitions(${driver_name} PRIVATE "OTHER_ENVIRONMENT_UNIX" ${BUILD_CONFIG_MACRO})
+  endif()
+
+  set(driver_src_list "")
+  foreach(src_file ${ARGN})
+    set(src_file_full_path "${CMAKE_CURRENT_SOURCE_DIR}/${src_file}")
+    list(APPEND driver_src_list "${src_file_full_path}")
+  endforeach()
+
+  message(STATUS "Adding [${type}] driver: ${driver_name} w/ include directory: ${CMAKE_CURRENT_SOURCE_DIR}")
+
+  target_include_directories(${driver_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+  target_sources(${driver_name} PUBLIC ${driver_src_list})
+  target_link_libraries(${driver_name} PUBLIC otherlib)
+endmacro()
+
+macro(add_static_driver driver_name)
+  add_driver_target("static" ${driver_name} ${ARGN})
+endmacro()
+
+macro(add_dynamic_driver driver_name)
+  add_driver_target("dynamic" ${driver_name} ${ARGN})
+endmacro()

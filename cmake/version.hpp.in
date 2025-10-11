@@ -1,0 +1,9 @@
+/**
+ * \file version.hpp
+ **/
+#ifndef OTHER_CORE_CORE_VERSION_HPP
+#define OTHER_CORE_CORE_VERSION_HPP
+
+namespace other {}  // namespace other
+
+#endif  // OTHER_CORE_CORE_VERSION_HPP
