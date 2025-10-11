@@ -31,12 +31,15 @@ jobs:
             c_compiler: cl
             cpp_compiler: cl
         exclude:
+          ## move these up when we figure out how to generate and build dotnet projects on linux
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
+          - os: windows-latest
+            c_compiler: gcc
           - os: ubuntu-latest
             c_compiler: cl
 
