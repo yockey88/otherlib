@@ -5,6 +5,11 @@ include(cmake/add_other_driver.cmake)
 project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
+## default to Release build type
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
+
 option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
 option(DISALLOW_OTHER_PLUGINS "Build the library statically and without the framework for loading plugins" OFF)
@@ -23,11 +28,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 message(STATUS "using compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} @ [${CMAKE_CXX_COMPILER}]")
 
 set(BUILD_CONFIG_MACRO "")
-if (CMAKE_BUILD_TYPE MATCHES Debug)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_DEBUG")
-elseif (CMAKE_BUILD_TYPE MATCHES ProfileD)
+elseif (CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_PROFILED")
-elseif (CMAKE_BUILD_TYPE MATCHES Profile)
+elseif (CMAKE_BUILD_TYPE STREQUAL "Profile")
   set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_PROFILE")
 else()
   set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_RELEASE")
@@ -38,9 +43,9 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(BUILD_PLATFORM "")
-if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(BUILD_PLATFORM "WINDOWS")
-elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(BUILD_PLATFORM "LINUX")
 else()
   message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}. Please use Windows, Linux")
@@ -94,7 +99,7 @@ endif()
 add_subdirectory(extern)
 
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(OTHER_LIBRARIES_PATH 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
@@ -102,7 +107,7 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/debug"
   )
   set(ASSIMP_NAME "assimp-vc143-mtd")
-elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
   set(OTHER_LIBRARIES_PATH 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
@@ -112,7 +117,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
   set(ASSIMP_NAME "assimp-vc143-mt")
 endif()
 
-if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   add_compile_definitions("TRACY_ENABLE" "TRACY_CALLSTACK=10")
 endif()
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib")
