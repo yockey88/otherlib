@@ -34,7 +34,6 @@ jobs:
           ## move these up when we figure out how to generate and build dotnet projects on linux
           - os: ubuntu-latest
             c_compiler: gcc
-            cpp_compiler: g++
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
