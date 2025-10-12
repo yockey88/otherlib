@@ -174,6 +174,12 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
+      ### run dotnet restore on solution file to restore nuget packages
+      # this has to happen before build step cause bulding dotnet projects
+      # requires the *.project.json files to be present
+      print("Restoring .NET packages...")
+      run_subprocess(["dotnet", "restore", "build/other.sln"])
+
       filename = "build/other.sln"
       if not os.path.exists(filename):
         print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
@@ -185,9 +191,6 @@ if __name__ == "__main__":
         dll_cfg = "Debug"
       copy_dlls(cfg, dll_cfg)
 
-      ### run dotnet restore on solution file to restore nuget packages
-      print("Restoring .NET packages...")
-      run_subprocess(["dotnet", "restore", "build/other.sln"])
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
