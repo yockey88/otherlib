@@ -184,6 +184,10 @@ if __name__ == "__main__":
       if cfg == "Debug" or cfg == "ProfileD":
         dll_cfg = "Debug"
       copy_dlls(cfg, dll_cfg)
+
+      ### run dotnet restore on solution file to restore nuget packages
+      print("Restoring .NET packages...")
+      run_subprocess(["dotnet", "restore", "build/other.sln"])
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
