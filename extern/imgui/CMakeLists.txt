@@ -12,4 +12,4 @@ target_sources(imgui
         imgui/misc/cpp/imgui_stdlib.cpp       
         imgui/misc/freetype/imgui_freetype.cpp       
 )
-target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui ${CMAKE_CURRENT_SOURCE_DIR}/../sdl)
+target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui ${CMAKE_CURRENT_SOURCE_DIR}/freetype ${CMAKE_CURRENT_SOURCE_DIR}/../sdl)

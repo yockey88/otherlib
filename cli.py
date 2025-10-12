@@ -16,6 +16,11 @@ def find_msbuild():
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
     "C:\\Program Files\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
     "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
+
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe",
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe",
+    "C:\\Program Files\\Microsoft Visual Studio\\2019\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe",
+    "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe",
   ]
   
   for path in default_paths:
@@ -169,6 +174,12 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
+      ### run dotnet restore on solution file to restore nuget packages
+      # this has to happen before build step cause bulding dotnet projects
+      # requires the *.project.json files to be present
+      print("Restoring .NET packages...")
+      run_subprocess(["dotnet", "restore", "build/other.sln"])
+
       filename = "build/other.sln"
       if not os.path.exists(filename):
         print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
@@ -179,6 +190,7 @@ if __name__ == "__main__":
       if cfg == "Debug" or cfg == "ProfileD":
         dll_cfg = "Debug"
       copy_dlls(cfg, dll_cfg)
+
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")

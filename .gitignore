@@ -9,7 +9,9 @@ dockerfile
 
 # environment files
 .vs*/
-.github/
+# testing with vs code copilot features, don't share
+.github/*.md
+.github/prompts/
 .cache/
 
 # scratch work/local-test-results
@@ -36,11 +38,7 @@ dev-*.toml
 
 ----- required dependencies -----
 ----- must find way to get to client bc too large to push to git -----
-# assimp-vc143-mtd.lib
-# assimp-vc143-mt.lib
-# assimp-vc143-mtd.pdb
-# assimp-vc143-mt.pdb
-# assimp-vc143-mtd.exp
-# assimp-vc143-mt.exp
-
-extern/python312
+# python scripting not implemented yet, solve this problem when it is
+extern/python312/DLLs
+extern/python312/include
+extern/python312/Lib
