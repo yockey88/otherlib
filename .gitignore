@@ -39,4 +39,6 @@ dev-*.toml
 ----- required dependencies -----
 ----- must find way to get to client bc too large to push to git -----
 # python scripting not implemented yet, solve this problem when it is
-extern/python312
+extern/python312/DLLs
+extern/python312/include
+extern/python312/Lib
