@@ -52,6 +52,7 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Profile")
 else()
   set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_RELEASE")
 endif()
+message(STATUS "Build configuration: ${BUILD_CONFIG_MACRO}")
 
 if (NOT CMAKE_BUILD_TYPE)
   message(FATAL_ERROR "CMAKE_BUILD_TYPE is not set. Please specify a build type (Debug, Release).")
