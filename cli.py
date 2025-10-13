@@ -59,6 +59,7 @@ def copy_dlls(cfg, dll_cfg):
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
     assimp_debug if cfg == "Debug" else assimp_release,
     f"extern/python312/python312.dll",
+    "extern/steamworks/bin/steam_api64.dll",
   ]
   destinations = [
     f"build/development-drivers/{cfg}/",
