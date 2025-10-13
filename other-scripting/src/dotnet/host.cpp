@@ -118,7 +118,16 @@ namespace other {
   void dotnet_host::call_entry_point() {
     const char_t* dotnet_type = DNET_STR("OtherCsBindings.Host, OtherCsBindings");
     const char_t* dotnet_type_method = DNET_STR("Entry");
-    OTHER_ASSERT(std::filesystem::exists("build/other-csharp-interop/Debug/OtherCsBindings.dll"), "Managed assembly not found: build/other-csharp-interop/Debug/OtherCsBindings.dll");
+
+#ifdef OTHER_ENVIRONMENT_DEBUG
+    filepath managed_asm_path = "build/other-csharp-interop/Debug/OtherCsBindings.dll";
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
+    filepath managed_asm_path = "build/other-csharp-interop/Release/OtherCsBindings.dll";
+#else
+  #error "Unknown build configuration!"
+#endif
+
+    OTHER_ASSERT(std::filesystem::exists(managed_asm_path), "Managed assembly not found: {}", managed_asm_path.string());
 
     bind_interop_table();
     bind_native_functions();
