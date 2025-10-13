@@ -171,7 +171,9 @@ namespace other {
     handler = nullptr;
   }
 
-  TEST_F(asset_tests, longer_async_load) {
+  TEST_F(asset_tests, omesh_async_load) {
+    GTEST_SKIP() << "Skipping omesh test until we have a way to generate them in CI, files are too large to push to git (may have to use github lfs?)";
+
     asio::io_context io_context;
     scope<asset_handler> handler = make_scope<asset_handler>(io_context);
 

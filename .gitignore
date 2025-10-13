@@ -23,7 +23,9 @@ code-generator/
 
 #large local development files
 resources/models/
-tests/resources/models/
+# this is really large, don't have a better way to do this yet
+tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.fbx
+tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.omesh
 
 # non-public sandboxes
 development-drivers/pbrt
@@ -33,8 +35,6 @@ dev-*.toml
 *-test-*.toml
 *-log-failure.log
 
-# otherfiles
-*.fbx
 
 ----- required dependencies -----
 ----- must find way to get to client bc too large to push to git -----
