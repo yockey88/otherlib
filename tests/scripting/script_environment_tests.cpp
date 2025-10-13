@@ -14,7 +14,13 @@ namespace other {
     EXPECT_NO_FATAL_FAILURE(env->initialize_script_environment());
 
     ref<assembly> dotnet_asm = nullptr;
-    EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module("build/other-csharp/Debug/OtherCs.dll"));
+#ifdef OTHER_ENVIRONMENT_DEBUG
+    EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll_debug.string()));
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
+    EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll_release.string()));
+#else
+  #error "Unknown build configuration!"
+#endif
     ASSERT_NE(dotnet_asm, nullptr);
 
     integer_t obj_id = 0;
@@ -29,7 +35,13 @@ namespace other {
 
     {
       ref<assembly> testing_asm = nullptr;
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module("build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"));
+#ifdef OTHER_ENVIRONMENT_DEBUG
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_debug.string()));
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_release.string()));
+#else
+  #error "Unknown build configuration!"
+#endif
       ASSERT_NE(testing_asm, nullptr);
 
       EXPECT_NO_FATAL_FAILURE(env->attach_dotnet_object(obj_id, "TestObject"));
@@ -60,7 +72,13 @@ namespace other {
 
     {
       ref<assembly> testing_asm = nullptr;
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module("build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"));
+#ifdef OTHER_ENVIRONMENT_DEBUG
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_debug.string()));
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_release.string()));
+#else
+  #error "Unknown build configuration!"
+#endif
       ASSERT_NE(testing_asm, nullptr);
 
       EXPECT_NO_FATAL_FAILURE(env->attach_dotnet_object(obj_id, "TestObject"));
@@ -88,10 +106,22 @@ namespace other {
       ref<assembly> dotnet_asm = nullptr;
       ref<assembly> testing_asm = nullptr;
 
-      EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module("build/other-csharp/Debug/OtherCs.dll"));
+#ifdef OTHER_ENVIRONMENT_DEBUG
+      EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll_debug.string()));
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
+      EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll_release.string()));
+#else
+  #error "Unknown build configuration!"
+#endif
       ASSERT_NE(dotnet_asm, nullptr);
 
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module("build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"));
+#ifdef OTHER_ENVIRONMENT_DEBUG
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_debug.string()));
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_release.string()));
+#else
+  #error "Unknown build configuration!"
+#endif
       ASSERT_NE(testing_asm, nullptr);
 
       integer_t obj_id = 0;

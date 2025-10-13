@@ -3,8 +3,6 @@
 name: Dev Stability Assurance - Windows
 
 on:
-  push:
-    branches: [ "dev" ]
   pull_request:
     branches: [ "dev" ]
 
@@ -13,10 +11,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
     - name: Configure CMake
-      run: cmake -DCMAKE_BUILD_TYPE=Release -G "Visual Studio 17 2022" -S ${{ github.workspace }} -B ${{ github.workspace }}/build  -DBUILD_OTHER_TESTS=ON -DBUILD_DEVELOPMENT_DRIVERS=OFF
+      run: cmake -S ${{ github.workspace }} -B ${{ github.workspace }}/build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release  -DBUILD_OTHER_TESTS=ON -DBUILD_DEVELOPMENT_DRIVERS=OFF
 
     - name: Build
       run: python ${{ github.workspace }}/cli.py -b -c=Release

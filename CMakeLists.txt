@@ -167,7 +167,7 @@ add_subdirectory(other-csharp)
 
 add_subdirectory(otherlib)
 
-if(BUILD_DEVELOPMENT_DRIVERS AND EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
+if(EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
   add_subdirectory(development-drivers)
 endif()
 
