@@ -2,7 +2,7 @@
 build/
 logs/
 */logs/*
-
+other_test_results.xml
 
 #only for local testing linux builds
 dockerfile

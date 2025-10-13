@@ -27,14 +27,14 @@ jobs:
 
     - name: Check Test Results
       run: |
-        if [ -f ${{ github.workspace }}/build/other_test_results.xml ]; then
+        if [ -f ${{ github.workspace }}/other_test_results.xml ]; then
           echo "Test results found."
         else
           echo "Test results not found!"
           exit 1
         fi
         ## check if tests passed
-        if grep -q 'failures="0"' ${{ github.workspace }}/build/other_test_results.xml; then
+        if grep -q 'failures="0"' ${{ github.workspace }}/other_test_results.xml; then
           echo "All tests passed."
         else
           echo "Some tests failed!"
@@ -47,4 +47,4 @@ jobs:
       if: always()
       with:
         name: other-test-results
-        path: ${{ github.workspace }}/build/other_test_results.xml
+        path: ${{ github.workspace }}/other_test_results.xml
