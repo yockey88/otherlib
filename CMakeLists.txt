@@ -140,12 +140,7 @@ set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/ex
 
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
 
-set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/json"
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/mio"
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/src"
-)
+set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet")
 set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
 set(DOTNET_LIBRARIES nethost)
 

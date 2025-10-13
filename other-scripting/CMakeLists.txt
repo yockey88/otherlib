@@ -50,18 +50,15 @@ message(STATUS "Python Include Directory: ${PYTHON_INCLUDE_DIR}")
 message(STATUS "Python Library Directory: ${PYTHON_LIB_DIR}")
 message(STATUS "Python Library: ${PYTHON_LIB}")
 
-# find_package(pybind11 REQUIRED)  # or `add_subdirectory(pybind11)`
-
 target_include_directories(other_scripting 
-PUBLIC 
-  "${CMAKE_CURRENT_SOURCE_DIR}/src"
-  ${DOTNET_INCLUDE_DIRECTORY}
+  PUBLIC 
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    ${OTHER_EXTERN_DIR}/pybind11/include
+    ${OTHER_EXTERN_DIR}/dotnet
 )
-
 target_link_directories(other_scripting 
-PUBLIC 
-  ${OTHER_LIBRARIES_PATH} 
-  ${PYTHON_LIB_DIR}
+  PUBLIC
+    ${OTHER_LIBRARIES_PATH} 
+    ${PYTHON_LIB_DIR}
 )
-
 target_link_libraries(other_scripting PUBLIC ${PYTHON_LIB} other_core)

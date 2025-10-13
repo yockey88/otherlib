@@ -58,6 +58,9 @@ target_include_directories(other_core
 			${OTHER_EXTERN_DIR}/reflect-cpp
 			${OTHER_EXTERN_DIR}/flatbuffers
 			${OTHER_EXTERN_DIR}/asio
+			${OTHER_EXTERN_DIR}/json
+			${OTHER_EXTERN_DIR}/mio
+			${OTHER_EXTERN_DIR}/nativefiledialog/src
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
