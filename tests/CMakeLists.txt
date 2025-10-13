@@ -2,6 +2,8 @@ if (NOT TARGET gtest)
   add_subdirectory(gtest)
 endif()
 
+enable_testing()
+
 add_executable(other_tests)
 target_compile_definitions(other_tests PRIVATE "OTHER_TEST_ENVIRONMENT")
 target_sources(other_tests
@@ -39,3 +41,6 @@ target_sources(other_tests
 )
 target_include_directories(other_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(other_tests PUBLIC otherlib gmock)
+
+include(GoogleTest)
+gtest_discover_tests(other_tests)

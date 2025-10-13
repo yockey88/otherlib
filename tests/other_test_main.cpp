@@ -47,6 +47,14 @@ namespace other {
 }  // namespace other
 
 int main(int argc, char** argv) {
+  /// this is for the CI pipeline which will start running build, but it wil fail to find resources if running there
+  other::filepath cwd = std::filesystem::current_path();
+  std::println("CWD: {}", cwd.string());
+  if (cwd.string().ends_with("build")) {
+    std::println("  - adjusting CWD to parent path");
+    std::filesystem::current_path(cwd.parent_path());
+  }
+
   ::testing::InitGoogleTest(&argc, argv);
   ::testing::AddGlobalTestEnvironment(new other::other_test_environment(argc, argv));
   return RUN_ALL_TESTS();

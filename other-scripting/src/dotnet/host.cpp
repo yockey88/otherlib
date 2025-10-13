@@ -11,11 +11,10 @@
 #include "core/logger.hpp"
 #include "serialization/reflection.hpp"
 
+#include "bindings/native_logger.hpp"
 #include "dotnet/interop_interface.hpp"
 #include "dotnet/native_string.hpp"
 #include "script/scripting_environment.hpp"
-
-#include "bindings/native_logger.hpp"
 
 namespace other {
   namespace {
@@ -76,7 +75,10 @@ namespace other {
     /// 1 - success, already initialized
     /// 2 - success, different runtime properties
     hostfxr_handle host_fxr = nullptr;
-    int32_t rc = coreclr.init_host_config(DNET_STR("other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"), nullptr, &host_fxr);
+
+    /// fix this, need to loop this up in ProgramFiles for a ddeployed build, for dev this works, but could fail the CI pipeline as it is very dependent on CWD being correct
+    const char_t* path = DNET_STR("other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json");
+    int32_t rc = coreclr.init_host_config(path, nullptr, &host_fxr);
     OTHER_ASSERT(host_fxr != nullptr, "Failed to initialize hostfxr with runtime config : error code [{} : {:#08x}]", rc, rc);
     if (rc < 0 || rc > 2) {
       OTHER_ASSERT(false, "Failed to initialize hostfxr with runtime config: error code [{} : {:#08x}]", rc, rc);
