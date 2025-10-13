@@ -26,6 +26,7 @@ endif()
 
 option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
+option(BUILD_DEVELOPMENT_DRIVERS "Build development drivers" ON)
 option(DISALLOW_OTHER_PLUGINS "Build the library statically and without the framework for loading plugins" OFF)
 if (DISALLOW_OTHER_PLUGINS)
   message(STATUS "Disallowing other plugins")
@@ -166,7 +167,7 @@ add_subdirectory(other-csharp)
 
 add_subdirectory(otherlib)
 
-if(EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
+if(BUILD_DEVELOPMENT_DRIVERS AND EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
   add_subdirectory(development-drivers)
 endif()
 
