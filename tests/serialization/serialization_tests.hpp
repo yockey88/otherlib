@@ -15,8 +15,15 @@ namespace other {
       subsystem<arena>::get();
 
       subsystem<scripting_environment>::get()->initialize_script_environment();
-      dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
-      testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module("build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll");
+#ifdef OTHER_ENVIRONMENT_DEBUG
+      dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_debug.string());
+      testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_debug.string());
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
+      dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_release.string());
+      testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_release.string());
+#else
+  #error "Unknown build configuration!"
+#endif
     }
     void TearDown() {
       subsystem<scripting_environment>::get()->unload_dotnet_module(testing_asm);
@@ -27,6 +34,12 @@ namespace other {
 
       subsystem<arena>::get()->shutdown();
     }
+
+    filepath other_dll_debug = "build/other-csharp/Debug/OtherCs.dll";
+    filepath other_dll_release = "build/other-csharp/Release/OtherCs.dll";
+
+    filepath testing_dll_debug = "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll";
+    filepath testing_dll_release = "build/development-drivers/script-testing/csharp/Release/DotnetTesting.dll";
 
     ref<assembly> dotnet_asm = nullptr;
     ref<assembly> testing_asm = nullptr;

@@ -136,6 +136,7 @@ namespace other {
     while (handler->get_asset_state(asset_id) == asset_state::LOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
+      handler->update_pipelines();
     }
     ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to load";
 
@@ -151,6 +152,7 @@ namespace other {
     while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
+      handler->update_pipelines();
     }
     ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to unload";
 
@@ -169,7 +171,9 @@ namespace other {
     handler = nullptr;
   }
 
-  TEST_F(asset_tests, longer_async_load) {
+  TEST_F(asset_tests, omesh_async_load) {
+    GTEST_SKIP() << "Skipping omesh test until we have a way to generate them in CI, files are too large to push to git (may have to use github lfs?)";
+
     asio::io_context io_context;
     scope<asset_handler> handler = make_scope<asset_handler>(io_context);
 
@@ -202,6 +206,7 @@ namespace other {
     while (handler->get_asset_state(asset_id) == asset_state::LOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
+      handler->update_pipelines();
     }
     std::chrono::seconds duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
     ASSERT_LT(duration, load_timeout) << "Timed out waiting for asset to load";
@@ -219,6 +224,7 @@ namespace other {
     while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
+      handler->update_pipelines();
     }
     duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
     ASSERT_LT(duration, load_timeout) << "Timed out waiting for asset to unload";
