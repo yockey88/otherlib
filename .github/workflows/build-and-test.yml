@@ -25,20 +25,7 @@ jobs:
       continue-on-error: true
 
     - name: Check Test Results
-      run: |
-        if [ -f ${{ github.workspace }}/other_test_results.xml ]; then
-          echo "Test results found."
-        else
-          echo "Test results not found!"
-          exit 1
-        fi
-        ## check if tests passed
-        if grep -q 'failures="0"' ${{ github.workspace }}/other_test_results.xml; then
-          echo "All tests passed."
-        else
-          echo "Some tests failed!"
-          exit 1
-        fi
+      run: python ${{ github.workspace }}/tools/test-validation.py ${{ github.workspace }}/other_test_results.xml
       continue-on-error: true
 
     - name: Upload Test Results
