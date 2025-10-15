@@ -1,8 +1,8 @@
 /**
  * \file ${project-name}_driver.hpp
  **/
-#ifndef OTHER_${PROJECT_NAME_UPPER}_DRIVER_HPP
-#define OTHER_${PROJECT_NAME_UPPER}_DRIVER_HPP
+#ifndef OTHER_${project-name-upper}_DRIVER_HPP
+#define OTHER_${project-name-upper}_DRIVER_HPP
 
 #include "other.hpp"
 
@@ -22,4 +22,4 @@ namespace ${project-name} {
 
 OTHER_DRIVER(${project-name}::${project-name}_driver);
 
-#endif // OTHER_${PROJECT_NAME_UPPER}_DRIVER_HPP
+#endif // OTHER_${project-name-upper}_DRIVER_HPP

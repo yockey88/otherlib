@@ -1,5 +1,6 @@
 [application]
 core-log-level = "info"
+core-log-file = "${project-folder}/logs/${project-name}.log"
 
 [rendering]
 rendering-backend = "opengl"
