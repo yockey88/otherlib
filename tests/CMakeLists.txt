@@ -33,6 +33,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/thread/message_bus_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/script_environment_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripting/dotnet_scripting_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/scene_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/asset_tests.cpp

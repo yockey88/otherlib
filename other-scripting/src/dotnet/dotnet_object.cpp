@@ -26,8 +26,8 @@ namespace other {
       }
 
       /// \todo find a way to deserialize the user types into storage
-      ///        class SerializedAttribute : Attribute {}
-      ///        [Serialized]
+      ///        class SerializableFieldAttribute : Attribute {}
+      ///        [SerializableField]
       if (f.get_type() == value_type::USER_TYPE) {
         continue;
       }
