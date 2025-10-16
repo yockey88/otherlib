@@ -7,7 +7,7 @@ on:
     branches: [ "dev" ]
 
 jobs:
-  build-and-test-release:
+  build-and-test-debug:
     runs-on: windows-latest
 
     steps:
