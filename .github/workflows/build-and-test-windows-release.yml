@@ -1,13 +1,13 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: Dev Stability Assurance - Windows
+name: Dev Stability Assurance - Windows/Release
 
 on:
   pull_request:
     branches: [ "dev" ]
 
 jobs:
-  build-and-test:
+  build-and-test-release:
     runs-on: windows-latest
 
     steps:
@@ -35,11 +35,11 @@ jobs:
       continue-on-error: true
 
     - name: Check Test Results
-      run: python ${{ github.workspace }}/tools/test-validation.py ${{ github.workspace }}/other_test_results.xml
+      run: python ${{ github.workspace }}/tools/test-validation.py ${{ github.workspace }}/other_test_results.windows.release.xml
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: other-test-results
-        path: ${{ github.workspace }}/other_test_results.xml
+        name: other-test-results-windows-release
+        path: ${{ github.workspace }}/other_test_results.windows.release.xml
