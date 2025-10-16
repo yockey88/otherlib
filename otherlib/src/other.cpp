@@ -53,14 +53,14 @@ namespace other {
     if (cmd.working_directory.has_value()) {
       filepath cwd = cmd.working_directory.value();
       if (!std::filesystem::exists(cwd) || !std::filesystem::is_directory(cwd)) {
-        std::println(std::cerr, "Invalid working directory specified: '{}'", cwd.string());
+        std::println(std::cerr, "[ERROR]: Invalid working directory specified: '{}'", cwd.string());
         return FAILURE;
       }
 
       std::error_code ec;
       std::filesystem::current_path(cmd.working_directory.value(), ec);
       if (ec) {
-        std::println(std::cerr, "Failed to set working directory to '{}': {}", cwd.string(), ec.message());
+        std::println(std::cerr, "[ERROR]: Failed to set working directory to '{}': {}", cwd.string(), ec.message());
         return FAILURE;
       }
     }
@@ -69,12 +69,12 @@ namespace other {
     if (std::filesystem::exists(cmd.config_file)) {
       config = config_table::load(cmd.config_file);
       if (!config.valid) {
-        std::println(std::cerr, "Failed to load configuration file: '{}'", cmd.config_file);
+        std::println(std::cerr, "[ERROR]: Failed to load configuration file: '{}'", cmd.config_file);
         return -1;
       }
 
     } else if (!cmd.config_file.empty()) {
-      CORE_LOG_WARN("Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
+      std::println(std::cout, "[WARNING]: Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
     }
 
     register_log_sinks(config);
