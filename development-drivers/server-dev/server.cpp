@@ -19,6 +19,8 @@
 
 #include "tools/build_tool.hpp"
 
+#include "server-ui/project-creator.hpp"
+
 namespace other {
 
   void server::on_initialize(const command_line& cmd) {
@@ -64,9 +66,10 @@ namespace other {
       validate_project_and_launch(project_entry);
     });
 
-    events->register_event("create-project");
-    events->add_listener("create-project", [this](const value& data) {
-
+    events->register_event("finalize-project");
+    events->add_listener("finalize-project", [this](const value& data) {
+      project_creator::project_context context = data;
+      CORE_LOG_DEBUG("Finalizing project '{}' at path '{}' with working directory '{}'", context.project_name, context.project_path.string(), context.working_directory.string());
     });
 
     /// launch threads

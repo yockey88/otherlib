@@ -3,6 +3,9 @@
  **/
 #include "value_test.hpp"
 
+#include "core/defines.hpp"
+
+
 namespace other {
 
   TEST_F(value_test, default_constructor_creates_empty_value) {
@@ -75,40 +78,46 @@ namespace other {
     ASSERT_EQ(str, kTestString);
   }
 
-  // TEST_F(value_test, move_constructor) {
-  //   value original_val(kTestInt32);
-  //   ASSERT_FALSE(original_val.is_empty());
+  TEST_F(value_test, user_data_constructor) {
+    struct TestData {
+      int a;
+      float b;
+    };
 
-  //   value moved_val(std::move(original_val));
-  //   ASSERT_FALSE(moved_val.is_empty());
-  //   ASSERT_EQ(moved_val.size(), sizeof(int32_t));
-  //   assert_value_equals(moved_val, kTestInt32);
-  // }
+    TestData data = { 10, 3.14f };
+    value user_data_val(data);
 
-  // TEST_F(value_test, copy_constructor) {
-  //   value original_val(kTestString);
-  //   value copied_val(original_val);
+    ASSERT_FALSE(user_data_val.is_empty());
+    ASSERT_EQ(user_data_val.size(), sizeof(TestData));
+    ASSERT_EQ(user_data_val.type(), value_type::USER_TYPE);
 
-  //   ASSERT_FALSE(copied_val.is_empty());
-  //   ASSERT_EQ(copied_val.size(), original_val.size());
-  //   ASSERT_EQ(copied_val.type(), original_val.type());
-  //   assert_value_equals(copied_val, kTestString);
-  //   assert_value_equals(original_val, kTestString);  // Original should remain unchanged
-  // }
+    TestData& out_data = user_data_val;
+    ASSERT_EQ(out_data.a, data.a);
+    ASSERT_EQ(out_data.b, data.b);
 
-  // TEST_F(value_test, nullptr_constructor) {
-  //   value null_val(nullptr);
-  //   ASSERT_TRUE(null_val.is_empty());
-  //   ASSERT_EQ(null_val.size(), 0);
-  // }
+    struct TestData2 {
+      filepath path1;
+      filepath path2;
+      std::string my_string;
+      int weirdly_placed_int;
+      double some_double;
+      std::string another_string;
+    };
 
-  // TEST_F(value_test, template_move_constructor) {
-  //   std::string temp_string = kTestString;
-  //   value moved_string_val(std::move(temp_string));
+    TestData2 data2 = { "C:/path/to/some/file.txt", "D:/another/path/file2.txt", "hello world", 42, 2.71828, "final string" };
+    value user_data_val2(data2);
 
-  //   ASSERT_FALSE(moved_string_val.is_empty());
-  //   ASSERT_EQ(moved_string_val.type(), value_type::STRING);
-  //   assert_value_equals(moved_string_val, kTestString);
-  // }
+    ASSERT_FALSE(user_data_val2.is_empty());
+    ASSERT_EQ(user_data_val2.size(), sizeof(TestData2));
+    ASSERT_EQ(user_data_val2.type(), value_type::USER_TYPE);
+
+    TestData2& out_data2 = user_data_val2;
+    ASSERT_EQ(out_data2.path1, data2.path1);
+    ASSERT_EQ(out_data2.path2, data2.path2);
+    ASSERT_EQ(out_data2.my_string, data2.my_string);
+    ASSERT_EQ(out_data2.weirdly_placed_int, data2.weirdly_placed_int);
+    ASSERT_EQ(out_data2.some_double, data2.some_double);
+    ASSERT_EQ(out_data2.another_string, data2.another_string);
+  }
 
 }  // namespace other
