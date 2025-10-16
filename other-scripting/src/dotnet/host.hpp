@@ -197,7 +197,13 @@ namespace other {
     /// \todo fix hardcoded path
     template <typename Fn>
     Fn load_managed_function(const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type = OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION) const {
+#ifdef OTHER_ENVIRONMENT_DEBUG
       const char_t* dotnetlib_path = DNET_STR("build/other-csharp/Debug/OtherCsBindings.dll");
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
+      const char_t* dotnetlib_path = DNET_STR("build/other-csharp/Release/OtherCsBindings.dll");
+#else
+  #error "Unknown build configuration!"
+#endif
       return (Fn)(load_managed_function(dotnetlib_path, type_name, method_name, delegate_type));
     }
   };

@@ -76,9 +76,8 @@ namespace other {
   }
 
   void asset_pipeline::poll() {
-    if (on_success_callback == nullptr || on_failure_callback == nullptr) {
-      return;
-    }
+    OTHER_ASSERT(on_success_callback != nullptr, "on_success_callback is null in poll");
+    OTHER_ASSERT(on_failure_callback != nullptr, "on_failure_callback is null in poll");
 
     on_pipeline_poll();
     if (pipeline_state.success) {
@@ -118,7 +117,6 @@ namespace other {
 
   void asset_pipeline::pipeline_finished() {
     pipeline_state.success = true;
-    CORE_LOG_TRACE("    pipeline_state.success = {}", (bool)pipeline_state.success);
   }
 
   void asset_pipeline::pipeline_failed(const std::string& error_message) {

@@ -208,7 +208,7 @@ if __name__ == "__main__":
       run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args, args.verbose)
     elif args.run_tests:
       print("Running tests...")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=["--gtest_shuffle"])
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=["--gtest_shuffle", "--gtest_output=xml:other_test_results.xml"])
     elif args.run_test_suite is not None and len(args.run_test_suite) == 1:
       test_filter = args.run_test_suite[0]
       print(f"Running test suite with filter: {test_filter}")
