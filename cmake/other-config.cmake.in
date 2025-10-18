@@ -1,0 +1,42 @@
+@PACKAGE_INIT@
+
+set_and_check(OTHER_INCLUDE_DIR "@PACKAGE_OTHER_INSTALL_INCLUDEDIR@")
+set_and_check(OTHER_LIB_DIR "@PACKAGE_OTHER_INSTALL_LIBDIR@")
+set_and_check(OTHER_BIN_DIR "@PACKAGE_OTHER_INSTALL_BINDIR@")
+
+## Set up external include directories
+set(OTHER_EXTERN_INCLUDE_DIRS
+  "${OTHER_INCLUDE_DIR}/extern/magic_enum"
+  "${OTHER_INCLUDE_DIR}/extern/args"
+  "${OTHER_INCLUDE_DIR}/extern/tomlplusplus"
+  "${OTHER_INCLUDE_DIR}/extern/spdlog"
+  "${OTHER_INCLUDE_DIR}/extern/glm"
+  "${OTHER_INCLUDE_DIR}/extern/refl"
+  "${OTHER_INCLUDE_DIR}/extern/reflect-cpp"
+  "${OTHER_INCLUDE_DIR}/extern/flatbuffers"
+  "${OTHER_INCLUDE_DIR}/extern/asio"
+  "${OTHER_INCLUDE_DIR}/extern/glad"
+  "${OTHER_INCLUDE_DIR}/extern/assimp"
+  "${OTHER_INCLUDE_DIR}/extern/stb"
+  "${OTHER_INCLUDE_DIR}/extern/mio"
+  "${OTHER_INCLUDE_DIR}/extern/dotnet"
+  "${OTHER_INCLUDE_DIR}/extern/entt"
+  "${OTHER_INCLUDE_DIR}/extern/sdl"
+  "${OTHER_INCLUDE_DIR}/third_party/imgui"
+)
+
+include("${CMAKE_CURRENT_LIST_DIR}/other-targets.cmake")
+
+## Add include directories to otherlib target
+if(TARGET other::otherlib)
+  set_target_properties(other::otherlib PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${OTHER_INCLUDE_DIR};${OTHER_EXTERN_INCLUDE_DIRS}"
+  )
+endif()
+
+check_required_components(other)
+
+## Create alias for convenience
+if(TARGET other::otherlib AND NOT TARGET other::other)
+  add_library(other::other ALIAS other::otherlib)
+endif()

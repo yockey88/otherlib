@@ -36,14 +36,11 @@ target_sources(other_renderer
 
 target_include_directories(other_renderer 
   PUBLIC 
-      "${CMAKE_CURRENT_SOURCE_DIR}/src"
-      ${OTHER_EXTERN_DIR}/glad/include
-      ${OTHER_EXTERN_DIR}/stb
-      ${OTHER_EXTERN_DIR}/imgui
-      ${OTHER_EXTERN_DIR}/sdl
-      ${OTHER_EXTERN_DIR}/assimp
-      ${OTHER_EXTERN_DIR}/mio
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/renderer>
 )
-target_link_directories(other_renderer PUBLIC ${OTHER_LIBRARIES_PATH})
 
-target_link_libraries(other_renderer PUBLIC imgui SDL3 glad ${ASSIMP_NAME} other_core)
+target_link_directories(other_renderer PUBLIC ${OTHER_LIBRARIES_PATH})
+target_link_libraries(other_renderer PRIVATE imgui SDL3 glad ${ASSIMP_NAME} other_core)
+
+other_install_module(other_renderer "renderer")

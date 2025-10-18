@@ -24,9 +24,19 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
 
+set(CMAKE_INSTALL_PREFIX "C:/OtherEnvironment" CACHE PATH "Installation directory" FORCE)
+include(GNUInstallDirs)
+include(cmake/other_install.cmake)
+set(OTHER_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/other")
+set(OTHER_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
+set(OTHER_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}")
+set(OTHER_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/other")
+
 option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
 option(BUILD_DEVELOPMENT_DRIVERS "Build development drivers" ON)
+option(BUILD_RENDERING_DEVELOPMENT_DRIVER "Build the rendering development driver" OFF)
+option(BUILD_EXAMPLE_APPLICATION "Build the example application" OFF)
 option(DISALLOW_OTHER_PLUGINS "Build the library statically and without the framework for loading plugins" OFF)
 if (DISALLOW_OTHER_PLUGINS)
   message(STATUS "Disallowing other plugins")
@@ -70,6 +80,7 @@ endif()
 set(COMPILE_OPTIONS "")
 if(BUILD_PLATFORM STREQUAL "WINDOWS")
   add_compile_definitions("OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "HAS_SEH_EXCEPTIONS" "NOMINMAX")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0A00") # Windows 10+
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWIN32_LEAN_AND_MEAN")
@@ -114,6 +125,7 @@ else()
 endif()
 
 add_subdirectory(extern)
+message(STATUS "IMGUI_INCLUDE_DIRS: ${IMGUI_INCLUDE_DIRS}")
 
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
@@ -139,7 +151,32 @@ if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
 endif()
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib")
 
+set(OTHER_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
+set(OTHER_EXTERN_INCLUDE_DIRS 
+  ${OTHER_EXTERN_DIR}/magic_enum
+  ${OTHER_EXTERN_DIR}/args
+  ${OTHER_EXTERN_DIR}/tomlplusplus
+  ${OTHER_EXTERN_DIR}/spdlog
+  ${OTHER_EXTERN_DIR}/glm
+  ${OTHER_EXTERN_DIR}/refl
+  ${OTHER_EXTERN_DIR}/reflect-cpp
+  ${OTHER_EXTERN_DIR}/flatbuffers
+  ${OTHER_EXTERN_DIR}/asio
+  ${OTHER_EXTERN_DIR}/spdlog
+  ${OTHER_EXTERN_DIR}/sdl
+  ${OTHER_EXTERN_DIR}/imgui
+  ${OTHER_EXTERN_DIR}/glad/include
+  ${OTHER_EXTERN_DIR}/assimp
+  ${OTHER_EXTERN_DIR}/stb
+  ${OTHER_EXTERN_DIR}/mio
+  ${OTHER_EXTERN_DIR}/dotnet
+  ${OTHER_EXTERN_DIR}/entt
+  ${OTHER_EXTERN_DIR}/pybind11/include
+  ${OTHER_EXTERN_DIR}/nativefiledialog/src
+  ${OTHER_EXTERN_DIR}/json
+  ${IMGUI_INCLUDE_DIRS}
+)
 
 set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
                              "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
@@ -169,15 +206,10 @@ add_subdirectory(other-csharp)
 
 add_subdirectory(otherlib)
 
+include(CMakePackageConfigHelpers)
+
 if(EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
   add_subdirectory(development-drivers)
-endif()
-
-if (BUILD_OTHER_TERMINAL)
-  message(STATUS "Building other terminal application")
-  add_subdirectory(other-terminal)
-else()
-  message(STATUS "Skipping other terminal application build")
 endif()
 
 add_subdirectory(driver)
@@ -195,3 +227,57 @@ add_subdirectory(tools)
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
   add_subdirectory(scratch)
 endif()
+
+other_install_external_headers("magic_enum" "${OTHER_EXTERN_DIR}/magic_enum")
+other_install_external_headers("args" "${OTHER_EXTERN_DIR}/args")
+other_install_external_headers("tomlplusplus" "${OTHER_EXTERN_DIR}/tomlplusplus")
+other_install_external_headers("spdlog" "${OTHER_EXTERN_DIR}/spdlog")
+other_install_external_headers("glm" "${OTHER_EXTERN_DIR}/glm")
+other_install_external_headers("refl" "${OTHER_EXTERN_DIR}/refl")
+other_install_external_headers("reflect-cpp" "${OTHER_EXTERN_DIR}/reflect-cpp")
+other_install_external_headers("flatbuffers" "${OTHER_EXTERN_DIR}/flatbuffers")
+other_install_external_headers("asio" "${OTHER_EXTERN_DIR}/asio")
+other_install_external_headers("glad" "${OTHER_EXTERN_DIR}/glad/include")
+other_install_external_headers("assimp" "${OTHER_EXTERN_DIR}/assimp")
+other_install_external_headers("stb" "${OTHER_EXTERN_DIR}/stb")
+other_install_external_headers("mio" "${OTHER_EXTERN_DIR}/mio")
+other_install_external_headers("dotnet" "${OTHER_EXTERN_DIR}/dotnet")
+other_install_external_headers("entt" "${OTHER_EXTERN_DIR}/entt")
+other_install_external_headers("sdl" "${OTHER_EXTERN_DIR}/sdl")
+other_install_external_headers("imgui" "${IMGUI_INCLUDE_DIRS}")
+other_install_external_headers("pybind11" "${OTHER_EXTERN_DIR}/pybind11/include")
+other_install_external_headers("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefiledialog/src")
+other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/other-config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/other-config.cmake"
+  INSTALL_DESTINATION "${OTHER_INSTALL_CMAKEDIR}"
+  PATH_VARS OTHER_INSTALL_INCLUDEDIR OTHER_INSTALL_LIBDIR OTHER_INSTALL_BINDIR
+)
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/other-config-version.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion
+)
+
+install(
+  FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/other-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/other-config-version.cmake"
+  DESTINATION "${OTHER_INSTALL_CMAKEDIR}"
+)
+
+export(
+  EXPORT other-targets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/other-targets.cmake"
+  NAMESPACE other::
+)
+
+install(
+  EXPORT other-targets
+  FILE other-targets.cmake
+  NAMESPACE other::
+  DESTINATION "${OTHER_INSTALL_CMAKEDIR}"
+)
