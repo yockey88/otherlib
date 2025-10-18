@@ -78,13 +78,9 @@ namespace other {
 
     std::string as_string() const {
       constexpr bool has_description_as_string =
-        requires(const T& t) {
-          { subsystem_description<T>::as_string(t) } -> std::convertible_to<std::string>;
-        };
+        requires(const T& t) { { subsystem_description<T>::as_string(t) } -> std::convertible_to<std::string>; };
       constexpr bool has_instance_as_string =
-        requires(const T& t) {
-          { t.as_string() } -> std::convertible_to<std::string>;
-        };
+        requires(const T& t) { { t.as_string() } -> std::convertible_to<std::string>; };
 
       constexpr static bool has_to_string = has_description_as_string || has_instance_as_string;
 

@@ -27,6 +27,7 @@ namespace other {
   using discover_binding_points = void (*)();
   using bind_native_function = void (*)(native_string, void*);
   using register_internal_call = void (*)(native_string, void*);
+  using validate_binding_points = nbool32 (*)();
 
   /// TypeInterface
   using get_net_core_types = void (*)(int32_t*, int32_t*);

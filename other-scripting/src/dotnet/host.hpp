@@ -62,6 +62,7 @@ namespace other {
       discover_binding_points discover_binding_points = nullptr;
       bind_native_function bind_native_function = nullptr;
       register_internal_call register_internal_call = nullptr;
+      validate_binding_points validate_binding_points = nullptr;
 
       /// TypeInterface
       get_type_information get_assembly_types = nullptr;
@@ -194,13 +195,13 @@ namespace other {
 
     void* load_managed_function(const filepath& asm_path, const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type = OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION) const;
 
-    /// \todo fix hardcoded path
+    /// \todo fix hardcoded path and replace with install location
     template <typename Fn>
     Fn load_managed_function(const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type = OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION) const {
 #ifdef OTHER_ENVIRONMENT_DEBUG
-      const char_t* dotnetlib_path = DNET_STR("build/other-csharp/Debug/OtherCsBindings.dll");
+      const char_t* dotnetlib_path = DNET_STR("C:/Yock/code/Other2/OtherEnv/build/other-csharp/Debug/OtherCsBindings.dll");
 #elif defined(OTHER_ENVIRONMENT_RELEASE)
-      const char_t* dotnetlib_path = DNET_STR("build/other-csharp/Release/OtherCsBindings.dll");
+      const char_t* dotnetlib_path = DNET_STR("C:/Yock/code/Other2/OtherEnv/build/other-csharp/Release/OtherCsBindings.dll");
 #else
   #error "Unknown build configuration!"
 #endif

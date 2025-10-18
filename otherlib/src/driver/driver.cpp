@@ -227,7 +227,7 @@ namespace other {
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
 #else
-  #error "UNIMPLEMENTED PLATFORM
+  #error "UNIMPLEMENTED PLATFORM"
 #endif
   }
 
@@ -239,7 +239,6 @@ namespace other {
     for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
       it->handle();
       if (it->handle.coro_handle.done()) {
-        std::println("Cleaning up finished coroutine, remaining live coroutines: {}", live_coroutines.size() - 1);
         it->handle.coro_handle.destroy();
         it = live_coroutines.erase(it);
       } else {

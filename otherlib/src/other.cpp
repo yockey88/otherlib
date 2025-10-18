@@ -92,6 +92,9 @@ namespace other {
     bind_primary_scripting_environment();
     bind_environment_scripts();
 
+    /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
+    ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
+
     exit_code res = SUCCESS;
     {
       CORE_LOG_INFO("Running Other Environment driver...");

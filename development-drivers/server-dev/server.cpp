@@ -22,6 +22,58 @@
 #include "server-ui/project-creator.hpp"
 
 namespace other {
+  namespace {
+
+    task build_project(const project_creator::project_context& context, json::json& project_cache_path) {
+      /// have to copy context since coroutine may outlive project_creator ui-page
+      project_creator::project_context ctx = context;
+
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
+
+      integer_t builder_obj_id = -1;
+      builder_obj_id = env->create_object("Builder");
+
+      if (builder_obj_id == -1) {
+        CORE_LOG_ERROR("Failed to create Builder object to build project {}", ctx.project_name);
+        co_return;
+      }
+
+      CORE_LOG_DEBUG("Attaching Builder object to scripting environment to build project '{}'", ctx.project_name);
+      env->attach_dotnet_object(builder_obj_id, "Other.BuildTool");
+      /// suspend just to let the engine breathe
+      CORE_LOG_DEBUG("Began building project '{}'", ctx.project_name);
+      co_await task::awaiter{};
+
+      script_object* builder_obj = env->get_object(builder_obj_id);
+      if (builder_obj == nullptr) {
+        env->destroy_object(builder_obj_id);
+        CORE_LOG_ERROR("Failed to retrieve Builder object from scripting environment to build project {}", ctx.project_name);
+        co_return;
+      }
+
+      struct build_args_ {
+        native_string project_type;
+        native_string name;
+        native_string filename;
+        native_string working_directory;
+      } args;
+      /// \todo make project type selectable
+      args.project_type = "Application";
+      args.name = context.project_name;
+      args.filename = context.project_path.string();
+      args.working_directory = context.working_directory.string();
+
+      CORE_LOG_DEBUG("Invoking CreateProject on Builder object for project '{}'", context.project_name);
+      builder_obj->dotnet_object->invoke<void>("CreateProject", args);
+      // builder_obj->dotnet_object->invoke<void>("BuildProject", args);
+
+      env->detach_dotnet_object(builder_obj_id);
+      env->destroy_object(builder_obj_id);
+      co_return;
+    }
+
+  }  // namespace
 
   void server::on_initialize(const command_line& cmd) {
     state_machine.handle_event(server_event::SERVER_EVENT_START, this);
@@ -68,8 +120,7 @@ namespace other {
 
     events->register_event("finalize-project");
     events->add_listener("finalize-project", [this](const value& data) {
-      project_creator::project_context context = data;
-      CORE_LOG_DEBUG("Finalizing project '{}' at path '{}' with working directory '{}'", context.project_name, context.project_path.string(), context.working_directory.string());
+      post_coroutine(build_project(data, project_cache));
     });
 
     /// launch threads
@@ -109,8 +160,8 @@ namespace other {
   void server::run() {
     while (running) {
       pump_events();
-
       core_update();
+
       switch (state_machine.get_current_state()) {
         case server_state::SERVER_STATE_INITIALIZING: update_initializing(); break;
         case server_state::SERVER_STATE_RUNNING: update_running(); break;

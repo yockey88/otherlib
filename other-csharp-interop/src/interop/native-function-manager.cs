@@ -99,6 +99,7 @@ namespace OtherCsBindings
       }
     }
 
+    /// does this work in all cases? this seems fragile
     private static bool IsNativeFunctionType(Type type)
     {
       if (type.IsFunctionPointer)
@@ -131,7 +132,7 @@ namespace OtherCsBindings
         Host.HandleException(e);
       }
     }
-  
+
     /// calls to this happen before the discovery of assembly modules and binding points for native functions 
     /// so we do not use the binding points api here
 
@@ -140,7 +141,7 @@ namespace OtherCsBindings
     {
       try
       {
-        var name = name_str.ToString()!; 
+        var name = name_str.ToString()!;
 
         var name_start = name.IndexOf('+');
         var name_end = name.IndexOf(",", name_start, StringComparison.CurrentCulture);
@@ -172,6 +173,28 @@ namespace OtherCsBindings
       {
         Host.HandleException(ex);
       }
+    }
+
+    [UnmanagedCallersOnly]
+    private static NativeBool32 ValidateBindingPoints()
+    {
+      var all_bound = true;
+      foreach (var kvp in binding_points)
+      {
+        var binding_point = kvp.Value;
+        var value = binding_point.field.GetValue(null);
+        if (value == null || (value is IntPtr ptr && ptr == IntPtr.Zero))
+        {
+          Logger.LogError($"Native function '{binding_point.registered_name}' was not bound to managed counterpart.");
+          all_bound = false;
+        }
+      }
+
+      if (all_bound)
+      {
+        Logger.LogInfo("All native functions successfully bound to managed counterparts.");
+      }
+      return all_bound;
     }
   }
 }

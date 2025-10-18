@@ -109,7 +109,7 @@ def validate_args(args, parser):
       and not args.run and not args.run_scratch \
       and not args.run_terminal and not args.run_tests \
       and not args.compile_serialization_schema \
-      and not args.compile_object and not args.generate_cs_bindings \
+      and not args.compile_object \
       and not args.run_test_suite and not args.run_server:
     parser.print_help()
     sys.exit(1)
@@ -130,17 +130,12 @@ if __name__ == "__main__":
   parser.add_argument("--compile-object", "-co", nargs = 2, type=str, metavar=("SCHEMA_FILE", "OBJECT_FILE"), help="Compile a binary object using the <object_file> and the <schema_file>")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
   parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
-  # parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
 
   args = parser.parse_args()
   try:
     validate_args(args, parser)
 
     cfg = args.cfg
-
-    if args.generate_cs_bindings:
-      print("Generating C# bindings...")
-      run_subprocess([f"build/code-generator/{cfg}/OtherCsBindingsGenerator.exe"])
 
     if args.compile_serialization_schema is not None and os.path.exists(args.compile_serialization_schema):
       if not args.compile_serialization_schema.endswith(".fbs"):
@@ -174,6 +169,9 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
+      # ### if no other.sln file found, regenerate project files
+      # if not os.path.exists("build/other.sln"):
+      #   regen_project()
       ### run dotnet restore on solution file to restore nuget packages
       # this has to happen before build step cause bulding dotnet projects
       # requires the *.project.json files to be present
@@ -208,7 +206,7 @@ if __name__ == "__main__":
       run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args, args.verbose)
     elif args.run_tests:
       print("Running tests...")
-      extra_args=["--gtest_shuffle" ]
+      extra_args = [ "--gtest_shuffle" ]
       
       ## TODO: fix platform specific output paths
       if cfg == "Debug" or cfg == "ProfileD":

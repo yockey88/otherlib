@@ -285,6 +285,9 @@ namespace other {
     interop_functions.register_internal_call = load_managed_function<register_internal_call>(native_function_manager_type_str, DNET_STR("RegisterInternalCall"));
     OTHER_ASSERT(interop_functions.register_internal_call != nullptr, "Failed to load RegisterInternalCall function from managed assembly.");
 
+    interop_functions.validate_binding_points = load_managed_function<validate_binding_points>(native_function_manager_type_str, DNET_STR("ValidateBindingPoints"));
+    OTHER_ASSERT(interop_functions.validate_binding_points != nullptr, "Failed to load ValidateBindingPoints function from managed assembly.");
+
     /// TypeInterface
     interop_functions.get_assembly_types = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetAssemblyTypes"));
     OTHER_ASSERT(interop_functions.get_assembly_types != nullptr, "Failed to load GetAssemblyTypes function from managed assembly.");

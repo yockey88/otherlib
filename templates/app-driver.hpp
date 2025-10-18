@@ -8,10 +8,11 @@
 
 namespace ${project-name} {
 
- class OTHER_CLASS ${project-name}_driver {
+ class OTHER_CLASS ${project-name}_driver : public other::driver {
   public:
-   ${project-name}_driver() = default;
-   ~${project-name}_driver() = default;
+   ${project-name}_driver(const other::config_table& config) 
+      : driver(config) {}
+   ~${project-name}_driver() override = default;
 
     void on_initialize(const command_line& cmd) override;
     void run() override;
