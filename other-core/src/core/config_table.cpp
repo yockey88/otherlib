@@ -243,8 +243,4 @@ namespace other {
     return oss.str();
   }
 
-  std::string config_table::format_table_string(const std::string_view section, const std::string_view key) const {
-    return std::format("{}.{}", section, key);
-  }
-
 }  // namespace other

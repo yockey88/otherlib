@@ -40,10 +40,8 @@ namespace other {
     const toml::table& get_project_table() const;
 
     std::string dump_table_string() const;
-    std::string format_table_string(const std::string_view section, const std::string_view key) const;
-
     template <typename T>
-    T get_value(const std::string_view toml_path, T default_value = {}) const {
+    std::remove_cvref_t<T> get_value(const std::string_view toml_path, T default_value = {}) const {
       toml::node_view node = table.at_path(toml_path);
       if (!node) {
         CORE_LOG_WARN("Config key '{}' not found, returning default value.", toml_path);
@@ -52,12 +50,36 @@ namespace other {
         CORE_LOG_TRACE("Found config key '{}'", toml_path);
       }
 
-      CORE_LOG_TRACE("Parsing config value for key '{}'", toml_path);
-      if (node.template is<T>()) {
-        return node.template as<T>()->get();
+      if constexpr (is_container<T> && !std::is_same_v<T, std::string>) {
+        // Handle container types (e.g., std::vector)
+        using value_type = typename T::value_type;
+
+        T result;
+        const toml::array* array_node = node.as_array();
+        if (array_node == nullptr) {
+          CORE_LOG_WARN("Config key '{}' is not an array, returning default value.", toml_path);
+          return result;
+        }
+
+        CORE_LOG_TRACE("Parsing config array for key '{}' ({} items)", toml_path, array_node->size());
+        array_node->for_each([&](auto&& elem) {
+          if (!elem.template is<value_type>()) {
+            CORE_LOG_WARN("Element in config array '{}' is not of the expected type, skipping.", toml_path);
+            return;
+          }
+          CORE_LOG_TRACE(" - Parsed element in config array '{}'", toml_path);
+          result.push_back(elem.template as<value_type>()->get());
+        });
+
+        return result;
       } else {
-        CORE_LOG_WARN("Config key '{}' is not of the expected type, returning default value.", toml_path);
-        return default_value;
+        CORE_LOG_TRACE("Parsing config value for key '{}'", toml_path);
+        if (node.template is<T>()) {
+          return node.template as<T>()->get();
+        } else {
+          CORE_LOG_WARN("Config key '{}' is not of the expected type, returning default value.", toml_path);
+          return default_value;
+        }
       }
     }
 
@@ -89,6 +111,45 @@ namespace other {
     toml::table table;
   };
 
+  namespace configuration {
+    namespace section {
+
+      inline constexpr std::string_view kProject = "project";
+      inline constexpr std::string_view kApplication = "application";
+      inline constexpr std::string_view kRendering = "rendering";
+      inline constexpr std::string_view kScripting = "scripting";
+
+    }  // namespace section
+    namespace key {
+
+      // application
+      inline constexpr std::string_view kDynamicDriverPath = "dynamic-driver-rel-path";
+
+      // rendering
+      inline constexpr std::string_view kRenderingBackend = "rendering-backend";
+      inline constexpr std::string_view kForceNoWindow = "force-no-window";
+      inline constexpr std::string_view kWindowSize = "window-size";
+      inline constexpr std::string_view kClearColor = "clear-color";
+
+      // scripting
+      inline constexpr std::string_view kDotnetBindings = "dotnet-bindings";
+      inline constexpr std::string_view kDotnetRuntimeConfig = "dotnet-runtime-config";
+      inline constexpr std::string_view kOtherCSharp = "other-csharp";
+
+    }  // namespace key
+
+    constexpr std::string_view kProjectDynamicDriverPath = "project.dynamic-driver-rel-path";
+
+    constexpr std::string_view kRenderingBackend = "rendering.rendering-backend";
+    constexpr std::string_view kForceNoWindow = "rendering.force-no-window";
+    constexpr std::string_view kWindowSize = "rendering.window-size";
+    constexpr std::string_view kClearColor = "rendering.clear-color";
+
+    constexpr std::string_view kDotnetBindings = "scripting.dotnet-bindings";
+    constexpr std::string_view kDotnetRuntimeConfig = "scripting.dotnet-runtime-config";
+    constexpr std::string_view kOtherCSharp = "scripting.other-csharp";
+
+  }  // namespace configuration
 }  // namespace other
 
 #endif  // OTHER_CORE_CONFIG_TABLE_HPP

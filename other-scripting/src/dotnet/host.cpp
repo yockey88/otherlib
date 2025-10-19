@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "core/arena.hpp"
+#include "core/config_table.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "serialization/reflection.hpp"
@@ -55,12 +56,12 @@ namespace other {
   void dotnet_host::load_host(const config_table& env_config) {
     this->environment_config = env_config;
 
-    std::string dotnet_binding_asm = env_config.get_value<std::string>("scripting.dotnet-bindings", "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.dll");
+    std::string dotnet_binding_asm = env_config.get_value<std::string>(configuration::kDotnetBindings, "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.dll");
     OTHER_ASSERT(!dotnet_binding_asm.empty(), "Dotnet binding assembly path cannot be empty.");
     OTHER_ASSERT(std::filesystem::exists(dotnet_binding_asm), "Dotnet binding assembly not found at path: {}", dotnet_binding_asm);
     this->dotnet_binding_assembly = detail::convert_string(dotnet_binding_asm);
 
-    std::string dotnet_runtime_config_path = env_config.get_value<std::string>("scripting.dotnet-runtime-config", "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.runtimeconfig.json");
+    std::string dotnet_runtime_config_path = env_config.get_value<std::string>(configuration::kDotnetRuntimeConfig, "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.runtimeconfig.json");
     OTHER_ASSERT(!dotnet_runtime_config_path.empty(), "Dotnet runtime config path cannot be empty.");
     OTHER_ASSERT(std::filesystem::exists(dotnet_runtime_config_path), "Dotnet runtime config not found at path: {}", dotnet_runtime_config_path);
     this->dotnet_runtime_config = detail::convert_string(dotnet_runtime_config_path);
@@ -230,7 +231,7 @@ namespace other {
   }
 
   filepath dotnet_host::get_bindings_assembly_path() const {
-    return environment_config.get_value<std::string>("scripting.dotnet_binding_assembly", "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.dll");
+    return environment_config.get_value<std::string>("scripting.dotnet-bindings", "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.dll");
   }
 
   dotnet_object* dotnet_host::new_object(const std::string_view name, dotnet_type* type) {

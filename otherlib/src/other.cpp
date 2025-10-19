@@ -138,7 +138,7 @@ namespace other {
     auto* env = subsystem<scripting_environment>::get();
     env->initialize_script_environment(config);
 
-    filepath other_cs_path = config.get_value<std::string>("scripting.other_cs_path", "C:/OtherEnvironment/dotnet-assemblies/OtherCs.dll");
+    filepath other_cs_path = config.get_value<std::string>(configuration::kOtherCSharp, "C:/OtherEnvironment/dotnet-assemblies/OtherCs.dll");
     env->dotnet_binding_assembly = env->load_dotnet_module(other_cs_path.string());
   }
 
