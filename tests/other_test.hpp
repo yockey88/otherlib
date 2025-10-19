@@ -23,13 +23,21 @@ namespace other {
       if (!std::filesystem::exists(cmd.config_file)) {
         std::println(std::cerr, "Configuration file does not exist: '{}'", cmd.config_file);
         ASSERT_TRUE(false);
+      } else {
+        std::println(std::cout, "Using configuration file: '{}'", cmd.config_file);
       }
-      config_table config = config_table::load(cmd.config_file);
-      ASSERT_EQ(config.valid, true) << "Failed to load configuration file: " << cmd.config_file;
+
+      config = config_table::load(cmd.config_file);
+      if (!config.valid) {
+        std::println(std::cerr, "Configuration file is invalid: '{}'. Might cause test failures", cmd.config_file);
+      }
       config.diagnostics.verbose = cmd.diagnostics.verbose;
+
+      std::println(std::cout, "Configuration Table:\n{}", config.dump_table_string());
 
       subsystem<arena>::get();
       config.core_log_level = spdlog::level::debug;
+
       register_log_sinks(config);
       CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
     }

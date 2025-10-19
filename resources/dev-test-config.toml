@@ -1,5 +1,8 @@
 [application]
 core-log-level = "warn"
+# fix test logs, currently this is every test and does not have good information, should have a log
+#   for each seperate test-case 
+core-log-file = "logs/dev-test-log.log"
 
 [rendering]
 force-no-window = true

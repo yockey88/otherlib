@@ -39,6 +39,7 @@ namespace other {
     toml::table& get_project_table();
     const toml::table& get_project_table() const;
 
+    std::string dump_table_string() const;
     std::string format_table_string(const std::string_view section, const std::string_view key) const;
 
     template <typename T>

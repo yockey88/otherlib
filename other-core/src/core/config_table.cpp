@@ -237,6 +237,12 @@ namespace other {
     return table;
   }
 
+  std::string config_table::dump_table_string() const {
+    std::ostringstream oss;
+    oss << table;
+    return oss.str();
+  }
+
   std::string config_table::format_table_string(const std::string_view section, const std::string_view key) const {
     return std::format("{}.{}", section, key);
   }
