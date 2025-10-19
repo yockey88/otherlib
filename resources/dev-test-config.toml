@@ -3,3 +3,8 @@ core-log-level = "warn"
 
 [rendering]
 force-no-window = true
+
+[scripting]
+dotnet-bindings = "build/other-csharp/Debug/OtherCsBindings.dll"
+dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+other-cs-path = "build/other-csharp/Debug/OtherCs.dll"
