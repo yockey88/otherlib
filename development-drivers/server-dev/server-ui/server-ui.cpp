@@ -64,10 +64,12 @@ namespace other {
     create_project_win->initialize();
 
     events->register_event("goto-project-page");
+    events->register_event("goto-home-page");
     events->register_event("goto-create-project-page");
     events->register_event("goto-settings-page");
 
     events->add_listener("goto-project-page", [this](const value& data) { state_machine.handle_event(ui_event::UI_EVENT_GO_TO_PROJECT_PAGE); });
+    events->add_listener("goto-home-page", [this](const value& data) { state_machine.handle_event(ui_event::UI_EVENT_GO_TO_HOME_PAGE); });
     events->add_listener("goto-create-project-page", [this](const value& data) { state_machine.handle_event(ui_event::UI_EVENT_GO_TO_CREATE_PROJECT_PAGE); });
     events->add_listener("goto-settings-page", [this](const value& data) { state_machine.handle_event(ui_event::UI_EVENT_GO_TO_SETTINGS_PAGE); });
 

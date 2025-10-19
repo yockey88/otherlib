@@ -11,39 +11,83 @@
 namespace other {
 
   void build_tool::start_build(const project_description& project) {
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
+
     this->project = project;
 
-    auto* script_env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(script_env != nullptr, "Scripting environment subsystem is not initialized");
+    build_tool_obj_id = env->create_object("Builder");
+    if (build_tool_obj_id == -1) {
+      CORE_LOG_ERROR("Failed to create Builder object to build project {}", project.project_name);
+      build_tool_obj = nullptr;
+      curr_build_status = BUILD_STATUS_FAILED;
+      return;
+    }
 
-    build_tool_obj_id = script_env->create_object("Builder");
-    OTHER_ASSERT(build_tool_obj_id != -1, "Failed to create Builder object in scripting environment");
+    CORE_LOG_DEBUG("Attaching Builder object to scripting environment to build project '{}'", project.project_name);
+    env->attach_dotnet_object(build_tool_obj_id, "Other.BuildTool");
+    /// suspend just to let the engine breathe
+    CORE_LOG_DEBUG("Began building project '{}'", project.project_name);
 
-    script_env->attach_dotnet_object(build_tool_obj_id, "Other.BuildTool");
-    script_object* builder_obj = script_env->get_object(build_tool_obj_id);
+    build_tool_obj = env->get_object(build_tool_obj_id);
+    if (build_tool_obj == nullptr) {
+      env->destroy_object(build_tool_obj_id);
+      CORE_LOG_ERROR("Failed to retrieve Builder object from scripting environment to build project {}", project.project_name);
+      build_tool_obj = nullptr;
+      curr_build_status = BUILD_STATUS_FAILED;
+      return;
+    }
 
-    struct build_args {
+    struct build_args_ {
       native_string project_type;
       native_string name;
-      native_string override_file_name;
+      native_string filename;
       native_string working_directory;
-    };
+    } args;
+    /// \todo make project type selectable
+    args.project_type = "Application";
+    args.name = project.project_name;
+    args.filename = project.environment_config.string();
+    args.working_directory = project.working_directory.string();
 
-    build_args args = build_args{
-      .name = native_string::new_str(project.name),
-      .working_directory = native_string::new_str(project.working_directory.string()),
-    };
+    CORE_LOG_DEBUG("Invoking CreateProject on Builder object for project '{}'", project.project_name);
+    build_tool_obj->dotnet_object->invoke<>("CreateProject", args);
+    curr_build_status = (build_status)build_tool_obj->dotnet_object->invoke<int32_t>("GetBuildStatus");
+  }
 
-    switch (project.project_type) {
-      case project_description::APPLICATION: args.project_type = native_string::new_str("Application"); break;
-      case project_description::MODULE: args.project_type = native_string::new_str("Module"); break;
-      default: args.project_type = native_string::new_str("Unknown"); break;
+  void build_tool::poll_project_build() {
+    if (build_tool_obj == nullptr) {
+      return;
     }
-    if (project.override_file_name != "") {
-      args.override_file_name = native_string::new_str(project.override_file_name);
+
+    curr_build_status = (build_status)build_tool_obj->dotnet_object->invoke<int32_t>("PollProjectBuild");
+  }
+
+  void build_tool::finalize_build() {
+    if (build_tool_obj == nullptr) {
+      return;
     }
 
-    builder_obj->dotnet_object->invoke("StartBuild", args);
+    build_tool_obj->dotnet_object->invoke<void>("FinalizeBuild");
+    CORE_LOG_DEBUG("Finalized build process.");
+
+    auto* env = subsystem<scripting_environment>::get();
+    env->detach_dotnet_object(build_tool_obj_id);
+    env->destroy_object(build_tool_obj_id);
+    build_tool_obj = nullptr;
+    build_tool_obj_id = -1;
+  }
+
+  bool build_tool::finished_project_generation() const {
+    return curr_build_status == BUILD_STATUS_SUCCESS || curr_build_status == BUILD_STATUS_FAILED;
+  }
+
+  build_tool::build_status build_tool::get_build_status() {
+    if (build_tool_obj == nullptr) {
+      return curr_build_status;
+    }
+    curr_build_status = (build_status)build_tool_obj->dotnet_object->invoke<int32_t>("GetBuildStatus");
+    return curr_build_status;
   }
 
 }  // namespace other

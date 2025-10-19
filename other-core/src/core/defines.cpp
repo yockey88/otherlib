@@ -64,29 +64,24 @@ namespace other {
     /// \todo: implement this and add a development override to return local dev dir
     ///         instead of prod installation path, currently returning hard coded local dev folder
 
-    filepath folder_path = "";
-#if 0
-    /// get OtherEnvironment install folder
-    ///   windows: PROGRAMFILES/OtherEnvironment
-    ///   linux: /usr/local/OtherEnvironment
-    /// \todo mac
+#if 1
+  /// get OtherEnvironment install folder
+  ///   windows: PROGRAMFILES/OtherEnvironment
+  ///   linux: /usr/local/OtherEnvironment
+  /// \todo mac
   #ifdef OTHER_ENVIRONMENT_WINDOWS
-    char* program_files = nullptr;
-    size_t len = 0;
-    errno_t err = _dupenv_s(&program_files, &len, "PROGRAMFILES");
-    OTHER_ASSERT(err == 0 && program_files != nullptr, "Failed to get PROGRAMFILES environment variable.");
-    folder_path = filepath(program_files) / filepath("OtherEnvironment");
-    free(program_files);
+    return filepath("C:/OtherEnvironment");
   #elif defined(OTHER_ENVIRONMENT_UNIX)
-    #error "Unimplemented"
+    return filepath("/usr/local/OtherEnvironment");
   #else
     #error "Unsupported platform"
   #endif
 #else
+    filepath folder_path = "";
     /// this only works in the dev environment on my machine right now, need to fix later
     folder_path = std::filesystem::current_path();
-#endif
     return folder_path;
+#endif
   }
 
   filepath get_system_default_working_directory() {

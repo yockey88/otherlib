@@ -1,11 +1,17 @@
 cmake_minimum_required(VERSION 3.27.0..4.0.2)
 
 project(${project-name} VERSION 0.1.0 LANGUAGES CXX CSharp)
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+message(STATUS "using compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} @ [${CMAKE_CXX_COMPILER}]")
 
 # Find otherlib package
 find_package(otherlib REQUIRED)

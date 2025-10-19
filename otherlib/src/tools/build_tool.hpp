@@ -6,18 +6,37 @@
 
 #include "core/defines.hpp"
 
-#include "project/project.hpp"
+#include "script/script_object.hpp"
 
+#include "project/project.hpp"
 
 namespace other {
 
   class build_tool {
    public:
+    enum build_status : int32_t {
+      BUILD_STATUS_NOT_STARTED = 0,
+      GENERATING_BUILD_SYSTEM,
+      CURRENTLY_BUILDING,
+      BUILD_STATUS_SUCCESS,
+      BUILD_STATUS_FAILED,
+
+      NUM_BUILD_STATUSES,
+      INVALID_BUILD_STATUS = NUM_BUILD_STATUSES,
+    };
+
     build_tool() = default;
     ~build_tool() = default;
 
+    /// returns json blob with build results and info
     void start_build(const project_description& project);
-    // void finalize_build();
+    void poll_project_build();
+    void finalize_build();
+
+    bool finished_project_generation() const;
+
+    /// updates and retrieves current build status
+    build_status get_build_status();
 
     /*
     std::string name = "NewProject";
@@ -40,7 +59,9 @@ namespace other {
 
    private:
     integer_t build_tool_obj_id = -1;
+    script_object* build_tool_obj = nullptr;
 
+    build_status curr_build_status = BUILD_STATUS_NOT_STARTED;
     project_description project = {};
 
     enum build_phase {

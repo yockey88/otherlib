@@ -24,52 +24,60 @@
 namespace other {
   namespace {
 
-    task build_project(const project_creator::project_context& context, json::json& project_cache_path) {
+    task build_project(const project_creator::project_context& context, json::json& project_cache_path, event_system& events) {
       /// have to copy context since coroutine may outlive project_creator ui-page
       project_creator::project_context ctx = context;
 
-      auto* env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
-
-      integer_t builder_obj_id = -1;
-      builder_obj_id = env->create_object("Builder");
-
-      if (builder_obj_id == -1) {
-        CORE_LOG_ERROR("Failed to create Builder object to build project {}", ctx.project_name);
-        co_return;
+      build_tool builder = {};
+      project_description project_desc = {};
+      project_desc.project_type = project_description::APPLICATION;
+      project_desc.project_name = ctx.project_name;
+      project_desc.environment_config = ctx.project_path;
+      project_desc.working_directory = ctx.working_directory;
+      CORE_LOG_DEBUG("Starting build for project '{}' at path '{}' with working directory '{}'", ctx.project_name, ctx.project_path.string(), ctx.working_directory.string());
+      builder.start_build(project_desc);
+      while (true) {
+        builder.poll_project_build();
+        if (builder.finished_project_generation()) {
+          CORE_LOG_DEBUG("Build process for project '{}' finished.", ctx.project_name);
+          break;
+        }
+        co_await task::awaiter{};
       }
 
-      CORE_LOG_DEBUG("Attaching Builder object to scripting environment to build project '{}'", ctx.project_name);
-      env->attach_dotnet_object(builder_obj_id, "Other.BuildTool");
-      /// suspend just to let the engine breathe
-      CORE_LOG_DEBUG("Began building project '{}'", ctx.project_name);
-      co_await task::awaiter{};
-
-      script_object* builder_obj = env->get_object(builder_obj_id);
-      if (builder_obj == nullptr) {
-        env->destroy_object(builder_obj_id);
-        CORE_LOG_ERROR("Failed to retrieve Builder object from scripting environment to build project {}", ctx.project_name);
+      builder.finalize_build();
+      if (builder.get_build_status() == build_tool::BUILD_STATUS_FAILED) {
+        CORE_LOG_ERROR("Build for project '{}' failed.", ctx.project_name);
         co_return;
+      } else {
+        CORE_LOG_DEBUG("Build for project '{}' completed successfully.", ctx.project_name);
       }
 
-      struct build_args_ {
-        native_string project_type;
-        native_string name;
-        native_string filename;
-        native_string working_directory;
-      } args;
-      /// \todo make project type selectable
-      args.project_type = "Application";
-      args.name = context.project_name;
-      args.filename = context.project_path.string();
-      args.working_directory = context.working_directory.string();
+      /// update project cache
+      json::json new_project_entry;
+      new_project_entry["name"] = ctx.project_name;
+      new_project_entry["project-file"] = ctx.project_path.string();
+      new_project_entry["working-directory"] = ctx.working_directory.string();
+      new_project_entry["configurations"] = std::vector<std::string>{ "Debug", "Release" };
+      new_project_entry["build"] = {
+        { "type", "other-application" },
+        { "output-folder", (filepath(ctx.working_directory) / "build/${configuration}").string() },
+        { "executable", (filepath(ctx.working_directory) / "build/${configuration}" / (ctx.project_name + ".exe")).string() },
+        { "args", std::vector<std::string>{} }
+      };
+      project_cache_path["projects"].push_back(new_project_entry);
+      /// rewrite entire cache back to file, we could optimize this later
+      /// we might just want to defer this to do on shutdown of server, but this also could lead to data loss if the server crashes
+      {
+        filepath project_cache_file = get_app_data_folder("OtherEngine/OtherServer") / filepath("project_cache.json");
+        std::ofstream file(project_cache_file, std::ios::trunc);
+        /// we want pretty json :)
+        file << project_cache_path.dump(2);
+        file.close();
+      }
 
-      CORE_LOG_DEBUG("Invoking CreateProject on Builder object for project '{}'", context.project_name);
-      builder_obj->dotnet_object->invoke<void>("CreateProject", args);
-      // builder_obj->dotnet_object->invoke<void>("BuildProject", args);
-
-      env->detach_dotnet_object(builder_obj_id);
-      env->destroy_object(builder_obj_id);
+      CORE_LOG_DEBUG("Project cache updated with new project '{}', returning to projects page", ctx.project_name);
+      events.trigger_event("goto-home-page");
       co_return;
     }
 
@@ -120,7 +128,7 @@ namespace other {
 
     events->register_event("finalize-project");
     events->add_listener("finalize-project", [this](const value& data) {
-      post_coroutine(build_project(data, project_cache));
+      post_coroutine(build_project(data, project_cache, *events));
     });
 
     /// launch threads
@@ -507,26 +515,6 @@ namespace other {
     itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
     itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(main_binding_point.port) });
     launch_detached_process(itr->working_directory, itr->executable, itr->args);
-
-    std::string ping_session_ev_name = "ping-session:[" + std::to_string(itr->id) + "]";
-    events->register_timed_event(ping_session_ev_name, seconds(10), true);
-    events->add_listener(ping_session_ev_name, [this, session_id = itr->id](const value& ec) {
-      CORE_LOG_DEBUG("Pinging session [{}] to check connectivity", session_id);
-      message msg;
-      msg.header = {
-        .category = CONTROL,
-        .id = PING,
-      };
-      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
-      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
-
-      send_message_and_wait_acknowledgment(
-        std::move(msg), seconds(1),
-        std::bind_front(&server::on_ack_control_ping_network_thread, this),
-        std::bind_front(&server::on_timeout_control_ping_network_thread, this)
-      );
-    });
-
 #endif
   }
 
@@ -659,6 +647,26 @@ namespace other {
 
     CORE_LOG_DEBUG("Session {} connection finalized", session_id);
     app_itr->second.connected = true;
+
+    /// we should only do this after the application has checked in successfully
+    std::string ping_session_ev_name = "ping-session:[" + std::to_string(itr->id) + "]";
+    events->register_timed_event(ping_session_ev_name, seconds(10), true);
+    events->add_listener(ping_session_ev_name, [this, session_id = itr->id](const value& ec) {
+      CORE_LOG_DEBUG("Pinging session [{}] to check connectivity", session_id);
+      message msg;
+      msg.header = {
+        .category = CONTROL,
+        .id = PING,
+      };
+      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
+
+      send_message_and_wait_acknowledgment(
+        std::move(msg), seconds(1),
+        std::bind_front(&server::on_ack_control_ping_network_thread, this),
+        std::bind_front(&server::on_timeout_control_ping_network_thread, this)
+      );
+    });
   }
 
   void server::on_shutdown_request() {

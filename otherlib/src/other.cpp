@@ -78,6 +78,11 @@ namespace other {
     }
 
     register_log_sinks(config);
+    if (cmd.diagnostics.verbose) {
+      config.diagnostics.verbose = true;
+      CORE_LOG_DEBUG("Loading Environment with configuration :\n{}\n", config.dump_table_string());
+    }
+
     CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
     CORE_LOG_DEBUG("Environment Config File: {}", cmd.config_file);
     CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
@@ -142,6 +147,8 @@ namespace other {
     env->initialize_script_environment(config);
 
     filepath other_cs_path = config.get_value<std::string>(configuration::kOtherCSharp, "C:/OtherEnvironment/dotnet-assemblies/OtherCs.dll");
+    OTHER_ASSERT(std::filesystem::exists(other_cs_path), "OtherCs.dll not found at path: {}", other_cs_path.string());
+    CORE_LOG_DEBUG("Using OtherCs.dll at path: {}", other_cs_path.string());
     env->dotnet_binding_assembly = env->load_dotnet_module(other_cs_path.string());
   }
 

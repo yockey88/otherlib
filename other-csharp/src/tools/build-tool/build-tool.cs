@@ -22,15 +22,25 @@ namespace Other
       INVALID_BUILD_PHASE = BuildPhase.NUM_BUILD_PHASES,
     };
 
-    public struct BuildArgs
+    enum BuildStatus
+    {
+      BUILD_STATUS_NOT_STARTED = 0,
+      GENERATING_BUILD_SYSTEM,
+      CURRENTLY_BUILDING,
+      BUILD_STATUS_SUCCESS,
+      BUILD_STATUS_FAILED,
+
+      NUM_BUILD_STATUSES,
+      INVALID_BUILD_STATUS = NUM_BUILD_STATUSES,
+    };
+
+    public struct ProjectCreationArgs
     {
       public NativeString project_type;
       public NativeString Name;
       public NativeString FileName;
       public NativeString WorkingDirectory;
     }
-
-    ProjectDescription project;
 
     struct FileData
     {
@@ -42,16 +52,28 @@ namespace Other
       }
     }
 
+    ProjectDescription project;
+    BuildStatus current_build_status = BuildStatus.BUILD_STATUS_NOT_STARTED;
+
+#nullable enable
+    Process? process_handle = null;
+#nullable disable
+
     public BuildTool()
     {
       project = new ProjectDescription();
+    }
+
+    public Int32 GetBuildStatus()
+    {
+      return (Int32)current_build_status;
     }
 
     private Dictionary<string, FileData> GetFileDataFromTemplates(string proj_working_directory, string project_name)
     {
       Dictionary<string, FileData> project_templates = new Dictionary<string, FileData>();
 
-      string templates_dir = Path.Combine(Core.Filesystem.GetInstallFolder(), "templates");
+      string templates_dir = Path.Combine(Core.Filesystem.GetInstallFolder(), "project/templates");
       foreach (string path in Directory.GetFiles(templates_dir))
       {
         /// replace each template file name with corresponding destination file path as described here:
@@ -62,6 +84,9 @@ namespace Other
         string filename_no_ext = Path.GetFileNameWithoutExtension(path);
         string filename = Path.GetFileName(path);
         string ext = Path.GetExtension(path);
+
+        string expected_cmake_filename = project.project_type == ProjectConfig.ProjectType.APPLICATION ?
+          "CMakeLists.application.txt" : "CMakeLists.module.txt";
 
         string destination_path = "";
         if (ext == ".cpp" || ext == ".hpp")
@@ -75,13 +100,9 @@ namespace Other
             destination_path = Path.Combine(proj_working_directory, "src", GetFileVersionOfProjectName(project_name) + ext);
           }
         }
-        else if (filename == "CMakeLists1.txt")
+        else if (filename == expected_cmake_filename)
         {
           destination_path = Path.Combine(proj_working_directory, "CMakeLists.txt");
-        }
-        else if (filename == "CMakeLists2.txt")
-        {
-          destination_path = Path.Combine(proj_working_directory, "src", "CMakeLists.txt");
         }
         else if (ext == ".toml")
         {
@@ -103,7 +124,66 @@ namespace Other
       return project_templates;
     }
 
-    public void CreateProject(BuildArgs args)
+    private void GenerateSolution()
+    {
+      process_handle = new Process();
+      process_handle.StartInfo.FileName = "cmake.exe";
+      process_handle.StartInfo.Arguments = $"-S {project.working_dir} -B {project.working_dir}/build -G \"Visual Studio 17 2022\"";
+      // process_handle.StartInfo.RedirectStandardOutput = false;  // true;
+      // process_handle.StartInfo.RedirectStandardError = false;   // true;
+      // process_handle.StartInfo.UseShellExecute = false;
+      // process_handle.StartInfo.CreateNoWindow = true;
+      // process_handle.OutputDataReceived += (sender, e) =>
+      // {
+      //   if (!string.IsNullOrEmpty(e.Data))
+      //   {
+      //     Core.Debug.Log(e.Data);
+      //   }
+      // };
+      // process_handle.ErrorDataReceived += (sender, e) =>
+      // {
+      //   if (!string.IsNullOrEmpty(e.Data))
+      //   {
+      //     Core.Debug.LogError(e.Data);
+      //   }
+      // };
+      Core.Debug.Log($"Generating build solution in '{project.working_dir}/build'...");
+
+      current_build_status = BuildStatus.GENERATING_BUILD_SYSTEM;
+      process_handle.Start();
+    }
+
+    private void BuildSolution()
+    {
+      process_handle = new Process();
+      process_handle.StartInfo.FileName = "cmake.exe";
+      /// \todo make config selectable
+      process_handle.StartInfo.Arguments = $"--build {project.working_dir}/build --config Debug";
+      // process_handle.StartInfo.RedirectStandardOutput = false;  // true;
+      // process_handle.StartInfo.RedirectStandardError = false;   // true;
+      // process_handle.StartInfo.UseShellExecute = false;
+      // process_handle.StartInfo.CreateNoWindow = true;
+      // process_handle.OutputDataReceived += (sender, e) =>
+      // {
+      //   if (!string.IsNullOrEmpty(e.Data))
+      //   {
+      //     Core.Debug.Log(e.Data);
+      //   }
+      // };
+      // process_handle.ErrorDataReceived += (sender, e) =>
+      // {
+      //   if (!string.IsNullOrEmpty(e.Data))
+      //   {
+      //     Core.Debug.LogError(e.Data);
+      //   }
+      // };
+      Core.Debug.Log($"Building project solution in '{project.working_dir}/build'...");
+
+      current_build_status = BuildStatus.CURRENTLY_BUILDING;
+      process_handle.Start();
+    }
+
+    public void CreateProject(ProjectCreationArgs args)
     {
       try
       {
@@ -149,30 +229,7 @@ namespace Other
           }
         }
 
-        using (var process = new Process())
-        {
-          process.StartInfo.FileName = "cmake.exe";
-          process.StartInfo.Arguments = $"-S {project.working_dir} -B {project.working_dir}/build -G \"Visual Studio 17 2022\"";
-          process.StartInfo.RedirectStandardOutput = true;
-          process.StartInfo.RedirectStandardError = true;
-          process.StartInfo.UseShellExecute = false;
-          process.StartInfo.CreateNoWindow = true;
-          process.OutputDataReceived += (sender, e) =>
-          {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-              Core.Debug.Log(e.Data);
-            }
-          };
-          process.ErrorDataReceived += (sender, e) =>
-          {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-              Core.Debug.LogError(e.Data);
-            }
-          };
-          process.Start();
-        }
+        BeginGenerateAndBuild();
       }
       catch (Exception e)
       {
@@ -180,74 +237,70 @@ namespace Other
       }
     }
 
-    public void StartBuild(BuildArgs project_description)
+    private void BeginGenerateAndBuild()
     {
-      project_description.FileName = GetFileNameFromBuildArgs(project_description);
-      if (!ValidateBuildArgs(project_description))
+      GenerateSolution();
+    }
+
+    public Int32 PollProjectBuild()
+    {
+      if (process_handle == null ||
+          current_build_status == BuildStatus.BUILD_STATUS_SUCCESS ||
+          current_build_status == BuildStatus.BUILD_STATUS_FAILED)
       {
-        Core.Debug.LogError("Build arguments are invalid, aborting build.");
-        return;
+        return (Int32)current_build_status;
       }
 
-      project = new ProjectDescription()
+      if (process_handle.HasExited)
       {
-        project_type = GetProjectTypeFromBuildArgs(project_description),
-        name = project_description.Name,
-        filename = project_description.FileName,
-        working_dir = project_description.WorkingDirectory,
-      };
+        if (current_build_status == BuildStatus.GENERATING_BUILD_SYSTEM)
+        {
+          if (process_handle.ExitCode == 0)
+          {
+            process_handle = null;
 
-      Log($"Validating project '{project_description.Name}' in '{project_description.WorkingDirectory}' with file '{project_description.FileName}'.");
-      Log($"Project type: {project_description.project_type}");
+            Core.Debug.Log("Build system generation completed successfully.");
+            BuildSolution();
+          }
+          else
+          {
+            Core.Debug.LogError($"Build system generation failed with exit code {process_handle.ExitCode}.");
+            current_build_status = BuildStatus.BUILD_STATUS_FAILED;
+          }
+        }
+        else if (current_build_status == BuildStatus.CURRENTLY_BUILDING)
+        {
+          if (process_handle.ExitCode == 0)
+          {
+            process_handle = null;
 
-      if (!ValidateProject())
+            Core.Debug.Log("Project build completed successfully.");
+            current_build_status = BuildStatus.BUILD_STATUS_SUCCESS;
+          }
+          else
+          {
+            Core.Debug.LogError($"Project build failed with exit code {process_handle.ExitCode}.");
+            current_build_status = BuildStatus.BUILD_STATUS_FAILED;
+          }
+        }
+
+        return (Int32)current_build_status;
+      }
+      else
       {
-        Core.Debug.LogError("Project validation failed, aborting build.");
-        return;
+        return (Int32)current_build_status;  
       }
     }
 
-
-    private bool ValidateProject()
+    public void FinalizeBuild()
     {
-      /// check if required files are present
-      var required_paths = GetRequiredPathsForBuild(project.name, project.working_dir);
-      foreach (var path in required_paths)
+      if (process_handle != null && !process_handle.HasExited)
       {
-        string ext = Path.GetExtension(path);
-
-        /// folder
-        if (string.IsNullOrEmpty(ext) || path == Path.Combine(project.working_dir, ".other"))
-        {
-          if (!Directory.Exists(path))
-          {
-            try 
-            {
-              Directory.CreateDirectory(path);
-            }
-            catch (Exception e)
-            {
-              Core.Debug.LogError($"Failed to create missing directory '{path}': {e.Message}");
-              return false;
-            }
-          }
-        }
-        else
-        {
-          if (!File.Exists(path))
-          {
-            /// \todo this is disabled for now, we should not auto-generate files yet
-            // if (!AttemptGeneration(path))
-            // {
-            //   Core.Debug.LogError($"Failed to generate missing file '{path}'.");
-            //   return false;
-            // }
-            return false;
-          }
-        }
+        process_handle.Kill();
+        process_handle = null;
       }
 
-      return true;
+      Core.Debug.Log("Finalized build process.");
     }
 
     private void WriteTemplatedFile(string template_path, string destination_path)
@@ -262,6 +315,8 @@ namespace Other
       {
         Core.Debug.LogWarning($"Destination file '{destination_path}' already exists, Overwriting.");
       }
+
+      Core.Debug.Log($"Generating file '{destination_path}' from template '{template_path}'.");
       
       string content = File.ReadAllText(template_path);
       content = content.Replace("${project-name}", project.name)
@@ -309,7 +364,7 @@ namespace Other
       return file_version;
     }
 
-    private bool ValidateBuildArgs(BuildArgs args)
+    private bool ValidateBuildArgs(ProjectCreationArgs args)
     {
       if (string.IsNullOrEmpty(args.Name))
       {
@@ -338,7 +393,7 @@ namespace Other
       return true;
     }
 
-    private NativeString GetFileNameFromBuildArgs(BuildArgs args)
+    private NativeString GetFileNameFromBuildArgs(ProjectCreationArgs args)
     {
       NativeString file_name = args.FileName;
       if (string.IsNullOrEmpty(file_name))
@@ -372,7 +427,7 @@ namespace Other
       return file_name;
     }
 
-    private ProjectConfig.ProjectType GetProjectTypeFromBuildArgs(BuildArgs args)
+    private ProjectConfig.ProjectType GetProjectTypeFromBuildArgs(ProjectCreationArgs args)
     {
       if (args.project_type == "Application")
       {

@@ -1,5 +1,0 @@
-add_static_driver(
-  ${project-name}
-  ${project-name}.cpp
-  ${project-name}_driver.cpp
-)
