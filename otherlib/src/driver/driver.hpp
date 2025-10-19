@@ -17,7 +17,6 @@
 
 #include "plugin/plugin.hpp"
 
-
 namespace other {
 
   class driver_thread;
@@ -160,6 +159,19 @@ namespace other {
   OTHER_PLUGIN(name)                                                                                             \
   OTHER_API other::driver* create_driver(const other::config_table* config) { return DRIVER_NEW(name, config); } \
   OTHER_API void destroy_driver(other::driver* instance) { DRIVER_DELETE(instance); }
+
+#define RUN_DRIVER(name, config)                           \
+  {                                                        \
+    other::driver* runtime = create_driver(&config);       \
+    if (!runtime) {                                        \
+      CORE_LOG_ERROR("Failed to create {} driver", #name); \
+      return other::exit_code::FAILURE;                    \
+    }                                                      \
+    runtime->initialize(cmd);                              \
+    runtime->run();                                        \
+    runtime->shutdown();                                   \
+    destroy_driver(runtime);                               \
+  }
 
 #ifdef OTHER_APPLICATION
   static inline std::vector<void (*)(SDL_Event*)> event_callbacks;

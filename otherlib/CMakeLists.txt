@@ -55,8 +55,6 @@ target_include_directories(otherlib_main PUBLIC
   $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
 )
 
-add_library(otherlib::main ALIAS otherlib_main)
-
 other_install_module(otherlib "")
 install(
   TARGETS otherlib_main
