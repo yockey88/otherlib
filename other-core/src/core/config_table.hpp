@@ -30,14 +30,35 @@ namespace other {
 
     ~config_table() = default;
 
-    /// for retrieving user-defined settings in 'project' section
-    value get_project_value(const std::string_view section, const std::string_view key) const;
+    /**
+     * \note this will look for the path @p toml_subpath at:
+     *   [project.<toml_subpath>]
+     */
+    value get_project_value(const std::string_view toml_subpath) const;
 
-    /// for debugging only, returns the entire project table
     toml::table& get_project_table();
     const toml::table& get_project_table() const;
 
     std::string format_table_string(const std::string_view section, const std::string_view key) const;
+
+    template <typename T>
+    T get_value(const std::string_view toml_path, T default_value = {}) const {
+      toml::node_view node = table.at_path(toml_path);
+      if (!node) {
+        CORE_LOG_WARN("Config key '{}' not found, returning default value.", toml_path);
+        return default_value;
+      } else {
+        CORE_LOG_TRACE("Found config key '{}'", toml_path);
+      }
+
+      CORE_LOG_TRACE("Parsing config value for key '{}'", toml_path);
+      if (node.template is<T>()) {
+        return node.template as<T>()->get();
+      } else {
+        CORE_LOG_WARN("Config key '{}' is not of the expected type, returning default value.", toml_path);
+        return default_value;
+      }
+    }
 
     bool valid = true;
     struct {

@@ -40,7 +40,10 @@ target_include_directories(other_renderer
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/renderer>
 )
 
-target_link_directories(other_renderer PUBLIC ${OTHER_LIBRARIES_PATH})
+target_link_directories(other_renderer PUBLIC 
+  $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}>
+  $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
+)
 target_link_libraries(other_renderer PRIVATE imgui SDL3 glad ${ASSIMP_NAME} other_core)
 
 other_install_module(other_renderer "renderer")

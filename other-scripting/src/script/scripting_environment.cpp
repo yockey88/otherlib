@@ -9,13 +9,13 @@
 
 namespace other {
 
-  void scripting_environment::initialize_script_environment() {
+  void scripting_environment::initialize_script_environment(const config_table& configuration) {
     script_object_pool = make_scope<memory_pool<script_object>>();
     OTHER_ASSERT(script_object_pool != nullptr, "Failed to create script object memory pool.");
 
     std::ranges::fill(live_objects, live_script_object{});
 
-    dotnet.load_host();
+    dotnet.load_host(configuration);
     dotnet.call_entry_point();
 
     dotnet_load_context = dotnet.create_assembly_context("Other-DotNet-Assembly-Context");

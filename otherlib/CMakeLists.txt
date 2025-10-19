@@ -48,4 +48,21 @@ else()
   target_link_libraries(otherlib PRIVATE nfd)
 endif()
 
+add_library(otherlib_main STATIC src/other_main.cpp)
+target_link_libraries(otherlib_main PUBLIC otherlib)
+target_include_directories(otherlib_main PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
+)
+
+add_library(otherlib::main ALIAS otherlib_main)
+
 other_install_module(otherlib "")
+install(
+  TARGETS otherlib_main
+  EXPORT otherlib-targets
+  LIBRARY DESTINATION "${OTHER_INSTALL_LIBDIR}"
+  ARCHIVE DESTINATION "${OTHER_INSTALL_LIBDIR}"
+  RUNTIME DESTINATION "${OTHER_INSTALL_BINDIR}"
+  INCLUDES DESTINATION "${OTHER_INSTALL_INCLUDEDIR}"
+)

@@ -60,9 +60,11 @@ target_include_directories(other_scripting
 
 
 target_link_directories(other_scripting 
-  PRIVATE 
-    ${OTHER_LIBRARIES_PATH} 
-    ${PYTHON_LIB_DIR}
+  PUBLIC
+    $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}> 
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
+    $<BUILD_INTERFACE:${PYTHON_LIB_DIR}>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 
 target_link_libraries(other_scripting PRIVATE ${PYTHON_LIB} other_core)

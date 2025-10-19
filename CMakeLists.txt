@@ -30,7 +30,8 @@ include(cmake/other_install.cmake)
 set(OTHER_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/other")
 set(OTHER_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
 set(OTHER_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}")
-set(OTHER_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/other")
+set(OTHER_INSTALL_CMAKEDIR "${CMAKE_INSTALL_PREFIX}/cmake")
+set(OTHER_INSTALL_ASSEMBLIES "${CMAKE_INSTALL_PREFIX}/dotnet-assemblies")
 
 option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
@@ -160,7 +161,6 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/spdlog
   ${OTHER_EXTERN_DIR}/glm
   ${OTHER_EXTERN_DIR}/refl
-  ${OTHER_EXTERN_DIR}/reflect-cpp
   ${OTHER_EXTERN_DIR}/flatbuffers
   ${OTHER_EXTERN_DIR}/asio
   ${OTHER_EXTERN_DIR}/spdlog
@@ -234,7 +234,6 @@ other_install_external_headers("tomlplusplus" "${OTHER_EXTERN_DIR}/tomlplusplus"
 other_install_external_headers("spdlog" "${OTHER_EXTERN_DIR}/spdlog")
 other_install_external_headers("glm" "${OTHER_EXTERN_DIR}/glm")
 other_install_external_headers("refl" "${OTHER_EXTERN_DIR}/refl")
-other_install_external_headers("reflect-cpp" "${OTHER_EXTERN_DIR}/reflect-cpp")
 other_install_external_headers("flatbuffers" "${OTHER_EXTERN_DIR}/flatbuffers")
 other_install_external_headers("asio" "${OTHER_EXTERN_DIR}/asio")
 other_install_external_headers("glad" "${OTHER_EXTERN_DIR}/glad/include")
@@ -248,36 +247,90 @@ other_install_external_headers("imgui" "${IMGUI_INCLUDE_DIRS}")
 other_install_external_headers("pybind11" "${OTHER_EXTERN_DIR}/pybind11/include")
 other_install_external_headers("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefiledialog/src")
 other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
+other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/include")
+
+## Install external libraries
+other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")
+other_install_external_library("assimp" "${OTHER_EXTERN_DIR}/assimp/lib")
+other_install_external_library("glad" "${OTHER_EXTERN_DIR}/glad/lib")
+other_install_external_library("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefiledialog/lib")
+other_install_external_library("flatbuffers" "${OTHER_EXTERN_DIR}/flatbuffers/lib")
+other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
+
+install(
+  FILES
+    "${OTHER_EXTERN_DIR}/python312/python312.dll"
+  DESTINATION "${OTHER_INSTALL_LIBDIR}"
+)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
+  set(DLL_CONFIG "debug")
+else()
+  set(DLL_CONFIG "release")
+endif()
+
+install(
+  FILES
+    "${OTHER_EXTERN_DIR}/sdl/lib/${DLL_CONFIG}/SDL3.dll"
+  DESTINATION "${OTHER_INSTALL_BINDIR}"
+  CONFIGURATIONS ${CMAKE_BUILD_TYPE}
+  OPTIONAL
+)
+
+install(
+  FILES
+    "${OTHER_EXTERN_DIR}/assimp/lib/${DLL_CONFIG}/assimp-vc143-mt$<$<CONFIG:Debug,ProfileD>:d>.dll"
+  DESTINATION "${OTHER_INSTALL_BINDIR}"
+  CONFIGURATIONS ${CMAKE_BUILD_TYPE}
+  OPTIONAL
+)
+
+install(
+  FILES "${CMAKE_CURRENT_SOURCE_DIR}/other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+  DESTINATION "${OTHER_INSTALL_ASSEMBLIES}"
+)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
+  set(ASSEMBLY_CONFIG "Debug")
+else()
+  set(ASSEMBLY_CONFIG "Release")
+endif()
+
+install(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/other-csharp/${ASSEMBLY_CONFIG}/"
+  DESTINATION "${OTHER_INSTALL_ASSEMBLIES}"
+)
 
 configure_package_config_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/other-config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/other-config.cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/otherlib-config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/otherlib-config.cmake"
   INSTALL_DESTINATION "${OTHER_INSTALL_CMAKEDIR}"
   PATH_VARS OTHER_INSTALL_INCLUDEDIR OTHER_INSTALL_LIBDIR OTHER_INSTALL_BINDIR
 )
 
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/other-config-version.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/otherlib-config-version.cmake"
   VERSION ${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
 )
 
 install(
   FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/other-config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/other-config-version.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/otherlib-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/otherlib-config-version.cmake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/add_other_driver.cmake"
   DESTINATION "${OTHER_INSTALL_CMAKEDIR}"
 )
 
 export(
-  EXPORT other-targets
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/other-targets.cmake"
-  NAMESPACE other::
+  EXPORT otherlib-targets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/otherlib-targets.cmake"
+  NAMESPACE otherlib::
 )
 
 install(
-  EXPORT other-targets
-  FILE other-targets.cmake
-  NAMESPACE other::
+  EXPORT otherlib-targets
+  FILE otherlib-targets.cmake
+  NAMESPACE otherlib::
   DESTINATION "${OTHER_INSTALL_CMAKEDIR}"
 )
