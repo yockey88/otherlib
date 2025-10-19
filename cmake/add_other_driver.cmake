@@ -40,32 +40,7 @@ macro(add_driver_target type driver_name)
 
   message(STATUS "Adding [${type}] driver: ${driver_name} w/ include directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-  target_include_directories(
-      ${driver_name} 
-    PUBLIC 
-      ${CMAKE_CURRENT_SOURCE_DIR}
-      ### TODO: replace these with install locations later
-      ### all otherlib directories because public linking does not propagate to projects outside solution
-      "C:/Yock/code/Other2/OtherEnv/other-core/src"
-      "C:/Yock/code/Other2/OtherEnv/other-network/src"
-      "C:/Yock/code/Other2/OtherEnv/other-renderer/src"
-      "C:/Yock/code/Other2/OtherEnv/other-scene/src"
-      "C:/Yock/code/Other2/OtherEnv/other-scripting/src"
-      "C:/Yock/code/Other2/OtherEnv/otherlib/src"
-      ### also include otherlib externals
-      C:/Yock/code/Other2/OtherEnv/extern/magic_enum
-      C:/Yock/code/Other2/OtherEnv/extern/glm
-      C:/Yock/code/Other2/OtherEnv/extern/dotnet
-      C:/Yock/code/Other2/OtherEnv/extern/spdlog
-      C:/Yock/code/Other2/OtherEnv/extern/flatbuffers
-      C:/Yock/code/Other2/OtherEnv/extern/refl
-      C:/Yock/code/Other2/OtherEnv/extern/entt
-      C:/Yock/code/Other2/OtherEnv/extern/glad
-      C:/Yock/code/Other2/OtherEnv/extern/sdl
-      C:/Yock/code/Other2/OtherEnv/extern/imgui
-      C:/Yock/code/Other2/OtherEnv/extern/asio
-      C:/Yock/code/Other2/OtherEnv/extern/tomlplusplus
-  )
+  target_include_directories( ${driver_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   target_sources(${driver_name} PUBLIC ${driver_src_list})
   target_link_libraries(${driver_name} PUBLIC otherlib)
   if (${type} STREQUAL "static")
