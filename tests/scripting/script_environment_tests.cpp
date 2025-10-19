@@ -11,7 +11,7 @@ namespace other {
     auto* env = subsystem<scripting_environment>::get();
     ASSERT_NE(env, nullptr);
 
-    EXPECT_NO_FATAL_FAILURE(env->initialize_script_environment());
+    EXPECT_NO_FATAL_FAILURE(env->initialize_script_environment(environment->config));
 
     ref<assembly> dotnet_asm = nullptr;
 #ifdef OTHER_ENVIRONMENT_DEBUG
@@ -100,7 +100,7 @@ namespace other {
 
     EXPECT_NO_FATAL_FAILURE(env->unload_dotnet_module(dotnet_asm));
     EXPECT_NO_FATAL_FAILURE(env->shutdown_script_environment());
-    EXPECT_NO_FATAL_FAILURE(env->initialize_script_environment());
+    EXPECT_NO_FATAL_FAILURE(env->initialize_script_environment(environment->config));
 
     {
       ref<assembly> dotnet_asm = nullptr;

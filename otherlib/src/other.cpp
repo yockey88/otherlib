@@ -89,7 +89,7 @@ namespace other {
       subsystem<renderer_backend>::get()->load_backend(config.rendering_backend.value(), config.window_size);
     }
 
-    bind_primary_scripting_environment();
+    bind_primary_scripting_environment(config);
     bind_environment_scripts();
 
     /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
@@ -137,10 +137,12 @@ namespace other {
     }
   }
 
-  void bind_primary_scripting_environment() {
+  void bind_primary_scripting_environment(const config_table& config) {
     auto* env = subsystem<scripting_environment>::get();
-    env->initialize_script_environment();
-    env->dotnet_binding_assembly = env->load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
+    env->initialize_script_environment(config);
+
+    filepath other_cs_path = config.get_value<std::string>(configuration::kOtherCSharp, "C:/OtherEnvironment/dotnet-assemblies/OtherCs.dll");
+    env->dotnet_binding_assembly = env->load_dotnet_module(other_cs_path.string());
   }
 
   native_string native_get_app_data_folder(native_string app_name_str, int32_t create_flag) {
@@ -217,7 +219,7 @@ namespace other {
 
       other::initialize_primary_arena();
       other::register_log_sinks(config);
-      other::bind_primary_scripting_environment();
+      other::bind_primary_scripting_environment(config);
       other::bind_environment_scripts();
     }
 

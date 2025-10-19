@@ -310,6 +310,9 @@ namespace other {
   filepath get_other_environment_install_folder();
   filepath get_system_default_working_directory();
 
+  std::string get_tag_replacement(const std::string_view tag);
+  std::string perform_tag_replacement(const std::string_view tag);
+
 }  // namespace other
 
 namespace std {

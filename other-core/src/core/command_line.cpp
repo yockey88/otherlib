@@ -39,7 +39,7 @@ namespace other {
           return command_line{ .diagnostics = { .usage = true } };
 
         default:
-          CORE_LOG_ERROR("Command Line Error [{}] : {}", err, parser.GetErrorMsg());
+          std::println(std::cerr, "Command Line Error [{}] : {}", err, parser.GetErrorMsg());
           std::nullopt;
       }
 
@@ -52,6 +52,13 @@ namespace other {
       }
       if (port) {
         cmd.port = port.Get();
+      }
+
+      if (cmd.diagnostics.verbose) {
+        std::println(std::cout, "Verbose output: {}", cmd.diagnostics.verbose ? "enabled" : "disabled");
+        std::println(std::cout, "Using configuration file: '{}'", cmd.config_file);
+        std::println(std::cout, "Session ID: {}", cmd.session_id.has_value() ? std::to_string(cmd.session_id.value()) : "not specified");
+        std::println(std::cout, "Port: {}", cmd.port.value());
       }
 
       cmd.valid = true;

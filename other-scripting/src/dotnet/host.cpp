@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "core/arena.hpp"
+#include "core/config_table.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "serialization/reflection.hpp"
@@ -19,7 +20,7 @@
 namespace other {
   namespace {
 
-    std::optional<filepath> GetHostPath();
+    std::optional<filepath> get_host_path();
 
     template <typename Fn>
     Fn load_function(void* handle, const char* name) {
@@ -52,9 +53,21 @@ namespace other {
   dotnet_host::dotnet_host() {
   }
 
-  void dotnet_host::load_host() {
+  void dotnet_host::load_host(const config_table& env_config) {
+    this->environment_config = env_config;
+
+    std::string dotnet_binding_asm = env_config.get_value<std::string>(configuration::kDotnetBindings, "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.dll");
+    OTHER_ASSERT(!dotnet_binding_asm.empty(), "Dotnet binding assembly path cannot be empty.");
+    OTHER_ASSERT(std::filesystem::exists(dotnet_binding_asm), "Dotnet binding assembly not found at path: {}", dotnet_binding_asm);
+    this->dotnet_binding_assembly = detail::convert_string(dotnet_binding_asm);
+
+    std::string dotnet_runtime_config_path = env_config.get_value<std::string>(configuration::kDotnetRuntimeConfig, "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.runtimeconfig.json");
+    OTHER_ASSERT(!dotnet_runtime_config_path.empty(), "Dotnet runtime config path cannot be empty.");
+    OTHER_ASSERT(std::filesystem::exists(dotnet_runtime_config_path), "Dotnet runtime config not found at path: {}", dotnet_runtime_config_path);
+    this->dotnet_runtime_config = detail::convert_string(dotnet_runtime_config_path);
+
     if (hostfxr_lib == nullptr) {
-      std::optional<filepath> host_path = GetHostPath();
+      std::optional<filepath> host_path = get_host_path();
       OTHER_ASSERT(host_path.has_value(), "Failed to find hostfxr library. Please ensure .NET SDK is installed and the path is correct.");
       CORE_LOG_DEBUG("Found hostfxr library at: {}", host_path->string());
 
@@ -77,7 +90,8 @@ namespace other {
     hostfxr_handle host_fxr = nullptr;
 
     /// fix this, need to loop this up in ProgramFiles for a ddeployed build, for dev this works, but could fail the CI pipeline as it is very dependent on CWD being correct
-    const char_t* path = DNET_STR("other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json");
+    CORE_LOG_TRACE("Initializing hostfxr with runtime config: {}", detail::convert_string(dotnet_runtime_config));
+    const char_t* path = dotnet_runtime_config.c_str();
     int32_t rc = coreclr.init_host_config(path, nullptr, &host_fxr);
     OTHER_ASSERT(host_fxr != nullptr, "Failed to initialize hostfxr with runtime config : error code [{} : {:#08x}]", rc, rc);
     if (rc < 0 || rc > 2) {
@@ -119,14 +133,7 @@ namespace other {
     const char_t* dotnet_type = DNET_STR("OtherCsBindings.Host, OtherCsBindings");
     const char_t* dotnet_type_method = DNET_STR("Entry");
 
-#ifdef OTHER_ENVIRONMENT_DEBUG
-    filepath managed_asm_path = "build/other-csharp-interop/Debug/OtherCsBindings.dll";
-#elif defined(OTHER_ENVIRONMENT_RELEASE)
-    filepath managed_asm_path = "build/other-csharp-interop/Release/OtherCsBindings.dll";
-#else
-  #error "Unknown build configuration!"
-#endif
-
+    filepath managed_asm_path = get_bindings_assembly_path();
     OTHER_ASSERT(std::filesystem::exists(managed_asm_path), "Managed assembly not found: {}", managed_asm_path.string());
 
     bind_interop_table();
@@ -221,6 +228,10 @@ namespace other {
     obj->managed_object = nullptr;
 
     remove_object(obj->object_name);
+  }
+
+  filepath dotnet_host::get_bindings_assembly_path() const {
+    return environment_config.get_value<std::string>("scripting.dotnet-bindings", "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.dll");
   }
 
   dotnet_object* dotnet_host::new_object(const std::string_view name, dotnet_type* type) {
@@ -452,7 +463,7 @@ namespace other {
 
   namespace {
 
-    std::optional<filepath> GetHostPath() {
+    std::optional<filepath> get_host_path() {
 #ifdef OTHER_ENVIRONMENT_WINDOWS
       filepath base_path = "";
 

@@ -14,7 +14,7 @@ namespace other {
       subsystem<arena>::get()->shutdown();
       subsystem<arena>::get();
 
-      subsystem<scripting_environment>::get()->initialize_script_environment();
+      subsystem<scripting_environment>::get()->initialize_script_environment(environment->config);
 #ifdef OTHER_ENVIRONMENT_DEBUG
       dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_debug.string());
       testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_debug.string());

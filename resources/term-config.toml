@@ -1,9 +1,0 @@
-[application]
-core-log-level = "trace"
-
-[environment]
-terminal = "on"
-
-[rendering]
-rendering-backend = "opengl"
-window-size = { width = 1920, height = 1080 }
