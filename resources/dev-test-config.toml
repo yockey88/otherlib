@@ -8,6 +8,6 @@ core-log-file = "logs/dev-test-log.log"
 force-no-window = true
 
 [scripting]
-dotnet-bindings = "build/other-csharp-interop/Debug/OtherCsBindings.dll"
+dotnet-bindings = "build/other-csharp-interop/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
-other-csharp = "build/other-csharp/Debug/OtherCs.dll"
+other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"

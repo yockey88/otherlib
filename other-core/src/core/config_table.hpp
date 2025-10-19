@@ -75,7 +75,12 @@ namespace other {
       } else {
         CORE_LOG_TRACE("Parsing config value for key '{}'", toml_path);
         if (node.template is<T>()) {
-          return node.template as<T>()->get();
+          if constexpr (std::is_same_v<T, std::string>) {
+            /// here we replace ${x} with environment variables/necessary replacements
+            return perform_tag_replacement(node.template as<T>()->get());
+          } else {
+            return node.template as<T>()->get();
+          }
         } else {
           CORE_LOG_WARN("Config key '{}' is not of the expected type, returning default value.", toml_path);
           return default_value;
