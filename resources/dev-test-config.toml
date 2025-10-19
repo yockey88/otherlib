@@ -1,0 +1,5 @@
+[application]
+core-log-level = "warn"
+
+[rendering]
+force-no-window = true
