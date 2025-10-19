@@ -307,6 +307,7 @@ namespace other {
 
   filepath get_program_files_folder(const std::string_view app_name);
   filepath get_app_data_folder(const std::string_view app_name, bool create = false);
+  filepath get_other_environment_install_folder();
   filepath get_system_default_working_directory();
 
   std::string get_tag_replacement(const std::string_view tag);

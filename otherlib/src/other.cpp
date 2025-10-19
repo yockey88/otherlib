@@ -53,14 +53,14 @@ namespace other {
     if (cmd.working_directory.has_value()) {
       filepath cwd = cmd.working_directory.value();
       if (!std::filesystem::exists(cwd) || !std::filesystem::is_directory(cwd)) {
-        std::println(std::cerr, "Invalid working directory specified: '{}'", cwd.string());
+        std::println(std::cerr, "[ERROR]: Invalid working directory specified: '{}'", cwd.string());
         return FAILURE;
       }
 
       std::error_code ec;
       std::filesystem::current_path(cmd.working_directory.value(), ec);
       if (ec) {
-        std::println(std::cerr, "Failed to set working directory to '{}': {}", cwd.string(), ec.message());
+        std::println(std::cerr, "[ERROR]: Failed to set working directory to '{}': {}", cwd.string(), ec.message());
         return FAILURE;
       }
     }
@@ -69,15 +69,20 @@ namespace other {
     if (std::filesystem::exists(cmd.config_file)) {
       config = config_table::load(cmd.config_file);
       if (!config.valid) {
-        std::println(std::cerr, "Failed to load configuration file: '{}'", cmd.config_file);
+        std::println(std::cerr, "[ERROR]: Failed to load configuration file: '{}'", cmd.config_file);
         return -1;
       }
 
     } else if (!cmd.config_file.empty()) {
-      CORE_LOG_WARN("Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
+      std::println(std::cout, "[WARNING]: Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
     }
 
     register_log_sinks(config);
+    if (cmd.diagnostics.verbose) {
+      config.diagnostics.verbose = true;
+      CORE_LOG_DEBUG("Loading Environment with configuration :\n{}\n", config.dump_table_string());
+    }
+
     CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
     CORE_LOG_DEBUG("Environment Config File: {}", cmd.config_file);
     CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
@@ -91,6 +96,9 @@ namespace other {
 
     bind_primary_scripting_environment(config);
     bind_environment_scripts();
+
+    /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
+    ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
 
     exit_code res = SUCCESS;
     {
@@ -139,6 +147,8 @@ namespace other {
     env->initialize_script_environment(config);
 
     filepath other_cs_path = config.get_value<std::string>(configuration::kOtherCSharp, "C:/OtherEnvironment/dotnet-assemblies/OtherCs.dll");
+    OTHER_ASSERT(std::filesystem::exists(other_cs_path), "OtherCs.dll not found at path: {}", other_cs_path.string());
+    CORE_LOG_DEBUG("Using OtherCs.dll at path: {}", other_cs_path.string());
     env->dotnet_binding_assembly = env->load_dotnet_module(other_cs_path.string());
   }
 

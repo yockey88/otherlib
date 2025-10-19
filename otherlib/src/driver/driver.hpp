@@ -78,7 +78,6 @@ namespace other {
 
     void post_coroutine(task coro) {
       add_live_coroutine(std::move(coro));
-      std::println("Posted new coroutine, total live coroutines: {}", live_coroutines.size());
     }
 
     template <typename T>

@@ -28,6 +28,7 @@ namespace other {
     UI_EVENT_GO_TO_PROJECT_PAGE = 0,
     UI_EVENT_GO_TO_CREATE_PROJECT_PAGE,
     UI_EVENT_GO_TO_SETTINGS_PAGE,
+    UI_EVENT_GO_TO_HOME_PAGE,  /// project page
 
     NUM_EVENTS,
   };
@@ -38,12 +39,15 @@ namespace other {
         : state_machine<ui_state, ui_event>(ui_state::UI_STATE_PROJECT_PAGE) {
       add_transition(ui_state::UI_STATE_PROJECT_PAGE, ui_event::UI_EVENT_GO_TO_CREATE_PROJECT_PAGE, ui_state::UI_STATE_CREATE_PROJECT_PAGE);
       add_transition(ui_state::UI_STATE_PROJECT_PAGE, ui_event::UI_EVENT_GO_TO_SETTINGS_PAGE, ui_state::UI_STATE_SETTINGS_PAGE);
+      add_transition(ui_state::UI_STATE_PROJECT_PAGE, ui_event::UI_EVENT_GO_TO_HOME_PAGE, ui_state::UI_STATE_PROJECT_PAGE);
 
       add_transition(ui_state::UI_STATE_CREATE_PROJECT_PAGE, ui_event::UI_EVENT_GO_TO_PROJECT_PAGE, ui_state::UI_STATE_PROJECT_PAGE);
       add_transition(ui_state::UI_STATE_CREATE_PROJECT_PAGE, ui_event::UI_EVENT_GO_TO_SETTINGS_PAGE, ui_state::UI_STATE_SETTINGS_PAGE);
+      add_transition(ui_state::UI_STATE_CREATE_PROJECT_PAGE, ui_event::UI_EVENT_GO_TO_HOME_PAGE, ui_state::UI_STATE_PROJECT_PAGE);
 
       add_transition(ui_state::UI_STATE_SETTINGS_PAGE, ui_event::UI_EVENT_GO_TO_PROJECT_PAGE, ui_state::UI_STATE_PROJECT_PAGE);
       add_transition(ui_state::UI_STATE_SETTINGS_PAGE, ui_event::UI_EVENT_GO_TO_CREATE_PROJECT_PAGE, ui_state::UI_STATE_CREATE_PROJECT_PAGE);
+      add_transition(ui_state::UI_STATE_SETTINGS_PAGE, ui_event::UI_EVENT_GO_TO_HOME_PAGE, ui_state::UI_STATE_PROJECT_PAGE);
     }
     virtual ~ui_state_machine() = default;
 

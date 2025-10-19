@@ -10,6 +10,6 @@ rendering-backend = "opengl"
 window-size = { width = 1920, height = 1080 }
 
 [scripting]
-dotnet-bindings = "build/other-csharp/Debug/OtherCsBindings.dll"
+dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
-other-cs-path = "build/other-csharp/Debug/OtherCs.dll"
+other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"

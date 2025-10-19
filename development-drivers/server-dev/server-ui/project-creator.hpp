@@ -26,6 +26,7 @@ namespace other {
       std::array<char, kMaxProjectPathLength> working_directory_buffer;
     };
     project_context context;
+    opt<std::string> error_message;
 
    private:
   };

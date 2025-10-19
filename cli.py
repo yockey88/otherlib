@@ -57,10 +57,10 @@ def run_subprocess(args):
 
 def run_project(out_dir, cfg, name, config_file, args, verbose = False, extra_args=None):
   run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}"]
+  # if verbose:
+  run_command.append("--verbose")
   if extra_args:
     run_command.extend(extra_args)
-  if verbose:
-    run_command.append("--verbose")
   run_subprocess(run_command)
   
 ## TODO: this is ugly, fix this
@@ -69,8 +69,9 @@ def validate_args(args, parser):
       and not args.run and not args.run_scratch \
       and not args.run_terminal and not args.run_tests \
       and not args.compile_serialization_schema \
-      and not args.compile_object and not args.generate_cs_bindings \
-      and not args.run_test_suite and not args.run_server:
+      and not args.compile_object \
+      and not args.run_test_suite and not args.run_server \
+      and not args.install:
     parser.print_help()
     sys.exit(1)
 
@@ -89,18 +90,14 @@ if __name__ == "__main__":
   parser.add_argument("--compile-serialization-schema", "-css", type=str, help="Compile the serialization schema.")
   parser.add_argument("--compile-object", "-co", nargs = 2, type=str, metavar=("SCHEMA_FILE", "OBJECT_FILE"), help="Compile a binary object using the <object_file> and the <schema_file>")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
-  parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
-  # parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
+  # parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
+  parser.add_argument("--install", "-i", action="store_true", help="Install Other Environment to the system.")
 
   args = parser.parse_args()
   try:
     validate_args(args, parser)
 
     cfg = args.cfg
-
-    if args.generate_cs_bindings:
-      print("Generating C# bindings...")
-      run_subprocess([f"build/code-generator/{cfg}/OtherCsBindingsGenerator.exe"])
 
     if args.compile_serialization_schema is not None and os.path.exists(args.compile_serialization_schema):
       if not args.compile_serialization_schema.endswith(".fbs"):
@@ -116,6 +113,16 @@ if __name__ == "__main__":
                       args.compile_serialization_schema])
                       #  "--gen-object-api", "--gen-mutable", "--gen-all", 
       print("Serialization schema compiled successfully.")
+
+    if args.install:
+      #remove if installation folder exists, this only works locally for dev testing (and only on windows)
+      if os.path.exists("C:/OtherEnvironment/"):
+        shutil.rmtree("C:/OtherEnvironment/")
+      run_subprocess(["cmake", "-S", ".", "-B", "build"])
+      run_subprocess(["cmake", "--build", "build", "--config", cfg])
+      run_subprocess(["cmake", "--install", "build", "--config", cfg])
+      print("Other Environment installed successfully.")
+      sys.exit(0)
 
     if args.compile_object is not None and len(args.compile_object) == 2:
       schema_file, object_file = args.compile_object
@@ -134,6 +141,20 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
+      # ### if no other.sln file found, regenerate project files
+      # if not os.path.exists("build/other.sln"):
+      #   regen_project()
+      ### run dotnet restore on solution file to restore nuget packages
+      # this has to happen before build step cause bulding dotnet projects
+      # requires the *.project.json files to be present
+      # print("Restoring .NET packages...")
+      # run_subprocess(["dotnet", "restore", "build/other.sln"])
+
+      # filename = "build/other.sln"
+      # if not os.path.exists(filename):
+      #   print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
+      #   sys.exit(1)
+      # build_sln_file(filename, cfg)
       run_subprocess(["cmake", "--build", "build", "--config", cfg])
 
       dll_cfg = "Release"
@@ -158,7 +179,7 @@ if __name__ == "__main__":
       run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args, args.verbose)
     elif args.run_tests:
       print("Running tests...")
-      extra_args=["--gtest_shuffle" ]
+      extra_args = [ "--gtest_shuffle" ]
       
       ## TODO: fix platform specific output paths
       if cfg == "Debug" or cfg == "ProfileD":

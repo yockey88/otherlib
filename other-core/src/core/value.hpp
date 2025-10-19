@@ -67,18 +67,6 @@ namespace other {
       type_size = sizeof(void*);
     }
 
-    value_storage_impl(void* opaque_data) {
-      static_assert(std::same_as<T, void*>, "value_storage_impl default constructor must be used for opaque_handle type!");
-      type_size = sizeof(void*);
-
-      object = opaque_data;
-      raw_data = opaque_data;
-
-      if (object == nullptr) {
-        // OE_ASSERT(data != nullptr, "Opaque data pointer is null!");
-      }
-    }
-
     value_storage_impl(const T& value) {
       if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
         raw_data = allocator.allocate_bytes(value.size());
@@ -97,19 +85,6 @@ namespace other {
         type_size = value.size();
       } else {
         object = allocator.allocate(std::move(value));
-        type_size = sizeof(T);
-      }
-    }
-
-    value_storage_impl(T* value_ptr) {
-      OTHER_ASSERT(value_ptr != nullptr, "Value pointer is null!");
-
-      if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
-        raw_data = allocator.allocate_bytes(value_ptr->size());
-        std::memcpy(raw_data, value_ptr->data(), value_ptr->size());
-        type_size = value_ptr->size();
-      } else {
-        object = allocator.allocate(*value_ptr);
         type_size = sizeof(T);
       }
     }
@@ -204,11 +179,11 @@ namespace other {
 
     value(value&& other);
     value& operator=(value&& other);
-    template <typename T>
-      requires(!std::is_pointer_v<T> && !std::is_same_v<T, void*>)
-    value(T&& value) {
-      storage = make_ref<value_storage_impl<T>>(std::move(value));
-    }
+    // template <typename T>
+    //   requires(!std::is_pointer_v<T> && !std::is_same_v<T, void*>)
+    // value(T&& value) {
+    //   storage = make_ref<value_storage_impl<T>>(std::move(value));
+    // }
 
     value(std::nullptr_t) { storage = nullptr; }
     template <typename T>

@@ -60,6 +60,30 @@ namespace other {
     return folder_path;
   }
 
+  filepath get_other_environment_install_folder() {
+    /// \todo: implement this and add a development override to return local dev dir
+    ///         instead of prod installation path, currently returning hard coded local dev folder
+
+#if 1
+  /// get OtherEnvironment install folder
+  ///   windows: PROGRAMFILES/OtherEnvironment
+  ///   linux: /usr/local/OtherEnvironment
+  /// \todo mac
+  #ifdef OTHER_ENVIRONMENT_WINDOWS
+    return filepath("C:/OtherEnvironment");
+  #elif defined(OTHER_ENVIRONMENT_UNIX)
+    return filepath("/usr/local/OtherEnvironment");
+  #else
+    #error "Unsupported platform"
+  #endif
+#else
+    filepath folder_path = "";
+    /// this only works in the dev environment on my machine right now, need to fix later
+    folder_path = std::filesystem::current_path();
+    return folder_path;
+#endif
+  }
+
   filepath get_system_default_working_directory() {
     /// get system default working directory
     ///   windows: C:/Users/<username>/Documents/OtherEngine

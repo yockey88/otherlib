@@ -114,7 +114,6 @@ function(other_install_external_library LIB_NAME LIB_BASE_PATH)
         DESTINATION "${OTHER_INSTALL_LIBDIR}"
         FILES_MATCHING 
         PATTERN "*.lib"
-        PATTERN "*.dll"
         PATTERN "*.exp"
         PATTERN "*.pdb"
       )
@@ -124,7 +123,6 @@ function(other_install_external_library LIB_NAME LIB_BASE_PATH)
         DESTINATION "${OTHER_INSTALL_LIBDIR}"
         FILES_MATCHING 
         PATTERN "*.lib"
-        PATTERN "*.dll"
         PATTERN "*.exp"
         PATTERN "*.pdb"
       )
