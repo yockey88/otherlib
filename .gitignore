@@ -2,7 +2,7 @@
 build/
 logs/
 */logs/*
-other_test_results.xml
+other_test_results.*.xml
 
 #only for local testing linux builds
 dockerfile
@@ -31,8 +31,6 @@ tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.omesh
 development-drivers/pbrt
 
 # configuration files
-dev-*.toml
-*-test-*.toml
 *-log-failure.log
 
 

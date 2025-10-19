@@ -21,8 +21,11 @@ target_sources(other_scene
 
 target_include_directories(other_scene 
   PUBLIC 
-      "${CMAKE_CURRENT_SOURCE_DIR}/src"
-      ${OTHER_EXTERN_DIR}/entt
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scene>
 )
-target_link_directories(other_scene PUBLIC ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_scene PUBLIC other_renderer other_scripting other_network)
+
+target_link_directories(other_scene PRIVATE ${OTHER_LIBRARIES_PATH})
+target_link_libraries(other_scene PRIVATE other_renderer other_scripting other_network other_core)
+
+other_install_module(other_scene "scene")

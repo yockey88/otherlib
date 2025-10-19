@@ -53,15 +53,20 @@ message(STATUS "Python Library: ${PYTHON_LIB}")
 # find_package(pybind11 REQUIRED)  # or `add_subdirectory(pybind11)`
 
 target_include_directories(other_scripting 
-PUBLIC 
-  "${CMAKE_CURRENT_SOURCE_DIR}/src"
-  ${DOTNET_INCLUDE_DIRECTORY}
+  PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scripting>
 )
+
 
 target_link_directories(other_scripting 
-PUBLIC 
-  ${OTHER_LIBRARIES_PATH} 
-  ${PYTHON_LIB_DIR}
+  PUBLIC
+    $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}> 
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
+    $<BUILD_INTERFACE:${PYTHON_LIB_DIR}>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 
-target_link_libraries(other_scripting PUBLIC ${PYTHON_LIB} other_core)
+target_link_libraries(other_scripting PRIVATE ${PYTHON_LIB} other_core)
+
+other_install_module(other_scripting "scripting")

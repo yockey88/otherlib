@@ -1,0 +1,11 @@
+[application]
+core-log-level = "debug"
+
+[rendering]
+rendering-backend = "opengl"
+window-size = { width = 1920, height = 1080 }
+
+[scripting]
+dotnet-modules = [
+  "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"
+]

@@ -216,7 +216,16 @@ namespace other {
     return config_table{};
   }
 
-  value config_table::get_project_value(const std::string_view section, const std::string_view key) const {
+  value config_table::get_project_value(const std::string_view toml_path) const {
+    toml::node_view node = table.at_path(std::format("project.{}", toml_path));
+    if (!node) {
+      CORE_LOG_WARN("Project config key '{}' not found, returning default value.", toml_path);
+      return value();
+    } else {
+      CORE_LOG_TRACE("Found project config key '{}'", toml_path);
+    }
+
+    /// \todo
     return value();
   }
 
@@ -228,8 +237,10 @@ namespace other {
     return table;
   }
 
-  std::string config_table::format_table_string(const std::string_view section, const std::string_view key) const {
-    return std::format("{}.{}", section, key);
+  std::string config_table::dump_table_string() const {
+    std::ostringstream oss;
+    oss << table;
+    return oss.str();
   }
 
 }  // namespace other

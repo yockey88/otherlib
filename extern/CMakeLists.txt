@@ -1,1 +1,3 @@
 add_subdirectory(imgui)
+
+set(IMGUI_INCLUDE_DIRS ${IMGUI_INCLUDE_DIRS} PARENT_SCOPE)

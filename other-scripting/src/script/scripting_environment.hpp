@@ -20,7 +20,7 @@ namespace other {
     scripting_environment() = default;
     virtual ~scripting_environment() = default;
 
-    void initialize_script_environment();
+    void initialize_script_environment(const config_table& configuration);
     void shutdown_script_environment();
 
     integer_t create_object(const std::string_view name);

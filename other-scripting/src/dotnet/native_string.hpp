@@ -15,6 +15,7 @@ namespace other {
   namespace detail {
 
     std::string convert_string(const std::basic_string_view<char_t>& str);
+    std::basic_string<char_t> convert_string(const std::string& str);
 
   }  // namespace detail
 

@@ -17,7 +17,6 @@
 
 #include "plugin/plugin.hpp"
 
-
 namespace other {
 
   class driver_thread;
@@ -85,48 +84,7 @@ namespace other {
     template <typename T>
       requires requires(T t) { T{}; }
     decltype(auto) get_config_value(const std::string_view section, const std::string_view key, T default_value = {}) {
-      auto& table = configuration().get_project_table();
-
-      std::string full_key = config.format_table_string(section, key);
-      toml::node_view node = table.at_path(full_key);
-      if (!node) {
-        CORE_LOG_WARN("Config key '{}' not found, returning default value.", full_key);
-        return default_value;
-      } else {
-        CORE_LOG_TRACE("Found config key '{}'", full_key);
-      }
-
-      if constexpr (is_container<T> && !std::is_same_v<T, std::string>) {
-        // Handle container types (e.g., std::vector)
-        using value_type = typename T::value_type;
-
-        T result;
-        const toml::array* array_node = node.as_array();
-        if (array_node == nullptr) {
-          CORE_LOG_WARN("Config key '{}' is not an array, returning default value.", full_key);
-          return result;
-        }
-
-        CORE_LOG_TRACE("Parsing config array for key '{}' ({} items)", full_key, array_node->size());
-        array_node->for_each([&](auto&& elem) {
-          if (!elem.template is<value_type>()) {
-            CORE_LOG_WARN("Element in config array '{}' is not of the expected type, skipping.", full_key);
-            return;
-          }
-          CORE_LOG_TRACE(" - Parsed element in config array '{}'", full_key);
-          result.push_back(elem.template as<value_type>()->get());
-        });
-
-        return result;
-      } else {
-        CORE_LOG_TRACE("Parsing config value for key '{}'", full_key);
-        if (node.template is<T>()) {
-          return node.template as<T>()->get();
-        } else {
-          CORE_LOG_WARN("Config key '{}' is not of the expected type, returning default value.", full_key);
-          return default_value;
-        }
-      }
+      return configuration().get_value(std::format("{}.{}", section, key), default_value);
     }
 
    private:
@@ -160,6 +118,19 @@ namespace other {
   OTHER_PLUGIN(name)                                                                                             \
   OTHER_API other::driver* create_driver(const other::config_table* config) { return DRIVER_NEW(name, config); } \
   OTHER_API void destroy_driver(other::driver* instance) { DRIVER_DELETE(instance); }
+
+#define RUN_DRIVER(name, config)                           \
+  {                                                        \
+    other::driver* runtime = create_driver(&config);       \
+    if (!runtime) {                                        \
+      CORE_LOG_ERROR("Failed to create {} driver", #name); \
+      return other::exit_code::FAILURE;                    \
+    }                                                      \
+    runtime->initialize(cmd);                              \
+    runtime->run();                                        \
+    runtime->shutdown();                                   \
+    destroy_driver(runtime);                               \
+  }
 
 #ifdef OTHER_APPLICATION
   static inline std::vector<void (*)(SDL_Event*)> event_callbacks;

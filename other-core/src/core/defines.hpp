@@ -309,6 +309,9 @@ namespace other {
   filepath get_app_data_folder(const std::string_view app_name, bool create = false);
   filepath get_system_default_working_directory();
 
+  std::string get_tag_replacement(const std::string_view tag);
+  std::string perform_tag_replacement(const std::string_view tag);
+
 }  // namespace other
 
 namespace std {

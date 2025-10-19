@@ -17,11 +17,11 @@ macro(add_driver_target type driver_name)
     endif()
   endif()
 
-  if (${BUILD_PLATFORM} STREQUAL "WINDOWS")
+  if (MSVC)
     target_compile_definitions(${driver_name} PRIVATE "OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "NOMINMAX" "WIN32_LEAN_AND_MEAN" "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
   endif()
 
-  if (${BUILD_PLATFORM} STREQUAL "LINUX")
+  if (UNIX)
     target_compile_definitions(${driver_name} PRIVATE "OTHER_ENVIRONMENT_UNIX" ${BUILD_CONFIG_MACRO})
   endif()
 
@@ -36,6 +36,9 @@ macro(add_driver_target type driver_name)
   target_include_directories(${driver_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   target_sources(${driver_name} PUBLIC ${driver_src_list})
   target_link_libraries(${driver_name} PUBLIC otherlib)
+  if (${type} STREQUAL "static")
+    target_link_libraries(${driver_name} PUBLIC otherlib_main)
+  endif()
 endmacro()
 
 macro(add_static_driver driver_name)
