@@ -8,7 +8,7 @@ using OtherCsBindings;
 
 namespace Other
 { 
-  public class BuildTool //: Toolset.Tool
+  public class BuildTool : Toolset.Tool
   {
     enum BuildPhase
     {
