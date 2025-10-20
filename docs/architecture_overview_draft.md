@@ -14,27 +14,27 @@ Supporting detail:
 ## High-Level Layering
 
 ```text
-+-------------------------------------------------------------+
-|                   Application / Drivers                     |
-|  (development-drivers, plugins, tools, tests, examples)     |
-+----------------------------v--------------------------------+
-|                Other Environment Integration                |
-|  (otherlib/src, entry point, project + plugin systems)      |
-+----------------------------v--------------------------------+
-|           Domain Modules (C++ and .NET components)          |
-|  Rendering | Scene | Scripting | Networking | Tooling       |
-+----------------------------v--------------------------------+
-|                  Foundation and Runtime Core                |
-|  Core utilities, memory, config, logging, threading         |
-+----------------------------v--------------------------------+
-|                External Dependencies (extern/)              |
-+-------------------------------------------------------------+
++-------------------------------------------------------------------------+
+|                   Application / Drivers                                 |
+|  (development-drivers, plugins, tools, tests, examples)                 |
++----------------------------v--------------------------------------------+
+|                Other Environment Integration                            |
+|  (otherlib/src, entry point, project + plugin systems)                  |
++----------------------------v--------------------------------------------+
+|           Domain Modules (C++ and .NET components)                      |
+|  Rendering | Scene | Scripting | Networking | Physics | Audio | Tooling |
++----------------------------v--------------------------------------------+
+|                     Foundation and Runtime Core                         |
+|           Core utilities, memory, config, logging, threading            |
++----------------------------v--------------------------------------------+
+|                External Dependencies (extern/)                          |
++-------------------------------------------------------------------------+
 ```
 
 ### Layer Guidelines
 
 - **Foundation** (`other-core`, parts of `extern/`): cross-cutting utilities with minimal dependencies. Higher layers depend on these but never the other way around.
-- **Domain Modules** (`other-renderer`, `other-scene`, `other-network`, `other-scripting`, `other-csharp`, `other-csharp-interop`, `tools/`): pair the core with rendering, asset, and scripting systems. Modules collaborate through well-defined interfaces and global subsystems.
+- **Domain Modules** (`other-renderer`, `other-scene`, `other-network`, `other-scripting`, `other-physics`, `other-csharp`, `other-csharp-interop`, `tools/`): pair the core with rendering, asset, and scripting systems. Modules collaborate through well-defined interfaces and global subsystems.
 - **Integration** (`otherlib/`): composes modules into the shipped runtime, manages subsystem lifetimes, and exposes entry points to drivers.
 - **Drivers and Applications** (`development-drivers/`, `driver/`, user binaries): consume OtherLib APIs, usually via the provided `other_main` hook.
 
@@ -49,6 +49,7 @@ Supporting detail:
 | `other-scene/` | Scene and asset systems | Scene graph, asset pipeline, serialization, component descriptors. |
 | `other-network/` | Networking | Session state machine, networking thread, packet handling hooks. |
 | `other-scripting/` | Language bindings | Dotnet and Python bridges, script lifecycle management, native bindings. |
+| `other-physics/` | Physics Engine | Runs the physics environment and handles all physics simulation |
 | `other-csharp-interop/` | Managed/Native bridge | C# host helpers, assembly loader, managed object wrappers. |
 | `other-csharp/` | Managed runtime surface | C# utilities, renderer and scene bindings, generator tooling. |
 | `otherlib/` | Runtime integrator | Provides `main`, wires subsystems, plugin support, project serialization. |

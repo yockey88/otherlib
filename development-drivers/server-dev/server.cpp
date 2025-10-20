@@ -61,8 +61,8 @@ namespace other {
       new_project_entry["configurations"] = std::vector<std::string>{ "Debug", "Release" };
       new_project_entry["build"] = {
         { "type", "other-application" },
-        { "output-folder", (filepath(ctx.working_directory) / "build/${configuration}").string() },
-        { "executable", (filepath(ctx.working_directory) / "build/${configuration}" / (ctx.project_name + ".exe")).string() },
+        { "output-folder", (filepath(ctx.working_directory) / "build/${build-config}").string() },
+        { "executable", (filepath(ctx.working_directory) / "build/${build-config}" / (ctx.project_name + ".exe")).string() },
         { "args", std::vector<std::string>{} }
       };
       project_cache_path["projects"].push_back(new_project_entry);
@@ -450,13 +450,6 @@ namespace other {
     /// set an event listener for 'session-initial-check-in' to register other-application with the server
     /// respond to the ping with server data
 
-#if 0
-  #define TESTING_COROS
-#endif
-    // post_coroutine(validate_and_build_other_application("OtherApp", working_dir, exe_name));
-#ifdef TESTING_COROS
-#else
-
     std::string name = project_entry.at("name").get<std::string>();
     filepath project_file = filepath(project_entry.at("project-file").get<std::string>());
     filepath working_dir = project_entry.at("working-directory").get<std::string>();
@@ -472,32 +465,11 @@ namespace other {
     OTHER_ASSERT(itr != pending_apps.end(), "Failed to begin Other application : {}  [{}]", id, exe_name.string());
     CORE_LOG_DEBUG("Starting Other application : {}", id);
 
-    itr->executable = replace_all_substrings_with(itr->executable.string(), "${configuration}", "Debug");
+    itr->executable = perform_tag_replacement(itr->executable.string());
     CORE_LOG_DEBUG("Launching Other application executable '{}' @ [{}]:", itr->executable.string(), working_dir.string());
     for (const auto& arg : itr->args) {
       CORE_LOG_DEBUG("   - {}", arg);
     }
-
-    /// \todo: build the project and validate it is correct first
-    // project_description proj_desc = {
-    //   .project_type = project_description::APPLICATION,
-    //   .name = name,
-    //   .working_directory = working_dir,
-    //   .output_directory = output_file.has_value() ? output_file->parent_path() : working_dir / filepath("build"),
-    //   .exe_name = output_file.has_value() ? *output_file : working_dir / filepath("build") / exe_name,
-    //   .configurations = { "Debug", "Release" },
-    //   .active_configuration = 0,
-    //   .cmd_args = args,
-    //   .version = "0.1.0",
-    //   .description = "An Other application.",
-    //   .author = "Author Name",
-    //   .license = "MIT",
-    // };
-    // if (project_entry.contains("project-file")) {
-    //   proj_desc.override_file_name = project_entry.at("project-file").get<std::string>();
-    // }
-    // build_tool bt;
-    // bt.start_build(proj_desc);
 
     {
       message msg;
@@ -515,7 +487,6 @@ namespace other {
     itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
     itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(main_binding_point.port) });
     launch_detached_process(itr->working_directory, itr->executable, itr->args);
-#endif
   }
 
   void server::process_network_thread_messages(message&& msg) {
@@ -649,9 +620,9 @@ namespace other {
     app_itr->second.connected = true;
 
     /// we should only do this after the application has checked in successfully
-    std::string ping_session_ev_name = "ping-session:[" + std::to_string(itr->id) + "]";
+    std::string ping_session_ev_name = "ping-session:[" + std::to_string(app_itr->second.id) + "]";
     events->register_timed_event(ping_session_ev_name, seconds(10), true);
-    events->add_listener(ping_session_ev_name, [this, session_id = itr->id](const value& ec) {
+    events->add_listener(ping_session_ev_name, [this, session_id = app_itr->second.id](const value& ec) {
       CORE_LOG_DEBUG("Pinging session [{}] to check connectivity", session_id);
       message msg;
       msg.header = {

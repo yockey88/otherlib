@@ -78,6 +78,7 @@ other::subsystem<other::logger>::shutdown();
 | `logger` | `other-core/src/core/logger.hpp` | Central logging registry backed by spdlog sinks. |
 | `renderer_backend` | `other-renderer/src/renderer/renderer_backend.hpp` | Loads and manages rendering APIs. |
 | `scripting_environment` | `other-scripting/src/script/scripting_environment.hpp` | Hosts .NET runtime and script bindings. |
+| `physics_environment` | `other-scripting/src/physics/physics_environment.hpp` | Physics Engine and simulation. |
 | `type_database` | `other-scripting/src/dotnet/type_cache.hpp` | Reflection cache bridging native and managed types. |
 
 (The list is non-exhaustive; consult module headers for additional subsystems.)

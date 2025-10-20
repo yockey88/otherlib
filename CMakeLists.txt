@@ -203,6 +203,8 @@ add_subdirectory(other-renderer)
 add_subdirectory(other-scripting)
 add_subdirectory(other-csharp-interop)
 
+add_subdirectory(other-physics)
+
 add_subdirectory(other-scene)
 add_subdirectory(other-csharp)
 
