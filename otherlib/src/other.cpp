@@ -5,6 +5,8 @@
 
 #include <iostream>
 
+#include <spdlog/common.h>
+
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
@@ -14,12 +16,12 @@
 #include "core/version.hpp"
 #include "serialization/reflection.hpp"
 
+#include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "scripting/dotnet_bindings.hpp"
 
-#include "spdlog/common.h"
 
 #ifndef OTHER_TEST_ENVIRONMENT
 /// if not test environment and this is not an other application then we define the extern main function for the static driver
@@ -96,6 +98,8 @@ namespace other {
 
     bind_primary_scripting_environment(config);
     bind_environment_scripts();
+
+    subsystem<physics_environment>::get()->initialize_physics_environment(config);
 
     /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
     ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
