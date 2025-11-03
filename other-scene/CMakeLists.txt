@@ -10,6 +10,7 @@ target_sources(other_scene
 
       src/object/scene_object.cpp
       src/object/script_component.cpp
+      src/object/animation_controller.cpp
       src/object/object_serialization.cpp
       
       src/scene/scene_tree.cpp

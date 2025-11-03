@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 
 #include "math/bounding_box.hpp"
+#include "math/definitions.hpp"
 #include "serialization/reflection.hpp"
 
 namespace other {
@@ -70,6 +71,8 @@ namespace other {
     glm::vec3 tangent = { 1, 0, 0 };
     glm::vec3 bitangent = { 0, 1, 0 };
     glm::vec2 tex_coord = { 0, 0 };
+    glm::ivec4 bone_ids = { -1, -1, -1, -1 };
+    glm::vec4 bone_weights = { 0.f, 0.f, 0.f, 0.f };
 
     vertex() = default;
 
@@ -109,21 +112,25 @@ namespace other {
     natural_t sub_mesh_id;
     natural_t material_id;
 
+    std::vector<uint32_t> bone_ids;
+
     std::string name;
 
     bool rigged = false;
   };
 
   struct mesh_node {
-    uint32_t parent = 0xFFFFFFFF;  // 0xFFFFFFFF indicates no parent
+    constexpr static uint32_t kNoParent = 0xFFFFFFFF;
+    uint32_t parent = kNoParent;
     std::vector<uint32_t> children;
     std::vector<uint32_t> sub_meshes;
 
     std::string name;
     glm::mat4 local_transform;
+    glm::mat4 inverse_local_transform;
 
     inline bool is_root() const {
-      return parent == 0xFFFFFFFF;
+      return parent == kNoParent;
     }
   };
 
@@ -135,7 +142,9 @@ OTHER_REFLECT(
   field(normal, other::attr::serializable()),
   field(tangent, other::attr::serializable()),
   field(bitangent, other::attr::serializable()),
-  field(tex_coord, other::attr::serializable())
+  field(tex_coord, other::attr::serializable()),
+  field(bone_ids, other::attr::serializable()),
+  field(bone_weights, other::attr::serializable())
 )
 
 OTHER_REFLECT(

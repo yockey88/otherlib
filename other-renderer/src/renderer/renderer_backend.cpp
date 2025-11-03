@@ -45,10 +45,7 @@ namespace other {
 
     natural_t hash = FNV(name);
     switch (hash) {
-      case backend_keys::kOpenGLHash: {
-        flags |= SDL_WINDOW_OPENGL;
-      } break;
-
+      case backend_keys::kOpenGLHash: flags |= SDL_WINDOW_OPENGL; break;
       default:
         CORE_LOG_ERROR("Unknown/Unimplmented rendering backend: {}", name);
         break;
@@ -61,10 +58,7 @@ namespace other {
       OTHER_ASSERT(window != nullptr, "Failed to create main window: {}", SDL_GetError());
 
       switch (hash) {
-        case backend_keys::kOpenGLHash: {
-          set_rendering_api(make_scope<opengl_api>(), std::move(window_mgr));
-        } break;
-
+        case backend_keys::kOpenGLHash: set_rendering_api(make_scope<opengl_api>(), std::move(window_mgr)); break;
         default:
           CORE_LOG_ERROR("Unknown/Unimplmented rendering backend: {}", name);
           break;

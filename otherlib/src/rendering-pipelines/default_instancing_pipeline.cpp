@@ -11,6 +11,7 @@
 
 #include "model/model.hpp"
 #include "renderer/camera.hpp"
+#include "renderer/gpu_structs.hpp"
 
 #include "glm/fwd.hpp"
 
@@ -83,8 +84,15 @@ namespace other {
       .unbind();
   }
 
+#define POINT_LIGHT_SHADOW_MAPS 0
+#define EXTRA_DEBUG_POST_PROCESSING 0
+
   void default_instancing_pipeline::create_resources() {
-    const auto settings = { shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) } };
+    const auto settings = {
+      shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) },
+      // Support up to 4 bone influences per vertex (common convention)
+      shader::setting{ "MAX_VERTEX_BONE_INFLUENCE", "4" }
+    };
 
     geometry_pass_shader_handle = shader::create("geometry_pass_shader_handle", "resources/basic-instancing-gbuffer.vert", "resources/basic-instancing-gbuffer.frag", settings);
     shadow_map_pass_shader_handle = shader::create("shadow_map_pass_shader_handle", "resources/basic-instancing-shadow-map.vert", "resources/basic-instancing-shadow-map.frag", settings);
@@ -103,12 +111,14 @@ namespace other {
       .finalize_mesh();
 
     auto window_size = get_renderer()->get_window_size();
+
     add_buffer_resource("camera_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+    add_buffer_resource("model_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
+    add_buffer_resource("bone_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     add_buffer_resource("point_light_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
     add_buffer_resource("direction_light_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
     add_buffer_resource("light_matrix_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
     add_buffer_resource("material_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
-    add_buffer_resource("model_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
 
     add_texture_resource("color_texture", window_size, texture::tex_type::TEXTURE_2D, texture::format::RGBA32U);
     add_texture_resource("normal_texture", window_size, texture::tex_type::TEXTURE_2D, texture::format::RGBA16F);
@@ -123,6 +133,7 @@ namespace other {
 
     set_model_buffer("model_buffer");
     set_material_buffer("material_buffer");
+    set_bone_buffer("bone_buffer");
     set_point_light_buffer("point_light_buffer");
     set_direction_light_buffer("direction_light_buffer");
     set_camera_buffer("camera_buffer");
@@ -130,6 +141,8 @@ namespace other {
 
   void default_instancing_pipeline::build_render_passes() {
     auto window_size = get_renderer()->get_window_size();
+    CORE_LOG_DEBUG("Building default instancing pipeline render passes with window size: {}x{}", window_size.x, window_size.y);
+
     start_pass("geometry-pass", geometry_pass_shader_handle, render_pass::RENDER_PASS, window_size)
       .texture_resource("color_texture", framebuffer::COLOR, WRITE)
       .texture_resource("normal_texture", framebuffer::COLOR, WRITE)
@@ -137,55 +150,58 @@ namespace other {
       .buffer_resource("material_buffer", 0, READ)
       .buffer_resource("model_buffer", 1, READ)
       .buffer_resource("camera_buffer", 2, READ)
-      .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
-        renderer.execute_draw_calls();
+      .buffer_resource("bone_buffer", 3, READ)
+      .execution_callback([&](renderer& renderer, render_graph::node* node, void* user_data) {
+        renderer.execute_draw_calls(node);
       })
       .end_pass();
 
     start_pass("shadow-map-pass", shadow_map_pass_shader_handle, render_pass::RENDER_PASS, window_size)
       .texture_resource("ambient_shadow_map", framebuffer::DEPTH, WRITE)
       .buffer_resource("model_buffer", 1, READ)
-      .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
-        renderer.execute_draw_calls();
+      .execution_callback([&](renderer& renderer, render_graph::node* node, void* user_data) {
+        renderer.execute_draw_calls(node);
       })
       .end_pass();
 
-    // start_pass("point-light-shadow-pass", shadow_map_pass_shader_handle, render_pass::RENDER_PASS, window_size)
-    //   .texture_resource("pl_shadow_map", framebuffer::DEPTH, WRITE)
-    //   .buffer_resource("model_buffer", 1, READ)
-    //   .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
-    //     shader* point_light_shader = get_pass_shader("point-light-shadow-pass");
-    //     OTHER_ASSERT(point_light_shader != nullptr, "Point light shadow pass shader not found.");
+#if POINT_LIGHT_SHADOW_MAPS
+    start_pass("point-light-shadow-pass", shadow_map_pass_shader_handle, render_pass::RENDER_PASS, window_size)
+      .texture_resource("pl_shadow_map", framebuffer::DEPTH, WRITE)
+      .buffer_resource("model_buffer", 1, READ)
+      .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
+        shader* point_light_shader = get_pass_shader("point-light-shadow-pass");
+        OTHER_ASSERT(point_light_shader != nullptr, "Point light shadow pass shader not found.");
 
-    //     float near_plane = 1.0f;
-    //     float far_plane = 10.f;
-    //     auto window_size = renderer.get_window_size();
-    //     glm::mat4 shadow_projection = glm::perspective(glm::radians(90.0f), (float)window_size.x / window_size.y, near_plane, far_plane);
+        float near_plane = 1.0f;
+        float far_plane = 10.f;
+        auto window_size = renderer.get_window_size();
+        glm::mat4 shadow_projection = glm::perspective(glm::radians(90.0f), (float)window_size.x / window_size.y, near_plane, far_plane);
 
-    //     point_light_shader->set_uniform("far_plane", far_plane);
+        point_light_shader->set_uniform("far_plane", far_plane);
 
-    //     for (size_t i = 0; i < get_frame_render_data()->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-    //       const auto& light = get_frame_render_data()->point_lights[i];
-    //       glm::vec3 light_pos = light.light_position;
+        for (size_t i = 0; i < get_frame_render_data()->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+          const auto& light = get_frame_render_data()->point_lights[i];
+          glm::vec3 light_pos = light.light_position;
 
-    //       std::vector<glm::mat4> light_matrices;
-    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
-    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
-    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)));
-    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
-    //       light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+          std::vector<glm::mat4> light_matrices;
+          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)));
+          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+          light_matrices.push_back(shadow_projection * glm::lookAt(light_pos, light_pos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
 
-    //       OTHER_ASSERT(light_matrices.size() == 6, "Point light shadow matrices should have 6 faces.");
-    //       for (size_t i = 0; i < light_matrices.size(); ++i) {
-    //         point_light_shader->set_uniform("shadow_matrices[" + std::to_string(i) + "]", light_matrices[i]);
-    //       }
-    //       point_light_shader->set_uniform("light_pos", light_pos);
+          OTHER_ASSERT(light_matrices.size() == 6, "Point light shadow matrices should have 6 faces.");
+          for (size_t i = 0; i < light_matrices.size(); ++i) {
+            point_light_shader->set_uniform("shadow_matrices[" + std::to_string(i) + "]", light_matrices[i]);
+          }
+          point_light_shader->set_uniform("light_pos", light_pos);
 
-    //       renderer.execute_draw_calls();
-    //     }
-    //   })
-    //   .end_pass();
+          renderer.execute_draw_calls();
+        }
+      })
+      .end_pass();
+#endif  // POINT_LIGHT_SHADOW_MAPS
 
     start_pass("shading-pass", shading_pass_shader_handle, render_pass::RENDER_PASS, window_size)
       .clear_color(glm::vec4(0.2f, 0.2f, 0.2f, 1.f))
@@ -203,26 +219,28 @@ namespace other {
       })
       .end_pass();
 
-    start_pass("to-screen", screen_shader_handle, render_pass::RENDER_PASS, window_size, /* create_framebuffer = */ false)
+#if EXTRA_DEBUG_POST_PROCESSING
+    start_pass("debug-post-processing", shading_pass_shader_handle, render_pass::RENDER_PASS, window_size, /* create_framebuffer = */ false)
       .texture_resource("screen_texture", framebuffer::COLOR, READ)
+      .texture_resource("debug_processed_texture", framebuffer::COLOR, WRITE)
+      .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
+        renderer.get_resource<mesh>(quad_mesh_handle).draw();
+      })
+      .end_pass();
+#endif
+
+    start_pass("to-screen", screen_shader_handle, render_pass::RENDER_PASS, window_size, /* create_framebuffer = */ false)
+#if EXTRA_DEBUG_POST_PROCESSING
+      .texture_resource("debug_processed_texture", framebuffer::COLOR, READ)
+      .texture_resource("final_frame", framebuffer::COLOR, WRITE)
+#else
+      .texture_resource("screen_texture", framebuffer::COLOR, READ)
+#endif
       .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
         get_pass_shader("to-screen")->set_uniform("OE_texture", 0);
         renderer.get_resource<mesh>(quad_mesh_handle).draw();
       })
       .end_pass();
-
-    // start_pass("debug-post-processing", debug_processing_shader_handle, render_pass::RENDER_PASS, window_size, false)
-    //   .execution_callback([&](renderer& renderer, const render_graph::node* node, void* user_data) {
-    //     // get_pass_shader("debug-post-processing")
-    //     //   ->set_uniform("projection", camera->projection)
-    //     //   .set_uniform("view", camera->view);
-    //     // blit_framebuffer_to_default_backbuffer("geometry-pass");
-
-    //     /// for each light
-    //     ///   shader->set_uniform("light_color", light.color);
-    //     ///   debug_cube_model.draw();
-    //   })
-    //   .end_pass();
   }
 
   namespace {

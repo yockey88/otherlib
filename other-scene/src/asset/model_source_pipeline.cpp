@@ -15,7 +15,11 @@ namespace other {
     CORE_LOG_DEBUG("Pipeline finished successfully for asset ID: {}", asset_ptr->id);
 
     PROFILE_SECTION("model_importer::load_model_data--create-model-source");
-    ref<model_source> src = make_ref<model_source>(asset_ptr->path.filename().stem().string(), builder.vertices, builder.indices, builder.triangles, builder.submeshes, builder.nodes, builder.bounds);
+    // clang-format off
+    ref<model_source> src = make_ref<model_source>(asset_ptr->path.filename().stem().string(), builder.vertices, builder.indices, builder.triangles, 
+                                                                                               builder.submeshes, builder.nodes, builder.bones, builder.materials, builder.animations, 
+                                                                                               builder.global_transform, builder.inverse_global_transform, builder.bounds);
+    // clang-format on
     if (!src) {
       CORE_LOG_ERROR("Failed to create model source for file: {}", asset_ptr->path.string());
       return;

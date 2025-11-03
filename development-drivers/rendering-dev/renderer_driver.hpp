@@ -50,9 +50,7 @@ namespace other {
     natural_t suzanne_id;
     natural_t camera_id;
 
-    model cube;
-    model suzanne;
-
+    model suzanne_model;
     natural_t suzanne_asset_id = 0;
 
     void on_event(SDL_Event* event) override;

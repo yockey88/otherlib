@@ -115,7 +115,7 @@ if __name__ == "__main__":
       print("Serialization schema compiled successfully.")
 
     if args.install:
-      #remove if installation folder exists, this only works locally for dev testing (and only on windows)
+      # remove if installation folder exists, this only works locally for dev testing (and only on windows)
       if os.path.exists("C:/OtherEnvironment/"):
         shutil.rmtree("C:/OtherEnvironment/")
       run_subprocess(["cmake", "-S", ".", "-B", "build"])
@@ -141,20 +141,6 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
-      # ### if no other.sln file found, regenerate project files
-      # if not os.path.exists("build/other.sln"):
-      #   regen_project()
-      ### run dotnet restore on solution file to restore nuget packages
-      # this has to happen before build step cause bulding dotnet projects
-      # requires the *.project.json files to be present
-      # print("Restoring .NET packages...")
-      # run_subprocess(["dotnet", "restore", "build/other.sln"])
-
-      # filename = "build/other.sln"
-      # if not os.path.exists(filename):
-      #   print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
-      #   sys.exit(1)
-      # build_sln_file(filename, cfg)
       run_subprocess(["cmake", "--build", "build", "--config", cfg])
 
       dll_cfg = "Release"
@@ -165,9 +151,9 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "script-config.toml"])
-      # run_subprocess(["build/scratch/" + cfg + "/coro-testing.exe", "resources/dev-test-config.toml"])
-      run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
+      # run_project("scratch", cfg, "gl-testing", "dev-config.toml", args, args.verbose)
       
     elif args.run_server:
       run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)

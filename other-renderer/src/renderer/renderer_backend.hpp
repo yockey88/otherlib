@@ -27,6 +27,8 @@ namespace other {
     bool has_backend() const { return rendering_api_instance != nullptr; }
 
     void load_backend(const std::string& name, const glm::uvec2& window_size);
+    /// don't ever use this unless you really know what you're doing,
+    /// it will skip proper initialization steps, useful for testing, etc.
     void force_set_backend(scope<rendering_api> api);
     void unload_backend();
 

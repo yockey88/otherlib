@@ -6,7 +6,7 @@
 namespace other {
   namespace {
 
-    static std::vector<uint32_t> actual_layout = { 3, 3, 3, 3, 2 };
+    static std::vector<uint32_t> actual_layout = { 3, 3, 3, 3, 2, 4, 4 };
 
   }  // namespace
 
@@ -17,6 +17,13 @@ namespace other {
       case VEC3:
         return 3;
       case VEC4:
+        return 4;
+
+      case IVEC2:
+        return 2;
+      case IVEC3:
+        return 3;
+      case IVEC4:
         return 4;
 
       case MAT3:
@@ -128,6 +135,8 @@ namespace other {
       vertex_attribute(value_type::VEC3, "tangent"),
       vertex_attribute(value_type::VEC3, "bitangent"),
       vertex_attribute(value_type::VEC2, "tex_coord"),
+      vertex_attribute(value_type::IVEC4, "bone_ids"),
+      vertex_attribute(value_type::VEC4, "bone_weights"),
     };
   }
 
