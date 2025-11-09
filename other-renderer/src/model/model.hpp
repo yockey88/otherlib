@@ -36,16 +36,14 @@ namespace other {
     submesh* get_submesh_by_name(const std::string& name);
 
     void draw();
-
-    ~model();
   };
 
   class model_source : public ref_counted {
    public:
     // clang-format off
-   model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices, const std::unordered_map<uint32_t, std::vector<triangle>>& triangle_map,
-                const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const std::vector<bone>& bones, const std::vector<material>& materials, const std::vector<animation>& animations, 
-                const glm::mat4& global_transform, const glm::mat4& inverse_global_transform, const bounding_box& bounds);
+   model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices, const std::vector<triangle>& triangle_map,
+                const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const std::vector<material>& materials, const std::vector<animation>& animations, 
+                const skeleton& skeleton, const glm::mat4& global_transform, const glm::mat4& inverse_global_transform, const bounding_box& bounds);
     // clang-format on
     ~model_source();
 
@@ -59,14 +57,12 @@ namespace other {
     /// non-const overloads (not all are provided)
     inline std::vector<submesh>& get_submeshes() { return submeshes; }
     inline std::vector<mesh_node>& get_nodes() { return nodes; }
-    inline std::vector<bone>& get_bones() { return bones; }
     /// const overloads
     inline const glm::mat4& get_global_transform() const { return global_transform; }
     inline const glm::mat4& get_inverse_global_transform() const { return inverse_global_transform; }
-    inline const std::unordered_map<uint32_t, std::vector<triangle>>& get_triangles() const { return triangle_map; }
+    inline const std::vector<triangle>& get_triangles() const { return triangles; }
     inline const std::vector<submesh>& get_submeshes() const { return submeshes; }
     inline const std::vector<mesh_node>& get_nodes() const { return nodes; }
-    inline const std::vector<bone>& get_bones() const { return bones; }
     inline const std::vector<material>& get_materials() const { return materials; }
     inline const std::vector<animation>& get_animations() const { return animations; }
 
@@ -80,7 +76,7 @@ namespace other {
 
     size_t num_models_produced = 0;
 
-    model base_model;
+    skeleton* skel = nullptr;
 
     glm::mat4 global_transform = glm::mat4(1.0f);
     glm::mat4 inverse_global_transform = glm::mat4(1.0f);
@@ -93,12 +89,11 @@ namespace other {
     /// base mesh data and geometry
     std::vector<vertex> vertices;
     std::vector<index> indices;
-    std::unordered_map<uint32_t, std::vector<triangle>> triangle_map;
+    std::vector<triangle> triangles;
 
     /// model structure data and transform relations for organizating geometry
     std::vector<submesh> submeshes;
     std::vector<mesh_node> nodes;
-    std::vector<bone> bones;
 
     /// high level model data
     std::vector<material> materials;
@@ -116,11 +111,5 @@ namespace other {
   };
 
 }  // namespace other
-
-OTHER_REFLECT(
-  other::model,
-  field(name, other::attr::serializable()),
-  field(submesh_indices, other::attr::serializable())
-)
 
 #endif  // OTHER_RENDERER_MODEL_MODEL_HPP

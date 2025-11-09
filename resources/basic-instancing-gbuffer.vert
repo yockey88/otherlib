@@ -10,12 +10,10 @@ void main() {
   mat3 normal_mat = transpose(inverse(mat3(model_matrix)));
 
   if (has_bones()) {
-    vec4 skinned_local = get_transform_bone_contributions();
-    vec4 skinned_world = model_matrix * skinned_local;
-
-    world_position = skinned_world.xyz;
+    vec4 skinned_world_pos = get_bone_transform() * get_local_position();
+    world_position = skinned_world_pos.xyz;
     world_normal = normalize(normal_mat * get_normal_bone_contribations());
-    gl_Position = get_camera_matrix() * skinned_world;
+    gl_Position = get_camera_matrix() * skinned_world_pos;
   } else {
     world_position = get_world_position().xyz;
     world_normal = normalize(normal_mat * OE_normal);

@@ -11,9 +11,17 @@ dotnet-modules = [
 ]
 
 [assets]
+# test-model = "resources/models/Rumba Dancing.fbx"
+# test-model = "resources/models/Rumba Dancing.dae"
 # test-model = "resources/models/bone-test-1.fbx"
 # test-model = "resources/models/bone-test-2.fbx"
-test-model = "resources/models/bone-test-3.fbx"
-# test-model = "resources/models/spinning-torus.fbx"
+# test-model = "resources/models/bone-test-2-1.fbx"
+# test-model = "resources/models/bone-test-2-1.dae"
+# test-model = "resources/models/bone-test-2-1.glb"
+# test-model = "resources/models/bone-test-2-2.dae"
+# test-model = "resources/models/bone-test-3.fbx"
+# test-model = "resources/models/bone-test-3.dae"
+# test-model = "resources/models/bone-test-4.fbx"
+test-model = "resources/models/spinning-torus.fbx"
 # test-model = "resources/models/animated-suzanne3.fbx"
 # test-model = "resources/models/suzanne3.fbx"

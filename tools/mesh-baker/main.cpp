@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
   }
   for (uint32_t s = 0; s < builder.submeshes.size(); ++s) {
     const submesh& submesh = builder.submeshes[s];
-    std::println("Submesh[{}] -- base_vertex: {}, base_idx: {}, mat_idx: {}, idx_cnt: {}, vert_cnt: {}, name: {}", s, submesh.base_vertex, submesh.base_idx, submesh.mat_idx, submesh.idx_cnt, submesh.vert_cnt, submesh.name);
+    std::println("Submesh[{}] -- base_vertex: {}, base_idx: {}, idx_cnt: {}, vert_cnt: {}, name: {}", s, submesh.base_vertex, submesh.base_idx, submesh.idx_cnt, submesh.vert_cnt, submesh.name);
     std::println("-- local_transform:\n{}", submesh.local_transform);
   }
   for (uint32_t n = 0; n < builder.nodes.size(); ++n) {
@@ -156,14 +156,14 @@ int main(int argc, char** argv) {
   for (const auto& submesh : builder.submeshes) {
     const uint8_t* base_vertex_bytes = reinterpret_cast<const uint8_t*>(&submesh.base_vertex);
     const uint8_t* base_idx_bytes = reinterpret_cast<const uint8_t*>(&submesh.base_idx);
-    const uint8_t* mat_idx_bytes = reinterpret_cast<const uint8_t*>(&submesh.mat_idx);
+    // const uint8_t* mat_idx_bytes = reinterpret_cast<const uint8_t*>(&submesh.mat_idx);
     const uint8_t* idx_cnt_bytes = reinterpret_cast<const uint8_t*>(&submesh.idx_cnt);
     const uint8_t* vert_cnt_bytes = reinterpret_cast<const uint8_t*>(&submesh.vert_cnt);
     const uint8_t* local_transform_bytes = reinterpret_cast<const uint8_t*>(&submesh.local_transform);
     const uint8_t* bounds_min_bytes = reinterpret_cast<const uint8_t*>(&submesh.bounds.min);
     const uint8_t* bounds_max_bytes = reinterpret_cast<const uint8_t*>(&submesh.bounds.max);
     const uint8_t* sub_mesh_id_bytes = reinterpret_cast<const uint8_t*>(&submesh.sub_mesh_id);
-    const uint8_t* material_id_bytes = reinterpret_cast<const uint8_t*>(&submesh.material_id);
+    // const uint8_t* material_id_bytes = reinterpret_cast<const uint8_t*>(&submesh.material_id);
 
     uint32_t name_length = static_cast<uint32_t>(submesh.name.size());
     const uint8_t* name_length_bytes = reinterpret_cast<const uint8_t*>(&name_length);
@@ -172,19 +172,19 @@ int main(int argc, char** argv) {
     uint8_t rigged_byte = submesh.rigged ? 1 : 0;
     const uint8_t* rigged_bytes = reinterpret_cast<const uint8_t*>(&rigged_byte);
 
-    std::println("Submesh '{}' id: {}, material id: {}", submesh.name, submesh.sub_mesh_id, submesh.material_id);
+    // std::println("Submesh '{}' id: {}, material id: {}", submesh.name, submesh.sub_mesh_id, submesh.material_id);
     std::println("Submesh '{}' bounds :\n[min: {}, max: {}]", submesh.name, submesh.bounds.min, submesh.bounds.max);
 
     submesh_buffer.append_range(std::span(base_vertex_bytes, sizeof(uint32_t)));
     submesh_buffer.append_range(std::span(base_idx_bytes, sizeof(uint32_t)));
-    submesh_buffer.append_range(std::span(mat_idx_bytes, sizeof(uint32_t)));
+    // submesh_buffer.append_range(std::span(mat_idx_bytes, sizeof(uint32_t)));
     submesh_buffer.append_range(std::span(idx_cnt_bytes, sizeof(uint32_t)));
     submesh_buffer.append_range(std::span(vert_cnt_bytes, sizeof(uint32_t)));
     submesh_buffer.append_range(std::span(local_transform_bytes, sizeof(glm::mat4)));
     submesh_buffer.append_range(std::span(bounds_min_bytes, sizeof(glm::vec3)));
     submesh_buffer.append_range(std::span(bounds_max_bytes, sizeof(glm::vec3)));
     submesh_buffer.append_range(std::span(sub_mesh_id_bytes, sizeof(natural_t)));
-    submesh_buffer.append_range(std::span(material_id_bytes, sizeof(natural_t)));
+    // submesh_buffer.append_range(std::span(material_id_bytes, sizeof(natural_t)));
     submesh_buffer.append_range(std::span(name_length_bytes, sizeof(uint32_t)));
     submesh_buffer.append_range(std::span(name_bytes, name_length));
     submesh_buffer.append_range(std::span(rigged_bytes, sizeof(uint8_t)));

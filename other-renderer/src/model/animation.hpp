@@ -31,7 +31,7 @@ namespace other {
     std::vector<translation_key<glm::quat>> rotation_keys;
     std::vector<translation_key<glm::vec3>> scale_keys;
 
-    glm::mat4 get_transform_at_time(double time);
+    const glm::mat4& get_transform_at_time(double time);
     glm::vec3 interpolated_position_at_time(double time) const;
     glm::quat interpolated_rotation_at_time(double time) const;
     glm::vec3 interpolated_scale_at_time(double time) const;

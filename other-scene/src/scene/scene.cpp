@@ -98,12 +98,13 @@ namespace other {
     PROFILE_SECTION("scene::update");
 
     storage->registry.view<render_component>().each([delta_time](entt::entity entity, render_component& render_comp) {
-      if (!render_comp.animated) {
-        auto* model_ptr = render_comp.model;
-        model_ptr->bone_matrices = model_ptr->skel->calculate_bone_matrices(glm::mat4(1.0f));
-      }
+      // if (!render_comp.animated) {
+      //   auto* model_ptr = render_comp.model;
+      //   model_ptr->bone_matrices = model_ptr->skel->calculate_bone_matrices(glm::mat4(1.0f));
+      // }
     });
-    storage->registry.view<animation_controller>().each([delta_time](entt::entity entity, animation_controller& anim_ctrl) {
+    storage->registry.view<object_handle, animation_controller>().each([this, delta_time](entt::entity entity, object_handle& obj_handle, animation_controller& anim_ctrl) {
+      anim_ctrl.root_transform = get_world_transform(obj_handle.id);
       anim_ctrl.update(delta_time);
     });
 
@@ -412,29 +413,28 @@ namespace other {
           call.line_thickness = 1.f;
         }
 
-        glm::mat4 world_transform = get_world_transform(handle.id) * transform_it->second;
+        glm::mat4 world_transform = get_world_transform(handle.id);  // * transform_it->second;
 
         size_t index = data.draw_calls[mesh_index].instance_count++;
         data.material_buffers[mesh_index].materials[index] = render.material;
         data.model_buffers[mesh_index].model_matrices[index] = world_transform;
       }
 
-      for (auto& bone_buff : data.bone_buffers) {
-        for (size_t i = 0; i < gpu::kMaxMaterials; ++i) {
-          bone_buff.bone_matrices[i] = glm::mat4(1.0f);
-        }
-        if (!draw_model->skel || draw_model->bone_matrices.size() == 0) {
-          bone_buff.has_bones = 0;
-          continue;
-        }
+      // for (auto& bone_buff : data.bone_buffers) {
+      //   for (size_t i = 0; i < gpu::kMaxMaterials; ++i) {
+      //     bone_buff.bone_matrices[i] = glm::mat4(1.0f);
+      //   }
+      //   if (!draw_model->skel || draw_model->bone_matrices.size() == 0) {
+      //     bone_buff.has_bones = 0;
+      //     continue;
+      //   }
 
-        bone_buff.has_bones = 1;
-        size_t bone_count = std::min(draw_model->bone_matrices.size(), static_cast<size_t>(100));
-        for (size_t b = 0; b < bone_count; ++b) {
-          bone_buff.bone_matrices[b] = draw_model->bone_matrices[b];
-        }
-        draw_model->bone_matrices.clear();
-      }
+      //   size_t bone_count = std::min(draw_model->bone_matrices.size(), static_cast<size_t>(100));
+      //   for (size_t b = 0; b < bone_count; ++b) {
+      //     bone_buff.bone_matrices[b] = draw_model->bone_matrices[b];
+      //   }
+      //   draw_model->bone_matrices.clear();
+      // }
     });
 
     return data;

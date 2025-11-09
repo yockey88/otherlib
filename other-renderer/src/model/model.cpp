@@ -67,8 +67,8 @@ namespace other {
     }
 
     std::tuple<resource_handle, resource_handle, resource_handle> get_mesh_handles(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
-      std::vector<float> vertex_data = build_vertex_buffer(vertices);
-      std::vector<uint32_t> indices_data = build_index_buffer(indices);
+      std::vector<float> vertex_data = vertex::to_gpu_buffer(vertices);
+      std::vector<uint32_t> indices_data = index::to_gpu_buffer(indices);
 
       resource_handle mesh_handle = subsystem<renderer_backend>::get()->api()->create_resource(name + "_vertex_buffer", resource_type::MESH);
       (*subsystem<renderer_backend>::get()->api()->get_resource_as<mesh>(mesh_handle))
@@ -120,31 +120,49 @@ namespace other {
     source->draw();
   }
 
-  model::~model() {
-    if (skel != nullptr) {
-      arena_allocator<skeleton>{}.free(skel);
-      skel = nullptr;
-    }
-  }
-
   // clang-format off
-  model_source::model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices, const std::unordered_map<uint32_t, std::vector<triangle>>& triangle_map, 
-                              const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const std::vector<bone>& bones, const std::vector<material>& materials, const std::vector<animation>& animations, 
-                              const glm::mat4& global_transform, const glm::mat4& inverse_global_transform, const bounding_box& bounds)
+  model_source::model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices, const std::vector<triangle>& triangles,
+                              const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const std::vector<material>& materials, const std::vector<animation>& animations, 
+                              const skeleton& skel, const glm::mat4& global_transform, const glm::mat4& inverse_global_transform, const bounding_box& bounds)
       // clang-format on
-      : global_transform(global_transform), inverse_global_transform(inverse_global_transform), vertices(vertices), indices(indices), triangle_map(triangle_map), submeshes(submeshes), nodes(nodes), bones(bones),
+      : global_transform(global_transform), inverse_global_transform(inverse_global_transform), vertices(vertices), indices(indices), triangles(triangles), submeshes(submeshes), nodes(nodes),
         materials(materials), animations(animations), bounds(bounds), file_path("") {
     OTHER_ASSERT(!vertices.empty(), "Model source must have at least one vertex.");
     OTHER_ASSERT(!indices.empty(), "Model source must have at least one index.");
     OTHER_ASSERT(!submeshes.empty(), "Model source must have at least one submesh.");
     OTHER_ASSERT(!name.empty(), "Model source name cannot be empty.");
 
-    CORE_LOG_DEBUG("Creating model source: {} with {} vertices, {} indices, {} submeshes, {} nodes, {} bones, {} materials, and {} animations.", name, vertices.size(), indices.size(), submeshes.size(), nodes.size(), bones.size(), materials.size(), animations.size());
+    this->skel = arena_allocator<skeleton>{}.allocate();
+
+    this->skel->name = skel.name;
+    this->skel->bones = skel.bones;
+    this->skel->parent_ids = skel.parent_ids;
+    this->skel->children_ids = skel.children_ids;
+    this->skel->bone_positions = skel.bone_positions;
+    this->skel->bone_rotations = skel.bone_rotations;
+    this->skel->bone_scales = skel.bone_scales;
+    this->skel->local_bone_positions = skel.local_bone_positions;
+    this->skel->final_bone_positions = skel.final_bone_positions;
+
+    for (uint32_t vidx = 0; vidx < vertices.size(); ++vidx) {
+      vertex& v = this->vertices[vidx];
+
+      double total_weight = v.bone_weights.x + v.bone_weights.y + v.bone_weights.z + v.bone_weights.w;
+      if (total_weight > 0.0) {
+        v.bone_weights.x = static_cast<float>(v.bone_weights.x / total_weight);
+        v.bone_weights.y = static_cast<float>(v.bone_weights.y / total_weight);
+        v.bone_weights.z = static_cast<float>(v.bone_weights.z / total_weight);
+        v.bone_weights.w = static_cast<float>(v.bone_weights.w / total_weight);
+      }
+    }
+
+    CORE_LOG_DEBUG("Creating model source: {} with {} vertices, {} indices, {} submeshes, {} nodes, {} bones, {} materials, and {} animations.", name, vertices.size(), indices.size(), submeshes.size(), nodes.size(), skel.bones.size(), materials.size(), animations.size());
     layout = vertex::get_buffer_layout();
     std::tie(mesh_handle, vertex_buffer_handle, index_buffer_handle) = get_mesh_handles(name, vertices, indices);
   }
 
   model_source::~model_source() {
+    arena_allocator<skeleton>{}.free(skel);
   }
 
   model model_source::produce_model(const std::string& name, const std::vector<uint32_t>& submesh_idxs) {
@@ -162,7 +180,7 @@ namespace other {
       OTHER_ASSERT(inserted, "Failed to insert local submesh transform for submesh index {}", sm_idx);
     }
 
-    m.skel = arena_allocator<skeleton>{}.allocate(name, this);
+    m.skel = skel;
 
     return m;
   }
@@ -180,9 +198,9 @@ namespace other {
 
     model_builder builder = model_importer::load_model_data(file_path);
     // clang-format off
-    ref<model_source> src = make_ref<model_source>(file_path.filename().stem().string(), builder.vertices, builder.indices, builder.triangles, 
-                                                                                         builder.submeshes, builder.nodes, builder.bones, builder.materials, builder.animations, 
-                                                                                         builder.global_transform, builder.inverse_global_transform, builder.bounds);
+    ref<model_source> src = make_ref<model_source>(file_path.filename().stem().string(), builder.vertices, builder.indices, builder.triangles,
+                                                                                         builder.submeshes, builder.nodes, builder.materials, builder.animations,
+                                                                                         builder.skel, builder.global_transform, builder.inverse_global_transform, builder.bounds);
     // clang-format on
     natural_t hash = FNV(file_path.string());
     subsystem<renderer_backend>::get()->add_model_source(hash, src);
@@ -200,9 +218,9 @@ namespace other {
 
     model_builder builder = model_importer::build_model_data(name, vertices, indices);
     // clang-format off
-    ref<model_source> src = make_ref<model_source>(name, builder.vertices, builder.indices, builder.triangles, 
-                                                   builder.submeshes, builder.nodes, builder.bones, builder.materials, builder.animations, 
-                                                   builder.global_transform, builder.inverse_global_transform, builder.bounds);
+    ref<model_source> src = make_ref<model_source>("name", builder.vertices, builder.indices, builder.triangles,
+                                                           builder.submeshes, builder.nodes, builder.materials, builder.animations,
+                                                           builder.skel, builder.global_transform, builder.inverse_global_transform, builder.bounds);
     // clang-format on
 
     natural_t hash = FNV(name);

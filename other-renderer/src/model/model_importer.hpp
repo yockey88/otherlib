@@ -16,7 +16,6 @@
 
 #include "glm/fwd.hpp"
 
-
 namespace other {
 
   struct model_builder {
@@ -35,12 +34,16 @@ namespace other {
 
     std::vector<material> materials;
 
-    std::vector<bone> bones;
+    skeleton skel;
+
     std::vector<animation> animations;
 
-    std::unordered_map<uint32_t, std::vector<triangle>> triangles;
+    std::vector<triangle> triangles;
 
     bounding_box bounds = bounding_box::empty;
+
+    submesh& new_submesh(const std::string_view name, uint32_t idx, uint32_t base_vert, uint32_t num_vertices, uint32_t base_idx, uint32_t num_faces);
+    void build_triangle_list();
 
     void dump_model_info() const;
   };

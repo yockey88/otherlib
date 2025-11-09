@@ -13,11 +13,9 @@ def regen_project():
 
 def copy_dlls(cfg, dll_cfg):
   print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
-  assimp_debug = "extern/assimp/lib/debug/assimp-vc143-mtd.dll"
-  assimp_release = "extern/assimp/lib/release/assimp-vc143-mt.dll"
   dlls = [
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
-    assimp_debug if cfg == "Debug" else assimp_release,
+    "extern/assimp/lib/assimp-vc143-mt.dll",
     f"extern/python312/python312.dll",
   ]
   destinations = [
@@ -28,21 +26,12 @@ def copy_dlls(cfg, dll_cfg):
     f"build/tests/{cfg}/",
     f"build/tools/{cfg}/",
   ]
-  
-  if cfg == "Debug" or cfg == "ProfileD":
-    if os.path.exists(assimp_debug):
-      dlls.append(assimp_debug)
-  else:
-    if os.path.exists(assimp_release):
-      dlls.append(assimp_release)
 
   for dll in dlls:
     if os.path.exists(dll):
       for dest in destinations:
         if os.path.exists(dest):
           shutil.copy(dll, dest)
-          # print(f"Copied {dll} to {dest}")
-
     else:
       print(f"Warning: {dll} does not exist.")
 
@@ -152,8 +141,8 @@ if __name__ == "__main__":
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
       # run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
-      run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
-      # run_project("scratch", cfg, "gl-testing", "dev-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
+      run_project("scratch", cfg, "gl-testing", "dev-config.toml", args, args.verbose)
       
     elif args.run_server:
       run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)

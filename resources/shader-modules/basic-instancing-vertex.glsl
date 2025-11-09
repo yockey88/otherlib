@@ -20,12 +20,11 @@ layout (std140, binding = 2) uniform camera_buffer {
   mat4 projection_matrix;
 };
 
-// Explicit bindings to match pipeline: model_buffer -> binding 1, camera_buffer -> binding 2, bone_buffer -> binding 3
-layout (std140, binding = 1) uniform model_buffer {
+layout (std140) uniform model_buffer {
   mat4 models[MAX_OBJECTS];
 };
 
-layout (std140, binding = 3) uniform bone_buffer {
+layout (std140) uniform bone_buffer {
   mat4 bones[MAX_OBJECTS];
   int use_bones;
 };
@@ -84,20 +83,20 @@ vec3 get_normal_bone_contribations() {
   return bone_normal;
 }
 
-vec4 get_transform_bone_contributions() {
-  vec4 bone_position = vec4(0.f);
+mat4 get_bone_transform() {
+  mat4 bone_transform = mat4(0.f);
 
   for (int i = 0; i < MAX_VERTEX_BONE_INFLUENCE; ++i) {
     if (OE_bone_ids[i] == -1) {
       continue;
     }
     if (OE_bone_ids[i] >= MAX_OBJECTS) {
-      bone_position = vec4(OE_position, 1.0);
+      bone_transform = mat4(1.0);
       break;
     }
 
-    bone_position += bones[OE_bone_ids[i]] * vec4(OE_position, 1.0) * OE_bone_weights[i];
+    bone_transform += bones[OE_bone_ids[i]] * OE_bone_weights[i];
   }
 
-  return bone_position;
+  return bone_transform;
 }

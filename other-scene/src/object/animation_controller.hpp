@@ -21,6 +21,7 @@ namespace other {
     uint32_t animation_index = 0;
     animation* anim_ptr;
     model* model_ptr;
+    glm::mat4 root_transform = glm::mat4(1.0f);
 
     void update(double delta_time);
 

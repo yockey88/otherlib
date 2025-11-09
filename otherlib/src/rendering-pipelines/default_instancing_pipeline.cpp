@@ -91,7 +91,8 @@ namespace other {
     const auto settings = {
       shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) },
       // Support up to 4 bone influences per vertex (common convention)
-      shader::setting{ "MAX_VERTEX_BONE_INFLUENCE", "4" }
+      shader::setting{ "MAX_VERTEX_BONE_INFLUENCE", "4" },
+      shader::setting{ "MAX_BONES", std::to_string(gpu::kMaxObjects) },
     };
 
     geometry_pass_shader_handle = shader::create("geometry_pass_shader_handle", "resources/basic-instancing-gbuffer.vert", "resources/basic-instancing-gbuffer.frag", settings);

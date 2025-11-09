@@ -140,4 +140,51 @@ namespace other {
     };
   }
 
+  std::vector<float> vertex::to_gpu_buffer(const vertex& v) {
+    std::vector<float> buffer;
+    buffer.push_back(v.position.x);
+    buffer.push_back(v.position.y);
+    buffer.push_back(v.position.z);
+    buffer.push_back(v.normal.x);
+    buffer.push_back(v.normal.y);
+    buffer.push_back(v.normal.z);
+    buffer.push_back(v.tangent.x);
+    buffer.push_back(v.tangent.y);
+    buffer.push_back(v.tangent.z);
+    buffer.push_back(v.bitangent.x);
+    buffer.push_back(v.bitangent.y);
+    buffer.push_back(v.bitangent.z);
+    buffer.push_back(v.tex_coord.x);
+    buffer.push_back(v.tex_coord.y);
+    buffer.push_back(static_cast<float>(v.bone_ids.x));
+    buffer.push_back(static_cast<float>(v.bone_ids.y));
+    buffer.push_back(static_cast<float>(v.bone_ids.z));
+    buffer.push_back(static_cast<float>(v.bone_ids.w));
+    buffer.push_back(v.bone_weights.x);
+    buffer.push_back(v.bone_weights.y);
+    buffer.push_back(v.bone_weights.z);
+    buffer.push_back(v.bone_weights.w);
+    return buffer;
+  }
+
+  std::vector<float> vertex::to_gpu_buffer(const std::vector<vertex>& v) {
+    std::vector<float> buffer;
+    for (const auto& vert : v) {
+      buffer.append_range(to_gpu_buffer(vert));
+    }
+    return buffer;
+  }
+
+  std::vector<uint32_t> index::to_gpu_buffer(const index& idx) {
+    return { idx.v0, idx.v1, idx.v2 };
+  }
+
+  std::vector<uint32_t> index::to_gpu_buffer(const std::vector<index>& indices) {
+    std::vector<uint32_t> buffer;
+    for (const auto& idx : indices) {
+      buffer.append_range(to_gpu_buffer(idx));
+    }
+    return buffer;
+  }
+
 }  // namespace other

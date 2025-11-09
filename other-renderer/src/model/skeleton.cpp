@@ -10,74 +10,77 @@
 
 namespace other {
 
-  std::vector<glm::mat4> skeleton::calculate_bone_matrices(const glm::mat4& parent_transform, animation* anim_ptr) {
-    OTHER_ASSERT(source_ptr != nullptr, "Model source pointer is null in skeleton::update_bone_matrices");
-    std::vector<bone>& bones = source_ptr->get_bones();
-    if (bones.empty()) {
-      return {};
+  void bone_influence::add_bone_data(uint32_t bone_id, float weight) {
+    if (current_bone_count >= kMaxBones) {
+      // should never get here - more than 4 bone influences per vertex
+      CORE_LOG_WARN("More than 4 bone influences on a vertex!");
+      return;
     }
 
-    std::vector<submesh>& submeshes = source_ptr->get_submeshes();
-    std::vector<mesh_node>& nodes = source_ptr->get_nodes();
-
-    std::vector<glm::mat4> bone_matrices(bones.size(), glm::mat4(1.0f));
-#if 0
-    calculate_bone_matrix(nodes[0], parent_transform, nodes, bones, bone_matrices, anim_ptr);
-#else
-    const glm::mat4& inverse_global_transform = source_ptr->get_inverse_global_transform();
-
-    std::stack<std::pair<uint32_t, glm::mat4> > node_stack;
-    node_stack.push({ 0, parent_transform });
-    do {
-      auto [current_node_idx, current_parent_transform] = node_stack.top();
-      node_stack.pop();
-
-      auto& node = nodes[current_node_idx];
-      glm::mat4 local_node_transform = node.local_transform;
-      if (anim_ptr != nullptr) {
-        auto ch = std::ranges::find_if(anim_ptr->channels, [&node](const animation_channel& channel) { return channel.node_name == node.name; });
-        if (ch != anim_ptr->channels.end()) {
-          local_node_transform = ch->local_transform;
-        }
-      }
-
-      glm::mat4 global_transform = current_parent_transform * local_node_transform;
-      CORE_LOG_DEBUG("Calculated node '{}' global transform:\n{}", node.name, global_transform);
-
-      auto bone_itr = std::ranges::find_if(bones, [&node](const bone& b) { return b.name == node.name; });
-      if (bone_itr != bones.end()) {
-        bone_matrices[bone_itr->id] = inverse_global_transform * global_transform * bone_itr->offset_matrix;
-      }
-
-      for (const auto& child_idx : node.children) {
-        node_stack.push({ child_idx, global_transform });
-      }
-    } while (!node_stack.empty());
-#endif
-    return bone_matrices;
+    bone_ids[current_bone_count] = bone_id;
+    weights[current_bone_count] = weight;
+    current_bone_count++;
   }
 
-  void skeleton::calculate_bone_matrix(const mesh_node& node, const glm::mat4& parent_transform, const std::vector<mesh_node>& nodes, const std::vector<bone>& bones, std::vector<glm::mat4>& out_bone_matrices, animation* anim_ptr) {
-    glm::mat4 local_node_transform = node.local_transform;
-    if (anim_ptr != nullptr) {
-      auto ch = std::ranges::find_if(anim_ptr->channels, [&node](const animation_channel& channel) { return channel.node_name == node.name; });
-      if (ch != anim_ptr->channels.end()) {
-        local_node_transform = ch->local_transform;
+  void bone_influence::normalize() {
+    double total = 0.0;
+    for (uint32_t i = 0; i < kMaxBones; i++) {
+      total += weights[i];
+    }
+
+    if (total > 0.0) {
+      for (uint32_t i = 0; i < kMaxBones; i++) {
+        weights[i] /= total;
       }
     }
+  }
 
-    glm::mat4 global_transform = parent_transform * local_node_transform;
-    CORE_LOG_DEBUG("Calculated node '{}' global transform:\n{}", node.name, global_transform);
+  uint32_t skeleton::add_bone_data(const std::string& name, uint32_t parent_id, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale) {
+    int32_t bone_id = static_cast<int32_t>(bones.size());
+    CORE_LOG_DEBUG("Adding bone data: id={}, name='{}', parent_id={}", bone_id, name, parent_id);
 
-    auto bone_itr = std::ranges::find_if(bones, [&node](const bone& b) { return b.name == node.name; });
-    if (bone_itr != bones.end()) {
-      out_bone_matrices[bone_itr->id] = source_ptr->get_inverse_global_transform() * global_transform * bone_itr->offset_matrix;
-      // CORE_LOG_DEBUG("Calculated bone matrix for bone '{}':\n{}", bone_itr->name, b);
+    bone& b = bones.emplace_back();
+    b.id = bone_id;
+    b.parent_id = parent_id;
+    b.name = name;
+
+    parent_ids.emplace_back(parent_id);
+    children_ids.emplace_back();
+    bone_positions.emplace_back(position);
+    bone_rotations.emplace_back(rotation);
+    bone_scales.emplace_back(scale);
+    local_bone_positions.emplace_back(glm::mat4(1.0f));
+    final_bone_positions.emplace_back(glm::mat4(1.0f));
+    return bone_id;
+  }
+
+  int32_t skeleton::get_bone_index(const std::string& name) const {
+    for (uint32_t i = 0; i < bones.size(); ++i) {
+      if (bones[i].name == name) {
+        return i;
+      }
     }
+    return -1;
+  }
 
-    for (const auto& child_idx : node.children) {
-      calculate_bone_matrix(nodes[child_idx], global_transform, nodes, bones, out_bone_matrices, anim_ptr);
-    }
+  glm::mat4& skeleton::calculate_local_transform(uint32_t bone_id) {
+    local_bone_positions[bone_id] = glm::translate(glm::mat4(1.0f), get_bone_position(bone_id)) *
+      glm::toMat4(get_bone_rotation(bone_id)) *
+      glm::scale(glm::mat4(1.0f), get_bone_scale(bone_id));
+    return local_bone_positions[bone_id];
+  }
+
+  const glm::mat4& skeleton::get_local_transform(uint32_t bone_id) const {
+    return local_bone_positions[bone_id];
+  }
+
+  glm::mat4& skeleton::calculate_final_transform(uint32_t bone_id) {
+    final_bone_positions[bone_id] = calculate_local_transform(bone_id) * bones[bone_id].offset_matrix;
+    return final_bone_positions[bone_id];
+  }
+
+  const glm::mat4& skeleton::get_final_transform(uint32_t bone_id) const {
+    return final_bone_positions[bone_id];
   }
 
 }  // namespace other

@@ -5,24 +5,24 @@
 
 namespace other {
 
-  glm::mat4 animation_channel::get_transform_at_time(double time) {
+  const glm::mat4& animation_channel::get_transform_at_time(double time) {
     glm::vec3 position = interpolated_position_at_time(time);
     glm::quat rotation = interpolated_rotation_at_time(time);
     glm::vec3 scale = interpolated_scale_at_time(time);
 
     local_transform = glm::translate(glm::mat4(1.0f), position) *
-      glm::mat4_cast(rotation) *
+      glm::toMat4(rotation) *
       glm::scale(glm::mat4(1.0f), scale);
     return local_transform;
   }
 
   namespace {
 
-    float get_interpolation_factor(double current_time, double start_time, double end_time) {
+    double get_interpolation_factor(double current_time, double start_time, double end_time) {
       if (end_time - start_time == 0.0) {
-        return 0.0f;
+        return 0.0;
       }
-      return static_cast<float>((current_time - start_time) / (end_time - start_time));
+      return (current_time - start_time) / (end_time - start_time);
     }
 
   }  // namespace
@@ -32,7 +32,7 @@ namespace other {
     size_t next_key_index = (key_index + 1) % position_keys.size();
 
     double factor = get_interpolation_factor(time, position_keys[key_index].time, position_keys[next_key_index].time);
-    return glm::mix(position_keys[key_index].value, position_keys[next_key_index].value, static_cast<float>(factor));
+    return glm::mix(position_keys[key_index].value, position_keys[next_key_index].value, factor);
   }
 
   glm::quat animation_channel::interpolated_rotation_at_time(double time) const {
@@ -48,7 +48,7 @@ namespace other {
     size_t next_key_index = (key_index + 1) % scale_keys.size();
 
     double factor = get_interpolation_factor(time, scale_keys[key_index].time, scale_keys[next_key_index].time);
-    return glm::mix(scale_keys[key_index].value, scale_keys[next_key_index].value, static_cast<float>(factor));
+    return glm::mix(scale_keys[key_index].value, scale_keys[next_key_index].value, factor);
   }
 
   size_t animation_channel::get_position_key_index_at_time(double time) const {
