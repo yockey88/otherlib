@@ -55,6 +55,10 @@ namespace other {
       glm::mat4 model_matrices[kMaxMaterials];
     };
 
+    GPU_ALIGN struct bone_matrix_buffer {
+      glm::mat4 bone_matrices[kMaxMaterials];
+    };
+
     GPU_ALIGN struct graphics_material {
       glm::vec3 diffuse_color;
       float diffuse_reflectivity;

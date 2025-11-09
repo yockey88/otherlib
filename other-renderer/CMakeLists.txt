@@ -11,6 +11,8 @@ target_sources(other_renderer
       
       src/model/vertex.cpp
       src/model/vertex_buffer.cpp
+      src/model/animation.cpp
+      src/model/skeleton.cpp
       src/model/model_importer.cpp
       src/model/model.cpp
       
@@ -24,8 +26,6 @@ target_sources(other_renderer
       src/renderer/render_graph.cpp
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
-
-      src/renderer/draw_command.cpp
 
       src/renderer/ui/nodes/hbox_node.cpp
 

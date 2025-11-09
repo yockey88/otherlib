@@ -13,11 +13,9 @@ def regen_project():
 
 def copy_dlls(cfg, dll_cfg):
   print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
-  assimp_debug = "extern/assimp/lib/debug/assimp-vc143-mtd.dll"
-  assimp_release = "extern/assimp/lib/release/assimp-vc143-mt.dll"
   dlls = [
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
-    assimp_debug if cfg == "Debug" else assimp_release,
+    "extern/assimp/lib/assimp-vc143-mt.dll",
     f"extern/python312/python312.dll",
   ]
   destinations = [
@@ -28,21 +26,12 @@ def copy_dlls(cfg, dll_cfg):
     f"build/tests/{cfg}/",
     f"build/tools/{cfg}/",
   ]
-  
-  if cfg == "Debug" or cfg == "ProfileD":
-    if os.path.exists(assimp_debug):
-      dlls.append(assimp_debug)
-  else:
-    if os.path.exists(assimp_release):
-      dlls.append(assimp_release)
 
   for dll in dlls:
     if os.path.exists(dll):
       for dest in destinations:
         if os.path.exists(dest):
           shutil.copy(dll, dest)
-          # print(f"Copied {dll} to {dest}")
-
     else:
       print(f"Warning: {dll} does not exist.")
 
@@ -115,7 +104,7 @@ if __name__ == "__main__":
       print("Serialization schema compiled successfully.")
 
     if args.install:
-      #remove if installation folder exists, this only works locally for dev testing (and only on windows)
+      # remove if installation folder exists, this only works locally for dev testing (and only on windows)
       if os.path.exists("C:/OtherEnvironment/"):
         shutil.rmtree("C:/OtherEnvironment/")
       run_subprocess(["cmake", "-S", ".", "-B", "build"])
@@ -141,20 +130,6 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
-      # ### if no other.sln file found, regenerate project files
-      # if not os.path.exists("build/other.sln"):
-      #   regen_project()
-      ### run dotnet restore on solution file to restore nuget packages
-      # this has to happen before build step cause bulding dotnet projects
-      # requires the *.project.json files to be present
-      # print("Restoring .NET packages...")
-      # run_subprocess(["dotnet", "restore", "build/other.sln"])
-
-      # filename = "build/other.sln"
-      # if not os.path.exists(filename):
-      #   print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
-      #   sys.exit(1)
-      # build_sln_file(filename, cfg)
       run_subprocess(["cmake", "--build", "build", "--config", cfg])
 
       dll_cfg = "Release"
@@ -165,9 +140,9 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "script-config.toml"])
-      # run_subprocess(["build/scratch/" + cfg + "/coro-testing.exe", "resources/dev-test-config.toml"])
-      run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "rendering_dev", "dev-config.toml", args, args.verbose)
+      run_project("scratch", cfg, "gl-testing", "dev-config.toml", args, args.verbose)
       
     elif args.run_server:
       run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)

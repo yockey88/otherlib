@@ -333,6 +333,8 @@ namespace other {
   constexpr inline detail::matrix_hadamard_product_fn matrix_hadamard_product{};
   constexpr inline detail::matrix_vector_product_fn matrix_vector_product{};
 
+  void decompose_mat4(const glm::mat4& mat, glm::vec3& out_translation, glm::quat& out_rotation, glm::vec3& out_scale);
+
 }  // namespace other
 
 #endif  // OTHER_CORE_DATA_STRUCTURES_MATRIX_HPP

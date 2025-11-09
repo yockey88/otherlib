@@ -36,8 +36,7 @@ namespace other {
       CORE_LOG_ERROR("Buffer resource [{}] not found in pipeline.", name);
       return;
     }
-    buffer
-      ->set_data(data, size)
+    buffer->set_data(data, size)
       .finalize_buffer();
   }
 
@@ -53,13 +52,13 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
     PROFILE_SECTION("render_pipeline::render_frame");
 
-    const auto& g = graph->get_graph();
+    auto& g = graph->get_graph();
     const auto& execs = graph->get_executors();
     for (const natural_t id : graph->get_topological_sort()) {
       auto node_atr = g.nodes.find(id);
       OTHER_ASSERT(node_atr != g.nodes.end(), "Node with id {} not found in graph.", id);
 
-      const auto& n = node_atr->second;
+      auto& n = node_atr->second;
       const auto* pass = n.pass;
       auto itr = execs.find(pass->id);
       OTHER_ASSERT(itr != execs.end(), "Executor for pass {} not found.", id);
@@ -74,6 +73,7 @@ namespace other {
     return {
       .model_buffer = *model_buffer_handle,
       .material_buffer = *material_buffer_handle,
+      .bone_buffer = *bone_buffer_handle,
       .point_light_buffer = *point_light_buffer_handle,
       .direction_light_buffer = *direction_light_buffer_handle,
       .camera_buffer = *camera_buffer_handle
@@ -103,6 +103,10 @@ namespace other {
 
   void render_pipeline::set_model_buffer(const std::string_view name) {
     set_core_buffer(model_buffer_handle, name);
+  }
+
+  void render_pipeline::set_bone_buffer(const std::string_view name) {
+    set_core_buffer(bone_buffer_handle, name);
   }
 
   void render_pipeline::set_point_light_buffer(const std::string_view name) {

@@ -44,6 +44,13 @@ namespace other {
 
     static scene create_scene(const std::string& name);
 
+    /// fixed update called at a constant timestep (e.g., 60 Hz)
+    void fixed_update(double delta_time);
+
+    /// per frame updates called with variable timestep
+    void update(double delta_time);
+    void late_update(double delta_time);
+
     scene_object& root_object();
 
     scene_object& create_object(scene_object* object);
@@ -98,6 +105,21 @@ namespace other {
       scene_tree::node* node = storage->tree.node_at(id);
       OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       return add_component<T>(node->object);
+    }
+
+    template <typename T, typename... Args>
+      requires std::constructible_from<T, Args...>
+    T& add_component(scene_object* object, Args&&... args) {
+      OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
+      entt::entity entity = entt::entity(object->registry_id);
+      return storage->registry.emplace<T>(entity, std::forward<Args>(args)...);
+    }
+    template <typename T, typename... Args>
+      requires std::constructible_from<T, Args...>
+    T& add_component(natural_t id, Args&&... args) {
+      scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+      return add_component<T>(node->object, std::forward<Args>(args)...);
     }
 
     template <typename T>

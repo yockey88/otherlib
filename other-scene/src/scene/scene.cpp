@@ -8,9 +8,14 @@
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 
+#include "model/model.hpp"
+#include "model/skeleton.hpp"
 #include "renderer/camera.hpp"
+#include "renderer/draw_command.hpp"
+#include "renderer/gpu_structs.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "object/animation_controller.hpp"
 #include "object/object_serialization_data.hpp"
 #include "object/render_component.hpp"
 #include "object/script_component.hpp"
@@ -79,6 +84,41 @@ namespace other {
 
   scene scene::create_scene(const std::string& name) {
     return scene(name);
+  }
+
+  void scene::fixed_update(double delta_time) {
+    PROFILE_SECTION("scene::fixed_update");
+
+    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
+      // comp.fixed_update(delta_time);
+    });
+  }
+
+  void scene::update(double delta_time) {
+    PROFILE_SECTION("scene::update");
+
+    storage->registry.view<render_component>().each([delta_time](entt::entity entity, render_component& render_comp) {
+      // if (!render_comp.animated) {
+      //   auto* model_ptr = render_comp.model;
+      //   model_ptr->bone_matrices = model_ptr->skel->calculate_bone_matrices(glm::mat4(1.0f));
+      // }
+    });
+    storage->registry.view<object_handle, animation_controller>().each([this, delta_time](entt::entity entity, object_handle& obj_handle, animation_controller& anim_ctrl) {
+      anim_ctrl.root_transform = get_world_transform(obj_handle.id);
+      anim_ctrl.update(delta_time);
+    });
+
+    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
+      // comp.update(delta_time);
+    });
+  }
+
+  void scene::late_update(double delta_time) {
+    PROFILE_SECTION("scene::late_update");
+
+    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
+      // comp.late_update(delta_time);
+    });
   }
 
   scene_object& scene::root_object() {
@@ -299,16 +339,13 @@ namespace other {
       data.primary_camera = (camera*)primary_camera;
     }
 
-    /// collect lights
-    /// \todo: should we collect these into an owning group?
-    //        pros: faster, faster, faster, and then also a little bit faster
-    //        cons: have to remember to create the groups and two entities can not have one of each light
     storage->registry.view<gpu::point_light>().each([&](const gpu::point_light& light) { data.point_lights.push_back(light); });
     storage->registry.view<object_handle, gpu::directional_light>().each([&](const object_handle& handle, const gpu::directional_light& light) {
       if (object_has_tag(handle.id, "scene-ambient-light")) {
         data.scene_ambient_light = &light;
       }
     });
+
     storage->registry.view<object_handle, render_component>().each([&](const object_handle& handle, const render_component& render) {
       if (!render.visible) {
         return;
@@ -319,27 +356,28 @@ namespace other {
       OTHER_ASSERT(draw_model->source != nullptr, "Draw command model source is null");
       PROFILE_SECTION("scene::prepare_render_data--submit_model");
 
-      model_source* source = draw_model->source;
-      OTHER_ASSERT(source != nullptr, "Model source is null");
+      const animation_controller* anim_ctrl = nullptr;
+      if (has_component<animation_controller>(handle.id)) {
+        anim_ctrl = get_component<animation_controller>(handle.id);
+      }
 
-      const std::vector<submesh>& submeshes = source->get_submeshes();
+      const std::vector<submesh>& submeshes = draw_model->source->get_submeshes();
       OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
 
       const std::vector<uint32_t>& sm_idxs = draw_model->submesh_indices;
       OTHER_ASSERT(!sm_idxs.empty(), "Model has no submeshes");
       for (const auto& sm_idx : sm_idxs) {
         OTHER_ASSERT(sm_idx < submeshes.size(), "Submesh index out of bounds");
-        draw_command cmd = {
-          .draw_model = draw_model,
-          .transform = get_world_transform(handle.id) * submeshes[sm_idx].local_transform,
-          .material = render.material,
-          .submesh_index = sm_idx,
+
+        auto transform_it = draw_model->local_submesh_transforms.find(sm_idx);
+        OTHER_ASSERT(transform_it != draw_model->local_submesh_transforms.end(), "Local submesh transform not found for submesh index {}", sm_idx);
+
+        mesh_key key = {
+          .model_source_handle = draw_model->source->get_mesh_handle(),
           .render_state = render_polygon_mode::POLYGON_MODE_FILL,
           .draw_mode = mesh::primitive_type::TRIANGLES,
-          .line_thickness = 1.f,
+          .submesh_index = sm_idx,
         };
-
-        mesh_key key = cmd;
 
         auto it = data.mesh_indices.find(key);
         if (it == data.mesh_indices.end()) {
@@ -350,32 +388,55 @@ namespace other {
           data.draw_calls.emplace_back() = draw_call{};
           data.material_buffers.emplace_back() = gpu::graphics_material_buffer{};
           data.model_buffers.emplace_back() = gpu::model_matrix_buffer{};
+          data.bone_buffers.emplace_back() = gpu::bone_matrix_buffer{};
+
           it = itr;
         }
+        OTHER_ASSERT(it != data.mesh_indices.end(), "Mesh key not found in map after insertion");
+
         size_t mesh_index = it->second;
 
         draw_call& call = data.draw_calls[mesh_index];
-        const submesh& sm = cmd.draw_model->source->get_submeshes()[cmd.submesh_index];
+        const submesh& sm = draw_model->source->get_submeshes()[sm_idx];
         if (call.instance_count == 0) {
           call.instance_count = 0;
-          call.submesh_index = cmd.submesh_index;
+          call.submesh_index = sm_idx;
 
-          call.mesh_handle = cmd.draw_model->source->get_mesh_handle();
-          call.submesh_index = cmd.submesh_index;
+          call.mesh_handle = draw_model->source->get_mesh_handle();
+          call.submesh_index = sm_idx;
 
           call.vertex_offset = sm.base_vertex;
           call.vertex_count = sm.vert_cnt;
           call.index_offset = sm.base_idx;
           call.index_count = sm.idx_cnt;
 
-          call.line_thickness = cmd.line_thickness;
+          call.line_thickness = 1.f;
         }
 
+        glm::mat4 world_transform = get_world_transform(handle.id);  // * transform_it->second;
+
         size_t index = data.draw_calls[mesh_index].instance_count++;
-        data.material_buffers[mesh_index].materials[index] = cmd.material;
-        data.model_buffers[mesh_index].model_matrices[index] = cmd.transform;
+        data.material_buffers[mesh_index].materials[index] = render.material;
+        data.model_buffers[mesh_index].model_matrices[index] = world_transform;
       }
+
+      // for (auto& bone_buff : data.bone_buffers) {
+      //   for (size_t i = 0; i < gpu::kMaxMaterials; ++i) {
+      //     bone_buff.bone_matrices[i] = glm::mat4(1.0f);
+      //   }
+      //   if (!draw_model->skel || draw_model->bone_matrices.size() == 0) {
+      //     bone_buff.has_bones = 0;
+      //     continue;
+      //   }
+
+      //   size_t bone_count = std::min(draw_model->bone_matrices.size(), static_cast<size_t>(100));
+      //   for (size_t b = 0; b < bone_count; ++b) {
+      //     bone_buff.bone_matrices[b] = draw_model->bone_matrices[b];
+      //   }
+      //   draw_model->bone_matrices.clear();
+      // }
     });
+
     return data;
   }
 

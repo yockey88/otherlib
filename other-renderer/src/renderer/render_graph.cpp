@@ -119,6 +119,9 @@ namespace other {
       fb.finalize_framebuffer();
     }
 
+    pass.next_texture_id = curr_texture_id;
+    pass.next_buffer_id = curr_buffer_id;
+
     return graph;
   }
 
@@ -283,8 +286,8 @@ namespace other {
   }
 
   /*
-  L ← Empty list that will contain the sorted elements
-  S ← Set of all nodes with no incoming edge
+L ← Empty list that will contain the sorted elements
+S ← Set of all nodes with no incoming edge
 
 while S is not empty do
     remove a node n from S

@@ -8,6 +8,8 @@
 
 namespace other {
 
+  /// \todo fix this add options for configuration and use assets instead of raw
+  ///         resources
   class default_instancing_pipeline : public render_pipeline {
    public:
     default_instancing_pipeline() = default;

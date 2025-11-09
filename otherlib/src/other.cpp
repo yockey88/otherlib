@@ -89,8 +89,8 @@ namespace other {
 
     config.diagnostics.verbose = cmd.diagnostics.verbose;
     const bool rendering_enabled = config.rendering_backend.has_value() && !config.rendering_backend->empty();
-    if (rendering_enabled) {
-      const bool force_no_window = config.force_no_window;
+    /// if rendering is enabled and we are not forcing headless mode, load the rendering backend
+    if (rendering_enabled && !config.force_no_window) {
       subsystem<renderer_backend>::get()->load_backend(config.rendering_backend.value(), config.window_size);
     }
 

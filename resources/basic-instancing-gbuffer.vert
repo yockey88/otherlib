@@ -7,10 +7,16 @@ void main() {
   set_instance_id();
 
   mat4 model_matrix = get_instance_model_matrix();
-  world_position = get_world_position().xyz;
-
   mat3 normal_mat = transpose(inverse(mat3(model_matrix)));
-  world_normal = (model_matrix * get_normal()).xyz;
 
-  gl_Position = get_camera_matrix() * vec4(world_position, 1.0);
+  if (has_bones()) {
+    vec4 skinned_world_pos = get_bone_transform() * get_local_position();
+    world_position = skinned_world_pos.xyz;
+    world_normal = normalize(normal_mat * get_normal_bone_contribations());
+    gl_Position = get_camera_matrix() * skinned_world_pos;
+  } else {
+    world_position = get_world_position().xyz;
+    world_normal = normalize(normal_mat * OE_normal);
+    gl_Position = get_camera_matrix() * vec4(world_position, 1.0);
+  }
 }

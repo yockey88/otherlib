@@ -6,7 +6,7 @@
 namespace other {
   namespace {
 
-    static std::vector<uint32_t> actual_layout = { 3, 3, 3, 3, 2 };
+    static std::vector<uint32_t> actual_layout = { 3, 3, 3, 3, 2, 4, 4 };
 
   }  // namespace
 
@@ -17,6 +17,13 @@ namespace other {
       case VEC3:
         return 3;
       case VEC4:
+        return 4;
+
+      case IVEC2:
+        return 2;
+      case IVEC3:
+        return 3;
+      case IVEC4:
         return 4;
 
       case MAT3:
@@ -128,7 +135,56 @@ namespace other {
       vertex_attribute(value_type::VEC3, "tangent"),
       vertex_attribute(value_type::VEC3, "bitangent"),
       vertex_attribute(value_type::VEC2, "tex_coord"),
+      vertex_attribute(value_type::IVEC4, "bone_ids"),
+      vertex_attribute(value_type::VEC4, "bone_weights"),
     };
+  }
+
+  std::vector<float> vertex::to_gpu_buffer(const vertex& v) {
+    std::vector<float> buffer;
+    buffer.push_back(v.position.x);
+    buffer.push_back(v.position.y);
+    buffer.push_back(v.position.z);
+    buffer.push_back(v.normal.x);
+    buffer.push_back(v.normal.y);
+    buffer.push_back(v.normal.z);
+    buffer.push_back(v.tangent.x);
+    buffer.push_back(v.tangent.y);
+    buffer.push_back(v.tangent.z);
+    buffer.push_back(v.bitangent.x);
+    buffer.push_back(v.bitangent.y);
+    buffer.push_back(v.bitangent.z);
+    buffer.push_back(v.tex_coord.x);
+    buffer.push_back(v.tex_coord.y);
+    buffer.push_back(static_cast<float>(v.bone_ids.x));
+    buffer.push_back(static_cast<float>(v.bone_ids.y));
+    buffer.push_back(static_cast<float>(v.bone_ids.z));
+    buffer.push_back(static_cast<float>(v.bone_ids.w));
+    buffer.push_back(v.bone_weights.x);
+    buffer.push_back(v.bone_weights.y);
+    buffer.push_back(v.bone_weights.z);
+    buffer.push_back(v.bone_weights.w);
+    return buffer;
+  }
+
+  std::vector<float> vertex::to_gpu_buffer(const std::vector<vertex>& v) {
+    std::vector<float> buffer;
+    for (const auto& vert : v) {
+      buffer.append_range(to_gpu_buffer(vert));
+    }
+    return buffer;
+  }
+
+  std::vector<uint32_t> index::to_gpu_buffer(const index& idx) {
+    return { idx.v0, idx.v1, idx.v2 };
+  }
+
+  std::vector<uint32_t> index::to_gpu_buffer(const std::vector<index>& indices) {
+    std::vector<uint32_t> buffer;
+    for (const auto& idx : indices) {
+      buffer.append_range(to_gpu_buffer(idx));
+    }
+    return buffer;
   }
 
 }  // namespace other

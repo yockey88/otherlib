@@ -166,6 +166,10 @@ namespace other {
     VEC3,
     VEC4,
 
+    IVEC2,
+    IVEC3,
+    IVEC4,
+
     MAT2,
     MAT3,
     MAT4,
@@ -219,6 +223,12 @@ namespace other {
       return value_type::VEC3;
     } else if constexpr (std::is_same_v<no_cvref_t, glm::vec4>) {
       return value_type::VEC4;
+    } else if constexpr (std::is_same_v<no_cvref_t, glm::ivec2>) {
+      return value_type::IVEC2;
+    } else if constexpr (std::is_same_v<no_cvref_t, glm::ivec3>) {
+      return value_type::IVEC3;
+    } else if constexpr (std::is_same_v<no_cvref_t, glm::ivec4>) {
+      return value_type::IVEC4;
     } else if constexpr (std::is_same_v<no_cvref_t, glm::mat2>) {
       return value_type::MAT2;
     } else if constexpr (std::is_same_v<no_cvref_t, glm::mat3>) {
@@ -250,6 +260,9 @@ namespace other {
       case value_type::VEC2: return sizeof(glm::vec2);
       case value_type::VEC3: return sizeof(glm::vec3);
       case value_type::VEC4: return sizeof(glm::vec4);
+      case value_type::IVEC2: return sizeof(glm::ivec2);
+      case value_type::IVEC3: return sizeof(glm::ivec3);
+      case value_type::IVEC4: return sizeof(glm::ivec4);
       case value_type::MAT2: return sizeof(glm::mat2);
       case value_type::MAT3: return sizeof(glm::mat3);
       case value_type::MAT4: return sizeof(glm::mat4);
@@ -294,6 +307,12 @@ namespace other {
       return value_type::VEC3;
     } else if (lc_str == "vec4") {
       return value_type::VEC4;
+    } else if (lc_str == "ivec2") {
+      return value_type::IVEC2;
+    } else if (lc_str == "ivec3") {
+      return value_type::IVEC3;
+    } else if (lc_str == "ivec4") {
+      return value_type::IVEC4;
     } else if (lc_str == "mat2") {
       return value_type::MAT2;
     } else if (lc_str == "mat3") {

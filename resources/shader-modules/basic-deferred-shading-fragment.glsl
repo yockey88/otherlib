@@ -8,7 +8,7 @@ struct direction_light {
   vec4 color;
 };
 
-layout (std140, binding = 2) uniform camera_buffer {
+layout (std140) uniform camera_buffer {
   vec4 camera_position;
   vec4 camera_forward;
 
@@ -22,11 +22,11 @@ layout (std140, binding = 2) uniform camera_buffer {
   mat4 projection_matrix;
 };
 
-layout (std430, binding = 1) readonly buffer point_light_buffer {
+layout (std430) readonly buffer point_light_buffer {
   point_light point_lights[];
 };
 
-layout (std430, binding = 0) readonly buffer direction_light_buffer {
+layout (std430) readonly buffer direction_light_buffer {
   direction_light direction_lights[];
 };
 

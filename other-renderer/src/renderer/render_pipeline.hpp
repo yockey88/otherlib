@@ -53,6 +53,7 @@ namespace other {
 
     void set_material_buffer(const std::string_view);
     void set_model_buffer(const std::string_view);
+    void set_bone_buffer(const std::string_view);
     void set_point_light_buffer(const std::string_view name);
     void set_direction_light_buffer(const std::string_view name);
     void set_camera_buffer(const std::string_view name);
@@ -63,9 +64,7 @@ namespace other {
 
     template <typename T>
     T* get_resource(const std::string_view name) {
-      auto itr = std::ranges::find_if(buffer_resources, [&](const auto& pair) {
-        return pair.second.name == name;
-      });
+      auto itr = std::ranges::find_if(buffer_resources, [&](const auto& pair) { return pair.second.name == name; });
       if (itr == buffer_resources.end()) {
         CORE_LOG_ERROR("Resource [{}] not found in pipeline.", name);
         return nullptr;
@@ -108,6 +107,7 @@ namespace other {
 
     opt<resource_handle> material_buffer_handle;
     opt<resource_handle> model_buffer_handle;
+    opt<resource_handle> bone_buffer_handle;
     opt<resource_handle> point_light_buffer_handle;
     opt<resource_handle> direction_light_buffer_handle;
     opt<resource_handle> camera_buffer_handle;

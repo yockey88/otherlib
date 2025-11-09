@@ -4,27 +4,27 @@
 #include "renderer_driver.hpp"
 
 #include <chrono>
+#include <stack>
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_mouse.h>
 #include <glad/glad.h>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "core/profiler.hpp"
 
-// #include "gpu_resource/renderer_resource.hpp"
+#include "model/animation.hpp"
 #include "model/vertex.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
 
+#include "object/animation_controller.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
-
-#include "asset/asset.hpp"
-#include "glm/gtc/type_ptr.hpp"
 
 #define UI_ON 1
 
@@ -90,21 +90,11 @@ namespace other {
       light_dlight.color = glm::vec3(1.f, 1.f, 1.f);
 
       {
-        auto now = std::chrono::steady_clock::now();
         PROFILE_SECTION("renderer_driver::on_initialize--load-assets");
-        // auto [hash, suzanne_source] = model_source::load_model_source("resources/models/NewSponza_Curtains_FBX_YUp_fbx7binary.omesh");
-        suzanne_asset_id = asset_mgr->load_asset("resources/models/suzanne3.omesh");
-        auto later = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(later - now).count();
-        CORE_LOG_INFO("loaded model source in {} ms", duration);
+        const auto& config = configuration();
+        std::string model_path = config.get_value<std::string>("assets.test-model", "resources/models/suzanne3.fbx");
+        suzanne_asset_id = asset_mgr->load_asset(model_path);
       }
-
-      // OTHER_ASSERT(suzanne_source != nullptr, "Failed to load Suzanne model source.");
-
-      // size_t num_root_children = active_scene.get_object_count();
-      // CORE_LOG_INFO("Number of children in the scene: {}", num_root_children);
-
-      // running = true;
     }
 
     CORE_LOG_INFO("Renderer driver initialized successfully.");
@@ -113,9 +103,20 @@ namespace other {
   void renderer_driver::run() {
     PROFILE_SECTION("renderer_driver::run");
 
+    float delta_time = 0.0f;
+
+    std::chrono::steady_clock::time_point last_time = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point current_time;
+
+    running = true;
     while (running) {
       MARK_NAMED_FRAME("Main Frame");
       PROFILE_SECTION("rendering-dev::main-loop");
+
+      current_time = std::chrono::steady_clock::now();
+      delta_time = std::chrono::duration<float>(current_time - last_time).count();
+
+      last_time = current_time;
 
       pump_events();
       if (!running) {
@@ -129,15 +130,11 @@ namespace other {
         ref<model_source> suzanne_source = subsystem<renderer_backend>::get()->get_model_source(hash);
         if (suzanne_source != nullptr) {
           scene_object& suzanne_obj = active_scene.get_object(suzanne_id);
-
-          suzanne = suzanne_source->produce_model("Suzanne");
-          CORE_LOG_DEBUG("created model : {}", other::type_data_handler<model>::as_string("suzanne", suzanne));
-
-          const submesh& suzanne_submesh = suzanne.source->get_submeshes()[0];
-          std::println("Suzanne [0] submesh local transform :\n{}", suzanne_submesh.local_transform);
+          suzanne_model = suzanne_source->produce_model("Suzanne");
 
           render_component& suzanne_render = active_scene.add_component<render_component>(&suzanne_obj);
-          suzanne_render.model = &suzanne;
+          suzanne_render.animated = true;
+          suzanne_render.model = &suzanne_model;
           suzanne_render.material.diffuse_color = glm::vec3(0.4f, 0.6f, 0.8f);
           suzanne_render.material.diffuse_reflectivity = 0.5f;
           suzanne_render.material.specular_color = glm::vec3(0.8f, 0.8f, 0.8f);
@@ -145,6 +142,20 @@ namespace other {
           suzanne_render.material.emissivity = 0.1f;
           suzanne_render.material.shininess = 16.f;
           suzanne_render.material.transparency = 0.f;
+
+          if (const auto& animations = suzanne_source->get_animations(); !animations.empty()) {
+            animation_controller& anim_ctrl = active_scene.add_component<animation_controller>(&suzanne_obj);
+            anim_ctrl.anim_ptr = suzanne_source->get_animation(0);
+            anim_ctrl.model_ptr = suzanne_render.model;
+
+            for (auto& anim : animations) {
+              CORE_LOG_DEBUG("Model Animation: Name: {}, Duration: {}, TicksPerSecond: {}, Channels: {}", anim.name, anim.duration, anim.ticks_per_second, anim.channels.size());
+
+              for (auto& channel : anim.channels) {
+                CORE_LOG_DEBUG("  Channel Node Name: {}, Position Keys: {}, Rotation Keys: {}, Scaling Keys: {}", channel.node_name, channel.position_keys.size(), channel.rotation_keys.size(), channel.scale_keys.size());
+              }
+            }
+          }
 
           loaded_suzanne = true;
         }
@@ -168,6 +179,13 @@ namespace other {
         cam->adjust_look_orientation(rel_pos.x, rel_pos.y);
       }
 
+      /// update animation
+      {
+        PROFILE_SECTION("rendering-dev--updates");
+        active_scene.update(delta_time);
+        active_scene.late_update(delta_time);
+      }
+
       {
         PROFILE_SECTION("rendering-dev--render-frame");
         render_data scene_render_data = active_scene.prepare_render_data();
@@ -178,9 +196,11 @@ namespace other {
         renderer->begin_ui_frame();
 
 #if UI_ON
+        auto* transform_comp = active_scene.get_component<transform>(suzanne_id);
         auto* render_comp = active_scene.get_component<render_component>(suzanne_id);
         if (render_comp != nullptr) {
           if (ImGui::Begin("Debug Window")) {
+            if (ImGui::DragFloat3("Suzanne Position", glm::value_ptr(transform_comp->local_position), 0.1f)) {}
             if (ImGui::DragFloat3("Suzanne Color", glm::value_ptr(render_comp->material.diffuse_color), 0.01f, 0.f, 1.0f)) {}
             if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
             if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}

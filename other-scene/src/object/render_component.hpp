@@ -13,7 +13,9 @@
 namespace other {
 
   struct render_component {
+    bool animated = false;
     bool visible = true;
+
     model* model = nullptr;
     gpu::graphics_material material = {};
   };

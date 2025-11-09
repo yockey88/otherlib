@@ -10,6 +10,7 @@ struct material {
   float shininess;
 };
 
+/// why does removing binding = 2 here break this?
 layout (std140, binding = 2) uniform camera_buffer {
   vec4 camera_position;
   vec4 camera_forward;
@@ -24,7 +25,7 @@ layout (std140, binding = 2) uniform camera_buffer {
   mat4 projection_matrix;
 };
 
-layout (std430, binding = 0) readonly buffer material_buffer {
+layout (std430) readonly buffer material_buffer {
   material materials[];
 };
 

@@ -27,7 +27,6 @@ namespace other {
 
   struct mesh_key {
     resource_handle model_source_handle = {};
-    resource_handle shader_handle = {};
     render_polygon_mode render_state = render_polygon_mode::POLYGON_MODE_FILL;
     mesh::primitive_type draw_mode = mesh::primitive_type::TRIANGLES;
 
@@ -36,29 +35,9 @@ namespace other {
     constexpr auto operator<=>(const mesh_key&) const = default;
   };
 
-  /**
-   * renderer-frontend takes draw_commands and turns them into a list of mesh keys and draw calls
-   * renderer-backend takes a render-graph with resources and the map of mesh keys to draw calls and uses the render-graph to
-   *                   to execute the draw calls
-   **/
-
-  struct draw_command {
-    model* draw_model = nullptr;
-    glm::mat4 transform = glm::mat4(1.f);
-
-    gpu::graphics_material material = {};
-
-    uint32_t submesh_index = 0;
-    render_polygon_mode render_state = render_polygon_mode::POLYGON_MODE_FILL;
-    mesh::primitive_type draw_mode = mesh::primitive_type::TRIANGLES;
-
-    real_t line_thickness = 1.f;
-
-    operator mesh_key() const;
-  };
-
   struct draw_call {
     resource_handle mesh_handle;
+    // resource_handle bone_buffer_handle;
 
     uint32_t submesh_index = 0;
 
@@ -74,60 +53,17 @@ namespace other {
     float line_thickness = 1.f;
   };
 
-  // struct SubMeshDrawCall {
-  //   arena_buffer cpu_model_storage;
-  //   arena_buffer cpu_material_storage;
-
-  //   uint32_t vertex_offset = 0;
-  //   uint32_t vertex_count = 0;
-
-  //   uint32_t index_offset = 0;
-  //   uint32_t index_count = 0;
-
-  //   uint32_t instance_count = 0;
-  // };
-
-  // struct MeshDrawCall {
-  //   // Ref<VertexArray> vao = nullptr;
-  //   uint32_t base_instance = 0;
-
-  //   // Ref<MaterialTable> material_table = nullptr;
-  //   std::vector<SubMeshDrawCall> submissions;
-
-  //   float line_thickness = 1.f;
-  // };
-
-  /**
-
-      model_storage->BindBase();
-      model_storage->LoadFromBuffer(sub_call.cpu_model_storage);
-      material_storage->BindBase();
-      material_storage->LoadFromBuffer(sub_call.cpu_material_storage);
-
-      glLineWidth(draw_call.line_thickness);
-      glPolygonMode(GL_FRONT_AND_BACK, mesh_key.render_state);
-      glDrawElementsInstancedBaseVertexBaseInstance(mesh_key.draw_mode, sub_call.index_count, GL_UNSIGNED_INT, (void*)0, sub_call.instance_count, sub_call.vertex_offset, 0);
-   */
+  /*
+  struct DrawElementsIndirectCommand {
+    uint32_t  count;
+    uint32_t  instanceCount;
+    uint32_t  firstIndex;
+    int32_t  baseVertex;
+    uint32_t  baseInstance;
+  };
+  */
 
 }  // namespace other
-
-// OTHER_REFLECT(
-//   other::mesh_key,
-//   field(model_source_handle, other::attr::serializable()),
-//   field(render_state, other::attr::serializable()),
-//   field(draw_mode, other::attr::serializable()),
-//   field(submesh_index, other::attr::serializable())
-// )
-
-// OTHER_REFLECT(
-//   other::draw_command,
-//   field(transform, other::attr::serializable()),
-//   // field(material, other::attr::serializable()),
-//   field(submesh_index, other::attr::serializable()),
-//   // field(render_state, other::attr::serializable()),
-//   field(draw_mode, other::attr::serializable()),
-//   field(line_thickness, other::attr::serializable())
-// )
 
 OTHER_REFLECT(
   other::draw_call,

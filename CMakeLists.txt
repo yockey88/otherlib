@@ -135,24 +135,33 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(OTHER_LIBRARIES_PATH 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib/debug"
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/debug"
   )
-  set(ASSIMP_NAME "assimp-vc143-mtd")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
   set(OTHER_LIBRARIES_PATH 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib/release"
         "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/release"
   )
-  set(ASSIMP_NAME "assimp-vc143-mt")
-endif()
-
+  endif()
+  
+  # TODO: replace above w/ below
+  # set(OTHER_LIBRARIES_PATH
+  #   ${OTHER_LIBRARIES_PATH} 
+  #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
+  #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
+  #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
+  #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
+  # )
+  
 if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   add_compile_definitions("TRACY_ENABLE" "TRACY_CALLSTACK=10")
 endif()
-set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib")
+set(ASSIMP_NAME "assimp-vc143-mt")
+set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} 
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib"
+)
 
 set(OTHER_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
@@ -260,8 +269,7 @@ other_install_external_library("flatbuffers" "${OTHER_EXTERN_DIR}/flatbuffers/li
 other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
 
 install(
-  FILES
-    "${OTHER_EXTERN_DIR}/python312/python312.dll"
+  FILES "${OTHER_EXTERN_DIR}/python312/python312.dll"
   DESTINATION "${OTHER_INSTALL_LIBDIR}"
 )
 
@@ -281,7 +289,7 @@ install(
 
 install(
   FILES
-    "${OTHER_EXTERN_DIR}/assimp/lib/${DLL_CONFIG}/assimp-vc143-mt$<$<CONFIG:Debug,ProfileD>:d>.dll"
+    "${OTHER_EXTERN_DIR}/assimp/lib/assimp-vc143-mt.dll"
   DESTINATION "${OTHER_INSTALL_BINDIR}/${DLL_CONFIG}"
   CONFIGURATIONS ${CMAKE_BUILD_TYPE}
   OPTIONAL

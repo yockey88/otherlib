@@ -174,6 +174,32 @@ namespace other {
     subsystem<scripting_environment>::get()->unload_dotnet_module(module);
   }
 
+  namespace {
+
+    std::string get_error_message() {
+#ifdef OTHER_ENVIRONMENT_WINDOWS
+      LPSTR msg_buffer = nullptr;
+      DWORD err_code = GetLastError();
+      size_t size = FormatMessageA(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        err_code,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPSTR)&msg_buffer,
+        0,
+        NULL
+      );
+
+      std::string message(msg_buffer, size);
+      LocalFree(msg_buffer);  // Free the buffer allocated by FormatMessage
+      return message;
+#else
+      return std::strerror(errno);
+#endif
+    }
+
+  }  // namespace
+
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
     if (!std::filesystem::exists(working_dir) || !std::filesystem::is_directory(working_dir)) {
       CORE_LOG_ERROR("Working directory does not exist or is not a directory: {}", working_dir.string());
@@ -203,6 +229,7 @@ namespace other {
       full_command += L" " + warg;
     }
     std::string str_full_command(full_command.begin(), full_command.end());
+    CORE_LOG_DEBUG("Launching detached process: {}", str_full_command);
 
     // Start the child process.
     if (!CreateProcessW(
@@ -219,7 +246,7 @@ namespace other {
           // Pointer to STARTUPINFOW structure and PROCESS_INFORMATION structure
           &si, &pi
         )) {
-      CORE_LOG_ERROR("CreateProcess failed (error {}): \n   [command: {}]\n", GetLastError(), str_full_command);
+      CORE_LOG_ERROR("CreateProcess failed (error {}): \n   [command: {}]\n[error: {}]", GetLastError(), str_full_command, get_error_message());
       return;
     }
 
