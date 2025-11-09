@@ -63,26 +63,6 @@ vec4 get_normal() {
   return vec4(OE_normal, 1.0);
 }
 
-
-vec3 get_normal_bone_contribations() {
-  vec3 bone_normal = vec3(0.0);
-
-  for (int i = 0; i < MAX_VERTEX_BONE_INFLUENCE; ++i) {
-    if (OE_bone_ids[i] == -1) {
-      continue;
-    }
-    if (OE_bone_ids[i] >= MAX_OBJECTS) {
-      bone_normal = OE_normal;
-      break;
-    }
-
-    mat3 bone3 = mat3(bones[OE_bone_ids[i]]);
-    bone_normal += (bone3 * OE_normal) * OE_bone_weights[i];
-  }
-
-  return bone_normal;
-}
-
 mat4 get_bone_transform() {
   mat4 bone_transform = mat4(0.f);
 
@@ -90,11 +70,6 @@ mat4 get_bone_transform() {
     if (OE_bone_ids[i] == -1) {
       continue;
     }
-    if (OE_bone_ids[i] >= MAX_OBJECTS) {
-      bone_transform = mat4(1.0);
-      break;
-    }
-
     bone_transform += bones[OE_bone_ids[i]] * OE_bone_weights[i];
   }
 

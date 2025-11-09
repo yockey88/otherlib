@@ -420,21 +420,20 @@ namespace other {
         data.model_buffers[mesh_index].model_matrices[index] = world_transform;
       }
 
-      // for (auto& bone_buff : data.bone_buffers) {
-      //   for (size_t i = 0; i < gpu::kMaxMaterials; ++i) {
-      //     bone_buff.bone_matrices[i] = glm::mat4(1.0f);
-      //   }
-      //   if (!draw_model->skel || draw_model->bone_matrices.size() == 0) {
-      //     bone_buff.has_bones = 0;
-      //     continue;
-      //   }
-
-      //   size_t bone_count = std::min(draw_model->bone_matrices.size(), static_cast<size_t>(100));
-      //   for (size_t b = 0; b < bone_count; ++b) {
-      //     bone_buff.bone_matrices[b] = draw_model->bone_matrices[b];
-      //   }
-      //   draw_model->bone_matrices.clear();
-      // }
+      for (auto& bone_buff : data.bone_buffers) {
+        for (size_t i = 0; i < gpu::kMaxMaterials; ++i) {
+          bone_buff.bone_matrices[i] = glm::mat4(1.0f);
+        }
+        if (!draw_model->skel || draw_model->bone_matrices.size() == 0) {
+          std::ranges::fill(std::span(bone_buff.bone_matrices, gpu::kMaxMaterials), glm::mat4(1.0f));
+        } else {
+          size_t bone_count = std::min(draw_model->bone_matrices.size(), static_cast<size_t>(100));
+          for (size_t b = 0; b < bone_count; ++b) {
+            bone_buff.bone_matrices[b] = draw_model->bone_matrices[b];
+          }
+          draw_model->bone_matrices.clear();
+        }
+      }
     });
 
     return data;
