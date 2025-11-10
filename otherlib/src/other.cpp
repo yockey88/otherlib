@@ -94,8 +94,12 @@ namespace other {
       subsystem<renderer_backend>::get()->load_backend(config.rendering_backend.value(), config.window_size);
     }
 
-    bind_primary_scripting_environment(config);
-    bind_environment_scripts();
+    bool force_disable_scripting = config.get_value<bool>("scripting.force-disable-scripting", false);
+    bool enable_scripting = !force_disable_scripting;
+    if (enable_scripting) {
+      bind_primary_scripting_environment(config);
+      bind_environment_scripts();
+    }
 
     /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
     ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
@@ -121,7 +125,9 @@ namespace other {
       }
     }
 
-    cleanup_scripting_environment();
+    if (enable_scripting) {
+      cleanup_scripting_environment();
+    }
 
     /// handle exit code
     CORE_LOG_INFO("Other Environment driver finished with exit code: {}", res);

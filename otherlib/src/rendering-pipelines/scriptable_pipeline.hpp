@@ -1,9 +1,21 @@
 /**
  * \file rendering-pipelines/scriptable_pipeline.hpp
  **/
-#ifndef RENDERING_PIPELINES_SCRIPTABLE_PIPELINE_HPP
-#define RENDERING_PIPELINES_SCRIPTABLE_PIPELINE_HPP
+#ifndef OTHERLIB_RENDERING_PIPELINES_SCRIPTABLE_PIPELINE_HPP
+#define OTHERLIB_RENDERING_PIPELINES_SCRIPTABLE_PIPELINE_HPP
 
-namespace other {}  // namespace other
+#include "renderer/render_pipeline.hpp"
 
-#endif  // RENDERING_PIPELINES_SCRIPTABLE_PIPELINE_HPP
+namespace other {
+
+  class scriptable_pipeline : public render_pipeline {
+   public:
+    virtual ~scriptable_pipeline() = default;
+
+    void create_resources() override {}
+    void build_render_passes() override {}
+  };
+
+}  // namespace other
+
+#endif  // OTHERLIB_RENDERING_PIPELINES_SCRIPTABLE_PIPELINE_HPP

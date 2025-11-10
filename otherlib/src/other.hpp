@@ -1,8 +1,8 @@
 /**
  * @file other.hpp
  */
-#ifndef OTHER_OTHERLIB_OTHER_HPP
-#define OTHER_OTHERLIB_OTHER_HPP
+#ifndef OTHERLIB_OTHER_HPP
+#define OTHERLIB_OTHER_HPP
 
 #include <iostream>
 #include <print>
@@ -51,4 +51,4 @@ namespace other {
 other::exit_code other_main(const command_line& cmd, const config_table& config) { return other::exit_code::SUCCESS; }
 #endif
 
-#endif  // OTHER_OTHERLIB_OTHER_HPP
+#endif  // OTHERLIB_OTHER_HPP

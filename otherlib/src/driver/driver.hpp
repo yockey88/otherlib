@@ -1,8 +1,8 @@
 /**
  * \file driver/driver.hpp
  **/
-#ifndef OTHER_DRIVER_DRIVER_HPP
-#define OTHER_DRIVER_DRIVER_HPP
+#ifndef OTHERLIB_DRIVER_DRIVER_HPP
+#define OTHERLIB_DRIVER_DRIVER_HPP
 
 #include <asio/asio.hpp>
 #include <asio/asio/signal_set.hpp>
@@ -157,4 +157,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_DRIVER_DRIVER_HPP
+#endif  // OTHERLIB_DRIVER_DRIVER_HPP

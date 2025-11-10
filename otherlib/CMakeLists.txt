@@ -12,8 +12,11 @@ target_sources(otherlib
     src/rendering-pipelines/scriptable_pipeline.cpp
 
     src/scripting/dotnet_bindings.cpp
+    src/scripting/other_device.cpp
 
     src/tools/build_tool.cpp
+
+    src/ui/node_editor.cpp
 
     src/other.cpp
 )

@@ -199,6 +199,8 @@ namespace other {
 
     static value create_opaque_handle(void* opaque_data);
 
+    std::string to_string() const;
+
     bool is_empty() const;
     void clear();
 

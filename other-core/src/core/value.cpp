@@ -40,6 +40,38 @@ namespace other {
     return v;
   }
 
+  std::string value::to_string() const {
+    std::stringstream ss;
+
+    if (is_empty()) {
+      ss << "<empty>";
+      return ss.str();
+    }
+
+    ss << std::format("<{}:", type());
+    switch (type()) {
+      case value_type::INT8: ss << unwrap_as<int8_t>(); break;
+      case value_type::INT16: ss << unwrap_as<int16_t>(); break;
+      case value_type::INT32: ss << unwrap_as<int32_t>(); break;
+      case value_type::INT64: ss << unwrap_as<int64_t>(); break;
+      case value_type::UINT8: ss << unwrap_as<uint8_t>(); break;
+      case value_type::UINT16: ss << unwrap_as<uint16_t>(); break;
+      case value_type::UINT32: ss << unwrap_as<uint32_t>(); break;
+      case value_type::UINT64: ss << unwrap_as<uint64_t>(); break;
+      case value_type::FLOAT: ss << unwrap_as<float>(); break;
+      case value_type::DOUBLE: ss << unwrap_as<double>(); break;
+      case value_type::OEBOOL: ss << (unwrap_as<bool>() ? "true" : "false"); break;
+      case value_type::STRING: ss << unwrap_as<std::string>(); break;
+      case value_type::OPAQUE_HANDLE: ss << std::format("{:p}", storage->data()); break;
+      default:
+        ss << "<unknown_type>";
+        break;
+    }
+    ss << ">";
+
+    return ss.str();
+  }
+
   bool value::is_empty() const {
     return storage == nullptr ||
       storage->data() == nullptr ||

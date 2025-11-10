@@ -10,6 +10,8 @@
 #include <SDL3/SDL_mouse.h>
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 #include "core/profiler.hpp"
 
@@ -96,6 +98,12 @@ namespace other {
         suzanne_asset_id = asset_mgr->load_asset(model_path);
       }
     }
+
+    auto& node = node_editor.nodes.emplace_back();
+    node.id = 0;
+    node.name = "Node 0";
+    node.position = glm::vec2(50.f, 50.f);
+    node.size = glm::vec2(300.f, 400.f);
 
     CORE_LOG_INFO("Renderer driver initialized successfully.");
   }
@@ -196,6 +204,7 @@ namespace other {
         renderer->begin_ui_frame();
 
 #if UI_ON
+
         auto* transform_comp = active_scene.get_component<transform>(suzanne_id);
         auto* render_comp = active_scene.get_component<render_component>(suzanne_id);
         if (render_comp != nullptr) {
@@ -204,6 +213,31 @@ namespace other {
             if (ImGui::DragFloat3("Suzanne Color", glm::value_ptr(render_comp->material.diffuse_color), 0.01f, 0.f, 1.0f)) {}
             if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
             if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}
+
+            ImGui::SeparatorText("===[node controls]===");
+            ImGui::Checkbox("Show Editor", &editor_open);
+            auto& node0 = node_editor.nodes[0];
+            ImGui::DragFloat2("Node 0 Position", glm::value_ptr(node0.position), 1.f);
+            ImGui::DragFloat2("Node 0 Size", glm::value_ptr(node0.size), 1.f, 100.f, 1000.f);
+          }
+          ImGui::End();
+
+          ImGui::GetIO().ConfigWindowsMoveFromTitleBarOnly = true;
+
+          ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
+          if (editor_open && ImGui::Begin("Node Editor", &editor_open, window_flags)) {
+            /// base_pos = (0,0) is top-left of window including titlebar and borders
+            /// offset y by titlebar height
+            ImGuiWindow* ig_window = ImGui::GetCurrentWindow();
+            ImVec2 base_pos = ig_window->Pos;
+            base_pos.y += ImGui::GetFrameHeight();
+
+            for (auto& node : node_editor.nodes) {
+              if (ig_window->SkipItems) {
+                break;
+              }
+              node.draw_node({ base_pos.x, base_pos.y });
+            }
           }
           ImGui::End();
         }
