@@ -66,7 +66,7 @@ IncludeCategories:
     Priority:        5
   - Regex:           '"((object|scene)\/)'
     Priority:        6
-  - Regex:           '"((terminal|rendering-pipelines|driver|project|plugin|scripting|ui)\/)'
+  - Regex:           '"((terminal|rendering-pipelines|driver|project|plugin|scripting|ui|vm)\/)'
     Priority:        7
   - Regex:           '"([A-Za-z0-9\/-_])+\.h(pp|xx|h)?"'
     Priority:        8

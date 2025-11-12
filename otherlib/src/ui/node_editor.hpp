@@ -4,70 +4,37 @@
 #ifndef OTHERLIB_UI_NODE_EDITOR_HPP
 #define OTHERLIB_UI_NODE_EDITOR_HPP
 
-#include <string>
-
 #include <glm/glm.hpp>
+#include <imgui/imgui.h>
 
-#include "glm/fwd.hpp"
+#include "core/defines.hpp"
+
+#include "renderer/ui/ui_window.hpp"
+
+#include "ui/node_editor_canvas_node.hpp"
 
 namespace other {
+  namespace ui {
 
-  struct node_editor {
-    static constexpr float kResizeHandleSize = 20.0f;
-    static constexpr float kGripPadding = 4.0f;
+    struct node_editor : public ui_window {
+      node_editor(event_system& events);
+      virtual ~node_editor() = default;
 
-    struct node {
-      static constexpr size_t kInvalidID = static_cast<size_t>(-1);
-      static constexpr float kMinNodeDimension = 50.f;
+      void add_editor_node(const std::string_view node_name, uint8_t input_pins = 0, uint8_t output_pins = 0);
 
-      size_t id = 0;
-      std::string name = "Node";
-
-      struct {
-        bool hovered = false;
-        bool selected = false;
-        bool stretching = false;
-        bool dragging = false;
-
-        bool error = false;
-      } state;
-
-      struct node_render_data {
-        glm::vec2 full_node_size;
-        glm::vec2 global_node_pos;
-        glm::vec2 full_node_max;
-
-        glm::vec2 node_header_end;
-        glm::vec2 node_body_begin;
-
-        glm::vec2 resize_triangle_p1;
-        glm::vec2 resize_triangle_p2;
-        glm::vec2 resize_triangle_p3;
-
-        void update_base_position(const glm::vec2& node_base_position, const glm::vec2& position, const glm::vec2& size);
-      } render_data;
-
-      glm::vec3 bg_color = glm::vec3(0.1f, 0.1f, 0.1f);
-
-      glm::vec2 size = glm::vec2(100.f, 100.f);
-      glm::vec2 position = glm::vec2(0.f, 0.f);
-
-      void draw_node(const glm::vec2& node_base_position);
+      void on_pre_render_nodes() override;
+      void on_post_render_nodes() override;
 
      private:
-      void begin_node();
+      friend struct node_editor_node;
+      node_editor_node* selected_node = nullptr;
+
+      natural_t canvas_id = 0;
+
+      std::map<natural_t, natural_t> node_name_hashes;
     };
 
-    node_editor() = default;
-    virtual ~node_editor() = default;
-
-    inline void add_node(const node& n) {
-      nodes.push_back(n);
-    }
-
-    std::vector<node> nodes;
-  };
-
+  }  // namespace ui
 }  // namespace other
 
 #endif  // OTHERLIB_UI_NODE_EDITOR_HPP

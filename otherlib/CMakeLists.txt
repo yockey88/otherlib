@@ -12,10 +12,22 @@ target_sources(otherlib
     src/rendering-pipelines/scriptable_pipeline.cpp
 
     src/scripting/dotnet_bindings.cpp
-    src/scripting/other_device.cpp
+
+    src/scripting/execution_node.cpp
+    src/scripting/execution_graph.cpp
+    src/scripting/execution_nodes/source_sink_nodes.cpp
+    src/scripting/execution_nodes/arithmetic_nodes.cpp
+
+    src/vm/opcode.cpp
+    src/vm/control_table.cpp
+    src/vm/other_device.cpp
+    src/vm/decompiler.cpp
+    src/vm/program.cpp
+    src/vm/vm.cpp
 
     src/tools/build_tool.cpp
 
+    src/ui/node_editor_canvas_node.cpp
     src/ui/node_editor.cpp
 
     src/other.cpp

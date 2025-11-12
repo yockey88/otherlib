@@ -27,10 +27,11 @@ namespace other {
         : id(FNV(node_title)), node_title(node_title), size(size_arg), flags(child_flags), window_flags(window_flags), containing_window(parent) {}
     virtual ~ui_node() = default;
 
+    void refresh();
     void render();
 
-    void add_child_node(scope<ui_node>& node);
-    void add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern = "");
+    natural_t add_child_node(scope<ui_node>& node);
+    natural_t add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern = "");
 
     void set_size(const glm::vec2& new_size) { size = new_size; }
     glm::vec2 get_size() const { return size; }
@@ -42,25 +43,20 @@ namespace other {
     std::vector<ui_node*> children;
 
     natural_t id = 0;
-    std::string_view node_title;
+    std::string node_title;
 
     bool visited_this_frame = false;
 
    protected:
     virtual void on_refresh() {}
 
-    virtual void push_themes() {}
-    virtual void pop_themes() {}
-
-    virtual void on_render_start() {}
+    virtual void on_prepare_render() {}
+    virtual void on_render_node_header() {}
+    virtual void on_render_node_body() {}
+    virtual void on_render_node_footer() {}
     virtual void on_render_end() {}
 
-    virtual void render_node() {}
-    virtual void override_child_rendering() {}
-
     event_system& events();
-
-    void set_overriding_child_rendering(bool override) { state.override_child_rendering = override; }
 
     void add_child_flag(uint32_t flag) { flags |= flag; }
     void remove_child_flag(uint32_t flag) { flags &= ~flag; }
@@ -76,8 +72,6 @@ namespace other {
       bool just_closed = false;
       bool just_opened = false;
       bool is_focused = false;
-
-      bool override_child_rendering = false;
     } state;
 
     glm::vec2 size{ 0.0f, 0.0f };

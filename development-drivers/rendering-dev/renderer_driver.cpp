@@ -21,12 +21,14 @@
 #include "renderer/gpu_structs.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
+#include "renderer/ui/ui_helpers.hpp"
 
 #include "object/animation_controller.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
+#include "scripting/execution_nodes/source_sink_nodes.hpp"
 
 #define UI_ON 1
 
@@ -99,14 +101,29 @@ namespace other {
       }
     }
 
-    auto& node = node_editor.nodes.emplace_back();
-    node.id = 0;
-    node.name = "Node 0";
-    node.position = glm::vec2(50.f, 50.f);
-    node.size = glm::vec2(300.f, 400.f);
+    events = make_scope<event_system>(net_context->io_context);
+    OTHER_ASSERT(events != nullptr, "Failed to create event system in renderer_driver");
+
+    node_editor = make_scope<ui::node_editor>(*events);
+
+    // input_node_id = exec_graph.add_node("NodeA", make_scope<source_node>(3.3f));
+    // output_node_id = exec_graph.add_node("NodeB", make_scope<sink_node>());
+
+    for (const auto& n : exec_graph.nodes) {
+      node_editor->add_editor_node(n.name, n.exec_node->get_num_inputs(), n.exec_node->get_num_outputs());
+    }
 
     CORE_LOG_INFO("Renderer driver initialized successfully.");
   }
+
+  /// things we are debugging with the ui
+  static glm::vec4 test_editor_bg_color = glm::vec4(0.03f, 0.03f, 0.03f, 0.7f);
+  static float grid_step = 50.0f;
+  static float major_grid_step = grid_step * 5.0f;
+  static glm::vec4 grid_color = glm::vec4(0.2f, 0.2f, 0.2f, 0.4f);
+  static glm::vec4 major_grid_color = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+  static float grid_thickness = 1.0f;
+  static float major_thickness = 2.0f;
 
   void renderer_driver::run() {
     PROFILE_SECTION("renderer_driver::run");
@@ -214,33 +231,19 @@ namespace other {
             if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
             if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}
 
-            ImGui::SeparatorText("===[node controls]===");
-            ImGui::Checkbox("Show Editor", &editor_open);
-            auto& node0 = node_editor.nodes[0];
-            ImGui::DragFloat2("Node 0 Position", glm::value_ptr(node0.position), 1.f);
-            ImGui::DragFloat2("Node 0 Size", glm::value_ptr(node0.size), 1.f, 100.f, 1000.f);
-          }
-          ImGui::End();
-
-          ImGui::GetIO().ConfigWindowsMoveFromTitleBarOnly = true;
-
-          ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
-          if (editor_open && ImGui::Begin("Node Editor", &editor_open, window_flags)) {
-            /// base_pos = (0,0) is top-left of window including titlebar and borders
-            /// offset y by titlebar height
-            ImGuiWindow* ig_window = ImGui::GetCurrentWindow();
-            ImVec2 base_pos = ig_window->Pos;
-            base_pos.y += ImGui::GetFrameHeight();
-
-            for (auto& node : node_editor.nodes) {
-              if (ig_window->SkipItems) {
-                break;
-              }
-              node.draw_node({ base_pos.x, base_pos.y });
-            }
+            ImGui::SeparatorText("Node Editor Debug/Configuration");
+            ImGui::DragFloat4("Editor Background Color", glm::value_ptr(test_editor_bg_color), 0.01f, 0.f, 1.f);
+            ImGui::DragFloat("Grid Step", &grid_step, 1.f, 10.f, 500.f);
+            ImGui::DragFloat("Major Grid Step", &major_grid_step, 5.f, 50.f, 2500.f);
+            ImGui::DragFloat4("Grid Color", glm::value_ptr(grid_color), 0.01f, 0.f, 1.f);
+            ImGui::DragFloat4("Major Grid Color", glm::value_ptr(major_grid_color), 0.01f, 0.f, 1.f);
+            ImGui::DragFloat("Grid Thickness", &grid_thickness, 0.1f, 0.1f, 10.f);
+            ImGui::DragFloat("Major Grid Thickness", &major_thickness, 0.1f, 0.1f, 10.f);
           }
           ImGui::End();
         }
+
+        node_editor->render();
 #endif
         renderer->end_ui_frame();
 
@@ -304,6 +307,17 @@ namespace other {
         }
         break;
 
+      case SDL_EVENT_MOUSE_WHEEL:
+        /// zoom grid in/out
+        if (event->wheel.y > 0) {
+          grid_step += 1.0f;
+          major_grid_step = grid_step * 5.0f;
+        } else {
+          grid_step = glm::max(1.0f, grid_step - 1.0f);
+          major_grid_step = grid_step * 5.0f;
+        }
+        break;
+
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
         if (event->button.button == SDL_BUTTON_MIDDLE) {
           pressing_mouse_wheel = true;
@@ -314,6 +328,7 @@ namespace other {
         if (event->button.button == SDL_BUTTON_MIDDLE) {
           pressing_mouse_wheel = false;
         }
+        break;
 
       default:
         break;
