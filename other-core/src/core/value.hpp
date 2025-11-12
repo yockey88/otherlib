@@ -15,8 +15,7 @@
 
 namespace other {
 
-  class value_storage : public ref_counted {
-   public:
+  struct value_storage : public ref_counted {
     value_storage() = default;
     virtual ~value_storage() = default;
 
@@ -48,7 +47,6 @@ namespace other {
       return std::string(str_data, size());
     }
 
-   protected:
     friend class value;
     template <typename T>
     friend class value_storage_impl;
@@ -214,6 +212,15 @@ namespace other {
 
     void aquire();
     void release();
+
+    value_storage& get_mutable_storage() {
+      OTHER_ASSERT(storage != nullptr, "Attempted to access mutable storage of an empty value!");
+      return *storage;
+    }
+    const value_storage& read_storage() const {
+      OTHER_ASSERT(storage != nullptr, "Attempted to read from an empty value storage!");
+      return *storage;
+    }
 
    private:
     std::mutex mutex;

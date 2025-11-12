@@ -35,6 +35,7 @@ namespace other {
       kStateError = std::numeric_limits<uint64_t>::max(),
     };
 
+    constexpr static uint8_t kReturnRegister = 15;
     constexpr static size_t kFlagRegister = kNumRegisters;
     /// last register is the flag register
     register_t<kRegisterBitSize> registers[kNumRegisters + 1];

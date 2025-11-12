@@ -4,6 +4,7 @@
 #include "renderer_driver.hpp"
 
 #include <chrono>
+#include <cstdint>
 #include <stack>
 
 #include <SDL3/SDL_events.h>
@@ -21,14 +22,15 @@
 #include "renderer/gpu_structs.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
-#include "renderer/ui/ui_helpers.hpp"
 
 #include "object/animation_controller.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
+#include "scripting/execution_nodes/linear_algebra_nodes.hpp"
 #include "scripting/execution_nodes/source_sink_nodes.hpp"
+#include "ui/value_ui.hpp"
 
 #define UI_ON 1
 
@@ -104,14 +106,23 @@ namespace other {
     events = make_scope<event_system>(net_context->io_context);
     OTHER_ASSERT(events != nullptr, "Failed to create event system in renderer_driver");
 
+    exec_graph.add_node("Vec1", make_scope<vec3_source_node>(glm::vec3{ 1.0f, 2.0f, 3.0f }));
+    exec_graph.add_node("Vec2", make_scope<vec3_source_node>(glm::vec3{ 4.0f, 5.0f, 6.0f }));
+    exec_graph.add_node("AddVecs", make_scope<add_vec3_node>());
+    exec_graph.connect_nodes("Vec1", 0, "AddVecs", 0);
+    exec_graph.connect_nodes("Vec2", 0, "AddVecs", 1);
+
     node_editor = make_scope<ui::node_editor>(*events);
-
-    // input_node_id = exec_graph.add_node("NodeA", make_scope<source_node>(3.3f));
-    // output_node_id = exec_graph.add_node("NodeB", make_scope<sink_node>());
-
     for (const auto& n : exec_graph.nodes) {
       node_editor->add_editor_node(n.name, n.exec_node->get_num_inputs(), n.exec_node->get_num_outputs());
     }
+    for (const auto& l : exec_graph.links) {
+      const auto& from_node = exec_graph.get_node_by_id(l.from.node_id);
+      const auto& to_node = exec_graph.get_node_by_id(l.to.node_id);
+      node_editor->connect_node_pins(from_node.name, l.from.pin_index, to_node.name, l.to.pin_index);
+    }
+
+    test_value = uint32_t(69);
 
     CORE_LOG_INFO("Renderer driver initialized successfully.");
   }
@@ -244,6 +255,11 @@ namespace other {
         }
 
         node_editor->render();
+
+        if (ImGui::Begin("Value Editor")) {
+          ui::value_editor("Test Value", test_value);
+        }
+        ImGui::End();
 #endif
         renderer->end_ui_frame();
 

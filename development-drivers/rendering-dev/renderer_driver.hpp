@@ -42,6 +42,8 @@ namespace other {
     bool pressing_mouse_wheel = false;
     mouse_state mouse;
 
+    value test_value;
+
     execution_graph exec_graph;
     scope<event_system> events;
     scope<ui::node_editor> node_editor = nullptr;

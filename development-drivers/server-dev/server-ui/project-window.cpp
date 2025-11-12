@@ -11,7 +11,7 @@
 #include "renderer/ui/ui_helpers.hpp"
 #include "renderer/ui/ui_node.hpp"
 
-#include "imgui.h"
+#include "ui/ui_widgets.hpp"
 
 namespace other {
   namespace {

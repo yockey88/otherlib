@@ -34,9 +34,14 @@ namespace other {
 
     uint32_t num_instructions = 0;
 
+    program() = default;
+    ~program() = default;
+
     void start_function(const std::string_view name);
     void end_function();
     void call(const std::string_view name);
+    void ret();
+    void ret_value_in_x(uint8_t x);
 
     void dump_registers();
     void dump_x(uint8_t x);

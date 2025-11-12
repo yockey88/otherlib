@@ -27,6 +27,8 @@ target_sources(otherlib
 
     src/tools/build_tool.cpp
 
+    src/ui/ui_widgets.cpp
+    src/ui/value_ui.cpp
     src/ui/node_editor_canvas_node.cpp
     src/ui/node_editor.cpp
 

@@ -6,10 +6,10 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-#include "ui/colors.hpp"
+#include "renderer/ui/ui_helpers.hpp"
 
-#include "colors.hpp"
-#include "node_editor_canvas_node.hpp"
+#include "ui/colors.hpp"
+#include "ui/node_editor_canvas_node.hpp"
 
 namespace other {
   namespace ui {
@@ -66,17 +66,18 @@ namespace other {
 
     natural_t node_editor_canvas_node::create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins) {
       glm::vec2 position = glm::vec2(0.f, 0.f);
-      glm::vec2 size = glm::vec2(100.f, 50.f);
+      glm::vec2 size = glm::vec2(kMinNodeSize, kMinNodeSize);
+
       /// calculate a position and size so it isn't overlapping other nodes
       float shift = 0.f;
       for (size_t i = 0; i < nodes.node_positions.size(); ++i) {
-        position.x += size.x + 50.f + shift;
+        position.y += size.y + 33.f + shift;
         if (position.x > canvas_size.x) {
           position.x = 0.f;
           position.y += size.y + 50.f + shift;
 
-          if (position.y > canvas_size.y) {
-            position.y = 0.f;
+          if (position.x > canvas_size.x) {
+            position.x = 0.f;
             shift += 7.5f;
           }
         }
@@ -100,6 +101,36 @@ namespace other {
       }
 
       return node_id;
+    }
+
+    void node_editor_canvas_node::connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx) {
+      natural_t from_name_hash = FNV(from_node);
+      natural_t to_name_hash = FNV(to_node);
+
+      auto from_itr = std::ranges::find_if(nodes.node_names, [from_name_hash](const auto& n) { return FNV(n) == from_name_hash; });
+      if (from_itr == nodes.node_names.end()) {
+        CORE_LOG_ERROR("From node '{}' not found in node editor!", from_node);
+        return;
+      }
+
+      auto to_itr = std::ranges::find_if(nodes.node_names, [to_name_hash](const auto& n) { return FNV(n) == to_name_hash; });
+      if (to_itr == nodes.node_names.end()) {
+        CORE_LOG_ERROR("To node '{}' not found in node editor!", to_node);
+        return;
+      }
+
+      natural_t from_node_id = from_itr - nodes.node_names.begin();
+      natural_t to_node_id = to_itr - nodes.node_names.begin();
+      connect_node_pins(from_node_id, from_pin_idx, to_node_id, to_pin_idx);
+    }
+
+    void node_editor_canvas_node::connect_node_pins(natural_t from_node_id, uint8_t from_pin_idx, natural_t to_node_id, uint8_t to_pin_idx) {
+      natural_t start_pin_id = nodes.node_output_pin_indices[from_node_id][from_pin_idx];
+      natural_t end_pin_id = nodes.node_input_pin_indices[to_node_id][to_pin_idx];
+      glm::vec4 link_color = { colors::editor::kBasicNodeLinkColor.x, colors::editor::kBasicNodeLinkColor.y, colors::editor::kBasicNodeLinkColor.z, colors::editor::kBasicNodeLinkColor.w };
+      links.create(start_pin_id, end_pin_id, link_color);
+      pins.pin_states[start_pin_id] = pin_data::pin_state::LINKED;
+      pins.pin_states[end_pin_id] = pin_data::pin_state::LINKED;
     }
 
     void node_editor_canvas_node::on_prepare_render() {
@@ -336,17 +367,7 @@ namespace other {
       draw_list->AddRectFilled(rect.Min, rect.Max, bg_col, 4.0f);
 
       /// title bar
-      ImVec2 text_size = ImGui::CalcTextSize(node_name.c_str());
-      std::string display_name = node_name;
-      if (text_size.x > (titlebar_rect.Max.x - titlebar_rect.Min.x) - 16.0f) {
-        size_t char_fit = static_cast<size_t>(((titlebar_rect.Max.x - titlebar_rect.Min.x) - 16.0f) / (text_size.x / node_name.length()));
-
-        if (char_fit > 3 && char_fit < node_name.length()) {
-          display_name = node_name.substr(0, char_fit - 3) + "...";
-        } else if (char_fit <= 3) {
-          display_name = "...";
-        }
-      }
+      std::string display_name = calculate_display_text(node_name, (titlebar_rect.Max.x - titlebar_rect.Min.x) - 16.f);
 
       ImVec2 text_pos = ImVec2{ nodes.global_node_positions[node_id].x + 8.0f, nodes.global_node_positions[node_id].y + 4.0f };
       draw_list->AddRectFilled(titlebar_rect.Min, titlebar_rect.Max, colors::ai::kNodeHeaderColor, 4.0f);

@@ -19,7 +19,7 @@ namespace other {
     struct node_editor_canvas_node : public ui_node {
       constexpr static float kNodeResizeGripPadding = 25.f;
       constexpr static float kNodeResizeGripSize = 10.f;
-      constexpr static float kMinNodeSize = 50.f;
+      constexpr static float kMinNodeSize = 100.f;
       struct node_data {
         enum node_state {
           NORMAL,
@@ -84,6 +84,8 @@ namespace other {
       virtual ~node_editor_canvas_node() = default;
 
       natural_t create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins);
+      void connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx);
+      void connect_node_pins(natural_t from_node_id, uint8_t from_pin_idx, natural_t to_node_id, uint8_t to_pin_idx);
 
       void on_prepare_render() override;
       void on_render_node_body() override;

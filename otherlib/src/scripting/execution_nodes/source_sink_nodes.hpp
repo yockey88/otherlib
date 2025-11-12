@@ -5,6 +5,7 @@
 #define OTHERLIB_SCRIPTING_EXECUTION_NODES_SOURCE_SINK_NODES_HPP
 
 #include "scripting/execution_node.hpp"
+#include "vm/program.hpp"
 
 namespace other {
 
@@ -59,8 +60,8 @@ namespace other {
 
     vec3_source_node() = default;
     vec3_source_node(const glm::vec3& val) : value(val) {}
-
     virtual ~vec3_source_node() = default;
+
     void execute_node() override {
       write_output<0>(value);
     }

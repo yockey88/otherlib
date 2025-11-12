@@ -11,6 +11,36 @@ namespace other {
   namespace ui {
     namespace colors {
 
+      constexpr auto kAccent = IM_COL32(236, 158, 36, 255);
+      constexpr auto kHighlight = IM_COL32(39, 185, 242, 255);
+      constexpr auto kText = IM_COL32(192, 192, 192, 255);
+      constexpr auto kTextBright = IM_COL32(210, 210, 210, 255);
+      constexpr auto kTextDark = IM_COL32(128, 128, 128, 255);
+      /// slightly orangish
+      constexpr auto kTextValueData = IM_COL32(242, 190, 112, 255);
+      /// slightly bluish
+      constexpr auto kTextValueType = IM_COL32(112, 190, 242, 255);
+      constexpr auto kTextError = IM_COL32(230, 51, 51, 255);
+
+      // /* ?? */ constexpr auto nice_blue = IM_COL32(83 , 232 , 254 , 255);
+      // constexpr auto compliment = IM_COL32(78 , 151 , 166 , 255);
+      // constexpr auto background = IM_COL32(36 , 36 , 36 , 255);
+      // constexpr auto background_dark = IM_COL32(26 , 26 , 26 , 255);
+      // constexpr auto title_bar = IM_COL32(21 , 21 , 21 , 255);
+      // constexpr auto title_bar_orange = IM_COL32(186 , 66 , 30 , 255);
+      // constexpr auto title_bar_green = IM_COL32(18 , 88 , 30 , 255);
+      // constexpr auto title_bar_red = IM_COL32(185 , 30 , 30 , 255);
+      // constexpr auto property_field = IM_COL32(15 , 15 , 15 , 255);
+      // constexpr auto muted = IM_COL32(77, 77, 77, 255);
+      // constexpr auto group_header = IM_COL32(47, 47, 47, 255);
+      // constexpr auto selection = IM_COL32(237, 192, 119, 255);
+      // constexpr auto selection_muted  = IM_COL32(237, 201, 142, 23);
+      // constexpr auto background_popup = IM_COL32(50, 50, 50, 255);
+      // constexpr auto valid_prefab = IM_COL32(82, 179, 222, 255);
+      // constexpr auto invalid_prefab = IM_COL32(222, 43, 43, 255);
+      // constexpr auto missing_mesh = IM_COL32(230, 102, 76, 255);
+      // constexpr auto mesh_not_set = IM_COL32(250, 101, 23, 255);
+
       static constexpr glm::vec4 kRed{ 1.f, 0, 0, 1.f };
       static constexpr glm::vec4 kBalancedRed{ 1.f, 50.f / 255.f, 50.f / 255.f, 1.f };
       static constexpr glm::vec4 kGreen{ 0, 1.f, 0, 1.f };

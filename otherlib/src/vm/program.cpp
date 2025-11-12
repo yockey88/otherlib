@@ -15,14 +15,8 @@ namespace other {
     current_function->address = current_offset;
   }
 
-  void program::end_function() {
-    assert(current_function && "Current Function is null!");
-    add_opcode(opcode_return());
-    current_function = nullptr;
-  }
-
   void program::call(const std::string_view name) {
-    assert(current_function && "Current Function is null!");
+    OTHER_ASSERT(current_function, "Current Function is null!");
     calls.emplace_back(call_instruction{
       .code_offset = static_cast<uint16_t>(current_function->code.size()),
       .from_address = current_function->address,
@@ -34,6 +28,18 @@ namespace other {
       current_function->code.emplace_back(byte);
       ++current_offset;
     }
+  }
+
+  void program::ret() {
+    OTHER_ASSERT(current_function, "Current Function is null!");
+    add_opcode(opcode_return());
+    current_function = nullptr;
+  }
+
+  void program::ret_value_in_x(uint8_t x) {
+    OTHER_ASSERT(current_function, "Current Function is null!");
+    add_opcode(opcode_return_value_in_x(x));
+    current_function = nullptr;
   }
 
   void program::dump_registers() {

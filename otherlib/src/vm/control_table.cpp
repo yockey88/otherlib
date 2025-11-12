@@ -161,6 +161,19 @@ namespace other {
       }
     }
 
+    /// 25xx0000 - return value in R[x]
+    void execute_return_value_in_x(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      if (device->sp == 0) {
+        assert(false && "Stack underflow on RET");
+      } else {
+        device->sp--;
+        device->pc = device->stack[device->sp];
+        device->stack[device->sp] = 0;
+        device->registers[other_command_device::kReturnRegister] = device->registers[x];
+      }
+    }
+
     /////////////////////// 3XXX /////////////////////
     /// 30xy0000 - R[x] = R[x] + R[y]
     void execute_add_x_y_to_x(other_command_device* device) {
@@ -228,6 +241,7 @@ namespace other {
       execute_goto_if_x_zero,
       execute_call_at,
       execute_return,
+      execute_return_value_in_x,
     };
     constexpr other_command_executor kArithmeticLogicTable[] = {
       execute_add_x_y_to_x,
