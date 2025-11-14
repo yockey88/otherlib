@@ -1,8 +1,6 @@
 using System;
 
-using OtherCsBindings;
-
-namespace Other.Scene
+namespace Other
 {
   public class OtherObject
   {

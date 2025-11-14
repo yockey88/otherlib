@@ -22,59 +22,64 @@ namespace other {
 
   }  // namespace detail
 
-  void ui_node::render() {
-    detail::ui_node_render_end_helper ___ui_node_render_end_helper_instance{};
-
-    bool current_state = state.open;
-    if (!ImGui::BeginChild(std::to_string(id).c_str(), ImVec2{ size.x, size.y }, flags, window_flags)) {
-      return;
+  void ui_node::refresh() {
+    on_refresh();
+    for (auto* child : children) {
+      OTHER_ASSERT(child != nullptr, "Null child node in UI node {}", node_title);
+      child->refresh();
     }
+  }
 
-    /// save imgui state
-    ImGuiErrorRecoveryState imgui_state{};
-    ImGui::ErrorRecoveryStoreState(&imgui_state);
+  void ui_node::render() {
+    on_prepare_render();
+    {
+      detail::ui_node_render_end_helper ___ui_node_render_end_helper_instance{};
 
-    try {
-      push_themes();
-      refresh(current_state);
-      if (!state.open) {
+      bool current_state = state.open;
+      if (!ImGui::BeginChild(std::to_string(id).c_str(), ImVec2{ size.x, size.y }, flags, window_flags)) {
         return;
       }
 
-      on_render_start();
-      render_node();
-      if (state.override_child_rendering) {
-        override_child_rendering();
-      } else {
+      /// save imgui state
+      ImGuiErrorRecoveryState imgui_state{};
+      ImGui::ErrorRecoveryStoreState(&imgui_state);
+
+      try {
+        refresh(current_state);
+        if (!state.open) {
+          return;
+        }
+
+        on_render_node_header();
+        on_render_node_body();
         for (auto* child : children) {
           OTHER_ASSERT(child != nullptr, "Null child node in UI node {}", node_title);
           child->render();
         }
+        on_render_node_footer();
+      } catch (const std::exception& e) {
+        CORE_LOG_ERROR("Exception during UI node render: {}", e.what());
+        ImGui::ErrorRecoveryTryToRecoverState(&imgui_state);
       }
-      on_render_end();
-
-      pop_themes();
-    } catch (const std::exception& e) {
-      CORE_LOG_ERROR("Exception during UI node render: {}", e.what());
-      ImGui::ErrorRecoveryTryToRecoverState(&imgui_state);
     }
+    on_render_end();
   }
 
-  void ui_node::add_child_node(scope<ui_node>& node) {
-    add_node_to(node /* this-node */);
+  natural_t ui_node::add_child_node(scope<ui_node>& node) {
+    return add_node_to(node /* this-node */);
   }
 
   event_system& ui_node::events() {
     return containing_window->get_event_system();
   }
 
-  void ui_node::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
+  natural_t ui_node::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
     OTHER_ASSERT(node != nullptr, "Cannot add null child node to UI node {}", node_title);
     if (remaining_search_pattern.empty()) {
       node->containing_window = containing_window;
       children.push_back(node.get());
       node->parent = id;
-      return;
+      return node->id;
     }
 
     std::string pattern_str(remaining_search_pattern);
@@ -94,10 +99,10 @@ namespace other {
     });
     if (itr == children.end()) {
       CORE_LOG_ERROR("No child node found with name '{}' in UI node '{}'", first_search_name, node_title);
-      return;
+      return 0;
     }
 
-    (*itr)->add_node_to(node, pattern_str);
+    return (*itr)->add_node_to(node, pattern_str);
   }
 
   void ui_node::trigger_event(const std::string_view name) {

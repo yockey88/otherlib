@@ -9,6 +9,7 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "core/value.hpp"
 #include "serialization/reflection.hpp"
 
 #include "dotnet/native_string.hpp"
@@ -52,6 +53,7 @@ namespace other {
       }
 
       void load_from_bytes(const uint8_t* data, uint64_t size);
+      void load_from_value(const value& val);
 
      private:
       void copy_string_to_storage(const std::string& value);

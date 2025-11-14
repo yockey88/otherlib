@@ -11,7 +11,7 @@
 #include "renderer/ui/ui_helpers.hpp"
 #include "renderer/ui/ui_node.hpp"
 
-#include "imgui.h"
+#include "ui/ui_widgets.hpp"
 
 namespace other {
   namespace {
@@ -68,7 +68,7 @@ namespace other {
       static constexpr size_t kNumTools = NUM_TOOLS;
       std::array<std::function<void()>, kNumTools> kTools;
 
-      void render_node() override {
+      void on_render_node_body() override {
         if (ImGui::BeginChild("##project-table-child", ImVec2(0.f, 512.f))) {
           render_project_table();
         }

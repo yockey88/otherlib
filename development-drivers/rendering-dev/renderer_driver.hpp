@@ -12,6 +12,8 @@
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
+#include "scripting/execution_graph.hpp"
+#include "ui/node_editor.hpp"
 
 #include "asset/asset_handler.hpp"
 
@@ -39,6 +41,20 @@ namespace other {
 
     bool pressing_mouse_wheel = false;
     mouse_state mouse;
+
+    struct {
+      bool node_editor_window = true;
+      bool value_editor_window = true;
+    } ui_tool_window_states;
+
+    value test_value;
+
+    execution_graph exec_graph;
+    scope<event_system> events;
+    scope<ui::node_editor> node_editor = nullptr;
+    natural_t input_node_id = 0;
+    natural_t output_node_id = 0;
+    bool editor_open = true;
 
     std::unique_ptr<asio::io_context> io_context = nullptr;
     scope<asset_handler> asset_mgr = nullptr;

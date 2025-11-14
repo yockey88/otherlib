@@ -4,12 +4,16 @@
 #include "renderer_driver.hpp"
 
 #include <chrono>
+#include <cstdint>
 #include <stack>
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_mouse.h>
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
+#include <imgui/imgui_memory_editor.h>
 
 #include "core/profiler.hpp"
 
@@ -19,12 +23,22 @@
 #include "renderer/gpu_structs.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
+#include "renderer/ui/ui_helpers.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "object/animation_controller.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
+#include "object/script_component.hpp"
 
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
+#include "scripting/execution_nodes/linear_algebra_nodes.hpp"
+#include "scripting/execution_nodes/source_sink_nodes.hpp"
+#include "ui/colors.hpp"
+#include "ui/ui_widgets.hpp"
+#include "ui/value_ui.hpp"
+
+#include "glm/fwd.hpp"
 
 #define UI_ON 1
 
@@ -60,7 +74,6 @@ namespace other {
 
     {
       PROFILE_SECTION("renderer_driver::on_initialize--scene-setup");
-      scene_object& suzanne_obj = active_scene.create_object("Suzanne", glm::vec3(0.f, -0.5f, 0.f));
       scene_object& light_obj = active_scene.create_object("Light", glm::vec3(0.f, 2.f, 0.f));
       active_scene.add_object_tag(light_obj.id, "scene-ambient-light");
 
@@ -72,13 +85,6 @@ namespace other {
       cam.sensitivity = 0.35f;
       cam.look({ 0.f, 1.f, 4.5f }, { 0.f, 0.f, 0.f });
       CORE_LOG_INFO("Camera data loaded from file: \n{}", type_data_handler<camera>::as_string("cam", cam));
-
-      suzanne_id = suzanne_obj.id;
-      light_id = light_obj.id;
-      camera_id = cam_obj.id;
-
-      mouse.position = renderer->get_mouse_position();
-      mouse.delta = glm::vec2(0.f, 0.f);
 
       transform& light_transform = active_scene.get_transform(&light_obj);
       light_transform.local_scale = glm::vec3(0.1f, 0.1f, 0.1f);
@@ -95,10 +101,72 @@ namespace other {
         std::string model_path = config.get_value<std::string>("assets.test-model", "resources/models/suzanne3.fbx");
         suzanne_asset_id = asset_mgr->load_asset(model_path);
       }
+
+      scene_object& suzanne_obj = active_scene.create_object("Suzanne", glm::vec3(0.f, -0.5f, 0.f));
+      script_component* suzanne_script = active_scene.get_component<script_component>(&suzanne_obj);
+      OTHER_ASSERT(suzanne_script != nullptr, "Failed to get script component for suzanne object in renderer_driver");
+      {
+        auto* script_env = subsystem<scripting_environment>::get();
+        script_env->attach_dotnet_object(suzanne_script->script_object_id, "TestObject");
+
+        script_object* script_obj = script_env->get_object(suzanne_script->script_object_id);
+        OTHER_ASSERT(script_obj != nullptr, "Failed to get scripting object for suzanne object in renderer_driver");
+
+        script_obj->dotnet_object->invoke("DisplayInfo");
+      }
+
+      suzanne_id = suzanne_obj.id;
+      light_id = light_obj.id;
+      camera_id = cam_obj.id;
+
+      mouse.position = renderer->get_mouse_position();
+      mouse.delta = glm::vec2(0.f, 0.f);
     }
+
+    events = make_scope<event_system>(net_context->io_context);
+    OTHER_ASSERT(events != nullptr, "Failed to create event system in renderer_driver");
+
+    exec_graph.add_node("Vec1", make_scope<vec3_source_node>(glm::vec3{ 1.0f, 2.0f, 3.0f }));
+    exec_graph.add_node("Vec2", make_scope<vec3_source_node>(glm::vec3{ 4.0f, 5.0f, 6.0f }));
+    exec_graph.add_node("AddVecs", make_scope<add_vec3_node>());
+    exec_graph.connect_nodes("Vec1", 0, "AddVecs", 0);
+    exec_graph.connect_nodes("Vec2", 0, "AddVecs", 1);
+
+    node_editor = make_scope<ui::node_editor>(*events);
+
+    std::vector<natural_t> node_ids;
+    for (const auto& n : exec_graph.nodes) {
+      node_ids.push_back(node_editor->add_editor_node(n.name, n.exec_node->get_num_inputs(), n.exec_node->get_num_outputs()));
+    }
+    for (const auto& l : exec_graph.links) {
+      const auto& from_node = exec_graph.get_node_by_id(l.from.node_id);
+      const auto& to_node = exec_graph.get_node_by_id(l.to.node_id);
+      node_editor->connect_node_pins(from_node.name, l.from.pin_index, to_node.name, l.to.pin_index);
+    }
+
+    node_editor->reorganize_nodes();
+
+    // for (size_t i = 0; i < node_ids.size(); ++i) {
+    // node_editor->set_display_fn(node_ids[0], [&](natural_t node_id, ImRect body_rect) {
+    //   auto* draw_list = ImGui::GetWindowDrawList();
+    //   exec_graph.get_node_by_id(node_id);
+    // });
+    // }
+
+    using namespace std::string_literals;
+    test_value = "hello!"s;
 
     CORE_LOG_INFO("Renderer driver initialized successfully.");
   }
+
+  /// things we are debugging with the ui
+  static glm::vec4 test_editor_bg_color = glm::vec4(0.03f, 0.03f, 0.03f, 0.7f);
+  static float grid_step = 50.0f;
+  static float major_grid_step = grid_step * 5.0f;
+  static glm::vec4 grid_color = glm::vec4(0.2f, 0.2f, 0.2f, 0.4f);
+  static glm::vec4 major_grid_color = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+  static float grid_thickness = 1.0f;
+  static float major_thickness = 2.0f;
 
   void renderer_driver::run() {
     PROFILE_SECTION("renderer_driver::run");
@@ -196,6 +264,28 @@ namespace other {
         renderer->begin_ui_frame();
 
 #if UI_ON
+
+        if (ImGui::BeginMainMenuBar()) {
+          if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Exit")) {
+              running = false;
+            }
+            ImGui::EndMenu();
+          }
+
+          if (ImGui::BeginMenu("Tools")) {
+            if (ImGui::MenuItem("Node Editor")) {
+              ui_tool_window_states.node_editor_window = true;
+            }
+            if (ImGui::MenuItem("Value Editor")) {
+              ui_tool_window_states.value_editor_window = true;
+            }
+            ImGui::EndMenu();
+          }
+
+          ImGui::EndMainMenuBar();
+        }
+
         auto* transform_comp = active_scene.get_component<transform>(suzanne_id);
         auto* render_comp = active_scene.get_component<render_component>(suzanne_id);
         if (render_comp != nullptr) {
@@ -204,9 +294,132 @@ namespace other {
             if (ImGui::DragFloat3("Suzanne Color", glm::value_ptr(render_comp->material.diffuse_color), 0.01f, 0.f, 1.0f)) {}
             if (ImGui::DragFloat3("Light Position", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->light_position), 0.1f)) {}
             if (ImGui::DragFloat3("Light Color", glm::value_ptr(active_scene.get_component<gpu::point_light>(light_id)->color), 0.01f, 0.f, 1.0f)) {}
+
+            ImGui::SeparatorText("Node Editor Debug/Configuration");
+            ImGui::DragFloat4("Editor Background Color", glm::value_ptr(test_editor_bg_color), 0.01f, 0.f, 1.f);
+            ImGui::DragFloat("Grid Step", &grid_step, 1.f, 10.f, 500.f);
+            ImGui::DragFloat("Major Grid Step", &major_grid_step, 5.f, 50.f, 2500.f);
+            ImGui::DragFloat4("Grid Color", glm::value_ptr(grid_color), 0.01f, 0.f, 1.f);
+            ImGui::DragFloat4("Major Grid Color", glm::value_ptr(major_grid_color), 0.01f, 0.f, 1.f);
+            ImGui::DragFloat("Grid Thickness", &grid_thickness, 0.1f, 0.1f, 10.f);
+            ImGui::DragFloat("Major Grid Thickness", &major_thickness, 0.1f, 0.1f, 10.f);
           }
           ImGui::End();
         }
+
+        node_editor->render();
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollbar;
+        if (ImGui::Begin("Value Editor", nullptr, flags)) {
+          if (ImGui::BeginChild("##EditorDisplay", ImVec2(0, 0), 0, ImGuiWindowFlags_NoScrollbar)) {
+            ImVec2 base_position = ImGui::GetCursorScreenPos();
+            ImVec2 window_max = {
+              base_position.x + ImGui::GetContentRegionAvail().x,
+              base_position.y + ImGui::GetContentRegionAvail().y
+            };
+            ImVec2 padding = ImVec2(1.5f, 1.5f);
+
+            ImRect window_bg_rect = ImRect(base_position, window_max);
+            ImRect inner_rect = ImRect(
+              ImVec2(window_bg_rect.Min.x + padding.x, window_bg_rect.Min.y + padding.y),
+              ImVec2(window_bg_rect.Max.x - padding.x, window_bg_rect.Max.y - padding.y)
+            );
+
+            ImRect titlebar_rect = ImRect(
+              ImVec2(window_bg_rect.Min.x, window_bg_rect.Min.y),
+              ImVec2(window_bg_rect.Max.x, window_bg_rect.Min.y + ImGui::GetFrameHeight())
+            );
+
+            std::string title_text = "Value";
+            std::string type_name = get_value_type_string_from_type(test_value.type());
+            std::string fmt_str = std::format("{} [{} : {} bytes]", title_text, type_name, test_value.size());
+            std::string calc_title_text = calculate_display_text(fmt_str, ImGui::GetContentRegionAvail().x - 15.f);
+            float text_width = ImGui::CalcTextSize(calc_title_text.c_str()).x;
+
+            auto* draw_list = ImGui::GetWindowDrawList();
+
+            /// header
+            ImVec4 col = { ui::colors::editor::kNodeEditorBackground.x, ui::colors::editor::kNodeEditorBackground.y, ui::colors::editor::kNodeEditorBackground.z, 0.1f };
+            ImVec4 tb_col = { ui::colors::editor::kNodeHeaderColor.x, ui::colors::editor::kNodeHeaderColor.y, ui::colors::editor::kNodeHeaderColor.z, 1.0f };
+            ImVec2 text_pos = ImVec2{ titlebar_rect.Min.x + (titlebar_rect.GetWidth() - text_width) / 2, titlebar_rect.Min.y + 2.0f };
+            draw_list->AddRectFilled(window_bg_rect.Min, window_bg_rect.Max, ImGui::GetColorU32(col));
+            draw_list->AddRectFilled(titlebar_rect.Min, titlebar_rect.Max, ImGui::GetColorU32(tb_col));
+            draw_list->AddText(text_pos, ImGui::GetColorU32(ui::colors::kTextValueData), calc_title_text.c_str());
+
+            /// body
+            col.w = 1.f;
+            ImVec2 body_start = ImVec2(inner_rect.Min.x, titlebar_rect.Max.y + padding.y);
+            ImVec2 body_end = ImVec2(inner_rect.Max.x, inner_rect.Max.y - padding.y);
+            ImVec2 inner_body_start = ImVec2(body_start.x + padding.x, body_start.y + padding.y);
+            ImVec2 inner_body_end = ImVec2(body_end.x - padding.x, body_end.y - padding.y);
+            ImRect body_rect = ImRect(inner_body_start, inner_body_end);
+            draw_list->AddRectFilled(body_rect.Min, body_rect.Max, ImGui::GetColorU32(col));
+
+            ImGui::SetCursorPos(ImVec2{ inner_body_start.x - ImGui::GetWindowPos().x, inner_body_start.y - ImGui::GetWindowPos().y });
+
+            /// value editor
+            bool string = test_value.type() == value_type::STRING;
+            bool opaque = test_value.type() == value_type::OPAQUE_HANDLE;
+            bool user_defined = test_value.type() == value_type::USER_TYPE;
+
+            float halfway_y = (body_rect.Min.y + body_rect.Max.y) / 2.0f;
+            float halfway_x = (body_rect.Min.x + body_rect.Max.x) / 2.0f;
+            /// left half
+            ImRect value_rect = ImRect(
+              ImVec2(body_rect.Min.x + padding.x, body_rect.Min.y + padding.y),
+              ImVec2(halfway_x - padding.x, body_rect.Max.y - padding.y)
+            );
+            /// right half
+            ImRect raw_memory_rect = ImRect(
+              ImVec2(halfway_x + padding.x, body_rect.Min.y + padding.y),
+              ImVec2(body_rect.Max.x - padding.x, body_rect.Max.y - padding.y)
+            );
+
+            /// value half
+            std::string label = "Value Editor";
+            std::string child_label = std::format("##ValueEditorValue:{}", label);
+            if (ImGui::BeginChild(child_label.c_str(), ImVec2(value_rect.GetWidth(), value_rect.GetHeight()))) {
+              ui::edit_value(label.c_str(), test_value);
+            }
+            ImGui::EndChild();
+
+            ImGui::SetNextWindowPos(ImVec2{ raw_memory_rect.Min.x, raw_memory_rect.Min.y }, ImGuiCond_Always);
+
+            child_label = std::format("##ValueEditorRawMemory:{}", label);
+            if (ImGui::BeginChild(child_label.c_str(), ImVec2(raw_memory_rect.GetWidth(), raw_memory_rect.GetHeight()))) {
+              child_label = std::format("Raw Memory##{}", label);
+              ui::draw_value_memory(child_label.c_str(), test_value);
+            }
+            ImGui::EndChild();
+
+            // /// memory half
+            // auto& raw_data = test_value.get_mutable_storage();
+          }
+          ImGui::EndChild();
+        }
+        ImGui::End();
+
+        if (ImGui::Begin("Script Field")) {
+          script_component* suzanne_script = active_scene.get_component<script_component>(suzanne_id);
+          OTHER_ASSERT(suzanne_script != nullptr, "Failed to get script component for suzanne object in renderer_driver");
+
+          auto* script_env = subsystem<scripting_environment>::get();
+          script_object* script_obj = script_env->get_object(suzanne_script->script_object_id);
+          OTHER_ASSERT(script_obj != nullptr, "Failed to get scripting object for suzanne object in renderer_driver");
+
+          dotnet_field::storage& field_storage = script_obj->dotnet_object->get_field_storage("field_value");
+          value v{ field_storage.data, field_storage.size, field_storage.stored_type };
+          if (ui::edit_value("Field Value", v)) {
+            field_storage.load_from_value(v);
+          }
+
+          if (ImGui::Button("Invoke DisplayInfo")) {
+            script_obj->dotnet_object->write_fields();
+            script_obj->dotnet_object->invoke("DisplayInfo");
+          }
+        }
+        ImGui::End();
+
 #endif
         renderer->end_ui_frame();
 
@@ -253,9 +466,9 @@ namespace other {
         break;
 
       case SDL_EVENT_KEY_DOWN:
-        if (SDLK_SPACE == event->key.key) {
-          CORE_LOG_INFO("Camera state : \n{}", type_data_handler<camera>::as_string("cam", *cam));
-        }
+        // if (SDLK_SPACE == event->key.key) {
+        //   CORE_LOG_INFO("Camera state : \n{}", type_data_handler<camera>::as_string("cam", *cam));
+        // }
         if (SDLK_W == event->key.key) {
           flags |= CAMERA_MOVE_FORWARD;
         }
@@ -270,6 +483,17 @@ namespace other {
         }
         break;
 
+      case SDL_EVENT_MOUSE_WHEEL:
+        /// zoom grid in/out
+        if (event->wheel.y > 0) {
+          grid_step += 1.0f;
+          major_grid_step = grid_step * 5.0f;
+        } else {
+          grid_step = glm::max(1.0f, grid_step - 1.0f);
+          major_grid_step = grid_step * 5.0f;
+        }
+        break;
+
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
         if (event->button.button == SDL_BUTTON_MIDDLE) {
           pressing_mouse_wheel = true;
@@ -280,6 +504,7 @@ namespace other {
         if (event->button.button == SDL_BUTTON_MIDDLE) {
           pressing_mouse_wheel = false;
         }
+        break;
 
       default:
         break;

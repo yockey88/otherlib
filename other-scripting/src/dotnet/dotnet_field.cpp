@@ -23,6 +23,11 @@ namespace other {
     std::memcpy(data, new_data, data_size);
   }
 
+  void dotnet_field::storage::load_from_value(const value& val) {
+    load_from_bytes(reinterpret_cast<const uint8_t*>(val.read_storage().data()), val.size());
+    stored_type = val.type();
+  }
+
   void dotnet_field::storage::copy_string_to_storage(const std::string& value) {
     size_t new_size = value.size() + 1;
     if (new_size > size) {

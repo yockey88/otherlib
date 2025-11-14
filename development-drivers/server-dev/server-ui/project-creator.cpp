@@ -9,7 +9,6 @@
 
 #include "core/defines.hpp"
 
-#include "renderer/ui/nodes/hbox_node.hpp"
 #include "renderer/ui/ui_node.hpp"
 
 namespace other {
@@ -20,7 +19,7 @@ namespace other {
           : ui_node(parent, "Create Project"), creator(creator) {}
       virtual ~create_project_node() = default;
 
-      void render_node() override;
+      void on_render_node_body() override;
       void select_path();
 
       opt<std::string> finalize_project();
@@ -33,7 +32,7 @@ namespace other {
           : ui_node(parent, name) {}
       virtual ~rect_node() = default;
 
-      void render_node() override {
+      void on_render_node_body() override {
         ImGui::Text("Rect Node");
       }
     };
@@ -53,7 +52,7 @@ namespace other {
 
   namespace detail {
 
-    void create_project_node::render_node() {
+    void create_project_node::on_render_node_body() {
       if (ImGui::Button("Cancel")) {
         trigger_event("goto-project-page");
         return;

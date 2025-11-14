@@ -1,8 +1,8 @@
 /**
  * \file plugin/library_handle.hpp
  **/
-#ifndef OTHER_PLUGIN_LIBRARY_HANDLE_HPP
-#define OTHER_PLUGIN_LIBRARY_HANDLE_HPP
+#ifndef OTHERLIB_PLUGIN_LIBRARY_HANDLE_HPP
+#define OTHERLIB_PLUGIN_LIBRARY_HANDLE_HPP
 
 #include <expected>
 #include <map>
@@ -45,4 +45,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_PLUGIN_LIBRARY_HANDLE_HPP
+#endif  // OTHERLIB_PLUGIN_LIBRARY_HANDLE_HPP

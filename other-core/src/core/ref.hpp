@@ -5,9 +5,11 @@
 #define OTHER_CORE_REF_HPP
 
 #include <concepts>
+#include <type_traits>
 #include <utility>
 
 #include "arena_allocator.hpp"
+#include "defines.hpp"
 #include "ref_counted.hpp"
 
 namespace other {
@@ -147,6 +149,24 @@ namespace other {
       // throw invalid_ref_cast(typeid(T), typeid(U));
     }
 
+    template <typename U>
+      requires ref_type<U> && std::is_default_constructible_v<U>
+    static ref<std::remove_cvref_t<U>> create() {
+      return ref<std::remove_cvref_t<U>>(allocator.allocate());
+    }
+
+    template <typename U>
+      requires ref_type<U> && std::is_copy_constructible_v<U>
+    static ref<std::remove_cvref_t<U>> create(const U& other) {
+      return ref<std::remove_cvref_t<U>>(allocator.allocate(other));
+    }
+
+    template <typename U>
+      requires ref_type<U> && std::is_move_constructible_v<U>
+    static ref<std::remove_cvref_t<U>> create(U&& other) {
+      return ref<std::remove_cvref_t<U>>(allocator.allocate(std::move(other)));
+    }
+
     template <typename... Args>
       requires std::is_base_of_v<ref_counted, std::remove_cvref_t<T>>
     static ref<std::remove_cvref_t<T>> create(Args&&... args) {
@@ -199,6 +219,24 @@ namespace other {
     requires ref_type<T> && std::constructible_from<T, Args...>
   ref<T> make_ref(Args&&... args) {
     return ref<T>::create(std::forward<Args>(args)...);
+  }
+
+  template <typename T>
+    requires ref_type<T> && std::is_default_constructible_v<T>
+  ref<T> make_ref() {
+    return ref<T>::create();
+  }
+
+  template <typename T>
+    requires ref_type<T> && std::is_copy_constructible_v<T>
+  ref<T> make_ref(const T& other) {
+    return ref<T>::create(other);
+  }
+
+  template <typename T>
+    requires ref_type<T> && std::is_move_constructible_v<T>
+  ref<T> make_ref(T&& other) {
+    return ref<T>::create(std::move(other));
   }
 
 }  // namespace other

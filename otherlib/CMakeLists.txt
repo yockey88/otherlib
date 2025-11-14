@@ -13,7 +13,24 @@ target_sources(otherlib
 
     src/scripting/dotnet_bindings.cpp
 
+    src/scripting/execution_node.cpp
+    src/scripting/execution_graph.cpp
+    src/scripting/execution_nodes/source_sink_nodes.cpp
+    src/scripting/execution_nodes/arithmetic_nodes.cpp
+
+    src/vm/opcode.cpp
+    src/vm/control_table.cpp
+    src/vm/other_device.cpp
+    src/vm/decompiler.cpp
+    src/vm/program.cpp
+    src/vm/vm.cpp
+
     src/tools/build_tool.cpp
+
+    src/ui/ui_widgets.cpp
+    src/ui/value_ui.cpp
+    src/ui/node_editor_canvas_node.cpp
+    src/ui/node_editor.cpp
 
     src/other.cpp
 )

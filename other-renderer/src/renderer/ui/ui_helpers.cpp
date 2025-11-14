@@ -3,6 +3,8 @@
  **/
 #include "renderer/ui/ui_helpers.hpp"
 
+#include <string>
+
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
@@ -57,6 +59,23 @@ namespace other {
 
   scoped_color_stack::~scoped_color_stack() {
     ImGui::PopStyleColor(count);
+  }
+
+  std::string calculate_display_text(const std::string& text, float max_width) {
+    ImVec2 text_size = ImGui::CalcTextSize(text.c_str());
+    std::string display_name = text;
+
+    if (text_size.x > max_width) {
+      size_t char_fit = static_cast<size_t>(max_width / (text_size.x / text.length()));
+
+      if (char_fit > 3 && char_fit < text.length()) {
+        display_name = text.substr(0, char_fit - 3) + "...";
+      } else if (char_fit <= 3) {
+        display_name = "...";
+      }
+    }
+
+    return display_name;
   }
 
   void shift_cursor(float x, float y) {

@@ -6,6 +6,7 @@ rendering-backend = "opengl"
 window-size = { width = 1920, height = 1080 }
 
 [scripting]
+# force-disable-scripting = true
 dotnet-modules = [
   "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"
 ]

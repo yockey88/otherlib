@@ -1,8 +1,8 @@
 /**
  * \file plugin/plugin.hpp
  **/
-#ifndef OTHER_PLUGIN_PLUGIN_HPP
-#define OTHER_PLUGIN_PLUGIN_HPP
+#ifndef OTHERLIB_PLUGIN_PLUGIN_HPP
+#define OTHERLIB_PLUGIN_PLUGIN_HPP
 
 #include <imgui/imgui.h>
 
@@ -67,4 +67,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_PLUGIN_PLUGIN_HPP
+#endif  // OTHERLIB_PLUGIN_PLUGIN_HPP

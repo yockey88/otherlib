@@ -4,6 +4,8 @@
 #ifndef OTHER_CORE_DATA_STRUCTURES_GRAPH_HPP
 #define OTHER_CORE_DATA_STRUCTURES_GRAPH_HPP
 
+#include <ranges>
+
 #include "math/dynamic_matrix.hpp"
 
 #include "data-structures/arena_vector.hpp"
@@ -25,16 +27,16 @@ namespace other {
     }
 
     void remove_node(uint64_t id) {
-      auto itr = nodes.find_if([id](const auto& n) { return n.id == id; });
+      auto itr = std::ranges::find_if(nodes, [id](const auto& n) { return n.id == id; });
       if (itr != nodes.end()) {
         nodes.erase(itr);
       }
     }
 
     T* ptr_to_node_value(uint64_t id) {
-      auto itr = nodes.find_if([id](const auto& n) { return n.id == id; });
+      auto itr = std::ranges::find_if(nodes, [id](const auto& n) { return n.id == id; });
       if (itr != nodes.end()) {
-        return &itr.ptr->value;
+        return &itr->value;
       }
       return nullptr;
     }
@@ -47,20 +49,6 @@ namespace other {
       return ids;
     }
 
-    // std::vector<uint64_t> get_node_neighbors(uint64_t id) const {
-    //   std::vector<uint64_t> neighbors;
-    //   auto itr = nodes.find_if([id](const auto& n) { return n.id == id; });
-    //   if (itr != nodes.end()) {
-    //     natural_t index = itr.ptr - nodes.data;
-    //     for (natural_t j = 0; j < adjacency_matrix.cols; ++j) {
-    //       if (adjacency_matrix(index, j) != 0) {
-    //         neighbors.push_back(nodes[j].id);
-    //       }
-    //     }
-    //   }
-    //   return neighbors;
-    // }
-
    private:
     struct node {
       uint64_t id = 0;
@@ -68,7 +56,8 @@ namespace other {
 
       constexpr auto operator<=>(const node& other) const = default;
     };
-    arena_vector<node> nodes = {};
+    std::vector<node> nodes;
+    std::map<natural_t, std::vector<natural_t>> adjacency_list;
 
     uint64_t id_counter = 0;
     uint64_t get_next_id() {

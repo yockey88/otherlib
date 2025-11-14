@@ -27,8 +27,6 @@ target_sources(other_renderer
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
 
-      src/renderer/ui/nodes/hbox_node.cpp
-
       src/renderer/ui/ui_helpers.cpp
       src/renderer/ui/ui_node.cpp
       src/renderer/ui/ui_window.cpp

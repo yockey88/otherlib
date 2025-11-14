@@ -38,6 +38,33 @@ namespace other {
     }
   }
 
+  void dotnet_object::write_fields() {
+    OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
+
+    const auto& fields = dn_type->get_fields();
+    for (const auto& f : fields) {
+      // skip C# property backing fields
+      if (f.name().ends_with("k__BackingField")) {
+        continue;
+      }
+
+      /// \todo find a way to serialize the user types from storage
+      ///        class SerializedAttribute : Attribute {}
+      ///        [Serialized]
+      if (f.get_type() == value_type::USER_TYPE) {
+        continue;
+      }
+
+      auto itr = std::ranges::find_if(field_storage, [&](const auto& pair) {
+        return pair.first == FNV(f.name());
+      });
+      OTHER_ASSERT(itr != field_storage.end(), "Failed to find field storage for field '{}'", f.name());
+
+      write_storage_to_field(itr, f.name());
+    }
+  }
+
   std::string dotnet_object::get_type_name() const {
     OTHER_ASSERT(dn_type != nullptr, "Type is not initialized for dotnet_object '{}'", object_name);
     return dn_type->full_name();
@@ -147,6 +174,18 @@ namespace other {
     serialization::write_bytes(storage_itr->second.data, storage_itr->second.size, bytes);
 
     return bytes;
+  }
+
+  dotnet_field::storage& dotnet_object::get_field_storage(const std::string_view field_name) {
+    auto itr = field_storage.find(FNV(field_name));
+    OTHER_ASSERT(itr != field_storage.end(), "Field '{}' not found in storage", field_name);
+    return itr->second;
+  }
+
+  const dotnet_field::storage& dotnet_object::get_field_storage(const std::string_view field_name) const {
+    auto itr = field_storage.find(FNV(field_name));
+    OTHER_ASSERT(itr != field_storage.end(), "Field '{}' not found in storage", field_name);
+    return itr->second;
   }
 
   std::map<uint64_t, dotnet_field::storage>::iterator dotnet_object::load_field(const std::string_view field_name, value_type type) {

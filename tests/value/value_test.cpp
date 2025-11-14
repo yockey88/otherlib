@@ -77,6 +77,16 @@ namespace other {
     ASSERT_EQ(str, kTestString);
   }
 
+  TEST_F(value_test, assignment_constructor_from_string) {
+    value string_val = kTestString;
+    ASSERT_FALSE(string_val.is_empty());
+    ASSERT_EQ(string_val.size(), kTestString.size());
+    ASSERT_EQ(string_val.type(), value_type::STRING);
+
+    std::string str = string_val;
+    ASSERT_EQ(str, kTestString);
+  }
+
   TEST_F(value_test, user_data_constructor) {
     struct TestData {
       int a;
@@ -216,6 +226,38 @@ namespace other {
     };
 
     ASSERT_TRUE(tfunc(val2));
+  }
+
+  TEST_F(value_test, opaque_handle_constructor) {
+    int dummy_data = 12345;
+    void* opaque_ptr = static_cast<void*>(&dummy_data);
+
+    value opaque_val = value::create_opaque_handle(opaque_ptr);
+
+    ASSERT_FALSE(opaque_val.is_empty());
+    ASSERT_EQ(opaque_val.size(), sizeof(void*));
+    ASSERT_EQ(opaque_val.type(), value_type::OPAQUE_HANDLE);
+
+    void* retrieved_ptr = opaque_val;
+    ASSERT_EQ(retrieved_ptr, opaque_ptr);
+    ASSERT_EQ(*static_cast<int*>(retrieved_ptr), dummy_data);
+  }
+
+  ::testing::AssertionResult const_ref_foo(const std::string& str) {
+    try {
+      if (str != "hello!") {
+        return ::testing::AssertionFailure() << "Expected 'hello!', got '" << str << "'";
+      }
+      return ::testing::AssertionSuccess();
+    } catch (...) {
+      return ::testing::AssertionFailure() << "Exception thrown when passing string by const reference";
+    }
+  }
+
+  TEST_F(value_test, pass_string_by_const_ref) {
+    using namespace std::string_literals;
+    value test_value = "hello!"s;
+    ASSERT_TRUE(const_ref_foo(test_value));
   }
 
 }  // namespace other

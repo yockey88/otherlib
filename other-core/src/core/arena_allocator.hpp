@@ -56,6 +56,34 @@ namespace other {
       return std::launder(static_cast<T*>(memory));
     }
 
+    T* allocate(const T& other)
+      requires std::is_copy_constructible_v<T>
+    {
+      void* memory = nullptr;
+      if (override_arena != nullptr) {
+        memory = override_arena->allocate(type_size);
+      } else {
+        memory = arena::allocate(type_size);
+      }
+
+      new (memory) T(other);
+      return std::launder(static_cast<T*>(memory));
+    }
+
+    T* allocate(T&& other)
+      requires std::is_move_constructible_v<T>
+    {
+      void* memory = nullptr;
+      if (override_arena != nullptr) {
+        memory = override_arena->allocate(type_size);
+      } else {
+        memory = arena::allocate(type_size);
+      }
+
+      new (memory) T(std::move(other));
+      return std::launder(static_cast<T*>(memory));
+    }
+
     T* allocate_block(size_t size) {
       T* ptr = (T*)arena::allocate(size * sizeof(T));
       for (size_t i = 0; i < size; i++) {
