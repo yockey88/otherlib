@@ -29,6 +29,7 @@ namespace other {
     ~dotnet_object() {}
 
     void load_fields();
+    void write_fields();
 
     std::string get_type_name() const;
 
@@ -57,6 +58,9 @@ namespace other {
         return invoke_ret<R>(method_name, std::forward<Args>(args)...);
       }
     }
+
+    dotnet_field::storage& get_field_storage(const std::string_view field_name);
+    const dotnet_field::storage& get_field_storage(const std::string_view field_name) const;
 
     template <typename FT>
       requires std::is_copy_constructible_v<FT>

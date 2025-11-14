@@ -63,6 +63,8 @@ namespace other {
     virtual void on_render_footer() {}
     virtual void on_render_end() {}
 
+    integer_t script_object_id = 0;
+
     bool is_window_open() const { return state.open; }
     bool was_window_just_closed() const { return state.just_closed; }
     bool was_window_just_opened() const { return state.just_opened; }

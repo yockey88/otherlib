@@ -8,16 +8,16 @@
 
 namespace other {
 
-  struct print_action : public action {
-    print_action(const std::string_view name = "Print", const std::string_view description = "Prints the input value to the console.")
-        : action(name, description) {}
-    virtual ~print_action() = default;
+  // struct print_action : public action {
+  //   print_action(const std::string_view name = "Print", const std::string_view description = "Prints the input value to the console.")
+  //       : action(name, description) {}
+  //   virtual ~print_action() = default;
 
-    value execute(const value& v) override {
-      CORE_LOG_INFO("Print Action Output: {}", v.to_string());
-      return v;
-    }
-  };
+  //   value execute(const value& v) override {
+  //     CORE_LOG_INFO("Print Action Output: {}", v.to_string());
+  //     return v;
+  //   }
+  // };
 
 }  // namespace other
 

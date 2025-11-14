@@ -54,21 +54,19 @@ namespace other {
     bool checkbox(const char* label, bool* value);
     void help_marker(const char* desc);
 
-    bool draw_ivec2_control(const std::string& label, glm::ivec2& value, bool& edited, int32_t reset_val = 0, float col_w = 100.f, vector_axis axes = vector_axis::ZERO, const glm::ivec2& min = glm::zero<glm::ivec2>(), const glm::ivec2& max = glm::zero<glm::ivec2>(), float speed = 1.f);
-    bool edit_ivec2(const std::string& label, ImVec2 size, float reset_val, bool& edited, glm::ivec2& value, vector_axis axes, float speed = 1.f, const glm::ivec2& min = glm::zero<glm::ivec2>(), const glm::ivec2& max = glm::zero<glm::ivec2>(), const char* format = "%.2f", ImGuiSliderFlags flags = 0);
-    bool draw_ivec3_control(const std::string& label, glm::ivec3& value, bool& edited, int32_t reset_val = 0, float col_w = 100.f, vector_axis axes = vector_axis::ZERO, const glm::ivec2& min = glm::zero<glm::ivec2>(), const glm::ivec2& max = glm::zero<glm::ivec2>(), float speed = 1.f);
-    bool edit_ivec3(const std::string& label, ImVec2 size, float reset_val, bool& edited, glm::ivec3& value, vector_axis axes, float speed = 1.f, const glm::ivec2& min = glm::zero<glm::ivec2>(), const glm::ivec2& max = glm::zero<glm::ivec2>(), const char* format = "%.2f", ImGuiSliderFlags flags = 0);
-    bool draw_ivec4_control(const std::string& label, glm::ivec4& value, bool& edited, int32_t reset_val = 0, float col_w = 100.f, vector_axis axes = vector_axis::ZERO, const glm::ivec2& min = glm::zero<glm::ivec2>(), const glm::ivec2& max = glm::zero<glm::ivec2>(), float speed = 1.f);
-    bool edit_ivec4(const std::string& label, ImVec2 size, float reset_val, bool& edited, glm::ivec4& value, vector_axis axes, float speed = 1.f, const glm::ivec2& min = glm::zero<glm::ivec2>(), const glm::ivec2& max = glm::zero<glm::ivec2>(), const char* format = "%.2f", ImGuiSliderFlags flags = 0);
+    bool edit_ivec2(const std::string_view label, glm::ivec2& value, const glm::ivec2& min = glm::zero<glm::ivec2>(), const glm::ivec2& max = glm::zero<glm::ivec2>(), float speed = 1.f, ImGuiSliderFlags flags = ImGuiSliderFlags_None);
+    void draw_ivec2(const glm::ivec2& value);
+    bool edit_ivec3(const std::string_view label, glm::ivec3& value, const glm::ivec3& min = glm::zero<glm::ivec3>(), const glm::ivec3& max = glm::zero<glm::ivec3>(), float speed = 1.f, ImGuiSliderFlags flags = ImGuiSliderFlags_None);
+    void draw_ivec3(const glm::ivec3& value);
+    bool edit_ivec4(const std::string_view label, glm::ivec4& value, const glm::ivec4& min = glm::zero<glm::ivec4>(), const glm::ivec4& max = glm::zero<glm::ivec4>(), float speed = 1.f, ImGuiSliderFlags flags = ImGuiSliderFlags_None);
+    void draw_ivec4(const glm::ivec4& value);
 
-    bool draw_vec2_control(const std::string& label, glm::vec2& value, bool& edited, float reset_val = 0.f, float col_w = 100.f, const glm::vec2& v_min = glm::vec2(-FLT_MAX), const glm::vec2& v_max = glm::vec2(FLT_MAX), float speed = 0.1f);
-    bool edit_vec2(const std::string& label, ImVec2 size, float reset_val, bool& edited, glm::vec2& value, float speed = 0.1f, const glm::vec2& v_min = glm::vec2(-FLT_MAX), const glm::vec2& v_max = glm::vec2(FLT_MAX), const char* format = "%.2f", ImGuiSliderFlags flags = 0);
-    bool draw_vec3_control(const std::string& label, glm::vec3& value, bool& edited, float reset_val = 0.f, float col_w = 100.f, const glm::vec3& v_min = glm::vec3(-FLT_MAX), const glm::vec3& v_max = glm::vec3(FLT_MAX), float speed = 0.1f);
-    bool edit_vec3(const std::string& label, ImVec2 size, float reset_val, bool& edited, glm::vec3& value, float speed = 0.1f, const glm::vec3& v_min = glm::vec3(-FLT_MAX), const glm::vec3& v_max = glm::vec3(FLT_MAX), const char* format = "%.2f", ImGuiSliderFlags flags = 0);
-    bool draw_vec4_control(const std::string& label, glm::vec4& value, bool& edited, float reset_val = 0.f, float col_w = 100.f, const glm::vec4& v_min = glm::vec4(-FLT_MAX), const glm::vec4& v_max = glm::vec4(FLT_MAX), float speed = 0.1f);
-    bool edit_vec4(const std::string& label, ImVec2 size, float reset_val, bool& edited, glm::vec4& value, float speed = 0.1f, const glm::vec4& v_min = glm::vec4(-FLT_MAX), const glm::vec4& v_max = glm::vec4(FLT_MAX), const char* format = "%.2f", ImGuiSliderFlags flags = 0);
-    bool draw_quat_control(const std::string& label, glm::quat& value, bool& edited, float reset_val = 0.f, float col_w = 100.f, const glm::vec4& v_min = glm::vec4(-1.f), const glm::vec4& v_max = glm::vec4(1.f), float speed = 0.1f);
-    bool edit_quat(const char* label, glm::quat& value);
+    bool edit_vec2(const std::string_view label, glm::vec2& value, const glm::vec2& min = glm::zero<glm::vec2>(), const glm::vec2& max = glm::zero<glm::vec2>(), float speed = 1.f, ImGuiSliderFlags flags = ImGuiSliderFlags_None);
+    void draw_vec2(const glm::vec2& value);
+    bool edit_vec3(const std::string_view label, glm::vec3& value, const glm::vec3& min = glm::zero<glm::vec3>(), const glm::vec3& max = glm::zero<glm::vec3>(), float speed = 1.f, ImGuiSliderFlags flags = ImGuiSliderFlags_None);
+    void draw_vec3(const glm::vec3& value);
+    bool edit_vec4(const std::string_view label, glm::vec4& value, const glm::vec4& min = glm::zero<glm::vec4>(), const glm::vec4& max = glm::zero<glm::vec4>(), float speed = 1.f, ImGuiSliderFlags flags = ImGuiSliderFlags_None);
+    void draw_vec4(const glm::vec4& value);
 
   }  // namespace ui
 }  // namespace other

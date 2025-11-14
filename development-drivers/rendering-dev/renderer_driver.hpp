@@ -42,6 +42,11 @@ namespace other {
     bool pressing_mouse_wheel = false;
     mouse_state mouse;
 
+    struct {
+      bool node_editor_window = true;
+      bool value_editor_window = true;
+    } ui_tool_window_states;
+
     value test_value;
 
     execution_graph exec_graph;

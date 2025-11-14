@@ -63,7 +63,7 @@ namespace other {
       }  // namespace ig
 
       namespace editor {
-        static constexpr auto kNodeEditorBackground = ImVec4(0.03f, 0.03f, 0.03f, 0.7f);
+        static constexpr auto kNodeEditorBackground = ImVec4(0.03f, 0.03f, 0.03f, 0.6f);
         static constexpr auto kNodeHeaderColor = ImVec4(44.f / 255.f, 47.f / 255.f, 55.f / 255.f, 1.f);
         static constexpr auto kNodeBodyColor = ImVec4(25.f / 255.f, 26.f / 255.f, 31.f / 255.f, 1.f);
 

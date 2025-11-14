@@ -19,7 +19,9 @@ namespace other {
     struct node_editor_canvas_node : public ui_node {
       constexpr static float kNodeResizeGripPadding = 25.f;
       constexpr static float kNodeResizeGripSize = 10.f;
-      constexpr static float kMinNodeSize = 100.f;
+      constexpr static float kMinNodeWidth = 300.f;
+      constexpr static float kMinNodeHeight = 150.f;
+
       struct node_data {
         enum node_state {
           NORMAL,
@@ -84,6 +86,8 @@ namespace other {
       virtual ~node_editor_canvas_node() = default;
 
       natural_t create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins);
+      void remove_single_node(natural_t node_id);
+
       void connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx);
       void connect_node_pins(natural_t from_node_id, uint8_t from_pin_idx, natural_t to_node_id, uint8_t to_pin_idx);
 
@@ -96,8 +100,10 @@ namespace other {
       glm::vec2 canvas_position{ 0.f, 0.f };
       glm::vec2 canvas_size{ 800.f, 600.f };
       glm::vec2 canvas_base_position{ 0.f, 0.f };
+      glm::vec2 canvas_next_node_position{ 0.f, 0.f };
 
      private:
+      friend struct node_editor;
       node_data nodes;
       pin_data pins;
       link_data links;

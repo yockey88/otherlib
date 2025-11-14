@@ -9,6 +9,7 @@
 #include "renderer/ui/ui_helpers.hpp"
 
 #include "ui/colors.hpp"
+#include "ui/node_editor.hpp"
 #include "ui/node_editor_canvas_node.hpp"
 
 namespace other {
@@ -66,9 +67,9 @@ namespace other {
 
     natural_t node_editor_canvas_node::create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins) {
       glm::vec2 position = glm::vec2(0.f, 0.f);
-      glm::vec2 size = glm::vec2(kMinNodeSize, kMinNodeSize);
+      glm::vec2 size = glm::vec2(kMinNodeWidth, kMinNodeHeight);
 
-      /// calculate a position and size so it isn't overlapping other nodes
+      // calculate a position and size so it isn't overlapping other nodes
       float shift = 0.f;
       for (size_t i = 0; i < nodes.node_positions.size(); ++i) {
         position.y += size.y + 33.f + shift;
@@ -101,6 +102,60 @@ namespace other {
       }
 
       return node_id;
+    }
+
+    void node_editor_canvas_node::remove_single_node(natural_t node_id) {
+      auto node_pins = { nodes.node_input_pin_indices[node_id], nodes.node_output_pin_indices[node_id] };
+      for (const auto& in_pin : node_pins | std::views::join) {
+        // Remove pin data
+        pins.pin_node_indices.erase(pins.pin_node_indices.begin() + in_pin);
+        pins.pin_indices_within_node.erase(pins.pin_indices_within_node.begin() + in_pin);
+        pins.pin_positions.erase(pins.pin_positions.begin() + in_pin);
+        pins.pin_radii.erase(pins.pin_radii.begin() + in_pin);
+        pins.pin_node_relative_positions.erase(pins.pin_node_relative_positions.begin() + in_pin);
+        pins.pin_colors.erase(pins.pin_colors.begin() + in_pin);
+        pins.interactables.erase(pins.interactables.begin() + in_pin);
+        pins.pin_states.erase(pins.pin_states.begin() + in_pin);
+        pins.pin_types.erase(pins.pin_types.begin() + in_pin);
+
+        /// all links into this pin
+        for (natural_t link_idx = 0; link_idx < links.link_start_pin_indices.size(); ++link_idx) {
+          natural_t start_pin = links.link_start_pin_indices[link_idx];
+          natural_t end_pin = links.link_end_pin_indices[link_idx];
+
+          if (start_pin == in_pin || end_pin == in_pin) {
+            links.link_start_pin_indices.erase(links.link_start_pin_indices.begin() + link_idx);
+            links.link_end_pin_indices.erase(links.link_end_pin_indices.begin() + link_idx);
+
+            // Adjust all subsequent link indices
+            for (natural_t i = 0; i < links.link_start_pin_indices.size(); ++i) {
+              if (links.link_start_pin_indices[i] > start_pin) {
+                --links.link_start_pin_indices[i];
+              }
+              if (links.link_end_pin_indices[i] > end_pin) {
+                --links.link_end_pin_indices[i];
+              }
+            }
+
+            --link_idx;
+          }
+        }
+      }
+
+      nodes.node_names.erase(nodes.node_names.begin() + node_id);
+      nodes.node_positions.erase(nodes.node_positions.begin() + node_id);
+      nodes.node_sizes.erase(nodes.node_sizes.begin() + node_id);
+      nodes.node_header_colors.erase(nodes.node_header_colors.begin() + node_id);
+      nodes.node_body_colors.erase(nodes.node_body_colors.begin() + node_id);
+      nodes.node_input_pin_indices.erase(nodes.node_input_pin_indices.begin() + node_id);
+      nodes.node_output_pin_indices.erase(nodes.node_output_pin_indices.begin() + node_id);
+      nodes.interactables.erase(nodes.interactables.begin() + node_id);
+      nodes.node_states.erase(nodes.node_states.begin() + node_id);
+
+      nodes.global_node_positions.erase(nodes.global_node_positions.begin() + node_id);
+      nodes.full_node_maxs.erase(nodes.full_node_maxs.begin() + node_id);
+      nodes.node_header_ends.erase(nodes.node_header_ends.begin() + node_id);
+      nodes.node_body_begins.erase(nodes.node_body_begins.begin() + node_id);
     }
 
     void node_editor_canvas_node::connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx) {
@@ -368,18 +423,43 @@ namespace other {
 
       /// title bar
       std::string display_name = calculate_display_text(node_name, (titlebar_rect.Max.x - titlebar_rect.Min.x) - 16.f);
+      std::string node_id_str = std::format("[{}]", node_id);
 
-      ImVec2 text_pos = ImVec2{ nodes.global_node_positions[node_id].x + 8.0f, nodes.global_node_positions[node_id].y + 4.0f };
+      /// text and other data goes in right and left corner of title bar
+      ImVec2 text_pos = ImVec2{ nodes.global_node_positions[node_id].x + 8.0f, nodes.global_node_positions[node_id].y + 2.f };
+      ImVec2 opp_text_pos = ImVec2{ titlebar_rect.Max.x - 24.f, text_pos.y };
+
       draw_list->AddRectFilled(titlebar_rect.Min, titlebar_rect.Max, colors::ai::kNodeHeaderColor, 4.0f);
       draw_list->AddText(text_pos, colors::ai::kNodeTitleTextColor, display_name.c_str());
+      draw_list->AddText(opp_text_pos, colors::ai::kNodeTitleTextColor, node_id_str.c_str());
 
       /// body
       draw_list->AddRectFilled(body_rect.Min, body_rect.Max, colors::ai::kNodeBodyColor, 4.0f);
 
-      auto pins = { nodes.node_input_pin_indices[node_id], nodes.node_output_pin_indices[node_id] };
+      const auto& input_pins = nodes.node_input_pin_indices[node_id];
+      const auto& output_pins = nodes.node_output_pin_indices[node_id];
+      auto pins = { input_pins, output_pins };
       for (const auto& p : pins | std::views::join) {
         render_pin(p);
       }
+
+      /// value display
+      size_t num_input_pins = input_pins.size();
+      size_t num_output_pins = output_pins.size();
+
+      float inner_body_in_pin_width_adj = 4.f;
+      float inner_body_out_pin_width_adj = 4.f;
+
+      inner_body_in_pin_width_adj += num_input_pins > 0 ? 16.f : 0.f;
+      inner_body_out_pin_width_adj += num_output_pins > 0 ? 16.f : 0.f;
+
+      ImRect body_without_pins_rect = {
+        { body_rect.Min.x + inner_body_in_pin_width_adj, body_rect.Min.y + 8.f },
+        { body_rect.Max.x - inner_body_out_pin_width_adj, body_rect.Max.y - 8.f }
+      };
+
+      ImGui::SetCursorPos(ImVec2{ body_without_pins_rect.Min.x - ImGui::GetWindowPos().x, body_without_pins_rect.Min.y - ImGui::GetWindowPos().y });
+      editor->render_node_body(node_id, body_without_pins_rect);
 
       /// frame
       draw_list->AddRect(rect.Min, rect.Max, colors::ai::kNodeOutlineColor, 4.0f, ImDrawFlags_None, 2.0f);
@@ -522,11 +602,11 @@ namespace other {
         nodes.node_sizes[node_id].x += ImGui::GetIO().MouseDelta.x;
         nodes.node_sizes[node_id].y += ImGui::GetIO().MouseDelta.y;
 
-        if (nodes.node_sizes[node_id].x < kMinNodeSize) {
-          nodes.node_sizes[node_id].x = kMinNodeSize;
+        if (nodes.node_sizes[node_id].x < kMinNodeWidth) {
+          nodes.node_sizes[node_id].x = kMinNodeWidth;
         }
-        if (nodes.node_sizes[node_id].y < kMinNodeSize) {
-          nodes.node_sizes[node_id].y = kMinNodeSize;
+        if (nodes.node_sizes[node_id].y < kMinNodeHeight) {
+          nodes.node_sizes[node_id].y = kMinNodeHeight;
         }
       }
 

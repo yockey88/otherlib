@@ -3,7 +3,7 @@
  **/
 #include "ui/value_ui.hpp"
 
-#include <winnt.h>
+#include <imgui/imgui_memory_editor.h>
 
 #include "renderer/ui/ui_helpers.hpp"
 
@@ -48,97 +48,212 @@ namespace other {
       shift_cursor_y(18.0f);
     }
 
-    void value_editor(const char* label, value& val) {
-      std::string type_name = get_value_type_string_from_type(val.type());
-      {
-        scoped_color text_color(ImGuiCol_Text, colors::kTextValueData);
-        std::string fmt_str = std::format("{} [{} : {} bytes]", label, type_name, val.size());
-        std::string display_text = calculate_display_text(fmt_str, ImGui::GetContentRegionAvail().x - 15.f);
-        ImGui::Text("%s", display_text.c_str());
+    std::string edit_string(const char* label, const std::string& val) {
+      std::string edited_value = val;
+
+      char buffer[1024];
+      std::strncpy(buffer, val.c_str(), val.size() + 1);
+      buffer[val.size()] = '\0';
+      if (ImGui::InputText(label, buffer, 1024)) {
+        // edited_value = std::string(buffer);
       }
 
-      bool string = val.type() == value_type::STRING;
-      bool opaque = val.type() == value_type::OPAQUE_HANDLE;
-      bool user_defined = val.type() == value_type::USER_TYPE;
+      return edited_value;
+    }
 
-      bool scalar = false;
-      bool lin_alg_type = (val.type() >= value_type::VEC2 && val.type() <= value_type::MAT4);
-      ImGuiDataType type_enum = ImGuiDataType_COUNT;
-      {
-        scoped_color text_color(ImGuiCol_Text, colors::kText);
-        if (string) {
+    bool edit_value(const char* label, value& val) {
+      bool changed = false;
+
+      switch (val.type()) {
+        case value_type::STRING: {
           std::string str_val = val;
 
           char buffer[1024];
-          std::ranges::fill(buffer, 0);
-          std::strncpy(buffer, str_val.c_str(), sizeof(buffer));
-          if (ImGui::InputText("##value", buffer, sizeof(buffer))) {
+          std::strncpy(buffer, str_val.c_str(), val.size() + 1);
+          buffer[val.size()] = '\0';
+
+          shift_cursor_y(7.0f);
+
+          std::string txt_label = std::format("{}##string-editor", label);
+          if (ImGui::InputText(txt_label.c_str(), buffer, 1024)) {
             val = std::string(buffer);
           }
-        } else if (opaque) {
-          ImGui::Text("<opaque-handle> @ {:p}", val.get_mutable_storage().data());
-        } else if (user_defined) {
-          ImGui::Text("<user-defined-type> @ {:p}", val.get_mutable_storage().data());
-        } else {
-          switch (val.type()) {
-            case value_type::OEBOOL: type_enum = ImGuiDataType_S8; break;
-            case value_type::INT8: type_enum = ImGuiDataType_S8; break;
-            case value_type::INT16: type_enum = ImGuiDataType_S16; break;
-            case value_type::INT32: type_enum = ImGuiDataType_S32; break;
-            case value_type::INT64: type_enum = ImGuiDataType_S64; break;
-            case value_type::UINT8: type_enum = ImGuiDataType_U8; break;
-            case value_type::UINT16: type_enum = ImGuiDataType_U16; break;
-            case value_type::UINT32: type_enum = ImGuiDataType_U32; break;
-            case value_type::UINT64: type_enum = ImGuiDataType_U64; break;
-            case value_type::FLOAT: type_enum = ImGuiDataType_Float; break;
-            case value_type::DOUBLE: type_enum = ImGuiDataType_Double; break;
-            default: break;
-          }
+        } break;
 
-          scalar = type_enum != ImGuiDataType_COUNT;
-          lin_alg_type = (val.type() >= value_type::VEC2 && val.type() <= value_type::MAT4);
-        }
+        case value_type::OPAQUE_HANDLE: {
+          void* handle = val;
+          std::string handle_str = std::format("<opaque-handle {:p}>", handle);
+          ImGui::Text("%s", handle_str.c_str());
+        } break;
+        case value_type::USER_TYPE: {
+          void* data = val.get_mutable_storage().data();
+          std::string data_str = std::format("<user-type @ {:p}, size={}>", data, val.size());
+          ImGui::Text("%s", data_str.c_str());
+        } break;
+        default: {
+          value_type val_type = val.type();
+          switch (val_type) {
+            case value_type::OEBOOL:
+            case value_type::INT8:
+            case value_type::INT16:
+            case value_type::INT32:
+            case value_type::INT64:
+            case value_type::UINT8:
+            case value_type::UINT16:
+            case value_type::UINT32:
+            case value_type::UINT64:
+            case value_type::FLOAT:
+            case value_type::DOUBLE: {
+              ImGuiDataType type_enum = ImGuiDataType_COUNT;
+              switch (val.type()) {
+                case value_type::OEBOOL: type_enum = ImGuiDataType_S8; break;
+                case value_type::INT8: type_enum = ImGuiDataType_S8; break;
+                case value_type::INT16: type_enum = ImGuiDataType_S16; break;
+                case value_type::INT32: type_enum = ImGuiDataType_S32; break;
+                case value_type::INT64: type_enum = ImGuiDataType_S64; break;
+                case value_type::UINT8: type_enum = ImGuiDataType_U8; break;
+                case value_type::UINT16: type_enum = ImGuiDataType_U16; break;
+                case value_type::UINT32: type_enum = ImGuiDataType_U32; break;
+                case value_type::UINT64: type_enum = ImGuiDataType_U64; break;
+                case value_type::FLOAT: type_enum = ImGuiDataType_Float; break;
+                case value_type::DOUBLE: type_enum = ImGuiDataType_Double; break;
+                default: break;
+              }
 
-        if (!scalar && !lin_alg_type) {
-          return;
-        }
+              OTHER_ASSERT(type_enum != ImGuiDataType_COUNT, "Invalid ImGui data type enum for scalar value editor");
 
-        if (scalar) {
-          auto drag_scalar = [&]<typename T>() {
-            T temp = val;
-            if (ImGui::DragScalar("##value", type_enum, &temp, 0.1f, nullptr, nullptr, nullptr, 0)) {
-              val = temp;
-            }
-          };
+              /// \todo get mins, maxes for appropriate types?
+              auto drag_scalar = [&]<typename T>() -> bool {
+                T temp = val;
+                std::string drag_label = std::format("{}##scalar-editor-{}", label, typeid(T).name());
+                if (ImGui::DragScalar(drag_label.c_str(), type_enum, &temp, 0.1f, nullptr, nullptr, nullptr, 0)) {
+                  val = temp;
+                  return true;
+                }
+                return false;
+              };
 
-          switch (type_enum) {
-            case ImGuiDataType_S8: drag_scalar.template operator()<int8_t>(); break;
-            case ImGuiDataType_S16: drag_scalar.template operator()<int16_t>(); break;
-            case ImGuiDataType_S32: drag_scalar.template operator()<int32_t>(); break;
-            case ImGuiDataType_S64: drag_scalar.template operator()<int64_t>(); break;
-            case ImGuiDataType_U8: drag_scalar.template operator()<uint8_t>(); break;
-            case ImGuiDataType_U16: drag_scalar.template operator()<uint16_t>(); break;
-            case ImGuiDataType_U32: drag_scalar.template operator()<uint32_t>(); break;
-            case ImGuiDataType_U64: drag_scalar.template operator()<uint64_t>(); break;
-            case ImGuiDataType_Float: drag_scalar.template operator()<float>(); break;
-            case ImGuiDataType_Double: drag_scalar.template operator()<double>(); break;
-            default: break;
-          }
-        } else if (lin_alg_type) {
-          switch (val.type()) {
-            case value_type::IVEC2: break;
-            case value_type::IVEC3: break;
-            case value_type::IVEC4: break;
-
-            case value_type::VEC2: break;
-            case value_type::VEC3: break;
-            case value_type::VEC4: break;
-            default: {
-              scoped_color error_color(ImGuiCol_Text, colors::kTextError);
-              ImGui::Text("Unsupported linear algebra type for value editor");
+              switch (type_enum) {
+                case ImGuiDataType_S8: drag_scalar.template operator()<int8_t>(); break;
+                case ImGuiDataType_S16: drag_scalar.template operator()<int16_t>(); break;
+                case ImGuiDataType_S32: drag_scalar.template operator()<int32_t>(); break;
+                case ImGuiDataType_S64: drag_scalar.template operator()<int64_t>(); break;
+                case ImGuiDataType_U8: drag_scalar.template operator()<uint8_t>(); break;
+                case ImGuiDataType_U16: drag_scalar.template operator()<uint16_t>(); break;
+                case ImGuiDataType_U32: drag_scalar.template operator()<uint32_t>(); break;
+                case ImGuiDataType_U64: drag_scalar.template operator()<uint64_t>(); break;
+                case ImGuiDataType_Float: drag_scalar.template operator()<float>(); break;
+                case ImGuiDataType_Double: drag_scalar.template operator()<double>(); break;
+                default: break;
+              }
             } break;
-          }
-        }
 
-      }  // namespace ui
-    }  // namespace other
+            case value_type::IVEC2: ui::edit_ivec2(label, val); break;
+            case value_type::IVEC3: ui::edit_ivec3(label, val); break;
+            case value_type::IVEC4: ui::edit_ivec4(label, val); break;
+            case value_type::VEC2: ui::edit_vec2(label, val); break;
+            case value_type::VEC3: ui::edit_vec3(label, val); break;
+            case value_type::VEC4: ui::edit_vec4(label, val); break;
+
+            default:
+              break;
+          }
+        } break;
+      }
+
+      return changed;
+    }
+
+    void draw_value_memory(const char* label, value& val, bool with_options, bool show_ascii, uint32_t columns) {
+      auto& raw_data = val.get_mutable_storage();
+
+      static MemoryEditor mem_edit;
+      mem_edit.OptShowOptions = with_options;
+      mem_edit.OptShowHexII = true;
+      mem_edit.OptShowAscii = show_ascii;
+      mem_edit.Cols = columns;
+
+      mem_edit.DrawContents(raw_data.data(), raw_data.size());
+    }
+
+    void value_editor::on_render_node_body() {
+      ImVec2 base_position = ImGui::GetCursorScreenPos();
+      ImVec2 window_max = {
+        base_position.x + ImGui::GetContentRegionAvail().x,
+        base_position.y + ImGui::GetContentRegionAvail().y
+      };
+      ImVec2 padding = ImVec2(1.5f, 1.5f);
+
+      ImRect window_bg_rect = ImRect(base_position, window_max);
+      ImRect inner_rect = ImRect(
+        ImVec2(window_bg_rect.Min.x + padding.x, window_bg_rect.Min.y + padding.y),
+        ImVec2(window_bg_rect.Max.x - padding.x, window_bg_rect.Max.y - padding.y)
+      );
+
+      ImRect titlebar_rect = ImRect(
+        ImVec2(window_bg_rect.Min.x, window_bg_rect.Min.y),
+        ImVec2(window_bg_rect.Max.x, window_bg_rect.Min.y + ImGui::GetFrameHeight())
+      );
+
+      std::string type_name = get_value_type_string_from_type(stored_value.type());
+      std::string fmt_str = std::format("[{} : {} bytes]", type_name, stored_value.size());
+      std::string calc_title_text = calculate_display_text(fmt_str, ImGui::GetContentRegionAvail().x - 15.f);
+      float text_width = ImGui::CalcTextSize(calc_title_text.c_str()).x;
+
+      auto* draw_list = ImGui::GetWindowDrawList();
+
+      /// header
+      ImVec4 col = { ui::colors::editor::kNodeEditorBackground.x, ui::colors::editor::kNodeEditorBackground.y, ui::colors::editor::kNodeEditorBackground.z, 0.1f };
+      ImVec4 tb_col = { ui::colors::editor::kNodeHeaderColor.x, ui::colors::editor::kNodeHeaderColor.y, ui::colors::editor::kNodeHeaderColor.z, 1.0f };
+      ImVec2 text_pos = ImVec2{ titlebar_rect.Min.x + (titlebar_rect.GetWidth() - text_width) / 2, titlebar_rect.Min.y + 2.0f };
+      draw_list->AddRectFilled(window_bg_rect.Min, window_bg_rect.Max, ImGui::GetColorU32(col));
+      draw_list->AddRectFilled(titlebar_rect.Min, titlebar_rect.Max, ImGui::GetColorU32(tb_col));
+      draw_list->AddText(text_pos, ImGui::GetColorU32(ui::colors::kTextValueData), calc_title_text.c_str());
+
+      /// body
+      col.w = 1.f;
+      ImVec2 body_start = ImVec2(inner_rect.Min.x, titlebar_rect.Max.y + padding.y);
+      ImVec2 body_end = ImVec2(inner_rect.Max.x, inner_rect.Max.y - padding.y);
+      ImVec2 inner_body_start = ImVec2(body_start.x + padding.x, body_start.y + padding.y);
+      ImVec2 inner_body_end = ImVec2(body_end.x - padding.x, body_end.y - padding.y);
+      ImRect body_rect = ImRect(inner_body_start, inner_body_end);
+      draw_list->AddRectFilled(body_rect.Min, body_rect.Max, ImGui::GetColorU32(col));
+
+      ImGui::SetCursorPos(ImVec2{ inner_body_start.x - ImGui::GetWindowPos().x, inner_body_start.y - ImGui::GetWindowPos().y });
+
+      /// value editor
+      float halfway_x = (body_rect.Min.x + body_rect.Max.x) / 2.0f;
+
+      /// left half
+      ImRect value_rect = ImRect(
+        ImVec2(body_rect.Min.x + padding.x, body_rect.Min.y + padding.y),
+        ImVec2(halfway_x - padding.x, body_rect.Max.y - padding.y)
+      );
+      /// right half
+      ImRect raw_memory_rect = ImRect(
+        ImVec2(halfway_x + padding.x, body_rect.Min.y + padding.y),
+        ImVec2(body_rect.Max.x - padding.x, body_rect.Max.y - padding.y)
+      );
+
+      std::string child_label = std::format("##ValueEditorValue:{}", node_title);
+      if (ImGui::BeginChild(child_label.c_str(), ImVec2(value_rect.GetWidth(), value_rect.GetHeight()))) {
+        std::string label = std::format("Value Editor##{}", node_title);
+        ui::edit_value(label.c_str(), stored_value);
+      }
+      ImGui::EndChild();
+
+      ImGui::SetNextWindowPos(ImVec2{ raw_memory_rect.Min.x, raw_memory_rect.Min.y }, ImGuiCond_Always);
+
+      child_label = std::format("##ValueEditorRawMemory:{}", node_title);
+      if (ImGui::BeginChild(child_label.c_str(), ImVec2(raw_memory_rect.GetWidth(), raw_memory_rect.GetHeight()))) {
+        child_label = std::format("Raw Memory##{}", node_title);
+        ui::draw_value_memory(child_label.c_str(), stored_value);
+      }
+      ImGui::EndChild();
+
+      // /// memory half
+      // auto& raw_data = test_value.get_mutable_storage();
+    }
+
+  }  // namespace ui
+}  // namespace other
