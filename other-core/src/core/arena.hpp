@@ -10,6 +10,7 @@
 #endif
 #include <mutex>
 
+#include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 
 namespace other {
@@ -49,7 +50,7 @@ namespace other {
     arena() = default;
     ~arena();
 
-    static void* allocate(size_t size);
+    static void* allocate(size_t size, size_t alignment = arena_storage::kAlignment);
     static void free(void* ptr, size_t size);
 
     void* request_region(size_t size, size_t alignment = arena_storage::kAlignment);
@@ -58,7 +59,7 @@ namespace other {
     page* get_current_page();
 
    private:
-    std::mutex arena_mutex;
+    PROFILE_MUTEX_TYPE(std::mutex, arena_mutex);
     page* current_page = nullptr;
 
    private:

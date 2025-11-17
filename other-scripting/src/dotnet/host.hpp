@@ -65,6 +65,10 @@ namespace other {
       register_internal_call register_internal_call = nullptr;
       validate_binding_points validate_binding_points = nullptr;
 
+      /// NativeObjectManager
+      attach_native_object attach_native_object = nullptr;
+      detach_native_object detach_native_object = nullptr;
+
       /// TypeInterface
       get_type_information get_assembly_types = nullptr;
       get_net_core_types get_net_core_types = nullptr;
@@ -205,6 +209,7 @@ namespace other {
     /// \todo fix hardcoded path and replace with install location
     template <typename Fn>
     Fn load_managed_function(const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type = OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION) const {
+      PROFILE_SECTION("dotnet_host::load-managed-function--by-type-and-method");
       const char_t* dotnetlib_path = dotnet_binding_assembly.data();
       return (Fn)(load_managed_function(dotnetlib_path, type_name, method_name, delegate_type));
     }

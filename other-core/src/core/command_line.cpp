@@ -9,12 +9,13 @@
 #include <args.hxx>
 
 #include "core/defines.hpp"
-#include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
   namespace {
 
     opt<command_line> parse_raw_args(int* argc, char* argv[]) {
+      PROFILE_SECTION("command_line::parse_raw_args");
       args::ArgumentParser parser("Other-Environment Options", "");
       args::Positional<std::string> config_file(parser, "config-file", "Configuration file");
 

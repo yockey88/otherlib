@@ -25,6 +25,7 @@ namespace other {
     OTHER_ASSERT(host != nullptr, "DotNet host is not initialized.");
     OTHER_ASSERT(!path.empty(), "Assembly path cannot be empty.");
 
+    PROFILE_SECTION("assembly_context::load-assembly");
     if (std::filesystem::exists(path) && !std::filesystem::is_regular_file(path)) {
       CORE_LOG_ERROR("Provided path '{}' is not a regular file.", path);
       return nullptr;

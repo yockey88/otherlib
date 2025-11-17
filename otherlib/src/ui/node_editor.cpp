@@ -15,7 +15,7 @@
 
 #include "ui/colors.hpp"
 #include "ui/node_editor_canvas_node.hpp"
-#include "ui/value_ui.hpp"
+#include "ui/type-bindings/value_ui.hpp"
 
 #include "colors.hpp"
 

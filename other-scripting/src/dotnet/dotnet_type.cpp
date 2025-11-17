@@ -18,7 +18,6 @@ namespace other {
       return;
     }
 
-    CORE_LOG_DEBUG("Initializing dotnet_type[{}] interface", full_name());
     dotnet_methods.clear();
     dotnet_fields.clear();
     dotnet_attributes.clear();
@@ -30,7 +29,6 @@ namespace other {
       for (int32_t attribute_id : dotnet_attribute_ids) {
         int32_t attribute_type_id = -1;
         host->interop().get_attribute_type(attribute_id, &attribute_type_id);
-        CORE_LOG_DEBUG("Found attribute with ID {} and type ID {}", attribute_id, attribute_type_id);
         dotnet_attributes.emplace_back(attribute_data{ attribute_type_id, { host, attribute_type_id, attribute_id } });
       }
     }

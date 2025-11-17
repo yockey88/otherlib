@@ -21,11 +21,15 @@ namespace other {
 
   class scene {
    private:
-    void do_scene_initialization();
+    void scene_first_construction_initialization();
+    void do_final_scene_destruction_cleanup();
+
+    void do_scene_binding();
+    void do_scene_unbinding();
 
    public:
     scene();
-    scene(const std::string& name);
+    scene(const std::string_view name);
 
     scene(scene&& other);
     scene& operator=(scene&& other);

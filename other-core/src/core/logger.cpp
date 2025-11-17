@@ -5,11 +5,12 @@
 
 #include "core/config_table.hpp"
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
   void logger::create_logger(const std::string& name, spdlog::level::level_enum level) {
-    // PROFILE_SECTION("Logger--CreateLogger");
+    PROFILE_SECTION("logger::create-logger");
     std::unique_ptr<spdlog::logger> logger = std::make_unique<spdlog::logger>(name);
     logger->set_level(level);
     logger->flush_on(level);
@@ -23,7 +24,7 @@ namespace other {
   }
 
   void logger::register_sink(const std::span<const std::string> logs, const log_sink& sink) {
-    // PROFILE_SECTION("Logger--RegisterSink");
+    PROFILE_SECTION("logger::register-sink");
 
     if (sink.sink_factory == nullptr) {
       log_failure_error(std::format("Sink factory for {} is null.", sink.sink_name));

@@ -1,11 +1,12 @@
 /**
- * \file ui/value_ui.hpp
+ * \file ui/type-bindings/value_ui.hpp
  **/
-#ifndef OTHERLIB_UI_VALUE_UI_HPP
-#define OTHERLIB_UI_VALUE_UI_HPP
+#ifndef OTHERLIB_UI_TYPE_BINDINGS_VALUE_UI_HPP
+#define OTHERLIB_UI_TYPE_BINDINGS_VALUE_UI_HPP
 
 #include <cstdint>
 
+#include <imgui/ImReflect.hpp>
 #include <imgui/imgui.h>
 
 #include "core/value.hpp"
@@ -39,4 +40,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_VALUE_UI_HPP
+#endif  // OTHERLIB_UI_TYPE_BINDINGS_VALUE_UI_HPP

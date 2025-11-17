@@ -100,7 +100,7 @@ namespace other {
 
     render_pipeline* pipeline = itr->second;
     pipeline->shutdown_pipeline();
-    delete pipeline;
+    arena_allocator<render_pipeline>{}.free(pipeline);
     pipelines.erase(itr);
   }
 

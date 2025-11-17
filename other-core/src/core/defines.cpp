@@ -136,10 +136,14 @@ namespace other {
 
     /// build config values
     if (inner_tag == "build-config") {
-#if defined(OTHER_DEBUG_BUILD) || defined(OTHER_PROFILED_BUILD)
+#if defined(OTHER_DEBUG_BUILD)
       return "Debug";
-#elif defined(OTHER_RELEASE_BUILD) || defined(OTHER_PROFILE_BUILD)
+#elif defined(OTHER_RELEASE_BUILD)
       return "Release";
+#elif defined(OTHER_PROFILE_BUILD)
+      return "Profile";
+#elif defined(OTHER_PROFILED_BUILD)
+      return "ProfileD";
 #endif
     }
 

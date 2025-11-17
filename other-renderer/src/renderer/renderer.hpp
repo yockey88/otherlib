@@ -81,7 +81,7 @@ namespace other {
         CORE_LOG_ERROR("Pipeline with name [{}] already exists.", name);
         return;
       }
-      auto* pipeline = new T();
+      auto* pipeline = arena_allocator<T>{}.allocate();
       pipeline->initialize_pipeline(this);
       pipelines.insert({ hash, pipeline });
     }

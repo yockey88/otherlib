@@ -5,10 +5,17 @@
 
 #include "core/logger.hpp"
 
+#include "driver/driver.hpp"
 #include "vm/decompiler.hpp"
 #include "vm/program.hpp"
 
 namespace other {
+
+  // void other_command_device::execute_instruction(const instruction& instr) {
+  //   OTHER_ASSERT(control_table != nullptr, "Control table is not initialized in device.");
+  //   uint8_t category_nib = instr.category_nibble();
+  //   control_table[category_nib](this);
+  // }
 
   uint8_t other_command_device::get_random_byte() {
     return static_cast<uint8_t>(rng.next());

@@ -17,8 +17,6 @@
 namespace other {
 
   class camera {
-    OTHER_REFLECTABLE(camera);
-
    public:
     struct clip_planes {
       real_t near_plane = 0.01f;

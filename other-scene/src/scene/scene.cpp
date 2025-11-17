@@ -18,6 +18,7 @@
 #include "object/animation_controller.hpp"
 #include "object/object_serialization_data.hpp"
 #include "object/render_component.hpp"
+#include "object/scene_object.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
 
@@ -26,29 +27,43 @@
 
 namespace other {
 
-  void scene::do_scene_initialization() {
+  void scene::scene_first_construction_initialization() {
     storage = make_scene_storage(this);
-    OTHER_ASSERT(storage != nullptr, "Failed to allocate scene storage->");
 
     // Create the root object
     scene_object& root = storage->tree.root_object();
     register_object(&root, "Root", glm::vec3(0.0f));
     root.visible = true;
+  }
 
+  void scene::do_final_scene_destruction_cleanup() {
+    storage->tree.destroy_all_objects();
+    storage = nullptr;
+  }
+
+  void scene::do_scene_binding() {
     storage->registry.on_construct<script_component>().connect<&scene::on_create_script_component>(this);
     // storage->registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
     storage->registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
   }
 
-  scene::scene() {
-    PROFILE_SECTION("scene::scene");
-    do_scene_initialization();
+  void scene::do_scene_unbinding() {
+    OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
+    storage->registry.on_construct<script_component>().disconnect<&scene::on_create_script_component>(this);
+    // storage->registry.on_update<script_component>().disconnect<&scene::on_update_script_component>(this);
+    storage->registry.on_destroy<script_component>().disconnect<&scene::on_destroy_script_component>(this);
   }
 
-  scene::scene(const std::string& name)
-      : scene() {
+  scene::scene() {
+    scene_first_construction_initialization();
+    do_scene_binding();
+  }
+
+  scene::scene(const std::string_view name) {
     this->name = name;
     this->id = FNV(name);
+    scene_first_construction_initialization();
+    do_scene_binding();
   }
 
   scene::scene(scene&& other) {
@@ -56,26 +71,31 @@ namespace other {
   }
 
   scene& scene::operator=(scene&& other) {
+    if (this == &other) {
+      return *this;
+    }
+
     this->name = std::move(other.name);
     this->id = other.id;
     other.id = 0;
     other.name = "Untitled Scene";
 
+    /// unbind them from the other scene first
+    other.do_scene_unbinding();
     this->storage = std::move(other.storage);
     other.storage = nullptr;
+    /// then bind to this scene
+    do_scene_binding();
 
+    /// transfer tree pointer (this probably needs to be done better)
     this->storage->tree.scene_ptr = this;
-
     return *this;
   }
 
   scene::~scene() {
     if (storage != nullptr) {
-      storage->tree.destroy_all_objects();
-      storage->registry.on_construct<script_component>().disconnect<&scene::on_create_script_component>(this);
-      // storage->registry.on_update<script_component>().disconnect<&scene::on_update_script_component>(this);
-      storage->registry.on_destroy<script_component>().disconnect<&scene::on_destroy_script_component>(this);
-      storage = nullptr;
+      do_scene_unbinding();
+      do_final_scene_destruction_cleanup();
     }
   }
 
@@ -138,6 +158,7 @@ namespace other {
   }
 
   scene_object& scene::create_object(const std::string& name, scene_object* parent_object) {
+    PROFILE_SECTION("scene::create_object_with_name");
     return create_object(name, glm::vec3(0.f), parent_object);
   }
 
@@ -523,9 +544,13 @@ namespace other {
     auto* script_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
-    script_component& script = storage->registry.get<script_component>(entity);
-    std::string script_name = script.object->name;
-    script.script_object_id = script_env->create_object(script_name);
+    script_component* script = storage->registry.try_get<script_component>(entity);
+    OTHER_ASSERT(script != nullptr, "Script component is null for entity {}", (natural_t)entity);
+
+    std::string script_name = script->object->name;
+    script->script_object_id = script_env->create_object(script_name);
+
+    // script_env->attach_dotnet_object(script.script_object_id, "Other.SceneObject");
   }
 
   // void scene::on_update_script_component(const entt::registry&, const entt::entity entity) {

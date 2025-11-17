@@ -9,6 +9,7 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
@@ -42,6 +43,7 @@ namespace other {
   }
 
   opt<config_table> parse_raw_config(const std::string_view filename) {
+    PROFILE_SECTION("config_table::parse_raw_config");
     if (filename.empty()) {
       config_table c{};
       c.valid = true;
@@ -152,7 +154,7 @@ namespace other {
         config.force_no_window = force_no_window.as_boolean();
       }
 
-      toml::node_view rendering_backend = config.table.at_path("rendering.rendering-backend");
+      toml::node_view rendering_backend = config.table.at_path("rendering.backend");
       rendering = rendering_backend.as_string() == nullptr ? "" : rendering_backend.as_string()->get();
       if (log_level == 0) {
         std::print("Rendering backend: '{}'\n", rendering);

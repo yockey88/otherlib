@@ -1,0 +1,25 @@
+$foo:
+  dumpx r1
+end
+
+; $entry:
+;   set r1, data.first_addr
+;   set r2, 1111
+;   set r3, 3333
+;   set r4, 5555
+;   cmp r1, r3, rflag
+;   dump
+;   jne failcmp ; if r1 != r3, jump to failcmp
+;   dumpx r3
+; end
+
+; $failcmp:
+;   dumpx r4
+; end
+
+; #data {
+;   .first_addr := 1111
+;   .hello_str : string = "Hello, Other Command Device!"
+;   .player_hp := 100
+;   .my_data := 01 02 03 04 FF EE DD CC
+; }

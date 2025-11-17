@@ -23,6 +23,35 @@ namespace other {
 
   }  // namespace detail
 
+  std::string decompiler::opcode_to_string(uint32_t opcode) {
+    instruction instr(opcode);
+    return "Opcode(Category: " + std::to_string(instr.category_nibble()) +
+      ", Type: " + std::to_string(instr.type_nibble()) + ")";
+  }
+
+  std::string decompiler::opcode_to_detailed_string(uint32_t opcode) {
+    instruction instr(opcode);
+    std::string result = "Opcode: ";
+
+    result += std::format("{:#010x}", instr.opcode);
+    result += " { ";
+    result += "Category: " + std::to_string(instr.category_nibble()) + ", ";
+    result += "Type: " + std::to_string(instr.type_nibble()) + ", ";
+    result += "Bytes: [ ";
+    for (size_t i = 0; i < sizeof(uint32_t); ++i) {
+      result += "0x" + std::to_string(instr.bytes[i]);
+      if (i < sizeof(uint32_t) - 1) {
+        result += ", ";
+      }
+    }
+    result += " ], ";
+    result += "Upper: 0x" + std::to_string(instr.upper) + ", ";
+    result += "Lower: 0x" + std::to_string(instr.lower);
+    result += " }";
+
+    return result;
+  }
+
   void decompiler::hexdump_memory(other_command_device* device) {
     assert(device != nullptr && "Null device!");
     std::stringstream ss;

@@ -94,7 +94,7 @@ namespace other {
     OTHER_ASSERT(progr, "Program is null!");
 
     std::vector<uint8_t> code = progr->compile_program(device->program_load_cursor);
-    load_bytes_to_address(device, device->program_load_cursor, code.data(), code.size());
+    load_program_from_bytes(device, code);
   }
 
   void vm::load_program_from_bytes(other_command_device* device, const std::span<const uint8_t> bytes) {
@@ -106,6 +106,10 @@ namespace other {
     device->pc = device->program_load_cursor;
     device->program_load_cursor += bytes.size();
     device->stopped = false;
+  }
+
+  void vm::write_instruction_at_address(other_command_device* device, uint64_t address, const instruction& instr) {
+    vm::load_bytes_to_address(device, address, reinterpret_cast<const uint8_t*>(&instr.opcode), sizeof(instr.opcode));
   }
 
 }  // namespace other

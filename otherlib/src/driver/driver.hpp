@@ -4,6 +4,9 @@
 #ifndef OTHERLIB_DRIVER_DRIVER_HPP
 #define OTHERLIB_DRIVER_DRIVER_HPP
 
+#include <queue>
+#include <type_traits>
+
 #include <asio/asio.hpp>
 #include <asio/asio/signal_set.hpp>
 
@@ -15,7 +18,10 @@
 #include "dotnet/dotnet_assembly.hpp"
 #include "renderer/renderer.hpp"
 
+#include "scene/scene_graph.hpp "
+
 #include "plugin/plugin.hpp"
+#include "vm/other_device.hpp"
 
 namespace other {
 
@@ -65,6 +71,14 @@ namespace other {
       return shutdown_requested;
     }
 
+    natural_t create_new_scene(const std::string_view name);
+    scene* get_scene(natural_t id);
+    scene* get_active_scene();
+
+    void write_id_at_address(uint16_t address, natural_t id);
+    void emit_instruction(const instruction& op);
+    void driver_step_device();
+
     void pump_events();
     virtual void on_event(SDL_Event* event) {}
     virtual void on_event(environment_event* event) {}
@@ -86,9 +100,15 @@ namespace other {
       return configuration().get_value(std::format("{}.{}", section, key), default_value);
     }
 
+    other_command_device core_device;
+
    private:
+    friend class driver_interface;
+
     bool shutdown_requested = false;
     config_table config;
+
+    std::queue<instruction> emitted_instructions;
 
     std::vector<ref<assembly>> loaded_dotnet_modules;
 
@@ -96,6 +116,15 @@ namespace other {
       task handle;
     };
     std::vector<live_coroutine> live_coroutines;
+
+    scene* active_scene = nullptr;
+    scope<scene_graph> project_scene_graph = nullptr;
+
+    natural_t add_scene_to_scene_graph(const filepath& scene_path);
+    natural_t create_empty_scene(const std::string_view name);
+    natural_t get_id_of_scene(const std::string_view name);
+
+    void set_scene_to_active(natural_t scene_id);
 
     void add_live_coroutine(task handle);
     void poll_coroutines();

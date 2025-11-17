@@ -24,6 +24,8 @@ namespace other {
     static void load_bytes_to_address(other_command_device* device, uint64_t address, const uint8_t* data, size_t size);
     static void load_program(other_command_device* device, program* progr);
     static void load_program_from_bytes(other_command_device* device, const std::span<const uint8_t> bytes);
+
+    static void write_instruction_at_address(other_command_device* device, uint64_t address, const instruction& instr);
   };
 
 }  // namespace other

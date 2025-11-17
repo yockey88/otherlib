@@ -17,20 +17,31 @@ target_sources(otherlib
     src/scripting/execution_graph.cpp
     src/scripting/execution_nodes/source_sink_nodes.cpp
     src/scripting/execution_nodes/arithmetic_nodes.cpp
+    src/scripting/execution_nodes/linear_algebra_nodes.cpp
+    src/scripting/execution_nodes/transform_nodes.cpp
 
     src/vm/opcode.cpp
+    src/vm/driver_interface.cpp
     src/vm/control_table.cpp
     src/vm/other_device.cpp
     src/vm/decompiler.cpp
     src/vm/program.cpp
     src/vm/vm.cpp
+    src/vm/command_files/token.cpp
+    src/vm/command_files/code_block.cpp
+    src/vm/command_files/data_block.cpp
+    src/vm/command_files/lexer.cpp
+    src/vm/command_files/parser.cpp
+    src/vm/command_files/assembler.cpp
 
     src/tools/build_tool.cpp
 
     src/ui/ui_widgets.cpp
-    src/ui/value_ui.cpp
     src/ui/node_editor_canvas_node.cpp
     src/ui/node_editor.cpp
+    src/ui/type-bindings/value_ui.cpp
+    src/ui/type-bindings/vm_ui.cpp
+    src/ui/type-bindings/scene_ui.cpp
 
     src/other.cpp
 )

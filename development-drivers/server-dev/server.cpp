@@ -427,14 +427,6 @@ namespace other {
     }
   }
 
-  task test_coroutine() {
-    for (uint32_t i = 0; i < 3; ++i) {
-      std::println("Coroutine tick {}", i);
-      co_await std::suspend_always{};
-    }
-    co_return;
-  }
-
   std::string replace_all_substrings_with(std::string str, const std::string& from, const std::string& to) {
     size_t start_pos = 0;
     while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
@@ -630,28 +622,31 @@ namespace other {
     OTHER_ASSERT(data.size() >= sizeof(integer_t), "Invalid session check in packet!");
 
     integer_t session_id = *reinterpret_cast<const integer_t*>(data.data());
-
-    auto itr = std::ranges::find_if(pending_apps, [&](const other_application& app) { return session_id == app.id; });
-    if (itr == pending_apps.end()) {
-      CORE_LOG_ERROR("Server received a session check in for an unknown Other application : {}", session_id);
-      return;
+    other_application* app = nullptr;
+    {
+      auto itr = std::ranges::find_if(pending_apps, [&](const other_application& app) { return session_id == app.id; });
+      if (itr == pending_apps.end()) {
+        CORE_LOG_ERROR("Server received a session check in for an unknown Other application : {}", session_id);
+        return;
+      }
+      CORE_LOG_DEBUG("finalizing connection to pending application : {}", session_id);
+      auto [app_itr, success] = other_apps.insert({ session_id, std::move(*itr) });
+      if (!success || app_itr == other_apps.end()) {
+        CORE_LOG_ERROR("Failed to save Other application session ID from check-in : {}", session_id);
+        return;
+      }
+      pending_apps.erase(itr);
+      app = &app_itr->second;
     }
-
-    CORE_LOG_DEBUG("finalizing connection to pending application : {}", session_id);
-    auto [app_itr, success] = other_apps.insert({ session_id, std::move(*itr) });
-    if (!success || app_itr == other_apps.end()) {
-      CORE_LOG_ERROR("Failed to save Other application session ID from check-in : {}", session_id);
-      return;
-    }
-    pending_apps.erase(itr);
+    OTHER_ASSERT(app != nullptr, "Application pointer is null after insertion!");
 
     CORE_LOG_DEBUG("Session {} connection finalized", session_id);
-    app_itr->second.connected = true;
+    app->connected = true;
 
     /// we should only do this after the application has checked in successfully
-    std::string ping_session_ev_name = "ping-session:[" + std::to_string(itr->id) + "]";
+    std::string ping_session_ev_name = "ping-session:[" + std::to_string(app->id) + "]";
     events->register_timed_event(ping_session_ev_name, seconds(10), true);
-    events->add_listener(ping_session_ev_name, [this, session_id = itr->id](const value& ec) {
+    events->add_listener(ping_session_ev_name, [this, session_id = app->id](const value& ec) {
       CORE_LOG_DEBUG("Pinging session [{}] to check connectivity", session_id);
       message msg;
       msg.header = {

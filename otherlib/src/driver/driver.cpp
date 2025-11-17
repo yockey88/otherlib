@@ -11,6 +11,10 @@
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "vm/control_table.hpp"
+#include "vm/other_device.hpp"
+#include "vm/vm.hpp"
+
 namespace other {
 
   void driver::initialize(const command_line& cmd) {
@@ -37,17 +41,36 @@ namespace other {
       loaded_dotnet_modules.push_back(assembly);
     }
 
-    on_initialize(cmd);
+    vm::initialize_device(&core_device);
+    vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
+    // vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_DECOMPILER_V000);
+    core_device.stopped = false;
+    core_device.host_driver = this;
+
+    project_scene_graph = make_scope<scene_graph>();
+
+    {
+      PROFILE_SECTION("driver::initialize--client-on_initialize");
+      on_initialize(cmd);
+    }
   }
 
   void driver::shutdown() {
     PROFILE_SECTION("driver::shutdown");
-    on_shutdown();
+    {
+      PROFILE_SECTION("driver::shutdown--client-on_shutdown");
+      on_shutdown();
+    }
+
+    core_device.stopped = true;
+    vm::shutdown_device(&core_device);
 
     for (auto& module : loaded_dotnet_modules) {
       unload_dotnet_module(module);
     }
     loaded_dotnet_modules.clear();
+
+    project_scene_graph = nullptr;
 
     net_context->signals.cancel();
     if (!net_context->io_context.stopped()) {
@@ -84,6 +107,7 @@ namespace other {
         CORE_LOG_ERROR("Failed to get symbol 'create_driver' from plugin '{}'", driver_path);
         return { nullptr, "" };
       }
+
       symbol& sym = sym_res.value();
       if (sym.address == nullptr) {
         CORE_LOG_ERROR("Failed to load symbol 'create_driver' from plugin '{}'", driver_path);
@@ -124,6 +148,47 @@ namespace other {
     plugin::unload_plugin_library(name);
   }
 
+  natural_t driver::create_new_scene(const std::string_view name) {
+    OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
+    auto [scene_id, ptr] = project_scene_graph->create_new_scene(name);
+    OTHER_ASSERT(ptr != nullptr, "Failed to create new scene: {}", name);
+    CORE_LOG_INFO("Created new scene [{}:{}]", scene_id, name);
+    return scene_id;
+  }
+
+  scene* driver::get_scene(natural_t id) {
+    OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
+    return project_scene_graph->get_scene(id);
+  }
+
+  scene* driver::get_active_scene() {
+    return active_scene;
+  }
+
+  void driver::write_id_at_address(uint16_t address, natural_t id) {
+    OTHER_ASSERT(address + sizeof(natural_t) <= other_command_device::kMemorySize, "Address out of bounds: {}", address);
+    core_device.write_u64_at(address, id);
+  }
+
+  void driver::emit_instruction(const instruction& op) {
+    auto data = std::span(reinterpret_cast<const uint8_t*>(&op.opcode), sizeof(op.opcode));
+    vm::load_bytes_to_address(&core_device, core_device.program_load_cursor, data.data(), data.size());
+    core_device.program_load_cursor += data.size();
+  }
+
+  void driver::driver_step_device() {
+    PROFILE_SECTION("driver::driver_step_device");
+    core_device.current_instruction = *(uint32_t*)&core_device.memory->at(core_device.pc);
+    if (core_device.current_instruction.opcode == 0x00000000) {
+    } else {
+      core_device.pc += other_command_device::kOpCodeSize;
+
+      uint8_t instr_nib = core_device.current_instruction.category_nibble();
+      core_device.control_table[instr_nib](&core_device);
+      vm::update_device_timers(&core_device);
+    }
+  }
+
   void driver::pump_events() {
     PROFILE_SECTION("driver::pump_events");
 
@@ -149,12 +214,13 @@ namespace other {
 
   scope<renderer> driver::get_renderer() const {
     if (auto* rendering = subsystem<renderer_backend>::get(); !rendering->has_backend()) {
-      rendering->load_backend("opengl", { 1280, 720 });
+      rendering->load_backend(configuration(), "opengl", { 1280, 720 });
     }
     return make_scope<renderer>();
   }
 
   ref<assembly> driver::load_dotnet_module(const std::string_view module_path) {
+    PROFILE_SECTION("driver::load_dotnet_module");
     CORE_LOG_DEBUG("Loading script module from path: {}", module_path);
     filepath path(module_path);
     if (!std::filesystem::exists(path)) {
@@ -258,7 +324,28 @@ namespace other {
 #endif
   }
 
-  void driver::add_live_coroutine(task handle) {
+  natural_t driver::add_scene_to_scene_graph(const filepath& scene_path) {
+    // OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
+    // return project_scene_graph->add_scene_from_file(scene_path);
+    CORE_LOG_ERROR("driver::add_scene_to_scene_graph is unimplemented.");
+    return 0;
+  }
+
+  natural_t driver::create_empty_scene(const std::string_view name) {
+    auto [id, _] = project_scene_graph->create_new_scene(name);
+    return id;
+  }
+
+  natural_t driver::get_id_of_scene(const std::string_view name) {
+    return project_scene_graph->get_id_of_scene(name);
+  }
+
+  void driver::set_scene_to_active(natural_t scene_id) {
+    CORE_LOG_DEBUG("Setting scene [{}] as active scene in driver.", scene_id);
+    active_scene = project_scene_graph->get_scene(scene_id);
+  }
+
+  void driver::driver::add_live_coroutine(task handle) {
     live_coroutines.push_back({ handle });
   }
 

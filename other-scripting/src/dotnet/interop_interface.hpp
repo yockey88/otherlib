@@ -29,6 +29,10 @@ namespace other {
   using register_internal_call = void (*)(native_string, void*);
   using validate_binding_points = nbool32 (*)();
 
+  /// NativeObjectManager
+  using attach_native_object = void (*)(int64_t, void*, native_string);
+  using detach_native_object = void (*)(int64_t, void*);
+
   /// TypeInterface
   using get_net_core_types = void (*)(int32_t*, int32_t*);
   using get_type_id = void (*)(native_string, int32_t*);

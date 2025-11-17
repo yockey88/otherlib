@@ -20,8 +20,12 @@ namespace other {
   }
 
   void rendering_api::initialize(scope<window_manager> window_mgr) {
+    PROFILE_SECTION("rendering_api::initialize");
     this->window_mgr = std::move(window_mgr);
-    on_initialize(this->window_mgr);
+    {
+      PROFILE_SECTION("rendering_api::initialize--client-on_initialize");
+      on_initialize(this->window_mgr);
+    }
   }
 
   void rendering_api::shutdown() {

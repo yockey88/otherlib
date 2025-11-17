@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "core/profiler.hpp"
 namespace other {
 
   template <typename T>
@@ -47,6 +48,7 @@ namespace other {
   class subsystem {
    public:
     static void set(T* obj) {
+      PROFILE_SECTION("subsystem<>::set");
       if (obj == nullptr) {
         throw std::runtime_error("Cannot set subsystem instance to null.");
       }
@@ -58,6 +60,7 @@ namespace other {
     }
 
     static void initialize() {
+      PROFILE_SECTION("subsystem<>::initialize");
       if (instance == nullptr) {
         new (&subsystem_description<T>::storage) T();
         instance = std::launder(reinterpret_cast<T*>(&subsystem_description<T>::storage));
@@ -65,11 +68,13 @@ namespace other {
     }
 
     static void shutdown() {
+      PROFILE_SECTION("subsystem<>::shutdown");
       subsystem_deleter<T>()(instance);
       instance = nullptr;
     }
 
     static T* get() {
+      PROFILE_SECTION("subsystem<>::get");
       if (instance == nullptr) {
         initialize();
       }

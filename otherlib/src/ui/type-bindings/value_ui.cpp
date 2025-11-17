@@ -1,7 +1,7 @@
 /**
- * \file ui/value_ui.cpp
+ * \file ui/type-bindings/value_ui.cpp
  **/
-#include "ui/value_ui.hpp"
+#include "ui/type-bindings/value_ui.hpp"
 
 #include <imgui/imgui_memory_editor.h>
 
@@ -10,7 +10,6 @@
 #include "ui/colors.hpp"
 #include "ui/ui_widgets.hpp"
 
-#include "colors.hpp"
 
 namespace other {
   namespace ui {

@@ -4,12 +4,14 @@
 #include "script/scripting_environment.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "script/script_object.hpp"
 
 namespace other {
 
   void scripting_environment::initialize_script_environment(const config_table& configuration) {
+    PROFILE_SECTION("scripting_environment::initialize-script-environment");
     script_object_pool = make_scope<memory_pool<script_object>>();
     OTHER_ASSERT(script_object_pool != nullptr, "Failed to create script object memory pool.");
 
@@ -95,6 +97,32 @@ namespace other {
     live_objects[id] = live_script_object{};
   }
 
+  void scripting_environment::dotnet_register_native_object(integer_t id, const std::string_view type_name) {
+    auto* obj = get_object(id);
+    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+
+    if (obj->dotnet_object == nullptr) {
+      CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+      return;
+    }
+
+    native_string type_str = native_string::new_str(type_name);
+    get_dotnet_host().interop().attach_native_object(id, obj->dotnet_object, type_str);
+    native_string::free_str(type_str);
+  }
+
+  void scripting_environment::dotnet_unregister_native_object(integer_t id) {
+    auto* obj = get_object(id);
+    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+
+    if (obj->dotnet_object == nullptr) {
+      CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+      return;
+    }
+
+    get_dotnet_host().interop().detach_native_object(id, obj->dotnet_object);
+  }
+
   script_object* scripting_environment::get_object(integer_t id) {
     OTHER_ASSERT(script_object_pool != nullptr, "Script object memory pool is not initialized.");
     OTHER_ASSERT(id >= 0 && id < kMaxScriptObjects, "Invalid script object ID: {}", id);
@@ -104,6 +132,8 @@ namespace other {
   ref<assembly> scripting_environment::load_dotnet_module(const std::string_view module_path) {
     OTHER_ASSERT(dotnet_load_context != nullptr, "DotNet load context is not initialized.");
     OTHER_ASSERT(!module_path.empty(), "Module path cannot be empty.");
+
+    PROFILE_SECTION("scripting_environment::load-dotnet-module");
     if (!std::filesystem::exists(module_path)) {
       CORE_LOG_ERROR("Module file does not exist: {}", module_path);
       return 0;
@@ -164,6 +194,8 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("[script {}] destroying .NET object [{}]", id, obj->name);
+
+    dotnet_unregister_native_object(id);
     dotnet.destroy_managed_object(obj->dotnet_object);
     obj->dotnet_object = nullptr;
   }

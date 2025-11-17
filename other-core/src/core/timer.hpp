@@ -13,10 +13,16 @@ namespace other {
   using microseconds = std::chrono::microseconds;
   using milliseconds = std::chrono::milliseconds;
   using seconds = std::chrono::seconds;
+  using fseconds = std::chrono::duration<float>;
 
   /// 10,000 ticks per second
   using tick_conversion = std::ratio<1, 10000>;
   using tick_duration = std::chrono::duration<natural_t, tick_conversion>;
+
+  template <typename D>
+  decltype(auto) duration_cast(auto from_duration) {
+    return std::chrono::duration_cast<D>(from_duration);
+  }
 
   template <integer_t FPS = 60>
   struct frame_rate_enforcer {

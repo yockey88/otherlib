@@ -3,6 +3,7 @@ add_subdirectory(script-testing)
 
 if (BUILD_DEVELOPMENT_DRIVERS)
   add_static_driver(runtime_dev
+    runtime-dev/behavior_tree.cpp
     runtime-dev/runtime.cpp
     runtime-dev/main.cpp
   )

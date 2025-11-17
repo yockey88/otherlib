@@ -3,79 +3,128 @@
  **/
 #include "runtime.hpp"
 
-#include <cstddef>
 #include <cstdint>
+#include <memory>
 
-#include "serialization/reflection.hpp"
+#include <imgui/ImReflect.hpp>
+#include <imgui/imgui.h>
 
+#include "core/timer.hpp"
+
+#include "renderer/camera.hpp"
+#include "renderer/renderer.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "object/animation_controller.hpp"
 #include "object/object_serialization.hpp"
+#include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
-#include "scene/scene_serialization.hpp"
-#include "scene/scene_serialization_data.hpp"
 
-#include "project/project_serialization.hpp"
+#include "rendering-pipelines/default_instancing_pipeline.hpp"
+#include "scripting/execution_nodes/transform_nodes.hpp"
+#include "ui/type-bindings/scene_ui.hpp"
+#include "ui/type-bindings/vm_ui.hpp"
+#include "vm/opcode.hpp"
+
+#include "asset/asset.hpp"
+#include "behavior_tree.hpp"
 
 namespace other {
 
-  /// goal 1: bind this and call from C#
-  void hello_cs() {
-    std::println("Hello There!");
-  }
-
-  /// goal 2: bind and call from C#
-  struct my_foo {
-    void hello_cs() {
-      std::println("Hello There! {:p}", (void*)this);
-    }
-  };
-
-  namespace detail {
-
-    // project_description parse_project_description(const std::span<const uint8_t> buffer) {
-    //   project_description proj = *reinterpret_cast<const project_description*>(buffer.data());
-    //   return proj;
-    // }
-
-    std::vector<uint8_t> read_file(const std::string_view filepath) {
-      std::ifstream file(std::string{ filepath }, std::ios::binary);
-      OTHER_ASSERT(file.is_open(), "Failed to open project file");
-
-      std::vector<uint8_t> buffer = {};
-
-      size_t num_bytes = 0;
-      file.seekg(0, std::ios::end);
-      num_bytes = static_cast<size_t>(file.tellg());
-      file.seekg(0, std::ios::beg);
-      OTHER_ASSERT(num_bytes > 0, "Project file is empty");
-      std::println("Project file size: {} bytes", num_bytes);
-
-      buffer.resize(num_bytes);
-      file.read(reinterpret_cast<char*>(buffer.data()), num_bytes);
-
-      return buffer;
-    }
-
-  }  // namespace detail
-
   void runtime::on_initialize(const command_line& cmd) {
     CORE_LOG_DEBUG("Runtime...");
+    state_machine.handle_event(runtime_event::RUNTIME_EVENT_START, this);
 
-    // scene_object& obj = active_scene.create_object("Runtime-Test-Object");
-    // script_component* comp = active_scene.get_component<script_component>(&obj);
-    // OTHER_ASSERT(comp != nullptr, "Failed to create script component on test object");
+    renderer = get_renderer();
+    if (!renderer) {
+      CORE_LOG_ERROR("Renderer backend is not initialized.");
+      return;
+    }
+    renderer->set_clear_color(glm::vec4(0.2f, 0.2f, 0.2f, 1.0f));
+    renderer->add_pipeline<default_instancing_pipeline>("Default Instancing Pipeline");
 
-    // auto* env = subsystem<scripting_environment>::get();
-    // OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
+    net_context = std::make_unique<network_context>();
+    asset_mgr = make_scope<asset_handler>(net_context->io_context);
 
-    // env->attach_dotnet_object(comp->script_object_id, "TestObject");
+    events = make_scope<event_system>(net_context->io_context);
+    events->register_event("shutdown-requested");
+    events->add_listener("shutdown-requested", [this](const value& data) {
+      CORE_LOG_DEBUG("Shutdown requested event received in runtime.");
+      state_machine.handle_event(runtime_event::RUNTIME_EVENT_STOP, this);
+    });
 
-    // script_object* script_obj = env->get_object(comp->script_object_id);
-    // OTHER_ASSERT(script_obj != nullptr, "Failed to retrieve script object from scripting environment");
+    events->register_event("project-loaded");
+    events->add_listener("project-loaded", [this](const value& data) {
+      CORE_LOG_DEBUG("Project loaded event received in runtime.");
+      /// load first scene
+      /// for now just harcode scene set up here
+      current_scene_id = create_new_scene("Main Scene");
+      auto* scene_ptr = get_scene(current_scene_id);
 
-    // script_obj->dotnet_object->invoke("DisplayInfo");
+      /// light
+      {
+        scene_object& light_obj = scene_ptr->create_object("Light", glm::vec3(0.f, 2.f, 0.f));
+        scene_ptr->add_object_tag(light_obj.id, "scene-ambient-light");
+
+        transform& light_transform = scene_ptr->get_transform(&light_obj);
+        light_transform.local_scale = glm::vec3(0.1f, 0.1f, 0.1f);
+
+        gpu::point_light& light_plight = scene_ptr->add_component<gpu::point_light>(&light_obj);
+        light_plight.light_position = glm::vec3(0.f, 5.f, 0.f);
+        light_plight.color = glm::vec3(1.f, 1.f, 1.f);
+
+        gpu::directional_light& light_dlight = scene_ptr->add_component<gpu::directional_light>(&light_obj);
+        light_dlight.direction = glm::vec3(0.f, -1.f, 0.f);
+        light_dlight.color = glm::vec3(1.f, 1.f, 1.f);
+      }
+
+      /// camera
+      {
+        scene_object& cam_obj = scene_ptr->create_object("Main Camera", glm::vec3(0.f, 0.f, 0.f));
+        scene_ptr->add_object_tag(cam_obj.id, "main-camera");
+
+        other::camera& cam = scene_ptr->add_component<camera>(&cam_obj);
+        cam.sensitivity = 0.35f;
+        cam.look({ 0.f, 1.f, 4.5f }, { 0.f, 0.f, 0.f });
+        CORE_LOG_INFO("Camera data loaded from file: \n{}", type_data_handler<camera>::as_string("cam", cam));
+      }
+
+      /// donut
+      {
+        scene_object& donut_obj = scene_ptr->create_object("Donut", glm::vec3(0.f, -0.5f, 0.f));
+        donut_id = donut_obj.id;
+
+        script_component* donut_script = scene_ptr->get_component<script_component>(&donut_obj);
+        OTHER_ASSERT(donut_script != nullptr, "Failed to get script component for donut object in runtime");
+
+        const auto& config = configuration();
+        std::string model_path = config.get_value<std::string>("assets.test-model", "resources/models/suzanne3.fbx");
+        donut_model_id = asset_mgr->load_asset(model_path);
+
+        behavior_tree& bt = scene_ptr->add_component<behavior_tree>(&donut_obj);
+        bt.add_node<constant_angular_velocity_node>("Spin", glm::vec3(0.f, 1.f, 0.f));
+        bt.connect_nodes("InputNode", 0, "OutputNode", 0);
+
+        bt.connect_nodes("InputNode", 1, "Spin", 0);
+        bt.connect_nodes("Spin", 0, "OutputNode", 1);
+
+        bt.connect_nodes("InputNode", 2, "OutputNode", 2);
+      }
+
+      CORE_LOG_INFO("Scene '{}' created and set as current scene in runtime.", scene_ptr->name);
+    });
+
+    events->register_timed_event("application-fixed-update", duration_cast<microseconds>(seconds(1)), true);
+    events->add_listener("application-fixed-update", [this](const value& data) {
+      // driver_step_device();
+      if (auto* current_scene = get_scene(current_scene_id); current_scene != nullptr) {
+        current_scene->fixed_update(1.f / 60.f);
+      }
+    });
+
+    runtime_ui = make_scope<runtime_control_window>(*events);
+    runtime_ui->add_node(make_scope<ui::device_display>(core_device, runtime_ui.get(), "Runtime"));
 
     integer_t session_id = cmd.session_id.value_or(-1);
     uint16_t port = cmd.port.value_or(49222);
@@ -100,43 +149,29 @@ namespace other {
       net_thread_message_bus.send_message(std::move(msg));
     }
 
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
+    last_frame_time = std::chrono::steady_clock::now();
 
-    builder_obj_id = env->create_object("Builder");
-    OTHER_ASSERT(builder_obj_id != -1, "Failed to create Builder object in scripting environment");
-
-    env->attach_dotnet_object(builder_obj_id, "Other.BuildTool");
-
-    // std::vector<uint8_t> buffer = detail::read_file("resources/dev-project1.other");
-    // std::println("Read {} bytes from project file", buffer.size());
-
-    // size_t cur = 0;
-    // std::span<const uint8_t> buf{ buffer.data(), buffer.size() };
-    // {
-    //   auto proj_description = detail::parse_project_description(buf);
-    //   cur = kSceneListOffset;
-    //   CORE_LOG_DEBUG("Project version : [{}.{}.{}]", proj_description.version[0], proj_description.version[1], proj_description.version[2]);
-    //   CORE_LOG_DEBUG("     - {} scenes", proj_description.num_scenes);
-
-    //   auto [scenes, scene_list_bytes_read] = serialization::parse_scene_list(buf.subspan(cur), proj_description.num_scenes);
-    //   cur += scene_list_bytes_read;
-
-    //   // CORE_LOG_DEBUG("Parsed project description: name='{}', num_scenes={}", std::string{ proj_description.project_name }, proj_description.num_scenes);
-    //   project_scene_graph = make_scope<scene_graph>(scenes);
-    // }
-
-    // initialize_subsystems();
-    // load_project_configuration();
-    // load_scenes_and_play();
     running = true;
   }
 
   void runtime::run() {
+    last_frame_time = std::chrono::steady_clock::now();
+
     do {
       pump_events();
-      // update();
-      // draw();
+      core_update();
+
+      switch (state_machine.get_current_state()) {
+        case runtime_state::RUNTIME_STATE_LOADING_PROJECT: update_loading_project(); break;
+        case runtime_state::RUNTIME_STATE_WAITING_FOR_START_SCENE_LOAD: update_waiting_for_start_scene_load(); break;
+        case runtime_state::RUNTIME_STATE_RUNNING: update_running(); break;
+        case runtime_state::RUNTIME_STATE_SHUTTING_DOWN: update_shutting_down(); break;
+        default:
+          CORE_LOG_ERROR("Server in unknown state {}", state_machine.get_current_state());
+          running = false;
+          break;
+      }
+      draw();
     } while (running);
   }
 
@@ -149,10 +184,13 @@ namespace other {
     }
 
     running = false;
-    project_scene_graph = nullptr;
 
     net_thread->shutdown();
     net_thread = nullptr;
+
+    asset_mgr = nullptr;
+    events = nullptr;
+    CORE_LOG_DEBUG("Runtime shut down complete.");
   }
 
   void runtime::catch_signal(int signal) {
@@ -164,16 +202,132 @@ namespace other {
     }
   }
 
-  void runtime::update() {
+  void runtime::core_update() {
+    std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
+    curr_frame_delta_time = std::chrono::duration<float>(current_time - last_frame_time).count();
+    last_frame_time = current_time;
+
+    net_context->io_context.poll();
+    if (net_context->io_context.stopped()) {
+      net_context->io_context.restart();
+    }
+
+    asset_mgr->update_pipelines();
+  }
+
+  void runtime::update_loading_project() {
+    events->trigger_event("project-loaded");
+    state_machine.handle_event(runtime_event::RUNTIME_EVENT_READY, this);
+  }
+
+  void runtime::update_waiting_for_start_scene_load() {
+    if (asset_mgr->get_asset_state(donut_model_id) == asset_state::LOADED) {
+      CORE_LOG_DEBUG("Donut model asset loaded successfully in runtime.");
+
+      auto* current_scene = get_scene(current_scene_id);
+      OTHER_ASSERT(current_scene != nullptr, "Current scene is null in runtime while loading donut model");
+
+      uint64_t hash = asset_mgr->get_asset_hash(donut_model_id);
+      ref<model_source> donut_source = subsystem<renderer_backend>::get()->get_model_source(hash);
+      if (donut_source != nullptr) {
+        CORE_LOG_DEBUG("Donut model source loaded successfully in runtime.");
+        scene_object& donut_obj = current_scene->get_object(donut_id);
+
+        render_component& donut_render = current_scene->add_component<render_component>(&donut_obj);
+        donut_render.material.diffuse_color = glm::vec3(0.4f, 0.6f, 0.8f);
+        donut_render.material.diffuse_reflectivity = 0.5f;
+        donut_render.material.specular_color = glm::vec3(0.8f, 0.8f, 0.8f);
+        donut_render.material.specular_reflectivity = 0.5f;
+        donut_render.material.emissivity = 0.1f;
+        donut_render.material.shininess = 16.f;
+        donut_render.material.transparency = 0.f;
+
+        donut_model = donut_source->produce_model("Donut");
+        donut_render.model = &donut_model;
+
+        // if (const auto& animations = donut_source->get_animations(); !animations.empty()) {
+        //   animation_controller& anim_ctrl = current_scene->add_component<animation_controller>(&donut_obj);
+        //   anim_ctrl.anim_ptr = donut_source->get_animation(0);
+        //   anim_ctrl.model_ptr = donut_render.model;
+        // }
+      }
+
+      CORE_LOG_DEBUG("Writing scene ID {} to device and emitting load scene opcode.", current_scene_id);
+      write_id_at_address(0x1234, current_scene_id);
+      emit_instruction(opcode_load_scene_with_id_at(0x1234));
+      state_machine.handle_event(runtime_event::RUNTIME_EVENT_READY, this);
+    }
+  }
+
+  void runtime::update_running() {
+    scene* current_scene = get_scene(current_scene_id);
+    OTHER_ASSERT(current_scene != nullptr, "Current scene is null in runtime update loop");
+
+    scene_object& donut_obj = current_scene->get_object(donut_id);
+    behavior_tree* bt = current_scene->get_component<behavior_tree>(&donut_obj);
+    OTHER_ASSERT(bt != nullptr, "Behavior tree component is null in runtime update loop for donut object");
+
+    transform& donut_transform = current_scene->get_transform(&donut_obj);
+    bt->set_input_transform(donut_transform);
+    donut_transform = bt->execute_tree();
+  }
+
+  void runtime::update_shutting_down() {
+    running = false;
+    CORE_LOG_DEBUG("Runtime shut down complete");
+
+    state_machine.handle_event(runtime_event::RUNTIME_EVENT_STOP, this);
   }
 
   void runtime::draw() {
+    render_data data = {};
+    if (auto* active_scene = get_active_scene(); active_scene != nullptr) {
+      PROFILE_SECTION("rendering-dev--render-frame");
+      data = active_scene->prepare_render_data();
+      renderer->begin_frame(&data);
+    } else {
+      renderer->begin_frame(nullptr);
+    }
+
+    renderer->render();
+    renderer->begin_ui_frame();
+
+    if (ImGui::BeginMainMenuBar()) {
+      if (ImGui::BeginMenu("File")) {
+        if (ImGui::MenuItem("Exit")) {
+          events->trigger_event("shutdown-requested");
+        }
+        ImGui::EndMenu();
+      }
+      ImGui::EndMainMenuBar();
+    }
+
+    if (ImGui::Begin("Runtime Debug")) {
+      ImGui::Text("Frame Time: %.3f ms", curr_frame_delta_time * 1000.f);
+      ImGui::Text("FPS: %.1f", 1.0f / curr_frame_delta_time);
+      ImGui::SeparatorText("=== VM Controls ===");
+      if (ImGui::Button("Step Instruction")) {
+        driver_step_device();
+      }
+
+      if (ImGui::Button("Emit CMP test")) {
+        emit_instruction(opcode_load_x_direct(0x01, 0x1111));
+        emit_instruction(opcode_load_x_direct(0x02, 0x1111));
+        emit_instruction(opcode_compare_x_y_set_z(0x01, 0x02, other_command_device::kFlagRegister));
+      }
+    }
+    ImGui::End();
+
+    runtime_ui->render();
+
+    renderer->end_ui_frame();
+    renderer->end_frame();
   }
 
   void runtime::on_event(SDL_Event* event) {
     OTHER_ASSERT(event != nullptr, "Event is null");
     switch (event->type) {
-      case SDL_EVENT_WINDOW_CLOSE_REQUESTED: running = false; break;
+      case SDL_EVENT_WINDOW_CLOSE_REQUESTED: events->trigger_event("shutdown-requested"); break;
       default: break;
     }
   }
