@@ -45,9 +45,12 @@ namespace other {
     block_section_ir sections;
 
     while (!finished()) {
+      /// call-label definition
       if (check(TOKEN_TYPE_DOLLAR)) {
         sections.sections.emplace_back(parse_code_block());
-      } else if (check(TOKEN_TYPE_HASH)) {
+      }
+      /// data-block definition
+      else if (check(TOKEN_TYPE_HASH)) {
         sections.data_sections.emplace_back(parse_data_block());
       } else {
         throw parse_error("Unexpected token: " + current().text);
@@ -76,23 +79,61 @@ namespace other {
     }
     consume();
 
+    uint32_t instruction_index = 0;
+
     /// now read everything until END keyword
     while (!finished() && !check(TOKEN_TYPE_KW_END)) {
+      bool set_instr_index = false;
+      if (check(TOKEN_TYPE_AT)) {
+        consume();  // consume '@'
+
+        if (finished() || !check(TOKEN_TYPE_IDENTIFIER)) {
+          throw parse_error("Expected identifier after '@' for label definition");
+        }
+
+        section.jump_labels.emplace_back(code_section_ir::jump_label_ir{ .name = current().text });
+        set_instr_index = true;
+        consume();
+
+        if (finished() || !check(TOKEN_TYPE_COLON)) {
+          throw parse_error("Expected ':' after label name");
+        }
+        consume();  // consume ':'
+      }
+
       if (is_instruction_keyword(current())) {
         auto curr_token = current();
         uint32_t category_and_type = get_opcode_category_and_type_from_token(curr_token);
         consume();
 
+        /// TODO:
+        // if (curr_token.type == TOKEN_TYPE_KW_END) {
+        //   /// if the last instruction emitted was RET or RETX, we can safely ignore the END,
+        //   ///   if not then we silently add a RET instruction at the end
+        //   if (section.instructions.empty() || !is_return_instruction(section.instructions.back())) {
+        //     CORE_LOG_WARNING("Code block '{}' missing explicit 'ret' before 'end', adding implicit 'ret'", section.name);
+        //     auto& instr = section.instructions.emplace_back(code_section_ir::instruction_ir{
+        //       .instruction_index = instruction_index++,
+        //       .category_and_type = raw_instruction::category_and_type_from_opcode(other_command_device::OPCODE_RET),
+        //     });
+        //   }
+        //   break;
+        // }
+
         auto rem_tokens = look_from_now() |
-          std::views::take_while([this](const token& tok) { return !is_instruction_keyword(tok) && tok.type != TOKEN_TYPE_KW_END; }) |
+          std::views::take_while([this](const token& tok) { return !is_eol_marker(tok); }) |
           std::ranges::to<std::vector>();
         auto instr_tokens = rem_tokens |
           std::views::filter([this](const token& tok) { return tok.type != TOKEN_TYPE_COMMA; }) |
           std::ranges::to<std::vector>();
 
         auto& instr = section.instructions.emplace_back(code_section_ir::instruction_ir{
+          .instruction_index = instruction_index++,
           .category_and_type = category_and_type,
         });
+        if (set_instr_index) {
+          section.jump_labels.back().instruction_index = instr.instruction_index;
+        }
 
         std::vector<token> arg_tokens = raw_instruction::get_argument_tokens_for_instruction(category_and_type, instr_tokens);
         for (natural_t i = 0; i < arg_tokens.size(); ++i) {
@@ -257,6 +298,12 @@ namespace other {
           instr.arguments.push_back(raw_instruction::argument::from_token(arg_tok));
         }
       }
+
+      for (const auto& lbl_ir : section.jump_labels) {
+        auto& lbl = code_blk.jump_labels.emplace_back();
+        lbl.name = lbl_ir.name;
+        lbl.section_address = static_cast<uint16_t>(lbl_ir.instruction_index * other_command_device::kOpCodeSize);
+      }
     }
   }
 
@@ -300,6 +347,15 @@ namespace other {
   bool ocmd_parser::is_instruction_keyword(const token& tok) const {
     return tok.type >= TOKEN_TYPE_KW_STOPDEV && tok.type <= TOKEN_TYPE_KW_LOADSCN;
   }
+
+  bool ocmd_parser::is_eol_marker(const token& tok) const {
+    return is_instruction_keyword(tok) || tok.type == TOKEN_TYPE_KW_END || tok.type == TOKEN_TYPE_AT;
+  }
+
+  // bool ocmd_parser::is_return_instruction(uint32_t category_and_type) const {
+  //   /// this works because these take
+  //   return category_and_type == OPCODE_RETURN || category_and_type == OPCODE_RETURN_VALUE_IN_X;
+  // }
 
   const token& ocmd_parser::peek(size_t offset) const {
     if (finished()) {
@@ -361,7 +417,8 @@ namespace other {
     if (tok.type == TOKEN_TYPE_KW_XOR) { return OPCODE_X_XOR_Y_SET_Z; }
     if (tok.type == TOKEN_TYPE_KW_LSHIFT) { return OPCODE_SHIFT_LEFT_X_BY_Y; }
     if (tok.type == TOKEN_TYPE_KW_RSHIFT) { return OPCODE_SHIFT_RIGHT_X_BY_Y; }
-    if (tok.type == TOKEN_TYPE_KW_GOTO) { return OPCODE_GOTO; }
+    if (tok.type == TOKEN_TYPE_KW_GOTO || 
+        tok.type == TOKEN_TYPE_KW_JMP) { return OPCODE_GOTO; }
     if (tok.type == TOKEN_TYPE_KW_JE) { return OPCODE_JUMP_IF_ZERO; }
     if (tok.type == TOKEN_TYPE_KW_JNE) { return OPCODE_JUMP_IF_NOT_ZERO; }
     if (tok.type == TOKEN_TYPE_KW_CALL) { return OPCODE_CALL_AT; }

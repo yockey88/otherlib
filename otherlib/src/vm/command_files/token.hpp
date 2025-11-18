@@ -12,7 +12,7 @@ namespace other {
   constexpr static inline std::array kOperators = {
     '+', '-', '*', '/',
     '=', '!', '<', '>', '&', '|',
-    '^', '%', '$', '#'
+    '^', '%', '$', '#', '@'
   };
 
   constexpr static inline std::array kPunctuation = {
@@ -41,6 +41,7 @@ namespace other {
 
     // g2
     "goto",
+    "jmp",
     "je",
     "jne",
     "call",
@@ -134,6 +135,7 @@ namespace other {
 
     TOKEN_TYPE_DOLLAR,
     TOKEN_TYPE_HASH,
+    TOKEN_TYPE_AT,
 
     TOKEN_TYPE_LEFT_PAREN,
     TOKEN_TYPE_RIGHT_PAREN,
@@ -179,6 +181,7 @@ namespace other {
     TOKEN_TYPE_KW_LSHIFT,
     TOKEN_TYPE_KW_RSHIFT,
     TOKEN_TYPE_KW_GOTO,
+    TOKEN_TYPE_KW_JMP,
     TOKEN_TYPE_KW_JE,
     TOKEN_TYPE_KW_JNE,
     TOKEN_TYPE_KW_CALL,

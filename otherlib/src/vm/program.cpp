@@ -48,7 +48,7 @@ namespace other {
     });
     /// save an opcode (uint32_t) worth of 0xFF bytes as a placeholder for the call instruction
     uint8_t byte = 0xFF;
-    for (uint8_t count = 0; count < sizeof(uint32_t); ++count) {
+    for (uint8_t count = 0; count < other_command_device::kOpCodeSize; ++count) {
       current_label->code.emplace_back(byte);
       ++current_offset;
     }
@@ -108,7 +108,7 @@ namespace other {
     });
     /// save an opcode (uint32_t) worth of 0xFF bytes as a placeholder for the call instruction
     uint8_t byte = 0xFF;
-    for (uint8_t count = 0; count < sizeof(uint32_t); ++count) {
+    for (uint8_t count = 0; count < other_command_device::kOpCodeSize; ++count) {
       current_label->code.emplace_back(byte);
       ++current_offset;
     }
@@ -155,10 +155,10 @@ namespace other {
     uint32_t stop_opcode = other::opcode_stop_device();
     uint8_t* stop_opcode_bytes = reinterpret_cast<uint8_t*>(&stop_opcode);
 
-    auto opcode_buffer = std::span(opcode_bytes, sizeof(uint32_t));
+    auto opcode_buffer = std::span(opcode_bytes, other_command_device::kOpCodeSize);
     result.append_range(opcode_buffer);
 
-    auto stop_opcode_buffer = std::span(stop_opcode_bytes, sizeof(uint32_t));
+    auto stop_opcode_buffer = std::span(stop_opcode_bytes, other_command_device::kOpCodeSize);
     result.append_range(stop_opcode_buffer);
 
     uint16_t compiled_offset = start_address + kDeviceProgramStartCodeOffset;
@@ -195,7 +195,7 @@ namespace other {
     assert(current_label && "Current Label is null!");
 
     uint8_t* bytes = reinterpret_cast<uint8_t*>(&opcode);
-    for (const auto& byte : std::span(bytes, sizeof(uint32_t))) {
+    for (const auto& byte : std::span(bytes, other_command_device::kOpCodeSize)) {
       current_label->code.emplace_back(byte);
       current_offset++;
     }

@@ -62,6 +62,7 @@ namespace other {
     uint8_t category_nibble() const { return static_cast<uint8_t>((opcode & kCategoryMask) >> kCategoryShift); }
     uint8_t type_nibble() const { return static_cast<uint8_t>((opcode & kTypeMask) >> kTypeShift); }
   };
+  static_assert(sizeof(instruction) == sizeof(uint32_t), "Instruction size must be the same as uint32_t");
 
   static uint8_t get_category_nibble(uint32_t opcode) {
     return static_cast<uint8_t>((opcode & instruction::kCategoryMask) >> instruction::kCategoryShift);
@@ -91,8 +92,6 @@ namespace other {
 
   uint32_t opcode_set_upper(uint32_t opcode, uint16_t upper);
   uint32_t opcode_set_lower(uint32_t opcode, uint16_t lower);
-
-  uint32_t opcode_get_from_category_and_type(uint32_t category_and_type);
 
   enum opcode_base : uint32_t {
     OPCODE_STOPDEV = 0x00000000,

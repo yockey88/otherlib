@@ -129,26 +129,6 @@ namespace other {
     return detail::set_lower_halfword(opcode, lower);
   }
 
-  uint32_t opcode_get_from_category_and_type(uint32_t category_and_type) {
-    uint8_t category = get_category_nibble(category_and_type);
-    uint8_t type = get_type_nibble(category_and_type);
-    switch (category) {
-      case 0x0:
-        return detail::group0_opcode(type);
-      case 0x1:
-        return detail::group1_opcode(type, 0, 0);
-      case 0x2:
-        return detail::group2_opcode(type);
-      case 0x3:
-        return detail::group3_opcode(type);
-      case 0x4:
-        return detail::group4_opcode(type, 0);
-      default:
-        OTHER_ASSERT(false, "Unknown opcode category!");
-        return 0;
-    }
-  }
-
   /// group 0 start ---------------
   uint32_t opcode_stop_device() {
     return 0x00000000;

@@ -32,6 +32,7 @@ namespace other {
     struct code_section_ir {
       struct instruction_ir {
         constexpr static size_t kMaxArguments = 3;
+        uint32_t instruction_index = 0;
         uint32_t category_and_type = 0;
         token arguments[kMaxArguments] = {
           token{ TOKEN_TYPE_INVALID, "", 0, 0 },
@@ -39,9 +40,15 @@ namespace other {
           token{ TOKEN_TYPE_INVALID, "", 0, 0 }
         };
       };
+      struct jump_label_ir {
+        std::string name;
+        uint32_t instruction_index = 0;
+        uint16_t section_address = 0;
+      };
 
       std::string name;
       std::vector<instruction_ir> instructions = {};
+      std::vector<jump_label_ir> jump_labels = {};
     };
 
     struct data_section_ir {
@@ -75,6 +82,8 @@ namespace other {
 
     bool is_type_keyword(const token& tok) const;
     bool is_instruction_keyword(const token& tok) const;
+    bool is_eol_marker(const token& tok) const;
+    // bool is_return_instruction(uint32_t category_and_type) const;
 
     const token& peek(size_t offset) const;
     const token& current() const;

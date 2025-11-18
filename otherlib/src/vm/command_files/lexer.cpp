@@ -9,7 +9,6 @@
 
 #include "token.hpp"
 
-
 namespace other {
   namespace {
 
@@ -242,6 +241,7 @@ namespace other {
       case '.': add_token(TOKEN_TYPE_DOT); break;
       case '#': add_token(TOKEN_TYPE_HASH); break;
       case '$': add_token(TOKEN_TYPE_DOLLAR); break;
+      case '@': add_token(TOKEN_TYPE_AT); break;
       case ':': add_token(TOKEN_TYPE_COLON); break;
       case '=': add_token(TOKEN_TYPE_EQUAL); break;
       case '\'':

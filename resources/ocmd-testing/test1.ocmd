@@ -1,5 +1,24 @@
 $foo:
-  dumpx r1
+  ; prepare registers
+  set r1, 10
+  set r2, 20
+  set r3, data.first_addr
+
+  ; compare into flag register for jne
+  cmp r1, r2, rflag
+  jne elseblock ; start of true block r1 == r2
+    dumpx r1
+  goto endif    ; end of true block
+@elseblock:
+    dumpx r1
+
+@endif:
+  ret
+end
+
+$bar:
+  dumpx r2
+  ret
 end
 
 ; $entry:
@@ -17,9 +36,10 @@ end
 ;   dumpx r4
 ; end
 
-; #data {
-;   .first_addr := 1111
-;   .hello_str : string = "Hello, Other Command Device!"
-;   .player_hp := 100
-;   .my_data := 01 02 03 04 FF EE DD CC
-; }
+#data {
+  .first_addr := 1111
+  .hello_str : string = "Hello, Other Command Device!"
+  .player_hp := 100
+  .my_data := DE AD BE EF FA CE BE EF
+  .my_second_data : blob = 0x010203
+}

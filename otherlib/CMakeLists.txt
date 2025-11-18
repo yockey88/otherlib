@@ -33,6 +33,7 @@ target_sources(otherlib
     src/vm/command_files/lexer.cpp
     src/vm/command_files/parser.cpp
     src/vm/command_files/assembler.cpp
+    src/vm/command_files/linker.cpp
 
     src/tools/build_tool.cpp
 

@@ -33,10 +33,16 @@ namespace other {
     static std::vector<token> get_argument_tokens_for_instruction(const uint32_t category_and_type, const std::vector<token>& arg_tokens);
   };
 
+  struct jump_label {
+    std::string name = "";
+    uint16_t section_address = 0;
+  };
+
   struct code_block {
     std::string name = "";
     natural_t name_hash = 0;
     std::vector<raw_instruction> instructions = {};
+    std::vector<jump_label> jump_labels = {};
   };
 
 }  // namespace other

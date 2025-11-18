@@ -65,9 +65,7 @@ namespace other {
     return arg;
   }
 
-  uint32_t raw_instruction::get_opcode(uint32_t category_and_type, const std::vector<argument>& arguments) {
-    uint32_t opcode = opcode_get_from_category_and_type(category_and_type);
-
+  uint32_t raw_instruction::get_opcode(uint32_t opcode, const std::vector<argument>& arguments) {
     switch (opcode) {
       case OPCODE_STOPDEV:
         OTHER_ASSERT(arguments.size() == 0, "STOPDEV takes no arguments : arguments.size() = {}", arguments.size());
