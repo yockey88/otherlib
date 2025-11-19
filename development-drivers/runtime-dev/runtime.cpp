@@ -23,14 +23,23 @@
 
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
 #include "scripting/execution_nodes/transform_nodes.hpp"
-#include "ui/type-bindings/scene_ui.hpp"
+#include "ui/node_editor_canvas_node.hpp"
 #include "ui/type-bindings/vm_ui.hpp"
+#include "vm/command_files/ocmd_compiler.hpp"
+#include "vm/command_files/ocmd_headers.hpp"
 #include "vm/opcode.hpp"
+#include "vm/vm.hpp"
 
-#include "asset/asset.hpp"
 #include "behavior_tree.hpp"
 
 namespace other {
+
+  void runtime_state_machine::on_enter_state(runtime_state new_state) {
+    CORE_LOG_DEBUG("Server state changed to {}", new_state);
+    if (new_state == runtime_state::RUNTIME_STATE_RUNNING) {
+      runtime_driver->driver_step_device();
+    }
+  }
 
   void runtime::on_initialize(const command_line& cmd) {
     CORE_LOG_DEBUG("Runtime...");
@@ -113,6 +122,22 @@ namespace other {
       }
 
       CORE_LOG_INFO("Scene '{}' created and set as current scene in runtime.", scene_ptr->name);
+
+      scene_object& donut_obj = scene_ptr->get_object(donut_id);
+      behavior_tree* bt = scene_ptr->get_component<behavior_tree>(&donut_obj);
+      OTHER_ASSERT(bt != nullptr, "Behavior tree component is null in runtime draw loop for donut object");
+
+      auto topo_sort = bt->topological_sort();
+      for (natural_t node_id : topo_sort) {
+        const auto& node = bt->get_node_by_id(node_id);
+        node_editor->add_editor_node(node.name, node.exec_node->get_num_inputs(), node.exec_node->get_num_outputs());
+      }
+      for (const auto& link : bt->links) {
+        const auto& from_node = bt->get_node_by_id(link.from.node_id);
+        const auto& to_node = bt->get_node_by_id(link.to.node_id);
+        node_editor->connect_node_pins(from_node.name, link.from.pin_index, to_node.name, link.to.pin_index);
+      }
+      node_editor->reorganize_nodes();
     });
 
     events->register_timed_event("application-fixed-update", duration_cast<microseconds>(seconds(1)), true);
@@ -148,6 +173,8 @@ namespace other {
       msg.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
       net_thread_message_bus.send_message(std::move(msg));
     }
+
+    node_editor = make_scope<ui::node_editor>(*events);
 
     last_frame_time = std::chrono::steady_clock::now();
 
@@ -299,6 +326,12 @@ namespace other {
         }
         ImGui::EndMenu();
       }
+      if (ImGui::BeginMenu("Tools")) {
+        if (ImGui::MenuItem("Toggle Node Editor")) {
+          show_node_editor = !show_node_editor;
+        }
+        ImGui::EndMenu();
+      }
       ImGui::EndMainMenuBar();
     }
 
@@ -315,13 +348,44 @@ namespace other {
         emit_instruction(opcode_load_x_direct(0x02, 0x1111));
         emit_instruction(opcode_compare_x_y_set_z(0x01, 0x02, other_command_device::kFlagRegister));
       }
+
+      static std::array<char, 256> file_buffer = {};
+      if (ImGui::InputText("OCMD File Path", file_buffer.data(), file_buffer.size())) {
+        // noop
+      }
+      if (ImGui::Button("Load OCMD File")) {
+        std::string filepath = std::string(file_buffer.data());
+        if (!filepath.empty()) {
+          load_ocmd_file_to_device(filepath, &core_device);
+        }
+      }
     }
     ImGui::End();
+
+    if (show_node_editor) {
+      node_editor->render();
+    }
 
     runtime_ui->render();
 
     renderer->end_ui_frame();
     renderer->end_frame();
+  }
+
+  void runtime::load_ocmd_file_to_device(const std::string& filepath, other_command_device* device) {
+    std::ifstream file(filepath, std::ios::binary);
+    if (!file.is_open()) {
+      CORE_LOG_ERROR("Failed to open OCMD file at path: {}", filepath);
+      return;
+    }
+
+    std::stringstream ss;
+    ss << file.rdbuf();
+    std::string file_content = ss.str();
+
+    std::vector<uint8_t> final_binary = ocmd_compiler::compile_single_translation_unit(file_content);
+    std::span program = std::span(final_binary).subspan(sizeof(ocmd_file_header));
+    vm::load_program_from_bytes(device, program);
   }
 
   void runtime::on_event(SDL_Event* event) {

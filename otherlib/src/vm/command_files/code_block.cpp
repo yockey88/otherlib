@@ -82,7 +82,18 @@ namespace other {
         return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
       case OPCODE_LOAD_X_DIRECT:
         OTHER_ASSERT(arguments.size() == 2, "LOAD takes 2 arguments : arguments.size() = {}", arguments.size());
-        return opcode_set_x_reg_n_address(opcode, arguments[0].value.value(), arguments[1].value.value());
+        if (arguments[1].type == TOKEN_TYPE_INTEGER_LITERAL || arguments[1].type == TOKEN_TYPE_ADDRESS) {
+          return opcode_set_x_reg_n_address(opcode, arguments[0].value.value(), arguments[1].value.value());
+        } else if (arguments[1].type == TOKEN_TYPE_FLOATING_POINT_LITERAL) {
+          OTHER_ASSERT(false, "Floating point literals not yet supported in LOAD_X_DIRECT");
+        } else if (arguments[1].type == TOKEN_TYPE_STRING_LITERAL) {
+          OTHER_ASSERT(false, "String literals not yet supported in LOAD_X_DIRECT");
+        } else if (arguments[1].type == TOKEN_TYPE_LABEL) {
+          return opcode_set_x_reg_n_address(opcode, arguments[0].value.value(), 0xFFFF);
+        } else {
+          OTHER_ASSERT(false, "Unsupported argument type for LOAD_X_DIRECT: {}", arguments[1].type);
+        }
+        break;
       case OPCODE_LOAD_X_FROM_MEM:
         OTHER_ASSERT(arguments.size() == 2, "LOAD takes 2 arguments : arguments.size() = {}", arguments.size());
         return opcode_set_x_reg_n_address(opcode, arguments[0].value.value(), arguments[1].value.value());

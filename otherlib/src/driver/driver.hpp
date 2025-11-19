@@ -42,6 +42,10 @@ namespace other {
     static std::pair<driver*, std::string> create(const config_table& config);
     static void destroy(const std::string& name, driver* instance);
 
+    void write_id_at_address(uint16_t address, natural_t id);
+    void emit_instruction(const instruction& op);
+    void driver_step_device();
+
    protected:
     struct network_context {
       asio::io_context io_context;
@@ -74,10 +78,6 @@ namespace other {
     natural_t create_new_scene(const std::string_view name);
     scene* get_scene(natural_t id);
     scene* get_active_scene();
-
-    void write_id_at_address(uint16_t address, natural_t id);
-    void emit_instruction(const instruction& op);
-    void driver_step_device();
 
     void pump_events();
     virtual void on_event(SDL_Event* event) {}

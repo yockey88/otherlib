@@ -140,10 +140,10 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      # run_project("development-drivers", cfg, "runtime_dev", "runtime-dev.toml", args, args.verbose)
+      run_project("development-drivers", cfg, "runtime_dev", "runtime-dev.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "rendering_dev", "renderer-dev.toml", args, args.verbose)
       # run_project("scratch", cfg, "gl-testing", "dev-config.toml", args, args.verbose)
-      run_project("scratch", cfg, "behavior-node", "behavior-node-dev.toml", args, args.verbose)
+      # run_project("scratch", cfg, "behavior-node", "behavior-node-dev.toml", args, args.verbose)
       # run_project("scratch", cfg, "action-dev", "action-dev.toml", args, args.verbose)
 
     elif args.run_server:

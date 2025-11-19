@@ -15,6 +15,7 @@
 #include "scene/scene_graph.hpp"
 
 #include "driver/driver.hpp"
+#include "ui/node_editor.hpp"
 
 #include "asset/asset_handler.hpp"
 #include "runtime_ui.hpp"
@@ -39,10 +40,12 @@ namespace other {
     NUM_EVENTS,
   };
 
+  class runtime;
+
   class runtime_state_machine : public state_machine<runtime_state, runtime_event> {
    public:
-    runtime_state_machine()
-        : state_machine<runtime_state, runtime_event>(runtime_state::RUNTIME_STATE_SHUT_DOWN) {
+    runtime_state_machine(runtime* driver)
+        : state_machine<runtime_state, runtime_event>(runtime_state::RUNTIME_STATE_SHUT_DOWN), runtime_driver(driver) {
       add_transition(runtime_state::RUNTIME_STATE_SHUT_DOWN, runtime_event::RUNTIME_EVENT_START, runtime_state::RUNTIME_STATE_LOADING_PROJECT);
 
       add_transition(runtime_state::RUNTIME_STATE_LOADING_PROJECT, runtime_event::RUNTIME_EVENT_READY, runtime_state::RUNTIME_STATE_WAITING_FOR_START_SCENE_LOAD);
@@ -57,15 +60,16 @@ namespace other {
     }
     virtual ~runtime_state_machine() = default;
 
-    void on_enter_state(runtime_state new_state) override {
-      CORE_LOG_DEBUG("Server state changed to {}", new_state);
-    }
+    void on_enter_state(runtime_state new_state) override;
+
+   private:
+    runtime* runtime_driver = nullptr;
   };
 
   class OTHER_CLASS runtime : public driver {
    public:
     runtime(const config_table& config)
-        : driver(config) {}
+        : driver(config), state_machine{ this } {}
     virtual ~runtime() = default;
 
     void on_initialize(const command_line& cmd) override;
@@ -91,6 +95,9 @@ namespace other {
     model donut_model;
     natural_t donut_model_id = 0;
 
+    bool show_node_editor = false;
+    scope<ui::node_editor> node_editor = nullptr;
+
     message_bus net_thread_message_bus;
     scope<network_thread> net_thread = nullptr;
 
@@ -104,6 +111,8 @@ namespace other {
     void update_running();
     void update_shutting_down();
     void draw();
+
+    void load_ocmd_file_to_device(const std::string& filepath, other_command_device* device);
 
     void on_event(SDL_Event* event) override;
   };

@@ -81,12 +81,12 @@ namespace other {
         natural_t create(natural_t start_pin_idx, natural_t end_pin_idx, const glm::vec4& color);
       };
 
-      node_editor_canvas_node(node_editor* parent)
-          : ui_node((ui_window*)parent, "Node Editor Canvas", glm::vec2(0, 0), ImGuiChildFlags_Borders /* | ImGuiChildFlags_FrameStyle */, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar), editor(parent) {}
+      node_editor_canvas_node(node_editor* parent);
       virtual ~node_editor_canvas_node() = default;
 
       natural_t create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins);
       void remove_single_node(natural_t node_id);
+      void clear_all_nodes();
 
       void connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx);
       void connect_node_pins(natural_t from_node_id, uint8_t from_pin_idx, natural_t to_node_id, uint8_t to_pin_idx);
@@ -107,6 +107,8 @@ namespace other {
       node_data nodes;
       pin_data pins;
       link_data links;
+
+      float zoom_level = 1.0f;
 
       struct open_link {
         natural_t pin_id = static_cast<natural_t>(-1);

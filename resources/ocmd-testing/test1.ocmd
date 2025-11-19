@@ -3,23 +3,24 @@ $foo:
   set r1, 10
   set r2, 20
   set r3, data.first_addr
-
-  ; compare into flag register for jne
   cmp r1, r2, rflag
-  jne elseblock ; start of true block r1 == r2
-    dumpx r1
-  goto endif    ; end of true block
-@elseblock:
-    dumpx r1
-
-@endif:
-  ret
 end
 
-$bar:
-  dumpx r2
-  ret
-end
+;   jne elseblock ; start of true block r1 == r2
+;     dumpx r1
+;   goto endif    ; end of true block
+; @elseblock:
+;     dumpx r1
+
+; @endif:
+;   dump
+;   ; compare into flag register for jne
+; end
+
+; $bar:
+;   dumpx r2
+;   ret
+; end
 
 ; $entry:
 ;   set r1, data.first_addr

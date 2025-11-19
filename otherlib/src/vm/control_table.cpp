@@ -455,8 +455,7 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() == device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("COMPARE R[{}] == R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
+      emit_instruction_log(device, std::format("[COMPARE-X-Y-SET-Z] x={} y={} z={}", x, y, z));
     }
 
     /// 15xxyyzz - R[z] = R[x] > R[y]
@@ -464,8 +463,7 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() > device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("GT R[{}] > R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
+      emit_instruction_log(device, std::format("[X-GT-Y-SET-Z] x={} y={} z={}", x, y, z));
     }
 
     /// 16xxyyzz - R[z] = R[x] < R[y]
@@ -473,8 +471,7 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() < device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("LT R[{}] < R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
+      emit_instruction_log(device, std::format("[X-LT-Y-SET-Z] x={} y={} z={}", x, y, z));
     }
 
     /// 17xxyyzz - R[z] = R[x] & R[y]
@@ -482,8 +479,7 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() & device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("AND R[{}] & R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
+      emit_instruction_log(device, std::format("[X-AND-Y-SET-Z] x={} y={} z={}", x, y, z));
     }
 
     /// 18xxyyzz - R[z] = R[x] | R[y]
@@ -491,8 +487,7 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() | device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("OR R[{}] | R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
+      emit_instruction_log(device, std::format("[X-OR-Y-SET-Z] x={} y={} z={}", x, y, z));
     }
 
     /// 19xxyyzz - R[z] = R[x] ^ R[y]
@@ -500,24 +495,21 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() ^ device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("XOR R[{}] ^ R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
+      emit_instruction_log(device, std::format("[X-XOR-Y-SET-Z] x={} y={} z={}", x, y, z));
     }
 
     /// 1Axxyy00 - R[x] = R[x] << R[y]
     void execute_decompiler_shift_left_x_by_y(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      device->registers[x] = uint64_t{ (device->registers[x].to_u64() << device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("SHL R[{}] << R[{}] -> R[{}] = {}", x, y, x, device->registers[x].to_u64());
+      emit_instruction_log(device, std::format("[SHL R[{}] << R[{}] -> R[{}]]", x, y, x));
     }
 
     /// 1Bxxyy00 - R[x] = R[x] >> R[y]
     void execute_decompiler_shift_right_x_by_y(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      device->registers[x] = uint64_t{ (device->registers[x].to_u64() >> device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("SHR R[{}] >> R[{}] -> R[{}] = {}", x, y, x, device->registers[x].to_u64());
+      emit_instruction_log(device, std::format("[SHR R[{}] >> R[{}] -> R[{}]]", x, y, x));
     }
 
     /////////////////////// 2XXX /////////////////////

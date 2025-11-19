@@ -53,7 +53,7 @@ namespace other {
 
         static MemoryEditor mem_edit;
         mem_edit.OptShowOptions = false;
-        mem_edit.Cols = 16;
+        mem_edit.Cols = 4;
         mem_edit.DrawContents(device_ref.memory->data, device_ref.memory->size());
       }
     }

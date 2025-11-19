@@ -1,3 +1,29 @@
+set(OTHERLIB_VERSION_MAJOR "0")
+set(OTHERLIB_VERSION_MINOR "0")
+set(OTHERLIB_VERSION_PATCH "1")
+configure_version_header(
+  "otherlib_version.hpp"
+  "OTHERLIB"
+  "OTHERLIB"
+  "${OTHERLIB_VERSION_MAJOR}"
+  "${OTHERLIB_VERSION_MINOR}"
+  "${OTHERLIB_VERSION_PATCH}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/otherlib_version.hpp"
+)
+
+set(OCMD_FILE_FORMAT_VERSION_MAJOR "0")
+set(OCMD_FILE_FORMAT_VERSION_MINOR "1")
+set(OCMD_FILE_FORMAT_VERSION_PATCH "0")
+configure_version_header(
+  "ocmd_file_format_version.hpp"
+  "OTHERLIB_VM_COMMAND_FILES_OCMD_FILE_FORMAT"
+  "OCMD_FILE_FORMAT"
+  "${OCMD_FILE_FORMAT_VERSION_MAJOR}"
+  "${OCMD_FILE_FORMAT_VERSION_MINOR}"
+  "${OCMD_FILE_FORMAT_VERSION_PATCH}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/vm/ocmd_file_format_version.hpp"
+)
+
 
 add_library(otherlib)
 target_sources(otherlib 
@@ -25,7 +51,6 @@ target_sources(otherlib
     src/vm/control_table.cpp
     src/vm/other_device.cpp
     src/vm/decompiler.cpp
-    src/vm/program.cpp
     src/vm/vm.cpp
     src/vm/command_files/token.cpp
     src/vm/command_files/code_block.cpp
@@ -34,6 +59,7 @@ target_sources(otherlib
     src/vm/command_files/parser.cpp
     src/vm/command_files/assembler.cpp
     src/vm/command_files/linker.cpp
+    src/vm/command_files/ocmd_compiler.cpp
 
     src/tools/build_tool.cpp
 

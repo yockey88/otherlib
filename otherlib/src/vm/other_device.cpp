@@ -7,7 +7,6 @@
 
 #include "driver/driver.hpp"
 #include "vm/decompiler.hpp"
-#include "vm/program.hpp"
 
 namespace other {
 

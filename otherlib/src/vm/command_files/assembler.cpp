@@ -55,20 +55,9 @@ namespace other {
               continue;
             }
 
-            /// attempt to resolve immediately if possible against the know labels
-            auto itr = std::ranges::find_if(code_section.jump_labels, [&](const jump_label& lbl) {
-              return lbl.name == instr.arguments[arg_idx].raw_txt;
-            });
-            if (itr != code_section.jump_labels.end()) {
-              uint16_t label_address = itr->section_address;
-              i.lower = label_address;
-            }
-            /// otherwise this will have to be linked later
-            else {
-              ocmd_assembled_code::unresolved_label& unresolved_lbl = label_usages.emplace_back();
-              unresolved_lbl.address = current_offset;
-              unresolved_lbl.label_name = instr.arguments[arg_idx].raw_txt;
-            }
+            ocmd_assembled_code::unresolved_label& unresolved_lbl = label_usages.emplace_back();
+            unresolved_lbl.address = current_offset;
+            unresolved_lbl.label_name = instr.arguments[arg_idx].raw_txt;
           }
         }
 

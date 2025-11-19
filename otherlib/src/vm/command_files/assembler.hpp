@@ -15,17 +15,16 @@
 namespace other {
 
   struct ocmd_assembled_code {
+    struct section_bound_ptr {
+      std::string name = "";
+      natural_t offset = 0;
+      natural_t size = 0;
+    };
     struct unresolved_label {
       uint16_t address = 0;
       std::string label_name = "";
     };
     struct data_object_ptr {
-      std::string name = "";
-      natural_t offset = 0;
-      natural_t size = 0;
-    };
-
-    struct section_bound_ptr {
       std::string name = "";
       natural_t offset = 0;
       natural_t size = 0;
@@ -88,8 +87,9 @@ namespace other {
     ocmd_ir ir;
 
     /// assembled code lacks address resolution
-    std::vector<uint8_t> assembled_data = {};
     std::vector<uint8_t> assembled_code = {};
+    std::vector<uint8_t> assembled_data = {};
+    std::vector<uint8_t> data_table_code{};
 
     natural_t num_instructions = 0;
 

@@ -34,6 +34,8 @@ namespace other {
     natural_t add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern = "");
 
     scope<ui_node>& get_node(natural_t node_id);
+    scope<ui_node>& get_node_by_name(const std::string_view node_name);
+    scope<ui_node>& get_node_by_search_pattern(const std::string_view search_pattern);
 
     template <typename T>
     T& get_node_as(natural_t node_id) {
@@ -42,6 +44,15 @@ namespace other {
 
       auto* casted_node = dynamic_cast<T*>(node.get());
       OTHER_ASSERT(casted_node != nullptr, "UI node with ID {} is not of requested type in window {}", node_id, title);
+      return *casted_node;
+    }
+    template <typename T>
+    T& get_node_as(const std::string_view search_pattern) {
+      auto& node = get_node_by_search_pattern(search_pattern);
+      OTHER_ASSERT(node != nullptr, "UI node with search pattern '{}' is null in window {}", search_pattern, title);
+
+      auto* casted_node = dynamic_cast<T*>(node.get());
+      OTHER_ASSERT(casted_node != nullptr, "UI node with search pattern '{}' is not of requested type in window {}", search_pattern, title);
       return *casted_node;
     }
 

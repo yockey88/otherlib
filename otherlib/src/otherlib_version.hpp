@@ -1,0 +1,11 @@
+/**
+ * \file otherlib_version.hpp
+ **/
+#ifndef OTHERLIB_VERSION_HPP
+#define OTHERLIB_VERSION_HPP
+
+#define OTHERLIB_VERSION_MAJOR 0
+#define OTHERLIB_VERSION_MINOR 0
+#define OTHERLIB_VERSION_PATCH 1
+
+#endif  // OTHERLIB_VERSION_HPP

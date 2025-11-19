@@ -7,12 +7,11 @@
 
 #include "core/logger.hpp"
 
+#include "vm/command_files/ocmd_headers.hpp"
+#include "vm/control_table.hpp"
 #include "vm/opcode.hpp"
 #include "vm/other_device.hpp"
-#include "vm/program.hpp"
 #include "vm/vm.hpp"
-
-#include "control_table.hpp"
 
 namespace other {
   namespace detail {
@@ -67,13 +66,6 @@ namespace other {
     CORE_LOG_DEBUG("{}", ss.str());
   }
 
-  void decompiler::dump_instructions(program* prog) {
-    OTHER_ASSERT(prog != nullptr, "Null program!");
-
-    std::vector<uint8_t> instructions = prog->compile_program(0);
-    dump_instructions(instructions);
-  }
-
   void decompiler::dump_instructions(const std::span<const uint8_t> instructions) {
     if (instructions.size() % other_command_device::kOpCodeSize != 0) {
       CORE_LOG_ERROR("Instruction size is not a multiple of opcode size!");
@@ -85,9 +77,16 @@ namespace other {
 
     vm::activate_builtin_control_table(&device, OTHER_CONTROL_TABLE_DECOMPILER_V000);
 
-    for (uint32_t offset = 0; offset < instructions.size();) {
-      const uint32_t* code_ptr = reinterpret_cast<const uint32_t*>(instructions.data() + offset);
+    OTHER_ASSERT(instructions.size() >= sizeof(ocmd_file_header), "Instructions size is smaller than OCMD file header size!");
+    const ocmd_file_header& file_header = *(reinterpret_cast<const ocmd_file_header*>(instructions.data()));
+    const program_header& prog_header = file_header.prog_header;
 
+    natural_t num_instructions = prog_header.num_instructions;
+    CORE_LOG_INFO("OCMD File Version: {}.{}", static_cast<int>(file_header.file_version_major), static_cast<int>(file_header.file_version_minor));
+
+    uint32_t offset = prog_header.code_section_offset;
+    for (natural_t i = 0; i < num_instructions; ++i) {
+      const uint32_t* code_ptr = reinterpret_cast<const uint32_t*>(instructions.data() + offset);
       device.current_instruction = *code_ptr;
       device.pc = offset;
       offset += other_command_device::kOpCodeSize;

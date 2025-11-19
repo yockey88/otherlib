@@ -115,25 +115,32 @@ namespace other {
     events = make_scope<event_system>(net_context->io_context);
     OTHER_ASSERT(events != nullptr, "Failed to create event system in renderer_driver");
 
-    // exec_graph.add_node("Vec1", make_scope<vec3_source_node>(glm::vec3{ 1.0f, 2.0f, 3.0f }));
-    // exec_graph.add_node("Vec2", make_scope<vec3_source_node>(glm::vec3{ 4.0f, 5.0f, 6.0f }));
-    // exec_graph.add_node("AddVecs", make_scope<add_vec3_node>());
-    // exec_graph.connect_nodes("Vec1", 0, "AddVecs", 0);
-    // exec_graph.connect_nodes("Vec2", 0, "AddVecs", 1);
+    exec_graph.add_node<vec3_source_node>("Vec1");  //, make_scope<vec3_source_node>(glm::vec3{ 1.0f, 2.0f, 3.0f }));
+    exec_graph.add_node<vec3_source_node>("Vec2");  //, make_scope<vec3_source_node>(glm::vec3{ 4.0f, 5.0f, 6.0f }));
+    exec_graph.add_node<add_vec3_node>("AddVecs");
+    exec_graph.connect_nodes("Vec1", 0, "AddVecs", 0);
+    exec_graph.connect_nodes("Vec2", 0, "AddVecs", 1);
+
+    auto& vec1 = exec_graph.get_node_by_name("Vec1");
+    auto& vec2 = exec_graph.get_node_by_name("Vec2");
+    vec1.exec_node->write_input(0, glm::vec3{ 1.0f, 2.0f, 3.0f });
+    vec2.exec_node->write_input(0, glm::vec3{ 4.0f, 5.0f, 6.0f });
 
     node_editor = make_scope<ui::node_editor>(*events);
 
-    // std::vector<natural_t> node_ids;
-    // for (const auto& n : exec_graph.nodes) {
-    //   node_ids.push_back(node_editor->add_editor_node(n.name, n.exec_node->get_num_inputs(), n.exec_node->get_num_outputs()));
-    // }
-    // for (const auto& l : exec_graph.links) {
-    //   const auto& from_node = exec_graph.get_node_by_id(l.from.node_id);
-    //   const auto& to_node = exec_graph.get_node_by_id(l.to.node_id);
-    //   node_editor->connect_node_pins(from_node.name, l.from.pin_index, to_node.name, l.to.pin_index);
-    // }
+    std::vector<natural_t> node_ids;
+    auto topo_sort = exec_graph.topological_sort();
+    for (const auto& n : topo_sort) {
+      auto& node = exec_graph.get_node_by_id(n);
+      node_ids.push_back(node_editor->add_editor_node(node.name, node.exec_node->get_num_inputs(), node.exec_node->get_num_outputs()));
+    }
+    for (const auto& l : exec_graph.links) {
+      const auto& from_node = exec_graph.get_node_by_id(l.from.node_id);
+      const auto& to_node = exec_graph.get_node_by_id(l.to.node_id);
+      node_editor->connect_node_pins(from_node.name, l.from.pin_index, to_node.name, l.to.pin_index);
+    }
 
-    // node_editor->reorganize_nodes();
+    node_editor->reorganize_nodes();
 
     // for (size_t i = 0; i < node_ids.size(); ++i) {
     // node_editor->set_display_fn(node_ids[0], [&](natural_t node_id, ImRect body_rect) {

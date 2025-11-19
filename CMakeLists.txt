@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.27.0..4.0.2)
 
 include(cmake/add_other_driver.cmake)
+include(cmake/configure_version_header.cmake)
 
 project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)

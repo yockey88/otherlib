@@ -91,6 +91,12 @@ namespace other {
       }
     }
 
+    void node_editor::clear_nodes() {
+      auto& canvas = get_node_as<node_editor_canvas_node>(canvas_id);
+      canvas.clear_all_nodes();
+      node_data.clear();
+    }
+
     void node_editor::reorganize_nodes() {
       /// go through the, starting at the root, and place the nodes in a directed graph
       auto& canvas = get_node_as<node_editor_canvas_node>(canvas_id);

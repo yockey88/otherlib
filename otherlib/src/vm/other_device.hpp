@@ -12,7 +12,6 @@
 
 namespace other {
 
-  struct program;
   class scene;
   class driver;
 

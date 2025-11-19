@@ -8,7 +8,6 @@
 
 #include "vm/control_table.hpp"
 #include "vm/opcode.hpp"
-#include "vm/program.hpp"
 
 namespace other {
 
@@ -86,15 +85,6 @@ namespace other {
     for (size_t i = 0; i < size; ++i) {
       device->memory->write_byte(address + i, data[i]);
     }
-  }
-
-  void vm::load_program(other_command_device* device, program* progr) {
-    OTHER_ASSERT(device, "Device is null!");
-    OTHER_ASSERT(device->memory, "Device memory is null");
-    OTHER_ASSERT(progr, "Program is null!");
-
-    std::vector<uint8_t> code = progr->compile_program(device->program_load_cursor);
-    load_program_from_bytes(device, code);
   }
 
   void vm::load_program_from_bytes(other_command_device* device, const std::span<const uint8_t> bytes) {

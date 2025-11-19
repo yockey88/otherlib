@@ -65,6 +65,10 @@ namespace other {
       return link_id;
     }
 
+    node_editor_canvas_node::node_editor_canvas_node(node_editor* parent)
+        : ui_node((ui_window*)parent, "Node Editor Canvas", glm::vec2(0, 0), ImGuiChildFlags_Borders /* | ImGuiChildFlags_FrameStyle */, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar), editor(parent) {
+    }
+
     natural_t node_editor_canvas_node::create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins) {
       glm::vec2 position = glm::vec2(0.f, 0.f);
       glm::vec2 size = glm::vec2(kMinNodeWidth, kMinNodeHeight);
@@ -158,6 +162,12 @@ namespace other {
       nodes.node_body_begins.erase(nodes.node_body_begins.begin() + node_id);
     }
 
+    void node_editor_canvas_node::clear_all_nodes() {
+      nodes = node_data{};
+      pins = pin_data{};
+      links = link_data{};
+    }
+
     void node_editor_canvas_node::connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx) {
       natural_t from_name_hash = FNV(from_node);
       natural_t to_name_hash = FNV(to_node);
@@ -193,12 +203,20 @@ namespace other {
 
     void node_editor_canvas_node::on_render_node_body() {
       canvas_position = { ImGui::GetCurrentWindow()->Pos.x, ImGui::GetCurrentWindow()->Pos.y };
-      canvas_size = { ImGui::GetCurrentWindow()->Size.x, ImGui::GetCurrentWindow()->Size.y };
+      canvas_size = { ImGui::GetCurrentWindow()->Size.x * zoom_level, ImGui::GetCurrentWindow()->Size.y * zoom_level };
 
       // draw_grid_lines();
 
       ImVec2 base_position = ImGui::GetCursorScreenPos();
       canvas_base_position = { base_position.x, base_position.y };
+
+      if (ImGui::IsWindowHovered()) {
+        if (ImGui::GetIO().MouseWheel > 0.f) {
+          zoom_level += 0.1f;
+        } else if (ImGui::GetIO().MouseWheel < 0.f) {
+          zoom_level = std::max(0.1f, zoom_level - 0.1f);
+        }
+      }
 
       for (natural_t node_id = 0; node_id < nodes.node_names.size(); ++node_id) {
         update_node_state(node_id);
@@ -497,7 +515,7 @@ namespace other {
       const auto& node_name = nodes.node_names[node_id];
 
       nodes.global_node_positions[node_id] = { canvas_base_position.x + nodes.node_positions[node_id].x, canvas_base_position.y + nodes.node_positions[node_id].y };
-      nodes.full_node_maxs[node_id] = nodes.global_node_positions[node_id] + nodes.node_sizes[node_id];
+      nodes.full_node_maxs[node_id] = nodes.global_node_positions[node_id] + nodes.node_sizes[node_id] * zoom_level;
 
       nodes.node_header_ends[node_id] = { nodes.full_node_maxs[node_id].x, nodes.global_node_positions[node_id].y + ImGui::GetFrameHeight() };
       nodes.node_body_begins[node_id] = { nodes.global_node_positions[node_id].x, nodes.node_header_ends[node_id].y };
