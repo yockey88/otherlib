@@ -19,6 +19,13 @@ namespace other {
   using tick_conversion = std::ratio<1, 10000>;
   using tick_duration = std::chrono::duration<natural_t, tick_conversion>;
 
+  using sys_clock = std::chrono::system_clock;
+  using steady_clock = std::chrono::steady_clock;
+  using highres_clock = std::chrono::high_resolution_clock;
+  using steady_timepoint = std::chrono::time_point<steady_clock>;
+  using system_timepoint = std::chrono::time_point<sys_clock>;
+  using highres_timepoint = std::chrono::time_point<highres_clock>;
+
   template <typename D>
   decltype(auto) duration_cast(auto from_duration) {
     return std::chrono::duration_cast<D>(from_duration);

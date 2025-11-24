@@ -17,4 +17,5 @@ dotnet-modules = [
 ]
 
 [assets]
+ocmd-file = "resources/ocmd-testing/test1.ocmd"
 test-model = "resources/models/spinning-torus.fbx"

@@ -74,7 +74,6 @@ namespace other {
 
     other_command_device device = {};
     vm::initialize_device(&device);
-
     vm::activate_builtin_control_table(&device, OTHER_CONTROL_TABLE_DECOMPILER_V000);
 
     OTHER_ASSERT(instructions.size() >= sizeof(ocmd_file_header), "Instructions size is smaller than OCMD file header size!");
@@ -82,9 +81,11 @@ namespace other {
     const program_header& prog_header = file_header.prog_header;
 
     natural_t num_instructions = prog_header.num_instructions;
-    CORE_LOG_INFO("OCMD File Version: {}.{}", static_cast<int>(file_header.file_version_major), static_cast<int>(file_header.file_version_minor));
+    CORE_LOG_DEBUG("OCMD File Version: {}.{}", static_cast<int>(file_header.file_version_major), static_cast<int>(file_header.file_version_minor));
+    CORE_LOG_DEBUG("Number of Instructions: {}", num_instructions);
+    CORE_LOG_DEBUG("Entry Point Address: {:#06x}", prog_header.entry_point_address);
 
-    uint32_t offset = prog_header.code_section_offset;
+    uint32_t offset = prog_header.code_section_offset + sizeof(ocmd_file_header);
     for (natural_t i = 0; i < num_instructions; ++i) {
       const uint32_t* code_ptr = reinterpret_cast<const uint32_t*>(instructions.data() + offset);
       device.current_instruction = *code_ptr;

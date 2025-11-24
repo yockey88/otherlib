@@ -5,6 +5,7 @@
 #define OTHERLIB_VM_COMMAND_FILES_PARSER_HPP
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include "core/defines.hpp"
@@ -16,8 +17,16 @@
 namespace other {
 
   struct ocmd_ir {
-    std::map<natural_t, code_block> code_blocks = {};
-    std::map<natural_t, data_block> data_blocks = {};
+    struct definition {
+      std::string name;
+      token value = { TOKEN_TYPE_INVALID, "", 0, 0 };
+    };
+
+    std::vector<definition> definitions = {};
+    std::vector<code_block> code_blocks = {};
+    std::vector<data_block> data_blocks = {};
+
+    bool valid = false;
   };
 
   class ocmd_parser {

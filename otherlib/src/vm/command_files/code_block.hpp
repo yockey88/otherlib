@@ -39,6 +39,8 @@ namespace other {
   };
 
   struct code_block {
+    bool is_entry_point = false;
+
     std::string name = "";
     natural_t name_hash = 0;
     std::vector<raw_instruction> instructions = {};

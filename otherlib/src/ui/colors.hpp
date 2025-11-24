@@ -11,6 +11,8 @@ namespace other {
   namespace ui {
     namespace colors {
 
+      constexpr auto kFireOrange = IM_COL32(242, 130, 7, 255);
+
       constexpr auto kAccent = IM_COL32(236, 158, 36, 255);
       constexpr auto kHighlight = IM_COL32(39, 185, 242, 255);
       constexpr auto kText = IM_COL32(192, 192, 192, 255);
@@ -70,6 +72,18 @@ namespace other {
         static constexpr auto kBasicNodeLinkColor = ImVec4(75.f / 255.f, 77.f / 255.f, 99.f / 255.f, 1.f);
         // static constexpr auto kNodeOutlineColor = ImVec4(1.f, 1.f, 1.f, 0.2f);
       }  // namespace editor
+      namespace console {
+        static constexpr auto kConsoleBackground = ImVec4(0.03f, 0.03f, 0.03f, 0.6f);
+        static constexpr auto kHeaderColor = ImVec4(44.f / 255.f, 47.f / 255.f, 55.f / 255.f, 1.f);
+        static constexpr auto kBodyColor = ImVec4(25.f / 255.f, 26.f / 255.f, 31.f / 255.f, 1.f);
+
+        static constexpr auto kConsoleCommandText = IM_COL32(112, 190, 242, 255);
+        static constexpr auto kConsoleOutputText = IM_COL32(192, 192, 192, 255);
+        static constexpr auto kConsoleDebugText = IM_COL32(128, 128, 128, 255);
+        static constexpr auto kConsoleInfoText = IM_COL32(192, 210, 192, 255);
+        static constexpr auto kConsoleWarningText = IM_COL32(242, 190, 112, 255);
+        static constexpr auto kConsoleErrorText = IM_COL32(230, 51, 51, 255);
+      }  // namespace console
 
       // IK IK :'(
       namespace ai {

@@ -12,6 +12,7 @@
 #include "core/arena.hpp"
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
+#include "core/value.hpp"
 #include "serialization/reflection.hpp"
 
 #include "dotnet/dotnet_field.hpp"

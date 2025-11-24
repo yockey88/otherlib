@@ -187,6 +187,8 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/pybind11/include
   ${OTHER_EXTERN_DIR}/nativefiledialog/src
   ${OTHER_EXTERN_DIR}/json
+  ${OTHER_EXTERN_DIR}/sol2
+  ${OTHER_EXTERN_DIR}/sol2/lua
   ${IMGUI_INCLUDE_DIRS}
 )
 if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
@@ -265,6 +267,7 @@ other_install_external_headers("pybind11" "${OTHER_EXTERN_DIR}/pybind11/include"
 other_install_external_headers("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefiledialog/src")
 other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
 other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/include")
+other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
 
 ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")

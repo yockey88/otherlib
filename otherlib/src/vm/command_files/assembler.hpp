@@ -29,15 +29,22 @@ namespace other {
       natural_t offset = 0;
       natural_t size = 0;
     };
+    struct definition {
+      std::string name;
+      token value = { TOKEN_TYPE_INVALID, "", 0, 0 };
+    };
 
     natural_t num_instructions = 0;
 
     std::vector<uint8_t> code = {};
     std::vector<uint8_t> data = {};
 
+    std::vector<definition> definitions = {};
     std::vector<section_bound_ptr> code_section_bounds = {};
     std::vector<unresolved_label> unresolved_labels = {};
     std::vector<data_object_ptr> data_object_ptrs = {};
+
+    bool malformed = true;
   };
 
   class ocmd_assembler {
@@ -99,6 +106,8 @@ namespace other {
     std::vector<unresolved_code_section> unresolved_code_sections = {};
 
     std::vector<unresolved_data_section> unresolved_data_sections = {};
+
+    ocmd_assembled_code code_metadata = {};
 
     void assemble_code_sections();
     void assemble_data_sections();

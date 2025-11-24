@@ -13,12 +13,12 @@ namespace OtherCsBindings
     static void AttachNativeObject(Int64 id, IntPtr native_ptr, NativeString class_name)
     {
       try {
+        Logger.LogDebug($"Attaching native object with ID {id} and class name {class_name}.");
         if (native_objects.ContainsKey(id))
         {
           throw new InvalidOperationException($"Native object with ID {id} is already attached.");
         }
 
-        Logger.LogDebug($"Attaching native object with ID {id} and class name {class_name}.");
         native_objects.Add(id, new NativeObject(id, native_ptr, class_name));
       } catch (Exception e) {
         Host.HandleException(e);

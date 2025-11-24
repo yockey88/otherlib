@@ -13,29 +13,57 @@
 
 namespace other {
 
+  struct assemble_error : public std::runtime_error {
+    assemble_error(const std::string& msg)
+        : std::runtime_error(msg) {}
+  };
+
   ocmd_assembled_code ocmd_assembler::assemble() {
-    assemble_data_sections();
-    assemble_code_sections();
+    if (!ir.valid) {
+      return {};
+    }
 
-    /// we can possibly resolve as many local labels here as possible
-    resolve_local_labels();
+    try {
+      assemble_data_sections();
+      assemble_code_sections();
 
-    return {
-      .num_instructions = num_instructions,
-      .code = assembled_code,
-      .data = assembled_data,
-      .code_section_bounds = code_section_bounds,
-      .unresolved_labels = label_usages,
-      .data_object_ptrs = data_object_ptrs,
-    };
+      /// we can possibly resolve as many local labels here as possible
+      resolve_local_labels();
+
+      code_metadata.num_instructions = num_instructions;
+      code_metadata.code = assembled_code;
+      code_metadata.data = assembled_data;
+      code_metadata.code_section_bounds = code_section_bounds;
+      code_metadata.unresolved_labels = label_usages;
+      code_metadata.data_object_ptrs = data_object_ptrs;
+      code_metadata.definitions = {};
+      for (const auto& def : ir.definitions) {
+        code_metadata.definitions.emplace_back(ocmd_assembled_code::definition{
+          .name = def.name,
+          .value = def.value,
+        });
+      }
+
+      code_metadata.malformed = false;
+      return code_metadata;
+    } catch (const assemble_error& e) {
+      CORE_LOG_ERROR("Assembly error: {}", e.what());
+      return {};
+    } catch (const std::exception& e) {
+      CORE_LOG_ERROR("Unexpected error during assembly: {}", e.what());
+      return {};
+    } catch (...) {
+      CORE_LOG_ERROR("Unknown error during assembly");
+      return {};
+    }
   }
 
   void ocmd_assembler::assemble_code_sections() {
-    natural_t section_offset = 0;
-    for (const auto& [name_hash, code_section] : ir.code_blocks) {
+    size_t offset = 0;
+    for (const auto& code_section : ir.code_blocks) {
       unresolved_code_section& unresolved_section = unresolved_code_sections.emplace_back();
       unresolved_section.name = code_section.name;
-      unresolved_section.output_offset = section_offset;
+      unresolved_section.output_offset = offset;
 
       natural_t instr_offset = 0;
       for (natural_t instr_idx = 0; instr_idx < code_section.instructions.size(); ++instr_idx) {
@@ -45,9 +73,6 @@ namespace other {
         unresolved_instr.opcode = raw_instruction::get_opcode(instr.category_and_type, instr.arguments);
         unresolved_instr.arguments = instr.arguments;
 
-        uint16_t current_offset = static_cast<uint16_t>(assembled_code.size());
-        OTHER_ASSERT(current_offset == section_offset + instr_offset, "Assembled code offset mismatch");
-
         instruction i = unresolved_instr.opcode;
         if (i.lower == 0xFFFF) {
           for (natural_t arg_idx = 0; arg_idx < instr.arguments.size(); ++arg_idx) {
@@ -56,20 +81,19 @@ namespace other {
             }
 
             ocmd_assembled_code::unresolved_label& unresolved_lbl = label_usages.emplace_back();
-            unresolved_lbl.address = current_offset;
+            unresolved_lbl.address = static_cast<uint16_t>(assembled_code.size());
             unresolved_lbl.label_name = instr.arguments[arg_idx].raw_txt;
           }
         }
 
-        unresolved_instr.section_offset = current_offset;
+        unresolved_instr.section_offset = instr_offset;
         instr_offset += other_command_device::kOpCodeSize;
 
         const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&i.opcode);
         assembled_code.append_range(std::span(bytes, other_command_device::kOpCodeSize));
+        offset += other_command_device::kOpCodeSize;
         ++num_instructions;
       }
-
-      section_offset += unresolved_section.instructions.size() * other_command_device::kOpCodeSize;
     }
 
     for (const auto& unresolved_section : unresolved_code_sections) {
@@ -83,7 +107,7 @@ namespace other {
 
   void ocmd_assembler::assemble_data_sections() {
     uint16_t section_offset = 0;
-    for (const auto& [name_hash, data_section] : ir.data_blocks) {
+    for (const auto& data_section : ir.data_blocks) {
       unresolved_data_section& unresolved_section = unresolved_data_sections.emplace_back();
       unresolved_section.output_offset = section_offset;
       unresolved_section.name = data_section.name;

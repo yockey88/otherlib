@@ -31,6 +31,12 @@ class TestObject
   {
   }
 
+  public int Add(int a, int b)
+  {
+    Debug.Log($"{a + b}");
+    return a + b;
+  }
+
   public void DisplayInfo()
   {
     // Debug.Log($"Filesystem.GetProgramFilesFolder(): {Filesystem.GetProgramFilesFolder("MyApp")}");

@@ -97,29 +97,19 @@ namespace other {
 
   std::vector<uint8_t> data_object::data_from_token_and_type(const token& value_token, data_type type) {
     switch (type) {
-      case OCMD_DATA_TYPE_I8: {
-        int8_t val = static_cast<int8_t>(std::stoll(value_token.text));
-        return raw_data_from_value<int8_t>(val);
+      case OCMD_DATA_TYPE_I8:
+      case OCMD_DATA_TYPE_I16:
+      case OCMD_DATA_TYPE_I32:
+      case OCMD_DATA_TYPE_I64: {
+        int64_t val = static_cast<int64_t>(std::stoll(value_token.text));
+        return raw_data_from_value(val);
       }
-      case OCMD_DATA_TYPE_U8: {
-        uint8_t val = static_cast<uint8_t>(std::stoull(value_token.text));
-        return raw_data_from_value<uint8_t>(val);
-      }
-      case OCMD_DATA_TYPE_I16: {
-        int16_t val = static_cast<int16_t>(std::stoll(value_token.text));
-        return raw_data_from_value<int16_t>(val);
-      }
-      case OCMD_DATA_TYPE_U16: {
-        uint16_t val = static_cast<uint16_t>(std::stoull(value_token.text));
-        return raw_data_from_value<uint16_t>(val);
-      }
-      case OCMD_DATA_TYPE_I32: {
-        int32_t val = static_cast<int32_t>(std::stoll(value_token.text));
-        return raw_data_from_value<int32_t>(val);
-      }
-      case OCMD_DATA_TYPE_U32: {
-        uint32_t val = static_cast<uint32_t>(std::stoull(value_token.text));
-        return raw_data_from_value<uint32_t>(val);
+      case OCMD_DATA_TYPE_U8:
+      case OCMD_DATA_TYPE_U16:
+      case OCMD_DATA_TYPE_U32:
+      case OCMD_DATA_TYPE_U64: {
+        uint64_t val = static_cast<uint64_t>(std::stoull(value_token.text));
+        return raw_data_from_value<uint64_t>(val);
       }
       case OCMD_DATA_TYPE_F32: return raw_data_from_value<float>(std::stof(value_token.text));
       case OCMD_DATA_TYPE_F64: return raw_data_from_value<double>(std::stod(value_token.text));

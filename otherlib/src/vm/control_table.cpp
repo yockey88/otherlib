@@ -114,7 +114,8 @@ namespace other {
     void execute_load_x_from_memory(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint16_t addr = device->current_instruction.lower;
-      device->registers[x] = device->read_u64_at(addr);
+      uint64_t value = device->read_u64_at(addr + device->program_start_address);
+      device->registers[x] = uint64_t{ value };
     }
 
     /// 12xxkkkk - R[x] = value
@@ -130,7 +131,7 @@ namespace other {
       uint16_t addr = device->current_instruction.lower;
       uint64_t value_addr = device->registers[x].to_u64();
       uint64_t value = device->read_u64_at(value_addr);
-      device->write_u64_at(addr, value);
+      device->write_u64_at(addr + device->program_start_address, value);
     }
 
     /// 14xxyyzz - R[z] = R[x] == R[y]
@@ -139,7 +140,6 @@ namespace other {
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
       device->registers[z] = uint64_t{ (device->registers[x].to_u64() == device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("COMPARE R[{}] == R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
     }
 
     /// 15xxyyzz - R[z] = R[x] > R[y]
@@ -148,7 +148,6 @@ namespace other {
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
       device->registers[z] = uint64_t{ (device->registers[x].to_u64() > device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("GT R[{}] > R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
     }
 
     /// 16xxyyzz - R[z] = R[x] < R[y]
@@ -157,7 +156,6 @@ namespace other {
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
       device->registers[z] = uint64_t{ (device->registers[x].to_u64() < device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("LT R[{}] < R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
     }
 
     /// 17xxyyzz - R[z] = R[x] & R[y]
@@ -166,7 +164,6 @@ namespace other {
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
       device->registers[z] = uint64_t{ (device->registers[x].to_u64() & device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("AND R[{}] & R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
     }
 
     /// 18xxyyzz - R[z] = R[x] | R[y]
@@ -175,7 +172,6 @@ namespace other {
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
       device->registers[z] = uint64_t{ (device->registers[x].to_u64() | device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("OR R[{}] | R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
     }
 
     /// 19xxyyzz - R[z] = R[x] ^ R[y]
@@ -184,7 +180,6 @@ namespace other {
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
       device->registers[z] = uint64_t{ (device->registers[x].to_u64() ^ device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("XOR R[{}] ^ R[{}] -> R[{}] = {}", x, y, z, device->registers[z].to_u64());
     }
 
     /// 1Axxyy00 - R[x] = R[x] << R[y]
@@ -192,7 +187,6 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       device->registers[x] = uint64_t{ (device->registers[x].to_u64() << device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("SHL R[{}] << R[{}] -> R[{}] = {}", x, y, x, device->registers[x].to_u64());
     }
 
     /// 1Bxxyy00 - R[x] = R[x] >> R[y]
@@ -200,14 +194,13 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       device->registers[x] = uint64_t{ (device->registers[x].to_u64() >> device->registers[y].to_u64()) };
-      CORE_LOG_DEBUG("SHR R[{}] >> R[{}] -> R[{}] = {}", x, y, x, device->registers[x].to_u64());
     }
 
     /////////////////////// 2XXX /////////////////////
     /// 2000nnnn - goto address nnn
     void execute_goto(other_command_device* device) {
       uint16_t addr = device->current_instruction.lower;
-      device->pc = addr;
+      device->pc = addr + device->program_start_address;
     }
 
     /// 2100nnnn - goto address nnn if R[x] == 0
@@ -215,7 +208,7 @@ namespace other {
       uint16_t addr = device->current_instruction.lower;
 
       if (device->registers[other_command_device::kFlagRegister].to_u64() == 0) {
-        device->pc = addr;
+        device->pc = addr + device->program_start_address;
       }
     }
 
@@ -224,7 +217,7 @@ namespace other {
       uint16_t addr = device->current_instruction.lower;
 
       if (device->registers[other_command_device::kFlagRegister].to_u64() != 0) {
-        device->pc = addr;
+        device->pc = addr + device->program_start_address;
       }
     }
 
@@ -233,13 +226,13 @@ namespace other {
       uint16_t addr = device->current_instruction.lower;
 
       // push current pc to stack
-      perform_call_stack_push_and_address_shift(device, addr);
+      perform_call_stack_push_and_address_shift(device, addr + device->program_start_address);
     }
 
     /// 24000000 - return from function
     void execute_return(other_command_device* device) {
       if (device->sp == 0) {
-        assert(false && "Stack underflow on RET");
+        OTHER_ASSERT(false, "Stack underflow on RET, PC: {:#08x}", device->pc);
       } else {
         perform_call_stack_pop_and_address_shift(device);
       }

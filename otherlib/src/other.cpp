@@ -18,6 +18,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "scripting/dotnet_bindings.hpp"
+#include "scripting/lua_bindings.hpp"
 
 #include "spdlog/common.h"
 
@@ -176,7 +177,9 @@ namespace other {
     /// we've already loaded OtherCs, so now we bind core functionality, start with the platform directory
     /// functions
     dotnet_host& dn_host = env->get_dotnet_host();
+    lua_host& l_host = env->get_lua_host();
     bind_otherlib_dotnet_functions(dn_host);
+    bind_otherlib_lua_functions(l_host);
   }
 
   void cleanup_scripting_environment() {

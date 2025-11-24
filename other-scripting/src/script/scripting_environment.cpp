@@ -23,6 +23,9 @@ namespace other {
     dotnet_load_context = dotnet.create_assembly_context("Other-DotNet-Assembly-Context");
     OTHER_ASSERT(dotnet_load_context != nullptr, "Failed to create assembly context for .NET assemblies.");
 
+    lua.load_host(configuration);
+    lua.call_entry_point();
+
     python.load_host();
     python.call_entry_point();
   }
@@ -198,6 +201,10 @@ namespace other {
     dotnet_unregister_native_object(id);
     dotnet.destroy_managed_object(obj->dotnet_object);
     obj->dotnet_object = nullptr;
+  }
+
+  lua_script* scripting_environment::load_lua_file(const std::string_view file_path) {
+    return lua.load_file(file_path);
   }
 
   void scripting_environment::attach_python_object(integer_t id, const std::string_view type_name) {

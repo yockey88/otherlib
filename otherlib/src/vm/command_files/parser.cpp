@@ -38,6 +38,7 @@ namespace other {
       return {};
     }
 
+    ir_result.valid = true;
     return ir_result;
   }
 
@@ -52,6 +53,28 @@ namespace other {
       /// data-block definition
       else if (check(TOKEN_TYPE_HASH)) {
         sections.data_sections.emplace_back(parse_data_block());
+      } else if (check(TOKEN_TYPE_SLASH)) {
+        consume();  // consume '/'
+        if (finished() || !check(TOKEN_TYPE_IDENTIFIER)) {
+          throw parse_error("Expected definition/setting or comment after '/'");
+        }
+
+        auto& def = ir_result.definitions.emplace_back(ocmd_ir::definition{
+          .name = current().text,
+        });
+        consume();
+
+        if (finished() || !check(TOKEN_TYPE_COLON)) {
+          throw parse_error("Expected':' after definition name");
+        }
+        consume();  // consume ':'
+
+        if (finished()) {
+          throw parse_error("Expected value for definition");
+        }
+
+        def.value = current();
+        consume();
       } else {
         throw parse_error("Unexpected token: " + current().text);
       }
@@ -281,10 +304,8 @@ namespace other {
 
     /// now go through and finalize instructions into code block for final IR
     for (auto& section : sections) {
-      auto [itr, inserted] = ir_result.code_blocks.emplace(FNV(section.name), code_block{});
-      auto& code_blk = itr->second;
+      auto& code_blk = ir_result.code_blocks.emplace_back(code_block{});
       code_blk.name = section.name;
-      code_blk.name_hash = itr->first;
 
       for (auto& instr_ir : section.instructions) {
         auto& instr = code_blk.instructions.emplace_back();
@@ -309,10 +330,8 @@ namespace other {
 
   void ocmd_parser::process_data_sections(std::vector<data_section_ir>& sections) {
     for (auto& data_section : sections) {
-      auto [itr, inserted] = ir_result.data_blocks.emplace(FNV(data_section.name), data_block{});
-      auto& data_blk = itr->second;
+      auto& data_blk = ir_result.data_blocks.emplace_back(data_block{});
       data_blk.name = data_section.name;
-      data_blk.name_hash = itr->first;
 
       for (auto& obj_ir : data_section.objects) {
         auto& obj = data_blk.objects.emplace_back();
@@ -328,7 +347,7 @@ namespace other {
     }
 
     /// now get data for each object
-    for (auto& [name_hash, data_blk] : ir_result.data_blocks) {
+    for (auto& data_blk : ir_result.data_blocks) {
       for (auto& obj : data_blk.objects) {
         if (obj.value_token.type != TOKEN_TYPE_DATA_VALUE) {
           CORE_LOG_ERROR("Data object '{}' has invalid value token type [{}]", obj.name, static_cast<int>(obj.value_token.type));

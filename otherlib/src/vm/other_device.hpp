@@ -62,6 +62,8 @@ namespace other {
     driver* host_driver = nullptr;
     scene* scene_context = nullptr;
 
+    uint16_t program_start_address = kProgramStartAddress;
+
     bool stopped = true;
 
     instruction current_instruction = 0x0;

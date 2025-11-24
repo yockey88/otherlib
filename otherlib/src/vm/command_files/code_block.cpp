@@ -66,6 +66,20 @@ namespace other {
   }
 
   uint32_t raw_instruction::get_opcode(uint32_t opcode, const std::vector<argument>& arguments) {
+    auto mark_load_opcode_label_arguments = [](uint32_t opcode, const std::vector<argument>& args) -> uint32_t {
+      if (args[1].type == TOKEN_TYPE_INTEGER_LITERAL || args[1].type == TOKEN_TYPE_ADDRESS) {
+        return opcode_set_x_reg_n_address(opcode, args[0].value.value(), args[1].value.value());
+      } else if (args[1].type == TOKEN_TYPE_FLOATING_POINT_LITERAL) {
+        OTHER_ASSERT(false, "Floating point literals not yet supported in LOAD_X_DIRECT");
+      } else if (args[1].type == TOKEN_TYPE_STRING_LITERAL) {
+        OTHER_ASSERT(false, "String literals not yet supported in LOAD_X_DIRECT");
+      } else if (args[1].type == TOKEN_TYPE_LABEL) {
+        return opcode_set_x_reg_n_address(opcode, args[0].value.value(), 0xFFFF);
+      } else {
+        OTHER_ASSERT(false, "Unsupported argument type for LOAD_X_DIRECT: {}", args[1].type);
+      }
+    };
+
     switch (opcode) {
       case OPCODE_STOPDEV:
         OTHER_ASSERT(arguments.size() == 0, "STOPDEV takes no arguments : arguments.size() = {}", arguments.size());
@@ -82,21 +96,11 @@ namespace other {
         return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
       case OPCODE_LOAD_X_DIRECT:
         OTHER_ASSERT(arguments.size() == 2, "LOAD takes 2 arguments : arguments.size() = {}", arguments.size());
-        if (arguments[1].type == TOKEN_TYPE_INTEGER_LITERAL || arguments[1].type == TOKEN_TYPE_ADDRESS) {
-          return opcode_set_x_reg_n_address(opcode, arguments[0].value.value(), arguments[1].value.value());
-        } else if (arguments[1].type == TOKEN_TYPE_FLOATING_POINT_LITERAL) {
-          OTHER_ASSERT(false, "Floating point literals not yet supported in LOAD_X_DIRECT");
-        } else if (arguments[1].type == TOKEN_TYPE_STRING_LITERAL) {
-          OTHER_ASSERT(false, "String literals not yet supported in LOAD_X_DIRECT");
-        } else if (arguments[1].type == TOKEN_TYPE_LABEL) {
-          return opcode_set_x_reg_n_address(opcode, arguments[0].value.value(), 0xFFFF);
-        } else {
-          OTHER_ASSERT(false, "Unsupported argument type for LOAD_X_DIRECT: {}", arguments[1].type);
-        }
+        return mark_load_opcode_label_arguments(opcode, arguments);
         break;
       case OPCODE_LOAD_X_FROM_MEM:
         OTHER_ASSERT(arguments.size() == 2, "LOAD takes 2 arguments : arguments.size() = {}", arguments.size());
-        return opcode_set_x_reg_n_address(opcode, arguments[0].value.value(), arguments[1].value.value());
+        return mark_load_opcode_label_arguments(opcode, arguments);
       case OPCODE_INDIRECT_WRITE_X_TO_MEM:
         OTHER_ASSERT(arguments.size() == 2, "INDIRECT_WRITE takes 2 arguments : arguments.size() = {}", arguments.size());
         return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());

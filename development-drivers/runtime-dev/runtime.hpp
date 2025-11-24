@@ -15,6 +15,7 @@
 #include "scene/scene_graph.hpp"
 
 #include "driver/driver.hpp"
+#include "ui/console.hpp"
 #include "ui/node_editor.hpp"
 
 #include "asset/asset_handler.hpp"
@@ -79,6 +80,8 @@ namespace other {
     void catch_signal(int signal) override;
 
    private:
+    friend class runtime_state_machine;
+
     integer_t builder_obj_id = -1;
 
     float curr_frame_delta_time = 0.0f;
@@ -95,13 +98,16 @@ namespace other {
     model donut_model;
     natural_t donut_model_id = 0;
 
-    bool show_node_editor = false;
+    bool show_node_editor = true;
     scope<ui::node_editor> node_editor = nullptr;
+
+    bool show_console_window = true;
+    scope<ui::console_window> console_window = nullptr;
+    lua_script* console_lua_script = nullptr;
 
     message_bus net_thread_message_bus;
     scope<network_thread> net_thread = nullptr;
 
-    scope<event_system> events = nullptr;
     scope<runtime_control_window> runtime_ui = nullptr;
     runtime_state_machine state_machine;
 
@@ -112,7 +118,7 @@ namespace other {
     void update_shutting_down();
     void draw();
 
-    void load_ocmd_file_to_device(const std::string& filepath, other_command_device* device);
+    bool handle_console_command(const std::string_view command, system_timepoint timestamp);
 
     void on_event(SDL_Event* event) override;
   };

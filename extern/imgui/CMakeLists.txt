@@ -14,6 +14,8 @@ target_sources(imgui
 )
 set(IMGUI_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/imgui ${CMAKE_CURRENT_SOURCE_DIR}/freetype ${CMAKE_CURRENT_SOURCE_DIR}/../sdl)
 set(IMGUI_INCLUDE_DIRS ${IMGUI_INCLUDE_DIRS} PARENT_SCOPE)
+
+### TODO fix this to use interface generator expressions $<...>
 target_include_directories(imgui PRIVATE ${IMGUI_INCLUDE_DIRS})
 
 other_install_dependency(imgui "${CMAKE_CURRENT_SOURCE_DIR}/imgui" HEADER_PATTERNS "*.h" "*.hpp")

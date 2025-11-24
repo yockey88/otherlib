@@ -16,8 +16,9 @@ namespace other {
     uint16_t data_table_offset = 0;
     uint16_t data_section_offset = 0;
     uint16_t num_instructions = 0;
+    uint16_t entry_point_address = 0;
   };
-  static_assert(sizeof(program_header) == 8, "Program header size must be 8 bytes");
+  static_assert(sizeof(program_header) == 10, "Program header size must be 10 bytes");
 
   struct ocmd_file_header {
     char file_signature[4] = { 'O', 'C', 'M', 'D' };
@@ -27,7 +28,7 @@ namespace other {
     program_header prog_header = {};
   };
 #pragma pack(pop)
-  static_assert(sizeof(ocmd_file_header) == 24, "OCMD file header size must be 24 bytes");
+  static_assert(sizeof(ocmd_file_header) == 26, "OCMD file header size must be 26 bytes");
 
 }  // namespace other
 

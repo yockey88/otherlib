@@ -11,6 +11,7 @@
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "scripting/lua_bindings.hpp"
 #include "vm/control_table.hpp"
 #include "vm/other_device.hpp"
 #include "vm/vm.hpp"
@@ -30,6 +31,9 @@ namespace other {
       }
     });
 
+    events = make_scope<event_system>(net_context->io_context);
+    events->register_event("shutdown-requested");
+
     std::vector<std::string> dotnet_modules = get_config_value<std::vector<std::string>>("scripting", "dotnet-modules");
     for (const auto& module : dotnet_modules) {
       CORE_LOG_DEBUG(" - .NET module to load: {}", module);
@@ -43,12 +47,13 @@ namespace other {
 
     vm::initialize_device(&core_device);
     vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
-    // vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_DECOMPILER_V000);
     core_device.stopped = false;
     core_device.host_driver = this;
 
     project_scene_graph = make_scope<scene_graph>();
 
+    auto* env = subsystem<scripting_environment>::get();
+    bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
     {
       PROFILE_SECTION("driver::initialize--client-on_initialize");
       on_initialize(cmd);
@@ -72,6 +77,7 @@ namespace other {
 
     project_scene_graph = nullptr;
 
+    events = nullptr;
     net_context->signals.cancel();
     if (!net_context->io_context.stopped()) {
       net_context->io_context.stop();
@@ -187,6 +193,11 @@ namespace other {
       core_device.control_table[instr_nib](&core_device);
       vm::update_device_timers(&core_device);
     }
+  }
+
+  void driver::set_scene_to_active(natural_t scene_id) {
+    CORE_LOG_DEBUG("Setting scene [{}] as active scene in driver.", scene_id);
+    active_scene = project_scene_graph->get_scene(scene_id);
   }
 
   void driver::pump_events() {
@@ -338,11 +349,6 @@ namespace other {
 
   natural_t driver::get_id_of_scene(const std::string_view name) {
     return project_scene_graph->get_id_of_scene(name);
-  }
-
-  void driver::set_scene_to_active(natural_t scene_id) {
-    CORE_LOG_DEBUG("Setting scene [{}] as active scene in driver.", scene_id);
-    active_scene = project_scene_graph->get_scene(scene_id);
   }
 
   void driver::driver::add_live_coroutine(task handle) {

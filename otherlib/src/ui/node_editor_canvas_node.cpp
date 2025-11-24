@@ -515,7 +515,7 @@ namespace other {
       const auto& node_name = nodes.node_names[node_id];
 
       nodes.global_node_positions[node_id] = { canvas_base_position.x + nodes.node_positions[node_id].x, canvas_base_position.y + nodes.node_positions[node_id].y };
-      nodes.full_node_maxs[node_id] = nodes.global_node_positions[node_id] + nodes.node_sizes[node_id] * zoom_level;
+      nodes.full_node_maxs[node_id] = nodes.global_node_positions[node_id] + nodes.node_sizes[node_id];  // * zoom_level;
 
       nodes.node_header_ends[node_id] = { nodes.full_node_maxs[node_id].x, nodes.global_node_positions[node_id].y + ImGui::GetFrameHeight() };
       nodes.node_body_begins[node_id] = { nodes.global_node_positions[node_id].x, nodes.node_header_ends[node_id].y };

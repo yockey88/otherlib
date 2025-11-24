@@ -14,6 +14,7 @@
 #include "core/config_table.hpp"
 #include "core/coroutine.hpp"
 #include "core/defines.hpp"
+#include "event/event_system.hpp"
 
 #include "dotnet/dotnet_assembly.hpp"
 #include "renderer/renderer.hpp"
@@ -46,6 +47,16 @@ namespace other {
     void emit_instruction(const instruction& op);
     void driver_step_device();
 
+    const config_table& configuration() const {
+      return config;
+    }
+
+    scope<event_system>& get_event_system() {
+      OTHER_ASSERT(events != nullptr, "Event system is not initialized in driver.");
+      return events;
+    }
+    void set_scene_to_active(natural_t scene_id);
+
    protected:
     struct network_context {
       asio::io_context io_context;
@@ -56,10 +67,6 @@ namespace other {
     };
     /// \todo figure out why asio does not like the arena allocator here
     std::unique_ptr<network_context> net_context = nullptr;
-
-    const config_table& configuration() const {
-      return config;
-    }
 
     virtual void on_initialize(const command_line& cmd) = 0;
     virtual void on_shutdown() = 0;
@@ -120,11 +127,11 @@ namespace other {
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
 
+    scope<event_system> events = nullptr;
+
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);
     natural_t get_id_of_scene(const std::string_view name);
-
-    void set_scene_to_active(natural_t scene_id);
 
     void add_live_coroutine(task handle);
     void poll_coroutines();

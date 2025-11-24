@@ -10,6 +10,7 @@
 
 #include "dotnet/dotnet_object.hpp"
 #include "dotnet/host.hpp"
+#include "lua/lua_host.hpp"
 #include "python/interpreter.hpp"
 #include "script/script_object.hpp"
 
@@ -69,10 +70,6 @@ namespace other {
         }
         obj->dotnet_object->load_fields();
       }
-
-      native_string native_name = native_string::new_str(type_name);
-      get_dotnet_host().interop().attach_native_object(id, obj->dotnet_object, native_name);
-      native_string::free_str(native_name);
     }
 
     template <typename... Args>
@@ -150,6 +147,11 @@ namespace other {
     void detach_dotnet_object(integer_t id);
     /// END DOTNET
 
+    /// LUA
+    lua_host& get_lua_host() { return lua; }
+    lua_script* load_lua_file(const std::string_view file_path);
+    /// END LUA
+
     /// PYTHON
     void attach_python_object(integer_t id, const std::string_view type_name);
     void detach_python_object(integer_t id);
@@ -171,6 +173,8 @@ namespace other {
 
     assembly_context* dotnet_load_context = nullptr;
     dotnet_host dotnet;
+
+    lua_host lua;
 
     python_interpreter python;
 

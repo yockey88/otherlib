@@ -38,6 +38,10 @@ target_sources(otherlib
     src/rendering-pipelines/scriptable_pipeline.cpp
 
     src/scripting/dotnet_bindings.cpp
+    src/scripting/lua_bindings.cpp
+
+    src/scripting/actions/action.cpp
+    src/scripting/actions/callback.cpp
 
     src/scripting/execution_node.cpp
     src/scripting/execution_graph.cpp
@@ -66,6 +70,8 @@ target_sources(otherlib
     src/ui/ui_widgets.cpp
     src/ui/node_editor_canvas_node.cpp
     src/ui/node_editor.cpp
+    src/ui/console_history_node.cpp
+    src/ui/console.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp
@@ -95,6 +101,9 @@ foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
   target_include_directories(otherlib PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
 endforeach()
 
+target_link_directories(otherlib PUBLIC 
+  $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/sol2/lib>
+)
 target_link_libraries(otherlib PUBLIC other_scene other_renderer other_scripting other_network other_core)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)

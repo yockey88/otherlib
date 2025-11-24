@@ -66,10 +66,8 @@ namespace other {
 
 #pragma pack(push, 1)
   struct message_header {
-    /// use uint16_t for category and id for custom message types
     uint16_t category;
     uint16_t id;
-
     constexpr auto operator<=>(const message_header& other) const = default;
   };
 #pragma pack(pop)
@@ -89,11 +87,7 @@ namespace other {
   };
 
   struct session_endpoint {
-    /// taps all nodes in simulation, receiving tagged packets
-    ///  to monitor total network traffic
     binding_point simulation;
-
-    /// generic control endpoint
     binding_point control;
 
     static std::string write_string(const session_endpoint& endpoint);
@@ -128,8 +122,6 @@ namespace other {
 
    protected:
     void write_header(std::vector<uint8_t>& data, const message_header& header);
-
-    // std::vector<uint8_t> build_message()
   };
 
   template <typename T>

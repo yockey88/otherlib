@@ -14,6 +14,17 @@
 
 namespace other {
 
+  template <typename T>
+  concept not_string_or_pointer = !std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
+
+  template <typename T>
+  concept is_string_type = std::is_same_v<std::remove_cvref_t<T>, std::string> || std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
+  template <typename T>
+  constexpr inline bool kIsStringType = is_string_type<T>;
+
+  template <typename T>
+  concept is_pointer_type = std::is_pointer_v<std::remove_cvref_t<T>>;
+
   class value {
    public:
     value() {}
@@ -56,15 +67,31 @@ namespace other {
     void clear();
 
     template <typename T>
-      requires(!std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, void*> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>)
+      requires not_string_or_pointer<T>
     operator T&() { return unwrap_as<T>(); }
     template <typename T>
-      requires(!std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, void*> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>)
+      requires not_string_or_pointer<T>
     operator const T&() const { return unwrap_as<T>(); }
 
     template <typename T>
-      requires std::is_same_v<std::remove_cvref_t<T>, std::string> || std::is_same_v<std::remove_cvref_t<T>, std::string_view>
-    operator T() const { return as_string(); }
+      requires is_string_type<T>
+    operator T() {
+      return as_string();
+    }
+    template <typename T>
+      requires is_string_type<T>
+    operator T() const {
+      return as_string();
+    }
+
+    std::string as_string() {
+      check<std::string>();
+      return storage->unchecked_string_unwrap();
+    }
+    std::string as_string() const {
+      check<std::string>();
+      return storage->unchecked_string_unwrap();
+    }
 
     operator void*() {
       check<void*>();
@@ -92,28 +119,20 @@ namespace other {
     ref<value_storage> storage = nullptr;
 
     template <typename T>
-      requires(!std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, void*> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>)
+      requires not_string_or_pointer<T>
     T& unwrap_as() {
       check<T>();
       return storage->unchecked_unwrap<T>();
     }
     template <typename T>
-      requires(!std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, void*> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>)
+      requires not_string_or_pointer<T>
     const T& unwrap_as() const {
       check<T>();
       return storage->unchecked_unwrap<const T>();
     }
 
-    std::string as_string() {
-      check<std::string>();
-      return storage->unchecked_string_unwrap();
-    }
-    std::string as_string() const {
-      check<std::string>();
-      return storage->unchecked_string_unwrap();
-    }
-
     template <typename T>
+      requires is_pointer_type<T>
     T* ptr() {
       if (storage == nullptr || storage->size() != sizeof(T) || storage->val_type() != get_value_type<T>()) {
         return nullptr;
@@ -122,6 +141,7 @@ namespace other {
     }
 
     template <typename T>
+      requires is_pointer_type<T>
     const T* ptr() const {
       if (storage == nullptr || storage->size() != sizeof(T) || storage->val_type() != get_value_type<T>()) {
         return nullptr;
@@ -144,6 +164,29 @@ namespace other {
       OTHER_ASSERT(storage->val_type() == get_value_type<T>(), "Value type mismatch! stored type: {}, requested type: {}", storage->val_type(), get_value_type<T>());
     }
   };
+
+  namespace detail {
+
+    template <typename T>
+    T unpack_value(const value& val) {
+      if constexpr (is_string_type<T>) {
+        return val.as_string();
+      } else {
+        return static_cast<T>(val);
+      }
+    }
+
+    template <typename... Args, std::size_t... Is>
+    std::tuple<Args...> unpack_args_impl(const std::span<value> args, std::index_sequence<Is...>) {
+      return std::make_tuple(unpack_value<Args>(args[Is])...);
+    }
+
+    template <typename... Args>
+    std::tuple<Args...> unpack_args(const std::span<value> args) {
+      return unpack_args_impl<Args...>(args, std::make_index_sequence<sizeof...(Args)>{});
+    }
+
+  }  // namespace detail
 
 }  // namespace other
 

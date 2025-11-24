@@ -6,18 +6,71 @@
 #include <algorithm>
 #include <cstdint>
 
+#include "core/logger.hpp"
+
 #include "vm/command_files/ocmd_headers.hpp"
 #include "vm/other_device.hpp"
 
 namespace other {
 
+  struct linker_error : public std::runtime_error {
+    linker_error(const std::string& msg)
+        : std::runtime_error(msg) {}
+  };
+
   std::vector<uint8_t> ocmd_linker::link() {
+    if (assembled_codes.malformed) {
+      return {};
+    }
+
+    auto entry_point_itr = std::ranges::find_if(assembled_codes.code_section_bounds, [](const ocmd_assembled_code::section_bound_ptr& sec) {
+      return sec.name == "entry";
+    });
+
+    auto entry_definition_itr = std::ranges::find_if(assembled_codes.definitions, [](const ocmd_assembled_code::definition& def) {
+      return def.name == "entry";
+    });
+
+    bool has_entry_label = entry_point_itr != assembled_codes.code_section_bounds.end();
+    bool has_entry_definition = entry_definition_itr != assembled_codes.definitions.end();
+    bool has_none = !has_entry_label && !has_entry_definition;
+    bool has_both = has_entry_label && has_entry_definition;
+
+    std::string entry_name = "entry";
+
+    if (has_none) {
+      CORE_LOG_ERROR("OCMD assembly has no entry point defined! Program is malformed!");
+      throw linker_error("No entry point defined");
+    } else if (has_both) {
+      if (entry_definition_itr->value.text != "entry") {
+        CORE_LOG_WARN("OCMD assembly contains both and 'entry' label and an 'entry' definition: '{}', overriding entry to '{}'", entry_point_itr->name, entry_definition_itr->value.text);
+        entry_name = entry_definition_itr->value.text;
+      } else {
+        /// no-op, both define 'entry'
+      }
+    } else if (has_entry_label) {
+      /// no-op, use the label
+    } else if (has_entry_definition) {
+      entry_name = entry_definition_itr->value.text;
+    } else {
+      OTHER_ASSERT(false, "Unreachable code reached in entry point determination");
+    }
+    CORE_LOG_DEBUG("OCMD assembly entry point set to '{}'", entry_name);
+
+    auto entry_offset_itr = std::ranges::find_if(assembled_codes.code_section_bounds, [&](const ocmd_assembled_code::section_bound_ptr& sec) {
+      return sec.name == entry_name;
+    });
+    OTHER_ASSERT(entry_offset_itr != assembled_codes.code_section_bounds.end(), "Entry point '{}' not found in code sections!", entry_name);
+    CORE_LOG_DEBUG("OCMD entry point '{}' found at offset {:#06x}", entry_name, entry_offset_itr->offset);
+
     ocmd_file_header file_header = {};
     auto& prog_header = file_header.prog_header;
     prog_header.num_instructions = static_cast<uint16_t>(assembled_codes.num_instructions);
-    prog_header.code_section_offset = sizeof(ocmd_file_header);
-    prog_header.data_section_offset = prog_header.code_section_offset + static_cast<uint16_t>(assembled_codes.code.size());
+    /// very important, the header is stripped before loading into memory so this offset has to be from the beginning of the program space
+    prog_header.code_section_offset = 0;
+    prog_header.data_section_offset = prog_header.code_section_offset + other_command_device::kOpCodeSize + static_cast<uint16_t>(assembled_codes.code.size());
     prog_header.data_table_offset = prog_header.data_section_offset + static_cast<uint16_t>(assembled_codes.data.size());
+    prog_header.entry_point_address = static_cast<uint16_t>(entry_offset_itr->offset);
 
     for (const auto& unresolved_lbl : assembled_codes.unresolved_labels) {
       auto& section = assembled_codes.code;
@@ -25,9 +78,7 @@ namespace other {
       uint8_t* instr_ptr = section.data() + unresolved_lbl.address;
       instruction* instr = reinterpret_cast<instruction*>(instr_ptr);
 
-      auto itr = std::ranges::find_if(assembled_codes.code_section_bounds, [&](const ocmd_assembled_code::section_bound_ptr& sec) {
-        return sec.name == unresolved_lbl.label_name;
-      });
+      auto itr = std::ranges::find_if(assembled_codes.code_section_bounds, [&](const ocmd_assembled_code::section_bound_ptr& sec) { return sec.name == unresolved_lbl.label_name; });
       if (itr != assembled_codes.code_section_bounds.end()) {
         uint16_t label_address = itr->offset;
         instr->lower = label_address + prog_header.code_section_offset;
@@ -42,9 +93,7 @@ namespace other {
 
         std::string data_section_name = unresolved_lbl.label_name.substr(0, dot_pos);
         std::string data_object_name = unresolved_lbl.label_name.substr(dot_pos + 1);
-        auto data_section_itr = std::ranges::find_if(assembled_codes.data_object_ptrs, [&](const ocmd_assembled_code::data_object_ptr& data_obj) {
-          return data_obj.name == data_object_name;
-        });
+        auto data_section_itr = std::ranges::find_if(assembled_codes.data_object_ptrs, [&](const ocmd_assembled_code::data_object_ptr& data_obj) { return data_obj.name == data_object_name; });
         if (data_section_itr != assembled_codes.data_object_ptrs.end()) {
           uint16_t data_object_address = static_cast<uint16_t>(data_section_itr->offset);
           instr->lower = data_object_address + prog_header.data_section_offset;
@@ -81,6 +130,8 @@ namespace other {
     const uint8_t* header_bytes = reinterpret_cast<const uint8_t*>(&file_header);
     final_binary.append_range(std::span(header_bytes, sizeof(ocmd_file_header)));
     final_binary.append_range(assembled_codes.code);
+    /// inject a stopdevice instruction at the end of code section so the VM knows to stop
+    final_binary.append_range(std::vector{ 0x00, 0x00, 0x00, 0x00 });
     final_binary.append_range(assembled_codes.data);
     final_binary.append_range(data_object_table);
     if (final_binary.size() % other_command_device::kOpCodeSize != 0) {

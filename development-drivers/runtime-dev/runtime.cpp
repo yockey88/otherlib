@@ -23,12 +23,9 @@
 
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
 #include "scripting/execution_nodes/transform_nodes.hpp"
+#include "ui/console.hpp"
+#include "ui/console_history_node.hpp"
 #include "ui/node_editor_canvas_node.hpp"
-#include "ui/type-bindings/vm_ui.hpp"
-#include "vm/command_files/ocmd_compiler.hpp"
-#include "vm/command_files/ocmd_headers.hpp"
-#include "vm/opcode.hpp"
-#include "vm/vm.hpp"
 
 #include "behavior_tree.hpp"
 
@@ -37,7 +34,6 @@ namespace other {
   void runtime_state_machine::on_enter_state(runtime_state new_state) {
     CORE_LOG_DEBUG("Server state changed to {}", new_state);
     if (new_state == runtime_state::RUNTIME_STATE_RUNNING) {
-      runtime_driver->driver_step_device();
     }
   }
 
@@ -53,18 +49,15 @@ namespace other {
     renderer->set_clear_color(glm::vec4(0.2f, 0.2f, 0.2f, 1.0f));
     renderer->add_pipeline<default_instancing_pipeline>("Default Instancing Pipeline");
 
-    net_context = std::make_unique<network_context>();
     asset_mgr = make_scope<asset_handler>(net_context->io_context);
 
-    events = make_scope<event_system>(net_context->io_context);
-    events->register_event("shutdown-requested");
-    events->add_listener("shutdown-requested", [this](const value& data) {
+    get_event_system()->add_listener("shutdown-requested", [this](const value& data) {
       CORE_LOG_DEBUG("Shutdown requested event received in runtime.");
       state_machine.handle_event(runtime_event::RUNTIME_EVENT_STOP, this);
     });
 
-    events->register_event("project-loaded");
-    events->add_listener("project-loaded", [this](const value& data) {
+    get_event_system()->register_event("project-loaded");
+    get_event_system()->add_listener("project-loaded", [this](const value& data) {
       CORE_LOG_DEBUG("Project loaded event received in runtime.");
       /// load first scene
       /// for now just harcode scene set up here
@@ -140,16 +133,16 @@ namespace other {
       node_editor->reorganize_nodes();
     });
 
-    events->register_timed_event("application-fixed-update", duration_cast<microseconds>(seconds(1)), true);
-    events->add_listener("application-fixed-update", [this](const value& data) {
+    get_event_system()->register_timed_event("application-fixed-update", duration_cast<microseconds>(seconds(1)), true);
+    get_event_system()->add_listener("application-fixed-update", [this](const value& data) {
       // driver_step_device();
       if (auto* current_scene = get_scene(current_scene_id); current_scene != nullptr) {
         current_scene->fixed_update(1.f / 60.f);
       }
     });
 
-    runtime_ui = make_scope<runtime_control_window>(*events);
-    runtime_ui->add_node(make_scope<ui::device_display>(core_device, runtime_ui.get(), "Runtime"));
+    runtime_ui = make_scope<runtime_control_window>(*get_event_system());
+    // runtime_ui->add_node(make_scope<ui::device_display>(core_device, runtime_ui.get(), "Runtime"));
 
     integer_t session_id = cmd.session_id.value_or(-1);
     uint16_t port = cmd.port.value_or(49222);
@@ -174,7 +167,17 @@ namespace other {
       net_thread_message_bus.send_message(std::move(msg));
     }
 
-    node_editor = make_scope<ui::node_editor>(*events);
+    node_editor = make_scope<ui::node_editor>(*get_event_system());
+    console_window = make_scope<ui::console_window>(*get_event_system(), std::bind_front(&runtime::handle_console_command, this));
+    console_lua_script = subsystem<scripting_environment>::get()->load_lua_file("resources/lua/console_commands.lua");
+    if (console_lua_script == nullptr || !console_lua_script->is_valid()) {
+      CORE_LOG_ERROR("Failed to load console Lua script in runtime.");
+    } else {
+      CORE_LOG_INFO("Console Lua script loaded successfully in runtime.");
+      auto& state = console_lua_script->get_state();
+      auto native_table = state["__other_native"];
+      /// add current driver table
+    }
 
     last_frame_time = std::chrono::steady_clock::now();
 
@@ -216,7 +219,6 @@ namespace other {
     net_thread = nullptr;
 
     asset_mgr = nullptr;
-    events = nullptr;
     CORE_LOG_DEBUG("Runtime shut down complete.");
   }
 
@@ -243,7 +245,7 @@ namespace other {
   }
 
   void runtime::update_loading_project() {
-    events->trigger_event("project-loaded");
+    get_event_system()->trigger_event("project-loaded");
     state_machine.handle_event(runtime_event::RUNTIME_EVENT_READY, this);
   }
 
@@ -280,8 +282,7 @@ namespace other {
       }
 
       CORE_LOG_DEBUG("Writing scene ID {} to device and emitting load scene opcode.", current_scene_id);
-      write_id_at_address(0x1234, current_scene_id);
-      emit_instruction(opcode_load_scene_with_id_at(0x1234));
+      set_scene_to_active(current_scene_id);
       state_machine.handle_event(runtime_event::RUNTIME_EVENT_READY, this);
     }
   }
@@ -322,7 +323,7 @@ namespace other {
     if (ImGui::BeginMainMenuBar()) {
       if (ImGui::BeginMenu("File")) {
         if (ImGui::MenuItem("Exit")) {
-          events->trigger_event("shutdown-requested");
+          get_event_system()->trigger_event("shutdown-requested");
         }
         ImGui::EndMenu();
       }
@@ -338,60 +339,34 @@ namespace other {
     if (ImGui::Begin("Runtime Debug")) {
       ImGui::Text("Frame Time: %.3f ms", curr_frame_delta_time * 1000.f);
       ImGui::Text("FPS: %.1f", 1.0f / curr_frame_delta_time);
-      ImGui::SeparatorText("=== VM Controls ===");
-      if (ImGui::Button("Step Instruction")) {
-        driver_step_device();
-      }
-
-      if (ImGui::Button("Emit CMP test")) {
-        emit_instruction(opcode_load_x_direct(0x01, 0x1111));
-        emit_instruction(opcode_load_x_direct(0x02, 0x1111));
-        emit_instruction(opcode_compare_x_y_set_z(0x01, 0x02, other_command_device::kFlagRegister));
-      }
-
-      static std::array<char, 256> file_buffer = {};
-      if (ImGui::InputText("OCMD File Path", file_buffer.data(), file_buffer.size())) {
-        // noop
-      }
-      if (ImGui::Button("Load OCMD File")) {
-        std::string filepath = std::string(file_buffer.data());
-        if (!filepath.empty()) {
-          load_ocmd_file_to_device(filepath, &core_device);
-        }
-      }
     }
     ImGui::End();
 
     if (show_node_editor) {
       node_editor->render();
     }
+    if (show_console_window) {
+      console_window->render();
+    }
 
-    runtime_ui->render();
+    // runtime_ui->render();
 
     renderer->end_ui_frame();
     renderer->end_frame();
   }
 
-  void runtime::load_ocmd_file_to_device(const std::string& filepath, other_command_device* device) {
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) {
-      CORE_LOG_ERROR("Failed to open OCMD file at path: {}", filepath);
-      return;
+  bool runtime::handle_console_command(const std::string_view command, system_timepoint timestamp) {
+    if (console_lua_script != nullptr) {
+      return console_lua_script->call_function<bool>("handle_console_command", std::string(command));
+    } else {
+      return false;
     }
-
-    std::stringstream ss;
-    ss << file.rdbuf();
-    std::string file_content = ss.str();
-
-    std::vector<uint8_t> final_binary = ocmd_compiler::compile_single_translation_unit(file_content);
-    std::span program = std::span(final_binary).subspan(sizeof(ocmd_file_header));
-    vm::load_program_from_bytes(device, program);
   }
 
   void runtime::on_event(SDL_Event* event) {
     OTHER_ASSERT(event != nullptr, "Event is null");
     switch (event->type) {
-      case SDL_EVENT_WINDOW_CLOSE_REQUESTED: events->trigger_event("shutdown-requested"); break;
+      case SDL_EVENT_WINDOW_CLOSE_REQUESTED: get_event_system()->trigger_event("shutdown-requested"); break;
       default: break;
     }
   }
