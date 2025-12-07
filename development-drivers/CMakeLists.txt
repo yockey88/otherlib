@@ -9,6 +9,7 @@ if (BUILD_DEVELOPMENT_DRIVERS)
   )
   add_static_driver(server_dev
     server-dev/server.cpp
+    server-dev/server_tasks.cpp
 
     server-dev/server-ui/project-window.cpp
     server-dev/server-ui/project-creator.cpp

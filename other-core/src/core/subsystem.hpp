@@ -7,12 +7,14 @@
 #include <concepts>
 #include <format>
 #include <memory>
+#include <mutex>
 #include <new>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 
 #include "core/profiler.hpp"
+
 namespace other {
 
   template <typename T>
@@ -47,11 +49,14 @@ namespace other {
   template <typename T>
   class subsystem {
    public:
+    static std::mutex subsystem_mtx;
+
     static void set(T* obj) {
       PROFILE_SECTION("subsystem<>::set");
       if (obj == nullptr) {
         throw std::runtime_error("Cannot set subsystem instance to null.");
       }
+      std::lock_guard lock(subsystem_mtx);
       instance = obj;
 
       if constexpr (requires(T t) { { T::on_set(std::declval<T*>()) } -> std::same_as<void>; }) {
@@ -62,6 +67,7 @@ namespace other {
     static void initialize() {
       PROFILE_SECTION("subsystem<>::initialize");
       if (instance == nullptr) {
+        std::lock_guard lock(subsystem_mtx);
         new (&subsystem_description<T>::storage) T();
         instance = std::launder(reinterpret_cast<T*>(&subsystem_description<T>::storage));
       }
@@ -69,6 +75,7 @@ namespace other {
 
     static void shutdown() {
       PROFILE_SECTION("subsystem<>::shutdown");
+      std::lock_guard lock(subsystem_mtx);
       subsystem_deleter<T>()(instance);
       instance = nullptr;
     }
@@ -115,6 +122,8 @@ namespace other {
   };
   template <typename T>
   T* subsystem<T>::instance = nullptr;
+  template <typename T>
+  std::mutex subsystem<T>::subsystem_mtx;
 
 }  // namespace other
 

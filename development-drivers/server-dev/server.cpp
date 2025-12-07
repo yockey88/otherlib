@@ -3,85 +3,26 @@
  **/
 #include "server.hpp"
 
-#include <coroutine>
 #include <filesystem>
 
 #include "core/coroutine.hpp"
 #include "core/defines.hpp"
 #include "serialization/serialization.hpp"
 #include "thread/message.hpp"
+#include "thread/messages.hpp"
 
 #include "renderer/ui/ui_helpers.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver.hpp"
 #include "rendering-pipelines/empty_pipeline.hpp"
-
 #include "tools/build_tool.hpp"
+
+#include "server_tasks.hpp"
 
 #include "server-ui/project-creator.hpp"
 
 namespace other {
-  namespace {
-
-    task build_project(const project_creator::project_context& context, json::json& project_cache_path, event_system& events) {
-      /// have to copy context since coroutine may outlive project_creator ui-page
-      project_creator::project_context ctx = context;
-
-      build_tool builder = {};
-      project_description project_desc = {};
-      project_desc.project_type = project_description::APPLICATION;
-      project_desc.project_name = ctx.project_name;
-      project_desc.environment_config = ctx.project_path;
-      project_desc.working_directory = ctx.working_directory;
-      CORE_LOG_DEBUG("Starting build for project '{}' at path '{}' with working directory '{}'", ctx.project_name, ctx.project_path.string(), ctx.working_directory.string());
-      builder.start_build(project_desc);
-      while (true) {
-        builder.poll_project_build();
-        if (builder.finished_project_generation()) {
-          CORE_LOG_DEBUG("Build process for project '{}' finished.", ctx.project_name);
-          break;
-        }
-        co_await task::awaiter{};
-      }
-
-      builder.finalize_build();
-      if (builder.get_build_status() == build_tool::BUILD_STATUS_FAILED) {
-        CORE_LOG_ERROR("Build for project '{}' failed.", ctx.project_name);
-        co_return;
-      } else {
-        CORE_LOG_DEBUG("Build for project '{}' completed successfully.", ctx.project_name);
-      }
-
-      /// update project cache
-      json::json new_project_entry;
-      new_project_entry["name"] = ctx.project_name;
-      new_project_entry["project-file"] = ctx.project_path.string();
-      new_project_entry["working-directory"] = ctx.working_directory.string();
-      new_project_entry["configurations"] = std::vector<std::string>{ "Debug", "Release" };
-      new_project_entry["build"] = {
-        { "type", "other-application" },
-        { "output-folder", (filepath(ctx.working_directory) / "build/${configuration}").string() },
-        { "executable", (filepath(ctx.working_directory) / "build/${configuration}" / (ctx.project_name + ".exe")).string() },
-        { "args", std::vector<std::string>{} }
-      };
-      project_cache_path["projects"].push_back(new_project_entry);
-      /// rewrite entire cache back to file, we could optimize this later
-      /// we might just want to defer this to do on shutdown of server, but this also could lead to data loss if the server crashes
-      {
-        filepath project_cache_file = get_app_data_folder("OtherEngine/OtherServer") / filepath("project_cache.json");
-        std::ofstream file(project_cache_file, std::ios::trunc);
-        /// we want pretty json :)
-        file << project_cache_path.dump(2);
-        file.close();
-      }
-
-      CORE_LOG_DEBUG("Project cache updated with new project '{}', returning to projects page", ctx.project_name);
-      events.trigger_event("goto-home-page");
-      co_return;
-    }
-
-  }  // namespace
 
   void server::on_initialize(const command_line& cmd) {
     state_machine.handle_event(server_event::SERVER_EVENT_START, this);
@@ -96,9 +37,8 @@ namespace other {
     }
 
     /// create event system
-    events = make_scope<event_system>(net_context->io_context);
-    events->register_event("open-project");
-    events->add_listener("open-project", [this](const value& data) {
+    get_event_system()->register_event("open-project");
+    get_event_system()->add_listener("open-project", [this](const value& data) {
       /// \todo open project
       CORE_LOG_DEBUG("Received request to open project");
       std::string name = data;
@@ -126,16 +66,10 @@ namespace other {
       validate_project_and_launch(project_entry);
     });
 
-    events->register_event("finalize-project");
-    events->add_listener("finalize-project", [this](const value& data) {
-      post_coroutine(build_project(data, project_cache, *events));
+    get_event_system()->register_event("finalize-project");
+    get_event_system()->add_listener("finalize-project", [this](const value& data) {
+      post_coroutine(build_project(data, project_cache, *get_event_system()));
     });
-
-    /// launch threads
-    ///  - networking thread
-    net_thread = make_scope<network_thread>(net_thread_message_bus);
-    net_thread->launch();
-    net_thread_message_bus.register_thread();
 
     {
       message msg;
@@ -158,7 +92,7 @@ namespace other {
       renderer = get_renderer();
       renderer->add_pipeline<empty_pipeline>("UI Pipeline");
 
-      ui_ptr = make_scope<server_ui>(renderer, events, project_cache);
+      ui_ptr = make_scope<server_ui>(renderer, get_event_system(), project_cache);
     }
     active_scene = scene("Server-Scene");
 
@@ -167,7 +101,6 @@ namespace other {
 
   void server::run() {
     while (running) {
-      pump_events();
       core_update();
 
       switch (state_machine.get_current_state()) {
@@ -192,15 +125,11 @@ namespace other {
   }
 
   void server::on_shutdown() {
-    events = nullptr;
-
     if (rendering_enabled()) {
       ui_ptr = nullptr;
       renderer->remove_pipeline("UI Pipeline");
       renderer = nullptr;
     }
-
-    net_thread = nullptr;
     CORE_LOG_INFO("Server shutdown complete.");
   }
 
@@ -213,26 +142,12 @@ namespace other {
     }
   }
 
-  filepath server::get_project_cache() {
-    filepath cache_file = get_app_data_folder("OtherEngine/OtherServer") / filepath("project_cache.json");
-    if (!std::filesystem::exists(cache_file)) {
-      std::ofstream file(cache_file);
-      file << "{}";
-      file.close();
-    }
-    return cache_file;
+  std::string server::other_application::get_name() const {
+    return name.has_value() ? *name : (executable.has_value() ? executable->filename().stem().string() : "<unnamed>");
   }
 
   void server::core_update() {
-    net_context->io_context.poll();
-    if (net_context->io_context.stopped()) {
-      net_context->io_context.restart();
-    }
-
-    auto msg_opt = net_thread_message_bus.receive_message();
-    if (msg_opt.has_value()) {
-      process_network_thread_messages(std::move(*msg_opt));
-    }
+    pump_events();
   }
 
   void server::update_initializing() {}
@@ -251,148 +166,6 @@ namespace other {
     switch (event->type) {
       case SDL_EVENT_WINDOW_CLOSE_REQUESTED: on_shutdown_request(); break;
       default: break;
-    }
-  }
-
-  void server::send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback) {
-    pending_ack ack{
-      .header = msg.header,
-      .timeout_duration = timeout,
-      .ack_callback = ack_callback,
-      .timeout_callback = timeout_callback,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-    CORE_LOG_DEBUG("PENDING-ACK {} (timeout: {} us)", ack.header, ack.timeout_duration.count());
-
-    {
-      auto itr = std::find_if(pending_acks.begin(), pending_acks.end(), [&ack](const pending_ack& existing_ack) {
-        return existing_ack.header == ack.header;
-      });
-      OTHER_ASSERT(itr == pending_acks.end(), "Acknowledgment for message ID {} already pending", ack.header);
-    }
-
-    ack.sent_time = std::chrono::steady_clock::now();
-    net_thread_message_bus.send_message(std::move(msg));
-    auto ack_itr = pending_acks.insert(pending_acks.end(), std::move(ack));
-    OTHER_ASSERT(ack_itr != pending_acks.end(), "Failed to insert pending acknowledgment for message ID {}", ack.header.id);
-
-    ack_itr->timer.expires_after(timeout);
-    ack_itr->timer.async_wait([this, stime = ack.sent_time](const asio::error_code& ec) {
-      if (!ec) {
-        auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
-        if (itr == pending_acks.end()) {
-          CORE_LOG_ERROR("Failed to find ack for timeout callback!");
-        }
-
-        CORE_LOG_WARN("Acknowledgment timeout for message {}", itr->header);
-        if (itr->timeout_callback) {
-          itr->timeout_callback(itr->header);
-        }
-      }
-
-      // remove from pending acks
-      auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
-      if (itr != pending_acks.end()) {
-        CORE_LOG_DEBUG("Removing pending acknowledgment for message ID {}", itr->header.id);
-        pending_acks.erase(itr);
-      }
-    });
-  }
-
-  void server::send_message_and_detach_response(message&& msg, pending_response::on_response response_callback) {
-    if (msg.header.category == CONTROL || msg.header.category == COMMAND || msg.header.category == ACKNOWLEDGEMENT) {
-      CORE_LOG_ERROR("Attempting to send message {} which requires acknowledgment without acknowledgment handling", msg.header);
-      return;
-    }
-
-    pending_response response{
-      .header = msg.header,
-      .sent_time = std::chrono::steady_clock::now(),
-      .response_callback = response_callback,
-      .timeout_callback = nullptr,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-    CORE_LOG_DEBUG("PENDING-RESPONSE {}", response.header);
-
-    {
-      auto itr = std::find_if(pending_responses.begin(), pending_responses.end(), [&response](const pending_response& existing_response) {
-        return existing_response.header == response.header;
-      });
-      OTHER_ASSERT(itr == pending_responses.end(), "Response for message ID {} already pending", response.header.id);
-    }
-
-    net_thread_message_bus.send_message(std::move(msg));
-    auto resp_itr = pending_responses.insert(pending_responses.end(), std::move(response));
-    OTHER_ASSERT(resp_itr != pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
-  }
-
-  void server::send_message_and_wait_response(message&& msg, microseconds timeout, pending_response::on_response response_callback, pending_response::on_timeout timeout_callback) {
-    pending_response response{
-      .header = msg.header,
-      .sent_time = std::chrono::steady_clock::now(),
-      .response_callback = response_callback,
-      .timeout_callback = timeout_callback,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-    CORE_LOG_DEBUG("PENDING-RESPONSE {} (timeout: {} us)", response.header, timeout.count());
-
-    {
-      auto itr = std::find_if(pending_responses.begin(), pending_responses.end(), [&response](const pending_response& existing_response) {
-        return existing_response.header == response.header;
-      });
-      OTHER_ASSERT(itr == pending_responses.end(), "Response for message ID {} already pending", response.header.id);
-    }
-
-    net_thread_message_bus.send_message(std::move(msg));
-    auto resp_itr = pending_responses.insert(pending_responses.end(), std::move(response));
-    OTHER_ASSERT(resp_itr != pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
-
-    // set up timeout
-    resp_itr->timer.expires_after(timeout);
-    resp_itr->timer.async_wait([this, stime = resp_itr->sent_time](const asio::error_code& ec) {
-      if (ec) {
-        return;
-      }
-
-      auto itr = std::ranges::find_if(pending_responses, [&](const pending_response& resp) { return resp.sent_time == stime; });
-      OTHER_ASSERT(itr != pending_responses.end(), "Failed to find response for timeout callback!");
-      OTHER_ASSERT(itr->timeout_callback != nullptr, "Timeout callback is null for message ID {}", itr->header.id);
-
-      CORE_LOG_WARN("Response timeout for message {}", itr->header);
-      itr->timeout_callback(itr->header);
-
-      pending_responses.erase(itr);
-    });
-  }
-
-  natural_t server::set_timeout(microseconds duration, timeout::on_timeout timeout_callback) {
-    timeout new_timeout{
-      .id = next_timeout_id++,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-    new_timeout.timer.expires_after(duration);
-    new_timeout.timer.async_wait([this, timeout_id = new_timeout.id, timeout_callback](const asio::error_code& ec) {
-      if (ec) {
-        return;
-      }
-
-      timeout_callback(timeout_id);
-
-      auto itr = std::ranges::find_if(pending_timeouts, [&](const timeout& t) { return t.id == timeout_id; });
-      if (itr != pending_timeouts.end()) {
-        pending_timeouts.erase(itr);
-      }
-    });
-    pending_timeouts.insert(pending_timeouts.end(), std::move(new_timeout));
-
-    return new_timeout.id;
-  }
-
-  void server::clear_timeout(natural_t timeout_id) {
-    auto itr = std::ranges::find_if(pending_timeouts, [&](const timeout& t) { return t.id == timeout_id; });
-    if (itr != pending_timeouts.end()) {
-      itr->timer.cancel();
-      pending_timeouts.erase(itr);
     }
   }
 
@@ -462,10 +235,11 @@ namespace other {
     integer_t id = next_id++;
     auto itr = pending_apps.insert(pending_apps.end(), other_application{ .id = id, .working_directory = working_dir, .executable = exe_name, .args = args });
     OTHER_ASSERT(itr != pending_apps.end(), "Failed to begin Other application : {}  [{}]", id, exe_name.string());
-    CORE_LOG_DEBUG("Starting Other application : {}", id);
 
-    itr->executable = replace_all_substrings_with(itr->executable.string(), "${configuration}", "Debug");
-    CORE_LOG_DEBUG("Launching Other application executable '{}' @ [{}]:", itr->executable.string(), working_dir.string());
+    CORE_LOG_DEBUG("Starting Other application : {}", id);
+    itr->executable = replace_all_substrings_with(itr->executable->string(), "${configuration}", "Debug");
+
+    CORE_LOG_DEBUG("Launching Other application executable '{}' @ [{}]:", itr->executable->string(), working_dir.string());
     for (const auto& arg : itr->args) {
       CORE_LOG_DEBUG("   - {}", arg);
     }
@@ -505,49 +279,9 @@ namespace other {
 
     itr->args.insert(itr->args.begin(), project_file.string());
     itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
-    itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(main_binding_point.port) });
-    launch_detached_process(itr->working_directory, itr->executable, itr->args);
+    itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(net_context->main_binding_point.port) });
+    launch_detached_process(*itr->working_directory, *itr->executable, itr->args);
 #endif
-  }
-
-  void server::process_network_thread_messages(message&& msg) {
-    CORE_LOG_TRACE("Processing message from network thread {} [{} bytes]", msg.header, msg.data.size());
-
-    switch (msg.header.category) {
-      case NOTIFICATION:
-        switch (msg.header.id) {
-          case SESSION_CLOSED: handle_notification_session_closed(std::move(msg)); break;
-          default:
-            CORE_LOG_ERROR("Server received unknown notification message ID {}", msg.header.id);
-            break;
-        }
-        break;
-
-      case ACKNOWLEDGEMENT:
-        switch (msg.header.id) {
-          case ACK: handle_acknowledgement_ack(std::move(msg)); break;
-          default:
-            CORE_LOG_ERROR("Server received unknown acknowledgment message ID {}", msg.header.id);
-            break;
-        }
-        break;
-
-      case CONTROL:
-        switch (msg.header.id) {
-          // case PING: handle_control_ping(std::move(msg)); break;
-          case PONG: handle_control_pong(std::move(msg)); break;
-          default:
-            CORE_LOG_ERROR("Server received unknown CONTROL message ID {}", msg.header.id);
-            break;
-        }
-        break;
-
-      case RESPONSE: handle_response(std::move(msg)); break;
-
-      default:
-        CORE_LOG_ERROR("Server received unknown message category {}", msg.header.category);
-        break;
-    }
   }
 
   void server::on_ack_control_ping_network_thread(message_header header, const std::vector<uint8_t>& data) {
@@ -564,23 +298,23 @@ namespace other {
     state_machine.handle_event(server_event::SERVER_EVENT_READY, this);
 
     /// register event for thread check in
-    natural_t event_id = events->register_timed_event("status-check:[network-thread]", seconds(1), /* recurring = */ true);
+    natural_t event_id = get_event_system()->register_timed_event("status-check:[network-thread]", seconds(1), /* recurring = */ true);
     if (event_id == 0) {
       CORE_LOG_ERROR("Failed to register event for network thread check-in");
       return;
     }
-    events->add_listener(event_id, [this](const value& ec) {
+    get_event_system()->add_listener(event_id, [this](const value& ec) {
       message msg;
       msg.header = {
         .category = CONTROL,
         .id = PING,
       };
-      netw_thread_heartbeat_timeout_id = set_timeout(milliseconds(250), [this](natural_t timeout_id) {
+      net_context->netw_thread_heartbeat_timeout_id = set_timeout(milliseconds(250), [this](natural_t timeout_id) {
         CORE_LOG_ERROR("Network thread failed to respond to PING within timeout period");
         /// handle_network_thread_unresponsive();
       });
 
-      net_thread_message_bus.send_message(std::move(msg));
+      net_context->net_thread_message_bus.send_message(std::move(msg));
     });
   }
 
@@ -591,7 +325,7 @@ namespace other {
   void server::on_ack_shutdown_request_network_thread(message_header header, const std::vector<uint8_t>& data) {
     CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
 
-    net_thread->shutdown();
+    net_context->net_thread->shutdown();
     state_machine.handle_event(server_event::SERVER_EVENT_SHUT_DOWN, this);
   }
 
@@ -606,7 +340,7 @@ namespace other {
     if (attempts >= 3) {
       CORE_LOG_ERROR("Network thread failed to shutdown after {} attempts, forcing exit", attempts);
       try {
-        net_thread->force_shutdown();
+        net_context->net_thread->force_shutdown();
         state_machine.handle_event(server_event::SERVER_EVENT_SHUT_DOWN, this);
         return;
       } catch (const std::exception& e) {
@@ -629,7 +363,7 @@ namespace other {
         CORE_LOG_ERROR("Server received a session check in for an unknown Other application : {}", session_id);
         return;
       }
-      CORE_LOG_DEBUG("finalizing connection to pending application : {}", session_id);
+
       auto [app_itr, success] = other_apps.insert({ session_id, std::move(*itr) });
       if (!success || app_itr == other_apps.end()) {
         CORE_LOG_ERROR("Failed to save Other application session ID from check-in : {}", session_id);
@@ -638,30 +372,146 @@ namespace other {
       pending_apps.erase(itr);
       app = &app_itr->second;
     }
+    register_other_application(session_id, app);
+  }
+
+  void server::send_session_information_request(integer_t session_id, other_application* app) {
+    if (app == nullptr) {
+      auto itr = other_apps.find(session_id);
+      if (itr == other_apps.end()) {
+        CORE_LOG_ERROR("Cannot send session information request to unknown Other application session ID {}", session_id);
+        return;
+      }
+      app = &itr->second;
+    }
+    if (app == nullptr) {
+      CORE_LOG_ERROR("Application pointer is null for session ID {}", session_id);
+      return;
+    }
+
+    session_information_request request;
+    request.project_data_flag = !app->name.has_value() && !app->executable.has_value() && !app->working_directory.has_value();
+    if (request.project_data_flag == 0) {
+      request.name_flag = app->name.has_value() ? 1 : 0;
+      request.executable_flag = app->executable.has_value() ? 1 : 0;
+      request.working_directory_flag = app->working_directory.has_value() ? 1 : 0;
+    }
+
+    if (request.project_data_flag == 0 && request.name_flag == 0 && request.executable_flag == 0 && request.working_directory_flag == 0) {
+      print_session_information(app);
+      return;
+    } else {
+      CORE_LOG_INFO("Requesting session information from Other application session [{}]", session_id);
+    }
+
+    message session_msg;
+    session_msg.header = {
+      .category = REQUEST,
+      .id = SESSION_INFORMATION,
+    };
+    session_msg.data.append_range(request.as_buffer());
+
+    message msg;
+    msg.header = {
+      .category = COMMAND,
+      .id = SESSION_TX_MESSAGE,
+    };
+
+    const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+    const uint8_t* session_msg_header_bytes = reinterpret_cast<const uint8_t*>(&session_msg.header);
+    const uint8_t* session_msg_data_bytes = reinterpret_cast<const uint8_t*>(session_msg.data.data());
+    msg.data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
+    msg.data.append_range(std::span(session_msg_header_bytes, sizeof(message_header)));
+    msg.data.append_range(std::span(session_msg_data_bytes, session_msg.data.size()));
+
+    net_context->net_thread_message_bus.send_message(std::move(msg));
+  }
+
+  void server::handle_session_information_response(integer_t session_id, session_information_response&& response) {
+    auto itr = other_apps.find(session_id);
+    if (itr == other_apps.end()) {
+      CORE_LOG_ERROR("Cannot process session information response for unknown Other application session ID {}", session_id);
+      return;
+    }
+    other_application& app = itr->second;
+
+    if (response.project_data_flag || response.name_flag) {
+      app.name = response.name;
+    }
+    if (response.project_data_flag || response.executable_flag) {
+      app.executable = filepath(response.executable);
+    }
+    if (response.project_data_flag || response.working_directory_flag) {
+      app.working_directory = filepath(response.working_directory);
+    }
+
+    if (!std::filesystem::exists(*app.executable)) {
+      CORE_LOG_ERROR("Executable path '{}' for Other application session [{}] does not exist", app.executable->string(), session_id);
+      app.executable = {};
+    }
+
+    if (!std::filesystem::exists(*app.working_directory)) {
+      CORE_LOG_ERROR("Working directory path '{}' for Other application session [{}] does not exist", app.working_directory->string(), session_id);
+      app.working_directory = {};
+    }
+
+    print_session_information(&app);
+  }
+
+  void server::on_response_request_session_information(message_header header, const std::vector<uint8_t>& data) {
+    OTHER_ASSERT(data.size() >= sizeof(integer_t), "Invalid session information response packet!");
+
+    size_t cursor = 0;
+    integer_t session_id = serialization::read_value<integer_t>(data, cursor);
+
+    auto itr = other_apps.find(session_id);
+    if (itr == other_apps.end()) {
+      CORE_LOG_ERROR("Cannot process session information response for unknown Other application session ID {}", session_id);
+      return;
+    }
+    other_application& app = itr->second;
+    app.session_info_request_resp_id = 0;
+
+    session_information_response response = other_message_spec::parse<session_information_response>(data);
+    if (response.project_data_flag || response.name_flag) {
+      app.name = response.name;
+    }
+    if (response.project_data_flag || response.executable_flag) {
+      app.executable = filepath(response.executable);
+    }
+    if (response.project_data_flag || response.working_directory_flag) {
+      app.working_directory = filepath(response.working_directory);
+    }
+
+    if (!std::filesystem::exists(*app.executable)) {
+      CORE_LOG_ERROR("Executable path '{}' for Other application session [{}] does not exist", app.executable->string(), session_id);
+      app.executable = {};
+    }
+
+    if (!std::filesystem::exists(*app.working_directory)) {
+      CORE_LOG_ERROR("Working directory path '{}' for Other application session [{}] does not exist", app.working_directory->string(), session_id);
+      app.working_directory = {};
+    }
+
+    print_session_information(&app);
+  }
+
+  void server::on_timeout_request_session_information_network_thread(message_header header) {
+    CORE_LOG_WARN("Network thread timed out waiting for session information response for session [{}]", header.id);
+  }
+
+  void server::print_session_information(other_application* app) {
+    CORE_LOG_INFO("Other application session [{}] information:", app->id);
+    CORE_LOG_INFO("   - Name: {}", app->get_name());
+    CORE_LOG_INFO("   - Executable: {}", app->executable.has_value() ? app->executable->string() : "<none>");
+    CORE_LOG_INFO("   - Working Directory: {}", app->working_directory.has_value() ? app->working_directory->string() : "<none>");
+  }
+
+  void server::register_other_application(integer_t session_id, other_application* app) {
     OTHER_ASSERT(app != nullptr, "Application pointer is null after insertion!");
 
-    CORE_LOG_DEBUG("Session {} connection finalized", session_id);
     app->connected = true;
-
-    /// we should only do this after the application has checked in successfully
-    std::string ping_session_ev_name = "ping-session:[" + std::to_string(app->id) + "]";
-    events->register_timed_event(ping_session_ev_name, seconds(10), true);
-    events->add_listener(ping_session_ev_name, [this, session_id = app->id](const value& ec) {
-      CORE_LOG_DEBUG("Pinging session [{}] to check connectivity", session_id);
-      message msg;
-      msg.header = {
-        .category = CONTROL,
-        .id = PING,
-      };
-      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
-      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
-
-      send_message_and_wait_acknowledgment(
-        std::move(msg), seconds(1),
-        std::bind_front(&server::on_ack_control_ping_network_thread, this),
-        std::bind_front(&server::on_timeout_control_ping_network_thread, this)
-      );
-    });
+    send_session_information_request(session_id);
   }
 
   void server::on_shutdown_request() {
@@ -695,28 +545,45 @@ namespace other {
       );
     }
 
-    events->clear();
+    get_event_system()->clear();
     if (!net_context->io_context.stopped()) {
       net_context->io_context.stop();
     }
   }
 
+  void server::handle_notification_session_check_in(message&& msg) {
+    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid session check-in notification size");
+    integer_t session_id = *reinterpret_cast<const integer_t*>(msg.data.data());
+
+    auto itr = other_apps.find(session_id);
+    /// this has to be a new connection, bc if we requested it then it would not be a notification
+    OTHER_ASSERT(itr == other_apps.end(), "Received session check-in for unknown Other application session ID {}", session_id);
+
+    other_application app = {
+      .id = session_id,
+      .connected = true,
+    };
+
+    auto [app_itr, success] = other_apps.insert({ session_id, std::move(app) });
+    if (!success || app_itr == other_apps.end()) {
+      CORE_LOG_ERROR("Failed to save Other application session ID from check-in : {}", session_id);
+      return;
+    }
+    register_other_application(session_id, &app_itr->second);
+  }
+
   void server::handle_notification_session_closed(message&& msg) {
     OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid session closed notification size");
-    integer_t session_id = *reinterpret_cast<const integer_t*>(msg.data.data());
-    CORE_LOG_INFO("Session {} has been closed by the network thread", session_id);
 
+    integer_t session_id = *reinterpret_cast<const integer_t*>(msg.data.data());
     auto app_itr = other_apps.find(session_id);
     if (app_itr != other_apps.end()) {
-      CORE_LOG_INFO("Other application [{}] has disconnected", app_itr->second.executable.string());
-
-      /// cancel event
-      std::string ping_session_ev_name = "ping-session:[" + std::to_string(session_id) + "]";
-      events->cancel_event(ping_session_ev_name);
-
+      CORE_LOG_INFO("Other application [{}] has disconnected", app_itr->second.get_name());
       app_itr->second.connected = false;
+      /// don't remove from list, it might reconnect
+      /// \todo set a timeout to remove it after a while if needed
     } else {
-      CORE_LOG_WARN("Received session closed notification for unknown other application with session ID {}", session_id);
+      /// ignore because there may be open sessions that aren't other applications
     }
   }
 
@@ -747,7 +614,7 @@ namespace other {
     integer_t session = serialization::read_value<integer_t>(msg.data, cursor);
 
     if (session == 0) {
-      clear_timeout(netw_thread_heartbeat_timeout_id);
+      clear_timeout(net_context->netw_thread_heartbeat_timeout_id);
     }
     /// else handle real session
     else {

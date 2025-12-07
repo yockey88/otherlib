@@ -4,41 +4,102 @@
 #ifndef OTHER_SCRIPTING_LUA_SCRIPT_HPP
 #define OTHER_SCRIPTING_LUA_SCRIPT_HPP
 
+#include <type_traits>
+
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 
 #include "lua/sol_bridge.hpp"
 
+#include "sol/load_result.hpp"
+
 namespace other {
 
   class lua_script {
    public:
-    lua_script() = default;
-    lua_script(sol::state* state)
-        : lua_state(state), script_data(nullptr) {}
-    lua_script(sol::state* state, sol::load_result* script_data)
-        : lua_state(state), script_data(script_data) {}
+    lua_script(sol::state& state, sol::environment&& env, sol::protected_function load_result);
     ~lua_script() = default;
 
-    bool is_valid() const {
-      return script_data != nullptr && script_data->valid();
-    }
+    sol::state& get_lua_state() { return lua_state; }
+    sol::environment& get_state() { return script_env; }
+    bool is_valid() const;
     void run_script();
 
-    sol::state& get_state() const { return *lua_state; }
+    bool script_ready() {
+      run_script();
+      if (!is_valid()) {
+        return false;
+      }
+      return true;
+    }
 
     sol::table get_symbol_as_table(const std::string_view symbol_name);
 
+    template <typename T>
+      requires requires(T t) { T{}; } && (!std::is_pointer_v<T> && !std::is_function_v<T>)
+    T get_symbol_as(const std::string_view symbol_name, T default_value = {}) {
+      if (!script_ready()) {
+        return T{};
+      }
+
+      sol::object symbol = script_env.get_or<sol::object>(symbol_name, sol::nil);
+      if (!symbol.is<T>()) {
+        CORE_LOG_ERROR("Symbol '{}' is not of the requested type in Lua script", symbol_name);
+        return default_value;
+      }
+
+      return symbol.as<T>();
+    }
+
+    template <typename T>
+      requires(std::is_pointer_v<T> && !std::is_function_v<T>)
+    T get_symbol_as(const std::string_view symbol_name, T default_value = nullptr) {
+      if (!script_ready()) {
+        return T{};
+      }
+
+      sol::object symbol = script_env.get_or<sol::object>(symbol_name, sol::nil);
+      if (!symbol.is<T>()) {
+        CORE_LOG_ERROR("Symbol '{}' is not of the requested type in Lua script", symbol_name);
+        return default_value;
+      }
+
+      return symbol.as<T>();
+    }
+
+    template <typename Fn, typename... Args>
+      requires requires(Fn f) { f(std::declval<Args...>()); }
+    Fn get_symbol_as(const std::string_view symbol_name) {
+      if (!script_ready()) {
+        return nullptr;
+      }
+
+      sol::object symbol = script_env.get_or<Fn>(symbol_name, sol::nil);
+      if (!symbol.is<sol::protected_function>()) {
+        CORE_LOG_ERROR("Symbol '{}' is not a function in Lua script", symbol_name);
+        return nullptr;
+      }
+
+      return symbol.as<Fn>();
+    }
+
+    bool has_symbol(const std::string_view symbol_name);
+
+    template <typename T>
+    void add_lua_symbol(const std::string_view name, T&& value) {
+      script_env[name] = std::forward<T>(value);
+    }
+
+    void call_hook_function_if_exists(const std::string_view function_name, bool on_entry = false);
+
     template <typename R, typename... Args>
     R call_function(const std::string_view function_name, Args&&... args) {
-      run_script();
-      if (!is_valid()) {
-        CORE_LOG_ERROR("Lua script is not valid, cannot call function '{}'", function_name);
+      if (!script_ready()) {
         return R{};
       }
 
       try {
-        sol::protected_function func = lua_state->globals().get<sol::protected_function>(function_name);
+        sol::protected_function func = script_env[function_name];
         if (!func.valid()) {
           CORE_LOG_ERROR("Function '{}' not found in Lua script", function_name);
           return R{};
@@ -66,8 +127,10 @@ namespace other {
     }
 
    private:
-    sol::state* lua_state = nullptr;
-    sol::load_result* script_data = nullptr;
+    sol::state& lua_state;
+    sol::environment script_env;
+    sol::protected_function load_fn;
+
     bool ran = false;
   };
 

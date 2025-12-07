@@ -147,10 +147,6 @@ namespace other {
     integer_t session_id = cmd.session_id.value_or(-1);
     uint16_t port = cmd.port.value_or(49222);
 
-    net_thread = make_scope<network_thread>(net_thread_message_bus);
-    net_thread->launch();
-    net_thread_message_bus.register_thread();
-
     if (session_id == -1) {
       CORE_LOG_WARN("No session ID provided to runtime");
     } else {
@@ -164,12 +160,13 @@ namespace other {
       const uint8_t* port_bytes = reinterpret_cast<const uint8_t*>(&port);
       msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
       msg.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
-      net_thread_message_bus.send_message(std::move(msg));
+      net_context->net_thread_message_bus.send_message(std::move(msg));
     }
 
     node_editor = make_scope<ui::node_editor>(*get_event_system());
-    console_window = make_scope<ui::console_window>(*get_event_system(), std::bind_front(&runtime::handle_console_command, this));
-    console_lua_script = subsystem<scripting_environment>::get()->load_lua_file("resources/lua/console_commands.lua");
+    console_window = make_scope<ui::console_window>(*get_event_system());
+    console_lua_script = subsystem<scripting_environment>::get()->load_lua_file("resources/lua/editor.lua");
+    environment_console::initialize(console_lua_script);
     if (console_lua_script == nullptr || !console_lua_script->is_valid()) {
       CORE_LOG_ERROR("Failed to load console Lua script in runtime.");
     } else {
@@ -214,9 +211,7 @@ namespace other {
     }
 
     running = false;
-
-    net_thread->shutdown();
-    net_thread = nullptr;
+    net_context->net_thread->shutdown();
 
     asset_mgr = nullptr;
     CORE_LOG_DEBUG("Runtime shut down complete.");
@@ -355,11 +350,10 @@ namespace other {
     renderer->end_frame();
   }
 
-  bool runtime::handle_console_command(const std::string_view command, system_timepoint timestamp) {
+  void runtime::handle_console_command(const std::string_view command, system_timepoint timestamp) {
     if (console_lua_script != nullptr) {
-      return console_lua_script->call_function<bool>("handle_console_command", std::string(command));
+      console_lua_script->call_function<bool>("handle_console_command", std::string(command));
     } else {
-      return false;
     }
   }
 

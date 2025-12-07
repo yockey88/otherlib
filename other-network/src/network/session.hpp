@@ -5,14 +5,16 @@
 #define OTHER_NETWORK_NETWORK_SESSION_HPP
 
 #include <array>
-#include <queue>
+#include <deque>
 #include <vector>
 
 #include <asio/asio.hpp>
 
 #include "core/logger.hpp"
+#include "core/timer.hpp"
 #include "thread/message.hpp"
 
+#include "network/session_protocol_handler.hpp"
 #include "network/session_state_machine.hpp"
 
 namespace other {
@@ -21,11 +23,11 @@ namespace other {
 
   class session {
    public:
-    session(network_thread* thread, integer_t id, asio::io_context& context)
-        : session_id(id), socket(context), io_context(context), thread(thread) {
+    session(network_thread* thread, natural_t connection_id, integer_t id, asio::io_context& context)
+        : connection_id(connection_id), session_id(id), socket(context), io_context(context), thread(thread) {
     }
-    session(network_thread* thread, integer_t id, asio::io_context& context, asio::ip::tcp::socket&& socket)
-        : session_id(id), socket(std::move(socket)), io_context(context), thread(thread) {
+    session(network_thread* thread, natural_t connection_id, integer_t id, asio::io_context& context, asio::ip::tcp::socket&& socket)
+        : connection_id(connection_id), session_id(id), socket(std::move(socket)), io_context(context), thread(thread) {
     }
 
     session(session&);
@@ -44,36 +46,78 @@ namespace other {
     void poll();
     std::vector<uint8_t> try_receive();
 
+    opt<message> receive_next_message();
+
+    network::session_state get_current_state() const {
+      return state_machine.get_current_state();
+    }
+
     constexpr static inline size_t kBufferSize = 4096;
+    constexpr static inline integer_t kNetworkThreadSessionId = 0;
+    constexpr static inline integer_t kInvalidSessionId = -1;
 
-    integer_t session_id = 0;
+    natural_t connection_id = 0;
+    integer_t session_id = kInvalidSessionId;
+
     asio::ip::tcp::socket socket;
-
-   protected:
     asio::io_context& io_context;
 
     network_thread* thread;
 
+    void dump_bytes_for_debug(const std::span<uint8_t> data, const std::string_view msg = "");
+    void dump_message_bytes(const message& msg);
+
+    inline natural_t get_timeout_id() {
+      static natural_t next_id = 1;
+      return next_id++;
+    }
+
+    natural_t set_timeout(seconds duration, bool repeating, void (session::*callback)());
+    void cancel_timeout(natural_t id);
+
+    void on_heartbeat_timeout();
+    void missed_heartbeat_response();
+
+   protected:
+    struct timeout {
+      natural_t id = 0;
+      asio::steady_timer timer;
+
+      bool repeating = false;
+
+      void (session::*callback)();
+    };
+    std::map<natural_t, timeout> timeouts;
+
     bool reading = false;
     std::array<uint8_t, kBufferSize> read_buffer{};
-    std::queue<std::vector<uint8_t>> read_queue{};
+    std::deque<std::vector<uint8_t>> read_queue{};
 
     bool writing = false;
     std::array<uint8_t, kBufferSize> write_buffer{};
-    std::queue<std::vector<uint8_t>> write_queue{};
+    std::deque<std::vector<uint8_t>> write_queue{};
 
     session_state_machine state_machine;
+
+    opt<natural_t> heartbeat_timeout_id = std::nullopt;
+    system_timepoint last_heartbeat_time = sys_clock::now();
+    scope<protocol_handler> active_protocol_handler = nullptr;
 
     void start_write();
 
     void finish_read(const asio::error_code& ec, std::size_t bytes_transferred);
     void finish_write(const asio::error_code& ec, std::size_t bytes_transferred);
 
-    void handle_control_ping(const message_header& header, const std::span<uint8_t> data);
-    void handle_control_pong(const message_header& header, const std::span<uint8_t> data);
+    void process_message(message&& msg);
 
-    void dump_bytes_for_debug(const std::span<uint8_t> data, const std::string_view msg = "");
-    void dump_message_bytes(const message& msg);
+    void handle_heartbeat_ping(message&& msg);
+    void handle_heartbeat_pong(message&& msg);
+
+    void handle_request_session_information(message&& msg);
+
+   private:
+    void set_timeout(natural_t id, seconds duration, bool repeating, void (session::*callback)());
+    void handle_timeout(natural_t id, const asio::error_code& ec);
   };
 
 }  // namespace other

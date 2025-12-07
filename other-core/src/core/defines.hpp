@@ -371,6 +371,11 @@ namespace other {
   std::string get_tag_replacement(const std::string_view tag);
   std::string perform_tag_replacement(const std::string_view tag);
 
+  std::string get_current_exe_name();
+  std::string get_current_exe_full_path();
+  std::string get_system_error_message();
+  void launch_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
+
 }  // namespace other
 
 namespace std {

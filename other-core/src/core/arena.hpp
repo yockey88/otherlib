@@ -52,6 +52,7 @@ namespace other {
 
     static void* allocate(size_t size, size_t alignment = arena_storage::kAlignment);
     static void free(void* ptr, size_t size);
+    static void free(void* ptr);
 
     void* request_region(size_t size, size_t alignment = arena_storage::kAlignment);
     void free_region(void* ptr);

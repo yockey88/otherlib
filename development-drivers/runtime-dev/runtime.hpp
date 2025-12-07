@@ -105,9 +105,6 @@ namespace other {
     scope<ui::console_window> console_window = nullptr;
     lua_script* console_lua_script = nullptr;
 
-    message_bus net_thread_message_bus;
-    scope<network_thread> net_thread = nullptr;
-
     scope<runtime_control_window> runtime_ui = nullptr;
     runtime_state_machine state_machine;
 
@@ -118,7 +115,7 @@ namespace other {
     void update_shutting_down();
     void draw();
 
-    bool handle_console_command(const std::string_view command, system_timepoint timestamp);
+    void handle_console_command(const std::string_view command, system_timepoint timestamp);
 
     void on_event(SDL_Event* event) override;
   };

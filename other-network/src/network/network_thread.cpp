@@ -10,10 +10,10 @@
 
 namespace other {
 
-  void network_thread::report_connection_closed(natural_t session_id) {
-    auto itr = client_endpoints.find(session_id);
+  void network_thread::report_connection_closed(natural_t connection_id, integer_t session_id) {
+    auto itr = client_endpoints.find(connection_id);
     if (itr != client_endpoints.end()) {
-      CORE_LOG_DEBUG("Connection closed for client {}", session_id);
+      CORE_LOG_DEBUG("Closing connection [{}] session {}", connection_id, session_id);
       itr->second.active_session->finalize();
 
       {
@@ -36,25 +36,35 @@ namespace other {
   void network_thread::report_connection_error(session* cli, const asio::error_code& ec) {
     OTHER_ASSERT(cli != nullptr, "Client pointer is null");
     CORE_LOG_ERROR("Connection error for client {}: {}", cli->session_id, ec.message());
-    report_connection_closed(cli->session_id);
+    report_connection_closed(cli->connection_id, cli->session_id);
   }
 
   void network_thread::report_connection_check_in(natural_t connection_id, integer_t session_id) {
-    auto itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.session_id == connection_id; });
+    auto itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.connection_number == connection_id; });
     if (itr == pending_connections.end()) {
       CORE_LOG_ERROR("Failed to find connection id to report check in : {}", connection_id);
       return;
     }
+    /// this override works because either we opened the session and had it from the start, or the remote session
+    ///   set it and this is correct
+    itr->session_id = session_id;
 
-    CORE_LOG_DEBUG("Connection {} checking in with session id {}", connection_id, session_id);
-    {
-      auto cb_itr = check_in_listeners.find(session_id);
-      if (cb_itr == check_in_listeners.end()) {
-        CORE_LOG_ERROR("Can not accept check in from session with incorrect session id {} (connection {})", session_id, connection_id);
-        return;
-      }
+    /// callback if any
+    auto cb_itr = check_in_listeners.find(session_id);
+    if (cb_itr != check_in_listeners.end()) {
       cb_itr->second(session_id);
       check_in_listeners.erase(cb_itr);
+    }
+    /// otherwise we have to report a new connection to the server
+    else {
+      message notif_msg;
+      notif_msg.header = {
+        .category = NOTIFICATION,
+        .id = SESSION_CHECK_IN,
+      };
+      const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+      notif_msg.data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
+      bus.send_message(std::move(notif_msg));
     }
 
     auto [conn_itr, success] = client_endpoints.insert({ connection_id, std::move(*itr) });
@@ -64,7 +74,7 @@ namespace other {
     }
     pending_connections.erase(itr);
 
-    CORE_LOG_INFO("Session {} successfully checked in", session_id);
+    CORE_LOG_INFO("Session [{}] successfully checked in", session_id);
   }
 
   void network_thread::on_initialize() {
@@ -103,7 +113,9 @@ namespace other {
           switch (msg->header.id) {
             case SHUTDOWN_REQUEST: handle_command_shutdown_request(std::move(*msg)); break;
             case SESSION_LISTEN_FOR: handle_command_session_listen_for(std::move(*msg)); break;
+            case SESSION_CONNECT_TO: handle_command_session_connect_to(std::move(*msg)); break;
             case SESSION_CHECK_IN: handle_command_session_check_in(std::move(*msg)); break;
+            case SESSION_TX_MESSAGE: handle_command_session_tx_message(std::move(*msg)); break;
             default:
               CORE_LOG_WARN("Network thread received unknown COMMAND message ID {:#06x}", msg->header.id);
               break;
@@ -172,13 +184,15 @@ namespace other {
       socket.close();
       return;
     }
+    CORE_LOG_DEBUG("Accepted new connection from {}", socket.remote_endpoint().address().to_string());
 
     if (!ec) {
       natural_t conn_id = get_next_connection_id();
       auto itr = pending_connections.insert(pending_connections.end(), connection{
+                                                                         .connection_number = current_connections,
                                                                          .session_id = (integer_t)conn_id,
                                                                          .endpoint = binding_point{ socket.remote_endpoint().address().to_v4().to_uint(), static_cast<uint16_t>(socket.remote_endpoint().port()) },
-                                                                         .active_session = make_scope<session>(this, conn_id, net_context->io_context, std::move(socket)),
+                                                                         .active_session = make_scope<session>(this, current_connections, conn_id, net_context->io_context, std::move(socket)),
                                                                        });
       if (itr == pending_connections.end()) {
         CORE_LOG_ERROR("Failed to add new connection to client endpoints");
@@ -205,40 +219,83 @@ namespace other {
       }
     }
 
-    auto [itr, success] = client_endpoints.emplace(session_id, connection{
-                                                                 .session_id = session_id,
-                                                                 .endpoint = binding_point{ 0, port },
-                                                                 .active_session = make_scope<session>(this, session_id, net_context->io_context),
-                                                               });
+    natural_t connection_number = current_connections;
+    auto [itr, success] = client_endpoints.emplace(connection_number, connection{
+                                                                        .connection_number = connection_number,
+                                                                        .session_id = session_id,
+                                                                        .endpoint = binding_point{ 0, port },
+                                                                        .active_session = make_scope<session>(this, connection_number, session_id, net_context->io_context),
+                                                                      });
     if (!success) {
       CORE_LOG_ERROR("Failed to add new connection to client endpoints");
       return;
     }
+    ++current_connections;
 
     asio::ip::tcp::endpoint ep(asio::ip::make_address_v4("127.0.0.1"), port);
-    itr->second.active_session->socket.async_connect(ep, [this, session_id](const asio::error_code& ec) {
+    itr->second.active_session->socket.async_connect(ep, [this, connection_number, session_id](const asio::error_code& ec) {
       if (!ec) {
-        CORE_LOG_INFO("Successfully connected to other application with session ID {}", session_id);
-        auto conn_itr = client_endpoints.find(session_id);
-        OTHER_ASSERT(conn_itr != client_endpoints.end(), "Connection not found for session ID {}", session_id);
+        CORE_LOG_INFO("Successfully connected to other application with session ID {} (conn: {})", session_id, connection_number);
+        auto conn_itr = client_endpoints.find(connection_number);
+        OTHER_ASSERT(conn_itr != client_endpoints.end(), "Connection not found for session ID {} (conn: {})", session_id, connection_number);
         conn_itr->second.active_session->check_in();
       } else {
         CORE_LOG_ERROR("Failed to connect to other application with session ID {}: {}", session_id, ec.message());
-        client_endpoints.erase(session_id);
+        client_endpoints.erase(connection_number);
       }
     });
-    CORE_LOG_TRACE("Attempting to connect to other application at port {} for session ID {}", port, session_id);
+    CORE_LOG_TRACE("Attempting to connect to other application at port {} for session ID {} (conn: {})", port, session_id, connection_number);
+  }
+
+  void network_thread::open_session_and_connect_to(const binding_point& bp) {
+    CORE_LOG_INFO("Opening session and connecting to {}", binding_point::write_string(bp));
+    {
+      auto itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.endpoint.ip == bp.ip && pair.second.endpoint.port == bp.port; });
+      if (itr != client_endpoints.end()) {
+        CORE_LOG_WARN("Already connected to endpoint {}", binding_point::write_string(bp));
+        return;
+      }
+    }
+
+    auto itr = pending_connections.insert(pending_connections.end(), connection{
+                                                                       .connection_number = current_connections,
+                                                                       .session_id = session::kInvalidSessionId,
+                                                                       .endpoint = bp,
+                                                                       .active_session = make_scope<session>(this, current_connections, session::kInvalidSessionId, net_context->io_context),
+                                                                     });
+    if (itr == pending_connections.end()) {
+      CORE_LOG_ERROR("Failed to add new connection to client endpoints");
+      return;
+    }
+    ++current_connections;
+
+    asio::ip::tcp::endpoint ep(asio::ip::address_v4(bp.ip), bp.port);
+    itr->active_session->socket.async_connect(ep, [this, bp](const asio::error_code& ec) {
+      if (!ec) {
+        CORE_LOG_INFO("Successfully connected to other application at {}", binding_point::write_string(bp));
+        // auto conn_itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.endpoint.ip == bp.ip && pair.second.endpoint.port == bp.port; });
+        // OTHER_ASSERT(conn_itr != client_endpoints.end(), "Connection not found for endpoint {}", binding_point::write_string(bp));
+        auto conn_itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.endpoint.ip == bp.ip && conn.endpoint.port == bp.port; });
+        OTHER_ASSERT(conn_itr != pending_connections.end(), "Connection not found for endpoint {}", binding_point::write_string(bp));
+        conn_itr->active_session->check_in();
+      } else {
+        CORE_LOG_ERROR("Failed to connect to other application at {}: {}", binding_point::write_string(bp), ec.message());
+        auto conn_itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.endpoint.ip == bp.ip && conn.endpoint.port == bp.port; });
+        if (conn_itr != pending_connections.end()) {
+          pending_connections.erase(conn_itr);
+        }
+      }
+    });
   }
 
   void network_thread::handle_control_ping(message&& msg) {
-    // Respond with PONG
     message pong_msg;
     pong_msg.header = {
       .category = CONTROL,
       .id = PONG,
     };
 
-    integer_t session_id = 0;  // network thread uses session id 0
+    integer_t session_id = session::kNetworkThreadSessionId;
     const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
     pong_msg.data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
 
@@ -257,15 +314,6 @@ namespace other {
       conn.active_session->shutdown();
     }
     current_state.shutdown_pending = true;
-  }
-
-  void network_thread::handle_command_session_check_in(message&& msg) {
-    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t) + sizeof(uint16_t), "Invalid session check-in message size");
-    integer_t session_id = *reinterpret_cast<const integer_t*>(msg.data.data());
-    uint16_t port = *reinterpret_cast<const uint16_t*>(msg.data.data() + sizeof(integer_t));
-
-    CORE_LOG_DEBUG("CHECK-IN [{} @ {}]", session_id, port);
-    open_session_and_check_in_at(session_id, port);
   }
 
   void network_thread::handle_command_session_listen_for(message&& msg) {
@@ -290,6 +338,47 @@ namespace other {
     const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&acked_header);
     ack_msg.data.append_range(std::span(bytes, sizeof(message_header)));
     bus.send_message(std::move(ack_msg));
+  }
+
+  void network_thread::handle_command_session_connect_to(message&& msg) {
+    OTHER_ASSERT(msg.data.size() == sizeof(binding_point), "Invalid session connect to message size");
+    const binding_point* bp = reinterpret_cast<const binding_point*>(msg.data.data());
+
+    CORE_LOG_DEBUG("CONNECT TO [{}]", binding_point::write_string(*bp));
+    open_session_and_connect_to(*bp);
+  }
+
+  void network_thread::handle_command_session_check_in(message&& msg) {
+    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t) + sizeof(uint16_t), "Invalid session check-in message size");
+    integer_t session_id = *reinterpret_cast<const integer_t*>(msg.data.data());
+    uint16_t port = *reinterpret_cast<const uint16_t*>(msg.data.data() + sizeof(integer_t));
+
+    CORE_LOG_DEBUG("CHECK-IN [{} @ {}]", session_id, port);
+    open_session_and_check_in_at(session_id, port);
+  }
+
+  void network_thread::handle_command_session_tx_message(message&& msg) {
+    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid session tx message size");
+
+    auto bytes = std::span(msg.data);
+    integer_t session_id = *reinterpret_cast<const integer_t*>(bytes.data());
+
+    auto itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.session_id == session_id; });
+    if (itr == client_endpoints.end()) {
+      CORE_LOG_ERROR("Failed to find session ID {} to transmit message", session_id);
+      return;
+    }
+
+    bytes = bytes.subspan(sizeof(integer_t));
+    message_header msg_header = *reinterpret_cast<const message_header*>(bytes.data());
+
+    auto msg_bytes = bytes.subspan(sizeof(message_header));
+    CORE_LOG_DEBUG("Transmitting message to session {}: header={}, data_size={}", session_id, msg_header, msg_bytes.size());
+
+    message tx_msg;
+    tx_msg.header = msg_header;
+    tx_msg.data.append_range(msg_bytes);
+    itr->second.active_session->start_write(std::move(tx_msg));
   }
 
   void network_thread::handle_request_session_check_in(message&& msg) {

@@ -43,12 +43,13 @@ namespace other {
       return nullptr;
     }
 
-    auto [script_itr, script_success] = loaded_lua_scripts.insert({ hash, lua_script(&lua_state, &itr->second) });
-    if (!script_success) {
-      CORE_LOG_ERROR("Failed to create lua_script for '{}'", fpath.string());
-      loaded_scripts.erase(itr);
-      return nullptr;
-    }
+    sol::environment env(lua_state, sol::create, lua_state.globals());
+    env["__script_file_path"] = fpath.string();
+    env["__script_file_name"] = fpath.filename().string();
+    env["__script_name"] = fpath.stem().string();
+
+    auto [script_itr, script_success] = loaded_lua_scripts.insert({ hash, lua_script(lua_state, std::move(env), itr->second) });
+    OTHER_ASSERT(script_success, "Failed to insert loaded Lua script into map.");
 
     return &script_itr->second;
   }

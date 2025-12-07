@@ -319,39 +319,13 @@ namespace other {
 
   void thread::handle_message(const message& msg) {
     switch (msg.get_category()) {
-      case message_category::NOTIFICATION:
-        handle_notification_message(msg);
-        break;
-
-      case message_category::ACKNOWLEDGEMENT:
-        /// we know that the message is an acknowledgement message
-        handle_acknowledgement_message(msg);
-        break;
-
-      case message_category::CONTROL:
-        handle_control_message(msg);
-        break;
-
-      case message_category::COMMAND:
-        handle_command_message(msg);
-        break;
-
-      case message_category::REQUEST:
-        handle_request_message(msg);
-        break;
-
-      case message_category::RESPONSE:
-        handle_response_message(msg);
-        break;
-
-      case message_category::ERROR_ALERT:
-        handle_error_alert_message(msg);
-        break;
-
-      case message_category::INFO:
-        handle_info_message(msg);
-        break;
-
+      case message_category::NOTIFICATION: handle_notification_message(msg); break;
+      case message_category::ACKNOWLEDGEMENT: handle_acknowledgement_message(msg); break;
+      case message_category::CONTROL: handle_control_message(msg); break;
+      case message_category::COMMAND: handle_command_message(msg); break;
+      case message_category::REQUEST: handle_request_message(msg); break;
+      case message_category::RESPONSE: handle_response_message(msg); break;
+      case message_category::ERROR_ALERT: handle_error_alert_message(msg); break;
       default:
         CORE_LOG_WARN("Terminal received unsupported message category: {}", msg.get_category());
         break;
@@ -379,14 +353,8 @@ namespace other {
 
   void thread::handle_control_message(const message& msg) {
     switch (msg.get_id()) {
-      case PING:
-        handle_ping(session_status_request::parse(msg.data));
-        break;
-
-      case PONG:
-        handle_pong(session_status_response::parse(msg.data));
-        break;
-
+      case PING: handle_ping(session_status_request::parse(msg.data)); break;
+      case PONG: handle_pong(session_status_response::parse(msg.data)); break;
       default:
         CORE_LOG_WARN("Thread received unsupported control message: {}", msg.get_id());
         break;
@@ -395,14 +363,6 @@ namespace other {
 
   void thread::handle_command_message(const message& msg) {
     switch (msg.get_id()) {
-      case OTHER_COMMAND:
-        handle_command(other_command_msg::parse(msg.data));
-        break;
-
-      case OTHER_COMMAND_BLOCK:
-        handle_command_block(other_command_block_msg::parse(msg.data));
-        break;
-
       default:
         CORE_LOG_WARN("Thread received unsupported command message: {}", msg.get_id());
         break;
@@ -427,19 +387,8 @@ namespace other {
 
   void thread::handle_error_alert_message(const message& msg) {
     CORE_LOG_ERROR("Thread received error alert: {}", msg.get_id());
-
     switch (msg.get_id()) {
       default:
-        break;
-    }
-  }
-
-  void thread::handle_info_message(const message& msg) {
-    CORE_LOG_INFO("Thread received info message: {}", msg.get_id());
-
-    switch (msg.get_id()) {
-      default:
-        CORE_LOG_WARN("Thread received unsupported info message: {}", msg.get_id());
         break;
     }
   }

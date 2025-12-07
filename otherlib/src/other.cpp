@@ -5,6 +5,9 @@
 
 #include <iostream>
 
+#include <spdlog/common.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
@@ -19,8 +22,6 @@
 
 #include "scripting/dotnet_bindings.hpp"
 #include "scripting/lua_bindings.hpp"
-
-#include "spdlog/common.h"
 
 #ifndef OTHER_TEST_ENVIRONMENT
 /// if not test environment and this is not an other application then we define the extern main function for the static driver
@@ -194,7 +195,7 @@ namespace other {
 #ifdef OTHER_ENVIRONMENT_WINDOWS
     return std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
 #else
-    return std::make_shared<spdlog::sinks::stdout_sink_mt>();
+    return std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 #endif
   }
 
@@ -224,6 +225,7 @@ namespace other {
         return std::make_shared<spdlog::sinks::basic_file_sink_mt>(config.core_log_file, true);
       },
     };
+
     std::string loggers[] = { "other-core-log" };
     log->register_sink(loggers, sink);
     log->register_sink(loggers, file_sink);

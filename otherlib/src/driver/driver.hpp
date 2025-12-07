@@ -5,24 +5,30 @@
 #define OTHERLIB_DRIVER_DRIVER_HPP
 
 #include <queue>
-#include <type_traits>
 
 #include <asio/asio.hpp>
 #include <asio/asio/signal_set.hpp>
+#include <nlohmann/json.hpp>
 
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
 #include "core/coroutine.hpp"
 #include "core/defines.hpp"
 #include "event/event_system.hpp"
+#include "thread/message.hpp"
+#include "thread/message_bus.hpp"
+#include "thread/messages.hpp"
 
 #include "dotnet/dotnet_assembly.hpp"
+#include "network/network_thread.hpp"
 #include "renderer/renderer.hpp"
 
 #include "scene/scene_graph.hpp "
 
 #include "plugin/plugin.hpp"
 #include "vm/other_device.hpp"
+
+namespace json = nlohmann;
 
 namespace other {
 
@@ -52,8 +58,9 @@ namespace other {
     }
 
     scope<event_system>& get_event_system() {
-      OTHER_ASSERT(events != nullptr, "Event system is not initialized in driver.");
-      return events;
+      OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in driver.");
+      OTHER_ASSERT(net_context->events != nullptr, "Event system is not initialized in driver.");
+      return net_context->events;
     }
     void set_scene_to_active(natural_t scene_id);
 
@@ -62,11 +69,71 @@ namespace other {
       asio::io_context io_context;
       asio::signal_set signals;
 
+      scope<event_system> events = nullptr;
+      natural_t netw_thread_heartbeat_timeout_id = 0;
+
+      message_bus net_thread_message_bus;
+      scope<network_thread> net_thread = nullptr;
+
+      constexpr static binding_point main_binding_point{ 0x7f000001, 49222 };
+
       network_context()
           : signals(io_context, SIGINT, SIGTERM) {}
     };
     /// \todo figure out why asio does not like the arena allocator here
     std::unique_ptr<network_context> net_context = nullptr;
+
+    struct pending_ack {
+      using on_ack = std::function<void(message_header, const std::vector<uint8_t>&)>;
+      using on_timeout = std::function<void(message_header)>;
+
+      natural_t id = 0;
+
+      message_header header;
+      microseconds timeout_duration = microseconds(0);
+      std::chrono::time_point<std::chrono::steady_clock> sent_time;
+
+      on_ack ack_callback = nullptr;
+      on_timeout timeout_callback = nullptr;
+
+      asio::steady_timer timer;
+
+      constexpr auto operator<=>(const pending_ack& other) const {
+        return sent_time.time_since_epoch() <=> other.sent_time.time_since_epoch();
+      }
+    };
+    natural_t next_pending_ack_id = 1;
+    std::deque<pending_ack> pending_acks;
+
+    struct pending_response {
+      using on_response = std::function<void(message_header, const std::vector<uint8_t>&)>;
+      using on_timeout = std::function<void(message_header)>;
+
+      natural_t id = 0;
+
+      message_header header;
+      std::chrono::time_point<std::chrono::steady_clock> sent_time;
+
+      on_response response_callback = nullptr;
+      on_timeout timeout_callback = nullptr;
+
+      asio::steady_timer timer;
+
+      constexpr auto operator<=>(const pending_response& other) const {
+        return header <=> other.header;
+      }
+    };
+    natural_t next_pending_response_id = 1;
+    std::deque<pending_response> pending_responses;
+
+    struct timeout {
+      using on_timeout = std::function<void(natural_t)>;
+
+      natural_t id = 0;
+      asio::steady_timer timer;
+    };
+    natural_t next_timeout_id = 1;
+    std::deque<timeout> pending_timeouts;
 
     virtual void on_initialize(const command_line& cmd) = 0;
     virtual void on_shutdown() = 0;
@@ -86,9 +153,36 @@ namespace other {
     scene* get_scene(natural_t id);
     scene* get_active_scene();
 
+    filepath get_project_cache();
+
     void pump_events();
+
+    void handle_session_event_rx_message(message&& msg);
+
+    void handle_request_session_information(integer_t session_id, message&& msg);
+    void handle_response_session_information(integer_t session_id, message&& msg);
+
+    virtual std::string get_project_name() const { return ""; }
+
     virtual void on_event(SDL_Event* event) {}
     virtual void on_event(environment_event* event) {}
+
+    /// notifications
+    virtual void handle_notification_session_check_in(message&& msg) {}
+    virtual void handle_notification_session_closed(message&& msg) {}
+    /// acknowledgments
+    virtual void handle_acknowledgement_ack(message&& msg) {}
+    /// control messages
+    virtual void handle_control_ping(message&& msg) {}
+    virtual void handle_control_pong(message&& msg) {}
+    /// command messages
+    /// request messages
+    /// response messages
+    virtual void handle_response(message&& msg) {}
+    virtual void handle_session_information_response(integer_t session_id, session_information_response&& response) {}
+    /// session events
+    /// error alerts
+    virtual void handle_error_alert(message&& msg) {}
 
     scope<renderer> get_renderer() const;
 
@@ -96,6 +190,18 @@ namespace other {
     void unload_dotnet_module(ref<assembly> module_id);
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
+
+    natural_t send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback);
+    void cancel_acknowledgment(natural_t ack_id);
+
+    void send_message_and_detach_response(message&& msg, pending_response::on_response response_callback);
+    natural_t send_message_and_wait_response(message&& msg, microseconds timeout, pending_response::on_response response_callback, pending_response::on_timeout timeout_callback);
+    void cancel_response(natural_t response_id);
+
+    natural_t set_timeout(microseconds duration, timeout::on_timeout timeout_callback);
+    void clear_timeout(natural_t timeout_id);
+
+    void process_network_thread_messages(message&& msg);
 
     void post_coroutine(task coro) {
       add_live_coroutine(std::move(coro));
@@ -127,8 +233,6 @@ namespace other {
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
 
-    scope<event_system> events = nullptr;
-
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);
     natural_t get_id_of_scene(const std::string_view name);
@@ -148,6 +252,9 @@ namespace other {
 #ifndef DRIVER_DELETE
   #define DRIVER_DELETE(instance) other::arena_allocator<other::driver>{}.free(instance)
 #endif
+
+#define OTHER_APPLICATION_DRIVER(name) \
+  std::string get_project_name() const override { return name; }
 
 #define OTHER_DRIVER(name)                                                                                       \
   OTHER_PLUGIN(name)                                                                                             \

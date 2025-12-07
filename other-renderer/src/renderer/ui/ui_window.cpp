@@ -87,6 +87,7 @@ namespace other {
     auto [itr, inserted] = node_map.emplace(id, std::move(node));
     OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
 
+    CORE_LOG_DEBUG("Added UI node with ID {} to window {}", itr->first, title);
     return add_node_to(itr->second);
   }
 

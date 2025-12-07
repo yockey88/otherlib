@@ -26,6 +26,7 @@ def copy_dlls(cfg, dll_cfg):
     f"build/scratch/{cfg}/",
     f"build/tests/{cfg}/",
     f"build/tools/{cfg}/",
+    f"build/other-editor/{cfg}/",
   ]
 
   for dll in dlls:
@@ -61,7 +62,8 @@ def validate_args(args, parser):
       and not args.compile_serialization_schema \
       and not args.compile_object \
       and not args.run_test_suite and not args.run_server \
-      and not args.install:
+      and not args.install \
+      and not args.daemon_server:
     parser.print_help()
     sys.exit(1)
 
@@ -82,6 +84,7 @@ if __name__ == "__main__":
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
   # parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
   parser.add_argument("--install", "-i", action="store_true", help="Install Other Environment to the system.")
+  parser.add_argument("--daemon-server", "-dsrv", action="store_true", help="Run the Other Environment Daemon Server.")
 
   args = parser.parse_args()
   try:
@@ -141,11 +144,10 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("development-drivers", cfg, "runtime_dev", "runtime-dev.toml", args, args.verbose)
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args, args.verbose)
+      # run_project("development-drivers", cfg, "runtime_dev", "runtime-dev.toml", args, args.verbose)
       # run_project("development-drivers", cfg, "rendering_dev", "renderer-dev.toml", args, args.verbose)
-      # run_project("scratch", cfg, "gl-testing", "dev-config.toml", args, args.verbose)
       # run_project("scratch", cfg, "behavior-node", "behavior-node-dev.toml", args, args.verbose)
-      # run_project("scratch", cfg, "action-dev", "action-dev.toml", args, args.verbose)
 
     elif args.run_server:
       run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)
@@ -170,6 +172,8 @@ if __name__ == "__main__":
       test_filter = args.run_test_suite[0]
       print(f"Running test suite with filter: {test_filter}")
       run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=[f"--gtest_filter={test_filter}", "--gtest_shuffle"])
+    elif args.daemon_server:
+      run_subprocess(["pwsh.exe", "-File", "tools/daemon-server.ps1"])
       
   except subprocess.CalledProcessError as e:
     print(f"Error: {e}")

@@ -37,8 +37,13 @@ namespace other {
     session_state_machine()
         : state_machine<network::session_state, network::session_event>(network::SESSION_STATE_STOPPED) {
       add_transition(network::SESSION_STATE_STOPPED, network::SESSION_EVENT_START, network::SESSION_STATE_LAUNCHING);
-      add_transition(network::SESSION_STATE_LAUNCHING, network::SESSION_EVENT_CHECK_IN, network::SESSION_STATE_STARTED /* ,  respond_to_check_in*/);
+
+      add_transition(network::SESSION_STATE_LAUNCHING, network::SESSION_EVENT_CHECK_IN, network::SESSION_STATE_STARTED);
+      add_transition(network::SESSION_STATE_LAUNCHING, network::SESSION_EVENT_SHUTDOWN_START, network::SESSION_STATE_SHUTTING_DOWN);
+
       add_transition(network::SESSION_STATE_STARTED, network::SESSION_EVENT_SHUTDOWN_START, network::SESSION_STATE_SHUTTING_DOWN);
+      add_transition(network::SESSION_STATE_STARTED, network::SESSION_EVENT_SHUTDOWN_COMPLETE, network::SESSION_STATE_STOPPED);
+
       add_transition(network::SESSION_STATE_SHUTTING_DOWN, network::SESSION_EVENT_SHUTDOWN_COMPLETE, network::SESSION_STATE_STOPPED);
     }
     virtual ~session_state_machine() = default;

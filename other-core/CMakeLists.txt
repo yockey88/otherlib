@@ -41,6 +41,8 @@ target_sources(other_core
 		src/serialization/serialization.cpp
 
 		src/thread/message.cpp
+		src/thread/test/new_message.cpp
+		src/thread/messages.cpp
 		src/thread/message_bus.cpp
 		src/thread/thread.cpp
 

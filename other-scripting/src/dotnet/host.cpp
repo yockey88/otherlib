@@ -202,14 +202,14 @@ namespace other {
     OTHER_ASSERT(inserted, "Failed to insert assembly context into map");
     itr->second.dotnet_id = context_handle;
 
-    CORE_LOG_INFO("Created assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
+    CORE_LOG_DEBUG("Created assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
     return &itr->second;
   }
 
   void dotnet_host::destroy_assembly_context(natural_t context_id) {
     auto itr = assembly_contexts.find(context_id);
     if (itr != assembly_contexts.end()) {
-      CORE_LOG_INFO("Destroying assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
+      CORE_LOG_DEBUG("Destroying assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
 
       // interop_functions.collect_garbage(0, dotother::GCMode::DEFAULT, true, true);
       // interop_functions.wait_for_pending_finalizers();
@@ -219,7 +219,7 @@ namespace other {
       // itr->second.assemblies.clear();
 
       assembly_contexts.erase(itr);
-      CORE_LOG_INFO("Destroyed assembly context with ID {}", context_id);
+      CORE_LOG_DEBUG("Destroyed assembly context with ID {}", context_id);
     } else {
       CORE_LOG_ERROR("Failed to destroy assembly context: ID {} not found", context_id);
     }

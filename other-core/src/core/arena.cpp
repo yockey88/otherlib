@@ -92,9 +92,14 @@ namespace other {
 
     instance->allocated_memory -= size;
     instance->live_allocations--;
+    PROFILE_DEALLOCATION(ptr);
+
     /// do nothing for now, allocators handle calling destructors and zeroing memory
     ///   later we can implement a free list or something or register freed chunks for defragmentation
-    PROFILE_DEALLOCATION(ptr);
+  }
+
+  void arena::free(void* ptr) {
+    free(ptr, 0);
   }
 
   void arena::free_region(void* ptr) {

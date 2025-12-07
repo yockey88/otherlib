@@ -66,6 +66,7 @@ target_sources(otherlib
     src/vm/command_files/ocmd_compiler.cpp
 
     src/tools/build_tool.cpp
+    src/tools/environment_console.cpp
 
     src/ui/ui_widgets.cpp
     src/ui/node_editor_canvas_node.cpp

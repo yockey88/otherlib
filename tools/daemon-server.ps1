@@ -1,0 +1,1 @@
+Start-Process ./build/development-drivers/Debug/server_dev.exe -ArgumentList "resources/server-config.toml --verbose"

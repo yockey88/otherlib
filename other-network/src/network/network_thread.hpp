@@ -23,10 +23,19 @@ namespace other {
           bus(bus), net_context{ std::make_unique<network_context>() } {}
     virtual ~network_thread() = default;
 
-    void report_connection_closed(natural_t client_id);
+    void report_connection_closed(natural_t connection_id, integer_t session_id);
     void report_connection_error(session* cli, const asio::error_code& ec);
 
     void report_connection_check_in(natural_t connection_id, integer_t session_id);
+
+    inline integer_t get_next_connection_id() {
+      static integer_t next_id = 1;
+      return next_id++;
+    }
+
+    message_bus& get_message_bus() {
+      return bus;
+    }
 
    protected:
     message_bus& bus;
@@ -67,22 +76,20 @@ namespace other {
     void accept_connections(asio::ip::tcp::socket&& socket, const asio::error_code& ec);
 
     void open_session_and_check_in_at(integer_t session_id, uint16_t port);
+    void open_session_and_connect_to(const binding_point& bp);
 
     void handle_control_ping(message&& msg);
 
     void handle_command_shutdown_request(message&& msg);
-    void handle_command_session_check_in(message&& msg);
     void handle_command_session_listen_for(message&& msg);
+    void handle_command_session_connect_to(message&& msg);
+    void handle_command_session_check_in(message&& msg);
+    void handle_command_session_tx_message(message&& msg);
 
     void handle_request_session_check_in(message&& msg);
 
     static inline natural_t max_connections = 1024;
     natural_t current_connections = 0;
-
-    inline integer_t get_next_connection_id() {
-      static integer_t next_id = 1;
-      return next_id++;
-    }
   };
 
 }  // namespace other

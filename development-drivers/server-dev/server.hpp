@@ -20,11 +20,7 @@
 
 #include "driver/driver.hpp"
 
-#include "asio/asio/steady_timer.hpp"
-
 #include "server-ui/server-ui.hpp"
-
-namespace json = nlohmann;
 
 namespace other {
   namespace detail {
@@ -32,8 +28,6 @@ namespace other {
     class message_handler;
 
   }  // namespace detail
-
-  constexpr static binding_point main_binding_point{ 0x7f000001, 49222 };
 
   enum class server_state : natural_t {
     SERVER_STATE_SHUT_DOWN = 0,
@@ -97,72 +91,26 @@ namespace other {
 
     struct other_application {
       integer_t id = 0;
-      filepath working_directory;
-      filepath executable;
+
+      natural_t session_info_request_resp_id = 0;
+
+      opt<filepath> working_directory;
+
+      opt<filepath> executable;
+      opt<std::string> name;
+
       std::vector<std::string> args;
       bool connected = false;
+
+      std::string get_name() const;
     };
     std::deque<other_application> pending_apps;
     std::map<integer_t, other_application> other_apps;
-
-    struct pending_ack {
-      using on_ack = std::function<void(message_header, const std::vector<uint8_t>&)>;
-      using on_timeout = std::function<void(message_header)>;
-
-      message_header header;
-      microseconds timeout_duration = microseconds(0);
-      std::chrono::time_point<std::chrono::steady_clock> sent_time;
-
-      on_ack ack_callback = nullptr;
-      on_timeout timeout_callback = nullptr;
-
-      asio::steady_timer timer;
-
-      constexpr auto operator<=>(const pending_ack& other) const {
-        return sent_time.time_since_epoch() <=> other.sent_time.time_since_epoch();
-      }
-    };
-    std::deque<pending_ack> pending_acks;
-
-    struct pending_response {
-      using on_response = std::function<void(message_header, const std::vector<uint8_t>&)>;
-      using on_timeout = std::function<void(message_header)>;
-
-      message_header header;
-      std::chrono::time_point<std::chrono::steady_clock> sent_time;
-
-      on_response response_callback = nullptr;
-      on_timeout timeout_callback = nullptr;
-
-      asio::steady_timer timer;
-
-      constexpr auto operator<=>(const pending_response& other) const {
-        return header <=> other.header;
-      }
-    };
-    std::deque<pending_response> pending_responses;
-
-    struct timeout {
-      using on_timeout = std::function<void(natural_t)>;
-
-      natural_t id = 0;
-      asio::steady_timer timer;
-    };
-    natural_t next_timeout_id = 1;
-    std::deque<timeout> pending_timeouts;
-
-    filepath get_project_cache();
 
     json::json project_cache;
 
     scope<renderer> renderer;
     scene active_scene;
-
-    scope<event_system> events = nullptr;
-    natural_t netw_thread_heartbeat_timeout_id = 0;
-
-    message_bus net_thread_message_bus;
-    scope<network_thread> net_thread = nullptr;
 
     scope<server_ui> ui_ptr = nullptr;
 
@@ -177,18 +125,8 @@ namespace other {
 
     void on_event(SDL_Event* event) override;
 
-    void send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback);
-
-    void send_message_and_detach_response(message&& msg, pending_response::on_response response_callback);
-    void send_message_and_wait_response(message&& msg, microseconds timeout, pending_response::on_response response_callback, pending_response::on_timeout timeout_callback);
-
-    natural_t set_timeout(microseconds duration, timeout::on_timeout timeout_callback);
-    void clear_timeout(natural_t timeout_id);
-
     void validate_project_and_launch(const json::json& project_entry);
     void begin_other_application(const json::json& project_entry);
-
-    void process_network_thread_messages(message&& msg);
 
     void on_ack_control_ping_network_thread(message_header header, const std::vector<uint8_t>& data);
     void on_timeout_control_ping_network_thread(message_header header);
@@ -201,13 +139,21 @@ namespace other {
 
     void on_respond_session_check_in_network_thread(message_header header, const std::vector<uint8_t>& data);
 
+    void send_session_information_request(integer_t session_id, other_application* app = nullptr);
+    void handle_session_information_response(integer_t session_id, session_information_response&& response) override;
+
+    void on_response_request_session_information(message_header header, const std::vector<uint8_t>& data);
+    void on_timeout_request_session_information_network_thread(message_header header);
+    void print_session_information(other_application* app);
+
+    void register_other_application(integer_t session_id, other_application* app);
     void on_shutdown_request();
 
-    void handle_notification_session_closed(message&& msg);
-    void handle_acknowledgement_ack(message&& msg);
-    // void handle_control_ping(message&& msg);
-    void handle_control_pong(message&& msg);
-    void handle_response(message&& msg);
+    void handle_notification_session_check_in(message&& msg) override;
+    void handle_notification_session_closed(message&& msg) override;
+    void handle_acknowledgement_ack(message&& msg) override;
+    void handle_control_pong(message&& msg) override;
+    void handle_response(message&& msg) override;
 
     task validate_and_build_other_application(const std::string& name, const filepath& folder, const filepath& env_config_path);
   };

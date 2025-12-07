@@ -26,14 +26,14 @@ namespace other {
     ACKNOWLEDGEMENT,
 
     CONTROL,
-
     COMMAND,
+
     REQUEST,
     RESPONSE,
 
-    ERROR_ALERT,
+    SESSION_EVENT,
 
-    INFO,
+    ERROR_ALERT,
   };
 
   enum message_id : uint16_t {
@@ -45,19 +45,25 @@ namespace other {
     PING,
     PONG,
 
+    /// command messages
     SESSION_LISTEN_FOR,
+    SESSION_CONNECT_TO,
+    SESSION_TX_MESSAGE,
 
+    /// request messages
     SESSION_CHECK_IN,
     SESSION_CLOSED,
-    SESSION_SHUTDOWN_REQUEST,
+    SESSION_SHUTDOWN,
+    SESSION_INFORMATION,
 
-    OTHER_COMMAND,
-    OTHER_COMMAND_BLOCK,
+    PROJECT_CACHE_INFORMATION,
 
-    /// query messages
     /// response messages
+
+    /// session event messages
+    SESSION_RX_MESSAGE,
+
     /// error alert messages
-    /// info messages
 
     SHUTDOWN_REQUEST,
 
@@ -218,95 +224,6 @@ namespace other {
 
     ERROR_CODE_FIELD,
     ERROR_MESSAGE_FIELD,
-  };
-
-  struct acknowledgement : message_spec_impl<acknowledgement> {
-    constexpr static message_category category = ACKNOWLEDGEMENT;
-    constexpr static message_id id = ACK;
-
-    message_header acked_header;
-    uint8_t ack_nack = 0;
-    uint64_t node_id = 0;
-
-    static acknowledgement parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const acknowledgement& msg);
-  };
-
-  struct session_status_request : message_spec_impl<session_status_request> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = PING;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint8_t layer_type = 0;
-
-    static session_status_request parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_status_request& msg);
-  };
-
-  struct session_status_response : message_spec_impl<session_status_response> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = PONG;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint64_t status = 0;
-
-    static session_status_response parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_status_response& msg);
-  };
-
-  struct session_shutdown_request : message_spec_impl<session_shutdown_request> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = SESSION_SHUTDOWN_REQUEST;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint64_t status = 0;
-
-    static session_shutdown_request parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_shutdown_request& msg);
-  };
-
-  /// thread messages have no messages, they are sort of ad-hoc messages
-
-  struct other_command_msg : message_spec_impl<other_command_msg> {
-    constexpr static message_category category = COMMAND;
-    constexpr static message_id id = OTHER_COMMAND;
-
-    command cmd;
-    std::vector<address_t> args;
-
-    static other_command_msg parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-  };
-
-  struct other_command_block_msg : message_spec_impl<other_command_block_msg> {
-    constexpr static message_category category = COMMAND;
-    constexpr static message_id id = OTHER_COMMAND_BLOCK;
-
-    command_block block;
-    std::vector<address_t> args;
-
-    static other_command_block_msg parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-  };
-
-  /// various error messages
-
-  struct error_alert_msg : message_spec_impl<error_alert_msg> {
-    constexpr static message_category category = ERROR_ALERT;
-    constexpr static message_id id = ERROR_ALERT_ID;
-
-    uint64_t error_code = 0;
-    std::string error_message;
-
-    static error_alert_msg parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
   };
 
 }  // namespace other

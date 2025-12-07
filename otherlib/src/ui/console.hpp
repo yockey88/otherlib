@@ -13,12 +13,11 @@ namespace other {
 
     class console_window : public ui_window {
      public:
-      console_window(event_system& events, console_command_delegate command_delegate);
+      console_window(event_system& events);
       ~console_window() override = default;
 
      private:
-      std::string current_input = "";
-      std::vector<std::string> output_lines = {};
+      natural_t history_node_id = 0;
     };
 
   }  // namespace ui
