@@ -94,7 +94,6 @@ namespace other {
 
       ui_ptr = make_scope<server_ui>(renderer, get_event_system(), project_cache);
     }
-    active_scene = scene("Server-Scene");
 
     running = true;
   }
@@ -115,8 +114,7 @@ namespace other {
       }
 
       if (rendering_enabled()) {
-        render_data data = active_scene.prepare_render_data();
-        renderer->begin_frame(&data);
+        renderer->begin_frame(nullptr);
         renderer->render();
         ui_ptr->render();
         renderer->end_frame();
@@ -284,16 +282,7 @@ namespace other {
 #endif
   }
 
-  void server::on_ack_control_ping_network_thread(message_header header, const std::vector<uint8_t>& data) {
-    // all good
-  }
-
-  void server::on_timeout_control_ping_network_thread(message_header header) {
-    CORE_LOG_WARN("Network thread timed out waiting for PONG response");
-    /// handle_network_thread_unresponsive();
-  }
-
-  void server::on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data) {
+  void server::on_ack_session_listen_for_network_thread(message_header header, const std::span<const uint8_t> data) {
     CORE_LOG_INFO("Network thread acknowledged event request at session check in for session [{}]", header.id);
     state_machine.handle_event(server_event::SERVER_EVENT_READY, this);
 
@@ -322,7 +311,7 @@ namespace other {
     CORE_LOG_WARN("Network thread timed out waiting for event request at session check in for session [{}]", header.id);
   }
 
-  void server::on_ack_shutdown_request_network_thread(message_header header, const std::vector<uint8_t>& data) {
+  void server::on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data) {
     CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
 
     net_context->net_thread->shutdown();
@@ -352,7 +341,7 @@ namespace other {
     on_shutdown_request();
   }
 
-  void server::on_respond_session_check_in_network_thread(message_header header, const std::vector<uint8_t>& data) {
+  void server::on_respond_session_check_in_network_thread(message_header header, const std::span<const uint8_t> data) {
     OTHER_ASSERT(data.size() >= sizeof(integer_t), "Invalid session check in packet!");
 
     integer_t session_id = *reinterpret_cast<const integer_t*>(data.data());
@@ -458,7 +447,7 @@ namespace other {
     print_session_information(&app);
   }
 
-  void server::on_response_request_session_information(message_header header, const std::vector<uint8_t>& data) {
+  void server::on_response_request_session_information(message_header header, const std::span<const uint8_t> data) {
     OTHER_ASSERT(data.size() >= sizeof(integer_t), "Invalid session information response packet!");
 
     size_t cursor = 0;
@@ -511,6 +500,7 @@ namespace other {
     OTHER_ASSERT(app != nullptr, "Application pointer is null after insertion!");
 
     app->connected = true;
+    CORE_LOG_INFO("Other application [{}] has connected", session_id);
     send_session_information_request(session_id);
   }
 
@@ -552,8 +542,13 @@ namespace other {
   }
 
   void server::handle_notification_session_check_in(message&& msg) {
-    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid session check-in notification size");
+    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid session check-in notification message size");
+
     integer_t session_id = *reinterpret_cast<const integer_t*>(msg.data.data());
+    if (session_id < 1) {
+      CORE_LOG_ERROR("Invalid session ID received in check-in notification: {}", session_id);
+      return;
+    }
 
     auto itr = other_apps.find(session_id);
     /// this has to be a new connection, bc if we requested it then it would not be a notification
@@ -570,6 +565,7 @@ namespace other {
       return;
     }
     register_other_application(session_id, &app_itr->second);
+    CORE_LOG_INFO("Session [{}] has checked in.", session_id);
   }
 
   void server::handle_notification_session_closed(message&& msg) {
@@ -587,54 +583,47 @@ namespace other {
     }
   }
 
-  void server::handle_acknowledgement_ack(message&& msg) {
-    CORE_LOG_DEBUG("  - ACK");
-    if (msg.data.size() >= sizeof(message_header)) {
-      message_header acked_header = *reinterpret_cast<const message_header*>(msg.data.data());
-      auto itr = std::ranges::find_if(pending_acks, [&acked_header](const pending_ack& ack) { return ack.header == acked_header; });
+  void server::on_active_scene_udp_handle_bound(udp_handle* handle) {
+    post_coroutine(active_scene_udp_loop());
+  }
 
-      if (itr != pending_acks.end()) {
-        CORE_LOG_DEBUG("Acknowledgment received for message {}", acked_header);
-        itr->timer.cancel();
-        if (itr->ack_callback) {
-          CORE_LOG_TRACE("Invoking acknowledgment callback for message {}", acked_header);
-          itr->ack_callback(acked_header, msg.data);
+  task server::active_scene_udp_loop() {
+    OTHER_ASSERT(get_active_scene() != nullptr, "No active scene to run UDP handle loop on.");
+    CORE_LOG_INFO("Starting active scene UDP handle loop...");
+
+    auto now = steady_clock::now();
+    auto last = now;
+    auto elapsed = now - last;
+    while (state_machine.get_current_state() != server_state::SERVER_STATE_SHUT_DOWN && get_active_scene() != nullptr) {
+      now = steady_clock::now();
+      elapsed += now - last;
+      last = now;
+
+      if (elapsed >= seconds(3)) {
+        elapsed = steady_clock::duration::zero();
+
+        CORE_LOG_DEBUG("Waiting to receive UDP packet on active scene UDP handle...");
+        auto packet = active_scene_udp_handle.receive();
+        if (!packet.empty()) {
+          CORE_LOG_INFO("Received UDP packet of size {} on active scene UDP handle", packet.size());
+          if (packet.size() >= sizeof(message_header) + sizeof(uint16_t)) {
+            size_t cursor = 0;
+            message_header header = serialization::read_value<message_header>(packet, cursor);
+            uint16_t str_len = serialization::read_value<uint16_t>(packet, cursor);
+
+            if (packet.size() >= sizeof(message_header) + sizeof(uint16_t) + str_len) {
+              std::string msg_str(reinterpret_cast<const char*>(packet.data() + cursor), str_len);
+              CORE_LOG_INFO("UDP Message received (Category: {}, ID: {}): {}", header.category, header.id, msg_str);
+            } else {
+              CORE_LOG_WARN("Received UDP packet is too small to contain the expected string data");
+            }
+          } else {
+            CORE_LOG_WARN("Received UDP packet is too small to contain a valid message header + size");
+          }
         }
-        pending_acks.erase(itr);
       } else {
-        CORE_LOG_ERROR("Received acknowledgment for unknown message {}", acked_header);
+        co_await task::awaiter{};
       }
-    } else {
-      CORE_LOG_WARN("Received invalid acknowledgment message size");
-    }
-  }
-
-  void server::handle_control_pong(message&& msg) {
-    size_t cursor = 0;
-    integer_t session = serialization::read_value<integer_t>(msg.data, cursor);
-
-    if (session == 0) {
-      clear_timeout(net_context->netw_thread_heartbeat_timeout_id);
-    }
-    /// else handle real session
-    else {
-      /// \todo
-    }
-  }
-
-  void server::handle_response(message&& msg) {
-    CORE_LOG_DEBUG("  - RESPONSE");
-    auto itr = std::ranges::find_if(pending_responses, [&msg](const pending_response& response) { return response.header.id == msg.header.id; });
-
-    if (itr != pending_responses.end()) {
-      CORE_LOG_DEBUG("Response received for message {}", msg.header);
-      if (itr->response_callback) {
-        CORE_LOG_TRACE("Invoking response callback for message {}", msg.header);
-        itr->response_callback(msg.header, msg.data);
-      }
-      pending_responses.erase(itr);
-    } else {
-      CORE_LOG_ERROR("Received response for unknown message {}", msg.header);
     }
   }
 

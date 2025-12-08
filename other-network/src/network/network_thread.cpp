@@ -5,12 +5,15 @@
 
 #include "core/defines.hpp"
 #include "thread/message.hpp"
+#include "thread/messages.hpp"
 
 #include "asio/asio/ip/address_v4.hpp"
 
 namespace other {
 
   void network_thread::report_connection_closed(natural_t connection_id, integer_t session_id) {
+    /// \todo: don't erase the connections because they may reconnect, just mark them as closed
+    ///           we need to add a mechanism to know when to fully remove them
     auto itr = client_endpoints.find(connection_id);
     if (itr != client_endpoints.end()) {
       CORE_LOG_DEBUG("Closing connection [{}] session {}", connection_id, session_id);
@@ -116,6 +119,7 @@ namespace other {
             case SESSION_CONNECT_TO: handle_command_session_connect_to(std::move(*msg)); break;
             case SESSION_CHECK_IN: handle_command_session_check_in(std::move(*msg)); break;
             case SESSION_TX_MESSAGE: handle_command_session_tx_message(std::move(*msg)); break;
+            case ENVIRONMENT_LOAD_SCENE: handle_command_environment_load_scene(std::move(*msg)); break;
             default:
               CORE_LOG_WARN("Network thread received unknown COMMAND message ID {:#06x}", msg->header.id);
               break;
@@ -125,6 +129,7 @@ namespace other {
         case REQUEST:
           switch (msg->header.id) {
             case SESSION_CHECK_IN: handle_request_session_check_in(std::move(*msg)); break;
+            case NEW_UDP_STREAM_BINDING: handle_request_new_udp_stream_binding(std::move(*msg)); break;
             default:
               CORE_LOG_WARN("Network thread received unknown REQUEST message ID {:#06x}", msg->header.id);
               break;
@@ -170,6 +175,7 @@ namespace other {
       };
       const uint8_t* acked_header_bytes = reinterpret_cast<const uint8_t*>(&acked_header);
       msg.data.append_range(std::span(acked_header_bytes, sizeof(message_header)));
+      msg.data.push_back(0x01);
       bus.send_message(std::move(msg));
 
       current_state.shutdown_complete = true;
@@ -187,7 +193,7 @@ namespace other {
     CORE_LOG_DEBUG("Accepted new connection from {}", socket.remote_endpoint().address().to_string());
 
     if (!ec) {
-      natural_t conn_id = get_next_connection_id();
+      natural_t conn_id = get_next_session_id();
       auto itr = pending_connections.insert(pending_connections.end(), connection{
                                                                          .connection_number = current_connections,
                                                                          .session_id = (integer_t)conn_id,
@@ -310,9 +316,23 @@ namespace other {
     } catch (...) {
     }
 
+    for (auto& [id, binding] : udp_binding_map) {
+      try {
+        binding.stream->shutdown();
+        arena_allocator<udp_stream>{}.free(binding.stream);
+        arena_allocator<std::mutex>{}.free(binding.mutex);
+      } catch (...) {
+      }
+    }
+
+    for (auto& conn : pending_connections) {
+      conn.active_session->shutdown();
+    }
+
     for (auto& [id, conn] : client_endpoints) {
       conn.active_session->shutdown();
     }
+
     current_state.shutdown_pending = true;
   }
 
@@ -337,6 +357,7 @@ namespace other {
     };
     const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&acked_header);
     ack_msg.data.append_range(std::span(bytes, sizeof(message_header)));
+    ack_msg.data.push_back(0x01);
     bus.send_message(std::move(ack_msg));
   }
 
@@ -381,6 +402,34 @@ namespace other {
     itr->second.active_session->start_write(std::move(tx_msg));
   }
 
+  void network_thread::handle_command_environment_load_scene(message&& msg) {
+    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid environment load scene command message size");
+
+    load_empty_scene_command scene_cmd = other_message_spec::parse<load_empty_scene_command>(msg.data);
+    if (scene_cmd.session_id_flag == 0x01) {
+      integer_t session_id = scene_cmd.session_id;
+      CORE_LOG_INFO("Sending load-empty-scene '{}' to session {}", scene_cmd.scene_name, session_id);
+      auto itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.session_id == session_id; });
+      if (itr == client_endpoints.end()) {
+        CORE_LOG_WARN("No connected session with ID {}, cannot load scene '{}'", session_id, scene_cmd.scene_name);
+        return;
+      }
+
+      itr->second.active_session->send_and_wait_response(
+        std::move(msg), message_header{ ACKNOWLEDGEMENT, ACK }, seconds(9),
+        [this, scene_name = scene_cmd.scene_name](message&& resp_msg) {
+          message_header* acked_header = reinterpret_cast<message_header*>(resp_msg.data.data());
+          CORE_LOG_DEBUG("Received acknowledgment for load-empty-scene '{}'", scene_name);
+          CORE_LOG_DEBUG(" - Acked header: {}", *acked_header);
+          bus.send_message(std::move(resp_msg));
+        }
+      );
+
+    } else {
+      CORE_LOG_ERROR("Unimplemented use case for load_empty_scene_command without session ID");
+    }
+  }
+
   void network_thread::handle_request_session_check_in(message&& msg) {
     OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid session check-in message size");
     integer_t session_id = *reinterpret_cast<const integer_t*>(msg.data.data());
@@ -399,6 +448,56 @@ namespace other {
 
     auto [itr, inserted] = check_in_listeners.insert({ session_id, callback });
     CORE_LOG_DEBUG(" - Registered check-in listener for session ID {}", session_id);
+  }
+
+  void network_thread::handle_request_new_udp_stream_binding(message&& msg) {
+    OTHER_ASSERT(msg.data.size() >= sizeof(uint8_t), "Invalid NEW_UDP_STREAM_BINDING request size");
+
+    natural_t binding_id = next_udp_binding_id++;
+    natural_t connection_id = current_connections;
+    auto [itr, success] = udp_binding_map.emplace(binding_id, udp_binding());
+    if (!success) {
+      CORE_LOG_ERROR("Failed to create new UDP stream binding");
+      return;
+    }
+    itr->second.udp_binding_id = binding_id;
+    itr->second.connection_number = connection_id;
+    itr->second.mutex = arena_allocator<std::mutex>{}.allocate();
+
+    asio::ip::udp::endpoint udp_ep;
+
+    if (msg.data.size() > sizeof(uint8_t) && msg.data[0] == 0x01) {
+      uint16_t port = *reinterpret_cast<const uint16_t*>(msg.data.data() + sizeof(uint8_t));
+      udp_ep = asio::ip::udp::endpoint(asio::ip::address_v4::any(), port);
+    }
+
+    itr->second.stream = arena_allocator<udp_stream>{}.allocate(net_context->io_context, udp_ep);
+    itr->second.stream->start_read();
+
+    auto local = itr->second.stream->socket.local_endpoint();
+    binding_point bp;
+    bp.ip = local.address().to_v4().to_uint();
+    bp.port = static_cast<uint16_t>(local.port());
+    CORE_LOG_INFO("Creating new UDP stream binding to {}", binding_point::write_string(bp));
+
+    itr->second.endpoint = bp;
+
+    ++current_connections;
+
+    message resp_msg;
+    resp_msg.header = {
+      .category = RESPONSE,
+      .id = NEW_UDP_STREAM_BINDING,
+    };
+
+    new_udp_stream_binding_response resp;
+    resp.handle.stream = itr->second.stream;
+    resp.handle.stream_mutex = itr->second.mutex;
+    resp.handle.endpoint = itr->second.endpoint;
+    resp_msg.data.append_range(resp.as_buffer());
+
+    bus.send_message(std::move(resp_msg));
+    CORE_LOG_DEBUG("Sent NEW_UDP_STREAM_BINDING response for binding ID {}", binding_id);
   }
 
 }  // namespace other

@@ -42,6 +42,11 @@ namespace other {
 
     void on_event(SDL_Event* event) override;
 
+    void handle_notification_session_check_in(message&& msg) override;
+    void on_active_scene_udp_handle_bound(udp_handle* handle) override;
+
+    task active_scene_udp_loop();
+
     void initialize_ui();
     void shutdown_ui();
   };

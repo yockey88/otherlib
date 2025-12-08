@@ -11,6 +11,7 @@ window-size = { width = 1920, height = 1080 }
 dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+other-lua-directory = "resources/lua"
 
 ### server only sections ###
 [network-thread]

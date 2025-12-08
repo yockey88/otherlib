@@ -12,7 +12,6 @@
 #include "core/logger.hpp"
 #include "core/timer.hpp"
 
-
 namespace other {
 
   class lua_script;
@@ -35,19 +34,34 @@ namespace other {
 
   class environment_console {
    public:
+    struct buffer_handle {
+      std::vector<console_input>& lines;
+
+      buffer_handle(std::vector<console_input>& lines)
+          : lines(lines), lock(environment_console::console_mutex) {}
+      ~buffer_handle() = default;
+
+     private:
+      std::lock_guard<std::mutex> lock;
+    };
+
     static void initialize(lua_script* console_script);
 
     static void push_message(const console_input& input);
     static void submit_console_text(const std::string_view text, console_message_type type, system_timepoint time_point);
 
-    static inline const std::vector<console_input>& get_console_history() { return history_lines; }
+    static inline const buffer_handle get_console_history() { return buffer_handle(history_lines); }
 
     static inline char* get_input_buffer() { return input_buffer.data(); }
-    static inline void clear_input_buffer() { std::ranges::fill(input_buffer.begin(), input_buffer.end(), 0); }
+    static inline void clear_input_buffer() {
+      std::lock_guard lock(console_mutex);
+      std::ranges::fill(input_buffer.begin(), input_buffer.end(), 0);
+    }
 
     constexpr static inline size_t kInputBufferSize = 256;
 
    private:
+    static std::mutex console_mutex;
     static std::vector<console_input> history_lines;
     static size_t max_history_lines;
     static lua_script* console_lua_script;

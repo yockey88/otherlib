@@ -13,6 +13,7 @@
 #include "thread/thread.hpp"
 
 #include "network/session.hpp"
+#include "network/udp_stream.hpp"
 
 namespace other {
 
@@ -28,13 +29,17 @@ namespace other {
 
     void report_connection_check_in(natural_t connection_id, integer_t session_id);
 
-    inline integer_t get_next_connection_id() {
+    inline integer_t get_next_session_id() {
       static integer_t next_id = 1;
       return next_id++;
     }
 
     message_bus& get_message_bus() {
       return bus;
+    }
+
+    asio::io_context& get_io_context() {
+      return net_context->io_context;
     }
 
    protected:
@@ -67,6 +72,22 @@ namespace other {
     using event_callback = std::function<void(integer_t)>;
     std::unordered_map<integer_t, event_callback> check_in_listeners;
 
+    struct udp_binding {
+      natural_t connection_number = 0;
+      natural_t udp_binding_id = 0;
+
+      binding_point endpoint;
+
+      udp_stream* stream = nullptr;
+      std::mutex* mutex = nullptr;
+
+      udp_handle handle;
+
+      udp_binding() {}
+    };
+    natural_t next_udp_binding_id = 1;
+    std::map<natural_t, udp_binding> udp_binding_map;
+
     void on_initialize() override;
     void on_start() override;
     void on_shutdown() override;
@@ -85,8 +106,10 @@ namespace other {
     void handle_command_session_connect_to(message&& msg);
     void handle_command_session_check_in(message&& msg);
     void handle_command_session_tx_message(message&& msg);
+    void handle_command_environment_load_scene(message&& msg);
 
     void handle_request_session_check_in(message&& msg);
+    void handle_request_new_udp_stream_binding(message&& msg);
 
     static inline natural_t max_connections = 1024;
     natural_t current_connections = 0;

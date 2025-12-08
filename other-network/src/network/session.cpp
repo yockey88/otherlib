@@ -24,13 +24,13 @@ namespace other {
     state_machine = other.state_machine;
     other.state_machine = {};
 
-    reading = other.reading;
-    read_queue = std::move(other.read_queue);
-    read_buffer = std::move(other.read_buffer);
+    buffer.reading = other.buffer.reading;
+    buffer.read_queue = std::move(other.buffer.read_queue);
+    buffer.read_buffer = std::move(other.buffer.read_buffer);
 
-    writing = other.writing;
-    write_queue = std::move(other.write_queue);
-    write_buffer = std::move(other.write_buffer);
+    buffer.writing = other.buffer.writing;
+    buffer.write_queue = std::move(other.buffer.write_queue);
+    buffer.write_buffer = std::move(other.buffer.write_buffer);
   }
 
   session& session::operator=(session&& other) {
@@ -41,13 +41,13 @@ namespace other {
       state_machine = other.state_machine;
       other.state_machine = {};
 
-      reading = other.reading;
-      read_queue = std::move(other.read_queue);
-      read_buffer = std::move(other.read_buffer);
+      buffer.reading = other.buffer.reading;
+      buffer.read_queue = std::move(other.buffer.read_queue);
+      buffer.read_buffer = std::move(other.buffer.read_buffer);
 
-      writing = other.writing;
-      write_queue = std::move(other.write_queue);
-      write_buffer = std::move(other.write_buffer);
+      buffer.writing = other.buffer.writing;
+      buffer.write_queue = std::move(other.buffer.write_queue);
+      buffer.write_buffer = std::move(other.buffer.write_buffer);
     }
 
     return *this;
@@ -91,12 +91,12 @@ namespace other {
   }
 
   void session::start_read() {
-    if (reading) {
+    if (buffer.reading) {
       return;
     }
-    reading = true;
+    buffer.reading = true;
 
-    socket.async_receive(asio::buffer(read_buffer), std::bind_front(&session::finish_read, this));
+    socket.async_receive(asio::buffer(buffer.read_buffer), std::bind_front(&session::finish_read, this));
   }
 
   void session::start_write(message&& msg) {
@@ -111,34 +111,33 @@ namespace other {
     msg_bytes.append_range(std::span(size_bytes, sizeof(uint16_t)));
     msg_bytes.append_range(std::span(msg.data.data(), msg.data.size()));
 
-    std::span buffer{ msg_bytes.data(), msg_bytes.size() };
+    std::span tx_buffer{ msg_bytes.data(), msg_bytes.size() };
     do {
-      buffer = buffer.subspan(offset);
+      tx_buffer = tx_buffer.subspan(offset);
 
       std::vector<uint8_t> chunk = {};
-      if (buffer.size() < kBufferSize) {
-        chunk = { buffer.begin(), buffer.end() };
-        offset += buffer.size();
+      if (tx_buffer.size() < kBufferSize) {
+        chunk = { tx_buffer.begin(), tx_buffer.end() };
+        offset += tx_buffer.size();
       } else {
-        chunk = { buffer.begin(), buffer.begin() + kBufferSize };
+        chunk = { tx_buffer.begin(), tx_buffer.begin() + kBufferSize };
         offset += kBufferSize;
       }
 
-      write_queue.push_back(std::move(chunk));
+      buffer.write_queue.push_back(std::move(chunk));
     } while (offset < msg_bytes.size());
-    if (writing) {
+    if (buffer.writing) {
       return;
     }
 
-    writing = true;
+    buffer.writing = true;
 
-    auto write_data = std::move(write_queue.front());
-    write_queue.pop_front();
+    auto write_data = std::move(buffer.write_queue.front());
+    buffer.write_queue.pop_front();
 
-    std::ranges::fill(write_buffer, 0);
-    std::ranges::copy(write_data.begin(), write_data.end(), write_buffer.begin());
-
-    std::span write_buffer_span(write_buffer.data(), write_data.size());
+    std::ranges::fill(buffer.write_buffer, 0);
+    std::ranges::copy(write_data.begin(), write_data.end(), buffer.write_buffer.begin());
+    std::span write_buffer_span(buffer.write_buffer.data(), write_data.size());
     dump_bytes_for_debug(write_buffer_span, std::format("writing {} bytes", write_data.size()));
     socket.async_send(asio::buffer(write_buffer_span), std::bind_front(&session::finish_write, this));
   }
@@ -209,28 +208,65 @@ namespace other {
 
   void session::missed_heartbeat_response() {
     CORE_LOG_WARN("Session {} missed heartbeat PONG response", session_id);
-    thread->report_connection_closed(connection_id, session_id);
+    /// count misses
   }
 
   void session::start_write() {
-    if (writing) {
+    if (buffer.writing) {
       return;
     }
-    if (write_queue.empty()) {
+    if (buffer.write_queue.empty()) {
       return;
     }
 
-    writing = true;
+    buffer.writing = true;
+    auto write_data = std::move(buffer.write_queue.front());
+    buffer.write_queue.pop_front();
 
-    auto write_data = std::move(write_queue.front());
-    write_queue.pop_front();
+    std::ranges::fill(buffer.write_buffer, 0);
+    std::ranges::copy(write_data.begin(), write_data.end(), buffer.write_buffer.begin());
 
-    std::ranges::fill(write_buffer, 0);
-    std::ranges::copy(write_data.begin(), write_data.end(), write_buffer.begin());
-
-    std::span write_buffer_span(write_buffer.data(), write_data.size());
+    std::span write_buffer_span(buffer.write_buffer.data(), write_data.size());
     dump_bytes_for_debug(write_buffer_span, std::format("writing {} bytes", write_data.size()));
     socket.async_send(asio::buffer(write_buffer_span), std::bind_front(&session::finish_write, this));
+  }
+
+  natural_t session::send_and_wait_response(message&& msg, message_header expected_response, microseconds timeout_duration, response_callback callback) {
+    natural_t response_id = next_response_id++;
+    if (responses.find(response_id) != responses.end()) {
+      CORE_LOG_ERROR("Response ID collision for session {}", session_id);
+      return 0;
+    }
+
+    response resp(thread->get_io_context());
+    resp.expected_header = expected_response;
+    resp.callback = callback;
+    resp.timer = asio::steady_timer(io_context);
+    resp.timer.expires_after(timeout_duration);
+    resp.timer.async_wait([this, response_id](const asio::error_code& ec) {
+      if (ec) {
+        return;
+      }
+
+      auto itr = responses.find(response_id);
+      if (itr != responses.end()) {
+        CORE_LOG_WARN("Response ID {} timed out for session {}", response_id, session_id);
+
+        responses.erase(itr);
+      }
+    });
+    responses.insert({ response_id, std::move(resp) });
+
+    start_write(std::move(msg));
+    return response_id;
+  }
+
+  void session::cancel_response(natural_t response_id) {
+    auto itr = responses.find(response_id);
+    if (itr != responses.end()) {
+      itr->second.timer.cancel();
+      responses.erase(itr);
+    }
   }
 
   void session::poll() {
@@ -251,37 +287,37 @@ namespace other {
   }
 
   std::vector<uint8_t> session::try_receive() {
-    if (read_queue.empty()) {
+    if (buffer.read_queue.empty()) {
       return {};
     }
 
-    std::vector<uint8_t> data = std::move(read_queue.front());
-    read_queue.pop_front();
+    std::vector<uint8_t> data = std::move(buffer.read_queue.front());
+    buffer.read_queue.pop_front();
 
     if (data.size() < sizeof(message_header) + sizeof(uint16_t)) {
-      if (read_queue.empty()) {
-        read_queue.push_front(std::move(data));
+      if (buffer.read_queue.empty()) {
+        buffer.read_queue.push_front(std::move(data));
         return {};
       }
 
       do {
-        std::vector<uint8_t> next_chunk = std::move(read_queue.front());
-        read_queue.pop_front();
+        std::vector<uint8_t> next_chunk = std::move(buffer.read_queue.front());
+        buffer.read_queue.pop_front();
         data.append_range(next_chunk);
-      } while (data.size() < sizeof(message_header) + sizeof(uint16_t) && !read_queue.empty());
+      } while (data.size() < sizeof(message_header) + sizeof(uint16_t) && !buffer.read_queue.empty());
       if (data.size() < sizeof(message_header) + sizeof(uint16_t)) {
-        read_queue.push_front(std::move(data));
+        buffer.read_queue.push_front(std::move(data));
         return {};
       }
 
       uint16_t message_size = *reinterpret_cast<const uint16_t*>(std::span(data).subspan(sizeof(message_header)).data());
-      while (data.size() < sizeof(message_header) + sizeof(uint16_t) + message_size && !read_queue.empty()) {
-        std::vector<uint8_t> next_chunk = std::move(read_queue.front());
-        read_queue.pop_front();
+      while (data.size() < sizeof(message_header) + sizeof(uint16_t) + message_size && !buffer.read_queue.empty()) {
+        std::vector<uint8_t> next_chunk = std::move(buffer.read_queue.front());
+        buffer.read_queue.pop_front();
         data.append_range(next_chunk);
       }
       if (data.size() < sizeof(message_header) + sizeof(uint16_t) + message_size) {
-        read_queue.push_front(std::move(data));
+        buffer.read_queue.push_front(std::move(data));
         return {};
       }
     }
@@ -304,7 +340,7 @@ namespace other {
   }
 
   void session::finish_read(const asio::error_code& ec, std::size_t bytes_transferred) {
-    reading = false;
+    buffer.reading = false;
     if (state_machine.get_current_state() == network::SESSION_STATE_SHUTTING_DOWN || state_machine.get_current_state() == network::SESSION_STATE_STOPPED) {
       if (state_machine.get_current_state() != network::SESSION_STATE_STOPPED) {
         state_machine.handle_event(network::SESSION_EVENT_SHUTDOWN_COMPLETE, this);
@@ -320,15 +356,15 @@ namespace other {
     }
 
     CORE_LOG_TRACE("Session {} finished reading {} bytes", session_id, bytes_transferred);
-    std::vector<uint8_t> data(read_buffer.begin(), read_buffer.begin() + bytes_transferred);
+    std::vector<uint8_t> data(buffer.read_buffer.begin(), buffer.read_buffer.begin() + bytes_transferred);
     dump_bytes_for_debug(data, "adding to read queue");
-    read_queue.push_back(data);
+    buffer.read_queue.push_back(data);
 
     start_read();
   }
 
   void session::finish_write(const asio::error_code& ec, std::size_t bytes_transferred) {
-    writing = false;
+    buffer.writing = false;
     if (state_machine.get_current_state() == network::SESSION_STATE_SHUTTING_DOWN || state_machine.get_current_state() == network::SESSION_STATE_STOPPED) {
       if (state_machine.get_current_state() != network::SESSION_STATE_STOPPED) {
         state_machine.handle_event(network::SESSION_EVENT_SHUTDOWN_COMPLETE, this);
@@ -366,6 +402,17 @@ namespace other {
         break;
 
       default: break;
+    }
+
+    /// search pending responses first
+    auto itr = std::ranges::find_if(responses, [&](const auto& pair) {
+      return pair.second.expected_header.category == msg.header.category && pair.second.expected_header.id == msg.header.id;
+    });
+    if (itr != responses.end()) {
+      itr->second.timer.cancel();
+      itr->second.callback(std::move(msg));
+      responses.erase(itr);
+      return;
     }
 
     message session_data;

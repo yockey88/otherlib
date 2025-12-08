@@ -7,6 +7,46 @@
 
 namespace other {
 
+  std::vector<uint8_t> load_empty_scene_command::custom_builder(load_empty_scene_command* msg) {
+    std::vector<uint8_t> data;
+
+    natural_t scene_name_len = static_cast<natural_t>(msg->scene_name.size());
+    const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&msg->session_id);
+    const uint8_t* scene_name_len_bytes = reinterpret_cast<const uint8_t*>(&scene_name_len);
+    const uint8_t* scene_name_bytes = reinterpret_cast<const uint8_t*>(msg->scene_name.data());
+    if (msg->session_id_flag) {
+      data.push_back(0x01);
+      data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
+    } else {
+      data.push_back(0x00);
+    }
+    data.append_range(std::span(scene_name_len_bytes, sizeof(natural_t)));
+    data.append_range(std::span(scene_name_bytes, scene_name_len));
+
+    return data;
+  }
+
+  load_empty_scene_command load_empty_scene_command::custom_parser(const std::span<const uint8_t> data) {
+    load_empty_scene_command msg;
+    size_t cursor = 0;
+
+    uint8_t session_id_flag = data[cursor];
+    cursor += sizeof(uint8_t);
+
+    msg.session_id_flag = session_id_flag;
+    if (session_id_flag) {
+      msg.session_id = *reinterpret_cast<const integer_t*>(data.data() + cursor);
+      cursor += sizeof(integer_t);
+    }
+
+    natural_t scene_name_len = *reinterpret_cast<const natural_t*>(data.data() + cursor);
+    cursor += sizeof(natural_t);
+    msg.scene_name = std::string(reinterpret_cast<const char*>(data.data() + cursor), scene_name_len);
+    cursor += scene_name_len;
+
+    return msg;
+  }
+
   std::vector<uint8_t> session_information_response::custom_builder(session_information_response* msg) {
     std::vector<uint8_t> data;
 

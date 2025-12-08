@@ -3,6 +3,7 @@
  **/
 #include "editor_driver.hpp"
 
+#include "core/timer.hpp"
 #include "event/event_system.hpp"
 
 #include "script/scripting_environment.hpp"
@@ -127,7 +128,8 @@ namespace other {
     state_machine.handle_event(editor_event::EDITOR_EVENT_READY);
   }
 
-  void editor_driver::update_running() {}
+  void editor_driver::update_running() {
+  }
 
   void editor_driver::update_shutting_down() {
     if (net_context->net_thread->get_current_state() == thread::state::STOPPED) {
@@ -143,6 +145,59 @@ namespace other {
         break;
       default:
         break;
+    }
+  }
+
+  void editor_driver::handle_notification_session_check_in(message&& msg) {
+    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid session check-in notification message size");
+
+    integer_t session_id = *reinterpret_cast<const integer_t*>(msg.data.data());
+    if (session_id < 1) {
+      CORE_LOG_ERROR("Invalid session ID received in check-in notification: {}", session_id);
+      return;
+    }
+
+    CORE_LOG_INFO("Session [{}] has checked in.", session_id);
+    client_session_id = session_id;
+  }
+
+  void editor_driver::on_active_scene_udp_handle_bound(udp_handle* handle) {
+    post_coroutine(active_scene_udp_loop());
+  }
+
+  task editor_driver::active_scene_udp_loop() {
+    OTHER_ASSERT(get_active_scene() != nullptr, "No active scene to run UDP handle loop on.");
+    CORE_LOG_INFO("Starting active scene UDP handle loop...");
+
+    auto now = steady_clock::now();
+    auto last = now;
+    auto elapsed = now - last;
+    while (state_machine.get_current_state() != editor_state::EDITOR_STATE_SHUTTING_DOWN && get_active_scene() != nullptr) {
+      now = steady_clock::now();
+      elapsed += now - last;
+      last = now;
+
+      if (elapsed >= seconds(3)) {
+        elapsed = steady_clock::duration::zero();
+
+        message udp_msg;
+        udp_msg.header = {
+          .category = NOTIFICATION,
+          .id = PING,
+        };
+        std::string ping_str = "Ping from editor via UDP!";
+
+        uint16_t size = static_cast<uint16_t>(ping_str.size());
+        const uint8_t* size_bytes = reinterpret_cast<const uint8_t*>(&size);
+        const uint8_t* ping_bytes = reinterpret_cast<const uint8_t*>(ping_str.data());
+        udp_msg.data.append_range(std::span(size_bytes, sizeof(uint16_t)));
+        udp_msg.data.append_range(std::span(ping_bytes, ping_str.size()));
+
+        CORE_LOG_DEBUG("Sending UDP PING message to server: {}", ping_str);
+        active_scene_udp_handle.send(std::move(udp_msg));
+      } else {
+        co_await task::awaiter{};
+      }
     }
   }
 

@@ -12,8 +12,23 @@
 
 namespace other {
 
+  filepath lua_host::get_environment_script_directory() const {
+    return script_directory;
+  }
+
+  filepath lua_host::retrieve_script_path(const std::string_view script_name) const {
+    return script_directory / script_name;
+  }
+
   void lua_host::load_host(const config_table& config) {
     lua_state.open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::io, sol::lib::os, sol::lib::debug);
+
+    filepath script_dir = config.get_value<std::string>("scripting.other-lua-directory", std::format("{}/lua", get_program_files_folder("OtherEnvironment").string()));
+    if (!std::filesystem::exists(script_dir)) {
+      CORE_LOG_ERROR("Lua script directory '{}' does not exist.", script_dir.string());
+      return;
+    }
+    script_directory = script_dir;
   }
 
   void lua_host::call_entry_point() {

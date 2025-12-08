@@ -39,8 +39,8 @@ class TestObject
 
   public void DisplayInfo()
   {
-    // Debug.Log($"Filesystem.GetProgramFilesFolder(): {Filesystem.GetProgramFilesFolder("MyApp")}");
-    // Debug.Log($"Filesystem.GetAppDataFolder(): {Filesystem.GetAppDataFolder("MyApp")}");
+    Debug.Log($"Filesystem.GetProgramFilesFolder(): {Filesystem.GetProgramFilesFolder("MyApp")}");
+    Debug.Log($"Filesystem.GetAppDataFolder(): {Filesystem.GetAppDataFolder("MyApp")}");
     Debug.Log($"Field Value: {field_value}");
     Debug.Log($"Property Value: {PropertyValue}");
     Debug.Log($"Field String: {field_string}");

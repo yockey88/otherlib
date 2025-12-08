@@ -1,6 +1,7 @@
 add_library(other_network STATIC)
 target_sources(other_network
     PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/udp_stream.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/network/network_thread.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/network/session.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/network/session_protocol_handler.cpp"

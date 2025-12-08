@@ -41,17 +41,21 @@ namespace other {
 
   void server_check_in_handler::transmit_current_message() {
     auto& current_msg = get_current_message();
+
+    /// respond to PING with the session id they told us
     if (current_msg_matches(CONTROL, PONG)) {
       message pong_msg;
       pong_msg.header = {
         .category = CONTROL,
         .id = PONG,
       };
-      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&get_session().session_id);
+      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&received_session_id);
       pong_msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
 
       get_session().start_write(std::move(pong_msg));
-    } else if (current_msg_matches(REQUEST, SESSION_CHECK_IN)) {
+    }
+    /// then request them to check in with our session id
+    else if (current_msg_matches(REQUEST, SESSION_CHECK_IN)) {
       message check_in_msg;
       check_in_msg.header = {
         .category = REQUEST,
@@ -71,18 +75,43 @@ namespace other {
       throw network_packet_parse_error("Invalid PING message data size");
     }
 
-    integer_t received_session_id = *reinterpret_cast<const integer_t*>(data.data());
-    if (get_session().session_id != session::kInvalidSessionId && received_session_id != session::kInvalidSessionId && get_session().session_id != received_session_id) {
-      CORE_LOG_ERROR(" - Launch check in session ID mismatch: local {}, received {}", get_session().session_id, received_session_id);
-      get_session().thread->report_connection_closed(get_session().connection_id, get_session().session_id);
-      return;
+    received_session_id = *reinterpret_cast<const integer_t*>(data.data());
+    /// case 1 session has id, client does not
+    if (get_session().session_id != session::kInvalidSessionId && received_session_id == session::kInvalidSessionId) {
+      CORE_LOG_DEBUG("Overriding local session ID {}", get_session().session_id);
     }
-
-    bool create_new_id = get_session().session_id == session::kInvalidSessionId && received_session_id == session::kInvalidSessionId;
-    if (create_new_id) {
-      CORE_LOG_TRACE(" - Launch check in requires new session ID");
-      /// get new session id and seend it back after the PONG
-      get_session().session_id = get_session().thread->get_next_connection_id();
+    /// case 2 session has id, client contains a match
+    else if (get_session().session_id != session::kInvalidSessionId && received_session_id != session::kInvalidSessionId && get_session().session_id == received_session_id) {
+      CORE_LOG_DEBUG("Session ID {} matches remote", get_session().session_id);
+    }
+    /// case 3 session has id, client contains a different id
+    else if (get_session().session_id != session::kInvalidSessionId && received_session_id != session::kInvalidSessionId && get_session().session_id != received_session_id) {
+      CORE_LOG_DEBUG("Overriding remote session ID {} with local ID {}", received_session_id, get_session().session_id);
+    }
+    /// case 4 session has no id, client has no id
+    else if (get_session().session_id == session::kInvalidSessionId && received_session_id == session::kInvalidSessionId) {
+      /// we will need to generate a new session id later
+      CORE_LOG_DEBUG("Both local and remote session IDs are invalid, generating a new session ID");
+      get_session().session_id = get_session().thread->get_next_session_id();
+      CORE_LOG_DEBUG("  - Assigned new session ID {}", get_session().session_id);
+    }
+    /// case 5 server has not id and client has an id (and it is unique)
+    else if (get_session().session_id == session::kInvalidSessionId && received_session_id != session::kInvalidSessionId
+             /// \todo check it is unique
+    ) {
+      CORE_LOG_DEBUG("Adopting remote session ID {}", received_session_id);
+      get_session().session_id = received_session_id;
+    }
+    /// case 6 server has no id, client has an id (and it the server knows another session with that id and the addresses match)
+    else if (get_session().session_id == session::kInvalidSessionId && received_session_id != session::kInvalidSessionId
+             /// \todo check if another session exists with that id
+    ) {
+      /// \todo ... for now we will just adopt it
+      CORE_LOG_DEBUG("Local ID is invalid, and remote is already in use, generating new session ID instead of adopting {}", received_session_id);
+      get_session().session_id = get_session().thread->get_next_session_id();
+      CORE_LOG_DEBUG("  - Assigned new session ID {}", get_session().session_id);
+    } else {
+      OTHER_ASSERT(false, "Unhandled session ID check-in case: local id={}, remote id={}", get_session().session_id, received_session_id);
     }
   }
 
@@ -117,6 +146,7 @@ namespace other {
       };
       const uint8_t* acked_header_bytes = reinterpret_cast<const uint8_t*>(&acked_header);
       ack_msg.data.append_range(std::span(acked_header_bytes, sizeof(message_header)));
+      ack_msg.data.push_back(get_ack_byte());
 
       get_session().start_write(std::move(ack_msg));
     } else {
@@ -127,19 +157,13 @@ namespace other {
   void client_check_in_handler::handle_request_session_check_in(const message_header& header, const std::span<uint8_t> data) {
     CORE_LOG_DEBUG("Client received SESSION_CHECK_IN request");
     const integer_t received_session_id = *reinterpret_cast<const integer_t*>(data.data());
-    if (get_session().session_id == session::kInvalidSessionId && received_session_id != session::kInvalidSessionId) {
+    if (received_session_id != session::kInvalidSessionId && get_session().session_id != received_session_id) {
       CORE_LOG_DEBUG(" - Launch check in adopting session ID {}", received_session_id);
       get_session().session_id = received_session_id;
     }
     /// otherwise see if they are both invalid
     else if (get_session().session_id == session::kInvalidSessionId && received_session_id == session::kInvalidSessionId) {
       /// \todo: send back msg either 1 - need id message or 2 - generate an id and send 'suggest-this-id' message
-    }
-    /// otherwise see if they are both valid but different
-    else if (get_session().session_id != session::kInvalidSessionId && received_session_id != session::kInvalidSessionId && get_session().session_id != received_session_id) {
-      CORE_LOG_ERROR(" - Launch check in session ID mismatch: local {}, received {}", get_session().session_id, received_session_id);
-      /// \todo maybe we send back something to clarify?
-      get_session().thread->report_connection_closed(get_session().connection_id, get_session().session_id);
     }
   }
 

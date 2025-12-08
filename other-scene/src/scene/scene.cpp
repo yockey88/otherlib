@@ -99,6 +99,10 @@ namespace other {
     }
   }
 
+  void scene::set_udp_handle(udp_handle* handle) {
+    udp_stream_handle = handle;
+  }
+
   void scene::reset() {
   }
 

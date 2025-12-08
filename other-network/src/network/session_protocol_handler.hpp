@@ -55,6 +55,13 @@ namespace other {
       return current_msg_matches(message_header{ .category = category, .id = id });
     }
 
+    inline uint8_t get_ack_byte() const {
+      return protocol_flags.should_nack ? 0x00 : 0x01;
+    }
+    inline void toggle_acknowledgement_flag() {
+      protocol_flags.should_nack = !protocol_flags.should_nack;
+    }
+
     session& get_session();
 
     message_sequence& get_current_sequence();
@@ -81,6 +88,10 @@ namespace other {
     natural_t sequence_index = 0;
     natural_t message_index = 0;
     natural_t message_count_index = 0;
+
+    struct {
+      bool should_nack = false;
+    } protocol_flags{};
 
     void process_message(message&& msg);
     void increment_sequence_index();

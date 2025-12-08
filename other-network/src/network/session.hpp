@@ -10,7 +10,7 @@
 
 #include <asio/asio.hpp>
 
-#include "core/logger.hpp"
+#include "core/async_buffer.hpp"
 #include "core/timer.hpp"
 #include "thread/message.hpp"
 
@@ -42,6 +42,10 @@ namespace other {
 
     void start_read();
     void start_write(message&& msg);
+
+    using response_callback = std::function<void(message&&)>;
+    natural_t send_and_wait_response(message&& msg, message_header expected_response, microseconds timeout_duration, response_callback callback);
+    void cancel_response(natural_t response_id);
 
     void poll();
     std::vector<uint8_t> try_receive();
@@ -89,13 +93,18 @@ namespace other {
     };
     std::map<natural_t, timeout> timeouts;
 
-    bool reading = false;
-    std::array<uint8_t, kBufferSize> read_buffer{};
-    std::deque<std::vector<uint8_t>> read_queue{};
+    struct response {
+      message_header expected_header;
+      response_callback callback;
+      asio::steady_timer timer;
 
-    bool writing = false;
-    std::array<uint8_t, kBufferSize> write_buffer{};
-    std::deque<std::vector<uint8_t>> write_queue{};
+      response(asio::io_context& io_ctx)
+          : timer(io_ctx) {}
+    };
+    natural_t next_response_id = 1;
+    std::map<natural_t, response> responses;
+
+    async_buffer<kBufferSize> buffer;
 
     session_state_machine state_machine;
 

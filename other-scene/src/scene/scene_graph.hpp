@@ -10,7 +10,6 @@
 
 #include "data-structures/graph.hpp"
 
-
 namespace other {
 
   class scene;
@@ -20,6 +19,9 @@ namespace other {
     scene_graph() = default;
     scene_graph(std::vector<scene>& scenes);
     ~scene_graph();
+
+    bool has_scene(natural_t id) const;
+    bool has_scene(const std::string_view name) const;
 
     std::pair<uint64_t, scene*> create_new_scene(const std::string_view name);
     void remove_scene(uint64_t id);

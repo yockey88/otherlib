@@ -20,6 +20,9 @@ namespace other {
     lua_host() = default;
     ~lua_host() = default;
 
+    filepath get_environment_script_directory() const;
+    filepath retrieve_script_path(const std::string_view script_name) const;
+
     void load_host(const config_table& config);
     void call_entry_point();
 
@@ -34,6 +37,8 @@ namespace other {
     sol::state lua_state;
     std::map<natural_t, sol::load_result> loaded_scripts;
     std::map<natural_t, lua_script> loaded_lua_scripts;
+
+    filepath script_directory;
   };
 
 }  // namespace other

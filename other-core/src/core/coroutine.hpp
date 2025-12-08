@@ -63,6 +63,22 @@ namespace other {
     void operator()() const {
       coro_handle.resume();
     }
+
+    /// helper tasks
+    static task sleep_for(asio::chrono::milliseconds duration) {
+      auto left = duration.count();
+
+      auto now = asio::chrono::steady_clock::now();
+      auto last = now;
+
+      while (left > 0) {
+        co_await task::awaiter{};
+        now = asio::chrono::steady_clock::now();
+        auto elapsed = asio::chrono::duration_cast<asio::chrono::milliseconds>(now - last).count();
+        left -= elapsed;
+        last = now;
+      }
+    }
   };
 
   struct worker {

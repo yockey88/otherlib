@@ -13,6 +13,18 @@
 namespace other {
 
   void bind_otherlib_lua_functions(lua_host& lua_host) {
+    filepath lua_defs_path = lua_host.retrieve_script_path("global_definitions.lua");
+    filepath lua_bridge_path = lua_host.retrieve_script_path("other_bridge.lua");
+    if (!std::filesystem::exists(lua_defs_path)) {
+      CORE_LOG_ERROR("Lua global definitions script '{}' does not exist.", lua_defs_path.string());
+      return;
+    }
+
+    if (!std::filesystem::exists(lua_bridge_path)) {
+      CORE_LOG_ERROR("Lua bridge script '{}' does not exist.", lua_bridge_path.string());
+      return;
+    }
+
     sol::state& lua_state = lua_host.get_lua_state();
 
     lua_state.new_enum(
@@ -42,9 +54,23 @@ namespace other {
       "__driver", lua_state.create_table_with(),
       "__environment_console", lua_state.create_table_with()
     );
+
+    lua_state.create_named_table(
+      "__lua_bridge_metadata",
+      "__paths", lua_state.create_table_with()
+    );
+
+    sol::table paths_table = lua_state["__lua_bridge_metadata"]["__paths"];
+    paths_table["script_directory"] = lua_host.get_environment_script_directory().string();
+    paths_table["global_definitions"] = lua_defs_path.string();
+    paths_table["other_bridge"] = lua_bridge_path.string();
+
+    CORE_LOG_DEBUG("Loading lua global definitions script '{}'.", lua_defs_path.string());
+    lua_state.script_file(lua_defs_path.string());
+
     sol::table log_table = lua_state["__other_native"]["__log"];
     log_table.set_function("send_log_message", [](spdlog::level::level_enum level, const std::string& message, const std::string& source, int line) {
-      other::subsystem<other::logger>::get()->send_log(level, 0, std::format("{} @ ({}:{})", message, source, line));
+      other::subsystem<other::logger>::get()->send_log(level, 0, std::format(" [Lua] {} @ ({}:{})", message, source, line));
     });
 
     sol::table console_table = lua_state["__other_native"]["__environment_console"];
@@ -55,31 +81,8 @@ namespace other {
       }
     );
 
-    /// add a little sugar for the lua side of the bridge
-    lua_state.script(R"(
-function send_log(level, message)
-  --- get source and line from stack of where log_xxx(...) was called (up two levels)
-  local info = debug.getinfo(3, "Sl") or {}
-  local source = info.short_src or "unknown"
-  local line = info.currentline or 0
-  __other_native.__log.send_log_message(level, message, source, line)
-
-  --- allow users to define this hook to intercept log messages
-  if (__other_log_intercept_hook ~= nil) 
-  then
-    __other_log_intercept_hook(string.format("[%s] %s:%d: %s", level, source, line, message))
-  end
-end
-
-CoreLog = {
-  log_trace = function(...)    send_log(log_level.TRACE, ...)    end,
-  log_debug = function(...)    send_log(log_level.DEBUG, ...)    end,
-  log_info = function(...)     send_log(log_level.INFO, ...)     end,
-  log_warning = function(...)  send_log(log_level.WARNING, ...)  end,
-  log_error = function(...)    send_log(log_level.ERROR, ...)    end,
-  log_critical = function(...) send_log(log_level.CRITICAL, ...) end
-}
-)");
+    CORE_LOG_DEBUG("Loading lua bridge script '{}'.", lua_bridge_path.string());
+    lua_state.script_file(lua_bridge_path.string());
   }
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver) {
@@ -87,6 +90,7 @@ CoreLog = {
 
     sol::table driver_table = lua_state["__other_native"]["__driver"];
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
+
     driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event) {
       host_driver->get_event_system()->trigger_event(event);
     });

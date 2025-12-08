@@ -9,9 +9,16 @@ window-size = { width = 1920, height = 1080 }
 
 
 [scripting]
+envrc-path = "resources/editor-rc.lua"
+# bridge dll for C# interop (private API)
 dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+# client dll for C# interop (public API)
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+
+# bridge directory for lua script (Prublit API)
+other-lua-directory = "resources/lua"
+
 dotnet-modules = [
   "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"
 ]

@@ -135,11 +135,11 @@ namespace other {
 
   void protocol_handler::increment_sequence_index() {
     message_count_index++;
-    if (message_count_index >= get_current_message().count) {
+    if (sequence_index < protocol_data.sequences.size() && message_count_index >= get_current_message().count) {
       message_count_index = 0;
 
       message_index++;
-      if (message_index >= get_current_sequence().messages.size()) {
+      if (sequence_index < protocol_data.sequences.size() && message_index >= get_current_sequence().messages.size()) {
         message_index = 0;
 
         sequence_index++;

@@ -19,6 +19,8 @@
 
 namespace other {
 
+  struct udp_handle;
+
   class scene {
    private:
     void scene_first_construction_initialization();
@@ -38,6 +40,8 @@ namespace other {
     scene& operator=(const scene&) = delete;
 
     ~scene();
+
+    void set_udp_handle(udp_handle* handle);
 
     void reset();
 
@@ -191,6 +195,8 @@ namespace other {
       bool operator==(const object_handle& other) const;
     };
     friend class scene_tree;
+
+    udp_handle* udp_stream_handle = nullptr;
 
     void register_object(scene_object* object, const std::string& name, const glm::vec3& world_position);
     void register_object(scene_object* object, const std::string& name, const transform& transformation);

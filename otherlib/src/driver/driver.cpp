@@ -10,7 +10,9 @@
 #include "core/logger.hpp"
 #include "serialization/serialization.hpp"
 #include "thread/message.hpp"
+#include "thread/messages.hpp"
 
+#include "network/network_thread.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -59,8 +61,73 @@ namespace other {
 
     project_scene_graph = make_scope<scene_graph>();
 
+    /// register events
+    get_event_system()->register_event("force-load-empty-scene");
+    get_event_system()->add_listener("force-load-empty-scene", [this](const value& data) {
+      if (data.type() != value_type::STRING) {
+        CORE_LOG_ERROR("Invalid data type for force-load-empty-scene event. Expected string.");
+        return;
+      }
+
+      std::string scene_name = data.as_string();
+      if (project_scene_graph->has_scene(scene_name)) {
+        CORE_LOG_WARN("Scene with name [{}] already exists in the scene graph. Cannot force load empty scene with duplicate name.", scene_name);
+        return;
+      }
+
+      natural_t scene_id = create_empty_scene(scene_name);
+
+      set_scene_to_active(scene_id);
+      CORE_LOG_INFO("Created and loaded empty scene [{}:{}] from console command.", scene_id, scene_name);
+
+      message cmd_msg;
+      cmd_msg.header = {
+        .category = COMMAND,
+        .id = ENVIRONMENT_LOAD_SCENE,
+      };
+
+      load_empty_scene_command scene_cmd;
+
+      scene_cmd.session_id_flag = client_session_id.has_value() ? 0x01 : 0x00;
+      if (client_session_id.has_value()) {
+        scene_cmd.session_id = client_session_id.value();
+      }
+
+      scene_cmd.scene_name = scene_name;
+      cmd_msg.data.append_range((scene_cmd.as_buffer()));
+
+      send_message_and_wait_acknowledgment(
+        std::move(cmd_msg),
+        seconds(10),
+        std::bind_front(&driver::on_acknowledge_command_environment_load_scene, this),
+        std::bind_front(&driver::on_timeout_environment_load_scene, this)
+      );
+    });
+
     auto* env = subsystem<scripting_environment>::get();
     bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
+
+    /// run driver envrc file if it exists
+    std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
+    if (!envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+      /// this one has to be loaded into the host without the sandboxing of the environment
+      ///  as this is supposed to be the user's customization of the environment
+      auto& lua_host = env->get_lua_host();
+      sol::state& lua_state = lua_host.get_lua_state();
+      try {
+        auto script = lua_state.script_file(envrc_path);
+        if (!script.valid()) {
+          sol::error err = script;
+          CORE_LOG_ERROR("Failed to run driver environment runtime script: {}\n{}", envrc_path, err.what());
+        } else {
+          envrc = lua_host.load_file(envrc_path);
+          CORE_LOG_INFO("Successfully ran driver environment runtime script: {}", envrc_path);
+        }
+      } catch (...) {
+        CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", envrc_path);
+      }
+    }
+
     {
       PROFILE_SECTION("driver::initialize--client-on_initialize");
       on_initialize(cmd);
@@ -206,6 +273,11 @@ namespace other {
 
   void driver::set_scene_to_active(natural_t scene_id) {
     CORE_LOG_DEBUG("Setting scene [{}] as active scene in driver.", scene_id);
+    if (active_scene != nullptr && active_scene->id == scene_id) {
+      CORE_LOG_WARN("Scene [{}] is already the active scene.", scene_id);
+      return;
+    }
+
     active_scene = project_scene_graph->get_scene(scene_id);
   }
 
@@ -292,6 +364,7 @@ namespace other {
 
       case COMMAND:
         switch (rx_msg.header.id) {
+          case ENVIRONMENT_LOAD_SCENE: handle_command_environment_load_scene(session_id, std::move(rx_msg)); return;
           default:
             CORE_LOG_WARN("Received unknown session event command message ID: {}", rx_msg.header.id);
             break;
@@ -381,6 +454,170 @@ namespace other {
   void driver::handle_response_session_information(integer_t session_id, message&& msg) {
     session_information_response response = other_message_spec::parse<session_information_response>(std::span(msg.data));
     handle_session_information_response(session_id, std::move(response));
+  }
+
+  void driver::on_acknowledge_command_environment_load_scene(message_header header, std::span<const uint8_t> data) {
+    CORE_LOG_DEBUG("Received acknowledgment for ENVIRONMENT_LOAD_SCENE command (header: {})", header);
+
+    request_scene_udp_binding();
+  }
+
+  void driver::on_timeout_environment_load_scene(message_header header) {
+    CORE_LOG_ERROR("Timeout while waiting for acknowledgment of ENVIRONMENT_LOAD_SCENE command (header: {})", header);
+    CORE_LOG_WARN("Does the active project have a scene using that name already?");
+
+    // unload_active_scene();
+  }
+
+  void driver::request_scene_udp_binding(opt<uint16_t> port) {
+    message udp_request;
+    udp_request.header = {
+      .category = REQUEST,
+      .id = NEW_UDP_STREAM_BINDING,
+    };
+
+    if (port.has_value()) {
+      udp_request.data.push_back(0x01);
+      const uint8_t* port_bytes = reinterpret_cast<const uint8_t*>(&port.value());
+      udp_request.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
+    } else {
+      udp_request.data.push_back(0x00);
+    }
+
+    send_message_and_wait_response(
+      std::move(udp_request),
+      seconds(5),
+      std::bind_front(&driver::on_respond_new_udp_stream_binding, this),
+      std::bind_front(&driver::on_timeout_new_udp_stream_binding, this)
+    );
+  }
+
+  void driver::on_respond_new_udp_stream_binding(message_header header, std::span<const uint8_t> data) {
+    OTHER_ASSERT(active_scene != nullptr, "No active scene to set UDP handle on.");
+    CORE_LOG_INFO("Received response for NEW_UDP_STREAM_BINDING (header: {})", header);
+
+    new_udp_stream_binding_response resp = other_message_spec::parse<new_udp_stream_binding_response>(data);
+    active_scene_udp_handle = resp.handle;
+    active_scene->set_udp_handle(&active_scene_udp_handle);
+
+    CORE_LOG_INFO("Received UDP stream binding from server: {}", binding_point::write_string(active_scene_udp_handle.endpoint));
+
+    on_active_scene_udp_handle_bound(&active_scene_udp_handle);
+  }
+
+  void driver::on_timeout_new_udp_stream_binding(message_header header) {
+    CORE_LOG_ERROR("Timeout while waiting for NEW_UDP_STREAM_BINDING response (header: {})", header);
+    // binding_point binding = other_message_spec::parse<binding_point>(data);
+    // CORE_LOG_INFO("Received UDP stream binding from server: {}:{}", ip_to_string(binding.ip), binding.port);
+    // udp_streamer->bind(binding.ip, binding.port);
+  }
+
+  void driver::handle_acknowledgement_ack(message&& msg) {
+    CORE_LOG_DEBUG("  - ACK");
+    if (msg.data.size() >= sizeof(message_header)) {
+      auto bytes = std::span(msg.data);
+      message_header acked_header = *reinterpret_cast<const message_header*>(bytes.data());
+      auto itr = std::ranges::find_if(pending_acks, [&acked_header](const pending_ack& ack) { return ack.header == acked_header; });
+
+      if (itr != pending_acks.end()) {
+        CORE_LOG_DEBUG("Acknowledgment received for message {}", acked_header);
+        itr->timer.cancel();
+
+        if (itr->ack_callback) {
+          CORE_LOG_TRACE("Invoking acknowledgment callback for message {}", acked_header);
+          itr->ack_callback(acked_header, msg.data);
+        }
+        pending_acks.erase(itr);
+      } else {
+        CORE_LOG_ERROR("Received acknowledgment for unknown message {}", acked_header);
+      }
+    } else {
+      CORE_LOG_WARN("Received invalid acknowledgment message size");
+    }
+  }
+
+  void driver::handle_control_ping(message&& msg) {
+    // size_t cursor = 0;
+    // integer_t session = serialization::read_value<integer_t>(msg.data, cursor);
+
+    // if (session == 0) {
+    //   send_control_pong(0);
+    // }
+    // /// else handle real session
+    // else {
+    //   /// \todo
+    // }
+  }
+
+  void driver::handle_control_pong(message&& msg) {
+    size_t cursor = 0;
+    integer_t session = serialization::read_value<integer_t>(msg.data, cursor);
+
+    if (session == 0) {
+      clear_timeout(net_context->netw_thread_heartbeat_timeout_id);
+    }
+    /// else handle real session
+    else {
+      /// \todo
+    }
+  }
+
+  void driver::handle_command_environment_load_scene(integer_t session_id, message&& msg) {
+    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid environment load scene command message size");
+
+    load_empty_scene_command scene_cmd = other_message_spec::parse<load_empty_scene_command>(msg.data);
+
+    natural_t scene_id = create_empty_scene(scene_cmd.scene_name);
+    set_scene_to_active(scene_id);
+
+    message ack_msg;
+    ack_msg.header = {
+      .category = ACKNOWLEDGEMENT,
+      .id = ACK,
+    };
+
+    message_header acked_header = {
+      .category = COMMAND,
+      .id = ENVIRONMENT_LOAD_SCENE,
+    };
+
+    const uint8_t* acked_header_bytes = reinterpret_cast<const uint8_t*>(&acked_header);
+    ack_msg.data.append_range(std::span(acked_header_bytes, sizeof(message_header)));
+    ack_msg.data.push_back(0x01);
+
+    message tx_msg;
+    tx_msg.header = {
+      .category = COMMAND,
+      .id = SESSION_TX_MESSAGE,
+    };
+    const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
+    const uint8_t* ack_msg_header_bytes = reinterpret_cast<const uint8_t*>(&ack_msg.header);
+    const uint8_t* ack_msg_data_bytes = reinterpret_cast<const uint8_t*>(ack_msg.data.data());
+    tx_msg.data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
+    tx_msg.data.append_range(std::span(ack_msg_header_bytes, sizeof(message_header)));
+    tx_msg.data.append_range(std::span(ack_msg_data_bytes, ack_msg.data.size()));
+
+    net_context->net_thread_message_bus.send_message(std::move(tx_msg));
+
+    CORE_LOG_INFO("Driver loading empty scene '{}' for session {}", scene_cmd.scene_name, scene_cmd.session_id_flag == 0x01 ? std::to_string(scene_cmd.session_id) : "ALL SESSIONS");
+    /// \todo fix hardcoded port, we also may not be server
+    request_scene_udp_binding(49223);
+  }
+
+  void driver::handle_response(message&& msg) {
+    CORE_LOG_DEBUG("  - RESPONSE");
+    auto itr = std::ranges::find_if(pending_responses, [&msg](const pending_response& response) { return response.header.id == msg.header.id; });
+
+    if (itr != pending_responses.end()) {
+      CORE_LOG_DEBUG("Response received for message {}", msg.header);
+      if (itr->response_callback) {
+        CORE_LOG_TRACE("Invoking response callback for message {}", msg.header);
+        itr->response_callback(msg.header, msg.data);
+      }
+      pending_responses.erase(itr);
+    } else {
+      CORE_LOG_ERROR("Received response for unknown message {}", msg.header);
+    }
   }
 
   scope<renderer> driver::get_renderer() const {

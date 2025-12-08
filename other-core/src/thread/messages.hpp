@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_CORE_MESSAGES_HPP
 #define OTHER_CORE_CORE_MESSAGES_HPP
 
+#include "core/defines.hpp"
 #include "thread/message.hpp"
 #include "thread/test/new_message.hpp"
 
@@ -13,6 +14,15 @@ namespace other {
   /// notification messages
   /// acknowledgement messages
   /// control messages
+  /// command messages
+  struct load_empty_scene_command : other_message_spec_impl<load_empty_scene_command> {
+    uint8_t session_id_flag = 0;
+    integer_t session_id = 0;
+    std::string scene_name;
+
+    static std::vector<uint8_t> custom_builder(load_empty_scene_command* msg);
+    static load_empty_scene_command custom_parser(const std::span<const uint8_t> data);
+  };
   /// request messages
   struct session_information_request : other_message_spec_impl<session_information_request> {
     uint8_t project_data_flag = 0;
@@ -37,6 +47,7 @@ namespace other {
     static std::vector<uint8_t> custom_builder(session_information_response* msg);
     static session_information_response custom_parser(const std::span<const uint8_t> data);
   };
+
   /// session event messages
   /// error alert messages
 

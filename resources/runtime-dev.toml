@@ -16,6 +16,9 @@ dotnet-modules = [
   "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"
 ]
 
+# bridge directory for lua script (Prublit API)
+other-lua-directory = "resources/lua"
+
 [assets]
 ocmd-file = "resources/ocmd-testing/test1.ocmd"
 test-model = "resources/models/spinning-torus.fbx"

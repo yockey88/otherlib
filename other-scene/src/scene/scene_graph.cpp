@@ -15,6 +15,18 @@ namespace other {
     g.clear();
   }
 
+  bool scene_graph::has_scene(natural_t id) const {
+    return g.find_item([&id](const scene& s) {
+      return s.id == id;
+    }) != nullptr;
+  }
+
+  bool scene_graph::has_scene(const std::string_view name) const {
+    return g.find_item([&name](const scene& s) {
+      return s.name == name;
+    }) != nullptr;
+  }
+
   std::pair<natural_t, scene*> scene_graph::create_new_scene(const std::string_view name) {
     natural_t id = g.add_node(scene(name));
     return { id, g.ptr_to_node_value(id) };

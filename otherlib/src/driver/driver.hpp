@@ -20,6 +20,7 @@
 #include "thread/messages.hpp"
 
 #include "dotnet/dotnet_assembly.hpp"
+#include "lua/lua_script.hpp"
 #include "network/network_thread.hpp"
 #include "renderer/renderer.hpp"
 
@@ -84,7 +85,7 @@ namespace other {
     std::unique_ptr<network_context> net_context = nullptr;
 
     struct pending_ack {
-      using on_ack = std::function<void(message_header, const std::vector<uint8_t>&)>;
+      using on_ack = std::function<void(message_header, const std::span<const uint8_t>)>;
       using on_timeout = std::function<void(message_header)>;
 
       natural_t id = 0;
@@ -106,7 +107,7 @@ namespace other {
     std::deque<pending_ack> pending_acks;
 
     struct pending_response {
-      using on_response = std::function<void(message_header, const std::vector<uint8_t>&)>;
+      using on_response = std::function<void(message_header, const std::span<const uint8_t>)>;
       using on_timeout = std::function<void(message_header)>;
 
       natural_t id = 0;
@@ -153,7 +154,14 @@ namespace other {
     scene* get_scene(natural_t id);
     scene* get_active_scene();
 
+    udp_handle active_scene_udp_handle;
+
     filepath get_project_cache();
+
+    inline lua_script& get_envrc_script() {
+      OTHER_ASSERT(envrc != nullptr, "Driver environment runtime script is not loaded.");
+      return *envrc;
+    }
 
     void pump_events();
 
@@ -161,6 +169,14 @@ namespace other {
 
     void handle_request_session_information(integer_t session_id, message&& msg);
     void handle_response_session_information(integer_t session_id, message&& msg);
+
+    void on_acknowledge_command_environment_load_scene(message_header header, std::span<const uint8_t> data);
+    void on_timeout_environment_load_scene(message_header header);
+    void request_scene_udp_binding(opt<uint16_t> port = std::nullopt);
+
+    void on_respond_new_udp_stream_binding(message_header header, std::span<const uint8_t> data);
+    void on_timeout_new_udp_stream_binding(message_header header);
+    virtual void on_active_scene_udp_handle_bound(udp_handle* handle) {}
 
     virtual std::string get_project_name() const { return ""; }
 
@@ -171,14 +187,15 @@ namespace other {
     virtual void handle_notification_session_check_in(message&& msg) {}
     virtual void handle_notification_session_closed(message&& msg) {}
     /// acknowledgments
-    virtual void handle_acknowledgement_ack(message&& msg) {}
+    void handle_acknowledgement_ack(message&& msg);
     /// control messages
-    virtual void handle_control_ping(message&& msg) {}
-    virtual void handle_control_pong(message&& msg) {}
+    void handle_control_ping(message&& msg);
+    void handle_control_pong(message&& msg);
     /// command messages
+    void handle_command_environment_load_scene(integer_t session_id, message&& msg);
     /// request messages
     /// response messages
-    virtual void handle_response(message&& msg) {}
+    void handle_response(message&& msg);
     virtual void handle_session_information_response(integer_t session_id, session_information_response&& response) {}
     /// session events
     /// error alerts
@@ -213,6 +230,7 @@ namespace other {
       return configuration().get_value(std::format("{}.{}", section, key), default_value);
     }
 
+    opt<integer_t> client_session_id;
     other_command_device core_device;
 
    private:
@@ -223,6 +241,7 @@ namespace other {
 
     std::queue<instruction> emitted_instructions;
 
+    lua_script* envrc = nullptr;
     std::vector<ref<assembly>> loaded_dotnet_modules;
 
     struct live_coroutine {

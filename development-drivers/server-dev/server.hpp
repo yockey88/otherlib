@@ -110,7 +110,6 @@ namespace other {
     json::json project_cache;
 
     scope<renderer> renderer;
-    scene active_scene;
 
     scope<server_ui> ui_ptr = nullptr;
 
@@ -128,21 +127,18 @@ namespace other {
     void validate_project_and_launch(const json::json& project_entry);
     void begin_other_application(const json::json& project_entry);
 
-    void on_ack_control_ping_network_thread(message_header header, const std::vector<uint8_t>& data);
-    void on_timeout_control_ping_network_thread(message_header header);
-
-    void on_ack_session_listen_for_network_thread(message_header header, const std::vector<uint8_t>& data);
+    void on_ack_session_listen_for_network_thread(message_header header, const std::span<const uint8_t> data);
     void on_timeout_session_listen_for_network_thread(message_header header);
 
-    void on_ack_shutdown_request_network_thread(message_header header, const std::vector<uint8_t>& data);
+    void on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data);
     void on_timeout_shutdown_request_network_thread(message_header header);
 
-    void on_respond_session_check_in_network_thread(message_header header, const std::vector<uint8_t>& data);
+    void on_respond_session_check_in_network_thread(message_header header, const std::span<const uint8_t> data);
 
     void send_session_information_request(integer_t session_id, other_application* app = nullptr);
     void handle_session_information_response(integer_t session_id, session_information_response&& response) override;
 
-    void on_response_request_session_information(message_header header, const std::vector<uint8_t>& data);
+    void on_response_request_session_information(message_header header, const std::span<const uint8_t> data);
     void on_timeout_request_session_information_network_thread(message_header header);
     void print_session_information(other_application* app);
 
@@ -151,9 +147,9 @@ namespace other {
 
     void handle_notification_session_check_in(message&& msg) override;
     void handle_notification_session_closed(message&& msg) override;
-    void handle_acknowledgement_ack(message&& msg) override;
-    void handle_control_pong(message&& msg) override;
-    void handle_response(message&& msg) override;
+
+    void on_active_scene_udp_handle_bound(udp_handle* handle) override;
+    task active_scene_udp_loop();
 
     task validate_and_build_other_application(const std::string& name, const filepath& folder, const filepath& env_config_path);
   };
