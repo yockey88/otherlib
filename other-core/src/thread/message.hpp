@@ -45,6 +45,7 @@ namespace other {
 
     /// notification messages
     STREAM_RX_UDP_DATAGRAM,
+    SESSION_RX_MESSAGE,
 
     /// control messages
     PING,
@@ -59,7 +60,7 @@ namespace other {
 
     ENVIRONMENT_LOAD_SCENE,
 
-    /// request messages
+    /// request/response messages
     SESSION_CHECK_IN,
     SESSION_CLOSED,
     SESSION_SHUTDOWN,
@@ -68,15 +69,11 @@ namespace other {
 
     PROJECT_CACHE_INFORMATION,
 
-    /// response messages
-
-    /// session event messages
-    SESSION_RX_MESSAGE,
+    SCENE_STATE,
 
     /// error alert messages
 
     SHUTDOWN_REQUEST,
-
     ERROR_ALERT_ID = 0xFFFF,
   };
 

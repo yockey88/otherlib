@@ -47,14 +47,8 @@ namespace other {
     }
 
     auto [itr, success] = loaded_scripts.insert({ hash, lua_state.load_file(fpath.string()) });
-    if (!success) {
+    if (!success || !itr->second.valid()) {
       CORE_LOG_ERROR("Failed to load Lua script '{}'", fpath.string());
-      return nullptr;
-    }
-    if (!itr->second.valid()) {
-      sol::error err = itr->second;
-      CORE_LOG_ERROR("Error loading Lua script '{}': {}", fpath.string(), err.what());
-      loaded_scripts.erase(itr);
       return nullptr;
     }
 
@@ -62,7 +56,6 @@ namespace other {
     env["__script_file_path"] = fpath.string();
     env["__script_file_name"] = fpath.filename().string();
     env["__script_name"] = fpath.stem().string();
-
     auto [script_itr, script_success] = loaded_lua_scripts.insert({ hash, lua_script(lua_state, std::move(env), itr->second) });
     OTHER_ASSERT(script_success, "Failed to insert loaded Lua script into map.");
 

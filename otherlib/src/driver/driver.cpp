@@ -915,16 +915,21 @@ namespace other {
   }
 
   void driver::handle_control_ping(message&& msg) {
-    // size_t cursor = 0;
-    // integer_t session = serialization::read_value<integer_t>(msg.data, cursor);
+    control_ping ping_msg = other_message_spec::parse<control_ping>(msg.data);
+    if (ping_msg.session_id == 0) {
+      // /// respond to ping
+      // message pong_msg;
+      // pong_msg.header = {
+      //   .category = CONTROL,
+      //   .id = PONG,
+      // };
 
-    // if (session == 0) {
-    //   send_control_pong(0);
-    // }
-    // /// else handle real session
-    // else {
-    //   /// \todo
-    // }
+      // control_pong pong;
+      // pong.session_id = 0;
+      // pong_msg.data.append_range(pong.as_buffer());
+
+      // send_to_network_thread(std::move(pong_msg));
+    }
   }
 
   void driver::handle_control_pong(message&& msg) {
@@ -963,37 +968,67 @@ namespace other {
       CORE_LOG_DEBUG("Scene '{}' does not require UDP binding.", scene_cmd.scene_name);
     }
 
-    message ack_msg;
-    ack_msg.header = {
-      .category = ACKNOWLEDGEMENT,
-      .id = ACK,
-    };
+    /// first acknowledge that we loaded the scene
+    {
+      message ack_msg;
+      ack_msg.header = {
+        .category = ACKNOWLEDGEMENT,
+        .id = ACK,
+      };
 
-    acknowledgement ackmsg;
-    ackmsg.acked_header = msg.header;
-    ackmsg.ack_nack = 0x01;  // Assuming 0x01 means ACK
+      acknowledgement ackmsg;
+      ackmsg.acked_header = msg.header;
+      ackmsg.ack_nack = 0x01;  // Assuming 0x01 means ACK
 
-    /// \todo send back final addressess, currently just echoing what was sent
-    udp_binding_information client_binding_info;
-    client_binding_info.endpoint = scene_cmd.udp_address;
-    client_binding_info.remote_endpoint = scene_cmd.server_udp_address;
-    client_binding_info.check_in_hash = active_scene->id;  // just use scene id for now
-    ackmsg.extra_data.append_range(client_binding_info.as_buffer());
-    ack_msg.data.append_range(ackmsg.as_buffer());
+      /// \todo send back final addressess, currently just echoing what was sent
+      udp_binding_information client_binding_info;
+      client_binding_info.endpoint = scene_cmd.udp_address;
+      client_binding_info.remote_endpoint = scene_cmd.server_udp_address;
+      client_binding_info.check_in_hash = active_scene->id;  // just use scene id for now
+      ackmsg.extra_data.append_range(client_binding_info.as_buffer());
+      ack_msg.data.append_range(ackmsg.as_buffer());
 
-    CORE_LOG_DEBUG("acknowledging ENVIRONMENT_LOAD_SCENE command");
-    message tx_msg;
-    tx_msg.header = {
-      .category = COMMAND,
-      .id = SESSION_TX_MESSAGE,
-    };
+      CORE_LOG_DEBUG("acknowledging ENVIRONMENT_LOAD_SCENE command");
+      message tx_msg;
+      tx_msg.header = {
+        .category = COMMAND,
+        .id = SESSION_TX_MESSAGE,
+      };
 
-    command_session_tx_message tx_session_msg;
-    tx_session_msg.session_id = session_id;
-    tx_session_msg.msg = std::move(ack_msg);
-    tx_msg.data.append_range(tx_session_msg.as_buffer());
+      command_session_tx_message tx_session_msg;
+      tx_session_msg.session_id = session_id;
+      tx_session_msg.msg = std::move(ack_msg);
+      tx_msg.data.append_range(tx_session_msg.as_buffer());
 
-    send_to_network_thread(std::move(tx_msg));
+      send_to_network_thread(std::move(tx_msg));
+    }
+
+    /// then ask for scene state/data
+    {
+      CORE_LOG_DEBUG("Requesting scene state/data for scene '{}'...", scene_cmd.scene_name);
+      message load_msg;
+      load_msg.header = {
+        .category = REQUEST,
+        // .id = ENVIRONMENT_REQUEST_SCENE_DATA,
+      };
+
+      // request_scene_data req;
+      // req.scene_id = active_scene->id;
+      // load_msg.data.append_range(req.as_buffer());
+
+      // message tx_msg;
+      // tx_msg.header = {
+      //   .category = COMMAND,
+      //   .id = SESSION_TX_MESSAGE,
+      // };
+
+      // command_session_tx_message tx_session_msg;
+      // tx_session_msg.session_id = session_id;
+      // tx_session_msg.msg = std::move(load_msg);
+      // tx_msg.data.append_range(tx_session_msg.as_buffer());
+
+      // send_to_network_thread(std::move(tx_msg));
+    }
   }
 
   void driver::session_check_in_request(integer_t session_id) {
