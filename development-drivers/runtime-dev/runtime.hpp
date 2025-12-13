@@ -23,61 +23,15 @@
 
 namespace other {
 
-  enum class runtime_state : natural_t {
-    RUNTIME_STATE_SHUT_DOWN = 0,
-    RUNTIME_STATE_LOADING_PROJECT,
-    RUNTIME_STATE_WAITING_FOR_START_SCENE_LOAD,
-    RUNTIME_STATE_RUNNING,
-    RUNTIME_STATE_SHUTTING_DOWN,
-
-    NUM_STATES,
-  };
-  enum class runtime_event : natural_t {
-    RUNTIME_EVENT_START = 0,
-    RUNTIME_EVENT_READY,
-    RUNTIME_EVENT_STOP,
-    RUNTIME_EVENT_SHUT_DOWN,
-
-    NUM_EVENTS,
-  };
-
-  class runtime;
-
-  class runtime_state_machine : public state_machine<runtime_state, runtime_event> {
-   public:
-    runtime_state_machine(runtime* driver)
-        : state_machine<runtime_state, runtime_event>(runtime_state::RUNTIME_STATE_SHUT_DOWN), runtime_driver(driver) {
-      add_transition(runtime_state::RUNTIME_STATE_SHUT_DOWN, runtime_event::RUNTIME_EVENT_START, runtime_state::RUNTIME_STATE_LOADING_PROJECT);
-
-      add_transition(runtime_state::RUNTIME_STATE_LOADING_PROJECT, runtime_event::RUNTIME_EVENT_READY, runtime_state::RUNTIME_STATE_WAITING_FOR_START_SCENE_LOAD);
-      add_transition(runtime_state::RUNTIME_STATE_LOADING_PROJECT, runtime_event::RUNTIME_EVENT_STOP, runtime_state::RUNTIME_STATE_SHUTTING_DOWN);
-
-      add_transition(runtime_state::RUNTIME_STATE_WAITING_FOR_START_SCENE_LOAD, runtime_event::RUNTIME_EVENT_READY, runtime_state::RUNTIME_STATE_RUNNING);
-      add_transition(runtime_state::RUNTIME_STATE_WAITING_FOR_START_SCENE_LOAD, runtime_event::RUNTIME_EVENT_STOP, runtime_state::RUNTIME_STATE_SHUTTING_DOWN);
-
-      add_transition(runtime_state::RUNTIME_STATE_RUNNING, runtime_event::RUNTIME_EVENT_STOP, runtime_state::RUNTIME_STATE_SHUTTING_DOWN);
-
-      add_transition(runtime_state::RUNTIME_STATE_SHUTTING_DOWN, runtime_event::RUNTIME_EVENT_STOP, runtime_state::RUNTIME_STATE_SHUT_DOWN);
-    }
-    virtual ~runtime_state_machine() = default;
-
-    void on_enter_state(runtime_state new_state) override;
-
-   private:
-    runtime* runtime_driver = nullptr;
-  };
-
   class OTHER_CLASS runtime : public driver {
    public:
     runtime(const config_table& config)
-        : driver(config), state_machine{ this } {}
+        : driver(config) {}
     virtual ~runtime() = default;
 
     void on_initialize(const command_line& cmd) override;
-    void run() override;
+    void on_update() override;
     void on_shutdown() override;
-
-    void catch_signal(int signal) override;
 
    private:
     friend class runtime_state_machine;
@@ -106,18 +60,14 @@ namespace other {
     lua_script* console_lua_script = nullptr;
 
     scope<runtime_control_window> runtime_ui = nullptr;
-    runtime_state_machine state_machine;
 
-    void core_update();
-    void update_loading_project();
-    void update_waiting_for_start_scene_load();
-    void update_running();
-    void update_shutting_down();
+    void update_initializing() override;
+    void on_initialize_ready() override;
+    void update_running() override;
+    void update_shutting_down() override;
     void draw();
 
     void handle_console_command(const std::string_view command, system_timepoint timestamp);
-
-    void on_event(SDL_Event* event) override;
   };
 
 }  // namespace other

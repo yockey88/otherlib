@@ -33,13 +33,18 @@ namespace other {
 
     SESSION_EVENT,
 
+    INFORMATION,
+
     ERROR_ALERT,
   };
 
   enum message_id : uint16_t {
-    /// notification messages
+
     /// ack messages
     ACK = 0x0001,
+
+    /// notification messages
+    STREAM_RX_UDP_DATAGRAM,
 
     /// control messages
     PING,
@@ -49,6 +54,8 @@ namespace other {
     SESSION_LISTEN_FOR,
     SESSION_CONNECT_TO,
     SESSION_TX_MESSAGE,
+
+    STREAM_SEND_UDP_DATAGRAM,
 
     ENVIRONMENT_LOAD_SCENE,
 
@@ -79,7 +86,7 @@ namespace other {
     uint16_t id;
     constexpr auto operator<=>(const message_header& other) const = default;
   };
-#pragma pack(pop)
+  static_assert(sizeof(message_header) == sizeof(uint32_t), "Invalid message_header size");
 
   struct binding_point {
     uint16_t port = 0;
@@ -92,8 +99,11 @@ namespace other {
     constexpr binding_point(uint32_t ip, uint16_t port) : port(port), ip(ip) {}
 
     static std::string write_string(const binding_point& bp);
+    static std::string write_string(const asio::ip::tcp::endpoint& ep);
+    static std::string write_string(const asio::ip::udp::endpoint& ep);
     static binding_point from_asio(const asio::ip::address& addr, uint16_t port);
   };
+  static_assert(sizeof(binding_point) == sizeof(uint32_t) + sizeof(uint16_t), "Invalid binding_point size");
 
   struct session_endpoint {
     binding_point simulation;
@@ -101,6 +111,8 @@ namespace other {
 
     static std::string write_string(const session_endpoint& endpoint);
   };
+  static_assert(sizeof(session_endpoint) == sizeof(binding_point) * 2, "Invalid session_endpoint size");
+#pragma pack(pop)
 
   struct message;
 

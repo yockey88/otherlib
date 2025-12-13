@@ -1,8 +1,8 @@
 /**
- * \file server-dev/server-ui/project-window.hpp
+ * \file server-ui/project-window.hpp
  **/
-#ifndef OTHER_SERVER_SEVRER_UI_PROJECT_WINDOW_HPP
-#define OTHER_SERVER_SEVRER_UI_PROJECT_WINDOW_HPP
+#ifndef OTHER_SERVER_SERVER_UI_PROJECT_WINDOW_HPP
+#define OTHER_SERVER_SERVER_UI_PROJECT_WINDOW_HPP
 
 #include <nlohmann/json.hpp>
 
@@ -23,4 +23,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_SERVER_SEVRER_UI_PROJECT_WINDOW_HPP
+#endif  // OTHER_SERVER_SERVER_UI_PROJECT_WINDOW_HPP

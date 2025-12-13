@@ -1,5 +1,5 @@
 /**
- * \file server-dev/server-ui/project-window.cpp
+ * \file server-ui/project-window.cpp
  **/
 #include "project-window.hpp"
 

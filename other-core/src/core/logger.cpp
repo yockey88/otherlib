@@ -90,7 +90,6 @@ namespace other {
   void logger::send_log(spdlog::level::level_enum level, natural_t log_id, const std::string_view msg) {
     OTHER_ASSERT(log_id < num_loggers, "Invalid log ID: {}", log_id);
 
-    std::unique_lock lock(log_mutex);
     auto& log_entry = loggers[log_id];
     if (log_entry.logger_ptr->level() == spdlog::level::off) {
       return;

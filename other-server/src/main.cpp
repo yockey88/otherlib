@@ -1,5 +1,5 @@
 /**
- * \file server-dev/main.cpp
+ * \file main.cpp
  **/
 #include "other.hpp"
 #include "server.hpp"

@@ -41,8 +41,6 @@ namespace other {
 
     ~scene();
 
-    void set_udp_handle(udp_handle* handle);
-
     void reset();
 
     inline scene_storage& get_storage() {
@@ -186,6 +184,9 @@ namespace other {
     std::string name = "Untitled Scene";
     natural_t id = 0;
 
+    integer_t kNoStreamBinding = -1;
+    integer_t update_stream_id = kNoStreamBinding;
+
    private:
     struct object_handle {
       natural_t id = 0;
@@ -195,8 +196,6 @@ namespace other {
       bool operator==(const object_handle& other) const;
     };
     friend class scene_tree;
-
-    udp_handle* udp_stream_handle = nullptr;
 
     void register_object(scene_object* object, const std::string& name, const glm::vec3& world_position);
     void register_object(scene_object* object, const std::string& name, const transform& transformation);

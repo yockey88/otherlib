@@ -3,6 +3,7 @@ target_sources(other_network
     PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/udp_stream.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/network/network_thread.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/network/message.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/network/session.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/network/session_protocol_handler.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/network/protocols/check_in_protocol.cpp"

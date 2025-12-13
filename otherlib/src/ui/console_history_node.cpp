@@ -33,7 +33,7 @@ namespace other {
         {
           /// locks console mutex
           const auto history_lines = environment_console::get_console_history();
-          for (const auto& line : history_lines.lines) {
+          for (const auto& line : history_lines) {
             ImGui::SetScrollHereY(1.f);
 
             auto zoned_time = std::chrono::zoned_time{ std::chrono::current_zone(), line.timestamp };

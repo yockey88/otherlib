@@ -1,4 +1,5 @@
 [application]
+role = "server"
 core-log-level = "debug"
 core-log-file = "logs/server.log"
 
@@ -12,7 +13,3 @@ dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
 other-lua-directory = "resources/lua"
-
-### server only sections ###
-[network-thread]
-active = true

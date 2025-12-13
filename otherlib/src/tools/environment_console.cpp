@@ -9,25 +9,81 @@
 
 namespace other {
 
-  std::mutex environment_console::console_mutex;
+  std::thread::id environment_console::console_thread_id = std::thread::id{};
+
+  std::atomic<bool> environment_console::console_initialized = false;
+
+  std::atomic<bool> environment_console::input_waiting = false;
+  std::queue<console_input> environment_console::input_queue = {};
   std::vector<console_input> environment_console::history_lines = {};
+
   size_t environment_console::max_history_lines = 100;
   std::array<char, environment_console::kInputBufferSize> environment_console::input_buffer = { 0 };
-  lua_script* environment_console::console_lua_script;
+  lua_script* environment_console::console_lua_script = nullptr;
 
   void environment_console::initialize(lua_script* console_script) {
-    std::lock_guard lock(console_mutex);
+    if (console_initialized) {
+      CORE_LOG_ERROR("Environment console is already initialized.");
+      return;
+    }
 
+    console_thread_id = std::this_thread::get_id();
     console_lua_script = console_script;
 
     /// run .envrc script if it exists
     if (console_lua_script != nullptr) {
       console_lua_script->call_hook_function_if_exists("__environment_console_init_hook");
     }
+
+    console_initialized = true;
+  }
+
+  void environment_console::poll() {
+    if (!console_initialized) {
+      return;
+    }
+    if (std::this_thread::get_id() != console_thread_id) {
+      CORE_LOG_ERROR("Environment console polled from incorrect thread.");
+      return;
+    }
+
+    if (input_waiting) {
+      while (!input_queue.empty()) {
+        console_input input = std::move(input_queue.front());
+        input_queue.pop();
+
+        bool is_command = false;
+        if (console_lua_script != nullptr) {
+          is_command = console_lua_script->call_function<bool>("is_command", input.input_text);
+        }
+
+        int32_t type_flags = input.message_type;
+        if (is_command) {
+          type_flags |= CONSOLE_MESSAGE_COMMAND;
+        }
+
+        history_lines.push_back({
+          .input_text = std::string{ input.input_text },
+          .message_type = type_flags,
+          .timestamp = input.timestamp,
+        });
+
+        if (is_command && console_lua_script != nullptr) {
+          console_lua_script->call_function<void>("handle_console_command", std::string(input.input_text));
+        } else {
+        }
+      }
+    }
   }
 
   void environment_console::push_message(const console_input& input) {
-    std::lock_guard lock(console_mutex);
+    if (!console_initialized) {
+      return;
+    }
+    if (std::this_thread::get_id() != console_thread_id) {
+      CORE_LOG_ERROR("Environment console push_message called from incorrect thread.");
+      return;
+    }
 
     history_lines.push_back(input);
     if (history_lines.size() > max_history_lines) {
@@ -36,31 +92,20 @@ namespace other {
   }
 
   void environment_console::submit_console_text(const std::string_view text, console_message_type type, system_timepoint time_point) {
+    if (!console_initialized) {
+      return;
+    }
     if (text.empty()) {
       return;
     }
-    std::lock_guard lock(console_mutex);
-
-    bool is_command = false;
-    if (console_lua_script != nullptr) {
-      is_command = console_lua_script->call_function<bool>("is_command", text);
-    }
-
-    int32_t type_flags = type;
-    if (is_command) {
-      type_flags |= CONSOLE_MESSAGE_COMMAND;
-    }
-
-    history_lines.push_back({
+    static std::mutex input_mutex;
+    std::lock_guard lock(input_mutex);
+    input_queue.push({
       .input_text = std::string{ text },
-      .message_type = type_flags,
+      .message_type = type,
       .timestamp = time_point,
     });
-
-    if (is_command && console_lua_script != nullptr) {
-      console_lua_script->call_function<void>("handle_console_command", std::string(text));
-    } else {
-    }
+    input_waiting = true;
   }
 
 }  // namespace other

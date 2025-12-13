@@ -15,29 +15,29 @@ namespace other {
   using suspend_always = std::suspend_always;
   using suspend_never = std::suspend_never;
 
+  /// C++ coroutines crash course
+  /**
+    coroutine<return-type> function_name(parameters...) {
+      auto* frame = new coroutine_frame(std::forward<parameters...>(parameters));
+      auto return_object = coroutine_frame->promise.get_return_object();
+      co_await coroutine_frame->promise.initial_suspend();
+      try
+      {
+          <body-statements>
+      }
+      catch (...)
+      {
+          coroutine_frame->promise.unhandled_exception();
+      }
+      co_await coroutine_frame->promise.final_suspend();
+      delete coroutine_frame;
+      return return_object;
+    }
+  */
+
   struct task {
-    struct promise_type;
-
-    struct awaiter {
-      /// initial suspend has to be suspend always so we can store and pump with the rest of the event loop
-      /// this is the same as this returning false
-      bool await_ready() const noexcept { return false; }
-      void await_suspend(std::coroutine_handle<>) const noexcept {}
-      void await_resume() const noexcept {}
-    };
-
-    // struct final_awaiter {
-    //   bool await_ready() const noexcept { return false; }
-
-    //   template <typename T>
-    //   void await_suspend(std::coroutine_handle<T> handle) const noexcept {
-    //     if (handle.promise().continuation) {
-    //       handle.promise().continuation.resume();
-    //     }
-    //   }
-
-    //   void await_resume() const noexcept {}
-    // };
+    struct awaiter;
+    struct final_awaiter;
 
     struct promise_type {
       task get_return_object() {
@@ -51,13 +51,27 @@ namespace other {
       awaiter initial_suspend() noexcept { return {}; }
       /// we want to catch the final suspend to know when to remove the coroutine from the live list
       /// and also to do any continuation handling
-      std::suspend_always final_suspend() noexcept { return {}; }
+      final_awaiter final_suspend() noexcept { return {}; }
+    };
+
+    struct awaiter {
+      std::coroutine_handle<promise_type> handle;
+
+      bool await_ready() const noexcept { return false; }
+      void await_suspend(std::coroutine_handle<>) const noexcept {}
+      void await_resume() const noexcept {}
+    };
+
+    struct final_awaiter {
+      bool await_ready() const noexcept { return false; }
+      void await_suspend(std::coroutine_handle<>) const noexcept {}
+      void await_resume() const noexcept {}
     };
 
     std::coroutine_handle<promise_type> coro_handle;
 
     auto operator co_await() noexcept {
-      return awaiter{};
+      return awaiter{ coro_handle };
     }
 
     void operator()() const {

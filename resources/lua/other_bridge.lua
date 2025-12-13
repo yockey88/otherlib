@@ -17,11 +17,7 @@ function _submit_console_text_impl(message, message_type)
 end
 
 function _trigger_driver_event_impl(event_name, event_data)
-  if event_data ~= nil 
-  then
-    __other_native.__driver.set_event_user_data(event_name, event_data)
-  end
-  __other_native.__driver.trigger_driver_event(event_name)
+  __other_native.__driver.trigger_driver_event(event_name, event_data)
 end
 
 function _get_lua_bridge_metadata_table()

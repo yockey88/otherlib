@@ -18,6 +18,7 @@ namespace other {
 
    protected:
     integer_t received_session_id = -1;
+
     void on_protocol_completion() override;
     void transmit_current_message() override;
 

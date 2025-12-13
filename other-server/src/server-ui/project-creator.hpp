@@ -1,5 +1,5 @@
 /**
- * \file server-dev/server-ui/project-creator.hpp
+ * \file server-ui/project-creator.hpp
  **/
 #ifndef OTHER_SERVER_SERVER_UI_PROJECT_CREATOR_HPP
 #define OTHER_SERVER_SERVER_UI_PROJECT_CREATOR_HPP

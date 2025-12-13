@@ -3,6 +3,7 @@
  **/
 #include "network/protocols/check_in_protocol.hpp"
 
+#include "network/message.hpp"
 #include "network/network_thread.hpp"
 #include "network/session.hpp"
 
@@ -49,8 +50,9 @@ namespace other {
         .category = CONTROL,
         .id = PONG,
       };
-      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&received_session_id);
-      pong_msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
+      control_pong pong_msg_data;
+      pong_msg_data.session_id = received_session_id;
+      pong_msg.data.append_range(pong_msg_data.as_buffer());
 
       get_session().start_write(std::move(pong_msg));
     }
@@ -61,8 +63,9 @@ namespace other {
         .category = REQUEST,
         .id = SESSION_CHECK_IN,
       };
-      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&get_session().session_id);
-      check_in_msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
+      session_check_in_request out_msg;
+      out_msg.session_id = get_session().session_id;
+      check_in_msg.data.append_range(out_msg.as_buffer());
 
       get_session().start_write(std::move(check_in_msg));
     } else {
@@ -71,11 +74,8 @@ namespace other {
   }
 
   void server_check_in_handler::handle_control_ping(const message_header& header, const std::span<uint8_t> data) {
-    if (data.size() < sizeof(integer_t)) {
-      throw network_packet_parse_error("Invalid PING message data size");
-    }
-
-    received_session_id = *reinterpret_cast<const integer_t*>(data.data());
+    control_ping ping_msg = other_message_spec::parse<control_ping>(data);
+    received_session_id = ping_msg.session_id;
     /// case 1 session has id, client does not
     if (get_session().session_id != session::kInvalidSessionId && received_session_id == session::kInvalidSessionId) {
       CORE_LOG_DEBUG("Overriding local session ID {}", get_session().session_id);
@@ -127,11 +127,13 @@ namespace other {
         .id = PING,
       };
 
-      const uint8_t* id_bytes = reinterpret_cast<const uint8_t*>(&get_session().session_id);
-      msg.data.append_range(std::span(id_bytes, sizeof(integer_t)));
-      /// other session related data
+      control_ping ping_msg;
+      ping_msg.session_id = get_session().session_id;
 
-      OTHER_ASSERT(msg.data.size() < session::kBufferSize, "Check-in message data is too large");
+      /// \todo add timestamp
+      // ping_msg.timesamp = ...
+      msg.data.append_range(ping_msg.as_buffer());
+
       get_session().dump_message_bytes(msg);
       get_session().start_write(std::move(msg));
     } else if (current_msg_matches(ACKNOWLEDGEMENT, ACK)) {
@@ -144,9 +146,11 @@ namespace other {
         .category = REQUEST,
         .id = SESSION_CHECK_IN,
       };
-      const uint8_t* acked_header_bytes = reinterpret_cast<const uint8_t*>(&acked_header);
-      ack_msg.data.append_range(std::span(acked_header_bytes, sizeof(message_header)));
-      ack_msg.data.push_back(get_ack_byte());
+
+      acknowledgement ack;
+      ack.acked_header = acked_header;
+      ack.ack_nack = get_ack_byte();
+      ack_msg.data.append_range(ack.as_buffer());
 
       get_session().start_write(std::move(ack_msg));
     } else {
@@ -158,12 +162,13 @@ namespace other {
     CORE_LOG_DEBUG("Client received SESSION_CHECK_IN request");
     const integer_t received_session_id = *reinterpret_cast<const integer_t*>(data.data());
     if (received_session_id != session::kInvalidSessionId && get_session().session_id != received_session_id) {
-      CORE_LOG_DEBUG(" - Launch check in adopting session ID {}", received_session_id);
+      CORE_LOG_DEBUG(" - Session adopting ID from check-in {}", received_session_id);
       get_session().session_id = received_session_id;
     }
     /// otherwise see if they are both invalid
     else if (get_session().session_id == session::kInvalidSessionId && received_session_id == session::kInvalidSessionId) {
       /// \todo: send back msg either 1 - need id message or 2 - generate an id and send 'suggest-this-id' message
+      CORE_LOG_ERROR("Unimplemented: both client and server have invalid session IDs during check-in");
     }
   }
 

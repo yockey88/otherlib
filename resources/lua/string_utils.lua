@@ -9,35 +9,35 @@ function _StringUtils.strip_leading_and_ending_whitespace(str)
 end
 
 function _StringUtils.split_string_list(str)
-  if str == nil or str == "" 
+  if str == nil or str == ""
   then
     return {}
   end
 
   local stripped = _StringUtils.strip_leading_and_ending_whitespace(str)
   local first_word_end = stripped:find("%s")
-  if first_word_end == nil 
+  if first_word_end == nil
   then
     return {}
   end
-  
+
   local args_str = stripped:sub(first_word_end + 1)
   local args = {}
 
   local current = ""
   local in_quote = false
   local i = 1
-  
-  while i <= #args_str 
+
+  while i <= #args_str
   do
     local c = args_str:sub(i,i)
 
-    if c == '"' 
+    if c == '"'
     then
       in_quote = not in_quote
     elseif c == ' ' and not in_quote 
     then
-      if current ~= "" 
+      if current ~= ""
       then
         table.insert(args, current)
         current = ""
@@ -47,8 +47,8 @@ function _StringUtils.split_string_list(str)
     end
     i = i + 1
   end
-  
-  if current ~= "" 
+
+  if current ~= ""
   then
     table.insert(args, current)
   end

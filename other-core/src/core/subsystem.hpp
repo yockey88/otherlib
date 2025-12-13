@@ -82,9 +82,7 @@ namespace other {
 
     static T* get() {
       PROFILE_SECTION("subsystem<>::get");
-      if (instance == nullptr) {
-        initialize();
-      }
+      initialize();
       return instance;
     }
 

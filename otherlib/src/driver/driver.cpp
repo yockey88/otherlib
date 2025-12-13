@@ -6,60 +6,39 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 
+#include "command/command.hpp"
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 #include "serialization/serialization.hpp"
 #include "thread/message.hpp"
 #include "thread/messages.hpp"
 
+#include "model/vertex.hpp"
+#include "network/message.hpp"
 #include "network/network_thread.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "driver/driver_tasks.hpp"
+#include "rendering-pipelines/default_instancing_pipeline.hpp"
 #include "scripting/lua_bindings.hpp"
+#include "tools/environment_console.hpp"
 #include "vm/control_table.hpp"
 #include "vm/other_device.hpp"
 #include "vm/vm.hpp"
+
+#include "driver_tasks.hpp"
 
 namespace other {
 
   void driver::initialize(const command_line& cmd) {
     PROFILE_SECTION("driver::initialize");
 
+    cmd_line = cmd;
+    state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
+
     /// set signal catchers
-    net_context = std::make_unique<network_context>();
-    net_context->signals.async_wait([this](std::error_code ec, int signum) {
-      if (!ec) {
-        catch_signal(signum);
-      } else {
-        CORE_LOG_ERROR("Error while waiting for signal: {}", ec.message());
-      }
-    });
-
-    net_context->events = make_scope<event_system>(net_context->io_context);
-    net_context->events->register_event("shutdown-requested");
-
-    net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
-    net_context->net_thread->launch();
-    net_context->net_thread_message_bus.register_thread();
-
-    std::vector<std::string> dotnet_modules = get_config_value<std::vector<std::string>>("scripting", "dotnet-modules");
-    for (const auto& module : dotnet_modules) {
-      CORE_LOG_DEBUG(" - .NET module to load: {}", module);
-      auto assembly = load_dotnet_module(module);
-      if (assembly == nullptr) {
-        CORE_LOG_ERROR("Failed to load .NET module: {}", module);
-      }
-
-      loaded_dotnet_modules.push_back(assembly);
-    }
-
-    vm::initialize_device(&core_device);
-    vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
-    core_device.stopped = false;
-    core_device.host_driver = this;
-
-    project_scene_graph = make_scope<scene_graph>();
+    initialize_network_context();
 
     /// register events
     get_event_system()->register_event("force-load-empty-scene");
@@ -76,7 +55,6 @@ namespace other {
       }
 
       natural_t scene_id = create_empty_scene(scene_name);
-
       set_scene_to_active(scene_id);
       CORE_LOG_INFO("Created and loaded empty scene [{}:{}] from console command.", scene_id, scene_name);
 
@@ -86,51 +64,72 @@ namespace other {
         .id = ENVIRONMENT_LOAD_SCENE,
       };
 
-      load_empty_scene_command scene_cmd;
-
+      command_load_empty_scene scene_cmd;
       scene_cmd.session_id_flag = client_session_id.has_value() ? 0x01 : 0x00;
       if (client_session_id.has_value()) {
         scene_cmd.session_id = client_session_id.value();
       }
 
+      scene_cmd.requires_udp_binding = 0x01;
+      scene_cmd.udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
+      scene_cmd.server_udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
       scene_cmd.scene_name = scene_name;
-      cmd_msg.data.append_range((scene_cmd.as_buffer()));
+      cmd_msg.data.append_range(scene_cmd.as_buffer());
 
-      send_message_and_wait_acknowledgment(
-        std::move(cmd_msg),
-        seconds(10),
-        std::bind_front(&driver::on_acknowledge_command_environment_load_scene, this),
-        std::bind_front(&driver::on_timeout_environment_load_scene, this)
-      );
+      CORE_LOG_DEBUG("Requesting UDP binding for scene '{}' w/ address @ [{}]", scene_name, binding_point::write_string(scene_cmd.udp_address));
+      CORE_LOG_DEBUG("  - Suggesting server UDP address @ [{}]", binding_point::write_string(scene_cmd.server_udp_address));
+      send_message_and_wait_acknowledgment(std::move(cmd_msg), seconds(10), message_handler{ this, &driver::on_acknowledge_command_environment_load_scene, &driver::on_timeout_environment_load_scene });
     });
 
-    auto* env = subsystem<scripting_environment>::get();
-    bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
-
-    /// run driver envrc file if it exists
-    std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
-    if (!envrc_path.empty() && std::filesystem::exists(envrc_path)) {
-      /// this one has to be loaded into the host without the sandboxing of the environment
-      ///  as this is supposed to be the user's customization of the environment
-      auto& lua_host = env->get_lua_host();
-      sol::state& lua_state = lua_host.get_lua_state();
-      try {
-        auto script = lua_state.script_file(envrc_path);
-        if (!script.valid()) {
-          sol::error err = script;
-          CORE_LOG_ERROR("Failed to run driver environment runtime script: {}\n{}", envrc_path, err.what());
-        } else {
-          envrc = lua_host.load_file(envrc_path);
-          CORE_LOG_INFO("Successfully ran driver environment runtime script: {}", envrc_path);
-        }
-      } catch (...) {
-        CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", envrc_path);
+    std::vector<std::string> dotnet_modules = get_config_value<std::vector<std::string>>("scripting", "dotnet-modules");
+    for (const auto& module : dotnet_modules) {
+      CORE_LOG_DEBUG(" - .NET module to load: {}", module);
+      auto assembly = load_dotnet_module(module);
+      if (assembly == nullptr) {
+        CORE_LOG_ERROR("Failed to load .NET module: {}", module);
       }
+
+      loaded_dotnet_modules.push_back(assembly);
     }
 
-    {
-      PROFILE_SECTION("driver::initialize--client-on_initialize");
-      on_initialize(cmd);
+    if (rendering_enabled()) {
+      renderer_ptr = get_renderer();
+      on_initialize_rendering(renderer_ptr);
+    }
+
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
+    bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
+
+    vm::initialize_device(&core_device);
+    vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
+    core_device.stopped = false;
+    core_device.host_driver = this;
+
+    project_scene_graph = make_scope<scene_graph>();
+
+    load_client();
+    start_network();
+  }
+
+  void driver::run() {
+    PROFILE_SECTION("driver::main_loop");
+    while (current_driver_state() != driver_state::DRIVER_STATE_STOPPED) {
+      update();
+      if (current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
+        break;
+      }
+
+      switch (current_driver_state()) {
+        case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
+        case driver_state::DRIVER_STATE_RUNNING: update_running(); break;
+        case driver_state::DRIVER_STATE_SHUTTING_DOWN: update_shutting_down(); break;
+        default:
+          OTHER_ASSERT(false, "Driver in unknown state {}", current_driver_state());
+          break;
+      }
+
+      render();
     }
   }
 
@@ -141,6 +140,11 @@ namespace other {
       on_shutdown();
     }
 
+    if (rendering_enabled()) {
+      on_shutdown_rendering();
+      renderer_ptr = nullptr;
+    }
+
     core_device.stopped = true;
     vm::shutdown_device(&core_device);
 
@@ -149,15 +153,12 @@ namespace other {
     }
     loaded_dotnet_modules.clear();
 
+    live_coroutines.clear();
+
     project_scene_graph = nullptr;
 
     net_context->net_thread = nullptr;
-
     net_context->events = nullptr;
-    net_context->signals.cancel();
-    if (!net_context->io_context.stopped()) {
-      net_context->io_context.stop();
-    }
     net_context = nullptr;
   }
 
@@ -230,6 +231,56 @@ namespace other {
     plugin::unload_plugin_library(name);
   }
 
+  void driver::on_initialize_rendering(scope<renderer>& renderer_ptr) {
+    renderer_ptr->add_pipeline<default_instancing_pipeline>("Rendering Pipeline");
+  }
+
+  void driver::on_shutdown_rendering() {
+    renderer_ptr->remove_pipeline("Rendering Pipeline");
+  }
+
+  void driver::catch_signal(int signum) {
+    if (signum == SIGINT || signum == SIGTERM) {
+      CORE_LOG_INFO("Received signal {}, shutting down driver...", signum);
+      request_shutdown();
+    } else {
+      CORE_LOG_WARN("Received unhandled signal {}", signum);
+    }
+  }
+
+  void driver::request_shutdown() {
+    net_context->signals.cancel();
+    if (!net_context->io_context.stopped()) {
+      net_context->io_context.stop();
+    }
+
+    for (auto& ack : ack_list.pending_acks) {
+      ack.timer.cancel();
+    }
+    ack_list.pending_acks.clear();
+
+    for (auto& response : resp_list.pending_responses) {
+      response.timer.cancel();
+    }
+    resp_list.pending_responses.clear();
+
+    live_coroutines.clear();
+
+    CORE_LOG_DEBUG("Sending shutdown request to network thread...");
+    if (!shutdown_requested) {
+      message msg;
+      msg.header = {
+        .category = COMMAND,
+        .id = SHUTDOWN_REQUEST,
+      };
+
+      send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(3), message_handler{ this, &driver::on_ack_shutdown_request_network_thread, &driver::on_timeout_shutdown_request_network_thread });
+    }
+
+    on_shutdown_request();
+    process_driver_event(driver_event::DRIVER_EVENT_STOP);
+  }
+
   natural_t driver::create_new_scene(const std::string_view name) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
     auto [scene_id, ptr] = project_scene_graph->create_new_scene(name);
@@ -245,6 +296,18 @@ namespace other {
 
   scene* driver::get_active_scene() {
     return active_scene;
+  }
+
+  renderer& driver::get_renderer_instance() {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in driver.");
+    return *renderer_ptr;
+  }
+
+  void driver::trigger_event(const std::string_view name, const value& data) {
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in driver.");
+    OTHER_ASSERT(net_context->events != nullptr, "Event system is not initialized in driver.");
+    net_context->events->set_user_data(name, data);
+    net_context->events->trigger_event(name);
   }
 
   void driver::write_id_at_address(uint16_t address, natural_t id) {
@@ -281,6 +344,132 @@ namespace other {
     active_scene = project_scene_graph->get_scene(scene_id);
   }
 
+  void driver::unload_active_scene() {
+    if (active_scene == nullptr) {
+      CORE_LOG_WARN("No active scene to unload in driver.");
+      return;
+    }
+    CORE_LOG_DEBUG("Unloading active scene [{}:{}] from driver.", active_scene->id, active_scene->name);
+    /// \todo serialize or something before removing?
+    project_scene_graph->remove_scene(active_scene->id);
+    active_scene = nullptr;
+  }
+
+  void driver::initialize_network_context() {
+    net_context = std::make_unique<network_context>();
+
+    struct signal_catcher {
+      signal_catcher(driver* driver_ptr)
+          : driver_ptr(driver_ptr) {}
+      void catch_signal(std::error_code ec, int signum) {
+        if ((ec && ec == asio::error::operation_aborted) ||
+            driver_ptr == nullptr || driver_ptr->net_context == nullptr) {
+          return;
+        }
+
+        if (!ec) {
+          driver_ptr->catch_signal(signum);
+        } else {
+          CORE_LOG_ERROR("Error while waiting for signal: {}", ec.message());
+
+          if (driver_ptr->current_driver_state() == driver_state::DRIVER_STATE_RUNNING) {
+            driver_ptr->net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, this));
+          }
+        }
+      }
+
+      driver* driver_ptr = nullptr;
+    };
+
+    static signal_catcher catcher{ this };
+    net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &catcher));
+
+    net_context->events = make_scope<event_system>(net_context->io_context);
+    net_context->events->register_event("shutdown-requested");
+    net_context->events->add_listener("shutdown-requested", [this](const value& data) {
+      CORE_LOG_DEBUG("Shutdown requested event received in driver.");
+      request_shutdown();
+    });
+
+    net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
+    net_context->net_thread->launch();
+    net_context->net_thread_message_bus.register_thread();
+  }
+
+  void driver::load_client() {
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
+
+    /// run driver envrc file if it exists
+    std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
+    if (!envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+      /// this one has to be loaded into the host without the sandboxing of the environment
+      ///  as this is supposed to be the user's customization of the environment
+      auto& lua_host = env->get_lua_host();
+      sol::state& lua_state = lua_host.get_lua_state();
+      try {
+        auto script = lua_state.script_file(envrc_path);
+        if (!script.valid()) {
+          sol::error err = script;
+          CORE_LOG_ERROR("Failed to run driver environment runtime script: {}\n{}", envrc_path, err.what());
+        } else {
+          envrc = lua_host.load_file(envrc_path);
+          CORE_LOG_INFO("Successfully ran driver environment runtime script: {}", envrc_path);
+        }
+      } catch (...) {
+        CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", envrc_path);
+      }
+    }
+
+    {
+      PROFILE_SECTION("driver::initialize--client-on_initialize");
+      on_initialize(cmd_line);
+    }
+  }
+
+  void driver::start_network() {
+    /// now we kick off main networking session
+    bool force_disable_network = get_config_value<bool>("network-thread", "force-disable", false);
+    bool network_thread_active = !force_disable_network && net_context->net_thread != nullptr;
+
+    std::string role = get_config_value<std::string>("application", "role", "client");
+    if (role != "client" && role != "server") {
+      CORE_LOG_WARN("Unknown application role '{}', defaulting to 'client'", role);
+      role = "client";
+    }
+
+    if (role == "client") {
+      primary_role = driver_role::CLIENT;
+    } else if (role == "server") {
+      primary_role = driver_role::SERVER;
+    }
+
+    if (network_thread_active && primary_role == driver_role::CLIENT) {
+      message connect_msg;
+      connect_msg.header = {
+        .category = COMMAND,
+        .id = SESSION_CONNECT_TO,
+      };
+
+      command_session_connect_to conn_cmd;
+      conn_cmd.address = net_context->main_binding_point;
+      connect_msg.data.append_range(conn_cmd.as_buffer());
+      send_to_network_thread(std::move(connect_msg));
+    } else if (network_thread_active && primary_role == driver_role::SERVER) {
+      message msg;
+      msg.header = {
+        .category = COMMAND,
+        .id = SESSION_LISTEN_FOR,
+      };
+
+      command_session_listen_at listen_cmd;
+      listen_cmd.address = net_context->main_binding_point;
+      msg.data.append_range(listen_cmd.as_buffer());
+
+      send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(10), message_handler{ this, &driver::on_ack_session_listen_for_network_thread, &driver::on_timeout_session_listen_for_network_thread });
+    }
+  }
+
   filepath driver::get_project_cache() {
     filepath cache_file = get_app_data_folder("OtherEngine/OtherServer") / filepath("project_cache.json");
     if (!std::filesystem::exists(cache_file)) {
@@ -291,17 +480,76 @@ namespace other {
     return cache_file;
   }
 
+  void driver::process_driver_event(driver_event event) {
+    state_machine.handle_event(event, this);
+  }
+
+  void driver::update() {
+    PROFILE_SECTION("driver::update");
+    pump_events();
+    poll_coroutines();
+    if (environment_console::is_initialized()) {
+      environment_console::poll();
+    }
+
+    /// we could propbably assert here if this is null
+    if (net_context != nullptr) {
+      net_context->io_context.poll();
+      if (net_context->io_context.stopped()) {
+        net_context->io_context.restart();
+      }
+    }
+
+    auto msg_opt = net_context->net_thread_message_bus.receive_message();
+    if (msg_opt.has_value()) {
+      process_network_thread_messages(std::move(*msg_opt));
+    }
+
+    on_update();
+  }
+
+  void driver::render() {
+    if (!rendering_enabled()) {
+      return;
+    }
+
+    render_data data = {};
+    if (active_scene != nullptr) {
+      data = active_scene->prepare_render_data();
+      get_renderer_instance().begin_frame(&data);
+    } else {
+      get_renderer_instance().begin_frame(nullptr);
+    }
+    get_renderer_instance().render();
+
+    on_render();
+    render_ui();
+
+    get_renderer_instance().end_frame();
+  }
+
+  void driver::render_ui() {
+    if (!rendering_enabled()) {
+      return;
+    }
+
+    get_renderer_instance().begin_ui_frame();
+    on_ui_render();
+    get_renderer_instance().end_ui_frame();
+  }
+
   void driver::pump_events() {
     PROFILE_SECTION("driver::pump_events");
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
-        case SDL_EVENT_WINDOW_CLOSE_REQUESTED: {
-          if (event.window.windowID == SDL_GetWindowID(subsystem<renderer_backend>::get()->get_main_window())) {
-            shutdown_requested = true;
+        case SDL_EVENT_QUIT:
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+          if (!shutdown_requested) {
+            get_event_system()->trigger_event("shutdown-requested");
           }
-        } break;
+          break;
 
         default: {
         } break;
@@ -310,32 +558,157 @@ namespace other {
       subsystem<renderer_backend>::get()->handle_event(&event);
       on_event(&event);
     }
+  }
 
-    poll_coroutines();
+  void driver::handle_request_session_information(integer_t session_id, message&& msg) {
+    session_information_response response;
+    response.name = get_project_name();
+    response.executable = get_current_exe_full_path();
+    response.working_directory = std::filesystem::current_path().string();
 
-    net_context->io_context.poll();
-    if (net_context->io_context.stopped()) {
-      net_context->io_context.restart();
+    CORE_LOG_TRACE("Session Information Response for session [{}]:", session_id);
+    CORE_LOG_TRACE("   - Name: {}", response.name);
+    CORE_LOG_TRACE("   - Executable: {}", response.executable);
+    CORE_LOG_TRACE("   - Working Directory: {}", response.working_directory);
+
+    response.name_flag = response.name != "";
+    response.executable_flag = response.executable != "";
+    response.working_directory_flag = response.working_directory != "";
+
+    message resp_msg;
+    resp_msg.header = {
+      .category = RESPONSE,
+      .id = SESSION_INFORMATION,
+    };
+
+    resp_msg.data.append_range(response.as_buffer());
+
+    message tx_msg;
+    tx_msg.header = {
+      .category = COMMAND,
+      .id = SESSION_TX_MESSAGE,
+    };
+
+    command_session_tx_message tx_session_msg;
+    tx_session_msg.session_id = session_id;
+    tx_session_msg.msg = std::move(resp_msg);
+    tx_msg.data.append_range(tx_session_msg.as_buffer());
+
+    send_message_and_detach_response(std::move(tx_msg), nullptr);
+  }
+
+  void driver::handle_response_session_information(integer_t session_id, message&& msg) {
+    session_information_response response = other_message_spec::parse<session_information_response>(std::span(msg.data));
+    handle_session_information_response(session_id, std::move(response));
+  }
+
+  void driver::on_acknowledge_command_environment_load_scene(message_header header, std::span<const uint8_t> data) {
+    CORE_LOG_DEBUG("Received acknowledgment for ENVIRONMENT_LOAD_SCENE command (header: {})", header);
+
+    /// expect a udp_binding_information structure in data
+    acknowledgement ackmsg = other_message_spec::parse<acknowledgement>(data);
+    if (ackmsg.ack_nack != 0x01) {
+      CORE_LOG_ERROR("ENVIRONMENT_LOAD_SCENE command was NACKed by server (header: {})", header);
+      return;
     }
 
-    auto msg_opt = net_context->net_thread_message_bus.receive_message();
-    if (msg_opt.has_value()) {
-      process_network_thread_messages(std::move(*msg_opt));
+    if (ackmsg.extra_data_length == 0) {
+      CORE_LOG_ERROR("ENVIRONMENT_LOAD_SCENE acknowledgment from server missing UDP binding information (header: {})", header);
+      return;
     }
+    if (ackmsg.extra_data.size() < ackmsg.extra_data_length) {
+      CORE_LOG_ERROR("ENVIRONMENT_LOAD_SCENE acknowledgment from server has invalid UDP binding information length (header: {})", header);
+      return;
+    }
+
+    udp_binding_information binding_info = other_message_spec::parse<udp_binding_information>(std::span<const uint8_t>(ackmsg.extra_data));
+
+    CORE_LOG_DEBUG("ENVIRONMENT_LOAD_SCENE command acknowledged successfully by server. Requesting UDP stream");
+    CORE_LOG_DEBUG("  - Requires UDP Binding: {}", binding_info.endpoint.port != 0 && binding_info.remote_endpoint.port != 0 ? "Yes" : "No");
+    if (binding_info.endpoint.port != 0 || binding_info.remote_endpoint.port != 0) {
+      CORE_LOG_DEBUG("  - Check-in Hash: {}", binding_info.check_in_hash);
+      CORE_LOG_DEBUG("  - Local Endpoint: [{}]", binding_point::write_string(binding_info.endpoint));
+      CORE_LOG_DEBUG("  - Remote Endpoint: [{}]", binding_point::write_string(binding_info.remote_endpoint));
+      request_scene_udp_binding(binding_info);
+    }
+  }
+
+  void driver::on_timeout_environment_load_scene(message_header header) {
+    CORE_LOG_ERROR("Timeout while waiting for acknowledgment of ENVIRONMENT_LOAD_SCENE command (header: {})", header);
+    CORE_LOG_WARN("Does the active project have a scene using that name already?");
+
+    // unload_active_scene();
+  }
+
+  void driver::request_scene_udp_binding(udp_binding_information address) {
+    message udp_request;
+    udp_request.header = {
+      .category = REQUEST,
+      .id = NEW_UDP_STREAM_BINDING,
+    };
+
+    CORE_LOG_DEBUG("Requesting new UDP stream binding @ address [{}]", binding_point::write_string(address.endpoint));
+    CORE_LOG_DEBUG("  - Remote endpoint: [{}]", binding_point::write_string(address.remote_endpoint));
+
+    new_udp_stream_binding_request req;
+    req.address = address.endpoint;
+    req.remote_address = address.remote_endpoint;
+    udp_request.data.append_range(req.as_buffer());
+
+    send_message_and_wait_response(std::move(udp_request), seconds(5), message_handler{ this, &driver::on_respond_new_udp_stream_binding, &driver::on_timeout_new_udp_stream_binding });
+  }
+
+  void driver::on_respond_new_udp_stream_binding(message_header header, std::span<const uint8_t> data) {
+    OTHER_ASSERT(active_scene != nullptr, "No active scene to set UDP handle on.");
+    CORE_LOG_INFO("Received response for NEW_UDP_STREAM_BINDING (header: {})", header);
+
+    new_udp_stream_binding_response resp = other_message_spec::parse<new_udp_stream_binding_response>(data);
+    integer_t binding_id = resp.binding_id;
+
+    if (resp.binding_id < 0) {
+      CORE_LOG_ERROR("Received invalid UDP stream binding ID from server: {}", resp.binding_id);
+      return;
+    }
+
+    active_streams.push_back({ .stream_id = binding_id });
+
+    CORE_LOG_INFO("Received UDP stream binding from server: {}", resp.binding_id);
+    active_scene->update_stream_id = binding_id;
+
+    if (primary_role == driver_role::CLIENT) {
+      CORE_LOG_DEBUG("No check-in required for UDP stream binding ID: {}", binding_id);
+
+      message msg;
+      msg.header = {
+        .category = COMMAND,
+        .id = STREAM_SEND_UDP_DATAGRAM,
+      };
+
+      command_stream_send_udp_datagram udp_msg;
+      udp_msg.stream_id = binding_id;
+      udp_msg.datagram.type = udp_packet_type::UDP_CHECK_IN;
+      udp_msg.datagram.packet.check_in = {
+        .hash = active_scene->id,
+      };
+
+      msg.data.append_range(udp_msg.as_buffer());
+      send_message_and_detach_response(std::move(msg), { this });
+
+    } else {
+      CORE_LOG_DEBUG("UDP binding ID: {} waiting for check-in from server.", binding_id);
+    }
+  }
+
+  void driver::on_timeout_new_udp_stream_binding(message_header header) {
+    CORE_LOG_ERROR("Timeout while waiting for NEW_UDP_STREAM_BINDING response (header: {})", header);
   }
 
   void driver::handle_session_event_rx_message(message&& msg) {
     auto bytes = std::span(msg.data);
 
-    integer_t session_id = *reinterpret_cast<integer_t*>(bytes.data());
-    bytes = bytes.subspan(sizeof(integer_t));
-
-    message_header msg_header = *reinterpret_cast<message_header*>(bytes.data());
-    bytes = bytes.subspan(sizeof(message_header));
-
-    message rx_msg;
-    rx_msg.header = msg_header;
-    rx_msg.data.append_range(std::span(bytes));
+    session_event_rx_message session_msg = other_message_spec::parse<session_event_rx_message>(bytes);
+    integer_t session_id = session_msg.session_id;
+    message rx_msg = std::move(session_msg.msg);
 
     switch (rx_msg.header.category) {
       case NOTIFICATION:
@@ -412,128 +785,151 @@ namespace other {
     }
   }
 
-  void driver::handle_request_session_information(integer_t session_id, message&& msg) {
-    session_information_response response;
-    response.name = get_project_name();
-    response.executable = get_current_exe_full_path();
-    response.working_directory = std::filesystem::current_path().string();
+  void driver::handle_notification_stream_receive_udp_datagram(message&& msg) {
+    notification_stream_rx_datagram udp_msg = other_message_spec::parse<notification_stream_rx_datagram>(msg.data);
+    integer_t stream_id = udp_msg.stream_id;
+    udp_datagram datagram = udp_msg.datagram;
 
-    CORE_LOG_TRACE("Session Information Response for session [{}]:", session_id);
-    CORE_LOG_TRACE("   - Name: {}", response.name);
-    CORE_LOG_TRACE("   - Executable: {}", response.executable);
-    CORE_LOG_TRACE("   - Working Directory: {}", response.working_directory);
+    CORE_LOG_DEBUG("Received UDP datagram on stream ID: {} of type: {}", stream_id, static_cast<uint8_t>(datagram.type));
 
-    response.name_flag = response.name != "";
-    response.executable_flag = response.executable != "";
-    response.working_directory_flag = response.working_directory != "";
+    switch (datagram.type) {
+      case udp_packet_type::UDP_CHECK_IN: {
+        udp_check_in check_in = datagram.packet.check_in;
+        if (check_in.hash != active_scene->id) {
+          CORE_LOG_ERROR("Received UDP check-in with invalid hash: {} (expected: {})", check_in.hash, active_scene->id);
+        } else {
+          CORE_LOG_INFO("Received valid UDP check-in on stream ID: {} for scene ID: {}", stream_id, check_in.hash);
+        }
+      } break;
 
-    message resp_msg;
-    resp_msg.header = {
-      .category = RESPONSE,
-      .id = SESSION_INFORMATION,
-    };
-
-    resp_msg.data.append_range(response.as_buffer());
-
-    message tx_msg;
-    tx_msg.header = {
-      .category = COMMAND,
-      .id = SESSION_TX_MESSAGE,
-    };
-
-    const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
-    const uint8_t* session_msg_header_bytes = reinterpret_cast<const uint8_t*>(&resp_msg.header);
-    const uint8_t* session_msg_data_bytes = reinterpret_cast<const uint8_t*>(resp_msg.data.data());
-    tx_msg.data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
-    tx_msg.data.append_range(std::span(session_msg_header_bytes, sizeof(message_header)));
-    tx_msg.data.append_range(std::span(session_msg_data_bytes, resp_msg.data.size()));
-
-    send_message_and_detach_response(std::move(tx_msg), nullptr);
+      default:
+        CORE_LOG_WARN("Received unknown UDP packet type: {} on stream ID: {}", static_cast<uint8_t>(datagram.type), stream_id);
+        break;
+    }
   }
 
-  void driver::handle_response_session_information(integer_t session_id, message&& msg) {
-    session_information_response response = other_message_spec::parse<session_information_response>(std::span(msg.data));
-    handle_session_information_response(session_id, std::move(response));
-  }
-
-  void driver::on_acknowledge_command_environment_load_scene(message_header header, std::span<const uint8_t> data) {
-    CORE_LOG_DEBUG("Received acknowledgment for ENVIRONMENT_LOAD_SCENE command (header: {})", header);
-
-    request_scene_udp_binding();
-  }
-
-  void driver::on_timeout_environment_load_scene(message_header header) {
-    CORE_LOG_ERROR("Timeout while waiting for acknowledgment of ENVIRONMENT_LOAD_SCENE command (header: {})", header);
-    CORE_LOG_WARN("Does the active project have a scene using that name already?");
-
-    // unload_active_scene();
-  }
-
-  void driver::request_scene_udp_binding(opt<uint16_t> port) {
-    message udp_request;
-    udp_request.header = {
-      .category = REQUEST,
-      .id = NEW_UDP_STREAM_BINDING,
-    };
-
-    if (port.has_value()) {
-      udp_request.data.push_back(0x01);
-      const uint8_t* port_bytes = reinterpret_cast<const uint8_t*>(&port.value());
-      udp_request.data.append_range(std::span(port_bytes, sizeof(uint16_t)));
-    } else {
-      udp_request.data.push_back(0x00);
+  void driver::handle_notification_session_check_in(message&& msg) {
+    notification_session_check_in check_in = other_message_spec::parse<notification_session_check_in>(msg.data);
+    integer_t session_id = check_in.session_id;
+    if (session_id < 0) {
+      CORE_LOG_ERROR("Invalid session ID received in session check-in notification: {}", session_id);
+      return;
     }
 
-    send_message_and_wait_response(
-      std::move(udp_request),
-      seconds(5),
-      std::bind_front(&driver::on_respond_new_udp_stream_binding, this),
-      std::bind_front(&driver::on_timeout_new_udp_stream_binding, this)
-    );
+    if (session_id == 0) {
+      CORE_LOG_ERROR("Received session check-in notification with session ID 0.");
+      return;
+    }
+
+    CORE_LOG_INFO("Session [{}] checked in.", session_id);
+    if (primary_role == driver_role::SERVER) {
+      /// new connection so it will not be in pending, but check for collision with ids
+      if (auto itr = std::ranges::find_if(app_list.pending_apps, [&](const application_list::other_application& app) { return session_id == app.id; });
+          itr != app_list.pending_apps.end()) {
+        /// \todo handle collision, start (new-id-protocol)
+        ///      for now error out
+        CORE_LOG_ERROR("Server received a session check in for an already pending Other application : {}", session_id);
+        return;
+      }
+
+      application_list::other_application* app = nullptr;
+      auto itr = app_list.other_apps.find(session_id);
+      if (itr != app_list.other_apps.end()) {
+        /// \todo handle collision, start (new-id-protocol)
+        ///      for now error out
+        CORE_LOG_ERROR("Server received a session check in for an already connected Other application : {}", session_id);
+        return;
+      }
+
+      app_list.other_apps.emplace(session_id, application_list::other_application{ .id = session_id });
+      app = &app_list.other_apps[session_id];
+      register_other_application(session_id, app);
+    } else if (primary_role == driver_role::CLIENT) {
+      client_session_id = session_id;
+    }
   }
 
-  void driver::on_respond_new_udp_stream_binding(message_header header, std::span<const uint8_t> data) {
-    OTHER_ASSERT(active_scene != nullptr, "No active scene to set UDP handle on.");
-    CORE_LOG_INFO("Received response for NEW_UDP_STREAM_BINDING (header: {})", header);
+  void driver::handle_notification_session_closed(message&& msg) {
+    notification_session_closed closed = other_message_spec::parse<notification_session_closed>(msg.data);
+    integer_t session_id = closed.session_id;
+    if (session_id < 0) {
+      CORE_LOG_ERROR("Invalid session ID received in session closed notification: {}", session_id);
+      return;
+    }
 
-    new_udp_stream_binding_response resp = other_message_spec::parse<new_udp_stream_binding_response>(data);
-    active_scene_udp_handle = resp.handle;
-    active_scene->set_udp_handle(&active_scene_udp_handle);
-
-    CORE_LOG_INFO("Received UDP stream binding from server: {}", binding_point::write_string(active_scene_udp_handle.endpoint));
-
-    on_active_scene_udp_handle_bound(&active_scene_udp_handle);
-  }
-
-  void driver::on_timeout_new_udp_stream_binding(message_header header) {
-    CORE_LOG_ERROR("Timeout while waiting for NEW_UDP_STREAM_BINDING response (header: {})", header);
-    // binding_point binding = other_message_spec::parse<binding_point>(data);
-    // CORE_LOG_INFO("Received UDP stream binding from server: {}:{}", ip_to_string(binding.ip), binding.port);
-    // udp_streamer->bind(binding.ip, binding.port);
+    CORE_LOG_INFO("Session [{}] closed.", session_id);
+    on_notification_session_closed(session_id);
   }
 
   void driver::handle_acknowledgement_ack(message&& msg) {
     CORE_LOG_DEBUG("  - ACK");
-    if (msg.data.size() >= sizeof(message_header)) {
-      auto bytes = std::span(msg.data);
-      message_header acked_header = *reinterpret_cast<const message_header*>(bytes.data());
-      auto itr = std::ranges::find_if(pending_acks, [&acked_header](const pending_ack& ack) { return ack.header == acked_header; });
+    acknowledgement ackmsg = other_message_spec::parse<acknowledgement>(msg.data);
+    message_header acked_header = ackmsg.acked_header;
 
-      if (itr != pending_acks.end()) {
-        CORE_LOG_DEBUG("Acknowledgment received for message {}", acked_header);
-        itr->timer.cancel();
-
-        if (itr->ack_callback) {
-          CORE_LOG_TRACE("Invoking acknowledgment callback for message {}", acked_header);
-          itr->ack_callback(acked_header, msg.data);
-        }
-        pending_acks.erase(itr);
-      } else {
-        CORE_LOG_ERROR("Received acknowledgment for unknown message {}", acked_header);
-      }
-    } else {
-      CORE_LOG_WARN("Received invalid acknowledgment message size");
+    auto itr = std::find_if(ack_list.pending_acks.begin(), ack_list.pending_acks.end(), [&](const acknowledgement_list::pending_ack& ack) {
+      return acked_header == ack.header;
+    });
+    if (itr == ack_list.pending_acks.end()) {
+      CORE_LOG_ERROR("Received acknowledgment for unknown message {}", acked_header);
+      return;
     }
+
+    CORE_LOG_DEBUG("Acknowledgment received for message {}", acked_header);
+    itr->timer.cancel();
+
+    if (itr->handler.handle_msg) {
+      CORE_LOG_TRACE("Invoking acknowledgment callback for message {}", acked_header);
+      (this->*itr->handler.handle_msg)(acked_header, msg.data);
+    }
+    ack_list.pending_acks.erase(itr);
+  }
+
+  void driver::on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data) {
+    CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
+    net_context->net_thread->shutdown();
+    on_shutdown_confirm();
+    process_driver_event(driver_event::DRIVER_EVENT_READY);
+  }
+
+  void driver::on_timeout_shutdown_request_network_thread(message_header header) {
+    /// force shutdown
+    CORE_LOG_WARN("Timeout waiting for network thread to acknowledge shutdown request, forcing shutdown...");
+    net_context->net_thread->force_shutdown();
+    on_shutdown_confirm();
+    process_driver_event(driver_event::DRIVER_EVENT_READY);
+  }
+
+  void driver::on_ack_session_listen_for_network_thread(message_header header, const std::span<const uint8_t> data) {
+    CORE_LOG_INFO("Network thread acknowledged event request at session check in for session [{}]", header.id);
+
+    /// register event for thread check in
+    natural_t event_id = get_event_system()->register_timed_event("status-check:[network-thread]", seconds(1), /* recurring = */ true);
+    if (event_id == 0) {
+      CORE_LOG_ERROR("Failed to register event for network thread check-in");
+      return;
+    }
+    get_event_system()->add_listener(event_id, [this](const value& ec) {
+      message msg;
+      msg.header = {
+        .category = CONTROL,
+        .id = PING,
+      };
+
+      control_ping ping_msg;
+
+      net_context->netw_thread_heartbeat_timeout_id = set_timeout(milliseconds(250), [this](natural_t timeout_id) {
+        CORE_LOG_ERROR("Network thread failed to respond to PING within timeout period");
+        /// handle_network_thread_unresponsive();
+      });
+
+      send_to_network_thread(std::move(msg));
+    });
+    /// ready : initializing -> running
+    process_driver_event(driver_event::DRIVER_EVENT_READY);
+  }
+
+  void driver::on_timeout_session_listen_for_network_thread(message_header header) {
+    CORE_LOG_WARN("Network thread timed out waiting for event request at session check in for session [{}]", header.id);
   }
 
   void driver::handle_control_ping(message&& msg) {
@@ -550,10 +946,8 @@ namespace other {
   }
 
   void driver::handle_control_pong(message&& msg) {
-    size_t cursor = 0;
-    integer_t session = serialization::read_value<integer_t>(msg.data, cursor);
-
-    if (session == 0) {
+    control_pong pong_msg = other_message_spec::parse<control_pong>(msg.data);
+    if (pong_msg.session_id == 0) {
       clear_timeout(net_context->netw_thread_heartbeat_timeout_id);
     }
     /// else handle real session
@@ -563,12 +957,29 @@ namespace other {
   }
 
   void driver::handle_command_environment_load_scene(integer_t session_id, message&& msg) {
-    OTHER_ASSERT(msg.data.size() >= sizeof(integer_t), "Invalid environment load scene command message size");
-
-    load_empty_scene_command scene_cmd = other_message_spec::parse<load_empty_scene_command>(msg.data);
+    command_load_empty_scene scene_cmd = other_message_spec::parse<command_load_empty_scene>(msg.data);
 
     natural_t scene_id = create_empty_scene(scene_cmd.scene_name);
     set_scene_to_active(scene_id);
+    OTHER_ASSERT(active_scene != nullptr, "Failed to set active scene after loading empty scene");
+
+    /// if we received this them we are the 'server' part of the UDP stream (i.e. currently hosting the scene)
+    /// so we name these in terms of us being the server
+
+    /// \todo check if these are ok, and if not response with better ones
+    udp_binding_information binding_info;
+    binding_info.endpoint = scene_cmd.server_udp_address;
+    binding_info.remote_endpoint = scene_cmd.udp_address;
+    CORE_LOG_DEBUG("Suggested Scene Endpoints local = [{}], remote = [{}]", binding_point::write_string(binding_info.endpoint), binding_point::write_string(binding_info.remote_endpoint));
+    binding_info.check_in_hash = active_scene->id;  // just use scene id for now
+
+    bool request_udp_binding = scene_cmd.requires_udp_binding == 0x01;
+    if (request_udp_binding) {
+      CORE_LOG_DEBUG("Scene '{}' requires UDP binding, requesting from server...", scene_cmd.scene_name);
+      request_scene_udp_binding(binding_info);
+    } else {
+      CORE_LOG_DEBUG("Scene '{}' does not require UDP binding.", scene_cmd.scene_name);
+    }
 
     message ack_msg;
     ack_msg.header = {
@@ -576,48 +987,167 @@ namespace other {
       .id = ACK,
     };
 
-    message_header acked_header = {
-      .category = COMMAND,
-      .id = ENVIRONMENT_LOAD_SCENE,
-    };
+    acknowledgement ackmsg;
+    ackmsg.acked_header = msg.header;
+    ackmsg.ack_nack = 0x01;  // Assuming 0x01 means ACK
 
-    const uint8_t* acked_header_bytes = reinterpret_cast<const uint8_t*>(&acked_header);
-    ack_msg.data.append_range(std::span(acked_header_bytes, sizeof(message_header)));
-    ack_msg.data.push_back(0x01);
+    /// \todo send back final addressess, currently just echoing what was sent
+    udp_binding_information client_binding_info;
+    client_binding_info.endpoint = scene_cmd.udp_address;
+    client_binding_info.remote_endpoint = scene_cmd.server_udp_address;
+    client_binding_info.check_in_hash = active_scene->id;  // just use scene id for now
+    ackmsg.extra_data.append_range(client_binding_info.as_buffer());
+    ack_msg.data.append_range(ackmsg.as_buffer());
 
+    CORE_LOG_DEBUG("acknowledging ENVIRONMENT_LOAD_SCENE command");
     message tx_msg;
     tx_msg.header = {
       .category = COMMAND,
       .id = SESSION_TX_MESSAGE,
     };
-    const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
-    const uint8_t* ack_msg_header_bytes = reinterpret_cast<const uint8_t*>(&ack_msg.header);
-    const uint8_t* ack_msg_data_bytes = reinterpret_cast<const uint8_t*>(ack_msg.data.data());
-    tx_msg.data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
-    tx_msg.data.append_range(std::span(ack_msg_header_bytes, sizeof(message_header)));
-    tx_msg.data.append_range(std::span(ack_msg_data_bytes, ack_msg.data.size()));
 
-    net_context->net_thread_message_bus.send_message(std::move(tx_msg));
+    command_session_tx_message tx_session_msg;
+    tx_session_msg.session_id = session_id;
+    tx_session_msg.msg = std::move(ack_msg);
+    tx_msg.data.append_range(tx_session_msg.as_buffer());
 
-    CORE_LOG_INFO("Driver loading empty scene '{}' for session {}", scene_cmd.scene_name, scene_cmd.session_id_flag == 0x01 ? std::to_string(scene_cmd.session_id) : "ALL SESSIONS");
-    /// \todo fix hardcoded port, we also may not be server
-    request_scene_udp_binding(49223);
+    send_to_network_thread(std::move(tx_msg));
+  }
+
+  void driver::session_check_in_request(integer_t session_id) {
+    message msg;
+    msg.header = {
+      .category = REQUEST,
+      .id = SESSION_CHECK_IN,
+    };
+
+    struct session_check_in_request request;
+    request.session_id = session_id;
+    msg.data.append_range(request.as_buffer());
+    // send_message_and_detach_response(std::move(msg), std::bind_front(&server::on_respond_session_check_in_network_thread, this));
+  }
+
+  void driver::session_application_information_request(integer_t session_id, application_list::other_application* app) {
+    if (app == nullptr) {
+      auto itr = app_list.other_apps.find(session_id);
+      if (itr == app_list.other_apps.end()) {
+        CORE_LOG_ERROR("Cannot send session information request to unknown Other application session ID {}", session_id);
+        return;
+      }
+      app = &itr->second;
+    }
+    if (app == nullptr) {
+      CORE_LOG_ERROR("Application pointer is null for session ID {}", session_id);
+      return;
+    }
+
+    session_information_request request;
+    request.project_data_flag = !app->name.has_value() && !app->executable.has_value() && !app->working_directory.has_value();
+    if (request.project_data_flag == 0) {
+      request.name_flag = app->name.has_value() ? 1 : 0;
+      request.executable_flag = app->executable.has_value() ? 1 : 0;
+      request.working_directory_flag = app->working_directory.has_value() ? 1 : 0;
+    }
+
+    if (request.project_data_flag == 0 && request.name_flag == 0 && request.executable_flag == 0 && request.working_directory_flag == 0) {
+      print_session_information(app);
+      return;
+    } else {
+      CORE_LOG_INFO("Requesting session information from Other application session [{}]", session_id);
+    }
+
+    message session_msg;
+    session_msg.header = {
+      .category = REQUEST,
+      .id = SESSION_INFORMATION,
+    };
+    session_msg.data.append_range(request.as_buffer());
+
+    message msg;
+    msg.header = {
+      .category = COMMAND,
+      .id = SESSION_TX_MESSAGE,
+    };
+
+    command_session_tx_message tx_session_msg;
+    tx_session_msg.session_id = session_id;
+    tx_session_msg.msg = std::move(session_msg);
+    msg.data.append_range(tx_session_msg.as_buffer());
+
+    send_to_network_thread(std::move(msg));
   }
 
   void driver::handle_response(message&& msg) {
     CORE_LOG_DEBUG("  - RESPONSE");
-    auto itr = std::ranges::find_if(pending_responses, [&msg](const pending_response& response) { return response.header.id == msg.header.id; });
+    auto itr = std::ranges::find_if(resp_list.pending_responses, [&msg](const response_list::pending_response& response) { return response.header.id == msg.header.id; });
 
-    if (itr != pending_responses.end()) {
+    if (itr != resp_list.pending_responses.end()) {
       CORE_LOG_DEBUG("Response received for message {}", msg.header);
-      if (itr->response_callback) {
+      if (itr->handler.handle_msg != nullptr) {
         CORE_LOG_TRACE("Invoking response callback for message {}", msg.header);
-        itr->response_callback(msg.header, msg.data);
+        (this->*itr->handler.handle_msg)(msg.header, msg.data);
       }
-      pending_responses.erase(itr);
+      resp_list.pending_responses.erase(itr);
     } else {
       CORE_LOG_ERROR("Received response for unknown message {}", msg.header);
     }
+  }
+
+  void driver::on_respond_session_check_in(message_header header, const std::span<const uint8_t> data) {
+    session_check_in_response response = other_message_spec::parse<session_check_in_response>(data);
+    integer_t session_id = response.session_id;
+
+    auto itr = std::ranges::find_if(app_list.pending_apps, [&](const application_list::other_application& app) { return session_id == app.id; });
+    if (itr == app_list.pending_apps.end()) {
+      CORE_LOG_ERROR("Server received a session check in for an unknown Other application : {}", session_id);
+      return;
+    }
+
+    auto [app_itr, success] = app_list.other_apps.insert({ session_id, std::move(*itr) });
+    if (!success || app_itr == app_list.other_apps.end()) {
+      CORE_LOG_ERROR("Failed to save Other application session ID from check-in : {}", session_id);
+      return;
+    }
+    app_list.pending_apps.erase(itr);
+    register_other_application(session_id, &app_itr->second);
+  }
+
+  void driver::handle_session_information_response(integer_t session_id, session_information_response&& response) {
+    auto itr = app_list.other_apps.find(session_id);
+    if (itr == app_list.other_apps.end()) {
+      CORE_LOG_ERROR("Cannot process session information response for unknown Other application session ID {}", session_id);
+      return;
+    }
+    application_list::other_application& app = itr->second;
+
+    if (response.project_data_flag || response.name_flag) {
+      app.name = response.name;
+    }
+    if (response.project_data_flag || response.executable_flag) {
+      app.executable = filepath(response.executable);
+    }
+    if (response.project_data_flag || response.working_directory_flag) {
+      app.working_directory = filepath(response.working_directory);
+    }
+
+    if (!std::filesystem::exists(*app.executable)) {
+      CORE_LOG_ERROR("Executable path '{}' for Other application session [{}] does not exist", app.executable->string(), session_id);
+      app.executable = {};
+    }
+
+    if (!std::filesystem::exists(*app.working_directory)) {
+      CORE_LOG_ERROR("Working directory path '{}' for Other application session [{}] does not exist", app.working_directory->string(), session_id);
+      app.working_directory = {};
+    }
+
+    print_session_information(&app);
+  }
+
+  void driver::print_session_information(application_list::other_application* app) {
+    CORE_LOG_INFO("Other application session [{}] information:", app->id);
+    CORE_LOG_INFO("   - Name: {}", app->get_name());
+    CORE_LOG_INFO("   - Executable: {}", app->executable.has_value() ? app->executable->string() : "<none>");
+    CORE_LOG_INFO("   - Working Directory: {}", app->working_directory.has_value() ? app->working_directory->string() : "<none>");
   }
 
   scope<renderer> driver::get_renderer() const {
@@ -652,48 +1182,50 @@ namespace other {
     launch_process(working_dir, exe_name, args);
   }
 
-  natural_t driver::send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback) {
-    pending_ack ack{
+  natural_t driver::send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, message_handler handler) {
+    acknowledgement_list::pending_ack ack{
       .header = msg.header,
       .timeout_duration = timeout,
-      .ack_callback = ack_callback,
-      .timeout_callback = timeout_callback,
+      .handler = handler,
       .timer = asio::steady_timer(net_context->io_context),
     };
     CORE_LOG_DEBUG("PENDING-ACK {} (timeout: {} us)", ack.header, ack.timeout_duration.count());
 
     {
-      auto itr = std::find_if(pending_acks.begin(), pending_acks.end(), [&ack](const pending_ack& existing_ack) {
+      auto itr = std::find_if(ack_list.pending_acks.begin(), ack_list.pending_acks.end(), [&ack](const acknowledgement_list::pending_ack& existing_ack) {
         return existing_ack.header == ack.header;
       });
-      OTHER_ASSERT(itr == pending_acks.end(), "Acknowledgment for message ID {} already pending", ack.header);
+      OTHER_ASSERT(itr == ack_list.pending_acks.end(), "Acknowledgment for message ID {} already pending", ack.header);
     }
 
     ack.sent_time = std::chrono::steady_clock::now();
-    ack.id = next_pending_ack_id++;
-    net_context->net_thread_message_bus.send_message(std::move(msg));
-    auto ack_itr = pending_acks.insert(pending_acks.end(), std::move(ack));
-    OTHER_ASSERT(ack_itr != pending_acks.end(), "Failed to insert pending acknowledgment for message ID {}", ack.header.id);
+    ack.id = ack_list.next_pending_ack_id++;
+    send_to_network_thread(std::move(msg));
+    auto ack_itr = ack_list.pending_acks.insert(ack_list.pending_acks.end(), std::move(ack));
+    OTHER_ASSERT(ack_itr != ack_list.pending_acks.end(), "Failed to insert pending acknowledgment for message ID {}", ack.header.id);
 
     ack_itr->timer.expires_after(timeout);
     ack_itr->timer.async_wait([this, stime = ack.sent_time](const asio::error_code& ec) {
+      if (ec && ec == asio::error::operation_aborted) {
+        return;
+      }
       if (!ec) {
-        auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
-        if (itr == pending_acks.end()) {
+        auto itr = std::ranges::find_if(ack_list.pending_acks, [&](const acknowledgement_list::pending_ack& ack) { return ack.sent_time == stime; });
+        if (itr == ack_list.pending_acks.end()) {
           CORE_LOG_ERROR("Failed to find ack for timeout callback!");
         }
 
         CORE_LOG_WARN("Acknowledgment timeout for message {}", itr->header);
-        if (itr->timeout_callback) {
-          itr->timeout_callback(itr->header);
+        if (itr->handler.on_timeout) {
+          (this->*itr->handler.on_timeout)(itr->header);
         }
       }
 
       // remove from pending acks
-      auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
-      if (itr != pending_acks.end()) {
+      auto itr = std::ranges::find_if(ack_list.pending_acks, [&](const acknowledgement_list::pending_ack& ack) { return ack.sent_time == stime; });
+      if (itr != ack_list.pending_acks.end()) {
         CORE_LOG_DEBUG("Removing pending acknowledgment for message ID {}", itr->header.id);
-        pending_acks.erase(itr);
+        ack_list.pending_acks.erase(itr);
       }
     });
 
@@ -701,60 +1233,58 @@ namespace other {
   }
 
   void driver::cancel_acknowledgment(natural_t ack_id) {
-    auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == ack_id; });
-    if (itr != pending_acks.end()) {
+    auto itr = std::ranges::find_if(ack_list.pending_acks, [&](const acknowledgement_list::pending_ack& ack) { return ack.id == ack_id; });
+    if (itr != ack_list.pending_acks.end()) {
       CORE_LOG_DEBUG("Cancelling pending acknowledgment for message ID {}", itr->header.id);
       itr->timer.cancel();
-      pending_acks.erase(itr);
+      ack_list.pending_acks.erase(itr);
     }
   }
 
-  void driver::send_message_and_detach_response(message&& msg, pending_response::on_response response_callback) {
-    pending_response response{
+  void driver::send_message_and_detach_response(message&& msg, message_handler handler) {
+    response_list::pending_response response{
       .header = msg.header,
       .sent_time = std::chrono::steady_clock::now(),
-      .response_callback = response_callback,
-      .timeout_callback = nullptr,
+      .handler = handler,
       .timer = asio::steady_timer(net_context->io_context),
     };
 
     {
-      auto itr = std::find_if(pending_responses.begin(), pending_responses.end(), [&response](const pending_response& existing_response) {
+      auto itr = std::find_if(resp_list.pending_responses.begin(), resp_list.pending_responses.end(), [&response](const response_list::pending_response& existing_response) {
         return existing_response.header == response.header;
       });
-      OTHER_ASSERT(itr == pending_responses.end(), "Response for message ID {} already pending", response.header.id);
+      OTHER_ASSERT(itr == resp_list.pending_responses.end(), "Response for message ID {} already pending", response.header.id);
     }
 
-    net_context->net_thread_message_bus.send_message(std::move(msg));
-    if (response_callback == nullptr) {
+    send_to_network_thread(std::move(msg));
+    if (handler.handle_msg == nullptr) {
       return;
     }
 
-    auto resp_itr = pending_responses.insert(pending_responses.end(), std::move(response));
-    OTHER_ASSERT(resp_itr != pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
+    auto resp_itr = resp_list.pending_responses.insert(resp_list.pending_responses.end(), std::move(response));
+    OTHER_ASSERT(resp_itr != resp_list.pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
   }
 
-  natural_t driver::send_message_and_wait_response(message&& msg, microseconds timeout, pending_response::on_response response_callback, pending_response::on_timeout timeout_callback) {
-    pending_response response{
+  natural_t driver::send_message_and_wait_response(message&& msg, microseconds timeout, message_handler handler) {
+    response_list::pending_response response{
       .header = msg.header,
       .sent_time = std::chrono::steady_clock::now(),
-      .response_callback = response_callback,
-      .timeout_callback = timeout_callback,
+      .handler = handler,
       .timer = asio::steady_timer(net_context->io_context),
     };
 
     {
-      auto itr = std::find_if(pending_responses.begin(), pending_responses.end(), [&response](const pending_response& existing_response) {
+      auto itr = std::find_if(resp_list.pending_responses.begin(), resp_list.pending_responses.end(), [&response](const response_list::pending_response& existing_response) {
         return existing_response.header == response.header;
       });
-      OTHER_ASSERT(itr == pending_responses.end(), "Response for message ID {} already pending", response.header.id);
+      OTHER_ASSERT(itr == resp_list.pending_responses.end(), "Response for message ID {} already pending", response.header.id);
     }
 
-    net_context->net_thread_message_bus.send_message(std::move(msg));
+    send_to_network_thread(std::move(msg));
 
-    response.id = next_pending_response_id++;
-    auto resp_itr = pending_responses.insert(pending_responses.end(), std::move(response));
-    OTHER_ASSERT(resp_itr != pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
+    response.id = resp_list.next_pending_response_id++;
+    auto resp_itr = resp_list.pending_responses.insert(resp_list.pending_responses.end(), std::move(response));
+    OTHER_ASSERT(resp_itr != resp_list.pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
 
     // set up timeout
     resp_itr->timer.expires_after(timeout);
@@ -763,31 +1293,31 @@ namespace other {
         return;
       }
 
-      auto itr = std::ranges::find_if(pending_responses, [&](const pending_response& resp) { return resp.sent_time == stime; });
-      OTHER_ASSERT(itr != pending_responses.end(), "Failed to find response for timeout callback!");
-      OTHER_ASSERT(itr->timeout_callback != nullptr, "Timeout callback is null for message ID {}", itr->header.id);
+      auto itr = std::ranges::find_if(resp_list.pending_responses, [&](const response_list::pending_response& resp) { return resp.sent_time == stime; });
+      OTHER_ASSERT(itr != resp_list.pending_responses.end(), "Failed to find response for timeout callback!");
+      OTHER_ASSERT(itr->handler.on_timeout != nullptr, "Timeout callback is null for message ID {}", itr->header.id);
 
       CORE_LOG_WARN("Response timeout for message {}", itr->header);
-      itr->timeout_callback(itr->header);
+      (this->*itr->handler.on_timeout)(itr->header);
 
-      pending_responses.erase(itr);
+      resp_list.pending_responses.erase(itr);
     });
 
     return resp_itr->id;
   }
 
   void driver::cancel_response(natural_t response_id) {
-    auto itr = std::ranges::find_if(pending_responses, [&](const pending_response& resp) { return resp.id == response_id; });
-    if (itr != pending_responses.end()) {
+    auto itr = std::ranges::find_if(resp_list.pending_responses, [&](const response_list::pending_response& resp) { return resp.id == response_id; });
+    if (itr != resp_list.pending_responses.end()) {
       CORE_LOG_DEBUG("Cancelling pending response for message ID {}", itr->header.id);
       itr->timer.cancel();
-      pending_responses.erase(itr);
+      resp_list.pending_responses.erase(itr);
     }
   }
 
-  natural_t driver::set_timeout(microseconds duration, timeout::on_timeout timeout_callback) {
-    timeout new_timeout{
-      .id = next_timeout_id++,
+  natural_t driver::set_timeout(microseconds duration, timer_list::timeout::on_timeout timeout_callback) {
+    timer_list::timeout new_timeout{
+      .id = timeout_list.next_timeout_id++,
       .timer = asio::steady_timer(net_context->io_context),
     };
     new_timeout.timer.expires_after(duration);
@@ -798,28 +1328,37 @@ namespace other {
 
       timeout_callback(timeout_id);
 
-      auto itr = std::ranges::find_if(pending_timeouts, [&](const timeout& t) { return t.id == timeout_id; });
-      if (itr != pending_timeouts.end()) {
-        pending_timeouts.erase(itr);
+      auto itr = std::ranges::find_if(timeout_list.pending_timeouts, [&](const timer_list::timeout& t) { return t.id == timeout_id; });
+      if (itr != timeout_list.pending_timeouts.end()) {
+        timeout_list.pending_timeouts.erase(itr);
       }
     });
-    pending_timeouts.insert(pending_timeouts.end(), std::move(new_timeout));
+    timeout_list.pending_timeouts.insert(timeout_list.pending_timeouts.end(), std::move(new_timeout));
 
     return new_timeout.id;
   }
 
   void driver::clear_timeout(natural_t timeout_id) {
-    auto itr = std::ranges::find_if(pending_timeouts, [&](const timeout& t) { return t.id == timeout_id; });
-    if (itr != pending_timeouts.end()) {
+    auto itr = std::ranges::find_if(timeout_list.pending_timeouts, [&](const timer_list::timeout& t) { return t.id == timeout_id; });
+    if (itr != timeout_list.pending_timeouts.end()) {
       itr->timer.cancel();
-      pending_timeouts.erase(itr);
+      timeout_list.pending_timeouts.erase(itr);
     }
+  }
+
+  void driver::register_other_application(integer_t session_id, application_list::other_application* app) {
+    OTHER_ASSERT(app != nullptr, "Application pointer is null after insertion!");
+
+    app->connected = true;
+    CORE_LOG_INFO("Other application [{}] has connected", session_id);
+    session_application_information_request(session_id);
   }
 
   void driver::process_network_thread_messages(message&& msg) {
     switch (msg.header.category) {
       case NOTIFICATION:
         switch (msg.header.id) {
+          case STREAM_RX_UDP_DATAGRAM: handle_notification_stream_receive_udp_datagram(std::move(msg)); break;
           case SESSION_CHECK_IN: handle_notification_session_check_in(std::move(msg)); break;
           case SESSION_CLOSED: handle_notification_session_closed(std::move(msg)); break;
           default:
@@ -878,6 +1417,10 @@ namespace other {
         CORE_LOG_ERROR("Server received unknown message category {}", msg.header.category);
         break;
     }
+  }
+
+  void driver::send_to_network_thread(message&& msg) {
+    net_context->net_thread_message_bus.send_message(std::move(msg));
   }
 
   natural_t driver::add_scene_to_scene_graph(const filepath& scene_path) {

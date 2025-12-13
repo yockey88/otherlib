@@ -45,6 +45,8 @@ namespace other {
       return protocol_data.function;
     }
 
+    void begin_protocol();
+    virtual void on_protocol_start() {}
     void force_set_sequence_index(natural_t index, natural_t message_idx);
 
     bool poll();

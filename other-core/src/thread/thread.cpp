@@ -148,7 +148,7 @@ namespace other {
 
       if (msg->get_category() == ACKNOWLEDGEMENT) {
         if (msg->get_id() == ACK) {
-          acknowledgement ack = acknowledgement::parse(msg->data);
+          acknowledgement ack = other_message_spec::parse<acknowledgement>(msg->data);
           if (ack.ack_nack == 1) {
             return;
           } else {
@@ -202,19 +202,17 @@ namespace other {
       if (checkpoints.force_exit) {
         break;
       }
-    } while (checkpoints.running && !stoken.stop_requested() && !checkpoints.error_occurred);
+      if (checkpoints.error_occurred) {
+        /// attempt recovery here
+      }
+    } while (checkpoints.running && !stoken.stop_requested());
     if (checkpoints.force_exit) {
       CORE_LOG_WARN("Thread [{}] exiting due to force exit flag", get_thread_name());
     }
 
     set_current_state(SHUTTING_DOWN);
-    if (checkpoints.error_occurred) {
-      CORE_LOG_ERROR("Thread error occurred, exiting thread");
-      /// handle error
-      return;
-    }
-
     wait_for_shutdown();
+
     if (checkpoints.error_occurred) {
       /// do something with errors, report them, attempt recovery?, etc...
     }
@@ -236,12 +234,11 @@ namespace other {
     acknowledgement ackmsg;
     ackmsg.acked_header = { CONTROL, THREAD_INITIALIZE };
     ackmsg.ack_nack = checkpoints.initialized ? 1 : 0;
-    ackmsg.node_id = 0;  // not used here
     CORE_LOG_DEBUG("Thread [{}] initialization {}", get_thread_name(), ackmsg.ack_nack == 1 ? "successful" : "failed");
 
     message ack;
     ack.header = { ACKNOWLEDGEMENT, ACK };
-    ack.data = ackmsg.build();
+    ack.data.append_range(ackmsg.as_buffer());
 
     checkpoints.error_occurred = false;
     thread_data->tx_channel->push(std::move(ack));
@@ -344,9 +341,9 @@ namespace other {
     OTHER_ASSERT(msg.get_category() == ACKNOWLEDGEMENT, "Invalid acknowledgement message category: {}", msg.header.category);
     OTHER_ASSERT(msg.get_id() == ACK, "Invalid acknowledgement message id: {}", msg.header.id);
 
-    acknowledgement ack = acknowledgement::parse(msg.data);
-    OTHER_ASSERT(ack.category == ACKNOWLEDGEMENT, "Invalid acknowledgement message category: {}", ack.acked_header.category);
-    OTHER_ASSERT(ack.id == ACK, "Invalid acknowledgement message id: {}", ack.acked_header.id);
+    acknowledgement ack = other_message_spec::parse<acknowledgement>(msg.data);
+    OTHER_ASSERT(ack.acked_header.category == ACKNOWLEDGEMENT, "Invalid acknowledgement message category: {}", ack.acked_header.category);
+    OTHER_ASSERT(ack.acked_header.id == ACK, "Invalid acknowledgement message id: {}", ack.acked_header.id);
 
     handle_acknowledgement(ack);
   }

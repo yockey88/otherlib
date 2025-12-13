@@ -11,6 +11,14 @@
 
 namespace other {
 
+  void protocol_handler::begin_protocol() {
+    CORE_LOG_DEBUG("Beginning protocol handler [{}]", get_protocol_id());
+    sequence_index = 0;
+    message_index = 0;
+    message_count_index = 0;
+    on_protocol_start();
+  }
+
   void protocol_handler::force_set_sequence_index(natural_t index, natural_t message_idx) {
     sequence_index = index;
     message_index = message_idx;

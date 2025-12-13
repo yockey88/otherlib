@@ -27,6 +27,7 @@ def copy_dlls(cfg, dll_cfg):
     f"build/tests/{cfg}/",
     f"build/tools/{cfg}/",
     f"build/other-editor/{cfg}/",
+    f"build/other-server/{cfg}/",
   ]
 
   for dll in dlls:
@@ -145,12 +146,9 @@ if __name__ == "__main__":
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
       run_project("other-editor", cfg, "other_editor", "editor-config.toml", args, args.verbose)
-      # run_project("development-drivers", cfg, "runtime_dev", "runtime-dev.toml", args, args.verbose)
-      # run_project("development-drivers", cfg, "rendering_dev", "renderer-dev.toml", args, args.verbose)
-      # run_project("scratch", cfg, "behavior-node", "behavior-node-dev.toml", args, args.verbose)
-
     elif args.run_server:
-      run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)
+      run_project("other-server", cfg, "other_server", "server-config.toml", args, args.verbose)
+
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
       run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)

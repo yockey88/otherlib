@@ -36,16 +36,22 @@ set(OTHER_INSTALL_ASSEMBLIES "${CMAKE_INSTALL_PREFIX}/dotnet-assemblies")
 set(OTHER_INSTALL_PROJECT "${CMAKE_INSTALL_PREFIX}/project")
 set(OTHER_INSTALL_PROJECT_TEMPLATES "${CMAKE_INSTALL_PREFIX}/project/templates")
 
-option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
-option(BUILD_OTHER_TESTS "Build the other tests" OFF)
-option(BUILD_OTHER_TOOLS "Build other tools" OFF)
-option(BUILD_DEVELOPMENT_DRIVERS "Build development drivers" OFF)
-option(BUILD_SCRATCH_PROGRAMS "Build scratch-work/development brainstorming programs" OFF)
-option(BUILD_OTHER_DRIVER_LOADER "Build the other driver loader" OFF)
-option(BUILD_OTHER_EDITOR "Build the other editor application" OFF)
-option(BUILD_RENDERING_DEVELOPMENT_DRIVER "Build the rendering development driver" OFF)
-option(BUILD_EXAMPLE_APPLICATION "Build the example application" OFF)
+### Build options
 option(DISALLOW_OTHER_PLUGINS "Build the library statically and without the framework for loading plugins" OFF)
+
+### projects to build
+option(BUILD_OTHER_TESTS "Build the other tests" OFF)
+option(BUILD_OTHER_EDITOR "Build the other editor application" OFF)
+option(BUILD_OTHER_SERVER "Build the other server application" OFF)
+option(BUILD_DEVELOPMENT_DRIVER "Build development driver (Other Runtime Dev)" OFF)
+option(BUILD_RENDERING_DEVELOPMENT_DRIVER "Build the rendering development driver" OFF)
+option(BUILD_SCRATCH_PROGRAMS "Build scratch-work/development brainstorming programs" OFF)
+option(BUILD_EXAMPLE_APPLICATION "Build the example application" OFF)
+
+option(BUILD_OTHER_DRIVER_LOADER "Build the other driver loader" OFF)
+option(BUILD_OTHER_TOOLS "Build other tools" OFF)
+
+
 if (DISALLOW_OTHER_PLUGINS)
   message(STATUS "Disallowing other plugins")
   add_compile_definitions("OTHER_DISALLOW_OTHER_PLUGINS")
@@ -250,6 +256,9 @@ endif()
 
 if (BUILD_OTHER_EDITOR)
   add_subdirectory(other-editor)
+endif()
+if (BUILD_OTHER_SERVER)
+  add_subdirectory(other-server)
 endif()
 
 if (BUILD_SCRATCH_PROGRAMS AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)

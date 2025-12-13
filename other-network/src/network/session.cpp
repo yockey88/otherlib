@@ -10,6 +10,7 @@
 
 #include "thread/message.hpp"
 
+#include "network/message.hpp"
 #include "network/network_thread.hpp"
 #include "network/protocols/check_in_protocol.hpp"
 #include "network/session_state_machine.hpp"
@@ -58,6 +59,7 @@ namespace other {
     state_machine.handle_event(network::SESSION_EVENT_START, this);
 
     active_protocol_handler = make_scope<server_check_in_handler>(this);
+    active_protocol_handler->begin_protocol();
     CORE_LOG_DEBUG("Launching [{}] protocol handler for session {}", active_protocol_handler->get_protocol_id(), session_id);
 
     start_read();
@@ -79,10 +81,17 @@ namespace other {
   }
 
   void session::shutdown() {
+    CORE_LOG_DEBUG("Session {} starting shutdown", session_id);
+
     try {
-      socket.close();
       state_machine.handle_event(network::SESSION_EVENT_SHUTDOWN_START, this);
+      socket.close();
     } catch (...) {
+    }
+
+    if (!buffer.reading && !buffer.writing) {
+      CORE_LOG_DEBUG(" > Session inactive, shutting down immediately");
+      thread->report_connection_closed(connection_id, session_id);
     }
   }
 
@@ -130,16 +139,7 @@ namespace other {
       return;
     }
 
-    buffer.writing = true;
-
-    auto write_data = std::move(buffer.write_queue.front());
-    buffer.write_queue.pop_front();
-
-    std::ranges::fill(buffer.write_buffer, 0);
-    std::ranges::copy(write_data.begin(), write_data.end(), buffer.write_buffer.begin());
-    std::span write_buffer_span(buffer.write_buffer.data(), write_data.size());
-    dump_bytes_for_debug(write_buffer_span, std::format("writing {} bytes", write_data.size()));
-    socket.async_send(asio::buffer(write_buffer_span), std::bind_front(&session::finish_write, this));
+    start_write();
   }
 
   namespace {
@@ -149,7 +149,7 @@ namespace other {
         if (i % 16 == 0) {
           os << "\n";
         }
-        os << std::format("{:#02x} ", data[i]);
+        os << std::format("{:#04x} ", data[i]);
       }
     }
 
@@ -227,7 +227,7 @@ namespace other {
     std::ranges::copy(write_data.begin(), write_data.end(), buffer.write_buffer.begin());
 
     std::span write_buffer_span(buffer.write_buffer.data(), write_data.size());
-    dump_bytes_for_debug(write_buffer_span, std::format("writing {} bytes", write_data.size()));
+    dump_bytes_for_debug(write_buffer_span, std::format("[TX CHUNK ({} bytes)]", write_data.size()));
     socket.async_send(asio::buffer(write_buffer_span), std::bind_front(&session::finish_write, this));
   }
 
@@ -331,63 +331,81 @@ namespace other {
       return std::nullopt;
     }
 
+    auto bytes = std::span(data);
+
     message msg;
-    msg.header = *reinterpret_cast<message_header*>(data.data());
-    msg.data.append_range(std::span(data).subspan(sizeof(message_header) + sizeof(uint16_t)));
+    msg.header = *reinterpret_cast<message_header*>(bytes.data());
+    bytes = bytes.subspan(sizeof(message_header));
+
+    uint16_t size = *reinterpret_cast<const uint16_t*>(bytes.data());
+    bytes = bytes.subspan(sizeof(uint16_t));
+
+    //// this MUST have been validated in try_receive
+    /// TODO: at this point, the message should be EQUAL in size, make this assert ==
+    OTHER_ASSERT(bytes.size() >= size, "Received message data size is smaller than expected");
+
+    msg.data.append_range(bytes.subspan(0, size));
 
     dump_bytes_for_debug(std::span(data), std::format("[RX MESSAGE {}] {}", session_id, msg.header));
     return msg;
   }
 
   void session::finish_read(const asio::error_code& ec, std::size_t bytes_transferred) {
-    buffer.reading = false;
-    if (state_machine.get_current_state() == network::SESSION_STATE_SHUTTING_DOWN || state_machine.get_current_state() == network::SESSION_STATE_STOPPED) {
-      if (state_machine.get_current_state() != network::SESSION_STATE_STOPPED) {
-        state_machine.handle_event(network::SESSION_EVENT_SHUTDOWN_COMPLETE, this);
-        thread->report_connection_closed(connection_id, session_id);
-      }
+    if (state_machine.get_current_state() == network::SESSION_STATE_STOPPED) {
       return;
     }
 
-    if (ec) {
-      CORE_LOG_TRACE("Read error on session {}: {}", session_id, ec.message());
+    buffer.reading = false;
+    bool should_close = false;
+    if ((ec && (ec == asio::error::operation_aborted || ec == asio::error::eof || ec == asio::error::connection_aborted || ec == asio::error::connection_reset)) ||
+        state_machine.get_current_state() == network::SESSION_STATE_SHUTTING_DOWN) {
+      if (ec && (ec == asio::error::eof || ec == asio::error::connection_aborted || ec == asio::error::connection_reset)) {
+        CORE_LOG_INFO("Session {} connection closed by peer", session_id);
+      }
+
+      should_close = true;
+    }
+
+    if (should_close) {
       thread->report_connection_closed(connection_id, session_id);
       return;
     }
 
-    CORE_LOG_TRACE("Session {} finished reading {} bytes", session_id, bytes_transferred);
-    std::vector<uint8_t> data(buffer.read_buffer.begin(), buffer.read_buffer.begin() + bytes_transferred);
-    dump_bytes_for_debug(data, "adding to read queue");
-    buffer.read_queue.push_back(data);
+    if (ec) {
+      CORE_LOG_ERROR("Read error on session {}: {}", session_id, ec.message());
+      /// \todo: should report and try to fix (or kill session if need be), for now we just close
+      // thread->report_error(connection_id, session_id, ec);
+      state_machine.handle_event(network::SESSION_EVENT_CLOSE_ON_ERROR, this);
+      thread->report_connection_closed(connection_id, session_id);
+    } else {
+      CORE_LOG_TRACE("Session {} finished reading {} bytes", session_id, bytes_transferred);
+      std::vector<uint8_t> data(buffer.read_buffer.begin(), buffer.read_buffer.begin() + bytes_transferred);
+
+      dump_bytes_for_debug(data, std::format("[RX CHUNK {} bytes]", data.size()));
+      buffer.read_queue.push_back(data);
+    }
 
     start_read();
   }
 
   void session::finish_write(const asio::error_code& ec, std::size_t bytes_transferred) {
+    if (state_machine.get_current_state() == network::SESSION_STATE_STOPPED) {
+      return;
+    }
+
     buffer.writing = false;
-    if (state_machine.get_current_state() == network::SESSION_STATE_SHUTTING_DOWN || state_machine.get_current_state() == network::SESSION_STATE_STOPPED) {
-      if (state_machine.get_current_state() != network::SESSION_STATE_STOPPED) {
-        state_machine.handle_event(network::SESSION_EVENT_SHUTDOWN_COMPLETE, this);
-        thread->report_connection_closed(connection_id, session_id);
-      }
+    if ((ec && ec == asio::error::operation_aborted) || state_machine.get_current_state() == network::SESSION_STATE_SHUTTING_DOWN) {
       return;
     }
 
-    if (ec && (ec == asio::error::operation_aborted || ec == asio::error::eof || ec == asio::error::connection_reset
-#if 0
-      || ec == asio::error::interrupted
-#endif
-              )) {
-      // Connection closed cleanly by peer.
-      thread->report_connection_closed(connection_id, session_id);
-      return;
-    }
-
-    if (!ec) {
-      /// \todo successful write callback ?
-      start_write();
+    if (ec) {
+      CORE_LOG_ERROR("Write error on session {}: {}", session_id, ec.message());
+      /// \todo:
+      thread->report_connection_error(this, ec);
     } else {
-      /// report error here
+      /// \todo successful write callback ?
+      CORE_LOG_TRACE("Session {} finished writing {} bytes", session_id, bytes_transferred);
+      start_write();
     }
   }
 
@@ -420,13 +438,10 @@ namespace other {
       .category = SESSION_EVENT,
       .id = SESSION_RX_MESSAGE,
     };
-
-    const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&session_id);
-    const uint8_t* msg_header_bytes = reinterpret_cast<const uint8_t*>(&msg.header);
-
-    session_data.data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
-    session_data.data.append_range(std::span(msg_header_bytes, sizeof(message_header)));
-    session_data.data.append_range(std::span(msg.data.data(), msg.data.size()));
+    session_event_rx_message session_msg;
+    session_msg.session_id = session_id;
+    session_msg.msg = std::move(msg);
+    session_data.data.append_range(session_msg.as_buffer());
 
     thread->get_message_bus().send_message(std::move(session_data));
   }

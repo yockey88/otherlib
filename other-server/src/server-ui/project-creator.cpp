@@ -1,5 +1,5 @@
 /**
- * \file server-dev/server-ui/project-creator.cpp
+ * \file server-ui/project-creator.cpp
  **/
 #include "project-creator.hpp"
 

@@ -91,10 +91,7 @@ namespace other {
     sol::table driver_table = lua_state["__other_native"]["__driver"];
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
 
-    driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event) {
-      host_driver->get_event_system()->trigger_event(event);
-    });
-    driver_table.set_function("set_event_user_data", [host_driver](const std::string& event, sol::object data) {
+    driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {
       value val;
       switch (data.get_type()) {
         case sol::type::nil: break;
@@ -111,7 +108,7 @@ namespace other {
           CORE_LOG_WARN("Unsupported data type for event user data: {}", static_cast<int>(data.get_type()));
           break;
       }
-      host_driver->get_event_system()->set_user_data(event, val);
+      host_driver->trigger_event(event, val);
     });
   }
 

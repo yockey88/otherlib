@@ -1,5 +1,5 @@
 /**
- * \file server-dev/server-ui/server-ui.cpp
+ * \file server-ui/server-ui.cpp
  **/
 #include "server-ui.hpp"
 
@@ -55,8 +55,8 @@ namespace other {
 
   }  // namespace detail
 
-  server_ui::server_ui(scope<renderer>& renderer_ptr, scope<event_system>& events, json::json& project_cache)
-      : renderer_ptr(renderer_ptr), events(events), project_cache(project_cache) {
+  server_ui::server_ui(scope<event_system>& events, json::json& project_cache)
+      : events(events), project_cache(project_cache) {
     project_win = make_scope<project_window>(*events, project_cache);
     project_win->initialize();
 
@@ -77,10 +77,7 @@ namespace other {
   }
 
   void server_ui::render() {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer is null in server UI");
-    renderer_ptr->begin_ui_frame();
     render_all();
-    renderer_ptr->end_ui_frame();
   }
 
   void server_ui::render_all() {

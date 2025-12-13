@@ -5,6 +5,7 @@
 #define OTHERLIB_TOOLS_ENVIRONMENT_CONSOLE_HPP
 
 #include <mutex>
+#include <queue>
 
 #include <spdlog/details/null_mutex.h>
 #include <spdlog/sinks/base_sink.h>
@@ -34,35 +35,35 @@ namespace other {
 
   class environment_console {
    public:
-    struct buffer_handle {
-      std::vector<console_input>& lines;
-
-      buffer_handle(std::vector<console_input>& lines)
-          : lines(lines), lock(environment_console::console_mutex) {}
-      ~buffer_handle() = default;
-
-     private:
-      std::lock_guard<std::mutex> lock;
-    };
-
     static void initialize(lua_script* console_script);
+    static inline bool is_initialized() {
+      return console_lua_script != nullptr && console_initialized;
+    }
+
+    static void poll();
 
     static void push_message(const console_input& input);
     static void submit_console_text(const std::string_view text, console_message_type type, system_timepoint time_point);
 
-    static inline const buffer_handle get_console_history() { return buffer_handle(history_lines); }
+    static inline const std::vector<console_input>& get_console_history() { return history_lines; }
 
     static inline char* get_input_buffer() { return input_buffer.data(); }
     static inline void clear_input_buffer() {
-      std::lock_guard lock(console_mutex);
       std::ranges::fill(input_buffer.begin(), input_buffer.end(), 0);
     }
 
     constexpr static inline size_t kInputBufferSize = 256;
 
    private:
-    static std::mutex console_mutex;
+    /// must always use console on thread that initialized it
+    static std::thread::id console_thread_id;
+
+    static std::atomic<bool> console_initialized;
+
+    static std::atomic<bool> input_waiting;
+    static std::queue<console_input> input_queue;
     static std::vector<console_input> history_lines;
+
     static size_t max_history_lines;
     static lua_script* console_lua_script;
 
@@ -77,7 +78,9 @@ namespace other {
    protected:
     void sink_it_(const spdlog::details::log_msg& msg) override {
       spdlog::memory_buf_t formatted;
-      spdlog::sinks::base_sink<std::mutex>::formatter_->format(msg, formatted);
+
+      using namespace spdlog::sinks;
+      base_sink<Mutex>::formatter_->format(msg, formatted);
       std::string output_msg = std::string{ formatted };
 
       console_message_type message_type = CONSOLE_MESSAGE_NONE;

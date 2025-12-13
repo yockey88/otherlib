@@ -27,6 +27,10 @@ namespace other {
     void report_connection_closed(natural_t connection_id, integer_t session_id);
     void report_connection_error(session* cli, const asio::error_code& ec);
 
+    void report_stream_closed(natural_t connection_id, integer_t stream_id);
+    void report_stream_error(udp_stream* strm, const asio::error_code& ec);
+
+    void report_connection_check_in_begin(natural_t connection_id, integer_t session_id);
     void report_connection_check_in(natural_t connection_id, integer_t session_id);
 
     inline integer_t get_next_session_id() {
@@ -41,6 +45,11 @@ namespace other {
     asio::io_context& get_io_context() {
       return net_context->io_context;
     }
+
+    struct connection_key {
+      natural_t connection_number = 0;
+      integer_t id = 0;
+    };
 
    protected:
     message_bus& bus;
@@ -61,8 +70,7 @@ namespace other {
     std::unique_ptr<network_context> net_context = nullptr;
 
     struct connection {
-      natural_t connection_number = 0;
-      integer_t session_id = 0;
+      connection_key connection_id;
       binding_point endpoint;
       scope<session> active_session = nullptr;
     };
@@ -73,20 +81,23 @@ namespace other {
     std::unordered_map<integer_t, event_callback> check_in_listeners;
 
     struct udp_binding {
-      natural_t connection_number = 0;
-      natural_t udp_binding_id = 0;
-
+      connection_key connection_id;
       binding_point endpoint;
 
-      udp_stream* stream = nullptr;
-      std::mutex* mutex = nullptr;
-
-      udp_handle handle;
-
-      udp_binding() {}
+      scope<udp_stream> stream = nullptr;
     };
-    natural_t next_udp_binding_id = 1;
-    std::map<natural_t, udp_binding> udp_binding_map;
+    uint16_t next_local_udp_port = 60000;
+    integer_t next_udp_binding_id = 1;
+    std::map<natural_t, udp_binding> udp_bindings;
+
+    std::queue<connection_key> session_closures;
+    std::queue<connection_key> stream_closures;
+
+    void handle_session_closures();
+    void handle_stream_closures();
+
+    void handle_session_closed(connection_key session_id);
+    void handle_stream_closed(connection_key stream_id);
 
     void on_initialize() override;
     void on_start() override;
@@ -106,7 +117,9 @@ namespace other {
     void handle_command_session_connect_to(message&& msg);
     void handle_command_session_check_in(message&& msg);
     void handle_command_session_tx_message(message&& msg);
+    void handle_command_stream_send_udp_datagram(message&& msg);
     void handle_command_environment_load_scene(message&& msg);
+    void on_acknowledge_environment_load_scene(message&& msg);
 
     void handle_request_session_check_in(message&& msg);
     void handle_request_new_udp_stream_binding(message&& msg);
@@ -116,5 +129,16 @@ namespace other {
   };
 
 }  // namespace other
+
+namespace std {
+
+  template <>
+  struct formatter<other::network_thread::connection_key> : public formatter<std::string_view> {
+    auto format(const other::network_thread::connection_key& key, format_context& ctx) const {
+      return formatter<std::string_view>::format(std::format("[{},{}]", key.connection_number, key.id), ctx);
+    }
+  };
+
+}  // namespace std
 
 #endif  // OTHER_NETWORK_THREAD_HPP

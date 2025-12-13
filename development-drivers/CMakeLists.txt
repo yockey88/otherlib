@@ -1,21 +1,11 @@
 add_subdirectory(script-testing)
 
 
-if (BUILD_DEVELOPMENT_DRIVERS)
+if (BUILD_DEVELOPMENT_DRIVER)
   add_static_driver(runtime_dev
     runtime-dev/behavior_tree.cpp
     runtime-dev/runtime.cpp
     runtime-dev/main.cpp
-  )
-  add_static_driver(server_dev
-    server-dev/server.cpp
-    server-dev/server_tasks.cpp
-
-    server-dev/server-ui/project-window.cpp
-    server-dev/server-ui/project-creator.cpp
-    server-dev/server-ui/server-ui.cpp
-
-    server-dev/main.cpp
   )
 endif()
 

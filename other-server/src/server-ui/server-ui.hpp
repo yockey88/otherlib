@@ -1,8 +1,8 @@
 /**
- * \file server-dev/server-ui/server-ui.hpp
+ * \file server-ui/server-ui.hpp
  **/
-#ifndef OTHER_SERVER_SERVER_UI_HPP
-#define OTHER_SERVER_SERVER_UI_HPP
+#ifndef OTHER_SERVER_SERVER_UI_SERVER_UI_HPP
+#define OTHER_SERVER_SERVER_UI_SERVER_UI_HPP
 
 #include <nfd/nfd.h>
 #include <nlohmann/json.hpp>
@@ -58,7 +58,7 @@ namespace other {
 
   class server_ui {
    public:
-    server_ui(scope<renderer>& renderer_ptr, scope<event_system>& events, json::json& project_cache);
+    server_ui(scope<event_system>& events, json::json& project_cache);
     ~server_ui() = default;
 
     void render();
@@ -66,7 +66,6 @@ namespace other {
    private:
     ui_state_machine state_machine;
 
-    scope<renderer>& renderer_ptr;
     scope<event_system>& events;
     json::json& project_cache;
 
@@ -84,4 +83,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_SERVER_SERVER_UI_HPP
+#endif  // OTHER_SERVER_SERVER_UI_SERVER_UI_HPP

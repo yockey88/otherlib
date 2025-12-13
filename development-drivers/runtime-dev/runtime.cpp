@@ -31,15 +31,8 @@
 
 namespace other {
 
-  void runtime_state_machine::on_enter_state(runtime_state new_state) {
-    CORE_LOG_DEBUG("Server state changed to {}", new_state);
-    if (new_state == runtime_state::RUNTIME_STATE_RUNNING) {
-    }
-  }
-
   void runtime::on_initialize(const command_line& cmd) {
     CORE_LOG_DEBUG("Runtime...");
-    state_machine.handle_event(runtime_event::RUNTIME_EVENT_START, this);
 
     renderer = get_renderer();
     if (!renderer) {
@@ -50,11 +43,6 @@ namespace other {
     renderer->add_pipeline<default_instancing_pipeline>("Default Instancing Pipeline");
 
     asset_mgr = make_scope<asset_handler>(net_context->io_context);
-
-    get_event_system()->add_listener("shutdown-requested", [this](const value& data) {
-      CORE_LOG_DEBUG("Shutdown requested event received in runtime.");
-      state_machine.handle_event(runtime_event::RUNTIME_EVENT_STOP, this);
-    });
 
     get_event_system()->register_event("project-loaded");
     get_event_system()->add_listener("project-loaded", [this](const value& data) {
@@ -181,25 +169,17 @@ namespace other {
     running = true;
   }
 
-  void runtime::run() {
-    last_frame_time = std::chrono::steady_clock::now();
+  void runtime::on_update() {
+    std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
+    curr_frame_delta_time = std::chrono::duration<float>(current_time - last_frame_time).count();
+    last_frame_time = current_time;
 
-    do {
-      pump_events();
-      core_update();
+    net_context->io_context.poll();
+    if (net_context->io_context.stopped()) {
+      net_context->io_context.restart();
+    }
 
-      switch (state_machine.get_current_state()) {
-        case runtime_state::RUNTIME_STATE_LOADING_PROJECT: update_loading_project(); break;
-        case runtime_state::RUNTIME_STATE_WAITING_FOR_START_SCENE_LOAD: update_waiting_for_start_scene_load(); break;
-        case runtime_state::RUNTIME_STATE_RUNNING: update_running(); break;
-        case runtime_state::RUNTIME_STATE_SHUTTING_DOWN: update_shutting_down(); break;
-        default:
-          CORE_LOG_ERROR("Server in unknown state {}", state_machine.get_current_state());
-          running = false;
-          break;
-      }
-      draw();
-    } while (running);
+    asset_mgr->update_pipelines();
   }
 
   void runtime::on_shutdown() {
@@ -217,69 +197,53 @@ namespace other {
     CORE_LOG_DEBUG("Runtime shut down complete.");
   }
 
-  void runtime::catch_signal(int signal) {
-    if (signal == SIGINT || signal == SIGTERM) {
-      CORE_LOG_INFO("Received signal {}, shutting down runtime...", signal);
-      running = false;
-    } else {
-      CORE_LOG_WARN("Received unhandled signal {}", signal);
-    }
-  }
+  // void runtime::core_update() {
+  // }
 
-  void runtime::core_update() {
-    std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
-    curr_frame_delta_time = std::chrono::duration<float>(current_time - last_frame_time).count();
-    last_frame_time = current_time;
+  // void runtime::update_loading_project() {
+  //   // get_event_system()->trigger_event("project-loaded");
+  // }
 
-    net_context->io_context.poll();
-    if (net_context->io_context.stopped()) {
-      net_context->io_context.restart();
-    }
+  // void runtime::update_waiting_for_start_scene_load() {
+  //   if (asset_mgr->get_asset_state(donut_model_id) == asset_state::LOADED) {
+  //     CORE_LOG_DEBUG("Donut model asset loaded successfully in runtime.");
 
-    asset_mgr->update_pipelines();
-  }
+  //     auto* current_scene = get_scene(current_scene_id);
+  //     OTHER_ASSERT(current_scene != nullptr, "Current scene is null in runtime while loading donut model");
 
-  void runtime::update_loading_project() {
-    get_event_system()->trigger_event("project-loaded");
-    state_machine.handle_event(runtime_event::RUNTIME_EVENT_READY, this);
-  }
+  //     uint64_t hash = asset_mgr->get_asset_hash(donut_model_id);
+  //     ref<model_source> donut_source = subsystem<renderer_backend>::get()->get_model_source(hash);
+  //     if (donut_source != nullptr) {
+  //       CORE_LOG_DEBUG("Donut model source loaded successfully in runtime.");
+  //       scene_object& donut_obj = current_scene->get_object(donut_id);
 
-  void runtime::update_waiting_for_start_scene_load() {
-    if (asset_mgr->get_asset_state(donut_model_id) == asset_state::LOADED) {
-      CORE_LOG_DEBUG("Donut model asset loaded successfully in runtime.");
+  //       render_component& donut_render = current_scene->add_component<render_component>(&donut_obj);
+  //       donut_render.material.diffuse_color = glm::vec3(0.4f, 0.6f, 0.8f);
+  //       donut_render.material.diffuse_reflectivity = 0.5f;
+  //       donut_render.material.specular_color = glm::vec3(0.8f, 0.8f, 0.8f);
+  //       donut_render.material.specular_reflectivity = 0.5f;
+  //       donut_render.material.emissivity = 0.1f;
+  //       donut_render.material.shininess = 16.f;
+  //       donut_render.material.transparency = 0.f;
 
-      auto* current_scene = get_scene(current_scene_id);
-      OTHER_ASSERT(current_scene != nullptr, "Current scene is null in runtime while loading donut model");
+  //       donut_model = donut_source->produce_model("Donut");
+  //       donut_render.model = &donut_model;
 
-      uint64_t hash = asset_mgr->get_asset_hash(donut_model_id);
-      ref<model_source> donut_source = subsystem<renderer_backend>::get()->get_model_source(hash);
-      if (donut_source != nullptr) {
-        CORE_LOG_DEBUG("Donut model source loaded successfully in runtime.");
-        scene_object& donut_obj = current_scene->get_object(donut_id);
+  //       // if (const auto& animations = donut_source->get_animations(); !animations.empty()) {
+  //       //   animation_controller& anim_ctrl = current_scene->add_component<animation_controller>(&donut_obj);
+  //       //   anim_ctrl.anim_ptr = donut_source->get_animation(0);
+  //       //   anim_ctrl.model_ptr = donut_render.model;
+  //       // }
+  //     }
 
-        render_component& donut_render = current_scene->add_component<render_component>(&donut_obj);
-        donut_render.material.diffuse_color = glm::vec3(0.4f, 0.6f, 0.8f);
-        donut_render.material.diffuse_reflectivity = 0.5f;
-        donut_render.material.specular_color = glm::vec3(0.8f, 0.8f, 0.8f);
-        donut_render.material.specular_reflectivity = 0.5f;
-        donut_render.material.emissivity = 0.1f;
-        donut_render.material.shininess = 16.f;
-        donut_render.material.transparency = 0.f;
+  //     CORE_LOG_DEBUG("Writing scene ID {} to device and emitting load scene opcode.", current_scene_id);
+  //     set_scene_to_active(current_scene_id);
+  //     // state_machine.handle_event(runtime_event::RUNTIME_EVENT_READY, this);
+  //   }
+  // }
 
-        donut_model = donut_source->produce_model("Donut");
-        donut_render.model = &donut_model;
-
-        // if (const auto& animations = donut_source->get_animations(); !animations.empty()) {
-        //   animation_controller& anim_ctrl = current_scene->add_component<animation_controller>(&donut_obj);
-        //   anim_ctrl.anim_ptr = donut_source->get_animation(0);
-        //   anim_ctrl.model_ptr = donut_render.model;
-        // }
-      }
-
-      CORE_LOG_DEBUG("Writing scene ID {} to device and emitting load scene opcode.", current_scene_id);
-      set_scene_to_active(current_scene_id);
-      state_machine.handle_event(runtime_event::RUNTIME_EVENT_READY, this);
-    }
+  void runtime::on_initialize_ready() {
+    CORE_LOG_DEBUG("Runtime initialization complete.");
   }
 
   void runtime::update_running() {
@@ -299,7 +263,7 @@ namespace other {
     running = false;
     CORE_LOG_DEBUG("Runtime shut down complete");
 
-    state_machine.handle_event(runtime_event::RUNTIME_EVENT_STOP, this);
+    // state_machine.handle_event(runtime_event::RUNTIME_EVENT_STOP, this);
   }
 
   void runtime::draw() {
@@ -354,14 +318,6 @@ namespace other {
     if (console_lua_script != nullptr) {
       console_lua_script->call_function<bool>("handle_console_command", std::string(command));
     } else {
-    }
-  }
-
-  void runtime::on_event(SDL_Event* event) {
-    OTHER_ASSERT(event != nullptr, "Event is null");
-    switch (event->type) {
-      case SDL_EVENT_WINDOW_CLOSE_REQUESTED: get_event_system()->trigger_event("shutdown-requested"); break;
-      default: break;
     }
   }
 

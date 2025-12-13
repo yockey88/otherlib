@@ -21,21 +21,29 @@
 
 #include "dotnet/dotnet_assembly.hpp"
 #include "lua/lua_script.hpp"
+#include "network/message.hpp"
+#include "network/message_handler.hpp"
 #include "network/network_thread.hpp"
 #include "renderer/renderer.hpp"
 
 #include "scene/scene_graph.hpp "
 
+#include "driver/acknowledgement_list.hpp"
+#include "driver/application_list.hpp"
+#include "driver/driver_state_machine.hpp"
+#include "driver/response_list.hpp"
+#include "driver/timer_list.hpp"
 #include "plugin/plugin.hpp"
 #include "vm/other_device.hpp"
+
+#include "acknowledgement_list.hpp"
+#include "application_list.hpp"
 
 namespace json = nlohmann;
 
 namespace other {
 
   class driver_thread;
-
-  struct environment_event;
 
   class OTHER_CLASS driver {
    public:
@@ -44,11 +52,13 @@ namespace other {
     virtual ~driver() = default;
 
     void initialize(const command_line& cmd);
-    virtual void run() = 0;
+    void run();
     void shutdown();
 
     static std::pair<driver*, std::string> create(const config_table& config);
     static void destroy(const std::string& name, driver* instance);
+
+    void trigger_event(const std::string_view name, const value& data);
 
     void write_id_at_address(uint16_t address, natural_t id);
     void emit_instruction(const instruction& op);
@@ -64,6 +74,11 @@ namespace other {
       return net_context->events;
     }
     void set_scene_to_active(natural_t scene_id);
+    void unload_active_scene();
+
+    inline driver_state current_driver_state() const {
+      return state_machine.get_current_state();
+    }
 
    protected:
     struct network_context {
@@ -76,7 +91,12 @@ namespace other {
       message_bus net_thread_message_bus;
       scope<network_thread> net_thread = nullptr;
 
-      constexpr static binding_point main_binding_point{ 0x7f000001, 49222 };
+      constexpr static uint32_t kLocalhostAddress = 0x7f000001;
+      constexpr static uint32_t kPrimarySessionBindingPort = 49222;
+      constexpr static uint16_t kServerBroadcastPost0 = 50160;
+
+      constexpr static binding_point main_binding_point{ kLocalhostAddress, kPrimarySessionBindingPort };
+      uint16_t next_available_server_port = kServerBroadcastPost0;
 
       network_context()
           : signals(io_context, SIGINT, SIGTERM) {}
@@ -84,62 +104,27 @@ namespace other {
     /// \todo figure out why asio does not like the arena allocator here
     std::unique_ptr<network_context> net_context = nullptr;
 
-    struct pending_ack {
-      using on_ack = std::function<void(message_header, const std::span<const uint8_t>)>;
-      using on_timeout = std::function<void(message_header)>;
+    acknowledgement_list ack_list;
+    response_list resp_list;
+    timer_list timeout_list;
+    application_list app_list;
 
-      natural_t id = 0;
-
-      message_header header;
-      microseconds timeout_duration = microseconds(0);
-      std::chrono::time_point<std::chrono::steady_clock> sent_time;
-
-      on_ack ack_callback = nullptr;
-      on_timeout timeout_callback = nullptr;
-
-      asio::steady_timer timer;
-
-      constexpr auto operator<=>(const pending_ack& other) const {
-        return sent_time.time_since_epoch() <=> other.sent_time.time_since_epoch();
-      }
-    };
-    natural_t next_pending_ack_id = 1;
-    std::deque<pending_ack> pending_acks;
-
-    struct pending_response {
-      using on_response = std::function<void(message_header, const std::span<const uint8_t>)>;
-      using on_timeout = std::function<void(message_header)>;
-
-      natural_t id = 0;
-
-      message_header header;
-      std::chrono::time_point<std::chrono::steady_clock> sent_time;
-
-      on_response response_callback = nullptr;
-      on_timeout timeout_callback = nullptr;
-
-      asio::steady_timer timer;
-
-      constexpr auto operator<=>(const pending_response& other) const {
-        return header <=> other.header;
-      }
-    };
-    natural_t next_pending_response_id = 1;
-    std::deque<pending_response> pending_responses;
-
-    struct timeout {
-      using on_timeout = std::function<void(natural_t)>;
-
-      natural_t id = 0;
-      asio::steady_timer timer;
-    };
-    natural_t next_timeout_id = 1;
-    std::deque<timeout> pending_timeouts;
+    // std::deque<other_application>::iterator launch_other_application_process(integer_t session_id, const json::json& application_details);
 
     virtual void on_initialize(const command_line& cmd) = 0;
-    virtual void on_shutdown() = 0;
+    void initialize_network_context();
+    void load_client();
+    void start_network();
+    virtual void on_initialize_rendering(scope<renderer>& renderer_ptr);
 
-    virtual void catch_signal(int signal) {}
+    virtual void on_shutdown() = 0;
+    virtual void on_shutdown_rendering();
+
+    void catch_signal(int signal);
+
+    void request_shutdown();
+    virtual void on_shutdown_request() {}
+    virtual void on_shutdown_confirm() {}
 
     bool rendering_enabled() const {
       auto* renderer_backend_subsystem = subsystem<renderer_backend>::get();
@@ -154,7 +139,7 @@ namespace other {
     scene* get_scene(natural_t id);
     scene* get_active_scene();
 
-    udp_handle active_scene_udp_handle;
+    renderer& get_renderer_instance();
 
     filepath get_project_cache();
 
@@ -163,41 +148,72 @@ namespace other {
       return *envrc;
     }
 
-    void pump_events();
+    void update();
+    void render();
+    void render_ui();
 
-    void handle_session_event_rx_message(message&& msg);
+    virtual void on_update() {}
+    virtual void update_initializing() { process_driver_event(driver_event::DRIVER_EVENT_READY); }
+    virtual void update_running() {}
+    virtual void update_shutting_down() {}
+    virtual void on_render() {}
+    virtual void on_ui_render() {}
+
+    void process_driver_event(driver_event event);
+
+    void pump_events();
 
     void handle_request_session_information(integer_t session_id, message&& msg);
     void handle_response_session_information(integer_t session_id, message&& msg);
 
     void on_acknowledge_command_environment_load_scene(message_header header, std::span<const uint8_t> data);
     void on_timeout_environment_load_scene(message_header header);
-    void request_scene_udp_binding(opt<uint16_t> port = std::nullopt);
+    void request_scene_udp_binding(udp_binding_information address);
 
-    void on_respond_new_udp_stream_binding(message_header header, std::span<const uint8_t> data);
-    void on_timeout_new_udp_stream_binding(message_header header);
-    virtual void on_active_scene_udp_handle_bound(udp_handle* handle) {}
-
-    virtual std::string get_project_name() const { return ""; }
+    virtual std::string get_project_name() const { return "[UNNAMED]"; }
 
     virtual void on_event(SDL_Event* event) {}
-    virtual void on_event(environment_event* event) {}
 
     /// notifications
-    virtual void handle_notification_session_check_in(message&& msg) {}
-    virtual void handle_notification_session_closed(message&& msg) {}
+    void handle_notification_stream_receive_udp_datagram(message&& msg);
+    void handle_notification_session_check_in(message&& msg);
+    void handle_notification_session_closed(message&& msg);
+    virtual void on_notification_session_closed(integer_t session_id) {}
+
     /// acknowledgments
     void handle_acknowledgement_ack(message&& msg);
+
+    void on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data);
+    void on_timeout_shutdown_request_network_thread(message_header header);
+
+    void on_ack_session_listen_for_network_thread(message_header header, const std::span<const uint8_t> data);
+    void on_timeout_session_listen_for_network_thread(message_header header);
+
     /// control messages
     void handle_control_ping(message&& msg);
     void handle_control_pong(message&& msg);
+
     /// command messages
     void handle_command_environment_load_scene(integer_t session_id, message&& msg);
+
     /// request messages
+    void session_check_in_request(integer_t session_id);
+    void session_application_information_request(integer_t session_id, application_list::other_application* app = nullptr);
+
     /// response messages
     void handle_response(message&& msg);
-    virtual void handle_session_information_response(integer_t session_id, session_information_response&& response) {}
+
+    void on_respond_session_check_in(message_header header, const std::span<const uint8_t> data);
+
+    void handle_session_information_response(integer_t session_id, session_information_response&& response);
+    void print_session_information(application_list::other_application* app);
+
+    void on_respond_new_udp_stream_binding(message_header header, std::span<const uint8_t> data);
+    void on_timeout_new_udp_stream_binding(message_header header);
+
     /// session events
+    void handle_session_event_rx_message(message&& msg);
+
     /// error alerts
     virtual void handle_error_alert(message&& msg) {}
 
@@ -208,15 +224,17 @@ namespace other {
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
-    natural_t send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, pending_ack::on_ack ack_callback, pending_ack::on_timeout timeout_callback);
+    natural_t send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, message_handler handler);
     void cancel_acknowledgment(natural_t ack_id);
 
-    void send_message_and_detach_response(message&& msg, pending_response::on_response response_callback);
-    natural_t send_message_and_wait_response(message&& msg, microseconds timeout, pending_response::on_response response_callback, pending_response::on_timeout timeout_callback);
+    void send_message_and_detach_response(message&& msg, message_handler handler);
+    natural_t send_message_and_wait_response(message&& msg, microseconds timeout, message_handler handler);
     void cancel_response(natural_t response_id);
 
-    natural_t set_timeout(microseconds duration, timeout::on_timeout timeout_callback);
+    natural_t set_timeout(microseconds duration, timer_list::timeout::on_timeout timeout_callback);
     void clear_timeout(natural_t timeout_id);
+
+    void register_other_application(integer_t session_id, application_list::other_application* app);
 
     void process_network_thread_messages(message&& msg);
 
@@ -230,14 +248,26 @@ namespace other {
       return configuration().get_value(std::format("{}.{}", section, key), default_value);
     }
 
+    void send_to_network_thread(message&& msg);
+
     opt<integer_t> client_session_id;
     other_command_device core_device;
 
    private:
     friend class driver_interface;
+    friend class driver_state_machine;
+
+    enum driver_role {
+      SERVER,
+      CLIENT,
+    };
+    /// each driver can be both at the same time,
+    ///     but this will take precedence in certain operations
+    driver_role primary_role = CLIENT;
 
     bool shutdown_requested = false;
     config_table config;
+    command_line cmd_line;
 
     std::queue<instruction> emitted_instructions;
 
@@ -249,8 +279,20 @@ namespace other {
     };
     std::vector<live_coroutine> live_coroutines;
 
+    struct open_stream {
+      integer_t stream_id = 0;
+      // ...
+    };
+    std::vector<open_stream> active_streams;
+
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
+
+    driver_state_machine state_machine;
+
+    scope<renderer> renderer_ptr = nullptr;
+
+    json::json project_cache;
 
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);
