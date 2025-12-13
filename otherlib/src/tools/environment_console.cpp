@@ -3,9 +3,8 @@
  **/
 #include "tools/environment_console.hpp"
 
-#include "core/timer.hpp"
-
 #include "lua/lua_script.hpp"
+
 
 namespace other {
 

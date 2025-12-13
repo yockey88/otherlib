@@ -11,7 +11,7 @@
 #include <spdlog/sinks/base_sink.h>
 
 #include "core/logger.hpp"
-#include "core/timer.hpp"
+#include "core/time.hpp"
 
 namespace other {
 

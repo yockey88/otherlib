@@ -6,14 +6,11 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 
-#include "command/command.hpp"
 #include "core/defines.hpp"
 #include "core/logger.hpp"
-#include "serialization/serialization.hpp"
 #include "thread/message.hpp"
 #include "thread/messages.hpp"
 
-#include "model/vertex.hpp"
 #include "network/message.hpp"
 #include "network/network_thread.hpp"
 #include "renderer/renderer_backend.hpp"
@@ -34,53 +31,18 @@ namespace other {
   void driver::initialize(const command_line& cmd) {
     PROFILE_SECTION("driver::initialize");
 
+    /// 1. core setup, set state, initialize context and register core events
     cmd_line = cmd;
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
 
-    /// set signal catchers
     initialize_network_context();
-
-    /// register events
+    get_event_system()->register_event("shutdown-requested");
+    get_event_system()->add_listener("shutdown-requested", [this](const value& data) { request_shutdown(); });
     get_event_system()->register_event("force-load-empty-scene");
-    get_event_system()->add_listener("force-load-empty-scene", [this](const value& data) {
-      if (data.type() != value_type::STRING) {
-        CORE_LOG_ERROR("Invalid data type for force-load-empty-scene event. Expected string.");
-        return;
-      }
+    get_event_system()->add_listener("force-load-empty-scene", std::bind_front(&driver::handle_load_scene_event, this));
 
-      std::string scene_name = data.as_string();
-      if (project_scene_graph->has_scene(scene_name)) {
-        CORE_LOG_WARN("Scene with name [{}] already exists in the scene graph. Cannot force load empty scene with duplicate name.", scene_name);
-        return;
-      }
-
-      natural_t scene_id = create_empty_scene(scene_name);
-      set_scene_to_active(scene_id);
-      CORE_LOG_INFO("Created and loaded empty scene [{}:{}] from console command.", scene_id, scene_name);
-
-      message cmd_msg;
-      cmd_msg.header = {
-        .category = COMMAND,
-        .id = ENVIRONMENT_LOAD_SCENE,
-      };
-
-      command_load_empty_scene scene_cmd;
-      scene_cmd.session_id_flag = client_session_id.has_value() ? 0x01 : 0x00;
-      if (client_session_id.has_value()) {
-        scene_cmd.session_id = client_session_id.value();
-      }
-
-      scene_cmd.requires_udp_binding = 0x01;
-      scene_cmd.udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-      scene_cmd.server_udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-      scene_cmd.scene_name = scene_name;
-      cmd_msg.data.append_range(scene_cmd.as_buffer());
-
-      CORE_LOG_DEBUG("Requesting UDP binding for scene '{}' w/ address @ [{}]", scene_name, binding_point::write_string(scene_cmd.udp_address));
-      CORE_LOG_DEBUG("  - Suggesting server UDP address @ [{}]", binding_point::write_string(scene_cmd.server_udp_address));
-      send_message_and_wait_acknowledgment(std::move(cmd_msg), seconds(10), message_handler{ this, &driver::on_acknowledge_command_environment_load_scene, &driver::on_timeout_environment_load_scene });
-    });
-
+    /// 2. load client specific .NET
+    /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
     std::vector<std::string> dotnet_modules = get_config_value<std::vector<std::string>>("scripting", "dotnet-modules");
     for (const auto& module : dotnet_modules) {
       CORE_LOG_DEBUG(" - .NET module to load: {}", module);
@@ -90,6 +52,19 @@ namespace other {
       }
 
       loaded_dotnet_modules.push_back(assembly);
+    }
+
+    std::vector<std::string> lua_scripts = get_config_value<std::vector<std::string>>("scripting", "lua-scripts");
+    for (const auto& script_path : lua_scripts) {
+      CORE_LOG_DEBUG(" - Lua script to load: {}", script_path);
+      // if (envrc == nullptr) {
+      //   envrc = make_scope<lua_script>();
+      // }
+
+      // bool loaded = envrc->load_script_from_file(script_path);
+      // if (!loaded) {
+      //   CORE_LOG_ERROR("Failed to load Lua script: {}", script_path);
+      // }
     }
 
     if (rendering_enabled()) {
@@ -342,6 +317,12 @@ namespace other {
     }
 
     active_scene = project_scene_graph->get_scene(scene_id);
+    get_event_system()->register_timed_event("scene-update", duration_cast<microseconds>(tick_duration(1)), true);
+    get_event_system()->add_listener("scene-update", [this](const value& data) {
+      if (active_scene != nullptr) {
+        active_scene->fixed_update(frame_delta_time.get_no_update());
+      }
+    });
   }
 
   void driver::unload_active_scene() {
@@ -385,12 +366,6 @@ namespace other {
     net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &catcher));
 
     net_context->events = make_scope<event_system>(net_context->io_context);
-    net_context->events->register_event("shutdown-requested");
-    net_context->events->add_listener("shutdown-requested", [this](const value& data) {
-      CORE_LOG_DEBUG("Shutdown requested event received in driver.");
-      request_shutdown();
-    });
-
     net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
     net_context->net_thread->launch();
     net_context->net_thread_message_bus.register_thread();
@@ -486,6 +461,8 @@ namespace other {
 
   void driver::update() {
     PROFILE_SECTION("driver::update");
+    double dt = frame_delta_time;
+
     pump_events();
     poll_coroutines();
     if (environment_console::is_initialized()) {
@@ -503,6 +480,11 @@ namespace other {
     auto msg_opt = net_context->net_thread_message_bus.receive_message();
     if (msg_opt.has_value()) {
       process_network_thread_messages(std::move(*msg_opt));
+    }
+
+    if (active_scene != nullptr) {
+      active_scene->update(dt);
+      active_scene->late_update(dt);
     }
 
     on_update();
@@ -1421,6 +1403,48 @@ namespace other {
 
   void driver::send_to_network_thread(message&& msg) {
     net_context->net_thread_message_bus.send_message(std::move(msg));
+  }
+
+  void driver::handle_load_scene_event(const value& data) {
+    if (data.type() != value_type::STRING) {
+      CORE_LOG_ERROR("Invalid data type for force-load-empty-scene event. Expected string.");
+      return;
+    }
+
+    std::string scene_name = data.as_string();
+    if (project_scene_graph->has_scene(scene_name)) {
+      CORE_LOG_WARN("Scene with name [{}] already exists in the scene graph. Cannot force load empty scene with duplicate name.", scene_name);
+      return;
+    }
+
+    natural_t scene_id = create_empty_scene(scene_name);
+    set_scene_to_active(scene_id);
+    CORE_LOG_INFO("Created and loaded empty scene [{}:{}] from console command.", scene_id, scene_name);
+
+    message cmd_msg;
+    cmd_msg.header = {
+      .category = COMMAND,
+      .id = ENVIRONMENT_LOAD_SCENE,
+    };
+
+    command_load_empty_scene scene_cmd;
+    scene_cmd.session_id_flag = client_session_id.has_value() ? 0x01 : 0x00;
+    if (client_session_id.has_value()) {
+      scene_cmd.session_id = client_session_id.value();
+    }
+
+    scene_cmd.requires_udp_binding = 0x01;
+    scene_cmd.udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
+    scene_cmd.server_udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
+    scene_cmd.scene_name = scene_name;
+    cmd_msg.data.append_range(scene_cmd.as_buffer());
+
+    CORE_LOG_DEBUG("Sending command to network thread to load empty scene '{}'", scene_name);
+    if (scene_cmd.requires_udp_binding == 0x01) {
+      CORE_LOG_DEBUG("Requesting UDP binding for scene '{}' w/ address @ [{}]", scene_name, binding_point::write_string(scene_cmd.udp_address));
+      CORE_LOG_DEBUG("  - Suggesting server UDP address @ [{}]", binding_point::write_string(scene_cmd.server_udp_address));
+    }
+    send_message_and_wait_acknowledgment(std::move(cmd_msg), seconds(10), message_handler{ this, &driver::on_acknowledge_command_environment_load_scene, &driver::on_timeout_environment_load_scene });
   }
 
   natural_t driver::add_scene_to_scene_graph(const filepath& scene_path) {

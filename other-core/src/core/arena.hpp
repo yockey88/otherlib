@@ -16,13 +16,15 @@
 namespace other {
 
   struct arena_storage {
-    static inline constexpr size_t kPageSize = 64 * (4096u);  // * 4096u);  // 64 MB
+    static inline constexpr size_t kPageSize = 64 * 4096u;  // 64 MB
     static inline constexpr size_t kAlignment = 16;
     static inline constexpr size_t kMaxPages = 64;
     static inline constexpr size_t kMaxMemoryAllowed = kMaxPages * kPageSize;
 
     struct page {
       size_t cursor = 0;
+      /// \todo this alignment is not not correct for all types and causes
+      ///       issue with things like asio::io_context (if we don't include it here it will be 1 byte aligned)
       alignas(kAlignment) uint8_t storage[kPageSize] = {};
 
       void* data() { return &storage[0]; }

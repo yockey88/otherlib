@@ -14,10 +14,10 @@
 #include "core/config_table.hpp"
 #include "core/coroutine.hpp"
 #include "core/defines.hpp"
+#include "core/delta_time.hpp"
 #include "event/event_system.hpp"
 #include "thread/message.hpp"
 #include "thread/message_bus.hpp"
-#include "thread/messages.hpp"
 
 #include "dotnet/dotnet_assembly.hpp"
 #include "lua/lua_script.hpp"
@@ -98,18 +98,16 @@ namespace other {
       constexpr static binding_point main_binding_point{ kLocalhostAddress, kPrimarySessionBindingPort };
       uint16_t next_available_server_port = kServerBroadcastPost0;
 
-      network_context()
-          : signals(io_context, SIGINT, SIGTERM) {}
+      network_context() : signals(io_context, SIGINT, SIGTERM) {}
     };
     /// \todo figure out why asio does not like the arena allocator here
+    ///  \note this is related to alignment I believe, and we need to modify arena allocator to take alignment into account
     std::unique_ptr<network_context> net_context = nullptr;
 
     acknowledgement_list ack_list;
     response_list resp_list;
     timer_list timeout_list;
     application_list app_list;
-
-    // std::deque<other_application>::iterator launch_other_application_process(integer_t session_id, const json::json& application_details);
 
     virtual void on_initialize(const command_line& cmd) = 0;
     void initialize_network_context();
@@ -285,6 +283,7 @@ namespace other {
     };
     std::vector<open_stream> active_streams;
 
+    delta_time frame_delta_time;
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
 
@@ -293,6 +292,8 @@ namespace other {
     scope<renderer> renderer_ptr = nullptr;
 
     json::json project_cache;
+
+    void handle_load_scene_event(const value& data);
 
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);

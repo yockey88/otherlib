@@ -49,9 +49,8 @@ namespace other {
   void* arena::allocate(size_t size, size_t alignment) {
     PROFILE_SECTION("arena::allocate");
     OTHER_ASSERT(size <= arena_storage::kPageSize, "Allocation size is too large for Arena.");
-    static arena* instance = subsystem_description<arena>::ptr();
-    LOCK_MUTEX(std::mutex, instance->arena_mutex);
-    // std::lock_guard<LockableBase(std::mutex)> lock_arena_mutex(instance->arena_mutex);
+    arena* instance = subsystem_description<arena>::ptr();
+    std::lock_guard lock_arena_mutex(instance->arena_mutex);
 
     if (instance->page_allocation_cursor == 0 ||
         instance->current_page == nullptr || instance->current_page->cursor + size >= arena_storage::kPageSize) {
@@ -64,10 +63,10 @@ namespace other {
     {
       PROFILE_SECTION("arena::allocate--perform-allocation");
       mem = instance->current_page->get_ptr_at(instance->current_page->cursor);
+      OTHER_ASSERT(mem != nullptr, "Failed to get pointer from current page.");
     }
     PROFILE_ALLOCATION(mem, size);
 
-    OTHER_ASSERT(mem != nullptr, "Failed to get pointer from current page.");
     instance->current_page->cursor += size;
     instance->allocated_memory += size;
     instance->total_allocations++;
@@ -76,19 +75,10 @@ namespace other {
     return mem;
   }
 
-  void* arena::request_region(size_t size, size_t alignment) {
-    PROFILE_SECTION("arena::request_region");
-    void* ptr = malloc(size + alignment - 1);
-    OTHER_ASSERT(ptr != nullptr, "Failed to allocate memory region of size {} with alignment {}.", size, alignment);
-    uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
-    uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
-    return reinterpret_cast<void*>(aligned_addr);
-  }
-
   void arena::free(void* ptr, std::size_t size) {
     PROFILE_SECTION("arena::free");
-    static arena* instance = subsystem_description<arena>::ptr();
-    LOCK_MUTEX(std::mutex, instance->arena_mutex);
+    arena* instance = subsystem_description<arena>::ptr();
+    std::lock_guard lock_arena_mutex(instance->arena_mutex);
 
     instance->allocated_memory -= size;
     instance->live_allocations--;
@@ -99,16 +89,35 @@ namespace other {
   }
 
   void arena::free(void* ptr) {
-    free(ptr, 0);
+    PROFILE_SECTION("arena::free");
+    arena* instance = subsystem_description<arena>::ptr();
+    std::lock_guard lock_arena_mutex(instance->arena_mutex);
+
+    //// be nice to have size info here but oh well
+    instance->live_allocations--;
+    PROFILE_DEALLOCATION(ptr);
+  }
+
+  void* arena::request_region(size_t size, size_t alignment) {
+    PROFILE_SECTION("arena::request_region");
+    std::lock_guard lock_arena_mutex(arena_mutex);
+
+    void* region = allocate(size, alignment);
+    OTHER_ASSERT(region != nullptr, "Failed to allocate aligned region.");
+    return region;
   }
 
   void arena::free_region(void* ptr) {
     PROFILE_SECTION("arena::free_region");
-    OTHER_ASSERT(ptr != nullptr, "Cannot free a null pointer.");
-    ::free(ptr);
+    std::lock_guard lock_arena_mutex(arena_mutex);
+
+    this->free(ptr);
   }
 
   arena::page* arena::get_current_page() {
+    arena* instance = subsystem_description<arena>::ptr();
+    std::lock_guard lock_arena_mutex(instance->arena_mutex);
+
     return current_page;
   }
 
@@ -117,20 +126,9 @@ namespace other {
 
     PROFILE_SECTION("arena::allocate_page");
     current_page = storage.allocate_page(page_allocation_cursor++);
+    CORE_LOG_TRACE("Allocated new arena page. Total pages allocated: {}", page_allocation_cursor);
     OTHER_ASSERT(current_page != nullptr, "Failed to allocate page.");
     current_page->cursor = 0;
   }
-
-  // #ifdef OTHERENV_MEMORY_DEBUG
-  //   void Arena::ReportAllocation(void* addr, std::size_t sz) {
-  //     std::stringstream ss;
-  //     ss << "Allocated memory at address: " << addr << ", size: " << sz << "\n";
-  //     ss << "   > Total Allocations: " << total_allocations << "\n";
-  //     ss << "   > Allocated Memory: " << allocated_memory << "\n";
-  //     ss << "   > Page Allocation Cursor: " << page_allocation_cursor << "\n";
-  //     ss << "   > Page Cursor: " << page_cursor << "\n";
-  //     // OE_DEBUG(ss.str());
-  //   }
-  // #endif
 
 }  // namespace other
