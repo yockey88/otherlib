@@ -82,38 +82,35 @@ namespace other {
     return msg;
   }
 
-  std::vector<uint8_t> command_load_empty_scene::custom_builder(command_load_empty_scene* msg) {
+  std::vector<uint8_t> command_load_scene::custom_builder(command_load_scene* msg) {
     std::vector<uint8_t> data;
 
     uint16_t scene_name_len = static_cast<uint16_t>(msg->scene_name.size());
     const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&msg->session_id);
-    const uint8_t* scene_name_len_bytes = reinterpret_cast<const uint8_t*>(&scene_name_len);
-    const uint8_t* scene_name_bytes = reinterpret_cast<const uint8_t*>(msg->scene_name.data());
-    if (msg->session_id_flag) {
-      data.push_back(0x01);
+    data.push_back(msg->session_id_flag);
+    if (msg->session_id_flag == 0x01) {
       data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
-    } else {
-      data.push_back(0x00);
     }
 
-    if (msg->requires_udp_binding) {
-      data.push_back(0x01);
+    data.push_back(msg->empty_scene_flag);
+    data.push_back(msg->requires_udp_binding);
+    if (msg->requires_udp_binding == 0x01) {
       const uint8_t* udp_address_bytes = reinterpret_cast<const uint8_t*>(&msg->udp_address);
       const uint8_t* server_udp_address_bytes = reinterpret_cast<const uint8_t*>(&msg->server_udp_address);
       data.append_range(std::span(udp_address_bytes, sizeof(binding_point)));
       data.append_range(std::span(server_udp_address_bytes, sizeof(binding_point)));
-    } else {
-      data.push_back(0x00);
     }
 
+    const uint8_t* scene_name_len_bytes = reinterpret_cast<const uint8_t*>(&scene_name_len);
+    const uint8_t* scene_name_bytes = reinterpret_cast<const uint8_t*>(msg->scene_name.data());
     data.append_range(std::span(scene_name_len_bytes, sizeof(uint16_t)));
     data.append_range(std::span(scene_name_bytes, scene_name_len));
 
     return data;
   }
 
-  command_load_empty_scene command_load_empty_scene::custom_parser(const std::span<const uint8_t> data) {
-    command_load_empty_scene msg;
+  command_load_scene command_load_scene::custom_parser(const std::span<const uint8_t> data) {
+    command_load_scene msg;
 
     auto bytes = std::span(data);
 
@@ -126,12 +123,16 @@ namespace other {
       bytes = bytes.subspan(sizeof(integer_t));
     }
 
-    uint8_t requires_udp_binding = bytes[0];
+    msg.empty_scene_flag = bytes[0];
     bytes = bytes.subspan(1);
-    msg.requires_udp_binding = requires_udp_binding;
-    if (requires_udp_binding) {
+
+    msg.requires_udp_binding = bytes[0];
+    bytes = bytes.subspan(1);
+
+    if (msg.requires_udp_binding) {
       msg.udp_address = *reinterpret_cast<const binding_point*>(bytes.data());
       bytes = bytes.subspan(sizeof(binding_point));
+
       msg.server_udp_address = *reinterpret_cast<const binding_point*>(bytes.data());
       bytes = bytes.subspan(sizeof(binding_point));
     }

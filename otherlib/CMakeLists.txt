@@ -39,6 +39,10 @@ target_sources(otherlib
 
     src/scripting/dotnet_bindings.cpp
     src/scripting/lua_bindings.cpp
+    src/scripting/scene_object_interface.cpp
+    src/scripting/binding_utils/bind_glm_vectors.cpp
+    src/scripting/binding_utils/bind_glm_matrices.cpp
+    src/scripting/binding_utils/bind_math_types_lua.cpp
 
     src/scripting/actions/action.cpp
     src/scripting/actions/callback.cpp

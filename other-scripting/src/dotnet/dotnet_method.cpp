@@ -19,8 +19,8 @@ namespace other {
     return return_type;
   }
 
-  std::string dotnet_method::name() {
-    native_string name_str = host->interop().get_full_type_name(dotnet_id);
+  std::string dotnet_method::name() const {
+    native_string name_str = host->interop().get_method_name(dotnet_id);
     std::string res = name_str;
     native_string::free_str(name_str);
     return res;

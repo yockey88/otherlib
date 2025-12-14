@@ -176,6 +176,16 @@ namespace other {
     return bytes;
   }
 
+  const dotnet_field* dotnet_object::get_dotnet_field(const std::string_view field_name) {
+    OTHER_ASSERT(dn_type != nullptr, "Type is not initialized for dotnet_object '{}'", object_name);
+
+    auto itr = std::ranges::find_if(dn_type->get_fields(), [&](const dotnet_field& f) { return f.name() == field_name; });
+    if (itr == dn_type->get_fields().end()) {
+      return nullptr;
+    }
+    return &(*itr);
+  }
+
   dotnet_field::storage& dotnet_object::get_field_storage(const std::string_view field_name) {
     auto itr = field_storage.find(FNV(field_name));
     OTHER_ASSERT(itr != field_storage.end(), "Field '{}' not found in storage", field_name);
@@ -186,6 +196,46 @@ namespace other {
     auto itr = field_storage.find(FNV(field_name));
     OTHER_ASSERT(itr != field_storage.end(), "Field '{}' not found in storage", field_name);
     return itr->second;
+  }
+
+  void dotnet_object::set_field(const std::string_view field_name, const value& val) {
+    if (!type_has_field(field_name)) {
+      CORE_LOG_ERROR("Field '{}' not found on .NET type {}", field_name, dn_type->full_name());
+      return;
+    }
+    if (val.type() != get_field_type(field_name)) {
+      CORE_LOG_ERROR("Type mismatch when setting field '{}' on .NET type {}: expected {}, got {}", field_name, dn_type->full_name(), get_field_type(field_name), val.type());
+      return;
+    }
+
+    switch (get_field_type(field_name)) {
+      case value_type::CHAR: set_field<char>(field_name, (char)val); break;
+      case value_type::OEBOOL: set_field<bool>(field_name, (bool)val); break;
+      case value_type::INT8: set_field<int8_t>(field_name, (int8_t)val); break;
+      case value_type::INT16: set_field<int16_t>(field_name, (int16_t)val); break;
+      case value_type::INT32: set_field<int32_t>(field_name, (int32_t)val); break;
+      case value_type::INT64: set_field<int64_t>(field_name, (int64_t)val); break;
+      case value_type::UINT8: set_field<uint8_t>(field_name, (uint8_t)val); break;
+      case value_type::UINT16: set_field<uint16_t>(field_name, (uint16_t)val); break;
+      case value_type::UINT32: set_field<uint32_t>(field_name, (uint32_t)val); break;
+      case value_type::UINT64: set_field<uint64_t>(field_name, (uint64_t)val); break;
+      case value_type::FLOAT: set_field<float>(field_name, (float)val); break;
+      case value_type::DOUBLE: set_field<double>(field_name, (double)val); break;
+      case value_type::STRING: set_field<std::string>(field_name, (std::string)val); break;
+      default:
+        CORE_LOG_ERROR(" - Unsupported field type [{}] for field '{}' in .NET type {}", val.type(), field_name, get_type_name());
+        break;
+    }
+  }
+
+  value_type dotnet_object::get_field_type(const std::string_view field_name) {
+    auto itr = load_field<value>(field_name);
+    if (itr == field_storage.end()) {
+      CORE_LOG_ERROR("Field '{}' not found on .NET type {}", field_name, dn_type->full_name());
+      return value_type::EMPTY_TYPE;
+    }
+
+    return itr->second.stored_type;
   }
 
   std::map<uint64_t, dotnet_field::storage>::iterator dotnet_object::load_field(const std::string_view field_name, value_type type) {

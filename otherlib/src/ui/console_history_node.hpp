@@ -31,6 +31,12 @@ namespace other {
       void on_render_end() override;
 
      private:
+      friend int text_callback(ImGuiInputTextCallbackData* data);
+
+      /// usually points one past last entered input (so input line is empty)
+      ///  if user presses up-arrow, cursor moves back to previous entry
+      size_t history_cursor = 0;
+
       void push_message_color(console_message_type type);
     };
 

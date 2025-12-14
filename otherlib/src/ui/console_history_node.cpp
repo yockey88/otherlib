@@ -20,6 +20,32 @@ namespace other {
   namespace ui {
 
     int text_callback(ImGuiInputTextCallbackData* data) {
+      OTHER_ASSERT(data != nullptr, "ImGuiInputTextCallbackData is null");
+      OTHER_ASSERT(data->UserData != nullptr, "UserData is null in text_callback, expected console_history_node*");
+      console_history_node* console_node = reinterpret_cast<console_history_node*>(data->UserData);
+      environment_console::history_move move = environment_console::HISTORY_MOVE_NONE;
+      switch (data->EventKey) {
+        case ImGuiKey_UpArrow: move = environment_console::HISTORY_MOVE_BACK; break;
+        case ImGuiKey_DownArrow: move = environment_console::HISTORY_MOVE_FORWARD; break;
+        default:
+          break;
+      }
+
+      if (move != environment_console::HISTORY_MOVE_NONE) {
+        CORE_LOG_DEBUG("text_callback: EventKey = {}, move = {}", data->EventKey, move);
+        environment_console::move_history_cursor(move);
+        char* input_buffer = environment_console::get_input_buffer();
+        OTHER_ASSERT(input_buffer != nullptr, "Input buffer is null in text_callback");
+
+        const auto& history = environment_console::get_console_history();
+        size_t cursor = environment_console::get_cursor_position();
+        if (cursor < history.size()) {
+          std::strncpy(input_buffer, history[cursor].input_text.c_str(), environment_console::kInputBufferSize - 1);
+        } else {
+          environment_console::clear_input_buffer();
+        }
+      }
+
       return 0;
     }
 

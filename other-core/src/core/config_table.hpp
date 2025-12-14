@@ -46,7 +46,7 @@ namespace other {
       PROFILE_SECTION("config_table::get-value");
       toml::node_view node = table.at_path(toml_path);
       if (!node) {
-        CORE_LOG_WARN("Config key '{}' not found, returning default value.", toml_path);
+        CORE_LOG_TRACE("Config key '{}' not found, returning default value.", toml_path);
         return default_value;
       } else {
         CORE_LOG_TRACE("Found config key '{}'", toml_path);

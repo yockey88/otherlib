@@ -9,6 +9,7 @@
 #include "core/defines.hpp"
 #include "core/scope.hpp"
 
+#include "lua/lua_sandbox.hpp"
 #include "renderer/renderer.hpp"
 
 #include "scene/scene_tree.hpp"
@@ -22,7 +23,13 @@ namespace other {
     entt::registry registry = {};
     scene_tree tree;
 
+    sol::state& lua_state;
+    lua_sandbox sandbox;
+
     std::optional<render_data> render_data_cache = std::nullopt;
+
+    scene_storage(sol::state& lua_env)
+        : lua_state(lua_env), sandbox(lua_env) {}
   };
 
   scope<scene_storage> make_scene_storage(scene* scene_ptr);

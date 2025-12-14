@@ -293,7 +293,9 @@ namespace other {
 
     json::json project_cache;
 
+    void handle_load_empty_scene_event(const value& data);
     void handle_load_scene_event(const value& data);
+    void send_load_command(const std::string_view scene_name, natural_t scene_id, bool requires_udp_binding);
 
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);

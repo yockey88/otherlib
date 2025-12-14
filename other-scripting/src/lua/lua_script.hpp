@@ -6,12 +6,9 @@
 
 #include <type_traits>
 
-#include "core/defines.hpp"
 #include "core/logger.hpp"
 
-#include "lua/sol_bridge.hpp"
-
-#include "sol/load_result.hpp"
+#include "lua/lua_sandbox.hpp"
 
 namespace other {
 
@@ -21,7 +18,7 @@ namespace other {
     ~lua_script() = default;
 
     sol::state& get_lua_state() { return lua_state; }
-    sol::environment& get_state() { return script_env; }
+    sol::environment& get_state() { return script_sandbox.environment(); }
     bool is_valid() const;
     void run_script();
 
@@ -42,7 +39,7 @@ namespace other {
         return T{};
       }
 
-      sol::object symbol = script_env.get_or<sol::object>(symbol_name, sol::nil);
+      sol::object symbol = script_sandbox.environment().get_or<sol::object>(symbol_name, sol::nil);
       if (!symbol.is<T>()) {
         CORE_LOG_ERROR("Symbol '{}' is not of the requested type in Lua script", symbol_name);
         return default_value;
@@ -58,7 +55,7 @@ namespace other {
         return T{};
       }
 
-      sol::object symbol = script_env.get_or<sol::object>(symbol_name, sol::nil);
+      sol::object symbol = script_sandbox.environment().get_or<sol::object>(symbol_name, sol::nil);
       if (!symbol.is<T>()) {
         CORE_LOG_ERROR("Symbol '{}' is not of the requested type in Lua script", symbol_name);
         return default_value;
@@ -74,7 +71,7 @@ namespace other {
         return nullptr;
       }
 
-      sol::object symbol = script_env.get_or<Fn>(symbol_name, sol::nil);
+      sol::object symbol = script_sandbox.environment().get_or<Fn>(symbol_name, sol::nil);
       if (!symbol.is<sol::protected_function>()) {
         CORE_LOG_ERROR("Symbol '{}' is not a function in Lua script", symbol_name);
         return nullptr;
@@ -87,7 +84,7 @@ namespace other {
 
     template <typename T>
     void add_lua_symbol(const std::string_view name, T&& value) {
-      script_env[name] = std::forward<T>(value);
+      script_sandbox.environment()[name] = std::forward<T>(value);
     }
 
     void call_hook_function_if_exists(const std::string_view function_name, bool on_entry = false);
@@ -99,7 +96,7 @@ namespace other {
       }
 
       try {
-        sol::protected_function func = script_env[function_name];
+        sol::protected_function func = script_sandbox.environment()[function_name];
         if (!func.valid()) {
           CORE_LOG_ERROR("Function '{}' not found in Lua script", function_name);
           return R{};
@@ -128,7 +125,7 @@ namespace other {
 
    private:
     sol::state& lua_state;
-    sol::environment script_env;
+    lua_sandbox script_sandbox;
     sol::protected_function load_fn;
 
     bool ran = false;

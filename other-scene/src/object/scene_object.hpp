@@ -4,8 +4,9 @@
 #ifndef OTHER_SCENE_OBJECT_SCENE_OBJECT_HPP
 #define OTHER_SCENE_OBJECT_SCENE_OBJECT_HPP
 
+#include <sol/sol.hpp>
+
 #include "core/defines.hpp"
-#include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
 namespace other {
@@ -13,7 +14,6 @@ namespace other {
   class scene;
 
   struct scene_object {
-    OTHER_REFLECTABLE(scene_object);
     natural_t id = 0;
     uint32_t registry_id = 0;
 

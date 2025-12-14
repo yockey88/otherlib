@@ -57,6 +57,7 @@ namespace other {
   using get_field_value_type = void (*)(int32_t, uint8_t*);
   using get_field_accessibility = type_accessibility (*)(int32_t);
   using get_field_attributes = void (*)(int32_t, int32_t*, int32_t*);
+  using get_default_value = void (*)(int32_t, void*);
 
   /// property
   using get_property_name = native_string (*)(int32_t);

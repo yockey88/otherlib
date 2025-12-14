@@ -7,10 +7,23 @@
 
 #include "core/logger.hpp"
 
+#include "dotnet/dotnet_object.hpp"
+#include "script/scripting_environment.hpp"
+
+#include "object/scene_object.hpp"
+#include "object/script_component.hpp"
+#include "object/transform.hpp"
+
 #include "driver/driver.hpp"
+#include "scripting/binding_utils/bind_math_types_lua.hpp"
+#include "scripting/binding_utils/type_binder.hpp"
 #include "tools/environment_console.hpp"
 
+#include "lua_bindings.hpp"
+
 namespace other {
+
+  void bind_native_types(sol::state& lua_state);
 
   void bind_otherlib_lua_functions(lua_host& lua_host) {
     filepath lua_defs_path = lua_host.retrieve_script_path("global_definitions.lua");
@@ -26,33 +39,15 @@ namespace other {
     }
 
     sol::state& lua_state = lua_host.get_lua_state();
-
-    lua_state.new_enum(
-      "log_level",
-      "TRACE", spdlog::level::trace,
-      "DEBUG", spdlog::level::debug,
-      "INFO", spdlog::level::info,
-      "WARN", spdlog::level::warn,
-      "ERROR", spdlog::level::err,
-      "CRITICAL", spdlog::level::critical
-    );
-    lua_state.new_enum(
-      "console_message",
-      "CONSOLE_NONE", CONSOLE_MESSAGE_NONE,
-      "CONSOLE_MESSAGE", CONSOLE_MESSAGE_MESSAGE,
-      "CONSOLE_TRACE", CONSOLE_MESSAGE_TRACE,
-      "CONSOLE_DEBUG", CONSOLE_MESSAGE_DEBUG,
-      "CONSOLE_INFO", CONSOLE_MESSAGE_INFO,
-      "CONSOLE_WARN", CONSOLE_MESSAGE_WARN,
-      "CONSOLE_ERROR", CONSOLE_MESSAGE_ERROR,
-      "CONSOLE_COMMAND", CONSOLE_MESSAGE_COMMAND
-    );
+    bind_native_types(lua_state);
 
     lua_state.create_named_table(
       "__other_native",
       "__log", lua_state.create_table_with(),
       "__driver", lua_state.create_table_with(),
-      "__environment_console", lua_state.create_table_with()
+      "__environment_console", lua_state.create_table_with(),
+      "__scene_object_interface", lua_state.create_table_with(),
+      "__dotnet_types", lua_state.create_table_with()
     );
 
     lua_state.create_named_table(
@@ -90,7 +85,6 @@ namespace other {
 
     sol::table driver_table = lua_state["__other_native"]["__driver"];
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
-
     driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {
       value val;
       switch (data.get_type()) {
@@ -110,6 +104,83 @@ namespace other {
       }
       host_driver->trigger_event(event, val);
     });
+
+    /// now we bind dotnet types into lua types by asking the dotnet types to write their descriptor tables
+    auto* scripting_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(scripting_env != nullptr, "scripting_environment is not initialized.");
+
+    auto& dotnet_host = scripting_env->get_dotnet_host();
+    type_cache* types = dotnet_host.get_type_cache();
+    OTHER_ASSERT(types != nullptr, "dotnet_host type cache is null.");
+
+    // lua_state.new_usertype<dotnet_object_proxy>(
+    //   "__dotnet_object_proxy",
+    //   sol::constructors<dotnet_object_proxy()>(),
+    //   "native_object", &dotnet_object_proxy::native_object
+    // );
+
+    for (auto& [type_hash, dotnet_type_ptr] : *types) {
+      sol::table type_table = dotnet_type_ptr.create_lua_descriptor(lua_state);
+      CORE_LOG_TRACE("Registering .NET type '{}' in Lua .NET type registry", dotnet_type_ptr.full_name());
+
+      lua_state["__other_native"]["__dotnet_types"][dotnet_type_ptr.full_name()] = type_table;
+    }
+  }
+
+  void bind_native_types(sol::state& lua_state) {
+    lua_state.new_enum(
+      "log_level",
+      "TRACE", spdlog::level::trace,
+      "DEBUG", spdlog::level::debug,
+      "INFO", spdlog::level::info,
+      "WARN", spdlog::level::warn,
+      "ERROR", spdlog::level::err,
+      "CRITICAL", spdlog::level::critical
+    );
+    lua_state.new_enum(
+      "console_message",
+      "CONSOLE_NONE", CONSOLE_MESSAGE_NONE,
+      "CONSOLE_MESSAGE", CONSOLE_MESSAGE_MESSAGE,
+      "CONSOLE_TRACE", CONSOLE_MESSAGE_TRACE,
+      "CONSOLE_DEBUG", CONSOLE_MESSAGE_DEBUG,
+      "CONSOLE_INFO", CONSOLE_MESSAGE_INFO,
+      "CONSOLE_WARN", CONSOLE_MESSAGE_WARN,
+      "CONSOLE_ERROR", CONSOLE_MESSAGE_ERROR,
+      "CONSOLE_COMMAND", CONSOLE_MESSAGE_COMMAND
+    );
+
+    // lua_state.new_usertype<value>(
+    //   "__native_value",
+    //   sol::constructors<
+    //     value(), value(char), value(bool),
+    //     value(int8_t), value(int16_t), value(int32_t), value(int64_t),
+    //     value(uint8_t), value(uint16_t), value(uint32_t), value(uint64_t),
+    //     value(float), value(double),
+    //     value(const std::string&),
+    //     value(const value&), value(value&&)>(),
+    //   "type", &value::type,
+    //   "as_char", [=](const value& v) { return (char)v; },
+    //   "as_bool", [=](const value& v) { return (bool)v; },
+    //   "as_int8", [=](const value& v) { return (int8_t)v; },
+    //   "as_int16", [=](const value& v) { return (int16_t)v; },
+    //   "as_int32", [=](const value& v) { return (int32_t)v; },
+    //   "as_int64", [=](const value& v) { return (int64_t)v; },
+    //   "as_uint8", [=](const value& v) { return (uint8_t)v; },
+    //   "as_uint16", [=](const value& v) { return (uint16_t)v; },
+    //   "as_uint32", [=](const value& v) { return (uint32_t)v; },
+    //   "as_uint64", [=](const value& v) { return (uint64_t)v; },
+    //   "as_float", [=](const value& v) { return (float)v; },
+    //   "as_double", [=](const value& v) { return (double)v; },
+    //   "as_string", [=](const value& v) { return (std::string)v; },
+    //   "to_string", &value::to_string
+    // );
+
+    bind_linear_algebra_types(lua_state);
+
+    /// bind scene components (and other native types)
+    type_binder<scene_object>::bind_component_lua(lua_state, "__native_scene_object");
+    type_binder<transform>::bind_component_lua(lua_state, "__native_transform_component");
+    type_binder<script_component>::bind_component_lua(lua_state, "__native_script_component");
   }
 
 }  // namespace other

@@ -51,8 +51,16 @@ namespace other {
     static inline void clear_input_buffer() {
       std::ranges::fill(input_buffer.begin(), input_buffer.end(), 0);
     }
+    static inline size_t get_cursor_position() { return history_cursor; }
 
-    constexpr static inline size_t kInputBufferSize = 256;
+    enum history_move {
+      HISTORY_MOVE_NONE = 0,
+      HISTORY_MOVE_BACK,
+      HISTORY_MOVE_FORWARD
+    };
+    static void move_history_cursor(history_move move);
+
+    constexpr static inline size_t kInputBufferSize = 1024;
 
    private:
     /// must always use console on thread that initialized it
@@ -62,6 +70,8 @@ namespace other {
 
     static std::atomic<bool> input_waiting;
     static std::queue<console_input> input_queue;
+
+    static size_t history_cursor;
     static std::vector<console_input> history_lines;
 
     static size_t max_history_lines;

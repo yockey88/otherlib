@@ -22,4 +22,10 @@ namespace other {
 
 }  // namespace other
 
+OTHER_REFLECT(
+  other::render_component,
+  field(animated, other::attr::serializable()),
+  field(visible, other::attr::serializable())
+)
+
 #endif  // OTHER_SCENE_OBJECT_RENDER_COMPONENT_HPP

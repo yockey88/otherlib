@@ -32,6 +32,16 @@ namespace other {
     return { id, g.ptr_to_node_value(id) };
   }
 
+  std::pair<uint64_t, scene*> scene_graph::load_scene(const filepath& scene_path) {
+    scene new_scene = scene::load_scene(scene_path);
+    if (new_scene.id == 0) {
+      return { 0, nullptr };
+    }
+
+    natural_t id = g.add_node(std::move(new_scene));
+    return { id, g.ptr_to_node_value(id) };
+  }
+
   void scene_graph::remove_scene(natural_t id) {
     g.remove_node(id);
   }

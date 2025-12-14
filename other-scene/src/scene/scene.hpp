@@ -49,6 +49,7 @@ namespace other {
     }
 
     static scene create_scene(const std::string& name);
+    static scene load_scene(const filepath& scene_path);
 
     /// fixed update called at a constant timestep (e.g., 60 Hz)
     void fixed_update(double delta_time);
@@ -208,6 +209,9 @@ namespace other {
     void on_create_script_component(const entt::registry&, const entt::entity entity);
     // void on_update_script_component(const entt::registry&, const entt::entity entity);
     void on_destroy_script_component(const entt::registry&, const entt::entity entity);
+
+    static scene load_from_lua_file(const filepath& scene_path);
+    void construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table);
 
     scope<scene_storage> storage = nullptr;
   };

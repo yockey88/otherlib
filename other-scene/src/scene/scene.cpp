@@ -24,6 +24,7 @@
 
 #include "entt/entity/fwd.hpp"
 #include "scene_storage.hpp"
+#include "sol/table.hpp"
 
 namespace other {
 
@@ -42,9 +43,17 @@ namespace other {
   }
 
   void scene::do_scene_binding() {
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "scripting_environment null in scene do_scene_binding!");
+
+    auto& lua_state = env->get_lua_host().get_lua_state();
     storage->registry.on_construct<script_component>().connect<&scene::on_create_script_component>(this);
     // storage->registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
     storage->registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
+
+    auto scene_table = storage->sandbox["__native_scene"];
+    scene_table["name"] = name;
+    scene_table["id"] = id;
   }
 
   void scene::do_scene_unbinding() {
@@ -67,6 +76,7 @@ namespace other {
   }
 
   scene::scene(scene&& other) {
+    other.do_scene_unbinding();
     *this = std::move(other);
   }
 
@@ -74,6 +84,7 @@ namespace other {
     if (this == &other) {
       return *this;
     }
+    other.do_scene_unbinding();
 
     this->name = std::move(other.name);
     this->id = other.id;
@@ -104,6 +115,19 @@ namespace other {
 
   scene scene::create_scene(const std::string& name) {
     return scene(name);
+  }
+
+  scene scene::load_scene(const filepath& scene_path) {
+    std::string ext = scene_path.extension().string();
+    switch (FNV(ext)) {
+      case FNV(".lua"): {
+        PROFILE_SECTION("scene::load_scene_lua");
+        return load_from_lua_file(scene_path);
+      }
+      default:
+        CORE_LOG_ERROR("Unsupported scene file extension '{}'", ext);
+        return scene();
+    }
   }
 
   void scene::fixed_update(double delta_time) {
@@ -506,10 +530,10 @@ namespace other {
 
     storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
     storage->registry.emplace<transform>(entity, transform{
-                                                   .local_basis = orthonormal_basis(glm::vec3(0, 1, 0)),
-                                                   .local_position = world_position,
-                                                   .local_scale = glm::vec3(1, 1, 1),
-                                                   .local_rotation_quat = glm::quat(1, 0, 0, 0),
+                                                   orthonormal_basis(glm::vec3(0, 1, 0)),
+                                                   world_position,
+                                                   glm::vec3(1, 1, 1),
+                                                   glm::quat(1, 0, 0, 0),
                                                  });
     storage->registry.emplace<script_component>(entity, script_component{ .object = object });
   }
@@ -564,6 +588,205 @@ namespace other {
 
     script_component& script = storage->registry.get<script_component>(entity);
     script_env->destroy_object(script.script_object_id);
+  }
+
+  scene scene::load_from_lua_file(const filepath& scene_path) {
+    // Create a new scene
+    scene new_scene = scene(scene_path.filename().stem().string());
+
+    // Load and execute the Lua script
+    auto* scripting_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment.");
+
+    lua_host& lua = scripting_env->get_lua_host();
+    sol::table scene_table = lua.try_load_table(scene_path.string());
+    sol::table objects_table;
+
+    bool scene_valid = scene_table.valid();
+    if (!scene_valid) {
+      CORE_LOG_ERROR("Failed to load scene-table from Lua file: {}", scene_path.string());
+      CORE_LOG_WARN(" - Make sure your Lua scene file returns a global table!");
+    } else {
+      objects_table = scene_table["Objects"];
+      scene_valid = objects_table.valid();
+      if (!scene_valid) {
+        CORE_LOG_WARN("Scene Lua file '{}' does not contain a valid 'Objects' table.", scene_path.string());
+      } else {
+      }
+    }
+
+    if (scene_valid) {
+      for (auto& obj : objects_table) {
+        std::string obj_name = obj.first.as<std::string>();
+        sol::table obj_table = obj.second.as<sol::table>();
+
+        scene_object& scene_obj = new_scene.create_object(obj_name);
+        if (scene_obj.id == 0) {
+          CORE_LOG_ERROR("Failed to create scene object '{}' in scene '{}'", obj_name, new_scene.name);
+          continue;
+        }
+        new_scene.construct_object_from_lua_table(scene_obj, obj_table);
+
+        CORE_LOG_DEBUG("Loaded scene object '{}' with ID {}.", obj_name, scene_obj.id);
+      }
+
+      CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", new_scene.name, scene_path.string());
+    }
+
+    return new_scene;
+  }
+
+  void scene::construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table) {
+    CORE_LOG_DEBUG("Constructing scene object '{}' from Lua table.", scene_obj.name);
+    const auto transform_table = obj_table["Transform"];
+    const auto scripts_table = obj_table["Scripts"];
+    OTHER_ASSERT(transform_table.valid(), "No Transform table found in the Lua object table for object w/ id {}", scene_obj.id);
+    OTHER_ASSERT(scripts_table.valid(), "No scripts found in the Lua object table for object w/ id {}", scene_obj.id);
+
+    transform obj_transform = get_transform(&scene_obj);
+
+    auto position = transform_table["local_position"];
+    auto rotation = transform_table["local_rotation_quat"];
+    auto scale = transform_table["local_scale"];
+
+    if (position.valid()) {
+      obj_transform.local_position = glm::vec3{ position["x"].get_or(0.0f), position["y"].get_or(0.0f), position["z"].get_or(0.0f) };
+    }
+    if (rotation.valid()) {
+      obj_transform.local_rotation_quat = glm::quat{ rotation["w"].get_or(1.0f), rotation["x"].get_or(0.0f), rotation["y"].get_or(0.0f), rotation["z"].get_or(0.0f) };
+    }
+    if (scale.valid()) {
+      obj_transform.local_scale = glm::vec3{ scale["x"].get_or(1.0f), scale["y"].get_or(1.0f), scale["z"].get_or(1.0f) };
+    }
+
+    set_transform(&scene_obj, obj_transform);
+
+    sol::table dotnet = scripts_table[".NET"];
+    // opt<sol::table> lua_scripts = scripts_table["Lua"];
+
+    script_component* script_comp = get_component<script_component>(&scene_obj);
+    OTHER_ASSERT(script_comp != nullptr, "Failed to retrieve script component for object w/ id {}", scene_obj.id);
+
+    auto* scripting_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment");
+
+    if (dotnet.valid()) {
+      CORE_LOG_DEBUG(" - attaching .NET scripts to script object ID {}", script_comp->script_object_id);
+      for (auto& item : dotnet) {
+        std::string script_name = item.first.as<std::string>();
+        CORE_LOG_DEBUG("[.NET Type Description]: {}", script_name);
+
+        sol::table script_data = item.second.as<sol::table>();
+        for (auto& field_item : script_data) {
+          CORE_LOG_DEBUG("[.NET Type Data Entry]: {}", field_item.first.as<std::string>());
+        }
+
+        opt<std::string> class_name = script_data["ClassName"];
+        if (!class_name.has_value()) {
+          CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not specify a ClassName.", script_name, script_comp->script_object_id);
+          continue;
+        }
+
+        scripting_env->attach_dotnet_object(script_comp->script_object_id, class_name.value());
+        script_object* obj = scripting_env->get_object(script_comp->script_object_id);
+        OTHER_ASSERT(obj != nullptr, "Failed to retrieve .NET script object after attachment for object ID {}", script_comp->script_object_id);
+
+        if (obj->dotnet_object == nullptr) {
+          CORE_LOG_ERROR(" - .NET script object '{}' for object ID {} has null dotnet_object after attachment.", script_name, script_comp->script_object_id);
+          continue;
+        }
+
+        CORE_LOG_DEBUG(" - attaching serialized .NET object '{}' to script object ID {}", script_name, script_comp->script_object_id);
+        sol::table fields_table = script_data["Fields"];
+
+        for (auto& field_item : fields_table) {
+          std::string field_name = field_item.first.as<std::string>();
+          if (field_name.contains("k__BackingField") || field_name.starts_with("<") ||
+              /// not sure what this one is but one of the type contains a mysterious generated 'value__' field (enums?? what does it mean?)
+              field_name == "value__") {
+            continue;
+          }
+
+          if (obj->dotnet_object->get_dotnet_field(field_name) == nullptr) {
+            CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not have field '{}' defined in the class.", script_name, script_comp->script_object_id, field_name);
+            continue;
+          }
+
+          auto* dn_field = obj->dotnet_object->get_dotnet_field(field_name);
+          OTHER_ASSERT(dn_field != nullptr, " - .NET script '{}' for object ID {} does not have field '{}' defined in the class.", script_name, script_comp->script_object_id, field_name);
+
+          sol::table field_value = field_item.second;
+          value_type val_type = field_value["Type"];
+          if (val_type == value_type::EMPTY_TYPE) {
+            CORE_LOG_ERROR("   - field '{}' on .NET script '{}' for object ID {} has EMPTY_TYPE, skipping.", field_name, script_name, script_comp->script_object_id);
+            continue;
+          }
+          if (val_type != dn_field->get_type()) {
+            CORE_LOG_ERROR("   - field '{}' on .NET script '{}' for object ID {} has mismatched type (Lua: {}, .NET: {}), skipping.", field_name, script_name, script_comp->script_object_id, val_type, dn_field->get_type());
+            continue;
+          }
+
+          CORE_LOG_DEBUG("Writing Field '{}' on .NET script '{}' for object ID {}", field_name, script_name, script_comp->script_object_id);
+          CORE_LOG_DEBUG("   - field value type: {}", val_type);
+
+          if (dn_field->is_property()) {
+          } else {
+          }
+
+          CORE_LOG_DEBUG(" - .NET script '{}' for object ID {} has field '{}' to set. (sol type = {})", script_name, script_comp->script_object_id, field_name, field_value.get_type());
+
+          value val;
+          switch (val_type) {
+            case value_type::CHAR: val = value(field_value["Value"].get<char>()); break;
+            case value_type::OEBOOL: val = value(field_value["Value"].get<bool>()); break;
+            case value_type::INT8: val = value(field_value["Value"].get<int8_t>()); break;
+            case value_type::UINT8: val = value(field_value["Value"].get<uint8_t>()); break;
+            case value_type::INT16: val = value(field_value["Value"].get<int16_t>()); break;
+            case value_type::UINT16: val = value(field_value["Value"].get<uint16_t>()); break;
+            case value_type::INT32: val = value(field_value["Value"].get<int32_t>()); break;
+            case value_type::UINT32: val = value(field_value["Value"].get<uint32_t>()); break;
+            case value_type::INT64: val = value(field_value["Value"].get<int64_t>()); break;
+            case value_type::UINT64: val = value(field_value["Value"].get<uint64_t>()); break;
+            case value_type::FLOAT: val = value(field_value["Value"].get<float>()); break;
+            case value_type::DOUBLE: val = value(field_value["Value"].get<double>()); break;
+            case value_type::STRING: val = value(field_value["Value"].get<std::string>()); break;
+            case value_type::VEC2: {
+              sol::table vec_table = field_value["Value"];
+              glm::vec2 vec_val = glm::vec2{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f) };
+              val = value(vec_val);
+            } break;
+            case value_type::VEC3: {
+              sol::table vec_table = field_value["Value"];
+              glm::vec3 vec_val = glm::vec3{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f), vec_table["z"].get_or(0.0f) };
+              val = value(vec_val);
+            } break;
+            case value_type::VEC4: {
+              sol::table vec_table = field_value["Value"];
+              glm::vec4 vec_val = glm::vec4{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f), vec_table["z"].get_or(0.0f), vec_table["w"].get_or(0.0f) };
+              val = value(vec_val);
+            } break;
+            default: break;
+          }
+
+          if (val.type() == value_type::EMPTY_TYPE) {
+            CORE_LOG_ERROR("   - could not convert field '{}' value to valid .NET value for script '{}' on object ID {}", field_name, script_name, script_comp->script_object_id);
+            continue;
+          }
+          obj->dotnet_object->set_field(field_name, val);
+        }
+      }
+    }
+
+    // if (lua_scripts.has_value() && lua_scripts->valid()) {
+    //   CORE_LOG_DEBUG(" - attaching Lua scripts to script object ID {}", script_comp->script_object_id);
+    //   // for (auto& item : lua_scripts) {
+    //   //   std::string script_name = item.first.as<std::string>();
+    //   //   // sol::table script_data = item.second.as<sol::table>();
+
+    //   //   // Load and attach the Lua script to the script component
+    //   //   subsystem<scripting_environment>::get()->attach_lua_script(script_comp->script_object_id, script_name);
+    //   // }
+    // }
   }
 
 }  // namespace other

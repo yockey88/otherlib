@@ -60,8 +60,12 @@ namespace other {
       }
     }
 
+    const dotnet_field* get_dotnet_field(const std::string_view field_name);
     dotnet_field::storage& get_field_storage(const std::string_view field_name);
     const dotnet_field::storage& get_field_storage(const std::string_view field_name) const;
+
+    void set_field(const std::string_view field_name, const value& val);
+    value_type get_field_type(const std::string_view field_name);
 
     template <typename FT>
       requires std::is_copy_constructible_v<FT>
@@ -119,6 +123,7 @@ namespace other {
         itr->second.template set_as<FT>(value);
       } else {
         CORE_LOG_ERROR("Field '{}' not found", field_name);
+        return;
       }
       write_storage_to_field(itr, field_name);
     }

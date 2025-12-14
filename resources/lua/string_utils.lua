@@ -1,9 +1,5 @@
 local _StringUtils = {}
 
-function _StringUtils.say_hello()
-  print("Hello from StringUtils!")
-end
-
 function _StringUtils.strip_leading_and_ending_whitespace(str)
   return str:match("^%s*(.-)%s*$")
 end

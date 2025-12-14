@@ -396,6 +396,9 @@ namespace other {
     interop_functions.get_field_attributes = load_managed_function<get_field_attributes>(type_interface_type_str, DNET_STR("GetFieldAttributes"));
     OTHER_ASSERT(interop_functions.get_field_attributes != nullptr, "Failed to load GetFieldAttributes from managed assembly.");
 
+    interop_functions.get_default_value = load_managed_function<get_default_value>(type_interface_type_str, DNET_STR("GetDefaultValue"));
+    OTHER_ASSERT(interop_functions.get_default_value != nullptr, "Failed to load GetDefaultValue from managed assembly.");
+
     //       property
     interop_functions.get_property_name = load_managed_function<get_property_name>(type_interface_type_str, DNET_STR("GetPropertyName"));
     OTHER_ASSERT(interop_functions.get_property_name != nullptr, "Failed to load GetPropertyName from managed assembly.");

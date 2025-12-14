@@ -85,9 +85,13 @@ namespace other {
     static command_session_tx_message custom_parser(const std::span<const uint8_t> data);
   };
 
-  struct command_load_empty_scene : other_message_spec_impl<command_load_empty_scene> {
+  struct command_load_scene : other_message_spec_impl<command_load_scene> {
     uint8_t session_id_flag = 0;
     integer_t session_id = 0;
+
+    /// if true (1) then the scene does not have to be synchronized over UDP,
+    /// if false (0) then the scene requires UDP synchronization
+    uint8_t empty_scene_flag = 0;
 
     uint8_t requires_udp_binding = 0;
     binding_point udp_address;
@@ -95,8 +99,8 @@ namespace other {
 
     std::string scene_name;
 
-    static std::vector<uint8_t> custom_builder(command_load_empty_scene* msg);
-    static command_load_empty_scene custom_parser(const std::span<const uint8_t> data);
+    static std::vector<uint8_t> custom_builder(command_load_scene* msg);
+    static command_load_scene custom_parser(const std::span<const uint8_t> data);
   };
 
   struct command_stream_send_udp_datagram : other_message_spec_impl<command_stream_send_udp_datagram> {

@@ -25,6 +25,7 @@ namespace other {
     {
       std::vector<int32_t> dotnet_attribute_ids;
       fill_out_type_information(dotnet_attribute_ids, host->interop().get_attributes);
+
       dotnet_attributes.reserve(dotnet_attribute_ids.size());
       for (int32_t attribute_id : dotnet_attribute_ids) {
         int32_t attribute_type_id = -1;
@@ -35,6 +36,7 @@ namespace other {
     {
       std::vector<int32_t> dotnet_method_ids;
       fill_out_type_information(dotnet_method_ids, host->interop().get_type_methods);
+
       dotnet_methods.reserve(dotnet_method_ids.size());
       for (int32_t method_id : dotnet_method_ids) {
         dotnet_methods.emplace_back(host, this, method_id);
@@ -43,14 +45,14 @@ namespace other {
     {
       std::vector<int32_t> dotnet_field_ids;
       fill_out_type_information(dotnet_field_ids, host->interop().get_type_fields);
-      dotnet_fields.reserve(dotnet_field_ids.size());
+      std::vector<int32_t> dotnet_property_ids;
+      fill_out_type_information(dotnet_property_ids, host->interop().get_type_properties);
+
+      dotnet_fields.reserve(dotnet_field_ids.size() + dotnet_property_ids.size());
       for (int32_t field_id : dotnet_field_ids) {
         auto& f = dotnet_fields.emplace_back(host, this, field_id);
         f.initialize_field();
       }
-
-      std::vector<int32_t> dotnet_property_ids;
-      fill_out_type_information(dotnet_property_ids, host->interop().get_type_properties);
       for (int32_t property_id : dotnet_property_ids) {
         auto& p = dotnet_fields.emplace_back(host, this, property_id, true);
         p.initialize_field();
@@ -66,6 +68,20 @@ namespace other {
     native_string name = host->interop().get_full_type_name(dotnet_id);
     std::string res = name;
     native_string::free_str(name);
+    return res;
+  }
+
+  std::string dotnet_type::namespace_name() const {
+    std::string full_name_str = full_name();
+    size_t last_dot = full_name_str.rfind('.');
+    std::string res = (last_dot == std::string::npos) ? "" : full_name_str.substr(0, last_dot);
+    return res;
+  }
+
+  std::string dotnet_type::class_name() const {
+    std::string gull_name = full_name();
+    size_t last_dot = gull_name.rfind('.');
+    std::string res = (last_dot == std::string::npos) ? gull_name : gull_name.substr(last_dot + 1);
     return res;
   }
 
@@ -165,6 +181,80 @@ namespace other {
     host->destroy_managed_object(obj);
   }
 
+  sol::table dotnet_type::create_lua_descriptor(sol::state& lua_state) {
+    sol::table type_table = lua_state.create_table_with(
+      "FullTypeName", full_name(),
+      /// this includes all namespaces except the class name, e.g. "System.Collections.Generic"
+      "NameSpace", namespace_name(),
+      "ClassName", class_name(),
+      "DotNetID", dotnet_id
+    );
+
+    type_table["Attributes"] = lua_state.create_table();
+    type_table["Methods"] = lua_state.create_table();
+    type_table["Fields"] = lua_state.create_table();
+
+    for (const auto& attr : dotnet_attributes) {
+      type_table["Attributes"][attr.attribute.name()] = lua_state.create_table_with(
+        "Name", attr.attribute.name(),
+        "DotNetID", attr.attribute.dotnet_id
+      );
+    }
+
+    for (auto& method : dotnet_methods) {
+      sol::table method_table = type_table["Methods"][method.name()] = lua_state.create_table_with(
+        "Name", method.name(),
+        "DotNetID", method.dotnet_id
+      );
+      /// \todo
+      // method_table["ReturnType"] = method.get_return_type();
+
+      /// \todo
+      // sol::table param_table = method_table["Parameters"] = lua_state.create_table();
+      // const auto& params = method.get_parameters();
+      // for (size_t i = 0; i < params.size(); ++i) {
+      //   const auto& param = params[i];
+      //   sol::table ptable = param_table[i + 1] = lua_state.create_table_with(
+      //     "Name", param.name(),
+      //     "Type", param.get_type(),
+      //     "IsOut", param.is_out(),
+      //     "IsRef", param.is_ref()
+      //   );
+      // }
+    }
+
+    for (const auto& field : dotnet_fields) {
+      sol::table field_table = type_table["Fields"][field.name()] = lua_state.create_table_with(
+        "Name", field.name(),
+        "Type", field.get_type(),
+        "DotNetID", field.dotnet_id,
+        "IsProperty", field.is_property()
+      );
+
+      value val = field.get_default_value();
+      switch (val.type()) {
+        case value_type::CHAR: field_table["Value"] = (char)val; break;
+        case value_type::OEBOOL: field_table["Value"] = (bool)val; break;
+        case value_type::INT8: field_table["Value"] = (int8_t)val; break;
+        case value_type::INT16: field_table["Value"] = (int16_t)val; break;
+        case value_type::INT32: field_table["Value"] = (int32_t)val; break;
+        case value_type::INT64: field_table["Value"] = (int64_t)val; break;
+        case value_type::UINT8: field_table["Value"] = (uint8_t)val; break;
+        case value_type::UINT16: field_table["Value"] = (uint16_t)val; break;
+        case value_type::UINT32: field_table["Value"] = (uint32_t)val; break;
+        case value_type::UINT64: field_table["Value"] = (uint64_t)val; break;
+        case value_type::FLOAT: field_table["Value"] = (float)val; break;
+        case value_type::DOUBLE: field_table["Value"] = (double)val; break;
+        case value_type::STRING: field_table["Value"] = (std::string)val; break;
+        default:
+          // CORE_LOG_WARN("Unsupported default value type '{}' for field '{}'", static_cast<int>(val.type()), field.name());
+          break;
+      }
+    }
+
+    return type_table;
+  }
+
   void dotnet_type::fill_out_type_information(std::vector<int32_t>& dotnet_ids, get_type_information fn) {
     OTHER_ASSERT(fn != nullptr, "get_type_information function is null");
 
@@ -173,6 +263,7 @@ namespace other {
 
     dotnet_ids.resize(count);
     fn(dotnet_id, dotnet_ids.data(), &count);
+    OTHER_ASSERT(dotnet_ids.size() == count, "Mismatch in expected type information count");
   }
 
   void dotnet_type::get_attribute_object(const std::string_view name, const std::string_view field_name, void* out) const {

@@ -26,31 +26,38 @@ end
 
 _Meta = _get_lua_bridge_metadata_table()
 _Meta.__index = _Meta
-function _Meta:scripts_directory_path()
-  return self.__paths.script_directory
-end
-function _Meta:bridge_path()
-  return self.__paths.other_bridge
-end
-function _Meta:global_definitions_path()
-  return self.__paths.global_definitions
-end
-function _Meta:get_core_script(name)
-  return string.format("%s/%s.lua", self:scripts_directory_path(), name)
-end
+function _Meta:scripts_directory_path()  return self.__paths.script_directory end
+function _Meta:bridge_path()             return self.__paths.other_bridge end
+function _Meta:global_definitions_path() return self.__paths.global_definitions end
+function _Meta:get_core_script(name)     return string.format("%s/%s.lua", self:scripts_directory_path(), name) end
 
 local _scripts_directory = _Meta:scripts_directory_path()
 local _require_fmt_scripts_directory = _scripts_directory:gsub("/", "."):gsub("\\", ".")
 
 _Meta._base_require_directory = _require_fmt_scripts_directory
-function _Meta:get_script(name)
-  return require(string.format("%s.%s", self._base_require_directory, name))
+function _Meta:get_script(name) return require(string.format("%s.%s", self._base_require_directory, name)) end
+function _Meta:do_file(path)
+  local full_path = string.format("%s/%s", self:scripts_directory_path(), path)
+  local chunk, err = loadfile(full_path)
+  if not chunk then
+    error(string.format("Error loading file '%s': %s", full_path, err))
+  end
+  return chunk()
 end
 
+Vec2 = __native_vector2
+Vec3 = __native_vector3
+Vec4 = __native_vector4
+Quat = __native_quaternion
+
 _Meta._string_utils = _Meta:get_script("string_utils")
-function _Meta:String()
-  return self._string_utils
-end
+_Meta._file_utils = _Meta:get_script("file_utils")
+_Meta._scene_object_interface = _Meta:get_script("scene_object_interface")
+_Meta._dotnet_type_cache = _Meta:get_script("dotnet_types")
+function _Meta:String() return self._string_utils end
+function _Meta:File() return self._file_utils end
+function _Meta:SceneObject() return self._scene_object_interface end
+function _Meta:DotnetTypes() return self._dotnet_type_cache end
 
 Driver = {
   TriggerEvent = function(event_name, event_data)

@@ -24,6 +24,7 @@ namespace other {
     bool has_scene(const std::string_view name) const;
 
     std::pair<uint64_t, scene*> create_new_scene(const std::string_view name);
+    std::pair<uint64_t, scene*> load_scene(const filepath& scene_path);
     void remove_scene(uint64_t id);
 
     natural_t get_id_of_scene(const std::string_view name) const;

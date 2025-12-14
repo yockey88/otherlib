@@ -10,6 +10,7 @@
 namespace other {
 
   class driver;
+  class dotnet_object;
 
   void bind_otherlib_lua_functions(lua_host& lua_host);
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);

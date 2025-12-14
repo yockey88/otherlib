@@ -5,7 +5,6 @@
 
 #include "lua/lua_script.hpp"
 
-
 namespace other {
 
   std::thread::id environment_console::console_thread_id = std::thread::id{};
@@ -14,6 +13,8 @@ namespace other {
 
   std::atomic<bool> environment_console::input_waiting = false;
   std::queue<console_input> environment_console::input_queue = {};
+
+  size_t environment_console::history_cursor = 0;
   std::vector<console_input> environment_console::history_lines = {};
 
   size_t environment_console::max_history_lines = 100;
@@ -85,6 +86,8 @@ namespace other {
     }
 
     history_lines.push_back(input);
+    ++history_cursor;
+
     if (history_lines.size() > max_history_lines) {
       history_lines.erase(history_lines.begin());
     }
@@ -97,6 +100,11 @@ namespace other {
     if (text.empty()) {
       return;
     }
+    if (text.length() >= kInputBufferSize) {
+      CORE_LOG_ERROR("Environment console input text exceeds maximum length of {} characters.", kInputBufferSize - 1);
+      return;
+    }
+
     static std::mutex input_mutex;
     std::lock_guard lock(input_mutex);
     input_queue.push({
@@ -105,6 +113,18 @@ namespace other {
       .timestamp = time_point,
     });
     input_waiting = true;
+  }
+
+  void environment_console::move_history_cursor(history_move move) {
+    if (move == HISTORY_MOVE_BACK) {
+      if (history_cursor > 0) {
+        --history_cursor;
+      }
+    } else if (move == HISTORY_MOVE_FORWARD) {
+      if (history_cursor < history_lines.size()) {
+        ++history_cursor;
+      }
+    }
   }
 
 }  // namespace other

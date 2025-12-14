@@ -95,6 +95,7 @@ namespace other {
       get_field_value_type get_field_value_type = nullptr;
       get_field_accessibility get_field_accessibility = nullptr;
       get_field_attributes get_field_attributes = nullptr;
+      get_default_value get_default_value = nullptr;
 
       //       property
       get_property_name get_property_name = nullptr;

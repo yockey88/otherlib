@@ -133,6 +133,33 @@ namespace other {
     return *new_node->object;
   }
 
+  scene_object* scene_tree::find_object_by_id(natural_t id) const {
+    PROFILE_SECTION("scene_tree::find_object_by_id");
+
+    OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+
+    const node* n = node_at(id);
+    if (n != nullptr) {
+      return n->object;
+    }
+    return nullptr;
+  }
+
+  scene_object* scene_tree::find_object_by_name(const std::string_view name) const {
+    PROFILE_SECTION("scene_tree::find_object_by_name");
+
+    OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+
+    for (const auto& node : *nodes) {
+      if (node.object != nullptr && node.object->name == name) {
+        return node.object;
+      }
+    }
+    return nullptr;
+  }
+
   scene_object* scene_tree::get_parent(natural_t id) {
     PROFILE_SECTION("scene_tree::get_parent");
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");

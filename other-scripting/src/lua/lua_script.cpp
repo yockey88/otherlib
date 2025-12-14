@@ -10,22 +10,22 @@
 namespace other {
 
   lua_script::lua_script(sol::state& state, sol::environment&& env, sol::protected_function load_fn)
-      : lua_state(state), script_env(std::move(env)), load_fn(load_fn) {
-    sol::set_environment(script_env, load_fn);
+      : lua_state(state), script_sandbox(std::move(env)), load_fn(load_fn) {
+    sol::set_environment(script_sandbox.environment(), load_fn);
     if (load_fn.valid()) {
-      script_env["__script_loaded"] = true;
+      script_sandbox["__script_loaded"] = true;
     } else {
-      script_env["__script_loaded"] = false;
+      script_sandbox["__script_loaded"] = false;
     }
   }
 
   bool lua_script::is_valid() const {
-    return script_env.valid() && script_env["__script_loaded"] == true;
+    return script_sandbox.environment().valid() && script_sandbox["__script_loaded"] == true;
   }
 
   void lua_script::run_script() {
     if (!is_valid()) {
-      CORE_LOG_ERROR("Lua script [{}] is not valid, cannot run script", script_env["__script_name"].get<std::string>());
+      CORE_LOG_ERROR("Lua script [{}] is not valid, cannot run script", script_sandbox["__script_name"].get<std::string>());
       return;
     }
     if (ran) {
@@ -42,7 +42,7 @@ namespace other {
       return sol::table{};
     }
 
-    sol::object symbol = script_env.get<sol::object>(symbol_name);
+    sol::object symbol = script_sandbox.environment().get<sol::object>(symbol_name);
     if (!symbol.is<sol::table>()) {
       CORE_LOG_ERROR("Symbol '{}' is not a Lua table", symbol_name);
       return sol::table{};
@@ -56,7 +56,7 @@ namespace other {
       return false;
     }
 
-    return script_env[symbol_name].valid();
+    return script_sandbox[symbol_name].valid();
   }
 
   void lua_script::call_hook_function_if_exists(const std::string_view function_name, bool on_entry) {
@@ -69,7 +69,7 @@ namespace other {
     }
 
     try {
-      sol::protected_function func = script_env.get<sol::protected_function>(function_name);
+      sol::protected_function func = script_sandbox.environment().get<sol::protected_function>(function_name);
       if (!func.valid()) {
         return;
       }

@@ -20,16 +20,25 @@ namespace other {
     lua_host() = default;
     ~lua_host() = default;
 
+    static std::string sol_object_to_string(const sol::object& obj);
+
+    value value_from_lua_object(const sol::object& obj);
+
     filepath get_environment_script_directory() const;
     filepath retrieve_script_path(const std::string_view script_name) const;
 
     void load_host(const config_table& config);
     void call_entry_point();
 
+    sol::environment create_environment() {
+      return sol::environment(lua_state, sol::create, lua_state.globals());
+    }
+
     sol::state& get_lua_state() { return lua_state; }
     const sol::state& get_lua_state() const { return lua_state; }
 
     lua_script* load_file(const std::string_view file_path);
+    sol::table try_load_table(const std::string_view file_path);
 
     void shutdown();
 

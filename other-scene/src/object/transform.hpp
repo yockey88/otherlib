@@ -16,10 +16,7 @@
 namespace other {
 
   struct transform {
-    OTHER_REFLECTABLE(transform);
-
     orthonormal_basis local_basis = orthonormal_basis(glm::vec3(0, 1, 0));
-
     glm::vec3 local_position = { 0, 0, 0 };
     glm::vec3 local_scale = { 1, 1, 1 };
     glm::quat local_rotation_quat = glm::quat(1, 0, 0, 0);
@@ -39,6 +36,16 @@ namespace other {
     glm::mat4 local_translation_matrix() const { return glm::translate(glm::mat4(1.0f), local_position); }
     glm::mat4 local_rotation_matrix() const { return glm::toMat4(local_rotation_quat); }
     glm::mat4 local_scale_matrix() const { return glm::scale(glm::mat4(1.0f), local_scale); }
+
+    transform() = default;
+    transform(const glm::vec3& position)
+        : local_position(position) {}
+    transform(const glm::vec3& position, const glm::quat& rotation_quat)
+        : local_position(position), local_rotation_quat(rotation_quat) {}
+    transform(const glm::vec3& position, const glm::quat& rotation_quat, const glm::vec3& scale)
+        : local_position(position), local_scale(scale), local_rotation_quat(rotation_quat) {}
+    transform(const orthonormal_basis& basis, const glm::vec3& position, const glm::vec3& scale, const glm::quat& rotation_quat)
+        : local_basis(basis), local_position(position), local_scale(scale), local_rotation_quat(rotation_quat) {}
   };
 
 }  // namespace other

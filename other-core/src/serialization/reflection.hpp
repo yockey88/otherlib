@@ -28,6 +28,7 @@ namespace other {
   namespace attr {
 
     struct serializable : refl::attr::usage::field, refl::attr::usage::function {};
+    struct constructor : refl::attr::usage::function {};
 
   }  // namespace attr
 

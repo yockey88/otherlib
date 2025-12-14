@@ -491,7 +491,7 @@ namespace other {
   }
 
   void network_thread::handle_command_environment_load_scene(message&& msg) {
-    command_load_empty_scene scene_cmd = other_message_spec::parse<command_load_empty_scene>(msg.data);
+    command_load_scene scene_cmd = other_message_spec::parse<command_load_scene>(msg.data);
     if (scene_cmd.session_id_flag == 0x01) {
       integer_t session_id = scene_cmd.session_id;
       CORE_LOG_INFO("Sending load-empty-scene '{}' to session {}", scene_cmd.scene_name, session_id);
@@ -508,7 +508,7 @@ namespace other {
       );
 
     } else {
-      CORE_LOG_ERROR("Unimplemented use case for command_load_empty_scene without session ID");
+      CORE_LOG_ERROR("Unimplemented use case for command_load_scene without session ID");
     }
   }
 

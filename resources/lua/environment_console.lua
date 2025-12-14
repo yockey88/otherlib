@@ -60,6 +60,23 @@ function _Console:CreateSceneCommand(args)
   Driver.TriggerEvent("force-load-empty-scene", _Meta._string_utils.strip_leading_and_ending_whitespace(scene_name))
 end
 
+function _Console:LoadSceneCommand(args)
+  if #args < 1
+  then
+    self.PushError("Usage: load-scene <scene-path>")
+    return
+  end
+
+  local path = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
+  if not _Meta._file_utils.file_exists(path)
+  then
+    self.PushError("Scene file does not exist: " .. args[1])
+    return
+  end
+
+  Driver.TriggerEvent("force-load-scene", path)
+end
+
 function _Console:IsCommand(command)
   return self.commands[self.GetCommandName(command)] ~= nil
 end
@@ -97,12 +114,15 @@ end
 _Console.__index = _Console
 function _Console:new()
   local obj = {}
+  
   self:RegisterConsoleCommand(":?", "Displays this help message", function(...) self:HelpCommand(...) end)
   self:RegisterConsoleCommand(":e", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
   self:RegisterConsoleCommand("help", "Displays this help message", function(...) self:HelpCommand(...) end)
   self:RegisterConsoleCommand("exit", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
 
   self:RegisterConsoleCommand("new-scene", "Creates a new empty scene", function(...) self:CreateSceneCommand(...) end)
+  self:RegisterConsoleCommand("load-scene", "Loads a scene from a specified path", function(...) self:LoadSceneCommand(...) end)
+
   setmetatable(obj, self)
   return obj
 end
