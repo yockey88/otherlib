@@ -272,7 +272,17 @@ namespace other {
       requires reflected_type<T>
     reflection_data* get_reflection_data(const T& value);
 
+    bool has_type(const std::string_view type_name) const;
+    const reflection_data* get_reflection_data(const std::string_view type_name);
+
+    const std::map<uint64_t, reflection_data>& get_type_data() const {
+      return data_map;
+    }
+
    private:
+    std::string get_namespace_string(const std::string_view full_name) const;
+    std::string strip_namespace(const std::string_view full_name) const;
+
     std::map<uint64_t, reflection_data> data_map;
   };
 
@@ -504,6 +514,7 @@ namespace other {
 
     for_each(refl::reflect(value).bases, [&](auto base) { it->second.base_types.push_back(base.hash); });
 
+    CORE_LOG_TRACE("Added reflection data for type '{}'.", it->second.type_name);
     return &it->second;
   }
 

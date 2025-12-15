@@ -20,6 +20,10 @@ function _trigger_driver_event_impl(event_name, event_data)
   __other_native.__driver.trigger_driver_event(event_name, event_data)
 end
 
+function _get_active_scene()
+  return __other_native.__driver.get_active_scene()
+end
+
 function _get_lua_bridge_metadata_table()
   return __lua_bridge_metadata
 end
@@ -52,10 +56,13 @@ Quat = __native_quaternion
 
 _Meta._string_utils = _Meta:get_script("string_utils")
 _Meta._file_utils = _Meta:get_script("file_utils")
-_Meta._scene_object_interface = _Meta:get_script("scene_object_interface")
 _Meta._dotnet_type_cache = _Meta:get_script("dotnet_types")
+_Meta._scene_interface = _Meta:get_script("scene_interface")
+_Meta._scene_object_interface = _Meta:get_script("scene_object_interface")
+
 function _Meta:String() return self._string_utils end
 function _Meta:File() return self._file_utils end
+function _Meta:Scene() return self._scene_interface end
 function _Meta:SceneObject() return self._scene_object_interface end
 function _Meta:DotnetTypes() return self._dotnet_type_cache end
 

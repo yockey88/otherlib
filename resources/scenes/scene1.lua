@@ -7,31 +7,10 @@ MyObject.Scripts = {
     ["Test-Object"] = Other:DotnetTypes().Get("TestObject"),
   }
 }
-
-function OnSceneLoad()
-  CoreLog.Info("My Object Initialized")
-end
-
-function OnSceneActivate()
-end
-
-function OnSceneFixedUpdate(fixed_delta_time)
-end
-
-function OnSceneUpdate(delta_time)
-end
-
-function OnSceneLateUpdate(delta_time)
-end
-
-function OnSceneDeactivate()
-end
-
-function OnSceneUnload()
-end
+local my_render_comp = MyObject:AddComponent("render_component")
 
 return {
   Objects = {
-    ["My Object"] = MyObject,
-  }
+    MyObject,
+  },
 }

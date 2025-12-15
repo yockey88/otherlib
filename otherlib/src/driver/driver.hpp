@@ -34,10 +34,12 @@
 #include "driver/response_list.hpp"
 #include "driver/timer_list.hpp"
 #include "plugin/plugin.hpp"
+#include "ui/driver_ui.hpp"
 #include "vm/other_device.hpp"
 
 #include "acknowledgement_list.hpp"
 #include "application_list.hpp"
+#include "asset/asset_handler.hpp"
 
 namespace json = nlohmann;
 
@@ -64,15 +66,36 @@ namespace other {
     void emit_instruction(const instruction& op);
     void driver_step_device();
 
-    const config_table& configuration() const {
+    natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded = nullptr);
+
+    scene* get_active_scene();
+
+    inline const config_table& configuration() const {
       return config;
     }
 
-    scope<event_system>& get_event_system() {
+    inline scope<event_system>& get_event_system() {
       OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in driver.");
       OTHER_ASSERT(net_context->events != nullptr, "Event system is not initialized in driver.");
       return net_context->events;
     }
+
+    inline scope<renderer>& get_renderer_pointer() {
+      OTHER_ASSERT(rendering_enabled(), "Attempting to access renderer while rendering is disabled. Unexpected behavior or invalid configuration, or a bug in a script.");
+      OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in driver.");
+      return renderer_ptr;
+    }
+
+    inline scope<asset_handler>& get_asset_manager() {
+      OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+      return asset_mgr;
+    }
+
+    inline scope<scene_graph>& get_scene_graph() {
+      OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
+      return project_scene_graph;
+    }
+
     void set_scene_to_active(natural_t scene_id);
     void unload_active_scene();
 
@@ -113,10 +136,16 @@ namespace other {
     void initialize_network_context();
     void load_client();
     void start_network();
+    void initialize_rendering();
     virtual void on_initialize_rendering(scope<renderer>& renderer_ptr);
+    void initialize_ui();
+    virtual void on_initialize_ui(scope<driver_ui>& ui_ptr) {}
 
     virtual void on_shutdown() = 0;
+    void shutdown_rendering();
     virtual void on_shutdown_rendering();
+    void shutdown_ui();
+    virtual void on_shutdown_ui() {}
 
     void catch_signal(int signal);
 
@@ -129,17 +158,15 @@ namespace other {
       return renderer_backend_subsystem != nullptr && renderer_backend_subsystem->has_backend();
     }
 
-    bool should_shutdown() const {
-      return shutdown_requested;
-    }
-
     natural_t create_new_scene(const std::string_view name);
     scene* get_scene(natural_t id);
-    scene* get_active_scene();
 
     renderer& get_renderer_instance();
 
     filepath get_project_cache();
+
+    void open_ui_window(driver_ui::builtin_window_type type);
+    void close_ui_window(driver_ui::builtin_window_type type);
 
     inline lua_script& get_envrc_script() {
       OTHER_ASSERT(envrc != nullptr, "Driver environment runtime script is not loaded.");
@@ -255,6 +282,12 @@ namespace other {
     friend class driver_interface;
     friend class driver_state_machine;
 
+    struct loading_asset {
+      using handler = std::function<void(natural_t asset_id)>;
+      natural_t asset_id = 0;
+      handler on_loaded = nullptr;
+    };
+
     enum driver_role {
       SERVER,
       CLIENT,
@@ -263,7 +296,6 @@ namespace other {
     ///     but this will take precedence in certain operations
     driver_role primary_role = CLIENT;
 
-    bool shutdown_requested = false;
     config_table config;
     command_line cmd_line;
 
@@ -290,12 +322,18 @@ namespace other {
     driver_state_machine state_machine;
 
     scope<renderer> renderer_ptr = nullptr;
+    scope<driver_ui> driver_ui_ptr = nullptr;
+    scope<asset_handler> asset_mgr = nullptr;
+    std::deque<loading_asset> loading_asset_ids;
 
     json::json project_cache;
 
     void handle_load_empty_scene_event(const value& data);
     void handle_load_scene_event(const value& data);
-    void send_load_command(const std::string_view scene_name, natural_t scene_id, bool requires_udp_binding);
+    void send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding);
+
+    void handle_open_ui_window_event(const value& data);
+    void handle_close_ui_window_event(const value& data);
 
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);

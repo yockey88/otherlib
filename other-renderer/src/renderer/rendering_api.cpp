@@ -196,6 +196,11 @@ namespace other {
     }
   }
 
+  bool rendering_api::resource_exists(const resource_handle& handle) {
+    auto itr = resources.find(handle.id);
+    return itr != resources.end();
+  }
+
   resource* rendering_api::get_resource(natural_t id) {
     auto itr = resources.find(id);
     if (itr != resources.end()) {

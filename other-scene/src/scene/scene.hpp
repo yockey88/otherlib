@@ -17,6 +17,8 @@
 #include "scene/scene_storage.hpp"
 #include "scene/scene_tree.hpp"
 
+#include "asset/asset_handler.hpp"
+
 namespace other {
 
   struct udp_handle;
@@ -41,6 +43,8 @@ namespace other {
 
     ~scene();
 
+    void run_lua_file(const filepath& script_path);
+
     void reset();
 
     inline scene_storage& get_storage() {
@@ -60,6 +64,7 @@ namespace other {
 
     scene_object& root_object();
 
+    scene_object& create_object();
     scene_object& create_object(scene_object* object);
     scene_object& create_object(const std::string& name, scene_object* parent_object = nullptr);
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
@@ -80,6 +85,12 @@ namespace other {
 
     void destroy_object(natural_t id);
 
+    bool has_object(const std::string_view name) const;
+    bool has_object(natural_t id) const;
+
+    scene_object& get_object(const std::string_view name);
+    const scene_object& get_object(const std::string_view name) const;
+
     scene_object& get_object(natural_t id);
     const scene_object& get_object(natural_t id) const;
 
@@ -96,10 +107,13 @@ namespace other {
     const transform& get_transform(natural_t id) const;
     void set_transform(natural_t id, const transform& t);
 
-    render_data prepare_render_data() const;
+    render_data prepare_render_data(scope<asset_handler>& asset_handler) const;
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;
     void add_object_tag(natural_t id, const std::string_view tag);
+
+    void add_component_by_name(scene_object* object, const std::string_view component_name);
+    void remove_component_by_name(scene_object* object, const std::string_view component_name);
 
     template <typename T>
     T& add_component(scene_object* object) {
@@ -181,6 +195,8 @@ namespace other {
     }
 
     static std::string as_string(const scene& s);
+
+    void connect_remote_session(integer_t session_id);
 
     std::string name = "Untitled Scene";
     natural_t id = 0;

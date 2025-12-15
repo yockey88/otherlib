@@ -16,6 +16,8 @@
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "object/camera_component.hpp"
+
 #include "driver/driver_tasks.hpp"
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
 #include "scripting/lua_bindings.hpp"
@@ -42,6 +44,14 @@ namespace other {
     get_event_system()->add_listener("force-load-empty-scene", std::bind_front(&driver::handle_load_empty_scene_event, this));
     get_event_system()->register_event("force-load-scene");
     get_event_system()->add_listener("force-load-scene", std::bind_front(&driver::handle_load_scene_event, this));
+    get_event_system()->register_event("open-driver-ui-window");
+    get_event_system()->add_listener("open-driver-ui-window", std::bind_front(&driver::handle_open_ui_window_event, this));
+    get_event_system()->register_event("close-driver-ui-window");
+    get_event_system()->add_listener("close-driver-ui-window", std::bind_front(&driver::handle_close_ui_window_event, this));
+    get_event_system()->register_event("clear-console-output");
+    get_event_system()->add_listener("clear-console-output", [this](const value& data) {
+      environment_console::clear_console_output();
+    });
 
     /// load client specific .NET
     /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
@@ -62,8 +72,7 @@ namespace other {
     // bind_scene_object_interface_lua_functions(env->get_lua_host(), this);
 
     if (rendering_enabled()) {
-      renderer_ptr = get_renderer();
-      on_initialize_rendering(renderer_ptr);
+      initialize_rendering();
     }
 
     vm::initialize_device(&core_device);
@@ -72,6 +81,7 @@ namespace other {
     core_device.host_driver = this;
 
     project_scene_graph = make_scope<scene_graph>();
+    asset_mgr = make_scope<asset_handler>(net_context->io_context);
 
     load_client();
     start_network();
@@ -106,8 +116,7 @@ namespace other {
     }
 
     if (rendering_enabled()) {
-      on_shutdown_rendering();
-      renderer_ptr = nullptr;
+      shutdown_rendering();
     }
 
     core_device.stopped = true;
@@ -120,6 +129,7 @@ namespace other {
 
     live_coroutines.clear();
 
+    asset_mgr = nullptr;
     project_scene_graph = nullptr;
 
     net_context->net_thread = nullptr;
@@ -201,7 +211,7 @@ namespace other {
   }
 
   void driver::on_shutdown_rendering() {
-    renderer_ptr->remove_pipeline("Rendering Pipeline");
+    get_renderer_instance().remove_pipeline("Rendering Pipeline");
   }
 
   void driver::catch_signal(int signum) {
@@ -224,6 +234,8 @@ namespace other {
       net_context->io_context.stop();
     }
 
+    asset_mgr->purge_stores();
+
     for (auto& ack : ack_list.pending_acks) {
       ack.timer.cancel();
     }
@@ -237,15 +249,13 @@ namespace other {
     live_coroutines.clear();
 
     CORE_LOG_DEBUG("Sending shutdown request to network thread...");
-    if (!shutdown_requested) {
-      message msg;
-      msg.header = {
-        .category = COMMAND,
-        .id = SHUTDOWN_REQUEST,
-      };
+    message msg;
+    msg.header = {
+      .category = COMMAND,
+      .id = SHUTDOWN_REQUEST,
+    };
 
-      send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(3), message_handler{ this, &driver::on_ack_shutdown_request_network_thread, &driver::on_timeout_shutdown_request_network_thread });
-    }
+    send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(3), message_handler{ this, &driver::on_ack_shutdown_request_network_thread, &driver::on_timeout_shutdown_request_network_thread });
 
     on_shutdown_request();
     process_driver_event(driver_event::DRIVER_EVENT_STOP);
@@ -262,10 +272,6 @@ namespace other {
   scene* driver::get_scene(natural_t id) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
     return project_scene_graph->get_scene(id);
-  }
-
-  scene* driver::get_active_scene() {
-    return active_scene;
   }
 
   renderer& driver::get_renderer_instance() {
@@ -304,6 +310,20 @@ namespace other {
     }
   }
 
+  natural_t driver::begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    natural_t asset_id = asset_mgr->load_asset(asset_path);
+    loading_asset_ids.push_back({
+      .asset_id = asset_id,
+      .on_loaded = on_loaded,
+    });
+    return asset_id;
+  }
+
+  scene* driver::get_active_scene() {
+    return active_scene;
+  }
+
   void driver::set_scene_to_active(natural_t scene_id) {
     CORE_LOG_DEBUG("Setting scene [{}] as active scene in driver.", scene_id);
     if (active_scene != nullptr && active_scene->id == scene_id) {
@@ -311,8 +331,25 @@ namespace other {
       return;
     }
 
+    if (active_scene != nullptr) {
+      get_event_system()->cancel_event("scene-update");
+    }
+
     active_scene = project_scene_graph->get_scene(scene_id);
-    get_event_system()->register_timed_event("scene-update", duration_cast<microseconds>(tick_duration(1)), true);
+    auto& storage = active_scene->get_storage();
+    if (storage.sandbox["OnSceneActivate"].valid()) {
+      CORE_LOG_DEBUG("Calling 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
+      sol::protected_function on_scene_activate_fn = storage.sandbox["OnSceneActivate"];
+      sol::protected_function_result result = on_scene_activate_fn();
+      if (!result.valid()) {
+        CORE_LOG_ERROR("Failed to execute 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
+        sol::error err = result;
+        CORE_LOG_ERROR("Lua Error: {}", err.what());
+      }
+    }
+
+    /// about 0.02 seconds per update
+    get_event_system()->register_timed_event("scene-update", milliseconds(20), true);
     get_event_system()->add_listener("scene-update", [this](const value& data) {
       if (active_scene != nullptr) {
         active_scene->fixed_update(frame_delta_time.get_no_update());
@@ -440,6 +477,36 @@ namespace other {
     }
   }
 
+  void driver::initialize_rendering() {
+    renderer_ptr = get_renderer();
+    on_initialize_rendering(renderer_ptr);
+
+    initialize_ui();
+  }
+
+  void driver::initialize_ui() {
+    driver_ui_ptr = make_scope<driver_ui>(this);
+    driver_ui_ptr->initialize();
+    on_initialize_ui(driver_ui_ptr);
+
+    auto open_windows = configuration().get_value<std::vector<std::string>>("ui.open-windows", std::vector<std::string>{});
+    for (const auto& window_name : open_windows) {
+      value val = window_name;
+      handle_open_ui_window_event(val);
+    }
+  }
+
+  void driver::shutdown_rendering() {
+    shutdown_ui();
+    on_shutdown_rendering();
+  }
+
+  void driver::shutdown_ui() {
+    on_shutdown_ui();
+    driver_ui_ptr->shutdown();
+    driver_ui_ptr = nullptr;
+  }
+
   filepath driver::get_project_cache() {
     filepath cache_file = get_app_data_folder("OtherEngine/OtherServer") / filepath("project_cache.json");
     if (!std::filesystem::exists(cache_file)) {
@@ -448,6 +515,24 @@ namespace other {
       file.close();
     }
     return cache_file;
+  }
+
+  void driver::open_ui_window(driver_ui::builtin_window_type type) {
+    if (!rendering_enabled()) {
+      return;
+    }
+
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
+    driver_ui_ptr->open_builtin_window(type);
+  }
+
+  void driver::close_ui_window(driver_ui::builtin_window_type type) {
+    if (!rendering_enabled()) {
+      return;
+    }
+
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
+    driver_ui_ptr->close_builtin_window(type);
   }
 
   void driver::process_driver_event(driver_event event) {
@@ -460,6 +545,21 @@ namespace other {
 
     pump_events();
     poll_coroutines();
+
+    /// check assets being loaded
+    for (auto it = loading_asset_ids.begin(); it != loading_asset_ids.end();) {
+      natural_t asset_id = it->asset_id;
+      if (asset_mgr->get_asset_state(asset_id) == asset_state::LOADED) {
+        if (it->on_loaded) {
+          it->on_loaded(asset_id);
+        }
+
+        it = loading_asset_ids.erase(it);
+      } else {
+        ++it;
+      }
+    }
+
     if (environment_console::is_initialized()) {
       environment_console::poll();
     }
@@ -492,7 +592,7 @@ namespace other {
 
     render_data data = {};
     if (active_scene != nullptr) {
-      data = active_scene->prepare_render_data();
+      data = active_scene->prepare_render_data(asset_mgr);
       get_renderer_instance().begin_frame(&data);
     } else {
       get_renderer_instance().begin_frame(nullptr);
@@ -511,6 +611,9 @@ namespace other {
     }
 
     get_renderer_instance().begin_ui_frame();
+
+    driver_ui_ptr->render();
+
     on_ui_render();
     get_renderer_instance().end_ui_frame();
   }
@@ -523,7 +626,8 @@ namespace other {
       switch (event.type) {
         case SDL_EVENT_QUIT:
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-          if (!shutdown_requested) {
+          if (!(current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN ||
+                current_driver_state() == driver_state::DRIVER_STATE_STOPPED)) {
             get_event_system()->trigger_event("shutdown-requested");
           }
           break;
@@ -600,12 +704,12 @@ namespace other {
 
     udp_binding_information binding_info = other_message_spec::parse<udp_binding_information>(std::span<const uint8_t>(ackmsg.extra_data));
 
-    CORE_LOG_DEBUG("ENVIRONMENT_LOAD_SCENE command acknowledged successfully by server. Requesting UDP stream");
-    CORE_LOG_DEBUG("  - Requires UDP Binding: {}", binding_info.endpoint.port != 0 && binding_info.remote_endpoint.port != 0 ? "Yes" : "No");
+    CORE_LOG_INFO("ENVIRONMENT_LOAD_SCENE command acknowledged by [session {}]. Requesting UDP stream", ackmsg.session_id <= 0 ? "<self>" : std::to_string(ackmsg.session_id));
+    CORE_LOG_INFO("  - Requires UDP Binding: {}", binding_info.endpoint.port != 0 && binding_info.remote_endpoint.port != 0 ? "Yes" : "No");
     if (binding_info.endpoint.port != 0 || binding_info.remote_endpoint.port != 0) {
-      CORE_LOG_DEBUG("  - Check-in Hash: {}", binding_info.check_in_hash);
-      CORE_LOG_DEBUG("  - Local Endpoint: [{}]", binding_point::write_string(binding_info.endpoint));
-      CORE_LOG_DEBUG("  - Remote Endpoint: [{}]", binding_point::write_string(binding_info.remote_endpoint));
+      CORE_LOG_INFO("  - Check-in Hash: {}", binding_info.check_in_hash);
+      CORE_LOG_INFO("  - Local Endpoint: [{}]", binding_point::write_string(binding_info.endpoint));
+      CORE_LOG_INFO("  - Remote Endpoint: [{}]", binding_point::write_string(binding_info.remote_endpoint));
       request_scene_udp_binding(binding_info);
     }
   }
@@ -624,8 +728,8 @@ namespace other {
       .id = NEW_UDP_STREAM_BINDING,
     };
 
-    CORE_LOG_DEBUG("Requesting new UDP stream binding @ address [{}]", binding_point::write_string(address.endpoint));
-    CORE_LOG_DEBUG("  - Remote endpoint: [{}]", binding_point::write_string(address.remote_endpoint));
+    CORE_LOG_INFO("Requesting new UDP stream binding @ address [{}]", binding_point::write_string(address.endpoint));
+    CORE_LOG_INFO("  - Remote endpoint: [{}]", binding_point::write_string(address.remote_endpoint));
 
     new_udp_stream_binding_request req;
     req.address = address.endpoint;
@@ -637,7 +741,7 @@ namespace other {
 
   void driver::on_respond_new_udp_stream_binding(message_header header, std::span<const uint8_t> data) {
     OTHER_ASSERT(active_scene != nullptr, "No active scene to set UDP handle on.");
-    CORE_LOG_INFO("Received response for NEW_UDP_STREAM_BINDING (header: {})", header);
+    CORE_LOG_DEBUG("Received response for NEW_UDP_STREAM_BINDING (header: {})", header);
 
     new_udp_stream_binding_response resp = other_message_spec::parse<new_udp_stream_binding_response>(data);
     integer_t binding_id = resp.binding_id;
@@ -947,17 +1051,15 @@ namespace other {
 
     /// if we received this them we are the 'server' part of the UDP stream (i.e. currently hosting the scene)
     /// so we name these in terms of us being the server
-
     /// \todo check if these are ok, and if not response with better ones
     udp_binding_information binding_info;
     binding_info.endpoint = scene_cmd.server_udp_address;
     binding_info.remote_endpoint = scene_cmd.udp_address;
-    CORE_LOG_DEBUG("Suggested Scene Endpoints local = [{}], remote = [{}]", binding_point::write_string(binding_info.endpoint), binding_point::write_string(binding_info.remote_endpoint));
-    binding_info.check_in_hash = active_scene->id;  // just use scene id for now
+    binding_info.check_in_hash = active_scene->id;
 
+    CORE_LOG_DEBUG("Suggested Scene Endpoints local = [{}], remote = [{}]", binding_point::write_string(binding_info.endpoint), binding_point::write_string(binding_info.remote_endpoint));
     bool request_udp_binding = scene_cmd.requires_udp_binding == 0x01;
     if (request_udp_binding) {
-      CORE_LOG_DEBUG("Scene '{}' requires UDP binding, requesting from server...", scene_cmd.scene_name);
       request_scene_udp_binding(binding_info);
     } else {
       CORE_LOG_DEBUG("Scene '{}' does not require UDP binding.", scene_cmd.scene_name);
@@ -972,14 +1074,15 @@ namespace other {
       };
 
       acknowledgement ackmsg;
+      ackmsg.session_id = session_id;
       ackmsg.acked_header = msg.header;
-      ackmsg.ack_nack = 0x01;  // Assuming 0x01 means ACK
+      ackmsg.ack_nack = 0x01;
 
       /// \todo send back final addressess, currently just echoing what was sent
       udp_binding_information client_binding_info;
       client_binding_info.endpoint = scene_cmd.udp_address;
       client_binding_info.remote_endpoint = scene_cmd.server_udp_address;
-      client_binding_info.check_in_hash = active_scene->id;  // just use scene id for now
+      client_binding_info.check_in_hash = active_scene->id;
       ackmsg.extra_data.append_range(client_binding_info.as_buffer());
       ack_msg.data.append_range(ackmsg.as_buffer());
 
@@ -998,32 +1101,12 @@ namespace other {
       send_to_network_thread(std::move(tx_msg));
     }
 
-    /// then ask for scene state/data
-    {
-      CORE_LOG_DEBUG("Requesting scene state/data for scene '{}'...", scene_cmd.scene_name);
-      message load_msg;
-      load_msg.header = {
-        .category = REQUEST,
-        // .id = ENVIRONMENT_REQUEST_SCENE_DATA,
-      };
-
-      // request_scene_data req;
-      // req.scene_id = active_scene->id;
-      // load_msg.data.append_range(req.as_buffer());
-
-      // message tx_msg;
-      // tx_msg.header = {
-      //   .category = COMMAND,
-      //   .id = SESSION_TX_MESSAGE,
-      // };
-
-      // command_session_tx_message tx_session_msg;
-      // tx_session_msg.session_id = session_id;
-      // tx_session_msg.msg = std::move(load_msg);
-      // tx_msg.data.append_range(tx_session_msg.as_buffer());
-
-      // send_to_network_thread(std::move(tx_msg));
+    /// scene is empty, so we are already up too date
+    if (scene_cmd.empty_scene_flag == 0x01) {
+      CORE_LOG_DEBUG("Scene '{}' is empty, no scene data to request.", scene_cmd.scene_name);
+      return;
     }
+    active_scene->connect_remote_session(session_id);
   }
 
   void driver::session_check_in_request(integer_t session_id) {
@@ -1452,30 +1535,9 @@ namespace other {
     OTHER_ASSERT(active_scene != nullptr, "Active scene is null after creating/loading scene.");
 
     CORE_LOG_INFO("Created and loaded empty scene [{}:{}] from console command.", scene_id, scene_name);
-    message cmd_msg;
-    cmd_msg.header = {
-      .category = COMMAND,
-      .id = ENVIRONMENT_LOAD_SCENE,
-    };
-
-    command_load_scene scene_cmd;
-    scene_cmd.session_id_flag = client_session_id.has_value() ? 0x01 : 0x00;
-    if (client_session_id.has_value()) {
-      scene_cmd.session_id = client_session_id.value();
-    }
-
-    scene_cmd.requires_udp_binding = 0x01;
-    scene_cmd.udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-    scene_cmd.server_udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-    scene_cmd.scene_name = active_scene->name;
-    cmd_msg.data.append_range(scene_cmd.as_buffer());
-
-    CORE_LOG_DEBUG("Sending command to network thread to load empty scene '{}'", scene_name);
-    if (scene_cmd.requires_udp_binding == 0x01) {
-      CORE_LOG_DEBUG("Requesting UDP binding for scene '{}' w/ address @ [{}]", scene_name, binding_point::write_string(scene_cmd.udp_address));
-      CORE_LOG_DEBUG("  - Suggesting server UDP address @ [{}]", binding_point::write_string(scene_cmd.server_udp_address));
-    }
-    send_message_and_wait_acknowledgment(std::move(cmd_msg), seconds(10), message_handler{ this, &driver::on_acknowledge_command_environment_load_scene, &driver::on_timeout_environment_load_scene });
+    constexpr bool is_empty = true;
+    constexpr bool requires_udp_binding = true;
+    send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
   }
 
   void driver::handle_load_scene_event(const value& data) {
@@ -1500,10 +1562,22 @@ namespace other {
     set_scene_to_active(scene_id);
     OTHER_ASSERT(active_scene != nullptr, "Active scene is null after loading scene.");
 
-    CORE_LOG_INFO("Loaded scene [{}:{}] from file '{}' via console command.", scene_id, active_scene->name, scene_path.string());
+    constexpr bool is_empty = false;
+    constexpr bool requires_udp_binding = true;
+    send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
+
+    if (rendering_enabled()) {
+      render_data data = active_scene->prepare_render_data(asset_mgr);
+      if (data.primary_camera == nullptr) {
+        CORE_LOG_WARN("Loaded scene '{}' does not have a primary camera set. Creating [Camera] Entity.", active_scene->name);
+        scene_object& obj = active_scene->create_object("Camera");
+        active_scene->add_component<camera_component>(obj.id);
+        active_scene->add_object_tag(obj.id, "main-camera");
+      }
+    }
   }
 
-  void driver::send_load_command(const std::string_view scene_name, natural_t scene_id, bool requires_udp_binding) {
+  void driver::send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding) {
     message cmd_msg;
     cmd_msg.header = {
       .category = COMMAND,
@@ -1516,18 +1590,74 @@ namespace other {
       scene_cmd.session_id = client_session_id.value();
     }
 
-    scene_cmd.requires_udp_binding = 0x01;
-    scene_cmd.udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-    scene_cmd.server_udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
+    scene_cmd.empty_scene_flag = is_empty ? 0x01 : 0x00;
+    scene_cmd.requires_udp_binding = requires_udp_binding ? 0x01 : 0x00;
+    if (requires_udp_binding) {
+      scene_cmd.udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
+      scene_cmd.server_udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
+    }
+
     scene_cmd.scene_name = active_scene->name;
     cmd_msg.data.append_range(scene_cmd.as_buffer());
 
     CORE_LOG_DEBUG("Sending command to network thread to load empty scene '{}'", scene_name);
     if (scene_cmd.requires_udp_binding == 0x01) {
-      CORE_LOG_DEBUG("Requesting UDP binding for scene '{}' w/ address @ [{}]", scene_name, binding_point::write_string(scene_cmd.udp_address));
-      CORE_LOG_DEBUG("  - Suggesting server UDP address @ [{}]", binding_point::write_string(scene_cmd.server_udp_address));
+      CORE_LOG_DEBUG("Scene '{}' requires UDP binding @ [LOCAL = {}, REMOTE = {}]", scene_name, binding_point::write_string(scene_cmd.udp_address), binding_point::write_string(scene_cmd.server_udp_address));
     }
+
+    /// \todo check if server is even open
+    CORE_LOG_INFO("sending ENVIRONMENT_LOAD_SCENE command for remote....");
     send_message_and_wait_acknowledgment(std::move(cmd_msg), seconds(10), message_handler{ this, &driver::on_acknowledge_command_environment_load_scene, &driver::on_timeout_environment_load_scene });
+  }
+
+  void driver::handle_open_ui_window_event(const value& data) {
+    if (data.type() == value_type::STRING) {
+      std::string window_type_str = data;
+      if (window_type_str == "console") {
+        open_ui_window(driver_ui::BUILTIN_WINDOW_CONSOLE);
+      } else if (window_type_str == "viewport") {
+        open_ui_window(driver_ui::BUILTIN_WINDOW_VIEWPORT);
+      } else if (window_type_str == "type-database") {
+        open_ui_window(driver_ui::BUILTIN_WINDOW_TYPE_DATABASE);
+      } else {
+        CORE_LOG_ERROR("Unknown UI window type requested to open: {}", window_type_str);
+      }
+    } else if (data.type() == value_type::INT32) {
+      int32_t window_type_int = data;
+      if (window_type_int >= 0 && window_type_int < static_cast<int32_t>(driver_ui::NUM_BUILTIN_WINDOW_TYPES)) {
+        open_ui_window(static_cast<driver_ui::builtin_window_type>(window_type_int));
+      } else {
+        CORE_LOG_ERROR("Invalid UI window type index requested to open: {}", window_type_int);
+      }
+    } else {
+      CORE_LOG_ERROR("Invalid data type for open-driver-ui-window event: {}", data.type());
+      return;
+    }
+  }
+
+  void driver::handle_close_ui_window_event(const value& data) {
+    if (data.type() == value_type::STRING) {
+      std::string window_type_str = data;
+      if (window_type_str == "console") {
+        close_ui_window(driver_ui::BUILTIN_WINDOW_CONSOLE);
+      } else if (window_type_str == "viewport") {
+        close_ui_window(driver_ui::BUILTIN_WINDOW_VIEWPORT);
+      } else if (window_type_str == "type-database") {
+        close_ui_window(driver_ui::BUILTIN_WINDOW_TYPE_DATABASE);
+      } else {
+        CORE_LOG_ERROR("Unknown UI window type requested to close: {}", window_type_str);
+      }
+    } else if (data.type() == value_type::INT32) {
+      int32_t window_type_int = data;
+      if (window_type_int >= 0 && window_type_int < static_cast<int32_t>(driver_ui::NUM_BUILTIN_WINDOW_TYPES)) {
+        close_ui_window(static_cast<driver_ui::builtin_window_type>(window_type_int));
+      } else {
+        CORE_LOG_ERROR("Invalid UI window type index requested to close: {}", window_type_int);
+      }
+    } else {
+      CORE_LOG_ERROR("Invalid data type for close-driver-ui-window event: {}", data.type());
+      return;
+    }
   }
 
   natural_t driver::add_scene_to_scene_graph(const filepath& scene_path) {

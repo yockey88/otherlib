@@ -16,6 +16,7 @@ namespace other {
 
   size_t environment_console::history_cursor = 0;
   std::vector<console_input> environment_console::history_lines = {};
+  std::vector<console_input> environment_console::long_term_history_lines = {};
 
   size_t environment_console::max_history_lines = 100;
   std::array<char, environment_console::kInputBufferSize> environment_console::input_buffer = { 0 };
@@ -86,6 +87,7 @@ namespace other {
     }
 
     history_lines.push_back(input);
+    long_term_history_lines.push_back(input);
     ++history_cursor;
 
     if (history_lines.size() > max_history_lines) {
@@ -113,6 +115,19 @@ namespace other {
       .timestamp = time_point,
     });
     input_waiting = true;
+  }
+
+  void environment_console::clear_console_output() {
+    if (!console_initialized) {
+      return;
+    }
+    if (std::this_thread::get_id() != console_thread_id) {
+      CORE_LOG_ERROR("Environment console clear_console_output called from incorrect thread.");
+      return;
+    }
+
+    history_lines.clear();
+    history_cursor = 0;
   }
 
   void environment_console::move_history_cursor(history_move move) {

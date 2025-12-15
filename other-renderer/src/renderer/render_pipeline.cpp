@@ -54,7 +54,8 @@ namespace other {
 
     auto& g = graph->get_graph();
     const auto& execs = graph->get_executors();
-    for (const natural_t id : graph->get_topological_sort()) {
+    auto sort = graph->get_topological_sort();
+    for (const natural_t id : sort) {
       auto node_atr = g.nodes.find(id);
       OTHER_ASSERT(node_atr != g.nodes.end(), "Node with id {} not found in graph.", id);
 
@@ -67,6 +68,31 @@ namespace other {
       itr->second.operator()(*renderer_ptr, &n, pass->user_data);
       n.end_pass(renderer_ptr);
     }
+
+    if (sort.empty()) {
+      return;
+    }
+
+    natural_t final_output_id = sort.back();
+    if (g.nodes.at(final_output_id).pass->texture_resources.empty()) {
+      CORE_LOG_WARN("Final output pass has no texture resources. Cannot retrieve output texture.");
+      return;
+    } else if (g.nodes.at(final_output_id).pass->texture_resources.size() > 1) {
+      CORE_LOG_WARN("Final output pass has multiple texture resources. Using the first one as output.");
+    }
+
+    output_texture_resource = g.nodes.at(final_output_id).pass->texture_resources.at(0).handle;
+  }
+
+  ImTextureID render_pipeline::get_final_output_texture_id() {
+    if (!get_renderer()->resource_exists(get_final_output_texture())) {
+      return 0;
+    }
+    return get_renderer()->get_resource<texture>(get_final_output_texture()).get_imgui_texture_id();
+  }
+
+  resource_handle render_pipeline::get_final_output_texture() {
+    return output_texture_resource;
   }
 
   renderer::frame_resources render_pipeline::get_frame_resources() const {

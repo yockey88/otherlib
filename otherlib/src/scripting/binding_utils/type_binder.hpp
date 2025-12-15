@@ -6,6 +6,8 @@
 
 #include <sol/sol.hpp>
 
+#include "serialization/reflection.hpp"
+
 #include "dotnet/host.hpp"
 #include "lua/lua_host.hpp"
 
@@ -36,6 +38,12 @@ namespace other {
             }
           });
         }
+
+        if constexpr (has_type_data_handler<CT>) {
+          /// ensures bound types are registered in the type database if they can be
+          reflection_data& _ = type_data_handler<CT>::get_reflection_data(CT{});
+        }
+
         return *this;
       }
     };

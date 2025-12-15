@@ -51,6 +51,11 @@ namespace other {
       "slerp", [](const glm::quat& self, const glm::quat& other, float t) { return glm::slerp(self, other, t); },
       "rotate", [](const glm::quat& self, const glm::vec3& v) { return glm::rotate(self, v); }
     );
+
+    auto* type_db = subsystem<type_database>::get();
+    OTHER_ASSERT(type_db != nullptr, "Type database subsystem is not initialized.");
+
+    type_db->get_reflection_data<glm::quat>(glm::quat{});
   }
 
 }  // namespace other

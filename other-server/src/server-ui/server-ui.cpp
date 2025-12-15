@@ -82,9 +82,9 @@ namespace other {
 
   void server_ui::render_all() {
     switch (state_machine.get_current_state()) {
-      case UI_STATE_PROJECT_PAGE: render_all_project_page(); break;
-      case UI_STATE_CREATE_PROJECT_PAGE: render_all_create_project_page(); break;
-      case UI_STATE_SETTINGS_PAGE: render_all_settings_page(); break;
+      case ui_state::UI_STATE_PROJECT_PAGE: render_all_project_page(); break;
+      case ui_state::UI_STATE_CREATE_PROJECT_PAGE: render_all_create_project_page(); break;
+      case ui_state::UI_STATE_SETTINGS_PAGE: render_all_settings_page(); break;
       default: break;
     }
   }

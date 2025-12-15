@@ -6,7 +6,11 @@
 
 #include <sol/sol.hpp>
 
+#include "core/defines.hpp"
+
 namespace other {
+
+  class lua_host;
 
   class lua_sandbox {
    public:
@@ -32,6 +36,9 @@ namespace other {
 
     sol::environment& environment() { return sandbox_environment; }
     const sol::environment& environment() const { return sandbox_environment; }
+
+    void script(const std::string_view code);
+    sol::table try_load_table(lua_host* lua_host, const filepath& path);
 
    private:
     sol::environment sandbox_environment;

@@ -4,9 +4,9 @@ core-log-level = "debug"
 core-log-file = "logs/server.log"
 
 [rendering]
-backend = "opengl"
-ui-layout-ini = "resources/ui/server-ui-layout.ini"
-window-size = { width = 1920, height = 1080 }
+# backend = "opengl"
+# ui-layout-ini = "resources/ui/server-ui-layout.ini"
+# window-size = { width = 1920, height = 1080 }
 
 [scripting]
 dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"

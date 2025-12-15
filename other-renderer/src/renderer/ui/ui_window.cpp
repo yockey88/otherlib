@@ -82,6 +82,14 @@ namespace other {
     on_render_end();
   }
 
+  void ui_window::toggle_open() {
+    state.open = true;
+  }
+
+  void ui_window::toggle_close() {
+    state.open = false;
+  }
+
   natural_t ui_window::add_node(scope<ui_node> node) {
     natural_t id = node->id;
     auto [itr, inserted] = node_map.emplace(id, std::move(node));
@@ -148,9 +156,9 @@ namespace other {
 
   void ui_window::refresh(bool current_state) {
     if (current_state != state.open) {
-      state.just_closed = !current_state;
-      state.just_opened = current_state;
       state.open = current_state;
+      state.just_closed = !state.open;
+      state.just_opened = state.open;
     } else {
       state.just_closed = false;
       state.just_opened = false;

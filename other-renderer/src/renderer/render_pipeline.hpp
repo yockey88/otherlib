@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <string_view>
 
+#include <imgui/imgui.h>
+
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
@@ -30,6 +32,9 @@ namespace other {
 
     void prepare_frame(renderer::frame_resources* resources, render_data* data);
     virtual void render_frame(renderer* renderer_ptr);
+
+    ImTextureID get_final_output_texture_id();
+    resource_handle get_final_output_texture();
 
     renderer::frame_resources get_frame_resources() const;
 
@@ -102,6 +107,7 @@ namespace other {
     render_graph* graph = nullptr;
     bool valid = false;
 
+    resource_handle output_texture_resource;
     render_data* frame_render_data = nullptr;
     renderer::frame_resources frame_resources;
 

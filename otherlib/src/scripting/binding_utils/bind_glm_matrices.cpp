@@ -107,6 +107,13 @@ namespace other {
     mat4_type.set_function("transpose", [](const glm::mat4& self) { return glm::transpose(self); });
     mat4_type.set_function("inverse", [](const glm::mat4& self) { return glm::inverse(self); });
     mat4_type.set_function("determinant", [](const glm::mat4& self) { return glm::determinant(self); });
+
+    auto* type_db = subsystem<type_database>::get();
+    OTHER_ASSERT(type_db != nullptr, "Type database subsystem is not initialized.");
+
+    type_db->get_reflection_data<glm::mat2>(glm::mat2{});
+    type_db->get_reflection_data<glm::mat3>(glm::mat3{});
+    type_db->get_reflection_data<glm::mat4>(glm::mat4{});
   }
 
 }  // namespace other

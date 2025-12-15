@@ -18,16 +18,13 @@ namespace other {
   void renderer::begin_frame(render_data* data) {
     if (data != nullptr) {
       scene_data = data;
+      rendering()->api()->set_clear_color(data->clear_color);
     }
     rendering()->api()->begin_frame();
   }
 
   void renderer::render() {
     PROFILE_SECTION("renderer::render");
-    if (scene_data == nullptr || scene_data->draw_calls.empty()) {
-      return;
-    }
-
     for (const auto& [id, pl] : pipelines) {
       if (pl->is_valid()) {
         current_frame_resources = pl->get_frame_resources();
@@ -90,6 +87,10 @@ namespace other {
     rendering()->api()->destroy_resource(handle);
   }
 
+  bool renderer::resource_exists(const resource_handle& handle) {
+    return rendering()->api()->resource_exists(handle);
+  }
+
   void renderer::remove_pipeline(const std::string_view name) {
     uint64_t hash = FNV(name);
     auto itr = pipelines.find(hash);
@@ -108,9 +109,9 @@ namespace other {
     OTHER_ASSERT(current_node != nullptr, "Current node must not be null.");
 
     if (scene_data == nullptr || scene_data->draw_calls.empty()) {
-      CORE_LOG_WARN("No render data submitted for this frame, skipping draw calls.");
       return;
     }
+
     PROFILE_SECTION("renderer::execute_draw_calls");
 
     gpu_buffer* material_buffer = rendering()->api()->get_resource_as<gpu_buffer>(current_frame_resources.material_buffer);

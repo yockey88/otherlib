@@ -494,7 +494,7 @@ namespace other {
     command_load_scene scene_cmd = other_message_spec::parse<command_load_scene>(msg.data);
     if (scene_cmd.session_id_flag == 0x01) {
       integer_t session_id = scene_cmd.session_id;
-      CORE_LOG_INFO("Sending load-empty-scene '{}' to session {}", scene_cmd.scene_name, session_id);
+      CORE_LOG_DEBUG("Sending command-load-scene '{}' to session {}", scene_cmd.scene_name, session_id);
 
       auto itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.connection_id.id == session_id; });
       if (itr == client_endpoints.end()) {
@@ -580,8 +580,7 @@ namespace other {
         return;
       };
 
-      CORE_LOG_DEBUG("Creating new UDP stream {} @ [{}]", itr->second.connection_id, binding_point::write_string(itr->second.stream->endpoint));
-      CORE_LOG_DEBUG("  - Remote endpoint: [{}]", binding_point::write_string(remote_endpoint));
+      CORE_LOG_DEBUG("Creating new UDP stream {} @ [LOCAL = {}, REMOTE = {}]", itr->second.connection_id, binding_point::write_string(itr->second.stream->endpoint), binding_point::write_string(remote_endpoint));
 
       new_udp_stream_binding_response resp;
       resp.ack_nack = 1;

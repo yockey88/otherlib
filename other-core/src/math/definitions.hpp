@@ -106,6 +106,17 @@ OTHER_REFLECT(
   field(w, other::attr::serializable())
 )
 
-/// TODO: figure out how to reflect glm::mat2, mat3, and mat4
+/// TODO: figure out how to do anything meaningful with matrices
+OTHER_REFLECT(
+  glm::mat2
+)
+
+OTHER_REFLECT(
+  glm::mat3
+)
+
+OTHER_REFLECT(
+  glm::mat4
+)
 
 #endif  // OTHER_CORE_MATH_DEFINITIONS_HPP

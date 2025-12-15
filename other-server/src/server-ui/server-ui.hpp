@@ -16,7 +16,7 @@ namespace json = nlohmann;
 
 namespace other {
 
-  enum ui_state {
+  enum class ui_state {
     UI_STATE_PROJECT_PAGE = 0,
     UI_STATE_CREATE_PROJECT_PAGE,
     UI_STATE_SETTINGS_PAGE,
@@ -24,7 +24,7 @@ namespace other {
     NUM_STATES,
   };
 
-  enum ui_event {
+  enum class ui_event {
     UI_EVENT_GO_TO_PROJECT_PAGE = 0,
     UI_EVENT_GO_TO_CREATE_PROJECT_PAGE,
     UI_EVENT_GO_TO_SETTINGS_PAGE,

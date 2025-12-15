@@ -29,6 +29,9 @@ namespace other {
 
     void render();
 
+    void toggle_open();
+    void toggle_close();
+
     natural_t add_node(scope<ui_node> node);
     natural_t add_node(scope<ui_node> node, const std::string_view parent_search_pattern);
     natural_t add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern = "");

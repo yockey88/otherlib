@@ -18,6 +18,7 @@ namespace other {
 
   /// acknowledgement messages
   struct acknowledgement : other_message_spec_impl<acknowledgement> {
+    integer_t session_id = -1;
     message_header acked_header;
     uint8_t ack_nack = 0;
 

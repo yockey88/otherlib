@@ -45,6 +45,8 @@ namespace other {
     static void push_message(const console_input& input);
     static void submit_console_text(const std::string_view text, console_message_type type, system_timepoint time_point);
 
+    static void clear_console_output();
+
     static inline const std::vector<console_input>& get_console_history() { return history_lines; }
 
     static inline char* get_input_buffer() { return input_buffer.data(); }
@@ -73,6 +75,7 @@ namespace other {
 
     static size_t history_cursor;
     static std::vector<console_input> history_lines;
+    static std::vector<console_input> long_term_history_lines;
 
     static size_t max_history_lines;
     static lua_script* console_lua_script;

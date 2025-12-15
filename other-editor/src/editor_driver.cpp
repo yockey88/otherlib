@@ -9,6 +9,7 @@
 
 #include "rendering-pipelines/empty_pipeline.hpp"
 #include "tools/environment_console.hpp"
+#include "ui/driver_ui.hpp"
 
 namespace other {
 
@@ -56,39 +57,18 @@ namespace other {
       CORE_LOG_INFO("Editing project: [{}]", proj_name);
     });
 
+    // get_event_system()->add_listener("force-load-scene", [this](const value& data) {
+    //   CORE_LOG_INFO("force-load-scene event received in editor driver.");
+    // });
+
+    open_ui_window(driver_ui::BUILTIN_WINDOW_CONSOLE);
+
     /// ready : initializing -> running
     /// nothing to do right now for editor, should start in running state
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
-  void editor_driver::on_initialize_rendering(scope<renderer>& renderer_ptr) {
-    renderer_ptr->add_pipeline<empty_pipeline>("UI Pipeline");
-    initialize_ui();
-  }
-
-  void editor_driver::on_update() {
-  }
-
-  void editor_driver::on_ui_render() {
-    ui_ptr->render();
-  }
-
-  void editor_driver::on_shutdown() {
-    CORE_LOG_INFO("Shut down editor driver.");
-  }
-
-  void editor_driver::on_shutdown_rendering() {
-    shutdown_ui();
-    get_renderer_instance().remove_pipeline("UI Pipeline");
-  }
-
-  void editor_driver::update_running() {
-  }
-
-  void editor_driver::initialize_ui() {
-    ui_ptr = make_scope<editor_ui>(get_event_system());
-    ui_ptr->initialize();
-
+  void editor_driver::on_initialize_ui(scope<driver_ui>& ui_ptr) {
     get_event_system()->register_event("editor:main-menu:file:new-project");
     get_event_system()->add_listener("editor:main-menu:file:new-project", [this](const value& data) {
       CORE_LOG_INFO("New Project menu item selected.");
@@ -98,11 +78,6 @@ namespace other {
     get_event_system()->add_listener("editor:main-menu:file:open-project", [this](const value& data) {
       CORE_LOG_INFO("Open Project menu item selected.");
     });
-  }
-
-  void editor_driver::shutdown_ui() {
-    ui_ptr->shutdown();
-    ui_ptr = nullptr;
   }
 
 }  // namespace other

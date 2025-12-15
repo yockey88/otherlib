@@ -19,21 +19,11 @@ namespace other {
     ~editor_driver() override {}
 
     void on_initialize(const command_line&) override;
-    void on_initialize_rendering(scope<renderer>& renderer_ptr) override;
-    void on_update() override;
-    void on_ui_render() override;
-    void on_shutdown() override;
-    void on_shutdown_rendering() override;
+    void on_initialize_ui(scope<driver_ui>& ui_ptr) override;
+    void on_shutdown() override {}
 
    private:
     lua_script* editor_lua_script = nullptr;
-
-    scope<editor_ui> ui_ptr = nullptr;
-
-    void update_running() override;
-
-    void initialize_ui();
-    void shutdown_ui();
   };
 
 }  // namespace other

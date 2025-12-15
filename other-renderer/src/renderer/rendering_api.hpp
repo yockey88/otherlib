@@ -110,6 +110,8 @@ namespace other {
 
     void set_resource_name(const resource_handle& handle, const std::string_view name);
 
+    bool resource_exists(const resource_handle& handle);
+
     template <typename T>
     T* get_resource_as(const resource_handle& handle) {
       return (T*)get_resource(handle.id);

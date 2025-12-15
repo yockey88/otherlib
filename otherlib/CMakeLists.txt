@@ -39,7 +39,7 @@ target_sources(otherlib
 
     src/scripting/dotnet_bindings.cpp
     src/scripting/lua_bindings.cpp
-    src/scripting/scene_object_interface.cpp
+    src/scripting/scene_interface.cpp
     src/scripting/binding_utils/bind_glm_vectors.cpp
     src/scripting/binding_utils/bind_glm_matrices.cpp
     src/scripting/binding_utils/bind_math_types_lua.cpp
@@ -77,6 +77,9 @@ target_sources(otherlib
     src/ui/node_editor.cpp
     src/ui/console_history_node.cpp
     src/ui/console.cpp
+    src/ui/viewport.cpp
+    src/ui/type_database.cpp
+    src/ui/driver_ui.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp

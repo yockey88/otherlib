@@ -160,7 +160,6 @@ namespace other {
   }
 
   void opengl_api::set_clear_color(const glm::vec4& color) {
-    glClearColor(color.r, color.g, color.b, color.a);
     override_clear_color(color);
   }
 

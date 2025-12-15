@@ -37,7 +37,7 @@ namespace other {
     }
   }
 
-  natural_t asset_handler::load_asset(const filepath& file_path) {
+  natural_t asset_handler::load_asset(const filepath& file_path, load_completion_callback on_complete) {
     natural_t asset_id = get_next_asset_id();
 
     if (!std::filesystem::exists(file_path)) {
@@ -87,11 +87,14 @@ namespace other {
 
     itr->pipeline->start_load(
       thread_pool, &itr->loading_asset,
-      [this, id = itr->loading_asset.id]() {
+      [this, id = itr->loading_asset.id, callback = std::move(on_complete)]() {
         auto it = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
         OTHER_ASSERT(it != asset_pipelines.end(), "Loaded asset not found in asset pipelines");
         CORE_LOG_DEBUG("Asset load completion handler triggered for asset ID: {}", id);
         on_asset_loaded(&it->loading_asset);
+        if (callback) {
+          callback(&it->loading_asset);
+        }
       },
       [this, id = itr->loading_asset.id](const std::string& error_msg) {
         auto it = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });

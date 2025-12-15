@@ -10,6 +10,8 @@
 #include "dotnet/dotnet_object.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "object/camera_component.hpp"
+#include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
@@ -17,6 +19,7 @@
 #include "driver/driver.hpp"
 #include "scripting/binding_utils/bind_math_types_lua.hpp"
 #include "scripting/binding_utils/type_binder.hpp"
+#include "scripting/scene_interface.hpp"
 #include "tools/environment_console.hpp"
 
 #include "lua_bindings.hpp"
@@ -46,6 +49,8 @@ namespace other {
       "__log", lua_state.create_table_with(),
       "__driver", lua_state.create_table_with(),
       "__environment_console", lua_state.create_table_with(),
+      "__native_scene", lua_state.create_table_with(),
+      "__scene_interface", lua_state.create_table_with(),
       "__scene_object_interface", lua_state.create_table_with(),
       "__dotnet_types", lua_state.create_table_with()
     );
@@ -84,7 +89,16 @@ namespace other {
     sol::state& lua_state = lua_host.get_lua_state();
 
     sol::table driver_table = lua_state["__other_native"]["__driver"];
+    sol::table scene_table = lua_state["__other_native"]["__scene_interface"];
+    sol::table scene_obj_interface_table = lua_state["__other_native"]["__scene_object_interface"];
+    scene_table.set_function("add_component_to_object", &scene_interface::add_component);
+    scene_table.set_function("get_object_name", &scene_interface::get_object_name);
+    scene_table.set_function("set_object_name", &scene_interface::set_object_name);
+    scene_table.set_function("get_scene_clear_color", &scene_interface::get_scene_clear_color);
+    scene_table.set_function("set_scene_clear_color", &scene_interface::set_scene_clear_color);
+
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
+
     driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {
       value val;
       switch (data.get_type()) {
@@ -112,12 +126,6 @@ namespace other {
     auto& dotnet_host = scripting_env->get_dotnet_host();
     type_cache* types = dotnet_host.get_type_cache();
     OTHER_ASSERT(types != nullptr, "dotnet_host type cache is null.");
-
-    // lua_state.new_usertype<dotnet_object_proxy>(
-    //   "__dotnet_object_proxy",
-    //   sol::constructors<dotnet_object_proxy()>(),
-    //   "native_object", &dotnet_object_proxy::native_object
-    // );
 
     for (auto& [type_hash, dotnet_type_ptr] : *types) {
       sol::table type_table = dotnet_type_ptr.create_lua_descriptor(lua_state);
@@ -149,38 +157,14 @@ namespace other {
       "CONSOLE_COMMAND", CONSOLE_MESSAGE_COMMAND
     );
 
-    // lua_state.new_usertype<value>(
-    //   "__native_value",
-    //   sol::constructors<
-    //     value(), value(char), value(bool),
-    //     value(int8_t), value(int16_t), value(int32_t), value(int64_t),
-    //     value(uint8_t), value(uint16_t), value(uint32_t), value(uint64_t),
-    //     value(float), value(double),
-    //     value(const std::string&),
-    //     value(const value&), value(value&&)>(),
-    //   "type", &value::type,
-    //   "as_char", [=](const value& v) { return (char)v; },
-    //   "as_bool", [=](const value& v) { return (bool)v; },
-    //   "as_int8", [=](const value& v) { return (int8_t)v; },
-    //   "as_int16", [=](const value& v) { return (int16_t)v; },
-    //   "as_int32", [=](const value& v) { return (int32_t)v; },
-    //   "as_int64", [=](const value& v) { return (int64_t)v; },
-    //   "as_uint8", [=](const value& v) { return (uint8_t)v; },
-    //   "as_uint16", [=](const value& v) { return (uint16_t)v; },
-    //   "as_uint32", [=](const value& v) { return (uint32_t)v; },
-    //   "as_uint64", [=](const value& v) { return (uint64_t)v; },
-    //   "as_float", [=](const value& v) { return (float)v; },
-    //   "as_double", [=](const value& v) { return (double)v; },
-    //   "as_string", [=](const value& v) { return (std::string)v; },
-    //   "to_string", &value::to_string
-    // );
-
     bind_linear_algebra_types(lua_state);
 
     /// bind scene components (and other native types)
     type_binder<scene_object>::bind_component_lua(lua_state, "__native_scene_object");
     type_binder<transform>::bind_component_lua(lua_state, "__native_transform_component");
     type_binder<script_component>::bind_component_lua(lua_state, "__native_script_component");
+    type_binder<render_component>::bind_component_lua(lua_state, "__native_render_component");
+    type_binder<camera_component>::bind_component_lua(lua_state, "__native_camera_component");
   }
 
 }  // namespace other

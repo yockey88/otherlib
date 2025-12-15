@@ -112,4 +112,12 @@ namespace other {
 
 }  // namespace other
 
+OTHER_REFLECT(
+  other::model,
+  field(name, other::attr::serializable()),
+  field(submesh_indices, other::attr::serializable()),
+  field(bone_matrices, other::attr::serializable()),
+  field(local_submesh_transforms, other::attr::serializable())
+)
+
 #endif  // OTHER_RENDERER_MODEL_MODEL_HPP

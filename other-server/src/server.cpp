@@ -67,7 +67,10 @@ namespace other {
 
   void server::on_initialize_rendering(scope<renderer>& renderer_ptr) {
     renderer_ptr->add_pipeline<empty_pipeline>("UI Pipeline");
-    ui_ptr = make_scope<server_ui>(get_event_system(), project_cache);
+  }
+
+  void server::on_initialize_ui(scope<driver_ui>& ui_ptr) {
+    this->ui_ptr = make_scope<server_ui>(get_event_system(), project_cache);
   }
 
   void server::on_update() {

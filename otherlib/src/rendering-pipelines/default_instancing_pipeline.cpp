@@ -34,6 +34,10 @@ namespace other {
   }  // namespace
 
   void default_instancing_pipeline::on_prepare_frame(renderer::frame_resources* resources, render_data* data) {
+    if (data == nullptr) {
+      return;
+    }
+
     gpu::camera_data cam_data = data->primary_camera->to_gpu_data();
     upload_buffer("camera_buffer", &cam_data, sizeof(gpu::camera_data));
 
