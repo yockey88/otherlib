@@ -80,19 +80,18 @@ namespace other {
     } else if (g.nodes.at(final_output_id).pass->texture_resources.size() > 1) {
       CORE_LOG_WARN("Final output pass has multiple texture resources. Using the first one as output.");
     }
-
-    output_texture_resource = g.nodes.at(final_output_id).pass->texture_resources.at(0).handle;
   }
 
   ImTextureID render_pipeline::get_final_output_texture_id() {
-    if (!get_renderer()->resource_exists(get_final_output_texture())) {
+    if (!get_renderer()->resource_exists(get_screen_texture())) {
       return 0;
     }
-    return get_renderer()->get_resource<texture>(get_final_output_texture()).get_imgui_texture_id();
+    return get_renderer()->get_resource<texture>(get_screen_texture()).get_imgui_texture_id();
   }
 
-  resource_handle render_pipeline::get_final_output_texture() {
-    return output_texture_resource;
+  resource_handle render_pipeline::get_screen_texture() {
+    OTHER_ASSERT(screen_texture_handle.has_value(), "Screen texture handle is not set.");
+    return screen_texture_handle.value();
   }
 
   renderer::frame_resources render_pipeline::get_frame_resources() const {
@@ -116,11 +115,21 @@ namespace other {
     buffer_resources.clear();
     texture_resources.clear();
 
+    screen_texture_handle = std::nullopt;
     model_buffer_handle = std::nullopt;
     material_buffer_handle = std::nullopt;
     point_light_buffer_handle = std::nullopt;
     direction_light_buffer_handle = std::nullopt;
     camera_buffer_handle = std::nullopt;
+  }
+
+  void render_pipeline::set_screen_texture(const std::string_view name) {
+    auto itr = std::ranges::find_if(texture_resources, [&](const auto& pair) { return pair.second.name == name; });
+    if (itr == texture_resources.end()) {
+      CORE_LOG_ERROR("Texture resource [{}] not found in pipeline.", name);
+      return;
+    }
+    screen_texture_handle = itr->second.handle;
   }
 
   void render_pipeline::set_material_buffer(const std::string_view name) {

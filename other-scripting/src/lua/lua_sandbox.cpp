@@ -28,6 +28,8 @@ namespace other {
 
   sol::table lua_sandbox::try_load_table(lua_host* lua_host, const filepath& path) {
     OTHER_ASSERT(lua_host != nullptr, "Lua host is null in lua_sandbox::try_load_table");
+
+    CORE_LOG_TRACE("Loading Lua table from file '{}'", path.string());
     sol::state& lua_state = lua_host->get_lua_state();
     sol::protected_function_result result_table = lua_state.script_file(path.string(), environment());
     if (!result_table.valid()) {

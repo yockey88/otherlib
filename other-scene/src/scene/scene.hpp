@@ -107,13 +107,15 @@ namespace other {
     const transform& get_transform(natural_t id) const;
     void set_transform(natural_t id, const transform& t);
 
-    render_data prepare_render_data(scope<asset_handler>& asset_handler) const;
+    render_data prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const;
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;
     void add_object_tag(natural_t id, const std::string_view tag);
+    void remove_object_tag(natural_t id, const std::string_view tag);
 
     void add_component_by_name(scene_object* object, const std::string_view component_name);
     void remove_component_by_name(scene_object* object, const std::string_view component_name);
+    bool has_component_by_name(scene_object* object, const std::string_view component_name) const;
 
     template <typename T>
     T& add_component(scene_object* object) {

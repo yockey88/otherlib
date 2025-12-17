@@ -7,11 +7,14 @@
 
 #include "ui/console_history_node.hpp"
 
+#include "imgui.h"
+
+
 namespace other {
   namespace ui {
 
     console_window::console_window(event_system& events)
-        : ui_window(events, "Console") {
+        : ui_window(events, "Console", true, ImGuiWindowFlags_NoScrollbar) {
       auto hist_node = make_scope<console_history_node>(this);
       history_node_id = add_node(std::move(hist_node));
     }

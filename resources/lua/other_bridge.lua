@@ -49,10 +49,22 @@ function _Meta:do_file(path)
   return chunk()
 end
 
+--- things people shouldn't be touching
+_NativeSceneObject = __native_scene_object
+_NativeTransformComponent = __native_transform_component
+_NativeScriptComponent = __native_script_component
+_NativeRenderComponent = __native_render_component
+_NativeCameraComponent = __native_camera_component
+
+GraphicsMaterial = __native_gpu_graphics_material
+PointLight = __native_gpu_point_light
+DirectionLight = __native_gpu_directional_light
+
 Vec2 = __native_vector2
 Vec3 = __native_vector3
 Vec4 = __native_vector4
 Quat = __native_quaternion
+
 
 _Meta._string_utils = _Meta:get_script("string_utils")
 _Meta._file_utils = _Meta:get_script("file_utils")

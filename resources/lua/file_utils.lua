@@ -1,6 +1,6 @@
 local _FileUtils = {}
 
-function _FileUtils.file_exists(path)
+function _FileUtils.Exists(path)
   local file = io.open(path, "r")
   if file ~= nil
   then

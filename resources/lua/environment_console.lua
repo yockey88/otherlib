@@ -68,7 +68,7 @@ function _Console:LoadSceneCommand(args)
   end
 
   local path = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
-  if not _Meta._file_utils.file_exists(path)
+  if not _Meta._file_utils.Exists(path)
   then
     self.PushError("Scene file does not exist: " .. args[1])
     return
@@ -111,7 +111,7 @@ local function _parse_open_close_args(cmd_name, console, args)
   if result.type == "file"
   then
     result.path = _Meta._string_utils.strip_leading_and_ending_whitespace(args[#args])
-    if not _Meta._file_utils.file_exists(result.path)
+    if not _Meta._file_utils.Exists(result.path)
     then
       console.PushError("File does not exist: " .. result.path)
       return {}, false

@@ -17,6 +17,7 @@
 
 #include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
+#include "object/light_component.hpp"
 #include "object/object_serialization_data.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
@@ -51,10 +52,25 @@ namespace other {
 
     sol::table scene_table = storage->sandbox["__other_native"]["__native_scene"];
     sol::table scene_interface_table = storage->sandbox["__other_native"]["__scene_interface"];
-    sol::table scene_obj_interface_table = storage->sandbox["__other_native"]["__scene_object_interface"];
 
     scene_table["__native_pointer"] = this;
-    scene_table.set_function("create_scene_object", [this]() -> natural_t { return create_object().id; });
+    scene_table.set_function(
+      "create_scene_object",
+      sol::overload(
+        [this]() -> natural_t {
+          scene_object& new_obj = this->create_object();
+          return new_obj.id;
+        },
+        [this](const std::string& name) -> natural_t {
+          scene_object& new_obj = this->create_object(name);
+          return new_obj.id;
+        },
+        [this](const std::string& name, const glm::vec3& world_position) -> natural_t {
+          scene_object& new_obj = this->create_object(name, world_position);
+          return new_obj.id;
+        }
+      )
+    );
     scene_table["name"] = name;
     scene_table["id"] = id;
     scene_table["set_clear_color"] = [this](glm::vec4 color) {
@@ -132,6 +148,7 @@ namespace other {
   }
 
   void scene::run_lua_file(const filepath& script_path) {
+    CORE_LOG_DEBUG("Running Lua script file '{}' in scene '{}'.", script_path.string(), name);
     // Load and execute the Lua script
     auto* scripting_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment.");
@@ -139,15 +156,12 @@ namespace other {
     lua_sandbox& sandbox = storage->sandbox;
     lua_host& lua = scripting_env->get_lua_host();
 
-    CORE_LOG_DEBUG("Attempting to retrieve scene table from Lua file: {}", script_path.string());
+    CORE_LOG_DEBUG("  - retrieving scene table");
     sol::table scene_table = sandbox.try_load_table(&lua, script_path);
     sol::table objects_table;
 
     bool scene_valid = scene_table.valid();
-    if (!scene_valid) {
-      CORE_LOG_ERROR("Failed to load scene-table from Lua file: {}", script_path.string());
-      CORE_LOG_WARN(" - Make sure your Lua scene file returns a global table!");
-    } else {
+    if (scene_valid) {
       objects_table = scene_table["Objects"];
       scene_valid = objects_table.valid();
       if (!scene_valid) {
@@ -505,28 +519,31 @@ namespace other {
     set_transform(node->object, t);
   }
 
-  render_data scene::prepare_render_data(scope<asset_handler>& asset_handler) const {
+  render_data scene::prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const {
     PROFILE_SECTION("scene::prepare_render_data");
 
     render_data data;
     data.clear_color = storage->clear_color;
 
-    const camera* primary_camera = nullptr;
-    storage->registry.view<object_handle, camera_component>().each([&](const object_handle& handle, const camera_component& cam) {
-      if (object_has_tag(handle.id, "main-camera")) {
+    camera* primary_camera = nullptr;
+    storage->registry.view<object_handle, camera_component>().each([&](const object_handle& handle, camera_component& cam) {
+      if (primary_camera == nullptr && object_has_tag(handle.id, "main-camera")) {
+        cam.camera.calculate_matrices(window_size);
         primary_camera = &cam.camera;
       }
     });
 
     if (primary_camera != nullptr) {
       /// \todo fix this const cast
-      data.primary_camera = (camera*)primary_camera;
+      data.primary_camera = primary_camera;
     }
 
-    storage->registry.view<gpu::point_light>().each([&](const gpu::point_light& light) { data.point_lights.push_back(light); });
-    storage->registry.view<object_handle, gpu::directional_light>().each([&](const object_handle& handle, const gpu::directional_light& light) {
+    storage->registry.view<object_handle, light_component>().each([&](const object_handle& handle, const light_component& light) {
+      std::ranges::copy(light.directional_lights, std::back_inserter(data.ambient_lights));
+      std::ranges::copy(light.point_lights, std::back_inserter(data.point_lights));
+
       if (object_has_tag(handle.id, "scene-ambient-light")) {
-        data.scene_ambient_light = &light;
+        data.scene_ambient_light = &light.directional_lights[0];
       }
     });
 
@@ -541,17 +558,17 @@ namespace other {
       }
 
       if (render.obj_model.source == nullptr) {
+        /// look up source with asset handler
+
         natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
         ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
         OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", render.model_asset_id);
 
-        render.obj_model = model_src->produce_model(std::format("{}-model", handle.object->name), render.submesh_indices);
+        std::string obj_name = get_object(handle.id).name;
+        render.obj_model = model_src->produce_model(std::format("{}:asset-model", obj_name), render.submesh_indices);
       }
 
       model* draw_model = &render.obj_model;
-      OTHER_ASSERT(draw_model->source != nullptr, "Draw command model source is null");
-      PROFILE_SECTION("scene::prepare_render_data--submit_model");
-
       const animation_controller* anim_ctrl = nullptr;
       if (has_component<animation_controller>(handle.id)) {
         anim_ctrl = get_component<animation_controller>(handle.id);
@@ -647,6 +664,13 @@ namespace other {
     n->tags.push_back(object_tag{ std::string{ tag } });
   }
 
+  void scene::remove_object_tag(natural_t id, const std::string_view tag) {
+    PROFILE_SECTION("scene::remove_object_tag");
+    scene_tree::node* n = storage->tree.node_at(id);
+    OTHER_ASSERT(n != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+    n->tags.erase(std::remove_if(n->tags.begin(), n->tags.end(), [&](const object_tag& t) { return t.name == tag; }), n->tags.end());
+  }
+
   void scene::add_component_by_name(scene_object* object, const std::string_view component_name) {
     OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
 
@@ -707,6 +731,29 @@ namespace other {
       return;
     }
     itr->second.remove_fn(storage->registry, object->registry_id, storage->sandbox, itr->second.custom_registration.remove_fn);
+  }
+
+  bool scene::has_component_by_name(scene_object* object, const std::string_view component_name) const {
+    OTHER_ASSERT(object != nullptr, "Cannot check component on a null scene object.");
+
+    auto* type_data = subsystem<type_database>::get()->get_reflection_data(component_name);
+    if (type_data == nullptr) {
+      CORE_LOG_ERROR("Component type '{}' not found in type database.", component_name);
+      return false;
+    }
+
+    auto itr = storage->reflection_data.component_types.find(type_data->type_hash);
+    if (itr == storage->reflection_data.component_types.end()) {
+      CORE_LOG_ERROR("Component type '{}' not registered in scene reflection data.", component_name);
+      return false;
+    }
+
+    if (!itr->second.has_fn) {
+      CORE_LOG_ERROR("Component type '{}' does not have a valid has function.", component_name);
+      return false;
+    }
+
+    return itr->second.has_fn(storage->registry, object->registry_id, storage->sandbox, itr->second.custom_registration.has_fn);
   }
 
   std::string scene::as_string(const scene& s) {
@@ -816,7 +863,6 @@ namespace other {
   }
 
   scene scene::load_from_lua_file(const filepath& scene_path) {
-    CORE_LOG_DEBUG("Loading scene from Lua file: {}", scene_path.string());
     scene new_scene = scene(scene_path.filename().stem().string());
     new_scene.run_lua_file(scene_path);
     return new_scene;
@@ -847,29 +893,22 @@ namespace other {
 
     set_transform(&scene_obj, obj_transform);
 
-    sol::table dotnet = scripts_table[".NET"];
+    std::optional<sol::table> dotnet = scripts_table[".NET"];
     // opt<sol::table> lua_scripts = scripts_table["Lua"];
+    if (dotnet.has_value() && dotnet->valid()) {
+      script_component* script_comp = get_component<script_component>(&scene_obj);
+      OTHER_ASSERT(script_comp != nullptr, "Failed to retrieve script component for object w/ id {}", scene_obj.id);
 
-    script_component* script_comp = get_component<script_component>(&scene_obj);
-    OTHER_ASSERT(script_comp != nullptr, "Failed to retrieve script component for object w/ id {}", scene_obj.id);
+      auto* scripting_env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment");
 
-    auto* scripting_env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment");
-
-    if (dotnet.valid()) {
       CORE_LOG_DEBUG(" - attaching .NET scripts to script object ID {}", script_comp->script_object_id);
-      for (auto& item : dotnet) {
+      for (auto& item : dotnet.value()) {
         std::string script_name = item.first.as<std::string>();
-        CORE_LOG_DEBUG("[.NET Type Description]: {}", script_name);
-
         sol::table script_data = item.second.as<sol::table>();
-        for (auto& field_item : script_data) {
-          CORE_LOG_DEBUG("[.NET Type Data Entry]: {}", field_item.first.as<std::string>());
-        }
 
         opt<std::string> class_name = script_data["ClassName"];
         if (!class_name.has_value()) {
-          CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not specify a ClassName.", script_name, script_comp->script_object_id);
           continue;
         }
 
@@ -912,14 +951,9 @@ namespace other {
             continue;
           }
 
-          CORE_LOG_DEBUG("Writing Field '{}' on .NET script '{}' for object ID {}", field_name, script_name, script_comp->script_object_id);
-          CORE_LOG_DEBUG("   - field value type: {}", val_type);
-
           if (dn_field->is_property()) {
           } else {
           }
-
-          CORE_LOG_DEBUG(" - .NET script '{}' for object ID {} has field '{}' to set. (sol type = {})", script_name, script_comp->script_object_id, field_name, field_value.get_type());
 
           value val;
           switch (val_type) {

@@ -170,7 +170,7 @@ namespace other {
     // auto window_size = get_window_size();
     // glViewport(0, 0, window_size.x, window_size.y);
     glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   }
 
   void opengl_api::on_end_frame(scope<window_manager>& window_mgr) {
@@ -853,8 +853,6 @@ namespace other {
       return;
     }
 
-    auto window_size = get_window_size();
-
     const auto& fb = itr->second;
     glViewport(0, 0, fb.size.x, fb.size.y);
 
@@ -875,8 +873,6 @@ namespace other {
     const auto& fb = itr->second;
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(get_gl_clear_bits(fb.clear_mask));
 
     CHECKGL();
   }

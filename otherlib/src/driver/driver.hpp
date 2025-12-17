@@ -54,7 +54,7 @@ namespace other {
     virtual ~driver() = default;
 
     void initialize(const command_line& cmd);
-    void run();
+    virtual void run();
     void shutdown();
 
     static std::pair<driver*, std::string> create(const config_table& config);

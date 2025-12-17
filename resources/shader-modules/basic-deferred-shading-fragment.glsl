@@ -22,12 +22,12 @@ layout (std140) uniform camera_buffer {
   mat4 projection_matrix;
 };
 
-layout (std430) readonly buffer point_light_buffer {
-  point_light point_lights[];
-};
-
 layout (std430) readonly buffer direction_light_buffer {
   direction_light direction_lights[];
+};
+
+layout (std430) readonly buffer point_light_buffer {
+  point_light point_lights[];
 };
 
 uniform int OE_num_point_lights;
@@ -99,7 +99,7 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
     diffuse_specular += (diffuse * attentuation) + (specular * attentuation);
   }
 
-  vec3 ambient = vec3(0);
+  vec3 ambient = vec3(1.0);
   if (OE_num_direction_lights > 0) {
     vec3 light_dir = normalize(direction_lights[0].direction.xyz);
     ambient = direction_lights[0].color.rgb * max(dot(world_normal, light_dir), 0.0) * diffuse;

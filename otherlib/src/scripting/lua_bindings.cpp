@@ -11,6 +11,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "object/camera_component.hpp"
+#include "object/light_component.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
@@ -18,11 +19,13 @@
 
 #include "driver/driver.hpp"
 #include "scripting/binding_utils/bind_math_types_lua.hpp"
+#include "scripting/binding_utils/bind_rendering_types_lua.hpp"
 #include "scripting/binding_utils/type_binder.hpp"
 #include "scripting/scene_interface.hpp"
 #include "tools/environment_console.hpp"
 
 #include "lua_bindings.hpp"
+
 
 namespace other {
 
@@ -51,7 +54,7 @@ namespace other {
       "__environment_console", lua_state.create_table_with(),
       "__native_scene", lua_state.create_table_with(),
       "__scene_interface", lua_state.create_table_with(),
-      "__scene_object_interface", lua_state.create_table_with(),
+      "__component_names", lua_state.create_table_with(),
       "__dotnet_types", lua_state.create_table_with()
     );
 
@@ -90,12 +93,19 @@ namespace other {
 
     sol::table driver_table = lua_state["__other_native"]["__driver"];
     sol::table scene_table = lua_state["__other_native"]["__scene_interface"];
-    sol::table scene_obj_interface_table = lua_state["__other_native"]["__scene_object_interface"];
-    scene_table.set_function("add_component_to_object", &scene_interface::add_component);
-    scene_table.set_function("get_object_name", &scene_interface::get_object_name);
-    scene_table.set_function("set_object_name", &scene_interface::set_object_name);
     scene_table.set_function("get_scene_clear_color", &scene_interface::get_scene_clear_color);
     scene_table.set_function("set_scene_clear_color", &scene_interface::set_scene_clear_color);
+    scene_table.set_function("get_object_name", &scene_interface::get_object_name);
+    scene_table.set_function("set_object_name", &scene_interface::set_object_name);
+    scene_table.set_function("add_tag_to_object", &scene_interface::add_tag_to_object);
+    scene_table.set_function("remove_tag_from_object", &scene_interface::remove_tag_from_object);
+    scene_table.set_function("add_component_to_object", &scene_interface::add_component);
+    scene_table.set_function("remove_component_from_object", &scene_interface::remove_component);
+    scene_table.set_function("check_if_object_has_component", &scene_interface::has_component);
+    scene_table.set_function("attach_model_to_object", &scene_interface::attach_model_to_object);
+    scene_table.set_function("attach_camera_to_object", &scene_interface::attach_camera_to_object);
+    scene_table.set_function("attach_point_light_to_object", &scene_interface::attach_point_light_to_object);
+    scene_table.set_function("attach_directional_light_to_object", &scene_interface::attach_directional_light_to_object);
 
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
 
@@ -113,7 +123,7 @@ namespace other {
           val = value(data.as<std::string>());
           break;
         default:
-          CORE_LOG_WARN("Unsupported data type for event user data: {}", static_cast<int>(data.get_type()));
+          CORE_LOG_WARN("Unsupported data type for event user data: {}", data.get_type());
           break;
       }
       host_driver->trigger_event(event, val);
@@ -158,6 +168,7 @@ namespace other {
     );
 
     bind_linear_algebra_types(lua_state);
+    bind_rendering_types(lua_state);
 
     /// bind scene components (and other native types)
     type_binder<scene_object>::bind_component_lua(lua_state, "__native_scene_object");
@@ -165,6 +176,7 @@ namespace other {
     type_binder<script_component>::bind_component_lua(lua_state, "__native_script_component");
     type_binder<render_component>::bind_component_lua(lua_state, "__native_render_component");
     type_binder<camera_component>::bind_component_lua(lua_state, "__native_camera_component");
+    type_binder<light_component>::bind_component_lua(lua_state, "__native_light_component");
   }
 
 }  // namespace other

@@ -16,11 +16,10 @@
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
-#include "object/camera_component.hpp"
-
 #include "driver/driver_tasks.hpp"
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
 #include "scripting/lua_bindings.hpp"
+#include "scripting/scene_interface.hpp"
 #include "tools/environment_console.hpp"
 #include "vm/control_table.hpp"
 #include "vm/other_device.hpp"
@@ -68,6 +67,8 @@ namespace other {
 
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
+
+    scene_interface::initialize(this);
     bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
     // bind_scene_object_interface_lua_functions(env->get_lua_host(), this);
 
@@ -118,6 +119,9 @@ namespace other {
     if (rendering_enabled()) {
       shutdown_rendering();
     }
+
+    asset_mgr->purge_stores();
+    asset_mgr = nullptr;
 
     core_device.stopped = true;
     vm::shutdown_device(&core_device);
@@ -546,6 +550,8 @@ namespace other {
     pump_events();
     poll_coroutines();
 
+    asset_mgr->update_pipelines();
+
     /// check assets being loaded
     for (auto it = loading_asset_ids.begin(); it != loading_asset_ids.end();) {
       natural_t asset_id = it->asset_id;
@@ -591,8 +597,9 @@ namespace other {
     }
 
     render_data data = {};
+    auto window_size = get_renderer_instance().get_window_size();
     if (active_scene != nullptr) {
-      data = active_scene->prepare_render_data(asset_mgr);
+      data = active_scene->prepare_render_data(window_size, asset_mgr);
       get_renderer_instance().begin_frame(&data);
     } else {
       get_renderer_instance().begin_frame(nullptr);
@@ -968,8 +975,13 @@ namespace other {
   void driver::on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data) {
     CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
     net_context->net_thread->shutdown();
+
     on_shutdown_confirm();
     process_driver_event(driver_event::DRIVER_EVENT_READY);
+    /// \todo wait for pending stuff?
+    // if (asset_mgr->get_num_pending_unloads() == 0) {
+    // } else {
+    // }
   }
 
   void driver::on_timeout_shutdown_request_network_thread(message_header header) {
@@ -1553,11 +1565,13 @@ namespace other {
       return;
     }
 
+    CORE_LOG_DEBUG("Loading scene '{}' and adding to scene graph.", scene_path.string());
     natural_t scene_id = add_scene_to_scene_graph(scene_path);
     if (scene_id == 0) {
       CORE_LOG_ERROR("Failed to load scene from file '{}' via console command.", scene_path.string());
       return;
     }
+    CORE_LOG_DEBUG("Scene '{}' loaded with ID {}.", scene_path.string(), scene_id);
 
     set_scene_to_active(scene_id);
     OTHER_ASSERT(active_scene != nullptr, "Active scene is null after loading scene.");
@@ -1565,16 +1579,6 @@ namespace other {
     constexpr bool is_empty = false;
     constexpr bool requires_udp_binding = true;
     send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
-
-    if (rendering_enabled()) {
-      render_data data = active_scene->prepare_render_data(asset_mgr);
-      if (data.primary_camera == nullptr) {
-        CORE_LOG_WARN("Loaded scene '{}' does not have a primary camera set. Creating [Camera] Entity.", active_scene->name);
-        scene_object& obj = active_scene->create_object("Camera");
-        active_scene->add_component<camera_component>(obj.id);
-        active_scene->add_object_tag(obj.id, "main-camera");
-      }
-    }
   }
 
   void driver::send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding) {

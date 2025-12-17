@@ -22,8 +22,27 @@ namespace other {
     void on_initialize_ui(scope<driver_ui>& ui_ptr) override;
     void on_shutdown() override {}
 
+    void update_running() override;
+    void update_initializing() override;
+    struct mouse_state {
+      glm::vec2 position = { 0, 0 };
+      glm::vec2 delta = { 0, 0 };
+    };
+
    private:
     lua_script* editor_lua_script = nullptr;
+
+    natural_t suzanne_obj_id = 0;
+
+    natural_t suzanne_id = 0;
+    bool suzanne_loaded = false;
+
+    natural_t camera_obj_id = 0;
+
+    mouse_state mouse;
+    bool pressing_mouse_wheel = false;
+
+    void on_event(SDL_Event* event) override;
   };
 
 }  // namespace other

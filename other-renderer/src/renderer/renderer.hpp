@@ -25,6 +25,7 @@ namespace other {
 
     camera* primary_camera = nullptr;
     const gpu::directional_light* scene_ambient_light = nullptr;
+    std::vector<gpu::directional_light> ambient_lights;
     std::vector<gpu::point_light> point_lights;
 
     size_t num_draw_calls = 0;
@@ -39,6 +40,8 @@ namespace other {
   class renderer {
    public:
     struct frame_resources {
+      resource_handle output_texture;
+
       resource_handle model_buffer;
       resource_handle material_buffer;
       resource_handle bone_buffer;

@@ -62,7 +62,7 @@ namespace other {
     };
     static void move_history_cursor(history_move move);
 
-    constexpr static inline size_t kInputBufferSize = 1024;
+    constexpr static inline size_t kInputBufferSize = 1024 * 2;
 
    private:
     /// must always use console on thread that initialized it

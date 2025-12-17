@@ -34,7 +34,7 @@ namespace other {
     virtual void render_frame(renderer* renderer_ptr);
 
     ImTextureID get_final_output_texture_id();
-    resource_handle get_final_output_texture();
+    resource_handle get_screen_texture();
 
     renderer::frame_resources get_frame_resources() const;
 
@@ -56,6 +56,7 @@ namespace other {
       return frame_render_data;
     }
 
+    void set_screen_texture(const std::string_view name);
     void set_material_buffer(const std::string_view);
     void set_model_buffer(const std::string_view);
     void set_bone_buffer(const std::string_view);
@@ -107,10 +108,10 @@ namespace other {
     render_graph* graph = nullptr;
     bool valid = false;
 
-    resource_handle output_texture_resource;
     render_data* frame_render_data = nullptr;
     renderer::frame_resources frame_resources;
 
+    opt<resource_handle> screen_texture_handle;
     opt<resource_handle> material_buffer_handle;
     opt<resource_handle> model_buffer_handle;
     opt<resource_handle> bone_buffer_handle;

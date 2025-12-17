@@ -34,7 +34,10 @@ namespace other {
   }  // namespace
 
   void default_instancing_pipeline::on_prepare_frame(renderer::frame_resources* resources, render_data* data) {
-    if (data == nullptr) {
+    if (data == nullptr ||
+        /// there is no camera then anything we render can't be seen anyways,
+        ///  so save the effort
+        data->primary_camera == nullptr) {
       return;
     }
 
@@ -136,6 +139,7 @@ namespace other {
 
     add_texture_resource("screen_texture", window_size, texture::tex_type::TEXTURE_2D, texture::format::RGBA16F);
 
+    set_screen_texture("screen_texture");
     set_model_buffer("model_buffer");
     set_material_buffer("material_buffer");
     set_bone_buffer("bone_buffer");

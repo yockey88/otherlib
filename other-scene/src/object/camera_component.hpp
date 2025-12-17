@@ -14,6 +14,10 @@ namespace other {
     camera camera;
   };
 
+  struct camera_component_lua_proxy {
+    camera_component* native_pointer = nullptr;
+  };
+
 }  // namespace other
 
 OTHER_REFLECT(

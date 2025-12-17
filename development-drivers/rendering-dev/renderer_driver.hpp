@@ -50,16 +50,10 @@ namespace other {
     value test_value;
 
     execution_graph exec_graph;
-    scope<event_system> events;
     scope<ui::node_editor> node_editor = nullptr;
     natural_t input_node_id = 0;
     natural_t output_node_id = 0;
     bool editor_open = true;
-
-    std::unique_ptr<asio::io_context> io_context = nullptr;
-    scope<asset_handler> asset_mgr = nullptr;
-    scope<renderer> renderer = nullptr;
-    scene active_scene;
 
     bool loaded_suzanne = false;
     natural_t light_id;

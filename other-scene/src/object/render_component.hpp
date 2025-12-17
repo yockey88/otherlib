@@ -23,6 +23,10 @@ namespace other {
     gpu::graphics_material material = {};
   };
 
+  struct render_component_lua_proxy {
+    render_component* native_pointer = nullptr;
+  };
+
 }  // namespace other
 
 OTHER_REFLECT(

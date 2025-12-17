@@ -54,13 +54,13 @@ namespace other {
     }
 
     void console_history_node::on_render_node_body() {
-      if (ImGui::BeginChild("ConsoleHistoryScrollRegion", ImVec2(0.f, -ImGui::GetFrameHeightWithSpacing()), false, ImGuiWindowFlags_HorizontalScrollbar)) {
+      if (ImGui::BeginChild("ConsoleHistoryScrollRegion", ImVec2(0.f, -ImGui::GetFrameHeightWithSpacing()), false)) {
         ImGui::PushTextWrapPos();
         {
           /// locks console mutex
           const auto history_lines = environment_console::get_console_history();
           for (const auto& line : history_lines) {
-            ImGui::SetScrollHereY(1.f);
+            // ImGui::SetScrollHereY(1.f);
 
             auto zoned_time = std::chrono::zoned_time{ std::chrono::current_zone(), line.timestamp };
             std::string time_str = std::format("{:%H:%M:%S}", std::chrono::round<milliseconds>(zoned_time.get_local_time()));
