@@ -10,7 +10,6 @@
 #include "scene/scene.hpp"
 #include "scene/scene_serialization_data.hpp"
 
-#include "gtest/gtest.h"
 #include "serialization_tests.hpp"
 
 namespace other {

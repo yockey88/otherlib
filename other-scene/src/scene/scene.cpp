@@ -50,13 +50,36 @@ namespace other {
     // storage->registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
     storage->registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
 
-    sol::table scene_table = storage->sandbox["__other_native"]["__native_scene"];
-    sol::table scene_interface_table = storage->sandbox["__other_native"]["__scene_interface"];
+    opt<sol::table> native_table = storage->sandbox["__other_native"];
+    if (native_table.has_value() && native_table->valid()) {
+      sol::table scene_table = storage->sandbox["__other_native"]["__native_scene"];
+      sol::table scene_interface_table = storage->sandbox["__other_native"]["__scene_interface"];
 
-    scene_table["__native_pointer"] = this;
-    scene_table.set_function(
-      "create_scene_object",
-      sol::overload(
+      scene_table["__native_pointer"] = this;
+      scene_table.set_function(
+        "create_scene_object",
+        sol::overload(
+          [this]() -> natural_t {
+            scene_object& new_obj = this->create_object();
+            return new_obj.id;
+          },
+          [this](const std::string& name) -> natural_t {
+            scene_object& new_obj = this->create_object(name);
+            return new_obj.id;
+          },
+          [this](const std::string& name, const glm::vec3& world_position) -> natural_t {
+            scene_object& new_obj = this->create_object(name, world_position);
+            return new_obj.id;
+          }
+        )
+      );
+      scene_table["name"] = name;
+      scene_table["id"] = id;
+      scene_table["set_clear_color"] = [this](glm::vec4 color) {
+        this->storage->clear_color = color;
+      };
+
+      scene_table["create_scene_object"] = sol::overload(
         [this]() -> natural_t {
           scene_object& new_obj = this->create_object();
           return new_obj.id;
@@ -69,28 +92,10 @@ namespace other {
           scene_object& new_obj = this->create_object(name, world_position);
           return new_obj.id;
         }
-      )
-    );
-    scene_table["name"] = name;
-    scene_table["id"] = id;
-    scene_table["set_clear_color"] = [this](glm::vec4 color) {
-      this->storage->clear_color = color;
-    };
-
-    scene_table["create_scene_object"] = sol::overload(
-      [this]() -> natural_t {
-        scene_object& new_obj = this->create_object();
-        return new_obj.id;
-      },
-      [this](const std::string& name) -> natural_t {
-        scene_object& new_obj = this->create_object(name);
-        return new_obj.id;
-      },
-      [this](const std::string& name, const glm::vec3& world_position) -> natural_t {
-        scene_object& new_obj = this->create_object(name, world_position);
-        return new_obj.id;
-      }
-    );
+      );
+    } else {
+      CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
+    }
   }
 
   void scene::do_scene_unbinding() {
