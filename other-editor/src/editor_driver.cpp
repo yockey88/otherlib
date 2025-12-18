@@ -60,6 +60,11 @@ namespace other {
       std::string proj_name = data;
       CORE_LOG_INFO("Editing project: [{}]", proj_name);
     });
+    get_event_system()->add_listener("force-load-scene", [this](const value& data) {
+      /// capture camera id
+      scene_object& cam_obj = get_active_scene()->get_object("Camera");
+      camera_obj_id = cam_obj.id;
+    });
 
     open_ui_window(driver_ui::BUILTIN_WINDOW_CONSOLE);
 
