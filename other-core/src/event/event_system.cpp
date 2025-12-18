@@ -71,7 +71,6 @@ namespace other {
   void event_system::cancel_event(const std::string_view name) {
     natural_t id = FNV(name);
     cancel_event(id);
-    CORE_LOG_INFO("Cancelled event '{}'", name);
   }
 
   void event_system::cancel_event(natural_t event_id) {

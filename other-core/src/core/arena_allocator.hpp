@@ -47,17 +47,45 @@ namespace other {
       /// TODO: custom alignment
       void* memory = nullptr;
       if (override_arena != nullptr) {
-        memory = override_arena->allocate(type_size);
+        memory = override_arena->allocate(type_size, alignof(T));
       } else {
-        memory = arena::allocate(type_size);
+        memory = arena::allocate(type_size, alignof(T));
       }
 
       new (memory) T(std::forward<Args>(args)...);
       return std::launder(static_cast<T*>(memory));
     }
 
+    T* allocate(const T& other)
+      requires std::is_copy_constructible_v<T>
+    {
+      void* memory = nullptr;
+      if (override_arena != nullptr) {
+        memory = override_arena->allocate(type_size, alignof(T));
+      } else {
+        memory = arena::allocate(type_size, alignof(T));
+      }
+
+      new (memory) T(other);
+      return std::launder(static_cast<T*>(memory));
+    }
+
+    T* allocate(T&& other)
+      requires std::is_move_constructible_v<T>
+    {
+      void* memory = nullptr;
+      if (override_arena != nullptr) {
+        memory = override_arena->allocate(type_size, alignof(T));
+      } else {
+        memory = arena::allocate(type_size, alignof(T));
+      }
+
+      new (memory) T(std::move(other));
+      return std::launder(static_cast<T*>(memory));
+    }
+
     T* allocate_block(size_t size) {
-      T* ptr = (T*)arena::allocate(size * sizeof(T));
+      T* ptr = (T*)arena::allocate(size * sizeof(T), alignof(T));
       for (size_t i = 0; i < size; i++) {
         new (&ptr[i]) T();
       }
@@ -92,6 +120,7 @@ namespace other {
     }
 
     static constexpr size_t type_size = sizeof(T);
+    static constexpr size_t type_alignment = alignof(T);
 
    private:
     arena* override_arena = nullptr;

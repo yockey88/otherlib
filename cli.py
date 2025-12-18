@@ -13,12 +13,11 @@ def regen_project():
 
 def copy_dlls(cfg, dll_cfg):
   print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
-  assimp_debug = "extern/assimp/lib/debug/assimp-vc143-mtd.dll"
-  assimp_release = "extern/assimp/lib/release/assimp-vc143-mt.dll"
   dlls = [
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
-    assimp_debug if cfg == "Debug" else assimp_release,
+    "extern/assimp/lib/assimp-vc143-mt.dll",
     f"extern/python312/python312.dll",
+    "extern/sol2/lib/lua-5.4.4.dll",
   ]
   destinations = [
     f"build/development-drivers/{cfg}/",
@@ -27,22 +26,15 @@ def copy_dlls(cfg, dll_cfg):
     f"build/scratch/{cfg}/",
     f"build/tests/{cfg}/",
     f"build/tools/{cfg}/",
+    f"build/other-editor/{cfg}/",
+    f"build/other-server/{cfg}/",
   ]
-  
-  if cfg == "Debug" or cfg == "ProfileD":
-    if os.path.exists(assimp_debug):
-      dlls.append(assimp_debug)
-  else:
-    if os.path.exists(assimp_release):
-      dlls.append(assimp_release)
 
   for dll in dlls:
     if os.path.exists(dll):
       for dest in destinations:
         if os.path.exists(dest):
           shutil.copy(dll, dest)
-          # print(f"Copied {dll} to {dest}")
-
     else:
       print(f"Warning: {dll} does not exist.")
 
@@ -71,7 +63,8 @@ def validate_args(args, parser):
       and not args.compile_serialization_schema \
       and not args.compile_object \
       and not args.run_test_suite and not args.run_server \
-      and not args.install:
+      and not args.install \
+      and not args.daemon_server:
     parser.print_help()
     sys.exit(1)
 
@@ -92,6 +85,7 @@ if __name__ == "__main__":
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
   # parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
   parser.add_argument("--install", "-i", action="store_true", help="Install Other Environment to the system.")
+  parser.add_argument("--daemon-server", "-dsrv", action="store_true", help="Run the Other Environment Daemon Server.")
 
   args = parser.parse_args()
   try:
@@ -115,7 +109,7 @@ if __name__ == "__main__":
       print("Serialization schema compiled successfully.")
 
     if args.install:
-      #remove if installation folder exists, this only works locally for dev testing (and only on windows)
+      # remove if installation folder exists, this only works locally for dev testing (and only on windows)
       if os.path.exists("C:/OtherEnvironment/"):
         shutil.rmtree("C:/OtherEnvironment/")
       run_subprocess(["cmake", "-S", ".", "-B", "build"])
@@ -141,20 +135,6 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
-      # ### if no other.sln file found, regenerate project files
-      # if not os.path.exists("build/other.sln"):
-      #   regen_project()
-      ### run dotnet restore on solution file to restore nuget packages
-      # this has to happen before build step cause bulding dotnet projects
-      # requires the *.project.json files to be present
-      # print("Restoring .NET packages...")
-      # run_subprocess(["dotnet", "restore", "build/other.sln"])
-
-      # filename = "build/other.sln"
-      # if not os.path.exists(filename):
-      #   print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
-      #   sys.exit(1)
-      # build_sln_file(filename, cfg)
       run_subprocess(["cmake", "--build", "build", "--config", cfg])
 
       dll_cfg = "Release"
@@ -165,12 +145,10 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "script-config.toml"])
-      # run_subprocess(["build/scratch/" + cfg + "/coro-testing.exe", "resources/dev-test-config.toml"])
-      run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
-      
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args, args.verbose)
     elif args.run_server:
-      run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)
+      run_project("other-server", cfg, "other_server", "server-config.toml", args, args.verbose)
+
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
       run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)
@@ -192,6 +170,8 @@ if __name__ == "__main__":
       test_filter = args.run_test_suite[0]
       print(f"Running test suite with filter: {test_filter}")
       run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=[f"--gtest_filter={test_filter}", "--gtest_shuffle"])
+    elif args.daemon_server:
+      run_subprocess(["pwsh.exe", "-File", "tools/daemon-server.ps1"])
       
   except subprocess.CalledProcessError as e:
     print(f"Error: {e}")

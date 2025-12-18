@@ -28,6 +28,10 @@ namespace other {
     opt<resource_handle> shader_handle = {};
     void* user_data = nullptr;
 
+    /// for other dynamic resource binding later
+    natural_t next_texture_id = 0;
+    natural_t next_buffer_id = 0;
+
     std::string name;
     glm::ivec2 size = { 0, 0 };
     glm::vec4 clear_color = { 0.2, 0.2, 0.2, 1.0 };
@@ -67,6 +71,9 @@ namespace other {
 
       bool operator==(const node& other) const { return id == other.id && pass == other.pass; }
     };
+    /// \todo can we use the graph structure from core/graph.hpp instead?
+    ///        this has special implementation considerations because of the
+    ///        rendering passes and their resources but maybe we can still do it?
     struct graph {
       std::map<natural_t, node> nodes;
       std::map<natural_t, std::vector<natural_t>> edges;
@@ -74,7 +81,7 @@ namespace other {
 
     /// \todo finish scripting and use actions:
     ///           using pass_executor = action<renderer&, node*, void*>;
-    using pass_executor = std::function<void(renderer& render, const node*, void*)>;
+    using pass_executor = std::function<void(renderer& render, node*, void*)>;
 
     struct pass_builder {
       pass_builder(render_graph& graph, render_pass& pass)
@@ -120,6 +127,7 @@ namespace other {
     const std::map<natural_t, pass_executor>& get_executors() const { return executors; }
     opt<resource_handle> get_output_texture() const { return output_texture_handle; }
 
+    graph& get_graph() { return pass_graph; }
     const graph& get_graph() const { return pass_graph; }
     const std::vector<natural_t>& get_topological_sort() const { return topological_sort; }
 

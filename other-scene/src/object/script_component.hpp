@@ -14,7 +14,6 @@ namespace other {
 
   struct script_component {
     scene_object* object = nullptr;
-
     integer_t script_object_id = 0;
   };
 

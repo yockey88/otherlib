@@ -20,6 +20,8 @@ wip/
 analysis/
 scratch/
 code-generator/
+*.svg
+*.d2
 
 #large local development files
 resources/models/

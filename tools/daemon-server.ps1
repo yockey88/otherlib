@@ -1,0 +1,1 @@
+Start-Process ./build/other-server/Debug/other_server.exe -ArgumentList "resources/server-config.toml --verbose"

@@ -77,6 +77,16 @@ namespace other {
     ASSERT_EQ(str, kTestString);
   }
 
+  TEST_F(value_test, assignment_constructor_from_string) {
+    value string_val = kTestString;
+    ASSERT_FALSE(string_val.is_empty());
+    ASSERT_EQ(string_val.size(), kTestString.size());
+    ASSERT_EQ(string_val.type(), value_type::STRING);
+
+    std::string str = string_val;
+    ASSERT_EQ(str, kTestString);
+  }
+
   TEST_F(value_test, user_data_constructor) {
     struct TestData {
       int a;
@@ -216,6 +226,106 @@ namespace other {
     };
 
     ASSERT_TRUE(tfunc(val2));
+  }
+
+  TEST_F(value_test, opaque_handle_constructor) {
+    int dummy_data = 12345;
+    void* opaque_ptr = static_cast<void*>(&dummy_data);
+
+    value opaque_val = value::create_opaque_handle(opaque_ptr);
+
+    ASSERT_FALSE(opaque_val.is_empty());
+    ASSERT_EQ(opaque_val.size(), sizeof(void*));
+    ASSERT_EQ(opaque_val.type(), value_type::OPAQUE_HANDLE);
+
+    void* retrieved_ptr = opaque_val;
+    ASSERT_EQ(retrieved_ptr, opaque_ptr);
+    ASSERT_EQ(*static_cast<int*>(retrieved_ptr), dummy_data);
+  }
+
+  ::testing::AssertionResult const_ref_foo(const std::string& str) {
+    try {
+      if (str != "hello!") {
+        return ::testing::AssertionFailure() << "Expected 'hello!', got '" << str << "'";
+      }
+      return ::testing::AssertionSuccess();
+    } catch (...) {
+      return ::testing::AssertionFailure() << "Exception thrown when passing string by const reference";
+    }
+  }
+
+  TEST_F(value_test, pass_string_by_const_ref) {
+    using namespace std::string_literals;
+    value test_value = "hello!"s;
+    ASSERT_TRUE(const_ref_foo(test_value));
+  }
+
+  TEST_F(value_test, turn_vector_values_to_tuple) {
+    using namespace std::string_literals;
+    std::vector<value> vec = { value(10), value(3.14f), value("test"s) };
+
+    {
+      ASSERT_EQ(vec.size(), 3);
+      ASSERT_EQ(vec[0].type(), value_type::INT32);
+      ASSERT_EQ(vec[1].type(), value_type::FLOAT);
+      ASSERT_EQ(vec[2].type(), value_type::STRING);
+      int int_val = vec[0];
+      float float_val = vec[1];
+      std::string str_val = vec[2];
+
+      ASSERT_EQ(int_val, 10);
+      ASSERT_EQ(float_val, 3.14f);
+      ASSERT_EQ(str_val, "test");
+    }
+
+    std::tuple<int, float, std::string> tup;
+    std::get<0>(tup) = vec[0];
+    std::get<1>(tup) = vec[1];
+    std::get<2>(tup) = vec[2].as_string();
+    CORE_LOG_DEBUG("Tuple values: {}, {}, {}", std::get<0>(tup), std::get<1>(tup), std::get<2>(tup));
+    ASSERT_EQ(std::get<0>(tup), 10);
+    ASSERT_EQ(std::get<1>(tup), 3.14f);
+    ASSERT_EQ(std::get<2>(tup), "test");
+  }
+
+  TEST_F(value_test, unpack_args_test) {
+    using namespace std::string_literals;
+    std::vector<value> vec = { value(25), value(7.5f), value("unpack"s) };
+
+    auto tup = other::detail::unpack_args<int, float, std::string>(vec);
+    ASSERT_EQ(std::get<0>(tup), 25);
+    ASSERT_EQ(std::get<1>(tup), 7.5f);
+    ASSERT_EQ(std::get<2>(tup), "unpack");
+  }
+
+  TEST_F(value_test, unpack_args_test2) {
+    using namespace std::string_literals;
+    std::vector<value> vec = { value(100), value(0.125f), value("args2"s), value(true) };
+
+    auto tup = other::detail::unpack_args<int, float, std::string, bool>(vec);
+    ASSERT_EQ(std::get<0>(tup), 100);
+    ASSERT_EQ(std::get<1>(tup), 0.125f);
+    ASSERT_EQ(std::get<2>(tup), "args2");
+    ASSERT_EQ(std::get<3>(tup), true);
+  }
+
+  TEST_F(value_test, unpack_args_test3) {
+    using namespace std::string_literals;
+    std::vector<value> vec = { value(-50), value(2.718f), value("args3"s), value(false), value(3.14159) };
+
+    auto tup = other::detail::unpack_args<int, float, std::string, bool, double>(vec);
+    ASSERT_EQ(std::get<0>(tup), -50);
+    ASSERT_EQ(std::get<1>(tup), 2.718f);
+    ASSERT_EQ(std::get<2>(tup), "args3");
+    ASSERT_EQ(std::get<3>(tup), false);
+    ASSERT_EQ(std::get<4>(tup), 3.14159);
+  }
+
+  TEST_F(value_test, unpack_args_test_empty) {
+    std::vector<value> vec;
+
+    auto tup = other::detail::unpack_args<>(vec);
+    ASSERT_EQ(std::tuple_size<decltype(tup)>::value, 0);
   }
 
 }  // namespace other

@@ -1,0 +1,24 @@
+[application]
+core-log-level = "debug"
+core-log-file = "logs/runtime-dev.log"
+
+[rendering]
+backend = "opengl"
+ui-layout-ini = "resources/ui/runtime-dev-layout.ini"
+window-size = { width = 1920, height = 1080 }
+
+
+[scripting]
+dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
+dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+dotnet-modules = [
+  "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"
+]
+
+# bridge directory for lua script (Prublit API)
+other-lua-directory = "resources/lua"
+
+[assets]
+ocmd-file = "resources/ocmd-testing/test1.ocmd"
+test-model = "resources/models/spinning-torus.fbx"

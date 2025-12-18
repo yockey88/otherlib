@@ -11,6 +11,8 @@ target_sources(other_renderer
       
       src/model/vertex.cpp
       src/model/vertex_buffer.cpp
+      src/model/animation.cpp
+      src/model/skeleton.cpp
       src/model/model_importer.cpp
       src/model/model.cpp
       
@@ -24,10 +26,6 @@ target_sources(other_renderer
       src/renderer/render_graph.cpp
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
-
-      src/renderer/draw_command.cpp
-
-      src/renderer/ui/nodes/hbox_node.cpp
 
       src/renderer/ui/ui_helpers.cpp
       src/renderer/ui/ui_node.cpp
@@ -45,5 +43,9 @@ target_link_directories(other_renderer PUBLIC
   $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 target_link_libraries(other_renderer PRIVATE imgui SDL3 glad ${ASSIMP_NAME} other_core)
+
+if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+	target_include_directories(other_renderer PRIVATE ${OTHER_EXTERN_DIR}/tracy)
+endif()
 
 other_install_module(other_renderer "renderer")

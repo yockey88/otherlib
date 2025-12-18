@@ -17,8 +17,6 @@
 namespace other {
 
   class camera {
-    OTHER_REFLECTABLE(camera);
-
    public:
     struct clip_planes {
       real_t near_plane = 0.01f;
@@ -44,6 +42,7 @@ namespace other {
 
     void adjust_look_orientation(real_t yaw, real_t pitch);
 
+    void calculate_matrices(const glm::ivec2& window_size);
     glm::mat4& get_view_matrix();
     glm::mat4& get_projection_matrix(const glm::ivec2& window_size);
 

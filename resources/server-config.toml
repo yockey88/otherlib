@@ -1,15 +1,15 @@
 [application]
+role = "server"
 core-log-level = "debug"
 core-log-file = "logs/server.log"
 
-[network-thread]
-active = true
-
 [rendering]
-rendering-backend = "opengl"
-window-size = { width = 1920, height = 1080 }
+# backend = "opengl"
+# ui-layout-ini = "resources/ui/server-ui-layout.ini"
+# window-size = { width = 1920, height = 1080 }
 
 [scripting]
 dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+other-lua-directory = "resources/lua"

@@ -5,9 +5,12 @@
 #define OTHERLIB_RENDERER_UI_HELPERS_HPP
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #include <imgui/imgui.h>
+
+#include "core/defines.hpp"
 
 namespace other {
 
@@ -81,11 +84,13 @@ namespace other {
     ~scoped_color_stack();
   };
 
+  std::string calculate_display_text(const std::string& text, float max_width);
+
   void shift_cursor(float x, float y);
   void shift_cursor_x(float x);
   void shift_cursor_y(float y);
 
-  void underline(bool full_width, float offx, float offy);
+  void underline(bool full_width = false, float offx = 0.f, float offy = -1.f);
 
 }  // namespace other
 

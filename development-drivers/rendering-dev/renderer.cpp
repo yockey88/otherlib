@@ -8,16 +8,16 @@
 
 exit_code other_main(const command_line& cmd, const config_table& config) {
   PROFILE_SECTION("rendering-dev--other_main");
-  other::driver* renderer_driver = create_driver(&config);
-  if (!renderer_driver) {
+  other::renderer_driver* driver = new other::renderer_driver(config);
+  if (!driver) {
     CORE_LOG_ERROR("Failed to create renderer driver");
     return exit_code::FAILURE;
   }
 
-  renderer_driver->initialize(cmd);
-  renderer_driver->run();
-  renderer_driver->shutdown();
+  driver->initialize(cmd);
+  driver->run();
+  driver->on_shutdown();
 
-  destroy_driver(renderer_driver);
+  delete driver;
   return exit_code::SUCCESS;
 }

@@ -14,6 +14,7 @@ namespace other {
       SESSION_STATE_LAUNCHING,
       SESSION_STATE_STARTED,
       SESSION_STATE_SHUTTING_DOWN,
+      SESSION_STATE_CLOSED,
 
       NUM_STATES,
       INVALID_STATE = NUM_STATES
@@ -25,6 +26,7 @@ namespace other {
       SESSION_EVENT_STATUS_CHECK,
       SESSION_EVENT_SHUTDOWN_START,
       SESSION_EVENT_SHUTDOWN_COMPLETE,
+      SESSION_EVENT_CLOSE_ON_ERROR,
 
       NUM_EVENTS,
       INVALID_EVENT = NUM_EVENTS
@@ -37,8 +39,16 @@ namespace other {
     session_state_machine()
         : state_machine<network::session_state, network::session_event>(network::SESSION_STATE_STOPPED) {
       add_transition(network::SESSION_STATE_STOPPED, network::SESSION_EVENT_START, network::SESSION_STATE_LAUNCHING);
-      add_transition(network::SESSION_STATE_LAUNCHING, network::SESSION_EVENT_CHECK_IN, network::SESSION_STATE_STARTED /* ,  respond_to_check_in*/);
+      /// for if shutdown is requested before check in
+      add_transition(network::SESSION_STATE_STOPPED, network::SESSION_EVENT_SHUTDOWN_START, network::SESSION_STATE_STOPPED);
+
+      add_transition(network::SESSION_STATE_LAUNCHING, network::SESSION_EVENT_CHECK_IN, network::SESSION_STATE_STARTED);
+      add_transition(network::SESSION_STATE_LAUNCHING, network::SESSION_EVENT_SHUTDOWN_START, network::SESSION_STATE_SHUTTING_DOWN);
+
       add_transition(network::SESSION_STATE_STARTED, network::SESSION_EVENT_SHUTDOWN_START, network::SESSION_STATE_SHUTTING_DOWN);
+      add_transition(network::SESSION_STATE_STARTED, network::SESSION_EVENT_CLOSE_ON_ERROR, network::SESSION_STATE_SHUTTING_DOWN);  // network::SESSION_STATE_CLOSED);
+      add_transition(network::SESSION_STATE_STARTED, network::SESSION_EVENT_SHUTDOWN_COMPLETE, network::SESSION_STATE_STOPPED);
+
       add_transition(network::SESSION_STATE_SHUTTING_DOWN, network::SESSION_EVENT_SHUTDOWN_COMPLETE, network::SESSION_STATE_STOPPED);
     }
     virtual ~session_state_machine() = default;

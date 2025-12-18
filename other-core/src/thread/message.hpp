@@ -26,53 +26,64 @@ namespace other {
     ACKNOWLEDGEMENT,
 
     CONTROL,
-
     COMMAND,
+
     REQUEST,
     RESPONSE,
 
-    ERROR_ALERT,
+    SESSION_EVENT,
 
-    INFO,
+    INFORMATION,
+
+    ERROR_ALERT,
   };
 
   enum message_id : uint16_t {
-    /// notification messages
+
     /// ack messages
     ACK = 0x0001,
+
+    /// notification messages
+    STREAM_RX_UDP_DATAGRAM,
+    SESSION_RX_MESSAGE,
 
     /// control messages
     PING,
     PONG,
 
+    /// command messages
     SESSION_LISTEN_FOR,
+    SESSION_CONNECT_TO,
+    SESSION_TX_MESSAGE,
 
+    STREAM_SEND_UDP_DATAGRAM,
+
+    ENVIRONMENT_LOAD_SCENE,
+
+    /// request/response messages
     SESSION_CHECK_IN,
     SESSION_CLOSED,
-    SESSION_SHUTDOWN_REQUEST,
+    SESSION_SHUTDOWN,
+    SESSION_INFORMATION,
+    NEW_UDP_STREAM_BINDING,
 
-    OTHER_COMMAND,
-    OTHER_COMMAND_BLOCK,
+    PROJECT_CACHE_INFORMATION,
 
-    /// query messages
-    /// response messages
+    SCENE_STATE,
+
     /// error alert messages
-    /// info messages
 
     SHUTDOWN_REQUEST,
-
     ERROR_ALERT_ID = 0xFFFF,
   };
 
 #pragma pack(push, 1)
   struct message_header {
-    /// use uint16_t for category and id for custom message types
     uint16_t category;
     uint16_t id;
-
     constexpr auto operator<=>(const message_header& other) const = default;
   };
-#pragma pack(pop)
+  static_assert(sizeof(message_header) == sizeof(uint32_t), "Invalid message_header size");
 
   struct binding_point {
     uint16_t port = 0;
@@ -85,19 +96,20 @@ namespace other {
     constexpr binding_point(uint32_t ip, uint16_t port) : port(port), ip(ip) {}
 
     static std::string write_string(const binding_point& bp);
+    static std::string write_string(const asio::ip::tcp::endpoint& ep);
+    static std::string write_string(const asio::ip::udp::endpoint& ep);
     static binding_point from_asio(const asio::ip::address& addr, uint16_t port);
   };
+  static_assert(sizeof(binding_point) == sizeof(uint32_t) + sizeof(uint16_t), "Invalid binding_point size");
 
   struct session_endpoint {
-    /// taps all nodes in simulation, receiving tagged packets
-    ///  to monitor total network traffic
     binding_point simulation;
-
-    /// generic control endpoint
     binding_point control;
 
     static std::string write_string(const session_endpoint& endpoint);
   };
+  static_assert(sizeof(session_endpoint) == sizeof(binding_point) * 2, "Invalid session_endpoint size");
+#pragma pack(pop)
 
   struct message;
 
@@ -128,8 +140,6 @@ namespace other {
 
    protected:
     void write_header(std::vector<uint8_t>& data, const message_header& header);
-
-    // std::vector<uint8_t> build_message()
   };
 
   template <typename T>
@@ -226,95 +236,6 @@ namespace other {
 
     ERROR_CODE_FIELD,
     ERROR_MESSAGE_FIELD,
-  };
-
-  struct acknowledgement : message_spec_impl<acknowledgement> {
-    constexpr static message_category category = ACKNOWLEDGEMENT;
-    constexpr static message_id id = ACK;
-
-    message_header acked_header;
-    uint8_t ack_nack = 0;
-    uint64_t node_id = 0;
-
-    static acknowledgement parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const acknowledgement& msg);
-  };
-
-  struct session_status_request : message_spec_impl<session_status_request> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = PING;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint8_t layer_type = 0;
-
-    static session_status_request parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_status_request& msg);
-  };
-
-  struct session_status_response : message_spec_impl<session_status_response> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = PONG;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint64_t status = 0;
-
-    static session_status_response parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_status_response& msg);
-  };
-
-  struct session_shutdown_request : message_spec_impl<session_shutdown_request> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = SESSION_SHUTDOWN_REQUEST;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint64_t status = 0;
-
-    static session_shutdown_request parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_shutdown_request& msg);
-  };
-
-  /// thread messages have no messages, they are sort of ad-hoc messages
-
-  struct other_command_msg : message_spec_impl<other_command_msg> {
-    constexpr static message_category category = COMMAND;
-    constexpr static message_id id = OTHER_COMMAND;
-
-    command cmd;
-    std::vector<address_t> args;
-
-    static other_command_msg parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-  };
-
-  struct other_command_block_msg : message_spec_impl<other_command_block_msg> {
-    constexpr static message_category category = COMMAND;
-    constexpr static message_id id = OTHER_COMMAND_BLOCK;
-
-    command_block block;
-    std::vector<address_t> args;
-
-    static other_command_block_msg parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-  };
-
-  /// various error messages
-
-  struct error_alert_msg : message_spec_impl<error_alert_msg> {
-    constexpr static message_category category = ERROR_ALERT;
-    constexpr static message_id id = ERROR_ALERT_ID;
-
-    uint64_t error_code = 0;
-    std::string error_message;
-
-    static error_alert_msg parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
   };
 
 }  // namespace other

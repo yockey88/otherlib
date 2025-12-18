@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include <spdlog/common.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
@@ -21,7 +22,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "scripting/dotnet_bindings.hpp"
-
+#include "scripting/lua_bindings.hpp"
 
 #ifndef OTHER_TEST_ENVIRONMENT
 /// if not test environment and this is not an other application then we define the extern main function for the static driver
@@ -69,6 +70,8 @@ namespace other {
 
     config_table config = {};
     if (std::filesystem::exists(cmd.config_file)) {
+      PROFILE_SECTION("other::entry--load-config");
+
       config = config_table::load(cmd.config_file);
       if (!config.valid) {
         std::println(std::cerr, "[ERROR]: Failed to load configuration file: '{}'", cmd.config_file);
@@ -91,15 +94,18 @@ namespace other {
 
     config.diagnostics.verbose = cmd.diagnostics.verbose;
     const bool rendering_enabled = config.rendering_backend.has_value() && !config.rendering_backend->empty();
-    if (rendering_enabled) {
-      const bool force_no_window = config.force_no_window;
-      subsystem<renderer_backend>::get()->load_backend(config.rendering_backend.value(), config.window_size);
+    /// if rendering is enabled and we are not forcing headless mode, load the rendering backend
+    if (rendering_enabled && !config.force_no_window) {
+      PROFILE_SECTION("other::entry--initialize-renderer-backend");
+      subsystem<renderer_backend>::get()->load_backend(config, config.rendering_backend.value(), config.window_size);
     }
 
-    bind_primary_scripting_environment(config);
-    bind_environment_scripts();
-
-    subsystem<physics_environment>::get()->initialize_physics_environment(config);
+    bool force_disable_scripting = config.get_value<bool>("scripting.force-disable-scripting", false);
+    if (!force_disable_scripting) {
+      PROFILE_SECTION("other::entry--initialize-scripting");
+      bind_primary_scripting_environment(config);
+      bind_environment_scripts();
+    }
 
     /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
     ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
@@ -125,7 +131,10 @@ namespace other {
       }
     }
 
-    cleanup_scripting_environment();
+    if (!force_disable_scripting) {
+      PROFILE_SECTION("other::entry--cleanup-scripting");
+      cleanup_scripting_environment();
+    }
 
     /// handle exit code
     CORE_LOG_INFO("Other Environment driver finished with exit code: {}", res);
@@ -147,6 +156,7 @@ namespace other {
   }
 
   void bind_primary_scripting_environment(const config_table& config) {
+    PROFILE_SECTION("other::bind-primary-scripting-environment");
     auto* env = subsystem<scripting_environment>::get();
     env->initialize_script_environment(config);
 
@@ -163,15 +173,19 @@ namespace other {
   }
 
   void bind_environment_scripts() {
+    PROFILE_SECTION("other::bind-environment-scripts");
     auto* env = subsystem<scripting_environment>::get();
     /// dotnet binding
     /// we've already loaded OtherCs, so now we bind core functionality, start with the platform directory
     /// functions
     dotnet_host& dn_host = env->get_dotnet_host();
+    lua_host& l_host = env->get_lua_host();
     bind_otherlib_dotnet_functions(dn_host);
+    bind_otherlib_lua_functions(l_host);
   }
 
   void cleanup_scripting_environment() {
+    PROFILE_SECTION("other::cleanup-scripting-environment");
     auto* env = subsystem<scripting_environment>::get();
     env->unload_dotnet_module(env->dotnet_binding_assembly);
     env->dotnet_binding_assembly = nullptr;
@@ -182,11 +196,13 @@ namespace other {
 #ifdef OTHER_ENVIRONMENT_WINDOWS
     return std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
 #else
-    return std::make_shared<spdlog::sinks::stdout_sink_mt>();
+    return std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 #endif
   }
 
   void register_log_sinks(const config_table& config) {
+    PROFILE_SECTION("other::register-log-sinks");
+
     logger* log = subsystem<logger>::get();
     if (log == nullptr) {
       throw std::runtime_error("Logger subsystem is null.");
@@ -210,12 +226,14 @@ namespace other {
         return std::make_shared<spdlog::sinks::basic_file_sink_mt>(config.core_log_file, true);
       },
     };
+
     std::string loggers[] = { "other-core-log" };
     log->register_sink(loggers, sink);
     log->register_sink(loggers, file_sink);
   }
 
   void shutdown_subsystems() {
+    PROFILE_SECTION("other::shutdown_subsystems");
     subsystem<scripting_environment>::get()->shutdown();
     subsystem<type_database>::get()->shutdown();
     subsystem<renderer_backend>::get()->shutdown();

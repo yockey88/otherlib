@@ -7,7 +7,7 @@
 #include <functional>
 
 #include "core/defines.hpp"
-#include "core/timer.hpp"
+#include "core/time.hpp"
 #include "core/value.hpp"
 
 namespace other {

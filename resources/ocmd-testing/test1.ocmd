@@ -1,0 +1,33 @@
+/entry: foo
+
+$entry:
+  dumpx r1
+  dumpx r2
+  dumpx r3
+  load r4, data.first_addr
+  ret
+end
+
+$foo:
+  set r1, 10
+  set r2, 11
+  load r3, data.first_addr
+  call entry
+  dumpx r4
+  stopdev
+end
+
+#data {
+  .first_addr := 1111
+  ; .hello_str : string = "Hello, Other Command Device!"
+  ; .player_hp := 100
+  ; .my_data := DE AD BE EF FA CE BE EF
+  ; .my_second_data : blob = 0x010203
+}
+
+;   jne elseblock ; start of true block r1 == r2
+;     dumpx r1
+;   goto endif    ; end of true block
+; @elseblock:
+;     dumpx r1
+; @endif:

@@ -36,8 +36,7 @@ namespace other {
       CORE_LOG_ERROR("Buffer resource [{}] not found in pipeline.", name);
       return;
     }
-    buffer
-      ->set_data(data, size)
+    buffer->set_data(data, size)
       .finalize_buffer();
   }
 
@@ -53,13 +52,14 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
     PROFILE_SECTION("render_pipeline::render_frame");
 
-    const auto& g = graph->get_graph();
+    auto& g = graph->get_graph();
     const auto& execs = graph->get_executors();
-    for (const natural_t id : graph->get_topological_sort()) {
+    auto sort = graph->get_topological_sort();
+    for (const natural_t id : sort) {
       auto node_atr = g.nodes.find(id);
       OTHER_ASSERT(node_atr != g.nodes.end(), "Node with id {} not found in graph.", id);
 
-      const auto& n = node_atr->second;
+      auto& n = node_atr->second;
       const auto* pass = n.pass;
       auto itr = execs.find(pass->id);
       OTHER_ASSERT(itr != execs.end(), "Executor for pass {} not found.", id);
@@ -68,12 +68,37 @@ namespace other {
       itr->second.operator()(*renderer_ptr, &n, pass->user_data);
       n.end_pass(renderer_ptr);
     }
+
+    if (sort.empty()) {
+      return;
+    }
+
+    natural_t final_output_id = sort.back();
+    if (g.nodes.at(final_output_id).pass->texture_resources.empty()) {
+      CORE_LOG_WARN("Final output pass has no texture resources. Cannot retrieve output texture.");
+      return;
+    } else if (g.nodes.at(final_output_id).pass->texture_resources.size() > 1) {
+      CORE_LOG_WARN("Final output pass has multiple texture resources. Using the first one as output.");
+    }
+  }
+
+  ImTextureID render_pipeline::get_final_output_texture_id() {
+    if (!get_renderer()->resource_exists(get_screen_texture())) {
+      return 0;
+    }
+    return get_renderer()->get_resource<texture>(get_screen_texture()).get_imgui_texture_id();
+  }
+
+  resource_handle render_pipeline::get_screen_texture() {
+    OTHER_ASSERT(screen_texture_handle.has_value(), "Screen texture handle is not set.");
+    return screen_texture_handle.value();
   }
 
   renderer::frame_resources render_pipeline::get_frame_resources() const {
     return {
       .model_buffer = *model_buffer_handle,
       .material_buffer = *material_buffer_handle,
+      .bone_buffer = *bone_buffer_handle,
       .point_light_buffer = *point_light_buffer_handle,
       .direction_light_buffer = *direction_light_buffer_handle,
       .camera_buffer = *camera_buffer_handle
@@ -90,11 +115,21 @@ namespace other {
     buffer_resources.clear();
     texture_resources.clear();
 
+    screen_texture_handle = std::nullopt;
     model_buffer_handle = std::nullopt;
     material_buffer_handle = std::nullopt;
     point_light_buffer_handle = std::nullopt;
     direction_light_buffer_handle = std::nullopt;
     camera_buffer_handle = std::nullopt;
+  }
+
+  void render_pipeline::set_screen_texture(const std::string_view name) {
+    auto itr = std::ranges::find_if(texture_resources, [&](const auto& pair) { return pair.second.name == name; });
+    if (itr == texture_resources.end()) {
+      CORE_LOG_ERROR("Texture resource [{}] not found in pipeline.", name);
+      return;
+    }
+    screen_texture_handle = itr->second.handle;
   }
 
   void render_pipeline::set_material_buffer(const std::string_view name) {
@@ -103,6 +138,10 @@ namespace other {
 
   void render_pipeline::set_model_buffer(const std::string_view name) {
     set_core_buffer(model_buffer_handle, name);
+  }
+
+  void render_pipeline::set_bone_buffer(const std::string_view name) {
+    set_core_buffer(bone_buffer_handle, name);
   }
 
   void render_pipeline::set_point_light_buffer(const std::string_view name) {

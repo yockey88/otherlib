@@ -9,7 +9,12 @@
 
 #include "core/defines.hpp"
 
+#include "model/animation.hpp"
+#include "model/material.hpp"
+#include "model/skeleton.hpp"
 #include "model/vertex.hpp"
+
+#include "glm/fwd.hpp"
 
 namespace other {
 
@@ -18,20 +23,27 @@ namespace other {
     uint32_t index_offset = 0;
     std::stack<uint32_t> index_stack;
 
+    glm::mat4 global_transform = glm::mat4(1.0f);
+    glm::mat4 inverse_global_transform = glm::mat4(1.0f);
+
     std::vector<vertex> vertices;
     std::vector<index> indices;
+
     std::vector<submesh> submeshes;
     std::vector<mesh_node> nodes;
 
-    std::unordered_map<uint32_t, std::vector<triangle>> triangles;
+    std::vector<material> materials;
+
+    skeleton skel;
+
+    std::vector<animation> animations;
+
+    std::vector<triangle> triangles;
 
     bounding_box bounds = bounding_box::empty;
 
-    /**
-    BBox mesh_bounds = BBox::empty;
-    std::vector<uint64_t> loaded_texture_hashes;
-    std::vector<UUID> material_ids;
-    */
+    submesh& new_submesh(const std::string_view name, uint32_t idx, uint32_t base_vert, uint32_t num_vertices, uint32_t base_idx, uint32_t num_faces);
+    void build_triangle_list();
 
     void dump_model_info() const;
   };

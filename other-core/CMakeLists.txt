@@ -12,6 +12,7 @@ target_sources(other_core
 		src/core/registers.cpp
 		src/core/ref.cpp
 		src/core/ref_counted.cpp
+		src/core/value_storage.cpp
 		src/core/value.cpp
 		src/core/formatting.cpp
 
@@ -40,6 +41,8 @@ target_sources(other_core
 		src/serialization/serialization.cpp
 
 		src/thread/message.cpp
+		src/thread/test/new_message.cpp
+		src/thread/messages.cpp
 		src/thread/message_bus.cpp
 		src/thread/thread.cpp
 

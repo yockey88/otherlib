@@ -26,7 +26,10 @@ namespace other {
     scope<rendering_api>& api() { return rendering_api_instance; }
     bool has_backend() const { return rendering_api_instance != nullptr; }
 
-    void load_backend(const std::string& name, const glm::uvec2& window_size);
+    void load_backend(const config_table& config, const std::string& name, const glm::uvec2& window_size);
+
+    /// don't ever use this unless you really know what you're doing,
+    /// it will skip proper initialization steps, useful for testing, etc.
     void force_set_backend(scope<rendering_api> api);
     void unload_backend();
 
@@ -45,8 +48,10 @@ namespace other {
     std::map<natural_t, ref<model_source>> model_sources;
 
     struct {
-      bool full_initialization : 1 = false;
-      bool forced_api_set      : 1 = false;
+      bool backend_loaded = false;
+      bool ui_initialized = false;
+      bool full_initialization = false;
+      bool forced_api_set = false;
     } state_flags;
 
     void set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr);

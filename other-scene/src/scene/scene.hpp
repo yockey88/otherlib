@@ -17,15 +17,23 @@
 #include "scene/scene_storage.hpp"
 #include "scene/scene_tree.hpp"
 
+#include "asset/asset_handler.hpp"
+
 namespace other {
+
+  struct udp_handle;
 
   class scene {
    private:
-    void do_scene_initialization();
+    void scene_first_construction_initialization();
+    void do_final_scene_destruction_cleanup();
+
+    void do_scene_binding();
+    void do_scene_unbinding();
 
    public:
     scene();
-    scene(const std::string& name);
+    scene(const std::string_view name);
 
     scene(scene&& other);
     scene& operator=(scene&& other);
@@ -35,6 +43,8 @@ namespace other {
 
     ~scene();
 
+    void run_lua_file(const filepath& script_path);
+
     void reset();
 
     inline scene_storage& get_storage() {
@@ -43,9 +53,18 @@ namespace other {
     }
 
     static scene create_scene(const std::string& name);
+    static scene load_scene(const filepath& scene_path);
+
+    /// fixed update called at a constant timestep (e.g., 60 Hz)
+    void fixed_update(double delta_time);
+
+    /// per frame updates called with variable timestep
+    void update(double delta_time);
+    void late_update(double delta_time);
 
     scene_object& root_object();
 
+    scene_object& create_object();
     scene_object& create_object(scene_object* object);
     scene_object& create_object(const std::string& name, scene_object* parent_object = nullptr);
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
@@ -66,6 +85,12 @@ namespace other {
 
     void destroy_object(natural_t id);
 
+    bool has_object(const std::string_view name) const;
+    bool has_object(natural_t id) const;
+
+    scene_object& get_object(const std::string_view name);
+    const scene_object& get_object(const std::string_view name) const;
+
     scene_object& get_object(natural_t id);
     const scene_object& get_object(natural_t id) const;
 
@@ -82,10 +107,15 @@ namespace other {
     const transform& get_transform(natural_t id) const;
     void set_transform(natural_t id, const transform& t);
 
-    render_data prepare_render_data() const;
+    render_data prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const;
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;
     void add_object_tag(natural_t id, const std::string_view tag);
+    void remove_object_tag(natural_t id, const std::string_view tag);
+
+    void add_component_by_name(scene_object* object, const std::string_view component_name);
+    void remove_component_by_name(scene_object* object, const std::string_view component_name);
+    bool has_component_by_name(scene_object* object, const std::string_view component_name) const;
 
     template <typename T>
     T& add_component(scene_object* object) {
@@ -98,6 +128,21 @@ namespace other {
       scene_tree::node* node = storage->tree.node_at(id);
       OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       return add_component<T>(node->object);
+    }
+
+    template <typename T, typename... Args>
+      requires std::constructible_from<T, Args...>
+    T& add_component(scene_object* object, Args&&... args) {
+      OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
+      entt::entity entity = entt::entity(object->registry_id);
+      return storage->registry.emplace<T>(entity, std::forward<Args>(args)...);
+    }
+    template <typename T, typename... Args>
+      requires std::constructible_from<T, Args...>
+    T& add_component(natural_t id, Args&&... args) {
+      scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+      return add_component<T>(node->object, std::forward<Args>(args)...);
     }
 
     template <typename T>
@@ -153,8 +198,13 @@ namespace other {
 
     static std::string as_string(const scene& s);
 
+    void connect_remote_session(integer_t session_id);
+
     std::string name = "Untitled Scene";
     natural_t id = 0;
+
+    integer_t kNoStreamBinding = -1;
+    integer_t update_stream_id = kNoStreamBinding;
 
    private:
     struct object_handle {
@@ -177,6 +227,9 @@ namespace other {
     void on_create_script_component(const entt::registry&, const entt::entity entity);
     // void on_update_script_component(const entt::registry&, const entt::entity entity);
     void on_destroy_script_component(const entt::registry&, const entt::entity entity);
+
+    static scene load_from_lua_file(const filepath& scene_path);
+    void construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table);
 
     scope<scene_storage> storage = nullptr;
   };

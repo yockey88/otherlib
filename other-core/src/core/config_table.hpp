@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 #include "core/value.hpp"
 #include "serialization/reflection.hpp"
 
@@ -42,9 +43,10 @@ namespace other {
     std::string dump_table_string() const;
     template <typename T>
     std::remove_cvref_t<T> get_value(const std::string_view toml_path, T default_value = {}) const {
+      PROFILE_SECTION("config_table::get-value");
       toml::node_view node = table.at_path(toml_path);
       if (!node) {
-        CORE_LOG_WARN("Config key '{}' not found, returning default value.", toml_path);
+        CORE_LOG_TRACE("Config key '{}' not found, returning default value.", toml_path);
         return default_value;
       } else {
         CORE_LOG_TRACE("Found config key '{}'", toml_path);
@@ -100,8 +102,6 @@ namespace other {
 
     /// environment settings
     bool open_terminal = false;
-
-    /// terminal settings
 
     /// rendering settings
     opt<std::string> rendering_backend;

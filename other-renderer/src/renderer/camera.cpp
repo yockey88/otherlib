@@ -13,7 +13,6 @@
 
 #include "glm/fwd.hpp"
 
-
 namespace other {
 
   glm::vec3 camera::center() const {
@@ -92,13 +91,19 @@ namespace other {
     basis = other::orthonormal_basis(world_up, direction);
   }
 
+  void camera::calculate_matrices(const glm::ivec2& window_size) {
+    get_view_matrix();
+    get_projection_matrix(window_size);
+  }
+
   glm::mat4& camera::get_view_matrix() {
     view_matrix = glm::lookAt(position, position + direction, up());
     return view_matrix;
   }
 
   glm::mat4& camera::get_projection_matrix(const glm::ivec2& window_size) {
-    projection_matrix = glm::perspective(glm::radians(fov), static_cast<real_t>(window_size.x) / window_size.y, clip.near_plane, clip.far_plane);
+    image_size = glm::vec2(window_size);
+    projection_matrix = glm::perspective(glm::radians(fov), static_cast<real_t>(image_size.x) / image_size.y, clip.near_plane, clip.far_plane);
     return projection_matrix;
   }
 

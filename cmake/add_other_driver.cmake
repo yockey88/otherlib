@@ -40,7 +40,7 @@ macro(add_driver_target type driver_name)
 
   message(STATUS "Adding [${type}] driver: ${driver_name} w/ include directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-  target_include_directories( ${driver_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+  target_include_directories(${driver_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   target_sources(${driver_name} PUBLIC ${driver_src_list})
   target_link_libraries(${driver_name} PUBLIC otherlib)
   if (${type} STREQUAL "static")
