@@ -24,12 +24,14 @@ target_sources(OtherCs PRIVATE
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/serializable-field.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/debug.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/other-behavior.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/filesystem.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/renderer.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/UIWindow.cs
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/other-object.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-behavior.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/project-configuration.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/other-tool.cs

@@ -4,14 +4,15 @@
 #ifndef OTHER_CORE_LOGGER_HPP
 #define OTHER_CORE_LOGGER_HPP
 
+#include <array>
 #include <cstdint>
 #include <fstream>
 #include <span>
+
 #if __has_include(<stacktrace>)
   #define OTHER_STACKTRACE_AVAILABLE
   #include <stacktrace>
 #endif
-#include <source_location>
 #include <string>
 
 #include <spdlog/sinks/basic_file_sink.h>
@@ -41,10 +42,16 @@ namespace other {
     logger() = default;
     ~logger() = default;
 
-    void create_logger(const std::string& name, spdlog::level::level_enum level);
+    static inline uint16_t get_next_sink_id() {
+      /// 1, 2 are reserved for stdout and file sinks
+      static uint16_t next_id = 3;
+      return next_id++;
+    }
+
+    natural_t create_logger(const std::string& name, spdlog::level::level_enum level);
     void register_sink(const std::span<const std::string> logs, const log_sink& sink);
 
-    void send_log(spdlog::level::level_enum level, const std::string_view log_name, const std::string_view msg);
+    void send_log(spdlog::level::level_enum level, natural_t log_idx, const std::string_view msg);
 
     void set_config(const config_table* config);
 
@@ -53,10 +60,18 @@ namespace other {
     constexpr static std::string_view kLogFailureFile = "other-log-failure.log";
     std::unique_ptr<std::ofstream> error_log_file = nullptr;
 
+    std::mutex log_mutex;
     const config_table* current_config_table = nullptr;
 
     std::map<uint16_t, spdlog::sink_ptr> sinks;
-    std::map<natural_t, std::shared_ptr<spdlog::logger>> loggers;
+    constexpr static size_t kMaxLoggers = 256;
+
+    natural_t num_loggers = 0;
+    struct log {
+      std::string name;
+      std::shared_ptr<spdlog::logger> logger_ptr = nullptr;
+    };
+    std::array<log, kMaxLoggers> loggers;
 
     void log_failure_error(const std::string& message);
   };
@@ -64,21 +79,21 @@ namespace other {
   /// figure out why I can't compile when using __VA_OPT__(,) instead of this hack
 #define VAR_ARGS(...) , ##__VA_ARGS__
 
-#define LOG(level, logger_name, frmt, ...) other::subsystem<other::logger>::get()->send_log(level, logger_name, std::format(frmt VAR_ARGS(__VA_ARGS__)))
+#define LOG(level, log_id, frmt, ...) other::subsystem<other::logger>::get()->send_log(level, log_id, std::format(frmt VAR_ARGS(__VA_ARGS__)))
 
-#define LOG_TRACE(logger_name, fmt, ...) LOG(spdlog::level::trace, logger_name, fmt VAR_ARGS(__VA_ARGS__))
-#define LOG_DEBUG(logger_name, fmt, ...) LOG(spdlog::level::debug, logger_name, fmt VAR_ARGS(__VA_ARGS__))
-#define LOG_INFO(logger_name, fmt, ...) LOG(spdlog::level::info, logger_name, fmt VAR_ARGS(__VA_ARGS__))
-#define LOG_WARN(logger_name, fmt, ...) LOG(spdlog::level::warn, logger_name, fmt VAR_ARGS(__VA_ARGS__))
-#define LOG_ERROR(logger_name, fmt, ...) LOG(spdlog::level::err, logger_name, fmt VAR_ARGS(__VA_ARGS__))
-#define LOG_CRITICAL(logger_name, fmt, ...) LOG(spdlog::level::critical, logger_name, fmt VAR_ARGS(__VA_ARGS__))
+#define OENV_LOG_TRACE(log_id, fmt, ...) LOG(spdlog::level::trace, log_id, fmt VAR_ARGS(__VA_ARGS__))
+#define OENV_LOG_DEBUG(log_id, fmt, ...) LOG(spdlog::level::debug, log_id, fmt VAR_ARGS(__VA_ARGS__))
+#define OENV_LOG_INFO(log_id, fmt, ...) LOG(spdlog::level::info, log_id, fmt VAR_ARGS(__VA_ARGS__))
+#define OENV_LOG_WARN(log_id, fmt, ...) LOG(spdlog::level::warn, log_id, fmt VAR_ARGS(__VA_ARGS__))
+#define OENV_LOG_ERROR(log_id, fmt, ...) LOG(spdlog::level::err, log_id, fmt VAR_ARGS(__VA_ARGS__))
+#define OENV_LOG_CRITICAL(log_id, fmt, ...) LOG(spdlog::level::critical, log_id, fmt VAR_ARGS(__VA_ARGS__))
 
-#define CORE_LOG_TRACE(format, ...) LOG_TRACE("other-core-log", format VAR_ARGS(__VA_ARGS__))
-#define CORE_LOG_DEBUG(format, ...) LOG_DEBUG("other-core-log", format VAR_ARGS(__VA_ARGS__))
-#define CORE_LOG_INFO(format, ...) LOG_INFO("other-core-log", format VAR_ARGS(__VA_ARGS__))
-#define CORE_LOG_WARN(format, ...) LOG_WARN("other-core-log", format VAR_ARGS(__VA_ARGS__))
-#define CORE_LOG_ERROR(format, ...) LOG_ERROR("other-core-log", format VAR_ARGS(__VA_ARGS__))
-#define CORE_LOG_CRITICAL(format, ...) LOG_CRITICAL("other-core-log", format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_TRACE(format, ...) OENV_LOG_TRACE(0, format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_DEBUG(format, ...) OENV_LOG_DEBUG(0, format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_INFO(format, ...) OENV_LOG_INFO(0, format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_WARN(format, ...) OENV_LOG_WARN(0, format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_ERROR(format, ...) OENV_LOG_ERROR(0, format VAR_ARGS(__VA_ARGS__))
+#define CORE_LOG_CRITICAL(format, ...) OENV_LOG_CRITICAL(0, format VAR_ARGS(__VA_ARGS__))
 
   /// \todo add automatic enter/exit function logger structs (raii tracing)
 

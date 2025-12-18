@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <sol/sol.hpp>
+
 #include "dotnet/dotnet_attribute.hpp"
 #include "dotnet/dotnet_field.hpp"
 #include "dotnet/dotnet_method.hpp"
@@ -28,6 +30,8 @@ namespace other {
 
     void initialize_type_interface();
     std::string full_name() const;
+    std::string namespace_name() const;
+    std::string class_name() const;
 
     bool has_attribute(const std::string_view attr_name) const;
     std::vector<std::string> get_attribute_names() const;
@@ -64,6 +68,8 @@ namespace other {
       }
       return dotnet_fields;
     }
+
+    sol::table create_lua_descriptor(sol::state& lua_state);
 
     int32_t dotnet_id = -1;
 

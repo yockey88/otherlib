@@ -2,7 +2,7 @@
 core-log-level = "debug"
 
 [rendering]
-rendering-backend = "opengl"
+backend = "opengl"
 window-size = { width = 1920, height = 1080 }
 
 [scripting]

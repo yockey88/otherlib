@@ -5,7 +5,7 @@
 #define OTHERLIB_VM_VM_MEMORY_HPP
 
 #include <algorithm>
-#include <bitset>
+#include <format>
 #include <span>
 
 namespace other {
@@ -45,6 +45,21 @@ namespace other {
   static_assert(sizeof(register_memory_t<16>) == sizeof(uint16_t), "Register memory size incorrect");
   static_assert(sizeof(register_memory_t<32>) == sizeof(uint32_t), "Register memory size incorrect");
   static_assert(sizeof(register_memory_t<64>) == sizeof(uint64_t), "Register memory size incorrect");
+
+}  // namespace other
+
+namespace std {
+
+  template <>
+  struct formatter<other::register_memory_t<64>> : public formatter<std::string_view> {
+    auto format(const other::register_memory_t<64>& reg, format_context& ctx) const {
+      return formatter<std::string_view>::format(std::format("{:#018x}", reg.to_u64()), ctx);
+    }
+  };
+
+}  // namespace std
+
+namespace other {
 
   template <size_t N>
   using register_t = register_memory_t<N>;

@@ -1,0 +1,8 @@
+[application]
+core-log-level = "debug"
+
+[scripting]
+# force-disable-scripting = true
+dotnet-modules = [
+  "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"
+]

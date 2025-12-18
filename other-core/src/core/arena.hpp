@@ -10,18 +10,21 @@
 #endif
 #include <mutex>
 
+#include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 
 namespace other {
 
   struct arena_storage {
-    static inline constexpr size_t kPageSize = 64 * (4096u * 4096u);  // 64 MB
+    static inline constexpr size_t kPageSize = 64 * 4096u;  // 64 MB
     static inline constexpr size_t kAlignment = 16;
     static inline constexpr size_t kMaxPages = 64;
     static inline constexpr size_t kMaxMemoryAllowed = kMaxPages * kPageSize;
 
     struct page {
       size_t cursor = 0;
+      /// \todo this alignment is not not correct for all types and causes
+      ///       issue with things like asio::io_context (if we don't include it here it will be 1 byte aligned)
       alignas(kAlignment) uint8_t storage[kPageSize] = {};
 
       void* data() { return &storage[0]; }
@@ -49,8 +52,9 @@ namespace other {
     arena() = default;
     ~arena();
 
-    static void* allocate(size_t size);
+    static void* allocate(size_t size, size_t alignment = arena_storage::kAlignment);
     static void free(void* ptr, size_t size);
+    static void free(void* ptr);
 
     void* request_region(size_t size, size_t alignment = arena_storage::kAlignment);
     void free_region(void* ptr);
@@ -58,7 +62,7 @@ namespace other {
     page* get_current_page();
 
    private:
-    std::mutex arena_mutex;
+    PROFILE_MUTEX_TYPE(std::mutex, arena_mutex);
     page* current_page = nullptr;
 
    private:

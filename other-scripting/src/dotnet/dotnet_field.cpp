@@ -46,6 +46,43 @@ namespace other {
     host->interop().get_field_value_type(dotnet_id, (uint8_t*)&valtype);
   }
 
+  value dotnet_field::get_default_value() const {
+    value val{};
+
+    auto retrieve_default = [this]<typename T>() -> T {
+      T v{};
+      host->interop().get_default_value(dotnet_id, (void*)&v);
+      return v;
+    };
+
+    switch (valtype) {
+      case value_type::CHAR: val = retrieve_default.operator()<char>(); break;
+      case value_type::OEBOOL: val = retrieve_default.operator()<bool>(); break;
+      case value_type::INT8: val = retrieve_default.operator()<int8_t>(); break;
+      case value_type::INT16: val = retrieve_default.operator()<int16_t>(); break;
+      case value_type::INT32: val = retrieve_default.operator()<int32_t>(); break;
+      case value_type::INT64: val = retrieve_default.operator()<int64_t>(); break;
+      case value_type::UINT8: val = retrieve_default.operator()<uint8_t>(); break;
+      case value_type::UINT16: val = retrieve_default.operator()<uint16_t>(); break;
+      case value_type::UINT32: val = retrieve_default.operator()<uint32_t>(); break;
+      case value_type::UINT64: val = retrieve_default.operator()<uint64_t>(); break;
+      case value_type::FLOAT: val = retrieve_default.operator()<float>(); break;
+      case value_type::DOUBLE: val = retrieve_default.operator()<double>(); break;
+      case value_type::STRING: {
+        native_string str_native;
+        host->interop().get_default_value(dotnet_id, (void*)&str_native);
+        std::string str = str_native;
+        native_string::free_str(str_native);
+        val = str;
+      } break;
+      default:
+        // CORE_LOG_WARN("Default value retrieval not implemented for value_type {}", valtype);
+        break;
+    }
+
+    return val;
+  }
+
   std::string dotnet_field::name() const {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     native_string name_str;

@@ -14,6 +14,7 @@
 #include <type_traits>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 #define bit(x) (1ll << x)
@@ -75,17 +76,17 @@
   #define OTHER_DEBUG_BUILD
 #endif  // !OTHER_DEBUG
 
-#ifdef OTHER_ENVIRONMENT_PROFILED
-  #define OTHER_PROFILED_BUILD
-#endif  // !OTHER_PROFILED
+#ifdef OTHER_ENVIRONMENT_RELEASE
+  #define OTHER_RELEASE_BUILD
+#endif  // !OTHER_RELEASE
 
 #ifdef OTHER_ENVIRONMENT_PROFILE
   #define OTHER_PROFILE_BUILD
 #endif  // !OTHER_PROFILE
 
-#ifdef OTHER_ENVIRONMENT_RELEASE
-  #define OTHER_RELEASE_BUILD
-#endif  // !OTHER_RELEASE
+#ifdef OTHER_ENVIRONMENT_PROFILED
+  #define OTHER_PROFILED_BUILD
+#endif  // !OTHER_PROFILED
 
 #ifndef OTHER_API
   #error "OTHER_API is not defined. Please define it for your platform."
@@ -174,6 +175,8 @@ namespace other {
     MAT3,
     MAT4,
 
+    QUATERNION,
+
     SAMPLER2D,
     SAMPLER2D_ARRAY,
 
@@ -235,6 +238,8 @@ namespace other {
       return value_type::MAT3;
     } else if constexpr (std::is_same_v<no_cvref_t, glm::mat4>) {
       return value_type::MAT4;
+    } else if constexpr (std::is_same_v<no_cvref_t, glm::quat>) {
+      return value_type::QUATERNION;
     } else if constexpr (std::is_same_v<no_cvref_t, void*>) {
       return value_type::OPAQUE_HANDLE;
     } else {
@@ -266,6 +271,7 @@ namespace other {
       case value_type::MAT2: return sizeof(glm::mat2);
       case value_type::MAT3: return sizeof(glm::mat3);
       case value_type::MAT4: return sizeof(glm::mat4);
+      case value_type::QUATERNION: return sizeof(glm::quat);
       case value_type::OPAQUE_HANDLE: return sizeof(void*);
       default: return sizeof(void*);
     }
@@ -319,6 +325,8 @@ namespace other {
       return value_type::MAT3;
     } else if (lc_str == "mat4") {
       return value_type::MAT4;
+    } else if (lc_str == "quaternion" || lc_str == "quat") {
+      return value_type::QUATERNION;
     } else {
       return value_type::USER_TYPE;
     }
@@ -348,6 +356,7 @@ namespace other {
       case value_type::MAT2: return "mat2";
       case value_type::MAT3: return "mat3";
       case value_type::MAT4: return "mat4";
+      case value_type::QUATERNION: return "quaternion";
       case value_type::OPAQUE_HANDLE: return "opaque-handle";
       case value_type::USER_TYPE: return "user-type";
       default: return "unknown";
@@ -361,6 +370,11 @@ namespace other {
 
   std::string get_tag_replacement(const std::string_view tag);
   std::string perform_tag_replacement(const std::string_view tag);
+
+  std::string get_current_exe_name();
+  std::string get_current_exe_full_path();
+  std::string get_system_error_message();
+  void launch_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
 }  // namespace other
 

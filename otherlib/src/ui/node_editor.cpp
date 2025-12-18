@@ -15,7 +15,7 @@
 
 #include "ui/colors.hpp"
 #include "ui/node_editor_canvas_node.hpp"
-#include "ui/value_ui.hpp"
+#include "ui/type-bindings/value_ui.hpp"
 
 #include "colors.hpp"
 
@@ -89,6 +89,12 @@ namespace other {
       if (to_itr->second.add_link_fn) {
         to_itr->second.add_link_fn(to_itr->second.node_id, from_pin_idx, to_pin_idx);
       }
+    }
+
+    void node_editor::clear_nodes() {
+      auto& canvas = get_node_as<node_editor_canvas_node>(canvas_id);
+      canvas.clear_all_nodes();
+      node_data.clear();
     }
 
     void node_editor::reorganize_nodes() {

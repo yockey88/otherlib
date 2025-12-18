@@ -153,4 +153,8 @@ namespace other {
     subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_type(), get_format(), size, data, data_size);
   }
 
+  ImTextureID texture::get_imgui_texture_id() {
+    return (ImTextureID)(uintptr_t)subsystem<renderer_backend>::get()->api()->get_texture_gpu_resource(handle());
+  }
+
 }  // namespace other

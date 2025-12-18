@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Reflection;
 using System.Text;
 using System.Runtime.InteropServices;
@@ -132,66 +133,82 @@ namespace OtherCsBindings
 
     internal static List<Type> GetAllTypesWithAttribute<T>() where T : Attribute
     {
-      List<Type> types_with_attribute = new();
-
-      foreach (var asm in AssemblyLoader.GetFullLoadedAssemblyContext())
+      try 
       {
-        Type[] types;
-        try
-        {
-          types = asm.GetTypes();
-        }
-        catch (ReflectionTypeLoadException ex)
-        {
-          types = ex.Types;
-        }
+        List<Type> types_with_attribute = new();
 
-        foreach (var type in types)
+        foreach (var asm in AssemblyLoader.GetFullLoadedAssemblyContext())
         {
-          if (type == null)
+          Type[] types;
+          try
           {
-            continue;
+            types = asm.GetTypes();
+          }
+          catch (ReflectionTypeLoadException ex)
+          {
+            types = ex.Types!;
           }
 
-          var attrs = type.GetCustomAttributes(typeof(T), false);
-          if (attrs.Length > 0)
+          foreach (var type in types)
           {
-            types_with_attribute.Add(type);
+            if (type == null)
+            {
+              continue;
+            }
+
+            var attrs = type.GetCustomAttributes(typeof(T), false);
+            if (attrs.Length > 0)
+            {
+              types_with_attribute.Add(type);
+            }
           }
         }
+        
+        return types_with_attribute;
       }
-
-      return types_with_attribute;
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+        return new List<Type>();
+      }
     }
 
     internal static List<Type> GetAllTypes()
     {
-      List<Type> all_types = new();
-
-      foreach (var asm in AssemblyLoader.GetFullLoadedAssemblyContext())
+      try 
       {
-        Type[] types;
-        try
-        {
-          types = asm.GetTypes();
-        }
-        catch (ReflectionTypeLoadException ex)
-        {
-          types = ex.Types;
-        }
+        List<Type> all_types = new();
 
-        foreach (var type in types)
+        foreach (var asm in AssemblyLoader.GetFullLoadedAssemblyContext())
         {
-          if (type == null)
+          Type[] types;
+          try
           {
-            continue;
+            types = asm.GetTypes();
+          }
+          catch (ReflectionTypeLoadException ex)
+          {
+            types = ex.Types!;
           }
 
-          all_types.Add(type);
-        }
-      }
+          foreach (var type in types)
+          {
+            if (type == null)
+            {
+              continue;
+            }
 
-      return all_types;
+            all_types.Add(type);
+          }
+        }
+
+        return all_types;
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+        return new List<Type>();
+      }
     }
 
     [UnmanagedCallersOnly]
@@ -427,7 +444,6 @@ namespace OtherCsBindings
           *count = 0;
           return;
         }
-        // LogMessage($" > Found {methods.Length} methods for type {t.FullName}", MessageLevel.Trace);
 
         *count = methods.Length;
         if (method_arr == null)
@@ -437,11 +453,10 @@ namespace OtherCsBindings
 
         for (Int32 i = 0; i < methods.Length; i++)
         {
-          // LogMessage($"  > Adding method [class : {t.Name}] {methods[i].Name} to cache", MessageLevel.Trace);
+          Logger.LogTrace($"  > Adding method [class : {t.Name}] {methods[i].Name} to cache");
           method_arr[i] = cached_methods.Add(methods[i]);
         }
 
-        // LogMessage($"  > Added {methods.Length} methods to cache", MessageLevel.Trace);
       }
       catch (Exception ex)
       {
@@ -480,6 +495,7 @@ namespace OtherCsBindings
 
         for (Int32 i = 0; i < fields.Length; i++)
         {
+          Logger.LogTrace($"  > Adding field [class : {t.Name}] {fields[i].Name} to cache");
           field_arr[i] = cached_fields.Add(fields[i]);
         }
       }
@@ -515,6 +531,7 @@ namespace OtherCsBindings
 
         for (Int32 i = 0; i < properties.Length; i++)
         {
+          Logger.LogTrace($"  > Adding property [class : {t.Name}] {properties[i].Name} to cache");
           arr[i] = cached_properties.Add(properties[i]);
         }
       }
@@ -569,9 +586,8 @@ namespace OtherCsBindings
 
         for (Int32 i = 0; i < attrs.Length; i++)
         {
-          Attribute attr = (Attribute)attrs[i];
-          attributes[i] = cached_attributes.Add(attr);
-          Logger.LogDebug($"Adding attribute with ID : {attributes[i]} {attr.GetType().FullName} to cache for type {t.FullName}");
+          Logger.LogTrace($"  > Adding attribute [class : {t.Name}] {attrs[i].GetType().Name} to cache");
+          attributes[i] = cached_attributes.Add((Attribute)attrs[i]);
         }
       }
       catch (Exception ex)
@@ -1074,6 +1090,65 @@ namespace OtherCsBindings
         Host.HandleException(ex);
       }
 		}
+
+    [UnmanagedCallersOnly]
+    private static unsafe void GetDefaultValue(Int32 id, IntPtr out_val)
+    {
+      try
+      {
+        if (IsProperty(id))
+        {
+          if (!cached_properties.TryGet(id, out var pinfo))
+          {
+            Logger.LogError($"Property with ID {id} not found in cache.");
+            return;
+          }
+
+          var default_value_attr = pinfo!.GetCustomAttribute<DefaultValueAttribute>();
+          if (default_value_attr == null)
+          {
+            Logger.LogTrace($"No DefaultValueAttribute found on property '{pinfo!.Name}'.");
+            return;
+          }
+
+          var value = default_value_attr.Value;
+          if (value == null)
+          {
+            Logger.LogTrace($"Default value for property '{pinfo!.Name}' is null.");
+            return;
+          }
+
+          OtherMemory.MarshalReturn(value, value.GetType(), out_val);
+        }
+        else
+        {
+          if (!cached_fields.TryGet(id, out var finfo))
+          {
+            Logger.LogError($"Field with ID {id} not found in cache.");
+            return;
+          }
+
+          var default_value_attr = finfo!.GetCustomAttribute<DefaultValueAttribute>();
+          if (default_value_attr == null)
+          {
+            return;
+          }
+
+          var value = default_value_attr.Value;
+          if (value == null)
+          {
+            Logger.LogTrace($"Default value for field '{finfo!.Name}' is null.");
+            return;
+          }
+
+          OtherMemory.MarshalReturn(value, value.GetType(), out_val);
+        }
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+      }
+    }
 
     [UnmanagedCallersOnly]
 		private static unsafe NativeString GetPropertyName(Int32 id, Int32* out_type)

@@ -4,11 +4,14 @@
 #include "renderer/window_manager.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
   SDL_Window* window_manager::create_window(const char* title, int width, int height, uint32_t flags) {
+    PROFILE_SECTION("window_manager::create-window");
     CORE_LOG_DEBUG("Creating window [{}] : size = {}x{}, flags = {}", title, width, height, flags);
+
     SDL_Window* window = SDL_CreateWindow(title, width, height, flags);
     if (window == nullptr) {
       CORE_LOG_ERROR("Failed to create window: {}", SDL_GetError());
@@ -26,6 +29,7 @@ namespace other {
   }
 
   void window_manager::destroy_window(SDL_Window* window) {
+    PROFILE_SECTION("window_manager::destroy-window");
     if (window == nullptr) {
       CORE_LOG_ERROR("Cannot destroy a null window.");
       return;
@@ -45,6 +49,7 @@ namespace other {
   }
 
   SDL_Window* window_manager::get_window(SDL_WindowID window_id) {
+    PROFILE_SECTION("window_manager::get-window");
     auto itr = windows.find(window_id);
     if (itr != windows.end()) {
       return itr->second;
@@ -54,6 +59,7 @@ namespace other {
   }
 
   SDL_Window* window_manager::get_main_window() const {
+    PROFILE_SECTION("window_manager::get-main-window");
     if (main_window == nullptr) {
       CORE_LOG_ERROR("Main window is not set.");
       return nullptr;

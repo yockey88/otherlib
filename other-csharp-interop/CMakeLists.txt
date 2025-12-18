@@ -12,7 +12,6 @@ target_sources(OtherCsBindings PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/set.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/type-extensions.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/garbage-collector.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/dotnet-object.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/attribute/other-attribute.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/attribute/interop-binding.cs
@@ -29,4 +28,8 @@ target_sources(OtherCsBindings PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/managed-object.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-function-manager.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/other-host.cs
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-handle.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-object.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-object-manager.cs
 )

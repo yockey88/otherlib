@@ -21,8 +21,11 @@ namespace other {
   class camera;
 
   struct render_data {
+    glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
+
     camera* primary_camera = nullptr;
     const gpu::directional_light* scene_ambient_light = nullptr;
+    std::vector<gpu::directional_light> ambient_lights;
     std::vector<gpu::point_light> point_lights;
 
     size_t num_draw_calls = 0;
@@ -37,6 +40,8 @@ namespace other {
   class renderer {
    public:
     struct frame_resources {
+      resource_handle output_texture;
+
       resource_handle model_buffer;
       resource_handle material_buffer;
       resource_handle bone_buffer;
@@ -56,6 +61,13 @@ namespace other {
     void begin_ui_frame();
     void end_ui_frame();
 
+    inline decltype(auto) get_pipeline_list() {
+      return pipelines |
+        std::views::values |
+        std::views::filter([](render_pipeline* pipeline) { return pipeline != nullptr; }) |
+        std::ranges::to<std::vector>();
+    }
+
     glm::ivec2 get_window_size();
     void set_clear_color(const glm::vec4& color);
 
@@ -63,6 +75,8 @@ namespace other {
 
     resource_handle create_resource(const std::string& name, resource_type type);
     void destroy_resource(const resource_handle& handle);
+
+    bool resource_exists(const resource_handle& handle);
 
     template <typename T>
     T& get_resource(const resource_handle& handle) {
@@ -81,7 +95,7 @@ namespace other {
         CORE_LOG_ERROR("Pipeline with name [{}] already exists.", name);
         return;
       }
-      auto* pipeline = new T();
+      auto* pipeline = arena_allocator<T>{}.allocate();
       pipeline->initialize_pipeline(this);
       pipelines.insert({ hash, pipeline });
     }

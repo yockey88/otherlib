@@ -53,11 +53,13 @@ namespace other {
 
     template <typename Fn>
     void bind_function(dotnet_host& dn_host, native_string name, Fn fn) {
+      PROFILE_SECTION("other::bindings::bind-function");
       void* fn_ptr = (void*)fn;
       dn_host.interop().bind_native_function(name, fn_ptr);
     }
 
     void validate_binding_points(dotnet_host& dn_host) {
+      PROFILE_SECTION("other::bindings::validate-binding-points");
       nbool32 res = dn_host.interop().validate_binding_points();
       if (!res) {
         CORE_LOG_ERROR("One or more native functions failed to bind to managed counterparts.");
@@ -72,6 +74,7 @@ namespace other {
 
       template <typename Fn>
       binding_context& bind(const std::string_view name, Fn fn) {
+        PROFILE_SECTION("other::bindings::binding_context::bind");
         native_scoped_string fn_name = native_string::new_str(name);
         bind_function(host, fn_name, fn);
         return *this;
@@ -81,6 +84,7 @@ namespace other {
   }  // namespace bindings
 
   void bind_otherlib_dotnet_functions(dotnet_host& dn_host) {
+    PROFILE_SECTION("other::bind-otherlib-dotnet-functions");
     dn_host.rediscover_binding_points();
 
     bindings::binding_context{ dn_host }

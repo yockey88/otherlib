@@ -4,11 +4,11 @@
 
 ## Purpose and Scope
 
-Other ENvironment is a C++23 game and simulation framework that supplies an opinionated runtime, tooling pipeline, and cross-language scripting bridge. When linked into an application, Other Environment owns process startup, configures subsystems, and executes project-specific drivers. This document sketches the architectural shape of the repository so that new contributors can navigate the codebase, understand layering, and spot the integration points for new features.
+Other Environment is a C++23 game and simulation framework that supplies an opinionated runtime, tooling pipeline, and scripting support for multiple languages. This document sketches the architectural shape of the repository.
 
 Supporting detail:
 
-- [Runtime Flow](architecture/runtime_flow_draft.md)
+- [Entry Point](architecture/runtime_flow_draft.md)
 - [Subsystem Model](architecture/subsystem_model_draft.md)
 
 ## High-Level Layering
@@ -16,54 +16,43 @@ Supporting detail:
 ```text
 +-------------------------------------------------------------+
 |                   Application / Drivers                     |
-|  (development-drivers, plugins, tools, tests, examples)     |
+|     (development-drivers, plugins, tools, tests, examples)  |
 +----------------------------v--------------------------------+
 |                Other Environment Integration                |
-|  (otherlib/src, entry point, project + plugin systems)      |
+|     (otherlib/src, entry point, project + plugin systems)   |
 +----------------------------v--------------------------------+
 |           Domain Modules (C++ and .NET components)          |
-|  Rendering | Scene | Scripting | Networking | Tooling       |
+|     Rendering | Scene | Scripting | Networking | Tooling    |
 +----------------------------v--------------------------------+
 |                  Foundation and Runtime Core                |
-|  Core utilities, memory, config, logging, threading         |
+|       Core utilities, memory, config, logging, threading    |
 +----------------------------v--------------------------------+
 |                External Dependencies (extern/)              |
 +-------------------------------------------------------------+
 ```
 
-### Layer Guidelines
-
-- **Foundation** (`other-core`, parts of `extern/`): cross-cutting utilities with minimal dependencies. Higher layers depend on these but never the other way around.
-- **Domain Modules** (`other-renderer`, `other-scene`, `other-network`, `other-scripting`, `other-csharp`, `other-csharp-interop`, `tools/`): pair the core with rendering, asset, and scripting systems. Modules collaborate through well-defined interfaces and global subsystems.
-- **Integration** (`otherlib/`): composes modules into the shipped runtime, manages subsystem lifetimes, and exposes entry points to drivers.
-- **Drivers and Applications** (`development-drivers/`, `driver/`, user binaries): consume OtherLib APIs, usually via the provided `other_main` hook.
-
-## Repository Surface Map
+## Repository Map
 
 | Area | Role | Notes |
 | --- | --- | --- |
-| `cmake/` | Build recipes and install helpers | `add_other_driver.cmake` exports convenience macros; `version.hpp.in` feeds package metadata. |
+| `cmake/` | cmake scripts and configuration files |
 | `extern/` | Third-party libraries | SDL3, GLAD, Assimp, ImGui, EnTT, magic_enum, FlatBuffers, DotNet hosting, etc. |
-| `other-core/` | Foundation runtime | Memory arenas, logging, config, math, serialization, command processing, subsystem infrastructure. |
-| `other-renderer/` | Rendering stack | Renderer backend abstraction, GPU resource lifecycle, render graph + pipelines, UI helpers. |
+| `other-core/` | Foundation runtime | Memory arena, logging, config, math, serialization, command processing, subsystems |
+| `other-renderer/` | Rendering stack | Renderer backend, GPU resources, render graph + pipelines, UI helpers. |
 | `other-scene/` | Scene and asset systems | Scene graph, asset pipeline, serialization, component descriptors. |
-| `other-network/` | Networking | Session state machine, networking thread, packet handling hooks. |
-| `other-scripting/` | Language bindings | Dotnet and Python bridges, script lifecycle management, native bindings. |
+| `other-network/` | Networking | networking thread, packet handling library. |
+| `other-scripting/` | Language bindings | Dotnet, Python, Lua bridges, script management, reflection/binding utilities |
 | `other-csharp-interop/` | Managed/Native bridge | C# host helpers, assembly loader, managed object wrappers. |
-| `other-csharp/` | Managed runtime surface | C# utilities, renderer and scene bindings, generator tooling. |
-| `otherlib/` | Runtime integrator | Provides `main`, wires subsystems, plugin support, project serialization. |
-| `development-drivers/` | Example executables | Runtime, renderer, server, simulation drivers for development and testing. |
-| `tools/` | Standalone utilities | Build tools, mesh baker, project writer; exercise APIs outside the main runtime. |
+| `other-csharp/` | Managed runtime | Public C# API |
+| `otherlib/` | Environment Library | Public Native Library |
+| `development-drivers/` | Example Executables | Runtime, renderer, server, editor, simulation drivers for development and testing. |
+| `tools/` | Standalone utilities | Build tools, mesh baker, project writer |
 
 ## Core Concepts
 
 ### Subsystem Pattern
 
-The subsystem framework in `other-core/src/core/subsystem.hpp` owns singleton-like services (arena, logger, renderer backend, scripting environment). Subsystems expose:
-
-- Static storage with compile-time size/alignment metadata
-- Explicit `initialize` and `shutdown` hooks
-- Optional `on_set` callbacks for custom wiring
+The subsystem framework in `other-core/src/core/subsystem.hpp` owns singleton-like services (arena, logger, renderer backend, scripting environment). Each subsystem has:
 
 See [Subsystem Model](architecture/subsystem_model_draft.md) for lifecycle, access rules, and extension guidance.
 

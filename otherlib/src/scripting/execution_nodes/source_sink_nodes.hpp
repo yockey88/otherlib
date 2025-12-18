@@ -5,7 +5,6 @@
 #define OTHERLIB_SCRIPTING_EXECUTION_NODES_SOURCE_SINK_NODES_HPP
 
 #include "scripting/execution_node.hpp"
-#include "vm/program.hpp"
 
 namespace other {
 

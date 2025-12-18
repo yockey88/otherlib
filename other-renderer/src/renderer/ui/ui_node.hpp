@@ -23,8 +23,8 @@ namespace other {
 
   class OTHER_CLASS ui_node {
    public:
-    ui_node(ui_window* parent, const std::string_view node_title, const glm::vec2& size_arg = { 0.f, 0.f }, int32_t child_flags = 0, int32_t window_flags = 0)
-        : id(FNV(node_title)), node_title(node_title), size(size_arg), flags(child_flags), window_flags(window_flags), containing_window(parent) {}
+    ui_node(ui_window* parent, const std::string_view node_title, const glm::vec2& size_arg = { 0.f, 0.f }, int32_t child_flags = 0, int32_t window_flags = 0, bool no_child = false)
+        : id(FNV(node_title)), node_title(node_title), no_child(no_child), size(size_arg), flags(child_flags), window_flags(window_flags), containing_window(parent) {}
     virtual ~ui_node() = default;
 
     void refresh();
@@ -73,6 +73,8 @@ namespace other {
       bool just_opened = false;
       bool is_focused = false;
     } state;
+
+    bool no_child = false;
 
     glm::vec2 size{ 0.0f, 0.0f };
     int32_t flags = 0;

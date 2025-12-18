@@ -82,11 +82,20 @@ namespace other {
     on_render_end();
   }
 
+  void ui_window::toggle_open() {
+    state.open = true;
+  }
+
+  void ui_window::toggle_close() {
+    state.open = false;
+  }
+
   natural_t ui_window::add_node(scope<ui_node> node) {
     natural_t id = node->id;
     auto [itr, inserted] = node_map.emplace(id, std::move(node));
     OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
 
+    CORE_LOG_DEBUG("Added UI node with ID {} to window {}", itr->first, title);
     return add_node_to(itr->second);
   }
 
@@ -116,11 +125,40 @@ namespace other {
     return itr->second;
   }
 
+  scope<ui_node>& ui_window::get_node_by_name(const std::string_view node_name) {
+    for (auto& [id, node] : node_map) {
+      if (node->node_title == node_name) {
+        return node;
+      }
+    }
+    OTHER_ASSERT(false, "UI node with name '{}' not found in window {}", node_name, title);
+    return node_map.begin()->second;  // to satisfy compiler, will never reach here due to assert
+  }
+
+  scope<ui_node>& ui_window::get_node_by_search_pattern(const std::string_view search_pattern) {
+    if (search_pattern.empty()) {
+      OTHER_ASSERT(false, "Search pattern is empty in window {}", title);
+    }
+
+    while (true) {
+      auto dot_pos = search_pattern.find('.');
+      if (dot_pos == std::string_view::npos) {
+        return get_node_by_name(search_pattern);
+      } else {
+        OTHER_ASSERT(false, "UI window::get_node_by_search_pattern with nested patterns is unimplemented in window {}", title);
+        // std::string_view current_name = search_pattern.substr(0, dot_pos);
+        // std::string_view remaining_pattern = search_pattern.substr(dot_pos + 1);
+        // auto& current_node = get_node_by_name(current_name);
+        // return current_node.get_node_by_search_pattern(remaining_pattern);
+      }
+    }
+  }
+
   void ui_window::refresh(bool current_state) {
     if (current_state != state.open) {
-      state.just_closed = !current_state;
-      state.just_opened = current_state;
       state.open = current_state;
+      state.just_closed = !state.open;
+      state.just_opened = state.open;
     } else {
       state.just_closed = false;
       state.just_opened = false;

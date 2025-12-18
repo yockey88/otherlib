@@ -29,6 +29,10 @@ namespace other {
   using register_internal_call = void (*)(native_string, void*);
   using validate_binding_points = nbool32 (*)();
 
+  /// NativeObjectManager
+  using attach_native_object = void (*)(int64_t, void*, native_string);
+  using detach_native_object = void (*)(int64_t, void*);
+
   /// TypeInterface
   using get_net_core_types = void (*)(int32_t*, int32_t*);
   using get_type_id = void (*)(native_string, int32_t*);
@@ -53,6 +57,7 @@ namespace other {
   using get_field_value_type = void (*)(int32_t, uint8_t*);
   using get_field_accessibility = type_accessibility (*)(int32_t);
   using get_field_attributes = void (*)(int32_t, int32_t*, int32_t*);
+  using get_default_value = void (*)(int32_t, void*);
 
   /// property
   using get_property_name = native_string (*)(int32_t);

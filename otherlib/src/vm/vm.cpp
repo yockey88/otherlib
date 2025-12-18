@@ -6,9 +6,9 @@
 #include "core/arena_allocator.hpp"
 #include "core/logger.hpp"
 
+#include "vm/command_files/ocmd_headers.hpp"
 #include "vm/control_table.hpp"
 #include "vm/opcode.hpp"
-#include "vm/program.hpp"
 
 namespace other {
 
@@ -77,35 +77,31 @@ namespace other {
   void vm::load_bytes_to_address(other_command_device* device, uint64_t address, const uint8_t* data, size_t size) {
     OTHER_ASSERT(device, "Device is null!");
     OTHER_ASSERT(device->memory, "Device memory is null");
-    OTHER_ASSERT(address < other_command_device::kMemorySize, "Address out of bounds!");
+    OTHER_ASSERT(address + size < other_command_device::kMemorySize, "Address out of bounds!");
     if (size == 0) {
       return;
     }
 
     OTHER_ASSERT(data, "Data must not be nulL!");
-    for (size_t i = 0; i < size; ++i) {
-      device->memory->write_byte(address + i, data[i]);
-    }
-  }
-
-  void vm::load_program(other_command_device* device, program* progr) {
-    OTHER_ASSERT(device, "Device is null!");
-    OTHER_ASSERT(device->memory, "Device memory is null");
-    OTHER_ASSERT(progr, "Program is null!");
-
-    std::vector<uint8_t> code = progr->compile_program(device->program_load_cursor);
-    load_bytes_to_address(device, device->program_load_cursor, code.data(), code.size());
+    // copy memory directly
+    std::memcpy(device->memory->data + address, data, size);
   }
 
   void vm::load_program_from_bytes(other_command_device* device, const std::span<const uint8_t> bytes) {
     OTHER_ASSERT(device, "Device is null!");
     OTHER_ASSERT(device->memory, "Device memory is null");
 
-    load_bytes_to_address(device, device->program_load_cursor, bytes.data(), bytes.size());
+    auto program_bytes = bytes.subspan(sizeof(ocmd_file_header));
+    load_bytes_to_address(device, device->program_load_cursor, program_bytes.data(), program_bytes.size());
 
     device->pc = device->program_load_cursor;
+    device->program_start_address = device->program_load_cursor;
     device->program_load_cursor += bytes.size();
     device->stopped = false;
+  }
+
+  void vm::write_instruction_at_address(other_command_device* device, uint64_t address, const instruction& instr) {
+    vm::load_bytes_to_address(device, address, reinterpret_cast<const uint8_t*>(&instr.opcode), sizeof(instr.opcode));
   }
 
 }  // namespace other

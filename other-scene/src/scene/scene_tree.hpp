@@ -65,6 +65,9 @@ namespace other {
 
     scene_object& add_object(scene_object* object, const transform& transformation, scene_object* parent_object = nullptr);
 
+    scene_object* find_object_by_id(natural_t id) const;
+    scene_object* find_object_by_name(const std::string_view name) const;
+
     scene_object* get_parent(natural_t id);
     const scene_object* get_parent(natural_t id) const;
     scene_object* get_parent(scene_object* object);

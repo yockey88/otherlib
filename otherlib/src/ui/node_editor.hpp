@@ -37,6 +37,8 @@ namespace other {
       natural_t add_editor_node(const std::string_view node_name, uint8_t input_pins = 0, uint8_t output_pins = 0);
       void connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx);
 
+      void clear_nodes();
+
       void reorganize_nodes();
 
       void on_pre_render_nodes() override;

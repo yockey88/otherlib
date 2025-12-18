@@ -33,6 +33,7 @@ namespace other {
 
   struct execution_node {
     natural_t id = 0;
+    float delta_time = 1.f / 60.f;
 
     virtual ~execution_node() = default;
 
@@ -85,6 +86,8 @@ namespace other {
     void write_register(natural_t index, const T& value) {
       get_value_of_register(index) = value;
     }
+
+    float get_delta_time() const { return delta_time; }
 
     inline natural_t get_this_node_input_index(natural_t index) const { return index; }
     inline natural_t get_this_node_output_index(natural_t index) const { return get_num_inputs() + index; }

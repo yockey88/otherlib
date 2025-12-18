@@ -14,13 +14,6 @@
 #include "imgui_internal.h"
 
 namespace other {
-  namespace detail {
-
-    struct ui_node_render_end_helper {
-      ~ui_node_render_end_helper() { ImGui::EndChild(); }
-    };
-
-  }  // namespace detail
 
   void ui_node::refresh() {
     on_refresh();
@@ -33,15 +26,15 @@ namespace other {
   void ui_node::render() {
     on_prepare_render();
     {
-      detail::ui_node_render_end_helper ___ui_node_render_end_helper_instance{};
-
       bool current_state = state.open;
-      if (!ImGui::BeginChild(std::to_string(id).c_str(), ImVec2{ size.x, size.y }, flags, window_flags)) {
-        return;
+      if (!no_child) {
+        if (!ImGui::BeginChild(std::to_string(id).c_str(), ImVec2{ size.x, size.y }, flags, window_flags)) {
+          return;
+        }
       }
 
       /// save imgui state
-      ImGuiErrorRecoveryState imgui_state{};
+      ImGuiErrorRecoveryState imgui_state = {};
       ImGui::ErrorRecoveryStoreState(&imgui_state);
 
       try {
@@ -60,6 +53,10 @@ namespace other {
       } catch (const std::exception& e) {
         CORE_LOG_ERROR("Exception during UI node render: {}", e.what());
         ImGui::ErrorRecoveryTryToRecoverState(&imgui_state);
+      }
+
+      if (!no_child) {
+        ImGui::EndChild();
       }
     }
     on_render_end();

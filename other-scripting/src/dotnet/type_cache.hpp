@@ -28,6 +28,18 @@ namespace other {
     dotnet_type* get_type(const std::string_view name);
     dotnet_type* get_type(int32_t id);
 
+    [[nodiscard]] auto begin() { return cached_types.begin(); }
+    [[nodiscard]] auto end() { return cached_types.end(); }
+    [[nodiscard]] auto rbegin() { return cached_types.rbegin(); }
+    [[nodiscard]] auto rend() { return cached_types.rend(); }
+
+    [[nodiscard]] auto begin() const { return cached_types.begin(); }
+    [[nodiscard]] auto end() const { return cached_types.end(); }
+    [[nodiscard]] auto rbegin() const { return cached_types.rbegin(); }
+    [[nodiscard]] auto rend() const { return cached_types.rend(); }
+
+    auto size() const { return cached_types.size(); }
+
    private:
     std::map<int32_t, dotnet_type> cached_types;
 

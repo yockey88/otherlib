@@ -15,19 +15,19 @@ namespace other {
   class dotnet_method {
    public:
     dotnet_method(dotnet_host* host, dotnet_type* type, int32_t method_id)
-        : host(host), type(type), dotnet_id(method_id) {}
+        : dotnet_id(method_id), host(host), type(type) {}
     ~dotnet_method() {}
 
     dotnet_type* get_return_type();
 
-    std::string name();
+    std::string name() const;
+
+    int32_t dotnet_id = -1;
 
    private:
     dotnet_host* host = nullptr;
     dotnet_type* type = nullptr;
     dotnet_type* return_type = nullptr;
-
-    int32_t dotnet_id = -1;
   };
 
 }  // namespace other

@@ -59,10 +59,11 @@ namespace other {
       void copy_string_to_storage(const std::string& value);
     };
     dotnet_field(dotnet_host* host, dotnet_type* type, int32_t dotnet_id, bool is_property = false)
-        : host(host), type(type), dotnet_id(dotnet_id), flags{ is_property } {}
+        : dotnet_id(dotnet_id), host(host), type(type), flags{ is_property } {}
     ~dotnet_field() {}
 
     void initialize_field();
+    value get_default_value() const;
 
     inline bool is_property() const {
       return flags.is_property;
@@ -72,11 +73,11 @@ namespace other {
 
     value_type get_type() const;
 
+    int32_t dotnet_id = 0;
+
    private:
     dotnet_host* host = nullptr;
     dotnet_type* type = nullptr;
-
-    int32_t dotnet_id = 0;
 
     value_type valtype = value_type::EMPTY_TYPE;
 

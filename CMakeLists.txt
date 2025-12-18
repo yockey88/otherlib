@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.27.0..4.0.2)
 
 include(cmake/add_other_driver.cmake)
+include(cmake/configure_version_header.cmake)
 
 project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
@@ -35,12 +36,22 @@ set(OTHER_INSTALL_ASSEMBLIES "${CMAKE_INSTALL_PREFIX}/dotnet-assemblies")
 set(OTHER_INSTALL_PROJECT "${CMAKE_INSTALL_PREFIX}/project")
 set(OTHER_INSTALL_PROJECT_TEMPLATES "${CMAKE_INSTALL_PREFIX}/project/templates")
 
-option(BUILD_OTHER_TERMINAL "Build the other terminal application" OFF)
-option(BUILD_OTHER_TESTS "Build the other tests" OFF)
-option(BUILD_DEVELOPMENT_DRIVERS "Build development drivers" ON)
-option(BUILD_RENDERING_DEVELOPMENT_DRIVER "Build the rendering development driver" OFF)
-option(BUILD_EXAMPLE_APPLICATION "Build the example application" OFF)
+### Build options
 option(DISALLOW_OTHER_PLUGINS "Build the library statically and without the framework for loading plugins" OFF)
+
+### projects to build
+option(BUILD_OTHER_TESTS "Build the other tests" OFF)
+option(BUILD_OTHER_EDITOR "Build the other editor application" OFF)
+option(BUILD_OTHER_SERVER "Build the other server application" OFF)
+option(BUILD_DEVELOPMENT_DRIVER "Build development driver (Other Runtime Dev)" OFF)
+option(BUILD_RENDERING_DEVELOPMENT_DRIVER "Build the rendering development driver" OFF)
+option(BUILD_SCRATCH_PROGRAMS "Build scratch-work/development brainstorming programs" OFF)
+option(BUILD_EXAMPLE_APPLICATION "Build the example application" OFF)
+
+option(BUILD_OTHER_DRIVER_LOADER "Build the other driver loader" OFF)
+option(BUILD_OTHER_TOOLS "Build other tools" OFF)
+
+
 if (DISALLOW_OTHER_PLUGINS)
   message(STATUS "Disallowing other plugins")
   add_compile_definitions("OTHER_DISALLOW_OTHER_PLUGINS")
@@ -83,7 +94,7 @@ endif()
 set(COMPILE_OPTIONS "")
 if(BUILD_PLATFORM STREQUAL "WINDOWS")
   add_compile_definitions("OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "HAS_SEH_EXCEPTIONS" "NOMINMAX")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /bigobj")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0A00") # Windows 10+
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWIN32_LEAN_AND_MEAN")
@@ -186,8 +197,15 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/pybind11/include
   ${OTHER_EXTERN_DIR}/nativefiledialog/src
   ${OTHER_EXTERN_DIR}/json
+  ${OTHER_EXTERN_DIR}/sol2
+  ${OTHER_EXTERN_DIR}/sol2/lua
   ${IMGUI_INCLUDE_DIRS}
 )
+if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
+  set(OTHER_EXTERN_INCLUDE_DIRS ${OTHER_EXTERN_INCLUDE_DIRS} 
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/tracy"
+  )
+endif()
 
 set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
                              "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
@@ -223,19 +241,27 @@ if(EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
   add_subdirectory(development-drivers)
 endif()
 
-add_subdirectory(driver)
-
-if (BUILD_OTHER_TESTS)
-  message(STATUS "Building other tests")
-  enable_testing()
-  add_subdirectory(tests)
-else()
-  message(STATUS "Skipping other tests build")
+if (BUILD_OTHER_DRIVER_LOADER)
+  add_subdirectory(driver)
 endif()
 
-add_subdirectory(tools)
+if (BUILD_OTHER_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
+if (BUILD_OTHER_TOOLS)
+  add_subdirectory(tools)
+endif()
+
+if (BUILD_OTHER_EDITOR)
+  add_subdirectory(other-editor)
+endif()
+if (BUILD_OTHER_SERVER)
+  add_subdirectory(other-server)
+endif()
+
+if (BUILD_SCRATCH_PROGRAMS AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
   add_subdirectory(scratch)
 endif()
 
@@ -259,6 +285,7 @@ other_install_external_headers("pybind11" "${OTHER_EXTERN_DIR}/pybind11/include"
 other_install_external_headers("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefiledialog/src")
 other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
 other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/include")
+other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
 
 ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")

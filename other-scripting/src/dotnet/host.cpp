@@ -10,6 +10,7 @@
 #include "core/config_table.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "serialization/reflection.hpp"
 
 #include "bindings/native_logger.hpp"
@@ -24,6 +25,7 @@ namespace other {
 
     template <typename Fn>
     Fn load_function(void* handle, const char* name) {
+      PROFILE_SECTION("other::<detail>::load_function");
 #ifdef OTHER_ENVIRONMENT_WINDOWS
       auto fn = (Fn)GetProcAddress((HMODULE)handle, name);
 #else
@@ -54,6 +56,7 @@ namespace other {
   }
 
   void dotnet_host::load_host(const config_table& env_config) {
+    PROFILE_SECTION("dotnet_host::load-host");
     this->environment_config = env_config;
 
     std::string dotnet_binding_asm = env_config.get_value<std::string>(configuration::kDotnetBindings, "C:/OtherEnvironment/dotnet-assemblies/OtherCsBindings.dll");
@@ -73,40 +76,56 @@ namespace other {
       OTHER_ASSERT(host_path.has_value(), "Failed to find hostfxr library. Please ensure .NET SDK is installed and the path is correct.");
       CORE_LOG_DEBUG("Found hostfxr library at: {}", host_path->string());
 
+      PROFILE_SECTION("dotnet_host::load-host--load-library");
       hostfxr_lib = LoadLibraryW(host_path->wstring().c_str());
       OTHER_ASSERT(hostfxr_lib != nullptr, "Failed to load hostfxr library: {}", host_path->string());
     }
-
-    coreclr.init_host_cmd_line = load_function<hostfxr_initialize_for_dotnet_command_line_fn>(hostfxr_lib, "hostfxr_initialize_for_dotnet_command_line");
-    coreclr.init_host_config = load_function<hostfxr_initialize_for_runtime_config_fn>(hostfxr_lib, "hostfxr_initialize_for_runtime_config");
-    coreclr.get_runtime_delegate = load_function<hostfxr_get_runtime_delegate_fn>(hostfxr_lib, "hostfxr_get_runtime_delegate");
-    // coreclr.run_app = load_function<hostfxr_run_app_fn>(hostfxr_lib, "hostfxr_run_app");
-    coreclr.close_host_fxr = load_function<hostfxr_close_fn>(hostfxr_lib, "hostfxr_close");
-    coreclr.set_error_writer = load_function<hostfxr_set_error_writer_fn>(hostfxr_lib, "hostfxr_set_error_writer");
-
-    OTHER_ASSERT(coreclr.init_host_cmd_line != nullptr && coreclr.init_host_config != nullptr && coreclr.get_runtime_delegate != nullptr && coreclr.close_host_fxr != nullptr, "Failed to load hostfxr functions");
 
     /// 0 - success
     /// 1 - success, already initialized
     /// 2 - success, different runtime properties
     hostfxr_handle host_fxr = nullptr;
+    {
+      PROFILE_SECTION("dotnet_host::load-host--load-coreclr");
+      {
+        PROFILE_SECTION("dotnet_host::load-host--load-functions");
+        coreclr.init_host_cmd_line = load_function<hostfxr_initialize_for_dotnet_command_line_fn>(hostfxr_lib, "hostfxr_initialize_for_dotnet_command_line");
+        coreclr.init_host_config = load_function<hostfxr_initialize_for_runtime_config_fn>(hostfxr_lib, "hostfxr_initialize_for_runtime_config");
+        coreclr.get_runtime_delegate = load_function<hostfxr_get_runtime_delegate_fn>(hostfxr_lib, "hostfxr_get_runtime_delegate");
+        // coreclr.run_app = load_function<hostfxr_run_app_fn>(hostfxr_lib, "hostfxr_run_app");
+        coreclr.close_host_fxr = load_function<hostfxr_close_fn>(hostfxr_lib, "hostfxr_close");
+        coreclr.set_error_writer = load_function<hostfxr_set_error_writer_fn>(hostfxr_lib, "hostfxr_set_error_writer");
+      }
+      OTHER_ASSERT(coreclr.init_host_cmd_line != nullptr && coreclr.init_host_config != nullptr && coreclr.get_runtime_delegate != nullptr && coreclr.close_host_fxr != nullptr, "Failed to load hostfxr functions");
 
-    /// fix this, need to loop this up in ProgramFiles for a ddeployed build, for dev this works, but could fail the CI pipeline as it is very dependent on CWD being correct
-    CORE_LOG_TRACE("Initializing hostfxr with runtime config: {}", detail::convert_string(dotnet_runtime_config));
-    const char_t* path = dotnet_runtime_config.c_str();
-    int32_t rc = coreclr.init_host_config(path, nullptr, &host_fxr);
-    OTHER_ASSERT(host_fxr != nullptr, "Failed to initialize hostfxr with runtime config : error code [{} : {:#08x}]", rc, rc);
-    if (rc < 0 || rc > 2) {
-      OTHER_ASSERT(false, "Failed to initialize hostfxr with runtime config: error code [{} : {:#08x}]", rc, rc);
+      /// fix this, need to loop this up in ProgramFiles for a ddeployed build, for dev this works, but could fail the CI pipeline as it is very dependent on CWD being correct
+      CORE_LOG_TRACE("Initializing hostfxr with runtime config: {}", detail::convert_string(dotnet_runtime_config));
+      int32_t rc = -1;
+      const char_t* path = dotnet_runtime_config.c_str();
+      {
+        PROFILE_SECTION("dotnet_host::load-host--init-hostfxr-config");
+        rc = coreclr.init_host_config(path, nullptr, &host_fxr);
+      }
+
+      OTHER_ASSERT(host_fxr != nullptr, "Failed to initialize hostfxr with runtime config : error code [{} : {:#08x}]", rc, rc);
+      if (rc < 0 || rc > 2) {
+        OTHER_ASSERT(false, "Failed to initialize hostfxr with runtime config: error code [{} : {:#08x}]", rc, rc);
+      }
+
+      void* delegate = nullptr;
+      {
+        PROFILE_SECTION("dotnet_host::load-host--get-runtime-delegate");
+        rc = coreclr.get_runtime_delegate(host_fxr, hdt_load_assembly_and_get_function_pointer, &delegate);
+      }
+      coreclr.get_managed_function_ptr = (load_assembly_and_get_function_pointer_fn)delegate;
+
+      OTHER_ASSERT(rc == 0 && coreclr.get_managed_function_ptr != nullptr, "Failed to get managed function pointer!");
+      {
+        PROFILE_SECTION("dotnet_host::load-host--close-hostfxr");
+        coreclr.close_host_fxr(host_fxr);
+        coreclr.close_host_fxr = nullptr;
+      }
     }
-
-    void* delegate = nullptr;
-    rc = coreclr.get_runtime_delegate(host_fxr, hdt_load_assembly_and_get_function_pointer, &delegate);
-    coreclr.get_managed_function_ptr = (load_assembly_and_get_function_pointer_fn)delegate;
-    OTHER_ASSERT(rc == 0 && coreclr.get_managed_function_ptr != nullptr, "Failed to get managed function pointer!");
-
-    coreclr.close_host_fxr(host_fxr);
-    coreclr.close_host_fxr = nullptr;
     host_fxr = nullptr;
   }
 
@@ -132,6 +151,7 @@ namespace other {
   }
 
   void dotnet_host::call_entry_point() {
+    PROFILE_SECTION("dotnet_host::call-entry-point");
     const char_t* dotnet_type = DNET_STR("OtherCsBindings.Host, OtherCsBindings");
     const char_t* dotnet_type_method = DNET_STR("Entry");
 
@@ -144,17 +164,20 @@ namespace other {
     using entry_point_t = void(OTHER_ENVIRONMENT_DOTNET_CALLTYPE*)(bindings::argv);
     entry_point_t entry_point = load_managed_function<entry_point_t>(dotnet_type, dotnet_type_method);
     OTHER_ASSERT(entry_point != nullptr, "Failed to load managed entry point function: {}.{}", detail::convert_string(dotnet_type), detail::convert_string(dotnet_type_method));
-
-    bindings::argv args{
-      .arena_native_handle = subsystem<arena>::get(),
-      .logger_native_handle = subsystem<logger>::get(),
-      .type_database_native_handle = subsystem<type_database>::get(),
-      .scripting_environment_native_handle = subsystem<scripting_environment>::get()
-    };
-    entry_point(args);
+    {
+      PROFILE_SECTION("dotnet_host::call-entry-point--invoke");
+      bindings::argv args{
+        .arena_native_handle = subsystem<arena>::get(),
+        .logger_native_handle = subsystem<logger>::get(),
+        .type_database_native_handle = subsystem<type_database>::get(),
+        .scripting_environment_native_handle = subsystem<scripting_environment>::get()
+      };
+      entry_point(args);
+    }
   }
 
   void dotnet_host::rediscover_binding_points() {
+    PROFILE_SECTION("dotnet_host::rediscover-binding-points");
     interop().discover_binding_points();
   }
 
@@ -179,14 +202,14 @@ namespace other {
     OTHER_ASSERT(inserted, "Failed to insert assembly context into map");
     itr->second.dotnet_id = context_handle;
 
-    CORE_LOG_INFO("Created assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
+    CORE_LOG_DEBUG("Created assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
     return &itr->second;
   }
 
   void dotnet_host::destroy_assembly_context(natural_t context_id) {
     auto itr = assembly_contexts.find(context_id);
     if (itr != assembly_contexts.end()) {
-      CORE_LOG_INFO("Destroying assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
+      CORE_LOG_DEBUG("Destroying assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
 
       // interop_functions.collect_garbage(0, dotother::GCMode::DEFAULT, true, true);
       // interop_functions.wait_for_pending_finalizers();
@@ -196,7 +219,7 @@ namespace other {
       // itr->second.assemblies.clear();
 
       assembly_contexts.erase(itr);
-      CORE_LOG_INFO("Destroyed assembly context with ID {}", context_id);
+      CORE_LOG_DEBUG("Destroyed assembly context with ID {}", context_id);
     } else {
       CORE_LOG_ERROR("Failed to destroy assembly context: ID {} not found", context_id);
     }
@@ -261,10 +284,12 @@ namespace other {
   }
 
   void dotnet_host::bind_interop_table() {
+    PROFILE_SECTION("dotnet_host::bind-interop-table");
     CORE_LOG_DEBUG("Binding interop table...");
 
     const char_t* assembly_loader_type_str = DNET_STR("OtherCsBindings.AssemblyLoader, OtherCsBindings");
     const char_t* native_function_manager_type_str = DNET_STR("OtherCsBindings.NativeFunctionManager, OtherCsBindings");
+    const char_t* native_object_manager_type_str = DNET_STR("OtherCsBindings.NativeObjectManager, OtherCsBindings");
     const char_t* type_interface_type_str = DNET_STR("OtherCsBindings.TypeInterface, OtherCsBindings");
     const char_t* managed_object_type_str = DNET_STR("OtherCsBindings.ManagedObject, OtherCsBindings");
     const char_t* garbage_collector_type_str = DNET_STR("OtherCsBindings.GarbageCollector, OtherCsBindings");
@@ -300,6 +325,13 @@ namespace other {
 
     interop_functions.validate_binding_points = load_managed_function<validate_binding_points>(native_function_manager_type_str, DNET_STR("ValidateBindingPoints"));
     OTHER_ASSERT(interop_functions.validate_binding_points != nullptr, "Failed to load ValidateBindingPoints function from managed assembly.");
+
+    /// NativeObjectManager
+    interop_functions.attach_native_object = load_managed_function<attach_native_object>(native_object_manager_type_str, DNET_STR("AttachNativeObject"));
+    OTHER_ASSERT(interop_functions.attach_native_object != nullptr, "Failed to load AttachNativeObject function from managed assembly.");
+
+    interop_functions.detach_native_object = load_managed_function<detach_native_object>(native_object_manager_type_str, DNET_STR("DetachNativeObject"));
+    OTHER_ASSERT(interop_functions.detach_native_object != nullptr, "Failed to load DetachNativeObject function from managed assembly.");
 
     /// TypeInterface
     interop_functions.get_assembly_types = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetAssemblyTypes"));
@@ -363,6 +395,9 @@ namespace other {
 
     interop_functions.get_field_attributes = load_managed_function<get_field_attributes>(type_interface_type_str, DNET_STR("GetFieldAttributes"));
     OTHER_ASSERT(interop_functions.get_field_attributes != nullptr, "Failed to load GetFieldAttributes from managed assembly.");
+
+    interop_functions.get_default_value = load_managed_function<get_default_value>(type_interface_type_str, DNET_STR("GetDefaultValue"));
+    OTHER_ASSERT(interop_functions.get_default_value != nullptr, "Failed to load GetDefaultValue from managed assembly.");
 
     //       property
     interop_functions.get_property_name = load_managed_function<get_property_name>(type_interface_type_str, DNET_STR("GetPropertyName"));
@@ -438,6 +473,7 @@ namespace other {
   }
 
   void dotnet_host::bind_native_functions() {
+    PROFILE_SECTION("dotnet_host::bind-native-functions");
     {
       /// logging has to happen first
       native_scoped_string function_name = native_string::new_str("OtherCsBindings.Logger+NativeLogMessage, OtherCsBindings");
