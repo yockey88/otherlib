@@ -24,8 +24,14 @@ namespace other {
 #else
   #error "Unknown build configuration!"
 #endif
+
+      subsystem<physics_environment>::get()->load_backend(environment->config);
+      subsystem<physics_environment>::get()->initialize_physics_environment(environment->config);
     }
     void TearDown() {
+      subsystem<physics_environment>::get()->shutdown_physics_environment();
+      subsystem<physics_environment>::get()->unload_backend();
+
       subsystem<scripting_environment>::get()->unload_dotnet_module(testing_asm);
       subsystem<scripting_environment>::get()->unload_dotnet_module(dotnet_asm);
       testing_asm = nullptr;

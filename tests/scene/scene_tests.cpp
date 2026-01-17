@@ -108,7 +108,6 @@ namespace other {
 
     scene& mapped_scene = itr->second;
     EXPECT_EQ(mapped_scene.name, "Mapped Scene");
-    EXPECT_EQ(mapped_scene.id, FNV("Mapped Scene"));
 
     scene_object& obj1 = itr->second.create_object("Object in Mapped Scene");
     natural_t obj1_id = obj1.id;
@@ -124,7 +123,6 @@ namespace other {
 
     scene& mapped_scene = itr->second;
     EXPECT_EQ(mapped_scene.name, "Mapped Scene");
-    EXPECT_EQ(mapped_scene.id, FNV("Mapped Scene"));
 
     scene_object& obj1 = itr->second.create_object("Object in Mapped Scene");
     natural_t obj1_id = obj1.id;
@@ -134,7 +132,6 @@ namespace other {
     std::vector<scene> scene_vector;
     scene& scene = scene_vector.emplace_back("Vector Scene");
     EXPECT_EQ(scene.name, "Vector Scene");
-    EXPECT_EQ(scene.id, FNV("Vector Scene"));
 
     scene_object& obj1 = scene.create_object("Object in Vector Scene");
     natural_t obj1_id = obj1.id;

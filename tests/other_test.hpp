@@ -6,9 +6,11 @@
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
 
+#include "physics/physics_environment.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "other.hpp"
+
 
 namespace other {
 

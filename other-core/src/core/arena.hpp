@@ -70,6 +70,7 @@ namespace other {
     size_t page_allocation_cursor = 0;
     size_t total_allocations = 0;
     size_t allocated_memory = 0;
+    size_t used_memory = 0;
 
     size_t live_allocations = 0;
 

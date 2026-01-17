@@ -93,7 +93,7 @@ namespace other {
     arena* a = subsystem<arena>::get();
 
     ASSERT_EQ(a->total_allocations, allocations.size()) << "Total allocations do not match recorded allocations.";
-    ASSERT_EQ(a->allocated_memory, total_allocated) << "Total allocated memory does not match recorded allocations.";
+    ASSERT_EQ(a->used_memory, total_allocated) << "Total allocated memory does not match recorded allocations.";
     ASSERT_LE(a->allocated_memory, arena_storage::kMaxMemoryAllowed) << "Allocated memory exceeds maximum allowed limit.";
     ASSERT_LE(a->page_allocation_cursor, a->storage.kMaxPages) << "Page allocation cursor exceeds maximum number pages.";
     ASSERT_NE(a->get_current_page(), nullptr) << "Current page is null after verification.";

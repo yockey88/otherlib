@@ -88,6 +88,7 @@ namespace other {
     PROFILE_ALLOCATION(mem, size);
 
     instance->current_page->cursor += size;
+    instance->used_memory += size;
     instance->allocated_memory += actual_space_needed;
     instance->total_allocations++;
     instance->live_allocations++;
