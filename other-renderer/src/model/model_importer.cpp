@@ -433,6 +433,8 @@ namespace other {
           return;
         }
 
+#define DEBUG_ASSIMP_IMPORTING
+#ifdef DEBUG_ASSIMP_IMPORTING
         if (scene->mMetaData != nullptr) {
           std::stringstream ss;
           ss << "Model Metadata:\n";
@@ -469,6 +471,7 @@ namespace other {
               default: ss << "   Value: [unknown type]\n"; break;
             }
           }
+#endif
 
           CORE_LOG_DEBUG("{}", ss.str());
         }

@@ -10,20 +10,27 @@ macro(add_driver_target type driver_name)
   endif()
   
   if (MSVC)
-    if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
-      target_compile_definitions(${driver_name} PRIVATE "/MDd")
-    else()
-      target_compile_definitions(${driver_name} PRIVATE "/MD")
-    endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20 /utf-8")
   endif()
 
   if (MSVC)
-    target_compile_definitions(${driver_name} PRIVATE "OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "NOMINMAX" "WIN32_LEAN_AND_MEAN" "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+    target_compile_definitions(${driver_name} 
+      PRIVATE 
+        "OTHER_ENVIRONMENT_WINDOWS" 
+        ${BUILD_CONFIG_MACRO} 
+        "NOMINMAX" 
+        "WIN32_LEAN_AND_MEAN" 
+        "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" 
+        "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS"
+    )
   endif()
 
   if (UNIX)
-    target_compile_definitions(${driver_name} PRIVATE "OTHER_ENVIRONMENT_UNIX" ${BUILD_CONFIG_MACRO})
+    target_compile_definitions(${driver_name} 
+      PRIVATE 
+        "OTHER_ENVIRONMENT_UNIX" 
+        ${BUILD_CONFIG_MACRO}
+    )
   endif()
 
   if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)

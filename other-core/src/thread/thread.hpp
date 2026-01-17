@@ -32,6 +32,12 @@ namespace other {
         : thread_name(thread_name) {}
     virtual ~thread() = default;
 
+    inline bool is_running() {
+      return current_state == STARTED ||
+        current_state == PROCESSING ||
+        current_state == WAITING;
+    }
+
     void launch();
     void shutdown();
     void force_shutdown();

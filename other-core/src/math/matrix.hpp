@@ -334,6 +334,7 @@ namespace other {
   constexpr inline detail::matrix_vector_product_fn matrix_vector_product{};
 
   void decompose_mat4(const glm::mat4& mat, glm::vec3& out_translation, glm::quat& out_rotation, glm::vec3& out_scale);
+  glm::mat4 compose_mat4(const glm::vec3& translation, const glm::quat& rotation, const glm::vec3& scale);
 
 }  // namespace other
 

@@ -70,6 +70,8 @@ namespace other {
 
     scene* get_active_scene();
 
+    void process_driver_event(driver_event event);
+
     inline const config_table& configuration() const {
       return config;
     }
@@ -165,8 +167,8 @@ namespace other {
 
     filepath get_project_cache();
 
-    void open_ui_window(driver_ui::builtin_window_type type);
-    void close_ui_window(driver_ui::builtin_window_type type);
+    void open_ui_window(const std::string_view type);
+    void close_ui_window(const std::string_view type);
 
     inline lua_script& get_envrc_script() {
       OTHER_ASSERT(envrc != nullptr, "Driver environment runtime script is not loaded.");
@@ -183,8 +185,6 @@ namespace other {
     virtual void update_shutting_down() {}
     virtual void on_render() {}
     virtual void on_ui_render() {}
-
-    void process_driver_event(driver_event event);
 
     void pump_events();
 
@@ -334,6 +334,12 @@ namespace other {
 
     void handle_open_ui_window_event(const value& data);
     void handle_close_ui_window_event(const value& data);
+
+    void handle_list_driver_default_event(const value& data);
+    void handle_list_driver_windows_event(const value& data);
+    void handle_list_driver_files_event(const value& data);
+    void handle_list_driver_scenes_event(const value& data);
+    void handle_list_driver_assets_event(const value& data);
 
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);

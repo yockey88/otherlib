@@ -89,6 +89,12 @@ namespace other {
       ->bind()
       .set_uniform("OE_exposure", 1.0f)
       .unbind();
+
+    /// upload debug data
+    if (data->debug_data.debug_lines.size() > 0) {
+    }
+    if (data->debug_data.debug_triangles.size() > 0) {
+    }
   }
 
 #define POINT_LIGHT_SHADOW_MAPS 0

@@ -16,10 +16,6 @@ function _submit_console_text_impl(message, message_type)
   __other_native.__environment_console.submit_console_text(message, message_type)
 end
 
-function _trigger_driver_event_impl(event_name, event_data)
-  __other_native.__driver.trigger_driver_event(event_name, event_data)
-end
-
 function _get_active_scene()
   return __other_native.__driver.get_active_scene()
 end
@@ -71,18 +67,14 @@ _Meta._file_utils = _Meta:get_script("file_utils")
 _Meta._dotnet_type_cache = _Meta:get_script("dotnet_types")
 _Meta._scene_interface = _Meta:get_script("scene_interface")
 _Meta._scene_object_interface = _Meta:get_script("scene_object_interface")
+_Meta._driver_interface = _Meta:get_script("driver_interface")
 
 function _Meta:String() return self._string_utils end
 function _Meta:File() return self._file_utils end
+function _Meta:DotnetTypes() return self._dotnet_type_cache end
 function _Meta:Scene() return self._scene_interface end
 function _Meta:SceneObject() return self._scene_object_interface end
-function _Meta:DotnetTypes() return self._dotnet_type_cache end
-
-Driver = {
-  TriggerEvent = function(event_name, event_data)
-    _trigger_driver_event_impl(event_name, event_data)
-  end,
-}
+function _Meta:Driver() return self._driver_interface end
 
 CoreLog = {
   Trace = function(...)    _send_log_impl(LogLevel.Trace, ...)    end,
@@ -95,9 +87,85 @@ CoreLog = {
 CoreLog.Debug("[lua bridge ".. _Meta:global_definitions_path() .. "] Global Definitions Loaded")
 CoreLog.Debug("[lua bridge ".. _Meta:bridge_path() .. "] Loading Other Environment Lua Bridge")
 
+function _Meta:LoadScene(path)
+  if path == nil or path == ""
+  then
+    CoreLog.Error("Invalid scene path provided to LoadScene: '%s'", tostring(path))
+    return
+  end
+
+  CoreLog.Info(string.format("Loading scene from path: '%s'", path))
+
+  local real_path = _Meta._string_utils.strip_leading_and_ending_whitespace(path)
+  if not _Meta._file_utils.Exists(real_path)
+  then
+    self.PushError("Scene file does not exist: " .. real_path)
+    return
+  end
+
+  self:Driver().TriggerEvent("force-load-scene", real_path)
+end
+
 _Meta._console = _Meta:get_script("environment_console")
 function _Meta:Console()
   return self._console
+end
+
+function _Meta._driver_interface:_OpenClose(type, args)
+  local parsed_args, success = self:_parse_open_close_args(type, args)
+  if not success
+  then
+    return
+  end
+
+  if parsed_args.type == "file"
+  then
+    _Meta:Console().PushError("[TODO] open file requested: " .. parsed_args.path)
+    -- local open_args = {
+    --   type = "file",
+    --   path = file_path
+    -- }
+    -- Driver.TriggerEvent("open-requested", open_args)
+  elseif parsed_args.type == "window"
+  then
+    _Meta._driver_interface.TriggerEvent(string.format("%s-driver-ui-window", type), parsed_args.window_identifier)
+  end
+end
+
+function _Meta._driver_interface:_List(args)
+  local parsed_args, success = self._parse_list_args(args)
+  if not success
+  then
+    return
+  end
+
+  local event_name = "ls-driver-" .. parsed_args.type
+  _Meta._driver_interface.TriggerEvent(event_name)
+end
+
+function _Meta._driver_interface:OpenCommand(args)
+  self:_OpenClose("open", args)
+end
+function _Meta._driver_interface:CloseCommand(args)
+  self:_OpenClose("close", args)
+end
+
+function _Meta._driver_interface:OpenWindow(arg)
+  self:_OpenClose("open", { "--window", _Meta:String().as_string(arg) })
+end
+function _Meta._driver_interface:CloseWindow(arg)
+  self:_OpenClose("close", { "--window", _Meta:String().as_string(arg) })
+end
+
+function _Meta._driver_interface:OpenFile(arg)
+  self:_OpenClose("open", { "--file", _Meta:String().as_string(arg) })
+end
+function _Meta._driver_interface:CloseFile(arg)
+  self:_OpenClose("close", { "--file", _Meta:String().as_string(arg) })
+end
+
+function _Meta._driver_interface:ListCommand(args)
+  self:_List(args)
 end
 
 --- TODO: check if there are user commands to register from config or elsewhere and 

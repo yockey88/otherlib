@@ -10,6 +10,7 @@
 #include "core/scope.hpp"
 
 #include "lua/lua_sandbox.hpp"
+#include "physics_world/physics_world.hpp"
 #include "renderer/renderer.hpp"
 
 #include "scene/scene_tree.hpp"
@@ -50,6 +51,8 @@ namespace other {
     sol::state& lua_state;
     lua_sandbox sandbox;
 
+    physics_world* physics = nullptr;
+
     glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
     std::optional<render_data> render_data_cache = std::nullopt;
 
@@ -60,6 +63,7 @@ namespace other {
   };
 
   scope<scene_storage> make_scene_storage(scene* scene_ptr);
+  void clear_storage(scope<scene_storage>& storage_ptr);
 
 }  // namespace other
 

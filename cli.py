@@ -4,6 +4,19 @@ import sys
 import argparse
 import shutil
 
+def get_physx_dlls(dll_cfg):
+  physx_base_path = "extern/physx/bin/"
+  dlls = [
+    f"{physx_base_path}{dll_cfg}/PhysX_64.dll",
+    f"{physx_base_path}{dll_cfg}/PhysXCommon_64.dll",
+    f"{physx_base_path}{dll_cfg}/PhysXCooking_64.dll",
+    f"{physx_base_path}{dll_cfg}/PhysXFoundation_64.dll",
+    f"{physx_base_path}{dll_cfg}/PhysXGpu_64.dll",
+  ]
+  if dll_cfg == "Debug":
+    dlls.append(f"{physx_base_path}{dll_cfg}/PVDRuntime_64.dll")
+  return dlls
+
 def regen_project():
   print("Regenerating the project files...")
   subprocess.call(["cmake", "-S", ".", "-B", "build"])
@@ -13,12 +26,16 @@ def regen_project():
 
 def copy_dlls(cfg, dll_cfg):
   print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
+
+  all_physx_dlls = get_physx_dlls(dll_cfg)
+
   dlls = [
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
     "extern/assimp/lib/assimp-vc143-mt.dll",
     f"extern/python312/python312.dll",
     "extern/sol2/lib/lua-5.4.4.dll",
   ]
+  dlls.extend(all_physx_dlls)
   destinations = [
     f"build/development-drivers/{cfg}/",
     f"build/driver/{cfg}/",

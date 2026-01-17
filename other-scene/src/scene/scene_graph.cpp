@@ -33,6 +33,15 @@ namespace other {
   }
 
   std::pair<uint64_t, scene*> scene_graph::load_scene(const filepath& scene_path) {
+    /// check if scene already exists
+    if (has_scene(scene_path.stem().string())) {
+      CORE_LOG_WARN("Scene with name [{}] already exists in the scene graph. Cannot load duplicate scene.", scene_path.stem().string());
+      const scene* existing_scene = g.find_item([&scene_path](const scene& s) {
+        return s.name == scene_path.stem().string();
+      });
+      return { existing_scene->id, g.ptr_to_node_value(existing_scene->id) };
+    }
+
     scene new_scene = scene::load_scene(scene_path);
     if (new_scene.id == 0) {
       return { 0, nullptr };

@@ -45,8 +45,6 @@ namespace other {
 
     void run_lua_file(const filepath& script_path);
 
-    void reset();
-
     inline scene_storage& get_storage() {
       OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
       return *storage;
@@ -54,6 +52,13 @@ namespace other {
 
     static scene create_scene(const std::string& name);
     static scene load_scene(const filepath& scene_path);
+
+    void play();
+    void stop();
+    void reset();
+
+    void enable_physics_debug_rendering();
+    void disable_physics_debug_rendering();
 
     /// fixed update called at a constant timestep (e.g., 60 Hz)
     void fixed_update(double delta_time);
@@ -80,6 +85,8 @@ namespace other {
 
     std::vector<uint64_t> get_children_ids(natural_t id) const;
     std::vector<uint64_t> get_children_ids(const scene_object* object) const;
+    std::vector<scene_object*> get_children(natural_t id);
+    std::vector<scene_object*> get_children(const scene_object* object);
 
     std::vector<uint64_t> get_all_object_ids() const;
 
@@ -206,6 +213,9 @@ namespace other {
     integer_t kNoStreamBinding = -1;
     integer_t update_stream_id = kNoStreamBinding;
 
+    bool synchronized = true;
+    bool debug_physics_rendering_enabled = false;
+
    private:
     struct object_handle {
       natural_t id = 0;
@@ -228,9 +238,14 @@ namespace other {
     // void on_update_script_component(const entt::registry&, const entt::entity entity);
     void on_destroy_script_component(const entt::registry&, const entt::entity entity);
 
+    void on_create_physics_component(const entt::registry&, const entt::entity entity);
+    // void on_update_physics_component(const entt::registry&, const entt::entity entity);
+    void on_destroy_physics_component(const entt::registry&, const entt::entity entity);
+
     static scene load_from_lua_file(const filepath& scene_path);
     void construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table);
 
+    bool playing = false;
     scope<scene_storage> storage = nullptr;
   };
 

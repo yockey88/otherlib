@@ -31,6 +31,8 @@ namespace other {
       /// reset because we are testing the arena here
       subsystem<arena>::get()->shutdown();
       subsystem<arena>::get();
+
+      allocations.clear();
     }
 
     void TearDown() override {

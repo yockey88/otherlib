@@ -47,7 +47,7 @@ function _Console:HelpCommand(args)
 end
 
 function _Console:ExitCommand(args)
-  Driver.TriggerEvent("shutdown-requested")
+  _Meta:Driver().TriggerEvent("shutdown-requested")
 end
 
 function _Console:CreateSceneCommand(args)
@@ -57,7 +57,7 @@ function _Console:CreateSceneCommand(args)
     return
   end
   local scene_name = args[1]
-  Driver.TriggerEvent("force-load-empty-scene", _Meta._string_utils.strip_leading_and_ending_whitespace(scene_name))
+  _Meta:Driver().TriggerEvent("force-load-empty-scene", _Meta._string_utils.strip_leading_and_ending_whitespace(scene_name))
 end
 
 function _Console:LoadSceneCommand(args)
@@ -67,105 +67,7 @@ function _Console:LoadSceneCommand(args)
     return
   end
 
-  local path = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
-  if not _Meta._file_utils.Exists(path)
-  then
-    self.PushError("Scene file does not exist: " .. args[1])
-    return
-  end
-
-  Driver.TriggerEvent("force-load-scene", path)
-end
-
-local function _parse_open_close_args(cmd_name, console, args)
-  if #args < 1
-  then
-    console.PushError("Usage: " .. cmd_name .. " <arguments...>")
-    return {}, false
-  end
-
-  local result = {
-    type = "file",
-  }
-
-  if #args == 1
-  then
-    --- in this case we expect a file exists and we will open it according to it's extension
-  elseif #args == 2
-  then
-    --- expect ((-f|--file) <file-path>) or ((-will|--window) (window-name|window-id))
-    local flag = args[1]
-    if flag == "-f" or flag == "--file"
-    then
-      result.type = "file"
-    else if flag == "-w" or flag == "--window"
-    then
-      result.type = "window"
-    else
-      console.PushError("Unknown flag for " .. cmd_name .. " command: " .. flag)
-      return {}, false
-    end
-    end
-  end 
-
-  if result.type == "file"
-  then
-    result.path = _Meta._string_utils.strip_leading_and_ending_whitespace(args[#args])
-    if not _Meta._file_utils.Exists(result.path)
-    then
-      console.PushError("File does not exist: " .. result.path)
-      return {}, false
-    end
-  elseif result.type == "window"
-  then
-    result.window_identifier = _Meta._string_utils.strip_leading_and_ending_whitespace(args[#args])
-  end
-  return result, true
-end
-
-function _Console:OpenCommand(args)
-  local parsed_args, success = _parse_open_close_args("open", self, args)
-  if not success
-  then
-    return
-  end
-
-  if parsed_args.type == "file"
-  then
-    self.PushError("[TODO] open file requested: " .. parsed_args.path)
-    -- local open_args = {
-    --   type = "file",
-    --   path = file_path
-    -- }
-    -- Driver.TriggerEvent("open-requested", open_args)
-  elseif parsed_args.type == "window"
-  then
-    print("ui-window : " .. parsed_args.window_identifier)
-    Driver.TriggerEvent("open-driver-ui-window", parsed_args.window_identifier)
-  end
-end
-
-function _Console:CloseCommand(args)
-  local parsed_args, success = _parse_open_close_args("close", self, args)
-  if not success
-  then
-    return
-  end
-
-  if parsed_args.type == "file"
-  then
-    self.PushError("[TODO] close file requested: " .. parsed_args.path)
-    -- local close_args = {
-    --   type = "file",
-    --   path = file_path
-    -- }
-    -- Driver.TriggerEvent("close-requested", close_args)
-  elseif parsed_args.type == "window"
-  then
-    Driver.TriggerEvent("close-driver-ui-window", parsed_args.window_identifier)
-  end
-
-  -- Driver.TriggerEvent("close-requested", close_args)
+  _Meta:LoadScene(args[1])
 end
 
 function _Console:OpenWindowCommand(args)
@@ -175,8 +77,7 @@ function _Console:OpenWindowCommand(args)
     return
   end
 
-  local new_cmd = { "--window", args[1] }
-  self:OpenCommand(new_cmd)
+  _Meta:Driver():OpenWindow(args[1])
 end
 
 function _Console:CloseWindowCommand(args)
@@ -186,8 +87,11 @@ function _Console:CloseWindowCommand(args)
     return
   end
 
-  local new_cmd = { "--window", args[1] }
-  self:CloseCommand(new_cmd)
+  _Meta:Driver():CloseWindow(args[1])
+end
+
+function _Console:ListCommand(args)
+  _Meta:Driver():ListCommand(args)
 end
 
 function _Console:IsCommand(command)
@@ -210,9 +114,15 @@ function _Console:HandleCommand(command)
     print("args:", table.concat(args, ", "))
     local command_info = self.commands[cmd]
 
-    if #args == 1 and (args[1] == "--help" or args[1] == "-h") and command_info.long_description ~= nil
+    if #args == 1 and (args[1] == "--help" or args[1] == "-h")
     then
-      self.PushConsoleMessage(command_info.long_description)
+      if command_info.long_description == nil
+      then
+        self.PushConsoleMessage(self.commands[cmd].description)
+        return
+      else 
+        self.PushConsoleMessage(command_info.long_description)
+      end
     else
       self.commands[self.GetCommandName(command)].handler(args)
     end
@@ -240,13 +150,12 @@ function _Console:new()
   self:RegisterConsoleCommand("help", "Displays this help message", function(...) self:HelpCommand(...) end)
   self:RegisterConsoleCommand("exit", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
 
-  self:RegisterConsoleCommand("clear", "Clears the console output", function(...) Driver.TriggerEvent("clear-console-output") end)
+  self:RegisterConsoleCommand("clear", "Clears the console output", function(...) _Meta:Driver().TriggerEvent("clear-console-output") end)
 
   self:RegisterConsoleCommand("new-scene", "Creates a new empty scene", function(...) self:CreateSceneCommand(...) end)
   self:RegisterConsoleCommand("load-scene", "Loads a scene from a specified path", function(...) self:LoadSceneCommand(...) end)
 
   local open_close_help_message = [[
-
   [%s Command]
     %s files, windows, scenes, and other resources.
     If no flags are provided, the command assumes a file path is given and attempts to %s the file accordingly.
@@ -261,10 +170,27 @@ function _Console:new()
   local open_help_msg = format_help_string("Open", "open", "Opens")
   local close_help_msg = format_help_string("Close", "close", "Closes")
 
-  self:RegisterConsoleCommand("open", "Runs the open function with the specified arguments", function(...) self:OpenCommand(...) end, open_help_msg)
-  self:RegisterConsoleCommand("close", "Runs the close function with the specified arguments", function(...) self:CloseCommand(...) end, close_help_msg)
-  self:RegisterConsoleCommand("open-window", "Opens the UI window the given name", function(...) self:OpenWindowCommand(...) end)
-  self:RegisterConsoleCommand("close-window", "Closes the UI window the given name", function(...) self:CloseWindowCommand(...) end)
+  self:RegisterConsoleCommand("open", "Runs the open function with the specified arguments", function(...) _Meta:Driver():OpenCommand(...) end, open_help_msg)
+  self:RegisterConsoleCommand("open-window", "Opens the specified window. Specialization of 'open' (open --window).", function(...) _Meta:Driver():OpenWindow(...) end)
+
+  self:RegisterConsoleCommand("close", "Runs the close function with the specified arguments", function(...) _Meta:Driver():CloseCommand(...) end, close_help_msg)
+  self:RegisterConsoleCommand("close-window", "Closes the specified window. Specialization of 'close' (close --window).", function(...) _Meta:Driver():CloseWindow(...) end)
+
+  local ls_long_description = [[
+  [ls Command]
+    Prints a list that take various forms depending on the arguments.
+    Default behavior is to list the contents of the current directory.
+    Usage:
+      ls (-h|--help)               Displays this help message
+      ls <directory-path>          Lists the contents of the specified directory
+      ls <-w|--windows>            Lists all registered UI windows
+      
+    Features In Development:
+      ls <-f|--files>              Lists all loaded files
+      ls <-s|--scenes>             Lists all loaded scenes
+      ls <-a|--assets>             Lists all loaded assets
+  ]]
+  self:RegisterConsoleCommand("ls", "Prints a list of items.", function(...) _Meta:Driver():ListCommand(...) end, ls_long_description)
 
   setmetatable(obj, self)
   return obj

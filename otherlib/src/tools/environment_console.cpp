@@ -11,6 +11,7 @@ namespace other {
 
   std::atomic<bool> environment_console::console_initialized = false;
 
+  std::mutex environment_console::input_mutex;
   std::atomic<bool> environment_console::input_waiting = false;
   std::queue<console_input> environment_console::input_queue = {};
 
@@ -50,8 +51,12 @@ namespace other {
 
     if (input_waiting) {
       while (!input_queue.empty()) {
-        console_input input = std::move(input_queue.front());
-        input_queue.pop();
+        console_input input = {};
+        {
+          std::lock_guard lock(input_mutex);
+          input = std::move(input_queue.front());
+          input_queue.pop();
+        }
 
         bool is_command = false;
         if (console_lua_script != nullptr) {
@@ -107,7 +112,6 @@ namespace other {
       return;
     }
 
-    static std::mutex input_mutex;
     std::lock_guard lock(input_mutex);
     input_queue.push({
       .input_text = std::string{ text },

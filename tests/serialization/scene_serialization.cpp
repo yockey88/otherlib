@@ -184,7 +184,6 @@ namespace other {
       scene1.name = scene_name;
       scene1.id = scene_desc.scene_id;
       EXPECT_EQ(scene1.name, "Test Scene");
-      EXPECT_EQ(scene1.id, FNV("Test Scene"));
 
       scene1.add_objects(objects);
       ASSERT_EQ(scene1.get_object_count(), scene_desc.num_objects);

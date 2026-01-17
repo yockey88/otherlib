@@ -17,48 +17,45 @@ namespace other {
 
   void ui_node::refresh() {
     on_refresh();
-    for (auto* child : children) {
-      OTHER_ASSERT(child != nullptr, "Null child node in UI node {}", node_title);
-      child->refresh();
+    for (auto child : children) {
+      OTHER_ASSERT(containing_window->get_node(child) != nullptr, "Null child node in UI node {}", node_title);
+      containing_window->get_node(child)->refresh();
     }
   }
 
   void ui_node::render() {
-    on_prepare_render();
-    {
-      bool current_state = state.open;
-      if (!no_child) {
-        if (!ImGui::BeginChild(std::to_string(id).c_str(), ImVec2{ size.x, size.y }, flags, window_flags)) {
-          return;
-        }
-      }
+    bool current_state = state.open;
+    if (!state.open) {
+      return;
+    }
 
+    on_prepare_render();
+    refresh(current_state);
+    if (!state.open) {
+      on_render_end();
+      return;
+    }
+
+    {
       /// save imgui state
       ImGuiErrorRecoveryState imgui_state = {};
       ImGui::ErrorRecoveryStoreState(&imgui_state);
 
       try {
-        refresh(current_state);
-        if (!state.open) {
-          return;
-        }
-
         on_render_node_header();
         on_render_node_body();
-        for (auto* child : children) {
-          OTHER_ASSERT(child != nullptr, "Null child node in UI node {}", node_title);
-          child->render();
+        for (auto child : children) {
+          OTHER_ASSERT(containing_window->get_node(child) != nullptr, "Null child node in UI node {}", node_title);
+          containing_window->get_node(child)->render();
+          ImGui::Separator();
         }
         on_render_node_footer();
       } catch (const std::exception& e) {
         CORE_LOG_ERROR("Exception during UI node render: {}", e.what());
         ImGui::ErrorRecoveryTryToRecoverState(&imgui_state);
       }
-
-      if (!no_child) {
-        ImGui::EndChild();
-      }
     }
+
     on_render_end();
   }
 
@@ -74,8 +71,10 @@ namespace other {
     OTHER_ASSERT(node != nullptr, "Cannot add null child node to UI node {}", node_title);
     if (remaining_search_pattern.empty()) {
       node->containing_window = containing_window;
-      children.push_back(node.get());
+      children.push_back(node->id);
       node->parent = id;
+
+      CORE_LOG_DEBUG("  - Added child UI node with ID {} to parent node {}", node->id, node_title);
       return node->id;
     }
 
@@ -91,15 +90,16 @@ namespace other {
       pattern_str = pattern_str.substr(colon + 1);
     }
 
-    auto itr = std::find_if(children.begin(), children.end(), [&first_search_name](const ui_node* child) {
-      return child->node_title == first_search_name;
+    auto itr = std::find_if(children.begin(), children.end(), [this, &first_search_name](const natural_t child) {
+      return containing_window->get_node(child)->node_title == first_search_name;
     });
     if (itr == children.end()) {
       CORE_LOG_ERROR("No child node found with name '{}' in UI node '{}'", first_search_name, node_title);
       return 0;
     }
 
-    return (*itr)->add_node_to(node, pattern_str);
+    CORE_LOG_DEBUG(" - Traversing to child UI node '{}' in parent node '{}'", first_search_name, node_title);
+    return containing_window->get_node(*itr)->add_node_to(node, pattern_str);
   }
 
   void ui_node::trigger_event(const std::string_view name) {

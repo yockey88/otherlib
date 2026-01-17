@@ -22,7 +22,7 @@ namespace other {
      public:
       console_history_node(ui_window* parent)
           /// arguments are default except 'true' which means that this node does not start a child region
-          : ui_node(parent, "Console History", { 0.f, 0.f }, 0, 0, true) {
+          : ui_node(parent, "Console History", { 0.f, 0.f }, 0, 0) {
       }
       virtual ~console_history_node() = default;
 

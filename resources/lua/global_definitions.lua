@@ -17,3 +17,7 @@ ConsoleMessage = {
   Error = console_message.CONSOLE_ERROR,
   Command = console_message.CONSOLE_COMMAND
 };
+
+DriverState = driver_state
+DriverEvent = driver_event
+

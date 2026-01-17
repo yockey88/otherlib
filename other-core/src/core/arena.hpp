@@ -16,7 +16,7 @@
 namespace other {
 
   struct arena_storage {
-    static inline constexpr size_t kPageSize = 64 * 4096u;  // 64 MB
+    static inline constexpr size_t kPageSize = 2 * 64 * 4096u;  // 128 MB
     static inline constexpr size_t kAlignment = 16;
     static inline constexpr size_t kMaxPages = 64;
     static inline constexpr size_t kMaxMemoryAllowed = kMaxPages * kPageSize;
@@ -70,6 +70,7 @@ namespace other {
     size_t page_allocation_cursor = 0;
     size_t total_allocations = 0;
     size_t allocated_memory = 0;
+    size_t used_memory = 0;
 
     size_t live_allocations = 0;
 

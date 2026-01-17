@@ -98,7 +98,9 @@ namespace other {
 
    private:
     asio::io_context& io_context;
-    asio::thread_pool thread_pool{ 4 };
+    /// \todo figure out model-source pipeline race condition, currently two models loading at the same
+    ///       time when using more than one thread causes issues
+    asio::thread_pool thread_pool{ 1 };
 
     struct pipeline_context {
       scope<asset_pipeline> pipeline = nullptr;
