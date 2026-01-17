@@ -26,7 +26,6 @@
 
 #include "lua_bindings.hpp"
 
-
 namespace other {
 
   void bind_native_types(sol::state& lua_state);
@@ -128,6 +127,9 @@ namespace other {
       }
       host_driver->trigger_event(event, val);
     });
+    driver_table.set_function("process_driver_event", [host_driver](driver_event event) {
+      host_driver->process_driver_event(event);
+    });
 
     /// now we bind dotnet types into lua types by asking the dotnet types to write their descriptor tables
     auto* scripting_env = subsystem<scripting_environment>::get();
@@ -165,6 +167,24 @@ namespace other {
       "CONSOLE_WARN", CONSOLE_MESSAGE_WARN,
       "CONSOLE_ERROR", CONSOLE_MESSAGE_ERROR,
       "CONSOLE_COMMAND", CONSOLE_MESSAGE_COMMAND
+    );
+    lua_state.new_enum(
+      "driver_state",
+      "STOPPED", driver_state::DRIVER_STATE_STOPPED,
+      "INITIALIZING", driver_state::DRIVER_STATE_INITIALIZING,
+      "RUNNING", driver_state::DRIVER_STATE_RUNNING,
+      "PAUSED", driver_state::DRIVER_STATE_PAUSED,
+      "SHUTTING_DOWN", driver_state::DRIVER_STATE_SHUTTING_DOWN,
+      "NUM_DRIVER_STATES", driver_state::NUM_STATES
+    );
+    lua_state.new_enum(
+      "driver_event",
+      "START", driver_event::DRIVER_EVENT_START,
+      "READY", driver_event::DRIVER_EVENT_READY,
+      "PAUSE", driver_event::DRIVER_EVENT_PAUSE,
+      "RESUME", driver_event::DRIVER_EVENT_RESUME,
+      "STOP", driver_event::DRIVER_EVENT_STOP,
+      "NUM_DRIVER_EVENTS", driver_event::NUM_EVENTS
     );
 
     bind_linear_algebra_types(lua_state);

@@ -5,6 +5,7 @@
 
 #include "core/defines.hpp"
 
+#include "physics/physics_environment.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "object/camera_component.hpp"
@@ -67,7 +68,23 @@ namespace other {
     bind_component_reflection_data<render_component>(*type_db, storage);
     bind_component_reflection_data<camera_component>(*type_db, storage);
 
+    auto* physics_env = subsystem<physics_environment>::get();
+    OTHER_ASSERT(physics_env != nullptr, "Physics environment subsystem is not initialized.");
+
+    storage->physics = physics_env->create_world(scene_ptr->id);
+
     return storage;
+  }
+
+  void clear_storage(scope<scene_storage>& storage) {
+    storage->tree.destroy_all_objects();
+
+    auto* env = subsystem<physics_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Physics environment subsystem is not initialized.");
+
+    env->destroy_world(storage->scene_id);
+
+    storage = nullptr;
   }
 
 }  // namespace other

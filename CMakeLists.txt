@@ -36,9 +36,6 @@ set(OTHER_INSTALL_ASSEMBLIES "${CMAKE_INSTALL_PREFIX}/dotnet-assemblies")
 set(OTHER_INSTALL_PROJECT "${CMAKE_INSTALL_PREFIX}/project")
 set(OTHER_INSTALL_PROJECT_TEMPLATES "${CMAKE_INSTALL_PREFIX}/project/templates")
 
-### Build options
-option(DISALLOW_OTHER_PLUGINS "Build the library statically and without the framework for loading plugins" OFF)
-
 ### projects to build
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
 option(BUILD_OTHER_EDITOR "Build the other editor application" OFF)
@@ -101,40 +98,20 @@ if(BUILD_PLATFORM STREQUAL "WINDOWS")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-  
-  if (DISALLOW_OTHER_PLUGINS)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  else()
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-  endif()
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  # link_libraries()
 
   if(CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
-    message(STATUS "Debug build enabled")
     if (CMAKE_BUILD_TYPE STREQUAL Debug-AS)
-      message(STATUS "Address Sanitizer enabled")
       add_compile_options("/fsanitize=address")
     endif()
     
     add_compile_options("/D_CRT_SECURE_NO_WARNINGS")
     add_compile_options("/Od" "/Zi" "/RTC1" "/D_DEBUG")
   elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
-    message(STATUS "Release build enabled")
     add_compile_options("/DNDEBUG")
   endif()
-
 else()
-  # add_compile_definitions("OTHER_ENVIRONMENT_UNIX" ${BUILD_CONFIG_MACRO})
-
-  # if(CMAKE_BUILD_TYPE MATCHES Debug)
-  #   message(STATUS "Debug build enabled")
-  #   message(STATUS "ASAN enabled")
-
-  #   add_compile_options("-g3" "-O0" "-fsanitize=address")
-  # elseif(CMAKE_BUILD_TYPE MATCHES Release)
-  #   message(STATUS "Release build enabled")
-    
-  #   add_compile_options("-Ox")
-  # endif()
   message(FATAL_ERROR "Unix builds are not supported yet. Please use Windows development.")
 endif()
 
@@ -144,17 +121,21 @@ message(STATUS "IMGUI_INCLUDE_DIRS: ${IMGUI_INCLUDE_DIRS}")
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(OTHER_LIBRARIES_PATH 
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/debug"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
+    # "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/debug"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/debug"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/debug"
   )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
   set(OTHER_LIBRARIES_PATH 
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/release"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
+    # "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/release"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/release"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/release"
   )
-  endif()
+endif()
   
   # TODO: replace above w/ below
   # set(OTHER_LIBRARIES_PATH
@@ -164,15 +145,16 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile
   #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
   #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
   # )
-  
-if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-  add_compile_definitions("TRACY_ENABLE" "TRACY_CALLSTACK=10")
-endif()
+
 set(ASSIMP_NAME "assimp-vc143-mt")
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} 
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib"
 )
+  
+if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
+  add_compile_definitions("TRACY_ENABLE" "TRACY_CALLSTACK=10")
+endif()
 
 set(OTHER_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
@@ -195,23 +177,27 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/dotnet
   ${OTHER_EXTERN_DIR}/entt
   ${OTHER_EXTERN_DIR}/pybind11/include
-  ${OTHER_EXTERN_DIR}/nativefiledialog/src
+  # ${OTHER_EXTERN_DIR}/nativefiledialog/src
   ${OTHER_EXTERN_DIR}/json
   ${OTHER_EXTERN_DIR}/sol2
   ${OTHER_EXTERN_DIR}/sol2/lua
+  ${OTHER_EXTERN_DIR}/physx
+  ${OTHER_EXTERN_DIR}/jolt
   ${IMGUI_INCLUDE_DIRS}
 )
+
 if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(OTHER_EXTERN_INCLUDE_DIRS ${OTHER_EXTERN_INCLUDE_DIRS} 
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/tracy"
   )
 endif()
 
-set(DOTNET_INCLUDE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/json"
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/mio"
-                             "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/src"
+set(DOTNET_INCLUDE_DIRECTORY 
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/json"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/mio"
+  # "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/src"
 )
 set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
 set(DOTNET_LIBRARIES nethost)

@@ -4,8 +4,8 @@
 #include "project-creator.hpp"
 
 #include <imgui/imgui.h>
-#include <nfd/nfd.h>
-#include <nfd_common.h>
+// #include <nfd/nfd.h>
+// #include <nfd_common.h>
 
 #include "core/defines.hpp"
 
@@ -84,31 +84,31 @@ namespace other {
       ImGui::Text("Working Directory: %s", disp_working_dir.c_str());
 
       if (ImGui::Button("Select Location")) {
-        nfdchar_t* outPath = nullptr;
-        nfdresult_t result = NFD_PickFolder(nullptr, &outPath);
+        // nfdchar_t* outPath = nullptr;
+        // nfdresult_t result = NFD_PickFolder(nullptr, &outPath);
 
-        std::string selected_path;
-        if (result == NFD_OKAY) {
-          selected_path = std::string(outPath);
-          NFDi_Free(outPath);
+        // std::string selected_path;
+        // if (result == NFD_OKAY) {
+        //   selected_path = std::string(outPath);
+        //   NFDi_Free(outPath);
 
-          filepath project_directory = selected_path / filepath(creator.context.project_name);
-          if (!creator.context.project_name.empty()) {
-            creator.context.project_path = project_directory / filepath(creator.context.project_name + ".toml");
+        //   filepath project_directory = selected_path / filepath(creator.context.project_name);
+        //   if (!creator.context.project_name.empty()) {
+        //     creator.context.project_path = project_directory / filepath(creator.context.project_name + ".toml");
 
-            if (std::filesystem::exists(project_directory)) {
-              CORE_LOG_WARN("Project directory already exists: {}", project_directory.string());
-            } else {
-              std::filesystem::create_directories(project_directory);
-            }
-          }
-          creator.context.working_directory = project_directory;
+        //     if (std::filesystem::exists(project_directory)) {
+        //       CORE_LOG_WARN("Project directory already exists: {}", project_directory.string());
+        //     } else {
+        //       std::filesystem::create_directories(project_directory);
+        //     }
+        //   }
+        //   creator.context.working_directory = project_directory;
 
-          CORE_LOG_INFO("User selected project path: {}", selected_path);
-        } else if (result == NFD_CANCEL) {
-        } else {
-          CORE_LOG_ERROR("Error selecting folder: {}", NFD_GetError());
-        }
+        //   CORE_LOG_INFO("User selected project path: {}", selected_path);
+        // } else if (result == NFD_CANCEL) {
+        // } else {
+        //   CORE_LOG_ERROR("Error selecting folder: {}", NFD_GetError());
+        // }
       }
 
       if (ImGui::Button("Create Project")) {

@@ -64,6 +64,10 @@ vec4 get_normal() {
 }
 
 mat4 get_bone_transform() {
+  if (!has_bones()) {
+    return mat4(1.f);
+  }
+
   mat4 bone_transform = mat4(0.f);
 
   for (int i = 0; i < MAX_VERTEX_BONE_INFLUENCE; ++i) {

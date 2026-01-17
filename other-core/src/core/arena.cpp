@@ -48,17 +48,37 @@ namespace other {
 
   void* arena::allocate(size_t size, size_t alignment) {
     PROFILE_SECTION("arena::allocate");
-    OTHER_ASSERT(size <= arena_storage::kPageSize, "Allocation size is too large for Arena.");
+    OTHER_ASSERT(size <= arena_storage::kPageSize, "Allocation size {} is too large for Arena.", size);
     arena* instance = subsystem_description<arena>::ptr();
     std::lock_guard lock_arena_mutex(instance->arena_mutex);
 
-    if (instance->page_allocation_cursor == 0 ||
-        instance->current_page == nullptr || instance->current_page->cursor + size >= arena_storage::kPageSize) {
+    size_t alignment_shift = 0;
+    size_t padding = 0;
+
+    if (instance->current_page != nullptr) {
+      alignment_shift = instance->current_page->cursor % alignment;
+      if (alignment_shift != 0) {
+        padding = alignment - alignment_shift;
+      }
+    }
+
+    size_t actual_space_needed = size + padding;
+
+    bool has_no_page = instance->page_allocation_cursor == 0 || instance->current_page == nullptr;
+    bool out_of_space = instance->current_page != nullptr && (instance->current_page->cursor + actual_space_needed >= arena_storage::kPageSize);
+    if (has_no_page || out_of_space) {
       OTHER_ASSERT(instance->page_allocation_cursor < arena_storage::kMaxPages, "Exceeded maximum number of pages. Allocating page : {}.", instance->page_allocation_cursor);
       instance->allocate_page();
     }
     OTHER_ASSERT(instance->current_page != nullptr, "Current page is null.");
 
+    padding = 0;
+    alignment_shift = instance->current_page->cursor % alignment;
+    if (alignment_shift != 0) {
+      padding = alignment - alignment_shift;
+    }
+
+    instance->current_page->cursor += padding;
     void* mem = nullptr;
     {
       PROFILE_SECTION("arena::allocate--perform-allocation");
@@ -68,7 +88,7 @@ namespace other {
     PROFILE_ALLOCATION(mem, size);
 
     instance->current_page->cursor += size;
-    instance->allocated_memory += size;
+    instance->allocated_memory += actual_space_needed;
     instance->total_allocations++;
     instance->live_allocations++;
 
@@ -123,12 +143,19 @@ namespace other {
 
   void arena::allocate_page() {
     OTHER_ASSERT(page_allocation_cursor < arena_storage::kMaxPages, "Exceeded maximum number of pages. Allocating page : {}.", page_allocation_cursor);
-
     PROFILE_SECTION("arena::allocate_page");
-    current_page = storage.allocate_page(page_allocation_cursor++);
-    CORE_LOG_TRACE("Allocated new arena page. Total pages allocated: {}", page_allocation_cursor);
+
+    if (current_page != nullptr) {
+      CORE_LOG_TRACE("[ARENA] Finalized page allocation with {} bytes used.", current_page->cursor);
+      CORE_LOG_TRACE("[ARENA] Total allocations so far: {}, total allocated memory: {} bytes.", total_allocations, allocated_memory);
+      CORE_LOG_TRACE("[ARENA] Live allocations: {}.", live_allocations);
+    }
+
+    current_page = storage.allocate_page(page_allocation_cursor);
     OTHER_ASSERT(current_page != nullptr, "Failed to allocate page.");
-    current_page->cursor = 0;
+    page_allocation_cursor++;
+
+    CORE_LOG_TRACE("[ARENA] Allocated new page ({} of {})", page_allocation_cursor, arena_storage::kMaxPages);
   }
 
 }  // namespace other

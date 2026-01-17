@@ -4,21 +4,26 @@
 #include "scene/scene.hpp"
 
 #include <cstdint>
+#include <ranges>
 
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "math/matrix.hpp"
 
 #include "model/model.hpp"
 #include "model/skeleton.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/gpu_structs.hpp"
+#include "renderer/renderer.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
+#include "object/component_registry.hpp"
 #include "object/light_component.hpp"
 #include "object/object_serialization_data.hpp"
+#include "object/physics_component.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
@@ -26,6 +31,7 @@
 #include "scene/scene_network_context.hpp"
 
 #include "entt/entity/fwd.hpp"
+#include "glm/fwd.hpp"
 #include "scene_storage.hpp"
 #include "sol/table.hpp"
 
@@ -41,7 +47,7 @@ namespace other {
   }
 
   void scene::do_final_scene_destruction_cleanup() {
-    storage->tree.destroy_all_objects();
+    clear_storage(storage);
     storage = nullptr;
   }
 
@@ -49,6 +55,10 @@ namespace other {
     storage->registry.on_construct<script_component>().connect<&scene::on_create_script_component>(this);
     // storage->registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
     storage->registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
+
+    storage->registry.on_construct<physics_component>().connect<&scene::on_create_physics_component>(this);
+    // storage->registry.on_update<physics_component>().connect<&scene::on_update_physics_component>(this);
+    storage->registry.on_destroy<physics_component>().connect<&scene::on_destroy_physics_component>(this);
 
     opt<sol::table> native_table = storage->sandbox["__other_native"];
     if (native_table.has_value() && native_table->valid()) {
@@ -100,6 +110,11 @@ namespace other {
 
   void scene::do_scene_unbinding() {
     OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
+
+    storage->registry.on_construct<physics_component>().disconnect<&scene::on_create_physics_component>(this);
+    // storage->registry.on_update<physics_component>().disconnect<&scene::on_update_physics_component>(this);
+    storage->registry.on_destroy<physics_component>().disconnect<&scene::on_destroy_physics_component>(this);
+
     storage->registry.on_construct<script_component>().disconnect<&scene::on_create_script_component>(this);
     // storage->registry.on_update<script_component>().disconnect<&scene::on_update_script_component>(this);
     storage->registry.on_destroy<script_component>().disconnect<&scene::on_destroy_script_component>(this);
@@ -111,8 +126,10 @@ namespace other {
   }
 
   scene::scene(const std::string_view name) {
+    static natural_t next_id = 1;
     this->name = name;
-    this->id = FNV(name);
+    this->id = next_id++;
+
     scene_first_construction_initialization();
     do_scene_binding();
   }
@@ -190,8 +207,6 @@ namespace other {
       CORE_LOG_DEBUG("Loading scene objects from Lua file: {}", script_path.string());
       for (auto& obj : objects_table) {
         sol::table obj_table = obj.second.as<sol::table>();
-        CORE_LOG_DEBUG(" - loading scene object from Lua table...");
-
         natural_t id = obj_table["GetId"](obj_table);
         OTHER_ASSERT(has_object(id), "Scene object with ID {} already exists!", id);
 
@@ -201,9 +216,6 @@ namespace other {
 
       CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", name, script_path.string());
     }
-  }
-
-  void scene::reset() {
   }
 
   scene scene::create_scene(const std::string& name) {
@@ -223,11 +235,54 @@ namespace other {
     }
   }
 
+  void scene::play() {
+    /// store initial state for reset
+
+    playing = true;
+
+    storage->physics->start_simulation();
+  }
+
+  void scene::stop() {
+    storage->physics->stop_simulation();
+    playing = false;
+  }
+
+  void scene::reset() {
+    /// restore initial state
+  }
+
+  void scene::enable_physics_debug_rendering() {
+    debug_physics_rendering_enabled = true;
+  }
+
+  void scene::disable_physics_debug_rendering() {
+    debug_physics_rendering_enabled = false;
+  }
+
   void scene::fixed_update(double delta_time) {
+    if (!playing) {
+      return;
+    }
     PROFILE_SECTION("scene::fixed_update");
 
-    if (storage->sandbox["OnSceneFixedUpdate"].valid()) {
-      sol::protected_function on_fixed_update_fn = storage->sandbox["OnSceneFixedUpdate"];
+    if (storage->physics != nullptr) {
+      storage->physics->step_simulation(delta_time);
+      storage->registry.view<physics_component, transform>().each([](entt::entity entity, physics_component& phys_comp, transform& trans) {
+        physics_body* body = phys_comp.body;
+        if (body == nullptr || !body->active) {
+          return;
+        }
+        glm::vec3 temp_scale;
+        decompose_mat4(phys_comp.body->interpolated_transform, trans.local_position, trans.local_rotation_quat, temp_scale);
+      });
+    }
+
+    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
+      // comp.fixed_update(delta_time);
+    });
+
+    if (sol::protected_function on_fixed_update_fn = storage->sandbox["OnSceneFixedUpdate"]; on_fixed_update_fn.valid()) {
       sol::protected_function_result result = on_fixed_update_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnFixedUpdate' for scene [{}:{}]", id, name);
@@ -235,24 +290,13 @@ namespace other {
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
     }
-
-    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
-      // comp.fixed_update(delta_time);
-    });
   }
 
   void scene::update(double delta_time) {
-    PROFILE_SECTION("scene::update");
-
-    if (storage->sandbox["OnSceneUpdate"].valid()) {
-      sol::protected_function on_update_fn = storage->sandbox["OnSceneUpdate"];
-      sol::protected_function_result result = on_update_fn(delta_time);
-      if (!result.valid()) {
-        CORE_LOG_ERROR("Failed to execute 'OnUpdate' for scene [{}:{}]", id, name);
-        sol::error err = result;
-        CORE_LOG_ERROR("Lua Error: {}", err.what());
-      }
+    if (!playing) {
+      return;
     }
+    PROFILE_SECTION("scene::update");
 
     // check_synchronization_updates();
 
@@ -270,10 +314,27 @@ namespace other {
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
       // comp.update(delta_time);
     });
+
+    if (storage->sandbox["OnSceneUpdate"].valid()) {
+      sol::protected_function on_update_fn = storage->sandbox["OnSceneUpdate"];
+      sol::protected_function_result result = on_update_fn(delta_time);
+      if (!result.valid()) {
+        CORE_LOG_ERROR("Failed to execute 'OnUpdate' for scene [{}:{}]", id, name);
+        sol::error err = result;
+        CORE_LOG_ERROR("Lua Error: {}", err.what());
+      }
+    }
   }
 
   void scene::late_update(double delta_time) {
+    if (!playing) {
+      return;
+    }
     PROFILE_SECTION("scene::late_update");
+
+    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
+      // comp.late_update(delta_time);
+    });
 
     if (storage->sandbox["OnSceneLateUpdate"].valid()) {
       sol::protected_function on_late_update_fn = storage->sandbox["OnSceneLateUpdate"];
@@ -284,10 +345,6 @@ namespace other {
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
     }
-
-    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
-      // comp.late_update(delta_time);
-    });
   }
 
   scene_object& scene::root_object() {
@@ -389,6 +446,33 @@ namespace other {
       return {};
     }
     return get_children_ids(object->id);
+  }
+
+  std::vector<scene_object*> scene::get_children(natural_t id) {
+    PROFILE_SECTION("scene::get_children");
+
+    const scene_tree::node* node = storage->tree.node_at(id);
+    if (node == nullptr) {
+      CORE_LOG_ERROR("Node with the given ID does not exist in the scene storage->tree.");
+      return {};
+    }
+
+    std::vector<scene_object*> children;
+    for (const scene_tree::node* child : node->children) {
+      if (child != nullptr && child->object != nullptr) {
+        children.push_back(child->object);
+      }
+    }
+    return children;
+  }
+
+  std::vector<scene_object*> scene::get_children(const scene_object* object) {
+    PROFILE_SECTION("scene::get_children");
+
+    if (object == nullptr) {
+      return {};
+    }
+    return get_children(object->id);
   }
 
   std::vector<uint64_t> scene::get_all_object_ids() const {
@@ -654,6 +738,29 @@ namespace other {
       }
     });
 
+    if (debug_physics_rendering_enabled && storage->physics != nullptr) {
+      physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();
+
+      auto lines_w_colors = std::views::zip(debug_data.debug_lines, debug_data.debug_line_colors);
+      data.debug_data.debug_lines.append_range(lines_w_colors | std::views::transform([](const std::pair<physics_api::line, glm::vec4>& pair) {
+                                                 return debug_line{
+                                                   .start = pair.first.start,
+                                                   .end = pair.first.end,
+                                                   .color = pair.second,
+                                                 };
+                                               }));
+
+      auto triangles_w_colors = std::views::zip(debug_data.debug_triangles, debug_data.debug_triangle_colors);
+      data.debug_data.debug_triangles.append_range(triangles_w_colors | std::views::transform([](const std::pair<physics_api::triangle, glm::vec4>& pair) {
+                                                     return debug_triangle{
+                                                       .v0 = pair.first.v0,
+                                                       .v1 = pair.first.v1,
+                                                       .v2 = pair.first.v2,
+                                                       .color = pair.second,
+                                                     };
+                                                   }));
+    }
+
     return data;
   }
 
@@ -806,6 +913,7 @@ namespace other {
     object->registry_id = (uint32_t)entity;
 
     storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
+    // storage->registry.emplace<component_registry>(entity, component_registry{});
     storage->registry.emplace<transform>(entity, transform{
                                                    orthonormal_basis(glm::vec3(0, 1, 0)),
                                                    world_position,
@@ -867,6 +975,35 @@ namespace other {
     script_env->destroy_object(script.script_object_id);
   }
 
+  void scene::on_create_physics_component(const entt::registry&, const entt::entity entity) {
+    PROFILE_SECTION("scene::on_create_physics_component");
+
+    physics_component& physics_comp = storage->registry.get<physics_component>(entity);
+    object_handle& obj_handle = storage->registry.get<object_handle>(entity);
+    physics_comp.settings.world_transform = get_world_transform(&get_object(obj_handle.id));
+
+    OTHER_ASSERT(storage->physics != nullptr, "Scene physics storage is not initialized.");
+    physics_comp.body = storage->physics->create_physics_body(physics_comp.settings);
+    physics_comp.shape = storage->physics->create_empty_shape(physics_comp.body);
+    physics_comp.body->active = true;
+
+    OTHER_ASSERT(physics_comp.body != nullptr, "Failed to create physics body for entity {}", (natural_t)entity);
+  }
+
+  // void scene::on_update_physics_component(const entt::registry&, const entt::entity entity) {}
+
+  void scene::on_destroy_physics_component(const entt::registry&, const entt::entity entity) {
+    PROFILE_SECTION("scene::on_destroy_physics_component");
+
+    physics_component& physics_comp = storage->registry.get<physics_component>(entity);
+
+    OTHER_ASSERT(storage->physics != nullptr, "Scene physics storage is not initialized.");
+    storage->physics->destroy_physics_shape(physics_comp.shape);
+    storage->physics->destroy_physics_body(physics_comp.body);
+    physics_comp.shape = nullptr;
+    physics_comp.body = nullptr;
+  }
+
   scene scene::load_from_lua_file(const filepath& scene_path) {
     scene new_scene = scene(scene_path.filename().stem().string());
     new_scene.run_lua_file(scene_path);
@@ -874,6 +1011,8 @@ namespace other {
   }
 
   void scene::construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table) {
+    PROFILE_SECTION("scene::construct_object_from_lua_table");
+
     CORE_LOG_DEBUG("Constructing scene object '{}' from Lua table.", scene_obj.name);
     const auto transform_table = obj_table["Transform"];
     const auto scripts_table = obj_table["Scripts"];

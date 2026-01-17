@@ -3,6 +3,8 @@
  **/
 #include "driver/driver.hpp"
 
+#include <sstream>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 
@@ -39,18 +41,37 @@ namespace other {
     initialize_network_context();
     get_event_system()->register_event("shutdown-requested");
     get_event_system()->add_listener("shutdown-requested", [this](const value& data) { request_shutdown(); });
-    get_event_system()->register_event("force-load-empty-scene");
-    get_event_system()->add_listener("force-load-empty-scene", std::bind_front(&driver::handle_load_empty_scene_event, this));
-    get_event_system()->register_event("force-load-scene");
-    get_event_system()->add_listener("force-load-scene", std::bind_front(&driver::handle_load_scene_event, this));
-    get_event_system()->register_event("open-driver-ui-window");
-    get_event_system()->add_listener("open-driver-ui-window", std::bind_front(&driver::handle_open_ui_window_event, this));
-    get_event_system()->register_event("close-driver-ui-window");
-    get_event_system()->add_listener("close-driver-ui-window", std::bind_front(&driver::handle_close_ui_window_event, this));
+
     get_event_system()->register_event("clear-console-output");
     get_event_system()->add_listener("clear-console-output", [this](const value& data) {
       environment_console::clear_console_output();
     });
+
+    /// scene commands
+    get_event_system()->register_event("force-load-empty-scene");
+    get_event_system()->add_listener("force-load-empty-scene", std::bind_front(&driver::handle_load_empty_scene_event, this));
+    get_event_system()->register_event("force-load-scene");
+    get_event_system()->add_listener("force-load-scene", std::bind_front(&driver::handle_load_scene_event, this));
+
+    /// open/close ui window events
+    get_event_system()->register_event("open-driver-ui-window");
+    get_event_system()->add_listener("open-driver-ui-window", std::bind_front(&driver::handle_open_ui_window_event, this));
+    get_event_system()->register_event("close-driver-ui-window");
+    get_event_system()->add_listener("close-driver-ui-window", std::bind_front(&driver::handle_close_ui_window_event, this));
+
+    // open/close file events
+    /// \todo ...
+
+    get_event_system()->register_event("ls-driver-default");
+    get_event_system()->add_listener("ls-driver-default", std::bind_front(&driver::handle_list_driver_default_event, this));
+    get_event_system()->register_event("ls-driver-windows");
+    get_event_system()->add_listener("ls-driver-windows", std::bind_front(&driver::handle_list_driver_windows_event, this));
+    get_event_system()->register_event("ls-driver-files");
+    get_event_system()->add_listener("ls-driver-files", std::bind_front(&driver::handle_list_driver_files_event, this));
+    get_event_system()->register_event("ls-driver-scenes");
+    get_event_system()->add_listener("ls-driver-scenes", std::bind_front(&driver::handle_list_driver_scenes_event, this));
+    get_event_system()->register_event("ls-driver-assets");
+    get_event_system()->add_listener("ls-driver-assets", std::bind_front(&driver::handle_list_driver_assets_event, this));
 
     /// load client specific .NET
     /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
@@ -352,13 +373,16 @@ namespace other {
       }
     }
 
-    /// about 0.02 seconds per update
-    get_event_system()->register_timed_event("scene-update", milliseconds(20), true);
+    /// 60 fps fixed update
+    /// \todo make fixed update time configurable
+    get_event_system()->register_timed_event("scene-update", milliseconds(16), true);
     get_event_system()->add_listener("scene-update", [this](const value& data) {
       if (active_scene != nullptr) {
-        active_scene->fixed_update(frame_delta_time.get_no_update());
+        constexpr static float kSixtyHertzFixedDeltaTime = 1.0f / 60.0f;
+        active_scene->fixed_update(kSixtyHertzFixedDeltaTime);
       }
     });
+    active_scene->play();
   }
 
   void driver::unload_active_scene() {
@@ -368,6 +392,9 @@ namespace other {
     }
     CORE_LOG_DEBUG("Unloading active scene [{}:{}] from driver.", active_scene->id, active_scene->name);
     /// \todo serialize or something before removing?
+
+    active_scene->stop();
+    // active_scene->reset();
     project_scene_graph->remove_scene(active_scene->id);
     active_scene = nullptr;
   }
@@ -411,30 +438,30 @@ namespace other {
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
-    /// run driver envrc file if it exists
-    std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
-    if (!envrc_path.empty() && std::filesystem::exists(envrc_path)) {
-      /// this one has to be loaded into the host without the sandboxing of the environment
-      ///  as this is supposed to be the user's customization of the environment
-      auto& lua_host = env->get_lua_host();
-      sol::state& lua_state = lua_host.get_lua_state();
-      try {
-        auto script = lua_state.script_file(envrc_path);
-        if (!script.valid()) {
-          sol::error err = script;
-          CORE_LOG_ERROR("Failed to run driver environment runtime script: {}\n{}", envrc_path, err.what());
-        } else {
-          envrc = lua_host.load_file(envrc_path);
-          CORE_LOG_INFO("Successfully ran driver environment runtime script: {}", envrc_path);
-        }
-      } catch (...) {
-        CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", envrc_path);
-      }
-    }
-
     {
       PROFILE_SECTION("driver::initialize--client-on_initialize");
       on_initialize(cmd_line);
+    }
+
+    {
+      PROFILE_SECTION("driver::initialize--client-run-envrc");
+      /// run driver envrc file if it exists
+
+      std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
+      if (!envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+        /// this one has to be loaded into the host without the sandboxing of the environment
+        ///  as this is supposed to be the user's customization of the environment
+        auto& lua_host = env->get_lua_host();
+        sol::state& lua_state = lua_host.get_lua_state();
+
+        try {
+          lua_state.script_file(envrc_path);
+        } catch (const sol::error& e) {
+          CORE_LOG_ERROR("Failed to run driver environment runtime script: {}\nLua Error: {}", envrc_path, e.what());
+        } catch (...) {
+          CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", envrc_path);
+        }
+      }
     }
   }
 
@@ -521,22 +548,22 @@ namespace other {
     return cache_file;
   }
 
-  void driver::open_ui_window(driver_ui::builtin_window_type type) {
+  void driver::open_ui_window(const std::string_view name) {
     if (!rendering_enabled()) {
       return;
     }
 
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
-    driver_ui_ptr->open_builtin_window(type);
+    driver_ui_ptr->open_window(name);
   }
 
-  void driver::close_ui_window(driver_ui::builtin_window_type type) {
+  void driver::close_ui_window(const std::string_view name) {
     if (!rendering_enabled()) {
       return;
     }
 
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
-    driver_ui_ptr->close_builtin_window(type);
+    driver_ui_ptr->close_window(name);
   }
 
   void driver::process_driver_event(driver_event event) {
@@ -639,10 +666,14 @@ namespace other {
           }
           break;
 
+          /// \todo: add input system (mouse/keyboard/gamepad) event handling here when
+          ///         input system is added
+
         default: {
         } break;
       }
 
+      /// allows ImGui to process the event
       subsystem<renderer_backend>::get()->handle_event(&event);
       on_event(&event);
     }
@@ -711,12 +742,12 @@ namespace other {
 
     udp_binding_information binding_info = other_message_spec::parse<udp_binding_information>(std::span<const uint8_t>(ackmsg.extra_data));
 
-    CORE_LOG_INFO("ENVIRONMENT_LOAD_SCENE command acknowledged by [session {}]. Requesting UDP stream", ackmsg.session_id <= 0 ? "<self>" : std::to_string(ackmsg.session_id));
+    CORE_LOG_INFO("ENVIRONMENT_LOAD_SCENE command acknowledged by [session {}].", ackmsg.session_id <= 0 ? "<self>" : std::to_string(ackmsg.session_id));
     CORE_LOG_INFO("  - Requires UDP Binding: {}", binding_info.endpoint.port != 0 && binding_info.remote_endpoint.port != 0 ? "Yes" : "No");
     if (binding_info.endpoint.port != 0 || binding_info.remote_endpoint.port != 0) {
-      CORE_LOG_INFO("  - Check-in Hash: {}", binding_info.check_in_hash);
-      CORE_LOG_INFO("  - Local Endpoint: [{}]", binding_point::write_string(binding_info.endpoint));
-      CORE_LOG_INFO("  - Remote Endpoint: [{}]", binding_point::write_string(binding_info.remote_endpoint));
+      CORE_LOG_INFO("   - Check-in Hash: {}", binding_info.check_in_hash);
+      CORE_LOG_INFO("   - Local Endpoint: [{}]", binding_point::write_string(binding_info.endpoint));
+      CORE_LOG_INFO("   - Remote Endpoint: [{}]", binding_point::write_string(binding_info.remote_endpoint));
       request_scene_udp_binding(binding_info);
     }
   }
@@ -1576,9 +1607,31 @@ namespace other {
     set_scene_to_active(scene_id);
     OTHER_ASSERT(active_scene != nullptr, "Active scene is null after loading scene.");
 
-    constexpr bool is_empty = false;
-    constexpr bool requires_udp_binding = true;
-    send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
+    bool network_thread_active = net_context->net_thread != nullptr && net_context->net_thread->is_running();
+    /// if we are a client and are connected to the server send the load command, if we are client and
+    ///  are not connected to a server we still set synchronized to false in case of a connection later
+    ///  we know to begin synchronization
+    if (network_thread_active && primary_role == driver_role::CLIENT) {
+      if (client_session_id.has_value()) {
+        constexpr bool is_empty = false;
+        constexpr bool requires_udp_binding = true;
+        send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
+      }
+
+      active_scene->synchronized = false;
+    }
+    /// if we are a server and have clients connected send the load command to them
+    else if (network_thread_active &&
+             primary_role == driver_role::SERVER && !app_list.other_apps.empty()) {
+      for (const auto& [other_app_id, other_app] : app_list.other_apps) {
+        if (!other_app.connected) {
+          continue;
+        }
+        constexpr bool is_empty = false;
+        constexpr bool requires_udp_binding = true;
+        send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
+      }
+    }
   }
 
   void driver::send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding) {
@@ -1617,23 +1670,17 @@ namespace other {
   void driver::handle_open_ui_window_event(const value& data) {
     if (data.type() == value_type::STRING) {
       std::string window_type_str = data;
-      if (window_type_str == "console") {
-        open_ui_window(driver_ui::BUILTIN_WINDOW_CONSOLE);
-      } else if (window_type_str == "viewport") {
-        open_ui_window(driver_ui::BUILTIN_WINDOW_VIEWPORT);
-      } else if (window_type_str == "type-database") {
-        open_ui_window(driver_ui::BUILTIN_WINDOW_TYPE_DATABASE);
-      } else {
-        CORE_LOG_ERROR("Unknown UI window type requested to open: {}", window_type_str);
-      }
-    } else if (data.type() == value_type::INT32) {
-      int32_t window_type_int = data;
-      if (window_type_int >= 0 && window_type_int < static_cast<int32_t>(driver_ui::NUM_BUILTIN_WINDOW_TYPES)) {
-        open_ui_window(static_cast<driver_ui::builtin_window_type>(window_type_int));
-      } else {
-        CORE_LOG_ERROR("Invalid UI window type index requested to open: {}", window_type_int);
-      }
-    } else {
+      open_ui_window(window_type_str);
+    }
+    // else if (data.type() == value_type::INT32) {
+    //   int32_t window_type_int = data;
+    //   if (window_type_int >= 0 && window_type_int < static_cast<int32_t>(driver_ui::NUM_BUILTIN_WINDOW_TYPES)) {
+    //     driver_ui_ptr
+    //   } else {
+    //     CORE_LOG_ERROR("Invalid UI window type index requested to open: {}", window_type_int);
+    //   }
+    // }
+    else {
       CORE_LOG_ERROR("Invalid data type for open-driver-ui-window event: {}", data.type());
       return;
     }
@@ -1642,26 +1689,59 @@ namespace other {
   void driver::handle_close_ui_window_event(const value& data) {
     if (data.type() == value_type::STRING) {
       std::string window_type_str = data;
-      if (window_type_str == "console") {
-        close_ui_window(driver_ui::BUILTIN_WINDOW_CONSOLE);
-      } else if (window_type_str == "viewport") {
-        close_ui_window(driver_ui::BUILTIN_WINDOW_VIEWPORT);
-      } else if (window_type_str == "type-database") {
-        close_ui_window(driver_ui::BUILTIN_WINDOW_TYPE_DATABASE);
-      } else {
-        CORE_LOG_ERROR("Unknown UI window type requested to close: {}", window_type_str);
-      }
-    } else if (data.type() == value_type::INT32) {
-      int32_t window_type_int = data;
-      if (window_type_int >= 0 && window_type_int < static_cast<int32_t>(driver_ui::NUM_BUILTIN_WINDOW_TYPES)) {
-        close_ui_window(static_cast<driver_ui::builtin_window_type>(window_type_int));
-      } else {
-        CORE_LOG_ERROR("Invalid UI window type index requested to close: {}", window_type_int);
-      }
-    } else {
+      close_ui_window(window_type_str);
+    }
+    // else if (data.type() == value_type::INT32) {
+    //   int32_t window_type_int = data;
+    //   if (window_type_int >= 0 && window_type_int < static_cast<int32_t>(driver_ui::NUM_BUILTIN_WINDOW_TYPES)) {
+    //     close_ui_window(static_cast<driver_ui::builtin_window_type>(window_type_int));
+    //   } else {
+    //     CORE_LOG_ERROR("Invalid UI window type index requested to close: {}", window_type_int);
+    //   }
+    // }
+    else {
       CORE_LOG_ERROR("Invalid data type for close-driver-ui-window event: {}", data.type());
       return;
     }
+  }
+
+  void driver::handle_list_driver_default_event(const value& data) {
+    filepath cwd = std::filesystem::current_path();
+    std::stringstream ss;
+    ss << "Current Working Directory: " << cwd.string() << "\n";
+
+    for (auto itr = std::filesystem::directory_iterator(cwd); itr != std::filesystem::directory_iterator(); ++itr) {
+      ss << " - " << itr->path().filename().string() << (itr->is_directory() ? " [DIR]" : "") << "\n";
+    }
+
+    environment_console::submit_console_text(ss.str(), CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+  }
+
+  void driver::handle_list_driver_windows_event(const value& data) {
+    std::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
+    std::vector<std::string> windows = std::span<const std::string_view>(driver_ui::kBuiltinWindowNames.data(), driver_ui::NUM_BUILTIN_WINDOW_TYPES).subspan(1) |
+      std::views::transform([](const std::string_view& name) { return std::string(name); }) |
+      std::views::filter([&open_windows](const std::string& name) { return std::ranges::find(open_windows, name) == open_windows.end(); }) |
+      std::ranges::to<std::vector>();
+
+    std::stringstream ss;
+    ss << "Available Driver UI Windows:\n";
+    for (const auto& window_name : open_windows) {
+      ss << "  - " << window_name << " (open)\n";
+    }
+    for (const auto& window_name : windows) {
+      ss << "  - " << window_name << "\n";
+    }
+    environment_console::submit_console_text(ss.str(), CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+  }
+
+  void driver::handle_list_driver_files_event(const value& data) {
+  }
+
+  void driver::handle_list_driver_scenes_event(const value& data) {
+  }
+
+  void driver::handle_list_driver_assets_event(const value& data) {
   }
 
   natural_t driver::add_scene_to_scene_graph(const filepath& scene_path) {

@@ -32,9 +32,11 @@ namespace other {
 
   void initialize_primary_arena();
 
+  void bind_physics_environment(const config_table& config);
   void bind_primary_scripting_environment(const config_table& config);
   void bind_environment_scripts();
   void cleanup_scripting_environment();
+  void cleanup_physics_environment();
 
   void register_log_sinks(const config_table& config);
   void shutdown_subsystems();

@@ -96,6 +96,8 @@ namespace other {
     if (parent_object != nullptr) {
       parent_node = node_from_scene_object(parent_object);
       OTHER_ASSERT(parent_node != nullptr, "Parent object not found in scene tree.");
+    } else {
+      parent_node = root;
     }
 
     node* new_node = create_object(parent_node);

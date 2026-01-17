@@ -100,6 +100,11 @@ namespace other {
       subsystem<renderer_backend>::get()->load_backend(config, config.rendering_backend.value(), config.window_size);
     }
 
+    bool force_disable_physics = config.get_value<bool>("physics.force-disable-physics", false);
+    if (!force_disable_physics) {
+      bind_physics_environment(config);
+    }
+
     bool force_disable_scripting = config.get_value<bool>("scripting.force-disable-scripting", false);
     if (!force_disable_scripting) {
       PROFILE_SECTION("other::entry--initialize-scripting");
@@ -136,6 +141,11 @@ namespace other {
       cleanup_scripting_environment();
     }
 
+    if (!force_disable_physics) {
+      PROFILE_SECTION("other::entry--shutdown-physics-environment");
+      cleanup_physics_environment();
+    }
+
     /// handle exit code
     CORE_LOG_INFO("Other Environment driver finished with exit code: {}", res);
 
@@ -153,6 +163,15 @@ namespace other {
       CORE_LOG_ERROR("Primary arena is null.");
       throw std::runtime_error("Primary arena is null.");
     }
+  }
+
+  void bind_physics_environment(const config_table& config) {
+    PROFILE_SECTION("other::bind-physics-environment");
+    auto* phys_env = subsystem<physics_environment>::get();
+    OTHER_ASSERT(phys_env != nullptr, "Physics environment subsystem is null.");
+
+    phys_env->load_backend(config);
+    phys_env->initialize_physics_environment(config);
   }
 
   void bind_primary_scripting_environment(const config_table& config) {
@@ -190,6 +209,13 @@ namespace other {
     env->unload_dotnet_module(env->dotnet_binding_assembly);
     env->dotnet_binding_assembly = nullptr;
     env->shutdown_script_environment();
+  }
+
+  void cleanup_physics_environment() {
+    PROFILE_SECTION("other::cleanup-physics-environment");
+    auto* phys_env = subsystem<physics_environment>::get();
+    phys_env->shutdown_physics_environment();
+    phys_env->unload_backend();
   }
 
   spdlog::sink_ptr stdout_sink_fn(const config_table& config) {
@@ -236,6 +262,7 @@ namespace other {
     PROFILE_SECTION("other::shutdown_subsystems");
     subsystem<scripting_environment>::get()->shutdown();
     subsystem<type_database>::get()->shutdown();
+    subsystem<physics_environment>::get()->shutdown();
     subsystem<renderer_backend>::get()->shutdown();
     subsystem<arena>::get()->shutdown();
     subsystem<logger>::get()->shutdown();

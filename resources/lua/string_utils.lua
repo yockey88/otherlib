@@ -1,13 +1,13 @@
 local _StringUtils = {}
 
 function _StringUtils.strip_leading_and_ending_whitespace(str)
-  return str:match("^%s*(.-)%s*$")
+  return string.match(str, "^%s*(.-)%s*$")
 end
 
 function _StringUtils.split_string_list(str)
   if str == nil or str == ""
   then
-    return {}
+    return "{}"
   end
 
   local stripped = _StringUtils.strip_leading_and_ending_whitespace(str)
@@ -50,6 +50,21 @@ function _StringUtils.split_string_list(str)
   end
 
   return args
+end
+
+function _StringUtils.as_string(obj)
+  if type(obj) == "string"
+  then
+    return obj
+  elseif type(obj) == "number" or type(obj) == "boolean"
+  then
+    return tostring(obj)
+  elseif type(obj) == "table"
+  then
+    return table.concat(obj, ", ")
+  else
+    error("Cannot convert object of type '" .. type(obj) .. "' to string")
+  end
 end
 
 return _StringUtils

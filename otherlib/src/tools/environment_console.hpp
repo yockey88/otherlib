@@ -43,7 +43,7 @@ namespace other {
     static void poll();
 
     static void push_message(const console_input& input);
-    static void submit_console_text(const std::string_view text, console_message_type type, system_timepoint time_point);
+    static void submit_console_text(const std::string_view text, console_message_type type, system_timepoint time_point = sys_clock::now());
 
     static void clear_console_output();
 
@@ -70,6 +70,7 @@ namespace other {
 
     static std::atomic<bool> console_initialized;
 
+    static std::mutex input_mutex;
     static std::atomic<bool> input_waiting;
     static std::queue<console_input> input_queue;
 

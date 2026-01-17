@@ -13,6 +13,9 @@ namespace other {
 
       constexpr auto kFriendlyErrorRed = IM_COL32(230, 51, 51, 255);
       constexpr auto kUnfriendlyErrorRed = IM_COL32(255, 0, 0, 255);
+
+      constexpr auto kTextFriendlyAlert = IM_COL32(255, 165, 0, 255);
+      constexpr auto kTextUnfriendlyAlert = IM_COL32(255, 69, 0, 255);
       constexpr auto kFireOrange = IM_COL32(242, 130, 7, 255);
 
       constexpr auto kAccent = IM_COL32(236, 158, 36, 255);

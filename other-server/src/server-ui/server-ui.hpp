@@ -4,7 +4,7 @@
 #ifndef OTHER_SERVER_SERVER_UI_SERVER_UI_HPP
 #define OTHER_SERVER_SERVER_UI_SERVER_UI_HPP
 
-#include <nfd/nfd.h>
+// #include <nfd/nfd.h>
 #include <nlohmann/json.hpp>
 
 #include "core/state_machine.hpp"

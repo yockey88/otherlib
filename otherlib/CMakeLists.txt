@@ -81,6 +81,9 @@ target_sources(otherlib
     src/ui/viewport.cpp
     src/ui/type_database.cpp
     src/ui/driver_ui.cpp
+    src/ui/scene_hierarchy.cpp
+    src/ui/scene_tree_node.cpp
+    src/ui/property_inspector_node.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp
@@ -113,13 +116,13 @@ endforeach()
 target_link_directories(otherlib PUBLIC 
   $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/sol2/lib>
 )
-target_link_libraries(otherlib PUBLIC other_scene other_renderer other_scripting other_network other_core)
+target_link_libraries(otherlib PUBLIC other_scene other_renderer other_physics other_scripting other_network other_core)
 
-if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
-  target_link_libraries(otherlib PRIVATE nfd_d)
-else()
-  target_link_libraries(otherlib PRIVATE nfd)
-endif()
+# if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+#   target_link_libraries(otherlib PRIVATE nfd_d)
+# else()
+#   target_link_libraries(otherlib PRIVATE nfd)
+# endif()
 
 add_library(otherlib_main STATIC src/other_main.cpp)
 target_link_libraries(otherlib_main PUBLIC otherlib)

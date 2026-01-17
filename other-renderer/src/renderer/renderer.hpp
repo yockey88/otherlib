@@ -20,6 +20,23 @@ namespace other {
   class render_pipeline;
   class camera;
 
+  struct debug_line {
+    glm::vec3 start;
+    glm::vec3 end;
+    glm::vec4 color;
+  };
+  struct debug_triangle {
+    glm::vec3 v0;
+    glm::vec3 v1;
+    glm::vec3 v2;
+    glm::vec4 color;
+  };
+
+  struct debug_rendering_data {
+    std::vector<debug_line> debug_lines;
+    std::vector<debug_triangle> debug_triangles;
+  };
+
   struct render_data {
     glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
 
@@ -35,6 +52,8 @@ namespace other {
     std::vector<gpu::graphics_material_buffer> material_buffers;
     std::vector<gpu::model_matrix_buffer> model_buffers;
     std::vector<gpu::bone_matrix_buffer> bone_buffers;
+
+    debug_rendering_data debug_data;
   };
 
   class renderer {

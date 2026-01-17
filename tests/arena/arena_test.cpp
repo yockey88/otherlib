@@ -41,7 +41,9 @@ namespace other {
   }
 
   void arena_test::verify_alignment(void* ptr, size_t alignment) {
+    CORE_LOG_DEBUG("Verifying alignment for pointer: {:p}", ptr);
     uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+    CORE_LOG_DEBUG("Pointer address: 0x{:x}, Alignment requirement: {}", addr, alignment);
     EXPECT_EQ(addr % alignment, 0) << "Pointer is not aligned to " << alignment << " bytes: " << addr;
     EXPECT_GE(reinterpret_cast<uint8_t*>(ptr) + kTestBlockSize, reinterpret_cast<uint8_t*>(ptr)) << "Pointer is not within valid memory range.";
     EXPECT_LE(reinterpret_cast<uint8_t*>(ptr) + kTestBlockSize, reinterpret_cast<uint8_t*>(ptr) + kPageSize) << "Pointer exceeds page size limit.";
@@ -104,6 +106,8 @@ namespace other {
 
     void* ptr = allocate_and_verify(kTestBlockSize);
     ASSERT_NE(ptr, nullptr) << "Allocation failed for size " << kTestBlockSize;
+    /// make sure it is 16-byte aligned
+    verify_alignment(ptr, kAlignment);
 
     arena::page* current_page = a->get_current_page();
     ASSERT_NE(current_page, nullptr) << "Current page is null after allocation.";
@@ -131,6 +135,21 @@ namespace other {
   TEST_F(arena_test, null_pointer_deallocation) {
     arena* a = subsystem<arena>::get();
     ASSERT_NO_THROW(a->free(nullptr, kTestBlockSize)) << "Deallocating null pointer should be perfectly safe.";
+  }
+
+  TEST_F(arena_test, arena_maintains_16byte_alignment_after_multiple_allocations) {
+    const size_t num_allocations = 10;
+    std::vector<void*> pointers;
+
+    for (size_t i = 0; i < num_allocations; ++i) {
+      void* ptr = allocate_and_verify(rand() % kTestBlockSize + 1);
+      ASSERT_NE(ptr, nullptr) << "Allocation failed for size " << kTestBlockSize;
+      pointers.push_back(ptr);
+    }
+
+    for (void* ptr : pointers) {
+      verify_alignment(ptr, kAlignment);
+    }
   }
 
   // TEST_F(arena_test, memory_pattern_integrity) {

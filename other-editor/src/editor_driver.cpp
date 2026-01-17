@@ -6,14 +6,19 @@
 #include "event/event_system.hpp"
 #include "serialization/reflection.hpp"
 
+#include "physics_world/physics_body.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "object/camera_component.hpp"
-#include "object/render_component.hpp"
+#include "object/physics_component.hpp"
+#include "object/scene_object.hpp"
 
 #include "rendering-pipelines/empty_pipeline.hpp"
 #include "tools/environment_console.hpp"
 #include "ui/driver_ui.hpp"
+
+#include "SDL3/SDL_events.h"
+#include "SDL3/SDL_keycode.h"
 
 namespace other {
 
@@ -64,9 +69,13 @@ namespace other {
       /// capture camera id
       scene_object& cam_obj = get_active_scene()->get_object("Camera");
       camera_obj_id = cam_obj.id;
-    });
 
-    open_ui_window(driver_ui::BUILTIN_WINDOW_CONSOLE);
+      scene_object& my_obj = get_active_scene()->get_object("MyObject");
+      scene_object& floor_obj = get_active_scene()->get_object("Floor");
+
+      get_active_scene()->add_component<physics_component>(&my_obj, physics_body_settings{ .body_type = BODY_TYPE_STATIC });
+      get_active_scene()->add_component<physics_component>(&floor_obj, physics_body_settings{ .body_type = BODY_TYPE_STATIC });
+    });
 
     /// ready : initializing -> running
     /// nothing to do right now for editor, should start in running state
@@ -116,42 +125,23 @@ namespace other {
   static glm::vec4 major_grid_color = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
   static float grid_thickness = 1.0f;
   static float major_thickness = 2.0f;
+  static bool ctrl_layer = false;
 
   void editor_driver::on_event(SDL_Event* event) {
     if (get_active_scene() == nullptr) {
       return;
     }
-
-    enum camera_move_flags : uint8_t {
-      NONE = 0,
-      CAMERA_MOVE_FORWARD = 1 << 0,
-      CAMERA_MOVE_BACKWARD = 1 << 1,
-      CAMERA_MOVE_RIGHT = 1 << 2,
-      CAMERA_MOVE_LEFT = 1 << 3,
-      CAMERA_MOVE_UP = 1 << 4,
-      CAMERA_MOVE_DOWN = 1 << 5
+    enum movement_flags {
+      MOVE_FORWARD = 1 << 0,
+      MOVE_BACKWARD = 1 << 1,
+      MOVE_LEFT = 1 << 2,
+      MOVE_RIGHT = 1 << 3,
+      MOVE_UP = 1 << 4,
+      MOVE_DOWN = 1 << 5,
     };
-
-    uint8_t flags = NONE;
-    scene_object& cam_obj = get_active_scene()->get_object(camera_obj_id);
-    camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+    movement_flags move_flags = static_cast<movement_flags>(0);
 
     switch (event->type) {
-      case SDL_EVENT_KEY_DOWN:
-        if (SDLK_W == event->key.key) {
-          flags |= CAMERA_MOVE_FORWARD;
-        }
-        if (SDLK_S == event->key.key) {
-          flags |= CAMERA_MOVE_BACKWARD;
-        }
-        if (SDLK_A == event->key.key) {
-          flags |= CAMERA_MOVE_LEFT;
-        }
-        if (SDLK_D == event->key.key) {
-          flags |= CAMERA_MOVE_RIGHT;
-        }
-        break;
-
       case SDL_EVENT_MOUSE_WHEEL:
         /// zoom grid in/out
         if (event->wheel.y > 0) {
@@ -175,28 +165,57 @@ namespace other {
         }
         break;
 
+      case SDL_EVENT_KEY_DOWN:
+        if (event->key.key == SDLK_W) {
+          move_flags = static_cast<movement_flags>(move_flags | MOVE_FORWARD);
+        } else if (event->key.key == SDLK_S) {
+          move_flags = static_cast<movement_flags>(move_flags | MOVE_BACKWARD);
+        } else if (event->key.key == SDLK_A) {
+          move_flags = static_cast<movement_flags>(move_flags | MOVE_LEFT);
+        } else if (event->key.key == SDLK_D) {
+          move_flags = static_cast<movement_flags>(move_flags | MOVE_RIGHT);
+        } else if (event->key.key == SDLK_LSHIFT) {
+          move_flags = static_cast<movement_flags>(move_flags | MOVE_UP);
+        } else if (event->key.key == SDLK_LCTRL) {
+          ctrl_layer = true;
+          move_flags = static_cast<movement_flags>(move_flags | MOVE_DOWN);
+        } else if (ctrl_layer && event->key.key == SDLK_M) {
+          move_toggled_on = !move_toggled_on;
+        }
+        break;
+
+      case SDL_EVENT_KEY_UP:
+        if (event->key.key == SDLK_LCTRL) {
+          ctrl_layer = false;
+        }
+
       default:
         break;
     }
 
-    if (flags == NONE) {
-      return;
-    }
+    if (move_toggled_on && move_flags != 0) {
+      scene_object& cam_obj = get_active_scene()->get_object(camera_obj_id);
+      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
 
-    if ((flags & CAMERA_MOVE_FORWARD) == CAMERA_MOVE_FORWARD) {
-      cam->camera.position += cam->camera.forward() * cam->camera.sensitivity;
-    }
-
-    if ((flags & CAMERA_MOVE_BACKWARD) == CAMERA_MOVE_BACKWARD) {
-      cam->camera.position -= cam->camera.forward() * cam->camera.sensitivity;
-    }
-
-    if ((flags & CAMERA_MOVE_RIGHT) == CAMERA_MOVE_RIGHT) {
-      cam->camera.position += cam->camera.right() * cam->camera.sensitivity;
-    }
-
-    if ((flags & CAMERA_MOVE_LEFT) == CAMERA_MOVE_LEFT) {
-      cam->camera.position -= cam->camera.right() * cam->camera.sensitivity;
+      float move_speed = 0.1f;
+      if ((move_flags & MOVE_FORWARD) == MOVE_FORWARD) {
+        cam->camera.position += cam->camera.forward() * move_speed;
+      }
+      if ((move_flags & MOVE_BACKWARD) == MOVE_BACKWARD) {
+        cam->camera.position -= cam->camera.forward() * move_speed;
+      }
+      if ((move_flags & MOVE_LEFT) == MOVE_LEFT) {
+        cam->camera.position -= cam->camera.right() * move_speed;
+      }
+      if ((move_flags & MOVE_RIGHT) == MOVE_RIGHT) {
+        cam->camera.position += cam->camera.right() * move_speed;
+      }
+      if ((move_flags & MOVE_UP) == MOVE_UP) {
+        cam->camera.position += cam->camera.up() * move_speed;
+      }
+      if ((move_flags & MOVE_DOWN) == MOVE_DOWN) {
+        cam->camera.position -= cam->camera.up() * move_speed;
+      }
     }
   }
 
