@@ -18,16 +18,13 @@ namespace other {
   void renderer::begin_frame(render_data* data) {
     if (data != nullptr) {
       scene_data = data;
+      rendering()->api()->set_clear_color(data->clear_color);
     }
     rendering()->api()->begin_frame();
   }
 
   void renderer::render() {
     PROFILE_SECTION("renderer::render");
-    if (scene_data == nullptr || scene_data->draw_calls.empty()) {
-      return;
-    }
-
     for (const auto& [id, pl] : pipelines) {
       if (pl->is_valid()) {
         current_frame_resources = pl->get_frame_resources();
@@ -58,7 +55,12 @@ namespace other {
     }
 
     int width, height;
-    SDL_GetWindowSize(window, &width, &height);
+    bool success = SDL_GetWindowSize(window, &width, &height);
+    if (!success) {
+      CORE_LOG_ERROR("Failed to get window size: {}", SDL_GetError());
+      return { 0, 0 };
+    }
+
     return { width, height };
   }
 
@@ -85,6 +87,10 @@ namespace other {
     rendering()->api()->destroy_resource(handle);
   }
 
+  bool renderer::resource_exists(const resource_handle& handle) {
+    return rendering()->api()->resource_exists(handle);
+  }
+
   void renderer::remove_pipeline(const std::string_view name) {
     uint64_t hash = FNV(name);
     auto itr = pipelines.find(hash);
@@ -95,21 +101,25 @@ namespace other {
 
     render_pipeline* pipeline = itr->second;
     pipeline->shutdown_pipeline();
-    delete pipeline;
+    arena_allocator<render_pipeline>{}.free(pipeline);
     pipelines.erase(itr);
   }
 
-  void renderer::execute_draw_calls() {
+  void renderer::execute_draw_calls(render_graph::node* current_node) {
+    OTHER_ASSERT(current_node != nullptr, "Current node must not be null.");
+
     if (scene_data == nullptr || scene_data->draw_calls.empty()) {
-      CORE_LOG_WARN("No render data submitted for this frame, skipping draw calls.");
       return;
     }
+
     PROFILE_SECTION("renderer::execute_draw_calls");
 
     gpu_buffer* material_buffer = rendering()->api()->get_resource_as<gpu_buffer>(current_frame_resources.material_buffer);
     gpu_buffer* model_buffer = rendering()->api()->get_resource_as<gpu_buffer>(current_frame_resources.model_buffer);
+    gpu_buffer* bone_buffer = rendering()->api()->get_resource_as<gpu_buffer>(current_frame_resources.bone_buffer);
     OTHER_ASSERT(material_buffer != nullptr, "Material buffer is null");
     OTHER_ASSERT(model_buffer != nullptr, "Model buffer is null");
+    OTHER_ASSERT(bone_buffer != nullptr, "Bone buffer is null");
 
     for (natural_t i = 0; i < scene_data->num_draw_calls; ++i) {
       draw_call& call = scene_data->draw_calls[i];
@@ -120,12 +130,16 @@ namespace other {
       mesh_key& key = scene_data->mesh_keys[i];
       gpu::graphics_material_buffer& cpu_material_storage = scene_data->material_buffers[i];
       gpu::model_matrix_buffer& cpu_model_storage = scene_data->model_buffers[i];
+      gpu::bone_matrix_buffer& bone_buffer_data = scene_data->bone_buffers[i];
 
       material_buffer
         ->set_data(&cpu_material_storage, sizeof(gpu::graphics_material_buffer))
         .finalize_buffer();
       model_buffer
         ->set_data(&cpu_model_storage, sizeof(gpu::model_matrix_buffer))
+        .finalize_buffer();
+      bone_buffer
+        ->set_data(&bone_buffer_data, sizeof(gpu::bone_matrix_buffer))
         .finalize_buffer();
 
       rendering()->api()->execute_draw_call(key.render_state, key.draw_mode, call);

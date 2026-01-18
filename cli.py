@@ -4,31 +4,18 @@ import sys
 import argparse
 import shutil
 
-def find_msbuild():
-  # Check if MSBuild is in the PATH
-  msbuild_path = subprocess.run(["where", "msbuild"], capture_output=True, text=True)
-  if msbuild_path.returncode == 0:
-    return msbuild_path.stdout.strip()
-  
-  # If not found, check the default installation path
-  default_paths = [
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
-    "C:\\Program Files\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
-    "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
-
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe",
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe",
-    "C:\\Program Files\\Microsoft Visual Studio\\2019\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe",
-    "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe",
+def get_physx_dlls(dll_cfg):
+  physx_base_path = "extern/physx/bin/"
+  dlls = [
+    f"{physx_base_path}{dll_cfg}/PhysX_64.dll",
+    f"{physx_base_path}{dll_cfg}/PhysXCommon_64.dll",
+    f"{physx_base_path}{dll_cfg}/PhysXCooking_64.dll",
+    f"{physx_base_path}{dll_cfg}/PhysXFoundation_64.dll",
+    f"{physx_base_path}{dll_cfg}/PhysXGpu_64.dll",
   ]
-  
-  for path in default_paths:
-    if os.path.exists(path):
-      return path
-  
-  print("MSBuild not found. Please install Visual Studio (2019 or 2022) with MSBuild.")
-  sys.exit(1)
+  if dll_cfg == "Debug":
+    dlls.append(f"{physx_base_path}{dll_cfg}/PVDRuntime_64.dll")
+  return dlls
 
 def regen_project():
   print("Regenerating the project files...")
@@ -37,30 +24,19 @@ def regen_project():
     print("Solution file does not exist. Please try again.")
     sys.exit(1)
 
-def build_sln_file(sln_file, cfg=None):
-  print(f"Building the project : {sln_file}...")
-  msbuild_path = find_msbuild()
-  msargs = [
-    msbuild_path,
-    sln_file,
-    f"/p:Configuration={cfg}" if cfg else "/p:Configuration=Release",
-  ]
-  try:
-    subprocess.run(msargs, check=True)
-  except subprocess.CalledProcessError as e:
-    print(f"Error: {e}")
-    sys.exit(1)
-
 def copy_dlls(cfg, dll_cfg):
   print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
-  assimp_debug = "extern/assimp/lib/debug/assimp-vc143-mtd.dll"
-  assimp_release = "extern/assimp/lib/release/assimp-vc143-mt.dll"
+
+  all_physx_dlls = get_physx_dlls(dll_cfg)
+
   dlls = [
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
-    assimp_debug if cfg == "Debug" else assimp_release,
+    "extern/assimp/lib/assimp-vc143-mt.dll",
     f"extern/python312/python312.dll",
     "extern/steamworks/bin/steam_api64.dll",
+    "extern/sol2/lib/lua-5.4.4.dll",
   ]
+  dlls.extend(all_physx_dlls)
   destinations = [
     f"build/development-drivers/{cfg}/",
     f"build/driver/{cfg}/",
@@ -68,22 +44,15 @@ def copy_dlls(cfg, dll_cfg):
     f"build/scratch/{cfg}/",
     f"build/tests/{cfg}/",
     f"build/tools/{cfg}/",
+    f"build/other-editor/{cfg}/",
+    f"build/other-server/{cfg}/",
   ]
-  
-  if cfg == "Debug" or cfg == "ProfileD":
-    if os.path.exists(assimp_debug):
-      dlls.append(assimp_debug)
-  else:
-    if os.path.exists(assimp_release):
-      dlls.append(assimp_release)
 
   for dll in dlls:
     if os.path.exists(dll):
       for dest in destinations:
         if os.path.exists(dest):
           shutil.copy(dll, dest)
-          # print(f"Copied {dll} to {dest}")
-
     else:
       print(f"Warning: {dll} does not exist.")
 
@@ -98,10 +67,10 @@ def run_subprocess(args):
 
 def run_project(out_dir, cfg, name, config_file, args, verbose = False, extra_args=None):
   run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}"]
+  # if verbose:
+  run_command.append("--verbose")
   if extra_args:
     run_command.extend(extra_args)
-  if verbose:
-    run_command.append("--verbose")
   run_subprocess(run_command)
   
 ## TODO: this is ugly, fix this
@@ -110,8 +79,10 @@ def validate_args(args, parser):
       and not args.run and not args.run_scratch \
       and not args.run_terminal and not args.run_tests \
       and not args.compile_serialization_schema \
-      and not args.compile_object and not args.generate_cs_bindings \
-      and not args.run_test_suite and not args.run_server:
+      and not args.compile_object \
+      and not args.run_test_suite and not args.run_server \
+      and not args.install \
+      and not args.daemon_server:
     parser.print_help()
     sys.exit(1)
 
@@ -130,18 +101,15 @@ if __name__ == "__main__":
   parser.add_argument("--compile-serialization-schema", "-css", type=str, help="Compile the serialization schema.")
   parser.add_argument("--compile-object", "-co", nargs = 2, type=str, metavar=("SCHEMA_FILE", "OBJECT_FILE"), help="Compile a binary object using the <object_file> and the <schema_file>")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
-  parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
-  # parser.add_argument("--regen-compile-commands", "-rcc", action="store_true", help="Regenerate the compile_commands.json file.")
+  # parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
+  parser.add_argument("--install", "-i", action="store_true", help="Install Other Environment to the system.")
+  parser.add_argument("--daemon-server", "-dsrv", action="store_true", help="Run the Other Environment Daemon Server.")
 
   args = parser.parse_args()
   try:
     validate_args(args, parser)
 
     cfg = args.cfg
-
-    if args.generate_cs_bindings:
-      print("Generating C# bindings...")
-      run_subprocess([f"build/code-generator/{cfg}/OtherCsBindingsGenerator.exe"])
 
     if args.compile_serialization_schema is not None and os.path.exists(args.compile_serialization_schema):
       if not args.compile_serialization_schema.endswith(".fbs"):
@@ -157,6 +125,16 @@ if __name__ == "__main__":
                       args.compile_serialization_schema])
                       #  "--gen-object-api", "--gen-mutable", "--gen-all", 
       print("Serialization schema compiled successfully.")
+
+    if args.install:
+      # remove if installation folder exists, this only works locally for dev testing (and only on windows)
+      if os.path.exists("C:/OtherEnvironment/"):
+        shutil.rmtree("C:/OtherEnvironment/")
+      run_subprocess(["cmake", "-S", ".", "-B", "build"])
+      run_subprocess(["cmake", "--build", "build", "--config", cfg])
+      run_subprocess(["cmake", "--install", "build", "--config", cfg])
+      print("Other Environment installed successfully.")
+      sys.exit(0)
 
     if args.compile_object is not None and len(args.compile_object) == 2:
       schema_file, object_file = args.compile_object
@@ -175,17 +153,7 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
-      ### run dotnet restore on solution file to restore nuget packages
-      # this has to happen before build step cause bulding dotnet projects
-      # requires the *.project.json files to be present
-      print("Restoring .NET packages...")
-      run_subprocess(["dotnet", "restore", "build/other.sln"])
-
-      filename = "build/other.sln"
-      if not os.path.exists(filename):
-        print(f"Solution file {filename} does not exist. Please regenerate the project files first.")
-        sys.exit(1)
-      build_sln_file(filename, cfg)
+      run_subprocess(["cmake", "--build", "build", "--config", cfg])
 
       dll_cfg = "Release"
       if cfg == "Debug" or cfg == "ProfileD":
@@ -195,12 +163,10 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      # run_subprocess(["build/driver/" + cfg + "/other_driver.exe", "script-config.toml"])
-      # run_subprocess(["build/scratch/" + cfg + "/coro-testing.exe", "resources/dev-test-config.toml"])
-      run_project("development-drivers", cfg, "runtime_dev", "dev-config.toml", args, args.verbose)
-      
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args, args.verbose)
     elif args.run_server:
-      run_project("development-drivers", cfg, "server_dev", "server-config.toml", args, args.verbose)
+      run_project("other-server", cfg, "other_server", "server-config.toml", args, args.verbose)
+
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
       run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)
@@ -209,11 +175,21 @@ if __name__ == "__main__":
       run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args, args.verbose)
     elif args.run_tests:
       print("Running tests...")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=["--gtest_shuffle", "--gtest_output=xml:other_test_results.xml"])
+      extra_args = [ "--gtest_shuffle" ]
+      
+      ## TODO: fix platform specific output paths
+      if cfg == "Debug" or cfg == "ProfileD":
+        extra_args.append("--gtest_output=xml:other_test_results.windows.debug.xml")
+      else:
+        extra_args.append("--gtest_output=xml:other_test_results.windows.release.xml")
+
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=extra_args)
     elif args.run_test_suite is not None and len(args.run_test_suite) == 1:
       test_filter = args.run_test_suite[0]
       print(f"Running test suite with filter: {test_filter}")
       run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=[f"--gtest_filter={test_filter}", "--gtest_shuffle"])
+    elif args.daemon_server:
+      run_subprocess(["pwsh.exe", "-File", "tools/daemon-server.ps1"])
       
   except subprocess.CalledProcessError as e:
     print(f"Error: {e}")

@@ -18,11 +18,15 @@ namespace other {
 
       MODEL_SOURCE,
       MODEL,
+      ANIMATION,
 
       SCRIPT_SOURCE,
       SCRIPT,
 
       AUDIO,
+
+      SCENE,
+      SCENE_OBJECT,
 
       EMPTY,
       NUM_ASSET_TYPES = EMPTY,
@@ -42,7 +46,7 @@ namespace other {
     asset::type asset_type;
     std::string_view extension;
   };
-  constexpr inline std::array<std::string_view, 10> kFileExtensions = {
+  constexpr inline std::array<std::string_view, 11> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
 
@@ -50,12 +54,18 @@ namespace other {
     ".fbx",    // MODEL_SOURCE
     ".obj",    // MODEL_SOURCE
 
+    /// usually actually just loaded from fbx with model source
+    ".anim",  // ANIMATION
+
     ".cs",   // SCRIPT_SOURCE
     ".lua",  // SCRIPT_SOURCE
     ".py",   // SCRIPT_SOURCE
 
     ".mp3",  // AUDIO
     ".wav",  // AUDIO
+
+    // ".scene",         // SCENE
+    // ".scene-object",  // SCENE_OBJECT
   };
 
   constexpr inline std::array<asset_extension, kFileExtensions.size()> kAssetExtensions{
@@ -67,6 +77,8 @@ namespace other {
       { asset::MODEL_SOURCE, ".fbx" },
       { asset::MODEL_SOURCE, ".obj" },
 
+      { asset::ANIMATION, ".anim" },
+
       { asset::SCRIPT_SOURCE, ".cs" },
       { asset::SCRIPT_SOURCE, ".lua" },
       { asset::SCRIPT_SOURCE, ".py" },
@@ -75,17 +87,6 @@ namespace other {
       { asset::AUDIO, ".wav" },
     }
   };
-
-  struct model_source_asset {
-    ref<model_source> source = nullptr;
-    natural_t asset_id;
-  };
-
-  struct model_asset {
-    // ref<model> model_ptr = nullptr;
-    // natural_t asset_id;
-  };
-
 }  // namespace other
 
 #endif  // OTHER_SCENE_ASSET_ASSET_HPP

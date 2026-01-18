@@ -20,8 +20,12 @@ namespace other {
   }
 
   void rendering_api::initialize(scope<window_manager> window_mgr) {
+    PROFILE_SECTION("rendering_api::initialize");
     this->window_mgr = std::move(window_mgr);
-    on_initialize(this->window_mgr);
+    {
+      PROFILE_SECTION("rendering_api::initialize--client-on_initialize");
+      on_initialize(this->window_mgr);
+    }
   }
 
   void rendering_api::shutdown() {
@@ -190,6 +194,11 @@ namespace other {
       CORE_LOG_ERROR("Failed to set name '{}' for resource ID: {}", name, handle.id);
       return;
     }
+  }
+
+  bool rendering_api::resource_exists(const resource_handle& handle) {
+    auto itr = resources.find(handle.id);
+    return itr != resources.end();
   }
 
   resource* rendering_api::get_resource(natural_t id) {

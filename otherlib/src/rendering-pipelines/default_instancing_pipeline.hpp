@@ -1,17 +1,19 @@
 /**
  * \file rendering-pipelines/default_instancing_pipeline.hpp
  **/
-#ifndef RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
-#define RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
+#ifndef OTHERLIB_RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
+#define OTHERLIB_RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
 
 #include "renderer/render_pipeline.hpp"
 
 namespace other {
 
+  /// \todo fix this add options for configuration and use assets instead of raw
+  ///         resources
   class default_instancing_pipeline : public render_pipeline {
    public:
     default_instancing_pipeline() = default;
-    ~default_instancing_pipeline() = default;
+    virtual ~default_instancing_pipeline() override = default;
 
    private:
     resource_handle quad_mesh_handle;
@@ -30,4 +32,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP
+#endif  // OTHERLIB_RENDERING_PIPELINES_DEFAULT_INSTANCING_PIPELINE_HPP

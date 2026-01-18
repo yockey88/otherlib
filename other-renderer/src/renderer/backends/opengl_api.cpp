@@ -160,15 +160,17 @@ namespace other {
   }
 
   void opengl_api::set_clear_color(const glm::vec4& color) {
-    glClearColor(color.r, color.g, color.b, color.a);
     override_clear_color(color);
   }
 
   void opengl_api::on_begin_frame(scope<window_manager>& window_mgr) {
     PROFILE_SECTION("opengl_api::on_begin_frame");
     glm::vec3 clear_color = get_clear_color();
+
+    // auto window_size = get_window_size();
+    // glViewport(0, 0, window_size.x, window_size.y);
     glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   }
 
   void opengl_api::on_end_frame(scope<window_manager>& window_mgr) {
@@ -194,7 +196,7 @@ namespace other {
     glPolygonMode(GL_FRONT_AND_BACK, get_gl_render_polygon_mode(render_state));
 
     glBindVertexArray(gpu_mesh_handle->second);
-    glDrawElementsInstancedBaseVertexBaseInstance(get_gl_prim_type(draw_mode), call.index_count, GL_UNSIGNED_INT, (void*)0, call.instance_count, call.vertex_offset, 0);
+    glDrawElementsInstancedBaseVertexBaseInstance(get_gl_prim_type(draw_mode), call.index_count, GL_UNSIGNED_INT, (void*)(call.index_offset * sizeof(uint32_t)), call.instance_count, call.vertex_offset, 0);
     glBindVertexArray(0);
 
     CHECKGL();
@@ -851,9 +853,9 @@ namespace other {
       return;
     }
 
-    // Set viewport to match framebuffer size
     const auto& fb = itr->second;
     glViewport(0, 0, fb.size.x, fb.size.y);
+
     glClearColor(fb.clear_color.r, fb.clear_color.g, fb.clear_color.b, fb.clear_color.a);
     glClear(get_gl_clear_bits(fb.clear_mask));
     CHECKGL();
@@ -862,9 +864,15 @@ namespace other {
   void opengl_api::unbind_framebuffer_resource(const resource_handle& handle) {
     PROFILE_SECTION("opengl_api::unbind_framebuffer_resource");
 
+    auto itr = framebuffer_resources.find(handle.id);
+    if (itr == framebuffer_resources.end()) {
+      CORE_LOG_ERROR("Framebuffer resource with ID {} not found. cannot unbind", handle.id);
+      return;
+    }
+
+    const auto& fb = itr->second;
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
 
     CHECKGL();
   }
@@ -960,7 +968,7 @@ namespace other {
       uint32_t renderbuffer_id = 0;
       glGenRenderbuffers(1, &renderbuffer_id);
       glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
-      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1280, 720);
+      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, itr->second.size.x, itr->second.size.y);
       glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
       auto [rb_itr, rb_inserted] = framebuffer_renderbuffers.emplace(handle.id, renderbuffer_id);

@@ -24,6 +24,11 @@ namespace other {
       return native_string::new_str(app_data_folder.string());
     }
 
+    native_string native_get_install_folder() {
+      filepath install_folder = get_other_environment_install_folder();
+      return native_string::new_str(install_folder.string());
+    }
+
     /// UI.
 
     bool native_begin_window(native_string title, int32_t flags) {
@@ -48,8 +53,17 @@ namespace other {
 
     template <typename Fn>
     void bind_function(dotnet_host& dn_host, native_string name, Fn fn) {
+      PROFILE_SECTION("other::bindings::bind-function");
       void* fn_ptr = (void*)fn;
       dn_host.interop().bind_native_function(name, fn_ptr);
+    }
+
+    void validate_binding_points(dotnet_host& dn_host) {
+      PROFILE_SECTION("other::bindings::validate-binding-points");
+      nbool32 res = dn_host.interop().validate_binding_points();
+      if (!res) {
+        CORE_LOG_ERROR("One or more native functions failed to bind to managed counterparts.");
+      }
     }
 
     struct binding_context {
@@ -60,6 +74,7 @@ namespace other {
 
       template <typename Fn>
       binding_context& bind(const std::string_view name, Fn fn) {
+        PROFILE_SECTION("other::bindings::binding_context::bind");
         native_scoped_string fn_name = native_string::new_str(name);
         bind_function(host, fn_name, fn);
         return *this;
@@ -69,12 +84,14 @@ namespace other {
   }  // namespace bindings
 
   void bind_otherlib_dotnet_functions(dotnet_host& dn_host) {
+    PROFILE_SECTION("other::bind-otherlib-dotnet-functions");
     dn_host.rediscover_binding_points();
 
     bindings::binding_context{ dn_host }
       /// Filesystem.
       .bind("GetProgramFilesFolder", bindings::native_get_program_files_folder)
-      .bind("GetAppDataFolder", bindings::native_get_app_data_folder);
+      .bind("GetAppDataFolder", bindings::native_get_app_data_folder)
+      .bind("GetInstallFolder", bindings::native_get_install_folder);
 
     bindings::binding_context{ dn_host }
       /// UI.
@@ -82,6 +99,8 @@ namespace other {
       .bind("EndWindow", bindings::native_end_window)
       .bind("BeginChild", bindings::native_begin_child)
       .bind("EndChild", bindings::native_end_child);
+
+    bindings::validate_binding_points(dn_host);
   }
 
 }  // namespace other

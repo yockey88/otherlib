@@ -1,0 +1,5 @@
+print("Hello from editor-rc.lua!")
+Other:LoadScene("resources/scenes/scene1.lua")
+Other:Driver():OpenWindow("console")
+Other:Driver():OpenWindow("viewport")
+Other:Driver():OpenWindow("scene-hierarchy")

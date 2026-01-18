@@ -17,16 +17,16 @@ namespace other {
       INVALID_PROJECT_TYPE = NUM_PROJECT_TYPES,
     };
     type project_type = APPLICATION;
-    std::string name = "NewProject";
-    std::string override_file_name = "";
-    filepath working_directory = "${CWD}";
+    std::string project_name = "NewProject";
 
-    filepath output_directory = "${CWD}/build";
-    filepath exe_name = "${CWD}/OtherApp.exe";
+    filepath environment_config = "${project-directory}/${project-name}.toml";
+    filepath working_directory = "${project-directory}";
+    filepath output_directory = "${project-directory}/build";
+    filepath exe_name = "${project-directory}/${project-name}.exe";
 
     std::vector<std::string> configurations = { "Debug", "Release" };
-    size_t active_configuration = 0;
 
+    size_t active_configuration = 0;
     std::vector<std::string> cmd_args = {};
 
     std::string version = "0.1.0";

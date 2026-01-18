@@ -10,6 +10,8 @@ namespace Other.Core
 
     [NativeFunction("GetAppDataFolder")]
     internal static unsafe delegate*<NativeString, NativeBool32, NativeString> NativeGetAppDataFolder;
+    [NativeFunction("GetInstallFolder")]
+    internal static unsafe delegate*<NativeString> NativeGetInstallFolder;
 
     public static string GetProgramFilesFolder(string app_name)
     {
@@ -29,6 +31,16 @@ namespace Other.Core
       unsafe
       {
         native_path = NativeGetAppDataFolder(app_name_str, create);
+      }
+      return native_path.ToString();
+    }
+
+    public static string GetInstallFolder()
+    {
+      NativeString native_path;
+      unsafe
+      {
+        native_path = NativeGetInstallFolder();
       }
       return native_path.ToString();
     }

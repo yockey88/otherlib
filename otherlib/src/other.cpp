@@ -5,6 +5,9 @@
 
 #include <iostream>
 
+#include <spdlog/common.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
@@ -14,12 +17,12 @@
 #include "core/version.hpp"
 #include "serialization/reflection.hpp"
 
+#include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "scripting/dotnet_bindings.hpp"
-
-#include "spdlog/common.h"
+#include "scripting/lua_bindings.hpp"
 
 #ifndef OTHER_TEST_ENVIRONMENT
 /// if not test environment and this is not an other application then we define the extern main function for the static driver
@@ -53,44 +56,64 @@ namespace other {
     if (cmd.working_directory.has_value()) {
       filepath cwd = cmd.working_directory.value();
       if (!std::filesystem::exists(cwd) || !std::filesystem::is_directory(cwd)) {
-        std::println(std::cerr, "Invalid working directory specified: '{}'", cwd.string());
+        std::println(std::cerr, "[ERROR]: Invalid working directory specified: '{}'", cwd.string());
         return FAILURE;
       }
 
       std::error_code ec;
       std::filesystem::current_path(cmd.working_directory.value(), ec);
       if (ec) {
-        std::println(std::cerr, "Failed to set working directory to '{}': {}", cwd.string(), ec.message());
+        std::println(std::cerr, "[ERROR]: Failed to set working directory to '{}': {}", cwd.string(), ec.message());
         return FAILURE;
       }
     }
 
     config_table config = {};
     if (std::filesystem::exists(cmd.config_file)) {
+      PROFILE_SECTION("other::entry--load-config");
+
       config = config_table::load(cmd.config_file);
       if (!config.valid) {
-        std::println(std::cerr, "Failed to load configuration file: '{}'", cmd.config_file);
+        std::println(std::cerr, "[ERROR]: Failed to load configuration file: '{}'", cmd.config_file);
         return -1;
       }
 
     } else if (!cmd.config_file.empty()) {
-      CORE_LOG_WARN("Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
+      std::println(std::cout, "[WARNING]: Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
     }
 
     register_log_sinks(config);
+    if (cmd.diagnostics.verbose) {
+      config.diagnostics.verbose = true;
+      CORE_LOG_DEBUG("Loading Environment with configuration :\n{}\n", config.dump_table_string());
+    }
+
     CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
     CORE_LOG_DEBUG("Environment Config File: {}", cmd.config_file);
     CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
 
     config.diagnostics.verbose = cmd.diagnostics.verbose;
     const bool rendering_enabled = config.rendering_backend.has_value() && !config.rendering_backend->empty();
-    if (rendering_enabled) {
-      const bool force_no_window = config.force_no_window;
-      subsystem<renderer_backend>::get()->load_backend(config.rendering_backend.value(), config.window_size);
+    /// if rendering is enabled and we are not forcing headless mode, load the rendering backend
+    if (rendering_enabled && !config.force_no_window) {
+      PROFILE_SECTION("other::entry--initialize-renderer-backend");
+      subsystem<renderer_backend>::get()->load_backend(config, config.rendering_backend.value(), config.window_size);
     }
 
-    bind_primary_scripting_environment();
-    bind_environment_scripts();
+    bool force_disable_physics = config.get_value<bool>("physics.force-disable-physics", false);
+    if (!force_disable_physics) {
+      bind_physics_environment(config);
+    }
+
+    bool force_disable_scripting = config.get_value<bool>("scripting.force-disable-scripting", false);
+    if (!force_disable_scripting) {
+      PROFILE_SECTION("other::entry--initialize-scripting");
+      bind_primary_scripting_environment(config);
+      bind_environment_scripts();
+    }
+
+    /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
+    ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
 
     exit_code res = SUCCESS;
     {
@@ -113,7 +136,15 @@ namespace other {
       }
     }
 
-    cleanup_scripting_environment();
+    if (!force_disable_scripting) {
+      PROFILE_SECTION("other::entry--cleanup-scripting");
+      cleanup_scripting_environment();
+    }
+
+    if (!force_disable_physics) {
+      PROFILE_SECTION("other::entry--shutdown-physics-environment");
+      cleanup_physics_environment();
+    }
 
     /// handle exit code
     CORE_LOG_INFO("Other Environment driver finished with exit code: {}", res);
@@ -134,10 +165,24 @@ namespace other {
     }
   }
 
-  void bind_primary_scripting_environment() {
+  void bind_physics_environment(const config_table& config) {
+    PROFILE_SECTION("other::bind-physics-environment");
+    auto* phys_env = subsystem<physics_environment>::get();
+    OTHER_ASSERT(phys_env != nullptr, "Physics environment subsystem is null.");
+
+    phys_env->load_backend(config);
+    phys_env->initialize_physics_environment(config);
+  }
+
+  void bind_primary_scripting_environment(const config_table& config) {
+    PROFILE_SECTION("other::bind-primary-scripting-environment");
     auto* env = subsystem<scripting_environment>::get();
-    env->initialize_script_environment();
-    env->dotnet_binding_assembly = env->load_dotnet_module("build/other-csharp/Debug/OtherCs.dll");
+    env->initialize_script_environment(config);
+
+    filepath other_cs_path = config.get_value<std::string>(configuration::kOtherCSharp, "C:/OtherEnvironment/dotnet-assemblies/OtherCs.dll");
+    OTHER_ASSERT(std::filesystem::exists(other_cs_path), "OtherCs.dll not found at path: {}", other_cs_path.string());
+    CORE_LOG_DEBUG("Using OtherCs.dll at path: {}", other_cs_path.string());
+    env->dotnet_binding_assembly = env->load_dotnet_module(other_cs_path.string());
   }
 
   native_string native_get_app_data_folder(native_string app_name_str, int32_t create_flag) {
@@ -147,30 +192,43 @@ namespace other {
   }
 
   void bind_environment_scripts() {
+    PROFILE_SECTION("other::bind-environment-scripts");
     auto* env = subsystem<scripting_environment>::get();
     /// dotnet binding
     /// we've already loaded OtherCs, so now we bind core functionality, start with the platform directory
     /// functions
     dotnet_host& dn_host = env->get_dotnet_host();
+    lua_host& l_host = env->get_lua_host();
     bind_otherlib_dotnet_functions(dn_host);
+    bind_otherlib_lua_functions(l_host);
   }
 
   void cleanup_scripting_environment() {
+    PROFILE_SECTION("other::cleanup-scripting-environment");
     auto* env = subsystem<scripting_environment>::get();
     env->unload_dotnet_module(env->dotnet_binding_assembly);
     env->dotnet_binding_assembly = nullptr;
     env->shutdown_script_environment();
   }
 
+  void cleanup_physics_environment() {
+    PROFILE_SECTION("other::cleanup-physics-environment");
+    auto* phys_env = subsystem<physics_environment>::get();
+    phys_env->shutdown_physics_environment();
+    phys_env->unload_backend();
+  }
+
   spdlog::sink_ptr stdout_sink_fn(const config_table& config) {
 #ifdef OTHER_ENVIRONMENT_WINDOWS
     return std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
 #else
-    return std::make_shared<spdlog::sinks::stdout_sink_mt>();
+    return std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 #endif
   }
 
   void register_log_sinks(const config_table& config) {
+    PROFILE_SECTION("other::register-log-sinks");
+
     logger* log = subsystem<logger>::get();
     if (log == nullptr) {
       throw std::runtime_error("Logger subsystem is null.");
@@ -194,14 +252,17 @@ namespace other {
         return std::make_shared<spdlog::sinks::basic_file_sink_mt>(config.core_log_file, true);
       },
     };
+
     std::string loggers[] = { "other-core-log" };
     log->register_sink(loggers, sink);
     log->register_sink(loggers, file_sink);
   }
 
   void shutdown_subsystems() {
+    PROFILE_SECTION("other::shutdown_subsystems");
     subsystem<scripting_environment>::get()->shutdown();
     subsystem<type_database>::get()->shutdown();
+    subsystem<physics_environment>::get()->shutdown();
     subsystem<renderer_backend>::get()->shutdown();
     subsystem<arena>::get()->shutdown();
     subsystem<logger>::get()->shutdown();
@@ -214,7 +275,7 @@ namespace other {
 
       other::initialize_primary_arena();
       other::register_log_sinks(config);
-      other::bind_primary_scripting_environment();
+      other::bind_primary_scripting_environment(config);
       other::bind_environment_scripts();
     }
 

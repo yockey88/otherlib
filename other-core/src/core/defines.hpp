@@ -14,6 +14,7 @@
 #include <type_traits>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 #define bit(x) (1ll << x)
@@ -75,17 +76,17 @@
   #define OTHER_DEBUG_BUILD
 #endif  // !OTHER_DEBUG
 
-#ifdef OTHER_ENVIRONMENT_PROFILED
-  #define OTHER_PROFILED_BUILD
-#endif  // !OTHER_PROFILED
+#ifdef OTHER_ENVIRONMENT_RELEASE
+  #define OTHER_RELEASE_BUILD
+#endif  // !OTHER_RELEASE
 
 #ifdef OTHER_ENVIRONMENT_PROFILE
   #define OTHER_PROFILE_BUILD
 #endif  // !OTHER_PROFILE
 
-#ifdef OTHER_ENVIRONMENT_RELEASE
-  #define OTHER_RELEASE_BUILD
-#endif  // !OTHER_RELEASE
+#ifdef OTHER_ENVIRONMENT_PROFILED
+  #define OTHER_PROFILED_BUILD
+#endif  // !OTHER_PROFILED
 
 #ifndef OTHER_API
   #error "OTHER_API is not defined. Please define it for your platform."
@@ -166,9 +167,15 @@ namespace other {
     VEC3,
     VEC4,
 
+    IVEC2,
+    IVEC3,
+    IVEC4,
+
     MAT2,
     MAT3,
     MAT4,
+
+    QUATERNION,
 
     SAMPLER2D,
     SAMPLER2D_ARRAY,
@@ -219,12 +226,20 @@ namespace other {
       return value_type::VEC3;
     } else if constexpr (std::is_same_v<no_cvref_t, glm::vec4>) {
       return value_type::VEC4;
+    } else if constexpr (std::is_same_v<no_cvref_t, glm::ivec2>) {
+      return value_type::IVEC2;
+    } else if constexpr (std::is_same_v<no_cvref_t, glm::ivec3>) {
+      return value_type::IVEC3;
+    } else if constexpr (std::is_same_v<no_cvref_t, glm::ivec4>) {
+      return value_type::IVEC4;
     } else if constexpr (std::is_same_v<no_cvref_t, glm::mat2>) {
       return value_type::MAT2;
     } else if constexpr (std::is_same_v<no_cvref_t, glm::mat3>) {
       return value_type::MAT3;
     } else if constexpr (std::is_same_v<no_cvref_t, glm::mat4>) {
       return value_type::MAT4;
+    } else if constexpr (std::is_same_v<no_cvref_t, glm::quat>) {
+      return value_type::QUATERNION;
     } else if constexpr (std::is_same_v<no_cvref_t, void*>) {
       return value_type::OPAQUE_HANDLE;
     } else {
@@ -250,9 +265,13 @@ namespace other {
       case value_type::VEC2: return sizeof(glm::vec2);
       case value_type::VEC3: return sizeof(glm::vec3);
       case value_type::VEC4: return sizeof(glm::vec4);
+      case value_type::IVEC2: return sizeof(glm::ivec2);
+      case value_type::IVEC3: return sizeof(glm::ivec3);
+      case value_type::IVEC4: return sizeof(glm::ivec4);
       case value_type::MAT2: return sizeof(glm::mat2);
       case value_type::MAT3: return sizeof(glm::mat3);
       case value_type::MAT4: return sizeof(glm::mat4);
+      case value_type::QUATERNION: return sizeof(glm::quat);
       case value_type::OPAQUE_HANDLE: return sizeof(void*);
       default: return sizeof(void*);
     }
@@ -294,20 +313,68 @@ namespace other {
       return value_type::VEC3;
     } else if (lc_str == "vec4") {
       return value_type::VEC4;
+    } else if (lc_str == "ivec2") {
+      return value_type::IVEC2;
+    } else if (lc_str == "ivec3") {
+      return value_type::IVEC3;
+    } else if (lc_str == "ivec4") {
+      return value_type::IVEC4;
     } else if (lc_str == "mat2") {
       return value_type::MAT2;
     } else if (lc_str == "mat3") {
       return value_type::MAT3;
     } else if (lc_str == "mat4") {
       return value_type::MAT4;
+    } else if (lc_str == "quaternion" || lc_str == "quat") {
+      return value_type::QUATERNION;
     } else {
       return value_type::USER_TYPE;
     }
   }
 
+  static inline std::string get_value_type_string_from_type(value_type type) {
+    switch (type) {
+      case value_type::OEBOOL: return "bool";
+      case value_type::CHAR: return "char";
+      case value_type::STRING: return "string";
+      case value_type::INT8: return "int8";
+      case value_type::INT16: return "int16";
+      case value_type::INT32: return "int32";
+      case value_type::INT64: return "int64";
+      case value_type::UINT8: return "uint8";
+      case value_type::UINT16: return "uint16";
+      case value_type::UINT32: return "uint32";
+      case value_type::UINT64: return "uint64";
+      case value_type::FLOAT: return "float";
+      case value_type::DOUBLE: return "double";
+      case value_type::VEC2: return "vec2";
+      case value_type::VEC3: return "vec3";
+      case value_type::VEC4: return "vec4";
+      case value_type::IVEC2: return "ivec2";
+      case value_type::IVEC3: return "ivec3";
+      case value_type::IVEC4: return "ivec4";
+      case value_type::MAT2: return "mat2";
+      case value_type::MAT3: return "mat3";
+      case value_type::MAT4: return "mat4";
+      case value_type::QUATERNION: return "quaternion";
+      case value_type::OPAQUE_HANDLE: return "opaque-handle";
+      case value_type::USER_TYPE: return "user-type";
+      default: return "unknown";
+    }
+  }
+
   filepath get_program_files_folder(const std::string_view app_name);
   filepath get_app_data_folder(const std::string_view app_name, bool create = false);
+  filepath get_other_environment_install_folder();
   filepath get_system_default_working_directory();
+
+  std::string get_tag_replacement(const std::string_view tag);
+  std::string perform_tag_replacement(const std::string_view tag);
+
+  std::string get_current_exe_name();
+  std::string get_current_exe_full_path();
+  std::string get_system_error_message();
+  void launch_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
 }  // namespace other
 

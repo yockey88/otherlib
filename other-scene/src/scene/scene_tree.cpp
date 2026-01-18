@@ -96,6 +96,8 @@ namespace other {
     if (parent_object != nullptr) {
       parent_node = node_from_scene_object(parent_object);
       OTHER_ASSERT(parent_node != nullptr, "Parent object not found in scene tree.");
+    } else {
+      parent_node = root;
     }
 
     node* new_node = create_object(parent_node);
@@ -131,6 +133,33 @@ namespace other {
 
     CORE_LOG_DEBUG("Added scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
     return *new_node->object;
+  }
+
+  scene_object* scene_tree::find_object_by_id(natural_t id) const {
+    PROFILE_SECTION("scene_tree::find_object_by_id");
+
+    OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+
+    const node* n = node_at(id);
+    if (n != nullptr) {
+      return n->object;
+    }
+    return nullptr;
+  }
+
+  scene_object* scene_tree::find_object_by_name(const std::string_view name) const {
+    PROFILE_SECTION("scene_tree::find_object_by_name");
+
+    OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+
+    for (const auto& node : *nodes) {
+      if (node.object != nullptr && node.object->name == name) {
+        return node.object;
+      }
+    }
+    return nullptr;
   }
 
   scene_object* scene_tree::get_parent(natural_t id) {

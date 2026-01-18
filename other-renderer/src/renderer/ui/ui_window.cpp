@@ -45,78 +45,78 @@ namespace other {
   }
 
   void ui_window::render() {
-    detail::ui_window_end_helper ___ui_window_end_helper_instance{};
-    bool is_open = state.open;
-    if (!ImGui::Begin(title.c_str(), &is_open, window_flags)) {
-      return;
-    }
-
-    /// save imgui state
-    ImGuiErrorRecoveryState imgui_state{};
-    ImGui::ErrorRecoveryStoreState(&imgui_state);
-
-    try {
-      refresh(is_open);
-      if (!state.open) {
+    on_prepare_render();
+    {
+      detail::ui_window_end_helper ___ui_window_end_helper_instance{};
+      bool is_open = state.open;
+      if (!ImGui::Begin(title.c_str(), &is_open, window_flags)) {
         return;
       }
 
-      on_render_start();
+      /// save imgui state
+      ImGuiErrorRecoveryState imgui_state{};
+      ImGui::ErrorRecoveryStoreState(&imgui_state);
 
-      auto root_itr = node_map.find(0);
-      OTHER_ASSERT(root_itr != node_map.end(), "UI window {} has no root node", title);
-      root_itr->second->render();
+      try {
+        refresh(is_open);
+        if (!state.open) {
+          return;
+        }
 
-      on_render_end();
-    } catch (const std::exception& e) {
-      CORE_LOG_ERROR("Exception during UI window render: {}", e.what());
+        on_render_header();
+        on_render_body();
+        on_pre_render_nodes();
 
-      ImGui::ErrorRecoveryTryToRecoverState(&imgui_state);
+        auto root_itr = node_map.find(0);
+        OTHER_ASSERT(root_itr != node_map.end(), "UI window {} has no root node", title);
+        root_itr->second->render();
+
+        on_post_render_nodes();
+        on_render_footer();
+      } catch (const std::exception& e) {
+        CORE_LOG_ERROR("Exception during UI window render: {}", e.what());
+
+        ImGui::ErrorRecoveryTryToRecoverState(&imgui_state);
+      }
     }
+    on_render_end();
   }
 
-  void ui_window::add_node(scope<ui_node> node) {
+  void ui_window::toggle_open() {
+    state.open = true;
+  }
+
+  void ui_window::toggle_close() {
+    state.open = false;
+  }
+
+  natural_t ui_window::add_node(scope<ui_node> node) {
     natural_t id = node->id;
     auto [itr, inserted] = node_map.emplace(id, std::move(node));
     OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
 
-    add_node_to(itr->second /* this-window */);
+    CORE_LOG_DEBUG("Added UI node with ID {} to window {}", itr->first, title);
+    return add_node_to(itr->second);
   }
 
-  void ui_window::add_node(scope<ui_node> node, const std::string_view parent_search_pattern) {
+  natural_t ui_window::add_node(scope<ui_node> node, const std::string_view parent_search_pattern) {
     natural_t id = node->id;
+    if (node_map.find(node->id) != node_map.end()) {
+      CORE_LOG_ERROR("UI node with ID {} already exists in window {}", id, title);
+      return 0;
+    }
+
     auto [itr, inserted] = node_map.emplace(id, std::move(node));
     OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
 
-    add_node_to(itr->second /* this-window */, parent_search_pattern);
+    return add_node_to(itr->second, parent_search_pattern);
   }
 
-  void ui_window::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
+  natural_t ui_window::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
     OTHER_ASSERT(node != nullptr, "Cannot add null node to UI window {}", title);
-    if (remaining_search_pattern.empty()) {
-      node->parent = 0;
-      auto root = node_map.find(0);
-      OTHER_ASSERT(root != node_map.end(), "UI window {} has no root node", title);
-      root->second->add_child_node(node);
-      return;
-    }
-
-    std::string pattern_str(remaining_search_pattern);
-    std::string first_search_name;
-
-    auto colon = pattern_str.find_first_of(':');
-    if (colon == std::string::npos) {
-      first_search_name = pattern_str;
-      pattern_str = "";
-    } else {
-      first_search_name = pattern_str.substr(0, colon);
-      pattern_str = pattern_str.substr(colon + 1);
-    }
-
-    auto itr = std::ranges::find_if(node_map, [&first_search_name](const auto& pair) { return pair.second->node_title == first_search_name; });
-    if (itr != node_map.end()) {
-      itr->second->add_node_to(node, pattern_str);
-    }
+    auto root_itr = node_map.find(0);
+    OTHER_ASSERT(root_itr != node_map.end(), "UI window {} has no root node", title);
+    return root_itr->second->add_node_to(node, remaining_search_pattern);
   }
 
   scope<ui_node>& ui_window::get_node(natural_t node_id) {
@@ -125,18 +125,51 @@ namespace other {
     return itr->second;
   }
 
+  scope<ui_node>& ui_window::get_node_by_name(const std::string_view node_name) {
+    for (auto& [id, node] : node_map) {
+      if (node->node_title == node_name) {
+        return node;
+      }
+    }
+    OTHER_ASSERT(false, "UI node with name '{}' not found in window {}", node_name, title);
+    return node_map.begin()->second;  // to satisfy compiler, will never reach here due to assert
+  }
+
+  scope<ui_node>& ui_window::get_node_by_search_pattern(const std::string_view search_pattern) {
+    if (search_pattern.empty()) {
+      OTHER_ASSERT(false, "Search pattern is empty in window {}", title);
+    }
+
+    while (true) {
+      auto dot_pos = search_pattern.find('.');
+      if (dot_pos == std::string_view::npos) {
+        return get_node_by_name(search_pattern);
+      } else {
+        OTHER_ASSERT(false, "UI window::get_node_by_search_pattern with nested patterns is unimplemented in window {}", title);
+        // std::string_view current_name = search_pattern.substr(0, dot_pos);
+        // std::string_view remaining_pattern = search_pattern.substr(dot_pos + 1);
+        // auto& current_node = get_node_by_name(current_name);
+        // return current_node.get_node_by_search_pattern(remaining_pattern);
+      }
+    }
+  }
+
   void ui_window::refresh(bool current_state) {
     if (current_state != state.open) {
-      state.just_closed = !current_state;
-      state.just_opened = current_state;
       state.open = current_state;
+      state.just_closed = !state.open;
+      state.just_opened = state.open;
     } else {
       state.just_closed = false;
       state.just_opened = false;
     }
 
     state.is_focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
+
     on_refresh();
+    for (auto& [id, node] : node_map) {
+      node->refresh();
+    }
   }
 
 }  // namespace other

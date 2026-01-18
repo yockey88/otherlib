@@ -7,13 +7,12 @@
 #include <glm/glm.hpp>
 
 #include "math/bounding_box.hpp"
+#include "math/definitions.hpp"
 #include "serialization/reflection.hpp"
 
 namespace other {
 
   struct vertex_attribute {
-    OTHER_REFLECTABLE(vertex_attribute);
-
     std::string name = "";
     value_type type = value_type::EMPTY_TYPE;
 
@@ -63,13 +62,18 @@ namespace other {
   };
 
   struct vertex {
-    OTHER_REFLECTABLE(vertex);
+    /// CPU side vertex data
+    uint32_t id = 0;
+    std::vector<uint32_t> connected_triangles;
 
+    /// GPU vertex data
     glm::vec3 position = { 0, 0, 0 };
     glm::vec3 normal = { 0, 0, 1 };
     glm::vec3 tangent = { 1, 0, 0 };
     glm::vec3 bitangent = { 0, 1, 0 };
     glm::vec2 tex_coord = { 0, 0 };
+    glm::ivec4 bone_ids = { 0, 0, 0, 0 };
+    glm::vec4 bone_weights = { 0.f, 0.f, 0.f, 0.f };
 
     vertex() = default;
 
@@ -77,18 +81,25 @@ namespace other {
     static size_t stride();
 
     static buffer_layout get_buffer_layout();
+    static std::vector<float> to_gpu_buffer(const vertex& v);
+    static std::vector<float> to_gpu_buffer(const std::vector<vertex>& v);
   };
 
   struct index {
     uint32_t v0 = 0;
     uint32_t v1 = 0;
     uint32_t v2 = 0;
+
+    static std::vector<uint32_t> to_gpu_buffer(const index& idx);
+    static std::vector<uint32_t> to_gpu_buffer(const std::vector<index>& indices);
   };
 
   struct triangle {
-    vertex v0;
-    vertex v1;
-    vertex v2;
+    uint32_t id = 0;
+
+    uint32_t v0_id = 0;
+    uint32_t v1_id = 0;
+    uint32_t v2_id = 0;
 
     glm::vec3 centroid;
   };
@@ -97,8 +108,6 @@ namespace other {
     uint32_t base_vertex = 0;
     uint32_t base_idx = 0;
 
-    uint32_t mat_idx = 0;
-
     uint32_t idx_cnt = 0;
     uint32_t vert_cnt = 0;
 
@@ -106,8 +115,10 @@ namespace other {
 
     bounding_box bounds{};
 
+    natural_t node_id;
     natural_t sub_mesh_id;
-    natural_t material_id;
+
+    std::vector<uint32_t> bone_ids;
 
     std::string name;
 
@@ -115,15 +126,17 @@ namespace other {
   };
 
   struct mesh_node {
-    uint32_t parent = 0xFFFFFFFF;  // 0xFFFFFFFF indicates no parent
+    constexpr static uint32_t kNoParent = 0xFFFFFFFF;
+    uint32_t parent = kNoParent;
     std::vector<uint32_t> children;
     std::vector<uint32_t> sub_meshes;
 
     std::string name;
     glm::mat4 local_transform;
+    glm::mat4 inverse_local_transform;
 
     inline bool is_root() const {
-      return parent == 0xFFFFFFFF;
+      return parent == kNoParent;
     }
   };
 
@@ -135,7 +148,9 @@ OTHER_REFLECT(
   field(normal, other::attr::serializable()),
   field(tangent, other::attr::serializable()),
   field(bitangent, other::attr::serializable()),
-  field(tex_coord, other::attr::serializable())
+  field(tex_coord, other::attr::serializable()),
+  field(bone_ids, other::attr::serializable()),
+  field(bone_weights, other::attr::serializable())
 )
 
 OTHER_REFLECT(
@@ -147,9 +162,9 @@ OTHER_REFLECT(
 
 OTHER_REFLECT(
   other::triangle,
-  field(v0, other::attr::serializable()),
-  field(v1, other::attr::serializable()),
-  field(v2, other::attr::serializable()),
+  field(v0_id, other::attr::serializable()),
+  field(v1_id, other::attr::serializable()),
+  field(v2_id, other::attr::serializable()),
   field(centroid, other::attr::serializable())
 )
 
@@ -170,14 +185,12 @@ OTHER_REFLECT(
   other::submesh,
   field(base_vertex, other::attr::serializable()),
   field(base_idx, other::attr::serializable()),
-  field(mat_idx, other::attr::serializable()),
   field(idx_cnt, other::attr::serializable()),
   field(vert_cnt, other::attr::serializable()),
   // field(transform, other::attr::serializable()),
   // field(local_transform, other::attr::serializable()),
   field(bounds, other::attr::serializable()),
   field(sub_mesh_id, other::attr::serializable()),
-  field(material_id, other::attr::serializable()),
   field(rigged, other::attr::serializable())
 )
 

@@ -79,7 +79,8 @@ namespace other {
     void purge_stores();
     void update_pipelines();
 
-    natural_t load_asset(const filepath& file_path);
+    using load_completion_callback = std::function<void(asset*)>;
+    natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     void unload_asset(natural_t asset_id);
 
     asset_state get_asset_state(natural_t asset_id) const;
@@ -97,7 +98,9 @@ namespace other {
 
    private:
     asio::io_context& io_context;
-    asio::thread_pool thread_pool{ 4 };
+    /// \todo figure out model-source pipeline race condition, currently two models loading at the same
+    ///       time when using more than one thread causes issues
+    asio::thread_pool thread_pool{ 1 };
 
     struct pipeline_context {
       scope<asset_pipeline> pipeline = nullptr;

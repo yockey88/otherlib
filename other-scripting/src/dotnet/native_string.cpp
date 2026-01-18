@@ -46,6 +46,15 @@ namespace other {
 #endif
     }
 
+    std::basic_string<char_t> convert_string(const std::string& str) {
+#ifdef OTHER_ENVIRONMENT_WINDOWS
+      std::wstring wide_str = convert_char_to_wide(str);
+      return std::basic_string<char_t>(wide_str);
+#else
+      return std::basic_string<char_t>(str);
+#endif
+    }
+
   }  // namespace detail
 
   native_string native_string::new_str(const char* str) {

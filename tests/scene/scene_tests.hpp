@@ -14,7 +14,7 @@ namespace other {
       subsystem<arena>::get()->shutdown();
       subsystem<arena>::get();
 
-      subsystem<scripting_environment>::get()->initialize_script_environment();
+      subsystem<scripting_environment>::get()->initialize_script_environment(environment->config);
 #ifdef OTHER_ENVIRONMENT_DEBUG
       dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_debug.string());
       testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_debug.string());
@@ -24,8 +24,15 @@ namespace other {
 #else
   #error "Unknown build configuration!"
 #endif
+      subsystem<physics_environment>::get()->load_backend(environment->config);
+      subsystem<physics_environment>::get()->initialize_physics_environment(environment->config);
     }
+
     void TearDown() {
+      subsystem<physics_environment>::get()->shutdown_physics_environment();
+      subsystem<physics_environment>::get()->unload_backend();
+      // subsystem<scripting_environment>::get()->shutdown();
+
       subsystem<scripting_environment>::get()->unload_dotnet_module(testing_asm);
       subsystem<scripting_environment>::get()->unload_dotnet_module(dotnet_asm);
       testing_asm = nullptr;

@@ -10,8 +10,11 @@ target_sources(other_scene
 
       src/object/scene_object.cpp
       src/object/script_component.cpp
+      src/object/physics_component.cpp
+      src/object/animation_controller.cpp
       src/object/object_serialization.cpp
       
+      src/scene/scene_network_context.cpp
       src/scene/scene_tree.cpp
       src/scene/scene_storage.cpp
       src/scene/scene.cpp
@@ -21,8 +24,11 @@ target_sources(other_scene
 
 target_include_directories(other_scene 
   PUBLIC 
-      "${CMAKE_CURRENT_SOURCE_DIR}/src"
-      ${OTHER_EXTERN_DIR}/entt
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scene>
 )
-target_link_directories(other_scene PUBLIC ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_scene PUBLIC other_renderer other_scripting other_network)
+
+target_link_directories(other_scene PRIVATE ${OTHER_LIBRARIES_PATH})
+target_link_libraries(other_scene PRIVATE other_renderer other_physics other_scripting other_network other_core)
+
+other_install_module(other_scene "scene")

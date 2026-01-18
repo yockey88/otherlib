@@ -28,6 +28,7 @@ namespace other {
   namespace attr {
 
     struct serializable : refl::attr::usage::field, refl::attr::usage::function {};
+    struct constructor : refl::attr::usage::function {};
 
   }  // namespace attr
 
@@ -271,7 +272,17 @@ namespace other {
       requires reflected_type<T>
     reflection_data* get_reflection_data(const T& value);
 
+    bool has_type(const std::string_view type_name) const;
+    const reflection_data* get_reflection_data(const std::string_view type_name);
+
+    const std::map<uint64_t, reflection_data>& get_type_data() const {
+      return data_map;
+    }
+
    private:
+    std::string get_namespace_string(const std::string_view full_name) const;
+    std::string strip_namespace(const std::string_view full_name) const;
+
     std::map<uint64_t, reflection_data> data_map;
   };
 
@@ -467,7 +478,7 @@ namespace other {
       CORE_LOG_ERROR("Failed to insert reflection data for type '{}'.", refl_type_name);
       return nullptr;
     }
-    CORE_LOG_DEBUG("Stashing reflection data for type '{}'.", refl_type_name);
+    CORE_LOG_TRACE("Stashing reflection data for type '{}'.", refl_type_name);
 
     it->second.type_hash = type_hash;
     it->second.type_name = refl_type_name;
@@ -489,10 +500,10 @@ namespace other {
       using member_t = decltype(member(value));
 
       m.value_type = get_value_type<member_t>();
-      CORE_LOG_DEBUG("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
+      CORE_LOG_TRACE("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
       if (m.value_type == value_type::USER_TYPE) {
         if constexpr (reflected_type<member_t>) {
-          CORE_LOG_DEBUG("    > type reflected = {}", std::string{ refl::reflect<member_t>().name });
+          CORE_LOG_TRACE("    >  reflected member type = {}", std::string{ refl::reflect<member_t>().name });
         }
       }
       m.size = sizeof(member_t);
@@ -503,6 +514,7 @@ namespace other {
 
     for_each(refl::reflect(value).bases, [&](auto base) { it->second.base_types.push_back(base.hash); });
 
+    CORE_LOG_TRACE("Added reflection data for type '{}'.", it->second.type_name);
     return &it->second;
   }
 

@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <string_view>
 
+#include <imgui/imgui.h>
+
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
@@ -31,6 +33,9 @@ namespace other {
     void prepare_frame(renderer::frame_resources* resources, render_data* data);
     virtual void render_frame(renderer* renderer_ptr);
 
+    ImTextureID get_final_output_texture_id();
+    resource_handle get_screen_texture();
+
     renderer::frame_resources get_frame_resources() const;
 
     inline const bool is_valid() const { return valid; }
@@ -51,8 +56,10 @@ namespace other {
       return frame_render_data;
     }
 
+    void set_screen_texture(const std::string_view name);
     void set_material_buffer(const std::string_view);
     void set_model_buffer(const std::string_view);
+    void set_bone_buffer(const std::string_view);
     void set_point_light_buffer(const std::string_view name);
     void set_direction_light_buffer(const std::string_view name);
     void set_camera_buffer(const std::string_view name);
@@ -63,9 +70,7 @@ namespace other {
 
     template <typename T>
     T* get_resource(const std::string_view name) {
-      auto itr = std::ranges::find_if(buffer_resources, [&](const auto& pair) {
-        return pair.second.name == name;
-      });
+      auto itr = std::ranges::find_if(buffer_resources, [&](const auto& pair) { return pair.second.name == name; });
       if (itr == buffer_resources.end()) {
         CORE_LOG_ERROR("Resource [{}] not found in pipeline.", name);
         return nullptr;
@@ -106,8 +111,10 @@ namespace other {
     render_data* frame_render_data = nullptr;
     renderer::frame_resources frame_resources;
 
+    opt<resource_handle> screen_texture_handle;
     opt<resource_handle> material_buffer_handle;
     opt<resource_handle> model_buffer_handle;
+    opt<resource_handle> bone_buffer_handle;
     opt<resource_handle> point_light_buffer_handle;
     opt<resource_handle> direction_light_buffer_handle;
     opt<resource_handle> camera_buffer_handle;

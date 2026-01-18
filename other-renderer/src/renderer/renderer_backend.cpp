@@ -4,14 +4,17 @@
 #include "renderer/renderer_backend.hpp"
 
 #include "SDL3/SDL_events.h"
+#include "SDL3/SDL_init.h"
 #include "SDL3/SDL_video.h"
 
 #undef main
 #include <SDL3/SDL.h>
 #include <imgui/imgui.h>
 
+#include "core/config_table.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "renderer/backends/opengl_api.hpp"
 
@@ -34,53 +37,63 @@ namespace other {
 
   }  // namespace backend_keys
 
-  void renderer_backend::load_backend(const std::string& name, const glm::uvec2& window_size) {
-    /// load sdl3
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-      CORE_LOG_ERROR("Failed to initialize SDL: {}", SDL_GetError());
-      return;
-    }
-
+  void renderer_backend::load_backend(const config_table& config, const std::string& name, const glm::uvec2& window_size) {
+    PROFILE_SECTION("renderer_backend::load-backend");
     uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
-    natural_t hash = FNV(name);
-    switch (hash) {
-      case backend_keys::kOpenGLHash: {
-        flags |= SDL_WINDOW_OPENGL;
-      } break;
+    {
+      PROFILE_SECTION("renderer_backend::load-backend--initialize-sdl3");
 
-      default:
-        CORE_LOG_ERROR("Unknown/Unimplmented rendering backend: {}", name);
-        break;
+      if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
+        CORE_LOG_ERROR("Failed to initialize SDL: {}", SDL_GetError());
+        return;
+      }
     }
 
     {
+      PROFILE_SECTION("renderer_backend::load-backend--create-window-and-load-api");
+
       scope<window_manager> window_mgr = make_scope<window_manager>();
       CORE_LOG_DEBUG("Creating main window with size: {}x{}", window_size.x, window_size.y);
-      SDL_Window* window = window_mgr->create_window("Other Environment", window_size.x, window_size.y, flags);
-      OTHER_ASSERT(window != nullptr, "Failed to create main window: {}", SDL_GetError());
 
+      natural_t hash = FNV(name);
       switch (hash) {
-        case backend_keys::kOpenGLHash: {
-          set_rendering_api(make_scope<opengl_api>(), std::move(window_mgr));
-        } break;
-
+        case backend_keys::kOpenGLHash: flags |= SDL_WINDOW_OPENGL; break;
         default:
           CORE_LOG_ERROR("Unknown/Unimplmented rendering backend: {}", name);
           break;
       }
+
+      SDL_Window* window = window_mgr->create_window("Other Environment", window_size.x, window_size.y, flags);
+      OTHER_ASSERT(window != nullptr, "Failed to create main window: {}", SDL_GetError());
+
+      switch (hash) {
+        case backend_keys::kOpenGLHash: set_rendering_api(make_scope<opengl_api>(), std::move(window_mgr)); break;
+        default:
+          CORE_LOG_ERROR("Unknown/Unimplmented rendering backend: {}", name);
+          break;
+      }
+
+      state_flags.backend_loaded = true;
     }
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    ImGui::StyleColorsDark();
+    std::string ui_ini_name = "resources/ui/default_ui_layout.ini";
+    static std::string real_ini_name = config.get_value<std::string>("rendering.ui-layout-ini", ui_ini_name);
+    {
+      PROFILE_SECTION("renderer_backend::load-backend--imgui-init");
+      IMGUI_CHECKVERSION();
+      ImGui::CreateContext();
+      ImGuiIO& io = ImGui::GetIO();
+      io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+      io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+      io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+      io.ConfigWindowsMoveFromTitleBarOnly = true;
+      io.IniFilename = real_ini_name.c_str();
+      ImGui::StyleColorsDark();
 
-    ui_context = ImGui::GetCurrentContext();
-    api()->initialize_ui_context();
+      ui_context = ImGui::GetCurrentContext();
+      api()->initialize_ui_context();
+    }
 
     state_flags.full_initialization = true;
   }
@@ -92,6 +105,7 @@ namespace other {
   }
 
   void renderer_backend::unload_backend() {
+    PROFILE_SECTION("renderer_backend::unload_backend");
     if (rendering_api_instance != nullptr) {
       CORE_LOG_DEBUG("Shutting down rendering API instance.");
 
@@ -150,7 +164,7 @@ namespace other {
   void renderer_backend::set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr) {
     OTHER_ASSERT(api != nullptr, "Rendering API instance cannot be null.");
     OTHER_ASSERT(window_mgr != nullptr, "Window manager instance cannot be null.");
-
+    PROFILE_SECTION("renderer_backend::set-rendering-api");
     rendering_api_instance = std::move(api);
     rendering_api_instance->initialize(std::move(window_mgr));
   }

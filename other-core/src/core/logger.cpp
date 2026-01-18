@@ -3,27 +3,38 @@
  **/
 #include "core/logger.hpp"
 
+#include <source_location>
+
 #include "core/config_table.hpp"
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
+
+#include "spdlog/sinks/basic_file_sink.h"
 
 namespace other {
 
-  void logger::create_logger(const std::string& name, spdlog::level::level_enum level) {
-    // PROFILE_SECTION("Logger--CreateLogger");
-    std::unique_ptr<spdlog::logger> logger = std::make_unique<spdlog::logger>(name);
+  natural_t logger::create_logger(const std::string& name, spdlog::level::level_enum level) {
+    PROFILE_SECTION("logger::create-logger");
+
+    std::unique_lock lock(log_mutex);
+    std::shared_ptr<spdlog::logger> logger = std::make_shared<spdlog::logger>(name);
     logger->set_level(level);
     logger->flush_on(level);
 
-    natural_t id = FNV(name);
-    auto [itr, inserted] = loggers.insert({ id, std::move(logger) });
-    if (!inserted) {
-      log_failure_error(std::format("Logger with name {} already exists.", name));
-      logger = nullptr;
+    natural_t id = num_loggers++;
+    if (id >= kMaxLoggers) {
+      log_failure_error("Maximum number of loggers reached.");
+      return static_cast<natural_t>(-1);
     }
+    loggers[id] = log{
+      .name = name,
+      .logger_ptr = logger,
+    };
+    return id;
   }
 
   void logger::register_sink(const std::span<const std::string> logs, const log_sink& sink) {
-    // PROFILE_SECTION("Logger--RegisterSink");
+    PROFILE_SECTION("logger::register-sink");
 
     if (sink.sink_factory == nullptr) {
       log_failure_error(std::format("Sink factory for {} is null.", sink.sink_name));
@@ -56,60 +67,55 @@ namespace other {
       log_failure_error(std::format("Sink with ID {} ({}) already exists.", sink.id, sink.sink_name));
       return;
     }
+
+    std::unique_lock lock(log_mutex);
     {
       auto& sink_ptr = itr->second;
       sink_ptr->set_pattern(sink.sink_pattern);
       sink_ptr->set_level(sink.level);
       for (const auto& log : logs) {
-        auto logger_itr = loggers.find(FNV(log));
+        if (log.empty()) {
+          continue;
+        }
 
-        if (logger_itr != loggers.end()) {
-          logger_itr->second->sinks().push_back(sink_ptr);
-        } else {
-          log_failure_error(std::format("Logger {} not found for sink {}.", log, sink.sink_name));
+        for (natural_t i = 0; i < num_loggers; ++i) {
+          if (loggers[i].name == log) {
+            loggers[i].logger_ptr->sinks().push_back(sink_ptr);
+          }
         }
       }
     }
   }
 
-  void logger::send_log(spdlog::level::level_enum level, const std::string_view log_name, const std::string_view msg) {
-    auto logger_itr = loggers.find(FNV(log_name));
-    if (logger_itr == loggers.end()) {
-      log_failure_error(std::format("Logger {} not found. Dropped Log :\n{}", log_name, msg));
-      return;
-    }
+  void logger::send_log(spdlog::level::level_enum level, natural_t log_id, const std::string_view msg) {
+    OTHER_ASSERT(log_id < num_loggers, "Invalid log ID: {}", log_id);
 
-    auto& logger = logger_itr->second;
-    if (logger == nullptr) {
-      log_failure_error(std::format("Logger {} is null. Dropped Log :\n{}", log_name, msg));
-      return;
-    }
-
-    if (logger->level() == spdlog::level::off) {
+    auto& log_entry = loggers[log_id];
+    if (log_entry.logger_ptr->level() == spdlog::level::off) {
       return;
     }
 
     switch (level) {
       case spdlog::level::trace:
-        logger->trace(msg);
+        log_entry.logger_ptr->trace(msg);
         break;
       case spdlog::level::debug:
-        logger->debug(msg);
+        log_entry.logger_ptr->debug(msg);
         break;
       case spdlog::level::info:
-        logger->info(msg);
+        log_entry.logger_ptr->info(msg);
         break;
       case spdlog::level::warn:
-        logger->warn(msg);
+        log_entry.logger_ptr->warn(msg);
         break;
       case spdlog::level::err:
-        logger->error(msg);
+        log_entry.logger_ptr->error(msg);
         break;
       case spdlog::level::critical:
-        logger->critical(msg);
+        log_entry.logger_ptr->critical(msg);
         break;
       default:
-        log_failure_error(std::format("Logger {} has invalid level. Dropped Log :\n{}", log_name, msg));
+        log_failure_error(std::format("Logger {} has invalid level. Dropped Log :\n{}", log_entry.name, msg));
     }
   }
 
@@ -118,6 +124,8 @@ namespace other {
   }
 
   void logger::log_failure_error(const std::string& message) {
+    std::unique_lock lock(log_mutex);
+
     if (error_log_file == nullptr) {
       error_log_file = std::make_unique<std::ofstream>(kLogFailureFile.data(), std::ios::out);
     }
@@ -131,6 +139,7 @@ namespace other {
     *error_log_file << "[" << time_str << "] "
                     << "LOG FAILURE ERROR: " << message << std::endl;
     *error_log_file << message << std::endl;
+    error_log_file = nullptr;
   }
 
 }  // namespace other

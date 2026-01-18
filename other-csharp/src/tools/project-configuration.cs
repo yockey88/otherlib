@@ -12,7 +12,6 @@ namespace Other
       "${project-folder}/CMakeLists.txt", // cmake build file for native code
 
       "${project-folder}/src", // source .cpp files for driver and other native code (should be largely invisible to user unless they want extreme control and to write native code)
-      "${project-folder}/src/CMakeLists.txt",
       "${project-folder}/src/${project-name}-driver.cpp",
       "${project-folder}/src/${project-name}-driver.hpp",
       "${project-folder}/assets", // assets which is visible in the editor and other project inspection Other tools
@@ -24,7 +23,7 @@ namespace Other
     public static Dictionary<string, string> TemplatePaths = new Dictionary<string, string> {
       { ".toml", "templates/app-environment-config.toml" },
       { ".cpp", "templates/app-driver.cpp" },
-      { ".hpp", "templates/app-driver.hpp" },
+      { ".hpp", "templates/app-driver.hpp" }
     };
 
     public enum ProjectType

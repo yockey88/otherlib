@@ -11,6 +11,9 @@
 
 #include "gpu_resource/renderer_resource.hpp"
 
+#include "imgui.h"
+
+
 namespace other {
 
   struct texture : public resource {
@@ -159,6 +162,8 @@ namespace other {
 
     void unbind(uint32_t slot = 0);
     void finalize_texture();
+
+    ImTextureID get_imgui_texture_id();
 
     const void* get_data() const { return data; }
     tex_type get_type() const { return (tex_type)texture_type; }

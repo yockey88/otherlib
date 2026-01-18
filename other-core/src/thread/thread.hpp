@@ -11,6 +11,7 @@
 #include "core/scope.hpp"
 #include "thread/channel.hpp"
 #include "thread/message.hpp"
+#include "thread/messages.hpp"
 
 namespace other {
 
@@ -30,6 +31,12 @@ namespace other {
     thread(const std::string& thread_name)
         : thread_name(thread_name) {}
     virtual ~thread() = default;
+
+    inline bool is_running() {
+      return current_state == STARTED ||
+        current_state == PROCESSING ||
+        current_state == WAITING;
+    }
 
     void launch();
     void shutdown();
@@ -58,8 +65,6 @@ namespace other {
     virtual void handle_ping(const session_status_request& ping) {}
     virtual void handle_pong(const session_status_response& pong) {}
     virtual void handle_shutdown_request(const session_shutdown_request& shutdown_request) {}
-    virtual void handle_command(const other_command_msg& cmd) {}
-    virtual void handle_command_block(const other_command_block_msg& cmd_block) {}
 
    protected:
     enum message_id {
@@ -123,7 +128,6 @@ namespace other {
     void handle_request_message(const message& msg);
     void handle_response_message(const message& msg);
     void handle_error_alert_message(const message& msg);
-    void handle_info_message(const message& msg);
 
     virtual inline microseconds get_message_timeout() {
       return microseconds(100);

@@ -10,6 +10,7 @@
 #include <dotnet/coreclr_delegates.h>
 #include <dotnet/hostfxr.h>
 
+#include "core/config_table.hpp"
 #include "core/defines.hpp"
 
 #include "dotnet/dotnet_assembly.hpp"
@@ -62,6 +63,11 @@ namespace other {
       discover_binding_points discover_binding_points = nullptr;
       bind_native_function bind_native_function = nullptr;
       register_internal_call register_internal_call = nullptr;
+      validate_binding_points validate_binding_points = nullptr;
+
+      /// NativeObjectManager
+      attach_native_object attach_native_object = nullptr;
+      detach_native_object detach_native_object = nullptr;
 
       /// TypeInterface
       get_type_information get_assembly_types = nullptr;
@@ -89,6 +95,7 @@ namespace other {
       get_field_value_type get_field_value_type = nullptr;
       get_field_accessibility get_field_accessibility = nullptr;
       get_field_attributes get_field_attributes = nullptr;
+      get_default_value get_default_value = nullptr;
 
       //       property
       get_property_name get_property_name = nullptr;
@@ -131,7 +138,7 @@ namespace other {
     void load_host_runtime_config(const filepath& runtime_config_path);
     void load_host_command_line(const filepath& command_line_path);
 #else
-    void load_host();
+    void load_host(const config_table& env_config);
 #endif
     void unload_host();
 
@@ -182,9 +189,15 @@ namespace other {
     interop_table interop_functions;
     type_cache loaded_types;
 
+    config_table environment_config;
+    std::basic_string<char_t> dotnet_binding_assembly;
+    std::basic_string<char_t> dotnet_runtime_config;
+
     std::map<natural_t, assembly_context> assembly_contexts;
 
     std::map<uint64_t, dotnet_object> managed_objects;
+
+    filepath get_bindings_assembly_path() const;
 
     dotnet_object* new_object(const std::string_view name, dotnet_type* type);
     void remove_object(const std::string_view name);
@@ -194,16 +207,11 @@ namespace other {
 
     void* load_managed_function(const filepath& asm_path, const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type = OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION) const;
 
-    /// \todo fix hardcoded path
+    /// \todo fix hardcoded path and replace with install location
     template <typename Fn>
     Fn load_managed_function(const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type = OTHER_ENVIRONMENT_DOTNET_UNMANAGED_FUNCTION) const {
-#ifdef OTHER_ENVIRONMENT_DEBUG
-      const char_t* dotnetlib_path = DNET_STR("build/other-csharp/Debug/OtherCsBindings.dll");
-#elif defined(OTHER_ENVIRONMENT_RELEASE)
-      const char_t* dotnetlib_path = DNET_STR("build/other-csharp/Release/OtherCsBindings.dll");
-#else
-  #error "Unknown build configuration!"
-#endif
+      PROFILE_SECTION("dotnet_host::load-managed-function--by-type-and-method");
+      const char_t* dotnetlib_path = dotnet_binding_assembly.data();
       return (Fn)(load_managed_function(dotnetlib_path, type_name, method_name, delegate_type));
     }
   };

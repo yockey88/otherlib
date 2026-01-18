@@ -4,9 +4,10 @@
 #ifndef OTHER_CORE_DATA_STRUCTURES_GRAPH_HPP
 #define OTHER_CORE_DATA_STRUCTURES_GRAPH_HPP
 
-#include "math/dynamic_matrix.hpp"
+#include <map>
+#include <vector>
 
-#include "data-structures/arena_vector.hpp"
+#include "core/defines.hpp"
 
 namespace other {
 
@@ -20,46 +21,74 @@ namespace other {
       nodes.clear();
     }
 
+    bool empty() const {
+      return nodes.empty();
+    }
+
+    size_t size() const {
+      return nodes.size();
+    }
+
     uint64_t add_node(T&& value) {
-      return nodes.emplace_back(node{ get_next_id(), std::move(value) }).id;
+      auto id = get_next_id();
+      auto [itr, success] = nodes.emplace(id, node{ id, std::move(value) });
+      if (!success) {
+        return 0;
+      }
+
+      return itr->first;
     }
 
     void remove_node(uint64_t id) {
-      auto itr = nodes.find_if([id](const auto& n) { return n.id == id; });
-      if (itr != nodes.end()) {
+      if (auto itr = nodes.find(id); itr != nodes.end()) {
         nodes.erase(itr);
       }
     }
 
     T* ptr_to_node_value(uint64_t id) {
-      auto itr = nodes.find_if([id](const auto& n) { return n.id == id; });
-      if (itr != nodes.end()) {
-        return &itr.ptr->value;
+      if (auto itr = nodes.find(id); itr != nodes.end()) {
+        return &itr->second.value;
       }
       return nullptr;
     }
 
     std::vector<uint64_t> get_all_node_ids() const {
       std::vector<uint64_t> ids;
-      for (natural_t i = 0; i < nodes.size; ++i) {
-        ids.push_back(nodes[i].id);
+      for (const auto& [id, node] : nodes) {
+        ids.push_back(id);
       }
       return ids;
     }
 
-    // std::vector<uint64_t> get_node_neighbors(uint64_t id) const {
-    //   std::vector<uint64_t> neighbors;
-    //   auto itr = nodes.find_if([id](const auto& n) { return n.id == id; });
-    //   if (itr != nodes.end()) {
-    //     natural_t index = itr.ptr - nodes.data;
-    //     for (natural_t j = 0; j < adjacency_matrix.cols; ++j) {
-    //       if (adjacency_matrix(index, j) != 0) {
-    //         neighbors.push_back(nodes[j].id);
-    //       }
-    //     }
-    //   }
-    //   return neighbors;
-    // }
+    template <typename Pred>
+      requires requires(Pred p, T t) { { p(t) } -> std::same_as<bool>; }
+    T* find_item(Pred&& predicate) {
+      for (auto& [id, node] : nodes) {
+        if (predicate(node.value)) {
+          return &node.value;
+        }
+      }
+      return nullptr;
+    }
+
+    template <typename Pred>
+      requires requires(Pred p, T t) { { p(t) } -> std::same_as<bool>; }
+    const T* find_item(Pred&& predicate) const {
+      for (const auto& [id, node] : nodes) {
+        if (predicate(node.value)) {
+          return &node.value;
+        }
+      }
+      return nullptr;
+    }
+
+    template <typename Func>
+      requires requires(Func f, T t) { f(t); }
+    void for_each_node(Func&& func) {
+      for (auto& [id, node] : nodes) {
+        func(node.value);
+      }
+    }
 
    private:
     struct node {
@@ -68,7 +97,8 @@ namespace other {
 
       constexpr auto operator<=>(const node& other) const = default;
     };
-    arena_vector<node> nodes = {};
+    std::map<uint64_t, node> nodes;
+    std::map<natural_t, std::vector<natural_t>> adjacency_list;
 
     uint64_t id_counter = 0;
     uint64_t get_next_id() {

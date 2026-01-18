@@ -11,6 +11,8 @@ target_sources(other_renderer
       
       src/model/vertex.cpp
       src/model/vertex_buffer.cpp
+      src/model/animation.cpp
+      src/model/skeleton.cpp
       src/model/model_importer.cpp
       src/model/model.cpp
       
@@ -25,10 +27,6 @@ target_sources(other_renderer
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
 
-      src/renderer/draw_command.cpp
-
-      src/renderer/ui/nodes/hbox_node.cpp
-
       src/renderer/ui/ui_helpers.cpp
       src/renderer/ui/ui_node.cpp
       src/renderer/ui/ui_window.cpp
@@ -36,14 +34,18 @@ target_sources(other_renderer
 
 target_include_directories(other_renderer 
   PUBLIC 
-      "${CMAKE_CURRENT_SOURCE_DIR}/src"
-      ${OTHER_EXTERN_DIR}/glad/include
-      ${OTHER_EXTERN_DIR}/stb
-      ${OTHER_EXTERN_DIR}/imgui
-      ${OTHER_EXTERN_DIR}/sdl
-      ${OTHER_EXTERN_DIR}/assimp
-      ${OTHER_EXTERN_DIR}/mio
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/renderer>
 )
-target_link_directories(other_renderer PUBLIC ${OTHER_LIBRARIES_PATH})
 
-target_link_libraries(other_renderer PUBLIC imgui SDL3 glad ${ASSIMP_NAME} other_core)
+target_link_directories(other_renderer PUBLIC 
+  $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}>
+  $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
+)
+target_link_libraries(other_renderer PRIVATE imgui SDL3 glad ${ASSIMP_NAME} other_core)
+
+if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+	target_include_directories(other_renderer PRIVATE ${OTHER_EXTERN_DIR}/tracy)
+endif()
+
+other_install_module(other_renderer "renderer")

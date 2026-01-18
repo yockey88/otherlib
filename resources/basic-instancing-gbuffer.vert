@@ -7,10 +7,13 @@ void main() {
   set_instance_id();
 
   mat4 model_matrix = get_instance_model_matrix();
-  world_position = get_world_position().xyz;
-
   mat3 normal_mat = transpose(inverse(mat3(model_matrix)));
-  world_normal = (model_matrix * get_normal()).xyz;
 
-  gl_Position = get_camera_matrix() * vec4(world_position, 1.0);
+  mat4 bone_transform = get_bone_transform();
+  mat3 bone_normal = transpose(inverse(mat3(bone_transform)));
+
+  vec4 skinned_world_pos = model_matrix * bone_transform * get_local_position();
+  world_position = skinned_world_pos.xyz;
+  world_normal = normalize(normal_mat * bone_normal * get_normal().xyz);
+  gl_Position = get_camera_matrix() * vec4(skinned_world_pos.xyz, 1);
 }

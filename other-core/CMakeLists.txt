@@ -12,6 +12,7 @@ target_sources(other_core
 		src/core/registers.cpp
 		src/core/ref.cpp
 		src/core/ref_counted.cpp
+		src/core/value_storage.cpp
 		src/core/value.cpp
 		src/core/formatting.cpp
 
@@ -40,6 +41,8 @@ target_sources(other_core
 		src/serialization/serialization.cpp
 
 		src/thread/message.cpp
+		src/thread/test/new_message.cpp
+		src/thread/messages.cpp
 		src/thread/message_bus.cpp
 		src/thread/thread.cpp
 
@@ -47,26 +50,20 @@ target_sources(other_core
 )
 
 target_include_directories(other_core 
-    PUBLIC 
-			"${CMAKE_CURRENT_SOURCE_DIR}/src" 
-			${OTHER_EXTERN_DIR}/magic_enum
-			${OTHER_EXTERN_DIR}/args
-			${OTHER_EXTERN_DIR}/tomlplusplus
-			${OTHER_EXTERN_DIR}/spdlog
-			${OTHER_EXTERN_DIR}/glm
-			${OTHER_EXTERN_DIR}/refl
-			${OTHER_EXTERN_DIR}/reflect-cpp
-			${OTHER_EXTERN_DIR}/flatbuffers
-			${OTHER_EXTERN_DIR}/asio
-			${OTHER_EXTERN_DIR}/json
-			${OTHER_EXTERN_DIR}/mio
-			${OTHER_EXTERN_DIR}/nativefiledialog/src
+  PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/core>		
 )
+foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
+  target_include_directories(other_core PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
+endforeach()
 
 if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
 	target_sources(other_core PRIVATE ${OTHER_EXTERN_DIR}/tracy/tracy/TracyClient.cpp)
-	target_include_directories(other_core PUBLIC ${OTHER_EXTERN_DIR}/tracy)
+	target_include_directories(other_core PRIVATE ${OTHER_EXTERN_DIR}/tracy)
 endif()
 
-target_link_directories(other_core PUBLIC ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_core PUBLIC flatbuffers glad Threads::Threads)
+target_link_directories(other_core PRIVATE ${OTHER_LIBRARIES_PATH})
+target_link_libraries(other_core PRIVATE flatbuffers glad Threads::Threads)
+
+other_install_module(other_core "core")

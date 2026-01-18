@@ -50,6 +50,7 @@ namespace other {
       if (itr != transitions.end()) {
         ST next_state = itr->to;
         OTHER_ASSERT(next_state < ST::NUM_STATES, "Next state is invalid");
+        CORE_LOG_TRACE("FSM[{}]: Event '{}': '{}' => '{}'", typeid(*this).name(), event, current, next_state);
 
         on_exit_state(current);
         if (itr->on_transition) {

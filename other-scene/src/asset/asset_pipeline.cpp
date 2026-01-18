@@ -106,7 +106,6 @@ namespace other {
           [this](const std::string& error_msg) { pipeline_failed(error_msg); },
           this
         );
-        CORE_LOG_TRACE("Load operation for asset ID: {} completed", asset_ptr->id);
       } catch (const std::exception& e) {
         pipeline_failed(e.what());
       } catch (...) {
@@ -117,10 +116,11 @@ namespace other {
 
   void asset_pipeline::pipeline_finished() {
     pipeline_state.success = true;
+    CORE_LOG_DEBUG("Pipeline finished successfully");
   }
 
   void asset_pipeline::pipeline_failed(const std::string& error_message) {
-    CORE_LOG_TRACE("    pipeline_state.failure = {}", (bool)pipeline_state.failure);
+    CORE_LOG_ERROR("Pipeline failed with error: {}", error_message);
     {
       std::lock_guard lck{ mtx };
       this->error_message = error_message;

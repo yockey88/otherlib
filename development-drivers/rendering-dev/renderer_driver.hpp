@@ -12,6 +12,8 @@
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
+#include "scripting/execution_graph.hpp"
+#include "ui/node_editor.hpp"
 
 #include "asset/asset_handler.hpp"
 
@@ -40,19 +42,25 @@ namespace other {
     bool pressing_mouse_wheel = false;
     mouse_state mouse;
 
-    std::unique_ptr<asio::io_context> io_context = nullptr;
-    scope<asset_handler> asset_mgr = nullptr;
-    scope<renderer> renderer = nullptr;
-    scene active_scene;
+    struct {
+      bool node_editor_window = true;
+      bool value_editor_window = true;
+    } ui_tool_window_states;
+
+    value test_value;
+
+    execution_graph exec_graph;
+    scope<ui::node_editor> node_editor = nullptr;
+    natural_t input_node_id = 0;
+    natural_t output_node_id = 0;
+    bool editor_open = true;
 
     bool loaded_suzanne = false;
     natural_t light_id;
     natural_t suzanne_id;
     natural_t camera_id;
 
-    model cube;
-    model suzanne;
-
+    model suzanne_model;
     natural_t suzanne_asset_id = 0;
 
     void on_event(SDL_Event* event) override;
