@@ -3,10 +3,29 @@
  **/
 #include "ui/property_inspector_node.hpp"
 
-#include "object/component_registry.hpp"
+#include "object/camera_component.hpp"
+#include "object/light_component.hpp"
+#include "object/physics_component.hpp"
+#include "object/render_component.hpp"
+#include "object/script_component.hpp"
 
 #include "driver/driver.hpp"
 #include "ui/colors.hpp"
+
+IMGUI_REFLECT(glm::vec3, x, y, z);
+IMGUI_REFLECT(glm::quat, w, x, y, z);
+
+IMGUI_REFLECT(other::gpu::graphics_material, diffuse_color, diffuse_reflectivity, specular_color, specular_reflectivity, emissivity, transparency, shininess, padding);
+
+IMGUI_REFLECT(other::scene_object, id, registry_id, name, visible);
+IMGUI_REFLECT(other::transform, local_position, local_rotation_quat, local_scale);
+IMGUI_REFLECT(other::script_component, script_object_id);
+IMGUI_REFLECT(other::render_component, material, visible, animated);
+IMGUI_REFLECT(other::physics_component, body, shape);
+
+IMGUI_REFLECT(other::orthonormal_basis, i, j, k);
+IMGUI_REFLECT(other::camera, position, direction, euler_angles, world_up, basis);
+IMGUI_REFLECT(other::camera_component, camera);
 
 namespace other {
   namespace ui {
@@ -36,6 +55,18 @@ namespace other {
         selected_object_ids.clear();
       }
       selected_object_ids.push_back(object_id);
+    }
+
+    template <typename T>
+    void draw_component(const std::string_view component_name, scene* active_scene, scene_object* object) {
+      if (!active_scene->has_component<T>(object)) {
+        return;
+      }
+
+      if (ImGui::CollapsingHeader(component_name.data())) {
+        auto settings = type_settings<T>::get();
+        ImReflect::Input(component_name.data(), *active_scene->get_component<T>(object), settings);
+      }
     }
 
     void property_inspector_node::on_render_node_body() {
@@ -75,10 +106,11 @@ namespace other {
         ImGui::Separator();
 
         /// components
-        // component_registry* comp_reg = active_scene->get_component<component_registry>(&obj);
-        // if (comp_reg != nullptr) {
-        //   ImGui::Text("Components:");
-        // }
+        draw_component<transform>("Transform", active_scene, &obj);
+        draw_component<script_component>("Script Component", active_scene, &obj);
+        draw_component<render_component>("Render Component", active_scene, &obj);
+        // draw_component<physics_component>("Physics Component", active_scene, &obj);
+        draw_component<camera_component>("Camera Component", active_scene, &obj);
       }
 
       ImGui::EndChild();

@@ -4,6 +4,8 @@
 #ifndef OTHERLIB_UI_PROPERTY_INSPECTOR_NODE_HPP
 #define OTHERLIB_UI_PROPERTY_INSPECTOR_NODE_HPP
 
+#include <imgui/ImReflect.hpp>
+
 #include "renderer/ui/ui_node.hpp"
 
 namespace other {
@@ -11,6 +13,13 @@ namespace other {
   class driver;
 
   namespace ui {
+
+    template <typename T>
+    struct type_settings {
+      static ImReflect::ImSettings get() {
+        return ImReflect::ImSettings();
+      }
+    };
 
     class property_inspector_node : public ui_node {
      public:

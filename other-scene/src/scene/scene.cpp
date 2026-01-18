@@ -913,7 +913,7 @@ namespace other {
     object->registry_id = (uint32_t)entity;
 
     storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
-    // storage->registry.emplace<component_registry>(entity, component_registry{});
+    storage->registry.emplace<component_registry>(entity, component_registry{});
     storage->registry.emplace<transform>(entity, transform{
                                                    orthonormal_basis(glm::vec3(0, 1, 0)),
                                                    world_position,
