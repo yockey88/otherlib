@@ -62,12 +62,6 @@ namespace other {
       if (!active_scene->has_component<T>(object)) {
         return;
       }
-
-      if (ImGui::CollapsingHeader(component_name.data())) {
-        /// this does not look good, but works for now
-        auto settings = type_settings<T>::get();
-        ImReflect::Input(component_name.data(), *active_scene->get_component<T>(object), settings);
-      }
     }
 
     void property_inspector_node::on_render_node_body() {

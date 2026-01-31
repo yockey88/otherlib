@@ -8,13 +8,22 @@
 
 #include "serialization/reflection.hpp"
 
+#include "object/component.hpp"
+
 namespace other {
 
   struct scene_object;
 
-  struct script_component {
+  struct script_component : public component {
     scene_object* object = nullptr;
     integer_t script_object_id = 0;
+
+    void fixed_update(double delta_time);
+    void update(double delta_time);
+    void late_update(double delta_time);
+
+    script_component() = default;
+    script_component(scene_object* obj) : object(obj), script_object_id(0) {}
   };
 
 }  // namespace other

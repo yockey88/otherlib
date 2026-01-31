@@ -13,9 +13,12 @@
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
+#include "object/component.hpp"
+
+
 namespace other {
 
-  struct transform {
+  struct transform : public component {
     orthonormal_basis local_basis = orthonormal_basis(glm::vec3(0, 1, 0));
     glm::vec3 local_position = { 0, 0, 0 };
     glm::vec3 local_scale = { 1, 1, 1 };

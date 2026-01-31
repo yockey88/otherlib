@@ -8,9 +8,11 @@
 
 #include "renderer/camera.hpp"
 
+#include "object/component.hpp"
+
 namespace other {
 
-  struct camera_component {
+  struct camera_component : public component {
     camera camera;
   };
 

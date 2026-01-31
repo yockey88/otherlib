@@ -45,7 +45,10 @@ namespace other {
 
   struct scene_storage {
     natural_t scene_id = 0;
+
     entt::registry registry = {};
+    entt::entity scene_root_entity = entt::null;
+
     scene_tree tree;
 
     sol::state& lua_state;

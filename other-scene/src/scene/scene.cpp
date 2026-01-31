@@ -20,7 +20,6 @@
 
 #include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
-#include "object/component_registry.hpp"
 #include "object/light_component.hpp"
 #include "object/object_serialization_data.hpp"
 #include "object/physics_component.hpp"
@@ -29,10 +28,10 @@
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
 #include "scene/scene_network_context.hpp"
+#include "scene/scene_storage.hpp"
 
 #include "entt/entity/fwd.hpp"
 #include "glm/fwd.hpp"
-#include "scene_storage.hpp"
 #include "sol/table.hpp"
 
 namespace other {
@@ -43,7 +42,10 @@ namespace other {
     // Create the root object
     scene_object& root = storage->tree.root_object();
     register_object(&root, "Root", glm::vec3(0.0f));
-    root.visible = true;
+    object_handle* tag = get_component<object_handle>(&root);
+    OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
+
+    storage->scene_root_entity = entt::entity(root.registry_id);
   }
 
   void scene::do_final_scene_destruction_cleanup() {
@@ -886,11 +888,10 @@ namespace other {
     PROFILE_SECTION("scene::connect_remote_session");
 
     scene_object& root = root_object();
-    if (!has_component<scene_network_context>(&root)) {
-      add_component<scene_network_context>(&root);
-    }
 
     auto* net_ctx = get_component<scene_network_context>(&root);
+    OTHER_ASSERT(net_ctx != nullptr, "Scene network context component is not present on the root scene object.");
+
     net_ctx->add_remote_session(session_id);
   }
 
@@ -914,13 +915,17 @@ namespace other {
 
     storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
     storage->registry.emplace<component_registry>(entity, component_registry{});
-    storage->registry.emplace<transform>(entity, transform{
-                                                   orthonormal_basis(glm::vec3(0, 1, 0)),
-                                                   world_position,
-                                                   glm::vec3(1, 1, 1),
-                                                   glm::quat(1, 0, 0, 0),
-                                                 });
-    storage->registry.emplace<script_component>(entity, script_component{ .object = object });
+    auto& transf = storage->registry.emplace<transform>(entity, transform{
+                                                                  orthonormal_basis(glm::vec3(0, 1, 0)),
+                                                                  world_position,
+                                                                  glm::vec3(1, 1, 1),
+                                                                  glm::quat(1, 0, 0, 0),
+                                                                });
+    auto& script = storage->registry.emplace<script_component>(entity, script_component{ object });
+
+    auto& comp_reg = storage->registry.get<component_registry>(entity);
+    comp_reg.register_component(transf);
+    comp_reg.register_component(script);
   }
 
   void scene::register_object(scene_object* object, const std::string& name, const transform& transformation) {

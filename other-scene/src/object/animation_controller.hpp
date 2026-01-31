@@ -8,12 +8,16 @@
 
 #include <glm/glm.hpp>
 
+#include "serialization/reflection.hpp"
+
+#include "object/component.hpp"
+
 namespace other {
 
   struct animation;
   struct model;
 
-  struct animation_controller {
+  struct animation_controller : public component {
     double animation_accumulator = 0.0;
     double animation_speed = 1.0;
     double animation_time = 0.0;
@@ -29,5 +33,14 @@ namespace other {
   };
 
 }  // namespace other
+
+OTHER_REFLECT(
+  other::animation_controller,
+  field(animation_accumulator, other::attr::serializable()),
+  field(animation_speed, other::attr::serializable()),
+  field(animation_time, other::attr::serializable()),
+  field(animation_index, other::attr::serializable()),
+  field(root_transform)
+)
 
 #endif  // OTHER_SCENE_OBJECT_ANIMATION_CONTROLLER_HPP
