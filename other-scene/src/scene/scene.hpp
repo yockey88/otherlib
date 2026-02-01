@@ -58,6 +58,9 @@ namespace other {
     void play();
     void stop();
     void reset();
+    bool is_playing() const {
+      return playing;
+    }
 
     void enable_physics_debug_rendering();
     void disable_physics_debug_rendering();
@@ -71,8 +74,6 @@ namespace other {
 
     scene_object& root_object();
 
-    scene_object& create_object();
-    scene_object& create_object(scene_object* object);
     scene_object& create_object(const std::string& name, scene_object* parent_object = nullptr);
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
 
@@ -255,6 +256,8 @@ namespace other {
       bool operator==(const object_handle& other) const;
     };
     friend class scene_tree;
+
+    scene_object* from_registry_id(entt::entity entity);
 
     void register_object(scene_object* object, const std::string& name, const glm::vec3& world_position);
     void register_object(scene_object* object, const std::string& name, const transform& transformation);

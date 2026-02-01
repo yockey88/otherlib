@@ -7,6 +7,8 @@
 
 #include "script/scripting_environment.hpp"
 
+#include "object/scene_object.hpp"
+
 namespace other {
   namespace bindings {
 
@@ -47,6 +49,16 @@ namespace other {
 
     void native_end_child() {
       ImGui::EndChild();
+    }
+
+    void native_get_object_id(void* object_ptr, integer_t* out_id) {
+      OTHER_ASSERT(object_ptr != nullptr, "Native object pointer is null.");
+      OTHER_ASSERT(out_id != nullptr, "Output ID pointer is null.");
+
+      scripting_environment* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+      *out_id = ((scene_object*)object_ptr)->id;
     }
 
     ///
@@ -99,6 +111,10 @@ namespace other {
       .bind("EndWindow", bindings::native_end_window)
       .bind("BeginChild", bindings::native_begin_child)
       .bind("EndChild", bindings::native_end_child);
+
+    bindings::binding_context{ dn_host }
+      /// Object/Scene
+      .bind("GetObjectID", bindings::native_get_object_id);
 
     bindings::validate_binding_points(dn_host);
   }

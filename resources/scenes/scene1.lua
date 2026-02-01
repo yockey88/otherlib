@@ -2,11 +2,11 @@ local MyObject = Other:SceneObject():new("MyObject")
 MyObject.Transform.local_position = Vec3:new(0.0, -0.5, 0.0)
 MyObject.Transform.local_rotation_quat = Quat:new(0.0, 0.0, 0.0, 1.0)
 MyObject.Transform.local_scale = Vec3:new(1.0, 1.0, 1.0)
-MyObject.Scripts = {
-  [".NET"] = {
-    ["Test-Object"] = Other:DotnetTypes().Get("TestObject"),
-  }
-}
+-- MyObject.Scripts = {
+--   [".NET"] = {
+--     ["Test-Object"] = Other:DotnetTypes().Get("TestObject"),
+--   }
+-- }
 
 local Floor = Other:SceneObject():new("Floor")
 Floor.Transform.local_position = Vec3:new(0.0, -3.0, 0.0)

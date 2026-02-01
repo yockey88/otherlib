@@ -17,6 +17,7 @@ namespace other {
     if (dotnet_id == -1 || type_interface_initialized) {
       return;
     }
+    CORE_LOG_DEBUG("Initializing dotnet_type[{}] interface", full_name());
 
     dotnet_methods.clear();
     dotnet_fields.clear();
@@ -33,6 +34,7 @@ namespace other {
         dotnet_attributes.emplace_back(attribute_data{ attribute_type_id, { host, attribute_type_id, attribute_id } });
       }
     }
+
     {
       std::vector<int32_t> dotnet_method_ids;
       fill_out_type_information(dotnet_method_ids, host->interop().get_type_methods);
@@ -45,6 +47,7 @@ namespace other {
     {
       std::vector<int32_t> dotnet_field_ids;
       fill_out_type_information(dotnet_field_ids, host->interop().get_type_fields);
+
       std::vector<int32_t> dotnet_property_ids;
       fill_out_type_information(dotnet_property_ids, host->interop().get_type_properties);
 
@@ -53,6 +56,7 @@ namespace other {
         auto& f = dotnet_fields.emplace_back(host, this, field_id);
         f.initialize_field();
       }
+
       for (int32_t property_id : dotnet_property_ids) {
         auto& p = dotnet_fields.emplace_back(host, this, property_id, true);
         p.initialize_field();

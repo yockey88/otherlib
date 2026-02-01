@@ -73,6 +73,7 @@ namespace other {
   using destroy_object = void (*)(void*);
   using invoke_method = void (*)(void*, native_string, const void**, const managed_type*, int32_t);
   using invoke_method_ret = void (*)(void*, native_string, const void**, const managed_type*, int32_t, void*);
+  using field_is_private_checker = nbool32 (*)(void*, native_string);
   using field_setter_getter = void (*)(void*, native_string, void*);
   using string_field_setter_getter = void (*)(void*, native_string, native_string*);
   using managed_strlen = size_t (*)(void*, native_string);

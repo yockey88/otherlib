@@ -99,6 +99,7 @@ namespace other {
     }
 
     void set_scene_to_active(natural_t scene_id);
+    void synchronize_active_scene(natural_t scene_id);
     void unload_active_scene();
 
     inline driver_state current_driver_state() const {
@@ -196,6 +197,7 @@ namespace other {
     void request_scene_udp_binding(udp_binding_information address);
 
     virtual std::string get_project_name() const { return "[UNNAMED]"; }
+    virtual bool should_auto_play_scenes() const { return true; }
 
     virtual void on_event(SDL_Event* event) {}
 
@@ -210,6 +212,9 @@ namespace other {
 
     void on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data);
     void on_timeout_shutdown_request_network_thread(message_header header);
+
+    void on_ack_session_connect_to(message_header header, const std::span<const uint8_t> data);
+    void on_timeout_session_connect_to(message_header header);
 
     void on_ack_session_listen_for_network_thread(message_header header, const std::span<const uint8_t> data);
     void on_timeout_session_listen_for_network_thread(message_header header);
@@ -249,6 +254,7 @@ namespace other {
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
+    void send_message_and_detach_acknowledgement(message&& msg, message_handler handler);
     natural_t send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, message_handler handler);
     void cancel_acknowledgment(natural_t ack_id);
 
@@ -337,8 +343,11 @@ namespace other {
     virtual void on_push_scene_object(scene_object* object) {}
     virtual void on_pop_scene_object(scene_object* object) {}
 
-    void handle_load_empty_scene_event(const value& data);
-    void handle_load_scene_event(const value& data);
+    void handle_scene_load_empty_event(const value& data);
+    void handle_scene_load_event(const value& data);
+    void handle_scene_unload_event(const value& data);
+    void handle_scene_info_event(const value& data);
+    void handle_scene_playback_command_event(const value& data);
     void send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding);
 
     void handle_open_ui_window_event(const value& data);
@@ -376,8 +385,9 @@ namespace other {
   #define DRIVER_DELETE(instance) other::arena_allocator<other::driver>{}.free(instance)
 #endif
 
-#define OTHER_APPLICATION_DRIVER(name) \
-  std::string get_project_name() const override { return name; }
+#define OTHER_APPLICATION_DRIVER(name, autoplay)                 \
+  std::string get_project_name() const override { return name; } \
+  bool should_auto_play_scenes() const override { return autoplay; }
 
 #define OTHER_DRIVER(name)                                                                                       \
   OTHER_PLUGIN(name)                                                                                             \

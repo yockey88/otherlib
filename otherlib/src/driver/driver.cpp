@@ -47,12 +47,6 @@ namespace other {
       environment_console::clear_console_output();
     });
 
-    /// scene commands
-    get_event_system()->register_event("force-load-empty-scene");
-    get_event_system()->add_listener("force-load-empty-scene", std::bind_front(&driver::handle_load_empty_scene_event, this));
-    get_event_system()->register_event("force-load-scene");
-    get_event_system()->add_listener("force-load-scene", std::bind_front(&driver::handle_load_scene_event, this));
-
     /// open/close ui window events
     get_event_system()->register_event("open-driver-ui-window");
     get_event_system()->add_listener("open-driver-ui-window", std::bind_front(&driver::handle_open_ui_window_event, this));
@@ -84,6 +78,18 @@ namespace other {
     get_event_system()->add_listener("object-driver-pop", std::bind_front(&driver::handle_object_driver_pop_event, this));
     get_event_system()->register_event("object-driver-info");
     get_event_system()->add_listener("object-driver-info", std::bind_front(&driver::handle_object_driver_info_event, this));
+
+    /// scene commands
+    get_event_system()->register_event("force-load-empty-scene");
+    get_event_system()->add_listener("force-load-empty-scene", std::bind_front(&driver::handle_scene_load_empty_event, this));
+    get_event_system()->register_event("force-load-scene");
+    get_event_system()->add_listener("force-load-scene", std::bind_front(&driver::handle_scene_load_event, this));
+    get_event_system()->register_event("force-unload-scene");
+    get_event_system()->add_listener("force-unload-scene", std::bind_front(&driver::handle_scene_unload_event, this));
+    get_event_system()->register_event("scene-info-requested");
+    get_event_system()->add_listener("scene-info-requested", std::bind_front(&driver::handle_scene_info_event, this));
+    get_event_system()->register_event("scene-playback-command");
+    get_event_system()->add_listener("scene-playback-command", std::bind_front(&driver::handle_scene_playback_command_event, this));
 
     /// load client specific .NET
     /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
@@ -369,10 +375,13 @@ namespace other {
     }
 
     if (active_scene != nullptr) {
-      get_event_system()->cancel_event("scene-update");
+      CORE_LOG_DEBUG("Another scene [{}:{}] is already active, unloading it first.", active_scene->id, active_scene->name);
+      unload_active_scene();
     }
 
     active_scene = project_scene_graph->get_scene(scene_id);
+    OTHER_ASSERT(active_scene != nullptr, "Scene with ID {} not found in scene graph.", scene_id);
+    CORE_LOG_DEBUG("Finalizing Scene [{}:{}] Activation.", active_scene->id, active_scene->name);
     auto& storage = active_scene->get_storage();
     if (storage.sandbox["OnSceneActivate"].valid()) {
       CORE_LOG_DEBUG("Calling 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
@@ -389,12 +398,42 @@ namespace other {
     /// \todo make fixed update time configurable
     get_event_system()->register_timed_event("scene-update", milliseconds(16), true);
     get_event_system()->add_listener("scene-update", [this](const value& data) {
-      if (active_scene != nullptr) {
-        constexpr static float kSixtyHertzFixedDeltaTime = 1.0f / 60.0f;
-        active_scene->fixed_update(kSixtyHertzFixedDeltaTime);
-      }
+      OTHER_ASSERT(active_scene != nullptr, "No active scene in driver during scene update event.");
+      constexpr static float kSixtyHertzFixedDeltaTime = 1.0f / 60.0f;
+      active_scene->fixed_update(kSixtyHertzFixedDeltaTime);
     });
-    active_scene->play();
+
+    if (should_auto_play_scenes()) {
+      active_scene->play();
+    }
+  }
+
+  void driver::synchronize_active_scene(natural_t scene_id) {
+    bool network_thread_active = net_context->net_thread != nullptr && net_context->net_thread->is_running();
+    /// if we are a client and are connected to the server send the load command, if we are client and
+    ///  are not connected to a server we still set synchronized to false in case of a connection later
+    ///  we know to begin synchronization
+    if (network_thread_active && primary_role == driver_role::CLIENT) {
+      if (client_session_id.has_value()) {
+        constexpr bool is_empty = false;
+        constexpr bool requires_udp_binding = true;
+        send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
+      }
+
+      active_scene->synchronized = false;
+    }
+    /// if we are a server and have clients connected send the load command to them
+    else if (network_thread_active &&
+             primary_role == driver_role::SERVER && !app_list.other_apps.empty()) {
+      for (const auto& [other_app_id, other_app] : app_list.other_apps) {
+        if (!other_app.connected) {
+          continue;
+        }
+        constexpr bool is_empty = false;
+        constexpr bool requires_udp_binding = true;
+        send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
+      }
+    }
   }
 
   void driver::unload_active_scene() {
@@ -402,12 +441,29 @@ namespace other {
       CORE_LOG_WARN("No active scene to unload in driver.");
       return;
     }
-    CORE_LOG_DEBUG("Unloading active scene [{}:{}] from driver.", active_scene->id, active_scene->name);
-    /// \todo serialize or something before removing?
 
-    active_scene->stop();
-    // active_scene->reset();
-    project_scene_graph->remove_scene(active_scene->id);
+    if (active_scene->is_playing()) {
+      active_scene->stop();
+      active_scene->reset();
+    }
+
+    auto& storage = active_scene->get_storage();
+    if (storage.sandbox["OnSceneDeactivate"].valid()) {
+      CORE_LOG_DEBUG("Calling 'OnSceneDeactivate' for scene [{}:{}]", active_scene->id, active_scene->name);
+      sol::protected_function on_scene_deactivate_fn = storage.sandbox["OnSceneDeactivate"];
+      sol::protected_function_result result = on_scene_deactivate_fn();
+      if (!result.valid()) {
+        CORE_LOG_ERROR("Failed to execute 'OnSceneDeactivate' for scene [{}:{}]", active_scene->id, active_scene->name);
+        sol::error err = result;
+        CORE_LOG_ERROR("Lua Error: {}", err.what());
+      }
+    }
+
+    get_event_system()->cancel_event("scene-update");
+
+    /// \todo decide whether to actually unload or to leaved cached, for now just stop it and
+    ///        and leave in the graph, but not active
+    // project_scene_graph->remove_scene(active_scene->id);
     active_scene = nullptr;
   }
 
@@ -494,6 +550,7 @@ namespace other {
       primary_role = driver_role::SERVER;
     }
 
+    CORE_LOG_DEBUG("Network Role : [{}]", primary_role);
     if (network_thread_active && primary_role == driver_role::CLIENT) {
       message connect_msg;
       connect_msg.header = {
@@ -504,7 +561,7 @@ namespace other {
       command_session_connect_to conn_cmd;
       conn_cmd.address = net_context->main_binding_point;
       connect_msg.data.append_range(conn_cmd.as_buffer());
-      send_to_network_thread(std::move(connect_msg));
+      send_message_and_wait_acknowledgment(std::move(connect_msg), std::chrono::seconds(10), message_handler{ this, &driver::on_ack_session_connect_to, &driver::on_timeout_session_connect_to });
     } else if (network_thread_active && primary_role == driver_role::SERVER) {
       message msg;
       msg.header = {
@@ -515,7 +572,6 @@ namespace other {
       command_session_listen_at listen_cmd;
       listen_cmd.address = net_context->main_binding_point;
       msg.data.append_range(listen_cmd.as_buffer());
-
       send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(10), message_handler{ this, &driver::on_ack_session_listen_for_network_thread, &driver::on_timeout_session_listen_for_network_thread });
     }
   }
@@ -1035,6 +1091,25 @@ namespace other {
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
+  void driver::on_ack_session_connect_to(message_header header, const std::span<const uint8_t> data) {
+    session_connect_to_response response = other_message_spec::parse<session_connect_to_response>(data);
+    if (response.ack_nack == 0x00) {
+      /// there is no session so we cannot be synchronized
+      active_scene->synchronized = true;
+    } else {
+      CORE_LOG_INFO("Connected to session [{}] successfully.", response.session_id);
+      active_scene->synchronized = false;
+    }
+  }
+
+  void driver::on_timeout_session_connect_to(message_header header) {
+    CORE_LOG_ERROR("Timeout while waiting for SESSION_CONNECT_TO response (header: {})", header);
+    if (active_scene == nullptr) {
+      /// there is no session so we cannot be synchronized
+      active_scene->synchronized = true;
+    }
+  }
+
   void driver::on_ack_session_listen_for_network_thread(message_header header, const std::span<const uint8_t> data) {
     CORE_LOG_INFO("Network thread acknowledged event request at session check in for session [{}]", header.id);
 
@@ -1044,6 +1119,7 @@ namespace other {
       CORE_LOG_ERROR("Failed to register event for network thread check-in");
       return;
     }
+
     get_event_system()->add_listener(event_id, [this](const value& ec) {
       message msg;
       msg.header = {
@@ -1332,6 +1408,25 @@ namespace other {
     launch_process(working_dir, exe_name, args);
   }
 
+  void driver::send_message_and_detach_acknowledgement(message&& msg, message_handler handler) {
+    acknowledgement_list::pending_ack ack{
+      .header = msg.header,
+      .handler = handler,
+      .timer = asio::steady_timer(net_context->io_context),
+    };
+
+    {
+      auto itr = std::find_if(ack_list.pending_acks.begin(), ack_list.pending_acks.end(), [&ack](const acknowledgement_list::pending_ack& existing_ack) {
+        return existing_ack.header == ack.header;
+      });
+      OTHER_ASSERT(itr == ack_list.pending_acks.end(), "Acknowledgment for message ID {} already pending", ack.header);
+    }
+
+    send_to_network_thread(std::move(msg));
+    auto ack_itr = ack_list.pending_acks.insert(ack_list.pending_acks.end(), std::move(ack));
+    OTHER_ASSERT(ack_itr != ack_list.pending_acks.end(), "Failed to insert pending acknowledgment for message ID {}", ack.header.id);
+  }
+
   natural_t driver::send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, message_handler handler) {
     acknowledgement_list::pending_ack ack{
       .header = msg.header,
@@ -1595,7 +1690,7 @@ namespace other {
     return context_stack[--context_stack_top];
   }
 
-  void driver::handle_load_empty_scene_event(const value& data) {
+  void driver::handle_scene_load_empty_event(const value& data) {
     if (data.type() != value_type::STRING) {
       CORE_LOG_ERROR("Invalid data type for force-load-empty-scene event. Expected string.");
       return;
@@ -1617,7 +1712,7 @@ namespace other {
     send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
   }
 
-  void driver::handle_load_scene_event(const value& data) {
+  void driver::handle_scene_load_event(const value& data) {
     if (data.type() != value_type::STRING) {
       CORE_LOG_ERROR("Invalid data type for load-scene event. Expected string.");
       return;
@@ -1640,31 +1735,63 @@ namespace other {
 
     set_scene_to_active(scene_id);
     OTHER_ASSERT(active_scene != nullptr, "Active scene is null after loading scene.");
+    synchronize_active_scene(scene_id);
+  }
 
-    bool network_thread_active = net_context->net_thread != nullptr && net_context->net_thread->is_running();
-    /// if we are a client and are connected to the server send the load command, if we are client and
-    ///  are not connected to a server we still set synchronized to false in case of a connection later
-    ///  we know to begin synchronization
-    if (network_thread_active && primary_role == driver_role::CLIENT) {
-      if (client_session_id.has_value()) {
-        constexpr bool is_empty = false;
-        constexpr bool requires_udp_binding = true;
-        send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
-      }
-
-      active_scene->synchronized = false;
+  void driver::handle_scene_unload_event(const value& data) {
+    if (active_scene == nullptr) {
+      CORE_LOG_ERROR("No active scene to unload.");
+      environment_console::submit_console_text("No active scene to unload.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      return;
     }
-    /// if we are a server and have clients connected send the load command to them
-    else if (network_thread_active &&
-             primary_role == driver_role::SERVER && !app_list.other_apps.empty()) {
-      for (const auto& [other_app_id, other_app] : app_list.other_apps) {
-        if (!other_app.connected) {
-          continue;
-        }
-        constexpr bool is_empty = false;
-        constexpr bool requires_udp_binding = true;
-        send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
-      }
+    CORE_LOG_INFO("Unloading active scene '{}'", active_scene->name);
+    unload_active_scene();
+  }
+
+  void driver::handle_scene_info_event(const value& data) {
+    if (active_scene == nullptr) {
+      CORE_LOG_ERROR("No active scene to get info from.");
+      environment_console::submit_console_text("No active scene to get info from.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      return;
+    }
+
+    std::stringstream ss;
+    ss << "Active Scene Information:\n";
+    ss << "  - Scene ID: " << active_scene->id << "\n";
+    ss << "  - Scene Name: " << active_scene->name << "\n";
+    // ss << "  - Number of Objects: " << active_scene->get_num_objects() << "\n";
+    ss << "  - Synchronized: " << (active_scene->synchronized ? "Yes" : "No") << "\n";
+
+    environment_console::submit_console_text(ss.str(), CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+  }
+
+  void driver::handle_scene_playback_command_event(const value& data) {
+    if (active_scene == nullptr) {
+      CORE_LOG_ERROR("No active scene to send playback command to.");
+      environment_console::submit_console_text("No active scene to send playback command to.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      return;
+    }
+
+    if (data.type() != value_type::STRING) {
+      CORE_LOG_ERROR("Invalid data type for scene-playback-command event. Expected string.");
+      environment_console::submit_console_text("Invalid data type for scene-playback-command event. Expected string.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      return;
+    }
+
+    std::string command = data.as_string();
+    if (command == "play") {
+      CORE_LOG_INFO("Starting scene '{}'", active_scene->name);
+      active_scene->play();
+    } else if (command == "pause") {
+      CORE_LOG_INFO("Pausing scene '{}'", active_scene->name);
+      active_scene->stop();
+    } else if (command == "stop") {
+      CORE_LOG_INFO("Stopping scene '{}'", active_scene->name);
+      active_scene->stop();
+      active_scene->reset();
+    } else {
+      CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
+      environment_console::submit_console_text("Unknown scene playback command: " + command, CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
     }
   }
 

@@ -71,10 +71,6 @@ namespace other {
       scene_table.set_function(
         "create_scene_object",
         sol::overload(
-          [this]() -> natural_t {
-            scene_object& new_obj = this->create_object();
-            return new_obj.id;
-          },
           [this](const std::string& name) -> natural_t {
             scene_object& new_obj = this->create_object(name);
             return new_obj.id;
@@ -92,10 +88,6 @@ namespace other {
       };
 
       scene_table["create_scene_object"] = sol::overload(
-        [this]() -> natural_t {
-          scene_object& new_obj = this->create_object();
-          return new_obj.id;
-        },
         [this](const std::string& name) -> natural_t {
           scene_object& new_obj = this->create_object(name);
           return new_obj.id;
@@ -236,9 +228,7 @@ namespace other {
 
   void scene::play() {
     /// store initial state for reset
-
     playing = true;
-
     storage->physics->start_simulation();
   }
 
@@ -354,17 +344,6 @@ namespace other {
     OTHER_ASSERT(root_node->object != nullptr, "Root node object is null.");
 
     return *root_node->object;
-  }
-
-  scene_object& scene::create_object() {
-    PROFILE_SECTION("scene::create_object_default");
-    return storage->tree.create_object("Scene Object", glm::vec3(0.f), nullptr);
-  }
-
-  scene_object& scene::create_object(scene_object* object) {
-    PROFILE_SECTION("scene::create_object_from_existing");
-    OTHER_ASSERT(object != nullptr, "Cannot create a scene object from a null pointer.");
-    return storage->tree.create_object(object->name, glm::vec3(0.f), nullptr);
   }
 
   scene_object& scene::create_object(const std::string& name, scene_object* parent_object) {
@@ -901,25 +880,40 @@ namespace other {
     return id == other.id && object == other.object;
   }
 
+  scene_object* scene::from_registry_id(entt::entity entity) {
+    PROFILE_SECTION("scene::from_registry_id");
+
+    object_handle* handle = storage->registry.try_get<object_handle>(entity);
+    if (handle == nullptr) {
+      CORE_LOG_ERROR("Object handle not found for entity {}", (natural_t)entity);
+      return nullptr;
+    }
+    return handle->object;
+  }
+
   void scene::register_object(scene_object* object, const std::string& name, const glm::vec3& world_position) {
     PROFILE_SECTION("scene::register_object");
 
+    OTHER_ASSERT(name.size() > 0, "Scene object name cannot be empty.");
     OTHER_ASSERT(object != nullptr, "Cannot register a null scene object.");
 
+    CORE_LOG_DEBUG("Registering scene object '{}' in scene '{}'", name, this->name);
     entt::entity entity = storage->registry.create();
     object->name = name;
     object->registry_id = (uint32_t)entity;
 
     storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
     storage->registry.emplace<component_registry>(entity, component_registry{});
-    auto& transf = storage->registry.emplace<transform>(entity, transform{
-                                                                  orthonormal_basis(glm::vec3(0, 1, 0)),
-                                                                  world_position,
-                                                                  glm::vec3(1, 1, 1),
-                                                                  glm::quat(1, 0, 0, 0),
-                                                                });
-    auto& script = storage->registry.emplace<script_component>(entity, script_component{ object });
+    storage->registry.emplace<transform>(entity, transform{
+                                                   orthonormal_basis(glm::vec3(0, 1, 0)),
+                                                   world_position,
+                                                   glm::vec3(1, 1, 1),
+                                                   glm::quat(1, 0, 0, 0),
+                                                 });
+    storage->registry.emplace<script_component>(entity, script_component{ object });
 
+    transform& transf = storage->registry.get<transform>(entity);
+    script_component& script = storage->registry.get<script_component>(entity);
     auto& comp_reg = storage->registry.get<component_registry>(entity);
     comp_reg.register_component(transf);
     comp_reg.register_component(script);
@@ -952,16 +946,19 @@ namespace other {
   void scene::on_create_script_component(const entt::registry&, const entt::entity entity) {
     PROFILE_SECTION("scene::on_create_script_component");
 
-    auto* script_env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
-
     script_component* script = storage->registry.try_get<script_component>(entity);
     OTHER_ASSERT(script != nullptr, "Script component is null for entity {}", (natural_t)entity);
 
-    std::string script_name = script->object->name;
-    script->script_object_id = script_env->create_object(script_name);
+    auto* script_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
-    // script_env->attach_dotnet_object(script.script_object_id, "Other.SceneObject");
+    script_object* object = script_env->get_object(script->script_object_id);
+    OTHER_ASSERT(object != nullptr, "Failed to retrieve script object after creation for object ID {}", script->script_object_id);
+
+    std::string script_name = script->object->name;
+    CORE_LOG_DEBUG("Creating script object for scene object '{}' [ID: {}] (entity {})", script->object->name, script->object->id, (natural_t)entity);
+    script->script_object_id = script_env->create_object(script->object->name);
+    script_env->attach_dotnet_object(script->script_object_id, "Other.SceneObject", (void*)object);
   }
 
   // void scene::on_update_script_component(const entt::registry&, const entt::entity entity) {

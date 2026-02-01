@@ -113,6 +113,7 @@ namespace other {
       invoke_method_ret invoke_method_ret = nullptr;
       // invoke_method invoke_static_method = nullptr;
       // invoke_method_ret invoke_static_method_ret = nullptr;
+      field_is_private_checker is_field_private = nullptr;
       field_setter_getter set_field = nullptr;
       field_setter_getter get_field = nullptr;
       field_setter_getter set_property = nullptr;

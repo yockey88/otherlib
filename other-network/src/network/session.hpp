@@ -24,14 +24,14 @@ namespace other {
   class session {
    public:
     session(network_thread* thread, natural_t connection_id, integer_t id, asio::io_context& context)
-        : connection_id(connection_id), session_id(id), socket(context), io_context(context), thread(thread) {
+        : connection_id(connection_id), session_id(id), socket(context), connection_timer(context), io_context(context), thread(thread) {
     }
     session(network_thread* thread, natural_t connection_id, integer_t id, asio::io_context& context, asio::ip::tcp::socket&& socket)
-        : connection_id(connection_id), session_id(id), socket(std::move(socket)), io_context(context), thread(thread) {
+        : connection_id(connection_id), session_id(id), socket(std::move(socket)), connection_timer(context), io_context(context), thread(thread) {
     }
 
     session(session&);
-    session& operator=(session&&);
+    session& operator=(session&&) = delete;
 
     void start_initialization();
     void checked_in();
@@ -64,6 +64,7 @@ namespace other {
     integer_t session_id = kInvalidSessionId;
 
     asio::ip::tcp::socket socket;
+    asio::steady_timer connection_timer;
     asio::io_context& io_context;
 
     network_thread* thread;

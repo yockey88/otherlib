@@ -317,5 +317,40 @@ function _Driver._parse_object_op_args(args)
   return result, true
 end
 
+function _Driver._parse_scene_op_args(args)
+  local result = {}
+  if #args < 1
+  then
+    _Meta:Console().PushError("Usage: scene <operation> [options...]")
+    return {}, false
+  end
+
+  local first_arg = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
+  if first_arg == "--new" or first_arg == "-n"
+  then
+    result.operation = "new"
+    result.scene_name = args[2] or nil
+  elseif first_arg == "--load" or first_arg == "-l"
+  then
+    result.operation = "load"
+    result.scene_path = args[2] or nil
+  elseif first_arg == "--unload" or first_arg == "-ul"
+  then
+    result.operation = "unload"
+  elseif first_arg == "--info" or first_arg == "-i"
+  then
+    result.operation = "info"
+  
+  elseif first_arg == "play" or first_arg == "pause" or first_arg == "stop"
+  then
+    result.operation = first_arg
+  else
+    _Meta:Console().PushError("Unknown operation for scene command.")
+    return {}, false
+  end
+
+  return result, true
+end
+
 local _D = _Driver:new()
 return _D
