@@ -227,10 +227,7 @@ namespace other {
   scene scene::load_scene(const filepath& scene_path) {
     std::string ext = scene_path.extension().string();
     switch (FNV(ext)) {
-      case FNV(".lua"): {
-        PROFILE_SECTION("scene::load_scene_lua");
-        return load_from_lua_file(scene_path);
-      }
+      case FNV(".lua"): return load_from_lua_file(scene_path);
       default:
         CORE_LOG_ERROR("Unsupported scene file extension '{}'", ext);
         return scene();
@@ -281,7 +278,7 @@ namespace other {
     }
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
-      // comp.fixed_update(delta_time);
+      comp.fixed_update(delta_time);
     });
 
     if (sol::protected_function on_fixed_update_fn = storage->sandbox["OnSceneFixedUpdate"]; on_fixed_update_fn.valid()) {
@@ -314,7 +311,7 @@ namespace other {
     });
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
-      // comp.update(delta_time);
+      comp.update(delta_time);
     });
 
     if (storage->sandbox["OnSceneUpdate"].valid()) {
@@ -335,7 +332,7 @@ namespace other {
     PROFILE_SECTION("scene::late_update");
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
-      // comp.late_update(delta_time);
+      comp.late_update(delta_time);
     });
 
     if (storage->sandbox["OnSceneLateUpdate"].valid()) {

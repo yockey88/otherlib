@@ -73,6 +73,18 @@ namespace other {
     get_event_system()->register_event("ls-driver-assets");
     get_event_system()->add_listener("ls-driver-assets", std::bind_front(&driver::handle_list_driver_assets_event, this));
 
+    // object commands
+    get_event_system()->register_event("object-driver-create");
+    get_event_system()->add_listener("object-driver-create", std::bind_front(&driver::handle_object_driver_create_event, this));
+    get_event_system()->register_event("object-driver-destroy");
+    get_event_system()->add_listener("object-driver-destroy", std::bind_front(&driver::handle_object_driver_destroy_event, this));
+    get_event_system()->register_event("object-driver-push");
+    get_event_system()->add_listener("object-driver-push", std::bind_front(&driver::handle_object_driver_push_event, this));
+    get_event_system()->register_event("object-driver-pop");
+    get_event_system()->add_listener("object-driver-pop", std::bind_front(&driver::handle_object_driver_pop_event, this));
+    get_event_system()->register_event("object-driver-info");
+    get_event_system()->add_listener("object-driver-info", std::bind_front(&driver::handle_object_driver_info_event, this));
+
     /// load client specific .NET
     /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
     std::vector<std::string> dotnet_modules = get_config_value<std::vector<std::string>>("scripting", "dotnet-modules");
@@ -1561,6 +1573,28 @@ namespace other {
     net_context->net_thread_message_bus.send_message(std::move(msg));
   }
 
+  void driver::push_scene_object_to_context_stack(scene_object* object) {
+    if (context_stack_top >= kObjectContextStackSize) {
+      CORE_LOG_ERROR("Context stack overflow when pushing scene object '{}'", object->name);
+      return;
+    }
+
+    CORE_LOG_DEBUG("Pushing scene object '{}' to context stack at position {}", object->name, context_stack_top);
+    context_stack[context_stack_top++] = object;
+    on_push_scene_object(context_stack[context_stack_top - 1]);
+  }
+
+  scene_object* driver::pop_scene_object_from_context_stack() {
+    if (context_stack_top == 0) {
+      CORE_LOG_ERROR("Context stack underflow when popping scene object");
+      return nullptr;
+    }
+
+    CORE_LOG_DEBUG("Popping scene object '{}' from context stack at position {}", context_stack[context_stack_top - 1]->name, context_stack_top - 1);
+    on_pop_scene_object(context_stack[context_stack_top - 1]);
+    return context_stack[--context_stack_top];
+  }
+
   void driver::handle_load_empty_scene_event(const value& data) {
     if (data.type() != value_type::STRING) {
       CORE_LOG_ERROR("Invalid data type for force-load-empty-scene event. Expected string.");
@@ -1742,6 +1776,68 @@ namespace other {
   }
 
   void driver::handle_list_driver_assets_event(const value& data) {
+  }
+
+  void driver::handle_object_driver_create_event(const value& data) {
+  }
+
+  void driver::handle_object_driver_destroy_event(const value& data) {
+  }
+
+  void driver::handle_object_driver_push_event(const value& data) {
+    CORE_LOG_DEBUG("Received object-driver-push event");
+    if (active_scene == nullptr) {
+      environment_console::submit_console_text("Error: No active scene to push object from", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      return;
+    }
+
+    scene_object* obj = nullptr;
+    if (data.type() == value_type::STRING) {
+      std::string object_name = data.as_string();
+      obj = &active_scene->get_object(object_name);
+    } else if (data.type() == value_type::DOUBLE) {
+      natural_t id = static_cast<natural_t>((double)data);
+      obj = &active_scene->get_object(id);
+    }
+    if (obj == nullptr) {
+      environment_console::submit_console_text("Error: Failed to find object in active scene to push", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      return;
+    }
+    push_scene_object_to_context_stack(obj);
+  }
+
+  void driver::handle_object_driver_pop_event(const value& data) {
+    CORE_LOG_DEBUG("Received object-driver-pop event");
+    scene_object* obj = pop_scene_object_from_context_stack();
+    if (obj == nullptr) {
+      environment_console::submit_console_text("Error: Failed to pop object from context stack", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      return;
+    }
+  }
+
+  void driver::handle_object_driver_info_event(const value& data) {
+    if (data.type() != value_type::STRING) {
+      environment_console::submit_console_text("Error: Invalid data type for object-driver-info event. Expected string.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      return;
+    }
+
+    std::string str = data;
+    CORE_LOG_DEBUG("object-driver-info argument: {}", str);
+    if (str == "<stack>") {
+      CORE_LOG_DEBUG("  {}", context_stack_top);
+      if (context_stack_top == 0) {
+        environment_console::submit_console_text("Context stack is empty.", CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+      } else {
+        scene_object* obj = context_stack[context_stack_top - 1];
+        std::stringstream ss;
+        ss << "Top of Context Stack Object Info:\n";
+        ss << "  - Name: " << obj->name << "\n";
+        ss << "  - ID: " << obj->id << "\n";
+        /// dump component info here, direct children ids/names, etc.
+        environment_console::submit_console_text(ss.str(), CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+      }
+    } else {
+    }
   }
 
   natural_t driver::add_scene_to_scene_graph(const filepath& scene_path) {

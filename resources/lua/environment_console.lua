@@ -94,6 +94,10 @@ function _Console:ListCommand(args)
   _Meta:Driver():ListCommand(args)
 end
 
+function _Console:ObjectCommand(args)
+  _Meta:Driver():ObjectCommand(args)
+end
+
 function _Console:IsCommand(command)
   return self.commands[self.GetCommandName(command)] ~= nil
 end
@@ -191,6 +195,28 @@ function _Console:new()
       ls <-a|--assets>             Lists all loaded assets
   ]]
   self:RegisterConsoleCommand("ls", "Prints a list of items.", function(...) _Meta:Driver():ListCommand(...) end, ls_long_description)
+
+  local object_long_description = [[
+  [object Command]
+    Performs various operations on scene objects.
+    Usage:
+      object (-h|--help)                      Displays this help message
+      object (-c|--create) <object-name>               Creates a new scene object with the specified name and pushes it to the stack for further operations
+      object (-d|--delete) [object-id|object-name]     Deletes the specified scene object, or the top object on the stack if none is specified.
+                                                  This also pops the object from the stack if it is the top object.
+      object (-pu|--push) [object-id|object-name]     Pushes the specified scene object to the stack for further operations
+      object (-po|--pop)                              Pops the top scene object from the stack
+      object (-i|--info) [object-id|object-name]     Displays detailed information about the specified scene object,
+                                                or the top object on the stack if none is specified
+
+    Features In Development:
+      object transform set <position|rotation|scale> <x> <y> <z>   Sets the specified transform property of the top object on the stack
+      object transform get <position|rotation|scale>               Gets the specified transform property of the top object on the stack
+      object script add <script-path>                      Attaches a script to the top object on the stack
+      object script remove <script-name>                  Removes a script from the top object on the stack
+    
+  ]]
+  self:RegisterConsoleCommand("object", "Performs various operations on scene objects.", function(...) _Meta:Driver():ObjectCommand(...) end, object_long_description)
 
   setmetatable(obj, self)
   return obj

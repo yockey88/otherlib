@@ -79,6 +79,7 @@ namespace other {
         ImGui::PushStyleColor(ImGuiCol_FrameBg, colors::console::kConsoleBackground);
 
         bool set_focus = false;
+        bool scroll_to_bottom = false;
         std::string input = "";
 
         if (ImGui::IsKeyChordPressed(ImGuiKey_Semicolon | ImGuiKey_ModShift, ImGuiInputFlags_RouteOverActive)) {
@@ -95,6 +96,7 @@ namespace other {
           input = std::string(environment_console::get_input_buffer());
           environment_console::submit_console_text(input, CONSOLE_MESSAGE_MESSAGE, time_point);
           environment_console::clear_input_buffer();
+          scroll_to_bottom = true;
         }
 
         if (set_focus) {

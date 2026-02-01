@@ -316,6 +316,9 @@ namespace other {
     std::vector<open_stream> active_streams;
 
     delta_time frame_delta_time;
+    constexpr inline static natural_t kObjectContextStackSize = 16;
+    size_t context_stack_top = 0;
+    scene_object* context_stack[kObjectContextStackSize] = { nullptr };
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
 
@@ -327,6 +330,12 @@ namespace other {
     std::deque<loading_asset> loading_asset_ids;
 
     json::json project_cache;
+
+    void push_scene_object_to_context_stack(scene_object* object);
+    scene_object* pop_scene_object_from_context_stack();
+
+    virtual void on_push_scene_object(scene_object* object) {}
+    virtual void on_pop_scene_object(scene_object* object) {}
 
     void handle_load_empty_scene_event(const value& data);
     void handle_load_scene_event(const value& data);
@@ -340,6 +349,12 @@ namespace other {
     void handle_list_driver_files_event(const value& data);
     void handle_list_driver_scenes_event(const value& data);
     void handle_list_driver_assets_event(const value& data);
+
+    void handle_object_driver_create_event(const value& data);
+    void handle_object_driver_destroy_event(const value& data);
+    void handle_object_driver_push_event(const value& data);
+    void handle_object_driver_pop_event(const value& data);
+    void handle_object_driver_info_event(const value& data);
 
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);

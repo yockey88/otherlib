@@ -121,6 +121,12 @@ namespace other {
         case sol::type::string:
           val = value(data.as<std::string>());
           break;
+        case sol::type::table: {
+          sol::table tbl = data.as<sol::table>();
+          // val = lua_table_to_value(tbl);
+          CORE_LOG_DEBUG("Lua table to value conversion not yet implemented for driver event data.");
+          return;
+        } break;
         default:
           CORE_LOG_WARN("Unsupported data type for event user data: {}", data.get_type());
           break;

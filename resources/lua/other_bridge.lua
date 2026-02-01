@@ -143,6 +143,42 @@ function _Meta._driver_interface:_List(args)
   _Meta._driver_interface.TriggerEvent(event_name)
 end
 
+function _Meta._driver_interface:_ObjectOpEvent(operation, op_table)
+  local event_name = "object-driver-" .. operation
+  if operation ~= nil and 
+    (operation == "create" or operation == "destroy" or operation == "push" or operation == "info") and
+     op_table.identifier ~= nil then
+    self.TriggerEvent(event_name, op_table.identifier)
+  end
+  if operation == "pop" 
+  then
+    self.TriggerEvent(event_name)
+  end
+end
+
+function _Meta._driver_interface:_ObjectOp(args)
+  local parsed_args, success = self._parse_object_op_args(args)
+  if not success
+  then
+    return
+  end
+
+  if parsed_args.operation == nil
+  then
+    _Meta:Console().PushError("No operation specified for object command")
+    return
+  end
+
+  if parsed_args.op_table == nil
+  then
+    _Meta:Console().PushError("No operation data specified for object command")
+    return
+  end
+
+  local event_name = "object-driver-" .. parsed_args.operation
+  self:_ObjectOpEvent(parsed_args.operation, parsed_args.op_table)
+end
+
 function _Meta._driver_interface:OpenCommand(args)
   self:_OpenClose("open", args)
 end
@@ -166,6 +202,10 @@ end
 
 function _Meta._driver_interface:ListCommand(args)
   self:_List(args)
+end
+
+function _Meta._driver_interface:ObjectCommand(args)
+  self:_ObjectOp(args)
 end
 
 --- TODO: check if there are user commands to register from config or elsewhere and 
