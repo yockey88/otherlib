@@ -29,7 +29,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/filesystem.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/renderer.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/UIWindow.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui_window.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-behavior.cs

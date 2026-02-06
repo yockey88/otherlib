@@ -3,6 +3,12 @@
  **/
 #include "ui/property_inspector_node.hpp"
 
+#include <string>
+
+#include "math/orthonormal_basis.hpp"
+#include "serialization/reflection.hpp"
+
+#include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
 #include "object/physics_component.hpp"
@@ -11,6 +17,10 @@
 
 #include "driver/driver.hpp"
 #include "ui/colors.hpp"
+#include "ui/component_widget.hpp"
+#include "ui/ui_widgets.hpp"
+
+#include "imgui.h"
 
 IMGUI_REFLECT(glm::vec3, x, y, z);
 IMGUI_REFLECT(glm::quat, w, x, y, z);
@@ -21,15 +31,73 @@ IMGUI_REFLECT(other::scene_object, id, registry_id, name, visible);
 IMGUI_REFLECT(other::transform, local_position, local_rotation_quat, local_scale);
 IMGUI_REFLECT(other::script_component, script_object_id);
 IMGUI_REFLECT(other::render_component, material, visible, animated);
+IMGUI_REFLECT(other::model, name, submesh_indices);
 IMGUI_REFLECT(other::physics_component, body, shape);
+IMGUI_REFLECT(other::physics_body_settings, body_type, mass);
+IMGUI_REFLECT(other::light_component, point_lights, directional_lights);  //, light_type, color, intensity, range, inner_cone_angle, outer_cone_angle);
+IMGUI_REFLECT(other::gpu::point_light, light_position, color);
+IMGUI_REFLECT(other::gpu::directional_light, direction, color);
 
 IMGUI_REFLECT(other::orthonormal_basis, i, j, k);
 IMGUI_REFLECT(other::camera, position, direction, euler_angles, world_up, basis);
 IMGUI_REFLECT(other::camera_component, camera);
 
 namespace other {
-  namespace ui {
 
+  template <>
+  struct property_ui<glm::vec2> {
+    bool operator()(const std::string& name, glm::vec2& value, scene* active_scene, scene_object* object) {
+      ImGui::PushID(name.c_str());
+      bool changed = ui::edit_vec2(name, value);
+      ImGui::PopID();
+      return changed;
+    }
+  };
+  template <>
+  struct property_ui<glm::vec3> {
+    bool operator()(const std::string& name, glm::vec3& value, scene* active_scene, scene_object* object) {
+      ImGui::PushID(name.c_str());
+      bool changed = ui::edit_vec3(name, value);
+      ImGui::PopID();
+      return changed;
+    }
+  };
+  template <>
+  struct property_ui<glm::vec4> {
+    bool operator()(const std::string& name, glm::vec4& value, scene* active_scene, scene_object* object) {
+      ImGui::PushID(name.c_str());
+      bool changed = ui::edit_vec4(name, value);
+      ImGui::PopID();
+      return changed;
+    }
+  };
+
+  template <>
+  struct property_ui<glm::quat> {
+    bool operator()(const std::string& name, glm::quat& value, scene* active_scene, scene_object* object) {
+      ImGui::PushID(name.c_str());
+      bool changed = ui::edit_quat(name, value);
+      ImGui::PopID();
+      return changed;
+    }
+  };
+
+  template <>
+  struct property_ui<orthonormal_basis> {
+    bool operator()(const std::string& name, orthonormal_basis& value, scene* active_scene, scene_object* object) {
+      ImGui::PushID(name.c_str());
+      bool changed = false;
+      glm::mat3 basis_mat3 = glm::mat3(value.to_matrix());
+      changed = changed || ui::edit_mat3(name, basis_mat3);
+      if (changed) {
+        value = orthonormal_basis::from_matrix(basis_mat3);
+      }
+      ImGui::PopID();
+      return changed;
+    }
+  };
+
+  namespace ui {
     property_inspector_node::property_inspector_node(ui_window* window, driver* drvr)
         : ui_node(window, "Property Inspector"), driver_ptr(drvr) {
       events().add_listener("ui.scene-hierarchy.object-selected", [this](const value& data) {
@@ -62,6 +130,24 @@ namespace other {
       if (!active_scene->has_component<T>(object)) {
         return;
       }
+
+      bool component_node_open = ImGui::TreeNodeEx(component_name.data(), ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding);
+      if (!component_node_open) {
+        return;
+      }
+
+      T& comp = *active_scene->get_component<T>(object);
+      reflection_data& type_data = type_data_handler<T>::get_reflection_data(comp);
+
+      ImGui::Separator();
+      {
+        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
+        ImGui::Text("%s Component [%s]", component_name.data(), type_data.type_name.c_str());
+      }
+      ImGui::Separator();
+      component_widget<T>{}(component_name, comp, active_scene, object);
+
+      ImGui::TreePop();
     }
 
     void property_inspector_node::on_render_node_body() {
@@ -71,12 +157,11 @@ namespace other {
       }
 
       if (selected_object_ids.empty()) {
-        scoped_color color_text(ImGuiCol_Text, colors::kTextFriendlyAlert);
+        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextFriendlyAlert));
         ImGui::Text("No object selected.");
       } else if (selected_object_ids.size() > 1) {
-        scoped_color color_text(ImGuiCol_Text, colors::kTextBright);
+        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
         ImGui::Text("Multiple objects selected (%zu).", selected_object_ids.size());
-
       } else {
         natural_t obj_id = selected_object_ids.front();
 
@@ -85,7 +170,7 @@ namespace other {
 
         scene_object& obj = active_scene->get_object(obj_id);
 
-        scoped_color color_text(ImGuiCol_Text, colors::kTextBright);
+        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
         ImGui::Text("Properties for Object:\n  - %s (ID: %llu)", obj.name.c_str(), obj.id);
 
         /// identifiers
@@ -102,10 +187,12 @@ namespace other {
 
         /// components
         draw_component<transform>("Transform", active_scene, &obj);
-        draw_component<script_component>("Script Component", active_scene, &obj);
-        draw_component<render_component>("Render Component", active_scene, &obj);
-        // draw_component<physics_component>("Physics Component", active_scene, &obj);
-        draw_component<camera_component>("Camera Component", active_scene, &obj);
+        draw_component<script_component>("Scripts", active_scene, &obj);
+        draw_component<render_component>("Graphics Object", active_scene, &obj);
+        draw_component<camera_component>("Camera", active_scene, &obj);
+        draw_component<physics_component>("Physics Body", active_scene, &obj);
+        draw_component<light_component>("Lights", active_scene, &obj);
+        draw_component<animation_controller>("Animation Controller", active_scene, &obj);
       }
 
       ImGui::EndChild();

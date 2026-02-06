@@ -13,8 +13,11 @@
 #include <string>
 #include <type_traits>
 
+#define GLM_ENABLE_EXPERIMENTAL
+// #define GLM_FORCE_QUAT_DATA_WXYZ
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 #define bit(x) (1ll << x)

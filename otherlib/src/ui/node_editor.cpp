@@ -213,7 +213,7 @@ namespace other {
     }
 
     void node_editor::on_pre_render_nodes() {
-      ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::editor::kNodeEditorBackground);
+      ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::rgba_to_imvec4(colors::kNodeEditorBackground));
     }
 
     void node_editor::on_post_render_nodes() {

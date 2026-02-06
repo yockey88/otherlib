@@ -63,7 +63,7 @@ namespace other {
     this->position = position;
     direction = glm::normalize(target - position);
 
-    basis = orthonormal_basis(world_up, direction);
+    basis = orthonormal_basis(direction, world_up);
     euler_angles = basis.to_local(euler_angles);
 
     reset_camera();
@@ -88,7 +88,7 @@ namespace other {
     new_dir.y = other::satisfy_floating_point_tolerance(sin(glm::radians(pitch())));
     new_dir.z = other::satisfy_floating_point_tolerance(sin(glm::radians(yaw())) * cos(glm::radians(pitch())));
     direction = glm::normalize(new_dir);
-    basis = other::orthonormal_basis(world_up, direction);
+    basis = other::orthonormal_basis(direction, world_up);
   }
 
   void camera::calculate_matrices(const glm::ivec2& window_size) {

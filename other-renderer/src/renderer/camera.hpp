@@ -50,10 +50,10 @@ namespace other {
     gpu::ray_gen_data to_ray_gen_data();
 
     glm::vec3 position = glm::vec3(0.f, 0.f, 1.f);
-    glm::vec3 direction = glm::vec3(0.f, 0.f, 0.f);
+    glm::vec3 direction = glm::vec3(0.f, 0.f, -1.f);
     glm::vec3 euler_angles = glm::vec3(0.f, 0.f, 0.f);
     glm::vec3 world_up = glm::vec3(0.f, 1.f, 0.f);
-    orthonormal_basis basis = orthonormal_basis(glm::vec3(0.f, 0.f, -1.f));
+    orthonormal_basis basis = orthonormal_basis(glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f));
 
     glm::vec2 image_size = { 1920.f, 1080.f };  /// width, height
 

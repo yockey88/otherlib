@@ -25,7 +25,7 @@ namespace other {
     using T = float;
 
     out_translation = glm::vec3(0);
-    out_rotation = glm::quat(1, 0, 0, 0);
+    out_rotation = glm::quat();
     out_scale = glm::vec3(1);
 
     mat4 local_mat(mat);

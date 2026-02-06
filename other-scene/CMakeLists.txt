@@ -8,6 +8,7 @@ target_sources(other_scene
       src/asset/asset_loader.cpp
       src/asset/asset_handler.cpp
 
+      src/object/component.cpp
       src/object/scene_object.cpp
       src/object/script_component.cpp
       src/object/physics_component.cpp

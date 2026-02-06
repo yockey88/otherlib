@@ -908,7 +908,7 @@ namespace other {
                                                    orthonormal_basis(glm::vec3(0, 1, 0)),
                                                    world_position,
                                                    glm::vec3(1, 1, 1),
-                                                   glm::quat(1, 0, 0, 0),
+                                                   glm::quat(),
                                                  });
     storage->registry.emplace<script_component>(entity, script_component{ object });
 

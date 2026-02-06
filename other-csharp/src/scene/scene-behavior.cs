@@ -1,10 +1,11 @@
-
+using System;
+using Other.Core;
 
 namespace Other
 {
-  public class SceneBehavior : Other.Core.OtherScriptedBehavior
+  public class SceneBehavior : OtherScriptedBehavior
   {
-    SceneBehavior() : base()
+    public SceneBehavior() : base()
     {
     }
 
