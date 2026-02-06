@@ -86,14 +86,9 @@ namespace other {
   struct property_ui<orthonormal_basis> {
     bool operator()(const std::string& name, orthonormal_basis& value, scene* active_scene, scene_object* object) {
       ImGui::PushID(name.c_str());
-      bool changed = false;
-      glm::mat3 basis_mat3 = glm::mat3(value.to_matrix());
-      changed = changed || ui::edit_mat3(name, basis_mat3);
-      if (changed) {
-        value = orthonormal_basis::from_matrix(basis_mat3);
-      }
+      ui::draw_mat3(name, glm::mat3(value.to_matrix()));
       ImGui::PopID();
-      return changed;
+      return false;
     }
   };
 
@@ -135,17 +130,19 @@ namespace other {
       if (!component_node_open) {
         return;
       }
-
-      T& comp = *active_scene->get_component<T>(object);
-      reflection_data& type_data = type_data_handler<T>::get_reflection_data(comp);
-
-      ImGui::Separator();
+      bool modified = false;
       {
-        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
-        ImGui::Text("%s Component [%s]", component_name.data(), type_data.type_name.c_str());
+        T& comp = *active_scene->get_component<T>(object);
+        reflection_data& type_data = type_data_handler<T>::get_reflection_data(comp);
+
+        ImGui::Separator();
+        {
+          scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
+          ImGui::Text("%s Component [%s]", component_name.data(), type_data.type_name.c_str());
+        }
+        ImGui::Separator();
+        modified = component_widget<T>{}(component_name, comp, active_scene, object);
       }
-      ImGui::Separator();
-      component_widget<T>{}(component_name, comp, active_scene, object);
 
       ImGui::TreePop();
     }

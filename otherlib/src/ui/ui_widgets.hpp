@@ -95,7 +95,8 @@ namespace other {
 
         bool changed = false;
 
-        ImGui::PushID(std::format("{}:{}", parent_label, label).c_str());
+        std::string id_str = std::format("{}:{}", parent_label, label);
+        ImGui::PushID(id_str.c_str());
 
         scoped_style button_frame(ImGuiStyleVar_FramePadding, ImVec2(kFramePadding, 0.f));
         scoped_style button_rounding(ImGuiStyleVar_FrameRounding, 1.f);
@@ -140,21 +141,18 @@ namespace other {
         }
 
         {
-          float original_frame_padding_y = ImGui::GetStyle().FramePadding.y;
-          ImGui::GetStyle().FramePadding.y += kFramePadding + 1;
-
           std::string drag_tag = std::format("##{}:{}-drag", parent_label, label);
 
           ImGui::SetNextItemWidth(input_item_w * kkItemWidthFactor);
+
+          ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + kFramePadding + 1));
           if constexpr (Const) {
             std::string txt = std::format("{}", value);
             ImGui::Text("%s", txt.c_str());
           } else {
-            changed = changed || ImGui::DragScalar(drag_tag.c_str(), ig_element_type, &value, speed, &vmin, &vmax, nullptr, flags);  // && ImGui::IsKeyDown(ImGuiKey_Tab);
+            changed = ImGui::DragScalar(drag_tag.c_str(), ig_element_type, &value, speed, &vmin, &vmax, nullptr, flags);
           }
-          // changed = changed && !ImGui::TempInputIsActive(ImGui::GetID(drag_tag.c_str()));
-
-          ImGui::GetStyle().FramePadding.y = original_frame_padding_y;
+          ImGui::PopStyleVar();
         }
 
         ImGui::PopID();
@@ -164,13 +162,14 @@ namespace other {
       template <natural_t N, typename R, bool Const = false>
       bool draw_elements(const std::string_view parent_label, const std::string_view label, glm::vec<N, R>& value, const ImVec2& size, const glm::vec<N, R>& vmin, const glm::vec<N, R>& vmax, const ImVec2& button_size, float speed, ImGuiSliderFlags flags) {
         bool changed = false;
-        changed = changed || detail::draw_vector_element<R>(std::format("##{}:{}", parent_label, label), "X", value.x, size, vmin.x, vmax.x, ImVec4{ 0.8f, 0.1f, 0.15f, 1.f }, ImVec4{ 0.9f, 0.2f, 0.2f, 1.f }, ImVec4{ 0.8f, 0.1f, 0.15f, 1.f }, button_size, speed, flags);
-        changed = changed || detail::draw_vector_element<R>(std::format("##{}:{}", parent_label, label), "Y", value.y, size, vmin.y, vmax.y, ImVec4{ 0.2f, 0.7f, 0.2f, 1.f }, ImVec4{ 0.3f, 0.8f, 0.3f, 1.f }, ImVec4{ 0.2f, 0.7f, 0.2f, 1.f }, button_size, speed, flags);
+        std::string elem_id = std::format("##{}:{}", parent_label, label);
+        changed |= detail::draw_vector_element<R>(elem_id, "X", value.x, size, vmin.x, vmax.x, ImVec4{ 0.8f, 0.1f, 0.15f, 1.f }, ImVec4{ 0.9f, 0.2f, 0.2f, 1.f }, ImVec4{ 0.8f, 0.1f, 0.15f, 1.f }, button_size, speed, flags);
+        changed |= detail::draw_vector_element<R>(elem_id, "Y", value.y, size, vmin.y, vmax.y, ImVec4{ 0.2f, 0.7f, 0.2f, 1.f }, ImVec4{ 0.3f, 0.8f, 0.3f, 1.f }, ImVec4{ 0.2f, 0.7f, 0.2f, 1.f }, button_size, speed, flags);
         if constexpr (N >= 3) {
-          changed = changed || detail::draw_vector_element<R>(std::format("##{}:{}", parent_label, label), "Z", value.z, size, vmin.z, vmax.z, ImVec4{ 0.1f, 0.25f, 0.8f, 1.f }, ImVec4{ 0.2f, 0.35f, 0.9f, 1.f }, ImVec4{ 0.1f, 0.25f, 0.8f, 1.f }, button_size, speed, flags);
+          changed |= detail::draw_vector_element<R>(elem_id, "Z", value.z, size, vmin.z, vmax.z, ImVec4{ 0.1f, 0.25f, 0.8f, 1.f }, ImVec4{ 0.2f, 0.35f, 0.9f, 1.f }, ImVec4{ 0.1f, 0.25f, 0.8f, 1.f }, button_size, speed, flags);
         }
         if constexpr (N == 4) {
-          changed = changed || detail::draw_vector_element<R>(std::format("##{}:{}", parent_label, label), "W", value.w, size, vmin.w, vmax.w, ImVec4{ 0.8f, 0.1f, 0.8f, 1.f }, ImVec4{ 0.9f, 0.2f, 0.9f, 1.f }, ImVec4{ 0.8f, 0.1f, 0.8f, 1.f }, button_size, speed, flags);
+          changed |= detail::draw_vector_element<R>(elem_id, "W", value.w, size, vmin.w, vmax.w, ImVec4{ 0.8f, 0.1f, 0.8f, 1.f }, ImVec4{ 0.9f, 0.2f, 0.9f, 1.f }, ImVec4{ 0.8f, 0.1f, 0.8f, 1.f }, button_size, speed, flags);
         }
         return changed;
       }

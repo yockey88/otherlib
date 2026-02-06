@@ -29,7 +29,7 @@ namespace other {
         bool changed = false;
         for_each(refl::reflect(component).members, [&](const auto& field) {
           std::string field_name = std::string{ field.name };
-          changed = draw_field(field_name, field(component), active_scene, object) || changed;
+          changed |= draw_field(field_name, field(component), active_scene, object);
         });
         return changed;
       }
@@ -47,15 +47,11 @@ namespace other {
                         property_ui<FT>{}(std::declval<const std::string&>(), std::declval<FT&>(), active_scene, object);
                       }) {
           std::string unique_field_name = std::string(field_name);
-          FT copy = field_value;
-          changed = property_ui<FT>{}(unique_field_name, copy, active_scene, object);
-          if (changed) {
-            field_value = copy;
-          }
+          changed = property_ui<FT>{}(unique_field_name, field_value, active_scene, object);
         } else if constexpr (reflected_type<FT>) {
           for_each(refl::reflect(field_value).members, [&](const auto& sub_field) {
             std::string sub_field_name = std::string{ sub_field.name };
-            changed = draw_field(sub_field_name, sub_field(field_value), active_scene, object) || changed;
+            changed |= draw_field(sub_field_name, sub_field(field_value), active_scene, object);
           });
         }
         /// check if overriden the special draw template
