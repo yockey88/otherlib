@@ -23,9 +23,12 @@ namespace other {
     double animation_time = 0.0;
 
     uint32_t animation_index = 0;
-    animation* anim_ptr;
+    animation* anim_ptr = nullptr;
     model* model_ptr;
     glm::mat4 root_transform = glm::mat4(1.0f);
+
+    animation_controller()
+        : component(component::ANIMATION) {}
 
     void update(double delta_time);
 
@@ -39,8 +42,8 @@ OTHER_REFLECT(
   field(animation_accumulator, other::attr::serializable()),
   field(animation_speed, other::attr::serializable()),
   field(animation_time, other::attr::serializable()),
-  field(animation_index, other::attr::serializable()),
-  field(root_transform)
+  field(animation_index, other::attr::serializable())
+  // field(root_transform)
 )
 
 #endif  // OTHER_SCENE_OBJECT_ANIMATION_CONTROLLER_HPP

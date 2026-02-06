@@ -10,7 +10,6 @@
 
 #include "object/component.hpp"
 
-
 namespace other {
 
   struct physics_shape;
@@ -21,9 +20,10 @@ namespace other {
 
     physics_body_settings settings;
 
-    physics_component() = default;
+    physics_component()
+        : component(component::PHYSICS) {}
     physics_component(const physics_body_settings& settings)
-        : settings(settings) {}
+        : component(component::PHYSICS), settings(settings) {}
   };
 
 }  // namespace other

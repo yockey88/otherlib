@@ -14,6 +14,9 @@ namespace other {
 
   struct camera_component : public component {
     camera camera;
+
+    camera_component()
+        : component(component::CAMERA) {}
   };
 
   struct camera_component_lua_proxy {

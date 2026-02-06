@@ -8,9 +8,13 @@
 
 #include "renderer/ui/ui_node.hpp"
 
+#include "object/component.hpp"
+
 namespace other {
 
   class driver;
+  class scene;
+  struct scene_object;
 
   namespace ui {
 
@@ -33,6 +37,9 @@ namespace other {
       std::deque<natural_t> selected_object_ids;
 
       void handle_object_selection(natural_t object_id);
+
+      template <typename T>
+      void draw_component_section(const std::string_view component_name, scene* active_scene, scene_object* object);
 
       void on_render_node_body() override;
     };
