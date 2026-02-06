@@ -8,11 +8,14 @@
 
 #include "physics_world/physics_body.hpp"
 
+#include "object/component.hpp"
+
+
 namespace other {
 
   struct physics_shape;
 
-  struct physics_component {
+  struct physics_component : public component {
     physics_body* body = nullptr;
     physics_shape* shape = nullptr;
 
@@ -27,7 +30,7 @@ namespace other {
 
 OTHER_REFLECT(
   other::physics_component,
-  field(settings)
+  field(settings, other::attr::serializable())
 )
 
 #endif  // OTHER_SCENE_OBJECT_PHYSICS_COMPONENT_HPP

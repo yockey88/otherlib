@@ -143,6 +143,83 @@ function _Meta._driver_interface:_List(args)
   _Meta._driver_interface.TriggerEvent(event_name)
 end
 
+function _Meta._driver_interface:_ObjectOpEvent(operation, op_table)
+  local event_name = "object-driver-" .. operation
+  if operation ~= nil and 
+    (operation == "create" or operation == "destroy" or operation == "push" or operation == "info") and
+     op_table.identifier ~= nil then
+    self.TriggerEvent(event_name, op_table.identifier)
+  end
+  if operation == "pop" 
+  then
+    self.TriggerEvent(event_name)
+  end
+end
+
+function _Meta._driver_interface:_ObjectOp(args)
+  local parsed_args, success = self._parse_object_op_args(args)
+  if not success
+  then
+    return
+  end
+
+  if parsed_args.operation == nil
+  then
+    _Meta:Console().PushError("No operation specified for object command")
+    return
+  end
+
+  if parsed_args.op_table == nil
+  then
+    _Meta:Console().PushError("No operation data specified for object command")
+    return
+  end
+
+  local event_name = "object-driver-" .. parsed_args.operation
+  self:_ObjectOpEvent(parsed_args.operation, parsed_args.op_table)
+end
+
+function _Meta._driver_interface:_SceneOp(args)
+  local parsed_args, success = self._parse_scene_op_args(args)
+  if not success
+  then return end
+
+  if parsed_args.operation == "new"
+  then
+    local scene_name = parsed_args.scene_name
+    if scene_name == nil or scene_name == ""
+    then
+      _Meta:Console().PushError("No scene name provided for new scene command")
+      return
+    end
+
+    _Meta:Driver().TriggerEvent("force-load-empty-scene", _Meta._string_utils.strip_leading_and_ending_whitespace(scene_name))
+  elseif parsed_args.operation == "load"
+  then
+    local scene_path = parsed_args.scene_path
+    if scene_path == nil or scene_path == ""
+    then
+      _Meta:Console().PushError("No scene path provided for load scene command")
+      return
+    end
+
+    _Meta:LoadScene(_Meta._string_utils.strip_leading_and_ending_whitespace(scene_path))
+  elseif parsed_args.operation == "unload"
+  then
+    _Meta:Driver().TriggerEvent("force-unload-scene")
+  elseif parsed_args.operation == "info"
+  then
+    self.TriggerEvent("scene-info-requested")
+  elseif parsed_args.operation == "play" or 
+         parsed_args.operation == "pause" or 
+         parsed_args.operation == "stop"
+  then
+    self.TriggerEvent("scene-playback-command", parsed_args.operation)
+  else
+    _Meta:Console().PushError("Unknown scene command operation: " .. tostring(parsed_args.operation))
+  end
+end
+
 function _Meta._driver_interface:OpenCommand(args)
   self:_OpenClose("open", args)
 end
@@ -166,6 +243,14 @@ end
 
 function _Meta._driver_interface:ListCommand(args)
   self:_List(args)
+end
+
+function _Meta._driver_interface:ObjectCommand(args)
+  self:_ObjectOp(args)
+end
+
+function _Meta._driver_interface:SceneCommand(args)
+  self:_SceneOp(args)
 end
 
 --- TODO: check if there are user commands to register from config or elsewhere and 

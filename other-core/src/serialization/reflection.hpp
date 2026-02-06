@@ -13,6 +13,7 @@
 
 #include <flatbuffers/flexbuffers.h>
 #include <glm/glm.hpp>
+#include <imgui/ImReflect.hpp>
 #include <magic_enum/magic_enum.hpp>
 #include <refl/refl.hpp>
 
@@ -27,8 +28,7 @@ namespace other {
 
   namespace attr {
 
-    struct serializable : refl::attr::usage::field, refl::attr::usage::function {};
-    struct constructor : refl::attr::usage::function {};
+    struct serializable : refl::attr::usage::field {};
 
   }  // namespace attr
 

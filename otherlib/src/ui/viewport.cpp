@@ -31,7 +31,7 @@ namespace other {
           auto& pipeline = pipeline_outputs[0];
           ImTextureID tex_id = pipeline->get_final_output_texture_id();
           if (tex_id == 0) {
-            scoped_color error_color{ ImGuiCol_Text, colors::kFriendlyErrorRed };
+            scoped_color error_color{ ImGuiCol_Text, colors::rgba_to_imvec4(colors::kFriendlyErrorRed) };
             ImGui::Text("No output texture available from the rendering pipeline.");
           } else {
             ImVec2 avail_size = ImGui::GetContentRegionAvail();

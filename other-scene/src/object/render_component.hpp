@@ -11,9 +11,11 @@
 #include "model/model.hpp"
 #include "renderer/gpu_structs.hpp"
 
+#include "object/component.hpp"
+
 namespace other {
 
-  struct render_component {
+  struct render_component : public component {
     bool animated = false;
     bool visible = true;
 

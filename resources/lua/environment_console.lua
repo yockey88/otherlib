@@ -50,6 +50,19 @@ function _Console:ExitCommand(args)
   _Meta:Driver().TriggerEvent("shutdown-requested")
 end
 
+
+function _Console:ListCommand(args)
+  _Meta:Driver():ListCommand(args)
+end
+
+function _Console:ObjectCommand(args)
+  _Meta:Driver():ObjectCommand(args)
+end
+
+function _Console:SceneCommand(args)
+  _Meta:Driver():SceneCommand(args)
+end
+
 function _Console:CreateSceneCommand(args)
   if #args < 1
   then
@@ -68,30 +81,6 @@ function _Console:LoadSceneCommand(args)
   end
 
   _Meta:LoadScene(args[1])
-end
-
-function _Console:OpenWindowCommand(args)
-  if #args < 1
-  then
-    self.PushError("Usage: open-window <window-name|window-id>")
-    return
-  end
-
-  _Meta:Driver():OpenWindow(args[1])
-end
-
-function _Console:CloseWindowCommand(args)
-  if #args < 1
-  then
-    self.PushError("Usage: close-window <window-name|window-id>")
-    return
-  end
-
-  _Meta:Driver():CloseWindow(args[1])
-end
-
-function _Console:ListCommand(args)
-  _Meta:Driver():ListCommand(args)
 end
 
 function _Console:IsCommand(command)
@@ -144,16 +133,13 @@ end
 _Console.__index = _Console
 function _Console:new()
   local obj = {}
-  
+
   self:RegisterConsoleCommand(":?", "Displays this help message", function(...) self:HelpCommand(...) end)
   self:RegisterConsoleCommand(":e", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
+  self:RegisterConsoleCommand(":q", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
   self:RegisterConsoleCommand("help", "Displays this help message", function(...) self:HelpCommand(...) end)
   self:RegisterConsoleCommand("exit", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
-
   self:RegisterConsoleCommand("clear", "Clears the console output", function(...) _Meta:Driver().TriggerEvent("clear-console-output") end)
-
-  self:RegisterConsoleCommand("new-scene", "Creates a new empty scene", function(...) self:CreateSceneCommand(...) end)
-  self:RegisterConsoleCommand("load-scene", "Loads a scene from a specified path", function(...) self:LoadSceneCommand(...) end)
 
   local open_close_help_message = [[
   [%s Command]
@@ -171,10 +157,7 @@ function _Console:new()
   local close_help_msg = format_help_string("Close", "close", "Closes")
 
   self:RegisterConsoleCommand("open", "Runs the open function with the specified arguments", function(...) _Meta:Driver():OpenCommand(...) end, open_help_msg)
-  self:RegisterConsoleCommand("open-window", "Opens the specified window. Specialization of 'open' (open --window).", function(...) _Meta:Driver():OpenWindow(...) end)
-
   self:RegisterConsoleCommand("close", "Runs the close function with the specified arguments", function(...) _Meta:Driver():CloseCommand(...) end, close_help_msg)
-  self:RegisterConsoleCommand("close-window", "Closes the specified window. Specialization of 'close' (close --window).", function(...) _Meta:Driver():CloseWindow(...) end)
 
   local ls_long_description = [[
   [ls Command]
@@ -191,6 +174,45 @@ function _Console:new()
       ls <-a|--assets>             Lists all loaded assets
   ]]
   self:RegisterConsoleCommand("ls", "Prints a list of items.", function(...) _Meta:Driver():ListCommand(...) end, ls_long_description)
+
+  local object_long_description = [[
+  [object Command]
+    Performs various operations on scene objects.
+    Usage:
+      object (-h|--help)                               Displays this help message
+      object (-c|--create) <object-name>               Creates a new scene object with the specified name and pushes it to the stack for further operations
+      object (-d|--delete) [object-id|object-name]     Deletes the specified scene object, or the top object on the stack if none is specified.
+                                                        This also pops the object from the stack if it is the top object.
+      object (-pu|--push) [object-id|object-name]      Pushes the specified scene object to the stack for further operations
+      object (-po|--pop)                               Pops the top scene object from the stack
+      object (-i|--info) [object-id|object-name]       Displays detailed information about the specified scene object,
+                                                        or the top object on the stack if none is specified
+
+    Features In Development:
+      object transform set <position|rotation|scale> <x> <y> <z>   Sets the specified transform property of the top object on the stack
+      object transform get <position|rotation|scale>               Gets the specified transform property of the top object on the stack
+      object script add <script-path>                              Attaches a script to the top object on the stack
+      object script remove <script-name>                           Removes a script from the top object on the stack
+    
+  ]]
+  self:RegisterConsoleCommand("object", "Performs various operations on scene objects.", function(...) _Meta:Driver():ObjectCommand(...) end, object_long_description)
+
+
+  local scene_long_description = [[
+  [scene Command]
+    Performs various operations on the current scene.
+    Usage:
+      scene (-h|--help)                         Displays this help message
+      scene (-n|--new) <scene-name>             Creates a new empty scene with the specified name
+      scene (-l|--load) <scene-path>            Loads a scene from the specified path
+      scene (-ul|--unload)                      Unloads the current scene
+      scene (-i|--info) [scene-name|scene-path] Displays information about the current scene or the specified scene
+
+      scene play                                Starts or resumes scene play
+      scene pause                               Pauses scene play
+      scene stop                                Stops scene play and resets to the beginning
+  ]]
+  self:RegisterConsoleCommand("scene", "Performs various operations on the current scene.", function(...) _Meta:Driver():SceneCommand(...) end, scene_long_description)
 
   setmetatable(obj, self)
   return obj

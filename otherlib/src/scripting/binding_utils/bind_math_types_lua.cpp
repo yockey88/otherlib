@@ -38,10 +38,10 @@ namespace other {
         [](float s, const glm::quat& q) { return s * q; }
       ),
       sol::meta_function::division, [](const glm::quat& q, float s) { return q / s; },
-      "w", &glm::quat::w,
       "x", &glm::quat::x,
       "y", &glm::quat::y,
       "z", &glm::quat::z,
+      "w", &glm::quat::w,
       "dot", [](const glm::quat& self, const glm::quat& other) { return glm::dot(self, other); },
       "length", [](const glm::quat& self) { return glm::length(self); },
       "length_squared", [](const glm::quat& self) { return glm::dot(self, self); },

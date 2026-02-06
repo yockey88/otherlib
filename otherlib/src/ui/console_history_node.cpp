@@ -50,7 +50,7 @@ namespace other {
     }
 
     void console_history_node::on_prepare_render() {
-      ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::console::kConsoleBackground);
+      ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::rgba_to_imvec4(colors::kConsoleBG));
     }
 
     void console_history_node::on_render_node_body() {
@@ -76,9 +76,10 @@ namespace other {
 
       /// input box
       if (ImGui::BeginChild("InputBox", ImVec2(0.f, ImGui::GetFrameHeightWithSpacing()), false)) {
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, colors::console::kConsoleBackground);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, colors::rgba_to_imvec4(colors::kConsoleBG));
 
         bool set_focus = false;
+        bool scroll_to_bottom = false;
         std::string input = "";
 
         if (ImGui::IsKeyChordPressed(ImGuiKey_Semicolon | ImGuiKey_ModShift, ImGuiInputFlags_RouteOverActive)) {
@@ -95,6 +96,7 @@ namespace other {
           input = std::string(environment_console::get_input_buffer());
           environment_console::submit_console_text(input, CONSOLE_MESSAGE_MESSAGE, time_point);
           environment_console::clear_input_buffer();
+          scroll_to_bottom = true;
         }
 
         if (set_focus) {
@@ -113,26 +115,26 @@ namespace other {
     void console_history_node::push_message_color(console_message_type type) {
       bool is_command = (type & CONSOLE_MESSAGE_COMMAND) != 0;
       if (is_command) {
-        ImGui::PushStyleColor(ImGuiCol_Text, colors::console::kConsoleCommandText);
+        ImGui::PushStyleColor(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kConsoleCommand));
         return;
       }
 
       if ((type & CONSOLE_MESSAGE_ERROR) != 0) {
-        ImGui::PushStyleColor(ImGuiCol_Text, colors::console::kConsoleErrorText);
+        ImGui::PushStyleColor(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kConsoleError));
         return;
       }
 
       if ((type & CONSOLE_MESSAGE_WARN) != 0) {
-        ImGui::PushStyleColor(ImGuiCol_Text, colors::console::kConsoleWarningText);
+        ImGui::PushStyleColor(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kConsoleWarning));
         return;
       }
 
       if ((type & CONSOLE_MESSAGE_DEBUG) != 0 || (type & CONSOLE_MESSAGE_INFO) != 0) {
-        ImGui::PushStyleColor(ImGuiCol_Text, colors::console::kConsoleInfoText);
+        ImGui::PushStyleColor(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kConsoleInfo));
         return;
       }
 
-      ImGui::PushStyleColor(ImGuiCol_Text, colors::console::kConsoleOutputText);
+      ImGui::PushStyleColor(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kConsoleOutput));
     }
 
   }  // namespace ui

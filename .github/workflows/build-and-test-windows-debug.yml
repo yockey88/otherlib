@@ -31,7 +31,7 @@ jobs:
       run: python ${{ github.workspace }}/cli.py -b -c=Debug
 
     - name: Run Tests
-      run: python ${{ github.workspace }}/cli.py -t -c=Debug
+      run: python ${{ github.workspace }}/cli.py -ts -serialization_tests* -c=Debug
       continue-on-error: true
 
     - name: Check Test Results

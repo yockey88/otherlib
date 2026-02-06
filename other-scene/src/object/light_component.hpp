@@ -8,9 +8,11 @@
 
 #include "renderer/gpu_structs.hpp"
 
+#include "object/component.hpp"
+
 namespace other {
 
-  struct light_component {
+  struct light_component : public component {
     std::vector<gpu::point_light> point_lights;
     std::vector<gpu::directional_light> directional_lights;
   };

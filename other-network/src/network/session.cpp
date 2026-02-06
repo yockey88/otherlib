@@ -18,7 +18,7 @@
 namespace other {
 
   session::session(session& other)
-      : socket(std::move(other.socket)), io_context(other.io_context) {
+      : socket(std::move(other.socket)), connection_timer(std::move(other.connection_timer)), io_context(other.io_context) {
     thread = other.thread;
     other.thread = nullptr;
 
@@ -32,26 +32,6 @@ namespace other {
     buffer.writing = other.buffer.writing;
     buffer.write_queue = std::move(other.buffer.write_queue);
     buffer.write_buffer = std::move(other.buffer.write_buffer);
-  }
-
-  session& session::operator=(session&& other) {
-    if (this != &other) {
-      thread = other.thread;
-      other.thread = nullptr;
-
-      state_machine = other.state_machine;
-      other.state_machine = {};
-
-      buffer.reading = other.buffer.reading;
-      buffer.read_queue = std::move(other.buffer.read_queue);
-      buffer.read_buffer = std::move(other.buffer.read_buffer);
-
-      buffer.writing = other.buffer.writing;
-      buffer.write_queue = std::move(other.buffer.write_queue);
-      buffer.write_buffer = std::move(other.buffer.write_buffer);
-    }
-
-    return *this;
   }
 
   void session::start_initialization() {

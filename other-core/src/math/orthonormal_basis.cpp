@@ -24,13 +24,33 @@ namespace other {
   }  // namespace
 
   orthonormal_basis::orthonormal_basis(const glm::vec3& reference_vector, const glm::vec3& n) {
-    k = glm::normalize(n);
-    i = glm::normalize(glm::cross(k, reference_vector));
-    j = glm::normalize(glm::cross(i, k));
+    j = glm::normalize(n);
+    i = glm::normalize(glm::cross(j, reference_vector));
+    k = glm::normalize(glm::cross(i, j));
+    check_negative_zero();
+  }
 
-    check_negative_zero(i);
-    check_negative_zero(j);
-    check_negative_zero(k);
+  orthonormal_basis orthonormal_basis::from_rotation(const glm::quat& rotation) {
+    glm::mat3 rot_matrix = glm::toMat3(rotation);
+    return from_matrix(rot_matrix);
+  }
+
+  orthonormal_basis orthonormal_basis::from_rotation(const glm::vec3& euler_angles) {
+    glm::quat rot = glm::quat(euler_angles);
+    return from_rotation(rot);
+  }
+
+  orthonormal_basis orthonormal_basis::from_matrix(const glm::mat4& matrix) {
+    return from_matrix(glm::mat3(matrix));
+  }
+
+  orthonormal_basis orthonormal_basis::from_matrix(const glm::mat3& matrix) {
+    orthonormal_basis basis;
+    basis.i = matrix[0];
+    basis.j = matrix[1];
+    basis.k = matrix[2];
+    basis.check_negative_zero();
+    return basis;
   }
 
   glm::vec3 orthonormal_basis::to_local(const glm::vec3& v) const {
@@ -57,6 +77,12 @@ namespace other {
   glm::vec3 orthonormal_basis::find_first_non_zero(const glm::vec3& v) const {
     auto vp = glm::vec3(-v.y, v.x, 0.f);
     return (glm::length(vp) < 0.0001f) ? glm::vec3(1.f, 0.f, 0.f) : glm::normalize(vp);
+  }
+
+  void orthonormal_basis::check_negative_zero() {
+    other::check_negative_zero(i);
+    other::check_negative_zero(j);
+    other::check_negative_zero(k);
   }
 
 }  // namespace other

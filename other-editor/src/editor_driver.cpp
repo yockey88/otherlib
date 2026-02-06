@@ -70,11 +70,11 @@ namespace other {
       scene_object& cam_obj = get_active_scene()->get_object("Camera");
       camera_obj_id = cam_obj.id;
 
-      scene_object& my_obj = get_active_scene()->get_object("MyObject");
-      scene_object& floor_obj = get_active_scene()->get_object("Floor");
+      // scene_object& my_obj = get_active_scene()->get_object("MyObject");
+      // scene_object& floor_obj = get_active_scene()->get_object("Floor");
 
-      get_active_scene()->add_component<physics_component>(&my_obj, physics_body_settings{ .body_type = BODY_TYPE_STATIC });
-      get_active_scene()->add_component<physics_component>(&floor_obj, physics_body_settings{ .body_type = BODY_TYPE_STATIC });
+      // get_active_scene()->add_component<physics_component>(&my_obj, physics_component{ physics_body_settings{ .body_type = BODY_TYPE_DYNAMIC } });
+      // get_active_scene()->add_component<physics_component>(&floor_obj, physics_component{ physics_body_settings{ .body_type = BODY_TYPE_STATIC } });
     });
 
     /// ready : initializing -> running

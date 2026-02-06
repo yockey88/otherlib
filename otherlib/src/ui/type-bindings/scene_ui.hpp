@@ -10,13 +10,15 @@
 #include "renderer/ui/ui_window.hpp"
 #include "script/script_object.hpp"
 
+#include "object/camera_component.hpp"
+#include "object/light_component.hpp"
+#include "object/physics_component.hpp"
+#include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
+#include "object/transform.hpp"
 #include "scene/scene.hpp"
 
-IMGUI_REFLECT(other::script_object, name, id);
-IMGUI_REFLECT(other::script_component, object, script_object_id);
-IMGUI_REFLECT(other::scene_object, id, registry_id, name, visible);
 // IMGUI_REFLECT(other::scene, storage);
 
 namespace other {

@@ -20,7 +20,6 @@
 
 #include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
-#include "object/component_registry.hpp"
 #include "object/light_component.hpp"
 #include "object/object_serialization_data.hpp"
 #include "object/physics_component.hpp"
@@ -29,10 +28,10 @@
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
 #include "scene/scene_network_context.hpp"
+#include "scene/scene_storage.hpp"
 
 #include "entt/entity/fwd.hpp"
 #include "glm/fwd.hpp"
-#include "scene_storage.hpp"
 #include "sol/table.hpp"
 
 namespace other {
@@ -43,7 +42,10 @@ namespace other {
     // Create the root object
     scene_object& root = storage->tree.root_object();
     register_object(&root, "Root", glm::vec3(0.0f));
-    root.visible = true;
+    object_handle* tag = get_component<object_handle>(&root);
+    OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
+
+    storage->scene_root_entity = entt::entity(root.registry_id);
   }
 
   void scene::do_final_scene_destruction_cleanup() {
@@ -69,10 +71,6 @@ namespace other {
       scene_table.set_function(
         "create_scene_object",
         sol::overload(
-          [this]() -> natural_t {
-            scene_object& new_obj = this->create_object();
-            return new_obj.id;
-          },
           [this](const std::string& name) -> natural_t {
             scene_object& new_obj = this->create_object(name);
             return new_obj.id;
@@ -90,10 +88,6 @@ namespace other {
       };
 
       scene_table["create_scene_object"] = sol::overload(
-        [this]() -> natural_t {
-          scene_object& new_obj = this->create_object();
-          return new_obj.id;
-        },
         [this](const std::string& name) -> natural_t {
           scene_object& new_obj = this->create_object(name);
           return new_obj.id;
@@ -225,10 +219,7 @@ namespace other {
   scene scene::load_scene(const filepath& scene_path) {
     std::string ext = scene_path.extension().string();
     switch (FNV(ext)) {
-      case FNV(".lua"): {
-        PROFILE_SECTION("scene::load_scene_lua");
-        return load_from_lua_file(scene_path);
-      }
+      case FNV(".lua"): return load_from_lua_file(scene_path);
       default:
         CORE_LOG_ERROR("Unsupported scene file extension '{}'", ext);
         return scene();
@@ -237,9 +228,7 @@ namespace other {
 
   void scene::play() {
     /// store initial state for reset
-
     playing = true;
-
     storage->physics->start_simulation();
   }
 
@@ -279,7 +268,7 @@ namespace other {
     }
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
-      // comp.fixed_update(delta_time);
+      comp.fixed_update(delta_time);
     });
 
     if (sol::protected_function on_fixed_update_fn = storage->sandbox["OnSceneFixedUpdate"]; on_fixed_update_fn.valid()) {
@@ -312,7 +301,7 @@ namespace other {
     });
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
-      // comp.update(delta_time);
+      comp.update(delta_time);
     });
 
     if (storage->sandbox["OnSceneUpdate"].valid()) {
@@ -333,7 +322,7 @@ namespace other {
     PROFILE_SECTION("scene::late_update");
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
-      // comp.late_update(delta_time);
+      comp.late_update(delta_time);
     });
 
     if (storage->sandbox["OnSceneLateUpdate"].valid()) {
@@ -355,17 +344,6 @@ namespace other {
     OTHER_ASSERT(root_node->object != nullptr, "Root node object is null.");
 
     return *root_node->object;
-  }
-
-  scene_object& scene::create_object() {
-    PROFILE_SECTION("scene::create_object_default");
-    return storage->tree.create_object("Scene Object", glm::vec3(0.f), nullptr);
-  }
-
-  scene_object& scene::create_object(scene_object* object) {
-    PROFILE_SECTION("scene::create_object_from_existing");
-    OTHER_ASSERT(object != nullptr, "Cannot create a scene object from a null pointer.");
-    return storage->tree.create_object(object->name, glm::vec3(0.f), nullptr);
   }
 
   scene_object& scene::create_object(const std::string& name, scene_object* parent_object) {
@@ -886,11 +864,10 @@ namespace other {
     PROFILE_SECTION("scene::connect_remote_session");
 
     scene_object& root = root_object();
-    if (!has_component<scene_network_context>(&root)) {
-      add_component<scene_network_context>(&root);
-    }
 
     auto* net_ctx = get_component<scene_network_context>(&root);
+    OTHER_ASSERT(net_ctx != nullptr, "Scene network context component is not present on the root scene object.");
+
     net_ctx->add_remote_session(session_id);
   }
 
@@ -903,24 +880,43 @@ namespace other {
     return id == other.id && object == other.object;
   }
 
+  scene_object* scene::from_registry_id(entt::entity entity) {
+    PROFILE_SECTION("scene::from_registry_id");
+
+    object_handle* handle = storage->registry.try_get<object_handle>(entity);
+    if (handle == nullptr) {
+      CORE_LOG_ERROR("Object handle not found for entity {}", (natural_t)entity);
+      return nullptr;
+    }
+    return handle->object;
+  }
+
   void scene::register_object(scene_object* object, const std::string& name, const glm::vec3& world_position) {
     PROFILE_SECTION("scene::register_object");
 
+    OTHER_ASSERT(name.size() > 0, "Scene object name cannot be empty.");
     OTHER_ASSERT(object != nullptr, "Cannot register a null scene object.");
 
+    CORE_LOG_DEBUG("Registering scene object '{}' in scene '{}'", name, this->name);
     entt::entity entity = storage->registry.create();
     object->name = name;
     object->registry_id = (uint32_t)entity;
 
     storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
-    // storage->registry.emplace<component_registry>(entity, component_registry{});
+    storage->registry.emplace<component_registry>(entity, component_registry{});
     storage->registry.emplace<transform>(entity, transform{
                                                    orthonormal_basis(glm::vec3(0, 1, 0)),
                                                    world_position,
                                                    glm::vec3(1, 1, 1),
-                                                   glm::quat(1, 0, 0, 0),
+                                                   glm::quat(),
                                                  });
-    storage->registry.emplace<script_component>(entity, script_component{ .object = object });
+    storage->registry.emplace<script_component>(entity, script_component{ object });
+
+    transform& transf = storage->registry.get<transform>(entity);
+    script_component& script = storage->registry.get<script_component>(entity);
+    auto& comp_reg = storage->registry.get<component_registry>(entity);
+    comp_reg.register_component(transf);
+    comp_reg.register_component(script);
   }
 
   void scene::register_object(scene_object* object, const std::string& name, const transform& transformation) {
@@ -950,16 +946,19 @@ namespace other {
   void scene::on_create_script_component(const entt::registry&, const entt::entity entity) {
     PROFILE_SECTION("scene::on_create_script_component");
 
-    auto* script_env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
-
     script_component* script = storage->registry.try_get<script_component>(entity);
     OTHER_ASSERT(script != nullptr, "Script component is null for entity {}", (natural_t)entity);
 
-    std::string script_name = script->object->name;
-    script->script_object_id = script_env->create_object(script_name);
+    auto* script_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
-    // script_env->attach_dotnet_object(script.script_object_id, "Other.SceneObject");
+    script_object* object = script_env->get_object(script->script_object_id);
+    OTHER_ASSERT(object != nullptr, "Failed to retrieve script object after creation for object ID {}", script->script_object_id);
+
+    std::string script_name = script->object->name;
+    CORE_LOG_DEBUG("Creating script object for scene object '{}' [ID: {}] (entity {})", script->object->name, script->object->id, (natural_t)entity);
+    script->script_object_id = script_env->create_object(script->object->name);
+    script_env->attach_dotnet_object(script->script_object_id, "Other.SceneObject", (void*)object);
   }
 
   // void scene::on_update_script_component(const entt::registry&, const entt::entity entity) {

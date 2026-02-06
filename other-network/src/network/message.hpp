@@ -129,6 +129,11 @@ namespace other {
   };
 
   /// response messages
+  struct session_connect_to_response : other_message_spec_impl<session_connect_to_response> {
+    uint8_t ack_nack = 0;
+    integer_t session_id = 0;
+  };
+
   struct session_check_in_response : other_message_spec_impl<session_check_in_response> {
     integer_t session_id = 0;
   };

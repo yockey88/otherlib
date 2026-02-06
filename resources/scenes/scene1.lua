@@ -2,16 +2,16 @@ local MyObject = Other:SceneObject():new("MyObject")
 MyObject.Transform.local_position = Vec3:new(0.0, -0.5, 0.0)
 MyObject.Transform.local_rotation_quat = Quat:new(0.0, 0.0, 0.0, 1.0)
 MyObject.Transform.local_scale = Vec3:new(1.0, 1.0, 1.0)
-MyObject.Scripts = {
-  [".NET"] = {
-    ["Test-Object"] = Other:DotnetTypes().Get("TestObject"),
-  }
-}
+-- MyObject.Scripts = {
+--   [".NET"] = {
+--     ["Test-Object"] = Other:DotnetTypes().Get("TestObject"),
+--   }
+-- }
 
-local Floor = Other:SceneObject():new("Floor")
-Floor.Transform.local_position = Vec3:new(0.0, -3.0, 0.0)
-Floor.Transform.local_scale = Vec3:new(10.0, 1.0, 10.0)
-Floor.Transform.local_rotation_quat = Quat:new(0.0, 0.0, 0.0, 1.0)
+-- local Floor = Other:SceneObject():new("Floor")
+-- Floor.Transform.local_position = Vec3:new(0.0, -3.0, 0.0)
+-- Floor.Transform.local_scale = Vec3:new(10.0, 1.0, 10.0)
+-- Floor.Transform.local_rotation_quat = Quat:new(0.0, 0.0, 0.0, 1.0)
 
 local material = GraphicsMaterial:new()
 material.diffuse_color = Vec3:new(0.4, 0.6, 0.8)
@@ -33,8 +33,8 @@ floor_material.transparency = 0.0
 
 local render_comp = MyObject:AttachModel("resources/models/spinning-torus.fbx")
 render_comp:SetMaterial(material)
-local floor_render = Floor:AttachModel("resources/models/cube.fbx")
-floor_render:SetMaterial(floor_material)
+-- local floor_render = Floor:AttachModel("resources/models/cube.fbx")
+-- floor_render:SetMaterial(floor_material)
 
 local Light = Other:SceneObject():new("Light", Vec3:new(2.0, 4.0, 2.0))
 Light:AddTag("scene-ambient-light")
@@ -62,7 +62,7 @@ cam:Look(Vec3:new(0.0, 1.0, 4.5), Vec3:new(0.0, 0.0, 0.0))
 return {
   Objects = {
     MyObject,
-    Floor,
+    -- Floor,
     Light,
     Camera,
   },

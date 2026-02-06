@@ -12,7 +12,7 @@ namespace other {
 
   class OTHER_CLASS editor_driver : public driver {
    public:
-    OTHER_APPLICATION_DRIVER("Other Editor");
+    OTHER_APPLICATION_DRIVER("Other Editor", false);
 
     editor_driver(const config_table& config)
         : driver(config) {}

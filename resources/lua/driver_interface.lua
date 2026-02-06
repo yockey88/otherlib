@@ -50,6 +50,27 @@ local function _deduce_list_type(args)
   return "unknown"
 end
 
+local function _deduce_object_op_type(args)
+  if #args < 1
+  then
+    return "unknown"
+  end
+  
+  local operation = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
+  if operation == "--create" or operation == "-c" 
+  then return "create" end
+  if operation == "--delete" or operation == "-d" 
+  then return "delete" end
+  if operation == "--push"   or operation == "-pu" 
+  then return "push" end
+  if operation == "--pop"    or operation == "-po" 
+  then return "pop" end
+  if operation == "--info"   or operation == "-i"
+  then return "info" end
+
+  return "unknown"
+end
+
 local function _get_path_from_args(arg)
   local path = _Meta._string_utils.strip_leading_and_ending_whitespace(arg)
   if not _Meta._file_utils.Exists(path)
@@ -98,6 +119,81 @@ local function _get_list_arg(result_table, arg)
 
   -- no additional args needed for now
   return true
+end
+
+local function _get_id_or_name(arg)
+  if arg == nil or arg == ""
+  then
+    return nil, nil
+  end
+  
+  local is_number = tonumber(arg) ~= nil
+  local is_name = arg ~= nil and not is_number and type(arg) == "string"
+  if not is_number and not is_name
+  then
+    return nil, nil
+  end
+  
+  if is_number
+  then
+    return tonumber(arg), nil
+  else
+    return nil, arg
+  end
+end
+
+local function _build_object_arg_table(operation, args)
+  local result_table = {}
+  if operation == "create"
+  -- expect name, optional parent id, optional components
+  then
+    result_table.name = args[2] or "NewObject"
+    result_table.parent_id = args[3] or nil
+    result_table.components = {}
+    for i = 4, #args do
+      table.insert(result_table.components, args[i])
+    end
+  elseif operation == "delete"
+  -- expect object id
+  then
+    result_table.object_id = args[2] or nil
+  elseif operation == "push"
+  -- expect object id or component name
+  then
+    local num, str = _get_id_or_name(args[2])
+    if num == nil and str == nil
+    then
+      return nil, false
+    end
+
+    if num ~= nil
+    then
+      result_table.identifier = num
+    elseif str ~= nil
+    then
+      result_table.identifier = str
+    end
+  elseif operation == "pop"
+  then
+    -- nothing to do
+  elseif operation == "info"
+  -- expect object id
+  then
+    local num, str =_get_id_or_name(args[2])
+    if num == nil and str == nil
+    then
+      result_table.identifier = "<stack>"
+    elseif num ~= nil
+    then
+      result_table.identifier = num
+    elseif str ~= nil
+    then
+      result_table.identifier = str
+    end
+  else
+    return nil, false
+  end
+  return result_table, true
 end
 
 local function _trigger_driver_event_impl(event_name, event_data)
@@ -192,6 +288,67 @@ function _Driver._parse_list_args(args)
   then
     return {}, false
   end
+  return result, true
+end
+
+function _Driver._parse_object_op_args(args)
+  local result = {}
+  if #args < 1
+  then
+    _Meta:Console().PushError("Usage: object <operation> [options...]")
+    return {}, false
+  end
+
+  result.operation = _deduce_object_op_type(args)
+  if result.operation == "unknown"
+  then
+    _Meta:Console().PushError("Unknown operation for object command.")
+    return {}, false
+  end
+
+  -- additional argument parsing can be done here based on operation type
+  result.op_table = _build_object_arg_table(result.operation, args)
+  if result.op_table == nil
+  then
+    _Meta:Console().PushError("Failed to parse arguments for object command.")
+    return {}, false
+  end
+
+  return result, true
+end
+
+function _Driver._parse_scene_op_args(args)
+  local result = {}
+  if #args < 1
+  then
+    _Meta:Console().PushError("Usage: scene <operation> [options...]")
+    return {}, false
+  end
+
+  local first_arg = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
+  if first_arg == "--new" or first_arg == "-n"
+  then
+    result.operation = "new"
+    result.scene_name = args[2] or nil
+  elseif first_arg == "--load" or first_arg == "-l"
+  then
+    result.operation = "load"
+    result.scene_path = args[2] or nil
+  elseif first_arg == "--unload" or first_arg == "-ul"
+  then
+    result.operation = "unload"
+  elseif first_arg == "--info" or first_arg == "-i"
+  then
+    result.operation = "info"
+  
+  elseif first_arg == "play" or first_arg == "pause" or first_arg == "stop"
+  then
+    result.operation = first_arg
+  else
+    _Meta:Console().PushError("Unknown operation for scene command.")
+    return {}, false
+  end
+
   return result, true
 end
 

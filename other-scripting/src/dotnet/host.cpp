@@ -230,6 +230,7 @@ namespace other {
     OTHER_ASSERT(type->dotnet_id != -1, "Type ID is invalid: {}", type->dotnet_id);
     OTHER_ASSERT(interop_functions.create_object != nullptr, "Interop function create_object is not initialized");
 
+    CORE_LOG_DEBUG("Attempting to create managed object [{}] of type [{}]", name, type->full_name());
     dotnet_object* obj = new_object(name, type);
     obj->managed_object = interop_functions.create_object(type->dotnet_id, false, argv, arg_ts, argc);
     if (obj->managed_object == nullptr) {
@@ -433,6 +434,9 @@ namespace other {
     // OTHER_ASSERT(interop_functions.invoke_static_method != nullptr, "Failed to load InvokeStaticMethod from managed assembly.");
     // interop_functions.invoke_static_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeStaticMethodRet"));
     // OTHER_ASSERT(interop_functions.invoke_static_method_ret != nullptr, "Failed to load InvokeStaticMethodRet from managed assembly.");
+
+    interop_functions.is_field_private = load_managed_function<field_is_private_checker>(managed_object_type_str, DNET_STR("IsFieldPrivate"));
+    OTHER_ASSERT(interop_functions.is_field_private != nullptr, "Failed to load IsFieldPrivate from managed assembly.");
 
     interop_functions.set_field = load_managed_function<field_setter_getter>(managed_object_type_str, DNET_STR("SetField"));
     OTHER_ASSERT(interop_functions.set_field != nullptr, "Failed to load SetField from managed assembly.");

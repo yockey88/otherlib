@@ -186,7 +186,13 @@ if __name__ == "__main__":
     elif args.run_test_suite is not None and len(args.run_test_suite) == 1:
       test_filter = args.run_test_suite[0]
       print(f"Running test suite with filter: {test_filter}")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=[f"--gtest_filter={test_filter}", "--gtest_shuffle"])
+      extra_args=[f"--gtest_filter={test_filter}", "--gtest_shuffle"]
+      ## TODO: fix platform specific output paths
+      if cfg == "Debug" or cfg == "ProfileD":
+        extra_args.append("--gtest_output=xml:other_test_results.windows.debug.xml")
+      else:
+        extra_args.append("--gtest_output=xml:other_test_results.windows.release.xml")
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=extra_args)
     elif args.daemon_server:
       run_subprocess(["pwsh.exe", "-File", "tools/daemon-server.ps1"])
       
