@@ -6,6 +6,7 @@
 #include "renderer/ui/ui_helpers.hpp"
 
 #include "ui/colors.hpp"
+#include "ui/unicode.hpp"
 
 namespace other {
   namespace ui {
@@ -158,7 +159,9 @@ namespace other {
 
         /// modified marker (right side)
         if (flags.modified) {
-          const char* mod_text = "\xe2\x97\x8f modified";  /// ● modified
+          std::string mod_text_str = std::string(unicode::kStatusDot) + " modified";
+          const char* mod_text = mod_text_str.c_str();
+
           float mod_w = ImGui::CalcTextSize(mod_text).x;
           float mod_x = cursor.x + avail_w - kInnerPadding - mod_w;
           dl->AddText({ mod_x, text_y }, colors::to_im_col(colors::inspector::kModifiedMarker), mod_text);

@@ -4,6 +4,8 @@
 #ifndef OTHER_CORE_EVENT_EVENT_SYSTEM_HPP
 #define OTHER_CORE_EVENT_EVENT_SYSTEM_HPP
 
+#include <deque>
+#include <mutex>
 #include <string_view>
 
 #include <asio/asio.hpp>
@@ -58,6 +60,8 @@ namespace other {
    private:
     asio::io_context& io_context;
 
+    mutable std::mutex events_mutex;
+
     struct event_ctx {
       event ev;
       std::vector<event::handler> listeners;
@@ -67,7 +71,7 @@ namespace other {
       asio::steady_timer timer;
     };
     std::vector<event_ctx> registered_events;
-    std::vector<event_timer> event_timers;
+    std::deque<event_timer> event_timers;
 
     void post_event_callback(natural_t event_id, microseconds duration);
   };

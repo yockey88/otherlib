@@ -10,7 +10,7 @@
 namespace other {
 
   void editor_ui::initialize() {
-    console_window_ptr = make_scope<ui::console_window>(*event_system);
+    console_window_ptr = make_scope<ui::console_window>(*event_system, driver_ptr);
   }
 
   void editor_ui::render() {

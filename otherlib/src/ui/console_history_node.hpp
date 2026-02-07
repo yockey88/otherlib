@@ -4,40 +4,45 @@
 #ifndef OTHERLIB_UI_CONSOLE_HISTORY_NODE_HPP
 #define OTHERLIB_UI_CONSOLE_HISTORY_NODE_HPP
 
-#include <chrono>
-
-#include "core/timer.hpp"
-
 #include "renderer/ui/ui_node.hpp"
 
-#include "tools/environment_console.hpp"
-
-/// \todo
-#include "scripting/actions/action.hpp"
+#include "ui/console_widgets.hpp"
 
 namespace other {
+
+  class driver;
+
   namespace ui {
 
     class console_history_node : public ui_node {
      public:
-      console_history_node(ui_window* parent)
-          /// arguments are default except 'true' which means that this node does not start a child region
-          : ui_node(parent, "Console History", { 0.f, 0.f }, 0, 0) {
-      }
+      console_history_node(ui_window* parent, driver* drvr);
       virtual ~console_history_node() = default;
 
-      void on_prepare_render() override;
-      void on_render_node_body() override;
-      void on_render_end() override;
+      void push_log(console_w::log_entry entry);
+      void push_log(const std::string& message, console_w::log_level level, const std::string& source = "");
+      void push_command(const std::string& command_text);
+      void clear();
+
+      size_t entry_count() const { return entries.size(); }
 
      private:
-      friend int text_callback(ImGuiInputTextCallbackData* data);
+      driver* driver_ptr = nullptr;
 
-      /// usually points one past last entered input (so input line is empty)
-      ///  if user presses up-arrow, cursor moves back to previous entry
-      size_t history_cursor = 0;
+      static constexpr size_t kMaxEntries = 4096;
+      std::deque<console_w::log_entry> entries;
 
-      void push_message_color(console_message_type type);
+      bool auto_scroll = true;        ///< stick to bottom
+      bool scroll_to_bottom = false;  ///< force scroll this frame
+
+      uint8_t filter_mask = 0xFF;  ///< all levels enabled by default
+      char search_buf[256] = {};
+      std::string search_lower;
+
+      bool passes_filter(const console_w::log_entry& entry) const;
+
+      void on_render_node_body() override;
+      static std::string make_timestamp();
     };
 
   }  // namespace ui

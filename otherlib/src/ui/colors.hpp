@@ -281,6 +281,53 @@ namespace other {
         constexpr inline glm::vec4 kSearchMatch = hex_col_to_rgba(IM_COL32(236, 158, 36, 100));
       }  // namespace hierarchy
 
+      //  Console  (grid-tool-console from theme reference)
+      namespace console {
+        /// backgrounds
+        constexpr inline glm::vec4 kBG = hex_col_to_rgba(IM_COL32(8, 8, 8, 230));
+        constexpr inline glm::vec4 kBGAlt = hex_col_to_rgba(IM_COL32(12, 12, 12, 230));
+        constexpr inline glm::vec4 kBorder = hex_col_to_rgba(IM_COL32(40, 40, 40, 255));
+        constexpr inline glm::vec4 kScrollGutter = hex_col_to_rgba(IM_COL32(16, 16, 16, 255));
+        /// prompt
+        constexpr inline glm::vec4 kPromptSymbol = hex_col_to_rgba(IM_COL32(217, 122, 29, 255));
+        constexpr inline glm::vec4 kPromptText = hex_col_to_rgba(IM_COL32(230, 235, 243, 255));
+        constexpr inline glm::vec4 kPromptCursor = hex_col_to_rgba(IM_COL32(236, 158, 36, 255));
+        constexpr inline glm::vec4 kPromptBG = hex_col_to_rgba(IM_COL32(14, 14, 14, 255));
+        constexpr inline glm::vec4 kPromptBorder = hex_col_to_rgba(IM_COL32(50, 40, 25, 255));
+
+        /// log level colors
+        constexpr inline glm::vec4 kCommand = hex_col_to_rgba(IM_COL32(39, 185, 242, 255));
+        constexpr inline glm::vec4 kCommandHistory = hex_col_to_rgba(IM_COL32(39, 185, 242, 140));
+        constexpr inline glm::vec4 kOutput = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
+        constexpr inline glm::vec4 kTrace = hex_col_to_rgba(IM_COL32(107, 107, 107, 255));
+        constexpr inline glm::vec4 kDebug = hex_col_to_rgba(IM_COL32(140, 140, 140, 255));
+        constexpr inline glm::vec4 kInfo = hex_col_to_rgba(IM_COL32(193, 208, 193, 255));
+        constexpr inline glm::vec4 kWarning = hex_col_to_rgba(IM_COL32(245, 158, 11, 255));
+        constexpr inline glm::vec4 kError = hex_col_to_rgba(IM_COL32(239, 68, 68, 255));
+        constexpr inline glm::vec4 kFatal = hex_col_to_rgba(IM_COL32(255, 40, 40, 255));
+        constexpr inline glm::vec4 kHint = hex_col_to_rgba(IM_COL32(155, 160, 170, 255));
+
+        /// autocomplete popup
+        constexpr inline glm::vec4 kAutocompleteBG = hex_col_to_rgba(IM_COL32(22, 22, 22, 245));
+        constexpr inline glm::vec4 kAutocompleteBorder = hex_col_to_rgba(IM_COL32(55, 55, 55, 255));
+        constexpr inline glm::vec4 kAutocompleteSelected = hex_col_to_rgba(IM_COL32(50, 35, 18, 255));
+        constexpr inline glm::vec4 kAutocompleteMatch = hex_col_to_rgba(IM_COL32(236, 158, 36, 255));
+        constexpr inline glm::vec4 kAutocompleteText = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
+        constexpr inline glm::vec4 kAutocompleteDesc = hex_col_to_rgba(IM_COL32(130, 130, 130, 255));
+
+        /// metadata
+        constexpr inline glm::vec4 kTimestamp = hex_col_to_rgba(IM_COL32(80, 80, 80, 255));
+        constexpr inline glm::vec4 kSource = hex_col_to_rgba(IM_COL32(100, 100, 100, 255));
+
+        /// filter toggles
+        constexpr inline glm::vec4 kFilterInactive = hex_col_to_rgba(IM_COL32(60, 60, 60, 255));
+        constexpr inline glm::vec4 kFilterHover = hex_col_to_rgba(IM_COL32(80, 80, 80, 255));
+
+        /// inline result highlights
+        constexpr inline glm::vec4 kResultValue = hex_col_to_rgba(IM_COL32(242, 190, 112, 255));
+        constexpr inline glm::vec4 kResultType = hex_col_to_rgba(IM_COL32(112, 190, 242, 255));
+      }  // namespace console
+
       //  Scene Object Editor  (grid-asset-scene-object from theme reference)
       namespace scene_object {
         constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));

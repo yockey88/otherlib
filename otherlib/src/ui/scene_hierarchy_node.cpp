@@ -66,7 +66,7 @@ namespace other {
       ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::rgba_to_imvec4(colors::hierarchy::kBG));
 
       /// get num objects and calculate need height
-      ImVec2 size = ImVec2(0, 500.f);
+      ImVec2 size = ImVec2(0, ImGui::GetContentRegionAvail().y / 2.f);
       auto* active_scene = driver_ptr->get_active_scene();
       if (active_scene == nullptr) {
         if (!ImGui::BeginChild("##scene-hierarchy", size)) {
@@ -79,9 +79,6 @@ namespace other {
         ImGui::PopStyleColor();
         return;
       }
-
-      const auto num_objects = active_scene->get_all_object_ids().size();
-      const float needed_height = num_objects * ImGui::GetTextLineHeightWithSpacing();
 
       if (selected_object_id == 0) {
         size = ImVec2(0, 0);
