@@ -64,6 +64,13 @@ namespace other {
     }
 
     void property_inspector_node::handle_object_selection(natural_t object_id) {
+      CORE_LOG_DEBUG("Handling object selection for ID {}", object_id);
+      if (object_id == 0) {
+        /// unselect anything selected
+        selected_object_ids.clear();
+        return;
+      }
+
       if (multi_selection_enabled) {
         auto it = std::ranges::find(selected_object_ids, object_id);
         if (it != selected_object_ids.end()) {
@@ -74,6 +81,7 @@ namespace other {
       else if (selected_object_ids.size() > 0) {
         selected_object_ids.clear();
       }
+      CORE_LOG_DEBUG("Selecting object ID {}", object_id);
       selected_object_ids.push_back(object_id);
     }
 

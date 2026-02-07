@@ -244,6 +244,43 @@ namespace other {
         constexpr inline glm::vec4 kResetButtonHover = hex_col_to_rgba(IM_COL32(255, 255, 255, 255));
       }  // namespace inspector
 
+      //  Scene Hierarchy  (grid-tool-hierarchy from theme reference)
+      namespace hierarchy {
+        constexpr inline glm::vec4 kBG = hex_col_to_rgba(IM_COL32(25, 25, 25, 255));
+        constexpr inline glm::vec4 kBorder = hex_col_to_rgba(IM_COL32(46, 46, 46, 255));
+
+        /// item text
+        constexpr inline glm::vec4 kItemText = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
+        constexpr inline glm::vec4 kItemTextSelected = hex_col_to_rgba(IM_COL32(230, 235, 243, 255));
+        constexpr inline glm::vec4 kItemTextDisabled = hex_col_to_rgba(IM_COL32(100, 100, 100, 255));
+
+        /// item backgrounds
+        constexpr inline glm::vec4 kItemHover = hex_col_to_rgba(IM_COL32(45, 45, 48, 255));
+        constexpr inline glm::vec4 kItemSelected = hex_col_to_rgba(IM_COL32(55, 40, 22, 255));
+        constexpr inline glm::vec4 kItemSelectedUnfocused = hex_col_to_rgba(IM_COL32(40, 40, 42, 255));
+
+        /// tree structure
+        constexpr inline glm::vec4 kIndentGuide = hex_col_to_rgba(IM_COL32(46, 46, 46, 120));
+        constexpr inline glm::vec4 kExpandArrow = hex_col_to_rgba(IM_COL32(140, 140, 140, 255));
+        constexpr inline glm::vec4 kExpandArrowHover = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
+
+        /// drag & drop
+        constexpr inline glm::vec4 kDropTarget = hex_col_to_rgba(IM_COL32(39, 185, 242, 160));
+        constexpr inline glm::vec4 kDropTargetLine = hex_col_to_rgba(IM_COL32(39, 185, 242, 255));
+        constexpr inline glm::vec4 kDragPreview = hex_col_to_rgba(IM_COL32(35, 35, 37, 200));
+
+        /// visibility / lock icons
+        constexpr inline glm::vec4 kIconVisible = hex_col_to_rgba(IM_COL32(180, 180, 180, 255));
+        constexpr inline glm::vec4 kIconHidden = hex_col_to_rgba(IM_COL32(80, 80, 80, 255));
+        constexpr inline glm::vec4 kIconLocked = hex_col_to_rgba(IM_COL32(200, 80, 80, 255));
+
+        /// search bar
+        constexpr inline glm::vec4 kSearchBG = hex_col_to_rgba(IM_COL32(14, 14, 14, 255));
+        constexpr inline glm::vec4 kSearchBorder = hex_col_to_rgba(IM_COL32(50, 50, 50, 255));
+        constexpr inline glm::vec4 kSearchBorderFocused = hex_col_to_rgba(IM_COL32(236, 158, 36, 200));
+        constexpr inline glm::vec4 kSearchMatch = hex_col_to_rgba(IM_COL32(236, 158, 36, 100));
+      }  // namespace hierarchy
+
       //  Scene Object Editor  (grid-asset-scene-object from theme reference)
       namespace scene_object {
         constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));

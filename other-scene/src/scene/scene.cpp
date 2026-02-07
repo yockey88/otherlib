@@ -503,6 +503,16 @@ namespace other {
     return *node->object;
   }
 
+  scene_object* scene::find_object(const std::string_view name) {
+    scene_object* n = storage->tree.find_object_by_name(name);
+    return n != nullptr ? n : nullptr;
+  }
+
+  scene_object* scene::find_object(natural_t id) {
+    scene_tree::node* node = storage->tree.node_at(id);
+    return (node != nullptr && node->object != nullptr) ? node->object : nullptr;
+  }
+
   size_t scene::get_object_count() const {
     PROFILE_SECTION("scene::get_object_count");
     OTHER_ASSERT(storage->tree.nodes != nullptr, "Scene tree nodes are not initialized.");
