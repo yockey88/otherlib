@@ -6,11 +6,12 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
+#include "renderer/ui/colors.hpp"
 #include "renderer/ui/ui_helpers.hpp"
 
-#include "ui/colors.hpp"
 #include "ui/node_editor.hpp"
 #include "ui/node_editor_canvas_node.hpp"
+
 
 namespace other {
   namespace ui {

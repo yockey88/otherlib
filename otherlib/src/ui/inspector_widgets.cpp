@@ -3,10 +3,10 @@
  **/
 #include "ui/inspector_widgets.hpp"
 
+#include "renderer/ui/colors.hpp"
 #include "renderer/ui/ui_helpers.hpp"
+#include "renderer/ui/unicode.hpp"
 
-#include "ui/colors.hpp"
-#include "ui/unicode.hpp"
 
 namespace other {
   namespace ui {

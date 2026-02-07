@@ -27,6 +27,7 @@
 #include "vm/other_device.hpp"
 #include "vm/vm.hpp"
 
+#include "SDL3/SDL_keycode.h"
 #include "driver_tasks.hpp"
 
 namespace other {
@@ -736,6 +737,17 @@ namespace other {
 
           /// \todo: add input system (mouse/keyboard/gamepad) event handling here when
           ///         input system is added
+        case SDL_EVENT_KEY_DOWN:
+          switch (event.key.key) {
+            case SDLK_BACKSLASH:
+            case SDLK_COLON:
+              get_event_system()->trigger_event("console.focus");
+              break;
+
+            default:
+              break;
+          }
+          break;
 
         default: {
         } break;

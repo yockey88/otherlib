@@ -1,8 +1,8 @@
 /**
- * \file ui/unicode.hpp
+ * \file renderer/ui/unicode.hpp
  **/
-#ifndef OTHER_UI_UNICODE_HPP
-#define OTHER_UI_UNICODE_HPP
+#ifndef OTHER_RENDERER_RENDERER_UI_UNICODE_HPP
+#define OTHER_RENDERER_RENDERER_UI_UNICODE_HPP
 
 namespace other {
   namespace ui {
@@ -15,4 +15,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHER_UI_UNICODE_HPP
+#endif  // OTHER_RENDERER_RENDERER_UI_UNICODE_HPP

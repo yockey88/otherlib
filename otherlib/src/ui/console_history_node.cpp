@@ -11,10 +11,12 @@
 
 #include "core/defines.hpp"
 
+#include "renderer/ui/colors.hpp"
+
 #include "tools/environment_console.hpp"
-#include "ui/colors.hpp"
 
 #include "console_widgets.hpp"
+
 
 namespace other {
   namespace ui {

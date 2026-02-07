@@ -3,8 +3,9 @@
  **/
 #include "ui/console_input_node.hpp"
 
+#include "renderer/ui/colors.hpp"
+
 #include "tools/environment_console.hpp"
-#include "ui/colors.hpp"
 
 #include "console_history_node.hpp"
 
@@ -22,6 +23,7 @@ namespace other {
     }
 
     void console_input_node::request_focus() {
+      CORE_LOG_DEBUG("Console input focus requested");
       focus_requested = true;
     }
 

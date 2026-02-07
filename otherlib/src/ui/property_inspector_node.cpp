@@ -8,6 +8,8 @@
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
+#include "renderer/ui/colors.hpp"
+
 #include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
@@ -18,13 +20,13 @@
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
-#include "ui/colors.hpp"
 #include "ui/component_widget.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/ui_widgets.hpp"
 
 #include "imgui.h"
 #include "inspector_widgets.hpp"
+
 
 IMGUI_REFLECT(glm::vec3, x, y, z);
 IMGUI_REFLECT(glm::quat, w, x, y, z);

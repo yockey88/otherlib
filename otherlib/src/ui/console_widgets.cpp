@@ -6,8 +6,8 @@
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 
-#include "ui/colors.hpp"
-#include "ui/unicode.hpp"
+#include "renderer/ui/colors.hpp"
+#include "renderer/ui/unicode.hpp"
 
 namespace other {
   namespace ui {

@@ -11,13 +11,11 @@
 
 #include "core/logger.hpp"
 
+#include "renderer/ui/colors.hpp"
 #include "renderer/ui/ui_helpers.hpp"
 
-#include "ui/colors.hpp"
 #include "ui/node_editor_canvas_node.hpp"
 #include "ui/type-bindings/value_ui.hpp"
-
-#include "colors.hpp"
 
 namespace other {
   namespace ui {

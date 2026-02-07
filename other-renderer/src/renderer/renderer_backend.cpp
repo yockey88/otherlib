@@ -17,6 +17,8 @@
 #include "core/profiler.hpp"
 
 #include "renderer/backends/opengl_api.hpp"
+#include "renderer/ui/unicode.hpp"
+
 
 namespace other {
   namespace backend_keys {

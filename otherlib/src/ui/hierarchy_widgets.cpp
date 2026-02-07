@@ -6,7 +6,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-#include "ui/colors.hpp"
+#include "renderer/ui/colors.hpp"
 
 namespace other {
   namespace ui {
