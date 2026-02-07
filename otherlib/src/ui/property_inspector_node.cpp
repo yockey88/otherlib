@@ -13,14 +13,18 @@
 #include "object/light_component.hpp"
 #include "object/physics_component.hpp"
 #include "object/render_component.hpp"
+#include "object/scene_object.hpp"
 #include "object/script_component.hpp"
+#include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
 #include "ui/colors.hpp"
 #include "ui/component_widget.hpp"
+#include "ui/inspector_widgets.hpp"
 #include "ui/ui_widgets.hpp"
 
 #include "imgui.h"
+#include "inspector_widgets.hpp"
 
 IMGUI_REFLECT(glm::vec3, x, y, z);
 IMGUI_REFLECT(glm::quat, w, x, y, z);
@@ -44,55 +48,8 @@ IMGUI_REFLECT(other::camera_component, camera);
 
 namespace other {
 
-  template <>
-  struct property_ui<glm::vec2> {
-    bool operator()(const std::string& name, glm::vec2& value, scene* active_scene, scene_object* object) {
-      ImGui::PushID(name.c_str());
-      bool changed = ui::edit_vec2(name, value);
-      ImGui::PopID();
-      return changed;
-    }
-  };
-  template <>
-  struct property_ui<glm::vec3> {
-    bool operator()(const std::string& name, glm::vec3& value, scene* active_scene, scene_object* object) {
-      ImGui::PushID(name.c_str());
-      bool changed = ui::edit_vec3(name, value);
-      ImGui::PopID();
-      return changed;
-    }
-  };
-  template <>
-  struct property_ui<glm::vec4> {
-    bool operator()(const std::string& name, glm::vec4& value, scene* active_scene, scene_object* object) {
-      ImGui::PushID(name.c_str());
-      bool changed = ui::edit_vec4(name, value);
-      ImGui::PopID();
-      return changed;
-    }
-  };
-
-  template <>
-  struct property_ui<glm::quat> {
-    bool operator()(const std::string& name, glm::quat& value, scene* active_scene, scene_object* object) {
-      ImGui::PushID(name.c_str());
-      bool changed = ui::edit_quat(name, value);
-      ImGui::PopID();
-      return changed;
-    }
-  };
-
-  template <>
-  struct property_ui<orthonormal_basis> {
-    bool operator()(const std::string& name, orthonormal_basis& value, scene* active_scene, scene_object* object) {
-      ImGui::PushID(name.c_str());
-      ui::draw_mat3(name, glm::mat3(value.to_matrix()));
-      ImGui::PopID();
-      return false;
-    }
-  };
-
   namespace ui {
+
     property_inspector_node::property_inspector_node(ui_window* window, driver* drvr)
         : ui_node(window, "Property Inspector"), driver_ptr(drvr) {
       events().add_listener("ui.scene-hierarchy.object-selected", [this](const value& data) {
@@ -107,6 +64,13 @@ namespace other {
     }
 
     void property_inspector_node::handle_object_selection(natural_t object_id) {
+      CORE_LOG_DEBUG("Handling object selection for ID {}", object_id);
+      if (object_id == 0) {
+        /// unselect anything selected
+        selected_object_ids.clear();
+        return;
+      }
+
       if (multi_selection_enabled) {
         auto it = std::ranges::find(selected_object_ids, object_id);
         if (it != selected_object_ids.end()) {
@@ -117,34 +81,38 @@ namespace other {
       else if (selected_object_ids.size() > 0) {
         selected_object_ids.clear();
       }
+      CORE_LOG_DEBUG("Selecting object ID {}", object_id);
       selected_object_ids.push_back(object_id);
     }
 
     template <typename T>
-    void draw_component(const std::string_view component_name, scene* active_scene, scene_object* object) {
+    void property_inspector_node::draw_component_section(const std::string_view component_name, scene* active_scene, scene_object* object) {
       if (!active_scene->has_component<T>(object)) {
         return;
       }
 
-      bool component_node_open = ImGui::TreeNodeEx(component_name.data(), ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding);
-      if (!component_node_open) {
-        return;
-      }
-      bool modified = false;
-      {
-        T& comp = *active_scene->get_component<T>(object);
-        reflection_data& type_data = type_data_handler<T>::get_reflection_data(comp);
+      T* comp = active_scene->get_component<T>(object);
+      OTHER_ASSERT(comp != nullptr, "Component of type '{}' not found on object with ID {}", component_name, object->id);
 
-        ImGui::Separator();
-        {
-          scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
-          ImGui::Text("%s Component [%s]", component_name.data(), type_data.type_name.c_str());
-        }
-        ImGui::Separator();
-        modified = component_widget<T>{}(component_name, comp, active_scene, object);
+      const auto tag = comp->get_id();
+      inspector::component_section_flags section_flags{};
+      if constexpr (std::is_same_v<T, transform>) {
+        section_flags.removable = false;
       }
 
-      ImGui::TreePop();
+      bool remove_requested = false;
+      bool is_open = inspector::begin_component_section(component_name, tag, section_flags, &remove_requested);
+
+      if (is_open) {
+        component_widget<T>{}(component_name, *comp, active_scene, object);
+      }
+
+      inspector::end_component_section();
+
+      /// \todo flesh this out more, this could be it but it may be more complicated
+      if (remove_requested) {
+        // active_scene->remove_component<T>(object);
+      }
     }
 
     void property_inspector_node::on_render_node_body() {
@@ -167,29 +135,37 @@ namespace other {
 
         scene_object& obj = active_scene->get_object(obj_id);
 
-        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
-        ImGui::Text("Properties for Object:\n  - %s (ID: %llu)", obj.name.c_str(), obj.id);
-
-        /// identifiers
-        ImGui::Separator();
-        ImGui::Text("ID: %llu", obj.id);
-        ImGui::Text("Name:");
-
         char name_buf[256];
         std::strncpy(name_buf, obj.name.c_str(), sizeof(name_buf));
-        if (ImGui::InputText("##object-name", name_buf, sizeof(name_buf))) {
+        name_buf[sizeof(name_buf) - 1] = '\0';
+
+        if (inspector::draw_object_header_editable(name_buf, sizeof(name_buf), obj.id, colors::scene_object::kSignature)) {
           obj.name = std::string(name_buf);
         }
-        ImGui::Separator();
+        // ImGui::Separator();
 
         /// components
-        draw_component<transform>("Transform", active_scene, &obj);
-        draw_component<script_component>("Scripts", active_scene, &obj);
-        draw_component<render_component>("Graphics Object", active_scene, &obj);
-        draw_component<camera_component>("Camera", active_scene, &obj);
-        draw_component<physics_component>("Physics Body", active_scene, &obj);
-        draw_component<light_component>("Lights", active_scene, &obj);
-        draw_component<animation_controller>("Animation Controller", active_scene, &obj);
+        draw_component_section<transform>("Transform", active_scene, &obj);
+        draw_component_section<script_component>("Scripts", active_scene, &obj);
+        draw_component_section<render_component>("Graphics Object", active_scene, &obj);
+        draw_component_section<camera_component>("Camera", active_scene, &obj);
+        draw_component_section<physics_component>("Physics Body", active_scene, &obj);
+        draw_component_section<light_component>("Lights", active_scene, &obj);
+        draw_component_section<animation_controller>("Animation Controller", active_scene, &obj);
+
+        if (inspector::draw_add_component_button()) {
+          /// \todo open component picker popup
+          ImGui::OpenPopup("##add_component_popup");
+        }
+
+        /// \todo component picker popup
+        if (ImGui::BeginPopup("##add_component_popup")) {
+          scoped_color text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kText));
+          ImGui::Text("Add Component...");
+          ImGui::Separator();
+          /// list available component types here
+          ImGui::EndPopup();
+        }
       }
 
       ImGui::EndChild();

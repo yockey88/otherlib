@@ -8,7 +8,30 @@ namespace other {
 
   class component {
    public:
+    enum id {
+      TRANSFORM = 0,
+      RENDERER,
+      PHYSICS,
+      SCRIPT,
+      AUDIO,
+      LIGHT,
+      CAMERA,
+      ANIMATION,
+
+      REGISTRY,
+      CUSTOM,
+      NUM_COMPONENT_TYPES,
+      INVALID_COMPONENT_TYPE = NUM_COMPONENT_TYPES
+    };
+
+    component(id comp_id)
+        : comp_id(comp_id) {}
     virtual ~component() = default;
+
+    id get_id() const { return comp_id; }
+
+   private:
+    id comp_id = CUSTOM;
   };
 
 }  // namespace other

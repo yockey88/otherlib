@@ -38,8 +38,8 @@ namespace other {
 
   class editor_ui {
    public:
-    editor_ui(scope<event_system>& events)
-        : event_system(events) {}
+    editor_ui(scope<event_system>& events, driver* driver_ptr)
+        : event_system(events), driver_ptr(driver_ptr) {}
     ~editor_ui() = default;
 
     void initialize();
@@ -50,6 +50,7 @@ namespace other {
     editor_ui_state_machine ui_state_machine;
     scope<event_system>& event_system;
 
+    driver* driver_ptr;
     scope<ui_window> console_window_ptr = nullptr;
   };
 

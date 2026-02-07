@@ -28,7 +28,12 @@ namespace other {
 
   namespace attr {
 
-    struct serializable : refl::attr::usage::field {};
+    struct serializable : refl::attr::usage::field {
+      std::string_view display_name;
+      serializable() = default;
+      constexpr serializable(const std::string_view display_name)
+          : display_name(std::move(display_name)) {}
+    };
 
   }  // namespace attr
 

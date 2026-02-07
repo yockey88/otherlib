@@ -15,6 +15,9 @@ namespace other {
   struct light_component : public component {
     std::vector<gpu::point_light> point_lights;
     std::vector<gpu::directional_light> directional_lights;
+
+    light_component()
+        : component(component::LIGHT) {}
   };
 
 }  // namespace other

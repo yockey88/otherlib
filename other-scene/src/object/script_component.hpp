@@ -22,12 +22,15 @@ namespace other {
     void update(double delta_time);
     void late_update(double delta_time);
 
-    script_component() = default;
-    script_component(const script_component& other) {
+    script_component()
+        : component(component::SCRIPT) {}
+    script_component(const script_component& other)
+        : component(component::SCRIPT) {
       this->object = other.object;
       this->script_object_id = other.script_object_id;
     }
-    script_component(scene_object* obj) : object(obj) {
+    script_component(scene_object* obj)
+        : component(component::SCRIPT), object(obj) {
       OTHER_ASSERT(object != nullptr, "Script component initialized with null scene object.");
     }
   };

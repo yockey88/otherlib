@@ -3,20 +3,24 @@
  **/
 #include "ui/console.hpp"
 
-#include <spdlog/fmt/fmt.h>
-
 #include "ui/console_history_node.hpp"
+#include "ui/console_input_node.hpp"
 
 #include "imgui.h"
-
 
 namespace other {
   namespace ui {
 
-    console_window::console_window(event_system& events)
-        : ui_window(events, "Console", true, ImGuiWindowFlags_NoScrollbar) {
-      auto hist_node = make_scope<console_history_node>(this);
-      history_node_id = add_node(std::move(hist_node));
+    console_window::console_window(event_system& events, driver* driver)
+        : ui_window(events, "Console", true) {
+      events.register_event("console.log");
+      events.register_event("console.output");
+      events.register_event("console.command-echo");
+      events.register_event("console.clear");
+      events.register_event("console.focus");
+
+      history_node_id = add_node(make_scope<console_history_node>(this, driver));
+      input_node_id = add_node(make_scope<console_input_node>(this, driver));
     }
 
   }  // namespace ui

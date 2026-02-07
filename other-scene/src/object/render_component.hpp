@@ -23,6 +23,9 @@ namespace other {
     natural_t model_asset_id = 0;
     std::vector<uint32_t> submesh_indices = {};
     gpu::graphics_material material = {};
+
+    render_component()
+        : component(component::RENDERER) {}
   };
 
   struct render_component_lua_proxy {
@@ -36,8 +39,8 @@ OTHER_REFLECT(
   field(animated, other::attr::serializable()),
   field(visible, other::attr::serializable()),
   field(obj_model, other::attr::serializable()),
-  field(model_asset_id, other::attr::serializable()),
-  field(submesh_indices, other::attr::serializable())
+  field(model_asset_id, other::attr::serializable())
+  // field(submesh_indices, other::attr::serializable())
 )
 
 #endif  // OTHER_SCENE_OBJECT_RENDER_COMPONENT_HPP

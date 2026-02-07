@@ -104,6 +104,9 @@ namespace other {
     scene_object& get_object(natural_t id);
     const scene_object& get_object(natural_t id) const;
 
+    scene_object* find_object(const std::string_view name);
+    scene_object* find_object(natural_t id);
+
     size_t get_object_count() const;
 
     transform& get_transform(scene_object* object);

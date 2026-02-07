@@ -79,6 +79,7 @@ namespace other {
 
     std::string ui_ini_name = "resources/ui/default_ui_layout.ini";
     static std::string real_ini_name = config.get_value<std::string>("rendering.ui-layout-ini", ui_ini_name);
+    static std::string main_imgui_font = config.get_value<std::string>("rendering.imgui-font", "./resources/fonts/BlexMonoNerdFont-Regular.ttf");
     {
       PROFILE_SECTION("renderer_backend::load-backend--imgui-init");
       IMGUI_CHECKVERSION();
@@ -90,6 +91,13 @@ namespace other {
       io.ConfigWindowsMoveFromTitleBarOnly = true;
       io.IniFilename = real_ini_name.c_str();
       ImGui::StyleColorsDark();
+      OTHER_ASSERT(std::filesystem::exists(main_imgui_font), "Failed to find ImGui font: {}", main_imgui_font);
+      ImFontConfig config;
+
+      static const ImWchar ranges[] = { 0x0020, 0x00FF, 0x276F, 0x276F, 0 };
+      ImFont* font = ImGui::GetIO().Fonts->AddFontFromFileTTF(main_imgui_font.c_str(), 16.0f, &config, ranges);
+      OTHER_ASSERT(font != nullptr, "Failed to load ImGui font: {}", main_imgui_font);
+      io.FontDefault = font;
 
       ui_context = ImGui::GetCurrentContext();
       api()->initialize_ui_context();

@@ -76,13 +76,17 @@ target_sources(otherlib
     src/ui/ui_widgets.cpp
     src/ui/node_editor_canvas_node.cpp
     src/ui/node_editor.cpp
+    src/ui/console_input_node.cpp
     src/ui/console_history_node.cpp
     src/ui/console.cpp
     src/ui/viewport.cpp
     src/ui/type_database.cpp
     src/ui/driver_ui.cpp
     src/ui/scene_hierarchy.cpp
-    src/ui/scene_tree_node.cpp
+    src/ui/scene_hierarchy_node.cpp
+    src/ui/inspector_widgets.cpp
+    src/ui/hierarchy_widgets.cpp
+    src/ui/console_widgets.cpp
     src/ui/property_inspector_node.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp

@@ -43,6 +43,9 @@ namespace other {
       registered_component_types.erase(typeid(T).hash_code());
       components.erase(typeid(T).hash_code());
     }
+
+    component_registry()
+        : component(component::REGISTRY) {}
   };
 
 }  // namespace other
