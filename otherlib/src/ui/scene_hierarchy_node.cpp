@@ -3,8 +3,9 @@
  **/
 #include "ui/scene_hierarchy_node.hpp"
 
+#include "renderer/ui/colors.hpp"
+
 #include "driver/driver.hpp"
-#include "ui/colors.hpp"
 
 namespace other {
   namespace ui {

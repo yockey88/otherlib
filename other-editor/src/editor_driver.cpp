@@ -25,8 +25,6 @@ namespace other {
   void editor_driver::on_initialize(const command_line& cmd) {
     CORE_LOG_INFO("Initialized editor driver.");
 
-    editor_lua_script = subsystem<scripting_environment>::get()->load_lua_file("resources/lua/editor.lua");
-    environment_console::initialize(editor_lua_script);
     {
       logger* log = subsystem<logger>::get();
       log->create_logger("other-editor-log", spdlog::level::trace);
@@ -35,8 +33,8 @@ namespace other {
         .sink_name = "console-sink",
         .sink_pattern = "[%l] %v",
         .level = spdlog::level::info,
-        .sink_factory = [](const config_table& config) -> spdlog::sink_ptr {
-          return std::make_shared<console_sink_mt>();
+        .sink_factory = [&](const config_table& config) -> spdlog::sink_ptr {
+          return std::make_shared<console_sink_mt>(get_event_system());
         }
       };
 

@@ -126,9 +126,7 @@ namespace other {
 
       network_context() : signals(io_context, SIGINT, SIGTERM) {}
     };
-    /// \todo figure out why asio does not like the arena allocator here
-    ///  \note this is related to alignment I believe, and we need to modify arena allocator to take alignment into account
-    std::unique_ptr<network_context> net_context = nullptr;
+    scope<network_context> net_context = nullptr;
 
     acknowledgement_list ack_list;
     response_list resp_list;
@@ -327,6 +325,8 @@ namespace other {
     scene_object* context_stack[kObjectContextStackSize] = { nullptr };
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
+
+    lua_script* driver_main_lua_script = nullptr;
 
     driver_state_machine state_machine;
 

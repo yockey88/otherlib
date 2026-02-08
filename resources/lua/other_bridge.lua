@@ -5,15 +5,11 @@ function _send_log_impl(level, message)
   local line = info.currentline or 0
   __other_native.__log.send_log_message(level, message, source, line)
 
-  --- allow users to define this hook to intercept log messages
-  if (__other_log_intercept_hook ~= nil) 
-  then
-    __other_log_intercept_hook(string.format(" [Lua] [%s] %s:%d: %s", level, source, line, message))
-  end
-end
-
-function _submit_console_text_impl(message, message_type)
-  __other_native.__environment_console.submit_console_text(message, message_type)
+  -- --- allow users to define this hook to intercept log messages
+  -- if (__other_log_intercept_hook ~= nil) 
+  -- then
+  --   __other_log_intercept_hook(string.format(" [Lua] [%s] %s:%d: %s", level, source, line, message))
+  -- end
 end
 
 function _get_active_scene()

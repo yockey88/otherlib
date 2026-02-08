@@ -246,7 +246,7 @@ namespace other {
       bus.send_message(std::move(msg));
 
       current_state.shutdown_complete = true;
-      CORE_LOG_DEBUG("All connections closed, completing network thread shutdown.");
+      // CORE_LOG_DEBUG("All connections closed, completing network thread shutdown.");
     }
   }
 

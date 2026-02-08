@@ -32,48 +32,69 @@ namespace other {
       constexpr float kAutocompletePaddingX = 10.f;
 
       enum class log_level : uint8_t {
-        COMMAND = 0,  ///< user-typed command echo
-        OUTPUT,       ///< standard command output
-        TRACE,        ///< verbose / low-priority
-        DEBUG,        ///< debug-level
-        INFO,         ///< informational
-        WARNING,      ///< warning
-        ERROR_ALERT,  ///< error
-        FATAL,        ///< fatal / unrecoverable
+        COMMAND = 1 << 0,
+        OUTPUT = 1 << 1,
+        TRACE = 1 << 2,
+        DEBUG = 1 << 3,
+        INFO = 1 << 4,
+        WARNING = 1 << 5,
+        ERROR_ALERT = 1 << 6,
+        FATAL = 1 << 7,
+      };
+
+      struct level_btn {
+        const char* label;
+        log_level lvl;
+      };
+
+      constexpr static inline level_btn kFilterButtons[] = {
+        { "CMD", log_level::COMMAND },
+        { "OUT", log_level::OUTPUT },
+        { "TRC", log_level::TRACE },
+        { "DBG", log_level::DEBUG },
+        { "INF", log_level::INFO },
+        { "WRN", log_level::WARNING },
+        { "ERR", log_level::ERROR_ALERT },
+      };
+      constexpr static inline size_t kNumFilterButtons = sizeof(kFilterButtons) / sizeof(kFilterButtons[0]);
+
+      struct filter_result {
+        bool changed = false;
+        bool filter_changed[kNumFilterButtons] = {};
       };
 
       struct log_entry {
-        std::string timestamp;  ///< formatted time string "[HH:MM:SS]"
-        std::string message;    ///< the log text
+        std::string timestamp;
+        std::string message;
         log_level level = log_level::OUTPUT;
-        std::string source;  ///< optional source tag (e.g. "Renderer")
+        std::string source;
       };
 
       struct prompt_result {
-        bool submitted = false;       ///< enter was pressed
-        bool tab_pressed = false;     ///< tab for autocomplete
-        bool up_pressed = false;      ///< up arrow for history
-        bool down_pressed = false;    ///< down arrow for history
-        bool escape_pressed = false;  ///< escape to dismiss autocomplete
+        bool submitted = false;
+        bool tab_pressed = false;
+        bool up_pressed = false;
+        bool down_pressed = false;
+        bool escape_pressed = false;
       };
 
       struct autocomplete_item {
-        std::string label;            ///< command name
-        std::string description;      ///< short description
-        std::string match_highlight;  ///< portion that matched (for highlight)
+        std::string label;
+        std::string description;
+        std::string match_highlight;
       };
 
       struct autocomplete_result {
-        int32_t selected_index = -1;  ///< -1 = nothing selected
-        bool confirmed = false;       ///< user pressed enter/tab on selection
-        bool dismissed = false;       ///< user pressed escape
+        int32_t selected_index = -1;
+        bool confirmed = false;
+        bool dismissed = false;
       };
 
       glm::vec4 color_for_level(log_level level);
       const char* prefix_for_level(log_level level);
 
       void draw_title_bar(const std::string_view title);
-      bool draw_filter_bar(uint8_t& filter_mask, char* search_buf, uint32_t search_buf_size);
+      filter_result draw_filter_bar(uint8_t& filter_mask, char* search_buf, uint32_t search_buf_size);
       bool draw_log_line(const log_entry& entry, bool alt_row);
       prompt_result draw_prompt_bar(char* input_buf, uint32_t buf_size, bool focus_requested);
       autocomplete_result draw_autocomplete_popup(const autocomplete_item* items, uint32_t item_count, int32_t current_index, const ImVec2& anchor_pos);

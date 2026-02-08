@@ -3,8 +3,9 @@
  **/
 #include "ui/console_input_node.hpp"
 
+#include "renderer/ui/colors.hpp"
+
 #include "tools/environment_console.hpp"
-#include "ui/colors.hpp"
 
 #include "console_history_node.hpp"
 
@@ -13,7 +14,7 @@ namespace other {
 
     console_input_node::console_input_node(ui_window* window, driver* drvr)
         : ui_node(window, "Console Input"), driver_ptr(drvr) {
-      /// listen for external focus requests (e.g. pressing ` or :)
+      /// listen for external focus requests (e.g. pressing \ or / or :)
       events().add_listener("console.focus", [this](const value&) { request_focus(); });
     }
 
@@ -25,21 +26,15 @@ namespace other {
       focus_requested = true;
     }
 
-    void console_input_node::set_command_handler(command_handler_fn handler) {
-      command_handler = std::move(handler);
-    }
-
     void console_input_node::navigate_history(int direction) {
       if (history.empty()) return;
 
       if (history_index == -1) {
-        /// save current input before navigating
         saved_input = input_buf;
       }
 
+      /// add and clamp index
       history_index += direction;
-
-      /// clamp
       if (history_index < -1) {
         history_index = -1;
       }
@@ -51,8 +46,9 @@ namespace other {
         /// restore saved input
         std::strncpy(input_buf, saved_input.c_str(), sizeof(input_buf) - 1);
         input_buf[sizeof(input_buf) - 1] = '\0';
-      } else {
-        /// history is stored newest-first, index 0 = most recent
+      }
+      /// history is stored newest-first, index 0 = most recent
+      else {
         const std::string& cmd = history[history_index];
         std::strncpy(input_buf, cmd.c_str(), sizeof(input_buf) - 1);
         input_buf[sizeof(input_buf) - 1] = '\0';
@@ -87,7 +83,6 @@ namespace other {
       std::strncpy(input_buf, item.label.c_str(), sizeof(input_buf) - 1);
       input_buf[sizeof(input_buf) - 1] = '\0';
 
-      /// append a space for convenience
       size_t len = std::strlen(input_buf);
       if (len < sizeof(input_buf) - 2) {
         input_buf[len] = ' ';
@@ -130,24 +125,12 @@ namespace other {
       history_index = -1;
       saved_input.clear();
 
-      /// echo the command to the history panel
-      events().trigger_event("console.command-echo", value(command));
-
-      /// dispatch to handler or event bus
-      if (command_handler) {
-        command_handler(command);
-      } else {
-        events().trigger_event("console.command", value(command));
-      }
+      events().trigger_event("console.check-command", value(command));
 
       /// clear the input
       input_buf[0] = '\0';
       dismiss_autocomplete();
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Render
-    // ═══════════════════════════════════════════════════════════════════════
 
     void console_input_node::on_render_node_body() {
       namespace cw = console_w;
@@ -162,20 +145,12 @@ namespace other {
       }
 
       /// store position for autocomplete anchor
-      ImVec2 prompt_pos = ImGui::GetCursorScreenPos();
-
       /// draw the prompt bar
+      ImVec2 prompt_pos = ImGui::GetCursorScreenPos();
       bool was_focus_requested = focus_requested;
       focus_requested = false;
 
       cw::prompt_result pr = cw::draw_prompt_bar(input_buf, sizeof(input_buf), was_focus_requested);
-
-      ImGui::Text(
-        "prompt_result = \n\t.submitted = % d\n\t.tab_pressed = % d\n\t.up_pressed = % d\n\t.down_pressed = % d\n\t.escape_pressed = % d ",
-        pr.submitted, pr.tab_pressed, pr.up_pressed, pr.down_pressed, pr.escape_pressed
-      );
-
-      /// handle prompt interactions
       if (pr.submitted) {
         if (autocomplete_visible && autocomplete_index >= 0) {
           accept_suggestion();
@@ -186,7 +161,6 @@ namespace other {
 
       if (pr.up_pressed) {
         if (autocomplete_visible) {
-          /// navigate autocomplete
           if (autocomplete_index > 0) {
             autocomplete_index--;
           }
@@ -197,7 +171,6 @@ namespace other {
 
       if (pr.down_pressed) {
         if (autocomplete_visible) {
-          /// navigate autocomplete
           if (autocomplete_index < static_cast<int32_t>(suggestions.size()) - 1) {
             autocomplete_index++;
           }
@@ -220,13 +193,7 @@ namespace other {
 
       /// draw autocomplete popup if active
       if (autocomplete_visible && !suggestions.empty()) {
-        cw::autocomplete_result ar = cw::draw_autocomplete_popup(
-          suggestions.data(),
-          static_cast<uint32_t>(suggestions.size()),
-          autocomplete_index,
-          prompt_pos
-        );
-
+        cw::autocomplete_result ar = cw::draw_autocomplete_popup(suggestions.data(), static_cast<uint32_t>(suggestions.size()), autocomplete_index, prompt_pos);
         if (ar.confirmed) {
           accept_suggestion();
         }

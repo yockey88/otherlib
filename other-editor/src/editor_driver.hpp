@@ -30,8 +30,6 @@ namespace other {
     };
 
    private:
-    lua_script* editor_lua_script = nullptr;
-
     natural_t suzanne_obj_id = 0;
 
     natural_t suzanne_id = 0;

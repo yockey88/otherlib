@@ -103,6 +103,30 @@
 
 namespace other {
 
+  template <typename T>
+  concept not_string_or_pointer = !std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
+  template <typename T>
+  concept is_pointer_type = std::is_pointer_v<std::remove_cvref_t<T>>;
+
+  template <typename T>
+  concept is_character_array_ptr = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, char*>;
+  template <typename T>
+  concept is_bounded_character_array = std::is_array_v<std::remove_cvref_t<T>> || std::is_bounded_array_v<T>;
+  template <typename T>
+  concept is_character_array = is_character_array_ptr<T> || is_bounded_character_array<T>;
+  template <typename T>
+  concept is_string_type =
+    std::is_same_v<std::remove_cvref_t<T>, std::string> ||
+    std::is_same_v<std::remove_cvref_t<T>, std::string_view> ||
+    is_character_array<T>;
+  template <typename T>
+  constexpr inline bool kIsStringType = is_string_type<T>;
+
+  template <typename T>
+  concept is_opaque_pointer = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, void*>;
+  template <typename T>
+  concept is_acceptable_value_type = is_character_array<T> || !is_opaque_pointer<T>;
+
   enum exit_code : uint8_t {
     SUCCESS = 0,
     FAILURE = 1,
@@ -201,7 +225,7 @@ namespace other {
       return value_type::OEBOOL;
     } else if constexpr (std::is_same_v<no_cvref_t, char>) {
       return value_type::CHAR;
-    } else if constexpr (std::is_same_v<no_cvref_t, std::string> || std::is_same_v<no_cvref_t, std::string_view>) {
+    } else if constexpr (is_string_type<T>) {
       return value_type::STRING;
     } else if constexpr (std::is_same_v<no_cvref_t, int8_t>) {
       return value_type::INT8;

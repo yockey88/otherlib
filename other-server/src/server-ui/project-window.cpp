@@ -114,8 +114,7 @@ namespace other {
           scoped_color button_color(ImGuiCol_Button, dark_bg_color.Value);
           scoped_color button_hover_color(ImGuiCol_ButtonHovered, hover_highlight.Value);
           if (ImGui::Button(("Open##" + p["name"].get<std::string>()).c_str(), ImVec2(100.f, 32.f))) {
-            events().set_user_data("open-project", p["name"].get<std::string>());
-            events().trigger_event("open-project");
+            events().trigger_event("open-project", p["name"].get<std::string>());
           }
         }
       }

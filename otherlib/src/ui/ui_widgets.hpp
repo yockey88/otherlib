@@ -14,9 +14,8 @@
 
 #include "core/value.hpp"
 
+#include "renderer/ui/colors.hpp"
 #include "renderer/ui/ui_helpers.hpp"
-
-#include "ui/colors.hpp"
 
 namespace other {
   namespace ui {

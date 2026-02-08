@@ -27,6 +27,7 @@
 #include "vm/other_device.hpp"
 #include "vm/vm.hpp"
 
+#include "SDL3/SDL_keycode.h"
 #include "driver_tasks.hpp"
 
 namespace other {
@@ -41,11 +42,6 @@ namespace other {
     initialize_network_context();
     get_event_system()->register_event("shutdown-requested");
     get_event_system()->add_listener("shutdown-requested", [this](const value& data) { request_shutdown(); });
-
-    get_event_system()->register_event("clear-console-output");
-    get_event_system()->add_listener("clear-console-output", [this](const value& data) {
-      environment_console::clear_console_output();
-    });
 
     /// open/close ui window events
     get_event_system()->register_event("open-driver-ui-window");
@@ -123,6 +119,27 @@ namespace other {
     project_scene_graph = make_scope<scene_graph>();
     asset_mgr = make_scope<asset_handler>(net_context->io_context);
 
+    driver_main_lua_script = subsystem<scripting_environment>::get()->load_lua_file("resources/lua/driver.lua");
+    if (driver_main_lua_script) {
+      environment_console::initialize(driver_main_lua_script);
+
+    } else {
+      CORE_LOG_ERROR("Failed to load driver main Lua script.");
+    }
+
+    get_event_system()->register_event("console.check-command");
+    get_event_system()->add_listener("console.check-command", [this](const value& data) {
+      if (data.type() == value_type::STRING) {
+        std::string command = data;
+        if (driver_main_lua_script && driver_main_lua_script->has_symbol("is_command") &&
+            driver_main_lua_script->call_function<bool>("is_command", command)) {
+          get_event_system()->trigger_event("console.command", command);
+        } else {
+          get_event_system()->trigger_event("console.output", command);
+        }
+      }
+    });
+
     load_client();
     start_network();
   }
@@ -158,6 +175,8 @@ namespace other {
     if (rendering_enabled()) {
       shutdown_rendering();
     }
+
+    driver_main_lua_script = nullptr;
 
     asset_mgr->purge_stores();
     asset_mgr = nullptr;
@@ -468,7 +487,7 @@ namespace other {
   }
 
   void driver::initialize_network_context() {
-    net_context = std::make_unique<network_context>();
+    net_context = make_scope<network_context>();
 
     struct signal_catcher {
       signal_catcher(driver* driver_ptr)
@@ -734,8 +753,17 @@ namespace other {
           }
           break;
 
-          /// \todo: add input system (mouse/keyboard/gamepad) event handling here when
-          ///         input system is added
+        /// \todo: add input system (mouse/keyboard/gamepad) event handling here when
+        ///         input system is added
+        case SDL_EVENT_KEY_DOWN:
+          switch (event.key.key) {
+            case SDLK_BACKSLASH:
+            case SDLK_SLASH:
+              get_event_system()->trigger_event("console.focus");
+              break;
+            default: break;
+          }
+          break;
 
         default: {
         } break;
@@ -1741,7 +1769,6 @@ namespace other {
   void driver::handle_scene_unload_event(const value& data) {
     if (active_scene == nullptr) {
       CORE_LOG_ERROR("No active scene to unload.");
-      environment_console::submit_console_text("No active scene to unload.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
       return;
     }
     CORE_LOG_INFO("Unloading active scene '{}'", active_scene->name);
@@ -1751,7 +1778,6 @@ namespace other {
   void driver::handle_scene_info_event(const value& data) {
     if (active_scene == nullptr) {
       CORE_LOG_ERROR("No active scene to get info from.");
-      environment_console::submit_console_text("No active scene to get info from.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
       return;
     }
 
@@ -1762,19 +1788,17 @@ namespace other {
     // ss << "  - Number of Objects: " << active_scene->get_num_objects() << "\n";
     ss << "  - Synchronized: " << (active_scene->synchronized ? "Yes" : "No") << "\n";
 
-    environment_console::submit_console_text(ss.str(), CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+    CORE_LOG_INFO("{}", ss.str());
   }
 
   void driver::handle_scene_playback_command_event(const value& data) {
     if (active_scene == nullptr) {
       CORE_LOG_ERROR("No active scene to send playback command to.");
-      environment_console::submit_console_text("No active scene to send playback command to.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
       return;
     }
 
     if (data.type() != value_type::STRING) {
       CORE_LOG_ERROR("Invalid data type for scene-playback-command event. Expected string.");
-      environment_console::submit_console_text("Invalid data type for scene-playback-command event. Expected string.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
       return;
     }
 
@@ -1791,7 +1815,6 @@ namespace other {
       active_scene->reset();
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
-      environment_console::submit_console_text("Unknown scene playback command: " + command, CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
     }
   }
 
@@ -1874,8 +1897,7 @@ namespace other {
     for (auto itr = std::filesystem::directory_iterator(cwd); itr != std::filesystem::directory_iterator(); ++itr) {
       ss << " - " << itr->path().filename().string() << (itr->is_directory() ? " [DIR]" : "") << "\n";
     }
-
-    environment_console::submit_console_text(ss.str(), CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+    get_event_system()->trigger_event("console.output", ss.str());
   }
 
   void driver::handle_list_driver_windows_event(const value& data) {
@@ -1893,7 +1915,7 @@ namespace other {
     for (const auto& window_name : windows) {
       ss << "  - " << window_name << "\n";
     }
-    environment_console::submit_console_text(ss.str(), CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+    get_event_system()->trigger_event("console.output", ss.str());
   }
 
   void driver::handle_list_driver_files_event(const value& data) {
@@ -1914,7 +1936,7 @@ namespace other {
   void driver::handle_object_driver_push_event(const value& data) {
     CORE_LOG_DEBUG("Received object-driver-push event");
     if (active_scene == nullptr) {
-      environment_console::submit_console_text("Error: No active scene to push object from", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      CORE_LOG_ERROR("Error: No active scene to push object from");
       return;
     }
 
@@ -1927,7 +1949,7 @@ namespace other {
       obj = &active_scene->get_object(id);
     }
     if (obj == nullptr) {
-      environment_console::submit_console_text("Error: Failed to find object in active scene to push", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      CORE_LOG_ERROR("Error: Failed to find object in active scene to push");
       return;
     }
     push_scene_object_to_context_stack(obj);
@@ -1937,14 +1959,14 @@ namespace other {
     CORE_LOG_DEBUG("Received object-driver-pop event");
     scene_object* obj = pop_scene_object_from_context_stack();
     if (obj == nullptr) {
-      environment_console::submit_console_text("Error: Failed to pop object from context stack", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      CORE_LOG_ERROR("Error: Failed to pop object from context stack");
       return;
     }
   }
 
   void driver::handle_object_driver_info_event(const value& data) {
     if (data.type() != value_type::STRING) {
-      environment_console::submit_console_text("Error: Invalid data type for object-driver-info event. Expected string.", CONSOLE_MESSAGE_ERROR, std::chrono::system_clock::now());
+      CORE_LOG_ERROR("Error: Invalid data type for object-driver-info event. Expected string.");
       return;
     }
 
@@ -1953,7 +1975,7 @@ namespace other {
     if (str == "<stack>") {
       CORE_LOG_DEBUG("  {}", context_stack_top);
       if (context_stack_top == 0) {
-        environment_console::submit_console_text("Context stack is empty.", CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+        CORE_LOG_INFO("Context stack is empty.");
       } else {
         scene_object* obj = context_stack[context_stack_top - 1];
         std::stringstream ss;
@@ -1961,7 +1983,7 @@ namespace other {
         ss << "  - Name: " << obj->name << "\n";
         ss << "  - ID: " << obj->id << "\n";
         /// dump component info here, direct children ids/names, etc.
-        environment_console::submit_console_text(ss.str(), CONSOLE_MESSAGE_INFO, std::chrono::system_clock::now());
+        CORE_LOG_INFO("{}", ss.str());
       }
     } else {
     }
