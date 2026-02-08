@@ -45,10 +45,21 @@ namespace other {
 
     template <typename T>
     void set_user_data(const std::string_view name, const T& data) {
+      if (name.empty()) {
+        return;
+      }
+      if (!has_event(name)) {
+        CORE_LOG_ERROR("Attempted to set user data for unregistered event name {}", name);
+        return;
+      }
       set_user_data(FNV(name), value{ data });
     }
     template <typename T>
     void set_user_data(natural_t event_id, const T& data) {
+      if (!has_event(event_id)) {
+        CORE_LOG_ERROR("Attempted to set user data for unregistered event ID {}", event_id);
+        return;
+      }
       set_user_data(event_id, value{ data });
     }
 
@@ -57,10 +68,13 @@ namespace other {
 
     void cancel_all();
 
+    bool has_event(const std::string_view name) const;
+    bool has_event(natural_t event_id) const;
+
    private:
     asio::io_context& io_context;
 
-    mutable std::mutex events_mutex;
+    mutable std::recursive_mutex events_mutex;
 
     struct event_ctx {
       event ev;

@@ -22,8 +22,7 @@ namespace other {
       virtual ~command_suggestion_provider() = default;
 
       /// given the current input prefix, return matching suggestions
-      virtual std::vector<console_w::autocomplete_item>
-      get_suggestions(const std::string& prefix) const = 0;
+      virtual std::vector<console_w::autocomplete_item> get_suggestions(const std::string& prefix) const = 0;
     };
 
     class console_input_node : public ui_node {
@@ -34,9 +33,6 @@ namespace other {
       void set_suggestion_provider(command_suggestion_provider* provider);
       void request_focus();
 
-      using command_handler_fn = std::function<void(const std::string& command)>;
-      void set_command_handler(command_handler_fn handler);
-
      private:
       driver* driver_ptr = nullptr;
 
@@ -45,8 +41,8 @@ namespace other {
 
       static constexpr size_t kMaxHistory = 256;
       std::vector<std::string> history;
-      int32_t history_index = -1;  ///< -1 = not navigating history
-      std::string saved_input;     ///< preserved input while browsing history
+      int32_t history_index = -1;
+      std::string saved_input;
 
       command_suggestion_provider* suggestion_provider = nullptr;
       std::vector<console_w::autocomplete_item> suggestions;
@@ -58,8 +54,6 @@ namespace other {
       void update_suggestions();
       void accept_suggestion();
       void dismiss_autocomplete();
-
-      command_handler_fn command_handler;
 
       void submit_command();
       void on_render_node_body() override;

@@ -27,7 +27,7 @@ namespace other {
 
   class config_table;
 
-  using sink_fn = spdlog::sink_ptr (*)(const config_table& config);
+  using sink_fn = std::function<spdlog::sink_ptr(const config_table& config)>;
   struct log_sink {
     uint16_t id;
     std::string sink_name;

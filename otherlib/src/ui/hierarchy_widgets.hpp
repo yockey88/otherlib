@@ -23,7 +23,7 @@ namespace other {
       //  Search / Filter Bar
       //
       //  ┌──────────────────────────────────────────┐
-      //  │  🔍 filter objects...                     │
+      //  │  🔍 filter objects...                    │
       //  └──────────────────────────────────────────┘
       //
       //  Returns true if the filter text changed.
@@ -34,29 +34,28 @@ namespace other {
       //  Hierarchy Item
       //
       //  ┌──────────────────────────────────────────┐
-      //  │  ▾  ObjectName                        👁  │
+      //  │  ▾  ObjectName                        👁 │
       //  └──────────────────────────────────────────┘
       //
       //  Draws a single row in the hierarchy tree.
       // ═══════════════════════════════════════════════════════════════════════
 
       struct item_flags {
-        bool selected = false;       ///< item is the current selection
-        bool has_children = false;   ///< show expand arrow
-        bool expanded = false;       ///< arrow points down (▾) vs right (▸)
-        bool visible = true;         ///< eye icon state
-        bool is_scene_root = false;  ///< renders with scene icon styling
-        bool disabled = false;       ///< grayed-out text
-        uint32_t indent_level = 0;   ///< nesting depth (0 = root level)
+        bool selected = false;
+        bool has_children = false;
+        bool expanded = false;  /// arrow points down (▾) vs right (▸)
+        bool visible = true;
+        bool is_scene_root = false;
+        bool disabled = false;
+        uint32_t indent_level = 0;
       };
 
-      /// result of drawing a hierarchy item — tells the caller what happened
       struct item_interaction {
-        bool clicked = false;             ///< row was clicked (select this item)
-        bool expand_toggled = false;      ///< expand arrow was clicked
-        bool visibility_toggled = false;  ///< eye icon was clicked
-        bool double_clicked = false;      ///< row was double-clicked (rename / focus)
-        bool right_clicked = false;       ///< right-click context menu
+        bool clicked = false;
+        bool expand_toggled = false;
+        bool visibility_toggled = false;
+        bool double_clicked = false;
+        bool right_clicked = false;
       };
 
       item_interaction draw_item(const std::string_view label, natural_t object_id, item_flags flags);

@@ -6,6 +6,7 @@
 
 #include <mutex>
 #include <string>
+#include <type_traits>
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
@@ -14,17 +15,6 @@
 
 namespace other {
 
-  template <typename T>
-  concept not_string_or_pointer = !std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
-
-  template <typename T>
-  concept is_string_type = std::is_same_v<std::remove_cvref_t<T>, std::string> || std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
-  template <typename T>
-  constexpr inline bool kIsStringType = is_string_type<T>;
-
-  template <typename T>
-  concept is_pointer_type = std::is_pointer_v<std::remove_cvref_t<T>>;
-
   class value {
    public:
     value() {}
@@ -32,7 +22,7 @@ namespace other {
     value(const value& other);
     value& operator=(const value& other);
     template <typename T>
-      requires(!std::is_pointer_v<T> && !std::is_same_v<T, void*>)
+      requires is_acceptable_value_type<T>
     value(const T& value) {
       /// small optimization: reuse existing storage if possible
       if (storage != nullptr && storage->val_type() == get_value_type<T>()) {

@@ -3,27 +3,11 @@ _Console = {
   command_order = {},
   commands = {},
 
-  PushMessage = function(message, message_type)
-    _submit_console_text_impl(message, message_type)
-  end,
-  PushConsoleMessage = function(message)
-    _submit_console_text_impl(message, ConsoleMessage.Message)
-  end,
-  PushTrace = function(message)
-    _submit_console_text_impl(message, ConsoleMessage.Trace)
-  end,
-  PushDebug = function(message)
-    _submit_console_text_impl(message, ConsoleMessage.Debug)
-  end,
-  PushInfo = function(message)
-    _submit_console_text_impl(message, ConsoleMessage.Info)
-  end,
-  PushWarn = function(message)
-    _submit_console_text_impl(message, ConsoleMessage.Warn)
-  end,
-  PushError = function(message)
-    _submit_console_text_impl(message, ConsoleMessage.Error)
-  end,
+  PushConsoleMessage = function(message) _Meta._driver_interface.TriggerEvent("console.output", message) end,
+  PushDebug = function(message) _Meta._driver_interface.TriggerEvent("console.debug", message) end,
+  PushInfo = function(message) _Meta._driver_interface.TriggerEvent("console.info", message) end,
+  PushWarn = function(message) _Meta._driver_interface.TriggerEvent("console.warn", message) end,
+  PushError = function(message) _Meta._driver_interface.TriggerEvent("console.error", message) end,
 
   GetCommandName = function(name)
     local stripped = _Meta._string_utils.strip_leading_and_ending_whitespace(name)
@@ -37,7 +21,7 @@ function _Console:HelpCommand(args)
     command_names[i] = self.command_order[i]
   end
 
-  local help_message = "\nAvailable commands:\n"
+  local help_message = "Available commands:\n"
   for _, name in ipairs(command_names) do
     local cmd_info = self.commands[name]
     help_message = help_message .. string.format(" - %s: %s\n", name, cmd_info.description)
@@ -134,12 +118,9 @@ _Console.__index = _Console
 function _Console:new()
   local obj = {}
 
-  self:RegisterConsoleCommand(":?", "Displays this help message", function(...) self:HelpCommand(...) end)
-  self:RegisterConsoleCommand(":e", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
-  self:RegisterConsoleCommand(":q", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
   self:RegisterConsoleCommand("help", "Displays this help message", function(...) self:HelpCommand(...) end)
   self:RegisterConsoleCommand("exit", "Exits the Other Environment runtime", function(...) self:ExitCommand(...) end)
-  self:RegisterConsoleCommand("clear", "Clears the console output", function(...) _Meta:Driver().TriggerEvent("clear-console-output") end)
+  self:RegisterConsoleCommand("clear", "Clears the console output", function(...) _Meta:Driver().TriggerEvent("console.clear") end)
 
   local open_close_help_message = [[
   [%s Command]

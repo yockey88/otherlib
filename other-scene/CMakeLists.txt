@@ -5,7 +5,6 @@ target_sources(other_scene
       src/asset/asset.cpp
       src/asset/asset_pipeline.cpp
       src/asset/model_source_pipeline.cpp
-      src/asset/asset_loader.cpp
       src/asset/asset_handler.cpp
 
       src/object/component.cpp

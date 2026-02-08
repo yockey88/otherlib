@@ -115,8 +115,7 @@ namespace other {
         creator.error_message = finalize_project();
         if (!creator.error_message.has_value()) {
           CORE_LOG_INFO("Attempting to finalize project creation : project_name = '{}' at path project_path = '{}'", creator.context.project_name, creator.context.project_path.string());
-          events().set_user_data("finalize-project", creator.context);
-          trigger_event("finalize-project");
+          events().trigger_event("finalize-project", creator.context);
         }
       }
     }

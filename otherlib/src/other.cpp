@@ -15,6 +15,7 @@
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 #include "core/version.hpp"
+#include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
 
 #include "physics/physics_environment.hpp"
@@ -112,6 +113,7 @@ namespace other {
       bind_environment_scripts();
     }
 
+    subsystem<input_system>::get()->initialize();
     /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
     ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
 
@@ -131,6 +133,8 @@ namespace other {
         CATCH_UNKNOWN_EXCEPTION();
         res = FAILURE;
       }
+
+      subsystem<input_system>::get()->shutdown();
       if (rendering_enabled) {
         subsystem<renderer_backend>::get()->unload_backend();
       }

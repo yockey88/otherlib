@@ -47,6 +47,10 @@ target_sources(other_core
 		src/thread/thread.cpp
 
 		src/event/event_system.cpp
+
+		src/input/input_action.cpp
+		src/input/input_state.cpp
+		src/input/input_system.cpp
 )
 
 target_include_directories(other_core 

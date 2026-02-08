@@ -11,7 +11,9 @@
 #include <spdlog/sinks/base_sink.h>
 
 #include "core/logger.hpp"
+#include "core/scope.hpp"
 #include "core/time.hpp"
+#include "event/event_system.hpp"
 
 namespace other {
 
@@ -87,32 +89,34 @@ namespace other {
   template <typename Mutex>
   class console_sink : public spdlog::sinks::base_sink<Mutex> {
    public:
+    console_sink(scope<event_system>& events)
+        : events(events) {}
     ~console_sink() override = default;
 
    protected:
+    scope<event_system>& events;
+
     void sink_it_(const spdlog::details::log_msg& msg) override {
+      if (!events) {
+        return;
+      }
+
       spdlog::memory_buf_t formatted;
 
       using namespace spdlog::sinks;
       base_sink<Mutex>::formatter_->format(msg, formatted);
       std::string output_msg = std::string{ formatted };
-
-      console_message_type message_type = CONSOLE_MESSAGE_NONE;
-
       switch (msg.level) {
-        case spdlog::level::trace: message_type = CONSOLE_MESSAGE_TRACE; break;
-        case spdlog::level::debug: message_type = CONSOLE_MESSAGE_DEBUG; break;
-        case spdlog::level::info: message_type = CONSOLE_MESSAGE_INFO; break;
-        case spdlog::level::warn: message_type = CONSOLE_MESSAGE_WARN; break;
-
-        case spdlog::level::err:
-        case spdlog::level::critical: message_type = CONSOLE_MESSAGE_ERROR; break;
+        case spdlog::level::trace: events->trigger_event("console.trace", output_msg); break;
+        case spdlog::level::debug: events->trigger_event("console.debug", output_msg); break;
+        case spdlog::level::info: events->trigger_event("console.info", output_msg); break;
+        case spdlog::level::warn: events->trigger_event("console.warn", output_msg); break;
+        case spdlog::level::err: events->trigger_event("console.error", output_msg); break;
+        case spdlog::level::critical: events->trigger_event("console.critical", output_msg); break;
         default:
           OTHER_ASSERT(false, "Unhandled log level in console sink: {}", msg.level);
           break;
       }
-
-      environment_console::submit_console_text(output_msg, message_type, sys_clock::now());
     }
 
     void flush_() override {

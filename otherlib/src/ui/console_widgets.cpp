@@ -3,15 +3,31 @@
  **/
 #include "ui/console_widgets.hpp"
 
-#include "core/defines.hpp"
-#include "core/logger.hpp"
+#include <algorithm>
+#include <format>
+#include <span>
 
-#include "ui/colors.hpp"
-#include "ui/unicode.hpp"
+#include "renderer/ui/colors.hpp"
+#include "renderer/ui/unicode.hpp"
+
+#include "console_widgets.hpp"
 
 namespace other {
   namespace ui {
     namespace console_w {
+      namespace detail {
+
+        int calculate_lines_in_text(const std::string& text) {
+          int lines = 1;
+          for (char c : text) {
+            if (c == '\n') {
+              lines++;
+            }
+          }
+          return lines;
+        }
+
+      }  // namespace detail
 
       glm::vec4 color_for_level(log_level level) {
         using namespace colors::console;
@@ -41,40 +57,6 @@ namespace other {
           default: return "???";
         }
       }
-
-      namespace detail {
-
-        int text_callback(ImGuiInputTextCallbackData* data) {
-          OTHER_ASSERT(data != nullptr, "ImGuiInputTextCallbackData is null");
-          // OTHER_ASSERT(data->UserData != nullptr, "UserData is null in text_callback, expected console_history_node*");
-          // console_history_node* console_node = reinterpret_cast<console_history_node*>(data->UserData);
-          // environment_console::history_move move = environment_console::HISTORY_MOVE_NONE;
-          // switch (data->EventKey) {
-          //   case ImGuiKey_UpArrow: move = environment_console::HISTORY_MOVE_BACK; break;
-          //   case ImGuiKey_DownArrow: move = environment_console::HISTORY_MOVE_FORWARD; break;
-          //   default:
-          //     break;
-          // }
-
-          // if (move != environment_console::HISTORY_MOVE_NONE) {
-          //   CORE_LOG_DEBUG("text_callback: EventKey = {}, move = {}", data->EventKey, move);
-          //   environment_console::move_history_cursor(move);
-          //   char* input_buffer = environment_console::get_input_buffer();
-          //   OTHER_ASSERT(input_buffer != nullptr, "Input buffer is null in text_callback");
-
-          //   const auto& history = environment_console::get_console_history();
-          //   size_t cursor = environment_console::get_cursor_position();
-          //   if (cursor < history.size()) {
-          //     std::strncpy(input_buffer, history[cursor].input_text.c_str(), environment_console::kInputBufferSize - 1);
-          //   } else {
-          //     environment_console::clear_input_buffer();
-          //   }
-          // }
-
-          return 0;
-        }
-
-      }  // namespace detail
 
       void draw_title_bar(const std::string_view title) {
         using namespace colors::console;
@@ -108,9 +90,10 @@ namespace other {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + kTitleBarHeight);
       }
 
-      bool draw_filter_bar(uint8_t& filter_mask, char* search_buf, uint32_t search_buf_size) {
+      filter_result draw_filter_bar(uint8_t& filter_mask, char* search_buf, uint32_t search_buf_size) {
         using namespace colors::console;
-        bool changed = false;
+        filter_result result;
+        result.changed = false;
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 cursor = ImGui::GetCursorScreenPos();
@@ -131,22 +114,10 @@ namespace other {
         float btn_x = cursor.x + kPaddingX;
         float btn_y = cursor.y + 3.f;
 
-        /// level toggle buttons: trace, debug, info, warning, error
-        struct level_btn {
-          const char* label;
-          log_level lvl;
-        };
+        for (size_t i = 0; i < kNumFilterButtons; i++) {
+          const auto& btn = kFilterButtons[i];
 
-        static const level_btn buttons[] = {
-          { "TRC", log_level::TRACE },
-          { "DBG", log_level::DEBUG },
-          { "INF", log_level::INFO },
-          { "WRN", log_level::WARNING },
-          { "ERR", log_level::ERROR_ALERT },
-        };
-
-        for (const auto& btn : buttons) {
-          uint8_t bit = 1u << static_cast<uint8_t>(btn.lvl);
+          uint8_t bit = static_cast<uint8_t>(btn.lvl);
           bool enabled = (filter_mask & bit) != 0;
 
           ImVec2 text_size = ImGui::CalcTextSize(btn.label);
@@ -157,16 +128,37 @@ namespace other {
           ImVec2 btn_max = { btn_x + btn_w, btn_y + btn_h };
 
           ImGui::SetCursorScreenPos(btn_min);
-          std::string id = std::format("##filter_{}", btn.label);
+          std::string id = std::format("##filter_btn_{}{}", i, btn.label);
           if (ImGui::InvisibleButton(id.c_str(), { btn_w, btn_h })) {
-            filter_mask ^= bit;
-            changed = true;
+            result.filter_changed[i] = true;
+            if (enabled) {
+              filter_mask &= ~bit;
+              if (btn.lvl != console_w::log_level::COMMAND && btn.lvl != console_w::log_level::OUTPUT) {
+                for (size_t j = i - 1; j > 1; j--) {
+                  result.filter_changed[j] = true;
+                  filter_mask &= ~static_cast<uint8_t>(kFilterButtons[j].lvl);
+                }
+              }
+            }
+            /// this condition ensures that COMMAND and OUTPUT levels are not toggled and also that i - 1 is valid
+            else {
+              filter_mask |= static_cast<uint8_t>(btn.lvl);
+              for (size_t j = i + 1; j < kNumFilterButtons; j++) {
+                result.filter_changed[j] = true;
+                filter_mask |= static_cast<uint8_t>(kFilterButtons[j].lvl);
+              }
+            }
           }
 
           bool hovered = ImGui::IsItemHovered();
-          glm::vec4 text_col = enabled ? color_for_level(btn.lvl) :
-            hovered                    ? kFilterHover :
-                                         kFilterInactive;
+          glm::vec4 text_col = {};
+          if (enabled) {
+            text_col = color_for_level(btn.lvl);
+          } else if (hovered) {
+            text_col = kFilterHover;
+          } else {
+            text_col = kFilterInactive;
+          }
 
           if (enabled) {
             dl->AddRectFilled(btn_min, btn_max, colors::to_im_col(glm::vec4(text_col.r, text_col.g, text_col.b, 0.12f)), 3.f);
@@ -192,7 +184,7 @@ namespace other {
         ImGui::PushItemWidth(search_w);
 
         if (ImGui::InputTextWithHint("##console_search", "filter...", search_buf, search_buf_size)) {
-          changed = true;
+          result.changed = true;
         }
 
         ImGui::PopItemWidth();
@@ -201,7 +193,8 @@ namespace other {
 
         ImGui::SetCursorScreenPos({ cursor.x, bar_max.y });
 
-        return changed;
+        result.changed = result.changed || std::ranges::any_of(std::span(result.filter_changed, kNumFilterButtons), [](bool v) { return v; });
+        return result;
       }
 
       bool draw_log_line(const log_entry& entry, bool alt_row) {
@@ -212,8 +205,18 @@ namespace other {
         const float avail_w = ImGui::GetContentRegionAvail().x;
 
         /// row background (alternating)
+        int lines_in_text = detail::calculate_lines_in_text(entry.message);
+        // float row_h = static_cast<float>(lines_in_text) * kLogLineHeight;
+        float line_h = ImGui::GetTextLineHeight();
+        float pad_y = (kLogLineHeight - line_h) * 0.5f;
+        if (pad_y < 0.f) {
+          pad_y = 0.f;
+        }
+
+        float row_h = std::max(kLogLineHeight, static_cast<float>(lines_in_text) * line_h + pad_y * 2.f);
+
         ImVec2 row_min = cursor;
-        ImVec2 row_max = { cursor.x + avail_w, cursor.y + kLogLineHeight };
+        ImVec2 row_max = { cursor.x + avail_w, cursor.y + row_h };
 
         if (alt_row) {
           dl->AddRectFilled(row_min, row_max, colors::to_im_col(kBGAlt));
@@ -222,34 +225,37 @@ namespace other {
         /// invisible button for hover / interaction
         ImGui::SetCursorScreenPos(cursor);
         std::string row_id = std::format("##log_{}", (uintptr_t)&entry);
-        ImGui::InvisibleButton(row_id.c_str(), { avail_w, kLogLineHeight });
-        bool hovered = ImGui::IsItemHovered();
+        ImGui::InvisibleButton(row_id.c_str(), { avail_w, row_h });
 
+        bool hovered = ImGui::IsItemHovered();
         if (hovered) {
           dl->AddRectFilled(row_min, row_max, IM_COL32(255, 255, 255, 8));
         }
 
-        float text_y = cursor.y + (kLogLineHeight - ImGui::GetFontSize()) * 0.5f;
+        float text_y = cursor.y + pad_y;
         float x = cursor.x + kPaddingX;
 
         /// timestamp
+        size_t timestamp_width = ImGui::CalcTextSize(entry.timestamp.c_str()).x;
         if (!entry.timestamp.empty()) {
           dl->AddText({ x, text_y }, colors::to_im_col(kTimestamp), entry.timestamp.c_str());
-          x += kTimestampWidth;
+          x += timestamp_width + kPaddingX;
         }
 
         /// prompt symbol for command lines
+        size_t prompt_width = ImGui::CalcTextSize(unicode::kPromptSymbol).x;
         if (entry.level == log_level::COMMAND) {
           const char* prompt = unicode::kPromptSymbol;
           dl->AddText({ x, text_y }, colors::to_im_col(kPromptSymbol), prompt);
-          x += kPromptSymbolWidth;
+          x += prompt_width + kPaddingX;
         }
 
         /// source tag (if present)
+        size_t src_tag_width = ImGui::CalcTextSize(entry.source.c_str()).x;
         if (!entry.source.empty()) {
           std::string src_text = std::format("[{}] ", entry.source);
           dl->AddText({ x, text_y }, colors::to_im_col(kSource), src_text.c_str());
-          x += ImGui::CalcTextSize(src_text.c_str()).x;
+          x += src_tag_width + kPaddingX;
         }
 
         /// message text with inline span parsing
@@ -419,10 +425,7 @@ namespace other {
         return result;
       }
 
-      autocomplete_result draw_autocomplete_popup(
-        const autocomplete_item* items, uint32_t item_count,
-        int32_t current_index, const ImVec2& anchor_pos
-      ) {
+      autocomplete_result draw_autocomplete_popup(const autocomplete_item* items, uint32_t item_count, int32_t current_index, const ImVec2& anchor_pos) {
         using namespace colors::console;
 
         autocomplete_result result{};
@@ -445,7 +448,6 @@ namespace other {
         ImVec2 popup_max = { popup_min.x + popup_w, popup_min.y + popup_h };
 
         /// clamp to screen
-        ImVec2 display_size = ImGui::GetIO().DisplaySize;
         if (popup_min.y < 0.f) {
           /// show below instead
           popup_min.y = anchor_pos.y + kPromptBarHeight + 2.f;

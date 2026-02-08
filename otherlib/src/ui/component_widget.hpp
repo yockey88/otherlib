@@ -10,10 +10,11 @@
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
+#include "renderer/ui/colors.hpp"
+
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
 
-#include "ui/colors.hpp"
 #include "ui/inspector_widgets.hpp"
 
 namespace other {

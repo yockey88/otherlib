@@ -8,8 +8,6 @@
 
 #include "renderer/ui/ui_helpers.hpp"
 
-#include "colors.hpp"
-
 namespace other {
   namespace ui {
 

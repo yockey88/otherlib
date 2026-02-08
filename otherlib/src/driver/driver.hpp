@@ -16,6 +16,7 @@
 #include "core/defines.hpp"
 #include "core/delta_time.hpp"
 #include "event/event_system.hpp"
+#include "input/input_system.hpp"
 #include "thread/message.hpp"
 #include "thread/message_bus.hpp"
 
@@ -126,9 +127,7 @@ namespace other {
 
       network_context() : signals(io_context, SIGINT, SIGTERM) {}
     };
-    /// \todo figure out why asio does not like the arena allocator here
-    ///  \note this is related to alignment I believe, and we need to modify arena allocator to take alignment into account
-    std::unique_ptr<network_context> net_context = nullptr;
+    scope<network_context> net_context = nullptr;
 
     acknowledgement_list ack_list;
     response_list resp_list;
@@ -136,6 +135,10 @@ namespace other {
     application_list app_list;
 
     virtual void on_initialize(const command_line& cmd) = 0;
+
+    input_map get_driver_input_map();
+    virtual void on_build_driver_input_map(input_map& map) {}
+
     void initialize_network_context();
     void load_client();
     void start_network();
@@ -199,7 +202,8 @@ namespace other {
     virtual std::string get_project_name() const { return "[UNNAMED]"; }
     virtual bool should_auto_play_scenes() const { return true; }
 
-    virtual void on_event(SDL_Event* event) {}
+    void handle_input_event(const input_state_change_event& event);
+    virtual void on_input_event(const input_state_change_event& event) {}
 
     /// notifications
     void handle_notification_stream_receive_udp_datagram(message&& msg);
@@ -327,6 +331,8 @@ namespace other {
     scene_object* context_stack[kObjectContextStackSize] = { nullptr };
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
+
+    lua_script* driver_main_lua_script = nullptr;
 
     driver_state_machine state_machine;
 

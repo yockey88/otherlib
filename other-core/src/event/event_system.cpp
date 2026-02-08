@@ -102,6 +102,7 @@ namespace other {
       registered_events.push_back({ ev, {} });
     }
 
+    CORE_LOG_DEBUG("Registered event with ID {}", id);
     return id;
   }
 
@@ -137,9 +138,7 @@ namespace other {
 
   void event_system::set_user_data(natural_t event_id, const value& data) {
     std::scoped_lock lock(events_mutex);
-    auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) {
-      return ctx.ev.id == event_id;
-    });
+    auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) { return ctx.ev.id == event_id; });
     if (itr == registered_events.end()) {
       CORE_LOG_ERROR("Attempted to set user data for unregistered event ID {}", event_id);
       return;
@@ -171,6 +170,15 @@ namespace other {
     for (auto& timer : event_timers) {
       timer.timer.cancel();
     }
+  }
+
+  bool event_system::has_event(const std::string_view name) const {
+    return has_event(FNV(name));
+  }
+
+  bool event_system::has_event(natural_t event_id) const {
+    std::scoped_lock lock(events_mutex);
+    return std::ranges::find_if(registered_events, [event_id](const event_ctx& ctx) { return ctx.ev.id == event_id; }) != registered_events.end();
   }
 
   void event_system::post_event_callback(natural_t event_id, microseconds duration) {

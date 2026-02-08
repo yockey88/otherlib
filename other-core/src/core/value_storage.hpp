@@ -25,24 +25,24 @@ namespace other {
     static ref<T> create_storage(const T& value);
 
     template <typename T>
-      requires(!std::is_same_v<T, void*>)
+      requires(!is_opaque_pointer<T>)
     T* unchecked_ptr_unwrap() { return reinterpret_cast<T*>(data()); }
     template <typename T>
-      requires(!std::is_same_v<T, void*>)
+      requires(!is_opaque_pointer<T>)
     const T* unchecked_ptr_unwrap() const { return reinterpret_cast<const T*>(data()); }
 
     template <typename T>
-      requires(!std::is_same_v<T, std::string> && !std::is_same_v<T, std::string_view> && !std::is_same_v<T, void*>)
+      requires(!is_string_type<T> && !is_opaque_pointer<T>)
     T& unchecked_unwrap() { return *unchecked_ptr_unwrap<T>(); }
     template <typename T>
-      requires(!std::is_same_v<T, std::string> && !std::is_same_v<T, std::string_view> && !std::is_same_v<T, void*>)
+      requires(!is_string_type<T> && !is_opaque_pointer<T>)
     const T& unchecked_unwrap() const { return *unchecked_ptr_unwrap<const T>(); }
 
     template <typename T>
-      requires(std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
+      requires(is_string_type<T>)
     std::string unchecked_unwrap() { return unchecked_string_unwrap(); }
     template <typename T>
-      requires(std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
+      requires(is_string_type<T>)
     std::string unchecked_unwrap() const { return unchecked_string_unwrap(); }
 
     void* unwrap_opaque_handle();
@@ -64,17 +64,26 @@ namespace other {
   class value_storage_impl : public value_storage {
    public:
     value_storage_impl() {
-      static_assert(std::same_as<T, void*>, "value_storage_impl default constructor must be used for opaque_handle type!");
+      static_assert(is_opaque_pointer<T>, "value_storage_impl default constructor must be used for opaque_handle type!");
       type_size = sizeof(void*);
     }
 
     value_storage_impl(const T& value) {
       arena_allocator<T> allocator;
 
-      if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
-        raw_data = allocator.allocate_bytes(value.size());
-        std::memcpy(raw_data, value.data(), value.size());
-        type_size = value.size();
+      if constexpr (is_string_type<T>) {
+        size_t size = 0;
+        const char* cstr = nullptr;
+        if constexpr (is_character_array<T>) {
+          cstr = value;
+          size = std::strlen(cstr) + 1;
+        } else {
+          cstr = value.data();
+          size = value.size();
+        }
+        raw_data = allocator.allocate_bytes(size);
+        std::memcpy(raw_data, cstr, size);
+        type_size = size;
       } else {
         object = allocator.allocate(value);
         type_size = sizeof(T);
@@ -84,10 +93,19 @@ namespace other {
     value_storage_impl(T&& value) {
       arena_allocator<T> allocator;
 
-      if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
-        raw_data = allocator.allocate_bytes(value.size());
-        std::memcpy(raw_data, value.data(), value.size());
-        type_size = value.size();
+      if constexpr (is_string_type<T>) {
+        size_t size;
+        const char* cstr = nullptr;
+        if constexpr (is_character_array<T>) {
+          cstr = value;
+          size = std::strlen(cstr) + 1;
+        } else {
+          cstr = value.data();
+          size = value.size();
+        }
+        raw_data = allocator.allocate_bytes(size);
+        std::memcpy(raw_data, cstr, size);
+        type_size = size;
       } else {
         object = allocator.allocate(std::move(value));
         type_size = sizeof(T);
@@ -141,7 +159,7 @@ namespace other {
     void reallocate(size_t new_size) override {
       arena_allocator<T> allocator;
 
-      if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>) {
+      if constexpr (is_string_type<T>) {
         OTHER_ASSERT(new_size > 0, "New size must be greater than zero for string reallocation!");
 
         void* new_raw_data = allocator.allocate_bytes(new_size);
@@ -175,7 +193,7 @@ namespace other {
 
    private:
     size_t size() const override {
-      if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>) {
+      if constexpr (is_string_type<T>) {
         return type_size;  // For strings, size is determined by the string's size
       } else {
         return sizeof(T);  // For other types, size is fixed

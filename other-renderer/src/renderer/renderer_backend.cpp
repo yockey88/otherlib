@@ -17,6 +17,7 @@
 #include "core/profiler.hpp"
 
 #include "renderer/backends/opengl_api.hpp"
+#include "renderer/ui/unicode.hpp"
 
 namespace other {
   namespace backend_keys {
@@ -94,8 +95,7 @@ namespace other {
       OTHER_ASSERT(std::filesystem::exists(main_imgui_font), "Failed to find ImGui font: {}", main_imgui_font);
       ImFontConfig config;
 
-      static const ImWchar ranges[] = { 0x0020, 0x00FF, 0x276F, 0x276F, 0 };
-      ImFont* font = ImGui::GetIO().Fonts->AddFontFromFileTTF(main_imgui_font.c_str(), 16.0f, &config, ranges);
+      ImFont* font = ImGui::GetIO().Fonts->AddFontFromFileTTF(main_imgui_font.c_str(), 16.0f, &config, ui::unicode::kUnicodeExtraRanges);
       OTHER_ASSERT(font != nullptr, "Failed to load ImGui font: {}", main_imgui_font);
       io.FontDefault = font;
 

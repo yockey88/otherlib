@@ -19,6 +19,8 @@ namespace other {
     ~editor_driver() override {}
 
     void on_initialize(const command_line&) override;
+    void on_build_driver_input_map(input_map& map) override;
+
     void on_initialize_ui(scope<driver_ui>& ui_ptr) override;
     void on_shutdown() override {}
 
@@ -30,8 +32,6 @@ namespace other {
     };
 
    private:
-    lua_script* editor_lua_script = nullptr;
-
     natural_t suzanne_obj_id = 0;
 
     natural_t suzanne_id = 0;
@@ -43,7 +43,7 @@ namespace other {
     bool pressing_mouse_wheel = false;
     bool move_toggled_on = false;
 
-    void on_event(SDL_Event* event) override;
+    void on_input_event(const input_state_change_event& event) override;
   };
 
 }  // namespace other
