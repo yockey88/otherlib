@@ -15,6 +15,12 @@
 
 namespace other {
 
+  void camera::set_viewport_size(const glm::vec2& size) {
+    /// recalculate fov and zoom based on new viewport size
+    aspect_ratio = size.x / size.y;
+    projection_matrix = glm::perspective(glm::radians(fov), aspect_ratio, clip.near_plane, clip.far_plane);
+  }
+
   glm::vec3 camera::center() const {
     return position;
   }
@@ -84,11 +90,11 @@ namespace other {
     }
 
     glm::vec3 new_dir;
-    new_dir.x = other::satisfy_floating_point_tolerance(cos(glm::radians(yaw())) * cos(glm::radians(pitch())));
-    new_dir.y = other::satisfy_floating_point_tolerance(sin(glm::radians(pitch())));
-    new_dir.z = other::satisfy_floating_point_tolerance(sin(glm::radians(yaw())) * cos(glm::radians(pitch())));
+    new_dir.x = satisfy_floating_point_tolerance(cos(glm::radians(yaw())) * cos(glm::radians(pitch())));
+    new_dir.y = satisfy_floating_point_tolerance(sin(glm::radians(pitch())));
+    new_dir.z = satisfy_floating_point_tolerance(sin(glm::radians(yaw())) * cos(glm::radians(pitch())));
     direction = glm::normalize(new_dir);
-    basis = other::orthonormal_basis(direction, world_up);
+    basis = orthonormal_basis(direction, world_up);
   }
 
   void camera::calculate_matrices(const glm::ivec2& window_size) {

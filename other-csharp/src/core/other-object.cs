@@ -4,7 +4,7 @@ using OtherCsBindings;
 
 namespace Other.Core
 {
-  public class OtherObject
+  public abstract class OtherObject
   {
     private struct InternalHandles
     {
@@ -40,32 +40,82 @@ namespace Other.Core
     }
 
     private List<Behavior> behaviors;
-    public OtherObject(IntPtr nativeHandle)
+    public OtherObject(IntPtr native_handle)
     {
       behaviors = new List<Behavior>();
       internal_handles = new InternalHandles
       {
         object_id = 0,
-        native_handle = nativeHandle
+        native_handle = native_handle
       };
       internal_handles.object_id = ObjectID;
     }
 
-    void AddBehavior(Behavior behavior)
+    public void AddBehavior(Behavior behavior)
     {
       behavior.OnAddToObject(this);
       behaviors.Add(behavior);
     }
 
-    void RemoveBehavior(string class_name)
+    public void RemoveBehavior(string class_name)
     {
-      /// todo
+      behaviors.RemoveAll(b => b.GetType().Name == class_name);
     }
 
-    void RemoveBehavior(Behavior behavior)
+    public void RemoveBehavior(Behavior behavior)
     {
       behavior.OnRemoveFromObject(this);
       behaviors.Remove(behavior);
     }
+
+    public void SceneStart()
+    {
+      OnStart();
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].SceneStart();
+      }
+    }
+
+    public void SceneStop()
+    {
+      OnStop();
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].SceneStop();
+      }
+    }
+
+    public void Update()
+    {
+      OnUpdate();
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectUpdate();
+      }
+    }
+    private void LateUpdate()
+    {
+      OnLateUpdate();
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectLateUpdate();
+      }
+    }
+    private void FixedUpdate()
+    {
+      OnFixedUpdate();
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectFixedUpdate();
+      }
+    }
+
+    public abstract void OnStart();
+    public abstract void OnStop();
+
+    public abstract void OnUpdate();
+    public abstract void OnLateUpdate();
+    public abstract void OnFixedUpdate();
   }
 }

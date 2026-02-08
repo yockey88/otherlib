@@ -23,6 +23,8 @@ namespace other {
       real_t far_plane = 100.f;
     } clip;
 
+    void set_viewport_size(const glm::vec2& size);
+
     glm::vec3 center() const;
 
     float yaw() const;

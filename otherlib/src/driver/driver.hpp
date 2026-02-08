@@ -50,6 +50,15 @@ namespace other {
 
   class OTHER_CLASS driver {
    public:
+    /// the various modes of the driver that can be set
+    ///  with '/' commands in the console.
+    enum mode {
+      CORE,
+      SCENE,
+      SCENE_OBJECT,
+      FILE,
+    };
+
     driver(const config_table& config)
         : config(config) {}
     virtual ~driver() = default;
@@ -105,6 +114,10 @@ namespace other {
 
     inline driver_state current_driver_state() const {
       return state_machine.get_current_state();
+    }
+
+    inline mode get_current_mode() const {
+      return current_mode;
     }
 
    protected:
@@ -285,9 +298,6 @@ namespace other {
 
     void send_to_network_thread(message&& msg);
 
-    opt<integer_t> client_session_id;
-    other_command_device core_device;
-
    private:
     friend class driver_interface;
     friend class driver_state_machine;
@@ -333,8 +343,12 @@ namespace other {
     scope<scene_graph> project_scene_graph = nullptr;
 
     lua_script* driver_main_lua_script = nullptr;
+    // dotnet_object* dotnet_window_registry = nullptr;
 
+    opt<integer_t> client_session_id;
     driver_state_machine state_machine;
+    other_command_device core_device;
+    mode current_mode = CORE;
 
     scope<renderer> renderer_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
@@ -348,6 +362,10 @@ namespace other {
 
     virtual void on_push_scene_object(scene_object* object) {}
     virtual void on_pop_scene_object(scene_object* object) {}
+
+    void handle_viewport_resize_event(const value& data);
+    virtual void on_viewport_resize(const glm::vec2& size) {}
+    glm::vec2 viewport_size;
 
     void handle_scene_load_empty_event(const value& data);
     void handle_scene_load_event(const value& data);

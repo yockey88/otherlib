@@ -22,5 +22,6 @@ other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
 other-lua-directory = "resources/lua"
 
 dotnet-modules = [
-  "build/development-drivers/script-testing/csharp/Debug/DotnetTesting.dll"
+  "build/development-drivers/script-testing/csharp/${build-config}/DotnetTesting.dll",
+  "build/other-editor/dotnet/${build-config}/OtherEditorCs.dll"
 ]

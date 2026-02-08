@@ -20,6 +20,7 @@
 
 #include "driver/driver_tasks.hpp"
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
+#include "scripting/dotnet_bindings.hpp"
 #include "scripting/lua_bindings.hpp"
 #include "scripting/scene_interface.hpp"
 #include "tools/environment_console.hpp"
@@ -110,6 +111,8 @@ namespace other {
     OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
 
     scene_interface::initialize(this);
+
+    set_dotnet_native_driver(this);
     bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
     // bind_scene_object_interface_lua_functions(env->get_lua_host(), this);
 
@@ -560,8 +563,8 @@ namespace other {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
       /// run driver envrc file if it exists
 
-      std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
-      if (!envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+      if (std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
+          !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
         /// this one has to be loaded into the host without the sandboxing of the environment
         ///  as this is supposed to be the user's customization of the environment
         auto& lua_host = env->get_lua_host();
@@ -638,6 +641,10 @@ namespace other {
       value val = window_name;
       handle_open_ui_window_event(val);
     }
+
+    get_event_system()->add_listener("viewport.resize", [this](const value& val) {
+      handle_viewport_resize_event(val);
+    });
   }
 
   void driver::shutdown_rendering() {
@@ -687,6 +694,7 @@ namespace other {
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
+    driver_step_device();
     pump_events();
     poll_coroutines();
 
@@ -738,8 +746,12 @@ namespace other {
 
     render_data data = {};
     auto window_size = get_renderer_instance().get_window_size();
+    if (viewport_size.x == 0 && viewport_size.y == 0) {
+      viewport_size = window_size;
+    }
+
     if (active_scene != nullptr) {
-      data = active_scene->prepare_render_data(window_size, asset_mgr);
+      data = active_scene->prepare_render_data(viewport_size, asset_mgr);
       get_renderer_instance().begin_frame(&data);
     } else {
       get_renderer_instance().begin_frame(nullptr);
@@ -759,6 +771,12 @@ namespace other {
 
     get_renderer_instance().begin_ui_frame();
     driver_ui_ptr->render();
+    /// render C# scripts
+    // {
+    //   PROFILE_SECTION("driver::render_ui--csharp-scripts");
+    //   auto* env = subsystem<scripting_environment>::get();
+    //   dotnet_object::invoke_state_function("UIWindowRegistry.RenderAll");
+    // }
     on_ui_render();
     get_renderer_instance().end_ui_frame();
   }
@@ -1741,6 +1759,15 @@ namespace other {
     CORE_LOG_DEBUG("Popping scene object '{}' from context stack at position {}", context_stack[context_stack_top - 1]->name, context_stack_top - 1);
     on_pop_scene_object(context_stack[context_stack_top - 1]);
     return context_stack[--context_stack_top];
+  }
+
+  void driver::handle_viewport_resize_event(const value& data) {
+    if (data.type() != value_type::VEC2) {
+      CORE_LOG_ERROR("Invalid data type for viewport resize event. Expected VEC2.");
+      return;
+    }
+    viewport_size = data;
+    on_viewport_resize(viewport_size);
   }
 
   void driver::handle_scene_load_empty_event(const value& data) {

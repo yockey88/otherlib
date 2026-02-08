@@ -4,11 +4,17 @@
 #include "ui/console_widgets.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <format>
 #include <span>
+#include <string>
+
+#include "core/logger.hpp"
 
 #include "renderer/ui/colors.hpp"
 #include "renderer/ui/unicode.hpp"
+
+#include "driver/driver.hpp"
 
 #include "console_widgets.hpp"
 
@@ -16,6 +22,64 @@ namespace other {
   namespace ui {
     namespace console_w {
       namespace detail {
+
+        bool contains_newline(const std::string& text) {
+          return text.find('\n') != std::string::npos || text.find('\r') != std::string::npos;
+        }
+
+        std::string normalize_newlines(const std::string& text) {
+          std::string out;
+          out.reserve(text.size());
+
+          for (size_t i = 0; i < text.size(); ++i) {
+            char c = text[i];
+            if (c == '\r') {
+              if (i + 1 < text.size() && text[i + 1] == '\n') {
+                ++i;
+              }
+              out.push_back('\n');
+              continue;
+            }
+            out.push_back(c);
+          }
+
+          return out;
+        }
+
+        bool is_type_span_candidate(const std::string_view span) {
+          if (span.size() < 3 || span.front() != '<' || span.back() != '>') {
+            return false;
+          }
+
+          const std::string_view inner = span.substr(1, span.size() - 2);
+          if (inner.empty()) {
+            return false;
+          }
+
+          for (char c : inner) {
+            const unsigned char uc = static_cast<unsigned char>(c);
+            if (std::isalnum(uc) != 0 || c == '_' || c == ':') {
+              continue;
+            }
+            return false;
+          }
+
+          return true;
+        }
+
+        bool is_value_tuple_candidate(const std::string_view span) {
+          if (span.size() < 3 || span.front() != '(' || span.back() != ')') {
+            return false;
+          }
+
+          const std::string_view inner = span.substr(1, span.size() - 2);
+          for (char c : inner) {
+            if (std::isdigit(static_cast<unsigned char>(c)) != 0) {
+              return true;
+            }
+          }
+          return false;
+        }
 
         int calculate_lines_in_text(const std::string& text) {
           int lines = 1;
@@ -25,6 +89,15 @@ namespace other {
             }
           }
           return lines;
+        }
+
+        std::string get_name_of_mode(driver::mode mode) {
+          return "OTHER";
+          // switch (mode) {
+          //   // case driver::mode::STOPPED: return "STOPPED";
+          //   // case driver::mode::PLAYING: return "PLAYING";
+          //   default: return "UNKNOWN";
+          // }
         }
 
       }  // namespace detail
@@ -292,6 +365,13 @@ namespace other {
           if (paren_pos != std::string::npos) {
             size_t paren_close = msg.find(')', paren_pos);
             if (paren_close != std::string::npos) {
+              const std::string_view tuple_view(msg.data() + paren_pos, paren_close - paren_pos + 1);
+              if (!detail::is_value_tuple_candidate(tuple_view)) {
+                paren_pos = std::string::npos;
+              }
+            }
+
+            if (paren_pos != std::string::npos) {
               /// use this if it comes before hex
               if (val_start == std::string::npos || paren_pos < val_start) {
                 val_start = paren_pos;
@@ -305,8 +385,11 @@ namespace other {
           bool is_type_span = false;
 
           if (angle_open != std::string::npos && angle_close != std::string::npos) {
-            next_special = angle_open;
-            is_type_span = true;
+            const std::string_view type_view(msg.data() + angle_open, angle_close - angle_open + 1);
+            if (detail::is_type_span_candidate(type_view)) {
+              next_special = angle_open;
+              is_type_span = true;
+            }
           }
 
           if (val_start != std::string::npos &&
@@ -350,13 +433,18 @@ namespace other {
         return hovered;
       }
 
-      prompt_result draw_prompt_bar(char* input_buf, uint32_t buf_size, bool focus_requested) {
+      prompt_result draw_prompt_bar(driver* driver_ptr, char* input_buf, uint32_t buf_size, bool focus_requested) {
+        OTHER_ASSERT(driver_ptr != nullptr, "Driver pointer is null");
         using namespace colors::console;
 
         prompt_result result{};
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 cursor = ImGui::GetCursorScreenPos();
         const float avail_w = ImGui::GetContentRegionAvail().x;
+
+        // ------------------------------------
+        // |  [mode-name]>                    |
+        // ------------------------------------
 
         /// background
         ImVec2 bar_min = cursor;
@@ -370,14 +458,18 @@ namespace other {
           colors::to_im_col(kPromptBorder), 1.f
         );
 
-        /// prompt symbol ❯
-        float sym_x = cursor.x + kPaddingX;
+        // mode name
         float text_y = cursor.y + (kPromptBarHeight - ImGui::GetFontSize()) * 0.5f;
+        std::string mode_text = "[ " + detail::get_name_of_mode(driver_ptr->get_current_mode()) + " ]";
+        dl->AddText({ cursor.x, text_y }, colors::to_im_col(kPromptText), mode_text.c_str());
+
+        /// prompt symbol ❯
+        float sym_x = cursor.x + ImGui::CalcTextSize(mode_text.c_str()).x;
         const char* prompt_sym = unicode::kPromptSymbol;  // ❯ UTF-8
         dl->AddText({ sym_x, text_y }, colors::to_im_col(kPromptSymbol), prompt_sym);
 
         /// input field
-        float input_x = sym_x + kPromptSymbolWidth + 4.f;
+        float input_x = sym_x + (kPaddingX / 2.f) + 4.f;
         float input_w = avail_w - input_x + cursor.x - kPaddingX;
 
         ImGui::SetCursorScreenPos({ input_x, cursor.y + 4.f });
