@@ -92,7 +92,7 @@ namespace other {
         .bind_key(key_code::M, modifier_flags::CTRL);
     }
 
-    auto& ctx = map.add_context("editor-camera-controls", false);
+    auto& ctx = map.add_context("editor-camera-controls");
 
     ctx.add_action("move", action_value_type::AXIS_2D)
       // keyboard – each key contributes ±1 to one component
