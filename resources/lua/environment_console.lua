@@ -83,10 +83,7 @@ function _Console:HandleCommand(command)
       table.insert(args, command_line[i])
     end
 
-    print("cmd:", cmd)
-    print("args:", table.concat(args, ", "))
     local command_info = self.commands[cmd]
-
     if #args == 1 and (args[1] == "--help" or args[1] == "-h")
     then
       if command_info.long_description == nil
@@ -97,6 +94,7 @@ function _Console:HandleCommand(command)
         self.PushConsoleMessage(command_info.long_description)
       end
     else
+      -- _Meta:Driver().TriggerEvent("console.command", command)
       self.commands[self.GetCommandName(command)].handler(args)
     end
   end

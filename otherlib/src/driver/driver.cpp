@@ -10,6 +10,7 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "file/filesystem.hpp"
 #include "thread/message.hpp"
 #include "thread/messages.hpp"
 
@@ -39,12 +40,25 @@ namespace other {
     cmd_line = cmd;
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
 
-    auto* input = subsystem<input_system>::get();
-    OTHER_ASSERT(input != nullptr, "Input system subsystem is not initialized.");
-    input->load_input_map(get_driver_input_map());
-    input->push_context("driver-core");
+    /// mount filesystem
+    {
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "Filesystem subsystem is not initialized.");
 
-    input->on_input_change_state(std::bind_front(&driver::handle_input_event, this));
+      fs->mount_virtual(driver_mounts::kAssetMount);
+      fs->mount_virtual(driver_mounts::kSceneMount);
+      fs->mount_virtual(driver_mounts::kScriptMount);
+    }
+
+    /// set up input system
+    {
+      auto* input = subsystem<input_system>::get();
+      OTHER_ASSERT(input != nullptr, "Input system subsystem is not initialized.");
+      input->load_input_map(get_driver_input_map());
+      input->push_context("driver-core");
+
+      input->on_input_change_state(std::bind_front(&driver::handle_input_event, this));
+    }
 
     initialize_network_context();
     get_event_system()->register_event("shutdown-requested");
@@ -122,7 +136,6 @@ namespace other {
 
     vm::initialize_device(&core_device);
     vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
-    core_device.stopped = false;
     core_device.host_driver = this;
 
     project_scene_graph = make_scope<scene_graph>();
@@ -364,22 +377,30 @@ namespace other {
   }
 
   void driver::emit_instruction(const instruction& op) {
+    if (core_device.stopped) {
+      core_device.stopped = false;
+    }
+
     auto data = std::span(reinterpret_cast<const uint8_t*>(&op.opcode), sizeof(op.opcode));
     vm::load_bytes_to_address(&core_device, core_device.program_load_cursor, data.data(), data.size());
     core_device.program_load_cursor += data.size();
   }
 
+  void driver::execute_driver_command(const std::string& command) {
+  }
+
   void driver::driver_step_device() {
     PROFILE_SECTION("driver::driver_step_device");
-    core_device.current_instruction = *(uint32_t*)&core_device.memory->at(core_device.pc);
-    if (core_device.current_instruction.opcode == 0x00000000) {
-    } else {
-      core_device.pc += other_command_device::kOpCodeSize;
-
-      uint8_t instr_nib = core_device.current_instruction.category_nibble();
-      core_device.control_table[instr_nib](&core_device);
-      vm::update_device_timers(&core_device);
+    if (core_device.stopped) {
+      return;
     }
+
+    core_device.current_instruction = *(uint32_t*)&core_device.memory->at(core_device.pc);
+    core_device.pc += other_command_device::kOpCodeSize;
+
+    uint8_t instr_nib = core_device.current_instruction.category_nibble();
+    core_device.control_table[instr_nib](&core_device);
+    vm::update_device_timers(&core_device);
   }
 
   natural_t driver::begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded) {

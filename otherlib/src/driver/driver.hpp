@@ -48,6 +48,14 @@ namespace other {
 
   class driver_thread;
 
+  namespace driver_mounts {
+
+    constexpr inline std::string_view kAssetMount = "assets";
+    constexpr inline std::string_view kSceneMount = "scenes";
+    constexpr inline std::string_view kScriptMount = "scripts";
+
+  }  // namespace driver_mounts
+
   class OTHER_CLASS driver {
    public:
     /// the various modes of the driver that can be set
@@ -74,6 +82,7 @@ namespace other {
 
     void write_id_at_address(uint16_t address, natural_t id);
     void emit_instruction(const instruction& op);
+    void execute_driver_command(const std::string& command);
     void driver_step_device();
 
     natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded = nullptr);

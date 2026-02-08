@@ -8,6 +8,7 @@
 #include "core/defines.hpp"
 
 #include "driver/driver.hpp"
+#include "ui/asset_browser.hpp"
 #include "ui/console.hpp"
 #include "ui/scene_hierarchy.hpp"
 #include "ui/type_database.hpp"
@@ -133,6 +134,7 @@ namespace other {
         case BUILTIN_WINDOW_CONSOLE: window.window_ptr = make_scope<ui::console_window>(*driver_ptr->get_event_system(), driver_ptr); break;
         case BUILTIN_WINDOW_VIEWPORT: window.window_ptr = make_scope<ui::viewport>(*driver_ptr->get_event_system(), driver_ptr->get_renderer_pointer(), driver_ptr); break;
         case BUILTIN_WINDOW_SCENE_HIERARCHY: window.window_ptr = make_scope<ui::scene_hierarchy>(*driver_ptr->get_event_system(), driver_ptr); break;
+        case BUILTIN_WINDOW_ASSET_BROWSER: window.window_ptr = make_scope<ui::asset_browser>(*driver_ptr->get_event_system(), driver_ptr); break;
         default:
           break;
       }

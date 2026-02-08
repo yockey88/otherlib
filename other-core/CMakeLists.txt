@@ -16,6 +16,10 @@ target_sources(other_core
 		src/core/value.cpp
 		src/core/formatting.cpp
 
+		src/file/local_file.cpp
+		src/file/virtual_file.cpp
+		src/file/remote_file.cpp
+
 		src/data-structures/arena_vector.cpp
 		src/data-structures/graph.cpp
 
