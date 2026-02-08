@@ -111,8 +111,8 @@ namespace other {
 
     input_map map;
 
-    /// front = top (active)
-    std::deque<natural_t> context_stack;
+    /// back = top (active)
+    std::vector<natural_t> context_stack;
 
     struct sdl_gamepad_entry {
       SDL_Gamepad* handle = nullptr;

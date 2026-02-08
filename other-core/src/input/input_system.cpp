@@ -656,7 +656,7 @@ namespace other {
     // bool skip_mouse = imgui_wants_mouse();
 
     /// walk the context stack top-down
-    for (auto it = context_stack.begin(); it != context_stack.end(); ++it) {
+    for (auto it = context_stack.rbegin(); it != context_stack.rend(); ++it) {
       natural_t ctx_id = *it;
       const input_context* ctx = nullptr;
       for (const auto& c : map.contexts) {
