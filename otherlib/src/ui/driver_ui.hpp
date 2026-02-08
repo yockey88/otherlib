@@ -57,6 +57,7 @@ namespace other {
 
     void open_window(const std::string_view window_name);
     void close_window(const std::string_view window_name);
+    bool is_window_open(const std::string_view window_name) const;
 
    private:
     struct builtin_window {

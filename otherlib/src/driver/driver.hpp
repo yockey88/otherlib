@@ -16,6 +16,7 @@
 #include "core/defines.hpp"
 #include "core/delta_time.hpp"
 #include "event/event_system.hpp"
+#include "input/input_system.hpp"
 #include "thread/message.hpp"
 #include "thread/message_bus.hpp"
 
@@ -134,6 +135,10 @@ namespace other {
     application_list app_list;
 
     virtual void on_initialize(const command_line& cmd) = 0;
+
+    input_map get_driver_input_map();
+    virtual void on_build_driver_input_map(input_map& map) {}
+
     void initialize_network_context();
     void load_client();
     void start_network();
@@ -197,7 +202,8 @@ namespace other {
     virtual std::string get_project_name() const { return "[UNNAMED]"; }
     virtual bool should_auto_play_scenes() const { return true; }
 
-    virtual void on_event(SDL_Event* event) {}
+    void handle_input_event(const input_state_change_event& event);
+    virtual void on_input_event(const input_state_change_event& event) {}
 
     /// notifications
     void handle_notification_stream_receive_udp_datagram(message&& msg);

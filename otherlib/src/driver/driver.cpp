@@ -27,7 +27,6 @@
 #include "vm/other_device.hpp"
 #include "vm/vm.hpp"
 
-#include "SDL3/SDL_keycode.h"
 #include "driver_tasks.hpp"
 
 namespace other {
@@ -38,6 +37,13 @@ namespace other {
     /// core setup, set state, initialize context and register core events
     cmd_line = cmd;
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
+
+    auto* input = subsystem<input_system>::get();
+    OTHER_ASSERT(input != nullptr, "Input system subsystem is not initialized.");
+    input->load_input_map(get_driver_input_map());
+    input->push_context("driver-core");
+
+    input->on_input_change_state(std::bind_front(&driver::handle_input_event, this));
 
     initialize_network_context();
     get_event_system()->register_event("shutdown-requested");
@@ -160,6 +166,7 @@ namespace other {
           OTHER_ASSERT(false, "Driver in unknown state {}", current_driver_state());
           break;
       }
+      subsystem<input_system>::get()->finalize_frame();
 
       render();
     }
@@ -486,6 +493,25 @@ namespace other {
     active_scene = nullptr;
   }
 
+  input_map driver::get_driver_input_map() {
+    auto* input = subsystem<input_system>::get();
+    OTHER_ASSERT(input != nullptr, "Input system subsystem is not initialized in driver.");
+
+    input_map driver_input_map;
+    {
+      auto& ctx = driver_input_map.add_context("driver-core", /* transparent = */ false);
+      ctx.add_action("quit")
+        .bind_key(key_code::Q, modifier_flags::CTRL);
+      ctx.add_action("focus-console-if-open")
+        .bind_key(key_code::SLASH);
+      ctx.add_action("focus-console-if-open-for-command")
+        .bind_key(key_code::SEMICOLON, modifier_flags::SHIFT);
+    }
+
+    on_build_driver_input_map(driver_input_map);
+    return driver_input_map;
+  }
+
   void driver::initialize_network_context() {
     net_context = make_scope<network_context>();
 
@@ -752,27 +778,14 @@ namespace other {
             get_event_system()->trigger_event("shutdown-requested");
           }
           break;
-
-        /// \todo: add input system (mouse/keyboard/gamepad) event handling here when
-        ///         input system is added
-        case SDL_EVENT_KEY_DOWN:
-          switch (event.key.key) {
-            case SDLK_BACKSLASH:
-            case SDLK_SLASH:
-              get_event_system()->trigger_event("console.focus");
-              break;
-            default: break;
-          }
-          break;
-
-        default: {
-        } break;
+        default: break;
       }
 
-      /// allows ImGui to process the event
+      subsystem<input_system>::get()->process_event(&event);
       subsystem<renderer_backend>::get()->handle_event(&event);
-      on_event(&event);
     }
+
+    subsystem<input_system>::get()->update();
   }
 
   void driver::handle_request_session_information(integer_t session_id, message&& msg) {
@@ -997,6 +1010,19 @@ namespace other {
       default:
         CORE_LOG_WARN("Received unknown session event message category: {}", rx_msg.header.category);
         break;
+    }
+  }
+
+  void driver::handle_input_event(const input_state_change_event& event) {
+    if (event.action_name.starts_with("focus-console-if-open")) {
+      std::string event_name = "console.focus" + std::string(event.action_name.substr(std::strlen("focus-console-if-open")));
+      if (driver_ui_ptr != nullptr && driver_ui_ptr->is_window_open("console")) {
+        get_event_system()->trigger_event(event_name);
+      }
+    } else if (event.action_name == "quit") {
+      return request_shutdown();
+    } else {
+      return on_input_event(event);
     }
   }
 

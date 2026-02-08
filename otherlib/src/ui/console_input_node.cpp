@@ -14,8 +14,16 @@ namespace other {
 
     console_input_node::console_input_node(ui_window* window, driver* drvr)
         : ui_node(window, "Console Input"), driver_ptr(drvr) {
-      /// listen for external focus requests (e.g. pressing \ or / or :)
+      /// listen for external focus requests (/ or :)
       events().add_listener("console.focus", [this](const value&) { request_focus(); });
+      events().add_listener("console.focus-for-command", [this](const value&) {
+        request_focus();
+        /// prepend ':' to the input buffer
+        if (std::strlen(input_buf) < sizeof(input_buf) - 1) {
+          std::memmove(input_buf + 1, input_buf, std::strlen(input_buf) + 1);
+          input_buf[0] = ':';
+        }
+      });
     }
 
     void console_input_node::set_suggestion_provider(command_suggestion_provider* provider) {

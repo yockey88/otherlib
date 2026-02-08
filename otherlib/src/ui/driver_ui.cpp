@@ -5,6 +5,8 @@
 
 #include <algorithm>
 
+#include "core/defines.hpp"
+
 #include "driver/driver.hpp"
 #include "ui/console.hpp"
 #include "ui/scene_hierarchy.hpp"
@@ -98,6 +100,19 @@ namespace other {
     }
 
     close_builtin_window(it->type);
+  }
+
+  bool driver_ui::is_window_open(const std::string_view window_name) const {
+    natural_t hash = FNV(window_name);
+
+    auto windows = std::span(builtin_windows, NUM_BUILTIN_WINDOW_TYPES);
+    auto it = std::ranges::find_if(windows, [hash](const builtin_window& win) {
+      return FNV(kBuiltinWindowNames[static_cast<size_t>(win.type)]) == hash;
+    });
+    if (it == windows.end()) {
+      return false;
+    }
+    return it->open;
   }
 
   void driver_ui::initialize_builtin_windows() {

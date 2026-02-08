@@ -179,7 +179,7 @@ namespace other {
       /// Use negative size to reserve space at the bottom for the prompt bar.
       /// Computing a positive height can become negative in small layouts and
       /// would then be interpreted by ImGui as "avail - abs(size)", causing overlap.
-      if (!ImGui::BeginChild("##console-history", ImVec2(0, -cw::kPromptBarHeight + 8.f), ImGuiChildFlags_None)) {
+      if (!ImGui::BeginChild("##console-history", ImVec2(0, -(cw::kPromptBarHeight + 8.f)), ImGuiChildFlags_None)) {
         ImGui::EndChild();
         ImGui::PopStyleColor();
         return;
