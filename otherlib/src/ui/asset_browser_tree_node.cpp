@@ -3,14 +3,39 @@
  **/
 #include "ui/asset_browser_tree_node.hpp"
 
+#include "core/subsystem.hpp"
+#include "file/directory.hpp"
+#include "file/filesystem.hpp"
+
 #include "renderer/ui/colors.hpp"
 
+#include "driver/driver.hpp"
 #include "ui/asset_browser_widgets.hpp"
+
 
 namespace other {
   namespace ui {
 
     namespace abw = asset_browser_w;
+
+    namespace {
+
+      void build_subtree(
+        std::vector<abw::dir_tree_node>& nodes,
+        const ref<directory>& dir,
+        const std::string& base_path,
+        int depth
+      ) {
+        auto children = dir->child_directories();
+        for (const auto& child : children) {
+          std::string child_path = base_path + "/" + child->name();
+          bool has_sub_dirs = !child->child_directories().empty();
+          nodes.push_back({ child->name(), child_path, depth, false, has_sub_dirs });
+          build_subtree(nodes, child, child_path, depth + 1);
+        }
+      }
+
+    }  // namespace
 
     asset_browser_tree_node::asset_browser_tree_node(ui_window* window, driver* driver_ptr)
         : ui_node(window, "Asset Browser Tree"), driver_ptr(driver_ptr) {
@@ -32,23 +57,22 @@ namespace other {
     void asset_browser_tree_node::rebuild_tree() {
       nodes.clear();
 
-      /// TODO(asset_registry): Replace with actual directory enumeration
-      ///   e.g.  for (auto& dir : asset_registry::list_directories())
-      ///
-      /// Stub data for initial UI development:
-      nodes.push_back({ "assets", "assets", 0, true, true });
-      nodes.push_back({ "characters", "assets/characters", 1, true, true });
-      nodes.push_back({ "player", "assets/characters/player", 2, false, true });
-      nodes.push_back({ "enemy", "assets/characters/enemy", 2, false, true });
-      nodes.push_back({ "npc", "assets/characters/npc", 2, false, true });
-      nodes.push_back({ "environment", "assets/environment", 1, true, true });
-      nodes.push_back({ "terrain", "assets/environment/terrain", 2, false, true });
-      nodes.push_back({ "props", "assets/environment/props", 2, false, true });
-      nodes.push_back({ "lighting", "assets/environment/lighting", 2, false, false });
-      nodes.push_back({ "audio", "assets/audio", 1, false, true });
-      nodes.push_back({ "scripts", "assets/scripts", 1, false, true });
-      nodes.push_back({ "scenes", "assets/scenes", 1, false, true });
-      nodes.push_back({ "ui", "assets/ui", 1, false, true });
+      auto* fs = subsystem<file_system>::get();
+      if (fs == nullptr) {
+        return;
+      }
+
+      auto mount_names = fs->mounted_names();
+      for (const auto& mount_name : mount_names) {
+        auto mount = fs->get_mount(mount_name);
+        if (mount == nullptr) {
+          continue;
+        }
+
+        bool has_children = !mount->child_directories().empty();
+        nodes.push_back({ mount_name, mount_name, 0, true, has_children });
+        build_subtree(nodes, mount, mount_name, 1);
+      }
     }
 
     void asset_browser_tree_node::on_render_node_body() {

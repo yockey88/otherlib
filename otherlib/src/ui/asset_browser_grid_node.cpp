@@ -13,16 +13,68 @@
 #include <imgui/imgui_internal.h>
 
 #include "core/defines.hpp"
+#include "core/fnv.hpp"
+#include "core/subsystem.hpp"
+#include "file/directory.hpp"
+#include "file/file_handle.hpp"
+#include "file/filesystem.hpp"
 
 #include "renderer/ui/colors.hpp"
 
+#include "driver/driver.hpp"
 #include "ui/asset_browser_grid_node.hpp"
 #include "ui/asset_browser_widgets.hpp"
+
+#include "asset/asset.hpp"
+#include "asset/asset_handler.hpp"
+
 
 namespace other {
   namespace ui {
 
     namespace cbw = asset_browser_w;
+
+    namespace {
+
+      cbw::asset_type map_asset_to_ui_type(asset::type t) {
+        switch (t) {
+          case asset::TEXTURE: return cbw::asset_type::TEXTURE;
+          case asset::MODEL_SOURCE: return cbw::asset_type::MODEL_SOURCE;
+          case asset::MODEL: return cbw::asset_type::MODEL;
+          case asset::ANIMATION: return cbw::asset_type::ANIMATION;
+          case asset::SCRIPT_SOURCE: return cbw::asset_type::SCRIPT_SOURCE;
+          case asset::SCRIPT: return cbw::asset_type::SCRIPT;
+          case asset::AUDIO: return cbw::asset_type::AUDIO;
+          case asset::SCENE: return cbw::asset_type::SCENE;
+          case asset::SCENE_OBJECT: return cbw::asset_type::SCENE_OBJECT;
+          default: return cbw::asset_type::UNKNOWN;
+        }
+      }
+
+      std::string format_file_size(natural_t bytes) {
+        constexpr natural_t kKB = 1024;
+        constexpr natural_t kMB = 1024 * 1024;
+
+        if (bytes >= kMB) {
+          std::ostringstream oss;
+          oss << std::fixed;
+          oss.precision(1);
+          oss << (static_cast<double>(bytes) / static_cast<double>(kMB)) << " MB";
+          return oss.str();
+        }
+
+        if (bytes >= kKB) {
+          std::ostringstream oss;
+          oss << std::fixed;
+          oss.precision(1);
+          oss << (static_cast<double>(bytes) / static_cast<double>(kKB)) << " KB";
+          return oss.str();
+        }
+
+        return std::to_string(bytes) + " B";
+      }
+
+    }  // namespace
 
     asset_browser_grid_node::asset_browser_grid_node(ui_window* parent, driver* drvr)
         : ui_node(parent, "Content Browser Grid"), driver_ptr(drvr) {
@@ -75,28 +127,71 @@ namespace other {
     void asset_browser_grid_node::rebuild_asset_list() {
       assets.clear();
 
-      /// TODO(asset_registry): Replace with actual asset enumeration
-      ///   e.g.  for (auto& entry : asset_registry::list(current_path_))
-      ///
-      /// Stub data for initial UI development:
-      using at = cbw::asset_type;
+      auto* fs = subsystem<file_system>::get();
+      if (fs == nullptr) {
+        return;
+      }
 
-      // assets.push_back({ "textures", "4 items", at::FOLDER });
-      // assets.push_back({ "anims", "6 items", at::FOLDER });
-      // assets.push_back({ "player_diffuse", "2048x2048 \xc2\xb7 4.2 MB", at::TEXTURE });
-      // assets.push_back({ "player_normal", "2048x2048 \xc2\xb7 3.8 MB", at::TEXTURE });
-      // assets.push_back({ "player_roughness", "1024x1024 \xc2\xb7 1.1 MB", at::TEXTURE });
-      // assets.push_back({ "player_mesh.fbx", "12.4k tris \xc2\xb7 2.1 MB", at::MODEL_SOURCE });
-      // assets.push_back({ "player_model", "compiled \xc2\xb7 890 KB", at::MODEL });
-      // assets.push_back({ "idle", "2.4s \xc2\xb7 30fps", at::ANIMATION });
-      // assets.push_back({ "run", "0.8s \xc2\xb7 30fps", at::ANIMATION });
-      // assets.push_back({ "jump", "0.6s \xc2\xb7 30fps", at::ANIMATION });
-      // assets.push_back({ "player_ctrl.lua", "142 lines \xc2\xb7 3.2 KB", at::SCRIPT_SOURCE });
-      // assets.push_back({ "player_controller", "compiled \xc2\xb7 1.8 KB", at::SCRIPT });
-      // assets.push_back({ "footstep_01", "0.3s \xc2\xb7 44.1kHz", at::AUDIO });
-      // assets.push_back({ "jump_sfx", "0.5s \xc2\xb7 44.1kHz", at::AUDIO });
-      // assets.push_back({ "player_prefab", "5 components", at::SCENE_OBJECT });
-      // assets.push_back({ "test_arena", "47 objects", at::SCENE });
+      std::string mount_name;
+      std::string relative_path;
+      auto sep = current_path.find('/');
+      if (sep == std::string::npos) {
+        mount_name = current_path;
+      } else {
+        mount_name = current_path.substr(0, sep);
+        relative_path = current_path.substr(sep + 1);
+      }
+
+      auto mount = fs->get_mount(mount_name);
+      if (mount == nullptr) {
+        return;
+      }
+
+      ref<directory> target_dir = mount;
+      if (!relative_path.empty()) {
+        auto components = directory::split_path(relative_path);
+        for (const auto& comp : components) {
+          target_dir = target_dir->get_child_directory(comp);
+          if (target_dir == nullptr) {
+            return;
+          }
+        }
+      }
+
+      for (const auto& child : target_dir->child_directories()) {
+        auto sub_dirs = child->child_directories();
+        auto sub_files = child->files();
+        std::string meta = std::to_string(sub_dirs.size() + sub_files.size()) + " items";
+        assets.push_back({ child->name(), meta, cbw::asset_type::FOLDER });
+      }
+
+      asset_handler* handler = nullptr;
+      if (driver_ptr != nullptr) {
+        handler = driver_ptr->get_asset_manager().get();
+      }
+
+      for (const auto& file : target_dir->files()) {
+        const std::string& ext = file->extension();
+        asset::type at = asset::get_type_from_extension(ext);
+        cbw::asset_type ui_type = map_asset_to_ui_type(at);
+
+        std::string meta;
+        if (file->exists()) {
+          meta = format_file_size(file->size());
+        }
+
+        if (handler != nullptr) {
+          natural_t path_hash = FNV(file->absolute_path().string());
+          asset_state state = handler->get_asset_state_by_path_hash(path_hash);
+          if (state == asset_state::LOADED) {
+            meta += " \xc2\xb7 loaded";
+          } else if (state == asset_state::LOADING) {
+            meta += " \xc2\xb7 loading";
+          }
+        }
+
+        assets.push_back({ file->name(), meta, ui_type });
+      }
     }
 
     bool asset_browser_grid_node::passes_filter(const cbw::asset_card_desc& desc) const {

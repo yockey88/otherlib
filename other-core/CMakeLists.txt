@@ -19,6 +19,8 @@ target_sources(other_core
 		src/file/local_file.cpp
 		src/file/virtual_file.cpp
 		src/file/remote_file.cpp
+		src/file/directory.cpp
+		src/file/filesystem.cpp
 
 		src/data-structures/arena_vector.cpp
 		src/data-structures/graph.cpp

@@ -1,8 +1,8 @@
 /**
  * \file filesystem/directory.hpp
  **/
-#ifndef OTHER_CORE_FILESYSTEM_DIRECTORY_HPP
-#define OTHER_CORE_FILESYSTEM_DIRECTORY_HPP
+#ifndef OTHER_CORE_FILE_DIRECTORY_HPP
+#define OTHER_CORE_FILE_DIRECTORY_HPP
 
 #include <map>
 #include <string>
@@ -64,4 +64,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_FILESYSTEM_DIRECTORY_HPP
+#endif  // OTHER_CORE_FILE_DIRECTORY_HPP

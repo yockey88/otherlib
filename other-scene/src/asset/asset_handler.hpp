@@ -6,6 +6,7 @@
 
 #include <deque>
 #include <queue>
+#include <string_view>
 
 #include <asio/asio.hpp>
 
@@ -81,10 +82,15 @@ namespace other {
 
     using load_completion_callback = std::function<void(asset*)>;
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
+    natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
     void unload_asset(natural_t asset_id);
 
     asset_state get_asset_state(natural_t asset_id) const;
+    asset_state get_asset_state_by_path_hash(natural_t path_hash) const;
     natural_t get_asset_hash(natural_t asset_id) const;
+
+    const asset* get_loaded_asset(natural_t asset_id) const;
+    std::vector<natural_t> get_all_tracked_ids() const;
 
     asio::io_context& get_io_context() { return io_context; }
     asio::thread_pool& get_thread_pool() { return thread_pool; }

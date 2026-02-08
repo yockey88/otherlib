@@ -1,8 +1,8 @@
 /**
  * \file filesystem/remote_file.hpp
  **/
-#ifndef OTHER_CORE_FILESYSTEM_REMOTE_FILE_HPP
-#define OTHER_CORE_FILESYSTEM_REMOTE_FILE_HPP
+#ifndef OTHER_CORE_FILE_REMOTE_FILE_HPP
+#define OTHER_CORE_FILE_REMOTE_FILE_HPP
 
 #include "core/coroutine.hpp"
 #include "file/file_handle.hpp"
@@ -61,4 +61,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_FILESYSTEM_REMOTE_FILE_HPP
+#endif  // OTHER_CORE_FILE_REMOTE_FILE_HPP

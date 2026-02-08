@@ -1,8 +1,8 @@
 /**
  * \file filesystem/file_system.hpp
  **/
-#ifndef OTHER_CORE_FILESYSTEM_FILE_SYSTEM_HPP
-#define OTHER_CORE_FILESYSTEM_FILE_SYSTEM_HPP
+#ifndef OTHER_CORE_FILE_FILE_SYSTEM_HPP
+#define OTHER_CORE_FILE_FILE_SYSTEM_HPP
 
 #include <map>
 #include <mutex>
@@ -104,4 +104,4 @@ namespace other {
 
 OTHER_SUBSYSTEM(other::file_system);
 
-#endif  // OTHER_CORE_FILESYSTEM_FILE_SYSTEM_HPP
+#endif  // OTHER_CORE_FILE_FILE_SYSTEM_HPP
