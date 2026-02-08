@@ -652,9 +652,6 @@ namespace other {
   }
 
   void input_system::evaluate_actions() {
-    // bool skip_keyboard = imgui_wants_keyboard();
-    // bool skip_mouse = imgui_wants_mouse();
-
     /// walk the context stack top-down
     for (auto it = context_stack.rbegin(); it != context_stack.rend(); ++it) {
       natural_t ctx_id = *it;
@@ -676,23 +673,11 @@ namespace other {
         }
 
         action_state state{};
-        // if (action.captures_text && !skip_keyboard) {
-        //   state.text = current.keyboard.text_input;
-        // }
 
         float accum_x = 0.f;
         float accum_y = 0.f;
 
         for (const auto& binding : action.bindings) {
-          /// respect ImGui capture
-          // CORE_LOG_DEBUG("Evaluating action: {}, binding: {} (skip_keyboard: {}, skip_mouse: {})", action.name, binding.source.device, skip_keyboard, skip_mouse);
-          // if (skip_keyboard && binding.source.device == device_type::KEYBOARD) {
-          //   continue;
-          // }
-          // if (skip_mouse && binding.source.device == device_type::MOUSE) {
-          //   continue;
-          // }
-
           float raw = evaluate_binding(binding);
 
           if (action.value_type == action_value_type::DIGITAL) {

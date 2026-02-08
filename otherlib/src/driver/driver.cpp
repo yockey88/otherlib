@@ -758,9 +758,7 @@ namespace other {
     }
 
     get_renderer_instance().begin_ui_frame();
-
     driver_ui_ptr->render();
-
     on_ui_render();
     get_renderer_instance().end_ui_frame();
   }
@@ -785,6 +783,7 @@ namespace other {
       subsystem<renderer_backend>::get()->handle_event(&event);
     }
 
+    /// process actions and fire events
     subsystem<input_system>::get()->update();
   }
 
