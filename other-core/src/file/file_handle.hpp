@@ -32,6 +32,7 @@ namespace other {
 
     inline const std::string& name() const { return file_name; }
     inline const std::string& extension() const { return file_extension; }
+    inline const filepath& path() const { return abs_path; }
     inline const filepath& absolute_path() const { return abs_path; }
     inline const std::string& virtual_path() const { return virt_path; }
 

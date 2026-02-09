@@ -193,7 +193,7 @@ namespace other {
       constexpr inline glm::vec4 kModePlayingBar = hex_col_to_rgba(IM_COL32(34, 197, 94, 255));
       constexpr inline glm::vec4 kModePlayingTint = hex_col_to_rgba(IM_COL32(11, 42, 26, 255));
 
-      //  Property Inspector  (grid-tool-inspector from theme reference)
+      //  Property Inspector
       namespace inspector {
         constexpr inline glm::vec4 kBG = hex_col_to_rgba(IM_COL32(28, 28, 28, 255));
         constexpr inline glm::vec4 kBorder = hex_col_to_rgba(IM_COL32(46, 46, 46, 255));
@@ -243,8 +243,7 @@ namespace other {
         constexpr inline glm::vec4 kResetButton = hex_col_to_rgba(IM_COL32(180, 180, 180, 200));
         constexpr inline glm::vec4 kResetButtonHover = hex_col_to_rgba(IM_COL32(255, 255, 255, 255));
       }  // namespace inspector
-
-      //  Scene Hierarchy  (grid-tool-hierarchy from theme reference)
+      //  Scene Hierarchy
       namespace hierarchy {
         constexpr inline glm::vec4 kBG = hex_col_to_rgba(IM_COL32(25, 25, 25, 255));
         constexpr inline glm::vec4 kBorder = hex_col_to_rgba(IM_COL32(46, 46, 46, 255));
@@ -280,8 +279,7 @@ namespace other {
         constexpr inline glm::vec4 kSearchBorderFocused = hex_col_to_rgba(IM_COL32(236, 158, 36, 200));
         constexpr inline glm::vec4 kSearchMatch = hex_col_to_rgba(IM_COL32(236, 158, 36, 100));
       }  // namespace hierarchy
-
-      //  Console  (grid-tool-console from theme reference)
+      //  Console
       namespace console {
         /// backgrounds
         constexpr inline glm::vec4 kBG = hex_col_to_rgba(IM_COL32(8, 8, 8, 230));
@@ -369,7 +367,6 @@ namespace other {
         constexpr inline glm::vec4 kSearchFieldBorder = hex_col_to_rgba(IM_COL32(50, 50, 50, 255));
         constexpr inline glm::vec4 kSearchFieldFocused = hex_col_to_rgba(IM_COL32(236, 158, 36, 200));
       }  // namespace asset_browser
-
       namespace asset {
         constexpr inline glm::vec4 kTexture = hex_col_to_rgba(IM_COL32(218, 165, 32, 255));
         constexpr inline glm::vec4 kModelSource = hex_col_to_rgba(IM_COL32(90, 130, 180, 255));
@@ -383,8 +380,162 @@ namespace other {
         constexpr inline glm::vec4 kFolder = hex_col_to_rgba(IM_COL32(217, 122, 29, 255));
         constexpr inline glm::vec4 kUnknown = hex_col_to_rgba(IM_COL32(107, 107, 107, 255));
       }  // namespace asset
+      namespace texture {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(218, 165, 32, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(240, 190, 60, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(218, 165, 32, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(42, 32, 10, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(218, 165, 32, 140));
 
-      //  Scene Object Editor  (grid-asset-scene-object from theme reference)
+        constexpr inline glm::vec4 kCheckerLight = hex_col_to_rgba(IM_COL32(50, 50, 50, 255));
+        constexpr inline glm::vec4 kCheckerDark = hex_col_to_rgba(IM_COL32(35, 35, 35, 255));
+
+        constexpr inline glm::vec4 kChannelR = hex_col_to_rgba(IM_COL32(220, 60, 60, 255));
+        constexpr inline glm::vec4 kChannelG = hex_col_to_rgba(IM_COL32(60, 200, 60, 255));
+        constexpr inline glm::vec4 kChannelB = hex_col_to_rgba(IM_COL32(60, 120, 220, 255));
+        constexpr inline glm::vec4 kChannelA = hex_col_to_rgba(IM_COL32(200, 200, 200, 255));
+
+        constexpr inline glm::vec4 kMipSlider = hex_col_to_rgba(IM_COL32(218, 165, 32, 200));
+        constexpr inline glm::vec4 kZoomBorder = hex_col_to_rgba(IM_COL32(218, 165, 32, 120));
+        constexpr inline glm::vec4 kPixelGridLine = hex_col_to_rgba(IM_COL32(80, 80, 80, 60));
+      }  // namespace texture
+      namespace model_source {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(90, 130, 180, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(120, 158, 205, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(90, 130, 180, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(18, 26, 36, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(90, 130, 180, 140));
+      }  // namespace model_source
+      namespace model {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(65, 160, 235, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(95, 185, 250, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(65, 160, 235, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(16, 32, 48, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(65, 160, 235, 140));
+      }  // namespace model
+      namespace animation {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(40, 200, 185, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(70, 225, 210, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(40, 200, 185, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(14, 38, 35, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(40, 200, 185, 140));
+      }  // namespace animation
+      namespace script_source {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(148, 195, 58, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(170, 215, 80, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(148, 195, 58, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(28, 38, 16, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(148, 195, 58, 140));
+
+        /// syntax highlighting
+        constexpr inline glm::vec4 kSyntaxKeyword = hex_col_to_rgba(IM_COL32(198, 120, 221, 255));
+        constexpr inline glm::vec4 kSyntaxString = hex_col_to_rgba(IM_COL32(152, 195, 121, 255));
+        constexpr inline glm::vec4 kSyntaxNumber = hex_col_to_rgba(IM_COL32(209, 154, 102, 255));
+        constexpr inline glm::vec4 kSyntaxComment = hex_col_to_rgba(IM_COL32(92, 99, 112, 255));
+        constexpr inline glm::vec4 kSyntaxType = hex_col_to_rgba(IM_COL32(97, 175, 239, 255));
+        constexpr inline glm::vec4 kSyntaxFunction = hex_col_to_rgba(IM_COL32(86, 182, 194, 255));
+        constexpr inline glm::vec4 kSyntaxOperator = hex_col_to_rgba(IM_COL32(190, 190, 190, 255));
+
+        /// language badges
+        constexpr inline glm::vec4 kLuaBadge = hex_col_to_rgba(IM_COL32(0, 0, 128, 255));
+        constexpr inline glm::vec4 kDotnetBadge = hex_col_to_rgba(IM_COL32(104, 33, 122, 255));
+
+        /// compile status
+        constexpr inline glm::vec4 kCompileSuccess = hex_col_to_rgba(IM_COL32(74, 222, 128, 255));
+        constexpr inline glm::vec4 kCompileError = hex_col_to_rgba(IM_COL32(239, 68, 68, 255));
+        constexpr inline glm::vec4 kCompileWarning = hex_col_to_rgba(IM_COL32(245, 158, 11, 255));
+
+        /// line numbers
+        constexpr inline glm::vec4 kLineNumber = hex_col_to_rgba(IM_COL32(90, 95, 100, 255));
+        constexpr inline glm::vec4 kLineNumberActive = hex_col_to_rgba(IM_COL32(148, 195, 58, 200));
+      }  // namespace script_source
+      namespace script {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(60, 190, 110, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(85, 215, 135, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(60, 190, 110, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(16, 36, 24, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(60, 190, 110, 140));
+
+        /// field visibility dots
+        constexpr inline glm::vec4 kExposedProperty = hex_col_to_rgba(IM_COL32(60, 190, 110, 200));
+        constexpr inline glm::vec4 kBoundProperty = hex_col_to_rgba(IM_COL32(39, 185, 242, 200));
+        constexpr inline glm::vec4 kUnboundProperty = hex_col_to_rgba(IM_COL32(140, 140, 140, 160));
+        constexpr inline glm::vec4 kOverriddenValue = hex_col_to_rgba(IM_COL32(236, 158, 36, 200));
+      }  // namespace script
+      namespace audio {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(210, 80, 170, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(230, 110, 195, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(210, 80, 170, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(40, 18, 34, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(210, 80, 170, 140));
+      }  // namespace audio
+      namespace scene {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(225, 140, 50, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(245, 165, 75, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(225, 140, 50, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(42, 28, 14, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(225, 140, 50, 140));
+      }  // namespace scene
+      namespace asset_editor {
+        constexpr inline glm::vec4 kBG = hex_col_to_rgba(IM_COL32(25, 25, 25, 255));
+        constexpr inline glm::vec4 kPanel = hex_col_to_rgba(IM_COL32(35, 35, 35, 255));
+        constexpr inline glm::vec4 kField = hex_col_to_rgba(IM_COL32(14, 14, 14, 255));
+        constexpr inline glm::vec4 kFieldHover = hex_col_to_rgba(IM_COL32(18, 18, 18, 255));
+        constexpr inline glm::vec4 kBorder = hex_col_to_rgba(IM_COL32(55, 55, 55, 255));
+        constexpr inline glm::vec4 kHeaderBG = hex_col_to_rgba(IM_COL32(30, 30, 30, 255));
+        constexpr inline glm::vec4 kText = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
+        constexpr inline glm::vec4 kTextMuted = hex_col_to_rgba(IM_COL32(140, 140, 140, 255));
+        constexpr inline glm::vec4 kPropertyLabel = hex_col_to_rgba(IM_COL32(170, 175, 185, 255));
+        constexpr inline glm::vec4 kPropertySep = hex_col_to_rgba(IM_COL32(42, 42, 42, 255));
+        constexpr inline glm::vec4 kDirtyMarker = hex_col_to_rgba(IM_COL32(236, 158, 36, 255));
+        constexpr inline glm::vec4 kReadOnlyOverlay = hex_col_to_rgba(IM_COL32(0, 0, 0, 40));
+      }  // namespace asset_editor
+      namespace texture_editor {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(218, 165, 32, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(238, 185, 55, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(218, 165, 32, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(40, 32, 18, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(218, 165, 32, 140));
+        constexpr inline glm::vec4 kCheckerLight = hex_col_to_rgba(IM_COL32(60, 60, 60, 255));
+        constexpr inline glm::vec4 kCheckerDark = hex_col_to_rgba(IM_COL32(40, 40, 40, 255));
+        constexpr inline glm::vec4 kChannelR = hex_col_to_rgba(IM_COL32(220, 60, 60, 255));
+        constexpr inline glm::vec4 kChannelG = hex_col_to_rgba(IM_COL32(60, 200, 60, 255));
+        constexpr inline glm::vec4 kChannelB = hex_col_to_rgba(IM_COL32(60, 100, 220, 255));
+        constexpr inline glm::vec4 kChannelA = hex_col_to_rgba(IM_COL32(180, 180, 180, 255));
+      }  // namespace texture_editor
+      namespace script_source_editor {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(148, 195, 58, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(170, 215, 80, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(148, 195, 58, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(28, 38, 16, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(148, 195, 58, 140));
+        constexpr inline glm::vec4 kSyntaxKeyword = hex_col_to_rgba(IM_COL32(198, 120, 221, 255));
+        constexpr inline glm::vec4 kSyntaxString = hex_col_to_rgba(IM_COL32(152, 195, 121, 255));
+        constexpr inline glm::vec4 kSyntaxNumber = hex_col_to_rgba(IM_COL32(209, 154, 102, 255));
+        constexpr inline glm::vec4 kSyntaxComment = hex_col_to_rgba(IM_COL32(92, 99, 112, 255));
+        constexpr inline glm::vec4 kSyntaxType = hex_col_to_rgba(IM_COL32(97, 175, 239, 255));
+        constexpr inline glm::vec4 kSyntaxFunction = hex_col_to_rgba(IM_COL32(86, 182, 194, 255));
+        constexpr inline glm::vec4 kSyntaxOperator = hex_col_to_rgba(IM_COL32(190, 190, 190, 255));
+        constexpr inline glm::vec4 kLuaBadge = hex_col_to_rgba(IM_COL32(0, 0, 128, 255));
+        constexpr inline glm::vec4 kDotnetBadge = hex_col_to_rgba(IM_COL32(104, 33, 122, 255));
+        constexpr inline glm::vec4 kCompileSuccess = hex_col_to_rgba(IM_COL32(74, 222, 128, 255));
+        constexpr inline glm::vec4 kCompileError = hex_col_to_rgba(IM_COL32(239, 68, 68, 255));
+        constexpr inline glm::vec4 kCompileWarning = hex_col_to_rgba(IM_COL32(245, 158, 11, 255));
+        constexpr inline glm::vec4 kLineNumber = hex_col_to_rgba(IM_COL32(90, 95, 100, 255));
+        constexpr inline glm::vec4 kLineNumberActive = hex_col_to_rgba(IM_COL32(148, 195, 58, 200));
+      }  // namespace script_source_editor
+      namespace script_editor {
+        constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(60, 190, 110, 255));
+        constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(85, 215, 135, 255));
+        constexpr inline glm::vec4 kSignatureMuted = hex_col_to_rgba(IM_COL32(60, 190, 110, 100));
+        constexpr inline glm::vec4 kHeaderTint = hex_col_to_rgba(IM_COL32(16, 36, 24, 255));
+        constexpr inline glm::vec4 kBorderAccent = hex_col_to_rgba(IM_COL32(60, 190, 110, 140));
+        constexpr inline glm::vec4 kExposedProperty = hex_col_to_rgba(IM_COL32(60, 190, 110, 200));
+        constexpr inline glm::vec4 kBoundProperty = hex_col_to_rgba(IM_COL32(39, 185, 242, 200));
+        constexpr inline glm::vec4 kUnboundProperty = hex_col_to_rgba(IM_COL32(140, 140, 140, 160));
+        constexpr inline glm::vec4 kOverriddenValue = hex_col_to_rgba(IM_COL32(236, 158, 36, 200));
+      }  // namespace script_editor
+      //  Scene Object Editor
       namespace scene_object {
         constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));
         constexpr inline glm::vec4 kSignatureHover = hex_col_to_rgba(IM_COL32(250, 148, 118, 255));

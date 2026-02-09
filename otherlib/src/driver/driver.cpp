@@ -61,6 +61,11 @@ namespace other {
     }
 
     initialize_network_context();
+
+    project_scene_graph = make_scope<scene_graph>();
+    asset_mgr = make_scope<asset_handler>(net_context->io_context);
+    asset_mgr->set_default_mount(std::string(driver_mounts::kAssetMount));
+
     get_event_system()->register_event("shutdown-requested");
     get_event_system()->add_listener("shutdown-requested", [this](const value& data) { request_shutdown(); });
 
@@ -137,9 +142,6 @@ namespace other {
     vm::initialize_device(&core_device);
     vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
     core_device.host_driver = this;
-
-    project_scene_graph = make_scope<scene_graph>();
-    asset_mgr = make_scope<asset_handler>(net_context->io_context);
 
     driver_main_lua_script = subsystem<scripting_environment>::get()->load_lua_file("resources/lua/driver.lua");
     if (driver_main_lua_script) {
@@ -405,7 +407,17 @@ namespace other {
 
   natural_t driver::begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
-    natural_t asset_id = asset_mgr->load_asset(asset_path);
+    natural_t asset_id = asset_mgr->load_asset(asset_path, [this, asset_path](asset* asset_ptr) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null.");
+
+      auto it = std::ranges::find_if(loading_asset_ids, [asset_ptr](const auto& entry) {
+        return entry.asset_id == asset_ptr->id;
+      });
+      OTHER_ASSERT(it != loading_asset_ids.end(), "Loading asset ID not found in tracking list.");
+      loading_asset_ids.erase(it);
+
+      get_event_system()->trigger_event("asset-browser.refresh");
+    });
     loading_asset_ids.push_back({
       .asset_id = asset_id,
       .on_loaded = on_loaded,
@@ -720,20 +732,6 @@ namespace other {
     poll_coroutines();
 
     asset_mgr->update_pipelines();
-
-    /// check assets being loaded
-    for (auto it = loading_asset_ids.begin(); it != loading_asset_ids.end();) {
-      natural_t asset_id = it->asset_id;
-      if (asset_mgr->get_asset_state(asset_id) == asset_state::LOADED) {
-        if (it->on_loaded) {
-          it->on_loaded(asset_id);
-        }
-
-        it = loading_asset_ids.erase(it);
-      } else {
-        ++it;
-      }
-    }
 
     if (environment_console::is_initialized()) {
       environment_console::poll();

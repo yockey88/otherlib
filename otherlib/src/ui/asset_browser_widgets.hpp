@@ -10,9 +10,19 @@
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
 
+#include "asset/asset.hpp"
+
 namespace other {
   namespace ui {
     namespace asset_browser_w {
+
+      constexpr const char* kDragDropPayloadType = "OTHER_ASSET_DND";
+
+      struct asset_drag_drop_payload {
+        char name[128] = {};
+        char path[256] = {};
+        asset::type asset_type = asset::EMPTY;
+      };
 
       constexpr float kToolbarHeight = 34.f;
       constexpr float kFilterBarHeight = 28.f;
@@ -73,6 +83,10 @@ namespace other {
         asset_type type = asset_type::UNKNOWN;
         ImTextureID thumbnail_id = 0;
         bool is_selected = false;
+
+        /// populated when the card represents a handler-tracked asset
+        uint64_t handler_asset_id = 0;
+        std::string asset_path;
       };
 
       struct status_bar_info {
@@ -85,6 +99,7 @@ namespace other {
       glm::vec4 color_for_asset_type(asset_type type);
       const char* badge_for_asset_type(asset_type type);
       const char* icon_for_asset_type(asset_type type);
+      asset::type map_ui_to_asset_type(asset_type type);
 
       float card_width_from_zoom(float zoom_normalized);
 

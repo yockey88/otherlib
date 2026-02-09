@@ -15,7 +15,12 @@
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
 
+#include "driver/driver.hpp"
+#include "ui/asset_browser_widgets.hpp"
 #include "ui/inspector_widgets.hpp"
+
+#include "asset/asset.hpp"
+#include "asset/asset_handler.hpp"
 
 namespace other {
 
@@ -92,8 +97,49 @@ namespace other {
         property_ui<FT>{}(std::declval<const std::string&>(), std::declval<FT&>(), std::declval<scene*>(), std::declval<scene_object*>());
       };
 
+      inline bool is_asset_id_field(const std::string& field_name) {
+        return field_name.find("asset_id") != std::string::npos;
+      }
+
+      inline std::vector<asset::type> accepted_asset_types_for_field(const std::string& field_name) {
+        if (field_name.find("model") != std::string::npos) {
+          return { asset::MODEL_SOURCE, asset::MODEL };
+        }
+        if (field_name.find("script") != std::string::npos) {
+          return { asset::SCRIPT_SOURCE, asset::SCRIPT };
+        }
+        if (field_name.find("texture") != std::string::npos) {
+          return { asset::TEXTURE };
+        }
+        if (field_name.find("audio") != std::string::npos || field_name.find("sound") != std::string::npos) {
+          return { asset::AUDIO };
+        }
+        if (field_name.find("animation") != std::string::npos || field_name.find("anim") != std::string::npos) {
+          return { asset::ANIMATION };
+        }
+        if (field_name.find("scene") != std::string::npos) {
+          return { asset::SCENE };
+        }
+        return {};
+      }
+
+      inline std::string asset_display_name_for_id(natural_t asset_id, const asset_handler* handler) {
+        if (asset_id == 0 || handler == nullptr) {
+          return "None";
+        }
+        const asset* a = handler->get_loaded_asset(asset_id);
+        if (a != nullptr) {
+          return a->path.filename().string();
+        }
+        asset_state state = handler->get_asset_state(asset_id);
+        if (state == asset_state::LOADING) {
+          return "Loading...";
+        }
+        return std::format("Asset #{}", asset_id);
+      }
+
       template <typename FT>
-      bool draw_inspector_field(const std::string& field_name, FT& field_value, scene* active_scene, scene_object* object, std::string display_name = "") {
+      bool draw_inspector_field(const std::string& field_name, FT& field_value, scene* active_scene, scene_object* object, asset_handler* handler = nullptr, driver* drvr = nullptr, std::string display_name = "") {
         bool changed = false;
 
         if (display_name.empty()) {
@@ -102,6 +148,27 @@ namespace other {
 
         if constexpr (has_property_ui<FT>) {
           changed = property_ui<FT>{}(field_name, field_value, active_scene, object);
+        } else if constexpr (std::is_same_v<FT, natural_t>) {
+          if (is_asset_id_field(field_name)) {
+            std::string asset_name = asset_display_name_for_id(field_value, handler);
+            auto accepted = accepted_asset_types_for_field(field_name);
+            std::string dropped_path;
+            if (inspector::property_asset_slot(display_name, field_value, asset_name, accepted, dropped_path)) {
+              if (drvr != nullptr) {
+                natural_t new_id = drvr->begin_asset_load(dropped_path);
+                if (new_id != 0) {
+                  field_value = new_id;
+                  changed = true;
+                }
+              }
+            }
+          } else {
+            int32_t ival = static_cast<int32_t>(field_value);
+            if (inspector::property_int(display_name, ival)) {
+              field_value = static_cast<natural_t>(ival);
+              changed = true;
+            }
+          }
         } else if constexpr (std::is_same_v<FT, glm::vec3>) {
           changed = inspector::property_vec3(field_name, field_value);
         } else if constexpr (std::is_same_v<FT, glm::vec2>) {
@@ -120,7 +187,7 @@ namespace other {
           /// 3. recursive reflected type — iterate sub-fields
           for_each(refl::reflect(field_value).members, [&](const auto& sub_field) {
             std::string sub_name = std::string{ sub_field.name };
-            changed |= draw_inspector_field(sub_name, sub_field(field_value), active_scene, object);
+            changed |= draw_inspector_field(sub_name, sub_field(field_value), active_scene, object, handler, drvr);
           });
         } else if constexpr (std::is_same_v<FT, bool>) {
           changed = inspector::property_bool(field_name, field_value);
@@ -158,7 +225,7 @@ namespace other {
 
     template <typename T>
     struct component_widget {
-      bool operator()(const std::string_view name, T& component, scene* active_scene, scene_object* object) {
+      bool operator()(const std::string_view name, T& component, scene* active_scene, scene_object* object, asset_handler* handler = nullptr, driver* drvr = nullptr) {
         bool changed = false;
         for_each(refl::reflect(component).members, [&](auto field) {
           std::string field_name = std::string{ field.name };
@@ -170,7 +237,7 @@ namespace other {
               display_name = std::string(serializable_attr.display_name);
             }
           }
-          changed |= detail::draw_inspector_field(field_name, field(component), active_scene, object, display_name);
+          changed |= detail::draw_inspector_field(field_name, field(component), active_scene, object, handler, drvr, display_name);
         });
         return changed;
       }

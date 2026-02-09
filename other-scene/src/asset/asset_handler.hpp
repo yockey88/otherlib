@@ -85,6 +85,8 @@ namespace other {
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
     void unload_asset(natural_t asset_id);
 
+    void set_default_mount(const std::string_view mount_name) { default_mount = mount_name; }
+
     asset_state get_asset_state(natural_t asset_id) const;
     asset_state get_asset_state_by_path_hash(natural_t path_hash) const;
     natural_t get_asset_hash(natural_t asset_id) const;
@@ -111,6 +113,7 @@ namespace other {
     struct pipeline_context {
       scope<asset_pipeline> pipeline = nullptr;
       asset loading_asset;
+      load_completion_callback on_complete = nullptr;
     };
     std::deque<pipeline_context> asset_pipelines;
 
@@ -118,6 +121,8 @@ namespace other {
     std::unordered_map<natural_t, asset_state_machine> asset_states;
 
     std::queue<natural_t> pending_unloads;
+
+    std::string default_mount = "assets";
 
     static inline natural_t next_asset_id = 1;
     static inline natural_t get_next_asset_id() {
@@ -132,6 +137,8 @@ namespace other {
 
     void on_asset_unloaded(asset* asset_ptr);
     void on_asset_unload_failed(asset* asset_ptr, const std::string& error_message);
+
+    void register_asset_in_filesystem(const asset* asset_ptr);
   };
 
 }  // namespace other

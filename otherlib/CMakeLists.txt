@@ -85,12 +85,15 @@ target_sources(otherlib
     src/ui/property_inspector_node.cpp
     src/ui/asset_browser_tree_node.cpp
     src/ui/asset_browser_grid_node.cpp
+    src/ui/asset_editor_node.cpp
     src/ui/node_editor.cpp
     src/ui/console.cpp
     src/ui/viewport.cpp
     src/ui/type_database.cpp
     src/ui/asset_browser.cpp
     src/ui/scene_hierarchy.cpp
+    src/ui/asset_editor_registry.cpp
+    src/ui/asset_editor.cpp
     src/ui/driver_ui.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp

@@ -7,6 +7,8 @@
 #include "renderer/ui/ui_helpers.hpp"
 #include "renderer/ui/unicode.hpp"
 
+#include "ui/asset_browser_widgets.hpp"
+
 namespace other {
   namespace ui {
     namespace inspector {
@@ -592,6 +594,120 @@ namespace other {
       }
 
       void draw_asset_slot(const std::string_view label, const std::string_view asset_name, asset_slot_state state) {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+
+        begin_property_row(label);
+
+        const glm::vec4 border_color = [&]() -> glm::vec4 {
+          switch (state) {
+            case asset_slot_state::empty: return colors::scene_object::kAssetSlotEmpty;
+            case asset_slot_state::filled: return colors::scene_object::kAssetSlotFilled;
+            case asset_slot_state::invalid: return colors::scene_object::kAssetSlotInvalid;
+            case asset_slot_state::drag_hover: return colors::scene_object::kAssetSlotDragHover;
+            default: return colors::scene_object::kAssetSlotEmpty;
+          }
+        }();
+
+        push_field_style();
+
+        std::string display = asset_name.empty() ? std::string("None") : std::string(asset_name);
+        std::string id = std::format("##{}_asset", label);
+
+        char buf[256];
+        std::strncpy(buf, display.c_str(), sizeof(buf));
+        buf[sizeof(buf) - 1] = '\0';
+        ImGui::BeginDisabled();
+        ImGui::InputText(id.c_str(), buf, sizeof(buf), ImGuiInputTextFlags_ReadOnly);
+        ImGui::EndDisabled();
+
+        ImVec2 item_min = ImGui::GetItemRectMin();
+        ImVec2 item_max = ImGui::GetItemRectMax();
+        dl->AddRect(item_min, item_max, colors::to_im_col(border_color), 3.f, 0, 2.f);
+
+        pop_field_style();
+
+        end_property_row();
+      }
+
+      bool property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const std::vector<asset::type>& accepted_types, std::string& out_dropped_path) {
+        bool accepted = false;
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+
+        asset_slot_state state = (asset_id != 0) ?
+          asset_slot_state::filled :
+          asset_slot_state::empty;
+
+        begin_property_row(label);
+
+        push_field_style();
+
+        std::string display = current_asset_name.empty() ? std::string("None") : std::string(current_asset_name);
+        std::string id = std::format("##{}_asset_slot", label);
+
+        char buf[256];
+        std::strncpy(buf, display.c_str(), sizeof(buf));
+        buf[sizeof(buf) - 1] = '\0';
+        ImGui::BeginDisabled();
+        ImGui::InputText(id.c_str(), buf, sizeof(buf), ImGuiInputTextFlags_ReadOnly);
+        ImGui::EndDisabled();
+
+        if (ImGui::BeginDragDropTarget()) {
+          if (const ImGuiPayload* preview = ImGui::GetDragDropPayload()) {
+            if (preview->IsDataType("OTHER_ASSET_DND")) {
+              const auto* data = static_cast<const asset_browser_w::asset_drag_drop_payload*>(preview->Data);
+
+              bool type_ok = accepted_types.empty();
+              for (const auto& t : accepted_types) {
+                if (t == data->asset_type) {
+                  type_ok = true;
+                  break;
+                }
+              }
+
+              if (type_ok) {
+                state = asset_slot_state::drag_hover;
+              }
+            }
+          }
+
+          if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("OTHER_ASSET_DND")) {
+            const auto* data = static_cast<const asset_browser_w::asset_drag_drop_payload*>(payload->Data);
+
+            bool type_ok = accepted_types.empty();
+            for (const auto& t : accepted_types) {
+              if (t == data->asset_type) {
+                type_ok = true;
+                break;
+              }
+            }
+
+            if (type_ok) {
+              out_dropped_path = data->path;
+              accepted = true;
+            }
+          }
+          ImGui::EndDragDropTarget();
+        }
+
+        const glm::vec4 border_color = [&]() -> glm::vec4 {
+          switch (state) {
+            case asset_slot_state::empty: return colors::scene_object::kAssetSlotEmpty;
+            case asset_slot_state::filled: return colors::scene_object::kAssetSlotFilled;
+            case asset_slot_state::invalid: return colors::scene_object::kAssetSlotInvalid;
+            case asset_slot_state::drag_hover: return colors::scene_object::kAssetSlotDragHover;
+            default: return colors::scene_object::kAssetSlotEmpty;
+          }
+        }();
+
+        ImVec2 item_min = ImGui::GetItemRectMin();
+        ImVec2 item_max = ImGui::GetItemRectMax();
+        dl->AddRect(item_min, item_max, colors::to_im_col(border_color), 3.f, 0, 2.f);
+
+        pop_field_style();
+
+        end_property_row();
+
+        return accepted;
       }
 
       bool draw_add_component_button() {
