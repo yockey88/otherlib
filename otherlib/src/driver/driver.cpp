@@ -10,6 +10,7 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "file/filesystem.hpp"
 #include "thread/message.hpp"
 #include "thread/messages.hpp"
 
@@ -20,6 +21,7 @@
 
 #include "driver/driver_tasks.hpp"
 #include "rendering-pipelines/default_instancing_pipeline.hpp"
+#include "scripting/dotnet_bindings.hpp"
 #include "scripting/lua_bindings.hpp"
 #include "scripting/scene_interface.hpp"
 #include "tools/environment_console.hpp"
@@ -38,12 +40,25 @@ namespace other {
     cmd_line = cmd;
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
 
-    auto* input = subsystem<input_system>::get();
-    OTHER_ASSERT(input != nullptr, "Input system subsystem is not initialized.");
-    input->load_input_map(get_driver_input_map());
-    input->push_context("driver-core");
+    /// mount filesystem
+    {
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "Filesystem subsystem is not initialized.");
 
-    input->on_input_change_state(std::bind_front(&driver::handle_input_event, this));
+      fs->mount_virtual(driver_mounts::kAssetMount);
+      fs->mount_virtual(driver_mounts::kSceneMount);
+      fs->mount_virtual(driver_mounts::kScriptMount);
+    }
+
+    /// set up input system
+    {
+      auto* input = subsystem<input_system>::get();
+      OTHER_ASSERT(input != nullptr, "Input system subsystem is not initialized.");
+      input->load_input_map(get_driver_input_map());
+      input->push_context("driver-core");
+
+      input->on_input_change_state(std::bind_front(&driver::handle_input_event, this));
+    }
 
     initialize_network_context();
     get_event_system()->register_event("shutdown-requested");
@@ -110,6 +125,8 @@ namespace other {
     OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
 
     scene_interface::initialize(this);
+
+    set_dotnet_native_driver(this);
     bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
     // bind_scene_object_interface_lua_functions(env->get_lua_host(), this);
 
@@ -119,7 +136,6 @@ namespace other {
 
     vm::initialize_device(&core_device);
     vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
-    core_device.stopped = false;
     core_device.host_driver = this;
 
     project_scene_graph = make_scope<scene_graph>();
@@ -361,22 +377,30 @@ namespace other {
   }
 
   void driver::emit_instruction(const instruction& op) {
+    if (core_device.stopped) {
+      core_device.stopped = false;
+    }
+
     auto data = std::span(reinterpret_cast<const uint8_t*>(&op.opcode), sizeof(op.opcode));
     vm::load_bytes_to_address(&core_device, core_device.program_load_cursor, data.data(), data.size());
     core_device.program_load_cursor += data.size();
   }
 
+  void driver::execute_driver_command(const std::string& command) {
+  }
+
   void driver::driver_step_device() {
     PROFILE_SECTION("driver::driver_step_device");
-    core_device.current_instruction = *(uint32_t*)&core_device.memory->at(core_device.pc);
-    if (core_device.current_instruction.opcode == 0x00000000) {
-    } else {
-      core_device.pc += other_command_device::kOpCodeSize;
-
-      uint8_t instr_nib = core_device.current_instruction.category_nibble();
-      core_device.control_table[instr_nib](&core_device);
-      vm::update_device_timers(&core_device);
+    if (core_device.stopped) {
+      return;
     }
+
+    core_device.current_instruction = *(uint32_t*)&core_device.memory->at(core_device.pc);
+    core_device.pc += other_command_device::kOpCodeSize;
+
+    uint8_t instr_nib = core_device.current_instruction.category_nibble();
+    core_device.control_table[instr_nib](&core_device);
+    vm::update_device_timers(&core_device);
   }
 
   natural_t driver::begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded) {
@@ -560,8 +584,8 @@ namespace other {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
       /// run driver envrc file if it exists
 
-      std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
-      if (!envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+      if (std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
+          !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
         /// this one has to be loaded into the host without the sandboxing of the environment
         ///  as this is supposed to be the user's customization of the environment
         auto& lua_host = env->get_lua_host();
@@ -638,6 +662,10 @@ namespace other {
       value val = window_name;
       handle_open_ui_window_event(val);
     }
+
+    get_event_system()->add_listener("viewport.resize", [this](const value& val) {
+      handle_viewport_resize_event(val);
+    });
   }
 
   void driver::shutdown_rendering() {
@@ -687,6 +715,7 @@ namespace other {
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
+    driver_step_device();
     pump_events();
     poll_coroutines();
 
@@ -738,8 +767,12 @@ namespace other {
 
     render_data data = {};
     auto window_size = get_renderer_instance().get_window_size();
+    if (viewport_size.x == 0 && viewport_size.y == 0) {
+      viewport_size = window_size;
+    }
+
     if (active_scene != nullptr) {
-      data = active_scene->prepare_render_data(window_size, asset_mgr);
+      data = active_scene->prepare_render_data(viewport_size, asset_mgr);
       get_renderer_instance().begin_frame(&data);
     } else {
       get_renderer_instance().begin_frame(nullptr);
@@ -758,9 +791,13 @@ namespace other {
     }
 
     get_renderer_instance().begin_ui_frame();
-
     driver_ui_ptr->render();
-
+    /// render C# scripts
+    // {
+    //   PROFILE_SECTION("driver::render_ui--csharp-scripts");
+    //   auto* env = subsystem<scripting_environment>::get();
+    //   dotnet_object::invoke_state_function("UIWindowRegistry.RenderAll");
+    // }
     on_ui_render();
     get_renderer_instance().end_ui_frame();
   }
@@ -785,6 +822,7 @@ namespace other {
       subsystem<renderer_backend>::get()->handle_event(&event);
     }
 
+    /// process actions and fire events
     subsystem<input_system>::get()->update();
   }
 
@@ -1742,6 +1780,15 @@ namespace other {
     CORE_LOG_DEBUG("Popping scene object '{}' from context stack at position {}", context_stack[context_stack_top - 1]->name, context_stack_top - 1);
     on_pop_scene_object(context_stack[context_stack_top - 1]);
     return context_stack[--context_stack_top];
+  }
+
+  void driver::handle_viewport_resize_event(const value& data) {
+    if (data.type() != value_type::VEC2) {
+      CORE_LOG_ERROR("Invalid data type for viewport resize event. Expected VEC2.");
+      return;
+    }
+    viewport_size = data;
+    on_viewport_resize(viewport_size);
   }
 
   void driver::handle_scene_load_empty_event(const value& data) {

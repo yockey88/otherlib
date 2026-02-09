@@ -96,7 +96,7 @@ namespace other {
       void draw_title_bar(const std::string_view title);
       filter_result draw_filter_bar(uint8_t& filter_mask, char* search_buf, uint32_t search_buf_size);
       bool draw_log_line(const log_entry& entry, bool alt_row);
-      prompt_result draw_prompt_bar(char* input_buf, uint32_t buf_size, bool focus_requested);
+      prompt_result draw_prompt_bar(driver* driver_ptr, char* input_buf, uint32_t buf_size, bool focus_requested);
       autocomplete_result draw_autocomplete_popup(const autocomplete_item* items, uint32_t item_count, int32_t current_index, const ImVec2& anchor_pos);
 
       void draw_text_span(const std::string_view text, const glm::vec4& color);

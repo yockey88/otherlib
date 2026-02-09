@@ -145,8 +145,7 @@ namespace other {
 
       ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::rgba_to_imvec4(colors::console::kPromptBG));
 
-      float child_h = cw::kPromptBarHeight;
-      if (!ImGui::BeginChild("##console-input", ImVec2(0, child_h), ImGuiChildFlags_None)) {
+      if (!ImGui::BeginChild("##console-input")) {
         ImGui::EndChild();
         ImGui::PopStyleColor();
         return;
@@ -158,7 +157,7 @@ namespace other {
       bool was_focus_requested = focus_requested;
       focus_requested = false;
 
-      cw::prompt_result pr = cw::draw_prompt_bar(input_buf, sizeof(input_buf), was_focus_requested);
+      cw::prompt_result pr = cw::draw_prompt_bar(driver_ptr, input_buf, sizeof(input_buf), was_focus_requested);
       if (pr.submitted) {
         if (autocomplete_visible && autocomplete_index >= 0) {
           accept_suggestion();

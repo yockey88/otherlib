@@ -1,0 +1,56 @@
+/**
+ * \file file/local_file.hpp
+ **/
+#ifndef OTHER_CORE_FILE_LOCAL_FILE_HPP
+#define OTHER_CORE_FILE_LOCAL_FILE_HPP
+
+#include <fstream>
+
+#include "file/file_handle.hpp"
+
+namespace other {
+
+  /// file handle backed by a real file on disk
+  class local_file : public file_handle {
+   public:
+    local_file() = default;
+
+    local_file(const filepath& path)
+        : file_handle(
+            path.filename().stem().string(),
+            path.extension().string(),
+            file_type::LOCAL
+          ) {
+      abs_path = std::filesystem::absolute(path);
+      file_name = path.filename().string();
+    }
+
+    ~local_file() override {
+      close();
+    }
+
+    bool exists() const override {
+      return std::filesystem::exists(abs_path);
+    }
+
+    uint64_t size() const override {
+      if (!std::filesystem::exists(abs_path)) {
+        return 0;
+      }
+      return static_cast<uint64_t>(std::filesystem::file_size(abs_path));
+    }
+
+    bool open(file_mode mode) override;
+    void close() override;
+
+    std::vector<uint8_t> read_all() override;
+    uint64_t read(std::span<uint8_t> buffer, uint64_t offset = 0) override;
+    uint64_t write(std::span<const uint8_t> data) override;
+
+   private:
+    std::fstream stream;
+  };
+
+}  // namespace other
+
+#endif  // OTHER_CORE_FILE_LOCAL_FILE_HPP

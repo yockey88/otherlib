@@ -121,6 +121,19 @@ namespace other {
       .bind_mouse_button(mouse_button::MIDDLE);
   }
 
+  void editor_driver::on_viewport_resize(const glm::vec2& size) {
+    auto* active_scene = get_active_scene();
+    if (active_scene == nullptr) {
+      return;
+    }
+
+    scene_object& cam_obj = active_scene->get_object(camera_obj_id);
+    camera_component* cam = active_scene->get_component<camera_component>(&cam_obj);
+    if (cam != nullptr) {
+      // cam->camera.set_viewport_size(size);
+    }
+  }
+
   void editor_driver::on_initialize_ui(scope<driver_ui>& ui_ptr) {
     get_event_system()->register_event("editor:main-menu:file:new-project");
     get_event_system()->add_listener("editor:main-menu:file:new-project", [this](const value& data) {

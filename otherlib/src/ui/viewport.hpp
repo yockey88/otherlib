@@ -9,11 +9,14 @@
 #include "renderer/ui/ui_window.hpp"
 
 namespace other {
+
+  class driver;
+
   namespace ui {
 
     class viewport : public ui_window {
      public:
-      viewport(event_system& events, scope<renderer>& renderer_ptr);
+      viewport(event_system& events, scope<renderer>& renderer_ptr, driver* driver_ptr);
       ~viewport() override = default;
 
       inline void set_display_texture(resource_handle resource) {
@@ -21,6 +24,7 @@ namespace other {
       }
 
      private:
+      driver* driver_ptr = nullptr;
       resource_handle display_texture_id = {};
     };
 

@@ -14,6 +14,7 @@
 #include "core/value.hpp"
 #include "serialization/reflection.hpp"
 
+#include "defines.hpp"
 #include "spdlog/common.h"
 
 #include <toml++/toml.h>
@@ -70,7 +71,11 @@ namespace other {
             return;
           }
           CORE_LOG_TRACE(" - Parsed element in config array '{}'", toml_path);
-          result.push_back(elem.template as<value_type>()->get());
+          value_type v = elem.template as<value_type>()->get();
+          if constexpr (is_string_type<value_type>) {
+            v = perform_tag_replacement(v);
+          }
+          result.push_back(v);
         });
 
         return result;

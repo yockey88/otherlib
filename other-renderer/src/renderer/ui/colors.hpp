@@ -328,6 +328,62 @@ namespace other {
         constexpr inline glm::vec4 kResultType = hex_col_to_rgba(IM_COL32(112, 190, 242, 255));
       }  // namespace console
 
+      namespace asset_browser {
+        constexpr inline glm::vec4 kBG = hex_col_to_rgba(IM_COL32(25, 25, 25, 255));
+        constexpr inline glm::vec4 kBorder = hex_col_to_rgba(IM_COL32(46, 46, 46, 255));
+
+        // grid cards
+        constexpr inline glm::vec4 kGridCardBG = hex_col_to_rgba(IM_COL32(35, 35, 37, 255));
+        constexpr inline glm::vec4 kGridCardHover = hex_col_to_rgba(IM_COL32(45, 45, 48, 255));
+        constexpr inline glm::vec4 kGridCardSelected = hex_col_to_rgba(IM_COL32(55, 40, 22, 255));
+        constexpr inline glm::vec4 kGridCardBorder = hex_col_to_rgba(IM_COL32(50, 50, 52, 255));
+        constexpr inline glm::vec4 kGridCardBorderSelected = hex_col_to_rgba(IM_COL32(236, 158, 36, 200));
+
+        // thumbnails
+        constexpr inline glm::vec4 kThumbnailBG = hex_col_to_rgba(IM_COL32(20, 20, 20, 255));
+
+        // text
+        constexpr inline glm::vec4 kFileName = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
+        constexpr inline glm::vec4 kFileNameSelected = hex_col_to_rgba(IM_COL32(230, 235, 243, 255));
+
+        // breadcrumbs
+        constexpr inline glm::vec4 kBreadcrumbText = hex_col_to_rgba(IM_COL32(155, 160, 170, 255));
+        constexpr inline glm::vec4 kBreadcrumbSeparator = hex_col_to_rgba(IM_COL32(80, 80, 80, 255));
+        constexpr inline glm::vec4 kBreadcrumbCurrent = hex_col_to_rgba(IM_COL32(230, 235, 243, 255));
+
+        // filter pills
+        constexpr inline glm::vec4 kFilterInactive = hex_col_to_rgba(IM_COL32(60, 60, 60, 255));
+        constexpr inline glm::vec4 kFilterHover = hex_col_to_rgba(IM_COL32(80, 80, 80, 255));
+
+        // directory tree
+        constexpr inline glm::vec4 kDirTreeBG = hex_col_to_rgba(IM_COL32(20, 20, 20, 255));
+        constexpr inline glm::vec4 kDirItemHover = hex_col_to_rgba(IM_COL32(45, 45, 48, 255));
+        constexpr inline glm::vec4 kDirItemSelected = hex_col_to_rgba(IM_COL32(59, 40, 22, 255));
+
+        // status bar
+        constexpr inline glm::vec4 kStatusBarBG = hex_col_to_rgba(IM_COL32(20, 20, 20, 255));
+        constexpr inline glm::vec4 kStatusText = hex_col_to_rgba(IM_COL32(107, 107, 107, 255));
+
+        // search field
+        constexpr inline glm::vec4 kSearchFieldBG = hex_col_to_rgba(IM_COL32(14, 14, 14, 255));
+        constexpr inline glm::vec4 kSearchFieldBorder = hex_col_to_rgba(IM_COL32(50, 50, 50, 255));
+        constexpr inline glm::vec4 kSearchFieldFocused = hex_col_to_rgba(IM_COL32(236, 158, 36, 200));
+      }  // namespace asset_browser
+
+      namespace asset {
+        constexpr inline glm::vec4 kTexture = hex_col_to_rgba(IM_COL32(218, 165, 32, 255));
+        constexpr inline glm::vec4 kModelSource = hex_col_to_rgba(IM_COL32(90, 130, 180, 255));
+        constexpr inline glm::vec4 kModel = hex_col_to_rgba(IM_COL32(65, 160, 235, 255));
+        constexpr inline glm::vec4 kAnimation = hex_col_to_rgba(IM_COL32(40, 200, 185, 255));
+        constexpr inline glm::vec4 kScriptSource = hex_col_to_rgba(IM_COL32(148, 195, 58, 255));
+        constexpr inline glm::vec4 kScript = hex_col_to_rgba(IM_COL32(60, 190, 110, 255));
+        constexpr inline glm::vec4 kAudio = hex_col_to_rgba(IM_COL32(210, 80, 170, 255));
+        constexpr inline glm::vec4 kScene = hex_col_to_rgba(IM_COL32(225, 140, 50, 255));
+        constexpr inline glm::vec4 kSceneObject = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));
+        constexpr inline glm::vec4 kFolder = hex_col_to_rgba(IM_COL32(217, 122, 29, 255));
+        constexpr inline glm::vec4 kUnknown = hex_col_to_rgba(IM_COL32(107, 107, 107, 255));
+      }  // namespace asset
+
       //  Scene Object Editor  (grid-asset-scene-object from theme reference)
       namespace scene_object {
         constexpr inline glm::vec4 kSignature = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));

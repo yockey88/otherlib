@@ -27,7 +27,8 @@ namespace other {
     void initialize();
     void shutdown();
 
-    void render();
+    // true if open
+    bool render();
 
     void toggle_open();
     void toggle_close();

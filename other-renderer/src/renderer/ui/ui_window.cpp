@@ -44,13 +44,13 @@ namespace other {
     on_shutdown();
   }
 
-  void ui_window::render() {
+  bool ui_window::render() {
     on_prepare_render();
     {
       detail::ui_window_end_helper ___ui_window_end_helper_instance{};
       bool is_open = state.open;
       if (!ImGui::Begin(title.c_str(), &is_open, window_flags)) {
-        return;
+        return false;
       }
 
       /// save imgui state
@@ -60,7 +60,7 @@ namespace other {
       try {
         refresh(is_open);
         if (!state.open) {
-          return;
+          return false;
         }
 
         on_render_header();
@@ -80,14 +80,19 @@ namespace other {
       }
     }
     on_render_end();
+    return state.open;
   }
 
   void ui_window::toggle_open() {
     state.open = true;
+    state.just_opened = true;
+    state.just_closed = false;
   }
 
   void ui_window::toggle_close() {
     state.open = false;
+    state.just_opened = false;
+    state.just_closed = true;
   }
 
   natural_t ui_window::add_node(scope<ui_node> node) {

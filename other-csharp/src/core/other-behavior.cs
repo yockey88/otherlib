@@ -2,32 +2,13 @@ using System;
 
 namespace Other.Core
 {
-  public interface Behavior
+  public abstract class Behavior
   {
-    UInt64 ObjectID { get; }
-
-    public abstract void OnAddToObject(OtherObject obj);
-    public abstract void OnRemoveFromObject(OtherObject obj);
-
-    public abstract void OnObjectAwake();
-    public abstract void OnObjectDestroy();
-
-    public abstract void OnSceneStart();
-    public abstract void OnSceneStop();
-
-    public abstract void OnStartTransferFields();
-    public abstract void OnEndTransferFields();
-
-    public abstract void OnObjectUpdate();
-    public abstract void OnObjectLateUpdate();
-    public abstract void OnObjectFixedUpdate();
-  }
-
-  public abstract class OtherScriptedBehavior : Behavior
-  {
+    
   #nullable enable
     OtherObject? parent_object = null;
   #nullable disable
+
     public UInt64 ObjectID
     {
       get
@@ -39,6 +20,35 @@ namespace Other.Core
         return parent_object!.ObjectID;
       }
     }
+
+    public void OnAddToObject(OtherObject obj) 
+    {
+      parent_object = obj;
+      ObjectAwake();
+    }
+    public void OnRemoveFromObject(OtherObject obj) 
+    {
+      ObjectRemove();
+      parent_object = null;
+    }
+
+    public abstract void ObjectAwake();
+    public abstract void ObjectRemove();
+
+    public abstract void SceneStart();
+    public abstract void SceneStop();
+
+    // public abstract void OnStartTransferFields();
+    // public abstract void OnEndTransferFields();
+
+    public abstract void ObjectUpdate();
+    public abstract void ObjectLateUpdate();
+    public abstract void ObjectFixedUpdate();
+  }
+
+  public abstract class OtherScriptedBehavior : Behavior
+  {
+
 
     public OtherScriptedBehavior()
     {
@@ -54,60 +64,47 @@ namespace Other.Core
     public abstract void RegisterScriptFields();
     public abstract void RegisterScriptMethods();
 
-    public virtual void OnAddToObject(OtherObject obj)
-    {
-      parent_object = obj;
-      OnObjectAwake();
-    }
-    public virtual void OnRemoveFromObject(OtherObject obj)
-    {
-      OnObjectDestroy();
-      parent_object = null;
-    }
-
-    public virtual void OnObjectAwake()
+    public override void ObjectAwake()
     {
       OnAwake();
     }
-    public virtual void OnAwake() { }
-
-    public virtual void OnObjectDestroy()
+    public override void ObjectRemove()
     {
-      OnDestroy();
+      OnRemove();
     }
-    public virtual void OnDestroy() { }
 
-    public virtual void OnSceneStart()
+    public virtual void OnAwake() { }
+    public virtual void OnRemove() { }
+
+    public override void SceneStart()
     {
       OnStart();
     }
-    public virtual void OnStart() { }
-
-    public virtual void OnSceneStop()
+    public override void SceneStop()
     { 
       OnStop();
     }
+
+    public virtual void OnStart() { }
     public virtual void OnStop() { }
 
-    public virtual void OnStartTransferFields() { }
-    public virtual void OnEndTransferFields() { }
+    // public virtual void OnStartTransferFields() { }
+    // public virtual void OnEndTransferFields() { }
 
-    public virtual void OnObjectUpdate()
+    public override void ObjectUpdate()
     {
       OnUpdate();
     }
-    public virtual void OnUpdate() { }
-
-    public virtual void OnObjectLateUpdate()
+    public override void ObjectLateUpdate()
     {
       OnLateUpdate();
     }
-    public virtual void OnLateUpdate() { }
-
-    public virtual void OnObjectFixedUpdate()
+    public override void ObjectFixedUpdate()
     {
       OnFixedUpdate();
     }
+    public virtual void OnUpdate() { }
+    public virtual void OnLateUpdate() { }
     public virtual void OnFixedUpdate() { }
 
   }

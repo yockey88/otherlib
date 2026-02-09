@@ -9,8 +9,11 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/subsystem.hpp"
+#include "file/filesystem.hpp"
 
 #include "asio/asio/associated_executor.hpp"
+
 
 namespace other {
 
@@ -40,7 +43,33 @@ namespace other {
   natural_t asset_handler::load_asset(const filepath& file_path, load_completion_callback on_complete) {
     natural_t asset_id = get_next_asset_id();
 
-    if (!std::filesystem::exists(file_path)) {
+    auto* fs = subsystem<file_system>::get();
+    bool exists = false;
+
+    if (fs != nullptr) {
+      std::string engine_path;
+      for (const auto& mount_name : fs->mounted_names()) {
+        auto mount = fs->get_mount(mount_name);
+        if (mount == nullptr) {
+          continue;
+        }
+        for (const auto& file : mount->files()) {
+          if (file->absolute_path() == file_path) {
+            exists = true;
+            break;
+          }
+        }
+        if (exists) {
+          break;
+        }
+      }
+    }
+
+    if (!exists) {
+      exists = std::filesystem::exists(file_path);
+    }
+
+    if (!exists) {
       CORE_LOG_ERROR("Asset file does not exist: {}", file_path.string());
       return 0;
     }
@@ -221,6 +250,66 @@ namespace other {
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", asset_ptr->id);
 
     state_itr->second.handle_event(asset_event::ERROR_EVENT);
+  }
+
+  natural_t asset_handler::load_asset(const std::string_view engine_path, load_completion_callback on_complete) {
+    auto* fs = subsystem<file_system>::get();
+    if (fs == nullptr) {
+      CORE_LOG_ERROR("File system subsystem not available for engine path: {}", engine_path);
+      return 0;
+    }
+
+    if (!fs->file_exists(engine_path)) {
+      CORE_LOG_ERROR("Asset not found in file system: {}", engine_path);
+      return 0;
+    }
+
+    auto file = fs->open(engine_path);
+    if (file == nullptr) {
+      CORE_LOG_ERROR("Failed to open file from file system: {}", engine_path);
+      return 0;
+    }
+
+    return load_asset(file->absolute_path(), std::move(on_complete));
+  }
+
+  asset_state asset_handler::get_asset_state_by_path_hash(natural_t path_hash) const {
+    for (const auto& [id, a] : loaded_assets) {
+      if (a.path_hash == path_hash) {
+        return get_asset_state(id);
+      }
+    }
+
+    for (const auto& ctx : asset_pipelines) {
+      if (ctx.loading_asset.path_hash == path_hash) {
+        return get_asset_state(ctx.loading_asset.id);
+      }
+    }
+
+    return asset_state::UNLOADED;
+  }
+
+  const asset* asset_handler::get_loaded_asset(natural_t asset_id) const {
+    auto it = loaded_assets.find(asset_id);
+    if (it != loaded_assets.end()) {
+      return &it->second;
+    }
+    return nullptr;
+  }
+
+  std::vector<natural_t> asset_handler::get_all_tracked_ids() const {
+    std::vector<natural_t> ids;
+    ids.reserve(loaded_assets.size() + asset_pipelines.size());
+
+    for (const auto& [id, a] : loaded_assets) {
+      ids.push_back(id);
+    }
+
+    for (const auto& ctx : asset_pipelines) {
+      ids.push_back(ctx.loading_asset.id);
+    }
+
+    return ids;
   }
 
 }  // namespace other
