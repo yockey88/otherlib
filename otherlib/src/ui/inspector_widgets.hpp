@@ -83,8 +83,15 @@ namespace other {
       void begin_property_row(const std::string_view label, float label_width = kPropertyLabelWidth);
       void end_property_row();
 
-      bool input_float_field(const char* id, float& value, float speed = 0.1f, const glm::vec4* axis_color = nullptr);
-      bool input_int_field(const char* id, int32_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_float_field(const char* id, float& value, float speed = 0.1f, const glm::vec4* axis_color = nullptr);
+      bool drag_int8_field(const char* id, int8_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_uint8_field(const char* id, uint8_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_int16_field(const char* id, int16_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_uint16_field(const char* id, uint16_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_int32_field(const char* id, int32_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_uint32_field(const char* id, uint32_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_int64_field(const char* id, int64_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_uint64_field(const char* id, uint64_t& value, const glm::vec4* axis_color = nullptr);
       bool input_text_field(const char* id, char* buf, uint32_t buf_size);
       void display_text_field(const char* id, const std::string_view text);
       bool inspector_checkbox(const char* id, bool& value);
@@ -99,7 +106,14 @@ namespace other {
       bool property_vec2(const std::string_view label, glm::vec2& value, float speed = 0.1f);
       void property_vec2_readonly(const std::string_view label, const glm::vec2& value);
       bool property_float(const std::string_view label, float& value, float speed = 0.1f);
-      bool property_int(const std::string_view label, int32_t& value);
+      bool property_int8(const std::string_view label, int8_t& value);
+      bool property_uint8(const std::string_view label, uint8_t& value);
+      bool property_int16(const std::string_view label, int16_t& value);
+      bool property_uint16(const std::string_view label, uint16_t& value);
+      bool property_int32(const std::string_view label, int32_t& value);
+      bool property_uint32(const std::string_view label, uint32_t& value);
+      bool property_int64(const std::string_view label, int64_t& value);
+      bool property_uint64(const std::string_view label, uint64_t& value);
       bool property_bool(const std::string_view label, bool& value);
       bool property_text(const std::string_view label, char* buf, uint32_t buf_size);
       void property_display(const std::string_view label, const std::string_view value_text, const glm::vec4& text_color = glm::vec4(0));
@@ -114,11 +128,8 @@ namespace other {
 
       void draw_asset_slot(const std::string_view label, const std::string_view asset_name, asset_slot_state state);
 
-      /// asset slot property: renders an asset reference with drag-drop target support.
-      /// `accepted_types` is a bitmask or list of asset::type values this slot accepts.
-      /// writes back the dropped asset path into `out_dropped_path` on success.
-      /// true if a new asset was dropped into the slot.
-      bool property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const std::vector<asset::type>& accepted_types, std::string& out_dropped_path);
+      /// returns id if an asset is dropped into the slot, or nullopt if no drop occurred
+      opt<natural_t> property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const asset::type acceptable_type);
 
       bool draw_add_component_button();
 

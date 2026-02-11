@@ -24,8 +24,8 @@ namespace other {
 
 OTHER_REFLECT(
   other::light_component,
-  field(point_lights, other::attr::serializable()),
-  field(directional_lights, other::attr::serializable())
+  field(point_lights, other::attr::serializable("Point Lights")),
+  field(directional_lights, other::attr::serializable("Directional Lights"))
 )
 
 #endif  // OTHER_SCENE_OBJECT_LIGHT_COMPONENT_HPP

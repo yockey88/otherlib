@@ -12,6 +12,8 @@
 
 #include "object/component.hpp"
 
+#include "asset/asset.hpp"
+
 namespace other {
 
   struct animation;
@@ -23,8 +25,10 @@ namespace other {
     double animation_time = 0.0;
 
     uint32_t animation_index = 0;
-    animation* anim_ptr = nullptr;
-    model* model_ptr;
+    // animation* anim_ptr = nullptr;
+    // model* model_ptr;
+    natural_t animation_asset_id = 0;
+    natural_t model_asset_id = 0;
     glm::mat4 root_transform = glm::mat4(1.0f);
 
     animation_controller()
@@ -39,11 +43,11 @@ namespace other {
 
 OTHER_REFLECT(
   other::animation_controller,
-  field(animation_accumulator, other::attr::serializable()),
-  field(animation_speed, other::attr::serializable()),
-  field(animation_time, other::attr::serializable()),
-  field(animation_index, other::attr::serializable())
-  // field(root_transform)
+  field(animation_accumulator, other::attr::serializable("Animation Accumulator")),
+  field(animation_speed, other::attr::serializable("Animation Speed")),
+  field(animation_time, other::attr::serializable("Animation Time")),
+  field(animation_index, other::attr::serializable("Animation Index")),
+  field(animation_asset_id, other::attr::serializable("Animation"), other::attr::asset_identifier_field(other::asset::ANIMATION))
 )
 
 #endif  // OTHER_SCENE_OBJECT_ANIMATION_CONTROLLER_HPP

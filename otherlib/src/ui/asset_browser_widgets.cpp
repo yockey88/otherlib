@@ -130,10 +130,6 @@ namespace other {
         return clicked;
       }
 
-      // ═══════════════════════════════════════════════════════════════════
-      //  draw_search_input
-      // ═══════════════════════════════════════════════════════════════════
-
       bool draw_search_input(char* buf, uint32_t buf_size, float width) {
         using namespace colors::asset_browser;
 
@@ -285,10 +281,10 @@ namespace other {
         bool clicked = ImGui::InvisibleButton("##card", ImVec2(card_width, card_h));
         bool hovered = ImGui::IsItemHovered();
 
-        if (desc.type != asset_type::FOLDER && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+        if (desc.type != asset_type::FOLDER &&
+            ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
           asset_drag_drop_payload payload{};
-          std::strncpy(payload.name, desc.name.c_str(), sizeof(payload.name) - 1);
-          std::strncpy(payload.path, desc.asset_path.c_str(), sizeof(payload.path) - 1);
+          payload.handler_asset_id = desc.handler_asset_id;
           payload.asset_type = map_ui_to_asset_type(desc.type);
 
           ImGui::SetDragDropPayload(kDragDropPayloadType, &payload, sizeof(payload));

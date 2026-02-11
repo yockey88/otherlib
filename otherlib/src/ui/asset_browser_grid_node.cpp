@@ -385,20 +385,13 @@ namespace other {
             }
           }
 
-          if (asset.type != cbw::asset_type::FOLDER && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+          if (asset.type != cbw::asset_type::FOLDER &&
+              ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
             cbw::asset_drag_drop_payload payload{};
-            std::strncpy(payload.name, asset.name.c_str(), sizeof(payload.name) - 1);
-
-            std::string full_path;
-            if (!asset.asset_path.empty()) {
-              full_path = asset.asset_path;
-            } else {
-              full_path = current_path + "/" + asset.name;
-            }
-            std::strncpy(payload.path, full_path.c_str(), sizeof(payload.path) - 1);
 
             const std::string& ext = asset.name.substr(asset.name.find_last_of('.'));
             payload.asset_type = other::asset::get_type_from_extension(ext);
+            payload.handler_asset_id = asset.handler_asset_id;
 
             ImGui::SetDragDropPayload(cbw::kDragDropPayloadType, &payload, sizeof(payload));
             ImGui::Text("%s", asset.name.c_str());

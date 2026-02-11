@@ -19,8 +19,7 @@ namespace other {
       constexpr const char* kDragDropPayloadType = "OTHER_ASSET_DND";
 
       struct asset_drag_drop_payload {
-        char name[128] = {};
-        char path[256] = {};
+        natural_t handler_asset_id = 0;
         asset::type asset_type = asset::EMPTY;
       };
 
@@ -44,6 +43,7 @@ namespace other {
       constexpr float kFilterPillHeight = 18.f;
       constexpr float kFilterDotRadius = 3.f;
 
+      // necessary because asset::type has no equivalent for folders or other special files that the UI needs to represent
       enum class asset_type : uint8_t {
         FOLDER = 0,
         TEXTURE,
@@ -85,7 +85,7 @@ namespace other {
         bool is_selected = false;
 
         /// populated when the card represents a handler-tracked asset
-        uint64_t handler_asset_id = 0;
+        natural_t handler_asset_id = 0;
         std::string asset_path;
       };
 

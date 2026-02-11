@@ -37,12 +37,26 @@ namespace other {
     type asset_type = type::EMPTY;
 
     natural_t id = 0;
+
+    /// hash uses absolute path string to avoid issues with relative paths and different working directories
     natural_t path_hash = 0;
+
     filepath path = "";
+    filepath absolute_path = "";
 
     static asset::type get_type_from_extension(const std::string_view extension);
     static std::vector<std::string> get_supported_extensions(asset::type asset_type);
   };
+
+  namespace attr {
+
+    struct asset_identifier_field : refl::attr::usage::field {
+      asset::type asset_type = asset::type::EMPTY;
+      constexpr asset_identifier_field(asset::type type)
+          : asset_type(type) {}
+    };
+
+  }  // namespace attr
 
   struct asset_extension {
     asset::type asset_type;
