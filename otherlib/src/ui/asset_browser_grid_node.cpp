@@ -392,6 +392,7 @@ namespace other {
             const std::string& ext = asset.name.substr(asset.name.find_last_of('.'));
             payload.asset_type = other::asset::get_type_from_extension(ext);
             payload.handler_asset_id = asset.handler_asset_id;
+            // CORE_LOG_DEBUG("Beginning drag of asset '{}', handler ID {}, type {}", asset.name, payload.handler_asset_id, payload.asset_type);
 
             ImGui::SetDragDropPayload(cbw::kDragDropPayloadType, &payload, sizeof(payload));
             ImGui::Text("%s", asset.name.c_str());
@@ -433,11 +434,11 @@ namespace other {
             state = handler->get_asset_state(sel.handler_asset_id);
           }
 
-          ui::inspector::asset_slot_state slot_state = ui::inspector::asset_slot_state::empty;
+          ui::inspector::asset_slot_state slot_state = ui::inspector::asset_slot_state::EMPTY;
           if (state == asset_state::LOADED) {
-            slot_state = ui::inspector::asset_slot_state::filled;
+            slot_state = ui::inspector::asset_slot_state::FILLED;
           } else if (state == asset_state::ERROR_STATE) {
-            slot_state = ui::inspector::asset_slot_state::invalid;
+            slot_state = ui::inspector::asset_slot_state::INVALID;
           }
 
           ui::inspector::draw_asset_slot("Asset", sel.name, slot_state);

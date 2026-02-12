@@ -11,6 +11,7 @@
 
 #include "ui/asset_browser_widgets.hpp"
 
+#include "asset/asset_handler.hpp"
 #include "imgui.h"
 
 namespace other {
@@ -730,20 +731,28 @@ namespace other {
         end_property_row();
       }
 
+      namespace detail {
+
+        glm::vec4 get_asset_slot_border_color(asset_slot_state state) {
+          switch (state) {
+            case asset_slot_state::EMPTY: return colors::scene_object::kAssetSlotEmpty;
+            case asset_slot_state::DRAG_HOVER: return colors::scene_object::kAssetSlotDragHover;
+            case asset_slot_state::FILLED: return colors::scene_object::kAssetSlotFilled;
+            case asset_slot_state::LOADING: return colors::scene_object::kAssetSlotLoading;
+            case asset_slot_state::INVALID:
+            default:
+              return colors::scene_object::kAssetSlotInvalid;
+          }
+        }
+
+      }  // namespace detail
+
       void draw_asset_slot(const std::string_view label, const std::string_view asset_name, asset_slot_state state) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
 
         begin_property_row(label);
 
-        const glm::vec4 border_color = [&]() -> glm::vec4 {
-          switch (state) {
-            case asset_slot_state::empty: return colors::scene_object::kAssetSlotEmpty;
-            case asset_slot_state::filled: return colors::scene_object::kAssetSlotFilled;
-            case asset_slot_state::invalid: return colors::scene_object::kAssetSlotInvalid;
-            case asset_slot_state::drag_hover: return colors::scene_object::kAssetSlotDragHover;
-            default: return colors::scene_object::kAssetSlotEmpty;
-          }
-        }();
+        const glm::vec4 border_color = detail::get_asset_slot_border_color(state);
 
         push_field_style();
 
@@ -766,20 +775,31 @@ namespace other {
         end_property_row();
       }
 
-      opt<natural_t> property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const asset::type acceptable_type) {
+      opt<natural_t> property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const asset::type field_asset_type, asset_handler* handler) {
         opt<natural_t> out_dropped_id = {};
         ImDrawList* dl = ImGui::GetWindowDrawList();
 
         asset_slot_state state = (asset_id != 0) ?
-          asset_slot_state::filled :
-          asset_slot_state::empty;
+          asset_slot_state::FILLED :
+          asset_slot_state::EMPTY;
+        if (handler != nullptr && state == asset_slot_state::FILLED) {
+          state = handler->asset_exists(asset_id) ?
+            asset_slot_state::FILLED :
+            asset_slot_state::INVALID;
+        }
+        if (handler != nullptr && state == asset_slot_state::FILLED) {
+          state = handler->asset_loaded(asset_id) ?
+            asset_slot_state::FILLED :
+            asset_slot_state::LOADING;
+        }
 
         begin_property_row(label);
-        const std::string asset_type_str = std::format("[{}]", acceptable_type);
-        ImGui::Text("%s", asset_type_str.c_str());
         push_field_style();
 
-        std::string display = current_asset_name.empty() ? std::string("None") : std::string(current_asset_name);
+        std::string display = current_asset_name.empty() ? "" : std::string(current_asset_name);
+        if (state == asset_slot_state::INVALID) {
+          display = "Invalid Asset";
+        }
         std::string id = std::format("##{}_asset_slot", label);
 
         char buf[256];
@@ -799,32 +819,31 @@ namespace other {
           const ImGuiPayload* hovering_payload = ImGui::AcceptDragDropPayload("OTHER_ASSET_DND", ImGuiDragDropFlags_AcceptPeekOnly);
           const ImGuiPayload* dropped_payload = ImGui::AcceptDragDropPayload("OTHER_ASSET_DND");
 
+          std::vector<asset::type> acceptable_types = asset_handler::get_convertible_asset_types(field_asset_type);
+
           if (hovering_payload != nullptr) {
+            OTHER_ASSERT(hovering_payload->Data != nullptr, "Expected asset drag-and-drop payload data");
             const auto* data = static_cast<const asset_browser_w::asset_drag_drop_payload*>(hovering_payload->Data);
-            if (data->asset_type == acceptable_type) {
-              state = asset_slot_state::drag_hover;
+            OTHER_ASSERT(data != nullptr, "Expected asset drag-and-drop payload data");
+
+            if (std::find(acceptable_types.begin(), acceptable_types.end(), data->asset_type) != acceptable_types.end()) {
+              state = asset_slot_state::DRAG_HOVER;
             }
           }
+
           if (dropped_payload != nullptr) {
+            OTHER_ASSERT(dropped_payload->Data != nullptr, "Expected asset drag-and-drop payload data");
             const auto* data = static_cast<const asset_browser_w::asset_drag_drop_payload*>(dropped_payload->Data);
             OTHER_ASSERT(data != nullptr, "Expected asset drag-and-drop payload data");
-            OTHER_ASSERT(data->asset_type != asset::type::EMPTY, "Expected known asset type in drag-and-drop payload");
-            if (data->asset_type == acceptable_type) {
+
+            if (std::find(acceptable_types.begin(), acceptable_types.end(), data->asset_type) != acceptable_types.end()) {
               out_dropped_id = data->handler_asset_id;
             }
           }
           ImGui::EndDragDropTarget();
         }
 
-        const glm::vec4 border_color = [&]() -> glm::vec4 {
-          switch (state) {
-            case asset_slot_state::empty: return colors::scene_object::kAssetSlotEmpty;
-            case asset_slot_state::filled: return colors::scene_object::kAssetSlotFilled;
-            case asset_slot_state::invalid: return colors::scene_object::kAssetSlotInvalid;
-            case asset_slot_state::drag_hover: return colors::scene_object::kAssetSlotDragHover;
-            default: return colors::scene_object::kAssetSlotEmpty;
-          }
-        }();
+        const glm::vec4 border_color = detail::get_asset_slot_border_color(state);
 
         ImVec2 item_min = ImGui::GetItemRectMin();
         ImVec2 item_max = ImGui::GetItemRectMax();

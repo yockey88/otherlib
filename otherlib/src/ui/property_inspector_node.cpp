@@ -114,13 +114,14 @@ namespace other {
       inspector::end_component_section();
 
       if (changed) {
-        if constexpr (std::is_same_v<T, render_component>) {
-          natural_t hash = handler->get_asset_hash(comp->model_asset_id);
-          ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
-          OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", comp->model_asset_id);
+        CORE_LOG_DEBUG("Component '{}' on object ID {} marked as modified", component_name, object->id);
+        // if constexpr (std::is_same_v<T, render_component>) {
+        //   natural_t hash = handler->get_asset_hash(comp->model_asset_id);
+        //   ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
+        //   OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", comp->model_asset_id);
 
-          comp->obj_model = model_src->produce_model(std::format("{}:asset-model", object->name), comp->submesh_indices);
-        }
+        //   comp->obj_model = model_src->produce_model(std::format("{}:asset-model", object->name), comp->submesh_indices);
+        // }
       }
 
       /// \todo flesh this out more, this could be it but it may be more complicated

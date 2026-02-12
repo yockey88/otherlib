@@ -6,12 +6,23 @@ namespace Other.Core
 {
   public abstract class OtherObject
   {
+    public enum ObjectType
+    {
+      SceneObject = 0,
+      // EditorObject, UIObject, etc...
+    }
+
+    private ObjectType object_type;
+    public ObjectType Type => object_type;
+
     private struct InternalHandles
     {
       public UInt64 object_id;
       public IntPtr native_handle;
     }
     private InternalHandles internal_handles;
+    public IntPtr NativeHandle => internal_handles.native_handle;
+
 
     [NativeFunction("GetObjectID")]
     internal static unsafe delegate*<nint, UInt64*, void> NativeGetObjectID;
@@ -39,10 +50,12 @@ namespace Other.Core
       }
     }
 
-    private List<Behavior> behaviors;
-    public OtherObject(IntPtr native_handle)
+    private List<OtherBehavior> behaviors;
+    public OtherObject(IntPtr native_handle, ObjectType type)
     {
-      behaviors = new List<Behavior>();
+      object_type = type;
+
+      behaviors = new List<OtherBehavior>();
       internal_handles = new InternalHandles
       {
         object_id = 0,
@@ -51,7 +64,7 @@ namespace Other.Core
       internal_handles.object_id = ObjectID;
     }
 
-    public void AddBehavior(Behavior behavior)
+    public void AddBehavior(OtherBehavior behavior)
     {
       behavior.OnAddToObject(this);
       behaviors.Add(behavior);
@@ -62,7 +75,7 @@ namespace Other.Core
       behaviors.RemoveAll(b => b.GetType().Name == class_name);
     }
 
-    public void RemoveBehavior(Behavior behavior)
+    public void RemoveBehavior(OtherBehavior behavior)
     {
       behavior.OnRemoveFromObject(this);
       behaviors.Remove(behavior);

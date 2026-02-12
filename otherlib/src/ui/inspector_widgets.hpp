@@ -16,6 +16,7 @@
 namespace other {
 
   struct scene_object;
+  class asset_handler;
 
   namespace ui {
     namespace inspector {
@@ -120,16 +121,17 @@ namespace other {
 
       //  asset reference field with colored border based on state.
       enum class asset_slot_state : uint32_t {
-        empty = 0,
-        filled,
-        invalid,
-        drag_hover,
+        EMPTY = 0,
+        DRAG_HOVER,
+        LOADING,
+        FILLED,
+        INVALID,
       };
 
       void draw_asset_slot(const std::string_view label, const std::string_view asset_name, asset_slot_state state);
 
       /// returns id if an asset is dropped into the slot, or nullopt if no drop occurred
-      opt<natural_t> property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const asset::type acceptable_type);
+      opt<natural_t> property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const asset::type field_asset_type, asset_handler* handler = nullptr);
 
       bool draw_add_component_button();
 

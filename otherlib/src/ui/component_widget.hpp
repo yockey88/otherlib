@@ -45,14 +45,17 @@ namespace other {
         if (asset_id == 0 || handler == nullptr) {
           return "None";
         }
+
         const asset* a = handler->get_loaded_asset(asset_id);
         if (a != nullptr) {
           return a->path.filename().string();
         }
+
         asset_state state = handler->get_asset_state(asset_id);
         if (state == asset_state::LOADING) {
           return "Loading...";
         }
+
         return std::format("Asset #{}", asset_id);
       }
 
@@ -78,23 +81,23 @@ namespace other {
             auto& asset_manager = drvr->get_asset_manager();
 
             bool asset_dropped = dropped_id.has_value();
-            bool asset_exists = asset_dropped && asset_manager->asset_exists(*dropped_id);
 
             if (asset_dropped) {
               CORE_LOG_DEBUG("Asset ID {} dropped into field '{}'", *dropped_id, field_name);
+              field_value = *dropped_id;
+              changed = true;
             }
 
-            /// \todo currently we issue error if asset is loading and not loaded, but we could
-            ///          also support a loading... state in inspector
+            bool asset_exists = asset_dropped && asset_manager->asset_exists(*dropped_id);
+            bool asset_loaded = asset_exists && asset_manager->asset_loaded(*dropped_id);
+            if (asset_exists && !asset_loaded) {
+              inspector::property_display(display_name, "Asset is loading...", colors::kTextDisabled);
+              CORE_LOG_WARN("Asset ID {} exists but is still loading for field '{}'", *dropped_id, field_name);
+            } else if (asset_dropped) {
+              inspector::property_display(display_name, "Asset Does Not Exist", colors::kTextError);
+              CORE_LOG_ERROR("Asset ID {} dropped into field '{}' does not exist", *dropped_id, field_name);
+            }
 
-            // if (asset_exists && !asset_manager->asset_loaded(*dropped_id)) {
-            //   inspector::property_display(display_name, "Asset is loading...", colors::kTextDisabled);
-            // } else if (asset_dropped && !asset_exists) {
-            //   inspector::property_display(display_name, "Asset not found", colors::kTextError);
-            // } else if (asset_dropped && asset_exists) {
-            //   field_value = *dropped_id;
-            //   changed = true;
-            // }
           } else {
             natural_t ival = field_value;
             if (inspector::property_uint64(display_name, ival)) {
@@ -104,6 +107,9 @@ namespace other {
           }
         } else if constexpr (std::is_same_v<FT, integer_t>) {
           if (is_script) {
+            /// \todo get script object, and list the attached behaviors
+            ///         need to be general enough for lua, dotnet, and eventually python and OtherScript,
+            //          which may have different concepts of what a "script object" is
           } else {
             integer_t ival = field_value;
             if (inspector::property_int64(display_name, ival)) {

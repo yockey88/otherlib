@@ -8,7 +8,7 @@ namespace Other
   {
     private SceneObjectHandle handle;
     public SceneObject(IntPtr native_handle)
-      : base(native_handle)
+      : base(native_handle, ObjectType.SceneObject)
     {
       handle = new SceneObjectHandle(ObjectID);
     }
