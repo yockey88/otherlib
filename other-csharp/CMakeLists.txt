@@ -44,9 +44,9 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/inspector.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/components.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-behavior.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object-handle.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-behavior.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/project-configuration.cs
