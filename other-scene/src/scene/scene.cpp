@@ -957,18 +957,21 @@ namespace other {
     PROFILE_SECTION("scene::on_create_script_component");
 
     script_component* script = storage->registry.try_get<script_component>(entity);
-    OTHER_ASSERT(script != nullptr, "Script component is null for entity {}", (natural_t)entity);
+    if (script == nullptr) {
+      CORE_LOG_ERROR("Script component not found for entity {}", (natural_t)entity);
+      return;
+    }
+    OTHER_ASSERT(script->object != nullptr, "Scene object reference in script component is null for entity {}", (natural_t)entity);
 
     auto* script_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
+    script->script_object_id = script_env->create_object(script->object->name);
     script_object* object = script_env->get_object(script->script_object_id);
     OTHER_ASSERT(object != nullptr, "Failed to retrieve script object after creation for object ID {}", script->script_object_id);
 
-    std::string script_name = script->object->name;
+    script_env->attach_dotnet_object(script->script_object_id, "Other.SceneObject", (void*)script->object);
     CORE_LOG_DEBUG("Creating script object for scene object '{}' [ID: {}] (entity {})", script->object->name, script->object->id, (natural_t)entity);
-    script->script_object_id = script_env->create_object(script->object->name);
-    script_env->attach_dotnet_object(script->script_object_id, "Other.SceneObject", (void*)object);
   }
 
   // void scene::on_update_script_component(const entt::registry&, const entt::entity entity) {

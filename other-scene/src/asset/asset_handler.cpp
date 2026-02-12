@@ -55,6 +55,21 @@ namespace {
 
 namespace other {
 
+  std::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
+    std::vector<asset::type> out_acceptable_types;
+    switch (requested_type) {
+      case asset::type::MODEL:
+      case asset::type::MODEL_SOURCE:
+        return { asset::type::MODEL, asset::type::MODEL_SOURCE };
+
+      case asset::type::SCRIPT:
+      case asset::type::SCRIPT_SOURCE:
+        return { asset::type::SCRIPT, asset::type::SCRIPT_SOURCE };
+      default: break;
+    }
+    return out_acceptable_types;
+  }
+
   void asset_handler::purge_stores() {
     while (!pending_unloads.empty()) {
       natural_t asset_id = pending_unloads.front();

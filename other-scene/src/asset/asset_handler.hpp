@@ -77,6 +77,8 @@ namespace other {
         : io_context(io_context) {}
     ~asset_handler() = default;
 
+    static std::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
+
     void purge_stores();
     void update_pipelines();
 
