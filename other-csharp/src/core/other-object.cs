@@ -53,7 +53,7 @@ namespace Other.Core
     private List<OtherBehavior> behaviors;
     public OtherObject(IntPtr native_handle, ObjectType type)
     {
-      // object_type = type;
+      object_type = type;
 
       behaviors = new List<OtherBehavior>();
       internal_handles = new InternalHandles
