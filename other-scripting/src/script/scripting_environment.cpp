@@ -187,6 +187,91 @@ namespace other {
     }
   }
 
+  void scripting_environment::attach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name) {
+    PROFILE_SECTION("scripting_environment::attach_dotnet_behavior");
+
+    script_object* parent = get_object(parent_id);
+    OTHER_ASSERT(parent != nullptr, "Script object with ID {} does not exist.", parent_id);
+    OTHER_ASSERT(parent->dotnet_object != nullptr, "Script object with ID {} does not have a .NET object attached.", parent_id);
+
+    CORE_LOG_DEBUG("[script {}] attaching behavior '{}' to object '{}'", parent_id, behavior_name, parent->name);
+
+    /// create a script_object slot for this behavior so we have a native-side handle
+    std::string behavior_obj_name = std::format("{}__behavior__{}", parent->name, behavior_name);
+    integer_t behavior_script_id = create_object(behavior_obj_name);
+
+    /// invoke AddBehaviorByTypeName on the parent SceneObject's managed object.
+    /// this creates the Behavior instance in C# via Activator.CreateInstance and
+    /// adds it to the OtherObject's behavior list.
+    native_string type_str = native_string::new_str(behavior_name);
+    parent->dotnet_object->invoke<void>("AddBehaviorByTypeName", type_str);
+    native_string::free_str(type_str);
+
+    /// track the behavior handle on the parent script_object
+    parent->behavior_handles.push_back({
+      .type_name = std::string(behavior_name),
+      .script_object_id = behavior_script_id,
+    });
+
+    CORE_LOG_DEBUG("[script {}] behavior '{}' attached with script_object ID {}", parent_id, behavior_name, behavior_script_id);
+  }
+
+  void scripting_environment::detach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name) {
+    PROFILE_SECTION("scripting_environment::detach_dotnet_behavior");
+
+    script_object* parent = get_object(parent_id);
+    OTHER_ASSERT(parent != nullptr, "Script object with ID {} does not exist.", parent_id);
+    OTHER_ASSERT(parent->dotnet_object != nullptr, "Script object with ID {} does not have a .NET object attached.", parent_id);
+
+    CORE_LOG_DEBUG("[script {}] detaching behavior '{}' from object '{}'", parent_id, behavior_name, parent->name);
+
+    /// find and remove the behavior handle
+    auto it = std::find_if(parent->behavior_handles.begin(), parent->behavior_handles.end(), [&behavior_name](const script_object::behavior_handle& handle) {
+      return handle.type_name == behavior_name;
+    });
+
+    if (it == parent->behavior_handles.end()) {
+      CORE_LOG_WARN("Behavior '{}' not found on script object with ID {}", behavior_name, parent_id);
+      return;
+    }
+
+    /// destroy the behavior's script_object slot
+    if (it->script_object_id >= 0) {
+      destroy_object(it->script_object_id);
+    }
+
+    parent->behavior_handles.erase(it);
+
+    /// invoke RemoveBehavior on the parent SceneObject's managed object
+    native_string type_str = native_string::new_str(behavior_name);
+    parent->dotnet_object->invoke<>("RemoveBehavior", type_str);
+    native_string::free_str(type_str);
+
+    CORE_LOG_DEBUG("[script {}] behavior '{}' detached", parent_id, behavior_name);
+  }
+
+  void scripting_environment::detach_all_dotnet_behaviors(integer_t parent_id) {
+    PROFILE_SECTION("scripting_environment::detach_all_dotnet_behaviors");
+
+    script_object* parent = get_object(parent_id);
+    OTHER_ASSERT(parent != nullptr, "Script object with ID {} does not exist.", parent_id);
+
+    CORE_LOG_DEBUG("[script {}] detaching all behaviors from object '{}'", parent_id, parent->name);
+
+    /// destroy all behavior script_objects in reverse order
+    for (auto it = parent->behavior_handles.rbegin(); it != parent->behavior_handles.rend(); ++it) {
+      if (it->script_object_id >= 0) {
+        destroy_object(it->script_object_id);
+      }
+    }
+    parent->behavior_handles.clear();
+
+    /// invoke RemoveAllBehaviors on the parent SceneObject's managed object
+    if (parent->dotnet_object != nullptr) {
+      parent->dotnet_object->invoke<>("RemoveAllBehaviors");
+    }
+  }
+
   void scripting_environment::detach_dotnet_object(integer_t id) {
     script_object* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);

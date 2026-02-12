@@ -33,6 +33,17 @@ namespace other {
 
     dotnet_object* dotnet_object = nullptr;
     python_object* python_object = nullptr;
+
+    /// behavior dotnet_objects attached to this script_object.
+    /// these are managed objects created through dotnet_host that represent
+    /// user scripts (SceneBehavior subclasses, etc.) added via attach_dotnet_behavior.
+    /// the corresponding C# Behavior instances are also stored in the parent
+    /// OtherObject's behavior list.
+    struct behavior_handle {
+      std::string type_name;
+      integer_t script_object_id = -1;  ///< the script_object ID for this behavior in the pool
+    };
+    std::vector<behavior_handle> behavior_handles;
   };
 
 }  // namespace other
