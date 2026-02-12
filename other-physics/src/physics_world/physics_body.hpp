@@ -55,8 +55,6 @@ namespace other {
 
 OTHER_REFLECT(
   other::physics_body_settings,
-  field(body_type),
-  field(world_transform),
   field(mass, other::attr::serializable())
 )
 
