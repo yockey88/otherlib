@@ -7,6 +7,8 @@ namespace Other
   public class SceneObject : Core.OtherObject
   {
     private SceneObjectHandle handle;
+    public SceneObjectHandle ObjectHandle => handle;
+
     public SceneObject(IntPtr native_handle)
       : base(native_handle, ObjectType.SceneObject)
     {

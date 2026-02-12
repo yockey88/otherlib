@@ -70,8 +70,8 @@ namespace Other.Core
     }
     protected abstract void Remove();
 
-    protected abstract void Enable();
-    protected abstract void Disable();
+    public abstract void Enable();
+    public abstract void Disable();
 
     public void ObjectUpdate()
     {

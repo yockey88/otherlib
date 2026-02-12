@@ -49,13 +49,13 @@ namespace Other
     }
     protected virtual void OnRemove() {}
 
-    protected override void Enable()
+    public override void Enable()
     {
       OnEnable();
     }
     public virtual void OnEnable() {}
 
-    protected override void Disable()
+    public override void Disable()
     {
       OnDisable();
     }

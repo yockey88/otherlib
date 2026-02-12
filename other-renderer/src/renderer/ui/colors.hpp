@@ -557,9 +557,10 @@ namespace other {
 
         /// asset slot states
         constexpr inline glm::vec4 kAssetSlotEmpty = hex_col_to_rgba(IM_COL32(60, 60, 60, 200));
+        constexpr inline glm::vec4 kAssetSlotDragHover = hex_col_to_rgba(IM_COL32(39, 185, 242, 200));
+        constexpr inline glm::vec4 kAssetSlotLoading = hex_col_to_rgba(IM_COL32(218, 165, 32, 200));
         constexpr inline glm::vec4 kAssetSlotFilled = hex_col_to_rgba(IM_COL32(236, 158, 36, 160));
         constexpr inline glm::vec4 kAssetSlotInvalid = hex_col_to_rgba(IM_COL32(239, 68, 68, 160));
-        constexpr inline glm::vec4 kAssetSlotDragHover = hex_col_to_rgba(IM_COL32(39, 185, 242, 200));
       }  // namespace scene_object
 
     }  // namespace colors

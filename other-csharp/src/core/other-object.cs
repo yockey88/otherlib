@@ -86,7 +86,7 @@ namespace Other.Core
       OnStart();
       for (int i = 0; i < behaviors.Count; i++)
       {
-        behaviors[i].SceneStart();
+        behaviors[i].Enable();
       }
     }
 
@@ -95,7 +95,7 @@ namespace Other.Core
       OnStop();
       for (int i = 0; i < behaviors.Count; i++)
       {
-        behaviors[i].SceneStop();
+        behaviors[i].Disable();
       }
     }
 
