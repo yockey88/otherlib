@@ -103,11 +103,26 @@ namespace other {
       bool remove_requested = false;
       bool is_open = inspector::begin_component_section(component_name, tag, section_flags, &remove_requested);
 
+      bool changed = false;
+      OTHER_ASSERT(driver_ptr != nullptr, "Driver is null");
+      asset_handler* handler = driver_ptr->get_asset_manager().get();
+      OTHER_ASSERT(handler != nullptr, "Asset handler is null");
       if (is_open) {
-        component_widget<T>{}(component_name, *comp, active_scene, object);
+        changed = component_widget<T>{}(component_name, *comp, active_scene, object, handler, driver_ptr);
       }
 
       inspector::end_component_section();
+
+      if (changed) {
+        CORE_LOG_DEBUG("Component '{}' on object ID {} marked as modified", component_name, object->id);
+        // if constexpr (std::is_same_v<T, render_component>) {
+        //   natural_t hash = handler->get_asset_hash(comp->model_asset_id);
+        //   ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
+        //   OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", comp->model_asset_id);
+
+        //   comp->obj_model = model_src->produce_model(std::format("{}:asset-model", object->name), comp->submesh_indices);
+        // }
+      }
 
       /// \todo flesh this out more, this could be it but it may be more complicated
       if (remove_requested) {

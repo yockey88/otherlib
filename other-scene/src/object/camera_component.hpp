@@ -27,7 +27,7 @@ namespace other {
 
 OTHER_REFLECT(
   other::camera_component,
-  field(camera, other::attr::serializable())
+  field(camera, other::attr::serializable("Camera"))
 )
 
 #endif  // OTHER_SCENE_OBJECT_CAMERA_COMPONENT_HPP

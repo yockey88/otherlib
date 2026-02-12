@@ -8,7 +8,11 @@
 
 #include "serialization/reflection.hpp"
 
+#include "script/script_object.hpp"
+
 #include "object/component.hpp"
+
+#include "asset/asset.hpp"
 
 namespace other {
 
@@ -37,9 +41,13 @@ namespace other {
 
 }  // namespace other
 
+// clang-format off
 OTHER_REFLECT(
   other::script_component,
-  field(script_object_id, other::attr::serializable())
+  field(script_object_id, other::attr::serializable("Script Object ID"), 
+                          other::attr::asset_identifier_field(other::asset::SCRIPT),
+                          other::attr::script_object_field())
 );
+// clang-format on
 
 #endif  // OTHER_SCENE_OBJECT_SCRIPT_COMPONENT_HPP

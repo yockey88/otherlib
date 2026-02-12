@@ -13,6 +13,8 @@
 
 #include "object/component.hpp"
 
+#include "asset/asset.hpp"
+
 namespace other {
 
   struct render_component : public component {
@@ -36,10 +38,10 @@ namespace other {
 
 OTHER_REFLECT(
   other::render_component,
-  field(animated, other::attr::serializable()),
-  field(visible, other::attr::serializable()),
-  field(obj_model, other::attr::serializable()),
-  field(model_asset_id, other::attr::serializable())
+  field(animated, other::attr::serializable("Animated")),
+  field(visible, other::attr::serializable("Visible")),
+  field(obj_model, other::attr::serializable("Model")),
+  field(model_asset_id, other::attr::serializable("Model"), other::attr::asset_identifier_field(other::asset::MODEL))
   // field(submesh_indices, other::attr::serializable())
 )
 

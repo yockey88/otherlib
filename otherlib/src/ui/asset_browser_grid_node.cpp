@@ -7,7 +7,9 @@
  * \file ui/asset_browser_grid_node.cpp
  **/
 #include <algorithm>
+#include <filesystem>
 #include <sstream>
+#include <unordered_set>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
@@ -20,14 +22,15 @@
 #include "file/filesystem.hpp"
 
 #include "renderer/ui/colors.hpp"
+#include "renderer/ui/unicode.hpp"
 
 #include "driver/driver.hpp"
 #include "ui/asset_browser_grid_node.hpp"
 #include "ui/asset_browser_widgets.hpp"
+#include "ui/inspector_widgets.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
-
 
 namespace other {
   namespace ui {
@@ -78,6 +81,7 @@ namespace other {
 
     asset_browser_grid_node::asset_browser_grid_node(ui_window* parent, driver* drvr)
         : ui_node(parent, "Content Browser Grid"), driver_ptr(drvr) {
+      // events().add_listener("asset-browser.refresh", [this](const value&) { refresh_listing(); });
       /// set up default filter pills
       filters = {
         { "All", cbw::asset_type::UNKNOWN, true },
@@ -96,6 +100,7 @@ namespace other {
     }
 
     void asset_browser_grid_node::navigate_to(const std::string& path) {
+      CORE_LOG_DEBUG("Navigating to path: {}", path);
       current_path = path;
       selected_asset_idx = -1;
       rebuild_breadcrumbs();
@@ -124,74 +129,125 @@ namespace other {
       }
     }
 
+    static const char* asset_state_label(asset_state state) {
+      switch (state) {
+        case asset_state::UNLOADED: return "unloaded";
+        case asset_state::LOADING: return "loading";
+        case asset_state::LOADED: return "loaded";
+        case asset_state::OUT_OF_DATE: return "out-of-date";
+        case asset_state::UNLOADING: return "unloading";
+        case asset_state::ERROR_STATE: return "error";
+        default: return "unknown";
+      }
+    }
+
     void asset_browser_grid_node::rebuild_asset_list() {
       assets.clear();
-
-      auto* fs = subsystem<file_system>::get();
-      if (fs == nullptr) {
-        return;
-      }
-
-      std::string mount_name;
-      std::string relative_path;
-      auto sep = current_path.find('/');
-      if (sep == std::string::npos) {
-        mount_name = current_path;
-      } else {
-        mount_name = current_path.substr(0, sep);
-        relative_path = current_path.substr(sep + 1);
-      }
-
-      auto mount = fs->get_mount(mount_name);
-      if (mount == nullptr) {
-        return;
-      }
-
-      ref<directory> target_dir = mount;
-      if (!relative_path.empty()) {
-        auto components = directory::split_path(relative_path);
-        for (const auto& comp : components) {
-          target_dir = target_dir->get_child_directory(comp);
-          if (target_dir == nullptr) {
-            return;
-          }
-        }
-      }
-
-      for (const auto& child : target_dir->child_directories()) {
-        auto sub_dirs = child->child_directories();
-        auto sub_files = child->files();
-        std::string meta = std::to_string(sub_dirs.size() + sub_files.size()) + " items";
-        assets.push_back({ child->name(), meta, cbw::asset_type::FOLDER });
-      }
 
       asset_handler* handler = nullptr;
       if (driver_ptr != nullptr) {
         handler = driver_ptr->get_asset_manager().get();
       }
 
-      for (const auto& file : target_dir->files()) {
-        const std::string& ext = file->extension();
-        asset::type at = asset::get_type_from_extension(ext);
-        cbw::asset_type ui_type = map_asset_to_ui_type(at);
+      auto* fs = subsystem<file_system>::get();
 
-        std::string meta;
-        if (file->exists()) {
-          meta = format_file_size(file->size());
+      /// collect path hashes of assets found in the filesystem to avoid duplicates
+      std::unordered_set<natural_t> fs_path_hashes;
+
+      if (fs != nullptr) {
+        std::string mount_name;
+        std::string relative_path;
+        auto sep = current_path.find('/');
+        if (sep == std::string::npos) {
+          mount_name = current_path;
+        } else {
+          mount_name = current_path.substr(0, sep);
+          relative_path = current_path.substr(sep + 1);
         }
 
-        if (handler != nullptr) {
-          natural_t path_hash = FNV(file->absolute_path().string());
-          asset_state state = handler->get_asset_state_by_path_hash(path_hash);
-          if (state == asset_state::LOADED) {
-            meta += " \xc2\xb7 loaded";
-          } else if (state == asset_state::LOADING) {
-            meta += " \xc2\xb7 loading";
+        auto mount = fs->get_mount(mount_name);
+        if (mount != nullptr) {
+          ref<directory> target_dir = mount;
+          if (!relative_path.empty()) {
+            auto components = directory::split_path(relative_path);
+            for (const auto& comp : components) {
+              target_dir = target_dir->get_child_directory(comp);
+              if (target_dir == nullptr) {
+                break;
+              }
+            }
+          }
+
+          if (target_dir != nullptr) {
+            for (const auto& child : target_dir->child_directories()) {
+              auto sub_dirs = child->child_directories();
+              auto sub_files = child->files();
+              std::string meta = std::to_string(sub_dirs.size() + sub_files.size()) + " items";
+              assets.push_back({ child->name(), meta, cbw::asset_type::FOLDER });
+            }
+
+            for (const auto& file : target_dir->files()) {
+              const std::string& ext = file->extension();
+              asset::type at = asset::get_type_from_extension(ext);
+              cbw::asset_type ui_type = map_asset_to_ui_type(at);
+
+              std::string meta;
+              if (file->exists()) {
+                meta = format_file_size(file->size());
+              }
+
+              natural_t path_hash = FNV(file->absolute_path().string());
+              fs_path_hashes.insert(path_hash);
+
+              if (handler != nullptr) {
+                asset_state state = handler->get_asset_state_by_path_hash(path_hash);
+                if (state != asset_state::UNLOADED) {
+                  meta += std::string(std::format("{}", unicode::kMiddleDot)) + asset_state_label(state);
+                }
+              }
+
+              assets.push_back({ file->name(), meta, ui_type, 0, false, 0, file->absolute_path().string() });
+            }
           }
         }
-
-        assets.push_back({ file->name(), meta, ui_type });
       }
+
+      // /// include all handler-tracked assets that are not already in the filesystem listing
+      // if (handler != nullptr) {
+      //   auto tracked_ids = handler->get_all_tracked_ids();
+      //   for (natural_t id : tracked_ids) {
+      //     const asset* a = handler->get_loaded_asset(id);
+      //     OTHER_ASSERT(a != nullptr, "Asset should not be null");
+
+      //     asset_state state = handler->get_asset_state(id);
+
+      //     filepath asset_path;
+      //     asset::type atype = asset::EMPTY;
+
+      //     if (fs_path_hashes.contains(a->path_hash)) {
+      //       continue;
+      //     }
+      //     asset_path = a->path;
+      //     atype = a->asset_type;
+
+      //     std::string name = asset_path.filename().string();
+      //     cbw::asset_type ui_type = map_asset_to_ui_type(atype);
+
+      //     std::string meta = asset_state_label(state);
+      //     if (std::filesystem::exists(asset_path)) {
+      //       auto sz = std::filesystem::file_size(asset_path);
+      //       meta = format_file_size(sz) + std::format(" {} ", unicode::kMiddleDot) + meta;
+      //     }
+
+      //     cbw::asset_card_desc desc;
+      //     desc.name = std::move(name);
+      //     desc.meta = std::move(meta);
+      //     desc.type = ui_type;
+      //     desc.handler_asset_id = id;
+      //     desc.asset_path = asset_path.string();
+      //     assets.push_back(std::move(desc));
+      //   }
+      // }
     }
 
     bool asset_browser_grid_node::passes_filter(const cbw::asset_card_desc& desc) const {
@@ -217,6 +273,7 @@ namespace other {
 
     void asset_browser_grid_node::on_render_node_body() {
       using namespace colors;
+      refresh_listing();
       ImDrawList* dl = ImGui::GetWindowDrawList();
 
       {
@@ -276,7 +333,17 @@ namespace other {
 
       float card_w = cbw::card_width_from_zoom(zoom);
       float avail_w = ImGui::GetContentRegionAvail().x;
-      float avail_h = ImGui::GetContentRegionAvail().y - cbw::kStatusBarHeight;
+
+      /// reserve space for the detail panel when a tracked asset is selected
+      constexpr float kDetailPanelHeight = 160.f;
+      bool show_detail_panel = false;
+      if (selected_asset_idx >= 0 && selected_asset_idx < static_cast<int>(assets.size()) &&
+          assets[selected_asset_idx].handler_asset_id != 0) {
+        show_detail_panel = true;
+      }
+
+      float detail_h = show_detail_panel ? kDetailPanelHeight : 0.f;
+      float avail_h = ImGui::GetContentRegionAvail().y - cbw::kStatusBarHeight - detail_h;
 
       ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(asset_browser::kBG));
       ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(cbw::kPaddingX, cbw::kPaddingX));
@@ -285,8 +352,8 @@ namespace other {
         int cols = std::max(1, static_cast<int>((avail_w - cbw::kPaddingX) / (card_w + cbw::kCardSpacing)));
         int col = 0;
 
-        for (int i = 0; i < static_cast<int>(assets.size()); ++i) {
-          auto& asset = assets[i];
+        size_t idx = 0;
+        for (auto& asset : assets) {
           if (!passes_filter(asset)) {
             continue;
           }
@@ -300,7 +367,7 @@ namespace other {
             }
           }
 
-          ImGui::PushID(i);
+          ImGui::PushID(idx);
 
           if (col > 0) {
             ImGui::SameLine(0.f, cbw::kCardSpacing);
@@ -309,20 +376,31 @@ namespace other {
           if (cbw::draw_asset_card(asset, card_w)) {
             /// deselect all others
             for (int j = 0; j < static_cast<int>(assets.size()); ++j) {
-              assets[j].is_selected = (j == i);
+              assets[j].is_selected = (j == static_cast<int>(idx));
             }
-            selected_asset_idx = i;
+            selected_asset_idx = static_cast<int>(idx);
 
-            /// double-click to open
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-              if (asset.type == cbw::asset_type::FOLDER) {
-                navigate_to(current_path + "/" + asset.name);
-              }
-              /// TODO(asset_browser): fire open-asset event for non-folder types
+            if (asset.type == cbw::asset_type::FOLDER) {
+              navigate_to(current_path + "/" + asset.name);
             }
           }
 
+          if (asset.type != cbw::asset_type::FOLDER &&
+              ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+            cbw::asset_drag_drop_payload payload{};
+
+            const std::string& ext = asset.name.substr(asset.name.find_last_of('.'));
+            payload.asset_type = other::asset::get_type_from_extension(ext);
+            payload.handler_asset_id = asset.handler_asset_id;
+            // CORE_LOG_DEBUG("Beginning drag of asset '{}', handler ID {}, type {}", asset.name, payload.handler_asset_id, payload.asset_type);
+
+            ImGui::SetDragDropPayload(cbw::kDragDropPayloadType, &payload, sizeof(payload));
+            ImGui::Text("%s", asset.name.c_str());
+            ImGui::EndDragDropSource();
+          }
+
           ImGui::PopID();
+          idx++;
 
           col++;
           if (col >= cols) {
@@ -334,6 +412,55 @@ namespace other {
 
       ImGui::PopStyleVar();
       ImGui::PopStyleColor();
+
+      /// inspector-style detail panel for handler-tracked assets
+      if (show_detail_panel) {
+        const auto& sel = assets[selected_asset_idx];
+        asset_handler* handler = driver_ptr ? driver_ptr->get_asset_manager().get() : nullptr;
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(colors::kBG0));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ui::inspector::kInnerPadding, 6.f));
+
+        if (ImGui::BeginChild("##asset-detail-panel", ImVec2(0, kDetailPanelHeight), ImGuiChildFlags_None)) {
+          dl->AddLine(
+            ImGui::GetCursorScreenPos(),
+            { ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x, ImGui::GetCursorScreenPos().y },
+            to_im_col(asset_browser::kBorder), 1.f
+          );
+          ImGui::Dummy(ImVec2(0, 2.f));
+
+          asset_state state = asset_state::UNLOADED;
+          if (handler != nullptr) {
+            state = handler->get_asset_state(sel.handler_asset_id);
+          }
+
+          ui::inspector::asset_slot_state slot_state = ui::inspector::asset_slot_state::EMPTY;
+          if (state == asset_state::LOADED) {
+            slot_state = ui::inspector::asset_slot_state::FILLED;
+          } else if (state == asset_state::ERROR_STATE) {
+            slot_state = ui::inspector::asset_slot_state::INVALID;
+          }
+
+          ui::inspector::draw_asset_slot("Asset", sel.name, slot_state);
+
+          std::string id_str = std::to_string(sel.handler_asset_id);
+          ui::inspector::property_display("ID", id_str);
+
+          const char* type_label = cbw::badge_for_asset_type(sel.type);
+          glm::vec4 type_color = cbw::color_for_asset_type(sel.type);
+          ui::inspector::property_display("Type", type_label, type_color);
+
+          ui::inspector::property_display("State", asset_state_label(state));
+
+          if (!sel.asset_path.empty()) {
+            ui::inspector::property_display("Path", sel.asset_path);
+          }
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+      }
 
       {
         int asset_count = 0;

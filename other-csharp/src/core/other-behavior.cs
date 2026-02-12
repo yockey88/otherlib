@@ -1,8 +1,9 @@
 using System;
+using Other.Core;
 
 namespace Other.Core
 {
-  public abstract class Behavior
+  public abstract class OtherBehavior
   {
     
   #nullable enable
@@ -21,6 +22,31 @@ namespace Other.Core
       }
     }
 
+    private bool enabled = true;
+    public bool Enabled
+    {
+      get => enabled;
+      set
+      {
+        if (enabled == value)
+        {
+          return;
+        }
+
+        enabled = value;
+        if (enabled)
+        {
+          Enable();
+        }
+        else
+        {
+          Disable();
+        }
+      }
+    }
+
+    public OtherObject ParentObject => parent_object;
+
     public void OnAddToObject(OtherObject obj) 
     {
       parent_object = obj;
@@ -32,80 +58,37 @@ namespace Other.Core
       parent_object = null;
     }
 
-    public abstract void ObjectAwake();
-    public abstract void ObjectRemove();
-
-    public abstract void SceneStart();
-    public abstract void SceneStop();
-
-    // public abstract void OnStartTransferFields();
-    // public abstract void OnEndTransferFields();
-
-    public abstract void ObjectUpdate();
-    public abstract void ObjectLateUpdate();
-    public abstract void ObjectFixedUpdate();
-  }
-
-  public abstract class OtherScriptedBehavior : Behavior
-  {
-
-
-    public OtherScriptedBehavior()
+    public void ObjectAwake()
     {
-      RegisterScriptType();
+      Awake();
     }
+    protected abstract void Awake();
 
-    public void RegisterScriptType()
+    public void ObjectRemove()
     {
-      /// \todo if script type already registered, skip
-      RegisterScriptFields();
-      RegisterScriptMethods();
+      Remove();
     }
-    public abstract void RegisterScriptFields();
-    public abstract void RegisterScriptMethods();
+    protected abstract void Remove();
 
-    public override void ObjectAwake()
+    public abstract void Enable();
+    public abstract void Disable();
+
+    public void ObjectUpdate()
     {
-      OnAwake();
+      Update();
     }
-    public override void ObjectRemove()
+    protected abstract void Update();
+
+    public void ObjectLateUpdate()
     {
-      OnRemove();
+      LateUpdate();
     }
+    protected abstract void LateUpdate();
 
-    public virtual void OnAwake() { }
-    public virtual void OnRemove() { }
-
-    public override void SceneStart()
+    public void ObjectFixedUpdate()
     {
-      OnStart();
+      FixedUpdate();
     }
-    public override void SceneStop()
-    { 
-      OnStop();
-    }
-
-    public virtual void OnStart() { }
-    public virtual void OnStop() { }
-
-    // public virtual void OnStartTransferFields() { }
-    // public virtual void OnEndTransferFields() { }
-
-    public override void ObjectUpdate()
-    {
-      OnUpdate();
-    }
-    public override void ObjectLateUpdate()
-    {
-      OnLateUpdate();
-    }
-    public override void ObjectFixedUpdate()
-    {
-      OnFixedUpdate();
-    }
-    public virtual void OnUpdate() { }
-    public virtual void OnLateUpdate() { }
-    public virtual void OnFixedUpdate() { }
-
+    protected abstract void FixedUpdate();
   }
 }

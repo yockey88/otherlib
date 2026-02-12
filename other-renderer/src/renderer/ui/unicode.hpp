@@ -16,6 +16,7 @@ namespace other {
       constexpr const char* kSearchIcon = "\xF0\x9F\x94\x8D";  // 🔍 UTF-8
       constexpr const char* kDownArrow = "\xe2\x96\xbe";       // ▾ UTF-8
       constexpr const char* kEyeIcon = "\xF0\x9F\x91\x81";     // 👁 UTF-8
+      constexpr const char* kMiddleDot = "\xc2\xb7";           // · UTF-8
 
       constexpr static ImWchar kUnicodeExtraRanges[] = {
         0x0020, 0x00FF,

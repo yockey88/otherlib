@@ -77,13 +77,42 @@ namespace other {
         : io_context(io_context) {}
     ~asset_handler() = default;
 
+    static std::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
+
     void purge_stores();
     void update_pipelines();
 
     using load_completion_callback = std::function<void(asset*)>;
+    using load_error_callback = std::function<void(asset*)>;
+
+    //  static bool is_asset_id_field(const std::string& field_name) {
+    //     /// \todo improve this by allowing users to specify which fields are asset id fields, maybe through a traits system or something
+    //     /// for now we will just assume any field named "asset_id" or ending with "_asset_id" is an asset id field
+    //     if (field_name == "asset_id" || field_name.ends_with("_asset_id")) {
+    //       return true;
+    //     }
+    //     return false;
+    // }
+
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
     void unload_asset(natural_t asset_id);
+
+    /// checks if asset is ready for use
+    inline bool asset_loaded(natural_t asset_id) const {
+      return loaded_assets.find(asset_id) != loaded_assets.end();
+    }
+    /// checks if asset is currently loading
+    inline bool asset_loading(natural_t asset_id) const {
+      auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+      return it != asset_pipelines.end();
+    }
+    /// checks if asset exists in system, usable or not
+    inline bool asset_exists(natural_t asset_id) const {
+      return asset_states.find(asset_id) != asset_states.end();
+    }
+
+    void set_default_mount(const std::string_view mount_name) { default_mount = mount_name; }
 
     asset_state get_asset_state(natural_t asset_id) const;
     asset_state get_asset_state_by_path_hash(natural_t path_hash) const;
@@ -111,6 +140,8 @@ namespace other {
     struct pipeline_context {
       scope<asset_pipeline> pipeline = nullptr;
       asset loading_asset;
+      load_completion_callback on_complete = nullptr;
+      load_error_callback on_error = nullptr;
     };
     std::deque<pipeline_context> asset_pipelines;
 
@@ -118,6 +149,8 @@ namespace other {
     std::unordered_map<natural_t, asset_state_machine> asset_states;
 
     std::queue<natural_t> pending_unloads;
+
+    std::string default_mount = "assets";
 
     static inline natural_t next_asset_id = 1;
     static inline natural_t get_next_asset_id() {
@@ -132,6 +165,8 @@ namespace other {
 
     void on_asset_unloaded(asset* asset_ptr);
     void on_asset_unload_failed(asset* asset_ptr, const std::string& error_message);
+
+    void register_asset_in_filesystem(const asset* asset_ptr);
   };
 
 }  // namespace other

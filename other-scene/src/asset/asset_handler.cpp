@@ -14,8 +14,61 @@
 
 #include "asio/asio/associated_executor.hpp"
 
+namespace {
+
+  void register_file_in_mount(
+    other::ref<other::directory> mount,
+    const std::string& mount_name, const other::filepath& abs_asset_path,
+    const std::string& relative_path
+  ) {
+    auto components = other::directory::split_path(relative_path);
+    if (components.empty()) {
+      return;
+    }
+
+    std::string file_name = components.back();
+    components.pop_back();
+
+    other::ref<other::directory> current = mount;
+    other::filepath current_path = mount->absolute_path();
+    for (const auto& comp : components) {
+      current_path /= comp;
+      auto child = current->get_child_directory(comp);
+      if (child == nullptr) {
+        child = current->add_child_directory(comp, current_path);
+      }
+      current = child;
+    }
+
+    if (current->has_file(file_name)) {
+      return;
+    }
+
+    auto local = other::make_ref<other::local_file>(abs_asset_path);
+    local->parent = current.raw_ptr();
+    current->add_file(local);
+
+    CORE_LOG_DEBUG("Registered asset in filesystem: {} (mount: {})", abs_asset_path.string(), mount_name);
+  }
+
+}  // anonymous namespace
 
 namespace other {
+
+  std::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
+    std::vector<asset::type> out_acceptable_types;
+    switch (requested_type) {
+      case asset::type::MODEL:
+      case asset::type::MODEL_SOURCE:
+        return { asset::type::MODEL, asset::type::MODEL_SOURCE };
+
+      case asset::type::SCRIPT:
+      case asset::type::SCRIPT_SOURCE:
+        return { asset::type::SCRIPT, asset::type::SCRIPT_SOURCE };
+      default: break;
+    }
+    return out_acceptable_types;
+  }
 
   void asset_handler::purge_stores() {
     while (!pending_unloads.empty()) {
@@ -74,16 +127,12 @@ namespace other {
       return 0;
     }
 
-    if (auto itr = std::ranges::find_if(loaded_assets, [&file_path](const auto& pair) { return pair.second.path_hash == FNV(file_path.string()); });
-        itr != loaded_assets.end()) {
-      CORE_LOG_WARN("Attempting to reload asset: {}", file_path.string());
-      return itr->second.id;
-    }
+    auto absolute_path = std::filesystem::absolute(file_path);
+    natural_t hash = FNV(absolute_path.string());
 
-    if (auto itr = std::ranges::find_if(asset_pipelines, [&file_path](const auto& pair) { return pair.loading_asset.path_hash == FNV(file_path.string()); });
-        itr != asset_pipelines.end()) {
-      CORE_LOG_WARN("Attempting to reload asset: {}", file_path.string());
-      return itr->loading_asset.id;
+    if (auto itr = std::ranges::find_if(loaded_assets, [hash](const auto& pair) { return pair.second.path_hash == hash; });
+        itr != loaded_assets.end()) {
+      return itr->second.id;
     }
 
     std::string extension = file_path.extension().string();
@@ -96,7 +145,14 @@ namespace other {
 
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
                                                               .pipeline = asset_pipeline::get_asset_pipeline(asset_type, this),
-                                                              .loading_asset = asset{ asset_type, asset_id, FNV(file_path.string()), file_path },
+                                                              .loading_asset = asset{
+                                                                .asset_type = asset_type,
+                                                                .id = asset_id,
+                                                                .path_hash = hash,
+                                                                .path = file_path,
+                                                                .absolute_path = absolute_path,
+                                                              },
+                                                              .on_complete = on_complete,
                                                             });
     OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
 
@@ -109,7 +165,7 @@ namespace other {
     CORE_LOG_DEBUG("Beginning load for asset ID: {} (Type: {}, Path: {})", asset_id, asset_type, file_path.string());
 
     asset* loading_asset = &it->loading_asset;
-    loading_asset->path_hash = FNV(file_path.string());
+    loading_asset->path_hash = hash;
     state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
 
     CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
@@ -122,12 +178,18 @@ namespace other {
         auto it = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
         OTHER_ASSERT(it != asset_pipelines.end(), "Loaded asset not found in asset pipelines");
         CORE_LOG_DEBUG("Asset load completion handler triggered for asset ID: {}", id);
+        if (it->on_complete) {
+          it->on_complete(&it->loading_asset);
+        }
         on_asset_loaded(&it->loading_asset);
       },
       [this, id = itr->loading_asset.id](const std::string& error_msg) {
         auto it = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
         OTHER_ASSERT(it != asset_pipelines.end(), "Failed asset not found in asset pipelines");
         CORE_LOG_DEBUG("Asset load failure handler triggered for asset ID: {}", id);
+        if (it->on_error) {
+          it->on_error(&it->loading_asset);
+        }
         on_asset_load_failed(&it->loading_asset, error_msg);
       }
     );
@@ -220,6 +282,8 @@ namespace other {
     pending_itr->pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
+    register_asset_in_filesystem(&itr.first->second);
+
     state_itr->second.handle_event(asset_event::LOAD_COMPLETED);
   }
 
@@ -271,6 +335,55 @@ namespace other {
     }
 
     return load_asset(file->absolute_path(), std::move(on_complete));
+  }
+
+  void asset_handler::register_asset_in_filesystem(const asset* asset_ptr) {
+    auto* fs = subsystem<file_system>::get();
+    if (fs == nullptr) {
+      return;
+    }
+
+    const filepath& asset_path = asset_ptr->path;
+    if (asset_path.empty()) {
+      return;
+    }
+
+    CORE_LOG_DEBUG("Registering asset in filesystem: {}", asset_path.string());
+    // filepath abs_asset_path = std::filesystem::absolute(asset_path);
+    std::string asset_path_str = asset_path.string();
+
+    for (const auto& mount_name : fs->mounted_names()) {
+      auto mount = fs->get_mount(mount_name);
+      if (mount == nullptr || mount->absolute_path().empty()) {
+        continue;
+      }
+
+      std::string mount_path_str = mount->absolute_path().string();
+      if (!asset_path_str.starts_with(mount_path_str)) {
+        continue;
+      }
+
+      std::string relative = asset_path_str.substr(mount_path_str.size());
+      if (!relative.empty() && (relative.front() == '/' || relative.front() == '\\')) {
+        relative = relative.substr(1);
+      }
+
+      register_file_in_mount(mount, mount_name, asset_path, relative);
+      return;
+    }
+
+    auto mount = fs->get_mount(default_mount);
+    if (mount == nullptr) {
+      mount = fs->mount_virtual(default_mount);
+    }
+
+    if (mount == nullptr) {
+      CORE_LOG_ERROR("Failed to get or create default mount '{}' for asset: {}", default_mount, asset_path.string());
+      return;
+    }
+
+    std::string relative = asset_path.parent_path().filename().string() + "/" + asset_path.filename().string();
+    register_file_in_mount(mount, default_mount, asset_path, relative);
   }
 
   asset_state asset_handler::get_asset_state_by_path_hash(natural_t path_hash) const {

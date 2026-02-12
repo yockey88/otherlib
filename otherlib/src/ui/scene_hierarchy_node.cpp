@@ -67,7 +67,7 @@ namespace other {
       ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::rgba_to_imvec4(colors::hierarchy::kBG));
 
       /// get num objects and calculate need height
-      ImVec2 size = ImVec2(0, ImGui::GetContentRegionAvail().y / 2.f);
+      ImVec2 size = ImVec2(0, ImGui::GetContentRegionAvail().y / 4.f);
       auto* active_scene = driver_ptr->get_active_scene();
       if (active_scene == nullptr) {
         if (!ImGui::BeginChild("##scene-hierarchy", size)) {

@@ -30,7 +30,7 @@ namespace other {
 
 OTHER_REFLECT(
   other::physics_component,
-  field(settings, other::attr::serializable())
+  field(settings, other::attr::serializable("Physics Settings"))
 )
 
 #endif  // OTHER_SCENE_OBJECT_PHYSICS_COMPONENT_HPP

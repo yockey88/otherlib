@@ -4,13 +4,19 @@
 #ifndef OTHERLIB_UI_INSPECTOR_WIDGETS_HPP
 #define OTHERLIB_UI_INSPECTOR_WIDGETS_HPP
 
+#include <string>
+#include <vector>
+
 #include "core/defines.hpp"
 
 #include "object/component.hpp"
 
+#include "asset/asset.hpp"
+
 namespace other {
 
   struct scene_object;
+  class asset_handler;
 
   namespace ui {
     namespace inspector {
@@ -78,72 +84,57 @@ namespace other {
       void begin_property_row(const std::string_view label, float label_width = kPropertyLabelWidth);
       void end_property_row();
 
-      //  Styled Input Fields (match theme reference field appearance)
-      /// single float with optional axis-colored left border
-      bool input_float_field(const char* id, float& value, float speed = 0.1f, const glm::vec4* axis_color = nullptr);
-
-      /// single int with optional axis-colored left border
-      bool input_int_field(const char* id, int32_t& value, const glm::vec4* axis_color = nullptr);
-
-      /// text input field
+      bool drag_float_field(const char* id, float& value, float speed = 0.1f, const glm::vec4* axis_color = nullptr);
+      bool drag_int8_field(const char* id, int8_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_uint8_field(const char* id, uint8_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_int16_field(const char* id, int16_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_uint16_field(const char* id, uint16_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_int32_field(const char* id, int32_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_uint32_field(const char* id, uint32_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_int64_field(const char* id, int64_t& value, const glm::vec4* axis_color = nullptr);
+      bool drag_uint64_field(const char* id, uint64_t& value, const glm::vec4* axis_color = nullptr);
       bool input_text_field(const char* id, char* buf, uint32_t buf_size);
-
-      /// read-only text display field
       void display_text_field(const char* id, const std::string_view text);
-
-      /// checkbox styled for inspector
       bool inspector_checkbox(const char* id, bool& value);
-
-      //  Compound property helpers
       bool property_mat4(const std::string_view label, glm::mat4& value, float speed);
       void property_mat4_readonly(const std::string_view label, const glm::mat4& value);
-
       bool property_mat3(const std::string_view label, glm::mat3& value, float speed);
       void property_mat3_readonly(const std::string_view label, const glm::mat3& value);
-
       bool property_vec4(const std::string_view label, glm::vec4& value, float speed);
       void property_vec4_readonly(const std::string_view label, const glm::vec4& value);
-
-      /// vec3 property: label + 3 axis-colored float fields
       bool property_vec3(const std::string_view label, glm::vec3& value, float speed = 0.1f);
       void property_vec3_readonly(const std::string_view label, const glm::vec3& value);
-
-      /// vec2 property: label + 2 axis-colored float fields
       bool property_vec2(const std::string_view label, glm::vec2& value, float speed = 0.1f);
       void property_vec2_readonly(const std::string_view label, const glm::vec2& value);
-
-      /// single float property
       bool property_float(const std::string_view label, float& value, float speed = 0.1f);
-
-      /// single int property
-      bool property_int(const std::string_view label, int32_t& value);
-
-      /// bool property
+      bool property_int8(const std::string_view label, int8_t& value);
+      bool property_uint8(const std::string_view label, uint8_t& value);
+      bool property_int16(const std::string_view label, int16_t& value);
+      bool property_uint16(const std::string_view label, uint16_t& value);
+      bool property_int32(const std::string_view label, int32_t& value);
+      bool property_uint32(const std::string_view label, uint32_t& value);
+      bool property_int64(const std::string_view label, int64_t& value);
+      bool property_uint64(const std::string_view label, uint64_t& value);
       bool property_bool(const std::string_view label, bool& value);
-
-      /// text property
       bool property_text(const std::string_view label, char* buf, uint32_t buf_size);
-
-      /// read-only display property (e.g. asset references)
       void property_display(const std::string_view label, const std::string_view value_text, const glm::vec4& text_color = glm::vec4(0));
 
-      //  Asset Slot
-      //  Shows an asset reference field with colored border based on state.
-      //  Returns true if a new asset was assigned (via text input for now).
+      //  asset reference field with colored border based on state.
       enum class asset_slot_state : uint32_t {
-        empty = 0,
-        filled,
-        invalid,
-        drag_hover,
+        EMPTY = 0,
+        DRAG_HOVER,
+        LOADING,
+        FILLED,
+        INVALID,
       };
 
       void draw_asset_slot(const std::string_view label, const std::string_view asset_name, asset_slot_state state);
 
-      //  Add Component Button
-      //  Full-width accent-colored button at the bottom of the inspector.
+      /// returns id if an asset is dropped into the slot, or nullopt if no drop occurred
+      opt<natural_t> property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const asset::type field_asset_type, asset_handler* handler = nullptr);
+
       bool draw_add_component_button();
 
-      //  Empty State
       void draw_no_selection_message();
       void draw_multi_selection_message(uint32_t count);
 

@@ -30,9 +30,10 @@ namespace other {
 
     struct serializable : refl::attr::usage::field {
       std::string_view display_name;
+      bool editable = true;
       serializable() = default;
-      constexpr serializable(const std::string_view display_name)
-          : display_name(std::move(display_name)) {}
+      explicit constexpr serializable(const std::string_view display_name, bool editable = true)
+          : display_name(std::move(display_name)), editable(editable) {}
     };
 
   }  // namespace attr

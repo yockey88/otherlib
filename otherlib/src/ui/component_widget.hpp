@@ -4,6 +4,7 @@
 #ifndef OTHERLIB_UI_COMPONENT_WIDGET_HPP
 #define OTHERLIB_UI_COMPONENT_WIDGET_HPP
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -11,11 +12,16 @@
 #include "serialization/reflection.hpp"
 
 #include "renderer/ui/colors.hpp"
+#include "script/script_object.hpp"
 
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
 
+#include "driver/driver.hpp"
 #include "ui/inspector_widgets.hpp"
+
+#include "asset/asset.hpp"
+#include "asset/asset_handler.hpp"
 
 namespace other {
 
@@ -24,67 +30,6 @@ namespace other {
 
   namespace ui {
 
-    // template <typename T>
-    // struct component_widget {
-    //   bool operator()(const std::string_view name, T& component, scene* active_scene, scene_object* object) {
-    //     bool changed = false;
-    //     for_each(refl::reflect(component).members, [&](const auto& field) {
-    //       std::string field_name = std::string{ field.name };
-    //       changed |= draw_field(field_name, field(component), active_scene, object);
-    //     });
-    //     return changed;
-    //   }
-
-    //   template <typename FT>
-    //   bool draw_field(const std::string_view field_name, FT& field_value, scene* active_scene, scene_object* object) {
-    //     {
-    //       scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextValueType));
-    //       ImGui::Text("%s:", field_name.data());
-    //     }
-
-    //     /// \todo fix this
-    //     bool changed = false;
-    //     if constexpr (requires {
-    //                     property_ui<FT>{}(std::declval<const std::string&>(), std::declval<FT&>(), active_scene, object);
-    //                   }) {
-    //       std::string unique_field_name = std::string(field_name);
-    //       changed = property_ui<FT>{}(unique_field_name, field_value, active_scene, object);
-    //     } else if constexpr (reflected_type<FT>) {
-    //       for_each(refl::reflect(field_value).members, [&](const auto& sub_field) {
-    //         std::string sub_field_name = std::string{ sub_field.name };
-    //         changed |= draw_field(sub_field_name, sub_field(field_value), active_scene, object);
-    //       });
-    //     }
-    //     /// check if overriden the special draw template
-    //     else {
-    //       shift_cursor_x(10.f);
-
-    //       if constexpr (std::is_same_v<FT, bool>) {
-    //         changed = ImGui::Checkbox(("##" + std::string{ field_name } + "_bool").c_str(), &field_value);
-    //       } else if constexpr (std::is_integral_v<FT>) {
-    //         if constexpr (sizeof(FT) <= sizeof(int)) {
-    //           changed = ImGui::DragInt(("##" + std::string{ field_name } + "_int").c_str(), reinterpret_cast<int*>(&field_value));
-    //         } else {
-    //           changed = ImGui::DragScalar(("##" + std::string{ field_name } + "_int64").c_str(), ImGuiDataType_S64, &field_value);
-    //         }
-    //       } else if constexpr (std::is_floating_point_v<FT>) {
-    //         if constexpr (std::same_as<FT, float>) {
-    //           changed = ImGui::DragFloat(("##" + std::string{ field_name } + "_float").c_str(), &field_value);
-    //         } else {
-    //           changed = ImGui::DragScalar(("##" + std::string{ field_name } + "_double").c_str(), ImGuiDataType_Double, &field_value);
-    //         }
-    //       }
-    //       // Fallback for unsupported types
-    //       else {
-    //         ImGui::Text("Unsupported type for field '%s'", field_name.data());
-    //       }
-    //       shift_cursor_x(-10.f);
-    //     }
-
-    //     return changed;
-    //   }
-    // };
-
     namespace detail {
 
       template <typename FT>
@@ -92,8 +37,35 @@ namespace other {
         property_ui<FT>{}(std::declval<const std::string&>(), std::declval<FT&>(), std::declval<scene*>(), std::declval<scene_object*>());
       };
 
+      inline bool is_asset_id_field(const std::string& field_name) {
+        return field_name.find("asset_id") != std::string::npos;
+      }
+
+      inline std::string asset_display_name_for_id(natural_t asset_id, const asset_handler* handler) {
+        if (asset_id == 0 || handler == nullptr) {
+          return "None";
+        }
+
+        const asset* a = handler->get_loaded_asset(asset_id);
+        if (a != nullptr) {
+          return a->path.filename().string();
+        }
+
+        asset_state state = handler->get_asset_state(asset_id);
+        if (state == asset_state::LOADING) {
+          return "Loading...";
+        }
+
+        return std::format("Asset #{}", asset_id);
+      }
+
       template <typename FT>
-      bool draw_inspector_field(const std::string& field_name, FT& field_value, scene* active_scene, scene_object* object, std::string display_name = "") {
+      // clang-format off
+      bool draw_inspector_field(const std::string& field_name, FT& field_value, asset::type asset_type, bool is_script,
+                                scene* active_scene, scene_object* object, asset_handler* handler = nullptr, driver* drvr = nullptr, 
+                                std::string display_name = "") {
+        // clang-format on
+        OTHER_ASSERT(drvr != nullptr, "Driver pointer is null in draw_inspector_field for field '{}'", field_name);
         bool changed = false;
 
         if (display_name.empty()) {
@@ -102,6 +74,49 @@ namespace other {
 
         if constexpr (has_property_ui<FT>) {
           changed = property_ui<FT>{}(field_name, field_value, active_scene, object);
+        } else if constexpr (std::is_same_v<FT, natural_t>) {
+          if (asset_type != asset::type::EMPTY) {
+            std::string asset_name = asset_display_name_for_id(field_value, handler);
+            opt<natural_t> dropped_id = inspector::property_asset_slot(display_name, field_value, asset_name, asset_type);
+            auto& asset_manager = drvr->get_asset_manager();
+
+            bool asset_dropped = dropped_id.has_value();
+
+            if (asset_dropped) {
+              CORE_LOG_DEBUG("Asset ID {} dropped into field '{}'", *dropped_id, field_name);
+              field_value = *dropped_id;
+              changed = true;
+            }
+
+            bool asset_exists = asset_dropped && asset_manager->asset_exists(*dropped_id);
+            bool asset_loaded = asset_exists && asset_manager->asset_loaded(*dropped_id);
+            if (asset_exists && !asset_loaded) {
+              inspector::property_display(display_name, "Asset is loading...", colors::kTextDisabled);
+              CORE_LOG_WARN("Asset ID {} exists but is still loading for field '{}'", *dropped_id, field_name);
+            } else if (asset_dropped) {
+              inspector::property_display(display_name, "Asset Does Not Exist", colors::kTextError);
+              CORE_LOG_ERROR("Asset ID {} dropped into field '{}' does not exist", *dropped_id, field_name);
+            }
+
+          } else {
+            natural_t ival = field_value;
+            if (inspector::property_uint64(display_name, ival)) {
+              field_value = static_cast<natural_t>(ival);
+              changed = true;
+            }
+          }
+        } else if constexpr (std::is_same_v<FT, integer_t>) {
+          if (is_script) {
+            /// \todo get script object, and list the attached behaviors
+            ///         need to be general enough for lua, dotnet, and eventually python and OtherScript,
+            //          which may have different concepts of what a "script object" is
+          } else {
+            integer_t ival = field_value;
+            if (inspector::property_int64(display_name, ival)) {
+              field_value = ival;
+              changed = true;
+            }
+          }
         } else if constexpr (std::is_same_v<FT, glm::vec3>) {
           changed = inspector::property_vec3(field_name, field_value);
         } else if constexpr (std::is_same_v<FT, glm::vec2>) {
@@ -117,10 +132,21 @@ namespace other {
           }
         } else if constexpr (std::is_same_v<FT, orthonormal_basis>) {
         } else if constexpr (reflected_type<FT>) {
-          /// 3. recursive reflected type — iterate sub-fields
-          for_each(refl::reflect(field_value).members, [&](const auto& sub_field) {
+          for_each(refl::reflect(field_value).members, [&](auto sub_field) {
             std::string sub_name = std::string{ sub_field.name };
-            changed |= draw_inspector_field(sub_name, sub_field(field_value), active_scene, object);
+
+            asset::type sub_asset_type = asset::type::EMPTY;
+            if constexpr (refl::descriptor::has_attribute<attr::asset_identifier_field>(sub_field)) {
+              auto& asset_id_attr = refl::descriptor::get_attribute<attr::asset_identifier_field>(sub_field);
+              asset_type = asset_id_attr.asset_type;
+            }
+
+            bool sub_is_script = false;
+            if constexpr (refl::descriptor::has_attribute<attr::script_object_field>(sub_field)) {
+              sub_is_script = true;
+            }
+
+            changed |= draw_inspector_field(sub_name, sub_field(field_value), sub_asset_type, sub_is_script, active_scene, object, handler, drvr);
           });
         } else if constexpr (std::is_same_v<FT, bool>) {
           changed = inspector::property_bool(field_name, field_value);
@@ -133,10 +159,18 @@ namespace other {
             changed = true;
           }
         } else if constexpr (std::is_integral_v<FT> && !std::is_same_v<FT, bool>) {
-          int32_t ival = static_cast<int32_t>(field_value);
-          if (inspector::property_int(field_name, ival)) {
-            field_value = static_cast<FT>(ival);
-            changed = true;
+          if (sizeof(FT) <= 4) {
+            int32_t ival = static_cast<int32_t>(field_value);
+            if (inspector::property_int32(field_name, ival)) {
+              field_value = static_cast<FT>(ival);
+              changed = true;
+            }
+          } else {
+            int64_t ival = static_cast<int64_t>(field_value);
+            if (inspector::property_int64(field_name, ival)) {
+              field_value = static_cast<FT>(ival);
+              changed = true;
+            }
           }
         } else if constexpr (std::is_same_v<FT, std::string>) {
           char buf[256];
@@ -158,7 +192,7 @@ namespace other {
 
     template <typename T>
     struct component_widget {
-      bool operator()(const std::string_view name, T& component, scene* active_scene, scene_object* object) {
+      bool operator()(const std::string_view name, T& component, scene* active_scene, scene_object* object, asset_handler* handler = nullptr, driver* drvr = nullptr) {
         bool changed = false;
         for_each(refl::reflect(component).members, [&](auto field) {
           std::string field_name = std::string{ field.name };
@@ -170,7 +204,22 @@ namespace other {
               display_name = std::string(serializable_attr.display_name);
             }
           }
-          changed |= detail::draw_inspector_field(field_name, field(component), active_scene, object, display_name);
+
+          asset::type asset_type = asset::type::EMPTY;
+          if constexpr (refl::descriptor::has_attribute<attr::asset_identifier_field>(field)) {
+            auto& asset_id_attr = refl::descriptor::get_attribute<attr::asset_identifier_field>(field);
+            asset_type = asset_id_attr.asset_type;
+          }
+
+          bool is_script_id = false;
+          if constexpr (refl::descriptor::has_attribute<attr::script_object_field>(field)) {
+            is_script_id = true;
+          }
+
+          // clang-format off
+          changed |= detail::draw_inspector_field(field_name, field(component), asset_type, is_script_id,
+                                                  active_scene, object, handler, drvr, display_name);
+          // clang-format on
         });
         return changed;
       }

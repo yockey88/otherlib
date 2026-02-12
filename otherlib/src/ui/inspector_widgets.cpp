@@ -3,9 +3,16 @@
  **/
 #include "ui/inspector_widgets.hpp"
 
+#include <string>
+
 #include "renderer/ui/colors.hpp"
 #include "renderer/ui/ui_helpers.hpp"
 #include "renderer/ui/unicode.hpp"
+
+#include "ui/asset_browser_widgets.hpp"
+
+#include "asset/asset_handler.hpp"
+#include "imgui.h"
 
 namespace other {
   namespace ui {
@@ -316,7 +323,7 @@ namespace other {
         }
       }
 
-      bool input_float_field(const char* id, float& value, float speed, const glm::vec4* axis_color) {
+      bool drag_float_field(const char* id, float& value, float speed, const glm::vec4* axis_color) {
         push_field_style(axis_color);
         bool changed = ImGui::DragFloat(id, &value, speed, 0.f, 0.f, "%.2f");
         if (axis_color) {
@@ -327,9 +334,86 @@ namespace other {
         return changed;
       }
 
-      bool input_int_field(const char* id, int32_t& value, const glm::vec4* axis_color) {
+      bool drag_int8_field(const char* id, int8_t& value, const glm::vec4* axis_color) {
         push_field_style(axis_color);
-        bool changed = ImGui::DragInt(id, &value, 1.f, 0, 0);
+        bool changed = ImGui::DragScalar(id, ImGuiDataType_S8, &value, 1.f, nullptr, nullptr);
+        if (axis_color) {
+          draw_axis_accent(*axis_color);
+        }
+        draw_focus_border_if_active();
+        pop_field_style();
+        return changed;
+      }
+
+      bool drag_uint8_field(const char* id, uint8_t& value, const glm::vec4* axis_color) {
+        push_field_style(axis_color);
+        bool changed = ImGui::DragScalar(id, ImGuiDataType_U8, &value, 1.f, nullptr, nullptr);
+        if (axis_color) {
+          draw_axis_accent(*axis_color);
+        }
+        draw_focus_border_if_active();
+        pop_field_style();
+        return changed;
+      }
+
+      bool drag_int16_field(const char* id, int16_t& value, const glm::vec4* axis_color) {
+        push_field_style(axis_color);
+        bool changed = ImGui::DragScalar(id, ImGuiDataType_S16, &value, 1.f, nullptr, nullptr);
+        if (axis_color) {
+          draw_axis_accent(*axis_color);
+        }
+        draw_focus_border_if_active();
+        pop_field_style();
+        return changed;
+      }
+
+      bool drag_uint16_field(const char* id, uint16_t& value, const glm::vec4* axis_color) {
+        push_field_style(axis_color);
+        bool changed = ImGui::DragScalar(id, ImGuiDataType_U16, &value, 1.f, nullptr, nullptr);
+        if (axis_color) {
+          draw_axis_accent(*axis_color);
+        }
+        draw_focus_border_if_active();
+        pop_field_style();
+        return changed;
+      }
+
+      bool drag_int32_field(const char* id, int32_t& value, const glm::vec4* axis_color) {
+        push_field_style(axis_color);
+        bool changed = ImGui::DragScalar(id, ImGuiDataType_S32, &value, 1.f, nullptr, nullptr);
+        if (axis_color) {
+          draw_axis_accent(*axis_color);
+        }
+        draw_focus_border_if_active();
+        pop_field_style();
+        return changed;
+      }
+
+      bool drag_uint32_field(const char* id, uint32_t& value, const glm::vec4* axis_color) {
+        push_field_style(axis_color);
+        bool changed = ImGui::DragScalar(id, ImGuiDataType_U32, &value, 1.f, nullptr, nullptr);
+        if (axis_color) {
+          draw_axis_accent(*axis_color);
+        }
+        draw_focus_border_if_active();
+        pop_field_style();
+        return changed;
+      }
+
+      bool drag_int64_field(const char* id, int64_t& value, const glm::vec4* axis_color) {
+        push_field_style(axis_color);
+        bool changed = ImGui::DragScalar(id, ImGuiDataType_S64, &value, 1.f, nullptr, nullptr);
+        if (axis_color) {
+          draw_axis_accent(*axis_color);
+        }
+        draw_focus_border_if_active();
+        pop_field_style();
+        return changed;
+      }
+
+      bool drag_uint64_field(const char* id, uint64_t& value, const glm::vec4* axis_color) {
+        push_field_style(axis_color);
+        bool changed = ImGui::DragScalar(id, ImGuiDataType_U64, &value, 1.f, nullptr, nullptr);
         if (axis_color) {
           draw_axis_accent(*axis_color);
         }
@@ -386,25 +470,25 @@ namespace other {
           ImGui::PushItemWidth(field_w);
           {
             std::string xid = std::format("##{}_x", label);
-            changed |= inspector::input_float_field(xid.c_str(), value.x, 0.1f, &colors::inspector::kVecFieldX);
+            changed |= inspector::drag_float_field(xid.c_str(), value.x, 0.1f, &colors::inspector::kVecFieldX);
           }
           ImGui::SameLine(0.f, inspector::kFieldGap);
           {
             std::string yid = std::format("##{}_y", label);
-            changed |= inspector::input_float_field(yid.c_str(), value.y, 0.1f, &colors::inspector::kVecFieldY);
+            changed |= inspector::drag_float_field(yid.c_str(), value.y, 0.1f, &colors::inspector::kVecFieldY);
           }
           if constexpr (N > 2) {
             ImGui::SameLine(0.f, inspector::kFieldGap);
             {
               std::string zid = std::format("##{}_z", label);
-              changed |= inspector::input_float_field(zid.c_str(), value.z, 0.1f, &colors::inspector::kVecFieldZ);
+              changed |= inspector::drag_float_field(zid.c_str(), value.z, 0.1f, &colors::inspector::kVecFieldZ);
             }
           }
           if constexpr (N > 3) {
             ImGui::SameLine(0.f, inspector::kFieldGap);
             {
               std::string wid = std::format("##{}_w", label);
-              changed |= inspector::input_float_field(wid.c_str(), value.w, 0.1f, &colors::inspector::kVecFieldW);
+              changed |= inspector::drag_float_field(wid.c_str(), value.w, 0.1f, &colors::inspector::kVecFieldW);
             }
           }
           ImGui::PopItemWidth();
@@ -548,15 +632,71 @@ namespace other {
       bool property_float(const std::string_view label, float& value, float speed) {
         begin_property_row(label);
         std::string id = std::format("##{}", label);
-        bool changed = input_float_field(id.c_str(), value, speed);
+        bool changed = drag_float_field(id.c_str(), value, speed);
         end_property_row();
         return changed;
       }
 
-      bool property_int(const std::string_view label, int32_t& value) {
+      bool property_int8(const std::string_view label, int8_t& value) {
         begin_property_row(label);
         std::string id = std::format("##{}", label);
-        bool changed = input_int_field(id.c_str(), value);
+        bool changed = drag_int8_field(id.c_str(), value, nullptr);
+        end_property_row();
+        return changed;
+      }
+
+      bool property_uint8(const std::string_view label, uint8_t& value) {
+        begin_property_row(label);
+        std::string id = std::format("##{}", label);
+        bool changed = drag_uint8_field(id.c_str(), value, nullptr);
+        end_property_row();
+        return changed;
+      }
+
+      bool property_int16(const std::string_view label, int16_t& value) {
+        begin_property_row(label);
+        std::string id = std::format("##{}", label);
+        bool changed = drag_int16_field(id.c_str(), value, nullptr);
+        end_property_row();
+        return changed;
+      }
+
+      bool property_uint16(const std::string_view label, uint16_t& value) {
+        begin_property_row(label);
+        std::string id = std::format("##{}", label);
+        bool changed = drag_uint16_field(id.c_str(), value, nullptr);
+        end_property_row();
+        return changed;
+      }
+
+      bool property_int32(const std::string_view label, int32_t& value) {
+        begin_property_row(label);
+        std::string id = std::format("##{}", label);
+        bool changed = drag_int32_field(id.c_str(), value, nullptr);
+        end_property_row();
+        return changed;
+      }
+
+      bool property_uint32(const std::string_view label, uint32_t& value) {
+        begin_property_row(label);
+        std::string id = std::format("##{}", label);
+        bool changed = drag_uint32_field(id.c_str(), value, nullptr);
+        end_property_row();
+        return changed;
+      }
+
+      bool property_int64(const std::string_view label, int64_t& value) {
+        begin_property_row(label);
+        std::string id = std::format("##{}", label);
+        bool changed = drag_int64_field(id.c_str(), value, nullptr);
+        end_property_row();
+        return changed;
+      }
+
+      bool property_uint64(const std::string_view label, uint64_t& value) {
+        begin_property_row(label);
+        std::string id = std::format("##{}", label);
+        bool changed = drag_uint64_field(id.c_str(), value, nullptr);
         end_property_row();
         return changed;
       }
@@ -591,7 +731,128 @@ namespace other {
         end_property_row();
       }
 
+      namespace detail {
+
+        glm::vec4 get_asset_slot_border_color(asset_slot_state state) {
+          switch (state) {
+            case asset_slot_state::EMPTY: return colors::scene_object::kAssetSlotEmpty;
+            case asset_slot_state::DRAG_HOVER: return colors::scene_object::kAssetSlotDragHover;
+            case asset_slot_state::FILLED: return colors::scene_object::kAssetSlotFilled;
+            case asset_slot_state::LOADING: return colors::scene_object::kAssetSlotLoading;
+            case asset_slot_state::INVALID:
+            default:
+              return colors::scene_object::kAssetSlotInvalid;
+          }
+        }
+
+      }  // namespace detail
+
       void draw_asset_slot(const std::string_view label, const std::string_view asset_name, asset_slot_state state) {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+
+        begin_property_row(label);
+
+        const glm::vec4 border_color = detail::get_asset_slot_border_color(state);
+
+        push_field_style();
+
+        std::string display = asset_name.empty() ? std::string("None") : std::string(asset_name);
+        std::string id = std::format("##{}_asset", label);
+
+        char buf[256];
+        std::strncpy(buf, display.c_str(), sizeof(buf));
+        buf[sizeof(buf) - 1] = '\0';
+        ImGui::BeginDisabled();
+        ImGui::InputText(id.c_str(), buf, sizeof(buf), ImGuiInputTextFlags_ReadOnly);
+        ImGui::EndDisabled();
+
+        ImVec2 item_min = ImGui::GetItemRectMin();
+        ImVec2 item_max = ImGui::GetItemRectMax();
+        dl->AddRect(item_min, item_max, colors::to_im_col(border_color), 3.f, 0, 2.f);
+
+        pop_field_style();
+
+        end_property_row();
+      }
+
+      opt<natural_t> property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const asset::type field_asset_type, asset_handler* handler) {
+        opt<natural_t> out_dropped_id = {};
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+
+        asset_slot_state state = (asset_id != 0) ?
+          asset_slot_state::FILLED :
+          asset_slot_state::EMPTY;
+        if (handler != nullptr && state == asset_slot_state::FILLED) {
+          state = handler->asset_exists(asset_id) ?
+            asset_slot_state::FILLED :
+            asset_slot_state::INVALID;
+        }
+        if (handler != nullptr && state == asset_slot_state::FILLED) {
+          state = handler->asset_loaded(asset_id) ?
+            asset_slot_state::FILLED :
+            asset_slot_state::LOADING;
+        }
+
+        begin_property_row(label);
+        push_field_style();
+
+        std::string display = current_asset_name.empty() ? "" : std::string(current_asset_name);
+        if (state == asset_slot_state::INVALID) {
+          display = "Invalid Asset";
+        }
+        std::string id = std::format("##{}_asset_slot", label);
+
+        char buf[256];
+        std::strncpy(buf, display.c_str(), sizeof(buf));
+        buf[sizeof(buf) - 1] = '\0';
+        ImGui::BeginDisabled();
+        ImGui::InputText(id.c_str(), buf, sizeof(buf), ImGuiInputTextFlags_ReadOnly);
+        ImGui::EndDisabled();
+
+        /// \todo this is bugged because we have to match model-sources to model slots and script sources
+        ///         to script slots and other weird mismatches. Need to come up with a cleaner way to handle
+        ///         convertible asset types.
+        ///       this also has to be built into a system than can convert compatible types
+        //          (model-source -> model is easy, but also model-source->animation, script-source -> script, etc..)
+
+        if (ImGui::BeginDragDropTarget()) {
+          const ImGuiPayload* hovering_payload = ImGui::AcceptDragDropPayload("OTHER_ASSET_DND", ImGuiDragDropFlags_AcceptPeekOnly);
+          const ImGuiPayload* dropped_payload = ImGui::AcceptDragDropPayload("OTHER_ASSET_DND");
+
+          std::vector<asset::type> acceptable_types = asset_handler::get_convertible_asset_types(field_asset_type);
+
+          if (hovering_payload != nullptr) {
+            OTHER_ASSERT(hovering_payload->Data != nullptr, "Expected asset drag-and-drop payload data");
+            const auto* data = static_cast<const asset_browser_w::asset_drag_drop_payload*>(hovering_payload->Data);
+            OTHER_ASSERT(data != nullptr, "Expected asset drag-and-drop payload data");
+
+            if (std::find(acceptable_types.begin(), acceptable_types.end(), data->asset_type) != acceptable_types.end()) {
+              state = asset_slot_state::DRAG_HOVER;
+            }
+          }
+
+          if (dropped_payload != nullptr) {
+            OTHER_ASSERT(dropped_payload->Data != nullptr, "Expected asset drag-and-drop payload data");
+            const auto* data = static_cast<const asset_browser_w::asset_drag_drop_payload*>(dropped_payload->Data);
+            OTHER_ASSERT(data != nullptr, "Expected asset drag-and-drop payload data");
+
+            if (std::find(acceptable_types.begin(), acceptable_types.end(), data->asset_type) != acceptable_types.end()) {
+              out_dropped_id = data->handler_asset_id;
+            }
+          }
+          ImGui::EndDragDropTarget();
+        }
+
+        const glm::vec4 border_color = detail::get_asset_slot_border_color(state);
+
+        ImVec2 item_min = ImGui::GetItemRectMin();
+        ImVec2 item_max = ImGui::GetItemRectMax();
+        dl->AddRect(item_min, item_max, colors::to_im_col(border_color), 3.f, 0, 2.f);
+
+        pop_field_style();
+        end_property_row();
+
+        return out_dropped_id;
       }
 
       bool draw_add_component_button() {

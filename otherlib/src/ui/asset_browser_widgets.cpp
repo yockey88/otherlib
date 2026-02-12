@@ -3,6 +3,7 @@
  **/
 #include "asset_browser_widgets.hpp"
 
+#include <cstring>
 #include <format>
 
 #include "renderer/ui/colors.hpp"
@@ -64,6 +65,21 @@ namespace other {
         return kCardMinWidth + zoom_normalized * (kCardMaxWidth - kCardMinWidth);
       }
 
+      asset::type map_ui_to_asset_type(asset_type type) {
+        switch (type) {
+          case asset_type::TEXTURE: return asset::TEXTURE;
+          case asset_type::MODEL_SOURCE: return asset::MODEL_SOURCE;
+          case asset_type::MODEL: return asset::MODEL;
+          case asset_type::ANIMATION: return asset::ANIMATION;
+          case asset_type::SCRIPT_SOURCE: return asset::SCRIPT_SOURCE;
+          case asset_type::SCRIPT: return asset::SCRIPT;
+          case asset_type::AUDIO: return asset::AUDIO;
+          case asset_type::SCENE: return asset::SCENE;
+          case asset_type::SCENE_OBJECT: return asset::SCENE_OBJECT;
+          default: return asset::EMPTY;
+        }
+      }
+
       int draw_breadcrumbs(const std::vector<breadcrumb_segment>& segments) {
         using namespace colors::asset_browser;
         int clicked = -1;
@@ -113,10 +129,6 @@ namespace other {
 
         return clicked;
       }
-
-      // ═══════════════════════════════════════════════════════════════════
-      //  draw_search_input
-      // ═══════════════════════════════════════════════════════════════════
 
       bool draw_search_input(char* buf, uint32_t buf_size, float width) {
         using namespace colors::asset_browser;
@@ -242,7 +254,9 @@ namespace other {
         x += 14.f;
 
         /// name
-        glm::vec4 name_col = is_selected ? kBreadcrumbCurrent : kBreadcrumbText;
+        glm::vec4 name_col = is_selected ?
+          kBreadcrumbCurrent :
+          kBreadcrumbText;
         dl->AddText({ x, text_y }, colors::to_im_col(name_col), node.name.c_str());
 
         if (clicked && node.has_children) {
@@ -251,10 +265,6 @@ namespace other {
 
         return clicked;
       }
-
-      // ═══════════════════════════════════════════════════════════════════
-      //  draw_asset_card
-      // ═══════════════════════════════════════════════════════════════════
 
       bool draw_asset_card(asset_card_desc& desc, float card_width) {
         using namespace colors::asset_browser;
@@ -270,6 +280,23 @@ namespace other {
         ImGui::PushID(desc.name.c_str());
         bool clicked = ImGui::InvisibleButton("##card", ImVec2(card_width, card_h));
         bool hovered = ImGui::IsItemHovered();
+
+        if (desc.type != asset_type::FOLDER &&
+            ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+          asset_drag_drop_payload payload{};
+          payload.handler_asset_id = desc.handler_asset_id;
+          payload.asset_type = map_ui_to_asset_type(desc.type);
+
+          ImGui::SetDragDropPayload(kDragDropPayloadType, &payload, sizeof(payload));
+
+          glm::vec4 sig = color_for_asset_type(desc.type);
+          ImGui::TextColored(ImVec4(sig.r, sig.g, sig.b, sig.a), "%s", badge_for_asset_type(desc.type));
+          ImGui::SameLine();
+          ImGui::TextUnformatted(desc.name.c_str());
+
+          ImGui::EndDragDropSource();
+        }
+
         ImGui::PopID();
 
         if (clicked) {
