@@ -11,6 +11,8 @@
 
 #include "serialization/reflection.hpp"
 
+#include "dotnet/native_string.hpp"
+
 namespace other {
 
   using nbool32 = uint32_t;
@@ -33,6 +35,7 @@ namespace other {
     BOOL_TYPE,
 
     POINTER_TYPE,
+    STRING_TYPE,
   };
 
   enum type_accessibility {
@@ -72,13 +75,20 @@ namespace other {
         return managed_type::DOUBLE_TYPE;
       } else if constexpr (std::same_as<TArg, bool>) {
         return managed_type::BOOL_TYPE;
+      } else if constexpr (std::is_same_v<TArg, native_string>) {
+        return managed_type::STRING_TYPE;
       } else {
         return managed_type::UNKNOWN_TYPE;
       }
     }
 
+    template <typename T>
+    concept dotnet_stringlike = std::same_as<T, native_string>;
+    template <typename T>
+    concept allowable_dotnet_arg = dotnet_stringlike<std::remove_cvref_t<T>> || !is_stringlike_type<std::remove_cvref_t<T>>;
+
     template <typename A, size_t I>
-      requires(!is_stringlike_type<std::remove_cvref_t<A>>)
+      requires allowable_dotnet_arg<A>
     inline void add_to_array_at_index(const void** args_arr, managed_type* param_types, A&& in_arg) {
       param_types[I] = get_managed_type<A>();
       if constexpr (std::is_pointer_v<std::remove_reference_t<A>>) {

@@ -106,7 +106,7 @@ namespace other {
 
   template <typename T>
   concept is_stringlike_type =
-    std::convertible_to<T, std::string> || std::convertible_to<T, std::string_view> ||
+    (std::convertible_to<T, std::string> || std::convertible_to<T, std::string_view>) ||
     std::convertible_to<T, const char*> ||
     std::convertible_to<T, char*>;
 
