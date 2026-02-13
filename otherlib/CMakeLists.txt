@@ -77,6 +77,7 @@ target_sources(otherlib
     src/ui/hierarchy_widgets.cpp
     src/ui/console_widgets.cpp
     src/ui/asset_browser_widgets.cpp
+    src/ui/script_property_widget.cpp
     src/ui/ui_widgets.cpp
     src/ui/node_editor_canvas_node.cpp
     src/ui/console_input_node.cpp

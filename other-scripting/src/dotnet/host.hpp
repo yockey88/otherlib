@@ -130,6 +130,15 @@ namespace other {
       /// GarbageCollector
       collect_garbage collect_garbage = nullptr;
       wait_for_pending_finalizers wait_for_pending_finalizers = nullptr;
+
+      /// BehaviorInterface
+      behavior_add add_behavior = nullptr;
+      behavior_remove remove_behavior = nullptr;
+      behavior_remove_all remove_all_behaviors = nullptr;
+      behavior_has has_behavior = nullptr;
+      behavior_get_count get_behavior_count = nullptr;
+      behavior_get_type_names get_behavior_type_names = nullptr;
+      behavior_destroy_handle destroy_behavior_handle = nullptr;
     };
 
     dotnet_host();

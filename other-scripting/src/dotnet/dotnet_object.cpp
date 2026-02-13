@@ -11,6 +11,7 @@
 
 #include "dotnet/host.hpp"
 #include "dotnet/native_string.hpp"
+#include "script/scripting_environment.hpp"
 
 namespace other {
 
@@ -63,6 +64,119 @@ namespace other {
 
       write_storage_to_field(itr, f.name());
     }
+  }
+
+  behavior_snapshot dotnet_object::get_behavior_snapshot() const {
+    // auto* env = subsystem<scripting_environment>::get();
+    // OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    // auto& fns = env->get_dotnet_host().interop();
+
+    // behavior_snapshot snapshot{};
+
+    // int32_t behavior_count = fns.get_behavior_count(managed_object);
+    // if (behavior_count <= 0) {
+    //   snapshot.valid = true;
+    //   return snapshot;
+    // }
+
+    // snapshot.behaviors.reserve(behavior_count);
+
+    // for (int32_t bi = 0; bi < behavior_count; ++bi) {
+    //   behavior_descriptor desc{};
+    //   desc.behavior_index = bi;
+
+    //   // type name
+    //   {
+    //     native_string name = fns.get_behavior_type_name(managed_object, bi);
+    //     desc.full_type_name = std::string(name);
+    //     native_string::free_str(name);
+    //   }
+
+    //   // display name
+    //   {
+    //     native_string name = fns.get_behavior_display_name(managed_object, bi);
+    //     desc.display_name = std::string(name);
+    //     native_string::free_str(name);
+    //   }
+
+    //   // fields
+    //   int32_t field_count = fns.get_behavior_field_count(managed_object, bi);
+    //   desc.fields.reserve(field_count);
+
+    //   for (int32_t fi = 0; fi < field_count; ++fi) {
+    //     behavior_field_descriptor field_desc{};
+    //     field_desc.field_index = fi;
+
+    //     // field name
+    //     {
+    //       native_string name = fns.get_behavior_field_name(managed_object, bi, fi);
+    //       field_desc.field_name = std::string(name);
+    //       native_string::free_str(name);
+    //     }
+
+    //     // display name
+    //     {
+    //       native_string name = fns.get_behavior_field_display_name(managed_object, bi, fi);
+    //       field_desc.display_name = std::string(name);
+    //       native_string::free_str(name);
+    //     }
+
+    //     // descriptor (type, flags, range)
+    //     {
+    //       native_behavior_field_descriptor native_desc{};
+    //       fns.get_behavior_field_descriptor(managed_object, bi, fi, &native_desc);
+    //       field_desc.type = static_cast<value_type>(native_desc.field_value_type);
+    //       field_desc.flags = static_cast<behavior_display_flags>(native_desc.flags);
+    //       field_desc.range_min = native_desc.range_min;
+    //       field_desc.range_max = native_desc.range_max;
+    //     }
+
+    //     // tooltip
+    //     if (has_flag(field_desc.flags, behavior_display_flags::has_tooltip)) {
+    //       native_string tip = fns.get_behavior_field_tooltip(managed_object, bi, fi);
+    //       field_desc.tooltip = std::string(tip);
+    //       native_string::free_str(tip);
+    //     }
+
+    //     // group name
+    //     if (has_flag(field_desc.flags, behavior_display_flags::is_group_start)) {
+    //       native_string group = fns.get_behavior_field_group_name(managed_object, bi, fi);
+    //       field_desc.group_name = std::string(group);
+    //       native_string::free_str(group);
+    //     }
+
+    //     desc.fields.push_back(std::move(field_desc));
+    //   }
+
+    //   snapshot.behaviors.push_back(std::move(desc));
+    // }
+
+    // snapshot.valid = true;
+    return {};
+  }
+
+  int32_t dotnet_object::read_behavior_field_value(int32_t behavior_index, int32_t field_index, void* out_data, int32_t buffer_size) {
+    if (managed_object == nullptr) {
+      return 0;
+    }
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    int32_t bytes_written = 0;
+    // env->get_dotnet_host().interop().get_behavior_field_value(managed_object, behavior_index, field_index, out_data, &bytes_written);
+    return bytes_written;
+  }
+
+  bool dotnet_object::write_field_value(int32_t behavior_index, int32_t field_index, void* in_data, int32_t data_size) {
+    if (managed_object == nullptr) {
+      return false;
+    }
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    // env->get_dotnet_host().interop().set_behavior_field_value(managed_object, behavior_index, field_index, in_data, data_size);
+    return true;
   }
 
   std::string dotnet_object::get_type_name() const {

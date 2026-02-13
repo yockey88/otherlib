@@ -15,9 +15,15 @@ namespace Other
       handle = new SceneObjectHandle(ObjectID);
     }
 
+    public T AddBehavior<T>() where T : Core.OtherBehavior, new()
+    {
+      T behavior = new T();
+      AddBehavior(behavior);
+      return behavior;
+    }
+
     public override void OnStart()
     {
-      
     }
 
     public override void OnStop()

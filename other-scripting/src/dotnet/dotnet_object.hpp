@@ -14,6 +14,7 @@
 #include "core/fnv.hpp"
 #include "core/value.hpp"
 
+#include "dotnet/behavior_descriptor.hpp"
 #include "dotnet/dotnet_field.hpp"
 #include "dotnet/dotnet_type.hpp"
 #include "dotnet/types.hpp"
@@ -30,6 +31,10 @@ namespace other {
 
     void load_fields();
     void write_fields();
+
+    behavior_snapshot get_behavior_snapshot() const;
+    int32_t read_behavior_field_value(int32_t behavior_index, int32_t field_index, void* out_data, int32_t buffer_size);
+    bool write_field_value(int32_t behavior_index, int32_t field_index, void* in_data, int32_t data_size);
 
     std::string get_type_name() const;
 

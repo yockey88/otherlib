@@ -22,6 +22,7 @@
 #include "driver/driver.hpp"
 #include "ui/component_widget.hpp"
 #include "ui/inspector_widgets.hpp"
+#include "ui/script_property_widget.hpp"
 
 #include "imgui.h"
 #include "inspector_widgets.hpp"

@@ -22,6 +22,7 @@ target_sources(OtherCsBindings PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-string.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/native-array.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/assembly-loader.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/behavior-interface.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/memory.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/interop/type-interface.cs
