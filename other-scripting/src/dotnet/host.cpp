@@ -294,6 +294,7 @@ namespace other {
     const char_t* type_interface_type_str = DNET_STR("OtherCsBindings.TypeInterface, OtherCsBindings");
     const char_t* managed_object_type_str = DNET_STR("OtherCsBindings.ManagedObject, OtherCsBindings");
     const char_t* garbage_collector_type_str = DNET_STR("OtherCsBindings.GarbageCollector, OtherCsBindings");
+    const char_t* behavior_interface_type_str = DNET_STR("OtherCsBindings.BehaviorInterface, OtherCsBindings");
 
     /// AssemblyLoader
     interop_functions.create_assembly_load_context = load_managed_function<create_assembly_load_context>(assembly_loader_type_str, DNET_STR("CreateAssemblyLoadContext"));
@@ -475,6 +476,28 @@ namespace other {
 
     interop_functions.wait_for_pending_finalizers = load_managed_function<wait_for_pending_finalizers>(garbage_collector_type_str, DNET_STR("WaitForPendingFinalizers"));
     OTHER_ASSERT(interop_functions.wait_for_pending_finalizers != nullptr, "Failed to load WaitForPendingFinalizers from managed assembly.");
+
+    /// BehaviorInterface
+    interop_functions.add_behavior = load_managed_function<behavior_add>(behavior_interface_type_str, DNET_STR("AddBehavior"));
+    OTHER_ASSERT(interop_functions.add_behavior != nullptr, "Failed to load AddBehavior from managed assembly.");
+
+    interop_functions.remove_behavior = load_managed_function<behavior_remove>(behavior_interface_type_str, DNET_STR("RemoveBehavior"));
+    OTHER_ASSERT(interop_functions.remove_behavior != nullptr, "Failed to load RemoveBehavior from managed assembly.");
+
+    interop_functions.remove_all_behaviors = load_managed_function<behavior_remove_all>(behavior_interface_type_str, DNET_STR("RemoveAllBehaviors"));
+    OTHER_ASSERT(interop_functions.remove_all_behaviors != nullptr, "Failed to load RemoveAllBehaviors from managed assembly.");
+
+    interop_functions.has_behavior = load_managed_function<behavior_has>(behavior_interface_type_str, DNET_STR("HasBehavior"));
+    OTHER_ASSERT(interop_functions.has_behavior != nullptr, "Failed to load HasBehavior from managed assembly.");
+
+    interop_functions.get_behavior_count = load_managed_function<behavior_get_count>(behavior_interface_type_str, DNET_STR("GetBehaviorCount"));
+    OTHER_ASSERT(interop_functions.get_behavior_count != nullptr, "Failed to load GetBehaviorCount from managed assembly.");
+
+    interop_functions.get_behavior_type_names = load_managed_function<behavior_get_type_names>(behavior_interface_type_str, DNET_STR("GetBehaviorTypeNames"));
+    OTHER_ASSERT(interop_functions.get_behavior_type_names != nullptr, "Failed to load GetBehaviorTypeNames from managed assembly.");
+
+    interop_functions.destroy_behavior_handle = load_managed_function<behavior_destroy_handle>(behavior_interface_type_str, DNET_STR("DestroyBehaviorHandle"));
+    OTHER_ASSERT(interop_functions.destroy_behavior_handle != nullptr, "Failed to load DestroyBehaviorHandle from managed assembly.");
   }
 
   void dotnet_host::bind_native_functions() {

@@ -51,6 +51,8 @@ namespace Other.Core
     }
 
     private List<OtherBehavior> behaviors;
+    public int BehaviorCount => behaviors.Count;
+
     public OtherObject(IntPtr native_handle, ObjectType type)
     {
       object_type = type;
@@ -72,13 +74,75 @@ namespace Other.Core
 
     public void RemoveBehavior(string class_name)
     {
-      behaviors.RemoveAll(b => b.GetType().Name == class_name);
+      for (int i = behaviors.Count - 1; i >= 0; i--)
+      {
+        if (behaviors[i].GetType().Name == class_name || behaviors[i].GetType().FullName == class_name)
+        {
+          behaviors[i].OnRemoveFromObject(this);
+          behaviors.RemoveAt(i);
+        }
+      }
     }
 
     public void RemoveBehavior(OtherBehavior behavior)
     {
       behavior.OnRemoveFromObject(this);
       behaviors.Remove(behavior);
+    }
+
+    public void RemoveAllBehaviors()
+    {
+      for (int i = behaviors.Count - 1; i >= 0; i--)
+      {
+        behaviors[i].OnRemoveFromObject(this);
+      }
+      behaviors.Clear();
+    }
+
+    public T GetBehavior<T>() where T : OtherBehavior
+    {
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        if (behaviors[i] is T typed)
+        {
+          return typed;
+        }
+      }
+      return null;
+    }
+
+    public bool HasBehavior<T>() where T : OtherBehavior
+    {
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        if (behaviors[i] is T)
+        {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    public bool HasBehavior(string class_name)
+    {
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        if (behaviors[i].GetType().Name == class_name || behaviors[i].GetType().FullName == class_name)
+        {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    public string[] GetBehaviorTypeNames()
+    {
+      string[] names = new string[behaviors.Count];
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        names[i] = behaviors[i].GetType().FullName;
+      }
+      return names;
     }
 
     public void SceneStart()
@@ -130,5 +194,7 @@ namespace Other.Core
     public abstract void OnUpdate();
     public abstract void OnLateUpdate();
     public abstract void OnFixedUpdate();
+
+    public virtual void OnDestroy() {}
   }
 }

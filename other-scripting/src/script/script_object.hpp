@@ -8,6 +8,9 @@
 
 #include "core/defines.hpp"
 
+#include "dotnet/behavior_descriptor.hpp"
+
+
 namespace other {
   namespace attr {
 
@@ -44,6 +47,8 @@ namespace other {
       integer_t script_object_id = -1;  ///< the script_object ID for this behavior in the pool
     };
     std::vector<behavior_handle> behavior_handles;
+
+    behavior_snapshot get_behavior_snapshot() const;
   };
 
 }  // namespace other
