@@ -165,6 +165,7 @@ namespace other {
     EXPECT_TRUE(handler->asset_loading(asset_id));
     EXPECT_FALSE(handler->asset_loaded(asset_id));
 
+    start_time = std::chrono::steady_clock::now();
     while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
