@@ -79,6 +79,9 @@ namespace other {
 
     static std::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
 
+    bool idle() const { return asset_pipelines.empty(); }
+    bool empty() const { return loaded_assets.empty() && idle(); }
+
     void purge_stores();
     void update_pipelines();
 
@@ -117,6 +120,7 @@ namespace other {
     asset_state get_asset_state(natural_t asset_id) const;
     asset_state get_asset_state_by_path_hash(natural_t path_hash) const;
     natural_t get_asset_hash(natural_t asset_id) const;
+    natural_t get_asset_id_by_path_hash(natural_t path_hash) const;
 
     const asset* get_loaded_asset(natural_t asset_id) const;
     std::vector<natural_t> get_all_tracked_ids() const;
@@ -144,6 +148,8 @@ namespace other {
       load_error_callback on_error = nullptr;
     };
     std::deque<pipeline_context> asset_pipelines;
+    std::queue<natural_t> successful_pipelines;
+    std::queue<natural_t> failed_pipelines;
 
     std::unordered_map<natural_t, asset> loaded_assets;
     std::unordered_map<natural_t, asset_state_machine> asset_states;
@@ -160,13 +166,16 @@ namespace other {
     friend struct detail::load_context;
     friend class asset_pipeline;
 
-    void on_asset_loaded(asset* asset_ptr);
-    void on_asset_load_failed(asset* asset_ptr, const std::string& error_message);
+    asset* find_asset_by_path(const filepath& file_path) const;
 
-    void on_asset_unloaded(asset* asset_ptr);
-    void on_asset_unload_failed(asset* asset_ptr, const std::string& error_message);
+    void on_asset_loaded(natural_t id);
+    void on_asset_load_failed(natural_t id, const std::string& error_message);
+
+    void on_asset_unloaded(natural_t id);
+    void on_asset_unload_failed(natural_t id, const std::string& error_message);
 
     void register_asset_in_filesystem(const asset* asset_ptr);
+    void unregister_asset_in_filesystem(const asset* asset_ptr);
   };
 
 }  // namespace other

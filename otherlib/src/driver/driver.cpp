@@ -187,6 +187,11 @@ namespace other {
       subsystem<input_system>::get()->finalize_frame();
 
       render();
+
+      /// \todo want to wait on asset unload for shutdown
+      // if (shutdown_state.asset_manager_shutdown && shutdown_state.network_thread_shutdown) {
+      //   process_driver_event(driver_event::DRIVER_EVENT_READY);
+      // }
     }
   }
 
@@ -405,8 +410,10 @@ namespace other {
     vm::update_device_timers(&core_device);
   }
 
-  natural_t driver::begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded) {
+  natural_t driver::begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    CORE_LOG_DEBUG("Loading asset at path: {}", asset_path.string());
+
     natural_t asset_id = asset_mgr->load_asset(asset_path, [this, asset_path](asset* asset_ptr) {
       OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null.");
 
@@ -414,14 +421,17 @@ namespace other {
         return entry.asset_id == asset_ptr->id;
       });
       OTHER_ASSERT(it != loading_asset_ids.end(), "Loading asset ID not found in tracking list.");
-      loading_asset_ids.erase(it);
+      CORE_LOG_DEBUG("Asset loaded callback for asset ID: {} @ path: {} (virtual path: {})", asset_ptr->id, asset_path.string(), asset_ptr->virtual_path);
 
+      loading_asset_ids.erase(it);
       get_event_system()->trigger_event("asset-browser.refresh");
     });
+
     loading_asset_ids.push_back({
       .asset_id = asset_id,
       .on_loaded = on_loaded,
     });
+
     return asset_id;
   }
 
@@ -1164,13 +1174,10 @@ namespace other {
   void driver::on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data) {
     CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
     net_context->net_thread->shutdown();
+    shutdown_state.network_thread_shutdown = true;
 
     on_shutdown_confirm();
     process_driver_event(driver_event::DRIVER_EVENT_READY);
-    /// \todo wait for pending stuff?
-    // if (asset_mgr->get_num_pending_unloads() == 0) {
-    // } else {
-    // }
   }
 
   void driver::on_timeout_shutdown_request_network_thread(message_header header) {

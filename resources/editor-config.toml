@@ -1,5 +1,5 @@
 [application]
-core-log-level = "debug"
+core-log-level = "info"
 core-log-file = "logs/editor.log"
 
 [rendering]

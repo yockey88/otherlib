@@ -24,4 +24,24 @@ namespace other {
     return extensions;
   }
 
+  std::string asset::get_filesystem_directory() const {
+    switch (asset_type) {
+      case asset::TEXTURE: return "textures";
+
+      case asset::MODEL_SOURCE:
+      case asset::MODEL:
+        return "models";
+
+      case asset::SCRIPT_SOURCE:
+      case asset::SCRIPT:
+        return "scripts";
+
+      case asset::AUDIO:
+        return "audio";
+
+      default:
+        return "other";
+    }
+  }
+
 }  // namespace other

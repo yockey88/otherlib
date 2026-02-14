@@ -41,6 +41,8 @@ namespace other {
     /// file access
     ref<file_handle> get_file(const std::string_view name) const;
     ref<file_handle> add_file(ref<file_handle> file);
+    void remove_file(const std::string_view name);
+    void remove_file_by_path(const filepath& path);
     bool has_file(const std::string_view name) const;
 
     /// find a file by name with optional extension filter

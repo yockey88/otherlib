@@ -85,7 +85,7 @@ namespace other {
     void execute_driver_command(const std::string& command);
     void driver_step_device();
 
-    natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded = nullptr);
+    natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
 
     scene* get_active_scene();
 
@@ -308,11 +308,21 @@ namespace other {
     void send_to_network_thread(message&& msg);
 
    private:
+    struct initialization_state {
+    };
+    struct shutdown_state {
+      bool network_thread_shutdown = false;
+      bool asset_manager_shutdown = false;
+    };
+
+    initialization_state init_state;
+    shutdown_state shutdown_state;
+
     friend class driver_interface;
     friend class driver_state_machine;
 
     struct loading_asset {
-      using handler = std::function<void(natural_t asset_id)>;
+      using handler = std::function<void(natural_t)>;
       natural_t asset_id = 0;
       handler on_loaded = nullptr;
     };

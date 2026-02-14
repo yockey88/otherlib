@@ -61,6 +61,23 @@ namespace other {
     return file;
   }
 
+  void directory::remove_file(const std::string_view name) {
+    natural_t hash = FNV(name);
+    auto it = file_handles.find(hash);
+    if (it != file_handles.end()) {
+      file_handles.erase(it);
+    }
+  }
+
+  void directory::remove_file_by_path(const filepath& path) {
+    for (auto it = file_handles.begin(); it != file_handles.end(); ++it) {
+      if (it->second->absolute_path() == path) {
+        file_handles.erase(it);
+        return;
+      }
+    }
+  }
+
   bool directory::has_file(const std::string_view name) const {
     return file_handles.find(FNV(name)) != file_handles.end();
   }

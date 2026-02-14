@@ -809,16 +809,9 @@ namespace other {
         ImGui::InputText(id.c_str(), buf, sizeof(buf), ImGuiInputTextFlags_ReadOnly);
         ImGui::EndDisabled();
 
-        /// \todo this is bugged because we have to match model-sources to model slots and script sources
-        ///         to script slots and other weird mismatches. Need to come up with a cleaner way to handle
-        ///         convertible asset types.
-        ///       this also has to be built into a system than can convert compatible types
-        //          (model-source -> model is easy, but also model-source->animation, script-source -> script, etc..)
-
         if (ImGui::BeginDragDropTarget()) {
-          const ImGuiPayload* hovering_payload = ImGui::AcceptDragDropPayload("OTHER_ASSET_DND", ImGuiDragDropFlags_AcceptPeekOnly);
-          const ImGuiPayload* dropped_payload = ImGui::AcceptDragDropPayload("OTHER_ASSET_DND");
-
+          const ImGuiPayload* hovering_payload = ImGui::AcceptDragDropPayload(asset_browser_w::kDragDropPayloadType, ImGuiDragDropFlags_AcceptPeekOnly);
+          const ImGuiPayload* dropped_payload = ImGui::AcceptDragDropPayload(asset_browser_w::kDragDropPayloadType);
           std::vector<asset::type> acceptable_types = asset_handler::get_convertible_asset_types(field_asset_type);
 
           if (hovering_payload != nullptr) {
@@ -827,6 +820,7 @@ namespace other {
             OTHER_ASSERT(data != nullptr, "Expected asset drag-and-drop payload data");
 
             if (std::find(acceptable_types.begin(), acceptable_types.end(), data->asset_type) != acceptable_types.end()) {
+              CORE_LOG_DEBUG("Accepting hovered asset id {} of type {}", data->handler_asset_id, data->asset_type);
               state = asset_slot_state::DRAG_HOVER;
             }
           }
@@ -837,6 +831,7 @@ namespace other {
             OTHER_ASSERT(data != nullptr, "Expected asset drag-and-drop payload data");
 
             if (std::find(acceptable_types.begin(), acceptable_types.end(), data->asset_type) != acceptable_types.end()) {
+              CORE_LOG_DEBUG("Dropped asset drag-and-drop payload detected: asset id {} of type {}", data->handler_asset_id, data->asset_type);
               out_dropped_id = data->handler_asset_id;
             }
           }

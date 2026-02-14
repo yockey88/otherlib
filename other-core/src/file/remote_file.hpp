@@ -23,7 +23,7 @@ namespace other {
     }
 
     remote_file(const std::string_view name, const std::string_view ext, const std::string_view url)
-        : file_handle(name, ext, file_type::REMOTE), remote_url(url) {}
+        : file_handle(name, ext, filepath(), std::string{ url }, file_type::REMOTE), remote_url(url) {}
 
     ~remote_file() override {
       close();
