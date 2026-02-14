@@ -44,6 +44,11 @@ namespace other {
       "/";
 #endif
 
+    /// parses both system and engine paths into its components
+    /// e.g. "assets://textures/grass.png" -> { "assets", "textures/grass.png", "grass.png" }
+    ///  or  "C:/path/to/file.txt" -> { "C", "path/to/file.txt", "file.txt" }
+    static resolved_path resolve_path(const std::string_view engine_path);
+
     ref<directory> mount_directory(const std::string_view mount_name, const filepath& path);
     ref<directory> mount_virtual(const std::string_view mount_name);
 
@@ -51,15 +56,15 @@ namespace other {
 
     bool is_mounted(const std::string_view mount_name) const;
 
+    ref<file_handle> get_file(const std::string_view engine_path) const;
+
     std::vector<std::string> mounted_names() const;
     ref<directory> get_mount(const std::string_view mount_name) const;
+    ref<directory> get_or_create_mount(const std::string_view mount_name, const filepath& path = "");
 
-    /// parses both system and engine paths into its components
-    /// e.g. "assets://textures/grass.png" -> { "assets", "textures/grass.png", "grass.png" }
-    ///  or  "C:/path/to/file.txt" -> { "C", "path/to/file.txt", "file.txt" }
-    static resolved_path resolve_path(const std::string_view engine_path);
-
+    bool path_exists(const std::string_view engine_path) const;
     bool file_exists(const std::string_view engine_path) const;
+    bool directory_exists(const std::string_view engine_path) const;
 
     ref<file_handle> find_file(const std::string_view name, const std::string_view ext = "") const;
     ref<file_handle> open(const std::string_view engine_path) const;

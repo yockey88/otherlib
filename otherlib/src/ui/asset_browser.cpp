@@ -56,6 +56,11 @@ namespace other {
         ImVec2 handle_max = { cursor.x + handle_w, cursor.y + avail.y };
 
         ImGui::SetCursorScreenPos(handle_min);
+
+        if (avail.y == 0.f) {
+          avail.y = 0.1f;
+        }
+
         ImGui::InvisibleButton("##cb-splitter", ImVec2(handle_w, avail.y));
         bool hovered = ImGui::IsItemHovered();
         bool active = ImGui::IsItemActive();

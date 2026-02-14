@@ -152,6 +152,7 @@ namespace other {
     std::queue<natural_t> failed_pipelines;
 
     std::unordered_map<natural_t, asset> loaded_assets;
+    std::unordered_map<natural_t, asset> unloaded_assets;
     std::unordered_map<natural_t, asset_state_machine> asset_states;
 
     std::queue<natural_t> pending_unloads;
@@ -169,10 +170,10 @@ namespace other {
     asset* find_asset_by_path(const filepath& file_path) const;
 
     void on_asset_loaded(natural_t id);
-    void on_asset_load_failed(natural_t id, const std::string& error_message);
+    void on_asset_load_failed(natural_t id);
 
     void on_asset_unloaded(natural_t id);
-    void on_asset_unload_failed(natural_t id, const std::string& error_message);
+    void on_asset_unload_failed(natural_t id);
 
     void register_asset_in_filesystem(const asset* asset_ptr);
     void unregister_asset_in_filesystem(const asset* asset_ptr);

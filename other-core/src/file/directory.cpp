@@ -32,8 +32,34 @@ namespace other {
     return child;
   }
 
+  ref<directory> directory::get_or_add_child_directory(const std::string_view name, const filepath& path) {
+    ref<directory> child = get_child_directory(name);
+    if (child != nullptr) {
+      return child;
+    }
+    return add_child_directory(name, path);
+  }
+
   bool directory::has_child_directory(const std::string_view name) const {
     return children.find(FNV(name)) != children.end();
+  }
+
+  bool directory::directory_exists(const std::string_view relative_path) const {
+    PROFILE_SECTION("directory::directory_exists");
+
+    auto components = split_path(relative_path);
+    const directory* current = this;
+
+    for (const auto& comp : components) {
+      ref<directory> child = current->get_child_directory(comp);
+      if (child == nullptr) {
+        return false;
+      }
+      /// we know this should stay in scope long enough
+      current = child.raw_ptr();
+    }
+
+    return true;
   }
 
   ref<file_handle> directory::get_file(const std::string_view name) const {

@@ -33,6 +33,8 @@ namespace other {
     void start_load(asio::thread_pool& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
     void start_unload(asio::thread_pool& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
 
+    std::string get_last_error() const { return error_message; }
+
     void poll();
 
     struct loading_table {
