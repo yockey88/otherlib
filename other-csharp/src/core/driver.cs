@@ -3,9 +3,6 @@ using OtherCsBindings;
 
 namespace Other.Core
 {
-  /// <summary>
-  /// Provides access to the application/driver state, configuration, and lifecycle.
-  /// </summary>
   public static class Application
   {
     [NativeFunction("DriverGetState")]
@@ -24,10 +21,6 @@ namespace Other.Core
     [NativeFunction("ConfigGetBool")]
     internal static unsafe delegate*<NativeString, NativeString, NativeBool32, NativeBool32> NativeConfigGetBool;
 
-    /// <summary>
-    /// Current driver state as an integer matching the native driver_state enum.
-    /// 0 = STOPPED, 1 = INITIALIZING, 2 = RUNNING, 3 = PAUSED, 4 = SHUTTING_DOWN
-    /// </summary>
     public static DriverState State
     {
       get { unsafe { return (DriverState)NativeGetState(); } }

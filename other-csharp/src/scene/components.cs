@@ -3,10 +3,6 @@ using OtherCsBindings;
 
 namespace Other.Core
 {
-  /// <summary>
-  /// Provides access to add, remove, and query components on scene objects by name.
-  /// Components are identified by their registered type name in the engine's type database.
-  /// </summary>
   public static class Components
   {
     [NativeFunction("ComponentAddByName")]
