@@ -32,8 +32,34 @@ namespace other {
     return child;
   }
 
+  ref<directory> directory::get_or_add_child_directory(const std::string_view name, const filepath& path) {
+    ref<directory> child = get_child_directory(name);
+    if (child != nullptr) {
+      return child;
+    }
+    return add_child_directory(name, path);
+  }
+
   bool directory::has_child_directory(const std::string_view name) const {
     return children.find(FNV(name)) != children.end();
+  }
+
+  bool directory::directory_exists(const std::string_view relative_path) const {
+    PROFILE_SECTION("directory::directory_exists");
+
+    auto components = split_path(relative_path);
+    const directory* current = this;
+
+    for (const auto& comp : components) {
+      ref<directory> child = current->get_child_directory(comp);
+      if (child == nullptr) {
+        return false;
+      }
+      /// we know this should stay in scope long enough
+      current = child.raw_ptr();
+    }
+
+    return true;
   }
 
   ref<file_handle> directory::get_file(const std::string_view name) const {
@@ -59,6 +85,23 @@ namespace other {
     file->parent = this;
     file_handles.insert({ hash, file });
     return file;
+  }
+
+  void directory::remove_file(const std::string_view name) {
+    natural_t hash = FNV(name);
+    auto it = file_handles.find(hash);
+    if (it != file_handles.end()) {
+      file_handles.erase(it);
+    }
+  }
+
+  void directory::remove_file_by_path(const filepath& path) {
+    for (auto it = file_handles.begin(); it != file_handles.end(); ++it) {
+      if (it->second->absolute_path() == path) {
+        file_handles.erase(it);
+        return;
+      }
+    }
   }
 
   bool directory::has_file(const std::string_view name) const {

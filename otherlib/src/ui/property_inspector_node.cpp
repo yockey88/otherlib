@@ -5,9 +5,12 @@
 
 #include <string>
 
+#include <imgui/imgui.h>
+
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
+#include "renderer/renderer_backend.hpp"
 #include "renderer/ui/colors.hpp"
 
 #include "object/animation_controller.hpp"
@@ -23,9 +26,6 @@
 #include "ui/component_widget.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/script_property_widget.hpp"
-
-#include "imgui.h"
-#include "inspector_widgets.hpp"
 
 IMGUI_REFLECT(glm::vec3, x, y, z);
 IMGUI_REFLECT(glm::quat, w, x, y, z);
@@ -87,7 +87,7 @@ namespace other {
     }
 
     template <typename T>
-    void property_inspector_node::draw_component_section(const std::string_view component_name, scene* active_scene, scene_object* object) {
+    void property_inspector_node::draw_component_section(const std::string_view component_name, scene* active_scene, scene_object* object, on_component_modified_fn<T> on_modified) {
       if (!active_scene->has_component<T>(object)) {
         return;
       }
@@ -115,14 +115,9 @@ namespace other {
       inspector::end_component_section();
 
       if (changed) {
-        CORE_LOG_DEBUG("Component '{}' on object ID {} marked as modified", component_name, object->id);
-        // if constexpr (std::is_same_v<T, render_component>) {
-        //   natural_t hash = handler->get_asset_hash(comp->model_asset_id);
-        //   ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
-        //   OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", comp->model_asset_id);
-
-        //   comp->obj_model = model_src->produce_model(std::format("{}:asset-model", object->name), comp->submesh_indices);
-        // }
+        if (on_modified != nullptr) {
+          on_modified(comp, object, active_scene, driver_ptr);
+        }
       }
 
       /// \todo flesh this out more, this could be it but it may be more complicated
@@ -163,7 +158,29 @@ namespace other {
         /// components
         draw_component_section<transform>("Transform", active_scene, &obj);
         draw_component_section<script_component>("Scripts", active_scene, &obj);
-        draw_component_section<render_component>("Graphics Object", active_scene, &obj);
+        draw_component_section<render_component>(
+          "Graphics Object", active_scene, &obj,
+          [](render_component* comp, scene_object* object, scene* active_scene, driver* drvr) {
+            natural_t new_asset_id = comp->model_asset_id;
+            auto& handler = drvr->get_asset_manager();
+            OTHER_ASSERT(handler != nullptr, "Asset handler is null in render_component on_modified callback");
+
+            auto* asset = handler->get_loaded_asset(new_asset_id);
+            OTHER_ASSERT(asset != nullptr, "Model asset ID {} not found in render_component on_modified callback", new_asset_id);
+            if (asset->asset_type == asset::type::MODEL_SOURCE) {
+              auto* renderer = subsystem<renderer_backend>::get();
+              OTHER_ASSERT(renderer != nullptr, "Renderer backend is null in render_component on_modified callback");
+              ref<model_source> model_src = renderer->get_model_source(asset->path_hash);
+              OTHER_ASSERT(model_src != nullptr, "Model source not found for asset ID {} in render_component on_modified callback", new_asset_id);
+
+              // comp->obj_model = model_src->produce_model(const std::string &name)
+
+            } else if (asset->asset_type == asset::type::MODEL) {
+            } else {
+              CORE_LOG_ERROR("Error: Asset ID {} is not a valid model or model source asset in render_component on_modified callback", new_asset_id);
+            }
+          }
+        );
         draw_component_section<camera_component>("Camera", active_scene, &obj);
         draw_component_section<physics_component>("Physics Body", active_scene, &obj);
         draw_component_section<light_component>("Lights", active_scene, &obj);

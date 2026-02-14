@@ -16,6 +16,12 @@ namespace other {
 
   class asset_pipeline {
    public:
+    using on_asset_loaded = std::function<void(asset*)>;
+    using on_asset_load_failed = std::function<void(asset*, const std::string&)>;
+
+    using on_load_success_fn = void (asset_pipeline::*)();
+    using on_load_failure_fn = void (asset_pipeline::*)(const std::string&);
+
     asset_pipeline(asset_handler* handler)
         : handler(handler) {
       OTHER_ASSERT(handler != nullptr, "Asset handler is null in asset_pipeline");
@@ -24,13 +30,15 @@ namespace other {
 
     static scope<asset_pipeline> get_asset_pipeline(asset::type type, asset_handler* handler);
 
-    void start_load(asio::thread_pool& execution_pool, asset* asset_ptr, std::function<void()> on_succes, std::function<void(const std::string&)> on_failure);
-    void start_unload(asio::thread_pool& execution_pool, asset* asset_ptr, std::function<void()> on_succes, std::function<void(const std::string&)> on_failure);
+    void start_load(asio::thread_pool& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
+    void start_unload(asio::thread_pool& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
+
+    std::string get_last_error() const { return error_message; }
 
     void poll();
 
     struct loading_table {
-      using loader_fn_t = std::function<void(asset*, std::function<void()>, std::function<void(const std::string&)>, void*)>;
+      using loader_fn_t = std::function<void(asset*, on_load_success_fn, on_load_failure_fn, void*)>;
       static std::array<loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> loaders;
       static std::array<loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> unloaders;
     };
@@ -48,7 +56,7 @@ namespace other {
 
     virtual void on_pipeline_poll() = 0;
 
-    void start_load_operation(asio::thread_pool& execution_pool, asset* asset_ptr, std::function<void()> on_succes, std::function<void(const std::string&)> on_failure, loading_table::loader_fn_t function);
+    void start_load_operation(asio::thread_pool& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure, loading_table::loader_fn_t function);
 
     void pipeline_finished();
     void pipeline_failed(const std::string& error_message);
@@ -72,8 +80,8 @@ namespace other {
 
     asset_handler* handler = nullptr;
 
-    std::function<void()> on_success_callback = nullptr;
-    std::function<void(const std::string&)> on_failure_callback = nullptr;
+    on_asset_loaded on_success_callback = nullptr;
+    on_asset_load_failed on_failure_callback = nullptr;
 
     void pipeline_complete(asset* asset_ptr);
     void pipeline_failed(asset* asset_ptr, const std::string& error_message);

@@ -41,11 +41,17 @@ namespace other {
     /// hash uses absolute path string to avoid issues with relative paths and different working directories
     natural_t path_hash = 0;
 
-    filepath path = "";
+    /// load path is the path passed to load_asset, may be relative or absolute,
+    filepath load_path = "";
+    /// virtual path is resolved via the filesystem mounts
+    ///  we use string to help avoid confusion since virtual_path is probably not a real filesystem path (although it can be)
+    std::string virtual_path = "";
     filepath absolute_path = "";
 
     static asset::type get_type_from_extension(const std::string_view extension);
     static std::vector<std::string> get_supported_extensions(asset::type asset_type);
+
+    std::string get_filesystem_directory() const;
   };
 
   namespace attr {

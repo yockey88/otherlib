@@ -16,14 +16,7 @@ namespace other {
     local_file() = default;
 
     local_file(const filepath& path)
-        : file_handle(
-            path.filename().stem().string(),
-            path.extension().string(),
-            file_type::LOCAL
-          ) {
-      abs_path = std::filesystem::absolute(path);
-      file_name = path.filename().string();
-    }
+        : file_handle(path.filename().stem().string(), path.extension().string(), std::filesystem::absolute(path), path.string(), file_type::LOCAL) {}
 
     ~local_file() override {
       close();

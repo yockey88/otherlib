@@ -13,7 +13,7 @@ namespace other {
   namespace ui {
 
     asset_editor::asset_editor(event_system& events, driver* driver_ptr, asset_editor_registry& registry, other::asset* asset_ptr)
-        : ui_window(events, asset_ptr ? asset_ptr->path.filename().string() : "Asset Editor", true, ImGuiWindowFlags_None),
+        : ui_window(events, asset_ptr ? asset_ptr->load_path.filename().string() : "Asset Editor", true, ImGuiWindowFlags_None),
           driver_ptr(driver_ptr),
           bound_asset(asset_ptr) {
       if (asset_ptr != nullptr) {

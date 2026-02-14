@@ -22,6 +22,7 @@ namespace other {
     bool visible = true;
 
     model obj_model;
+    natural_t last_model_asset_id = 0;
     natural_t model_asset_id = 0;
     std::vector<uint32_t> submesh_indices = {};
     gpu::graphics_material material = {};

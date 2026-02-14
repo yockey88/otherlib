@@ -629,12 +629,36 @@ namespace other {
         return;
       }
 
-      bool is_loaded = asset_handler->get_asset_state(render.model_asset_id) == asset_state::LOADED;
+      bool changed = render.last_model_asset_id != render.model_asset_id;
+      render.last_model_asset_id = render.model_asset_id;
+
+      if (changed) {
+        natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
+        CORE_LOG_INFO("Render component model asset ID changed for object ID {}. New asset hash: {}", handle.id, hash);
+
+        ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
+        if (model_src == nullptr) {
+          CORE_LOG_WARN("Model source is null for asset ID {} on object ID {}. Clearing model.", render.model_asset_id, handle.id);
+          render.obj_model = model{};
+          render.obj_model.source = nullptr;
+          return;
+        }
+
+        std::string obj_name = get_object(handle.id).name;
+        render.obj_model = model_src->produce_model(std::format("{}:asset-model", obj_name), render.submesh_indices);
+      }
+
+      bool is_loaded = asset_handler->asset_loaded(render.model_asset_id);
       if (!is_loaded) {
+        if (changed) {
+          render.obj_model = model{};
+          render.obj_model.source = nullptr;
+        }
         return;
       }
 
       if (render.obj_model.source == nullptr) {
+        CORE_LOG_INFO("Looking up model source for asset ID {}", render.model_asset_id);
         /// look up source with asset handler
 
         natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
@@ -646,11 +670,6 @@ namespace other {
       }
 
       model* draw_model = &render.obj_model;
-      const animation_controller* anim_ctrl = nullptr;
-      if (has_component<animation_controller>(handle.id)) {
-        anim_ctrl = get_component<animation_controller>(handle.id);
-      }
-
       const std::vector<submesh>& submeshes = draw_model->source->get_submeshes();
       OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
 

@@ -30,6 +30,16 @@ namespace other {
    public:
     virtual ~file_handle() = default;
 
+    inline std::string to_string() const {
+      return std::format(
+        "File Handle:\n - Type: {}\n - Name: {}\n - Absolute Path: {}\n - Virtual Path: {}",
+        handle_type,
+        file_name,
+        abs_path.string(),
+        virt_path
+      );
+    }
+
     inline const std::string& name() const { return file_name; }
     inline const std::string& extension() const { return file_extension; }
     inline const filepath& absolute_path() const { return abs_path; }
@@ -60,8 +70,8 @@ namespace other {
    protected:
     file_handle() = default;
 
-    file_handle(const std::string_view name, const std::string_view ext, file_type type)
-        : file_name(name), file_extension(ext), handle_type(type) {}
+    file_handle(const std::string_view name, const std::string_view ext, const filepath& abs_path, std::string virtual_path, file_type type)
+        : file_name(name), file_extension(ext), abs_path(abs_path), virt_path(std::move(virtual_path)), handle_type(type) {}
 
     std::string file_name;
     std::string file_extension;

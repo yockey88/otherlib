@@ -81,10 +81,10 @@ namespace other {
         std::string name;
         std::string meta;  ///< e.g. "2048×2048 · 4.2 MB"
         asset_type type = asset_type::UNKNOWN;
+
         ImTextureID thumbnail_id = 0;
         bool is_selected = false;
 
-        /// populated when the card represents a handler-tracked asset
         natural_t handler_asset_id = 0;
         std::string asset_path;
       };

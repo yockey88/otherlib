@@ -97,8 +97,8 @@ namespace other {
       ImGui::PopStyleColor();
 
       /// asset name (if available)
-      if (asset_ptr != nullptr && !asset_ptr->path.empty()) {
-        std::string name = asset_ptr->path.filename().string();
+      if (asset_ptr != nullptr && !asset_ptr->load_path.empty()) {
+        std::string name = asset_ptr->load_path.filename().string();
         ImVec2 badge_size = ImGui::CalcTextSize(badge);
         float name_x = badge_x + badge_size.x + 10.f;
 
@@ -148,9 +148,9 @@ namespace other {
       x += 10.f;
 
       /// asset name
-      if (asset_ptr != nullptr && !asset_ptr->path.empty()) {
-        std::string stem = asset_ptr->path.stem().string();
-        std::string ext = asset_ptr->path.extension().string();
+      if (asset_ptr != nullptr && !asset_ptr->load_path.empty()) {
+        std::string stem = asset_ptr->load_path.stem().string();
+        std::string ext = asset_ptr->load_path.extension().string();
 
         dl->AddText({ x, text_y }, to_im_col(kAccent), stem.c_str());
         x += ImGui::CalcTextSize(stem.c_str()).x;

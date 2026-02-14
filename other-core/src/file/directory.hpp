@@ -36,11 +36,15 @@ namespace other {
     /// child directory access
     ref<directory> get_child_directory(const std::string_view name) const;
     ref<directory> add_child_directory(const std::string_view name, const filepath& path);
+    ref<directory> get_or_add_child_directory(const std::string_view name, const filepath& path);
     bool has_child_directory(const std::string_view name) const;
+    bool directory_exists(const std::string_view relative_path) const;
 
     /// file access
     ref<file_handle> get_file(const std::string_view name) const;
     ref<file_handle> add_file(ref<file_handle> file);
+    void remove_file(const std::string_view name);
+    void remove_file_by_path(const filepath& path);
     bool has_file(const std::string_view name) const;
 
     /// find a file by name with optional extension filter

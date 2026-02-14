@@ -287,7 +287,7 @@ namespace other {
           payload.handler_asset_id = desc.handler_asset_id;
           payload.asset_type = map_ui_to_asset_type(desc.type);
 
-          ImGui::SetDragDropPayload(kDragDropPayloadType, &payload, sizeof(payload));
+          bool _ = ImGui::SetDragDropPayload(kDragDropPayloadType, &payload, sizeof(payload));
 
           glm::vec4 sig = color_for_asset_type(desc.type);
           ImGui::TextColored(ImVec4(sig.r, sig.g, sig.b, sig.a), "%s", badge_for_asset_type(desc.type));

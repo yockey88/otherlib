@@ -183,7 +183,11 @@ namespace other {
               auto sub_dirs = child->child_directories();
               auto sub_files = child->files();
               std::string meta = std::to_string(sub_dirs.size() + sub_files.size()) + " items";
-              assets.push_back({ child->name(), meta, cbw::asset_type::FOLDER });
+              assets.push_back({
+                .name = child->name(),
+                .meta = meta,
+                .type = cbw::asset_type::FOLDER,
+              });
             }
 
             for (const auto& file : target_dir->files()) {
@@ -199,14 +203,24 @@ namespace other {
               natural_t path_hash = FNV(file->absolute_path().string());
               fs_path_hashes.insert(path_hash);
 
+              natural_t handler_asset_id = 0;
               if (handler != nullptr) {
                 asset_state state = handler->get_asset_state_by_path_hash(path_hash);
                 if (state != asset_state::UNLOADED) {
                   meta += std::string(std::format("{}", unicode::kMiddleDot)) + asset_state_label(state);
                 }
+                handler_asset_id = handler->get_asset_id_by_path_hash(path_hash);
               }
 
-              assets.push_back({ file->name(), meta, ui_type, 0, false, 0, file->absolute_path().string() });
+              assets.push_back({
+                .name = file->name(),
+                .meta = meta,
+                .type = ui_type,
+                .thumbnail_id = 0,
+                .is_selected = false,
+                .handler_asset_id = handler_asset_id,
+                .asset_path = file->absolute_path().string(),
+              });
             }
           }
         }
@@ -383,20 +397,6 @@ namespace other {
             if (asset.type == cbw::asset_type::FOLDER) {
               navigate_to(current_path + "/" + asset.name);
             }
-          }
-
-          if (asset.type != cbw::asset_type::FOLDER &&
-              ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-            cbw::asset_drag_drop_payload payload{};
-
-            const std::string& ext = asset.name.substr(asset.name.find_last_of('.'));
-            payload.asset_type = other::asset::get_type_from_extension(ext);
-            payload.handler_asset_id = asset.handler_asset_id;
-            // CORE_LOG_DEBUG("Beginning drag of asset '{}', handler ID {}, type {}", asset.name, payload.handler_asset_id, payload.asset_type);
-
-            ImGui::SetDragDropPayload(cbw::kDragDropPayloadType, &payload, sizeof(payload));
-            ImGui::Text("%s", asset.name.c_str());
-            ImGui::EndDragDropSource();
           }
 
           ImGui::PopID();

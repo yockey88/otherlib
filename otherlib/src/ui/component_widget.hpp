@@ -48,7 +48,7 @@ namespace other {
 
         const asset* a = handler->get_loaded_asset(asset_id);
         if (a != nullptr) {
-          return a->path.filename().string();
+          return a->load_path.filename().string();
         }
 
         asset_state state = handler->get_asset_state(asset_id);
@@ -81,21 +81,12 @@ namespace other {
             auto& asset_manager = drvr->get_asset_manager();
 
             bool asset_dropped = dropped_id.has_value();
-
-            if (asset_dropped) {
-              CORE_LOG_DEBUG("Asset ID {} dropped into field '{}'", *dropped_id, field_name);
+            bool asset_exists = asset_dropped && asset_manager->asset_exists(*dropped_id);
+            if (asset_exists) {
               field_value = *dropped_id;
               changed = true;
-            }
-
-            bool asset_exists = asset_dropped && asset_manager->asset_exists(*dropped_id);
-            bool asset_loaded = asset_exists && asset_manager->asset_loaded(*dropped_id);
-            if (asset_exists && !asset_loaded) {
-              inspector::property_display(display_name, "Asset is loading...", colors::kTextDisabled);
-              CORE_LOG_WARN("Asset ID {} exists but is still loading for field '{}'", *dropped_id, field_name);
             } else if (asset_dropped) {
-              inspector::property_display(display_name, "Asset Does Not Exist", colors::kTextError);
-              CORE_LOG_ERROR("Asset ID {} dropped into field '{}' does not exist", *dropped_id, field_name);
+              CORE_LOG_ERROR("Dropped asset ID {} does not exist in asset manager for field '{}'", *dropped_id, field_name);
             }
 
           } else {
