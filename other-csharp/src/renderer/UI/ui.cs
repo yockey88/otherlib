@@ -568,9 +568,6 @@ namespace Other
     public static bool BeginDragDropTarget() { unsafe { return NativeBeginDragDropTarget(); } }
     public static void EndDragDropTarget() { unsafe { NativeEndDragDropTarget(); } }
 
-    /// <summary>
-    /// Helper: show tooltip on hover for the previous item.
-    /// </summary>
     public static void HelpMarker(string description)
     {
       if (IsItemHovered())

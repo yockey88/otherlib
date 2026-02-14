@@ -14,10 +14,6 @@ namespace Other
       }
     }
 
-    /// <summary>
-    /// Convenience accessor for the SceneObjectHandle of the parent SceneObject.
-    /// Provides access to transform, name, children, tags, etc.
-    /// </summary>
     public SceneObjectHandle Handle
     {
       get
@@ -26,9 +22,6 @@ namespace Other
       }
     }
 
-    /// <summary>
-    /// Convenience accessor for the transform of the parent SceneObject.
-    /// </summary>
     public Transform Transform
     {
       get

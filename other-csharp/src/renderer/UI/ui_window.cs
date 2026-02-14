@@ -5,19 +5,6 @@ using OtherCsBindings;
 
 namespace Other.Editor
 {
-  /// <summary>
-  /// Base class for custom windows. Subclass this to create dockable
-  /// UI panels in the Other editor, similar to how ui_window works in C++.
-  ///
-  /// Usage:
-  ///   public class MyInspector : UIWindow
-  ///   {
-  ///     public MyInspector() : base("My Inspector") { }
-  ///     protected override void OnRenderBody() { UI.Text("Hello from C#!"); }
-  ///   }
-  ///
-  /// Register windows with UIWindowRegistry.Register() during plugin init.
-  /// </summary>
   public abstract class UIWindow
   {
     private string title;

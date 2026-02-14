@@ -7,32 +7,9 @@ using System.Runtime.InteropServices;
 #nullable enable
 namespace OtherCsBindings
 {
-  /// <summary>
-  /// Generic interop interface for managing behaviors on managed objects.
-  /// 
-  /// This class has NO knowledge of OtherObject, Behavior, SceneObject, or any 
-  /// types in the OtherCs library. All operations are performed via reflection
-  /// against the managed object behind the GCHandle.
-  /// 
-  /// Expected contract on the target object (discovered via reflection):
-  ///   - Method: void AddBehavior({some_base_type} behavior)
-  ///   - Method: void RemoveBehavior(string class_name) 
-  ///   - Method: void RemoveAllBehaviors()
-  ///   - Property: int BehaviorCount { get; }
-  ///   - Method: bool HasBehavior(string class_name)
-  ///   - Method: string[] GetBehaviorTypeNames()
-  /// </summary>
   [InteropBinding("BehaviorInterface")]
   internal static class BehaviorInterface
   {
-    /// <summary>
-    /// Creates an instance of the specified behavior type and adds it to the 
-    /// parent managed object by invoking its "AddBehavior" method via reflection.
-    /// Returns a GCHandle (IntPtr) to the created behavior instance.
-    /// </summary>
-    /// <param name="parent_handle">GCHandle to the parent managed object</param>
-    /// <param name="behavior_type_name">Fully qualified or short type name of the behavior</param>
-    /// <returns>GCHandle to the created behavior, or IntPtr.Zero on failure</returns>
     [UnmanagedCallersOnly]
     internal static unsafe IntPtr AddBehavior(IntPtr parent_handle, NativeString behavior_type_name)
     {
@@ -95,10 +72,6 @@ namespace OtherCsBindings
       }
     }
 
-    /// <summary>
-    /// Removes a behavior from the parent managed object by type name,
-    /// invoking "RemoveBehavior(string)" via reflection.
-    /// </summary>
     [UnmanagedCallersOnly]
     internal static unsafe void RemoveBehavior(IntPtr parent_handle, NativeString behavior_type_name)
     {
@@ -138,10 +111,6 @@ namespace OtherCsBindings
       }
     }
 
-    /// <summary>
-    /// Removes all behaviors from the parent managed object by invoking 
-    /// "RemoveAllBehaviors()" via reflection.
-    /// </summary>
     [UnmanagedCallersOnly]
     internal static unsafe void RemoveAllBehaviors(IntPtr parent_handle)
     {
@@ -174,10 +143,6 @@ namespace OtherCsBindings
       }
     }
 
-    /// <summary>
-    /// Checks if the parent managed object has a behavior of the given type name
-    /// by invoking "HasBehavior(string)" via reflection.
-    /// </summary>
     [UnmanagedCallersOnly]
     internal static unsafe NativeBool32 HasBehavior(IntPtr parent_handle, NativeString behavior_type_name)
     {
@@ -198,10 +163,7 @@ namespace OtherCsBindings
         }
 
         Type parent_type = parent.GetType();
-        MethodInfo? has_method = parent_type.GetMethod("HasBehavior",
-          BindingFlags.Public | BindingFlags.Instance,
-          null, new Type[] { typeof(string) }, null);
-
+        MethodInfo? has_method = parent_type.GetMethod("HasBehavior", BindingFlags.Public | BindingFlags.Instance, null, new Type[] { typeof(string) }, null);
         if (has_method == null)
         {
           Logger.LogError($"BehaviorInterface.HasBehavior: could not find 'HasBehavior(string)' on type '{parent_type.FullName}'.");
@@ -218,10 +180,6 @@ namespace OtherCsBindings
       }
     }
 
-    /// <summary>
-    /// Returns the number of behaviors attached to the parent managed object
-    /// by reading the "BehaviorCount" property via reflection.
-    /// </summary>
     [UnmanagedCallersOnly]
     internal static unsafe Int32 GetBehaviorCount(IntPtr parent_handle)
     {
@@ -235,9 +193,7 @@ namespace OtherCsBindings
         }
 
         Type parent_type = parent.GetType();
-        PropertyInfo? count_prop = parent_type.GetProperty("BehaviorCount",
-          BindingFlags.Public | BindingFlags.Instance);
-
+        PropertyInfo? count_prop = parent_type.GetProperty("BehaviorCount", BindingFlags.Public | BindingFlags.Instance);
         if (count_prop == null)
         {
           Logger.LogError($"BehaviorInterface.GetBehaviorCount: could not find 'BehaviorCount' property on type '{parent_type.FullName}'.");
@@ -254,11 +210,6 @@ namespace OtherCsBindings
       }
     }
 
-    /// <summary>
-    /// Returns the type names of all behaviors attached to the parent managed 
-    /// object by invoking "GetBehaviorTypeNames()" via reflection.
-    /// Writes names into a pre-allocated native string array.
-    /// </summary>
     [UnmanagedCallersOnly]
     internal static unsafe void GetBehaviorTypeNames(IntPtr parent_handle, NativeString* out_names, Int32* out_count, Int32 max_count)
     {
@@ -273,10 +224,7 @@ namespace OtherCsBindings
         }
 
         Type parent_type = parent.GetType();
-        MethodInfo? get_names = parent_type.GetMethod("GetBehaviorTypeNames",
-          BindingFlags.Public | BindingFlags.Instance,
-          null, Type.EmptyTypes, null);
-
+        MethodInfo? get_names = parent_type.GetMethod("GetBehaviorTypeNames", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
         if (get_names == null)
         {
           Logger.LogError($"BehaviorInterface.GetBehaviorTypeNames: could not find 'GetBehaviorTypeNames()' on type '{parent_type.FullName}'.");

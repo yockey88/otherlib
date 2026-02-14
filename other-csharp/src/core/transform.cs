@@ -97,10 +97,6 @@ namespace Other
     }
 
     public Mat4 WorldMatrix => TransformAccess.GetWorldMatrix(object_id);
-
-    /// <summary>
-    /// Convenience: Set euler angles (degrees) for rotation.
-    /// </summary>
     public Vec3 EulerAngles
     {
       set
