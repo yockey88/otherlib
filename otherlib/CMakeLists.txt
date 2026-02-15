@@ -128,7 +128,7 @@ endforeach()
 target_link_directories(otherlib PUBLIC 
   $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/sol2/lib>
 )
-target_link_libraries(otherlib PUBLIC other_scene other_renderer other_physics other_scripting other_network other_core)
+target_link_libraries(otherlib PUBLIC other_scene other_audio other_renderer other_physics other_scripting other_network other_core)
 
 # if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
 #   target_link_libraries(otherlib PRIVATE nfd_d)

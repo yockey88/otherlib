@@ -18,6 +18,7 @@
 #include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
 
+#include "audio/audio_engine.hpp"
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
@@ -113,7 +114,10 @@ namespace other {
       bind_environment_scripts();
     }
 
+    subsystem<audio_engine>::get()->initialize();
     subsystem<input_system>::get()->initialize();
+
+    ///
     /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
     ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
 
@@ -135,6 +139,7 @@ namespace other {
       }
 
       subsystem<input_system>::get()->shutdown();
+      subsystem<audio_engine>::get()->shutdown();
       if (rendering_enabled) {
         subsystem<renderer_backend>::get()->unload_backend();
       }

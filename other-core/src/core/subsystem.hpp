@@ -109,6 +109,7 @@ namespace other {
 
    protected:
     subsystem() = default;
+    virtual ~subsystem() = default;
 
    private:
     static T* instance;

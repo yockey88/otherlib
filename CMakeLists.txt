@@ -126,6 +126,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
     # "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/debug"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/debug"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/debug"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/miniaudio/lib/debug"
   )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
   set(OTHER_LIBRARIES_PATH 
@@ -134,6 +135,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile
     # "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/release"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/release"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/release"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/miniaudio/lib/release"
   )
 endif()
   
@@ -183,6 +185,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/sol2/lua
   ${OTHER_EXTERN_DIR}/physx
   ${OTHER_EXTERN_DIR}/jolt
+  ${OTHER_EXTERN_DIR}/miniaudio
   ${IMGUI_INCLUDE_DIRS}
 )
 
@@ -217,6 +220,8 @@ add_subdirectory(other-scripting)
 add_subdirectory(other-csharp-interop)
 
 add_subdirectory(other-physics)
+
+add_subdirectory(other-audio)
 
 add_subdirectory(other-scene)
 add_subdirectory(other-csharp)
