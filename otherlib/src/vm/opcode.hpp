@@ -11,6 +11,34 @@ namespace other {
 
   struct other_command_device;
 
+  /**
+   * Opcode 32 bit integer format:
+   *  - Opcodes can have one of a few different forms depending on the category/type, but the general layout is as follows:
+   *   |-------------------------------|
+   *   | 2 bytes upper | 2 bytes lower |
+   *   |-------------------------------|
+   *
+   *  - The first 4 bits of the first upper byte (C) represent the opcode category (16 possible categories).
+   *  - The last 4 bits of the first upper byte (T) represent the opcode type within that category (16 possible types per category).
+   *  - the second upper byte (X) is often a register, but it can also be a small constant or half of a large constant or address
+   *  - the first lower byte (Y) is often a register, but it can also be a small constant or half of a large constant or address
+   *  - the second lower byte (Z) is often a register or small constant, but it can also be half of a large constant or address
+   *  - when the bytes are grouped as an address we refer to it as N (bytes), when they are grouped as a constant we refer to it as K (2 bytes),
+   *      and if it is a small constant then it is referred to by A (1 byte)
+   *
+   *   |-------------------------------|
+   *   | C | T |  X/A  |  Y/A  |  Z/A  |
+   *   |-------------------------------|
+   *
+   *   |-------------------------|
+   *   | C | T |  X  |   N/K     |
+   *   |-------------------------|
+   *
+   *   |-------------------------|
+   *   | C | T |   N/K    |   Z  |
+   *   |-------------------------|
+   **/
+
   struct instruction {
     constexpr static uint32_t kCategoryMask = 0xF0000000;
     constexpr static uint8_t kCategoryShift = 28;
@@ -93,41 +121,26 @@ namespace other {
   uint32_t opcode_set_upper(uint32_t opcode, uint16_t upper);
   uint32_t opcode_set_lower(uint32_t opcode, uint16_t lower);
 
-  enum opcode_base : uint32_t {
-    OPCODE_STOPDEV = 0x00000000,
-    OPCODE_DUMP = 0x01000000,
-    OPCODE_DUMPX = 0x02000000,
+  /// Opcode Tables:
+  //  0 - device control and debug operations
+  //  1 - load/store/logical operations
+  //  2 - program flow operations
+  //  3 - arithmetic operations
+  //  4 - scene table
+  //  5 - scene object table
+  //  6 - component table
+  //  7 -
+  //  8 -
+  //  9 -
+  //  A -
+  //  B -
+  //  C -
+  //  D -
+  //  E -
+  //  F -
 
-    OPCODE_WRITE_X_TO_MEM = 0x10000000,
-    OPCODE_LOAD_X_FROM_MEM = 0x11000000,
-    OPCODE_LOAD_X_DIRECT = 0x12000000,
-    OPCODE_INDIRECT_WRITE_X_TO_MEM = 0x13000000,
-    OPCODE_COMPARE_X_Y_SET_Z = 0x14000000,
-    OPCODE_COMPARE_GT_X_Y_SET_Z = 0x15000000,
-    OPCODE_COMPARE_LT_X_Y_SET_Z = 0x16000000,
-    OPCODE_X_AND_Y_SET_Z = 0x17000000,
-    OPCODE_X_OR_Y_SET_Z = 0x18000000,
-    OPCODE_X_XOR_Y_SET_Z = 0x19000000,
-    OPCODE_SHIFT_LEFT_X_BY_Y = 0x1A000000,
-    OPCODE_SHIFT_RIGHT_X_BY_Y = 0x1B000000,
-
-    OPCODE_GOTO = 0x20000000,
-    OPCODE_JUMP_IF_ZERO = 0x21000000,
-    OPCODE_JUMP_IF_NOT_ZERO = 0x22000000,
-    OPCODE_CALL_AT = 0x23000000,
-    OPCODE_RETURN = 0x24000000,
-    OPCODE_RETURN_VALUE_IN_X = 0x25000000,
-
-    OPCODE_ADD_X_Y_TO_X = 0x30000000,
-    OPCODE_SUB_X_Y_TO_X = 0x31000000,
-    OPCODE_MUL_X_Y_TO_X = 0x32000000,
-    OPCODE_DIV_X_Y_TO_X = 0x33000000,
-    OPCODE_MOD_X_Y_TO_X = 0x34000000,
-
-    OPCODE_LOAD_SCENE_WITH_ID_AT = 0x40000000,
-
-    OPCODE_INVALID = 0xFFFFFFFF,
-  };
+  /// Opcode Types:
+  //   - there is a maximum of 16 types per category, but not all categories use all 16 types, and some types are shared between categories
 
   /// 0 table (device control)
   /// 0x00000000
@@ -189,9 +202,13 @@ namespace other {
   /// 34xy0000
   uint32_t opcode_mod_x_y_to_x(uint8_t x, uint8_t y);
 
-  /// 4 table (core scene-control calls)
+  /// 4 table (scene)
   /// 4000nnnn
   uint32_t opcode_load_scene_with_id_at(uint16_t n);
+  /// 41000000
+  uint32_t opcode_play_scene();
+  /// 42000000
+  uint32_t opcode_stop_scene();
 
 }  // namespace other
 
