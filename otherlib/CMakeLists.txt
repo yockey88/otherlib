@@ -72,6 +72,7 @@ target_sources(otherlib
 
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp
+    src/tools/project_tool.cpp
 
     src/ui/inspector_widgets.cpp
     src/ui/hierarchy_widgets.cpp
