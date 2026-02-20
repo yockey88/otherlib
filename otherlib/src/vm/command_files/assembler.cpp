@@ -67,32 +67,32 @@ namespace other {
 
       natural_t instr_offset = 0;
       for (natural_t instr_idx = 0; instr_idx < code_section.instructions.size(); ++instr_idx) {
-        const auto& instr = code_section.instructions[instr_idx];
+        // const auto& instr = code_section.instructions[instr_idx];
 
-        unresolved_code_section::unresolved_instruction& unresolved_instr = unresolved_section.instructions.emplace_back();
-        unresolved_instr.opcode = raw_instruction::get_opcode(instr.category_and_type, instr.arguments);
-        unresolved_instr.arguments = instr.arguments;
+        // unresolved_code_section::unresolved_instruction& unresolved_instr = unresolved_section.instructions.emplace_back();
+        // unresolved_instr.opcode = raw_instruction::get_opcode(instr.category_and_type, instr.arguments);
+        // unresolved_instr.arguments = instr.arguments;
 
-        instruction i = unresolved_instr.opcode;
-        if (i.lower == 0xFFFF) {
-          for (natural_t arg_idx = 0; arg_idx < instr.arguments.size(); ++arg_idx) {
-            if (instr.arguments[arg_idx].type != TOKEN_TYPE_LABEL) {
-              continue;
-            }
+        // instruction i = unresolved_instr.opcode;
+        // if (i.lower == 0xFFFF) {
+        //   for (natural_t arg_idx = 0; arg_idx < instr.arguments.size(); ++arg_idx) {
+        //     if (instr.arguments[arg_idx].type != TOKEN_TYPE_LABEL) {
+        //       continue;
+        //     }
 
-            ocmd_assembled_code::unresolved_label& unresolved_lbl = label_usages.emplace_back();
-            unresolved_lbl.address = static_cast<uint16_t>(assembled_code.size());
-            unresolved_lbl.label_name = instr.arguments[arg_idx].raw_txt;
-          }
-        }
+        //     ocmd_assembled_code::unresolved_label& unresolved_lbl = label_usages.emplace_back();
+        //     unresolved_lbl.address = static_cast<uint16_t>(assembled_code.size());
+        //     unresolved_lbl.label_name = instr.arguments[arg_idx].raw_txt;
+        //   }
+        // }
 
-        unresolved_instr.section_offset = instr_offset;
-        instr_offset += other_command_device::kOpCodeSize;
+        // unresolved_instr.section_offset = instr_offset;
+        // instr_offset += other_command_device::kOpCodeSize;
 
-        const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&i.opcode);
-        assembled_code.append_range(std::span(bytes, other_command_device::kOpCodeSize));
-        offset += other_command_device::kOpCodeSize;
-        ++num_instructions;
+        // const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&i.opcode);
+        // assembled_code.append_range(std::span(bytes, other_command_device::kOpCodeSize));
+        // offset += other_command_device::kOpCodeSize;
+        // ++num_instructions;
       }
     }
 

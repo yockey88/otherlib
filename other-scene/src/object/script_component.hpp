@@ -58,8 +58,7 @@ namespace other {
 OTHER_REFLECT(
   other::script_component,
   field(script_object_id, other::attr::serializable("Script Object ID"), 
-                          other::attr::asset_identifier_field(other::asset::SCRIPT),
-                          other::attr::script_object_field())
+                          other::attr::asset_identifier_field(other::asset::SCRIPT))
 );
 // clang-format on
 

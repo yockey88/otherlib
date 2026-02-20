@@ -29,8 +29,8 @@ namespace other {
     uint32_t category_and_type = 0;
     std::vector<argument> arguments = {};
 
-    static uint32_t get_opcode(uint32_t category_and_type, const std::vector<argument>& arguments);
-    static std::vector<token> get_argument_tokens_for_instruction(const uint32_t category_and_type, const std::vector<token>& arg_tokens);
+    // static uint32_t get_opcode(uint32_t category_and_type, const std::vector<argument>& arguments);
+    // static std::vector<token> get_argument_tokens_for_instruction(const uint32_t category_and_type, const std::vector<token>& arg_tokens);
   };
 
   struct jump_label {

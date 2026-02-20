@@ -61,7 +61,7 @@ namespace other {
 
       template <typename FT>
       // clang-format off
-      bool draw_inspector_field(const std::string& field_name, FT& field_value, asset::type asset_type, bool is_script,
+      bool draw_inspector_field(const std::string& field_name, FT& field_value, asset::type asset_type, 
                                 scene* active_scene, scene_object* object, asset_handler* handler = nullptr, driver* drvr = nullptr, 
                                 std::string display_name = "") {
         // clang-format on
@@ -71,16 +71,13 @@ namespace other {
         if (display_name.empty()) {
           display_name = field_name;
         }
-
-        if constexpr (has_property_ui<FT>) {
-          changed = property_ui<FT>{}(field_name, field_value, active_scene, object);
-        } else if constexpr (std::is_same_v<FT, natural_t>) {
+        if constexpr (std::same_as<FT, natural_t> || std::same_as<FT, integer_t>) {
           if (asset_type != asset::type::EMPTY) {
             std::string asset_name = asset_display_name_for_id(field_value, handler);
             opt<natural_t> dropped_id = inspector::property_asset_slot(display_name, field_value, asset_name, asset_type);
             auto& asset_manager = drvr->get_asset_manager();
 
-            bool asset_dropped = dropped_id.has_value();
+            bool asset_dropped = dropped_id.has_value() && dropped_id.value() != field_value;
             bool asset_exists = asset_dropped && asset_manager->asset_exists(*dropped_id);
             if (asset_exists) {
               field_value = *dropped_id;
@@ -88,26 +85,17 @@ namespace other {
             } else if (asset_dropped) {
               CORE_LOG_ERROR("Dropped asset ID {} does not exist in asset manager for field '{}'", *dropped_id, field_name);
             }
-
           } else {
-            natural_t ival = field_value;
-            if (inspector::property_uint64(display_name, ival)) {
-              field_value = static_cast<natural_t>(ival);
-              changed = true;
+            if constexpr (std::is_same_v<FT, natural_t>) {
+              natural_t ival = field_value;
+              changed = inspector::property_uint64(display_name, ival);
+            } else if constexpr (std::is_same_v<FT, integer_t>) {
+              integer_t ival = field_value;
+              changed = inspector::property_int64(display_name, ival);
             }
           }
-        } else if constexpr (std::is_same_v<FT, integer_t>) {
-          if (is_script) {
-            /// \todo get script object, and list the attached behaviors
-            ///         need to be general enough for lua, dotnet, and eventually python and OtherScript,
-            //          which may have different concepts of what a "script object" is
-          } else {
-            integer_t ival = field_value;
-            if (inspector::property_int64(display_name, ival)) {
-              field_value = ival;
-              changed = true;
-            }
-          }
+        } else if constexpr (has_property_ui<FT>) {
+          changed = property_ui<FT>{}(field_name, field_value, active_scene, object);
         } else if constexpr (std::is_same_v<FT, glm::vec3>) {
           changed = inspector::property_vec3(field_name, field_value);
         } else if constexpr (std::is_same_v<FT, glm::vec2>) {
@@ -132,12 +120,7 @@ namespace other {
               asset_type = asset_id_attr.asset_type;
             }
 
-            bool sub_is_script = false;
-            if constexpr (refl::descriptor::has_attribute<attr::script_object_field>(sub_field)) {
-              sub_is_script = true;
-            }
-
-            changed |= draw_inspector_field(sub_name, sub_field(field_value), sub_asset_type, sub_is_script, active_scene, object, handler, drvr);
+            changed |= draw_inspector_field(sub_name, sub_field(field_value), sub_asset_type, active_scene, object, handler, drvr);
           });
         } else if constexpr (std::is_same_v<FT, bool>) {
           changed = inspector::property_bool(field_name, field_value);
@@ -202,13 +185,8 @@ namespace other {
             asset_type = asset_id_attr.asset_type;
           }
 
-          bool is_script_id = false;
-          if constexpr (refl::descriptor::has_attribute<attr::script_object_field>(field)) {
-            is_script_id = true;
-          }
-
           // clang-format off
-          changed |= detail::draw_inspector_field(field_name, field(component), asset_type, is_script_id,
+          changed |= detail::draw_inspector_field(field_name, field(component), asset_type, 
                                                   active_scene, object, handler, drvr, display_name);
           // clang-format on
         });
