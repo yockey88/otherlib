@@ -129,7 +129,7 @@ if __name__ == "__main__":
       # remove if installation folder exists, this only works locally for dev testing (and only on windows)
       if os.path.exists("C:/OtherEnvironment/"):
         shutil.rmtree("C:/OtherEnvironment/")
-      run_subprocess(["cmake", "-S", ".", "-B", "build"])
+      # run_subprocess(["cmake", "-S", ".", "-B", "build"])s
       run_subprocess(["cmake", "--build", "build", "--config", cfg])
       run_subprocess(["cmake", "--install", "build", "--config", cfg])
       print("Other Environment installed successfully.")

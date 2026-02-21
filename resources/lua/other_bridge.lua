@@ -31,7 +31,7 @@ local _scripts_directory = _Meta:scripts_directory_path()
 local _require_fmt_scripts_directory = _scripts_directory:gsub("/", "."):gsub("\\", ".")
 
 _Meta._base_require_directory = _require_fmt_scripts_directory
-function _Meta:get_script(name) return require(string.format("%s.%s", self._base_require_directory, name)) end
+function _Meta:get_script(name) return require(string.format("%s", name)) end
 function _Meta:do_file(path)
   local full_path = string.format("%s/%s", self:scripts_directory_path(), path)
   local chunk, err = loadfile(full_path)

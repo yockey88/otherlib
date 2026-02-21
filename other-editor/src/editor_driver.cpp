@@ -183,12 +183,6 @@ namespace other {
     }
   }
 
-  void editor_driver::update_initializing() {
-    using namespace std::string_literals;
-    // trigger_event("force-load-scene", "resources/scenes/scene1.lua"s);
-    // process_driver_event(driver_event::DRIVER_EVENT_READY);
-  }
-
   void editor_driver::on_input_event(const input_state_change_event& event) {
     if (event.action_name == "toggle_move_mode" && event.pressed) {
       auto* input_sys = subsystem<input_system>::get();

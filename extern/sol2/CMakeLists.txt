@@ -41,7 +41,7 @@ target_include_directories(sol2
 PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/sol>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lua>
-  $<INSTALL_INTERFACE:include/sol2>
+  $<INSTALL_INTERFACE:include/sol2/sol>
   $<INSTALL_INTERFACE:include/sol2/lua>
 )
 

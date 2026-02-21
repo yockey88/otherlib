@@ -72,6 +72,7 @@ target_sources(otherlib
 
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp
+    src/tools/project_tool.cpp
 
     src/ui/inspector_widgets.cpp
     src/ui/hierarchy_widgets.cpp
@@ -122,7 +123,11 @@ target_include_directories(otherlib
 )
 
 foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
-  target_include_directories(otherlib PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
+  target_include_directories(otherlib 
+    PUBLIC 
+      $<BUILD_INTERFACE:${extern_dir}>
+      $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>    
+  )
 endforeach()
 
 target_link_directories(otherlib PUBLIC 

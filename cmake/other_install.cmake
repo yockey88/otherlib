@@ -3,6 +3,8 @@ function(other_install_module TARGET_NAME MODULE_NAME)
   set(one_value_args HEADER_DIR)
   set(multi_value_args HEADER_PATTERNS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+
+  message(STATUS "[MODULE] ${TARGET_NAME} (${MODULE_NAME}) from ${ARG_HEADER_DIR} to ${OTHER_INSTALL_INCLUDEDIR}/${MODULE_NAME}")
   
   if(NOT ARG_HEADER_DIR)
     set(ARG_HEADER_DIR "src")
@@ -44,6 +46,8 @@ function(other_install_dependency TARGET_NAME HEADER_DIR)
   set(multi_value_args HEADER_PATTERNS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
   
+  message(STATUS "[DEPENDENCY] ${TARGET_NAME} from ${HEADER_DIR} to ${OTHER_INSTALL_INCLUDEDIR}/third_party/${TARGET_NAME}")
+
   if(NOT ARG_HEADER_PATTERNS)
     set(ARG_HEADER_PATTERNS "*.h" "*.hpp")
   endif()
@@ -73,6 +77,7 @@ function(other_install_external_headers LIB_NAME HEADER_DIR)
   set(one_value_args "")
   set(multi_value_args HEADER_PATTERNS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+  message(STATUS "[EXTERNAL HEADER] ${LIB_NAME} from ${HEADER_DIR} to ${OTHER_INSTALL_INCLUDEDIR}/extern/${LIB_NAME}")
   
   if(NOT ARG_HEADER_PATTERNS)
     set(ARG_HEADER_PATTERNS "*.h" "*.hpp" "*.inl" "*.hh" "*.ipp")
@@ -88,6 +93,7 @@ function(other_install_external_headers LIB_NAME HEADER_DIR)
 endfunction()
 
 function(other_install_csharp TARGET_NAME)
+  message(STATUS "[CSharp] ${TARGET_NAME} to ${OTHER_INSTALL_BINDIR}")
   install(
     TARGETS ${TARGET_NAME}
     LIBRARY DESTINATION "${OTHER_INSTALL_LIBDIR}"
@@ -100,11 +106,10 @@ function(other_install_external_library LIB_NAME LIB_BASE_PATH)
   set(options "")
   set(one_value_args "")
   set(multi_value_args FILE_PATTERNS)
+  set(ARG_FILE_PATTERNS "*.lib" "*.dll" "*.exp" "*.pdb")
+
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
-  
-  if(NOT ARG_FILE_PATTERNS)
-    set(ARG_FILE_PATTERNS "*.lib" "*.dll" "*.exp" "*.pdb")
-  endif()
+  message(STATUS "[EXTERNAL LIBRARY] ${LIB_NAME} from ${LIB_BASE_PATH} to ${OTHER_INSTALL_LIBDIR}")
   
   if(EXISTS "${LIB_BASE_PATH}/debug" AND EXISTS "${LIB_BASE_PATH}/release")
     ## Configuration-specific installation

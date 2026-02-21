@@ -5,14 +5,12 @@
 #define OTHER_RENDERER_GPU_RESOURCE_TEXTURE_HPP
 
 #include <glm/glm.hpp>
+#include <imgui/imgui.h>
 
 #include "math/definitions.hpp"
 #include "serialization/reflection.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
-
-#include "imgui.h"
-
 
 namespace other {
 

@@ -78,9 +78,11 @@ namespace other {
         std::println(std::cerr, "[ERROR]: Failed to load configuration file: '{}'", cmd.config_file);
         return -1;
       }
-
+      std::println(std::cout, "Loaded configuration from file: '{}'", cmd.config_file);
     } else if (!cmd.config_file.empty()) {
       std::println(std::cout, "[WARNING]: Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
+    } else {
+      std::println(std::cout, "No configuration file specified. Using default configuration.");
     }
 
     register_log_sinks(config);
@@ -94,9 +96,20 @@ namespace other {
     CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
 
     config.diagnostics.verbose = cmd.diagnostics.verbose;
-    const bool rendering_enabled = config.rendering_backend.has_value() && !config.rendering_backend->empty();
+
+    /// rendering.backend == "headless" is the same as rendering.force-no-window == true, we just check both for ease of use
+    bool rendering_enabled = true;
+    if ((config.rendering_backend.has_value() && config.rendering_backend.value() == "headless") || config.force_no_window) {
+      rendering_enabled = false;
+      config.rendering_backend = "headless";
+    }
+    /// default to opengl
+    else if (!config.rendering_backend.has_value()) {
+      config.rendering_backend = "opengl";
+    }
+
     /// if rendering is enabled and we are not forcing headless mode, load the rendering backend
-    if (rendering_enabled && !config.force_no_window) {
+    if (rendering_enabled) {
       PROFILE_SECTION("other::entry--initialize-renderer-backend");
       subsystem<renderer_backend>::get()->load_backend(config, config.rendering_backend.value(), config.window_size);
     }

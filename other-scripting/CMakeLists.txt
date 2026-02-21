@@ -37,9 +37,9 @@ set(LUA_LIB_DIRECTORY
   $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 
-message(STATUS "Python Include Directory: ${PYTHON_INCLUDE_DIR}")
-message(STATUS "Python Library Directory: ${PYTHON_LIB_DIR}")
-message(STATUS "Lua Library Directory: ${LUA_LIB_DIRECTORY}")
+# message(STATUS "Python Include Directory: ${PYTHON_INCLUDE_DIR}")
+# message(STATUS "Python Library Directory: ${PYTHON_LIB_DIR}")
+# message(STATUS "Lua Library Directory: ${LUA_LIB_DIRECTORY}")
 
 target_include_directories(other_scripting 
   PUBLIC 
