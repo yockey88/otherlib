@@ -21,6 +21,7 @@ namespace other {
 
       args::HelpFlag help(parser, "help", "Display this help message", { 'h', "help" });
       args::Flag verbose(parser, "verbose", "Enable verbose output", { 'v', "verbose" });
+      args::ValueFlag<std::string> cwd(parser, "working-directory", "Set the working directory for the application", { 'd', "cwd" });
       args::ValueFlag<integer_t> session_id(parser, "session-id", "Session ID to use when checking in with the server", { 's', "session-id", "sid" });
       args::ValueFlag<uint16_t> port(parser, "port", "Port to use to check in with the server, if not used, then check-in is attempted at port 49222", { 'p', "port" }, 49222);
 
@@ -54,12 +55,16 @@ namespace other {
       if (port) {
         cmd.port = port.Get();
       }
+      if (cwd) {
+        cmd.working_directory = cwd.Get();
+      }
 
       if (cmd.diagnostics.verbose) {
         std::println(std::cout, "Verbose output: {}", cmd.diagnostics.verbose ? "enabled" : "disabled");
         std::println(std::cout, "Using configuration file: '{}'", cmd.config_file);
         std::println(std::cout, "Session ID: {}", cmd.session_id.has_value() ? std::to_string(cmd.session_id.value()) : "not specified");
         std::println(std::cout, "Port: {}", cmd.port.value());
+        std::println(std::cout, "Working Directory: {}", cmd.working_directory.has_value() ? cmd.working_directory.value().string() : "not specified");
       }
 
       cmd.valid = true;

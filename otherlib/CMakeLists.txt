@@ -148,6 +148,15 @@ target_include_directories(otherlib_main PUBLIC
   $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
 )
 
+add_executable(otherlib_driver)
+target_sources(otherlib_driver PRIVATE src/other_main.cpp)
+target_compile_definitions(otherlib_driver PRIVATE OTHER_CLIENT)
+target_link_libraries(otherlib_driver PUBLIC otherlib)
+target_include_directories(otherlib_driver PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
+)
+
 other_install_module(otherlib "")
 install(
   TARGETS otherlib_main

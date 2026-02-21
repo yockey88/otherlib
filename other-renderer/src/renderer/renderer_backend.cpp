@@ -80,7 +80,7 @@ namespace other {
 
     std::string ui_ini_name = "resources/ui/default_ui_layout.ini";
     static std::string real_ini_name = config.get_value<std::string>("rendering.ui-layout-ini", ui_ini_name);
-    static std::string main_imgui_font = config.get_value<std::string>("rendering.imgui-font", "./resources/fonts/BlexMonoNerdFont-Regular.ttf");
+    static std::string main_imgui_font = config.get_value<std::string>("rendering.imgui-font", "${other-directory}/resources/fonts/BlexMonoNerdFont-Regular.ttf");
     {
       PROFILE_SECTION("renderer_backend::load-backend--imgui-init");
       IMGUI_CHECKVERSION();

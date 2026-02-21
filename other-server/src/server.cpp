@@ -76,6 +76,8 @@ namespace other {
   }
 
   void server::on_initialize_ui(scope<driver_ui>& ui_ptr) {
+    ///  \todo replace this function with UI that can be loaded from a file
+    ///         or attached through .NET scripts
     this->ui_ptr = make_scope<server_ui>(get_event_system(), project_cache);
   }
 

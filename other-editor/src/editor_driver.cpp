@@ -78,8 +78,6 @@ namespace other {
       // get_active_scene()->add_component<physics_component>(&my_obj, physics_component{ physics_body_settings{ .body_type = BODY_TYPE_DYNAMIC } });
       // get_active_scene()->add_component<physics_component>(&floor_obj, physics_component{ physics_body_settings{ .body_type = BODY_TYPE_STATIC } });
     });
-
-    process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {

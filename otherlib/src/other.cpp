@@ -25,13 +25,7 @@
 #include "scripting/dotnet_bindings.hpp"
 #include "scripting/lua_bindings.hpp"
 
-#ifndef OTHER_TEST_ENVIRONMENT
-/// if not test environment and this is not an other application then we define the extern main function for the static driver
-/// \todo: check if the other application is a dynamic driver and define other_main as the dynamic driver entry point (prototype sample in driver/development_driver_loader.cpp)
-  #ifndef OTHER_APPLICATION
 extern exit_code other_main(const command_line& cmd, const config_table& config);
-  #endif
-#endif
 
 #if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
   #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what())

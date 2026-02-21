@@ -26,8 +26,8 @@ namespace other {
     resource_handle screen_shader_handle;
 
     void on_prepare_frame(renderer::frame_resources* resources, render_data* data) override;
-    void create_resources() override;
-    void build_render_passes() override;
+    void create_resources(renderer* renderer_ptr) override;
+    void build_render_passes(renderer* renderer_ptr) override;
   };
 
 }  // namespace other

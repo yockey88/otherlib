@@ -27,8 +27,8 @@ namespace other {
     static config_table load_from_source(const std::string_view text);
 
     config_table() = default;
-    config_table(const config_table& other);
-    config_table& operator=(const config_table& other);
+    config_table(const config_table& other) = default;
+    config_table& operator=(const config_table& other) = default;
 
     ~config_table() = default;
 
@@ -48,7 +48,11 @@ namespace other {
       toml::node_view node = table.at_path(toml_path);
       if (!node) {
         CORE_LOG_TRACE("Config key '{}' not found, returning default value.", toml_path);
-        return default_value;
+        if constexpr (is_string_type<T>) {
+          return perform_tag_replacement(default_value);
+        } else {
+          return default_value;
+        }
       } else {
         CORE_LOG_TRACE("Found config key '{}'", toml_path);
       }
@@ -90,10 +94,16 @@ namespace other {
           }
         } else {
           CORE_LOG_WARN("Config key '{}' is not of the expected type, returning default value.", toml_path);
-          return default_value;
+          if constexpr (std::is_same_v<T, std::string>) {
+            return perform_tag_replacement(default_value);
+          } else {
+            return default_value;
+          }
         }
       }
     }
+
+    const toml::table* get_subtable(const std::string_view toml_path) const;
 
     bool valid = true;
     struct {

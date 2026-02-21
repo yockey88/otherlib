@@ -5,7 +5,7 @@
 
 namespace other {
 
-  void empty_pipeline::create_resources() {
+  void empty_pipeline::create_resources(renderer* renderer_ptr) {
     add_buffer_resource("camera_buffer", gpu_buffer::buf_type::UNIFORM_BUFFER, gpu_buffer::usage::DYNAMIC);
     add_buffer_resource("point_light_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
     add_buffer_resource("bone_buffer", gpu_buffer::buf_type::STORAGE_BUFFER, gpu_buffer::usage::DYNAMIC);
@@ -22,7 +22,7 @@ namespace other {
     set_camera_buffer("camera_buffer");
   }
 
-  void empty_pipeline::build_render_passes() {
+  void empty_pipeline::build_render_passes(renderer* renderer_ptr) {
   }
 
 }  // namespace other

@@ -43,8 +43,8 @@ namespace other {
    protected:
     virtual void on_prepare_frame(renderer::frame_resources* resources, render_data* data) {}
     virtual void on_render_frame(renderer* renderer_ptr, render_data* data) {}
-    virtual void create_resources() = 0;
-    virtual void build_render_passes() = 0;
+    virtual void create_resources(renderer* renderer_ptr) = 0;
+    virtual void build_render_passes(renderer* renderer_ptr) = 0;
     void destroy_resources();
 
     renderer* get_renderer() {

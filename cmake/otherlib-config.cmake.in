@@ -211,4 +211,4 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/otherlib-targets.cmake")
 
 ## Include helper macros for creating Other drivers/applications
-include("${CMAKE_CURRENT_LIST_DIR}/add_other_driver.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/other_driver.cmake")

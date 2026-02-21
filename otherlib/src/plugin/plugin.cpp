@@ -6,8 +6,11 @@
 #include "core/arena.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "file/filesystem.hpp"
+#include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
 
+#include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -62,8 +65,11 @@ namespace other {
     other_plugin_argv argv = {
       subsystem<arena>::get(),
       subsystem<logger>::get(),
-      subsystem<renderer_backend>::get(),
+      subsystem<file_system>::get(),
+      subsystem<input_system>::get(),
       subsystem<type_database>::get(),
+      subsystem<physics_environment>::get(),
+      subsystem<renderer_backend>::get(),
       subsystem<scripting_environment>::get()
     };
     CORE_LOG_DEBUG("Calling plugin binding function '{}' for plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);

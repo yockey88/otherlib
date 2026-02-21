@@ -40,6 +40,8 @@ namespace other {
     cmd_line = cmd;
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
 
+    driver_metadata = build_metadata();
+
     /// mount filesystem
     {
       auto* fs = subsystem<file_system>::get();
@@ -170,29 +172,29 @@ namespace other {
 
   void driver::run() {
     PROFILE_SECTION("driver::main_loop");
-    while (current_driver_state() != driver_state::DRIVER_STATE_STOPPED) {
+
+    CORE_LOG_DEBUG("Entering main driver loop");
+    do {
       update();
-      if (current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
-        break;
-      }
 
       switch (current_driver_state()) {
         case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
         case driver_state::DRIVER_STATE_RUNNING: update_running(); break;
         case driver_state::DRIVER_STATE_SHUTTING_DOWN: update_shutting_down(); break;
+        case driver_state::DRIVER_STATE_STOPPED: break;
         default:
           OTHER_ASSERT(false, "Driver in unknown state {}", current_driver_state());
           break;
       }
-      subsystem<input_system>::get()->finalize_frame();
 
+      subsystem<input_system>::get()->finalize_frame();
       render();
 
       /// \todo want to wait on asset unload for shutdown
       // if (shutdown_state.asset_manager_shutdown && shutdown_state.network_thread_shutdown) {
       //   process_driver_event(driver_event::DRIVER_EVENT_READY);
       // }
-    }
+    } while (current_driver_state() != driver_state::DRIVER_STATE_STOPPED);
   }
 
   void driver::shutdown() {
@@ -237,8 +239,8 @@ namespace other {
 
     /// if no path then run built-in driver/event loop with environment terminal
     if (driver_path.empty()) {
-      CORE_LOG_ERROR("No driver path specified, using default driver.");
-      return { nullptr, "" };
+      CORE_LOG_DEBUG("Creating static driver instance");
+      return { create_driver(&config), "" };
     }
     /// otherwise attempt to load the driver and run it
     else {
@@ -268,30 +270,35 @@ namespace other {
       driver* (*fn)(const config_table*) = sym.get_function<driver* (*)(const config_table*)>();
       driver_instance = fn(&config);
       CORE_LOG_DEBUG("Loaded driver [{}]", driver_name);
+
+      if (driver_instance == nullptr) {
+        CORE_LOG_ERROR("Failed to create driver instance from plugin '{}'", driver_path);
+        plugin::unload_plugin_library(driver_name);
+        return { nullptr, "" };
+      }
     }
 
+    driver_instance->dynamic = true;
     return { driver_instance, driver_name };
   }
 
   void driver::destroy(const std::string& name, driver* instance) {
     OTHER_ASSERT(instance != nullptr, "Cannot destroy a null driver instance.");
 
-    library_handle* lib_handle = plugin::get_plugin_library(name);
-    if (lib_handle == nullptr) {
-      CORE_LOG_ERROR("Failed to get plugin library: {}", name);
+    if (!instance->dynamic) {
+      CORE_LOG_DEBUG("Destroying driver instance.");
+      destroy_driver(instance);
       return;
     }
 
+    library_handle* lib_handle = plugin::get_plugin_library(name);
+    OTHER_ASSERT(lib_handle != nullptr, "Failed to get plugin library: {}", name);
+
     auto sym_res = lib_handle->get_symbol("destroy_driver");
-    if (!sym_res.has_value()) {
-      CORE_LOG_ERROR("Failed to get symbol 'destroy_driver' from plugin '{}'", name);
-      return;
-    }
+    OTHER_ASSERT(sym_res.has_value(), "Failed to get symbol 'destroy_driver' from plugin '{}'", name);
+
     symbol& sym = sym_res.value();
-    if (sym.address == nullptr) {
-      CORE_LOG_ERROR("Failed to load symbol 'destroy_driver' from plugin '{}'", name);
-      return;
-    }
+    OTHER_ASSERT(sym.address != nullptr, "Failed to load symbol 'destroy_driver' from plugin '{}'", name);
 
     CORE_LOG_DEBUG("calling 'destroy_driver' from plugin [{}]", name);
     sym.get_function<void (*)(driver*)>()(instance);
@@ -340,8 +347,7 @@ namespace other {
 
     live_coroutines.clear();
 
-    bool shutdown_immediately = net_context->net_thread == nullptr;
-    if (!shutdown_immediately) {
+    if (primary_role != NONE) {
       CORE_LOG_DEBUG("Sending shutdown request to network thread...");
       message msg;
       msg.header = {
@@ -355,7 +361,7 @@ namespace other {
     on_shutdown_request();
     process_driver_event(driver_event::DRIVER_EVENT_STOP);
 
-    if (shutdown_immediately) {
+    if (primary_role == NONE) {
       on_shutdown_confirm();
       process_driver_event(driver_event::DRIVER_EVENT_READY);
     }
@@ -601,7 +607,7 @@ namespace other {
 
     net_context->events = make_scope<event_system>(net_context->io_context);
 
-    bool force_disable_network = get_config_value<bool>("network-thread.force-disable", false);
+    bool force_disable_network = get_config_value<bool>("networking.force-disable", false);
     if (force_disable_network) {
       CORE_LOG_INFO("Network thread is disabled, skipping network initialization.");
       return;
@@ -645,8 +651,8 @@ namespace other {
 
   void driver::start_network() {
     /// now we kick off main networking session
-    bool force_disable_network = get_config_value<bool>("network-thread.force-disable", false);
-    bool network_thread_active = !force_disable_network && net_context->net_thread != nullptr;
+    bool force_disable_network = get_config_value<bool>("networking.force-disable", false);
+    bool network_thread_active = !force_disable_network;
 
     std::string role = get_config_value<std::string>("application.role", "client");
     if (role != "client" && role != "server") {
@@ -658,18 +664,10 @@ namespace other {
       primary_role = driver_role::CLIENT;
     } else if (role == "server") {
       primary_role = driver_role::SERVER;
-    } else {
-      CORE_LOG_ERROR("Unknown role! {}, defaulting to no network role.", role);
-      force_disable_network = true;
     }
 
     if (force_disable_network) {
       primary_role = driver_role::NONE;
-    }
-
-    if (primary_role == driver_role::NONE) {
-      CORE_LOG_WARN("Network thread is disabled, running in offline mode.");
-      return;
     }
 
     CORE_LOG_INFO("Network Role : [{}]", primary_role);
@@ -695,6 +693,8 @@ namespace other {
       listen_cmd.address = net_context->main_binding_point;
       msg.data.append_range(listen_cmd.as_buffer());
       send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(10), message_handler{ this, &driver::on_ack_session_listen_for_network_thread, &driver::on_timeout_session_listen_for_network_thread });
+    } else {
+      CORE_LOG_WARN("Network thread is disabled, running in offline mode.");
     }
   }
 
@@ -1091,6 +1091,26 @@ namespace other {
     }
   }
 
+  std::string driver::get_project_name() const {
+    return get_metadata().name;
+  }
+
+  std::string driver::get_project_description() const {
+    return get_metadata().description;
+  }
+
+  std::string driver::get_project_author() const {
+    return get_metadata().author;
+  }
+
+  std::string driver::get_project_version() const {
+    return get_metadata().version;
+  }
+
+  bool driver::should_auto_play_scenes() const {
+    return get_config_value<bool>("application.auto-play-loaded-scenes", true);
+  }
+
   void driver::handle_input_event(const input_state_change_event& event) {
     if (event.action_name.starts_with("focus-console-if-open")) {
       std::string event_name = "console.focus" + std::string(event.action_name.substr(std::strlen("focus-console-if-open")));
@@ -1219,7 +1239,8 @@ namespace other {
     /// force shutdown
     OTHER_ASSERT(net_context != nullptr, "Network context is null in driver.");
     OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is null in driver.");
-    CORE_LOG_WARN("Timeout waiting for network thread to acknowledge shutdown request, forcing shutdown...");
+    CORE_LOG_ERROR("Timeout waiting for network thread to acknowledge shutdown request");
+    CORE_LOG_ERROR("   Data may be corrupt from unclean shutdown");
     net_context->net_thread->force_shutdown();
     on_shutdown_confirm();
     process_driver_event(driver_event::DRIVER_EVENT_READY);
@@ -1235,6 +1256,11 @@ namespace other {
       /// if we connected (ack == 1) then we have to sychronize with remote
       active_scene->synchronized = (response.ack_nack == 0x00);
     }
+
+    /// server does this in @ref driver::on_ack_session_listen_for_network_thread
+    if (primary_role == driver_role::CLIENT) {
+      process_driver_event(driver_event::DRIVER_EVENT_READY);
+    }
   }
 
   void driver::on_timeout_session_connect_to(message_header header) {
@@ -1242,6 +1268,11 @@ namespace other {
     if (active_scene == nullptr) {
       /// there is no session so we cannot be synchronized
       active_scene->synchronized = true;
+    }
+
+    /// server does this in @ref driver::on_timeout_session_listen_for_network_thread
+    if (primary_role == driver_role::CLIENT) {
+      process_driver_event(driver_event::DRIVER_EVENT_READY);
     }
   }
 
@@ -1271,12 +1302,20 @@ namespace other {
 
       send_to_network_thread(std::move(msg));
     });
-    /// ready : initializing -> running
-    process_driver_event(driver_event::DRIVER_EVENT_READY);
+
+    /// client does this in @ref driver::on_ack_session_connect_to
+    if (primary_role == driver_role::SERVER) {
+      process_driver_event(driver_event::DRIVER_EVENT_READY);
+    }
   }
 
   void driver::on_timeout_session_listen_for_network_thread(message_header header) {
     CORE_LOG_WARN("Network thread timed out waiting for event request at session check in for session [{}]", header.id);
+
+    /// client does this in @ref driver::on_timeout_session_connect_to
+    if (primary_role == driver_role::SERVER) {
+      process_driver_event(driver_event::DRIVER_EVENT_READY);
+    }
   }
 
   void driver::handle_control_ping(message&& msg) {
@@ -1512,10 +1551,11 @@ namespace other {
   }
 
   scope<renderer> driver::get_renderer() const {
-    if (auto* rendering = subsystem<renderer_backend>::get(); !rendering->has_backend()) {
-      rendering->load_backend(configuration(), "opengl", { 1280, 720 });
+    if (!rendering_enabled()) {
+      OTHER_ASSERT(false, "Attempted to get renderer instance when rendering is disabled.");
+      return nullptr;
     }
-    return make_scope<renderer>();
+    return make_scope<renderer>(configuration());
   }
 
   ref<assembly> driver::load_dotnet_module(const std::string_view module_path) {
@@ -1801,6 +1841,29 @@ namespace other {
 
   void driver::send_to_network_thread(message&& msg) {
     net_context->net_thread_message_bus.send_message(std::move(msg));
+  }
+
+  driver::metadata driver::build_metadata() {
+    std::string name = get_config_value<std::string>("application.metadata.info.name", "Unnamed Application");
+    std::string description = get_config_value<std::string>("application.metadata.info.description", "No description provided.");
+    std::string author = get_config_value<std::string>("application.metadata.info.author", "Unknown author");
+    std::string version = get_config_value<std::string>("application.metadata.info.version", "0.0.1");
+
+    const toml::table* metadata_mounts = configuration().get_subtable("application.metadata.fs-mounts");
+    if (metadata_mounts != nullptr) {
+      for (const auto& [mount_name, mount_info] : *metadata_mounts) {
+      }
+    } else {
+      CORE_LOG_WARN("No filesystem mounts defined in metadata.");
+    }
+
+    return {
+      .name = name,
+      .description = description,
+      .author = author,
+      .version = version,
+      .filesystem_mounts = {},
+    };
   }
 
   void driver::push_scene_object_to_context_stack(scene_object* object) {
