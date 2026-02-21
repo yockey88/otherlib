@@ -55,6 +55,11 @@ namespace other {
     auto& g = graph->get_graph();
     const auto& execs = graph->get_executors();
     auto sort = graph->get_topological_sort();
+
+    if (sort.empty()) {
+      return;
+    }
+
     for (const natural_t id : sort) {
       auto node_atr = g.nodes.find(id);
       OTHER_ASSERT(node_atr != g.nodes.end(), "Node with id {} not found in graph.", id);
@@ -69,14 +74,9 @@ namespace other {
       n.end_pass(renderer_ptr);
     }
 
-    if (sort.empty()) {
-      return;
-    }
-
     natural_t final_output_id = sort.back();
     if (g.nodes.at(final_output_id).pass->texture_resources.empty()) {
       CORE_LOG_WARN("Final output pass has no texture resources. Cannot retrieve output texture.");
-      return;
     } else if (g.nodes.at(final_output_id).pass->texture_resources.size() > 1) {
       CORE_LOG_WARN("Final output pass has multiple texture resources. Using the first one as output.");
     }
@@ -95,6 +95,12 @@ namespace other {
   }
 
   renderer::frame_resources render_pipeline::get_frame_resources() const {
+    OTHER_ASSERT(model_buffer_handle.has_value(), "Model buffer handle is not set.");
+    OTHER_ASSERT(material_buffer_handle.has_value(), "Material buffer handle is not set.");
+    OTHER_ASSERT(bone_buffer_handle.has_value(), "Bone buffer handle is not set.");
+    OTHER_ASSERT(point_light_buffer_handle.has_value(), "Point light buffer handle is not set.");
+    OTHER_ASSERT(direction_light_buffer_handle.has_value(), "Direction light buffer handle is not set.");
+    OTHER_ASSERT(camera_buffer_handle.has_value(), "Camera buffer handle is not set.");
     return {
       .model_buffer = *model_buffer_handle,
       .material_buffer = *material_buffer_handle,

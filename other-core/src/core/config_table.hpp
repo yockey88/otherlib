@@ -113,7 +113,7 @@ namespace other {
 
     bool force_no_window = false;
 
-    glm::uvec2 window_size = { 1280, 720 };
+    glm::uvec2 window_size = { 1920, 1080 };
     glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
    private:

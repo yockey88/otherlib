@@ -26,7 +26,6 @@ namespace other {
     void on_shutdown() override {}
 
     void update_running() override;
-    void update_initializing() override;
     struct mouse_state {
       glm::vec2 position = { 0, 0 };
       glm::vec2 delta = { 0, 0 };

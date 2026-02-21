@@ -68,12 +68,21 @@ namespace other {
   void lua_host::load_host(const config_table& config) {
     lua_state.open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::io, sol::lib::os, sol::lib::debug);
 
-    filepath script_dir = config.get_value<std::string>("scripting.other-lua-directory", std::format("{}/lua", get_program_files_folder("OtherEnvironment").string()));
+    filepath default_path = std::format("{}/lua", get_other_environment_install_folder().string());
+    filepath script_dir = config.get_value<std::string>("scripting.other-lua-directory", default_path.string());
+    CORE_LOG_DEBUG("Lua script directory from config: '{}'", script_dir.string());
     if (!std::filesystem::exists(script_dir)) {
       CORE_LOG_ERROR("Lua script directory '{}' does not exist.", script_dir.string());
       return;
     }
+
     script_directory = script_dir;
+    CORE_LOG_DEBUG("Lua script directory set to '{}'", script_directory.string());
+
+    std::string current_pkg_path = lua_state["package"]["path"];
+    std::string new_pkg_path = current_pkg_path + ";" + (script_directory / "?.lua").string();
+    lua_state["package"]["path"] = new_pkg_path;
+    CORE_LOG_TRACE("Lua package.path updated to '{}'", lua_state["package"]["path"].get<std::string>());
   }
 
   void lua_host::call_entry_point() {
@@ -86,8 +95,18 @@ namespace other {
       return nullptr;
     }
 
+    if (!std::filesystem::exists(fpath)) {
+      fpath = script_directory / fpath;
+      if (!std::filesystem::exists(fpath)) {
+        CORE_LOG_ERROR("Lua script file '{}' does not exist.", file_path);
+        return nullptr;
+      }
+    }
+    CORE_LOG_TRACE("Loading Lua script from path '{}'", fpath.string());
+
     auto hash = FNV(fpath.string());
     if (auto itr = loaded_lua_scripts.find(hash); itr != loaded_lua_scripts.end()) {
+      CORE_LOG_DEBUG("Lua script '{}' already loaded, returning existing instance.", fpath.string());
       return &itr->second;
     }
 

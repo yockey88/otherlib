@@ -58,7 +58,6 @@ namespace other {
     bool open_terminal = false;
 
     std::string rendering = "";
-    glm::uvec2 window_size = { 1280, 720 };
 
     config_table config = {};
     try {
@@ -165,11 +164,11 @@ namespace other {
         toml::node_view width_node = window_size_node.at_path("width");
         toml::node_view height_node = window_size_node.at_path("height");
         if (width_node.is_integer() && height_node.is_integer()) {
-          window_size = { width_node.as_integer()->get(), height_node.as_integer()->get() };
+          config.window_size = { width_node.as_integer()->get(), height_node.as_integer()->get() };
         }
 
         if (log_level == 0) {
-          std::print("Window size: {}x{}\n", window_size.x, window_size.y);
+          std::print("Window size: {}x{}\n", config.window_size.x, config.window_size.y);
         }
       }
 
@@ -202,7 +201,6 @@ namespace other {
     if (!rendering.empty()) {
       config.rendering_backend = rendering;
     }
-    config.window_size = window_size;
 
     return config;
   }

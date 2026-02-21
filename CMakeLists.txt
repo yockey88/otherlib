@@ -33,8 +33,12 @@ set(OTHER_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
 set(OTHER_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}")
 set(OTHER_INSTALL_CMAKEDIR "${CMAKE_INSTALL_PREFIX}/cmake")
 set(OTHER_INSTALL_ASSEMBLIES "${CMAKE_INSTALL_PREFIX}/dotnet-assemblies")
+set(OTHER_INSTALL_RESOURCES "${CMAKE_INSTALL_PREFIX}/resources")
+set(OTHER_INSTALL_LUA "${CMAKE_INSTALL_PREFIX}/lua")
 set(OTHER_INSTALL_PROJECT "${CMAKE_INSTALL_PREFIX}/project")
 set(OTHER_INSTALL_PROJECT_TEMPLATES "${CMAKE_INSTALL_PREFIX}/project/templates")
+
+message(STATUS "[INSTALL PATHS]\n  Includedir: ${OTHER_INSTALL_INCLUDEDIR}\n  Libdir: ${OTHER_INSTALL_LIBDIR}\n  Bindir: ${OTHER_INSTALL_BINDIR}\n  CMakeDir: ${OTHER_INSTALL_CMAKEDIR}\n  Assemblies: ${OTHER_INSTALL_ASSEMBLIES}\n  Project: ${OTHER_INSTALL_PROJECT}")
 
 ### projects to build
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
@@ -60,8 +64,6 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-message(STATUS "using compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} @ [${CMAKE_CXX_COMPILER}]")
 
 set(BUILD_CONFIG_MACRO "")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -99,7 +101,6 @@ if(BUILD_PLATFORM STREQUAL "WINDOWS")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  # link_libraries()
 
   if(CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
     if (CMAKE_BUILD_TYPE STREQUAL Debug-AS)
@@ -116,9 +117,7 @@ else()
 endif()
 
 add_subdirectory(extern)
-message(STATUS "IMGUI_INCLUDE_DIRS: ${IMGUI_INCLUDE_DIRS}")
 
-message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(OTHER_LIBRARIES_PATH 
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
@@ -136,15 +135,6 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/release"
   )
 endif()
-  
-  # TODO: replace above w/ below
-  # set(OTHER_LIBRARIES_PATH
-  #   ${OTHER_LIBRARIES_PATH} 
-  #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
-  #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
-  #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
-  #   "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib$<$<CONFIG:Debug>:debug>$<$<CONFIG:Release>:release>"
-  # )
 
 set(ASSIMP_NAME "assimp-vc143-mt")
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} 
@@ -158,7 +148,8 @@ endif()
 
 set(OTHER_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
-set(OTHER_EXTERN_INCLUDE_DIRS 
+set(OTHER_EXTERN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/other/extern")
+set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/magic_enum
   ${OTHER_EXTERN_DIR}/args
   ${OTHER_EXTERN_DIR}/tomlplusplus
@@ -181,9 +172,36 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/json
   ${OTHER_EXTERN_DIR}/sol2
   ${OTHER_EXTERN_DIR}/sol2/lua
+  ${OTHER_EXTERN_DIR}/sol2/sol
   ${OTHER_EXTERN_DIR}/physx
   ${OTHER_EXTERN_DIR}/jolt
   ${IMGUI_INCLUDE_DIRS}
+)
+set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/magic_enum
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/args
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/tomlplusplus
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/spdlog
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/glm
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/refl
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/flatbuffers
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/asio
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/spdlog
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sdl
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/imgui
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/glad/include
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/assimp
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/stb
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/mio
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/dotnet
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/entt
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/pybind11/include
+  # ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/nativefiledialog/src
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/json
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/lua
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/sol
+  ${OTHER_EXTERN_INCLUDE_DIRS}
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
@@ -210,17 +228,12 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(other-core)
 add_subdirectory(other-network)
-
 add_subdirectory(other-renderer)
-
 add_subdirectory(other-scripting)
 add_subdirectory(other-csharp-interop)
-
 add_subdirectory(other-physics)
-
 add_subdirectory(other-scene)
 add_subdirectory(other-csharp)
-
 add_subdirectory(otherlib)
 
 include(CMakePackageConfigHelpers)
@@ -275,36 +288,34 @@ other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
 other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/include")
 other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
 
-## Install external libraries
+# ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")
 other_install_external_library("assimp" "${OTHER_EXTERN_DIR}/assimp/lib")
 other_install_external_library("glad" "${OTHER_EXTERN_DIR}/glad/lib")
 other_install_external_library("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefiledialog/lib")
 other_install_external_library("flatbuffers" "${OTHER_EXTERN_DIR}/flatbuffers/lib")
 other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
-
-install(
-  FILES "${OTHER_EXTERN_DIR}/python312/python312.dll"
-  DESTINATION "${OTHER_INSTALL_LIBDIR}"
-)
-
+other_install_external_library("jolt" "${OTHER_EXTERN_DIR}/jolt/lib")
+other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
+  
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(DLL_CONFIG "debug")
 else()
   set(DLL_CONFIG "release")
 endif()
-
+  
 install(
   FILES
+    "${OTHER_EXTERN_DIR}/python312/python312.dll"
     "${OTHER_EXTERN_DIR}/sdl/lib/${DLL_CONFIG}/SDL3.dll"
-  DESTINATION "${OTHER_INSTALL_BINDIR}/${DLL_CONFIG}"
-  CONFIGURATIONS ${CMAKE_BUILD_TYPE}
-  OPTIONAL
-)
-
-install(
-  FILES
     "${OTHER_EXTERN_DIR}/assimp/lib/assimp-vc143-mt.dll"
+    "${OTHER_EXTERN_DIR}/sol2/lib/lua-5.4.4.dll"
+    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysX_64.dll"
+    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCommon_64.dll"
+    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCooking_64.dll"
+    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXFoundation_64.dll"
+    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXGpu_64.dll"
+    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PVDRuntime_64.dll"
   DESTINATION "${OTHER_INSTALL_BINDIR}/${DLL_CONFIG}"
   CONFIGURATIONS ${CMAKE_BUILD_TYPE}
   OPTIONAL
@@ -321,18 +332,37 @@ else()
   set(ASSEMBLY_CONFIG "Release")
 endif()
 
-install(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/other-csharp/${ASSEMBLY_CONFIG}/"
-  DESTINATION "${OTHER_INSTALL_ASSEMBLIES}"
-)
-
 if (NOT EXISTS "${OTHER_INSTALL_PROJECT}")
   file(MAKE_DIRECTORY "${OTHER_INSTALL_PROJECT}")
 endif()
 
 install(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/other-csharp/${ASSEMBLY_CONFIG}/"
+  DESTINATION "${OTHER_INSTALL_ASSEMBLIES}"
+)
+
+install(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/templates/"
   DESTINATION "${OTHER_INSTALL_PROJECT_TEMPLATES}"
+)
+
+### now install resources (lua scripts, shaders, etc.)
+set(OTHERLIB_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/resources")
+set(OTHERLIB_FONTS_RESOURCES "${OTHERLIB_RESOURCES}/fonts")
+set(OTHERLIB_LUA_RESOURCES "${OTHERLIB_RESOURCES}/lua")
+set(OTHERLIB_SHADER_MODULE_RESOURCES "${OTHERLIB_RESOURCES}/shader-modules")
+
+install(
+  DIRECTORY "${OTHERLIB_LUA_RESOURCES}"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  FILES_MATCHING 
+  PATTERN "*.lua"
+)
+install(
+  DIRECTORY "${OTHERLIB_FONTS_RESOURCES}"
+  DESTINATION "${OTHER_INSTALL_RESOURCES}/fonts"
+  FILES_MATCHING 
+  PATTERN "*.ttf"
 )
 
 configure_package_config_file(

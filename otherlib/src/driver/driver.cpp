@@ -115,7 +115,7 @@ namespace other {
 
     /// load client specific .NET
     /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
-    std::vector<std::string> dotnet_modules = get_config_value<std::vector<std::string>>("scripting", "dotnet-modules");
+    std::vector<std::string> dotnet_modules = get_config_value<std::vector<std::string>>("scripting.dotnet-modules");
     for (const auto& module : dotnet_modules) {
       CORE_LOG_DEBUG(" - .NET module to load: {}", module);
       auto assembly = load_dotnet_module(module);
@@ -143,7 +143,7 @@ namespace other {
     vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
     core_device.host_driver = this;
 
-    driver_main_lua_script = subsystem<scripting_environment>::get()->load_lua_file("resources/lua/driver.lua");
+    driver_main_lua_script = subsystem<scripting_environment>::get()->load_lua_file("driver.lua");
     if (driver_main_lua_script) {
       environment_console::initialize(driver_main_lua_script);
 
@@ -298,8 +298,8 @@ namespace other {
     plugin::unload_plugin_library(name);
   }
 
-  void driver::on_initialize_rendering(scope<renderer>& renderer_ptr) {
-    renderer_ptr->add_pipeline<default_instancing_pipeline>("Rendering Pipeline");
+  void driver::on_initialize_rendering() {
+    get_renderer_instance().add_pipeline<default_instancing_pipeline>("Rendering Pipeline");
   }
 
   void driver::on_shutdown_rendering() {
@@ -340,17 +340,25 @@ namespace other {
 
     live_coroutines.clear();
 
-    CORE_LOG_DEBUG("Sending shutdown request to network thread...");
-    message msg;
-    msg.header = {
-      .category = COMMAND,
-      .id = SHUTDOWN_REQUEST,
-    };
+    bool shutdown_immediately = net_context->net_thread == nullptr;
+    if (!shutdown_immediately) {
+      CORE_LOG_DEBUG("Sending shutdown request to network thread...");
+      message msg;
+      msg.header = {
+        .category = COMMAND,
+        .id = SHUTDOWN_REQUEST,
+      };
 
-    send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(3), message_handler{ this, &driver::on_ack_shutdown_request_network_thread, &driver::on_timeout_shutdown_request_network_thread });
+      send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(3), message_handler{ this, &driver::on_ack_shutdown_request_network_thread, &driver::on_timeout_shutdown_request_network_thread });
+    }
 
     on_shutdown_request();
     process_driver_event(driver_event::DRIVER_EVENT_STOP);
+
+    if (shutdown_immediately) {
+      on_shutdown_confirm();
+      process_driver_event(driver_event::DRIVER_EVENT_READY);
+    }
   }
 
   natural_t driver::create_new_scene(const std::string_view name) {
@@ -481,7 +489,11 @@ namespace other {
   }
 
   void driver::synchronize_active_scene(natural_t scene_id) {
-    bool network_thread_active = net_context->net_thread != nullptr && net_context->net_thread->is_running();
+    bool network_thread_active = net_context->net_thread != nullptr;
+    if (network_thread_active) {
+      network_thread_active = net_context->net_thread->is_running();
+    }
+
     /// if we are a client and are connected to the server send the load command, if we are client and
     ///  are not connected to a server we still set synchronized to false in case of a connection later
     ///  we know to begin synchronization
@@ -588,6 +600,13 @@ namespace other {
     net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &catcher));
 
     net_context->events = make_scope<event_system>(net_context->io_context);
+
+    bool force_disable_network = get_config_value<bool>("network-thread.force-disable", false);
+    if (force_disable_network) {
+      CORE_LOG_INFO("Network thread is disabled, skipping network initialization.");
+      return;
+    }
+
     net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
     net_context->net_thread->launch();
     net_context->net_thread_message_bus.register_thread();
@@ -606,7 +625,7 @@ namespace other {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
       /// run driver envrc file if it exists
 
-      if (std::string envrc_path = get_config_value<std::string>("scripting", "envrc-path");
+      if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path");
           !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
         /// this one has to be loaded into the host without the sandboxing of the environment
         ///  as this is supposed to be the user's customization of the environment
@@ -626,10 +645,10 @@ namespace other {
 
   void driver::start_network() {
     /// now we kick off main networking session
-    bool force_disable_network = get_config_value<bool>("network-thread", "force-disable", false);
+    bool force_disable_network = get_config_value<bool>("network-thread.force-disable", false);
     bool network_thread_active = !force_disable_network && net_context->net_thread != nullptr;
 
-    std::string role = get_config_value<std::string>("application", "role", "client");
+    std::string role = get_config_value<std::string>("application.role", "client");
     if (role != "client" && role != "server") {
       CORE_LOG_WARN("Unknown application role '{}', defaulting to 'client'", role);
       role = "client";
@@ -639,9 +658,21 @@ namespace other {
       primary_role = driver_role::CLIENT;
     } else if (role == "server") {
       primary_role = driver_role::SERVER;
+    } else {
+      CORE_LOG_ERROR("Unknown role! {}, defaulting to no network role.", role);
+      force_disable_network = true;
     }
 
-    CORE_LOG_DEBUG("Network Role : [{}]", primary_role);
+    if (force_disable_network) {
+      primary_role = driver_role::NONE;
+    }
+
+    if (primary_role == driver_role::NONE) {
+      CORE_LOG_WARN("Network thread is disabled, running in offline mode.");
+      return;
+    }
+
+    CORE_LOG_INFO("Network Role : [{}]", primary_role);
     if (network_thread_active && primary_role == driver_role::CLIENT) {
       message connect_msg;
       connect_msg.header = {
@@ -669,7 +700,8 @@ namespace other {
 
   void driver::initialize_rendering() {
     renderer_ptr = get_renderer();
-    on_initialize_rendering(renderer_ptr);
+
+    on_initialize_rendering();
 
     initialize_ui();
   }
@@ -1172,7 +1204,10 @@ namespace other {
   }
 
   void driver::on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data) {
+    OTHER_ASSERT(net_context != nullptr, "Network context is null in driver.");
+    OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is null in driver.");
     CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
+
     net_context->net_thread->shutdown();
     shutdown_state.network_thread_shutdown = true;
 
@@ -1182,6 +1217,8 @@ namespace other {
 
   void driver::on_timeout_shutdown_request_network_thread(message_header header) {
     /// force shutdown
+    OTHER_ASSERT(net_context != nullptr, "Network context is null in driver.");
+    OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is null in driver.");
     CORE_LOG_WARN("Timeout waiting for network thread to acknowledge shutdown request, forcing shutdown...");
     net_context->net_thread->force_shutdown();
     on_shutdown_confirm();
@@ -1190,12 +1227,13 @@ namespace other {
 
   void driver::on_ack_session_connect_to(message_header header, const std::span<const uint8_t> data) {
     session_connect_to_response response = other_message_spec::parse<session_connect_to_response>(data);
-    if (response.ack_nack == 0x00) {
-      /// there is no session so we cannot be synchronized
-      active_scene->synchronized = true;
-    } else {
+    if (response.ack_nack == 0x01) {
       CORE_LOG_INFO("Connected to session [{}] successfully.", response.session_id);
-      active_scene->synchronized = false;
+    }
+
+    if (active_scene != nullptr) {
+      /// if we connected (ack == 1) then we have to sychronize with remote
+      active_scene->synchronized = (response.ack_nack == 0x00);
     }
   }
 

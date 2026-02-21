@@ -22,6 +22,8 @@ set(OTHERLIB_EXTERN_INCLUDE_DIRS
   "${OTHERLIB_INCLUDE_DIR}/extern/entt"
   "${OTHERLIB_INCLUDE_DIR}/extern/sdl"
   "${OTHERLIB_INCLUDE_DIR}/extern/python312"
+  "${OTHERLIB_INCLUDE_DIR}/extern/sol2"
+  "${OTHERLIB_INCLUDE_DIR}/extern/json"
   "${OTHERLIB_INCLUDE_DIR}/third_party"
 )
 

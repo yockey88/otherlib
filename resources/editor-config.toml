@@ -3,9 +3,7 @@ core-log-level = "info"
 core-log-file = "logs/editor.log"
 
 [rendering]
-backend = "opengl"
 ui-layout-ini = "resources/ui/editor-layout.ini"
-window-size = { width = 1920, height = 1080 }
 
 [assets]
 test-model = "resources/models/spinning-torus.fbx"

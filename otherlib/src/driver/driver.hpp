@@ -165,7 +165,7 @@ namespace other {
     void load_client();
     void start_network();
     void initialize_rendering();
-    virtual void on_initialize_rendering(scope<renderer>& renderer_ptr);
+    virtual void on_initialize_rendering();
     void initialize_ui();
     virtual void on_initialize_ui(scope<driver_ui>& ui_ptr) {}
 
@@ -301,8 +301,8 @@ namespace other {
 
     template <typename T>
       requires requires(T t) { T{}; }
-    decltype(auto) get_config_value(const std::string_view section, const std::string_view key, T default_value = {}) {
-      return configuration().get_value(std::format("{}.{}", section, key), default_value);
+    decltype(auto) get_config_value(const std::string_view toml_path, T default_value = {}) {
+      return configuration().get_value(toml_path, default_value);
     }
 
     void send_to_network_thread(message&& msg);
@@ -330,6 +330,8 @@ namespace other {
     enum driver_role {
       SERVER,
       CLIENT,
+
+      NONE,
     };
     /// each driver can be both at the same time,
     ///     but this will take precedence in certain operations
