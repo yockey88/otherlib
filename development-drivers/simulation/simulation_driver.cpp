@@ -9,11 +9,8 @@
 
 #include "object/scene_object.hpp"
 
-#include "rendering-pipelines/empty_pipeline.hpp"
-
 #include "imgui.h"
 #include "simulation.hpp"
-
 
 namespace other {
 

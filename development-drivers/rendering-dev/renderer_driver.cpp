@@ -31,7 +31,6 @@
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
 
-#include "rendering-pipelines/default_instancing_pipeline.hpp"
 #include "scripting/execution_nodes/linear_algebra_nodes.hpp"
 #include "scripting/execution_nodes/source_sink_nodes.hpp"
 #include "ui/colors.hpp"

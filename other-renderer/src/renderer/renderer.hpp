@@ -13,7 +13,10 @@
 #include "renderer/draw_command.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/render_graph.hpp"
+#include "renderer/render_pipeline.hpp"
 #include "renderer/renderer_backend.hpp"
+
+#include "pipeline_definition.hpp"
 
 namespace other {
 
@@ -60,18 +63,6 @@ namespace other {
 
   class renderer {
    public:
-    struct frame_resources {
-      resource_handle output_texture;
-
-      resource_handle model_buffer;
-      resource_handle material_buffer;
-      resource_handle bone_buffer;
-
-      resource_handle point_light_buffer;
-      resource_handle direction_light_buffer;
-      resource_handle camera_buffer;
-    };
-
     renderer(const config_table& config)
         : config(config) {}
     virtual ~renderer() = default;
@@ -79,6 +70,8 @@ namespace other {
     void begin_frame(render_data* data);
     void render();
     void end_frame();
+
+    opt<resource_handle> get_pipeline_output(const std::string_view pipeline_name) const;
 
     void begin_ui_frame();
     void end_ui_frame();
@@ -111,17 +104,23 @@ namespace other {
       return rendering()->api()->get_texture_gpu_resource(handle);
     }
 
-    template <typename T>
-    void add_pipeline(const std::string_view name) {
+    void add_pipeline(const std::string_view name, pipeline_definition&& definition) {
       uint64_t hash = FNV(name);
       auto itr = pipelines.find(hash);
       if (itr != pipelines.end()) {
         CORE_LOG_ERROR("Pipeline with name [{}] already exists.", name);
         return;
       }
-      auto* pipeline = arena_allocator<T>{}.allocate();
-      pipeline->initialize_pipeline(this);
-      pipelines.insert({ hash, pipeline });
+
+      auto* pl = arena_allocator<render_pipeline>{}.allocate(std::move(definition));
+      pl->initialize_pipeline(this);
+      auto [pitr, res] = pipelines.insert({ hash, pl });
+      if (!res) {
+        CORE_LOG_ERROR("Failed to insert pipeline [{}] into pipeline map.", name);
+        pl->shutdown_pipeline();
+        arena_allocator<render_pipeline>{}.free(pl);
+        return;
+      }
     }
 
     void remove_pipeline(const std::string_view name);

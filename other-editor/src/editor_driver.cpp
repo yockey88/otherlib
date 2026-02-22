@@ -13,7 +13,6 @@
 #include "object/physics_component.hpp"
 #include "object/scene_object.hpp"
 
-#include "rendering-pipelines/empty_pipeline.hpp"
 #include "tools/environment_console.hpp"
 #include "ui/driver_ui.hpp"
 
@@ -131,6 +130,8 @@ namespace other {
       // cam->camera.set_viewport_size(size);
     }
   }
+
+  /// \todo load editor pipeline for debug drawing
 
   void editor_driver::on_initialize_ui(scope<driver_ui>& ui_ptr) {
     get_event_system()->register_event("editor:main-menu:file:new-project");
