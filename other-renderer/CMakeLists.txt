@@ -17,16 +17,14 @@ target_sources(other_renderer
       src/model/model.cpp
       
       src/renderer/window_manager.cpp
-      
       src/renderer/rendering_api.cpp
       src/renderer/renderer_backend.cpp
       src/renderer/backends/opengl_api.cpp
-
       src/renderer/camera.cpp
       src/renderer/render_graph.cpp
+      src/renderer/pipeline_definition.cpp
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
-
       src/renderer/ui/unicode.cpp
       src/renderer/ui/ui_helpers.cpp
       src/renderer/ui/ui_node.cpp

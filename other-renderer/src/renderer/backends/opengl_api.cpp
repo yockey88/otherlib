@@ -1019,6 +1019,78 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int8_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform1i(shader_id, value);
+    CHECKGL();
+  }
+
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, uint8_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform1i(shader_id, value);
+    CHECKGL();
+  }
+
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int16_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform1i(shader_id, value);
+    CHECKGL();
+  }
+
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, uint16_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform1i(shader_id, value);
+    CHECKGL();
+  }
+
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int32_t value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 
@@ -1034,6 +1106,60 @@ namespace other {
     }
 
     glUniform1i(shader_id, value);
+    CHECKGL();
+  }
+
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, uint32_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform1i(shader_id, value);
+    CHECKGL();
+  }
+
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, int64_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform1i64NV(shader_id, value);
+    CHECKGL();
+  }
+
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, uint64_t value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform1i64NV(shader_id, value);
     CHECKGL();
   }
 

@@ -20,7 +20,6 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver_tasks.hpp"
-#include "rendering-pipelines/default_instancing_pipeline.hpp"
 #include "scripting/dotnet_bindings.hpp"
 #include "scripting/lua_bindings.hpp"
 #include "scripting/scene_interface.hpp"
@@ -306,7 +305,7 @@ namespace other {
   }
 
   void driver::on_initialize_rendering() {
-    get_renderer_instance().add_pipeline<default_instancing_pipeline>("Rendering Pipeline");
+    get_renderer_instance().add_pipeline("Rendering Pipeline", get_default_instancing_pipeline());
   }
 
   void driver::on_shutdown_rendering() {

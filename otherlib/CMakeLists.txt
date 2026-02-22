@@ -33,10 +33,6 @@ target_sources(otherlib
       
     src/driver/driver.cpp
 
-    src/rendering-pipelines/empty_pipeline.cpp
-    src/rendering-pipelines/default_instancing_pipeline.cpp
-    src/rendering-pipelines/scriptable_pipeline.cpp
-
     src/scripting/dotnet_bindings.cpp
     src/scripting/lua_bindings.cpp
     src/scripting/scene_interface.cpp

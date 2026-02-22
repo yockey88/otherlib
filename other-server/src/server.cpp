@@ -12,8 +12,6 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver.hpp"
-#include "rendering-pipelines/default_instancing_pipeline.hpp"
-#include "rendering-pipelines/empty_pipeline.hpp"
 
 #include "server_tasks.hpp"
 
@@ -69,9 +67,9 @@ namespace other {
   void server::on_initialize_rendering() {
     std::string backend = configuration().rendering_backend.value();
     if (backend == "headless") {
-      get_renderer_instance().add_pipeline<empty_pipeline>("Headless Pipeline");
+      get_renderer_instance().add_pipeline("Headless Pipeline", get_empty_pipeline());
     } else {
-      get_renderer_instance().add_pipeline<default_instancing_pipeline>("UI Pipeline");
+      get_renderer_instance().add_pipeline("UI Pipeline", get_default_instancing_pipeline());
     }
   }
 

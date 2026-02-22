@@ -267,7 +267,42 @@ namespace other {
     subsystem<renderer_backend>::get()->api()->finalize_shader(handle());
   }
 
+  shader& shader::set_uniform(const std::string& name, int8_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, uint8_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, int16_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, uint16_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
   shader& shader::set_uniform(const std::string& name, int32_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, uint32_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, int64_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, uint64_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }

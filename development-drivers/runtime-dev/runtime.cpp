@@ -21,7 +21,6 @@
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
 
-#include "rendering-pipelines/default_instancing_pipeline.hpp"
 #include "scripting/execution_nodes/transform_nodes.hpp"
 #include "ui/console.hpp"
 #include "ui/console_history_node.hpp"
