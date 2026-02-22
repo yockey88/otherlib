@@ -38,6 +38,23 @@ namespace other {
 
   }  // namespace backend_keys
 
+  namespace detail {
+
+    /// imgui functions so that imgui works across dll boundaries
+
+    // typedef void* (*ImGuiMemAllocFunc)(size_t sz, void* user_data);  // Function signature for ImGui::SetAllocatorFunctions()
+    // typedef void (*ImGuiMemFreeFunc)(void* ptr, void* user_data);    // Function signature for ImGui::SetAllocatorFunctions()
+
+    void* imgui_allocate(size_t size, void* user_data) {
+      return arena::allocate(size);
+    }
+
+    void imgui_deallocate(void* ptr, void* user_data) {
+      arena::free(ptr);
+    }
+
+  };  // namespace detail
+
   void renderer_backend::on_set(renderer_backend* instance) {
     GImGui = instance->ui_context;
   }
@@ -105,6 +122,8 @@ namespace other {
 
       ui_context = ImGui::GetCurrentContext();
       api()->initialize_ui_context();
+
+      ImGui::SetAllocatorFunctions(&detail::imgui_allocate, &detail::imgui_deallocate);
 
       ui_context = GImGui;
     }
