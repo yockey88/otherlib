@@ -22,44 +22,23 @@
 
 #define bit(x) (1ll << x)
 
-#ifdef OTHER_APPLICATION
+#ifdef OTHER_CLIENT
+  #define OTHER_DYNAMIC_DRIVER
+#elif defined(OTHER_APPLICATION) && !defined(OTHER_TEST_ENVIRONMENT)
   #define OTHER_STATIC_DRIVER
 #else
-  #define OTHER_DYNAMIC_DRIVER
+  #define OTHER_STATIC_LIBRARY
 #endif
 
 #ifdef OTHER_ENVIRONMENT_WINDOWS
   #ifdef OTHER_CLIENT
-    #ifndef OTHER_API
-      #define OTHER_API extern "C" __declspec(dllexport)
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS __declspec(dllexport)
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x) __declspec(align(x))
-    #endif
-  #endif
-  #ifdef OTHER_APPLICATION
-    #ifndef OTHER_API
-      #define OTHER_API static inline
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x)
-    #endif
+    #define OTHER_API __declspec(dllexport)
+    #define OTHER_CLASS __declspec(dllexport)
+    #define OTHER_ALIGN(x) __declspec(align(x))
   #else
-    #ifndef OTHER_API
-      #define OTHER_API
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x)
-    #endif
+    #define OTHER_API
+    #define OTHER_CLASS
+    #define OTHER_ALIGN(x)
   #endif  // OTHER_CLIENT
 #endif    // OTHER_ENVIRONMENT_WINDOWS
 

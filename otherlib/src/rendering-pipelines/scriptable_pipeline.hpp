@@ -12,8 +12,8 @@ namespace other {
    public:
     virtual ~scriptable_pipeline() = default;
 
-    void create_resources() override {}
-    void build_render_passes() override {}
+    void create_resources(renderer* renderer_ptr) override {}
+    void build_render_passes(renderer* renderer_ptr) override {}
   };
 
 }  // namespace other

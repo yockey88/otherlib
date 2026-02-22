@@ -7,6 +7,8 @@
 #include <SDL3/SDL.h>
 #include <glm/glm.hpp>
 
+#include "core/config_table.hpp"
+
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/gpu_structs.hpp"
@@ -70,7 +72,8 @@ namespace other {
       resource_handle camera_buffer;
     };
 
-    renderer() = default;
+    renderer(const config_table& config)
+        : config(config) {}
     virtual ~renderer() = default;
 
     void begin_frame(render_data* data);
@@ -79,6 +82,8 @@ namespace other {
 
     void begin_ui_frame();
     void end_ui_frame();
+
+    inline const config_table& get_config() const { return config; }
 
     inline decltype(auto) get_pipeline_list() {
       return pipelines |
@@ -130,6 +135,8 @@ namespace other {
 
    private:
     friend class render_graph;
+
+    config_table config;
 
     frame_resources current_frame_resources;
     render_data* scene_data = nullptr;

@@ -14,10 +14,10 @@ namespace other {
 
   void render_pipeline::initialize_pipeline(renderer* renderer) {
     graph = arena_allocator<render_graph>{}.allocate(renderer);
-    create_resources();
+    create_resources(renderer);
 
     graph->start_pipeline();
-    build_render_passes();
+    build_render_passes(renderer);
     graph->end_pipeline();
 
     validate_pipeline();

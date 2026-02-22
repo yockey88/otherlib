@@ -100,7 +100,7 @@ namespace other {
 #define POINT_LIGHT_SHADOW_MAPS 0
 #define EXTRA_DEBUG_POST_PROCESSING 0
 
-  void default_instancing_pipeline::create_resources() {
+  void default_instancing_pipeline::create_resources(renderer* renderer_ptr) {
     const auto settings = {
       shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) },
       // Support up to 4 bone influences per vertex (common convention)
@@ -108,12 +108,20 @@ namespace other {
       shader::setting{ "MAX_BONES", std::to_string(gpu::kMaxObjects) },
     };
 
-    geometry_pass_shader_handle = shader::create("geometry_pass_shader_handle", "resources/basic-instancing-gbuffer.vert", "resources/basic-instancing-gbuffer.frag", settings);
-    shadow_map_pass_shader_handle = shader::create("shadow_map_pass_shader_handle", "resources/basic-instancing-shadow-map.vert", "resources/basic-instancing-shadow-map.frag", settings);
-    point_light_shadow_pass_shader_handle = shader::create("point_light_shadow_pass_shader_handle", "resources/basic-instancing-point-light-shadow-map.vert", "resources/basic-instancing-point-light-shadow-map.geom", "resources/basic-instancing-point-light-shadow-map.frag", settings);
-    shading_pass_shader_handle = shader::create("shading_pass_shader_handle", "resources/basic-shading.vert", "resources/basic-shading.frag", settings);
-    // debug_processing_shader_handle = shader::create("debug_processing_shader_handle", "resources/debug-processing.vert", "resources/debug-processing.frag", settings);
-    screen_shader_handle = shader::create("screen_shader", "resources/basic-textured-quad.vert", "resources/basic-textured-quad.frag", settings);
+    const auto& config = renderer_ptr->get_config();
+    std::string geometry_pass_shader_path = config.get_value<std::string>("rendering.pipeline.geometry_pass_shader", "${other-directory}/resources/basic-instancing-gbuffer");
+    std::string shadow_map_pass_shader_path = config.get_value<std::string>("rendering.pipeline.shadow_map_pass_shader", "${other-directory}/resources/basic-instancing-shadow-map");
+    std::string point_light_shadow_pass_shader_path = config.get_value<std::string>("rendering.pipeline.point_light_shadow_pass_shader", "${other-directory}/resources/basic-instancing-point-light-shadow-map");
+    std::string shading_pass_shader_path = config.get_value<std::string>("rendering.pipeline.shading_pass_shader", "${other-directory}/resources/basic-shading");
+    std::string debug_processing_shader_path = config.get_value<std::string>("rendering.pipeline.debug_processing_shader", "${other-directory}/resources/debug-processing");
+    std::string screen_shader_path = config.get_value<std::string>("rendering.pipeline.screen_shader", "${other-directory}/resources/basic-textured-quad");
+
+    geometry_pass_shader_handle = shader::create("geometry_pass_shader_handle", geometry_pass_shader_path + ".vert", geometry_pass_shader_path + ".frag", settings);
+    shadow_map_pass_shader_handle = shader::create("shadow_map_pass_shader_handle", shadow_map_pass_shader_path + ".vert", shadow_map_pass_shader_path + ".frag", settings);
+    point_light_shadow_pass_shader_handle = shader::create("point_light_shadow_pass_shader_handle", point_light_shadow_pass_shader_path + ".vert", point_light_shadow_pass_shader_path + ".geom", point_light_shadow_pass_shader_path + ".frag", settings);
+    shading_pass_shader_handle = shader::create("shading_pass_shader_handle", shading_pass_shader_path + ".vert", shading_pass_shader_path + ".frag", settings);
+    // debug_processing_shader_handle = shader::create("debug_processing_shader_handle", debug_processing_shader_path + ".vert", debug_processing_shader_path + ".frag", settings);
+    screen_shader_handle = shader::create("screen_shader", screen_shader_path + ".vert", screen_shader_path + ".frag", settings);
 
     quad_mesh_handle = get_renderer()->create_resource("quad_mesh", resource_type::MESH);
     get_renderer()
@@ -154,7 +162,7 @@ namespace other {
     set_camera_buffer("camera_buffer");
   }
 
-  void default_instancing_pipeline::build_render_passes() {
+  void default_instancing_pipeline::build_render_passes(renderer* renderer_ptr) {
     auto window_size = get_renderer()->get_window_size();
     CORE_LOG_DEBUG("Building default instancing pipeline render passes with window size: {}x{}", window_size.x, window_size.y);
 

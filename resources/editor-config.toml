@@ -1,9 +1,12 @@
 [application]
+metadata.info = { name = "Other Editor", description = "Other Environment Project Editor", author = "Other Team", version = "0.1.0" }
 core-log-level = "info"
 core-log-file = "logs/editor.log"
+auto-play-loaded-scenes = false
 
 [rendering]
 ui-layout-ini = "resources/ui/editor-layout.ini"
+pipeline = { geometry_pass_shader = "resources/basic-instancing-gbuffer", shadow_map_pass_shader = "resources/basic-instancing-shadow-map", point_light_shadow_pass_shader = "resources/basic-instancing-point-light-shadow-map", shading_pass_shader = "resources/basic-shading", debug_processing_shader = "resources/debug-processing", screen_shader = "resources/basic-textured-quad" }
 
 [assets]
 test-model = "resources/models/spinning-torus.fbx"

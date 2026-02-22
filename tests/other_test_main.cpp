@@ -7,10 +7,10 @@
 
 /// have to define for linking
 exit_code other_main(const command_line& cmd, const config_table& config) { return exit_code::FAILURE; }
-
-namespace other {
-
-}  // namespace other
+extern "C" {
+other::driver* create_driver(const other::config_table* config) { return nullptr; }
+void destroy_driver(other::driver* instance) {}
+}
 
 int main(int argc, char** argv) {
   /// this is for the CI pipeline which will start running build, but it wil fail to find resources if running there

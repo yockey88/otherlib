@@ -13,35 +13,6 @@
 
 namespace other {
 
-  config_table::config_table(const config_table& other) {
-    this->table = other.table;
-    this->valid = other.valid;
-    this->diagnostics = other.diagnostics;
-    this->dynamic_driver_rel_path = other.dynamic_driver_rel_path;
-    this->core_log_level = other.core_log_level;
-    this->core_log_file = other.core_log_file;
-    this->open_terminal = other.open_terminal;
-    this->rendering_backend = other.rendering_backend;
-    this->window_size = other.window_size;
-    this->clear_color = other.clear_color;
-  }
-
-  config_table& config_table::operator=(const config_table& other) {
-    if (this != &other) {
-      this->table = other.table;
-      this->valid = other.valid;
-      this->diagnostics = other.diagnostics;
-      this->dynamic_driver_rel_path = other.dynamic_driver_rel_path;
-      this->core_log_level = other.core_log_level;
-      this->core_log_file = other.core_log_file;
-      this->open_terminal = other.open_terminal;
-      this->rendering_backend = other.rendering_backend;
-      this->window_size = other.window_size;
-      this->clear_color = other.clear_color;
-    }
-    return *this;
-  }
-
   opt<config_table> parse_raw_config(const std::string_view filename) {
     PROFILE_SECTION("config_table::parse_raw_config");
     if (filename.empty()) {
@@ -241,6 +212,19 @@ namespace other {
     std::ostringstream oss;
     oss << table;
     return oss.str();
+  }
+
+  const toml::table* config_table::get_subtable(const std::string_view toml_path) const {
+    toml::node_view node = table.at_path(toml_path);
+    if (!node) {
+      CORE_LOG_WARN("Config subtable '{}' not found.", toml_path);
+      return nullptr;
+    } else if (!node.is_table()) {
+      CORE_LOG_WARN("Config subtable '{}' is not a table.", toml_path);
+      return nullptr;
+    } else {
+      return node.as_table();
+    }
   }
 
 }  // namespace other
