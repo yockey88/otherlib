@@ -126,7 +126,7 @@ namespace other {
       return { 0, resource_type::EMPTY };
     }
 
-    CORE_LOG_DEBUG("Created resource of type: {}, ID: {}", type, handle.id);
+    CORE_LOG_DEBUG("      Created resource of type: {}, ID: {}", type, handle.id);
     set_resource_name(handle, name);
     return handle;
   }
