@@ -38,6 +38,10 @@ namespace other {
 
   }  // namespace backend_keys
 
+  void renderer_backend::on_set(renderer_backend* instance) {
+    GImGui = instance->ui_context;
+  }
+
   void renderer_backend::load_backend(const config_table& config, const std::string& name, const glm::uvec2& window_size) {
     PROFILE_SECTION("renderer_backend::load-backend");
     uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
@@ -101,6 +105,8 @@ namespace other {
 
       ui_context = ImGui::GetCurrentContext();
       api()->initialize_ui_context();
+
+      ui_context = GImGui;
     }
 
     state_flags.full_initialization = true;
