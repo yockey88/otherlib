@@ -84,7 +84,6 @@ namespace other {
 
   struct pipeline_definition {
     std::string name = "unnamed";
-    uint32_t version = 1;
 
     std::vector<pipeline_buffer_definition> buffers;
     std::vector<pipeline_texture_definition> textures;
@@ -94,6 +93,8 @@ namespace other {
     /// if non-empty, assert these tags are present before marking valid
     std::vector<resource_tag> required_tags;
 
+    /// \todo how to eliminate this? a pipeline definition should only define the resources and passes
+    ///       not contain specific data about the pipeline
     opt<std::string> shadow_map_pass_name;
     opt<std::string> shading_pass_name;
     opt<std::string> light_space_matrix_uniform_name;

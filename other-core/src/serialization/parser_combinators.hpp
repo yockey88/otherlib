@@ -15,7 +15,6 @@
 // #include "core/meta.hpp"
 #include "core/ref.hpp"
 #include "core/ref_counted.hpp"
-
 #include "serialization/reflection.hpp"
 
 namespace other {
@@ -288,6 +287,7 @@ namespace other {
   };
 
   ref<parser<std::string>> match_any_string_from(const std::vector<std::string>& strings);
+  ref<parser<std::string>> match_any_string_until_word(const std::string_view word);
 
   struct parse_eof : parser<void> {
     void operator()(std::istream& stream) const override;

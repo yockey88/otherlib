@@ -337,13 +337,12 @@ namespace other {
     for (auto& ack : ack_list.pending_acks) {
       ack.timer.cancel();
     }
-    ack_list.pending_acks.clear();
-
     for (auto& response : resp_list.pending_responses) {
       response.timer.cancel();
     }
-    resp_list.pending_responses.clear();
 
+    ack_list.pending_acks.clear();
+    resp_list.pending_responses.clear();
     live_coroutines.clear();
 
     if (primary_role != NONE) {

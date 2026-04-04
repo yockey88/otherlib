@@ -348,6 +348,28 @@ namespace other {
     return make_ref<parse_one_of>(strings);
   }
 
+  ref<parser<std::string>> match_any_string_until_word(const std::string_view word) {
+    auto string_until_space = parse_until(' ');
+    auto space_then_word = skip_spaces() >> match_string(word);
+    return string_until_space | [&space_then_word](const std::string& str) -> std::string {
+      std::istringstream stream(str);
+      if (stream.eof()) {
+        return str;
+      }
+
+      try {
+        (*space_then_word)(stream);
+        if (stream.fail()) {
+          throw parsing_error();
+        }
+
+        return str.substr(0, stream.tellg());
+      } catch (...) {
+        return str;
+      }
+    };
+  }
+
   std::string concat_parser::operator()(std::istream& stream) const {
     if (stream.fail() || stream.eof()) {
       return "";

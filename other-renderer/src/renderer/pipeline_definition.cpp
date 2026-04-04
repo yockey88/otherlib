@@ -33,7 +33,6 @@ namespace other {
   pipeline_definition get_basic_geometry_only_pipeline() {
     pipeline_definition def;
     def.name = "basic-geometry-only";
-    def.version = 1;
 
     def.buffers = {
       { .name = "material_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::MATERIAL },
@@ -122,7 +121,6 @@ namespace other {
     def.light_space_matrix_uniform_name = "OE_light_space_matrix";
 
     def.name = "default-instancing";
-    def.version = 1;
 
     def.buffers = {
       { .name = "camera_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::CAMERA },
@@ -262,7 +260,6 @@ namespace other {
   pipeline_definition get_empty_pipeline() {
     pipeline_definition def;
     def.name = "empty";
-    def.version = 1;
     /// no passes, no textures, no shaders
     ///     useful for UI-only
     return def;

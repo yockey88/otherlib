@@ -33,6 +33,10 @@ target_sources(otherlib
       
     src/driver/driver.cpp
 
+    src/ocl/object_parser.cpp
+
+    # src/project/...
+
     src/scripting/dotnet_bindings.cpp
     src/scripting/lua_bindings.cpp
     src/scripting/scene_interface.cpp
