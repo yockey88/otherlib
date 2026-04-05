@@ -420,7 +420,14 @@ namespace other {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(colors::kBG0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ui::inspector::kInnerPadding, 6.f));
 
-        if (ImGui::BeginChild("##asset-detail-panel")) {  // }, ImVec2(0, height), ImGuiChildFlags_None)) {
+        constexpr float kDetailPanelMinWidth = 240.f;
+        constexpr float kDetailPanelMaxWidth = 400.f;
+        constexpr float kDetailPanelDefaultWidth = 280.f;
+        float detail_panel_width = std::clamp(avail_w * 0.4f, kDetailPanelMinWidth, kDetailPanelMaxWidth);
+        detail_panel_width = std::max(detail_panel_width, kDetailPanelDefaultWidth);
+
+        ImGui::SameLine();
+        if (ImGui::BeginChild("##asset-detail-panel", ImVec2(detail_panel_width, 0), ImGuiChildFlags_None)) {
           dl->AddLine(
             ImGui::GetCursorScreenPos(),
             { ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x, ImGui::GetCursorScreenPos().y },
