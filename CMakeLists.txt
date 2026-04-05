@@ -230,6 +230,7 @@ add_subdirectory(other-editor)
 add_subdirectory(other-server)
 add_subdirectory(tools)
 
+add_subdirectory(script-testing)
 if (BUILD_OTHER_TESTS)
   enable_testing()
   add_subdirectory(tests)

@@ -354,6 +354,7 @@ namespace other {
       if (selected_asset_idx >= 0 && selected_asset_idx < static_cast<int>(assets.size()) &&
           assets[selected_asset_idx].handler_asset_id != 0) {
         show_detail_panel = true;
+        ImGui::OpenPopup("##asset-detail-popup");
       }
 
       float detail_h = show_detail_panel ? kDetailPanelHeight : 0.f;
@@ -414,71 +415,6 @@ namespace other {
       ImGui::PopStyleVar();
       ImGui::PopStyleColor();
 
-      /// inspector-style detail panel for handler-tracked assets
-      if (show_detail_panel) {
-        const auto& sel = assets[selected_asset_idx];
-
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(colors::kBG0));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ui::inspector::kInnerPadding, 6.f));
-
-        constexpr float kDetailPanelMinWidth = 240.f;
-        constexpr float kDetailPanelMaxWidth = 400.f;
-        constexpr float kDetailPanelDefaultWidth = 280.f;
-        float detail_panel_width = std::clamp(avail_w * 0.4f, kDetailPanelMinWidth, kDetailPanelMaxWidth);
-        detail_panel_width = std::max(detail_panel_width, kDetailPanelDefaultWidth);
-
-        /// calculate left side of detail panel because we have to manually place it if we want it to be right-aligned
-        float detail_panel_x = ImGui::GetCursorScreenPos().x + avail_w - detail_panel_width;
-        ImVec2 detail_panel_pos = { detail_panel_x, top_of_grid_y };
-        ImGui::SetCursorScreenPos(detail_panel_pos);
-        if (ImGui::BeginChild("##asset-detail-panel")) {  // }, ImVec2(detail_panel_width, 0), ImGuiChildFlags_None)) {
-          // draw border
-          dl->AddRect(detail_panel_pos, { detail_panel_pos.x + detail_panel_width, detail_panel_pos.y + avail_h }, to_im_col(colors::kBorder));
-          dl->AddLine(
-            ImGui::GetCursorScreenPos(),
-            { ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x, ImGui::GetCursorScreenPos().y },
-            to_im_col(asset_browser::kBorder), 1.f
-          );
-          ImGui::Dummy(ImVec2(0, 2.f));
-
-          asset_state state = asset_state::UNLOADED;
-
-          /// \todo is there a better way to do this?
-          if (driver_ptr != nullptr) {
-            auto& handler = driver_ptr->get_asset_manager();
-            OTHER_ASSERT(handler != nullptr, "Asset handler should not be null");
-
-            state = handler->get_asset_state(sel.handler_asset_id);
-          }
-
-          ui::inspector::asset_slot_state slot_state = ui::inspector::asset_slot_state::EMPTY;
-          if (state == asset_state::LOADED) {
-            slot_state = ui::inspector::asset_slot_state::FILLED;
-          } else if (state == asset_state::ERROR_STATE) {
-            slot_state = ui::inspector::asset_slot_state::INVALID;
-          }
-
-          ui::inspector::draw_asset_slot("Asset", sel.name, slot_state);
-
-          std::string id_str = std::to_string(sel.handler_asset_id);
-          ui::inspector::property_display("ID", id_str);
-
-          const char* type_label = abw::badge_for_asset_type(sel.type);
-          glm::vec4 type_color = abw::color_for_asset_type(sel.type);
-          ui::inspector::property_display("Type", type_label, type_color);
-
-          ui::inspector::property_display("State", asset_state_label(state));
-
-          if (!sel.asset_path.empty()) {
-            ui::inspector::property_display("Path", sel.asset_path);
-          }
-        }
-        ImGui::EndChild();
-
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor();
-      }
-
       {
         int asset_count = 0;
         int folder_count = 0;
@@ -502,6 +438,63 @@ namespace other {
         if (abw::draw_status_bar(info)) {
           zoom = info.zoom_normalized;
         }
+      }
+
+      /// inspector-style detail panel for handler-tracked assets
+
+      /// \todo move this to a separate window or popup
+      if (show_detail_panel && ImGui::BeginChild("##asset-detail-popup")) {
+        const auto& sel = assets[selected_asset_idx];
+
+        // ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(colors::kBG0));
+        // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ui::inspector::kInnerPadding, 6.f));
+
+        constexpr float kDetailPanelMinWidth = 240.f;
+        constexpr float kDetailPanelMaxWidth = 400.f;
+        constexpr float kDetailPanelDefaultWidth = 280.f;
+        float detail_panel_width = std::clamp(avail_w * 0.4f, kDetailPanelMinWidth, kDetailPanelMaxWidth);
+        detail_panel_width = std::max(detail_panel_width, kDetailPanelDefaultWidth);
+        dl->AddLine(
+          ImGui::GetCursorScreenPos(),
+          { ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x, ImGui::GetCursorScreenPos().y },
+          to_im_col(asset_browser::kBorder), 1.f
+        );
+        ImGui::Dummy(ImVec2(0, 2.f));
+
+        asset_state state = asset_state::UNLOADED;
+
+        /// \todo is there a better way to do this?
+        if (driver_ptr != nullptr) {
+          auto& handler = driver_ptr->get_asset_manager();
+          OTHER_ASSERT(handler != nullptr, "Asset handler should not be null");
+
+          state = handler->get_asset_state(sel.handler_asset_id);
+        }
+
+        ui::inspector::asset_slot_state slot_state = ui::inspector::asset_slot_state::EMPTY;
+        if (state == asset_state::LOADED) {
+          slot_state = ui::inspector::asset_slot_state::FILLED;
+        } else if (state == asset_state::ERROR_STATE) {
+          slot_state = ui::inspector::asset_slot_state::INVALID;
+        }
+
+        std::string id_str = std::to_string(sel.handler_asset_id);
+        const char* type_label = abw::badge_for_asset_type(sel.type);
+        glm::vec4 type_color = abw::color_for_asset_type(sel.type);
+
+        ui::inspector::draw_asset_slot("Asset", sel.name, slot_state);
+        ui::inspector::property_display("ID", id_str);
+        ui::inspector::property_display("Type", type_label, type_color);
+        ui::inspector::property_display("State", asset_state_label(state));
+        if (!sel.asset_path.empty()) {
+          ui::inspector::property_display("Path", sel.asset_path);
+        }
+
+        // ImGui::PopStyleVar();
+        // ImGui::PopStyleColor();
+      }
+      if (show_detail_panel) {
+        ImGui::EndChild();
       }
     }
 

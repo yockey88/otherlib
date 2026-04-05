@@ -76,7 +76,7 @@ namespace other {
   }
 
   TEST_F(action_tests, dotnet_callback_test) {
-    GTEST_SKIP() << "Dotnet callback implementation needs to be redesigned";
+    // GTEST_SKIP() << "Dotnet callback implementation needs to be redesigned";
 
     subsystem<arena>::get()->shutdown();
     subsystem<arena>::get();
@@ -120,7 +120,7 @@ namespace other {
   }
 
   TEST_F(action_tests, lua_callback_test) {
-    GTEST_SKIP() << "Lua callback implementation needs to be redesigned";
+    // GTEST_SKIP() << "Lua callback implementation needs to be redesigned";
 
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
