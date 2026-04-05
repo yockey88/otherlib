@@ -28,7 +28,6 @@ message(STATUS "[INSTALL PATHS]\n  Includedir: ${OTHER_INSTALL_INCLUDEDIR}\n  Li
 ### projects to build
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
 option(BUILD_SCRATCH_PROGRAMS "Build scratch-work/development brainstorming programs" OFF)
-
 if (DISALLOW_OTHER_PLUGINS)
   message(STATUS "Disallowing other plugins")
   add_compile_definitions("OTHER_DISALLOW_OTHER_PLUGINS")

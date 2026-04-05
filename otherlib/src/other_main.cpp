@@ -12,7 +12,7 @@ void destroy_driver(other::driver* instance) {}
 #endif
 
 exit_code other_main(const command_line& cmd, const config_table& config) {
-  CORE_LOG_INFO("Configuration loaded successfully from: {}", cmd.config_file);
+  CORE_LOG_INFO("Running Other Runtime [{}]", cmd.config_file);
   auto [driver_instance, driver_name] = driver::create(config);
   if (driver_instance == nullptr) {
     CORE_LOG_ERROR("Failed to create driver instance.");

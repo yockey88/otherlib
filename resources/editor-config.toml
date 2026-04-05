@@ -1,8 +1,18 @@
 [application]
-metadata.info = { name = "Other Editor", description = "Other Environment Project Editor", author = "Other Team", version = "0.1.0" }
+metadata = [ 
+  { key = "name", value = "Other Editor"}, 
+  { key = "description", value = "Other Environment Project Editor"},
+  { key = "author", value = "Other Team"},
+  { key = "version", value = "0.1.0"} 
+]
 core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
+
+[filesystem]
+mounts = [
+  { name = "editor-assets", type = "physical", path = "resources/editor-assets" }
+]
 
 [rendering]
 ui-layout-ini = "resources/ui/editor-layout.ini"

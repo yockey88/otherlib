@@ -45,6 +45,34 @@ namespace other {
         return colors::rgba_to_hex(c);
       }
 
+      static inline ImU32 im_col_with_multiplier(const ImColor& col, float factor) {
+        const ImVec4& color_val = col.Value;
+        float hue, sat, val;
+        ImGui::ColorConvertRGBtoHSV(color_val.x, color_val.y, color_val.z, hue, sat, val);
+        return ImColor::HSV(hue, sat, std::min(val * factor, 1.f));
+      }
+
+      static inline ImU32 im_col_with_saturation_multiplier(const ImColor& col, float factor) {
+        const ImVec4& col_raw = col.Value;
+        float hue, sat, val;
+        ImGui::ColorConvertRGBtoHSV(col_raw.x, col_raw.y, col_raw.z, hue, sat, val);
+        return ImColor::HSV(hue, std::min(sat * factor, 1.0f), val);
+      }
+
+      static inline glm::vec4 color_with_multiplier(const glm::vec4& col, float factor) {
+        ImU32 mod_col = im_col_with_multiplier({ col.r, col.g, col.b, col.a }, factor);
+        return hex_col_to_rgba(mod_col);
+      }
+
+      static inline glm::vec4 color_with_saturation_multiplier(const glm::vec4& col, float factor) {
+        ImU32 mod_col = im_col_with_saturation_multiplier({ col.r, col.g, col.b, col.a }, factor);
+        return hex_col_to_rgba(mod_col);
+      }
+
+      static inline glm::vec4 mute_by_factor(const glm::vec4& col, float factor) {
+        return color_with_saturation_multiplier(col, factor);
+      }
+
       //  Pure Hues
       constexpr inline glm::vec4 kRed = hex_col_to_rgba(IM_COL32(255, 0, 0, 255));
       constexpr inline glm::vec4 kBalancedRed = hex_col_to_rgba(IM_COL32(255, 50, 50, 255));

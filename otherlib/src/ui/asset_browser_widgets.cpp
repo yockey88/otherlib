@@ -180,24 +180,18 @@ namespace other {
             dl->AddRectFilled(pill_min, pill_max, IM_COL32(255, 255, 255, 10), 9.f);
           }
 
-          /// border when active
-          if (f.active) {
-            dl->AddRect(pill_min, pill_max, colors::to_im_col(sig), 9.f, 0, 1.f);
-          }
-
           /// dot
           ImVec2 dot_center = { pill_min.x + 9.f, pill_min.y + kFilterPillHeight * 0.5f };
-          dl->AddCircleFilled(dot_center, kFilterDotRadius, colors::to_im_col(sig));
           if (f.active) {
+            dl->AddCircleFilled(dot_center, kFilterDotRadius, colors::to_im_col(sig));
             dl->AddCircle(dot_center, kFilterDotRadius + 2.f, colors::to_im_col(glm::vec4(sig.r, sig.g, sig.b, 0.25f)));
+          } else {
+            dl->AddCircle(dot_center, kFilterDotRadius, colors::to_im_col(colors::kTextMuted));
           }
 
           /// label
-          glm::vec4 text_col = f.active ? sig : (hovered ? kFilterHover : kFilterInactive);
-          dl->AddText(
-            { pill_min.x + 18.f, pill_min.y + (kFilterPillHeight - label_size.y) * 0.5f },
-            colors::to_im_col(text_col), f.label
-          );
+          glm::vec4 text_col = f.active ? colors::mute_by_factor(sig, 0.5f) : (hovered ? kFilterHover : kFilterInactive);
+          dl->AddText({ pill_min.x + 18.f, pill_min.y + (kFilterPillHeight - label_size.y) * 0.5f }, colors::to_im_col(text_col), f.label);
 
           ImGui::PopID();
           ImGui::SameLine(0.f, 4.f);

@@ -71,8 +71,6 @@ namespace other {
       std::string description;
       std::string author;
       std::string version;
-
-      std::vector<std::pair<std::string, std::string>> filesystem_mounts;
     };
     bool dynamic = false;
 
@@ -409,6 +407,7 @@ namespace other {
     json::json project_cache;
 
     metadata build_metadata();
+    void configure_filesystem();
 
     void push_scene_object_to_context_stack(scene_object* object);
     scene_object* pop_scene_object_from_context_stack();
