@@ -362,6 +362,7 @@ namespace other {
       ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(asset_browser::kBG));
       ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(abw::kPaddingX, abw::kPaddingX));
 
+      float top_of_grid_y = ImGui::GetCursorScreenPos().y;
       if (ImGui::BeginChild("##asset-grid-scroll", ImVec2(0, avail_h), ImGuiChildFlags_None)) {
         int cols = std::max(1, static_cast<int>((avail_w - abw::kPaddingX) / (card_w + abw::kCardSpacing)));
         int col = 0;
@@ -426,8 +427,13 @@ namespace other {
         float detail_panel_width = std::clamp(avail_w * 0.4f, kDetailPanelMinWidth, kDetailPanelMaxWidth);
         detail_panel_width = std::max(detail_panel_width, kDetailPanelDefaultWidth);
 
-        ImGui::SameLine();
-        if (ImGui::BeginChild("##asset-detail-panel", ImVec2(detail_panel_width, 0), ImGuiChildFlags_None)) {
+        /// calculate left side of detail panel because we have to manually place it if we want it to be right-aligned
+        float detail_panel_x = ImGui::GetCursorScreenPos().x + avail_w - detail_panel_width;
+        ImVec2 detail_panel_pos = { detail_panel_x, top_of_grid_y };
+        ImGui::SetCursorScreenPos(detail_panel_pos);
+        if (ImGui::BeginChild("##asset-detail-panel")) {  // }, ImVec2(detail_panel_width, 0), ImGuiChildFlags_None)) {
+          // draw border
+          dl->AddRect(detail_panel_pos, { detail_panel_pos.x + detail_panel_width, detail_panel_pos.y + avail_h }, to_im_col(colors::kBorder));
           dl->AddLine(
             ImGui::GetCursorScreenPos(),
             { ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x, ImGui::GetCursorScreenPos().y },
