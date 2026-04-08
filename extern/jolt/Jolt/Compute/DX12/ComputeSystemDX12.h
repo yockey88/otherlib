@@ -18,17 +18,10 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT ComputeSystemDX12 : public ComputeSystem
 {
 public:
-	JPH_OVERRIDE_NEW_DELETE
-
-	/// How we want to compile our shaders
-	enum class EDebug
-	{
-		NoDebugSymbols,
-		DebugSymbols
-	};
+	JPH_DECLARE_RTTI_VIRTUAL(JPH_EXPORT, ComputeSystemDX12)
 
 	/// Initialize / shutdown
-	void							Initialize(ID3D12Device *inDevice, EDebug inDebug);
+	void							Initialize(ID3D12Device *inDevice);
 	void							Shutdown();
 
 	// See: ComputeSystem
@@ -44,7 +37,7 @@ public:
 
 private:
 	ComPtr<ID3D12Device>			mDevice;
-	EDebug							mDebug = EDebug::NoDebugSymbols;
+	FARPROC							mDxcCreateInstanceFn;
 };
 
 JPH_NAMESPACE_END

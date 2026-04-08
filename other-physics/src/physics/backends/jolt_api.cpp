@@ -8,10 +8,9 @@
 #include "physics_world/physics_world.hpp"
 
 // clang-format off
-#define JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
-#define JPH_PROFILE_ENABLED
+#define JPH_SHARED_LIBRARY 
+// #define JPH_DOUBLE_PRECISION 
 #define JPH_DEBUG_RENDERER
-#define JPH_OBJECT_STREAM
 #include <Jolt/Jolt.h>
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Memory.h>

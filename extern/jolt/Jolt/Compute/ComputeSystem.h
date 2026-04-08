@@ -7,6 +7,7 @@
 #include <Jolt/Compute/ComputeShader.h>
 #include <Jolt/Compute/ComputeBuffer.h>
 #include <Jolt/Compute/ComputeQueue.h>
+#include <Jolt/Core/RTTI.h>
 
 JPH_NAMESPACE_BEGIN
 
@@ -14,7 +15,7 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT ComputeSystem : public RefTarget<ComputeSystem>, public NonCopyable
 {
 public:
-	JPH_OVERRIDE_NEW_DELETE
+	JPH_DECLARE_RTTI_ABSTRACT_BASE(JPH_EXPORT, ComputeSystem)
 
 	/// Destructor
 	virtual								~ComputeSystem() = default;
@@ -40,9 +41,11 @@ using ComputeSystemResult = Result<Ref<ComputeSystem>>;
 extern JPH_EXPORT ComputeSystemResult	CreateComputeSystemVK();
 #endif
 
+#ifdef JPH_USE_CPU_COMPUTE
 /// Factory function to create a compute system that falls back to CPU.
 /// This is intended mainly for debugging purposes and is not optimized for performance
 extern JPH_EXPORT ComputeSystemResult	CreateComputeSystemCPU();
+#endif
 
 #ifdef JPH_USE_DX12
 
