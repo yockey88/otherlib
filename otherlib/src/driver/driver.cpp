@@ -442,6 +442,20 @@ namespace other {
     return active_scene;
   }
 
+  void driver::new_blank_scene(const std::string_view name) {
+    if (project_scene_graph->has_scene(name)) {
+      CORE_LOG_WARN("Scene with name '{}' already exists, cannot create new blank scene with duplicate name.", name);
+      return;
+    }
+
+    if (active_scene != nullptr) {
+      CORE_LOG_DEBUG("Unloading current scene [{}:{}] before creating new blank scene.", active_scene->id, active_scene->name);
+      unload_active_scene();
+    }
+
+    set_scene_to_active(create_new_scene(name));
+  }
+
   void driver::set_scene_to_active(natural_t scene_id) {
     CORE_LOG_DEBUG("Setting scene [{}] as active scene in driver.", scene_id);
     if (active_scene != nullptr && active_scene->id == scene_id) {
@@ -670,7 +684,10 @@ namespace other {
       command_session_connect_to conn_cmd;
       conn_cmd.address = net_context->main_binding_point;
       connect_msg.data.append_range(conn_cmd.as_buffer());
-      send_message_and_wait_acknowledgment(std::move(connect_msg), std::chrono::seconds(10), message_handler{ this, &driver::on_ack_session_connect_to, &driver::on_timeout_session_connect_to });
+      send_message_and_wait_acknowledgment(
+        std::move(connect_msg), std::chrono::seconds(10),
+        message_handler{ this, &driver::on_ack_session_connect_to, &driver::on_timeout_session_connect_to }
+      );
     } else if (network_thread_active && primary_role == driver_role::SERVER) {
       message msg;
       msg.header = {
@@ -681,7 +698,10 @@ namespace other {
       command_session_listen_at listen_cmd;
       listen_cmd.address = net_context->main_binding_point;
       msg.data.append_range(listen_cmd.as_buffer());
-      send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(10), message_handler{ this, &driver::on_ack_session_listen_for_network_thread, &driver::on_timeout_session_listen_for_network_thread });
+      send_message_and_wait_acknowledgment(
+        std::move(msg), std::chrono::seconds(10),
+        message_handler{ this, &driver::on_ack_session_listen_for_network_thread, &driver::on_timeout_session_listen_for_network_thread }
+      );
     } else {
       CORE_LOG_WARN("Network thread is disabled, running in offline mode.");
     }

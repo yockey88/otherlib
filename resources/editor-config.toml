@@ -18,6 +18,9 @@ mounts = [
 ui-layout-ini = "resources/ui/editor-layout.ini"
 pipeline = { geometry_pass_shader = "resources/basic-instancing-gbuffer", shadow_map_pass_shader = "resources/basic-instancing-shadow-map", point_light_shadow_pass_shader = "resources/basic-instancing-point-light-shadow-map", shading_pass_shader = "resources/basic-shading", debug_processing_shader = "resources/debug-processing", screen_shader = "resources/basic-textured-quad" }
 
+[ui]
+enable-environment-menu-bar = false
+
 [assets]
 test-model = "resources/models/spinning-torus.fbx"
 
@@ -33,6 +36,5 @@ other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
 other-lua-directory = "resources/lua"
 
 dotnet-modules = [
-  "build/development-drivers/script-testing/csharp/${build-config}/DotnetTesting.dll",
   "build/other-editor/dotnet/${build-config}/OtherEditorCs.dll"
 ]

@@ -12,6 +12,8 @@
 
 namespace other {
 
+  class driver;
+
   class ui_window {
    public:
     struct window_root : public ui_node {

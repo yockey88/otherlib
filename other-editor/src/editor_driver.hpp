@@ -6,8 +6,6 @@
 
 #include "driver/driver.hpp"
 
-#include "editor_ui.hpp"
-
 namespace other {
 
   class OTHER_CLASS editor_driver : public driver {
@@ -45,7 +43,5 @@ namespace other {
   };
 
 }  // namespace other
-
-OTHER_DRIVER(other::editor_driver);
 
 #endif  // OTHER_EDITOR_EDITOR_DRIVER_HPP

@@ -34,15 +34,12 @@ namespace other {
       }
     }
 
-    for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
-      auto& window = builtin_windows[i];
-      if (window.open && window.window_ptr != nullptr) {
-        window.window_ptr->render();
-      }
-    }
+    render_builtin_windows();
+    render_custom_windows();
   }
 
   void driver_ui::shutdown() {
+    shutdown_custom_windows();
     shutdown_builtin_windows();
   }
 
@@ -70,16 +67,15 @@ namespace other {
       return FNV(kBuiltinWindowNames[static_cast<size_t>(win.type)]) == hash;
     });
     if (it == windows.end()) {  // } || it->type == BUILTIN_WINDOW_NONE || it->type == INVALID_WINDOW_TYPE) {
-      CORE_LOG_ERROR("Unknown UI window type requested to open: {}", window_name);
-      return;
-    }
+      open_custom_window(window_name);
+    } else {
+      if (it->window_ptr == nullptr) {
+        CORE_LOG_ERROR("UI window appears '{}' to be unimplemented.", window_name);
+        return;
+      }
 
-    if (it->window_ptr == nullptr) {
-      CORE_LOG_ERROR("UI window appears '{}' to be unimplemented.", window_name);
-      return;
+      open_builtin_window(it->type);
     }
-
-    open_builtin_window(it->type);
   }
 
   void driver_ui::close_window(const std::string_view window_name) {
@@ -91,16 +87,15 @@ namespace other {
       return FNV(kBuiltinWindowNames[static_cast<size_t>(win.type)]) == hash;
     });
     if (it == windows.end()) {  // || it->type == BUILTIN_WINDOW_NONE || it->type == INVALID_WINDOW_TYPE) {
-      CORE_LOG_ERROR("Unknown UI window type requested to close: {}", window_name);
-      return;
-    }
+      close_custom_window(window_name);
+    } else {
+      if (it->window_ptr == nullptr) {
+        CORE_LOG_ERROR("UI window appears '{}' to be unimplemented.", window_name);
+        return;
+      }
 
-    if (it->window_ptr == nullptr) {
-      CORE_LOG_ERROR("UI window appears '{}' to be unimplemented.", window_name);
-      return;
+      close_builtin_window(it->type);
     }
-
-    close_builtin_window(it->type);
   }
 
   bool driver_ui::is_window_open(const std::string_view window_name) const {
@@ -114,6 +109,11 @@ namespace other {
       return false;
     }
     return it->open;
+  }
+
+  event_system& driver_ui::events() {
+    OTHER_ASSERT(driver_ptr != nullptr, "Driver pointer is null in driver UI.");
+    return *driver_ptr->get_event_system();
   }
 
   void driver_ui::initialize_builtin_windows() {
@@ -154,6 +154,15 @@ namespace other {
     }
   }
 
+  void driver_ui::shutdown_custom_windows() {
+    CORE_LOG_DEBUG("Shutting down custom UI windows...");
+    for (auto& [hash, window] : custom_windows) {
+      CORE_LOG_DEBUG("  - shutting down custom window: {} [{}]", window.name, hash);
+      window.window_ptr = nullptr;
+    }
+    custom_windows.clear();
+  }
+
   void driver_ui::open_builtin_window(builtin_window_type type) {
     OTHER_ASSERT(type > BUILTIN_WINDOW_NONE && type < NUM_BUILTIN_WINDOW_TYPES, "Invalid builtin window type");
     auto& window = builtin_windows[static_cast<size_t>(type)];
@@ -166,6 +175,53 @@ namespace other {
     auto& window = builtin_windows[static_cast<size_t>(type)];
     window.window_ptr->toggle_close();
     window.open = false;
+  }
+
+  void driver_ui::render_builtin_windows() {
+    for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
+      auto& window = builtin_windows[i];
+      if (window.open && window.window_ptr != nullptr) {
+        window.window_ptr->render();
+      }
+    }
+  }
+
+  void driver_ui::render_custom_windows() {
+    for (auto& [hash, window] : custom_windows) {
+      if (window.open && window.window_ptr != nullptr) {
+        window.window_ptr->render();
+      }
+    }
+  }
+
+  void driver_ui::open_custom_window(const std::string_view name) {
+    auto itr = custom_windows.find(FNV(name));
+    if (itr == custom_windows.end()) {
+      CORE_LOG_ERROR("Unknown custom UI window requested to open: {}", name);
+      return;
+    }
+
+    if (itr->second.window_ptr == nullptr) {
+      CORE_LOG_ERROR("Custom UI window '{}' appears to be unimplemented.", name);
+      return;
+    }
+    itr->second.window_ptr->toggle_open();
+    itr->second.open = true;
+  }
+
+  void driver_ui::close_custom_window(const std::string_view name) {
+    auto itr = custom_windows.find(FNV(name));
+    if (itr == custom_windows.end()) {
+      CORE_LOG_ERROR("Unknown custom UI window requested to close: {}", name);
+      return;
+    }
+
+    if (itr->second.window_ptr == nullptr) {
+      CORE_LOG_ERROR("Custom UI window '{}' appears to be unimplemented.", name);
+      return;
+    }
+    itr->second.window_ptr->toggle_close();
+    itr->second.open = false;
   }
 
 }  // namespace other

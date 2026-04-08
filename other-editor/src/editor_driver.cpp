@@ -3,6 +3,9 @@
  **/
 #include "editor_driver.hpp"
 
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_keycode.h>
+
 #include "event/event_system.hpp"
 #include "serialization/reflection.hpp"
 
@@ -16,8 +19,8 @@
 #include "tools/environment_console.hpp"
 #include "ui/driver_ui.hpp"
 
-#include "SDL3/SDL_events.h"
-#include "SDL3/SDL_keycode.h"
+#include "project_window.hpp"
+#include "status_window.hpp"
 
 namespace other {
 
@@ -51,17 +54,6 @@ namespace other {
       std::string proj_name = data;
       CORE_LOG_INFO("Opening project: [{}]", proj_name);
     });
-
-    get_event_system()->register_event("edit-project");
-    get_event_system()->add_listener("edit-project", [this](const value& data) {
-      if (data.type() != value_type::STRING) {
-        CORE_LOG_ERROR("Invalid data type for edit-project event. Expected string.");
-        return;
-      }
-
-      std::string proj_name = data;
-      CORE_LOG_INFO("Editing project: [{}]", proj_name);
-    });
     get_event_system()->add_listener("force-load-scene", [this](const value& data) {
       /// capture camera id
       scene_object& cam_obj = get_active_scene()->get_object("Camera");
@@ -70,12 +62,6 @@ namespace other {
       camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
       OTHER_ASSERT(cam != nullptr, "Camera component is null");
       cam->camera.sensitivity = 10.0f;
-
-      // scene_object& my_obj = get_active_scene()->get_object("MyObject");
-      // scene_object& floor_obj = get_active_scene()->get_object("Floor");
-
-      // get_active_scene()->add_component<physics_component>(&my_obj, physics_component{ physics_body_settings{ .body_type = BODY_TYPE_DYNAMIC } });
-      // get_active_scene()->add_component<physics_component>(&floor_obj, physics_component{ physics_body_settings{ .body_type = BODY_TYPE_STATIC } });
     });
   }
 
@@ -134,15 +120,13 @@ namespace other {
   /// \todo load editor pipeline for debug drawing
 
   void editor_driver::on_initialize_ui(scope<driver_ui>& ui_ptr) {
-    get_event_system()->register_event("editor:main-menu:file:new-project");
-    get_event_system()->add_listener("editor:main-menu:file:new-project", [this](const value& data) {
-      CORE_LOG_INFO("New Project menu item selected.");
-    });
+    /// register editor windows
+    ui_ptr->register_window<ui::project_window>("Project", *get_event_system());
+    ui_ptr->register_window<ui::status_window>("Status", *get_event_system(), this);
+    ui_ptr->open_window("Status");
+    // ui_ptr->open_window("Project");
 
-    get_event_system()->register_event("editor:main-menu:file:open-project");
-    get_event_system()->add_listener("editor:main-menu:file:open-project", [this](const value& data) {
-      CORE_LOG_INFO("Open Project menu item selected.");
-    });
+    /// register custom project windows
   }
 
   void editor_driver::update_running() {
@@ -198,3 +182,5 @@ namespace other {
   }
 
 }  // namespace other
+
+OTHER_DRIVER(other::editor_driver);

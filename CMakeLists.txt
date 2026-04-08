@@ -158,7 +158,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/dotnet
   ${OTHER_EXTERN_DIR}/entt
   ${OTHER_EXTERN_DIR}/pybind11/include
-  # ${OTHER_EXTERN_DIR}/nativefiledialog/src
+  ${OTHER_EXTERN_DIR}/nativefiledialog/src
   ${OTHER_EXTERN_DIR}/json
   ${OTHER_EXTERN_DIR}/sol2
   ${OTHER_EXTERN_DIR}/sol2/lua

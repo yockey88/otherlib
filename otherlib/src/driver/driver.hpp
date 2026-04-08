@@ -97,6 +97,7 @@ namespace other {
     natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
 
     scene* get_active_scene();
+    void new_blank_scene(const std::string_view name);
 
     void process_driver_event(driver_event event);
 
