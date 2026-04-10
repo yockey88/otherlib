@@ -31,7 +31,8 @@ namespace OtherCsBindings
 
 		Bool,
 
-		Pointer
+		Pointer,
+    String,
 	};
 
   [StructLayout(LayoutKind.Sequential, Pack = 1)]

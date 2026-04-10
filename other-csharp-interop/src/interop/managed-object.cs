@@ -256,6 +256,35 @@ namespace OtherCsBindings
     }
 
     [UnmanagedCallersOnly]
+    private static unsafe NativeBool32 IsFieldPrivate(IntPtr target, NativeString name)
+    {
+      try
+      {
+        var obj = GCHandle.FromIntPtr(target).Target;
+        if (obj == null)
+        {
+          Logger.LogError("Target object is null.");
+          return false;
+        }
+
+        var type = obj.GetType();
+        var field = type.GetField(name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field == null)
+        {
+          Logger.LogError($"Field '{name}' not found in type '{type.FullName}'.");
+          return false;
+        }
+
+        return field.IsPrivate;
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+        return false;
+      }
+    }
+
+    [UnmanagedCallersOnly]
     private static unsafe void SetField(IntPtr target, NativeString name, IntPtr value)
     {
       try

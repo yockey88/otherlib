@@ -11,13 +11,11 @@
 
 #include "core/logger.hpp"
 
+#include "renderer/ui/colors.hpp"
 #include "renderer/ui/ui_helpers.hpp"
 
-#include "ui/colors.hpp"
 #include "ui/node_editor_canvas_node.hpp"
 #include "ui/type-bindings/value_ui.hpp"
-
-#include "colors.hpp"
 
 namespace other {
   namespace ui {
@@ -213,7 +211,7 @@ namespace other {
     }
 
     void node_editor::on_pre_render_nodes() {
-      ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::editor::kNodeEditorBackground);
+      ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::rgba_to_imvec4(colors::kNodeEditorBackground));
     }
 
     void node_editor::on_post_render_nodes() {

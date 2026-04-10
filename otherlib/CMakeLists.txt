@@ -33,9 +33,9 @@ target_sources(otherlib
       
     src/driver/driver.cpp
 
-    src/rendering-pipelines/empty_pipeline.cpp
-    src/rendering-pipelines/default_instancing_pipeline.cpp
-    src/rendering-pipelines/scriptable_pipeline.cpp
+    src/ocl/object_parser.cpp
+
+    # src/project/...
 
     src/scripting/dotnet_bindings.cpp
     src/scripting/lua_bindings.cpp
@@ -72,18 +72,31 @@ target_sources(otherlib
 
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp
+    src/tools/project_tool.cpp
 
+    src/ui/inspector_widgets.cpp
+    src/ui/hierarchy_widgets.cpp
+    src/ui/console_widgets.cpp
+    src/ui/asset_browser_widgets.cpp
+    src/ui/script_property_widget.cpp
     src/ui/ui_widgets.cpp
     src/ui/node_editor_canvas_node.cpp
-    src/ui/node_editor.cpp
+    src/ui/console_input_node.cpp
     src/ui/console_history_node.cpp
+    src/ui/scene_hierarchy_node.cpp
+    src/ui/property_inspector_node.cpp
+    src/ui/asset_browser_tree_node.cpp
+    src/ui/asset_browser_grid_node.cpp
+    src/ui/asset_editor_node.cpp
+    src/ui/node_editor.cpp
     src/ui/console.cpp
     src/ui/viewport.cpp
     src/ui/type_database.cpp
-    src/ui/driver_ui.cpp
+    src/ui/asset_browser.cpp
     src/ui/scene_hierarchy.cpp
-    src/ui/scene_tree_node.cpp
-    src/ui/property_inspector_node.cpp
+    src/ui/asset_editor_registry.cpp
+    src/ui/asset_editor.cpp
+    src/ui/driver_ui.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp
@@ -110,7 +123,11 @@ target_include_directories(otherlib
 )
 
 foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
-  target_include_directories(otherlib PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
+  target_include_directories(otherlib 
+    PUBLIC 
+      $<BUILD_INTERFACE:${extern_dir}>
+      $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>    
+  )
 endforeach()
 
 target_link_directories(otherlib PUBLIC 
@@ -127,6 +144,15 @@ target_link_libraries(otherlib PUBLIC other_scene other_renderer other_physics o
 add_library(otherlib_main STATIC src/other_main.cpp)
 target_link_libraries(otherlib_main PUBLIC otherlib)
 target_include_directories(otherlib_main PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
+)
+
+add_executable(otherlib_driver)
+target_sources(otherlib_driver PRIVATE src/other_main.cpp)
+target_compile_definitions(otherlib_driver PRIVATE OTHER_CLIENT)
+target_link_libraries(otherlib_driver PUBLIC otherlib)
+target_include_directories(otherlib_driver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
 )

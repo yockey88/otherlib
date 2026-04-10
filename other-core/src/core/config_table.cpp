@@ -13,35 +13,6 @@
 
 namespace other {
 
-  config_table::config_table(const config_table& other) {
-    this->table = other.table;
-    this->valid = other.valid;
-    this->diagnostics = other.diagnostics;
-    this->dynamic_driver_rel_path = other.dynamic_driver_rel_path;
-    this->core_log_level = other.core_log_level;
-    this->core_log_file = other.core_log_file;
-    this->open_terminal = other.open_terminal;
-    this->rendering_backend = other.rendering_backend;
-    this->window_size = other.window_size;
-    this->clear_color = other.clear_color;
-  }
-
-  config_table& config_table::operator=(const config_table& other) {
-    if (this != &other) {
-      this->table = other.table;
-      this->valid = other.valid;
-      this->diagnostics = other.diagnostics;
-      this->dynamic_driver_rel_path = other.dynamic_driver_rel_path;
-      this->core_log_level = other.core_log_level;
-      this->core_log_file = other.core_log_file;
-      this->open_terminal = other.open_terminal;
-      this->rendering_backend = other.rendering_backend;
-      this->window_size = other.window_size;
-      this->clear_color = other.clear_color;
-    }
-    return *this;
-  }
-
   opt<config_table> parse_raw_config(const std::string_view filename) {
     PROFILE_SECTION("config_table::parse_raw_config");
     if (filename.empty()) {
@@ -58,7 +29,6 @@ namespace other {
     bool open_terminal = false;
 
     std::string rendering = "";
-    glm::uvec2 window_size = { 1280, 720 };
 
     config_table config = {};
     try {
@@ -97,37 +67,28 @@ namespace other {
       }
 
       toml::node_view log_level_node = config.table.at_path("application.core-log-level");
+      toml::node_view log_file_node = config.table.at_path("application.core-log-file");
+
       if (log_level_node.is_integer()) {
         log_level = log_level_node.as_integer()->get();
       } else if (log_level_node.is_string()) {
         std::string level_str = log_level_node.as_string()->get();
         switch (FNV(level_str)) {
-          case FNV("trace"):
-            log_level = 0;
-            break;
-          case FNV("debug"):
-            log_level = 1;
-            break;
-          case FNV("info"):
-            log_level = 2;
-            break;
-          case FNV("warn"):
-            log_level = 3;
-            break;
-          case FNV("error"):
-            log_level = 4;
-            break;
-          case FNV("critical"):
-            log_level = 5;
-            break;
+          case FNV("trace"): log_level = 0; break;
+          case FNV("debug"): log_level = 1; break;
+          case FNV("info"): log_level = 2; break;
+          case FNV("warn"): log_level = 3; break;
+          case FNV("error"): log_level = 4; break;
+          case FNV("critical"): log_level = 5; break;
           default:
             log_level = 2;  // Default to info
+            break;
         }
       } else {
         log_level = 2;
       }
+      std::println("using log level: {}", log_level);
 
-      toml::node_view log_file_node = config.table.at_path("application.core-log-file");
       if (log_file_node.is_string()) {
         core_log_file = log_file_node.as_string()->get();
       }
@@ -145,9 +106,6 @@ namespace other {
           std::println(std::cerr, "Invalid value for 'environment.terminal', not opening.");
         }
       }
-      if (log_level == 0) {
-        std::print("Terminal open: {}\n", open_terminal);
-      }
 
       toml::node_view force_no_window = config.table.at_path("rendering.force-no-window");
       if (force_no_window.is_boolean()) {
@@ -156,55 +114,39 @@ namespace other {
 
       toml::node_view rendering_backend = config.table.at_path("rendering.backend");
       rendering = rendering_backend.as_string() == nullptr ? "" : rendering_backend.as_string()->get();
-      if (log_level == 0) {
-        std::print("Rendering backend: '{}'\n", rendering);
-      }
 
       toml::node_view window_size_node = config.table.at_path("rendering.window-size");
       if (window_size_node.is_table()) {
         toml::node_view width_node = window_size_node.at_path("width");
         toml::node_view height_node = window_size_node.at_path("height");
         if (width_node.is_integer() && height_node.is_integer()) {
-          window_size = { width_node.as_integer()->get(), height_node.as_integer()->get() };
+          config.window_size = { width_node.as_integer()->get(), height_node.as_integer()->get() };
         }
 
         if (log_level == 0) {
-          std::print("Window size: {}x{}\n", window_size.x, window_size.y);
+          std::print("Terminal open: {}\n", open_terminal);
+          std::print("Rendering backend: '{}'\n", rendering);
+          std::print("Window size: {}x{}\n", config.window_size.x, config.window_size.y);
         }
       }
 
-      // {
-      //   toml::node_view ptable = config.table.at_path("project");
-      //   if (pconfig.table.is_table()) {
-      //     if (auto* p = pconfig.table.as_table(); p != nullptr) {
-      //       project_config.table.emplace(std::move(*p));
-      //     }
+      if (!driver.empty()) {
+        config.dynamic_driver_rel_path = driver;
+      }
+      if (!rendering.empty()) {
+        config.rendering_backend = rendering;
+      }
 
-      //     if (log_level == 0) {
-      //       std::print("Loaded project table with {} entries.\n", project_table->size());
-      //     }
-      //   }
-      // }
+      config.core_log_level = log_level;
+      config.core_log_file = core_log_file;
+      config.open_terminal = open_terminal;
+
+      config.valid = true;
+      return config;
     } catch (const toml::parse_error& err) {
       std::println(std::cerr, "Failed to parse configuration file '{}' caught a toml-parse-error: {}", filename, err.description());
       return std::nullopt;
     }
-
-    config.valid = true;
-    if (!driver.empty()) {
-      config.dynamic_driver_rel_path = driver;
-    }
-    config.core_log_level = log_level;
-    config.core_log_file = core_log_file;
-
-    config.open_terminal = open_terminal;
-
-    if (!rendering.empty()) {
-      config.rendering_backend = rendering;
-    }
-    config.window_size = window_size;
-
-    return config;
   }
 
   config_table config_table::load(const std::string_view filename) {
@@ -243,6 +185,19 @@ namespace other {
     std::ostringstream oss;
     oss << table;
     return oss.str();
+  }
+
+  const toml::table* config_table::get_subtable(const std::string_view toml_path) const {
+    toml::node_view node = table.at_path(toml_path);
+    if (!node) {
+      CORE_LOG_WARN("Config subtable '{}' not found.", toml_path);
+      return nullptr;
+    } else if (!node.is_table()) {
+      CORE_LOG_WARN("Config subtable '{}' is not a table.", toml_path);
+      return nullptr;
+    } else {
+      return node.as_table();
+    }
   }
 
 }  // namespace other

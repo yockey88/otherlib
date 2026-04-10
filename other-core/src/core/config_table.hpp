@@ -14,6 +14,7 @@
 #include "core/value.hpp"
 #include "serialization/reflection.hpp"
 
+#include "defines.hpp"
 #include "spdlog/common.h"
 
 #include <toml++/toml.h>
@@ -26,8 +27,8 @@ namespace other {
     static config_table load_from_source(const std::string_view text);
 
     config_table() = default;
-    config_table(const config_table& other);
-    config_table& operator=(const config_table& other);
+    config_table(const config_table& other) = default;
+    config_table& operator=(const config_table& other) = default;
 
     ~config_table() = default;
 
@@ -47,7 +48,11 @@ namespace other {
       toml::node_view node = table.at_path(toml_path);
       if (!node) {
         CORE_LOG_TRACE("Config key '{}' not found, returning default value.", toml_path);
-        return default_value;
+        if constexpr (is_string_type<T>) {
+          return perform_tag_replacement(default_value);
+        } else {
+          return default_value;
+        }
       } else {
         CORE_LOG_TRACE("Found config key '{}'", toml_path);
       }
@@ -70,7 +75,11 @@ namespace other {
             return;
           }
           CORE_LOG_TRACE(" - Parsed element in config array '{}'", toml_path);
-          result.push_back(elem.template as<value_type>()->get());
+          value_type v = elem.template as<value_type>()->get();
+          if constexpr (is_string_type<value_type>) {
+            v = perform_tag_replacement(v);
+          }
+          result.push_back(v);
         });
 
         return result;
@@ -85,10 +94,19 @@ namespace other {
           }
         } else {
           CORE_LOG_WARN("Config key '{}' is not of the expected type, returning default value.", toml_path);
-          return default_value;
+          if constexpr (std::is_same_v<T, std::string>) {
+            return perform_tag_replacement(default_value);
+          } else {
+            return default_value;
+          }
         }
       }
     }
+
+    inline const auto get_raw(const std::string_view toml_path) const {
+      return table.at_path(toml_path);
+    }
+    const toml::table* get_subtable(const std::string_view toml_path) const;
 
     bool valid = true;
     struct {
@@ -108,7 +126,7 @@ namespace other {
 
     bool force_no_window = false;
 
-    glm::uvec2 window_size = { 1280, 720 };
+    glm::uvec2 window_size = { 1920, 1080 };
     glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
    private:

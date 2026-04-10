@@ -33,6 +33,7 @@ namespace other {
       return { 0, resource_type::EMPTY };
     }
 
+    CORE_LOG_DEBUG("Creating shader resource with name: {}, from file: {}, handle ID: {}", name, filepath.string(), handle.id);
     std::string source = preprocess_file(filepath, settings);
     if (source.empty()) {
       CORE_LOG_ERROR("Failed to preprocess shader source from file: {}", filepath.string());
@@ -142,7 +143,7 @@ namespace other {
   }
 
   std::string shader::preprocess_file(const filepath& file, const std::vector<setting>& setting_definitions) {
-    CORE_LOG_DEBUG("Attempting to preprocess shader source from file: {}", file.string());
+    CORE_LOG_DEBUG(" - Attempting to preprocess shader source from file: {}", file.string());
     std::ifstream file_stream(file);
     if (!file_stream.is_open()) {
       CORE_LOG_ERROR("Failed to open shader file: {}", file.string());
@@ -184,7 +185,7 @@ namespace other {
 
     std::string dir_path = file.parent_path().string();
     std::string name = file.filename().string();
-    CORE_LOG_DEBUG("Including shader source from directory: {}, name: {}", dir_path, name);
+    CORE_LOG_DEBUG("   Including shader source from directory: {}, name: {}", dir_path, name);
 
     char* buffer = src.data();
     char* dir_str_buffer = dir_path.data();
@@ -237,7 +238,7 @@ namespace other {
       return *this;
     }
 
-    CORE_LOG_DEBUG("Attaching shader source [{}], resource-handle = {}", type, handle().id);
+    CORE_LOG_DEBUG("      Attaching shader source [{}], resource-handle = {}", type, handle().id);
     subsystem<renderer_backend>::get()->api()->compile_and_attach_source(handle(), source, type);
 
     sources.push_back(source);
@@ -267,7 +268,42 @@ namespace other {
     subsystem<renderer_backend>::get()->api()->finalize_shader(handle());
   }
 
+  shader& shader::set_uniform(const std::string& name, int8_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, uint8_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, int16_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, uint16_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
   shader& shader::set_uniform(const std::string& name, int32_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, uint32_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, int64_t value) {
+    subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
+    return *this;
+  }
+
+  shader& shader::set_uniform(const std::string& name, uint64_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }

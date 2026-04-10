@@ -6,11 +6,12 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
+#include "renderer/ui/colors.hpp"
 #include "renderer/ui/ui_helpers.hpp"
 
-#include "ui/colors.hpp"
 #include "ui/node_editor.hpp"
 #include "ui/node_editor_canvas_node.hpp"
+
 
 namespace other {
   namespace ui {
@@ -88,8 +89,8 @@ namespace other {
         }
       }
 
-      glm::vec4 header_color = { colors::editor::kNodeHeaderColor.x, colors::editor::kNodeHeaderColor.y, colors::editor::kNodeHeaderColor.z, colors::editor::kNodeHeaderColor.w };
-      glm::vec4 body_color = { colors::editor::kNodeBodyColor.x, colors::editor::kNodeBodyColor.y, colors::editor::kNodeBodyColor.z, colors::editor::kNodeBodyColor.w };
+      glm::vec4 header_color = { colors::kNodeHeaderColor.x, colors::kNodeHeaderColor.y, colors::kNodeHeaderColor.z, colors::kNodeHeaderColor.w };
+      glm::vec4 body_color = { colors::kNodeBodyColor.x, colors::kNodeBodyColor.y, colors::kNodeBodyColor.z, colors::kNodeBodyColor.w };
       natural_t node_id = nodes.create(node_name, position, size, header_color, body_color);
 
       nodes.node_input_pin_indices[node_id].reserve(input_pins);
@@ -192,7 +193,7 @@ namespace other {
     void node_editor_canvas_node::connect_node_pins(natural_t from_node_id, uint8_t from_pin_idx, natural_t to_node_id, uint8_t to_pin_idx) {
       natural_t start_pin_id = nodes.node_output_pin_indices[from_node_id][from_pin_idx];
       natural_t end_pin_id = nodes.node_input_pin_indices[to_node_id][to_pin_idx];
-      glm::vec4 link_color = { colors::editor::kBasicNodeLinkColor.x, colors::editor::kBasicNodeLinkColor.y, colors::editor::kBasicNodeLinkColor.z, colors::editor::kBasicNodeLinkColor.w };
+      glm::vec4 link_color = { colors::kBasicNodeLinkColor.x, colors::kBasicNodeLinkColor.y, colors::kBasicNodeLinkColor.z, colors::kBasicNodeLinkColor.w };
       links.create(start_pin_id, end_pin_id, link_color);
       pins.pin_states[start_pin_id] = pin_data::pin_state::LINKED;
       pins.pin_states[end_pin_id] = pin_data::pin_state::LINKED;
@@ -262,7 +263,7 @@ namespace other {
           ImVec2(start_pos.x, start_pos.y),
           ImVec2((start_pos.x + end_pos.x) * 0.5f, (start_pos.y + end_pos.y) * 0.5f + 50.f),
           ImVec2(end_pos.x, end_pos.y),
-          colors::ai::kDataLinkColor,
+          colors::rgba_to_hex(colors::kDataLinkColor),
           3.0f
         );
       } else if (dragging_link.has_value()) {
@@ -276,7 +277,7 @@ namespace other {
           ImVec2(start_pos.x, start_pos.y),
           ImVec2((start_pos.x + end_pos.x) * 0.5f, (start_pos.y + end_pos.y) * 0.5f + 50.f),
           ImVec2(end_pos.x, end_pos.y),
-          colors::ai::kDataLinkColor,
+          colors::rgba_to_hex(colors::kDataLinkColor),
           3.0f
         );
       }
@@ -291,7 +292,7 @@ namespace other {
         // add link from open pin to new node's first input pin
         natural_t start_pin_id = currently_open_link->pin_id;
         natural_t end_pin_id = nodes.node_input_pin_indices[node_id][0];
-        glm::vec4 link_color = { colors::editor::kBasicNodeLinkColor.x, colors::editor::kBasicNodeLinkColor.y, colors::editor::kBasicNodeLinkColor.z, colors::editor::kBasicNodeLinkColor.w };
+        glm::vec4 link_color = { colors::kBasicNodeLinkColor.x, colors::kBasicNodeLinkColor.y, colors::kBasicNodeLinkColor.z, colors::kBasicNodeLinkColor.w };
         links.create(start_pin_id, end_pin_id, link_color);
         pins.pin_states[start_pin_id] = pin_data::pin_state::LINKED;
         pins.pin_states[end_pin_id] = pin_data::pin_state::LINKED;
@@ -307,7 +308,7 @@ namespace other {
             pins.pin_types[end_pin_id] == pin_data::pin_type::INPUT;
 
           if (can_link) {
-            glm::vec4 link_color = { colors::editor::kBasicNodeLinkColor.x, colors::editor::kBasicNodeLinkColor.y, colors::editor::kBasicNodeLinkColor.z, colors::editor::kBasicNodeLinkColor.w };
+            glm::vec4 link_color = { colors::kBasicNodeLinkColor.x, colors::kBasicNodeLinkColor.y, colors::kBasicNodeLinkColor.z, colors::kBasicNodeLinkColor.w };
             links.create(currently_open_link->pin_id, end_pin_id, link_color);
             pins.pin_states[currently_open_link->pin_id] = pin_data::pin_state::LINKED;
             pins.pin_states[end_pin_id] = pin_data::pin_state::LINKED;
@@ -431,13 +432,13 @@ namespace other {
       auto* draw_list = ImGui::GetWindowDrawList();
 
       /// bg
-      auto bg_col = colors::ai::kNodeBodyColor;
+      auto bg_col = colors::kNodeBodyColor;
       if (state.hovered) {
-        bg_col = colors::ai::kNodeCardStrokeColor;
+        bg_col = colors::kNodeCardStrokeColor;
       } else {
-        bg_col = colors::ai::kNodeBodyColor;
+        bg_col = colors::kNodeBodyColor;
       }
-      draw_list->AddRectFilled(rect.Min, rect.Max, bg_col, 4.0f);
+      draw_list->AddRectFilled(rect.Min, rect.Max, colors::rgba_to_hex(bg_col), 4.0f);
 
       /// title bar
       std::string display_name = calculate_display_text(node_name, (titlebar_rect.Max.x - titlebar_rect.Min.x) - 16.f);
@@ -447,12 +448,12 @@ namespace other {
       ImVec2 text_pos = ImVec2{ nodes.global_node_positions[node_id].x + 8.0f, nodes.global_node_positions[node_id].y + 2.f };
       ImVec2 opp_text_pos = ImVec2{ titlebar_rect.Max.x - 24.f, text_pos.y };
 
-      draw_list->AddRectFilled(titlebar_rect.Min, titlebar_rect.Max, colors::ai::kNodeHeaderColor, 4.0f);
-      draw_list->AddText(text_pos, colors::ai::kNodeTitleTextColor, display_name.c_str());
-      draw_list->AddText(opp_text_pos, colors::ai::kNodeTitleTextColor, node_id_str.c_str());
+      draw_list->AddRectFilled(titlebar_rect.Min, titlebar_rect.Max, colors::rgba_to_hex(colors::kNodeHeaderColor), 4.0f);
+      draw_list->AddText(text_pos, (colors::rgba_to_hex(colors::kNodeTitleTextColor)), display_name.c_str());
+      draw_list->AddText(opp_text_pos, colors::rgba_to_hex(colors::kNodeTitleTextColor), node_id_str.c_str());
 
       /// body
-      draw_list->AddRectFilled(body_rect.Min, body_rect.Max, colors::ai::kNodeBodyColor, 4.0f);
+      draw_list->AddRectFilled(body_rect.Min, body_rect.Max, colors::rgba_to_hex(colors::kNodeBodyColor), 4.0f);
 
       const auto& input_pins = nodes.node_input_pin_indices[node_id];
       const auto& output_pins = nodes.node_output_pin_indices[node_id];
@@ -480,7 +481,7 @@ namespace other {
       editor->render_node_body(node_id, body_without_pins_rect);
 
       /// frame
-      draw_list->AddRect(rect.Min, rect.Max, colors::ai::kNodeOutlineColor, 4.0f, ImDrawFlags_None, 2.0f);
+      draw_list->AddRect(rect.Min, rect.Max, colors::rgba_to_hex(colors::kNodeOutlineColor), 4.0f, ImDrawFlags_None, 2.0f);
 
       ImGui::EndGroup();
       ImGui::PopID();
@@ -506,7 +507,7 @@ namespace other {
         ImVec2(start_pin.x + 50.f, start_pin.y),
         ImVec2(end_pin.x - 50.f, end_pin.y),
         ImVec2(end_pin.x, end_pin.y),
-        colors::ai::kDataLinkColor,
+        colors::rgba_to_hex(colors::kDataLinkColor),
         3.0f
       );
     }

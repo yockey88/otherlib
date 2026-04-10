@@ -12,122 +12,111 @@
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/pipeline_definition.hpp"
 #include "renderer/render_graph.hpp"
-#include "renderer/renderer.hpp"
 
 namespace other {
 
   struct render_data;
   class renderer;
 
+  struct frame_resources {
+    std::map<resource_tag, resource_handle> tagged_buffers;
+    std::map<resource_tag, resource_handle> tagged_textures;
+
+    inline opt<resource_handle> find(resource_tag tag) const {
+      if (auto itr = tagged_buffers.find(tag); itr != tagged_buffers.end()) {
+        return itr->second;
+      }
+      if (auto itr = tagged_textures.find(tag); itr != tagged_textures.end()) {
+        return itr->second;
+      }
+      return std::nullopt;
+    }
+
+    inline bool has(resource_tag tag) const {
+      return tagged_buffers.contains(tag) || tagged_textures.contains(tag);
+    }
+  };
+
   class render_pipeline {
    public:
     render_pipeline() = default;
+    render_pipeline(pipeline_definition&& def)
+        : definition(std::move(def)) {}
     virtual ~render_pipeline() = default;
 
-    void initialize_pipeline(renderer* renderer);
+    void initialize_pipeline(renderer* renderer_ptr);
     void shutdown_pipeline();
 
-    void upload_buffer(const std::string_view name, const void* data, size_t size);
+    bool reload(pipeline_definition&& new_def);
 
-    void prepare_frame(renderer::frame_resources* resources, render_data* data);
-    virtual void render_frame(renderer* renderer_ptr);
+    void prepare_frame(render_data* data);
+    void render_frame(renderer* renderer_ptr);
 
     ImTextureID get_final_output_texture_id();
-    resource_handle get_screen_texture();
+    resource_handle get_screen_texture() const;
+    frame_resources get_frame_resources() const;
 
-    renderer::frame_resources get_frame_resources() const;
-
-    inline const bool is_valid() const { return valid; }
-
-   protected:
-    virtual void on_prepare_frame(renderer::frame_resources* resources, render_data* data) {}
-    virtual void on_render_frame(renderer* renderer_ptr, render_data* data) {}
-    virtual void create_resources() = 0;
-    virtual void build_render_passes() = 0;
-    void destroy_resources();
-
-    renderer* get_renderer() {
-      OTHER_ASSERT(graph != nullptr, "Render graph is not initialized. Cannot retrieve renderer.");
-      return graph->get_renderer();
-    }
-    render_data* get_frame_render_data() {
-      OTHER_ASSERT(frame_render_data != nullptr, "Frame render data is not set. Cannot retrieve it.");
-      return frame_render_data;
-    }
-
-    void set_screen_texture(const std::string_view name);
-    void set_material_buffer(const std::string_view);
-    void set_model_buffer(const std::string_view);
-    void set_bone_buffer(const std::string_view);
-    void set_point_light_buffer(const std::string_view name);
-    void set_direction_light_buffer(const std::string_view name);
-    void set_camera_buffer(const std::string_view name);
-
-    void add_buffer_resource(const std::string_view name, gpu_buffer::buf_type type, gpu_buffer::usage usage);
-    void add_texture_resource(const std::string_view name, const glm::vec2& size, texture::tex_type tex_type, texture::format format);
-    void add_texture_resource(const std::string_view name, const glm::vec2& size, texture::tex_type tex_type, texture::format format, const std::pair<texture::filter, texture::filter>& filters, const std::tuple<texture::wrap, texture::wrap, texture::wrap>& wraps);
-
-    template <typename T>
-    T* get_resource(const std::string_view name) {
-      auto itr = std::ranges::find_if(buffer_resources, [&](const auto& pair) { return pair.second.name == name; });
-      if (itr == buffer_resources.end()) {
-        CORE_LOG_ERROR("Resource [{}] not found in pipeline.", name);
-        return nullptr;
-      }
-      return &get_renderer()->get_resource<T>(itr->second.handle);
-    }
-
-    shader* get_pass_shader(const std::string_view name);
-
-    struct pass_builder {
-      pass_builder(render_pipeline* pipeline, render_graph::pass_builder&& builder)
-          : pipeline(pipeline), builder(std::move(builder)) {}
-
-      pass_builder& clear_color(const glm::vec4& clear_color);
-      pass_builder& buffer_resource(const std::string_view name, uint32_t binding, access_flags flags);
-      pass_builder& texture_resource(const std::string_view name, framebuffer::attachment_type type, access_flags flags = READ_WRITE);
-      pass_builder& execution_callback(render_graph::pass_executor&& executor, void* user_data = nullptr);
-      // pass_builder& set_user_data(void* user_data);
-      void end_pass();
-
-      std::string pass_name;
-
-     private:
-      uint32_t curr_texture_slot = 0;
-
-      render_pipeline* pipeline = nullptr;
-      render_graph::pass_builder builder;
-    };
-    render_pipeline::pass_builder start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true);
-
-    opt<resource_handle> find_buffer_resource(const std::string_view name) const;
-    opt<resource_handle> find_texture_resource(const std::string_view name) const;
+    const pipeline_definition& get_definition() const { return definition; }
+    const std::string& get_name() const { return definition.name; }
+    inline bool is_valid() const { return valid; }
 
    private:
-    render_graph* graph = nullptr;
+    pipeline_definition definition;
     bool valid = false;
 
+    render_graph* graph = nullptr;
     render_data* frame_render_data = nullptr;
-    renderer::frame_resources frame_resources;
 
-    opt<resource_handle> screen_texture_handle;
-    opt<resource_handle> material_buffer_handle;
-    opt<resource_handle> model_buffer_handle;
-    opt<resource_handle> bone_buffer_handle;
-    opt<resource_handle> point_light_buffer_handle;
-    opt<resource_handle> direction_light_buffer_handle;
-    opt<resource_handle> camera_buffer_handle;
+    renderer* renderer_ptr = nullptr;
 
-    struct resource {
+    struct named_resource {
       std::string name;
       resource_handle handle;
+      resource_tag tag = resource_tag::NONE;
     };
-    std::map<natural_t, resource> buffer_resources;
-    std::map<natural_t, resource> texture_resources;
 
-    void set_core_buffer(opt<resource_handle>& handle, const std::string_view name);
-    void validate_pipeline();
+    std::map<natural_t, named_resource> buffer_resources;   /// keyed by FNV(name)
+    std::map<natural_t, named_resource> texture_resources;  /// keyed by FNV(name)
+    std::map<std::string, resource_handle> shader_handles;  /// keyed by shader def name
+
+    std::map<resource_tag, resource_handle> tagged_buffer_handles;
+    std::map<resource_tag, resource_handle> tagged_texture_handles;
+
+    opt<resource_handle> screen_texture_handle;
+    opt<resource_handle> quad_mesh_handle;
+
+    using executor_fn = render_graph::pass_executor;
+    std::map<std::string, executor_fn> executor_overrides;
+
+    void upload_buffer(resource_handle handle, const void* data, size_t size);
+    opt<resource_handle> find_buffer_by_name(const std::string_view name) const;
+    opt<resource_handle> find_texture_by_name(const std::string_view name) const;
+    opt<resource_handle> find_tagged(resource_tag tag) const;
+    shader* get_pass_shader(const std::string_view pass_name);
+
+    void override_pass_executor(const std::string_view pass_name, executor_fn&& fn);
+
+    void create_resources_from_def();
+
+    void build_tag_maps();
+    void build_passes_from_def();
+    void validate();
+    void destroy_resources();
+
+    void upload_to_handle(resource_handle handle, const void* data, size_t size);
+
+    renderer* get_renderer() const;
+    glm::ivec2 resolve_size(bool use_window, const glm::ivec2& fixed) const;
+    bool is_buffer_resource(const std::string_view name) const;
+
+    executor_fn make_executor(const pipeline_pass_definition& pass);
+    executor_fn make_draw_scene_executor();
+    executor_fn make_fullscreen_quad_executor(const pipeline_executor_definition& exec, const std::string& pass_name);
+    executor_fn make_noop_executor();
+
+    static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
   };
 
 }  // namespace other

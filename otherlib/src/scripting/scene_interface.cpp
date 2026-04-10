@@ -170,8 +170,9 @@ namespace other {
     OTHER_ASSERT(std::filesystem::exists(model_path), "Model path '{}' does not exist in scene_object_interface::attach_model_to_object", model_path);
     OTHER_ASSERT(render_comp != nullptr, "Render component pointer is null in scene_object_interface::attach_model_to_object");
 
-    CORE_LOG_DEBUG("Beginning asset load for model '{}' to attach to object '{}'.", model_path, object->name);
+    CORE_LOG_DEBUG(" [LUA] Beginning asset load for model '{}' to attach to object '{}'.", model_path, object->name);
     render_comp->model_asset_id = driver_ptr->begin_asset_load(model_path);
+    render_comp->last_model_asset_id = render_comp->model_asset_id;
 
     return render_component_lua_proxy{ render_comp };
   }

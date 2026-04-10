@@ -5,6 +5,7 @@
 #define OTHER_PHYSICS_PHYSICS_WORLD_PHYSICS_BODY_HPP
 
 #include "core/defines.hpp"
+#include "serialization/reflection.hpp"
 
 #include "glm/fwd.hpp"
 
@@ -51,5 +52,10 @@ namespace other {
   };
 
 }  // namespace other
+
+OTHER_REFLECT(
+  other::physics_body_settings,
+  field(mass, other::attr::serializable())
+)
 
 #endif  // OTHER_PHYSICS_PHYSICS_WORLD_PHYSICS_BODY_HPP

@@ -19,6 +19,8 @@ namespace other {
    public:
     renderer_backend() = default;
 
+    static void on_set(renderer_backend* instance);
+
     SDL_Window* get_main_window() const { return rendering_api_instance->window_handle(); }
 
     ImGuiContext* get_ui_context() const { return ui_context; }

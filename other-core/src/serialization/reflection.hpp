@@ -13,6 +13,7 @@
 
 #include <flatbuffers/flexbuffers.h>
 #include <glm/glm.hpp>
+#include <imgui/ImReflect.hpp>
 #include <magic_enum/magic_enum.hpp>
 #include <refl/refl.hpp>
 
@@ -27,8 +28,13 @@ namespace other {
 
   namespace attr {
 
-    struct serializable : refl::attr::usage::field, refl::attr::usage::function {};
-    struct constructor : refl::attr::usage::function {};
+    struct serializable : refl::attr::usage::field {
+      std::string_view display_name;
+      bool editable = true;
+      serializable() = default;
+      explicit constexpr serializable(const std::string_view display_name, bool editable = true)
+          : display_name(std::move(display_name)), editable(editable) {}
+    };
 
   }  // namespace attr
 
@@ -100,7 +106,7 @@ namespace other {
 
   template <typename T>
   concept is_stringlike_type =
-    std::convertible_to<T, std::string> || std::convertible_to<T, std::string_view> ||
+    (std::convertible_to<T, std::string> || std::convertible_to<T, std::string_view>) ||
     std::convertible_to<T, const char*> ||
     std::convertible_to<T, char*>;
 

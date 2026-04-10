@@ -46,7 +46,9 @@ namespace other {
 
     bool dotnet_object_has_attribute(integer_t id, const std::string_view attr_name);
 
-    void attach_dotnet_behavior(integer_t id, const std::string_view behavior_name);
+    void attach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name);
+    void detach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name);
+    void detach_all_dotnet_behaviors(integer_t parent_id);
 
     template <typename... Args>
     void attach_dotnet_object(integer_t id, const std::string_view type_name, Args&&... ctor_args) {

@@ -3,6 +3,8 @@ function(other_install_module TARGET_NAME MODULE_NAME)
   set(one_value_args HEADER_DIR)
   set(multi_value_args HEADER_PATTERNS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+
+  message(STATUS "[MODULE] ${TARGET_NAME} (${MODULE_NAME}) from ${ARG_HEADER_DIR} to ${OTHER_INSTALL_INCLUDEDIR}/${MODULE_NAME}")
   
   if(NOT ARG_HEADER_DIR)
     set(ARG_HEADER_DIR "src")
@@ -44,6 +46,8 @@ function(other_install_dependency TARGET_NAME HEADER_DIR)
   set(multi_value_args HEADER_PATTERNS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
   
+  message(STATUS "[DEPENDENCY] ${TARGET_NAME} from ${HEADER_DIR} to ${OTHER_INSTALL_INCLUDEDIR}/third_party/${TARGET_NAME}")
+
   if(NOT ARG_HEADER_PATTERNS)
     set(ARG_HEADER_PATTERNS "*.h" "*.hpp")
   endif()
@@ -73,6 +77,7 @@ function(other_install_external_headers LIB_NAME HEADER_DIR)
   set(one_value_args "")
   set(multi_value_args HEADER_PATTERNS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+  message(STATUS "[EXTERNAL HEADER] ${LIB_NAME} from ${HEADER_DIR} to ${OTHER_INSTALL_INCLUDEDIR}/extern/${LIB_NAME}")
   
   if(NOT ARG_HEADER_PATTERNS)
     set(ARG_HEADER_PATTERNS "*.h" "*.hpp" "*.inl" "*.hh" "*.ipp")
@@ -88,6 +93,7 @@ function(other_install_external_headers LIB_NAME HEADER_DIR)
 endfunction()
 
 function(other_install_csharp TARGET_NAME)
+  message(STATUS "[CSharp] ${TARGET_NAME} to ${OTHER_INSTALL_BINDIR}")
   install(
     TARGETS ${TARGET_NAME}
     LIBRARY DESTINATION "${OTHER_INSTALL_LIBDIR}"
@@ -96,21 +102,19 @@ function(other_install_csharp TARGET_NAME)
   )
 endfunction()
 
-function(other_install_external_library LIB_NAME LIB_BASE_PATH)
+function(other_install_external_library LIB_NAME LIBPATH)
   set(options "")
   set(one_value_args "")
   set(multi_value_args FILE_PATTERNS)
+
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+  message(STATUS "[EXTERNAL LIBRARY] ${LIB_NAME} from ${LIBPATH} to ${OTHER_INSTALL_LIBDIR}")
   
-  if(NOT ARG_FILE_PATTERNS)
-    set(ARG_FILE_PATTERNS "*.lib" "*.dll" "*.exp" "*.pdb")
-  endif()
-  
-  if(EXISTS "${LIB_BASE_PATH}/debug" AND EXISTS "${LIB_BASE_PATH}/release")
+  if(EXISTS "${LIBPATH}" AND EXISTS "${LIBPATH}")
     ## Configuration-specific installation
     if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
       install(
-        DIRECTORY "${LIB_BASE_PATH}/debug/"
+        DIRECTORY "${LIBPATH}/"
         DESTINATION "${OTHER_INSTALL_LIBDIR}"
         FILES_MATCHING 
         PATTERN "*.lib"
@@ -119,7 +123,7 @@ function(other_install_external_library LIB_NAME LIB_BASE_PATH)
       )
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
       install(
-        DIRECTORY "${LIB_BASE_PATH}/release/"
+        DIRECTORY "${LIBPATH}/"
         DESTINATION "${OTHER_INSTALL_LIBDIR}"
         FILES_MATCHING 
         PATTERN "*.lib"
@@ -128,12 +132,6 @@ function(other_install_external_library LIB_NAME LIB_BASE_PATH)
       )
     endif()
   else()
-    ## Single configuration installation
-    install(
-      DIRECTORY "${LIB_BASE_PATH}/"
-      DESTINATION "${OTHER_INSTALL_LIBDIR}"
-      FILES_MATCHING 
-      PATTERN "*.lib"
-    )
+   message(FATAL_ERROR "External library path '${LIBPATH}' does not exist for '${LIB_NAME}'")
   endif()
 endfunction()

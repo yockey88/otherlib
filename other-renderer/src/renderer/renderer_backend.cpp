@@ -17,6 +17,7 @@
 #include "core/profiler.hpp"
 
 #include "renderer/backends/opengl_api.hpp"
+#include "renderer/ui/unicode.hpp"
 
 namespace other {
   namespace backend_keys {
@@ -36,6 +37,27 @@ namespace other {
     static constexpr natural_t kNullHash = FNV(kNull);
 
   }  // namespace backend_keys
+
+  namespace detail {
+
+    /// imgui functions so that imgui works across dll boundaries
+
+    // typedef void* (*ImGuiMemAllocFunc)(size_t sz, void* user_data);  // Function signature for ImGui::SetAllocatorFunctions()
+    // typedef void (*ImGuiMemFreeFunc)(void* ptr, void* user_data);    // Function signature for ImGui::SetAllocatorFunctions()
+
+    void* imgui_allocate(size_t size, void* user_data) {
+      return arena::allocate(size);
+    }
+
+    void imgui_deallocate(void* ptr, void* user_data) {
+      arena::free(ptr);
+    }
+
+  };  // namespace detail
+
+  void renderer_backend::on_set(renderer_backend* instance) {
+    GImGui = instance->ui_context;
+  }
 
   void renderer_backend::load_backend(const config_table& config, const std::string& name, const glm::uvec2& window_size) {
     PROFILE_SECTION("renderer_backend::load-backend");
@@ -79,6 +101,7 @@ namespace other {
 
     std::string ui_ini_name = "resources/ui/default_ui_layout.ini";
     static std::string real_ini_name = config.get_value<std::string>("rendering.ui-layout-ini", ui_ini_name);
+    static std::string main_imgui_font = config.get_value<std::string>("rendering.imgui-font", "${other-directory}/resources/fonts/BlexMonoNerdFont-Regular.ttf");
     {
       PROFILE_SECTION("renderer_backend::load-backend--imgui-init");
       IMGUI_CHECKVERSION();
@@ -90,9 +113,19 @@ namespace other {
       io.ConfigWindowsMoveFromTitleBarOnly = true;
       io.IniFilename = real_ini_name.c_str();
       ImGui::StyleColorsDark();
+      OTHER_ASSERT(std::filesystem::exists(main_imgui_font), "Failed to find ImGui font: {}", main_imgui_font);
+      ImFontConfig config;
+
+      ImFont* font = ImGui::GetIO().Fonts->AddFontFromFileTTF(main_imgui_font.c_str(), 16.0f, &config, ui::unicode::kUnicodeExtraRanges);
+      OTHER_ASSERT(font != nullptr, "Failed to load ImGui font: {}", main_imgui_font);
+      io.FontDefault = font;
 
       ui_context = ImGui::GetCurrentContext();
       api()->initialize_ui_context();
+
+      ImGui::SetAllocatorFunctions(&detail::imgui_allocate, &detail::imgui_deallocate);
+
+      ui_context = GImGui;
     }
 
     state_flags.full_initialization = true;

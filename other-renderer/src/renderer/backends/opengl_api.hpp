@@ -71,7 +71,14 @@ namespace other {
     void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level, uint32_t color_attachment_index = 0) override;
     void finalize_framebuffer(const resource_handle& handle) override;
 
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, int8_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, uint8_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, int16_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, uint16_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, int32_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, uint32_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, int64_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, uint64_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, real_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) override;

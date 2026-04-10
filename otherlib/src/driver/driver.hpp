@@ -16,6 +16,7 @@
 #include "core/defines.hpp"
 #include "core/delta_time.hpp"
 #include "event/event_system.hpp"
+#include "input/input_system.hpp"
 #include "thread/message.hpp"
 #include "thread/message_bus.hpp"
 
@@ -47,11 +48,37 @@ namespace other {
 
   class driver_thread;
 
+  namespace driver_mounts {
+
+    constexpr inline std::string_view kAssetMount = "assets";
+    constexpr inline std::string_view kSceneMount = "scenes";
+    constexpr inline std::string_view kScriptMount = "scripts";
+
+  }  // namespace driver_mounts
+
   class OTHER_CLASS driver {
    public:
+    /// the various modes of the driver that can be set
+    ///  with '/' commands in the console.
+    enum mode {
+      CORE,
+      SCENE,
+      SCENE_OBJECT,
+      FILE,
+    };
+    struct metadata {
+      std::string name;
+      std::string description;
+      std::string author;
+      std::string version;
+    };
+    bool dynamic = false;
+
     driver(const config_table& config)
         : config(config) {}
     virtual ~driver() = default;
+
+    const metadata& get_metadata() const { return driver_metadata; }
 
     void initialize(const command_line& cmd);
     virtual void run();
@@ -64,17 +91,23 @@ namespace other {
 
     void write_id_at_address(uint16_t address, natural_t id);
     void emit_instruction(const instruction& op);
+    void execute_driver_command(const std::string& command);
     void driver_step_device();
 
-    natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t asset_id)> on_loaded = nullptr);
+    natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
 
     scene* get_active_scene();
+    void new_blank_scene(const std::string_view name);
 
     void process_driver_event(driver_event event);
 
     inline const config_table& configuration() const {
       return config;
     }
+
+    /**
+     * \todo return reference to thing itself not reference to unique pointer for all functions below
+     **/
 
     inline scope<event_system>& get_event_system() {
       OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in driver.");
@@ -99,10 +132,15 @@ namespace other {
     }
 
     void set_scene_to_active(natural_t scene_id);
+    void synchronize_active_scene(natural_t scene_id);
     void unload_active_scene();
 
     inline driver_state current_driver_state() const {
       return state_machine.get_current_state();
+    }
+
+    inline mode get_current_mode() const {
+      return current_mode;
     }
 
    protected:
@@ -125,22 +163,31 @@ namespace other {
 
       network_context() : signals(io_context, SIGINT, SIGTERM) {}
     };
-    /// \todo figure out why asio does not like the arena allocator here
-    ///  \note this is related to alignment I believe, and we need to modify arena allocator to take alignment into account
-    std::unique_ptr<network_context> net_context = nullptr;
+    scope<network_context> net_context = nullptr;
 
     acknowledgement_list ack_list;
     response_list resp_list;
     timer_list timeout_list;
     application_list app_list;
 
+    metadata driver_metadata;
+
     virtual void on_initialize(const command_line& cmd) = 0;
+
+    input_map get_driver_input_map();
+    /// \todo remove this and read input map from the input map asset, or allow it to get
+    ///         built from a script callback to lua or .NET scripts
+    virtual void on_build_driver_input_map(input_map& map) {}
+
     void initialize_network_context();
     void load_client();
     void start_network();
     void initialize_rendering();
-    virtual void on_initialize_rendering(scope<renderer>& renderer_ptr);
+    virtual void on_initialize_rendering();
     void initialize_ui();
+    /// \todo remove this function or make it not take a pointer,
+    ///           user driver should be able to load UI from a file or through .NET scripts,
+    ///           not hardcoded in C++
     virtual void on_initialize_ui(scope<driver_ui>& ui_ptr) {}
 
     virtual void on_shutdown() = 0;
@@ -180,7 +227,12 @@ namespace other {
     void render_ui();
 
     virtual void on_update() {}
-    virtual void update_initializing() { process_driver_event(driver_event::DRIVER_EVENT_READY); }
+    virtual void update_initializing() {
+      if (primary_role == NONE) {
+        CORE_LOG_DEBUG("No network role, skipping initialization wait.");
+        process_driver_event(driver_event::DRIVER_EVENT_READY);
+      }
+    }
     virtual void update_running() {}
     virtual void update_shutting_down() {}
     virtual void on_render() {}
@@ -195,9 +247,14 @@ namespace other {
     void on_timeout_environment_load_scene(message_header header);
     void request_scene_udp_binding(udp_binding_information address);
 
-    virtual std::string get_project_name() const { return "[UNNAMED]"; }
+    std::string get_project_name() const;
+    std::string get_project_description() const;
+    std::string get_project_author() const;
+    std::string get_project_version() const;
+    bool should_auto_play_scenes() const;
 
-    virtual void on_event(SDL_Event* event) {}
+    void handle_input_event(const input_state_change_event& event);
+    virtual void on_input_event(const input_state_change_event& event) {}
 
     /// notifications
     void handle_notification_stream_receive_udp_datagram(message&& msg);
@@ -210,6 +267,9 @@ namespace other {
 
     void on_ack_shutdown_request_network_thread(message_header header, const std::span<const uint8_t> data);
     void on_timeout_shutdown_request_network_thread(message_header header);
+
+    void on_ack_session_connect_to(message_header header, const std::span<const uint8_t> data);
+    void on_timeout_session_connect_to(message_header header);
 
     void on_ack_session_listen_for_network_thread(message_header header, const std::span<const uint8_t> data);
     void on_timeout_session_listen_for_network_thread(message_header header);
@@ -249,6 +309,7 @@ namespace other {
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
+    void send_message_and_detach_acknowledgement(message&& msg, message_handler handler);
     natural_t send_message_and_wait_acknowledgment(message&& msg, microseconds timeout, message_handler handler);
     void cancel_acknowledgment(natural_t ack_id);
 
@@ -269,21 +330,28 @@ namespace other {
 
     template <typename T>
       requires requires(T t) { T{}; }
-    decltype(auto) get_config_value(const std::string_view section, const std::string_view key, T default_value = {}) {
-      return configuration().get_value(std::format("{}.{}", section, key), default_value);
+    decltype(auto) get_config_value(const std::string_view toml_path, T default_value = {}) const {
+      return configuration().get_value(toml_path, default_value);
     }
 
     void send_to_network_thread(message&& msg);
 
-    opt<integer_t> client_session_id;
-    other_command_device core_device;
-
    private:
+    struct initialization_state {
+    };
+    struct shutdown_state {
+      bool network_thread_shutdown = false;
+      bool asset_manager_shutdown = false;
+    };
+
+    initialization_state init_state;
+    shutdown_state shutdown_state;
+
     friend class driver_interface;
     friend class driver_state_machine;
 
     struct loading_asset {
-      using handler = std::function<void(natural_t asset_id)>;
+      using handler = std::function<void(natural_t)>;
       natural_t asset_id = 0;
       handler on_loaded = nullptr;
     };
@@ -291,6 +359,8 @@ namespace other {
     enum driver_role {
       SERVER,
       CLIENT,
+
+      NONE,
     };
     /// each driver can be both at the same time,
     ///     but this will take precedence in certain operations
@@ -316,10 +386,19 @@ namespace other {
     std::vector<open_stream> active_streams;
 
     delta_time frame_delta_time;
+    constexpr inline static natural_t kObjectContextStackSize = 16;
+    size_t context_stack_top = 0;
+    scene_object* context_stack[kObjectContextStackSize] = { nullptr };
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
 
+    lua_script* driver_main_lua_script = nullptr;
+    // dotnet_object* dotnet_window_registry = nullptr;
+
+    opt<integer_t> client_session_id;
     driver_state_machine state_machine;
+    other_command_device core_device;
+    mode current_mode = CORE;
 
     scope<renderer> renderer_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
@@ -328,8 +407,24 @@ namespace other {
 
     json::json project_cache;
 
-    void handle_load_empty_scene_event(const value& data);
-    void handle_load_scene_event(const value& data);
+    metadata build_metadata();
+    void configure_filesystem();
+
+    void push_scene_object_to_context_stack(scene_object* object);
+    scene_object* pop_scene_object_from_context_stack();
+
+    virtual void on_push_scene_object(scene_object* object) {}
+    virtual void on_pop_scene_object(scene_object* object) {}
+
+    void handle_viewport_resize_event(const value& data);
+    virtual void on_viewport_resize(const glm::vec2& size) {}
+    glm::vec2 viewport_size;
+
+    void handle_scene_load_empty_event(const value& data);
+    void handle_scene_load_event(const value& data);
+    void handle_scene_unload_event(const value& data);
+    void handle_scene_info_event(const value& data);
+    void handle_scene_playback_command_event(const value& data);
     void send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding);
 
     void handle_open_ui_window_event(const value& data);
@@ -340,6 +435,12 @@ namespace other {
     void handle_list_driver_files_event(const value& data);
     void handle_list_driver_scenes_event(const value& data);
     void handle_list_driver_assets_event(const value& data);
+
+    void handle_object_driver_create_event(const value& data);
+    void handle_object_driver_destroy_event(const value& data);
+    void handle_object_driver_push_event(const value& data);
+    void handle_object_driver_pop_event(const value& data);
+    void handle_object_driver_info_event(const value& data);
 
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name);
@@ -361,13 +462,7 @@ namespace other {
   #define DRIVER_DELETE(instance) other::arena_allocator<other::driver>{}.free(instance)
 #endif
 
-#define OTHER_APPLICATION_DRIVER(name) \
-  std::string get_project_name() const override { return name; }
-
-#define OTHER_DRIVER(name)                                                                                       \
-  OTHER_PLUGIN(name)                                                                                             \
-  OTHER_API other::driver* create_driver(const other::config_table* config) { return DRIVER_NEW(name, config); } \
-  OTHER_API void destroy_driver(other::driver* instance) { DRIVER_DELETE(instance); }
+}  // namespace other
 
 #define RUN_DRIVER(name, config)                           \
   {                                                        \
@@ -382,30 +477,44 @@ namespace other {
     destroy_driver(runtime);                               \
   }
 
-#ifdef OTHER_APPLICATION
-  static inline std::vector<void (*)(SDL_Event*)> event_callbacks;
+#if defined(OTHER_STATIC_LIBRARY) && !defined(OTHER_TEST_ENVIRONMENT)
+extern "C" {
+extern other::driver* create_driver(const other::config_table* config);
+extern void destroy_driver(other::driver* instance);
+}
+#endif
 
-  static inline void pump_events() {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-      subsystem<renderer_backend>::get()->handle_event(&event);
-      for (auto& callback : event_callbacks) {
-        if (callback) {
-          callback(&event);
-        }
-      }
+#ifdef OTHER_DYNAMIC_DRIVER
+  #define OTHER_PLUGIN(name)                                                            \
+    extern "C" {                                                                        \
+    OTHER_API const char* other_plugin_name() { return #name; }                         \
+    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) {                \
+      other::subsystem<other::arena>::set(argv->arena);                                 \
+      other::subsystem<other::logger>::set(argv->logger);                               \
+      other::subsystem<other::file_system>::set(argv->file_system);                     \
+      other::subsystem<other::input_system>::set(argv->input_system);                   \
+      other::subsystem<other::type_database>::set(argv->type_database);                 \
+      other::subsystem<other::physics_environment>::set(argv->physics_environment);     \
+      other::subsystem<other::renderer_backend>::set(argv->renderer);                   \
+      other::subsystem<other::scripting_environment>::set(argv->scripting_environment); \
+    }                                                                                   \
     }
-  }
 
-  static inline void add_event_callback(void (*callback)(SDL_Event*)) {
-    if (callback) {
-      event_callbacks.push_back(callback);
-    } else {
-      CORE_LOG_ERROR("Cannot add a null event callback.");
+#endif
+
+#ifdef OTHER_STATIC_DRIVER
+  #define OTHER_PLUGIN(name)                                              \
+    extern "C" {                                                          \
+    OTHER_API const char* other_plugin_name() { return nullptr; }         \
+    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) {} \
     }
-  }
-#endif  // OTHER_APPLICATION
+#endif
 
-}  // namespace other
+#define OTHER_DRIVER(name)                                                                                       \
+  OTHER_PLUGIN(name)                                                                                             \
+  extern "C" {                                                                                                   \
+  OTHER_API other::driver* create_driver(const other::config_table* config) { return DRIVER_NEW(name, config); } \
+  OTHER_API void destroy_driver(other::driver* instance) { DRIVER_DELETE(instance); }                            \
+  }
 
 #endif  // OTHERLIB_DRIVER_DRIVER_HPP

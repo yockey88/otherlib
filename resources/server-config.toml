@@ -1,12 +1,13 @@
+
 [application]
+metadata.info = { name = "Other Server", description = "Other Engine Project Management Tool", author = "Other Team", version = "0.1.0" }
 role = "server"
-core-log-level = "debug"
+core-log-level = "info"
 core-log-file = "logs/server.log"
 
 [rendering]
-# backend = "opengl"
-# ui-layout-ini = "resources/ui/server-ui-layout.ini"
-# window-size = { width = 1920, height = 1080 }
+backend = "headless"
+ui-layout-ini = "resources/ui/server-ui-layout.ini"
 
 [scripting]
 dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"

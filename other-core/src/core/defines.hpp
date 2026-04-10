@@ -13,50 +13,32 @@
 #include <string>
 #include <type_traits>
 
+#define GLM_ENABLE_EXPERIMENTAL
+// #define GLM_FORCE_QUAT_DATA_WXYZ
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 #define bit(x) (1ll << x)
 
-#ifdef OTHER_APPLICATION
+#ifdef OTHER_CLIENT
+  #define OTHER_DYNAMIC_DRIVER
+#elif defined(OTHER_APPLICATION) && !defined(OTHER_TEST_ENVIRONMENT)
   #define OTHER_STATIC_DRIVER
 #else
-  #define OTHER_DYNAMIC_DRIVER
+  #define OTHER_STATIC_LIBRARY
 #endif
 
 #ifdef OTHER_ENVIRONMENT_WINDOWS
   #ifdef OTHER_CLIENT
-    #ifndef OTHER_API
-      #define OTHER_API extern "C" __declspec(dllexport)
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS __declspec(dllexport)
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x) __declspec(align(x))
-    #endif
-  #endif
-  #ifdef OTHER_APPLICATION
-    #ifndef OTHER_API
-      #define OTHER_API static inline
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x)
-    #endif
+    #define OTHER_API __declspec(dllexport)
+    #define OTHER_CLASS __declspec(dllexport)
+    #define OTHER_ALIGN(x) __declspec(align(x))
   #else
-    #ifndef OTHER_API
-      #define OTHER_API
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x)
-    #endif
+    #define OTHER_API
+    #define OTHER_CLASS
+    #define OTHER_ALIGN(x)
   #endif  // OTHER_CLIENT
 #endif    // OTHER_ENVIRONMENT_WINDOWS
 
@@ -99,6 +81,30 @@
 #endif  // !OTHER_ALIGN
 
 namespace other {
+
+  template <typename T>
+  concept not_string_or_pointer = !std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
+  template <typename T>
+  concept is_pointer_type = std::is_pointer_v<std::remove_cvref_t<T>>;
+
+  template <typename T>
+  concept is_character_array_ptr = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, char*>;
+  template <typename T>
+  concept is_bounded_character_array = std::is_array_v<std::remove_cvref_t<T>> || std::is_bounded_array_v<T>;
+  template <typename T>
+  concept is_character_array = is_character_array_ptr<T> || is_bounded_character_array<T>;
+  template <typename T>
+  concept is_string_type =
+    std::is_same_v<std::remove_cvref_t<T>, std::string> ||
+    std::is_same_v<std::remove_cvref_t<T>, std::string_view> ||
+    is_character_array<T>;
+  template <typename T>
+  constexpr inline bool kIsStringType = is_string_type<T>;
+
+  template <typename T>
+  concept is_opaque_pointer = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, void*>;
+  template <typename T>
+  concept is_acceptable_value_type = is_character_array<T> || !is_opaque_pointer<T>;
 
   enum exit_code : uint8_t {
     SUCCESS = 0,
@@ -198,7 +204,7 @@ namespace other {
       return value_type::OEBOOL;
     } else if constexpr (std::is_same_v<no_cvref_t, char>) {
       return value_type::CHAR;
-    } else if constexpr (std::is_same_v<no_cvref_t, std::string> || std::is_same_v<no_cvref_t, std::string_view>) {
+    } else if constexpr (is_string_type<T>) {
       return value_type::STRING;
     } else if constexpr (std::is_same_v<no_cvref_t, int8_t>) {
       return value_type::INT8;

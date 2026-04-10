@@ -5,11 +5,10 @@
 
 #include <imgui/imgui_memory_editor.h>
 
+#include "renderer/ui/colors.hpp"
 #include "renderer/ui/ui_helpers.hpp"
 
-#include "ui/colors.hpp"
 #include "ui/ui_widgets.hpp"
-
 
 namespace other {
   namespace ui {
@@ -202,12 +201,12 @@ namespace other {
       auto* draw_list = ImGui::GetWindowDrawList();
 
       /// header
-      ImVec4 col = { ui::colors::editor::kNodeEditorBackground.x, ui::colors::editor::kNodeEditorBackground.y, ui::colors::editor::kNodeEditorBackground.z, 0.1f };
-      ImVec4 tb_col = { ui::colors::editor::kNodeHeaderColor.x, ui::colors::editor::kNodeHeaderColor.y, ui::colors::editor::kNodeHeaderColor.z, 1.0f };
+      ImVec4 col = colors::rgba_to_imvec4(colors::kNodeEditorBackground);
+      ImVec4 tb_col = colors::rgba_to_imvec4(colors::kNodeHeaderColor);
       ImVec2 text_pos = ImVec2{ titlebar_rect.Min.x + (titlebar_rect.GetWidth() - text_width) / 2, titlebar_rect.Min.y + 2.0f };
       draw_list->AddRectFilled(window_bg_rect.Min, window_bg_rect.Max, ImGui::GetColorU32(col));
       draw_list->AddRectFilled(titlebar_rect.Min, titlebar_rect.Max, ImGui::GetColorU32(tb_col));
-      draw_list->AddText(text_pos, ImGui::GetColorU32(ui::colors::kTextValueData), calc_title_text.c_str());
+      draw_list->AddText(text_pos, colors::rgba_to_hex(colors::kTextValueData), calc_title_text.c_str());
 
       /// body
       col.w = 1.f;

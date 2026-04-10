@@ -12,7 +12,6 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver.hpp"
-#include "rendering-pipelines/empty_pipeline.hpp"
 
 #include "server_tasks.hpp"
 
@@ -65,11 +64,18 @@ namespace other {
     });
   }
 
-  void server::on_initialize_rendering(scope<renderer>& renderer_ptr) {
-    renderer_ptr->add_pipeline<empty_pipeline>("UI Pipeline");
+  void server::on_initialize_rendering() {
+    std::string backend = configuration().rendering_backend.value();
+    if (backend == "headless") {
+      get_renderer_instance().add_pipeline("Headless Pipeline", get_empty_pipeline());
+    } else {
+      get_renderer_instance().add_pipeline("UI Pipeline", get_default_instancing_pipeline());
+    }
   }
 
   void server::on_initialize_ui(scope<driver_ui>& ui_ptr) {
+    ///  \todo replace this function with UI that can be loaded from a file
+    ///         or attached through .NET scripts
     this->ui_ptr = make_scope<server_ui>(get_event_system(), project_cache);
   }
 
@@ -85,7 +91,12 @@ namespace other {
   }
 
   void server::on_shutdown_rendering() {
-    get_renderer_instance().remove_pipeline("UI Pipeline");
+    std::string backend = configuration().rendering_backend.value();
+    if (backend == "headless") {
+      get_renderer_instance().remove_pipeline("Headless Pipeline");
+    } else {
+      get_renderer_instance().remove_pipeline("UI Pipeline");
+    }
   }
 
   void server::core_update() {

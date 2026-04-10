@@ -19,7 +19,14 @@ namespace other {
     '(', ')', '{', '}', '[', ']', ';', ':', ',', '.', '"', '\''
   };
 
+  /**
+   * contains keywords for all things parsed in otherlib, so special handling determines
+   *     if the keyword makes sense in the relevant parser. This is gross I know.
+   **/
   constexpr static inline std::array kOcmdKeywords = {
+    /**
+     * oasm keywords
+     **/
     // g0
     "stopdev",
     "dump",
@@ -100,8 +107,24 @@ namespace other {
     "rf",
     "rflag",
 
-    /// other
-    "end",
+    /**
+     * ocl keywords
+     **/
+    "begin",
+    "end",  // also used by oasm
+
+    /// other object types and keywords
+    "object",
+
+    "asset",
+    "scene",
+
+    "pipeline",
+    "pass",
+    "shader",
+    "texture",
+    "buffer",
+    "tag",
   };
 
   enum token_type {
@@ -194,7 +217,32 @@ namespace other {
     TOKEN_TYPE_KW_MOD,
     TOKEN_TYPE_KW_LOADSCN,
 
+    TOKEN_TYPE_KW_BEGIN,
     TOKEN_TYPE_KW_END,
+
+    TOKEN_TYPE_KW_OBJECT,
+
+    TOKEN_TYPE_KW_ASSET,
+    TOKEN_TYPE_KW_SCENE,
+
+    TOKEN_TYPE_KW_MODEL_SOURCE,
+    TOKEN_TYPE_KW_MODEL,
+    TOKEN_TYPE_KW_ANIMATION,
+
+    TOKEN_TYPE_KW_SCRIPT_SOURCE,
+    TOKEN_TYPE_KW_SCRIPT,
+
+    TOKEN_TYPE_KW_AUDIO,
+    TOKEN_TYPE_KW_SCENE_OBJECT,
+
+    TOKEN_TYPE_KW_INPUT_MAP,
+    TOKEN_TYPE_KW_PIPELINE,
+
+    TOKEN_TYPE_KW_PASS,
+    TOKEN_TYPE_KW_SHADER,
+    TOKEN_TYPE_KW_TEXTURE,
+    TOKEN_TYPE_KW_BUFFER,
+    TOKEN_TYPE_KW_TAG,
 
     TOKEN_TYPE_REGISTER,
     TOKEN_TYPE_ADDRESS,

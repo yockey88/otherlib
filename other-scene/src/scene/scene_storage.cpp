@@ -8,7 +8,10 @@
 #include "physics/physics_environment.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
+#include "object/light_component.hpp"
+#include "object/physics_component.hpp"
 #include "object/render_component.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
@@ -67,6 +70,9 @@ namespace other {
     bind_component_reflection_data<script_component>(*type_db, storage);
     bind_component_reflection_data<render_component>(*type_db, storage);
     bind_component_reflection_data<camera_component>(*type_db, storage);
+    bind_component_reflection_data<physics_component>(*type_db, storage);
+    bind_component_reflection_data<light_component>(*type_db, storage);
+    bind_component_reflection_data<animation_controller>(*type_db, storage);
 
     auto* physics_env = subsystem<physics_environment>::get();
     OTHER_ASSERT(physics_env != nullptr, "Physics environment subsystem is not initialized.");

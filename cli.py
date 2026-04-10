@@ -27,7 +27,6 @@ def regen_project():
 def copy_dlls(cfg, dll_cfg):
   print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
 
-  all_physx_dlls = get_physx_dlls(dll_cfg)
 
   dlls = [
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
@@ -35,8 +34,10 @@ def copy_dlls(cfg, dll_cfg):
     f"extern/python312/python312.dll",
     "extern/steamworks/bin/steam_api64.dll",
     "extern/sol2/lib/lua-5.4.4.dll",
+    f"extern/jolt/bin/{dll_cfg}/Jolt.dll",
   ]
-  dlls.extend(all_physx_dlls)
+  dlls.extend(get_physx_dlls(dll_cfg))
+
   destinations = [
     f"build/development-drivers/{cfg}/",
     f"build/driver/{cfg}/",
@@ -110,6 +111,9 @@ if __name__ == "__main__":
     validate_args(args, parser)
 
     cfg = args.cfg
+    if cfg != "Debug" and cfg != "Release" and cfg != "Profile" and cfg != "ProfileD":
+      print(f"Error: Invalid configuration '{cfg}'. Valid options are: Debug, Release, Profile, ProfileD.")
+      sys.exit(1)
 
     if args.compile_serialization_schema is not None and os.path.exists(args.compile_serialization_schema):
       if not args.compile_serialization_schema.endswith(".fbs"):
@@ -127,11 +131,6 @@ if __name__ == "__main__":
       print("Serialization schema compiled successfully.")
 
     if args.install:
-      # remove if installation folder exists, this only works locally for dev testing (and only on windows)
-      if os.path.exists("C:/OtherEnvironment/"):
-        shutil.rmtree("C:/OtherEnvironment/")
-      run_subprocess(["cmake", "-S", ".", "-B", "build"])
-      run_subprocess(["cmake", "--build", "build", "--config", cfg])
       run_subprocess(["cmake", "--install", "build", "--config", cfg])
       print("Other Environment installed successfully.")
       sys.exit(0)
@@ -187,7 +186,13 @@ if __name__ == "__main__":
     elif args.run_test_suite is not None and len(args.run_test_suite) == 1:
       test_filter = args.run_test_suite[0]
       print(f"Running test suite with filter: {test_filter}")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=[f"--gtest_filter={test_filter}", "--gtest_shuffle"])
+      extra_args=[f"--gtest_filter={test_filter}", "--gtest_shuffle"]
+      ## TODO: fix platform specific output paths
+      if cfg == "Debug" or cfg == "ProfileD":
+        extra_args.append("--gtest_output=xml:other_test_results.windows.debug.xml")
+      else:
+        extra_args.append("--gtest_output=xml:other_test_results.windows.release.xml")
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=extra_args)
     elif args.daemon_server:
       run_subprocess(["pwsh.exe", "-File", "tools/daemon-server.ps1"])
       

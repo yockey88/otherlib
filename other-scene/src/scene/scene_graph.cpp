@@ -56,12 +56,12 @@ namespace other {
   }
 
   natural_t scene_graph::get_id_of_scene(const std::string_view name) const {
-    const scene* found_scene = g.find_item([&name](const scene& s) {
-      return s.name == name;
-    });
+    const scene* found_scene = g.find_item([&name](const scene& s) { return s.name == name; });
     if (found_scene != nullptr) {
+      CORE_LOG_INFO("Found scene [{}] with ID {} cached in scene graph.", name, found_scene->id);
       return found_scene->id;
     }
+    CORE_LOG_WARN("Scene [{}] not found in scene graph.", name);
     return 0;
   }
 

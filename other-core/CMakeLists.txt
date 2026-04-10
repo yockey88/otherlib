@@ -16,6 +16,12 @@ target_sources(other_core
 		src/core/value.cpp
 		src/core/formatting.cpp
 
+		src/file/local_file.cpp
+		src/file/virtual_file.cpp
+		src/file/remote_file.cpp
+		src/file/directory.cpp
+		src/file/filesystem.cpp
+
 		src/data-structures/arena_vector.cpp
 		src/data-structures/graph.cpp
 
@@ -47,6 +53,10 @@ target_sources(other_core
 		src/thread/thread.cpp
 
 		src/event/event_system.cpp
+
+		src/input/input_action.cpp
+		src/input/input_state.cpp
+		src/input/input_system.cpp
 )
 
 target_include_directories(other_core 

@@ -75,14 +75,6 @@ namespace other {
       other::subsystem<other::logger>::get()->send_log(level, 0, std::format(" [Lua] {} @ ({}:{})", message, source, line));
     });
 
-    sol::table console_table = lua_state["__other_native"]["__environment_console"];
-    console_table.set_function(
-      "submit_console_text",
-      [](const std::string& text, console_message_type type) {
-        environment_console::submit_console_text(text, type, sys_clock::now());
-      }
-    );
-
     CORE_LOG_DEBUG("Loading lua bridge script '{}'.", lua_bridge_path.string());
     lua_state.script_file(lua_bridge_path.string());
   }
@@ -107,7 +99,6 @@ namespace other {
     scene_table.set_function("attach_directional_light_to_object", &scene_interface::attach_directional_light_to_object);
 
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
-
     driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {
       value val;
       switch (data.get_type()) {
@@ -121,6 +112,12 @@ namespace other {
         case sol::type::string:
           val = value(data.as<std::string>());
           break;
+        case sol::type::table: {
+          sol::table tbl = data.as<sol::table>();
+          // val = lua_table_to_value(tbl);
+          CORE_LOG_DEBUG("Lua table to value conversion not yet implemented for driver event data.");
+          return;
+        } break;
         default:
           CORE_LOG_WARN("Unsupported data type for event user data: {}", data.get_type());
           break;

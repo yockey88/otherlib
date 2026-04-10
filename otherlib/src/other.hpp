@@ -49,8 +49,4 @@ namespace other {
 
 }  // namespace other
 
-#ifdef OTHER_IMPLEMENTATION
-other::exit_code other_main(const command_line& cmd, const config_table& config) { return other::exit_code::SUCCESS; }
-#endif
-
 #endif  // OTHERLIB_OTHER_HPP

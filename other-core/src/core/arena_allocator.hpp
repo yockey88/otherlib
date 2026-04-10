@@ -92,9 +92,10 @@ namespace other {
       return ptr;
     }
     void free_block(T* ptr, size_t size) {
-      if (ptr != nullptr) {
-        std::destroy_at(ptr);
+      for (size_t i = 0; i < size; i++) {
+        ptr[i].~T();
       }
+
       if (override_arena != nullptr) {
         override_arena->free(ptr, size * sizeof(T));
       } else {
@@ -104,8 +105,9 @@ namespace other {
 
     void free(T* ptr) {
       if (ptr != nullptr) {
-        std::destroy_at(ptr);
+        ptr->~T();
       }
+
       if (override_arena != nullptr) {
         override_arena->free(ptr, type_size);
       } else {

@@ -14,8 +14,11 @@ namespace other {
 
   void event_system::clear() {
     cancel_all();
-    registered_events.clear();
-    event_timers.clear();
+    {
+      std::scoped_lock lock(events_mutex);
+      registered_events.clear();
+      event_timers.clear();
+    }
     CORE_LOG_INFO("Cleared all events and listeners");
   }
 
@@ -25,16 +28,24 @@ namespace other {
   }
 
   void event_system::trigger_event(natural_t event_id) {
-    auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) {
-      return ctx.ev.id == event_id;
-    });
-    if (itr == registered_events.end()) {
-      return;
+    std::vector<event::handler> listeners;
+    value data;
+    {
+      std::scoped_lock lock(events_mutex);
+      auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) {
+        return ctx.ev.id == event_id;
+      });
+      if (itr == registered_events.end()) {
+        return;
+      }
+
+      listeners = itr->listeners;
+      data = itr->ev.data;
     }
 
-    for (const auto& listener : itr->listeners) {
+    for (const auto& listener : listeners) {
       if (listener) {
-        listener(itr->ev.data);
+        listener(data);
       }
     }
   }
@@ -42,13 +53,26 @@ namespace other {
   natural_t event_system::register_timed_event(const std::string_view name, microseconds duration, bool recurring) {
     natural_t id = FNV(name);
 
+    {
+      std::scoped_lock lock(events_mutex);
+      auto itr = std::find_if(registered_events.begin(), registered_events.end(), [id](const event_ctx& ctx) {
+        return ctx.ev.id == id;
+      });
+      if (itr != registered_events.end()) {
+        return id;
+      }
+    }
+
     event ev{
       .id = id,
       .name = std::string(name),
       .duration = duration,
       .recurring = recurring,
     };
-    registered_events.push_back({ ev, {} });
+    {
+      std::scoped_lock lock(events_mutex);
+      registered_events.push_back({ ev, {} });
+    }
     post_event_callback(id, duration);
 
     return id;
@@ -57,14 +81,28 @@ namespace other {
   natural_t event_system::register_event(const std::string_view name) {
     natural_t id = FNV(name);
 
+    {
+      std::scoped_lock lock(events_mutex);
+      auto itr = std::find_if(registered_events.begin(), registered_events.end(), [id](const event_ctx& ctx) {
+        return ctx.ev.id == id;
+      });
+      if (itr != registered_events.end()) {
+        return id;
+      }
+    }
+
     event ev{
       .id = id,
       .name = std::string(name),
       .duration = microseconds::zero(),
       .recurring = false,
     };
-    registered_events.push_back({ ev, {} });
+    {
+      std::scoped_lock lock(events_mutex);
+      registered_events.push_back({ ev, {} });
+    }
 
+    CORE_LOG_DEBUG("Registered event with ID {}", id);
     return id;
   }
 
@@ -74,6 +112,7 @@ namespace other {
   }
 
   void event_system::cancel_event(natural_t event_id) {
+    std::scoped_lock lock(events_mutex);
     auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) {
       return ctx.ev.id == event_id;
     });
@@ -98,9 +137,8 @@ namespace other {
   }
 
   void event_system::set_user_data(natural_t event_id, const value& data) {
-    auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) {
-      return ctx.ev.id == event_id;
-    });
+    std::scoped_lock lock(events_mutex);
+    auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) { return ctx.ev.id == event_id; });
     if (itr == registered_events.end()) {
       CORE_LOG_ERROR("Attempted to set user data for unregistered event ID {}", event_id);
       return;
@@ -115,6 +153,7 @@ namespace other {
   }
 
   void event_system::add_listener(natural_t id, event::handler callback) {
+    std::scoped_lock lock(events_mutex);
     auto itr = std::find_if(registered_events.begin(), registered_events.end(), [id](const event_ctx& ctx) {
       return ctx.ev.id == id;
     });
@@ -127,39 +166,59 @@ namespace other {
   }
 
   void event_system::cancel_all() {
+    std::scoped_lock lock(events_mutex);
     for (auto& timer : event_timers) {
       timer.timer.cancel();
     }
   }
 
+  bool event_system::has_event(const std::string_view name) const {
+    return has_event(FNV(name));
+  }
+
+  bool event_system::has_event(natural_t event_id) const {
+    std::scoped_lock lock(events_mutex);
+    return std::ranges::find_if(registered_events, [event_id](const event_ctx& ctx) { return ctx.ev.id == event_id; }) != registered_events.end();
+  }
+
   void event_system::post_event_callback(natural_t event_id, microseconds duration) {
-    auto& timer = event_timers.emplace_back(event_timer{ event_id, asio::steady_timer(io_context) });
-    timer.timer.expires_after(duration);
-    timer.timer.async_wait([this, event_id](const asio::error_code& ec) {
-      if (ec && ec != asio::error::operation_aborted) {
-        CORE_LOG_ERROR("Event {} timer error: {}", event_id, ec.message());
-        return;
-      } else if (ec) {
-        cancel_event(event_id);
-        return;
-      }
-
-      if (!ec) {
-        trigger_event(event_id);
-
-        auto event_itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) { return ctx.ev.id == event_id; });
-        if (event_itr == registered_events.end()) {
-          /// this can happen if the event was cancelled in between the timer being set and the callback being invoked
+    {
+      std::scoped_lock lock(events_mutex);
+      auto& timer = event_timers.emplace_back(event_timer{ event_id, asio::steady_timer(io_context) });
+      timer.timer.expires_after(duration);
+      timer.timer.async_wait([this, event_id](const asio::error_code& ec) {
+        if (ec && ec != asio::error::operation_aborted) {
+          CORE_LOG_ERROR("Event {} timer error: {}", event_id, ec.message());
+          return;
+        } else if (ec) {
+          cancel_event(event_id);
           return;
         }
 
-        if (event_itr->ev.recurring) {
-          post_event_callback(event_id, event_itr->ev.duration);
-        } else {
-          cancel_event(event_id);
+        if (!ec) {
+          trigger_event(event_id);
+
+          microseconds next_duration = microseconds::zero();
+          bool recurring = false;
+          {
+            std::scoped_lock lock(events_mutex);
+            auto event_itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) { return ctx.ev.id == event_id; });
+            if (event_itr == registered_events.end()) {
+              /// this can happen if the event was cancelled in between the timer being set and the callback being invoked
+              return;
+            }
+            recurring = event_itr->ev.recurring;
+            next_duration = event_itr->ev.duration;
+          }
+
+          if (recurring) {
+            post_event_callback(event_id, next_duration);
+          } else {
+            cancel_event(event_id);
+          }
         }
-      }
-    });
+      });
+    }
   }
 
 }  // namespace other

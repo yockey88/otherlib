@@ -8,10 +8,15 @@
 
 #include "renderer/camera.hpp"
 
+#include "object/component.hpp"
+
 namespace other {
 
-  struct camera_component {
+  struct camera_component : public component {
     camera camera;
+
+    camera_component()
+        : component(component::CAMERA) {}
   };
 
   struct camera_component_lua_proxy {
@@ -22,7 +27,7 @@ namespace other {
 
 OTHER_REFLECT(
   other::camera_component,
-  field(camera, other::attr::serializable())
+  field(camera, other::attr::serializable("Camera"))
 )
 
 #endif  // OTHER_SCENE_OBJECT_CAMERA_COMPONENT_HPP

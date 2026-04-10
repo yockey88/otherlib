@@ -15,6 +15,7 @@
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 #include "core/version.hpp"
+#include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
 
 #include "physics/physics_environment.hpp"
@@ -24,13 +25,7 @@
 #include "scripting/dotnet_bindings.hpp"
 #include "scripting/lua_bindings.hpp"
 
-#ifndef OTHER_TEST_ENVIRONMENT
-/// if not test environment and this is not an other application then we define the extern main function for the static driver
-/// \todo: check if the other application is a dynamic driver and define other_main as the dynamic driver entry point (prototype sample in driver/development_driver_loader.cpp)
-  #ifndef OTHER_APPLICATION
 extern exit_code other_main(const command_line& cmd, const config_table& config);
-  #endif
-#endif
 
 #if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
   #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what())
@@ -77,9 +72,11 @@ namespace other {
         std::println(std::cerr, "[ERROR]: Failed to load configuration file: '{}'", cmd.config_file);
         return -1;
       }
-
+      std::println(std::cout, "Loaded configuration from file: '{}'", cmd.config_file);
     } else if (!cmd.config_file.empty()) {
       std::println(std::cout, "[WARNING]: Configuration file '{}' does not exist. Using default configuration.", cmd.config_file);
+    } else {
+      std::println(std::cout, "No configuration file specified. Using default configuration.");
     }
 
     register_log_sinks(config);
@@ -93,9 +90,20 @@ namespace other {
     CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
 
     config.diagnostics.verbose = cmd.diagnostics.verbose;
-    const bool rendering_enabled = config.rendering_backend.has_value() && !config.rendering_backend->empty();
+
+    /// rendering.backend == "headless" is the same as rendering.force-no-window == true, we just check both for ease of use
+    bool rendering_enabled = true;
+    if ((config.rendering_backend.has_value() && config.rendering_backend.value() == "headless") || config.force_no_window) {
+      rendering_enabled = false;
+      config.rendering_backend = "headless";
+    }
+    /// default to opengl
+    else if (!config.rendering_backend.has_value()) {
+      config.rendering_backend = "opengl";
+    }
+
     /// if rendering is enabled and we are not forcing headless mode, load the rendering backend
-    if (rendering_enabled && !config.force_no_window) {
+    if (rendering_enabled) {
       PROFILE_SECTION("other::entry--initialize-renderer-backend");
       subsystem<renderer_backend>::get()->load_backend(config, config.rendering_backend.value(), config.window_size);
     }
@@ -112,6 +120,8 @@ namespace other {
       bind_environment_scripts();
     }
 
+    subsystem<input_system>::get()->initialize();
+    /// \note maybe not doing this here anymore
     /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
     ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
 
@@ -131,6 +141,8 @@ namespace other {
         CATCH_UNKNOWN_EXCEPTION();
         res = FAILURE;
       }
+
+      subsystem<input_system>::get()->shutdown();
       if (rendering_enabled) {
         subsystem<renderer_backend>::get()->unload_backend();
       }

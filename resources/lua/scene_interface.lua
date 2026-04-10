@@ -69,6 +69,12 @@ function _SceneInterface.GetActiveScene()
 end
 
 function _SceneInterface.CreateSceneObject(name, position)
+  if name == nil
+  then
+    error("Scene object name cannot be nil")
+    return nil
+  end
+
   local scene = _get_active_scene()
   if scene == nil
   then
@@ -76,10 +82,7 @@ function _SceneInterface.CreateSceneObject(name, position)
     return nil
   end
 
-  if name == nil and position == nil
-  then
-    return scene.create_scene_object()
-  elseif position == nil
+  if position == nil
   then
     return scene.create_scene_object(name)
   else

@@ -8,6 +8,7 @@ add_executable(other_tests)
 target_compile_definitions(other_tests PRIVATE "OTHER_TEST_ENVIRONMENT")
 target_sources(other_tests
     PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/reflection_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/state_machine_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_test.cpp
@@ -26,6 +27,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/scene_serialization.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/config_table_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/asset_serialization.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/serialization/ocl_object_parser_tests.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/parser-combinator/parser_combinator_tests.cpp
     

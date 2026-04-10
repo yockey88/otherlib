@@ -1,4 +1,5 @@
 add_library(other_physics STATIC)
+
 target_sources(other_physics
   PRIVATE
     src/physics_world/physics_world.cpp
@@ -47,7 +48,6 @@ target_link_libraries(other_physics
   PRIVATE 
     ${PYTHON_LIB} 
     other_core 
-    # ${PHYSX_LIBS} 
     Jolt
 )
 

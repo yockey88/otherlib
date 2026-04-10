@@ -10,6 +10,8 @@
 
 #include "renderer/renderer.hpp"
 
+#include "object/component.hpp"
+#include "object/component_registry.hpp"
 #include "object/object_serialization_data.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
@@ -56,6 +58,9 @@ namespace other {
     void play();
     void stop();
     void reset();
+    bool is_playing() const {
+      return playing;
+    }
 
     void enable_physics_debug_rendering();
     void disable_physics_debug_rendering();
@@ -69,8 +74,6 @@ namespace other {
 
     scene_object& root_object();
 
-    scene_object& create_object();
-    scene_object& create_object(scene_object* object);
     scene_object& create_object(const std::string& name, scene_object* parent_object = nullptr);
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
 
@@ -101,6 +104,9 @@ namespace other {
     scene_object& get_object(natural_t id);
     const scene_object& get_object(natural_t id) const;
 
+    scene_object* find_object(const std::string_view name);
+    scene_object* find_object(natural_t id);
+
     size_t get_object_count() const;
 
     transform& get_transform(scene_object* object);
@@ -125,11 +131,26 @@ namespace other {
     bool has_component_by_name(scene_object* object, const std::string_view component_name) const;
 
     template <typename T>
+      requires std::is_base_of_v<component, T>
+    void register_component(scene_object* object, T& comp) {
+      OTHER_ASSERT(object != nullptr, "Cannot register component to a null scene object.");
+
+      auto* comp_reg = get_component<component_registry>(object);
+      OTHER_ASSERT(comp_reg != nullptr, "Component registry not found for object with ID {}", object->id);
+
+      comp_reg->register_component(comp);
+    }
+
+    template <typename T>
+      requires std::is_base_of_v<component, T>
     T& add_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
-      return storage->registry.emplace<T>(entity);
+      auto& comp = storage->registry.emplace<T>(entity);
+      register_component<T>(object, comp);
+      return comp;
     }
+
     template <typename T>
     T& add_component(natural_t id) {
       scene_tree::node* node = storage->tree.node_at(id);
@@ -142,8 +163,11 @@ namespace other {
     T& add_component(scene_object* object, Args&&... args) {
       OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
-      return storage->registry.emplace<T>(entity, std::forward<Args>(args)...);
+      auto& comp = storage->registry.emplace<T>(entity, std::forward<Args>(args)...);
+      register_component<T>(object, comp);
+      return comp;
     }
+
     template <typename T, typename... Args>
       requires std::constructible_from<T, Args...>
     T& add_component(natural_t id, Args&&... args) {
@@ -158,6 +182,7 @@ namespace other {
       entt::entity entity = entt::entity(object->registry_id);
       return storage->registry.try_get<T>(entity);
     }
+
     template <typename T>
     T* get_component(natural_t id) {
       scene_tree::node* node = storage->tree.node_at(id);
@@ -171,6 +196,7 @@ namespace other {
       entt::entity entity = entt::entity(object->registry_id);
       return storage->registry.try_get<T>(entity);
     }
+
     template <typename T>
     const T* get_component(natural_t id) const {
       const scene_tree::node* node = storage->tree.node_at(id);
@@ -182,8 +208,16 @@ namespace other {
     void remove_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot remove component from a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
+
+      auto* comp_reg = get_component<component_registry>(object);
+      OTHER_ASSERT(comp_reg != nullptr, "Component registry not found for object with ID {}", object->id);
+
+      comp_reg->remove_component<T>();
+      comp_reg = nullptr;
+
       storage->registry.remove<T>(entity);
     }
+
     template <typename T>
     void remove_component(natural_t id) {
       scene_tree::node* node = storage->tree.node_at(id);
@@ -225,6 +259,8 @@ namespace other {
       bool operator==(const object_handle& other) const;
     };
     friend class scene_tree;
+
+    scene_object* from_registry_id(entt::entity entity);
 
     void register_object(scene_object* object, const std::string& name, const glm::vec3& world_position);
     void register_object(scene_object* object, const std::string& name, const transform& transformation);

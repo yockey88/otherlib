@@ -12,7 +12,9 @@
 
 namespace other {
 
-  class OTHER_CLASS ui_window {
+  class driver;
+
+  class ui_window {
    public:
     struct window_root : public ui_node {
       window_root(ui_window* parent)
@@ -27,7 +29,8 @@ namespace other {
     void initialize();
     void shutdown();
 
-    void render();
+    // true if open
+    bool render();
 
     void toggle_open();
     void toggle_close();
@@ -95,6 +98,7 @@ namespace other {
       bool is_focused = false;
     } state;
     uint32_t window_flags = 0;
+
     std::unordered_map<natural_t, scope<ui_node>> node_map;
 
     event_system& events;

@@ -60,37 +60,38 @@ namespace other {
     static gpu_buffer test_index_buffer(resource_handle(2, resource_type::BUFFER));
 
     void set_up_mock_rendering_api_and_expect_mesh_creation() {
+      using ::testing::_;
       /// first we have to override the rendering subsystem api to avoid nullptr dereference
       scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
-      EXPECT_CALL(*mock_api, on_initialize(testing::_)).Times(1);
+      EXPECT_CALL(*mock_api, on_initialize(_)).Times(1);
       // EXPECT_CALL(*mock_api, initialize_ui_context()).Times(1);
       EXPECT_CALL(*mock_api, shutdown_ui_context()).Times(1);
-      EXPECT_CALL(*mock_api, on_shutdown(testing::_)).Times(1);
+      EXPECT_CALL(*mock_api, on_shutdown(_)).Times(1);
 
-      EXPECT_CALL(*mock_api, create_mesh_resource(testing::_, testing::_))
+      EXPECT_CALL(*mock_api, create_mesh_resource(_, _))
         .Times(1)
         .WillOnce(testing::Return(&test_mesh));
-      // EXPECT_CALL(*mock_api, destroy_mesh_resource(testing::_))
+      // EXPECT_CALL(*mock_api, destroy_mesh_resource(_))
       //   .Times(1);
-      EXPECT_CALL(*mock_api, bind_mesh_resource(testing::_))
+      EXPECT_CALL(*mock_api, bind_mesh_resource(_))
         .Times(3);
-      EXPECT_CALL(*mock_api, unbind_mesh_resource(testing::_))
+      EXPECT_CALL(*mock_api, unbind_mesh_resource(_))
         .Times(3);
 
-      EXPECT_CALL(*mock_api, create_buffer_resource(testing::_, testing::_))
+      EXPECT_CALL(*mock_api, create_buffer_resource(_, _))
         .Times(2)
         .WillOnce(testing::Return(&test_vertex_buffer))
         .WillOnce(testing::Return(&test_index_buffer));
-      // EXPECT_CALL(*mock_api, destroy_buffer_resource(testing::_))
+      // EXPECT_CALL(*mock_api, destroy_buffer_resource(_))
       //   .Times(2);
-      EXPECT_CALL(*mock_api, bind_buffer_resource(testing::_, testing::_))
+      EXPECT_CALL(*mock_api, bind_buffer_resource(_, _))
         .Times(2);
-      EXPECT_CALL(*mock_api, unbind_buffer_resource(testing::_))
+      EXPECT_CALL(*mock_api, unbind_buffer_resource(_))
         .Times(2);
-      EXPECT_CALL(*mock_api, set_mesh_vertex_attributes(testing::_, testing::_))
+      EXPECT_CALL(*mock_api, set_mesh_vertex_attributes(_, _))
         .Times(1);
 
-      EXPECT_CALL(*mock_api, buffer_data(testing::_, testing::_, testing::_, testing::_))
+      EXPECT_CALL(*mock_api, buffer_data(_, _, _, _))
         .Times(2);
 
       subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
@@ -101,6 +102,12 @@ namespace other {
       subsystem<renderer_backend>::shutdown();
     }
 
+    struct dtor {
+      ~dtor() {
+        shutdown_mock_rendering_api();
+      }
+    };
+
   }  // namespace
 
   TEST_F(asset_tests, simple_async_load) {
@@ -109,11 +116,7 @@ namespace other {
 
     set_up_mock_rendering_api_and_expect_mesh_creation();
 
-    struct dtor {
-      ~dtor() {
-        shutdown_mock_rendering_api();
-      }
-    } ___destructor_guard;
+    dtor ___destructor_guard;
 
     filepath test_file_path = "tests/resources/models/suzanne3.fbx";
     ASSERT_EQ(std::filesystem::exists(test_file_path), true)
@@ -126,6 +129,9 @@ namespace other {
     EXPECT_EQ(handler->get_num_loading_assets(), 1);
     EXPECT_EQ(handler->get_num_loaded_assets(), 0);
     EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    EXPECT_TRUE(handler->asset_exists(asset_id));
+    EXPECT_TRUE(handler->asset_loading(asset_id));
+    EXPECT_FALSE(handler->asset_loaded(asset_id));
 
     /// no io-context polling yet so should still be loading
     EXPECT_THAT(handler->get_asset_state(asset_id), asset_state::LOADING);
@@ -145,10 +151,21 @@ namespace other {
     EXPECT_EQ(handler->get_num_loading_assets(), 0);
     EXPECT_EQ(handler->get_num_loaded_assets(), 1);
     EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    EXPECT_TRUE(handler->asset_exists(asset_id));
+    EXPECT_FALSE(handler->asset_loading(asset_id));
+    EXPECT_TRUE(handler->asset_loaded(asset_id));
 
     handler->unload_asset(asset_id);
     EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADING);
+    ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
+    EXPECT_EQ(handler->get_num_loading_assets(), 1);
+    EXPECT_EQ(handler->get_num_loaded_assets(), 0);
+    EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    EXPECT_TRUE(handler->asset_exists(asset_id));
+    EXPECT_TRUE(handler->asset_loading(asset_id));
+    EXPECT_FALSE(handler->asset_loaded(asset_id));
 
+    start_time = std::chrono::steady_clock::now();
     while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
@@ -156,17 +173,19 @@ namespace other {
     }
     ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to unload";
 
-    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
-    ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
-    EXPECT_EQ(handler->get_num_loading_assets(), 0);
-    EXPECT_EQ(handler->get_num_loaded_assets(), 1);
-    EXPECT_EQ(handler->get_num_pending_unloads(), 1);
+    handler->update_pipelines();
 
-    ASSERT_NO_FATAL_FAILURE(handler->purge_stores());
-    EXPECT_EQ(handler->get_num_assets_in_flight(), 0);
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
+    /// the loaded asset now exists and a pipeline unloading the asset also exists
+    ASSERT_EQ(handler->get_num_assets_in_flight(), 0);
     EXPECT_EQ(handler->get_num_loading_assets(), 0);
     EXPECT_EQ(handler->get_num_loaded_assets(), 0);
     EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    EXPECT_TRUE(handler->asset_exists(asset_id));
+    EXPECT_FALSE(handler->asset_loading(asset_id));
+    EXPECT_FALSE(handler->asset_loaded(asset_id));
+
+    ASSERT_NO_FATAL_FAILURE(handler->purge_stores());
 
     handler = nullptr;
   }

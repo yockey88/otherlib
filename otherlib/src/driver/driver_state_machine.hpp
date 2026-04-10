@@ -34,6 +34,7 @@ namespace other {
       add_transition(driver_state::DRIVER_STATE_STOPPED, driver_event::DRIVER_EVENT_START, driver_state::DRIVER_STATE_INITIALIZING);
 
       add_transition(driver_state::DRIVER_STATE_INITIALIZING, driver_event::DRIVER_EVENT_READY, driver_state::DRIVER_STATE_RUNNING);
+      add_transition(driver_state::DRIVER_STATE_INITIALIZING, driver_event::DRIVER_EVENT_STOP, driver_state::DRIVER_STATE_SHUTTING_DOWN);
 
       add_transition(driver_state::DRIVER_STATE_RUNNING, driver_event::DRIVER_EVENT_STOP, driver_state::DRIVER_STATE_SHUTTING_DOWN);
       add_transition(driver_state::DRIVER_STATE_RUNNING, driver_event::DRIVER_EVENT_PAUSE, driver_state::DRIVER_STATE_PAUSED);

@@ -109,10 +109,11 @@ namespace other {
       /// ManagedObject
       create_object create_object = nullptr;
       destroy_object destroy_object = nullptr;
+      invoke_method invoke_static_method = nullptr;
+      invoke_method_ret invoke_static_method_ret = nullptr;
       invoke_method invoke_method = nullptr;
       invoke_method_ret invoke_method_ret = nullptr;
-      // invoke_method invoke_static_method = nullptr;
-      // invoke_method_ret invoke_static_method_ret = nullptr;
+      field_is_private_checker is_field_private = nullptr;
       field_setter_getter set_field = nullptr;
       field_setter_getter get_field = nullptr;
       field_setter_getter set_property = nullptr;
@@ -129,6 +130,15 @@ namespace other {
       /// GarbageCollector
       collect_garbage collect_garbage = nullptr;
       wait_for_pending_finalizers wait_for_pending_finalizers = nullptr;
+
+      /// BehaviorInterface
+      behavior_add add_behavior = nullptr;
+      behavior_remove remove_behavior = nullptr;
+      behavior_remove_all remove_all_behaviors = nullptr;
+      behavior_has has_behavior = nullptr;
+      behavior_get_count get_behavior_count = nullptr;
+      behavior_get_type_names get_behavior_type_names = nullptr;
+      behavior_destroy_handle destroy_behavior_handle = nullptr;
     };
 
     dotnet_host();

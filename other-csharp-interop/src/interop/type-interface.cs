@@ -479,12 +479,13 @@ namespace OtherCsBindings
           return;
         }
 
-        ReadOnlySpan<FieldInfo> fields = t!.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+        ReadOnlySpan<FieldInfo> fields = t!.GetFields(BindingFlags.Public);
         if (fields.Length == 0)
         {
           *field_count = 0;
           return;
         }
+
 
         *field_count = fields.Length;
 
@@ -515,7 +516,7 @@ namespace OtherCsBindings
           return;
         }
 
-        ReadOnlySpan<PropertyInfo> properties = t!.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+        ReadOnlySpan<PropertyInfo> properties = t!.GetProperties(BindingFlags.Public);
         if (properties.Length == 0)
         {
           *count = 0;

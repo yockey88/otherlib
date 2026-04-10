@@ -8,6 +8,7 @@
 
 #include "core/defines.hpp"
 
+#include "dotnet/behavior_descriptor.hpp"
 #include "dotnet/dotnet_assembly.hpp"
 #include "dotnet/garbage_collector.hpp"
 #include "dotnet/native_string.hpp"
@@ -73,6 +74,7 @@ namespace other {
   using destroy_object = void (*)(void*);
   using invoke_method = void (*)(void*, native_string, const void**, const managed_type*, int32_t);
   using invoke_method_ret = void (*)(void*, native_string, const void**, const managed_type*, int32_t, void*);
+  using field_is_private_checker = nbool32 (*)(void*, native_string);
   using field_setter_getter = void (*)(void*, native_string, void*);
   using string_field_setter_getter = void (*)(void*, native_string, native_string*);
   using managed_strlen = size_t (*)(void*, native_string);
@@ -80,6 +82,15 @@ namespace other {
   /// GarbageCollector
   using collect_garbage = void (*)(int32_t, gc_mode, nbool32, nbool32);
   using wait_for_pending_finalizers = void (*)();
+
+  /// BehaviorInterface
+  using behavior_add = void* (*)(void* parent_handle, native_string behavior_type_name);
+  using behavior_remove = void (*)(void* parent_handle, native_string behavior_type_name);
+  using behavior_remove_all = void (*)(void* parent_handle);
+  using behavior_has = nbool32 (*)(void* parent_handle, native_string behavior_type_name);
+  using behavior_get_count = int32_t (*)(void* parent_handle);
+  using behavior_get_type_names = void (*)(void* parent_handle, native_string* out_names, int32_t* out_count, int32_t max_count);
+  using behavior_destroy_handle = void (*)(void* behavior_handle);
 
 }  // namespace other
 

@@ -14,6 +14,11 @@
 
 JPH_NAMESPACE_BEGIN
 
+JPH_IMPLEMENT_RTTI_VIRTUAL(ComputeSystemDX12Impl)
+{
+	JPH_ADD_BASE_CLASS(ComputeSystemDX12Impl, ComputeSystemDX12)
+}
+
 ComputeSystemDX12Impl::~ComputeSystemDX12Impl()
 {
 	Shutdown();
@@ -105,7 +110,7 @@ bool ComputeSystemDX12Impl::Initialize(ComputeSystemResult &outResult)
 		return false;
 
 	// Initialize the compute interface
-	ComputeSystemDX12::Initialize(device.Get(), EDebug::DebugSymbols);
+	ComputeSystemDX12::Initialize(device.Get());
 
 #ifdef JPH_DEBUG
 	// Enable breaking on errors

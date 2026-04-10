@@ -4,10 +4,7 @@
 #ifndef OTHER_CORE_MATH_DEFINITIONS_HPP
 #define OTHER_CORE_MATH_DEFINITIONS_HPP
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
-
+#include "core/defines.hpp"
 #include "core/formatting.hpp"
 #include "serialization/reflection.hpp"
 

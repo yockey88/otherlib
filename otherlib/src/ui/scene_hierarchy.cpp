@@ -7,7 +7,7 @@
 
 #include "driver/driver.hpp"
 #include "ui/property_inspector_node.hpp"
-#include "ui/scene_tree_node.hpp"
+#include "ui/scene_hierarchy_node.hpp"
 
 namespace other {
   namespace ui {
@@ -24,7 +24,8 @@ namespace other {
         natural_t obj_id = data;
         select_scene_object(obj_id);
       });
-      hierarchy_node_id = add_node(make_scope<scene_tree_node>(this, drvr));
+
+      hierarchy_node_id = add_node(make_scope<scene_hierarchy_node>(this, drvr));
       property_inspector_node_id = add_node(make_scope<property_inspector_node>(this, drvr));
     }
 

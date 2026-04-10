@@ -1,6 +1,12 @@
 import os
 import regex as re
 
+def get_failed_test_names(content):
+  pattern = re.compile(r'<testcase name="([^"]*)"')
+  failure_pattern = re.compile(rf'<testcase name="{re.escape(test_name)}".*?<failure')
+  failed_test_names = content.split('<testcase name="')[1:]
+  return [name.split('"')[0] for name in failed_test_names if failure_pattern.search(content)]
+
 def validate_test_success(results_file) -> bool:
   if not os.path.exists(result_file):
     print(f"Test result file {result_file} does not exist.")
@@ -11,7 +17,12 @@ def validate_test_success(results_file) -> bool:
     content = f.read()
     matches = len(pattern.findall(content))
     if matches > 0:
+      test_names = get_failed_test_names(content)
+      print(f"{matches} test(s) failed: {', '.join(test_names)}")
       return False
+    
+  
+  print("All tests passed successfully.")
   return True
 
 
@@ -24,8 +35,6 @@ if __name__ == "__main__":
     result_file = "other_test_results.xml"
 
   if validate_test_success(result_file):
-    print("All tests passed successfully.")
     sys.exit(0)
   else:
-    print("Some tests failed.")
     sys.exit(1)

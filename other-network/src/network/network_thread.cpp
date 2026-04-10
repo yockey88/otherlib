@@ -246,7 +246,7 @@ namespace other {
       bus.send_message(std::move(msg));
 
       current_state.shutdown_complete = true;
-      CORE_LOG_DEBUG("All connections closed, completing network thread shutdown.");
+      // CORE_LOG_DEBUG("All connections closed, completing network thread shutdown.");
     }
   }
 
@@ -347,21 +347,51 @@ namespace other {
     CORE_LOG_DEBUG("Attempting to open session {} @ {}", itr->connection_id, binding_point::write_string(bp));
 
     asio::ip::tcp::endpoint ep(asio::ip::address_v4(bp.ip), bp.port);
+    itr->active_session->connection_timer.expires_after(seconds(5));
+    itr->active_session->connection_timer.async_wait([this, stime = itr->active_session->connection_timer.expiry()](const asio::error_code& ec) {
+      if (ec && ec == asio::error::operation_aborted) {
+        return;
+      }
+
+      if (!ec) {
+        auto itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.active_session->connection_timer.expiry() == stime; });
+        if (itr != pending_connections.end()) {
+          itr->active_session->socket.close();
+        }
+      } else {
+      }
+    });
+
     itr->active_session->socket.async_connect(ep, [this, bp](const asio::error_code& ec) {
+      message ack_msg;
+      ack_msg.header = {
+        .category = ACKNOWLEDGEMENT,
+        .id = ACK,
+      };
+
+      acknowledgement ackmsg;
+      ackmsg.acked_header = message_header{ .category = COMMAND, .id = SESSION_CONNECT_TO };
       if (!ec) {
         CORE_LOG_INFO("Successfully connected to other application at {}", binding_point::write_string(bp));
-        // auto conn_itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.endpoint.ip == bp.ip && pair.second.endpoint.port == bp.port; });
-        // OTHER_ASSERT(conn_itr != client_endpoints.end(), "Connection not found for endpoint {}", binding_point::write_string(bp));
+
         auto conn_itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.endpoint.ip == bp.ip && conn.endpoint.port == bp.port; });
         OTHER_ASSERT(conn_itr != pending_connections.end(), "Connection not found for endpoint {}", binding_point::write_string(bp));
+
         conn_itr->active_session->check_in();
+        ackmsg.ack_nack = 1;
       } else {
         CORE_LOG_ERROR("Failed to connect to other application at {}: {}", binding_point::write_string(bp), ec.message());
+
         auto conn_itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.endpoint.ip == bp.ip && conn.endpoint.port == bp.port; });
+        conn_itr->active_session->connection_timer.cancel();
         if (conn_itr != pending_connections.end()) {
           pending_connections.erase(conn_itr);
         }
+        ackmsg.ack_nack = 0;
       }
+
+      ack_msg.data.append_range(ackmsg.as_buffer());
+      bus.send_message(std::move(ack_msg));
     });
   }
 
