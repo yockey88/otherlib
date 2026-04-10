@@ -102,20 +102,19 @@ function(other_install_csharp TARGET_NAME)
   )
 endfunction()
 
-function(other_install_external_library LIB_NAME LIB_BASE_PATH)
+function(other_install_external_library LIB_NAME LIBPATH)
   set(options "")
   set(one_value_args "")
   set(multi_value_args FILE_PATTERNS)
-  set(ARG_FILE_PATTERNS "*.lib" "*.dll" "*.exp" "*.pdb")
 
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
-  message(STATUS "[EXTERNAL LIBRARY] ${LIB_NAME} from ${LIB_BASE_PATH} to ${OTHER_INSTALL_LIBDIR}")
+  message(STATUS "[EXTERNAL LIBRARY] ${LIB_NAME} from ${LIBPATH} to ${OTHER_INSTALL_LIBDIR}")
   
-  if(EXISTS "${LIB_BASE_PATH}/debug" AND EXISTS "${LIB_BASE_PATH}/release")
+  if(EXISTS "${LIBPATH}" AND EXISTS "${LIBPATH}")
     ## Configuration-specific installation
     if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
       install(
-        DIRECTORY "${LIB_BASE_PATH}/debug/"
+        DIRECTORY "${LIBPATH}/"
         DESTINATION "${OTHER_INSTALL_LIBDIR}"
         FILES_MATCHING 
         PATTERN "*.lib"
@@ -124,7 +123,7 @@ function(other_install_external_library LIB_NAME LIB_BASE_PATH)
       )
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
       install(
-        DIRECTORY "${LIB_BASE_PATH}/release/"
+        DIRECTORY "${LIBPATH}/"
         DESTINATION "${OTHER_INSTALL_LIBDIR}"
         FILES_MATCHING 
         PATTERN "*.lib"
@@ -133,12 +132,6 @@ function(other_install_external_library LIB_NAME LIB_BASE_PATH)
       )
     endif()
   else()
-    ## Single configuration installation
-    install(
-      DIRECTORY "${LIB_BASE_PATH}/"
-      DESTINATION "${OTHER_INSTALL_LIBDIR}"
-      FILES_MATCHING 
-      PATTERN "*.lib"
-    )
+   message(FATAL_ERROR "External library path '${LIBPATH}' does not exist for '${LIB_NAME}'")
   endif()
 endfunction()

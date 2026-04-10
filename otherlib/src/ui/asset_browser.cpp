@@ -29,8 +29,7 @@ namespace other {
 
       /// clamp splitter
       splitter_width = std::clamp(
-        splitter_width,
-        asset_browser_w::kDirTreeMinWidth,
+        splitter_width, asset_browser_w::kDirTreeMinWidth,
         std::min(asset_browser_w::kDirTreeMaxWidth, avail.x * 0.5f)
       );
 

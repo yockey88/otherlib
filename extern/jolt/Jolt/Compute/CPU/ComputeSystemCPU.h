@@ -5,6 +5,9 @@
 #pragma once
 
 #include <Jolt/Compute/ComputeSystem.h>
+
+#ifdef JPH_USE_CPU_COMPUTE
+
 #include <Jolt/Core/UnorderedMap.h>
 #include <Jolt/Compute/CPU/ComputeShaderCPU.h>
 
@@ -15,7 +18,7 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT ComputeSystemCPU : public ComputeSystem
 {
 public:
-	JPH_OVERRIDE_NEW_DELETE
+	JPH_DECLARE_RTTI_VIRTUAL(JPH_EXPORT, ComputeSystemCPU)
 
 	// See: ComputeSystem
 	virtual ComputeShaderResult  	CreateComputeShader(const char *inName, uint32 inGroupSizeX, uint32 inGroupSizeY, uint32 inGroupSizeZ) override;
@@ -45,3 +48,5 @@ private:
 #define JPH_REGISTER_SHADER(sys, name)				JPH::JPH_SHADER_WRAPPER_FUNCTION_NAME(name)(sys)
 
 JPH_NAMESPACE_END
+
+#endif // JPH_USE_CPU_COMPUTE

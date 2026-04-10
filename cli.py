@@ -27,15 +27,16 @@ def regen_project():
 def copy_dlls(cfg, dll_cfg):
   print(f"Copying DLLs ({dll_cfg}) for configuration: {cfg}...")
 
-  all_physx_dlls = get_physx_dlls(dll_cfg)
 
   dlls = [
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
     "extern/assimp/lib/assimp-vc143-mt.dll",
     f"extern/python312/python312.dll",
     "extern/sol2/lib/lua-5.4.4.dll",
+    f"extern/jolt/bin/{dll_cfg}/Jolt.dll",
   ]
-  dlls.extend(all_physx_dlls)
+  dlls.extend(get_physx_dlls(dll_cfg))
+
   destinations = [
     f"build/development-drivers/{cfg}/",
     f"build/driver/{cfg}/",
@@ -109,6 +110,9 @@ if __name__ == "__main__":
     validate_args(args, parser)
 
     cfg = args.cfg
+    if cfg != "Debug" and cfg != "Release" and cfg != "Profile" and cfg != "ProfileD":
+      print(f"Error: Invalid configuration '{cfg}'. Valid options are: Debug, Release, Profile, ProfileD.")
+      sys.exit(1)
 
     if args.compile_serialization_schema is not None and os.path.exists(args.compile_serialization_schema):
       if not args.compile_serialization_schema.endswith(".fbs"):
@@ -126,11 +130,6 @@ if __name__ == "__main__":
       print("Serialization schema compiled successfully.")
 
     if args.install:
-      # remove if installation folder exists, this only works locally for dev testing (and only on windows)
-      # if os.path.exists("C:/OtherEnvironment/"):
-      #   shutil.rmtree("C:/OtherEnvironment/")
-      # run_subprocess(["cmake", "-S", ".", "-B", "build"])s
-      # run_subprocess(["cmake", "--build", "build", "--config", cfg])
       run_subprocess(["cmake", "--install", "build", "--config", cfg])
       print("Other Environment installed successfully.")
       sys.exit(0)

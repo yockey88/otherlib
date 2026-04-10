@@ -13,27 +13,30 @@
 namespace other {
 
   enum class action_value_type : uint8_t {
-    /// Digital – the action is either active (1.0) or inactive (0.0) suitable for buttons, key presses.
+    /// action either active (1.0) or inactive (0.0)
     DIGITAL = 0,
 
-    /// 1D axis – the action produces a single float in [-1, 1] suitable for triggers, single-axis stick movement.
+    /// action is single float in [-1, 1]
+    //   for triggers, single-axis stick movement.
     AXIS_1D,
 
-    /// 2D axis – the action produces a vec2 suitable for stick pairs, mouse delta, WASD composite movement.
+    /// action is vec2
     AXIS_2D,
   };
 
-  /// physical-to-logical binding. An action can have many of these
-  /// (e.g. keyboard W *and* gamepad left-stick-Y both bind to "move_forward").
+  /// physical-to-logical binding
+  /// action can have many of these
+  /// (keyboard W *and* gamepad left-stick-Y binded to "move_forward").
   struct action_binding {
     input_source source{};
 
     /// AXIS_1D / AXIS_2D actions, the contribution axis index
-    /// (0 = x or single, 1 = y). Ignored for DIGITAL.
+    //   0 = x or single, 1 = y
+    //   ignored for DIGITAL.
     uint8_t component = 0;
 
-    /// applied to the raw value before accumulation.
-    /// Use -1.0 to invert (e.g. S key contributes -1 to forward axis).
+    /// applied to the raw value before accumulation
+    //   use -1.0 to invert
     float scale = 1.0f;
   };
 

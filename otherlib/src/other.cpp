@@ -121,6 +121,7 @@ namespace other {
     }
 
     subsystem<input_system>::get()->initialize();
+    /// \note maybe not doing this here anymore
     /// \todo handle other-driver registration here, this includes loading everything not pulled from environment config file
     ///        and registering/initializing all user-facing APIs (this includes things like registering user-facing log, registering user events, etc)
 

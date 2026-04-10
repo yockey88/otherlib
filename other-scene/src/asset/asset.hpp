@@ -29,6 +29,7 @@ namespace other {
       SCENE_OBJECT,
 
       INPUT_MAP,
+      PIPELINE,
 
       EMPTY,
       NUM_ASSET_TYPES = EMPTY,
@@ -69,7 +70,7 @@ namespace other {
     std::string_view extension;
   };
 
-  constexpr inline std::array<std::string_view, 13> kFileExtensions = {
+  constexpr inline std::array<std::string_view, 16> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
 
@@ -91,7 +92,10 @@ namespace other {
     // ".scene-object",  // SCENE_OBJECT
 
     ".oinputmap",  // INPUT_MAP
-    ".oeim",
+    ".oeim",       // INPUT_MAP
+
+    ".orp",        // PIPELINE
+    ".opipeline",  // PIPELINE
   };
 
   constexpr inline std::array<asset_extension, kFileExtensions.size()> kAssetExtensions{
@@ -114,6 +118,9 @@ namespace other {
 
       { asset::INPUT_MAP, ".oinputmap" },
       { asset::INPUT_MAP, ".oeim" },
+
+      { asset::PIPELINE, ".orp" },
+      { asset::PIPELINE, ".opipeline" },
     }
   };
 

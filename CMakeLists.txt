@@ -20,7 +20,6 @@ if (NOT CMAKE_EXE_LINKER_FLAGS_PROFILED)
   set(CMAKE_EXE_LINKER_FLAGS_PROFILED "${CMAKE_EXE_LINKER_FLAGS_DEBUG}" CACHE STRING "Flags used by the linker during all build types." FORCE)
 endif()
 
-## default to Release build type
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
@@ -42,17 +41,7 @@ message(STATUS "[INSTALL PATHS]\n  Includedir: ${OTHER_INSTALL_INCLUDEDIR}\n  Li
 
 ### projects to build
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
-option(BUILD_OTHER_EDITOR "Build the other editor application" OFF)
-option(BUILD_OTHER_SERVER "Build the other server application" OFF)
-option(BUILD_DEVELOPMENT_DRIVER "Build development driver (Other Runtime Dev)" OFF)
-option(BUILD_RENDERING_DEVELOPMENT_DRIVER "Build the rendering development driver" OFF)
 option(BUILD_SCRATCH_PROGRAMS "Build scratch-work/development brainstorming programs" OFF)
-option(BUILD_EXAMPLE_APPLICATION "Build the example application" OFF)
-
-option(BUILD_OTHER_DRIVER_LOADER "Build the other driver loader" OFF)
-option(BUILD_OTHER_TOOLS "Build other tools" OFF)
-
-
 if (DISALLOW_OTHER_PLUGINS)
   message(STATUS "Disallowing other plugins")
   add_compile_definitions("OTHER_DISALLOW_OTHER_PLUGINS")
@@ -93,9 +82,9 @@ endif()
 set(COMPILE_OPTIONS "")
 if(BUILD_PLATFORM STREQUAL "WINDOWS")
   add_compile_definitions("OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "HAS_SEH_EXCEPTIONS" "NOMINMAX")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /bigobj")
+  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /bigobj")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0A00") # Windows 10+
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
+  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWIN32_LEAN_AND_MEAN")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
@@ -110,7 +99,8 @@ if(BUILD_PLATFORM STREQUAL "WINDOWS")
     add_compile_options("/D_CRT_SECURE_NO_WARNINGS")
     add_compile_options("/Od" "/Zi" "/RTC1" "/D_DEBUG")
   elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
-    add_compile_options("/DNDEBUG")
+    ## optimize as much as possible, also need iterator levels to be 0 for release builds
+    add_compile_options("/DNDEBUG" "/MD" "/O2" "/Ob2")
   endif()
 else()
   message(FATAL_ERROR "Unix builds are not supported yet. Please use Windows development.")
@@ -168,7 +158,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/dotnet
   ${OTHER_EXTERN_DIR}/entt
   ${OTHER_EXTERN_DIR}/pybind11/include
-  # ${OTHER_EXTERN_DIR}/nativefiledialog/src
+  ${OTHER_EXTERN_DIR}/nativefiledialog/src
   ${OTHER_EXTERN_DIR}/json
   ${OTHER_EXTERN_DIR}/sol2
   ${OTHER_EXTERN_DIR}/sol2/lua
@@ -236,36 +226,21 @@ add_subdirectory(other-scene)
 add_subdirectory(other-csharp)
 add_subdirectory(otherlib)
 
-include(CMakePackageConfigHelpers)
+add_subdirectory(other-editor)
+add_subdirectory(other-server)
+add_subdirectory(tools)
 
-if(EXISTS "development-drivers" AND IS_DIRECTORY "development-drivers")
-  add_subdirectory(development-drivers)
-endif()
-
-if (BUILD_OTHER_DRIVER_LOADER)
-  add_subdirectory(driver)
-endif()
-
+add_subdirectory(script-testing)
 if (BUILD_OTHER_TESTS)
   enable_testing()
   add_subdirectory(tests)
-endif()
-
-if (BUILD_OTHER_TOOLS)
-  add_subdirectory(tools)
-endif()
-
-if (BUILD_OTHER_EDITOR)
-  add_subdirectory(other-editor)
-endif()
-if (BUILD_OTHER_SERVER)
-  add_subdirectory(other-server)
 endif()
 
 if (BUILD_SCRATCH_PROGRAMS AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
   add_subdirectory(scratch)
 endif()
 
+include(CMakePackageConfigHelpers)
 other_install_external_headers("magic_enum" "${OTHER_EXTERN_DIR}/magic_enum")
 other_install_external_headers("args" "${OTHER_EXTERN_DIR}/args")
 other_install_external_headers("tomlplusplus" "${OTHER_EXTERN_DIR}/tomlplusplus")

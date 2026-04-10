@@ -71,8 +71,6 @@ namespace other {
       std::string description;
       std::string author;
       std::string version;
-
-      std::vector<std::pair<std::string, std::string>> filesystem_mounts;
     };
     bool dynamic = false;
 
@@ -99,6 +97,7 @@ namespace other {
     natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
 
     scene* get_active_scene();
+    void new_blank_scene(const std::string_view name);
 
     void process_driver_event(driver_event event);
 
@@ -409,6 +408,7 @@ namespace other {
     json::json project_cache;
 
     metadata build_metadata();
+    void configure_filesystem();
 
     void push_scene_object_to_context_stack(scene_object* object);
     scene_object* pop_scene_object_from_context_stack();

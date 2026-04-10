@@ -40,16 +40,7 @@ namespace other {
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
 
     driver_metadata = build_metadata();
-
-    /// mount filesystem
-    {
-      auto* fs = subsystem<file_system>::get();
-      OTHER_ASSERT(fs != nullptr, "Filesystem subsystem is not initialized.");
-
-      fs->mount_virtual(driver_mounts::kAssetMount);
-      fs->mount_virtual(driver_mounts::kSceneMount);
-      fs->mount_virtual(driver_mounts::kScriptMount);
-    }
+    configure_filesystem();
 
     /// set up input system
     {
@@ -337,13 +328,12 @@ namespace other {
     for (auto& ack : ack_list.pending_acks) {
       ack.timer.cancel();
     }
-    ack_list.pending_acks.clear();
-
     for (auto& response : resp_list.pending_responses) {
       response.timer.cancel();
     }
-    resp_list.pending_responses.clear();
 
+    ack_list.pending_acks.clear();
+    resp_list.pending_responses.clear();
     live_coroutines.clear();
 
     if (primary_role != NONE) {
@@ -450,6 +440,20 @@ namespace other {
 
   scene* driver::get_active_scene() {
     return active_scene;
+  }
+
+  void driver::new_blank_scene(const std::string_view name) {
+    if (project_scene_graph->has_scene(name)) {
+      CORE_LOG_WARN("Scene with name '{}' already exists, cannot create new blank scene with duplicate name.", name);
+      return;
+    }
+
+    if (active_scene != nullptr) {
+      CORE_LOG_DEBUG("Unloading current scene [{}:{}] before creating new blank scene.", active_scene->id, active_scene->name);
+      unload_active_scene();
+    }
+
+    set_scene_to_active(create_new_scene(name));
   }
 
   void driver::set_scene_to_active(natural_t scene_id) {
@@ -680,7 +684,10 @@ namespace other {
       command_session_connect_to conn_cmd;
       conn_cmd.address = net_context->main_binding_point;
       connect_msg.data.append_range(conn_cmd.as_buffer());
-      send_message_and_wait_acknowledgment(std::move(connect_msg), std::chrono::seconds(10), message_handler{ this, &driver::on_ack_session_connect_to, &driver::on_timeout_session_connect_to });
+      send_message_and_wait_acknowledgment(
+        std::move(connect_msg), std::chrono::seconds(10),
+        message_handler{ this, &driver::on_ack_session_connect_to, &driver::on_timeout_session_connect_to }
+      );
     } else if (network_thread_active && primary_role == driver_role::SERVER) {
       message msg;
       msg.header = {
@@ -691,7 +698,10 @@ namespace other {
       command_session_listen_at listen_cmd;
       listen_cmd.address = net_context->main_binding_point;
       msg.data.append_range(listen_cmd.as_buffer());
-      send_message_and_wait_acknowledgment(std::move(msg), std::chrono::seconds(10), message_handler{ this, &driver::on_ack_session_listen_for_network_thread, &driver::on_timeout_session_listen_for_network_thread });
+      send_message_and_wait_acknowledgment(
+        std::move(msg), std::chrono::seconds(10),
+        message_handler{ this, &driver::on_ack_session_listen_for_network_thread, &driver::on_timeout_session_listen_for_network_thread }
+      );
     } else {
       CORE_LOG_WARN("Network thread is disabled, running in offline mode.");
     }
@@ -1843,26 +1853,148 @@ namespace other {
   }
 
   driver::metadata driver::build_metadata() {
-    std::string name = get_config_value<std::string>("application.metadata.info.name", "Unnamed Application");
-    std::string description = get_config_value<std::string>("application.metadata.info.description", "No description provided.");
-    std::string author = get_config_value<std::string>("application.metadata.info.author", "Unknown author");
-    std::string version = get_config_value<std::string>("application.metadata.info.version", "0.0.1");
+    const auto md = configuration().get_raw("application.metadata");
 
-    const toml::table* metadata_mounts = configuration().get_subtable("application.metadata.fs-mounts");
-    if (metadata_mounts != nullptr) {
-      for (const auto& [mount_name, mount_info] : *metadata_mounts) {
+    metadata data = {};
+    if (md) {
+      if (md.is_array_of_tables()) {
+        const auto* metadata_tables = md.as_array();
+        OTHER_ASSERT(metadata_tables != nullptr, "Invalid format for application metadata in configuration. Expected an array of tables.");
+
+        for (const auto& table : *metadata_tables) {
+          OTHER_ASSERT(table.is_table(), "Invalid format for application metadata in configuration. Expected an array of tables.");
+          const auto* metadata_table = table.as_table();
+          OTHER_ASSERT(metadata_table != nullptr, "Invalid format for application metadata in configuration. Expected an array of tables.");
+
+          auto key_itr = metadata_table->find("key");
+          auto value_itr = metadata_table->find("value");
+          if (key_itr == metadata_table->end() || value_itr == metadata_table->end()) {
+            CORE_LOG_ERROR("Invalid format for application metadata entry in configuration. Each metadata entry must contain 'key' and 'value' fields.");
+            continue;
+          }
+
+          if (!key_itr->second.is_string()) {
+            CORE_LOG_ERROR("Invalid format for application metadata key in configuration. 'key' field must be a string.");
+            continue;
+          }
+
+          auto* key = key_itr->second.as_string();
+          OTHER_ASSERT(key != nullptr, "Invalid format for application metadata key in configuration. 'key' field must be a string.");
+
+          std::string k = key->get();
+          CORE_LOG_DEBUG("Processing application metadata entry with key '{}'", k);
+          /// \todo fix this
+          if (k == "name") {
+            if (!value_itr->second.is_string()) {
+              CORE_LOG_ERROR("Invalid format for application metadata value in configuration. 'value' field for 'name' key must be a string.");
+              continue;
+            }
+            data.name = value_itr->second.as_string()->get();
+          } else if (k == "description") {
+            if (!value_itr->second.is_string()) {
+              CORE_LOG_ERROR("Invalid format for application metadata value in configuration. 'value' field for 'description' key must be a string.");
+              continue;
+            }
+            data.description = value_itr->second.as_string()->get();
+          } else if (k == "author") {
+            if (!value_itr->second.is_string()) {
+              CORE_LOG_ERROR("Invalid format for application metadata value in configuration. 'value' field for 'author' key must be a string.");
+              continue;
+            }
+            data.author = value_itr->second.as_string()->get();
+          } else if (k == "version") {
+            if (!value_itr->second.is_string()) {
+              CORE_LOG_ERROR("Invalid format for application metadata value in configuration. 'value' field for 'version' key must be a string.");
+              continue;
+            }
+            data.version = value_itr->second.as_string()->get();
+          } else {
+            CORE_LOG_WARN("Unknown application metadata key '{}' in configuration. This key will be ignored.", k);
+          }
+        }
+      } else {
+        CORE_LOG_ERROR("Invalid format for application metadata in configuration. Expected an array of tables.");
       }
-    } else {
-      CORE_LOG_WARN("No filesystem mounts defined in metadata.");
     }
 
-    return {
-      .name = name,
-      .description = description,
-      .author = author,
-      .version = version,
-      .filesystem_mounts = {},
-    };
+    // clang-format off
+    CORE_LOG_DEBUG("\nFinished processing application metadata from configuration.\nResult: name='{}', description='{}', author='{}', version='{}'\n", 
+                    data.name, data.description, data.author, data.version);
+    // clang-format on
+    return data;
+  }
+
+  void driver::configure_filesystem() {
+    auto* fs = subsystem<file_system>::get();
+    OTHER_ASSERT(fs != nullptr, "Filesystem subsystem is not available when building driver metadata.");
+
+    CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
+    const auto md_mnts = configuration().get_raw("filesystem.mounts");
+    if (md_mnts) {
+      if (md_mnts.is_array_of_tables()) {
+        const auto* mounts_tables = md_mnts.as_array();
+        OTHER_ASSERT(mounts_tables != nullptr, "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
+
+        CORE_LOG_DEBUG("Found {} filesystem mount entries in configuration", mounts_tables->size());
+        for (const auto& table : *mounts_tables) {
+          OTHER_ASSERT(table.is_table(), "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
+          const auto* mount_table = table.as_table();
+          OTHER_ASSERT(mount_table != nullptr, "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
+
+          auto name_itr = mount_table->find("name");
+          auto type_itr = mount_table->find("type");
+          auto path_itr = mount_table->find("path");
+          if (name_itr == mount_table->end() || type_itr == mount_table->end()) {
+            CORE_LOG_ERROR("Invalid format for filesystem mount entry in configuration. Each mount entry must contain 'name' and 'type' fields.");
+            continue;
+          }
+          if (!name_itr->second.is_string() || !type_itr->second.is_string()) {
+            CORE_LOG_ERROR("Invalid format for filesystem mount entry in configuration. 'name' and 'type' fields must be strings.");
+            continue;
+          }
+
+          std::string name = name_itr->second.as_string()->get();
+          std::string type = type_itr->second.as_string()->get();
+          /// physical is probably going to be the default use case and needs extra checking
+          if (type == "physical") {
+            if (path_itr == mount_table->end()) {
+              CORE_LOG_ERROR("Invalid format for physical filesystem mount entry in configuration. Physical mounts must contain a 'path' field.");
+              continue;
+            }
+            if (!path_itr->second.is_string()) {
+              CORE_LOG_ERROR("Invalid format for physical filesystem mount entry in configuration. 'path' field must be a string.");
+              continue;
+            }
+            std::string path_str = path_itr->second.as_string()->get();
+            filepath path(path_str);
+            if (!std::filesystem::exists(path)) {
+              CORE_LOG_ERROR("Filesystem mount path '{}' does not exist. Cannot configure filesystem mount '{}'.", path_str, name);
+              continue;
+            }
+
+            fs->mount_directory(name, path);
+          }
+          /// virtual is simpler
+          else if (type == "virtual") {
+            if (fs->is_mounted(name)) {
+              CORE_LOG_WARN("Filesystem mount '{}' is already mounted. Skipping virtual mount.", name);
+              continue;
+            }
+
+            fs->mount_virtual(name);
+          } else {
+            CORE_LOG_ERROR("Invalid filesystem mount type '{}' for mount '{}'. Supported types are 'physical' and 'virtual'.", type, name);
+          }
+        }
+      } else {
+        CORE_LOG_ERROR("Invalid format for filesystem mounts in configuration. Expected an array of tables.");
+      }
+    }
+
+    /// defaults
+    fs->mount_virtual(driver_mounts::kAssetMount);
+    fs->mount_virtual(driver_mounts::kSceneMount);
+    fs->mount_virtual(driver_mounts::kScriptMount);
   }
 
   void driver::push_scene_object_to_context_stack(scene_object* object) {

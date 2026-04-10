@@ -35,22 +35,22 @@
 namespace other {
   namespace ui {
 
-    namespace cbw = asset_browser_w;
+    namespace abw = asset_browser_w;
 
     namespace {
 
-      cbw::asset_type map_asset_to_ui_type(asset::type t) {
+      abw::asset_type map_asset_to_ui_type(asset::type t) {
         switch (t) {
-          case asset::TEXTURE: return cbw::asset_type::TEXTURE;
-          case asset::MODEL_SOURCE: return cbw::asset_type::MODEL_SOURCE;
-          case asset::MODEL: return cbw::asset_type::MODEL;
-          case asset::ANIMATION: return cbw::asset_type::ANIMATION;
-          case asset::SCRIPT_SOURCE: return cbw::asset_type::SCRIPT_SOURCE;
-          case asset::SCRIPT: return cbw::asset_type::SCRIPT;
-          case asset::AUDIO: return cbw::asset_type::AUDIO;
-          case asset::SCENE: return cbw::asset_type::SCENE;
-          case asset::SCENE_OBJECT: return cbw::asset_type::SCENE_OBJECT;
-          default: return cbw::asset_type::UNKNOWN;
+          case asset::TEXTURE: return abw::asset_type::TEXTURE;
+          case asset::MODEL_SOURCE: return abw::asset_type::MODEL_SOURCE;
+          case asset::MODEL: return abw::asset_type::MODEL;
+          case asset::ANIMATION: return abw::asset_type::ANIMATION;
+          case asset::SCRIPT_SOURCE: return abw::asset_type::SCRIPT_SOURCE;
+          case asset::SCRIPT: return abw::asset_type::SCRIPT;
+          case asset::AUDIO: return abw::asset_type::AUDIO;
+          case asset::SCENE: return abw::asset_type::SCENE;
+          case asset::SCENE_OBJECT: return abw::asset_type::SCENE_OBJECT;
+          default: return abw::asset_type::UNKNOWN;
         }
       }
 
@@ -84,16 +84,16 @@ namespace other {
       // events().add_listener("asset-browser.refresh", [this](const value&) { refresh_listing(); });
       /// set up default filter pills
       filters = {
-        { "All", cbw::asset_type::UNKNOWN, true },
-        { "Texture", cbw::asset_type::TEXTURE, true },
-        { "Model", cbw::asset_type::MODEL, true },
-        { "Model Src", cbw::asset_type::MODEL_SOURCE, true },
-        { "Animation", cbw::asset_type::ANIMATION, true },
-        { "Script Src", cbw::asset_type::SCRIPT_SOURCE, true },
-        { "Script", cbw::asset_type::SCRIPT, true },
-        { "Audio", cbw::asset_type::AUDIO, true },
-        { "Scene", cbw::asset_type::SCENE, true },
-        { "Object", cbw::asset_type::SCENE_OBJECT, true },
+        { "All", abw::asset_type::UNKNOWN, true },
+        { "Texture", abw::asset_type::TEXTURE, true },
+        { "Model", abw::asset_type::MODEL, true },
+        { "Model Src", abw::asset_type::MODEL_SOURCE, true },
+        { "Animation", abw::asset_type::ANIMATION, true },
+        { "Script Src", abw::asset_type::SCRIPT_SOURCE, true },
+        { "Script", abw::asset_type::SCRIPT, true },
+        { "Audio", abw::asset_type::AUDIO, true },
+        { "Scene", abw::asset_type::SCENE, true },
+        { "Object", abw::asset_type::SCENE_OBJECT, true },
       };
 
       navigate_to("assets");
@@ -186,14 +186,14 @@ namespace other {
               assets.push_back({
                 .name = child->name(),
                 .meta = meta,
-                .type = cbw::asset_type::FOLDER,
+                .type = abw::asset_type::FOLDER,
               });
             }
 
             for (const auto& file : target_dir->files()) {
               const std::string& ext = file->extension();
               asset::type at = asset::get_type_from_extension(ext);
-              cbw::asset_type ui_type = map_asset_to_ui_type(at);
+              abw::asset_type ui_type = map_asset_to_ui_type(at);
 
               std::string meta;
               if (file->exists()) {
@@ -245,7 +245,7 @@ namespace other {
       //     atype = a->asset_type;
 
       //     std::string name = asset_path.filename().string();
-      //     cbw::asset_type ui_type = map_asset_to_ui_type(atype);
+      //     abw::asset_type ui_type = map_asset_to_ui_type(atype);
 
       //     std::string meta = asset_state_label(state);
       //     if (std::filesystem::exists(asset_path)) {
@@ -253,7 +253,7 @@ namespace other {
       //       meta = format_file_size(sz) + std::format(" {} ", unicode::kMiddleDot) + meta;
       //     }
 
-      //     cbw::asset_card_desc desc;
+      //     abw::asset_card_desc desc;
       //     desc.name = std::move(name);
       //     desc.meta = std::move(meta);
       //     desc.type = ui_type;
@@ -264,9 +264,9 @@ namespace other {
       // }
     }
 
-    bool asset_browser_grid_node::passes_filter(const cbw::asset_card_desc& desc) const {
+    bool asset_browser_grid_node::passes_filter(const abw::asset_card_desc& desc) const {
       /// folders always show
-      if (desc.type == cbw::asset_type::FOLDER) {
+      if (desc.type == abw::asset_type::FOLDER) {
         return true;
       }
 
@@ -294,16 +294,16 @@ namespace other {
         ImVec2 cursor = ImGui::GetCursorScreenPos();
         float w = ImGui::GetContentRegionAvail().x;
 
-        dl->AddRectFilled(cursor, { cursor.x + w, cursor.y + cbw::kToolbarHeight }, to_im_col(asset_browser::kBG));
+        dl->AddRectFilled(cursor, { cursor.x + w, cursor.y + abw::kToolbarHeight }, to_im_col(asset_browser::kBG));
         dl->AddLine(
-          { cursor.x, cursor.y + cbw::kToolbarHeight },
-          { cursor.x + w, cursor.y + cbw::kToolbarHeight },
+          { cursor.x, cursor.y + abw::kToolbarHeight },
+          { cursor.x + w, cursor.y + abw::kToolbarHeight },
           to_im_col(asset_browser::kBorder), 1.f
         );
 
-        ImGui::SetCursorScreenPos({ cursor.x + cbw::kPaddingX, cursor.y + cbw::kPaddingY });
+        ImGui::SetCursorScreenPos({ cursor.x + abw::kPaddingX, cursor.y + abw::kPaddingY });
 
-        int clicked_crumb = cbw::draw_breadcrumbs(breadcrumbs);
+        int clicked_crumb = abw::draw_breadcrumbs(breadcrumbs);
         if (clicked_crumb >= 0 && clicked_crumb < static_cast<int>(breadcrumbs.size())) {
           navigate_to(breadcrumbs[clicked_crumb].full_path);
         }
@@ -311,28 +311,28 @@ namespace other {
         /// search field on the right
         float search_w = 200.f;
         ImGui::SameLine(0.f, 0.f);
-        float search_x = cursor.x + w - search_w - cbw::kPaddingX;
-        ImGui::SetCursorScreenPos({ search_x, cursor.y + cbw::kPaddingY });
-        if (cbw::draw_search_input(search_buf, sizeof(search_buf), search_w)) {
+        float search_x = cursor.x + w - search_w - abw::kPaddingX;
+        ImGui::SetCursorScreenPos({ search_x, cursor.y + abw::kPaddingY });
+        if (abw::draw_search_input(search_buf, sizeof(search_buf), search_w)) {
           search_lower = search_buf;
           std::ranges::transform(search_lower, search_lower.begin(), [](unsigned char c) { return std::tolower(c); });
         }
 
-        ImGui::SetCursorScreenPos({ cursor.x, cursor.y + cbw::kToolbarHeight + 1.f });
+        ImGui::SetCursorScreenPos({ cursor.x, cursor.y + abw::kToolbarHeight + 1.f });
       }
 
       {
         ImVec2 cursor = ImGui::GetCursorScreenPos();
         float w = ImGui::GetContentRegionAvail().x;
 
-        dl->AddRectFilled(cursor, { cursor.x + w, cursor.y + cbw::kFilterBarHeight }, to_im_col(colors::kBG0));
+        dl->AddRectFilled(cursor, { cursor.x + w, cursor.y + abw::kFilterBarHeight }, to_im_col(colors::kBG0));
         dl->AddLine(
-          { cursor.x, cursor.y + cbw::kFilterBarHeight },
-          { cursor.x + w, cursor.y + cbw::kFilterBarHeight },
+          { cursor.x, cursor.y + abw::kFilterBarHeight },
+          { cursor.x + w, cursor.y + abw::kFilterBarHeight },
           to_im_col(asset_browser::kBorder), 1.f
         );
 
-        ImGui::SetCursorScreenPos({ cursor.x + cbw::kPaddingX, cursor.y + 5.f });
+        ImGui::SetCursorScreenPos({ cursor.x + abw::kPaddingX, cursor.y + 5.f });
 
         int visible_count = 0;
         for (const auto& a : assets) {
@@ -340,12 +340,12 @@ namespace other {
             ++visible_count;
           }
         }
-        cbw::draw_filter_bar(filters, visible_count);
+        abw::draw_filter_bar(filters, visible_count);
 
-        ImGui::SetCursorScreenPos({ cursor.x, cursor.y + cbw::kFilterBarHeight + 1.f });
+        ImGui::SetCursorScreenPos({ cursor.x, cursor.y + abw::kFilterBarHeight + 1.f });
       }
 
-      float card_w = cbw::card_width_from_zoom(zoom);
+      float card_w = abw::card_width_from_zoom(zoom);
       float avail_w = ImGui::GetContentRegionAvail().x;
 
       /// reserve space for the detail panel when a tracked asset is selected
@@ -354,16 +354,18 @@ namespace other {
       if (selected_asset_idx >= 0 && selected_asset_idx < static_cast<int>(assets.size()) &&
           assets[selected_asset_idx].handler_asset_id != 0) {
         show_detail_panel = true;
+        ImGui::OpenPopup("##asset-detail-popup");
       }
 
       float detail_h = show_detail_panel ? kDetailPanelHeight : 0.f;
-      float avail_h = ImGui::GetContentRegionAvail().y - cbw::kStatusBarHeight - detail_h;
+      float avail_h = ImGui::GetContentRegionAvail().y - abw::kStatusBarHeight - detail_h;
 
       ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(asset_browser::kBG));
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(cbw::kPaddingX, cbw::kPaddingX));
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(abw::kPaddingX, abw::kPaddingX));
 
+      float top_of_grid_y = ImGui::GetCursorScreenPos().y;
       if (ImGui::BeginChild("##asset-grid-scroll", ImVec2(0, avail_h), ImGuiChildFlags_None)) {
-        int cols = std::max(1, static_cast<int>((avail_w - cbw::kPaddingX) / (card_w + cbw::kCardSpacing)));
+        int cols = std::max(1, static_cast<int>((avail_w - abw::kPaddingX) / (card_w + abw::kCardSpacing)));
         int col = 0;
 
         size_t idx = 0;
@@ -384,17 +386,17 @@ namespace other {
           ImGui::PushID(idx);
 
           if (col > 0) {
-            ImGui::SameLine(0.f, cbw::kCardSpacing);
+            ImGui::SameLine(0.f, abw::kCardSpacing);
           }
 
-          if (cbw::draw_asset_card(asset, card_w)) {
+          if (abw::draw_asset_card(asset, card_w)) {
             /// deselect all others
             for (int j = 0; j < static_cast<int>(assets.size()); ++j) {
               assets[j].is_selected = (j == static_cast<int>(idx));
             }
             selected_asset_idx = static_cast<int>(idx);
 
-            if (asset.type == cbw::asset_type::FOLDER) {
+            if (asset.type == abw::asset_type::FOLDER) {
               navigate_to(current_path + "/" + asset.name);
             }
           }
@@ -413,55 +415,6 @@ namespace other {
       ImGui::PopStyleVar();
       ImGui::PopStyleColor();
 
-      /// inspector-style detail panel for handler-tracked assets
-      if (show_detail_panel) {
-        const auto& sel = assets[selected_asset_idx];
-        asset_handler* handler = driver_ptr ? driver_ptr->get_asset_manager().get() : nullptr;
-
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(colors::kBG0));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ui::inspector::kInnerPadding, 6.f));
-
-        if (ImGui::BeginChild("##asset-detail-panel", ImVec2(0, kDetailPanelHeight), ImGuiChildFlags_None)) {
-          dl->AddLine(
-            ImGui::GetCursorScreenPos(),
-            { ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x, ImGui::GetCursorScreenPos().y },
-            to_im_col(asset_browser::kBorder), 1.f
-          );
-          ImGui::Dummy(ImVec2(0, 2.f));
-
-          asset_state state = asset_state::UNLOADED;
-          if (handler != nullptr) {
-            state = handler->get_asset_state(sel.handler_asset_id);
-          }
-
-          ui::inspector::asset_slot_state slot_state = ui::inspector::asset_slot_state::EMPTY;
-          if (state == asset_state::LOADED) {
-            slot_state = ui::inspector::asset_slot_state::FILLED;
-          } else if (state == asset_state::ERROR_STATE) {
-            slot_state = ui::inspector::asset_slot_state::INVALID;
-          }
-
-          ui::inspector::draw_asset_slot("Asset", sel.name, slot_state);
-
-          std::string id_str = std::to_string(sel.handler_asset_id);
-          ui::inspector::property_display("ID", id_str);
-
-          const char* type_label = cbw::badge_for_asset_type(sel.type);
-          glm::vec4 type_color = cbw::color_for_asset_type(sel.type);
-          ui::inspector::property_display("Type", type_label, type_color);
-
-          ui::inspector::property_display("State", asset_state_label(state));
-
-          if (!sel.asset_path.empty()) {
-            ui::inspector::property_display("Path", sel.asset_path);
-          }
-        }
-        ImGui::EndChild();
-
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor();
-      }
-
       {
         int asset_count = 0;
         int folder_count = 0;
@@ -469,22 +422,79 @@ namespace other {
           if (!passes_filter(a)) {
             continue;
           }
-          if (a.type == cbw::asset_type::FOLDER) {
+          if (a.type == abw::asset_type::FOLDER) {
             folder_count++;
           } else {
             asset_count++;
           }
         }
 
-        cbw::status_bar_info info;
+        abw::status_bar_info info;
         info.total_assets = asset_count;
         info.folder_count = folder_count;
         info.selected_name = (selected_asset_idx >= 0 && selected_asset_idx < static_cast<int>(assets.size())) ? assets[selected_asset_idx].name.c_str() : nullptr;
         info.zoom_normalized = zoom;
 
-        if (cbw::draw_status_bar(info)) {
+        if (abw::draw_status_bar(info)) {
           zoom = info.zoom_normalized;
         }
+      }
+
+      /// inspector-style detail panel for handler-tracked assets
+
+      /// \todo move this to a separate window or popup
+      if (show_detail_panel && ImGui::BeginChild("##asset-detail-popup")) {
+        const auto& sel = assets[selected_asset_idx];
+
+        // ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(colors::kBG0));
+        // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ui::inspector::kInnerPadding, 6.f));
+
+        constexpr float kDetailPanelMinWidth = 240.f;
+        constexpr float kDetailPanelMaxWidth = 400.f;
+        constexpr float kDetailPanelDefaultWidth = 280.f;
+        float detail_panel_width = std::clamp(avail_w * 0.4f, kDetailPanelMinWidth, kDetailPanelMaxWidth);
+        detail_panel_width = std::max(detail_panel_width, kDetailPanelDefaultWidth);
+        dl->AddLine(
+          ImGui::GetCursorScreenPos(),
+          { ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x, ImGui::GetCursorScreenPos().y },
+          to_im_col(asset_browser::kBorder), 1.f
+        );
+        ImGui::Dummy(ImVec2(0, 2.f));
+
+        asset_state state = asset_state::UNLOADED;
+
+        /// \todo is there a better way to do this?
+        if (driver_ptr != nullptr) {
+          auto& handler = driver_ptr->get_asset_manager();
+          OTHER_ASSERT(handler != nullptr, "Asset handler should not be null");
+
+          state = handler->get_asset_state(sel.handler_asset_id);
+        }
+
+        ui::inspector::asset_slot_state slot_state = ui::inspector::asset_slot_state::EMPTY;
+        if (state == asset_state::LOADED) {
+          slot_state = ui::inspector::asset_slot_state::FILLED;
+        } else if (state == asset_state::ERROR_STATE) {
+          slot_state = ui::inspector::asset_slot_state::INVALID;
+        }
+
+        std::string id_str = std::to_string(sel.handler_asset_id);
+        const char* type_label = abw::badge_for_asset_type(sel.type);
+        glm::vec4 type_color = abw::color_for_asset_type(sel.type);
+
+        ui::inspector::draw_asset_slot("Asset", sel.name, slot_state);
+        ui::inspector::property_display("ID", id_str);
+        ui::inspector::property_display("Type", type_label, type_color);
+        ui::inspector::property_display("State", asset_state_label(state));
+        if (!sel.asset_path.empty()) {
+          ui::inspector::property_display("Path", sel.asset_path);
+        }
+
+        // ImGui::PopStyleVar();
+        // ImGui::PopStyleColor();
+      }
+      if (show_detail_panel) {
+        ImGui::EndChild();
       }
     }
 

@@ -103,6 +103,9 @@ namespace other {
       }
     }
 
+    inline const auto get_raw(const std::string_view toml_path) const {
+      return table.at_path(toml_path);
+    }
     const toml::table* get_subtable(const std::string_view toml_path) const;
 
     bool valid = true;

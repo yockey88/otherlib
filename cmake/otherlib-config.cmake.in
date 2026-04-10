@@ -70,7 +70,7 @@ endfunction()
 
 ## Setup external library targets
 _otherlib_setup_external_lib(SDL3 SDL3 SHARED sdl SDL3)
-_otherlib_setup_external_lib(assimp assimp SHARED assimp assimp-vc143-mtd assimp-vc143-mt)
+_otherlib_setup_external_lib(assimp assimp SHARED assimp assimp-vc143-mt assimp-vc143-mt)
 _otherlib_setup_external_lib(glad glad STATIC glad glad)
 _otherlib_setup_external_lib(nfd nfd STATIC nativefiledialog nfd_d nfd)
 _otherlib_setup_external_lib(flatbuffers flatbuffers STATIC flatbuffers flatbuffers)
