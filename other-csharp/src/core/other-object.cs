@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using OtherCsBindings;
 
 namespace Other.Core
@@ -72,6 +73,19 @@ namespace Other.Core
       behaviors.Add(behavior);
     }
 
+    public void AddNativeBehavior(IntPtr native_handle)
+    {
+      GCHandle behavior_handle = GCHandle.FromIntPtr(native_handle);
+      if (behavior_handle.Target is OtherBehavior behavior)
+      {
+        AddBehavior(behavior);
+      }
+      else
+      {
+        throw new InvalidOperationException("The provided native handle does not point to a valid OtherBehavior instance.");
+      }
+    }
+
     public void RemoveBehavior(string class_name)
     {
       for (int i = behaviors.Count - 1; i >= 0; i--)
@@ -94,7 +108,7 @@ namespace Other.Core
     {
       for (int i = behaviors.Count - 1; i >= 0; i--)
       {
-        behaviors[i].OnRemoveFromObject(this);
+        RemoveBehavior(behaviors[i]);
       }
       behaviors.Clear();
     }

@@ -79,7 +79,7 @@ namespace other {
     }
   }
 
-  void script_component::add_behavior(const std::string& behavior_type_name) {
+  void script_component::add_behavior(const std::string_view behavior_type_name) {
     PROFILE_SECTION("script_component::add_behavior");
 
     auto* env = subsystem<scripting_environment>::get();
@@ -88,7 +88,7 @@ namespace other {
     env->attach_dotnet_behavior(script_object_id, behavior_type_name);
   }
 
-  void script_component::remove_behavior(const std::string& behavior_type_name) {
+  void script_component::remove_behavior(const std::string_view behavior_type_name) {
     PROFILE_SECTION("script_component::remove_behavior");
 
     auto* env = subsystem<scripting_environment>::get();

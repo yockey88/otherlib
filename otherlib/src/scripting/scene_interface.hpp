@@ -36,6 +36,8 @@ namespace other {
 
     /// lua
     /// \todo .NET
+    static void attach_dotnet_behavior_to_object(scene* scene_ptr, natural_t id, const std::string_view behavior_type_name);
+
     static render_component_lua_proxy attach_model_to_object(scene* scene, natural_t id, const std::string_view model_path);
     static camera_component_lua_proxy attach_camera_to_object(scene* scene_ptr, natural_t id);
 

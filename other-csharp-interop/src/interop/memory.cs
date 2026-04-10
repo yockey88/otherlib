@@ -10,7 +10,7 @@ namespace OtherCsBindings
    * TODO: replace the use of Marshal with better approach
    **/
 
-  internal static class OtherMemory
+  public static class OtherMemory
   {
     struct ArrayContainer
     {

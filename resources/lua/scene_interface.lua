@@ -50,6 +50,10 @@ local function _check_if_object_has_component(scene_handle, native_id, component
   return __other_native.__scene_interface.check_if_object_has_component(scene_handle, native_id, component_name)
 end
 
+local function _attach_dotnet_behavior_to_object(scene_handle, native_id, behavior_type_name)
+  return __other_native.__scene_interface.attach_dotnet_behavior_to_object(scene_handle, native_id, behavior_type_name)
+end
+
 local function _attach_model_to_object(scene_handle, native_id, model_path)
   return __other_native.__scene_interface.attach_model_to_object(scene_handle, native_id, model_path)
 end
@@ -172,6 +176,9 @@ function _SceneInterface:AttachDirectionalLightToObject(native_id, light)
   return self:CallInterfaceFunction(_attach_directional_light_to_object, native_id, light)
 end
 
+function _SceneInterface:AttachDotNetBehaviorToObject(native_id, behavior_type_name)
+  return self:CallInterfaceFunction(_attach_dotnet_behavior_to_object, native_id, behavior_type_name)
+end
 
 local _Scene = _SceneInterface:new()
 return _Scene

@@ -5,6 +5,9 @@ function _SceneObjectInterface:new(name, position)
   obj.native_id = Other:Scene().CreateSceneObject(name, position)
   obj.Transform = _NativeTransformComponent:new()
   obj.Scripts = _NativeScriptComponent:new()
+  function obj:AttachBehavior(behavior_type_name)
+    Other:Scene():AttachDotNetBehaviorToObject(obj.native_id, behavior_type_name)
+  end
 
   setmetatable(obj, self)
   self.__index = self

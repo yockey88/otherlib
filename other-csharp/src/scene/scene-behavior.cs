@@ -1,5 +1,6 @@
 namespace Other
 {
+  /// simply defers all functions to user's implementations
   public class SceneBehavior : Core.OtherBehavior
   {
     public SceneObject SceneObject

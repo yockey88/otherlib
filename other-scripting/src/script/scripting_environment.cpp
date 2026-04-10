@@ -200,14 +200,14 @@ namespace other {
     std::string behavior_obj_name = std::format("{}__behavior__{}", parent->name, behavior_name);
     integer_t behavior_script_id = create_object(behavior_obj_name);
 
-    /// invoke AddBehaviorByTypeName on the parent SceneObject's managed object.
-    /// this creates the Behavior instance in C# via Activator.CreateInstance and
-    /// adds it to the OtherObject's behavior list.
-    native_string type_str = native_string::new_str(behavior_name);
-    parent->dotnet_object->invoke<void>("AddBehaviorByTypeName", type_str);
-    native_string::free_str(type_str);
+    dotnet_object* behavior_dotnet_obj = dotnet.instantiate_managed_object(behavior_name, behavior_obj_name);
+    if (behavior_dotnet_obj == nullptr) {
+      CORE_LOG_ERROR("Failed to instantiate .NET behavior object of type '{}' for script object with ID {}", behavior_name, behavior_script_id);
+      destroy_object(behavior_script_id);
+      return;
+    }
 
-    /// track the behavior handle on the parent script_object
+    parent->dotnet_object->invoke<>("AddNativeBehavior", behavior_dotnet_obj->managed_object);
     parent->behavior_handles.push_back({
       .type_name = std::string(behavior_name),
       .script_object_id = behavior_script_id,
@@ -283,6 +283,7 @@ namespace other {
 
     CORE_LOG_DEBUG("[script {}] destroying .NET object [{}]", id, obj->name);
 
+    obj->dotnet_object->invoke<>("RemoveAllBehaviors");
     dotnet_unregister_native_object(id);
     dotnet.destroy_managed_object(obj->dotnet_object);
     obj->dotnet_object = nullptr;

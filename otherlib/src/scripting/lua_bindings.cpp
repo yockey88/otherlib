@@ -93,6 +93,7 @@ namespace other {
     scene_table.set_function("add_component_to_object", &scene_interface::add_component);
     scene_table.set_function("remove_component_from_object", &scene_interface::remove_component);
     scene_table.set_function("check_if_object_has_component", &scene_interface::has_component);
+    scene_table.set_function("attach_dotnet_behavior_to_object", &scene_interface::attach_dotnet_behavior_to_object);
     scene_table.set_function("attach_model_to_object", &scene_interface::attach_model_to_object);
     scene_table.set_function("attach_camera_to_object", &scene_interface::attach_camera_to_object);
     scene_table.set_function("attach_point_light_to_object", &scene_interface::attach_point_light_to_object);
