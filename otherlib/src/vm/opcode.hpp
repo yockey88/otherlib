@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <string>
 
+#include "core/defines.hpp"
+
 namespace other {
 
   struct other_command_device;
@@ -39,6 +41,7 @@ namespace other {
    *   |-------------------------|
    **/
 
+#pragma pack(push, 1)
   struct instruction {
     constexpr static uint32_t kCategoryMask = 0xF0000000;
     constexpr static uint8_t kCategoryShift = 28;
@@ -91,6 +94,30 @@ namespace other {
     uint8_t type_nibble() const { return static_cast<uint8_t>((opcode & kTypeMask) >> kTypeShift); }
   };
   static_assert(sizeof(instruction) == sizeof(uint32_t), "Instruction size must be the same as uint32_t");
+
+  struct address_t {
+    uint8_t segment = 0;
+    uint32_t index = 0;
+
+    address_t() = default;
+    constexpr address_t(natural_t addr) {
+      segment = static_cast<uint8_t>(addr >> 32);
+      index = static_cast<uint32_t>(addr & 0xFFFFFFFF);
+    }
+    constexpr address_t(uint8_t segment, uint32_t index)
+        : segment(segment), index(index) {}
+
+    constexpr auto operator<=>(const address_t&) const = default;
+
+    operator natural_t() const {
+      return (static_cast<natural_t>(segment) << 32) | index;
+    }
+  };
+#pragma pack(pop)
+
+  namespace address {
+    static constexpr address_t kNullAddress = { 0u, 0u };
+  }
 
   static uint8_t get_category_nibble(uint32_t opcode) {
     return static_cast<uint8_t>((opcode & instruction::kCategoryMask) >> instruction::kCategoryShift);

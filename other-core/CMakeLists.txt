@@ -9,7 +9,6 @@ target_sources(other_core
 		src/core/logger.cpp
 		src/core/arena.cpp
 		src/core/arena_buffer.cpp
-		src/core/registers.cpp
 		src/core/ref.cpp
 		src/core/ref_counted.cpp
 		src/core/value_storage.cpp
@@ -36,7 +35,6 @@ target_sources(other_core
 		src/math/vector.cpp
 		src/math/matrix.cpp
 		src/math/dynamic_vector.cpp
-		src/math/dynamic_matrix.cpp
 		
 		src/command/command_parser.cpp
 		src/command/command_compiler.cpp

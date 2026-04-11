@@ -15,7 +15,6 @@
 #include "thread/messages.hpp"
 
 #include "network/message.hpp"
-#include "network/network_thread.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -29,6 +28,7 @@
 #include "vm/vm.hpp"
 
 #include "driver_tasks.hpp"
+
 
 namespace other {
 

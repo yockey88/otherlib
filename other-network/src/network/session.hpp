@@ -30,8 +30,9 @@ namespace other {
         : connection_id(connection_id), session_id(id), socket(std::move(socket)), connection_timer(context), io_context(context), thread(thread) {
     }
 
-    session(session&);
-    session& operator=(session&&) = delete;
+    session(session&) = delete;
+    session(session&& other);
+    session& operator=(const session&) = delete;
 
     void start_initialization();
     void checked_in();

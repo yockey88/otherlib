@@ -102,7 +102,10 @@ namespace other {
             // CORE_LOG_ERROR("[DEV-NOTICE]: Unimplemented field type in other_message_spec_impl::read_object for field '{}'", field_name);
           }
         });
-      } else {
+      } else if constexpr (std::is_trivially_copyable_v<T>) {
+        OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
+        msg = *reinterpret_cast<const T*>(data.subspan(0, sizeof(T)).data());
+        data = data.subspan(sizeof(T));
         // CORE_LOG_ERROR("[DEV-NOTICE]: Attempted to read object for non-reflected type in other_message_spec_impl::read_object");
       }
       return msg;

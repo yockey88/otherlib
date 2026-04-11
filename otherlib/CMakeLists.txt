@@ -50,6 +50,9 @@ target_sources(otherlib
     src/scripting/dotnet_bindings/scene_bindings.cpp
     src/scripting/dotnet_bindings/scene_object_bindings.cpp
     src/scripting/dotnet_bindings/component_bindings.cpp
+    src/scripting/dotnet_bindings/event_bindings.cpp
+    src/scripting/dotnet_bindings/input_bindings.cpp
+    src/scripting/dotnet_bindings/network_bindings.cpp
 
     src/scripting/actions/action.cpp
     src/scripting/actions/callback.cpp

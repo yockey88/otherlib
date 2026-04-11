@@ -56,6 +56,16 @@ namespace other {
     return complete;
   }
 
+  message_sequence protocol_handler::invert_message_sequence(const message_sequence& seq) {
+    message_sequence inverted_sequence = seq;
+    for (auto& msg : inverted_sequence.messages) {
+      if (msg.rx_tx != message_sequence::message::NONE) {
+        msg.rx_tx = (msg.rx_tx + 1) % 2;
+      }
+    }
+    return inverted_sequence;
+  }
+
   bool protocol_handler::current_msg_matches(const message_header& header) {
     return header == get_current_message().header;
   }
@@ -72,8 +82,20 @@ namespace other {
 
   message_sequence::message& protocol_handler::get_current_message() {
     auto& sequence = get_current_sequence();
-    OTHER_ASSERT(message_index < sequence.messages.size(), "Message index out of range");
-    return sequence.messages[message_index];
+    OTHER_ASSERT(message_index < sequence.steps.size(), "Message index out of range");
+
+    auto& step = sequence.steps[message_index];
+    if (step.type == message_sequence::sequence_step::CHOICE) {
+      OTHER_ASSERT(step.choice_count > 0, "Choice step must have at least one choice");
+      OTHER_ASSERT(step.choice_indices != nullptr, "Choice step must have choice indices");
+
+      natural_t choice_index = step.choice_indices[message_count_index];
+      OTHER_ASSERT(choice_index < sequence.steps.size(), "Choice index out of range");
+      return sequence.messages[choice_index];
+    } else {
+      natural_t message_idx = step.sequence_index;
+      return sequence.messages[message_idx];
+    }
   }
 
   bool protocol_handler::receive_current_message() {
@@ -120,6 +142,7 @@ namespace other {
         switch (msg.header.id) {
           case PING: handle_control_ping(msg.header, msg.data); break;
           case PONG: handle_control_pong(msg.header, msg.data); break;
+          case VERSION_HANDSHAKE: handle_control_version_handshake(msg.header, msg.data); break;
           default:
             CORE_LOG_WARN("Unhandled CONTROL message ID {:#06x} in protocol handler", msg.header.id);
             break;

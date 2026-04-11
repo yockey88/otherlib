@@ -36,12 +36,12 @@
 #include "driver/timer_list.hpp"
 #include "plugin/plugin.hpp"
 #include "scripting/dotnet_bindings.hpp"
+#include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "ui/driver_ui.hpp"
 #include "vm/other_device.hpp"
 
-#include "acknowledgement_list.hpp"
-#include "application_list.hpp"
 #include "asset/asset_handler.hpp"
+
 
 namespace json = nlohmann;
 

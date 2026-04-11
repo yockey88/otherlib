@@ -1,6 +1,11 @@
 
 [application]
-metadata.info = { name = "Other Server", description = "Other Engine Project Management Tool", author = "Other Team", version = "0.1.0" }
+metadata = [ 
+  { key = "name", value = "Other Editor"}, 
+  { key = "description", value = "Other Environment Project Editor"},
+  { key = "author", value = "Other Team"},
+  { key = "version", value = "0.1.0"} 
+]
 role = "server"
 core-log-level = "info"
 core-log-file = "logs/server.log"

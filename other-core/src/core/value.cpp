@@ -126,7 +126,7 @@ namespace other {
     return storage->val_type();
   }
 
-  void value::aquire() {
+  void value::acquire() {
     mutex.lock();
   }
 
