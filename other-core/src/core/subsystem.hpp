@@ -87,23 +87,25 @@ namespace other {
     }
 
     std::string as_string() const {
-      constexpr bool has_description_as_string =
-        requires(const T& t) { { subsystem_description<T>::as_string(t) } -> std::convertible_to<std::string>; };
-      constexpr bool has_instance_as_string =
-        requires(const T& t) { { t.as_string() } -> std::convertible_to<std::string>; };
+      constexpr bool has_description_to_string =
+        requires(const T& t) { { subsystem_description<T>::to_string(t) } -> std::convertible_to<std::string>; };
+      constexpr bool has_instance_to_string =
+        requires(const T& t) { { t.to_string() } -> std::convertible_to<std::string>; };
+      constexpr bool has_instance_static_to_string =
+        requires(const T& t) { { T::to_string(t) } -> std::convertible_to<std::string>; };
 
-      constexpr static bool has_to_string = has_description_as_string || has_instance_as_string;
+      constexpr static bool has_to_string = has_description_to_string || has_instance_to_string || has_instance_static_to_string;
 
       if constexpr (has_to_string) {
-        if constexpr (has_description_as_string) {
-          return subsystem_description<T>::as_string(*this);
-        } else if constexpr (has_instance_as_string) {
-          return instance->as_string();
+        if constexpr (has_description_to_string) {
+          return subsystem_description<T>::to_string(*this);
+        } else if constexpr (has_instance_to_string) {
+          return ((T*)instance)->to_string();
         } else {
-          return std::format("Subsystem<{}> [no as-string method available]", typeid(T).name());
+          return T::to_string(*instance);
         }
       } else {
-        return std::format("Subsystem<{}> [no as-string method available]", typeid(T).name());
+        return std::format("Subsystem<{}> [no to-string method available]", typeid(T).name());
       }
     }
 

@@ -5,294 +5,16 @@
 
 #include <imgui/imgui.h>
 
-#include "script/scripting_environment.hpp"
-
-#include "object/scene_object.hpp"
-
 #include "driver/driver.hpp"
+#include "scripting/dotnet_bindings/component_bindings.hpp"
+#include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/dotnet_bindings/environment_api_bindings.hpp"
+#include "scripting/dotnet_bindings/scene_bindings.hpp"
+#include "scripting/dotnet_bindings/scene_object_bindings.hpp"
 #include "scripting/dotnet_bindings/ui_bindings.hpp"
 
 namespace other {
   namespace bindings {
-    namespace {
-
-      static driver* s_driver = nullptr;
-
-      scene* get_active_scene_checked() {
-        OTHER_ASSERT(s_driver != nullptr, "Driver pointer is null.");
-        auto* env = subsystem<scripting_environment>::get();
-        OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
-        auto* active_scene = s_driver->get_active_scene();
-        OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
-        return active_scene;
-      }
-
-    }  // namespace
-
-    void native_get_object_id(void* object_ptr, natural_t* out_id) {
-      OTHER_ASSERT(object_ptr != nullptr, "Native object pointer is null.");
-      OTHER_ASSERT(out_id != nullptr, "Output ID pointer is null.");
-
-      scripting_environment* env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
-
-      *out_id = ((scene_object*)object_ptr)->id;
-    }
-
-    void native_get_component(void* object_ptr, int32_t type_handle, void** out_component_ptr) {
-      OTHER_ASSERT(object_ptr != nullptr, "Native object pointer is null.");
-      OTHER_ASSERT(out_component_ptr != nullptr, "Output component pointer is null.");
-
-      scripting_environment* env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
-
-      scene_object* obj = (scene_object*)object_ptr;
-      // const std::type_info* type_info = env->get_type_info_from_handle(type_handle);
-      // if (type_info == nullptr) {
-      //   CORE_LOG_ERROR("Type handle {} does not correspond to a valid type.", type_handle);
-      //   *out_component_ptr = nullptr;
-      //   return;
-      // }
-
-      // *out_component_ptr = obj->get_component_by_type(*type_info);
-    }
-
-    natural_t native_scene_create_object(native_string name, float x, float y, float z) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        CORE_LOG_ERROR("No active scene to create object in.");
-        return 0;
-      }
-      std::string name_str = name;
-      scene_object& obj = active_scene->create_object(name_str, glm::vec3(x, y, z));
-      return obj.id;
-    }
-
-    void native_scene_destroy_object(natural_t id) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      active_scene->destroy_object(id);
-    }
-
-    nbool32 native_scene_has_object(natural_t id) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return false;
-      }
-      return active_scene->has_object(id);
-    }
-
-    native_string native_scene_get_object_name(natural_t id) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return native_string::new_str("");
-      }
-      const scene_object& obj = active_scene->get_object(id);
-      return native_string::new_str(obj.name);
-    }
-
-    void native_scene_set_object_name(natural_t id, native_string name) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      scene_object& obj = active_scene->get_object(id);
-      obj.name = (std::string)name;
-    }
-
-    void native_scene_get_object_ids(natural_t* out_ids, int32_t* out_count, int32_t max_count) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        *out_count = 0;
-        return;
-      }
-      auto ids = active_scene->get_all_object_ids();
-      int32_t count = std::min((int32_t)ids.size(), max_count);
-      for (int32_t i = 0; i < count; ++i) {
-        out_ids[i] = ids[i];
-      }
-      *out_count = count;
-    }
-
-    natural_t native_scene_get_object_count() {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return 0;
-      }
-      return active_scene->get_object_count();
-    }
-
-    natural_t native_scene_find_object_by_name(native_string name) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return 0;
-      }
-      std::string name_str = name;
-      scene_object* obj = active_scene->find_object(name_str);
-      if (obj == nullptr) {
-        return 0;
-      }
-      return obj->id;
-    }
-
-    natural_t native_scene_get_parent_id(natural_t id) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return 0;
-      }
-      const scene_object* parent = active_scene->get_parent(id);
-      return parent != nullptr ? parent->id : 0;
-    }
-
-    void native_scene_get_children_ids(natural_t id, natural_t* out_ids, int32_t* out_count, int32_t max_count) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        *out_count = 0;
-        return;
-      }
-      auto ids = active_scene->get_children_ids(id);
-      int32_t count = std::min((int32_t)ids.size(), max_count);
-      for (int32_t i = 0; i < count; ++i) {
-        out_ids[i] = ids[i];
-      }
-      *out_count = count;
-    }
-
-    nbool32 native_scene_object_has_tag(natural_t id, native_string tag) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return false;
-      }
-      return active_scene->object_has_tag(id, (std::string)tag);
-    }
-
-    void native_scene_add_object_tag(natural_t id, native_string tag) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      active_scene->add_object_tag(id, (std::string)tag);
-    }
-
-    void native_scene_remove_object_tag(natural_t id, native_string tag) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      active_scene->remove_object_tag(id, (std::string)tag);
-    }
-
-    nbool32 native_scene_get_object_visible(natural_t id) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return false;
-      }
-      return active_scene->get_object(id).visible;
-    }
-
-    void native_scene_set_object_visible(natural_t id, nbool32 visible) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      active_scene->get_object(id).visible = visible;
-    }
-
-    void native_transform_get_position(natural_t id, float* out_x, float* out_y, float* out_z) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      const transform& t = active_scene->get_transform(id);
-      *out_x = t.local_position.x;
-      *out_y = t.local_position.y;
-      *out_z = t.local_position.z;
-    }
-
-    void native_transform_set_position(natural_t id, float x, float y, float z) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      transform& t = active_scene->get_transform(id);
-      t.local_position = glm::vec3(x, y, z);
-    }
-
-    void native_transform_get_rotation(natural_t id, float* out_x, float* out_y, float* out_z, float* out_w) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      const transform& t = active_scene->get_transform(id);
-      *out_x = t.local_rotation_quat.x;
-      *out_y = t.local_rotation_quat.y;
-      *out_z = t.local_rotation_quat.z;
-      *out_w = t.local_rotation_quat.w;
-    }
-
-    void native_transform_set_rotation(natural_t id, float x, float y, float z, float w) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      transform t = active_scene->get_transform(id);
-      t.local_rotation_quat = glm::quat(w, x, y, z);
-      active_scene->set_transform(id, t);
-    }
-
-    void native_transform_get_scale(natural_t id, float* out_x, float* out_y, float* out_z) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      const transform& t = active_scene->get_transform(id);
-      *out_x = t.local_scale.x;
-      *out_y = t.local_scale.y;
-      *out_z = t.local_scale.z;
-    }
-
-    void native_transform_set_scale(natural_t id, float x, float y, float z) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      transform t = active_scene->get_transform(id);
-      t.local_scale = glm::vec3(x, y, z);
-      active_scene->set_transform(id, t);
-    }
-
-    void native_transform_get_world_matrix(natural_t id, float* out_matrix) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) {
-        return;
-      }
-      glm::mat4 world = active_scene->get_world_transform(id);
-      std::memcpy(out_matrix, &world[0][0], sizeof(float) * 16);
-    }
-
-    void native_component_add_by_name(integer_t id, native_string component_name) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) return;
-      scene_object& obj = active_scene->get_object(id);
-      active_scene->add_component_by_name(&obj, (std::string)component_name);
-    }
-
-    void native_component_remove_by_name(integer_t id, native_string component_name) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) return;
-      scene_object& obj = active_scene->get_object(id);
-      active_scene->remove_component_by_name(&obj, (std::string)component_name);
-    }
-
-    nbool32 native_component_has_by_name(integer_t id, native_string component_name) {
-      scene* active_scene = get_active_scene_checked();
-      if (active_scene == nullptr) return false;
-      scene_object& obj = active_scene->get_object(id);
-      return active_scene->has_component_by_name(&obj, (std::string)component_name);
-    }
 
     // ===================================================================
     //  Events
@@ -369,21 +91,6 @@ namespace other {
       return ImGui::GetFrameCount();
     }
 
-    int32_t native_driver_get_state() {
-      /// \todo connect to actual driver state machine
-      return 0;
-    }
-
-    void native_driver_request_shutdown() {
-      /// \todo connect to driver shutdown request
-      CORE_LOG_WARN("native_driver_request_shutdown: not yet connected to driver");
-    }
-
-    native_string native_driver_get_project_name() {
-      /// \todo connect to driver project name
-      return native_string::new_str("Unknown");
-    }
-
     native_string native_config_get_string(native_string section, native_string key, native_string default_value) {
       /// \todo connect to config table
       return default_value;
@@ -444,8 +151,7 @@ namespace other {
   }  // namespace bindings
 
   void set_dotnet_native_driver(driver* drv) {
-    OTHER_ASSERT(drv != nullptr, "Driver pointer is null.");
-    bindings::s_driver = drv;
+    detail::set_dotnet_native_driver(drv);
   }
 
   void bind_otherlib_dotnet_functions(dotnet_host& dn_host) {
@@ -595,14 +301,6 @@ namespace other {
       .bind("UIEndDragDropTarget", bindings::native_ui_end_drag_drop_target);
 
     bindings::binding_context{ dn_host }
-      /// OtherObject
-      .bind("GetObjectID", bindings::native_get_object_id);
-
-    bindings::binding_context{ dn_host }
-      /// SceneObject
-      .bind("GetComponent", bindings::native_get_component);
-
-    bindings::binding_context{ dn_host }
       /// Scene
       .bind("SceneCreateObject", bindings::native_scene_create_object)
       .bind("SceneDestroyObject", bindings::native_scene_destroy_object)
@@ -611,23 +309,29 @@ namespace other {
       .bind("SceneSetObjectName", bindings::native_scene_set_object_name)
       .bind("SceneGetObjectIds", bindings::native_scene_get_object_ids)
       .bind("SceneGetObjectCount", bindings::native_scene_get_object_count)
-      .bind("SceneFindObjectByName", bindings::native_scene_find_object_by_name);
-
-    bindings::binding_context{ dn_host }
+      .bind("SceneFindObjectByName", bindings::native_scene_find_object_by_name)
       /// Object Hierarchy.
       .bind("SceneGetParentId", bindings::native_scene_get_parent_id)
-      .bind("SceneGetChildrenIds", bindings::native_scene_get_children_ids);
-
-    bindings::binding_context{ dn_host }
+      .bind("SceneGetChildrenIds", bindings::native_scene_get_children_ids)
       /// Object Tags.
       .bind("SceneObjectHasTag", bindings::native_scene_object_has_tag)
       .bind("SceneAddObjectTag", bindings::native_scene_add_object_tag)
-      .bind("SceneRemoveObjectTag", bindings::native_scene_remove_object_tag);
-
-    bindings::binding_context{ dn_host }
+      .bind("SceneRemoveObjectTag", bindings::native_scene_remove_object_tag)
       /// Object Visibility.
       .bind("SceneGetObjectVisible", bindings::native_scene_get_object_visible)
       .bind("SceneSetObjectVisible", bindings::native_scene_set_object_visible);
+
+    bindings::binding_context{ dn_host }
+      /// OtherObject
+      .bind("GetObjectID", bindings::native_get_object_id)
+      /// Components.
+      .bind("ComponentAddByName", bindings::native_component_add_by_name)
+      .bind("ComponentRemoveByName", bindings::native_component_remove_by_name)
+      .bind("ComponentHasByName", bindings::native_component_has_by_name);
+
+    // bindings::binding_context{ dn_host }
+    //   /// SceneObject
+    //   .bind("GetComponent", bindings::native_get_component);
 
     bindings::binding_context{ dn_host }
       /// Transform.
@@ -638,12 +342,6 @@ namespace other {
       .bind("TransformGetScale", bindings::native_transform_get_scale)
       .bind("TransformSetScale", bindings::native_transform_set_scale)
       .bind("TransformGetWorldMatrix", bindings::native_transform_get_world_matrix);
-
-    bindings::binding_context{ dn_host }
-      /// Components.
-      .bind("ComponentAddByName", bindings::native_component_add_by_name)
-      .bind("ComponentRemoveByName", bindings::native_component_remove_by_name)
-      .bind("ComponentHasByName", bindings::native_component_has_by_name);
 
     bindings::binding_context{ dn_host }
       /// Events.

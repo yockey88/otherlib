@@ -46,6 +46,10 @@ target_sources(otherlib
     src/scripting/binding_utils/bind_rendering_types_lua.cpp
     src/scripting/dotnet_bindings/environment_api_bindings.cpp
     src/scripting/dotnet_bindings/ui_bindings.cpp
+    src/scripting/dotnet_bindings/driver_bindings.cpp
+    src/scripting/dotnet_bindings/scene_bindings.cpp
+    src/scripting/dotnet_bindings/scene_object_bindings.cpp
+    src/scripting/dotnet_bindings/component_bindings.cpp
 
     src/scripting/actions/action.cpp
     src/scripting/actions/callback.cpp

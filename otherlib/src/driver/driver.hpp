@@ -35,6 +35,7 @@
 #include "driver/response_list.hpp"
 #include "driver/timer_list.hpp"
 #include "plugin/plugin.hpp"
+#include "scripting/dotnet_bindings.hpp"
 #include "ui/driver_ui.hpp"
 #include "vm/other_device.hpp"
 
@@ -337,6 +338,9 @@ namespace other {
     void send_to_network_thread(message&& msg);
 
    private:
+    friend void bindings::native_driver_request_shutdown();
+    friend native_string bindings::native_driver_get_project_name();
+
     struct initialization_state {
     };
     struct shutdown_state {
