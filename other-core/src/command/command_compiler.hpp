@@ -4,8 +4,6 @@
 #ifndef OTHER_CORE_COMMAND_COMMAND_COMPILER_HPP
 #define OTHER_CORE_COMMAND_COMMAND_COMPILER_HPP
 
-#include "core/registers.hpp"
-
 #include "command/command.hpp"
 
 namespace other {
