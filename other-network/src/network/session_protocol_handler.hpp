@@ -4,6 +4,10 @@
 #ifndef OTHER_NETWORK_NETWORK_SESSION_MANAGEMENT_FUNCTION_HPP
 #define OTHER_NETWORK_NETWORK_SESSION_MANAGEMENT_FUNCTION_HPP
 
+#include <cstdint>
+
+#include "core/defines.hpp"
+#include "core/version.hpp"
 #include "thread/message.hpp"
 
 namespace other {
@@ -16,17 +20,84 @@ namespace other {
     SESSION_SHUTDOWN,
   };
 
+#pragma pack(push, 1)
+
+  struct handshake_header {
+    uint8_t magic[4];
+    version version_info;
+  };
+
+  struct session_handshake_data {
+    handshake_header header = {
+      { 'O', 'T', 'H', 'R' },
+      {
+        OTHERENV_VERSION_MAJOR,
+        OTHERENV_VERSION_MINOR,
+        OTHERENV_VERSION_PATCH,
+      }
+    };
+    version min_version_supported = {
+      OTHERENV_VERSION_MAJOR,
+      OTHERENV_VERSION_MINOR,
+      OTHERENV_VERSION_PATCH,
+    };
+
+    uint32_t flags = 0x00;
+    enum protocol_flags : uint32_t {
+      NONE = 0x00,
+    };
+  };
+
+  struct protocol_handshake_data {
+    handshake_header header;
+    session_protocol protocol_id;
+    uint32_t flags = 0x00;
+  };
+
+  // struct protocol_handshake_response {
+  //   uint8_t magic[4];
+  //   uint16_t protocol_version;
+  //   uint16_t protocol_id;
+  //   uint16_t min_version_supported;
+
+  //   uint32_t flags;
+  // };
+#pragma pack(pop)
+
   struct message_sequence {
     struct message {
-      enum {
+      enum : int8_t {
         NONE = -1,
         RX = 0,
         TX = 1,
-      } rx_tx;
+      };
+      int8_t rx_tx = NONE;
       message_header header;
       natural_t count;
     };
 
+    struct sequence_step {
+      enum : int8_t {
+        SEQUENCE_START,
+        SEQUENCE_END,
+        RX_TX,
+
+        CHOICE,
+      };
+      int8_t type;
+      union {
+        struct {
+          natural_t choice_count;
+          natural_t* choice_indices;
+        };
+        struct {
+          natural_t sequence_index;
+          int8_t rx_tx;
+        };
+      };
+    };
+
+    std::vector<sequence_step> steps;
     std::vector<message> messages;
   };
 
@@ -38,7 +109,7 @@ namespace other {
   class protocol_handler {
    public:
     protocol_handler(session* s, const session_protocol_data& data)
-        : session_ptr(s), protocol_data(data) {}
+        : protocol_data(data), session_ptr(s) {}
     virtual ~protocol_handler() = default;
 
     session_protocol get_protocol_id() const {
@@ -52,6 +123,8 @@ namespace other {
     bool poll();
 
    protected:
+    message_sequence invert_message_sequence(const message_sequence& seq);
+
     bool current_msg_matches(const message_header& header);
     bool current_msg_matches(uint16_t category, uint16_t id) {
       return current_msg_matches(message_header{ .category = category, .id = id });
@@ -80,12 +153,14 @@ namespace other {
 
     virtual void handle_control_ping(const message_header& header, const std::span<uint8_t> data) {}
     virtual void handle_control_pong(const message_header& header, const std::span<uint8_t> data) {}
+    virtual void handle_control_version_handshake(const message_header& header, const std::span<uint8_t> data) {}
 
     virtual void handle_request_session_check_in(const message_header& header, const std::span<uint8_t> data) {}
 
+    session_protocol_data protocol_data{};
+
    private:
     session* session_ptr = nullptr;
-    session_protocol_data protocol_data{};
 
     natural_t sequence_index = 0;
     natural_t message_index = 0;

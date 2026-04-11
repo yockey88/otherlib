@@ -181,6 +181,31 @@ namespace other {
     std::queue<uint64_t> argument_queue;  // addresses of arguments in the registers
   };
 
+#pragma pack(push, 1)
+  struct address_t {
+    uint8_t segment = 0;
+    uint32_t index = 0;
+
+    address_t() = default;
+    constexpr address_t(natural_t addr) {
+      segment = static_cast<uint8_t>(addr >> 32);
+      index = static_cast<uint32_t>(addr & 0xFFFFFFFF);
+    }
+    constexpr address_t(uint8_t segment, uint32_t index)
+        : segment(segment), index(index) {}
+
+    constexpr auto operator<=>(const address_t&) const = default;
+
+    operator natural_t() const {
+      return (static_cast<natural_t>(segment) << 32) | index;
+    }
+  };
+
+#pragma pack(pop)
+
+  namespace address {
+    static constexpr address_t kNullAddress = { 0u, 0u };
+  }  // namespace address
 }  // namespace other
 
 #endif  // OTHER_CORE_CORE_COMMAND_HPP

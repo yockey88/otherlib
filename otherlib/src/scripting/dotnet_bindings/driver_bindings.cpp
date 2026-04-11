@@ -48,5 +48,36 @@ namespace other {
       return native_string::new_str(project_name);
     }
 
+    float native_time_get_delta_time() {
+      ImGuiIO& io = ImGui::GetIO();
+      return io.DeltaTime;
+    }
+
+    float native_time_get_elapsed_time() {
+      /// \todo replace with engine time accumulator
+      return (float)ImGui::GetTime();
+    }
+
+    int64_t native_time_get_frame_count() {
+      return ImGui::GetFrameCount();
+    }
+
+    native_string native_config_get_string(native_string section, native_string key, native_string default_value) {
+      /// \todo connect to config table
+      return default_value;
+    }
+
+    int32_t native_config_get_int(native_string section, native_string key, int32_t default_value) {
+      return default_value;
+    }
+
+    float native_config_get_float(native_string section, native_string key, float default_value) {
+      return default_value;
+    }
+
+    nbool32 native_config_get_bool(native_string section, native_string key, nbool32 default_value) {
+      return default_value;
+    }
+
   }  // namespace bindings
 }  // namespace other

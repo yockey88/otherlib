@@ -17,21 +17,26 @@
 
 namespace other {
 
-  session::session(session& other)
+  session::session(session&& other)
       : socket(std::move(other.socket)), connection_timer(std::move(other.connection_timer)), io_context(other.io_context) {
+    if (this == &other) {
+      return;
+    }
+    connection_id = other.connection_id;
+    session_id = other.session_id;
     thread = other.thread;
-    other.thread = nullptr;
-
     state_machine = other.state_machine;
-    other.state_machine = {};
-
     buffer.reading = other.buffer.reading;
     buffer.read_queue = std::move(other.buffer.read_queue);
     buffer.read_buffer = std::move(other.buffer.read_buffer);
-
     buffer.writing = other.buffer.writing;
     buffer.write_queue = std::move(other.buffer.write_queue);
     buffer.write_buffer = std::move(other.buffer.write_buffer);
+
+    other.thread = nullptr;
+    other.state_machine = {};
+    other.buffer.reading = false;
+    other.buffer.writing = false;
   }
 
   void session::start_initialization() {

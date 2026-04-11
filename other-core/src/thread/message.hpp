@@ -16,7 +16,6 @@
 #include <asio/asio.hpp>
 
 #include "command/command.hpp"
-#include "core/registers.hpp"
 #include "thread/channel.hpp"
 
 namespace other {
@@ -50,6 +49,7 @@ namespace other {
     /// control messages
     PING,
     PONG,
+    VERSION_HANDSHAKE,
 
     /// command messages
     SESSION_LISTEN_FOR,
@@ -109,6 +109,17 @@ namespace other {
     static std::string write_string(const session_endpoint& endpoint);
   };
   static_assert(sizeof(session_endpoint) == sizeof(binding_point) * 2, "Invalid session_endpoint size");
+
+  struct version {
+    uint16_t major;
+    uint16_t minor;
+    uint16_t patch;
+
+    std::string to_string() const {
+      return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
+    }
+  };
+  static_assert(sizeof(version) == sizeof(uint16_t) * 3, "Invalid version size");
 #pragma pack(pop)
 
   struct message;
@@ -179,6 +190,30 @@ namespace other {
   template <typename T>
   std::vector<uint8_t> message_spec_impl<T>::build_message() {
     return reinterpret_cast<T*>(this)->build();
+  }
+
+  template <typename T>
+    requires std::is_trivially_copyable_v<T>
+  T read_object_from_buffer(std::span<const uint8_t>& data) {
+    OTHER_ASSERT(!data.empty(), "Attempted to read object of type '{}' from empty buffer in other_message_spec_impl::read_object", typeid(T).name());
+    OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
+
+    OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
+    T obj = *reinterpret_cast<const T*>(data.subspan(0, sizeof(T)).data());
+    data = data.subspan(sizeof(T));
+
+    return obj;
+  }
+  template <typename T>
+    requires std::is_trivially_copyable_v<T>
+  T read_object_from_buffer(const std::span<const uint8_t>& data) {
+    OTHER_ASSERT(!data.empty(), "Attempted to read object of type '{}' from empty buffer in other_message_spec_impl::read_object", typeid(T).name());
+    OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
+
+    OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
+    T obj = *reinterpret_cast<const T*>(data.subspan(0, sizeof(T)).data());
+
+    return obj;
   }
 
   using message_channel = channel<message>;

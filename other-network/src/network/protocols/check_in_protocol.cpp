@@ -3,41 +3,55 @@
  **/
 #include "network/protocols/check_in_protocol.hpp"
 
+#include "thread/message.hpp"
+
 #include "network/message.hpp"
 #include "network/network_thread.hpp"
 #include "network/session.hpp"
+#include "network/session_protocol_handler.hpp"
 
 namespace other {
 
-  message_sequence create_check_in_sequence(bool is_server) {
+  message_sequence create_check_in_sequence() {
     auto mseq = message_sequence{
+      {},
       {
         { message_sequence::message::NONE, { CONTROL, PING }, 1 },
         { message_sequence::message::NONE, { CONTROL, PONG }, 1 },
         { message_sequence::message::NONE, { REQUEST, SESSION_CHECK_IN }, 1 },
+        { message_sequence::message::NONE, { CONTROL, VERSION_HANDSHAKE }, 1 },
+        { message_sequence::message::NONE, { CONTROL, VERSION_HANDSHAKE }, 1 },
         { message_sequence::message::NONE, { ACKNOWLEDGEMENT, ACK }, 1 },
       }
     };
 
-    if (is_server) {
-      auto& msgs = mseq.messages;
-      msgs[0].rx_tx = message_sequence::message::RX;
-      msgs[1].rx_tx = message_sequence::message::TX;
-      msgs[2].rx_tx = message_sequence::message::TX;
-      msgs[3].rx_tx = message_sequence::message::RX;
-    } else {
-      auto& msgs = mseq.messages;
-      msgs[0].rx_tx = message_sequence::message::TX;
-      msgs[1].rx_tx = message_sequence::message::RX;
-      msgs[2].rx_tx = message_sequence::message::RX;
-      msgs[3].rx_tx = message_sequence::message::TX;
+    auto& msgs = mseq.messages;
+    msgs[0].rx_tx = message_sequence::message::RX;
+    msgs[1].rx_tx = message_sequence::message::TX;
+    msgs[2].rx_tx = message_sequence::message::TX;
+    msgs[3].rx_tx = message_sequence::message::RX;
+    msgs[4].rx_tx = message_sequence::message::TX;
+    msgs[5].rx_tx = message_sequence::message::RX;
+
+    mseq.steps.reserve(6);
+    for (size_t i = 0; i < msgs.size(); i++) {
+      mseq.steps.push_back({
+        message_sequence::sequence_step::RX_TX,
+        { .sequence_index = i, .rx_tx = msgs[i].rx_tx },
+      });
     }
+
     return mseq;
   }
 
   void server_check_in_handler::on_protocol_completion() {
-    get_session().checked_in();
-    get_session().set_timeout(seconds(10), false, &session::on_heartbeat_timeout);
+    if (version_invalid) {
+      CORE_LOG_WARN("Implement version incompatibility handling in server check-in handler");
+      OTHER_ASSERT(false, "Version incompatibility detected during check-in protocol");
+    } else {
+      get_session().checked_in();
+      get_session().set_timeout(seconds(10), false, &session::on_heartbeat_timeout);
+    }
   }
 
   void server_check_in_handler::transmit_current_message() {
@@ -68,6 +82,17 @@ namespace other {
       check_in_msg.data.append_range(out_msg.as_buffer());
 
       get_session().start_write(std::move(check_in_msg));
+    } else if (current_msg_matches(CONTROL, VERSION_HANDSHAKE)) {
+      /// transmit version handshake response with our version
+      message handshake;
+      handshake.header = {
+        .category = CONTROL,
+        .id = VERSION_HANDSHAKE,
+      };
+      session_handshake_data handshake_data;
+      handshake.data.append_range(std::span(reinterpret_cast<const uint8_t*>(&handshake_data), sizeof(handshake_data)));
+
+      get_session().start_write(std::move(handshake));
     } else {
       OTHER_ASSERT(false, "Unhandled transmit message in server check-in handler : {}", current_msg.header);
     }
@@ -115,8 +140,25 @@ namespace other {
     }
   }
 
+  void server_check_in_handler::handle_control_version_handshake(const message_header& header, const std::span<uint8_t> data) {
+    session_handshake_data handshake_data = read_object_from_buffer<session_handshake_data>(data);
+
+    CORE_LOG_INFO(
+      "Received version handshake from client: version {}.{}.{}",
+      handshake_data.header.version_info.major, handshake_data.header.version_info.minor, handshake_data.header.version_info.patch
+    );
+
+    /// \todo check version compatibility and set version_invalid if not compatible
+    version_invalid = false;
+  }
+
   void client_check_in_handler::on_protocol_completion() {
-    get_session().checked_in();
+    if (version_invalid) {
+      CORE_LOG_WARN("Implement version incompatibility handling in client check-in handler");
+      OTHER_ASSERT(false, "Version incompatibility detected during check-in protocol");
+    } else {
+      get_session().checked_in();
+    }
   }
 
   void client_check_in_handler::transmit_current_message() {
@@ -136,12 +178,24 @@ namespace other {
 
       get_session().dump_message_bytes(msg);
       get_session().start_write(std::move(msg));
+    } else if (current_msg_matches(CONTROL, VERSION_HANDSHAKE)) {
+      /// transmit version handshake with our version
+      message handshake;
+      handshake.header = {
+        .category = CONTROL,
+        .id = VERSION_HANDSHAKE,
+      };
+      session_handshake_data handshake_data;
+      handshake.data.append_range(std::span(reinterpret_cast<const uint8_t*>(&handshake_data), sizeof(handshake_data)));
+
+      get_session().start_write(std::move(handshake));
     } else if (current_msg_matches(ACKNOWLEDGEMENT, ACK)) {
       message ack_msg;
       ack_msg.header = {
         .category = ACKNOWLEDGEMENT,
         .id = ACK,
       };
+
       message_header acked_header = {
         .category = REQUEST,
         .id = SESSION_CHECK_IN,
@@ -170,6 +224,18 @@ namespace other {
       /// \todo: send back msg either 1 - need id message or 2 - generate an id and send 'suggest-this-id' message
       CORE_LOG_ERROR("Unimplemented: both client and server have invalid session IDs during check-in");
     }
+  }
+
+  void client_check_in_handler::handle_control_version_handshake(const message_header& header, const std::span<uint8_t> data) {
+    session_handshake_data handshake_data = read_object_from_buffer<session_handshake_data>(data);
+
+    CORE_LOG_INFO(
+      "Received version handshake from server: version {}.{}.{}",
+      handshake_data.header.version_info.major, handshake_data.header.version_info.minor, handshake_data.header.version_info.patch
+    );
+
+    /// \todo check version compatibility and set version_invalid if not compatible
+    version_invalid = false;
   }
 
 }  // namespace other

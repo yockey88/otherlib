@@ -150,9 +150,6 @@ namespace other {
 
   void network_thread::pump_thread() {
     net_context->io_context.poll();
-    if (net_context->io_context.stopped()) {
-      net_context->io_context.restart();
-    }
 
     handle_session_closures();
     handle_stream_closures();

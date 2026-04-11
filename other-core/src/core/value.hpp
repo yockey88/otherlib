@@ -91,7 +91,7 @@ namespace other {
     size_t size() const;
     value_type type() const;
 
-    void aquire();
+    void acquire();
     void release();
 
     value_storage& get_mutable_storage() {

@@ -9,114 +9,15 @@
 #include "scripting/dotnet_bindings/component_bindings.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/dotnet_bindings/environment_api_bindings.hpp"
+#include "scripting/dotnet_bindings/event_bindings.hpp"
+#include "scripting/dotnet_bindings/input_bindings.hpp"
+#include "scripting/dotnet_bindings/network_bindings.hpp"
 #include "scripting/dotnet_bindings/scene_bindings.hpp"
 #include "scripting/dotnet_bindings/scene_object_bindings.hpp"
 #include "scripting/dotnet_bindings/ui_bindings.hpp"
 
 namespace other {
   namespace bindings {
-
-    // ===================================================================
-    //  Events
-    // ===================================================================
-
-    void native_event_register(native_string event_name) {
-      /// \todo access event system through driver or global accessor
-      CORE_LOG_WARN("native_event_register not yet connected to event system");
-    }
-
-    void native_event_trigger(native_string event_name) {
-      /// \todo access event system through driver or global accessor
-      CORE_LOG_WARN("native_event_trigger not yet connected to event system");
-    }
-
-    void native_event_trigger_with_string(native_string event_name, native_string data) {
-      /// \todo access event system through driver or global accessor
-      CORE_LOG_WARN("native_event_trigger_with_string not yet connected to event system");
-    }
-
-    // ===================================================================
-    //  Input
-    // ===================================================================
-
-    nbool32 native_input_is_key_down(int32_t sdl_scancode) {
-      const bool* keyboard_state = SDL_GetKeyboardState(nullptr);
-      if (keyboard_state == nullptr) return false;
-      return keyboard_state[sdl_scancode];
-    }
-
-    nbool32 native_input_is_key_pressed(int32_t sdl_scancode) {
-      /// \note ImGui tracks pressed (transition) state, SDL only gives current state
-      ///       we use ImGui's key mapping for pressed detection
-      ImGuiKey imgui_key = static_cast<ImGuiKey>(sdl_scancode);
-      return ImGui::IsKeyPressed(imgui_key);
-    }
-
-    nbool32 native_input_is_mouse_button_down(int32_t button) {
-      return ImGui::IsMouseDown(button);
-    }
-
-    nbool32 native_input_is_mouse_button_clicked(int32_t button) {
-      return ImGui::IsMouseClicked(button);
-    }
-
-    void native_input_get_mouse_position(float* out_x, float* out_y) {
-      ImVec2 pos = ImGui::GetMousePos();
-      *out_x = pos.x;
-      *out_y = pos.y;
-    }
-
-    void native_input_get_mouse_delta(float* out_x, float* out_y) {
-      ImGuiIO& io = ImGui::GetIO();
-      *out_x = io.MouseDelta.x;
-      *out_y = io.MouseDelta.y;
-    }
-
-    float native_input_get_mouse_wheel() {
-      ImGuiIO& io = ImGui::GetIO();
-      return io.MouseWheel;
-    }
-
-    float native_time_get_delta_time() {
-      ImGuiIO& io = ImGui::GetIO();
-      return io.DeltaTime;
-    }
-
-    float native_time_get_elapsed_time() {
-      /// \todo replace with engine time accumulator
-      return (float)ImGui::GetTime();
-    }
-
-    int64_t native_time_get_frame_count() {
-      return ImGui::GetFrameCount();
-    }
-
-    native_string native_config_get_string(native_string section, native_string key, native_string default_value) {
-      /// \todo connect to config table
-      return default_value;
-    }
-
-    int32_t native_config_get_int(native_string section, native_string key, int32_t default_value) {
-      return default_value;
-    }
-
-    float native_config_get_float(native_string section, native_string key, float default_value) {
-      return default_value;
-    }
-
-    nbool32 native_config_get_bool(native_string section, native_string key, nbool32 default_value) {
-      return default_value;
-    }
-
-    nbool32 native_network_is_connected() {
-      /// \todo connect to network subsystem
-      return false;
-    }
-
-    int32_t native_network_get_role() {
-      /// \todo connect to driver role
-      return 0;
-    }
 
     template <typename Fn>
     void bind_function(dotnet_host& dn_host, native_string name, Fn fn) {
