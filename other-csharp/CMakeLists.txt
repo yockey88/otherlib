@@ -40,6 +40,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/network/network.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/renderer.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/mesh.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui_window.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/inspector.cs
@@ -53,5 +54,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/project-configuration.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/other-tool.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/build-tool/build-tool.cs
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/util/log.cs
 )
 target_link_libraries(OtherCs PUBLIC OtherCsBindings)

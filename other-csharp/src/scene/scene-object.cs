@@ -1,11 +1,13 @@
 using System;
-using System.Collections.Generic;
 using OtherCsBindings;
 
 namespace Other
 {
   public class SceneObject : Core.OtherObject
   {
+    [NativeFunction("GetComponent")]
+    internal static unsafe delegate*<nint, UInt64, nint, void> NativeGetComponent;
+
     private SceneObjectHandle handle;
     public SceneObjectHandle ObjectHandle => handle;
 
@@ -21,6 +23,13 @@ namespace Other
       AddBehavior(behavior);
       return behavior;
     }
+
+#nullable enable
+    public T? GetComponent<T>() where T : Core.OtherBehavior
+    {
+      return Scene.GetComponent<T>(ObjectID);
+    }
+#nullable disable
 
     public override void OnStart()
     {

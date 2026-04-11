@@ -1,5 +1,6 @@
 namespace Other
 {
+  /// simply defers all functions to user's implementations
   public class SceneBehavior : Core.OtherBehavior
   {
     public SceneObject SceneObject
@@ -30,6 +31,15 @@ namespace Other
       }
     }
 
+    protected T GetComponent<T>() where T : Core.OtherBehavior
+    {
+      if (SceneObject == null)
+      {
+        return null;
+      }
+      return SceneObject.GetComponent<T>();
+    }
+
     protected override void Awake()
     {
       OnAwake();
@@ -42,18 +52,18 @@ namespace Other
     }
     protected virtual void OnRemove() {}
 
-    public override void Enable()
+    protected override void Enable()
     {
       OnEnable();
     }
-    public virtual void OnEnable() {}
+    protected virtual void OnEnable() {}
 
-    public override void Disable()
+    protected override void Disable()
     {
       OnDisable();
     }
-    public virtual void OnDisable() {}
-    
+    protected virtual void OnDisable() {}
+
     protected override void Update()
     {
       OnUpdate();

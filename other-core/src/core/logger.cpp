@@ -62,14 +62,14 @@ namespace other {
       return;
     }
 
-    auto [itr, inserted] = sinks.insert({ sink.id, std::move(sink_ptr) });
-    if (!inserted) {
-      log_failure_error(std::format("Sink with ID {} ({}) already exists.", sink.id, sink.sink_name));
-      return;
-    }
-
     std::unique_lock lock(log_mutex);
     {
+      auto [itr, inserted] = sinks.insert({ sink.id, std::move(sink_ptr) });
+      if (!inserted) {
+        log_failure_error(std::format("Sink with ID {} ({}) already exists.", sink.id, sink.sink_name));
+        return;
+      }
+
       auto& sink_ptr = itr->second;
       sink_ptr->set_pattern(sink.sink_pattern);
       sink_ptr->set_level(sink.level);

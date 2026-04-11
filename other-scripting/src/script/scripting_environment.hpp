@@ -59,18 +59,17 @@ namespace other {
       if (obj->dotnet_object != nullptr) {
         CORE_LOG_WARN("Script object with ID {} already has a .NET object attached. Detaching previous object.", id);
         detach_dotnet_object(id);
-      } else {
-        OTHER_ASSERT(obj->dotnet_object == nullptr, "Script object with ID {} already has a .NET object attached.", id);
+      }
 
-        CORE_LOG_DEBUG("[script {}] creating .NET object [{} {}]'", id, type_name, obj->name);
-        obj->dotnet_object = dotnet.instantiate_managed_object(type_name, obj->name, std::forward<Args>(ctor_args)...);
+      OTHER_ASSERT(obj->dotnet_object == nullptr, "Script object with ID {} already has a .NET object attached.", id);
 
+      CORE_LOG_DEBUG("[script {}] creating .NET object [{} {}]'", id, type_name, obj->name);
+      obj->dotnet_object = dotnet.instantiate_managed_object(type_name, obj->name, std::forward<Args>(ctor_args)...);
+      if (obj->dotnet_object != nullptr) {
         dotnet_register_native_object(id, type_name);
-        if (obj->dotnet_object == nullptr) {
-          CORE_LOG_ERROR("Failed to attach .NET object of type {} to script object with ID {}", type_name, id);
-          return;
-        }
         obj->dotnet_object->load_fields();
+      } else {
+        CORE_LOG_ERROR("Failed to attach .NET object of type {} to script object with ID {}", type_name, id);
       }
     }
 

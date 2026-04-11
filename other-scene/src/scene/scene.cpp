@@ -71,32 +71,16 @@ namespace other {
       scene_table.set_function(
         "create_scene_object",
         sol::overload(
-          [this](const std::string& name) -> natural_t {
-            scene_object& new_obj = this->create_object(name);
-            return new_obj.id;
-          },
-          [this](const std::string& name, const glm::vec3& world_position) -> natural_t {
-            scene_object& new_obj = this->create_object(name, world_position);
-            return new_obj.id;
-          }
+          [this](const std::string& name) -> natural_t { return this->create_object(name).id; },
+          [this](const std::string& name, const glm::vec3& world_position) -> natural_t { return this->create_object(name, world_position).id; }
         )
       );
+
       scene_table["name"] = name;
       scene_table["id"] = id;
       scene_table["set_clear_color"] = [this](glm::vec4 color) {
         this->storage->clear_color = color;
       };
-
-      scene_table["create_scene_object"] = sol::overload(
-        [this](const std::string& name) -> natural_t {
-          scene_object& new_obj = this->create_object(name);
-          return new_obj.id;
-        },
-        [this](const std::string& name, const glm::vec3& world_position) -> natural_t {
-          scene_object& new_obj = this->create_object(name, world_position);
-          return new_obj.id;
-        }
-      );
     } else {
       CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
     }
@@ -227,14 +211,45 @@ namespace other {
   }
 
   void scene::play() {
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot play scene because storage is not initialized.");
+      return;
+    }
+
     /// store initial state for reset
+
     playing = true;
     storage->physics->start_simulation();
+
+    storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
+      comp.scene_start();
+    });
+  }
+
+  void scene::pause() {
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot pause scene because storage is not initialized.");
+      return;
+    }
+
+    storage->physics->stop_simulation();
+    playing = false;
   }
 
   void scene::stop() {
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot stop scene because storage is not initialized.");
+      return;
+    }
+
+    storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
+      comp.scene_stop();
+    });
+
     storage->physics->stop_simulation();
     playing = false;
+
+    /// reset initial state
   }
 
   void scene::reset() {
@@ -1068,7 +1083,7 @@ namespace other {
 
     set_transform(&scene_obj, obj_transform);
 
-    std::optional<sol::table> dotnet = scripts_table[".NET"];
+    opt<sol::table> dotnet = obj_table["DotNetClasses"];
     // opt<sol::table> lua_scripts = scripts_table["Lua"];
     if (dotnet.has_value() && dotnet->valid()) {
       script_component* script_comp = get_component<script_component>(&scene_obj);
@@ -1077,99 +1092,92 @@ namespace other {
       auto* scripting_env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment");
 
-      CORE_LOG_DEBUG(" - attaching .NET scripts to script object ID {}", script_comp->script_object_id);
-      for (auto& item : dotnet.value()) {
-        std::string script_name = item.first.as<std::string>();
-        sol::table script_data = item.second.as<sol::table>();
+      CORE_LOG_DEBUG(" - attaching .NET scripts to script object ID {} ({} scripts)", script_comp->script_object_id, dotnet->size());
+      for (const auto& kv : *dotnet) {
+        const auto& script_name = kv.first.as<std::string>();
+        if (!kv.second.is<std::string>()) {
+          CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not have a valid class name string, skipping.", script_name, scene_obj.id);
+          continue;
+        }
 
-        // opt<std::string> class_name = script_data["ClassName"];
-        // if (!class_name.has_value()) {
-        //   continue;
-        // }
-
-        // scripting_env->attach_dotnet_object(script_comp->script_object_id, class_name.value());
-        // script_object* obj = scripting_env->get_object(script_comp->script_object_id);
-        // OTHER_ASSERT(obj != nullptr, "Failed to retrieve .NET script object after attachment for object ID {}", script_comp->script_object_id);
-
-        // if (obj->dotnet_object == nullptr) {
-        //   CORE_LOG_ERROR(" - .NET script object '{}' for object ID {} has null dotnet_object after attachment.", script_name, script_comp->script_object_id);
-        //   continue;
-        // }
-
-        // CORE_LOG_DEBUG(" - attaching serialized .NET object '{}' to script object ID {}", script_name, script_comp->script_object_id);
-        // sol::table fields_table = script_data["Fields"];
-
-        // for (auto& field_item : fields_table) {
-        //   std::string field_name = field_item.first.as<std::string>();
-        //   if (field_name.contains("k__BackingField") || field_name.starts_with("<") ||
-        //       /// not sure what this one is but one of the type contains a mysterious generated 'value__' field (enums?? what does it mean?)
-        //       field_name == "value__") {
-        //     continue;
-        //   }
-
-        //   if (obj->dotnet_object->get_dotnet_field(field_name) == nullptr) {
-        //     CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not have field '{}' defined in the class.", script_name, script_comp->script_object_id, field_name);
-        //     continue;
-        //   }
-
-        //   auto* dn_field = obj->dotnet_object->get_dotnet_field(field_name);
-        //   OTHER_ASSERT(dn_field != nullptr, " - .NET script '{}' for object ID {} does not have field '{}' defined in the class.", script_name, script_comp->script_object_id, field_name);
-
-        //   sol::table field_value = field_item.second;
-        //   value_type val_type = field_value["Type"];
-        //   if (val_type == value_type::EMPTY_TYPE) {
-        //     CORE_LOG_ERROR("   - field '{}' on .NET script '{}' for object ID {} has EMPTY_TYPE, skipping.", field_name, script_name, script_comp->script_object_id);
-        //     continue;
-        //   }
-        //   if (val_type != dn_field->get_type()) {
-        //     CORE_LOG_ERROR("   - field '{}' on .NET script '{}' for object ID {} has mismatched type (Lua: {}, .NET: {}), skipping.", field_name, script_name, script_comp->script_object_id, val_type, dn_field->get_type());
-        //     continue;
-        //   }
-
-        //   if (dn_field->is_property()) {
-        //   } else {
-        //   }
-
-        //   value val;
-        //   switch (val_type) {
-        //     case value_type::CHAR: val = value(field_value["Value"].get<char>()); break;
-        //     case value_type::OEBOOL: val = value(field_value["Value"].get<bool>()); break;
-        //     case value_type::INT8: val = value(field_value["Value"].get<int8_t>()); break;
-        //     case value_type::UINT8: val = value(field_value["Value"].get<uint8_t>()); break;
-        //     case value_type::INT16: val = value(field_value["Value"].get<int16_t>()); break;
-        //     case value_type::UINT16: val = value(field_value["Value"].get<uint16_t>()); break;
-        //     case value_type::INT32: val = value(field_value["Value"].get<int32_t>()); break;
-        //     case value_type::UINT32: val = value(field_value["Value"].get<uint32_t>()); break;
-        //     case value_type::INT64: val = value(field_value["Value"].get<int64_t>()); break;
-        //     case value_type::UINT64: val = value(field_value["Value"].get<uint64_t>()); break;
-        //     case value_type::FLOAT: val = value(field_value["Value"].get<float>()); break;
-        //     case value_type::DOUBLE: val = value(field_value["Value"].get<double>()); break;
-        //     case value_type::STRING: val = value(field_value["Value"].get<std::string>()); break;
-        //     case value_type::VEC2: {
-        //       sol::table vec_table = field_value["Value"];
-        //       glm::vec2 vec_val = glm::vec2{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f) };
-        //       val = value(vec_val);
-        //     } break;
-        //     case value_type::VEC3: {
-        //       sol::table vec_table = field_value["Value"];
-        //       glm::vec3 vec_val = glm::vec3{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f), vec_table["z"].get_or(0.0f) };
-        //       val = value(vec_val);
-        //     } break;
-        //     case value_type::VEC4: {
-        //       sol::table vec_table = field_value["Value"];
-        //       glm::vec4 vec_val = glm::vec4{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f), vec_table["z"].get_or(0.0f), vec_table["w"].get_or(0.0f) };
-        //       val = value(vec_val);
-        //     } break;
-        //     default: break;
-        //   }
-
-        //   if (val.type() == value_type::EMPTY_TYPE) {
-        //     CORE_LOG_ERROR("   - could not convert field '{}' value to valid .NET value for script '{}' on object ID {}", field_name, script_name, script_comp->script_object_id);
-        //     continue;
-        //   }
-        //   obj->dotnet_object->set_field(field_name, val);
-        // }
+        const auto& class_name = kv.second.as<std::string>();
+        CORE_LOG_DEBUG("   - attaching .NET script '{}' with class name '{}' to script object ID {}", script_name, class_name, script_comp->script_object_id);
+        scripting_env->attach_dotnet_object(script_comp->script_object_id, class_name);
       }
+
+      // CORE_LOG_DEBUG(" - attaching serialized .NET object '{}' to script object ID {}", script_name, script_comp->script_object_id);
+      // sol::table fields_table = script_data["Fields"];
+
+      // for (auto& field_item : fields_table) {
+      //   std::string field_name = field_item.first.as<std::string>();
+      //   if (field_name.contains("k__BackingField") || field_name.starts_with("<") ||
+      //       /// not sure what this one is but one of the type contains a mysterious generated 'value__' field (enums?? what does it mean?)
+      //       field_name == "value__") {
+      //     continue;
+      //   }
+
+      //   if (obj->dotnet_object->get_dotnet_field(field_name) == nullptr) {
+      //     CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not have field '{}' defined in the class.", script_name, script_comp->script_object_id, field_name);
+      //     continue;
+      //   }
+
+      //   auto* dn_field = obj->dotnet_object->get_dotnet_field(field_name);
+      //   OTHER_ASSERT(dn_field != nullptr, " - .NET script '{}' for object ID {} does not have field '{}' defined in the class.", script_name, script_comp->script_object_id, field_name);
+
+      //   sol::table field_value = field_item.second;
+      //   value_type val_type = field_value["Type"];
+      //   if (val_type == value_type::EMPTY_TYPE) {
+      //     CORE_LOG_ERROR("   - field '{}' on .NET script '{}' for object ID {} has EMPTY_TYPE, skipping.", field_name, script_name, script_comp->script_object_id);
+      //     continue;
+      //   }
+      //   if (val_type != dn_field->get_type()) {
+      //     CORE_LOG_ERROR("   - field '{}' on .NET script '{}' for object ID {} has mismatched type (Lua: {}, .NET: {}), skipping.", field_name, script_name, script_comp->script_object_id, val_type, dn_field->get_type());
+      //     continue;
+      //   }
+
+      //   if (dn_field->is_property()) {
+      //   } else {
+      //   }
+
+      //   value val;
+      //   switch (val_type) {
+      //     case value_type::CHAR: val = value(field_value["Value"].get<char>()); break;
+      //     case value_type::OEBOOL: val = value(field_value["Value"].get<bool>()); break;
+      //     case value_type::INT8: val = value(field_value["Value"].get<int8_t>()); break;
+      //     case value_type::UINT8: val = value(field_value["Value"].get<uint8_t>()); break;
+      //     case value_type::INT16: val = value(field_value["Value"].get<int16_t>()); break;
+      //     case value_type::UINT16: val = value(field_value["Value"].get<uint16_t>()); break;
+      //     case value_type::INT32: val = value(field_value["Value"].get<int32_t>()); break;
+      //     case value_type::UINT32: val = value(field_value["Value"].get<uint32_t>()); break;
+      //     case value_type::INT64: val = value(field_value["Value"].get<int64_t>()); break;
+      //     case value_type::UINT64: val = value(field_value["Value"].get<uint64_t>()); break;
+      //     case value_type::FLOAT: val = value(field_value["Value"].get<float>()); break;
+      //     case value_type::DOUBLE: val = value(field_value["Value"].get<double>()); break;
+      //     case value_type::STRING: val = value(field_value["Value"].get<std::string>()); break;
+      //     case value_type::VEC2: {
+      //       sol::table vec_table = field_value["Value"];
+      //       glm::vec2 vec_val = glm::vec2{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f) };
+      //       val = value(vec_val);
+      //     } break;
+      //     case value_type::VEC3: {
+      //       sol::table vec_table = field_value["Value"];
+      //       glm::vec3 vec_val = glm::vec3{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f), vec_table["z"].get_or(0.0f) };
+      //       val = value(vec_val);
+      //     } break;
+      //     case value_type::VEC4: {
+      //       sol::table vec_table = field_value["Value"];
+      //       glm::vec4 vec_val = glm::vec4{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f), vec_table["z"].get_or(0.0f), vec_table["w"].get_or(0.0f) };
+      //       val = value(vec_val);
+      //     } break;
+      //     default: break;
+      //   }
+
+      //   if (val.type() == value_type::EMPTY_TYPE) {
+      //     CORE_LOG_ERROR("   - could not convert field '{}' value to valid .NET value for script '{}' on object ID {}", field_name, script_name, script_comp->script_object_id);
+      //     continue;
+      //   }
+      //   obj->dotnet_object->set_field(field_name, val);
+      // }
     }
 
     // if (lua_scripts.has_value() && lua_scripts->valid()) {

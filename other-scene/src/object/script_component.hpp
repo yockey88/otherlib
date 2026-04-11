@@ -34,12 +34,11 @@ namespace other {
     void scene_start();
     void scene_stop();
 
-    void add_behavior(const std::string& behavior_type_name);
-    void remove_behavior(const std::string& behavior_type_name);
+    void add_behavior(const std::string_view behavior_type_name);
+    void remove_behavior(const std::string_view behavior_type_name);
     void remove_all_behaviors();
 
-    script_component()
-        : component(component::SCRIPT) {}
+    script_component() : component(component::SCRIPT) {}
     script_component(const script_component& other)
         : component(component::SCRIPT) {
       this->object = other.object;

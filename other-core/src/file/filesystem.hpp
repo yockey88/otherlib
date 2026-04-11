@@ -29,6 +29,10 @@ namespace other {
     bool is_valid() const { return !mount_name.empty(); }
   };
 
+  /**
+   * \note this should only ever be used by the main thread
+   * \todo make this thread safe, or add a request/response message
+   **/
   class file_system : public subsystem<file_system> {
    public:
     file_system() = default;

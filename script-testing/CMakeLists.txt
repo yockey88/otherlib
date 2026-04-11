@@ -10,5 +10,6 @@ set_target_properties(DotnetTesting PROPERTIES
 
 target_sources(DotnetTesting PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/test-object.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/test-behavior.cs
 )
 target_link_libraries(DotnetTesting PRIVATE OtherCs)

@@ -152,6 +152,20 @@ namespace other {
     }
   }
 
+  void scene_interface::attach_dotnet_behavior_to_object(scene* scene_ptr, natural_t id, const std::string_view behavior_type_name) {
+    OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_dotnet_behavior_to_object");
+
+    scene_object* object = &scene_ptr->get_object(id);
+    OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_dotnet_behavior_to_object");
+
+    auto* scripting_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(scripting_env != nullptr, "Scripting environment subsystem is not initialized in scene_object_interface::attach_dotnet_behavior_to_object");
+
+    script_component* script_comp = scene_ptr->get_component<script_component>(object);
+    OTHER_ASSERT(script_comp != nullptr, "Script component not found on object [{}] in scene_object_interface::attach_dotnet_behavior_to_object", object->name);
+    script_comp->add_behavior(behavior_type_name);
+  }
+
   render_component_lua_proxy scene_interface::attach_model_to_object(scene* scene_ptr, natural_t id, const std::string_view model_path) {
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_model_to_object");
     OTHER_ASSERT(driver_ptr != nullptr, "Driver pointer is null in scene_object_interface::attach_model_to_object");
