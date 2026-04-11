@@ -56,6 +56,7 @@ namespace other {
     static scene load_scene(const filepath& scene_path);
 
     void play();
+    void pause();
     void stop();
     void reset();
     bool is_playing() const {

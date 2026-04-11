@@ -164,7 +164,7 @@ namespace Other.Core
       OnStart();
       for (int i = 0; i < behaviors.Count; i++)
       {
-        behaviors[i].Enable();
+        behaviors[i].Enabled = true;
       }
     }
 
@@ -173,7 +173,7 @@ namespace Other.Core
       OnStop();
       for (int i = 0; i < behaviors.Count; i++)
       {
-        behaviors[i].Disable();
+        behaviors[i].Enabled = false;
       }
     }
 

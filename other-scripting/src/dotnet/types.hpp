@@ -6,7 +6,6 @@
 
 #include <concepts>
 #include <cstdint>
-#include <string>
 #include <type_traits>
 
 #include "serialization/reflection.hpp"

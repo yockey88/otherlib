@@ -165,6 +165,7 @@ namespace other {
 
     CORE_LOG_DEBUG("Entering main driver loop");
     do {
+      MARK_NAMED_FRAME("driver_main_loop");
       update();
 
       switch (current_driver_state()) {

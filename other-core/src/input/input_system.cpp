@@ -17,20 +17,26 @@ namespace other {
     /// SDL_INIT_GAMEPAD implies SDL_INIT_JOYSTICK
     /// we do this in case the other environment has inputs configured for gamepad
     ///   even without a render backend loaded.
-    if (!SDL_WasInit(SDL_INIT_GAMEPAD)) {
-      if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
-        CORE_LOG_ERROR("Failed to initialize SDL gamepad subsystem: {}", SDL_GetError());
+    {
+      PROFILE_SECTION("input_system::initialize--sdl");
+      if (!SDL_WasInit(SDL_INIT_GAMEPAD)) {
+        if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
+          CORE_LOG_ERROR("Failed to initialize SDL gamepad subsystem: {}", SDL_GetError());
+        }
       }
     }
 
     /// enumerate already-connected gamepads  plugged in before launch
     int count = 0;
-    SDL_JoystickID* joysticks = SDL_GetGamepads(&count);
-    if (joysticks) {
-      for (int i = 0; i < count; ++i) {
-        handle_gamepad_added(joysticks[i]);
+    {
+      PROFILE_SECTION("input_system::initialize--sdl-enumerate-gamepads");
+      SDL_JoystickID* joysticks = SDL_GetGamepads(&count);
+      if (joysticks) {
+        for (int i = 0; i < count; ++i) {
+          handle_gamepad_added(joysticks[i]);
+        }
+        SDL_free(joysticks);
       }
-      SDL_free(joysticks);
     }
 
     staging.clear();

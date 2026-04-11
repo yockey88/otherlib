@@ -211,14 +211,45 @@ namespace other {
   }
 
   void scene::play() {
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot play scene because storage is not initialized.");
+      return;
+    }
+
     /// store initial state for reset
+
     playing = true;
     storage->physics->start_simulation();
+
+    storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
+      comp.scene_start();
+    });
+  }
+
+  void scene::pause() {
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot pause scene because storage is not initialized.");
+      return;
+    }
+
+    storage->physics->stop_simulation();
+    playing = false;
   }
 
   void scene::stop() {
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot stop scene because storage is not initialized.");
+      return;
+    }
+
+    storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
+      comp.scene_stop();
+    });
+
     storage->physics->stop_simulation();
     playing = false;
+
+    /// reset initial state
   }
 
   void scene::reset() {

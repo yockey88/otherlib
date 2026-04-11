@@ -131,14 +131,12 @@ namespace other {
   void arena::free_region(void* ptr) {
     PROFILE_SECTION("arena::free_region");
     std::lock_guard lock_arena_mutex(arena_mutex);
-
     this->free(ptr);
   }
 
   arena::page* arena::get_current_page() {
     arena* instance = subsystem_description<arena>::ptr();
     std::lock_guard lock_arena_mutex(instance->arena_mutex);
-
     return current_page;
   }
 

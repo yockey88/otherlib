@@ -12,6 +12,7 @@ void destroy_driver(other::driver* instance) {}
 #endif
 
 exit_code other_main(const command_line& cmd, const config_table& config) {
+  PROFILE_SECTION("other::main");
   CORE_LOG_INFO("Running Other Runtime [{}]", cmd.config_file);
   auto [driver_instance, driver_name] = driver::create(config);
   if (driver_instance == nullptr) {
@@ -33,5 +34,6 @@ exit_code other_main(const command_line& cmd, const config_table& config) {
 }
 
 int main(int argc, char* argv[]) {
+  PROFILE_SECTION("native-main");
   return other::entry(argc, argv);
 }

@@ -22,7 +22,7 @@ namespace Other.Core
       }
     }
 
-    private bool enabled = true;
+    private bool enabled = false;
     public bool Enabled
     {
       get => enabled;
@@ -70,8 +70,8 @@ namespace Other.Core
     }
     protected abstract void Remove();
 
-    public abstract void Enable();
-    public abstract void Disable();
+    protected abstract void Enable();
+    protected abstract void Disable();
 
     public void ObjectUpdate()
     {
