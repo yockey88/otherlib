@@ -16,7 +16,8 @@ namespace other {
   class subsystem_registry {
    public:
     void register_subsystem(const subsystem_definition& def);
-    void resolve_dependencies_and_initialize(std::span<const std::string_view> requested_systems, const config_table* config);
+    void initialize_profile(const std::string_view, const config_table* config);
+    void resolve_dependency_list_and_do_initialization(std::span<const std::string_view> requested_systems, const config_table* config);
     void shutdown_all(bool skip_logger);
 
     const std::vector<natural_t>& get_initialization_order() const { return initialization_order; }

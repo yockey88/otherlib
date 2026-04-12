@@ -12,13 +12,16 @@
 namespace other {
 
   class driver;
+  class driver_kernel;
 
   enum driver_system_type : uint32_t {
     EVENT_DRIVER_SYSTEM = 0,
-    SCENE_DRIVER_SYSTEM,
-    VM_DRIVER_SYSTEM,
     NETWORK_DRIVER_SYSTEM,
-    ASSETS_AND_RESOURCES_DRIVER_SYSTEM,
+    SCRIPTING_DRIVER_SYSTEM,
+    ASSET_DRIVER_SYSTEM,
+    VM_DRIVER_SYSTEM,
+    RENDERING_DRIVER_SYSTEM,
+    SCENE_DRIVER_SYSTEM,
     NUM_BUILTIN_DRIVER_SYSTEMS,
 
     /*
@@ -63,9 +66,9 @@ namespace other {
 
     virtual std::string name() const = 0;
 
-    virtual void initialize() = 0;
-    virtual void tick(float dt) = 0;
-    virtual void shutdown() = 0;
+    virtual void initialize(driver_kernel* kernel) = 0;
+    virtual void tick(driver_kernel* kernel, float dt) = 0;
+    virtual void shutdown(driver_kernel* kernel) = 0;
 
    protected:
     driver& get_driver();
@@ -84,9 +87,9 @@ namespace other {
     bool active() const override { return is_active; }
     inline void set_active(bool is_active) { this->is_active = is_active; }
 
-    void initialize() override;
-    void tick(float dt) override;
-    void shutdown() override;
+    void initialize(driver_kernel* kernel) override;
+    void tick(driver_kernel* kernel, float dt) override;
+    void shutdown(driver_kernel* kernel) override;
 
     virtual void on_initialize() {}
     virtual void on_tick(float dt) {}
@@ -94,22 +97,6 @@ namespace other {
 
    private:
     bool is_active = false;
-  };
-
-  /// CRTP base class for core driver systems
-  template <typename D>
-  class core_system : public driver_system {
-   public:
-    core_system(driver* driver_instance, uint32_t id)
-        : driver_system(driver_instance, id) {}
-
-    virtual void initialize() override {}
-    virtual void tick(float dt) override {}
-    virtual void shutdown() override {}
-
-   protected:
-    D& self() { return static_cast<D&>(*this); }
-    const D& self() const { return static_cast<const D&>(*this); }
   };
 
 }  // namespace other

@@ -4,7 +4,9 @@
 #ifndef OTHERLIB_DRIVER_SYSTEMS_SCENE_SYSTEM_HPP
 #define OTHERLIB_DRIVER_SYSTEMS_SCENE_SYSTEM_HPP
 
-#include "driver/systems/driver_system.hpp"
+#include "core/value.hpp"
+
+#include "driver/driver_kernel.hpp"
 
 namespace other {
 
@@ -14,11 +16,18 @@ namespace other {
         : core_system(driver_instance, driver_system_type::SCENE_DRIVER_SYSTEM) {}
     virtual ~scene_system() = default;
 
-    void initialize() override;
-    void tick(float dt) override;
-    void shutdown() override;
+    std::string name() const override { return "Scene Driver System"; }
+
+    void initialize(driver_kernel* kernel) override;
+    void tick(driver_kernel* kernel, float dt) override;
+    void shutdown(driver_kernel* kernel) override;
 
    private:
+    void handle_scene_load_empty_event(const value& data);
+    void handle_scene_load_event(const value& data);
+    void handle_scene_unload_event(const value& data);
+    void handle_scene_info_event(const value& data);
+    void handle_scene_playback_command_event(const value& data);
   };
 
 }  // namespace other

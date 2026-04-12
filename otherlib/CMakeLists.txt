@@ -33,6 +33,7 @@ target_sources(otherlib
       
     src/driver/systems/driver_system.cpp
     src/driver/systems/event_driver_system.cpp
+    src/driver/systems/scene_system.cpp
     src/driver/driver_kernel.cpp
     src/driver/subsystem_registry.cpp
     src/driver/driver.cpp

@@ -13,17 +13,12 @@
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
 
+#include "driver/driver_mounts.hpp"
 #include "scripting/dotnet_bindings.hpp"
 #include "scripting/lua_bindings.hpp"
 
 namespace other {
-  namespace driver_mounts {
 
-    constexpr inline std::string_view kAssetMount = "assets";
-    constexpr inline std::string_view kSceneMount = "scenes";
-    constexpr inline std::string_view kScriptMount = "scripts";
-
-  }  // namespace driver_mounts
   namespace detail {
 
     void initialize_arena(const config_table* config);
@@ -55,7 +50,11 @@ namespace other {
     registry.emplace(FNV(def.name), def);
   }
 
-  void subsystem_registry::resolve_dependencies_and_initialize(std::span<const std::string_view> requested_systems, const config_table* config) {
+  void subsystem_registry::initialize_profile(const std::string_view profile, const config_table* config) {
+    resolve_dependency_list_and_do_initialization(get_required_subsystems_for_profile(profile), config);
+  }
+
+  void subsystem_registry::resolve_dependency_list_and_do_initialization(std::span<const std::string_view> requested_systems, const config_table* config) {
     initialization_order.clear();
     initialization_order = resolve_dependencies(requested_systems, subsystem_definition{});
 
@@ -362,6 +361,7 @@ namespace other {
       }
 
       /// defaults
+      /// \todo make this more robust
       fs->mount_virtual(driver_mounts::kAssetMount);
       fs->mount_virtual(driver_mounts::kSceneMount);
       fs->mount_virtual(driver_mounts::kScriptMount);
