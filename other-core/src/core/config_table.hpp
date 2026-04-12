@@ -38,6 +38,24 @@ namespace other {
      */
     value get_project_value(const std::string_view toml_subpath) const;
 
+    template <typename T>
+    opt<T> try_get_value(const std::string_view toml_path) const {
+      if constexpr (is_container<T> && !is_stringlike_type<T>) {
+        return std::nullopt;
+      } else {
+        toml::node_view node = table.at_path(toml_path);
+        if (!node) {
+          std::println(std::cerr, "Config key '{}' not found.", toml_path);
+          return std::nullopt;
+        }
+
+        if (node.template is<T>()) {
+          return node.template as<T>()->get();
+        }
+        return std::nullopt;
+      }
+    }
+
     toml::table& get_project_table();
     const toml::table& get_project_table() const;
 
@@ -45,20 +63,24 @@ namespace other {
     template <typename T>
     std::remove_cvref_t<T> get_value(const std::string_view toml_path, T default_value = {}) const {
       PROFILE_SECTION("config_table::get-value");
-      toml::node_view node = table.at_path(toml_path);
-      if (!node) {
-        CORE_LOG_TRACE("Config key '{}' not found, returning default value.", toml_path);
+      opt<T> value_opt = try_get_value<T>(toml_path);
+      if (!value_opt.has_value() && !(is_container<T> && !is_stringlike_type<T>)) {
         if constexpr (is_string_type<T>) {
           return perform_tag_replacement(default_value);
         } else {
           return default_value;
         }
-      } else {
-        CORE_LOG_TRACE("Found config key '{}'", toml_path);
       }
 
-      if constexpr (is_container<T> && !std::is_same_v<T, std::string>) {
-        // Handle container types (e.g., std::vector)
+      toml::node_view node = table.at_path(toml_path);
+      if constexpr (is_container<T> && !is_stringlike_type<T>) {
+        if (!node) {
+          CORE_LOG_WARN("Config key '{}' not found, returning default value.", toml_path);
+          return default_value;
+        } else {
+          CORE_LOG_TRACE("Found config key '{}'", toml_path);
+        }
+
         using value_type = typename T::value_type;
 
         T result;
@@ -100,6 +122,12 @@ namespace other {
             return default_value;
           }
         }
+      }
+
+      if constexpr (is_stringlike_type<T>) {
+        return perform_tag_replacement(default_value);
+      } else {
+        return default_value;
       }
     }
 

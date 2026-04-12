@@ -158,13 +158,8 @@ namespace other {
   }
 
   void network_thread::pump_thread() {
-    if (current_state.shutdown_complete) {
-      return;
-    }
-
-    net_context->io_context.poll();
-    if (net_context->io_context.stopped()) {
-      net_context->io_context.restart();
+    if (!net_context->io_context.stopped()) {
+      net_context->io_context.poll();
     }
 
     handle_session_closures();
@@ -259,7 +254,7 @@ namespace other {
       bus.send_message(std::move(msg));
 
       current_state.shutdown_complete = true;
-      // CORE_LOG_DEBUG("All connections closed, completing network thread shutdown.");
+      CORE_LOG_INFO("Network thread shutdown complete.");
     }
   }
 

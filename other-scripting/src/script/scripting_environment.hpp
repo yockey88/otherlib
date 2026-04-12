@@ -210,6 +210,13 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::scripting_environment);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::scripting_environment,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger,
+  subsystem_profile::kFileSystem,
+  subsystem_profile::kInputSystem,
+  subsystem_profile::kTypeDatabase,
+);
 
 #endif  // OTHER_SCRIPTING_SCRIPT_SCRIPTING_ENVIRONMENT_HPP

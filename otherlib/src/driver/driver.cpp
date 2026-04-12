@@ -19,6 +19,8 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver_tasks.hpp"
+#include "driver/systems/driver_system.hpp"
+#include "driver/systems/event_driver_system.hpp"
 #include "scripting/dotnet_bindings.hpp"
 #include "scripting/lua_bindings.hpp"
 #include "scripting/scene_interface.hpp"
@@ -29,19 +31,21 @@
 
 #include "driver_tasks.hpp"
 
-
 namespace other {
 
   void driver::initialize(const command_line& cmd) {
     PROFILE_SECTION("driver::initialize");
+
+    driver_kernel_ptr = make_scope<driver_kernel>(this);
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Failed to create driver kernel.");
 
     /// core setup, set state, initialize context and register core events
     cmd_line = cmd;
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
 
     driver_metadata = build_metadata();
-    configure_filesystem();
 
+    // configure_filesystem();
     /// set up input system
     {
       auto* input = subsystem<input_system>::get();
@@ -56,54 +60,9 @@ namespace other {
 
     project_scene_graph = make_scope<scene_graph>();
     asset_mgr = make_scope<asset_handler>(net_context->io_context);
-    asset_mgr->set_default_mount(std::string(driver_mounts::kAssetMount));
+    // asset_mgr->set_default_mount(std::string(driver_mounts::kAssetMount));
 
-    get_event_system()->register_event("shutdown-requested");
-    get_event_system()->add_listener("shutdown-requested", [this](const value& data) { request_shutdown(); });
-
-    /// open/close ui window events
-    get_event_system()->register_event("open-driver-ui-window");
-    get_event_system()->add_listener("open-driver-ui-window", std::bind_front(&driver::handle_open_ui_window_event, this));
-    get_event_system()->register_event("close-driver-ui-window");
-    get_event_system()->add_listener("close-driver-ui-window", std::bind_front(&driver::handle_close_ui_window_event, this));
-
-    // open/close file events
-    /// \todo ...
-
-    get_event_system()->register_event("ls-driver-default");
-    get_event_system()->add_listener("ls-driver-default", std::bind_front(&driver::handle_list_driver_default_event, this));
-    get_event_system()->register_event("ls-driver-windows");
-    get_event_system()->add_listener("ls-driver-windows", std::bind_front(&driver::handle_list_driver_windows_event, this));
-    get_event_system()->register_event("ls-driver-files");
-    get_event_system()->add_listener("ls-driver-files", std::bind_front(&driver::handle_list_driver_files_event, this));
-    get_event_system()->register_event("ls-driver-scenes");
-    get_event_system()->add_listener("ls-driver-scenes", std::bind_front(&driver::handle_list_driver_scenes_event, this));
-    get_event_system()->register_event("ls-driver-assets");
-    get_event_system()->add_listener("ls-driver-assets", std::bind_front(&driver::handle_list_driver_assets_event, this));
-
-    // object commands
-    get_event_system()->register_event("object-driver-create");
-    get_event_system()->add_listener("object-driver-create", std::bind_front(&driver::handle_object_driver_create_event, this));
-    get_event_system()->register_event("object-driver-destroy");
-    get_event_system()->add_listener("object-driver-destroy", std::bind_front(&driver::handle_object_driver_destroy_event, this));
-    get_event_system()->register_event("object-driver-push");
-    get_event_system()->add_listener("object-driver-push", std::bind_front(&driver::handle_object_driver_push_event, this));
-    get_event_system()->register_event("object-driver-pop");
-    get_event_system()->add_listener("object-driver-pop", std::bind_front(&driver::handle_object_driver_pop_event, this));
-    get_event_system()->register_event("object-driver-info");
-    get_event_system()->add_listener("object-driver-info", std::bind_front(&driver::handle_object_driver_info_event, this));
-
-    /// scene commands
-    get_event_system()->register_event("force-load-empty-scene");
-    get_event_system()->add_listener("force-load-empty-scene", std::bind_front(&driver::handle_scene_load_empty_event, this));
-    get_event_system()->register_event("force-load-scene");
-    get_event_system()->add_listener("force-load-scene", std::bind_front(&driver::handle_scene_load_event, this));
-    get_event_system()->register_event("force-unload-scene");
-    get_event_system()->add_listener("force-unload-scene", std::bind_front(&driver::handle_scene_unload_event, this));
-    get_event_system()->register_event("scene-info-requested");
-    get_event_system()->add_listener("scene-info-requested", std::bind_front(&driver::handle_scene_info_event, this));
-    get_event_system()->register_event("scene-playback-command");
-    get_event_system()->add_listener("scene-playback-command", std::bind_front(&driver::handle_scene_playback_command_event, this));
+    driver_kernel_ptr->initialize();
 
     /// load client specific .NET
     /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
@@ -120,8 +79,6 @@ namespace other {
 
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
-
-    scene_interface::initialize(this);
 
     set_dotnet_native_driver(this);
     bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
@@ -214,6 +171,8 @@ namespace other {
 
     live_coroutines.clear();
 
+    driver_kernel_ptr->shutdown();
+
     asset_mgr = nullptr;
     project_scene_graph = nullptr;
 
@@ -231,7 +190,8 @@ namespace other {
     /// if no path then run built-in driver/event loop with environment terminal
     if (driver_path.empty()) {
       CORE_LOG_DEBUG("Creating static driver instance");
-      return { create_driver(&config), "" };
+      driver_name = config.get_value<std::string>("application.name", "static-driver");
+      return { create_driver(&config), driver_name };
     }
     /// otherwise attempt to load the driver and run it
     else {
@@ -724,7 +684,7 @@ namespace other {
     auto open_windows = configuration().get_value<std::vector<std::string>>("ui.open-windows", std::vector<std::string>{});
     for (const auto& window_name : open_windows) {
       value val = window_name;
-      handle_open_ui_window_event(val);
+      driver_kernel_ptr->get_builtin_system<event_driver_system>(driver_system_type::EVENT_DRIVER_SYSTEM)->handle_open_ui_window_event(val);
     }
 
     get_event_system()->add_listener("viewport.resize", [this](const value& val) {
@@ -1926,76 +1886,76 @@ namespace other {
   }
 
   void driver::configure_filesystem() {
-    auto* fs = subsystem<file_system>::get();
-    OTHER_ASSERT(fs != nullptr, "Filesystem subsystem is not available when building driver metadata.");
+    // auto* fs = subsystem<file_system>::get();
+    // OTHER_ASSERT(fs != nullptr, "Filesystem subsystem is not available when building driver metadata.");
 
-    CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
-    const auto md_mnts = configuration().get_raw("filesystem.mounts");
-    if (md_mnts) {
-      if (md_mnts.is_array_of_tables()) {
-        const auto* mounts_tables = md_mnts.as_array();
-        OTHER_ASSERT(mounts_tables != nullptr, "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
+    // CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
+    // const auto md_mnts = configuration().get_raw("filesystem.mounts");
+    // if (md_mnts) {
+    //   if (md_mnts.is_array_of_tables()) {
+    //     const auto* mounts_tables = md_mnts.as_array();
+    //     OTHER_ASSERT(mounts_tables != nullptr, "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
 
-        CORE_LOG_DEBUG("Found {} filesystem mount entries in configuration", mounts_tables->size());
-        for (const auto& table : *mounts_tables) {
-          OTHER_ASSERT(table.is_table(), "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
-          const auto* mount_table = table.as_table();
-          OTHER_ASSERT(mount_table != nullptr, "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
+    //     CORE_LOG_DEBUG("Found {} filesystem mount entries in configuration", mounts_tables->size());
+    //     for (const auto& table : *mounts_tables) {
+    //       OTHER_ASSERT(table.is_table(), "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
+    //       const auto* mount_table = table.as_table();
+    //       OTHER_ASSERT(mount_table != nullptr, "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
 
-          auto name_itr = mount_table->find("name");
-          auto type_itr = mount_table->find("type");
-          auto path_itr = mount_table->find("path");
-          if (name_itr == mount_table->end() || type_itr == mount_table->end()) {
-            CORE_LOG_ERROR("Invalid format for filesystem mount entry in configuration. Each mount entry must contain 'name' and 'type' fields.");
-            continue;
-          }
-          if (!name_itr->second.is_string() || !type_itr->second.is_string()) {
-            CORE_LOG_ERROR("Invalid format for filesystem mount entry in configuration. 'name' and 'type' fields must be strings.");
-            continue;
-          }
+    //       auto name_itr = mount_table->find("name");
+    //       auto type_itr = mount_table->find("type");
+    //       auto path_itr = mount_table->find("path");
+    //       if (name_itr == mount_table->end() || type_itr == mount_table->end()) {
+    //         CORE_LOG_ERROR("Invalid format for filesystem mount entry in configuration. Each mount entry must contain 'name' and 'type' fields.");
+    //         continue;
+    //       }
+    //       if (!name_itr->second.is_string() || !type_itr->second.is_string()) {
+    //         CORE_LOG_ERROR("Invalid format for filesystem mount entry in configuration. 'name' and 'type' fields must be strings.");
+    //         continue;
+    //       }
 
-          std::string name = name_itr->second.as_string()->get();
-          std::string type = type_itr->second.as_string()->get();
-          /// physical is probably going to be the default use case and needs extra checking
-          if (type == "physical") {
-            if (path_itr == mount_table->end()) {
-              CORE_LOG_ERROR("Invalid format for physical filesystem mount entry in configuration. Physical mounts must contain a 'path' field.");
-              continue;
-            }
-            if (!path_itr->second.is_string()) {
-              CORE_LOG_ERROR("Invalid format for physical filesystem mount entry in configuration. 'path' field must be a string.");
-              continue;
-            }
-            std::string path_str = path_itr->second.as_string()->get();
-            filepath path(path_str);
-            if (!std::filesystem::exists(path)) {
-              CORE_LOG_ERROR("Filesystem mount path '{}' does not exist. Cannot configure filesystem mount '{}'.", path_str, name);
-              continue;
-            }
+    //       std::string name = name_itr->second.as_string()->get();
+    //       std::string type = type_itr->second.as_string()->get();
+    //       /// physical is probably going to be the default use case and needs extra checking
+    //       if (type == "physical") {
+    //         if (path_itr == mount_table->end()) {
+    //           CORE_LOG_ERROR("Invalid format for physical filesystem mount entry in configuration. Physical mounts must contain a 'path' field.");
+    //           continue;
+    //         }
+    //         if (!path_itr->second.is_string()) {
+    //           CORE_LOG_ERROR("Invalid format for physical filesystem mount entry in configuration. 'path' field must be a string.");
+    //           continue;
+    //         }
+    //         std::string path_str = path_itr->second.as_string()->get();
+    //         filepath path(path_str);
+    //         if (!std::filesystem::exists(path)) {
+    //           CORE_LOG_ERROR("Filesystem mount path '{}' does not exist. Cannot configure filesystem mount '{}'.", path_str, name);
+    //           continue;
+    //         }
 
-            fs->mount_directory(name, path);
-          }
-          /// virtual is simpler
-          else if (type == "virtual") {
-            if (fs->is_mounted(name)) {
-              CORE_LOG_WARN("Filesystem mount '{}' is already mounted. Skipping virtual mount.", name);
-              continue;
-            }
+    //         fs->mount_directory(name, path);
+    //       }
+    //       /// virtual is simpler
+    //       else if (type == "virtual") {
+    //         if (fs->is_mounted(name)) {
+    //           CORE_LOG_WARN("Filesystem mount '{}' is already mounted. Skipping virtual mount.", name);
+    //           continue;
+    //         }
 
-            fs->mount_virtual(name);
-          } else {
-            CORE_LOG_ERROR("Invalid filesystem mount type '{}' for mount '{}'. Supported types are 'physical' and 'virtual'.", type, name);
-          }
-        }
-      } else {
-        CORE_LOG_ERROR("Invalid format for filesystem mounts in configuration. Expected an array of tables.");
-      }
-    }
+    //         fs->mount_virtual(name);
+    //       } else {
+    //         CORE_LOG_ERROR("Invalid filesystem mount type '{}' for mount '{}'. Supported types are 'physical' and 'virtual'.", type, name);
+    //       }
+    //     }
+    //   } else {
+    //     CORE_LOG_ERROR("Invalid format for filesystem mounts in configuration. Expected an array of tables.");
+    //   }
+    // }
 
-    /// defaults
-    fs->mount_virtual(driver_mounts::kAssetMount);
-    fs->mount_virtual(driver_mounts::kSceneMount);
-    fs->mount_virtual(driver_mounts::kScriptMount);
+    // /// defaults
+    // fs->mount_virtual(driver_mounts::kAssetMount);
+    // fs->mount_virtual(driver_mounts::kSceneMount);
+    // fs->mount_virtual(driver_mounts::kScriptMount);
   }
 
   void driver::push_scene_object_to_context_stack(scene_object* object) {
@@ -2020,6 +1980,25 @@ namespace other {
     return context_stack[--context_stack_top];
   }
 
+  std::string driver::get_driver_info_string(const std::string_view str) const {
+    CORE_LOG_DEBUG("object-driver-info argument: {}", str);
+    std::stringstream ss;
+
+    if (str == "<stack>") {
+      ss << "  " << context_stack_top << " objects in context stack.\n";
+      if (context_stack_top > 0) {
+        scene_object* obj = context_stack[context_stack_top - 1];
+        ss << "Top of Context Stack Object Info:\n";
+        ss << "  - Name: " << obj->name << "\n";
+        ss << "  - ID: " << obj->id << "\n";
+      }
+    } else {
+      ss << "Unknown driver info argument: '" << str << "'";
+    }
+
+    return ss.str();
+  }
+
   void driver::handle_viewport_resize_event(const value& data) {
     if (data.type() != value_type::VEC2) {
       CORE_LOG_ERROR("Invalid data type for viewport resize event. Expected VEC2.");
@@ -2027,106 +2006,6 @@ namespace other {
     }
     viewport_size = data;
     on_viewport_resize(viewport_size);
-  }
-
-  void driver::handle_scene_load_empty_event(const value& data) {
-    if (data.type() != value_type::STRING) {
-      CORE_LOG_ERROR("Invalid data type for force-load-empty-scene event. Expected string.");
-      return;
-    }
-
-    std::string scene_name = data.as_string();
-    if (project_scene_graph->has_scene(scene_name)) {
-      CORE_LOG_WARN("Scene with name [{}] already exists in the scene graph. Cannot force load empty scene with duplicate name.", scene_name);
-      return;
-    }
-
-    natural_t scene_id = create_empty_scene(scene_name);
-    set_scene_to_active(scene_id);
-    OTHER_ASSERT(active_scene != nullptr, "Active scene is null after creating/loading scene.");
-
-    CORE_LOG_INFO("Created and loaded empty scene [{}:{}] from console command.", scene_id, scene_name);
-    constexpr bool is_empty = true;
-    constexpr bool requires_udp_binding = true;
-    send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
-  }
-
-  void driver::handle_scene_load_event(const value& data) {
-    if (data.type() != value_type::STRING) {
-      CORE_LOG_ERROR("Invalid data type for load-scene event. Expected string.");
-      return;
-    }
-
-    std::string scene_path_str = data.as_string();
-    filepath scene_path(scene_path_str);
-    if (!std::filesystem::exists(scene_path)) {
-      CORE_LOG_ERROR("Scene file '{}' does not exist. Cannot load scene.", scene_path.string());
-      return;
-    }
-
-    CORE_LOG_DEBUG("Loading scene '{}' and adding to scene graph.", scene_path.string());
-    natural_t scene_id = add_scene_to_scene_graph(scene_path);
-    if (scene_id == 0) {
-      CORE_LOG_ERROR("Failed to load scene from file '{}' via console command.", scene_path.string());
-      return;
-    }
-    CORE_LOG_DEBUG("Scene '{}' loaded with ID {}.", scene_path.string(), scene_id);
-
-    set_scene_to_active(scene_id);
-    OTHER_ASSERT(active_scene != nullptr, "Active scene is null after loading scene.");
-    synchronize_active_scene(scene_id);
-  }
-
-  void driver::handle_scene_unload_event(const value& data) {
-    if (active_scene == nullptr) {
-      CORE_LOG_ERROR("No active scene to unload.");
-      return;
-    }
-    CORE_LOG_INFO("Unloading active scene '{}'", active_scene->name);
-    unload_active_scene();
-  }
-
-  void driver::handle_scene_info_event(const value& data) {
-    if (active_scene == nullptr) {
-      CORE_LOG_ERROR("No active scene to get info from.");
-      return;
-    }
-
-    std::stringstream ss;
-    ss << "Active Scene Information:\n";
-    ss << "  - Scene ID: " << active_scene->id << "\n";
-    ss << "  - Scene Name: " << active_scene->name << "\n";
-    // ss << "  - Number of Objects: " << active_scene->get_num_objects() << "\n";
-    ss << "  - Synchronized: " << (active_scene->synchronized ? "Yes" : "No") << "\n";
-
-    CORE_LOG_INFO("{}", ss.str());
-  }
-
-  void driver::handle_scene_playback_command_event(const value& data) {
-    if (active_scene == nullptr) {
-      CORE_LOG_ERROR("No active scene to send playback command to.");
-      return;
-    }
-
-    if (data.type() != value_type::STRING) {
-      CORE_LOG_ERROR("Invalid data type for scene-playback-command event. Expected string.");
-      return;
-    }
-
-    std::string command = data.as_string();
-    if (command == "play") {
-      CORE_LOG_INFO("Starting scene '{}'", active_scene->name);
-      active_scene->play();
-    } else if (command == "pause") {
-      CORE_LOG_INFO("Pausing scene '{}'", active_scene->name);
-      active_scene->stop();
-    } else if (command == "stop") {
-      CORE_LOG_INFO("Stopping scene '{}'", active_scene->name);
-      active_scene->stop();
-      active_scene->reset();
-    } else {
-      CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
-    }
   }
 
   void driver::send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding) {
@@ -2160,144 +2039,6 @@ namespace other {
     /// \todo check if server is even open
     CORE_LOG_INFO("sending ENVIRONMENT_LOAD_SCENE command for remote....");
     send_message_and_wait_acknowledgment(std::move(cmd_msg), seconds(10), message_handler{ this, &driver::on_acknowledge_command_environment_load_scene, &driver::on_timeout_environment_load_scene });
-  }
-
-  void driver::handle_open_ui_window_event(const value& data) {
-    if (data.type() == value_type::STRING) {
-      std::string window_type_str = data;
-      open_ui_window(window_type_str);
-    }
-    // else if (data.type() == value_type::INT32) {
-    //   int32_t window_type_int = data;
-    //   if (window_type_int >= 0 && window_type_int < static_cast<int32_t>(driver_ui::NUM_BUILTIN_WINDOW_TYPES)) {
-    //     driver_ui_ptr
-    //   } else {
-    //     CORE_LOG_ERROR("Invalid UI window type index requested to open: {}", window_type_int);
-    //   }
-    // }
-    else {
-      CORE_LOG_ERROR("Invalid data type for open-driver-ui-window event: {}", data.type());
-      return;
-    }
-  }
-
-  void driver::handle_close_ui_window_event(const value& data) {
-    if (data.type() == value_type::STRING) {
-      std::string window_type_str = data;
-      close_ui_window(window_type_str);
-    }
-    // else if (data.type() == value_type::INT32) {
-    //   int32_t window_type_int = data;
-    //   if (window_type_int >= 0 && window_type_int < static_cast<int32_t>(driver_ui::NUM_BUILTIN_WINDOW_TYPES)) {
-    //     close_ui_window(static_cast<driver_ui::builtin_window_type>(window_type_int));
-    //   } else {
-    //     CORE_LOG_ERROR("Invalid UI window type index requested to close: {}", window_type_int);
-    //   }
-    // }
-    else {
-      CORE_LOG_ERROR("Invalid data type for close-driver-ui-window event: {}", data.type());
-      return;
-    }
-  }
-
-  void driver::handle_list_driver_default_event(const value& data) {
-    filepath cwd = std::filesystem::current_path();
-    std::stringstream ss;
-    ss << "Current Working Directory: " << cwd.string() << "\n";
-
-    for (auto itr = std::filesystem::directory_iterator(cwd); itr != std::filesystem::directory_iterator(); ++itr) {
-      ss << " - " << itr->path().filename().string() << (itr->is_directory() ? " [DIR]" : "") << "\n";
-    }
-    get_event_system()->trigger_event("console.output", ss.str());
-  }
-
-  void driver::handle_list_driver_windows_event(const value& data) {
-    std::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
-    std::vector<std::string> windows = std::span<const std::string_view>(driver_ui::kBuiltinWindowNames.data(), driver_ui::NUM_BUILTIN_WINDOW_TYPES).subspan(1) |
-      std::views::transform([](const std::string_view& name) { return std::string(name); }) |
-      std::views::filter([&open_windows](const std::string& name) { return std::ranges::find(open_windows, name) == open_windows.end(); }) |
-      std::ranges::to<std::vector>();
-
-    std::stringstream ss;
-    ss << "Available Driver UI Windows:\n";
-    for (const auto& window_name : open_windows) {
-      ss << "  - " << window_name << " (open)\n";
-    }
-    for (const auto& window_name : windows) {
-      ss << "  - " << window_name << "\n";
-    }
-    get_event_system()->trigger_event("console.output", ss.str());
-  }
-
-  void driver::handle_list_driver_files_event(const value& data) {
-  }
-
-  void driver::handle_list_driver_scenes_event(const value& data) {
-  }
-
-  void driver::handle_list_driver_assets_event(const value& data) {
-  }
-
-  void driver::handle_object_driver_create_event(const value& data) {
-  }
-
-  void driver::handle_object_driver_destroy_event(const value& data) {
-  }
-
-  void driver::handle_object_driver_push_event(const value& data) {
-    CORE_LOG_DEBUG("Received object-driver-push event");
-    if (active_scene == nullptr) {
-      CORE_LOG_ERROR("Error: No active scene to push object from");
-      return;
-    }
-
-    scene_object* obj = nullptr;
-    if (data.type() == value_type::STRING) {
-      std::string object_name = data.as_string();
-      obj = &active_scene->get_object(object_name);
-    } else if (data.type() == value_type::DOUBLE) {
-      natural_t id = static_cast<natural_t>((double)data);
-      obj = &active_scene->get_object(id);
-    }
-    if (obj == nullptr) {
-      CORE_LOG_ERROR("Error: Failed to find object in active scene to push");
-      return;
-    }
-    push_scene_object_to_context_stack(obj);
-  }
-
-  void driver::handle_object_driver_pop_event(const value& data) {
-    CORE_LOG_DEBUG("Received object-driver-pop event");
-    scene_object* obj = pop_scene_object_from_context_stack();
-    if (obj == nullptr) {
-      CORE_LOG_ERROR("Error: Failed to pop object from context stack");
-      return;
-    }
-  }
-
-  void driver::handle_object_driver_info_event(const value& data) {
-    if (data.type() != value_type::STRING) {
-      CORE_LOG_ERROR("Error: Invalid data type for object-driver-info event. Expected string.");
-      return;
-    }
-
-    std::string str = data;
-    CORE_LOG_DEBUG("object-driver-info argument: {}", str);
-    if (str == "<stack>") {
-      CORE_LOG_DEBUG("  {}", context_stack_top);
-      if (context_stack_top == 0) {
-        CORE_LOG_INFO("Context stack is empty.");
-      } else {
-        scene_object* obj = context_stack[context_stack_top - 1];
-        std::stringstream ss;
-        ss << "Top of Context Stack Object Info:\n";
-        ss << "  - Name: " << obj->name << "\n";
-        ss << "  - ID: " << obj->id << "\n";
-        /// dump component info here, direct children ids/names, etc.
-        CORE_LOG_INFO("{}", ss.str());
-      }
-    } else {
-    }
   }
 
   natural_t driver::add_scene_to_scene_graph(const filepath& scene_path) {

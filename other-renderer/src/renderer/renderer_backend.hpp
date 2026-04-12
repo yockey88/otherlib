@@ -61,6 +61,11 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::renderer_backend);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::renderer_backend,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger,
+  subsystem_profile::kFileSystem
+);
 
 #endif  // OTHER_RENDERER_RENDERER_RENDERER_BACKEND_HPP

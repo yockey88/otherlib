@@ -1,0 +1,38 @@
+/**
+ * \file driver/subsystem_registry.hpp
+ **/
+#ifndef OTHERLIB_DRIVER_SUBSYSTEM_REGISTRY_HPP
+#define OTHERLIB_DRIVER_SUBSYSTEM_REGISTRY_HPP
+
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "core/config_table.hpp"
+#include "core/subsystem.hpp"
+
+namespace other {
+
+  class subsystem_registry {
+   public:
+    void register_subsystem(const subsystem_definition& def);
+    void resolve_dependencies_and_initialize(std::span<const std::string_view> requested_systems, const config_table* config);
+    void shutdown_all(bool skip_logger);
+
+    const std::vector<natural_t>& get_initialization_order() const { return initialization_order; }
+    const std::unordered_map<natural_t, subsystem_definition>& get_registry() const { return registry; }
+
+   private:
+    std::vector<natural_t> initialization_order;
+    std::unordered_map<natural_t, subsystem_definition> registry;
+
+    std::vector<natural_t> resolve_dependencies(std::span<const std::string_view> requested_systems, const subsystem_definition& def);
+  };
+
+  subsystem_registry register_all_subsystems();
+  const std::string_view get_subsystem_profile(const config_table* config);
+  std::span<const std::string_view> get_required_subsystems_for_profile(const std::string_view profile_name);
+
+}  // namespace other
+
+#endif  // OTHERLIB_DRIVER_SUBSYSTEM_REGISTRY_HPP

@@ -93,6 +93,10 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::file_system);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::file_system,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger
+);
 
 #endif  // OTHER_CORE_FILE_FILE_SYSTEM_HPP

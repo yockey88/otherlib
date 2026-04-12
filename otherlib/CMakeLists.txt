@@ -31,6 +31,10 @@ target_sources(otherlib
     src/plugin/library_handle.cpp
     src/plugin/plugin.cpp
       
+    src/driver/systems/driver_system.cpp
+    src/driver/systems/event_driver_system.cpp
+    src/driver/driver_kernel.cpp
+    src/driver/subsystem_registry.cpp
     src/driver/driver.cpp
 
     src/ocl/object_parser.cpp

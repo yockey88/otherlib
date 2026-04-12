@@ -1,4 +1,5 @@
 [application]
+name = "Other Editor"
 metadata = [ 
   { key = "name", value = "Other Editor"}, 
   { key = "description", value = "Other Environment Project Editor"},
