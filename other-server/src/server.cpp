@@ -18,15 +18,15 @@
 namespace other {
 
   void server::on_initialize(const command_line& cmd) {
-    filepath app_folder = get_project_cache();
+    // filepath app_folder = get_project_cache();
 
-    std::ifstream file(app_folder);
-    if (file.is_open()) {
-      file >> project_cache;
-      file.close();
-    } else {
-      CORE_LOG_WARN("Failed to open project cache file at {}", app_folder.string());
-    }
+    // std::ifstream file(app_folder);
+    // if (file.is_open()) {
+    //   file >> project_cache;
+    //   file.close();
+    // } else {
+    //   CORE_LOG_WARN("Failed to open project cache file at {}", app_folder.string());
+    // }
 
     /// create event system
     get_event_system()->register_event("open-project");
@@ -60,47 +60,29 @@ namespace other {
 
     get_event_system()->register_event("finalize-project");
     get_event_system()->add_listener("finalize-project", [this](const value& data) {
-      post_coroutine(build_project(data, project_cache, *get_event_system()));
+      // post_coroutine(build_project(data, project_cache, *get_event_system()));
     });
   }
 
-  void server::on_initialize_rendering() {
-    std::string backend = configuration().rendering_backend.value();
-    if (backend == "headless") {
-      get_renderer_instance().add_pipeline("Headless Pipeline", get_empty_pipeline());
-    } else {
-      get_renderer_instance().add_pipeline("UI Pipeline", get_default_instancing_pipeline());
-    }
-  }
-
-  void server::on_initialize_ui(scope<driver_ui>& ui_ptr) {
-    ///  \todo replace this function with UI that can be loaded from a file
-    ///         or attached through .NET scripts
-    this->ui_ptr = make_scope<server_ui>(get_event_system(), project_cache);
-  }
+  // void server::on_initialize_ui(scope<driver_ui>& ui_ptr) {
+  //   ///  \todo replace this function with UI that can be loaded from a file
+  //   ///         or attached through .NET scripts
+  //   this->ui_ptr = make_scope<server_ui>(get_event_system(), project_cache);
+  // }
 
   void server::on_update() {
   }
 
   void server::on_ui_render() {
-    ui_ptr->render();
+    // ui_ptr->render();
   }
 
   void server::on_shutdown() {
     CORE_LOG_INFO("Server shutdown complete.");
   }
 
-  void server::on_shutdown_rendering() {
-    std::string backend = configuration().rendering_backend.value();
-    if (backend == "headless") {
-      get_renderer_instance().remove_pipeline("Headless Pipeline");
-    } else {
-      get_renderer_instance().remove_pipeline("UI Pipeline");
-    }
-  }
-
   void server::core_update() {
-    pump_events();
+    // pump_events();
   }
 
   void server::update_initializing() {}
@@ -173,16 +155,16 @@ namespace other {
 
     static integer_t next_id = 1;
     integer_t id = next_id++;
-    auto itr = app_list.pending_apps.insert(app_list.pending_apps.end(), application_list::other_application{ .id = id, .working_directory = working_dir, .executable = exe_name, .args = args });
-    OTHER_ASSERT(itr != app_list.pending_apps.end(), "Failed to begin Other application : {}  [{}]", id, exe_name.string());
+    // auto itr = app_list.pending_apps.insert(app_list.pending_apps.end(), application_list::other_application{ .id = id, .working_directory = working_dir, .executable = exe_name, .args = args });
+    // OTHER_ASSERT(itr != app_list.pending_apps.end(), "Failed to begin Other application : {}  [{}]", id, exe_name.string());
 
-    CORE_LOG_DEBUG("Starting Other application : {}", id);
-    itr->executable = replace_all_substrings_with(itr->executable->string(), "${configuration}", "Debug");
+    // CORE_LOG_DEBUG("Starting Other application : {}", id);
+    // itr->executable = replace_all_substrings_with(itr->executable->string(), "${configuration}", "Debug");
 
-    CORE_LOG_DEBUG("Launching Other application executable '{}' @ [{}]:", itr->executable->string(), working_dir.string());
-    for (const auto& arg : itr->args) {
-      CORE_LOG_DEBUG("   - {}", arg);
-    }
+    // CORE_LOG_DEBUG("Launching Other application executable '{}' @ [{}]:", itr->executable->string(), working_dir.string());
+    // for (const auto& arg : itr->args) {
+    //   CORE_LOG_DEBUG("   - {}", arg);
+    // }
 
     /// \todo: build the project and validate it is correct first
     // project_description proj_desc = {
@@ -205,12 +187,12 @@ namespace other {
     // build_tool bt;
     // bt.start_build(proj_desc);
 
-    session_check_in_request(itr->id);
+    // session_check_in_request(itr->id);
 
-    itr->args.insert(itr->args.begin(), project_file.string());
-    itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
-    itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(net_context->main_binding_point.port) });
-    launch_detached_process(*itr->working_directory, *itr->executable, itr->args);
+    // itr->args.insert(itr->args.begin(), project_file.string());
+    // itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
+    // itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(net_context->main_binding_point.port) });
+    // launch_detached_process(*itr->working_directory, *itr->executable, itr->args);
 #endif
   }
 
@@ -219,15 +201,15 @@ namespace other {
   // }
 
   void server::on_notification_session_closed(integer_t session_id) {
-    auto app_itr = app_list.other_apps.find(session_id);
-    if (app_itr != app_list.other_apps.end()) {
-      CORE_LOG_INFO("Other application [{}] has disconnected", app_itr->second.get_name());
-      app_itr->second.connected = false;
-      /// don't remove from list, it might reconnect
-      /// \todo set a timeout to remove it after a while if needed
-    } else {
-      /// ignore because there may be open sessions that aren't other applications
-    }
+    // auto app_itr = app_list.other_apps.find(session_id);
+    // if (app_itr != app_list.other_apps.end()) {
+    //   CORE_LOG_INFO("Other application [{}] has disconnected", app_itr->second.get_name());
+    //   app_itr->second.connected = false;
+    //   /// don't remove from list, it might reconnect
+    //   /// \todo set a timeout to remove it after a while if needed
+    // } else {
+    //   /// ignore because there may be open sessions that aren't other applications
+    // }
   }
 
   task server::validate_and_build_other_application(const std::string& name, const filepath& folder, const filepath& env_config_path) {

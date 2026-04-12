@@ -16,6 +16,8 @@
 #include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 #include "core/version.hpp"
+#include "file/filesystem.hpp"
+#include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
 
 #include "physics/physics_environment.hpp"
@@ -24,7 +26,7 @@
 
 #include "driver/subsystem_registry.hpp"
 
-extern exit_code other_main(const command_line& cmd, const config_table& config);
+extern other::exit_code other_main(const other::command_line& cmd, const other::config_table& config, const other::subsystem_registry& registry);
 
 #if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
   #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what())
@@ -52,7 +54,7 @@ namespace other {
 
     subsystem_registry registry = register_all_subsystems();
     const std::string_view profile = get_subsystem_profile(&config);
-    registry.resolve_dependencies_and_initialize(get_required_subsystems_for_profile(profile), &config);
+    registry.initialize_profile(profile, &config);
 
     if (config.diagnostics.verbose) {
       CORE_LOG_INFO("Initialized subsystems for profile '{}':", profile);
@@ -73,7 +75,7 @@ namespace other {
       CORE_LOG_INFO("Running Other Environment driver...");
       PROFILE_SECTION("other::main");
       try {
-        res = other_main(cmd, config);
+        res = other_main(cmd, config, registry);
       } catch (const std::runtime_error& e) {
         CATCH_RUNTIME_ERROR(e);
         res = FAILURE;
@@ -92,6 +94,12 @@ namespace other {
     shutdown_subsystems();
     return res;
   }
+
+  namespace detail {
+
+    void finalize_configuration_table(config_table& config, const command_line& cmd);
+
+  }  // namespace detail
 
   load_config_result read_command_line_and_config(int argc, char* argv[]) {
     command_line cmd = command_line::parse(&argc, argv);
@@ -132,75 +140,36 @@ namespace other {
       std::println(std::cout, "No configuration file specified. Using default configuration.");
     }
 
-    config.diagnostics.verbose = cmd.diagnostics.verbose;
-    if (cmd.diagnostics.verbose) {
-      config.diagnostics.verbose = true;
-      std::println(std::cout, "Loading Environment with configuration :\n{}\n", config.dump_table_string());
-    }
-
-    /// rendering.backend == "headless" is the same as rendering.force-no-window == true, we just check both for ease of use
-    bool rendering_enabled = true;
-    if ((config.rendering_backend.has_value() && config.rendering_backend.value() == "headless") || config.force_no_window) {
-      rendering_enabled = false;
-      config.rendering_backend = "headless";
-    }
-    /// default to opengl
-    else if (!config.rendering_backend.has_value()) {
-      config.rendering_backend = "opengl";
-    }
-
-    if (config.diagnostics.verbose) {
-      std::println(std::cout, "Rendering backend: {}", rendering_enabled ? config.rendering_backend.value() : "headless (disabled)");
-    }
-
+    detail::finalize_configuration_table(config, cmd);
     return std::make_tuple(true, config, cmd);
   }
 
-  native_string native_get_app_data_folder(native_string app_name_str, int32_t create_flag) {
-    std::string app_name = app_name_str;
-    filepath app_data_folder = get_app_data_folder(app_name, create_flag != 0);
-    return native_string::new_str(app_data_folder.string());
-  }
+  namespace detail {
 
-  spdlog::sink_ptr stdout_sink_fn(const config_table& config) {
-#ifdef OTHER_ENVIRONMENT_WINDOWS
-    return std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
-#else
-    return std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-#endif
-  }
+    void finalize_configuration_table(config_table& config, const command_line& cmd) {
+      config.diagnostics.verbose = cmd.diagnostics.verbose;
+      if (cmd.diagnostics.verbose) {
+        config.diagnostics.verbose = true;
+        std::println(std::cout, "Loading Environment with configuration :\n{}\n", config.dump_table_string());
+      }
 
-  void register_log_sinks(const config_table& config) {
-    PROFILE_SECTION("other::register-log-sinks");
+      /// rendering.backend == "headless" is the same as rendering.force-no-window == true, we just check both for ease of use
+      bool rendering_enabled = true;
+      if ((config.rendering_backend.has_value() && config.rendering_backend.value() == "headless") || config.force_no_window) {
+        rendering_enabled = false;
+        config.rendering_backend = "headless";
+      }
+      /// default to opengl
+      else if (!config.rendering_backend.has_value()) {
+        config.rendering_backend = "opengl";
+      }
 
-    logger* log = subsystem<logger>::get();
-    if (log == nullptr) {
-      throw std::runtime_error("Logger subsystem is null.");
+      if (config.diagnostics.verbose) {
+        std::println(std::cout, "Rendering backend: {}", rendering_enabled ? config.rendering_backend.value() : "headless (disabled)");
+      }
     }
-    log->set_config(&config);
 
-    log->create_logger("other-core-log", spdlog::level::trace);
-    log_sink sink = {
-      1,
-      "console-sink",
-      "%^[%l]%$ %v (%t)",
-      (spdlog::level::level_enum)config.core_log_level,
-      stdout_sink_fn,
-    };
-    log_sink file_sink = {
-      2,
-      "file-sink",
-      "[%Y-%m-%d %H:%M:%S -  %t] [%l] %v",
-      spdlog::level::trace,
-      [](const config_table& config) -> spdlog::sink_ptr {
-        return std::make_shared<spdlog::sinks::basic_file_sink_mt>(config.core_log_file, true);
-      },
-    };
-
-    std::string loggers[] = { "other-core-log" };
-    log->register_sink(loggers, sink);
-    log->register_sink(loggers, file_sink);
-  }
+  }  // namespace detail
 
   void shutdown_subsystems() {
     PROFILE_SECTION("other::shutdown_subsystems");
@@ -208,6 +177,8 @@ namespace other {
     subsystem<type_database>::get()->shutdown();
     subsystem<physics_environment>::get()->shutdown();
     subsystem<renderer_backend>::get()->shutdown();
+    subsystem<input_system>::get()->shutdown();
+    subsystem<file_system>::get()->shutdown();
     subsystem<arena>::get()->shutdown();
     subsystem<logger>::get()->shutdown();
   }

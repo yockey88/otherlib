@@ -10,20 +10,20 @@ namespace other {
     return *driver_instance;
   }
 
-  void driver_plugin::initialize() {
+  void driver_plugin::initialize(driver_kernel* kernel) {
     if (!active()) {
       on_initialize();
       set_active(true);
     }
   }
 
-  void driver_plugin::tick(float dt) {
+  void driver_plugin::tick(driver_kernel* kernel, double dt) {
     if (active()) {
       on_tick(dt);
     }
   }
 
-  void driver_plugin::shutdown() {
+  void driver_plugin::shutdown(driver_kernel* kernel) {
     if (active()) {
       on_shutdown();
       set_active(false);

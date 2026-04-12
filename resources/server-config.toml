@@ -1,9 +1,9 @@
 
 [application]
 metadata = [ 
-  { key = "name", value = "Other Editor"}, 
-  { key = "description", value = "Other Environment Project Editor"},
-  { key = "author", value = "Other Team"},
+  { key = "name", value = "Other Server"}, 
+  { key = "description", value = "Other Environment Test Server"},
+  { key = "author", value = "N/A"},
   { key = "version", value = "0.1.0"} 
 ]
 role = "server"

@@ -5,6 +5,10 @@
 
 #include "other_test.hpp"
 
+using other::command_line;
+using other::config_table;
+using other::exit_code;
+
 /// have to define for linking
 exit_code other_main(const command_line& cmd, const config_table& config) { return exit_code::FAILURE; }
 extern "C" {

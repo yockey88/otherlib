@@ -158,9 +158,7 @@ namespace other {
   }
 
   void network_thread::pump_thread() {
-    if (!net_context->io_context.stopped()) {
-      net_context->io_context.poll();
-    }
+    net_context->io_context.poll();
 
     handle_session_closures();
     handle_stream_closures();
@@ -367,6 +365,7 @@ namespace other {
           itr->active_session->socket.close();
         }
       } else {
+        CORE_LOG_ERROR("Error in connection timer: {}", ec.message());
       }
     });
 
@@ -379,14 +378,19 @@ namespace other {
 
       acknowledgement ackmsg;
       ackmsg.acked_header = message_header{ .category = COMMAND, .id = SESSION_CONNECT_TO };
+      ackmsg.ack_nack = 0x01;
+
+      session_connect_to_response response;
+
       if (!ec) {
         CORE_LOG_INFO("Successfully connected to other application at {}", binding_point::write_string(bp));
 
         auto conn_itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.endpoint.ip == bp.ip && conn.endpoint.port == bp.port; });
         OTHER_ASSERT(conn_itr != pending_connections.end(), "Connection not found for endpoint {}", binding_point::write_string(bp));
 
+        conn_itr->active_session->connection_timer.cancel();
         conn_itr->active_session->check_in();
-        ackmsg.ack_nack = 1;
+        response.ack_nack = 0x01;
       } else {
         CORE_LOG_ERROR("Failed to connect to other application at {}: {}", binding_point::write_string(bp), ec.message());
 
@@ -395,9 +399,11 @@ namespace other {
         if (conn_itr != pending_connections.end()) {
           pending_connections.erase(conn_itr);
         }
-        ackmsg.ack_nack = 0;
+
+        response.ack_nack = 0x00;
       }
 
+      ackmsg.extra_data.append_range(response.as_buffer());
       ack_msg.data.append_range(ackmsg.as_buffer());
       bus.send_message(std::move(ack_msg));
     });

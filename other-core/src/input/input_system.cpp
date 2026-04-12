@@ -47,8 +47,6 @@ namespace other {
   }
 
   void input_system::shutdown() {
-    CORE_LOG_INFO("Shutting down input system.");
-
     for (auto& entry : sdl_gamepads) {
       if (entry.handle) {
         SDL_CloseGamepad(entry.handle);
