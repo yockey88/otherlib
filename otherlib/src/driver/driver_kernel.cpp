@@ -7,34 +7,80 @@
 
 #include "core/logger.hpp"
 
+#include "driver/driver.hpp"
+#include "driver/systems/asset_system.hpp"
+#include "driver/systems/driver_system.hpp"
+#include "driver/systems/event_driver_system.hpp"
+#include "driver/systems/input_driver_system.hpp"
+#include "driver/systems/network_system.hpp"
+#include "driver/systems/rendering_system.hpp"
+#include "driver/systems/scene_system.hpp"
+#include "driver/systems/scripting_system.hpp"
+#include "driver/systems/vm_system.hpp"
+
 namespace other {
+
+  void driver_kernel::load_profile() {
+    /// initialize network system regardless of whether networking is enabled or not, as some subsystems depend on it and it can handle being disabled internally
+    add_system<network_system>(driver_system_type::NETWORK_DRIVER_SYSTEM);
+
+    /// always load events/input/assets
+    add_system<event_driver_system>(driver_system_type::EVENT_DRIVER_SYSTEM);
+    add_system<input_driver_system>(driver_system_type::INPUT_DRIVER_SYSTEM);
+    add_system<asset_system>(driver_system_type::ASSET_DRIVER_SYSTEM);
+
+    if (driver_instance->scripting_enabled()) {
+      add_system<scripting_system>(driver_system_type::SCRIPTING_DRIVER_SYSTEM);
+    }
+    // if (driver_instance->physics_enabled()) {
+    //   add_system<physics_system>(driver_system_type::PHYSICS_DRIVER_SYSTEM);
+    // }
+    if (driver_instance->rendering_enabled()) {
+      add_system<rendering_system>(driver_system_type::RENDERING_DRIVER_SYSTEM);
+    }
+    add_system<vm_system>(driver_system_type::VM_DRIVER_SYSTEM);
+    add_system<scene_system>(driver_system_type::SCENE_DRIVER_SYSTEM);
+  }
 
   void driver_kernel::initialize() {
     CORE_LOG_INFO("Initializing driver kernel.");
 
+    update_order();
     for (const auto type : system_order) {
       if (builtin_systems[static_cast<size_t>(type)] != nullptr) {
+        CORE_LOG_DEBUG("Initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
         builtin_systems[static_cast<size_t>(type)]->initialize(this);
       }
     }
   }
 
-  void driver_kernel::tick(float dt) {
+  void driver_kernel::tick(double dt) {
     for (const auto type : system_order) {
       if (builtin_systems[static_cast<size_t>(type)] != nullptr && builtin_systems[static_cast<size_t>(type)]->active()) {
         builtin_systems[static_cast<size_t>(type)]->tick(this, dt);
       }
     }
 
-    tick_plugins(dt);
+    for (auto& [key, plugin] : plugin_systems) {
+      if (plugin != nullptr && plugin->active()) {
+        plugin->tick(this, dt);
+      }
+    }
   }
 
   void driver_kernel::shutdown() {
     CORE_LOG_INFO("Shutting down driver kernel.");
-    shutdown_plugins();
+    for (auto& [key, plugin] : plugin_systems) {
+      if (plugin != nullptr && plugin->active()) {
+        plugin->shutdown(this);
+      }
+      arena_allocator<driver_system>{}.free(plugin);
+    }
+    plugin_systems.clear();
 
     for (auto itr = system_order.rbegin(); itr != system_order.rend(); ++itr) {
       if (builtin_systems[static_cast<size_t>(*itr)] != nullptr) {
+        CORE_LOG_DEBUG("Shutting down builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(*itr)]->name(), *itr);
         builtin_systems[static_cast<size_t>(*itr)]->shutdown(this);
         arena_allocator<driver_system>{}.free(builtin_systems[static_cast<size_t>(*itr)]);
         builtin_systems[static_cast<size_t>(*itr)] = nullptr;
@@ -57,6 +103,17 @@ namespace other {
       OTHER_ASSERT(system_b != nullptr, "System of type {} is not initialized.", static_cast<uint32_t>(b));
       return system_a->id() < system_b->id();
     });
+  }
+
+  std::string driver_kernel::list_systems() const {
+    std::stringstream ss;
+    ss << "Installed Driver Systems:\n";
+    for (const auto type : system_order) {
+      if (builtin_systems[static_cast<size_t>(type)] != nullptr) {
+        ss << " - " << builtin_systems[static_cast<size_t>(type)]->name() << "\n";
+      }
+    }
+    return ss.str();
   }
 
   void driver_kernel::remove_system(driver_system_type type) {
@@ -137,24 +194,6 @@ namespace other {
     driver_plugin* plugin = dynamic_cast<driver_plugin*>(itr->second);
     OTHER_ASSERT(plugin != nullptr, "Failed to cast plugin with type {} and index {} to driver_plugin.", id, index);
     return plugin;
-  }
-
-  void driver_kernel::tick_plugins(float dt) {
-    for (auto& [key, plugin] : plugin_systems) {
-      if (plugin->active()) {
-        plugin->tick(this, dt);
-      }
-    }
-  }
-
-  void driver_kernel::shutdown_plugins() {
-    for (auto& [key, plugin] : plugin_systems) {
-      if (plugin->active()) {
-        plugin->shutdown(this);
-      }
-      arena_allocator<driver_system>{}.free(plugin);
-    }
-    plugin_systems.clear();
   }
 
 }  // namespace other

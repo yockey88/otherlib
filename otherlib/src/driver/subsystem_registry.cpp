@@ -51,6 +51,7 @@ namespace other {
   }
 
   void subsystem_registry::initialize_profile(const std::string_view profile, const config_table* config) {
+    current_profile = profile;
     resolve_dependency_list_and_do_initialization(get_required_subsystems_for_profile(profile), config);
   }
 

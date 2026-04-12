@@ -129,10 +129,13 @@ namespace other {
       window.type = type;
       window.open = false;
       window.id = static_cast<uint32_t>(i);
+
+      auto& rendering = driver_ptr->get_kernel().get_core_system<rendering_system>();
+      auto& renderer = rendering.get_renderer();
       switch (type) {
         case BUILTIN_WINDOW_TYPE_DATABASE: window.window_ptr = make_scope<ui::type_database>(*driver_ptr->get_event_system()); break;
         case BUILTIN_WINDOW_CONSOLE: window.window_ptr = make_scope<ui::console_window>(*driver_ptr->get_event_system(), driver_ptr); break;
-        case BUILTIN_WINDOW_VIEWPORT: window.window_ptr = make_scope<ui::viewport>(*driver_ptr->get_event_system(), driver_ptr->get_renderer_pointer(), driver_ptr); break;
+        case BUILTIN_WINDOW_VIEWPORT: window.window_ptr = make_scope<ui::viewport>(*driver_ptr->get_event_system(), renderer, driver_ptr); break;
         case BUILTIN_WINDOW_SCENE_HIERARCHY: window.window_ptr = make_scope<ui::scene_hierarchy>(*driver_ptr->get_event_system(), driver_ptr); break;
         case BUILTIN_WINDOW_ASSET_BROWSER: window.window_ptr = make_scope<ui::asset_browser>(*driver_ptr->get_event_system(), driver_ptr); break;
         default:

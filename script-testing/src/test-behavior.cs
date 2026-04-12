@@ -30,18 +30,22 @@ class TestBehavior : SceneBehavior
     new_mesh.AddIndex(3); new_mesh.AddIndex(4); new_mesh.AddIndex(7);
 
     // GetComponent<RendererComponent>()?.SetMesh(new_mesh);
+    Debug.Warn("TestBehavior: OnAwake called, created a cube mesh but did not set it to any renderer component.");
   }
 
   protected override void OnRemove()
   {
+    Debug.Warn("TestBehavior: OnRemove called.");
   }
 
   protected override void OnEnable()
   {
+    Debug.Warn("TestBehavior: OnEnable called.");
   }
 
   protected override void OnDisable()
   {
+    Debug.Warn("TestBehavior: OnDisable called.");
   }
 
   protected override void OnUpdate()

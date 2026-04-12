@@ -10,8 +10,8 @@
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/scene_system.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
-
 
 namespace other {
   namespace detail {
@@ -20,7 +20,7 @@ namespace other {
       OTHER_ASSERT(detail::get_dotnet_native_driver() != nullptr, "Driver pointer is null.");
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
-      auto* active_scene = detail::get_dotnet_native_driver()->get_active_scene();
+      auto* active_scene = detail::get_dotnet_native_driver()->get_kernel().get_core_system<scene_system>().get_active_scene();
       OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
       return active_scene;
     }

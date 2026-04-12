@@ -123,7 +123,7 @@ namespace other {
           CORE_LOG_WARN("Unsupported data type for event user data: {}", data.get_type());
           break;
       }
-      host_driver->trigger_event(event, val);
+      host_driver->get_kernel().get_core_system<event_driver_system>().trigger_event(&host_driver->get_kernel(), event, val);
     });
     driver_table.set_function("process_driver_event", [host_driver](driver_event event) {
       host_driver->process_driver_event(event);

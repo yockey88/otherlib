@@ -16,6 +16,8 @@
 #include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 #include "core/version.hpp"
+#include "file/filesystem.hpp"
+#include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
 
 #include "physics/physics_environment.hpp"
@@ -24,7 +26,7 @@
 
 #include "driver/subsystem_registry.hpp"
 
-extern exit_code other_main(const command_line& cmd, const config_table& config);
+extern other::exit_code other_main(const other::command_line& cmd, const other::config_table& config);
 
 #if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
   #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what())
@@ -175,6 +177,8 @@ namespace other {
     subsystem<type_database>::get()->shutdown();
     subsystem<physics_environment>::get()->shutdown();
     subsystem<renderer_backend>::get()->shutdown();
+    subsystem<input_system>::get()->shutdown();
+    subsystem<file_system>::get()->shutdown();
     subsystem<arena>::get()->shutdown();
     subsystem<logger>::get()->shutdown();
   }

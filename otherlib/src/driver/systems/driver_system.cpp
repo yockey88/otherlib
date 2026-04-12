@@ -17,7 +17,7 @@ namespace other {
     }
   }
 
-  void driver_plugin::tick(driver_kernel* kernel, float dt) {
+  void driver_plugin::tick(driver_kernel* kernel, double dt) {
     if (active()) {
       on_tick(dt);
     }

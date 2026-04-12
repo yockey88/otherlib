@@ -14,26 +14,31 @@ namespace other {
   class driver;
   class driver_kernel;
 
+  /**
+   * \note important to note that this is also the boot order and update order of the core systems, so they should be ordered with that in mind.
+   **/
   enum driver_system_type : uint32_t {
-    EVENT_DRIVER_SYSTEM = 0,
-    NETWORK_DRIVER_SYSTEM,
-    SCRIPTING_DRIVER_SYSTEM,
+    /// network first because we need to create the io context and register the network system so it is accessible
+    NETWORK_DRIVER_SYSTEM = 0,
+    /// use IO context from network system to instantiate event system
+    EVENT_DRIVER_SYSTEM,
+    INPUT_DRIVER_SYSTEM,
+    /// VM/asset/scripting/rendering can probably each be launched in any order (or even asynchronously)
+    ///    because scene system depends on all of them
     ASSET_DRIVER_SYSTEM,
-    VM_DRIVER_SYSTEM,
+    SCRIPTING_DRIVER_SYSTEM,
     RENDERING_DRIVER_SYSTEM,
+    VM_DRIVER_SYSTEM,
+    /// scene system last because it depends on all the others to function properly
     SCENE_DRIVER_SYSTEM,
+
+    /// sentinel
     NUM_BUILTIN_DRIVER_SYSTEMS,
 
-    /*
-    /// ???
-  debug_overlay  = 0x1000,
-  profiler       = 0x1001,
-  replay         = 0x1002,
-  editor         = 0x1003,
-    */
-
-    /// user/custom
+    /// plugin range, these will be launched in increasing ID order (unless a specific dependency is specificied in plugin config)
     CUSTOM_DRIVER_SYSTEM_ID_START = 0x1000,
+
+    // this range reserved for plugin IDs
 
     CUSTOM_DRIVER_SYSTEM_ID_END = 0xFFFF,
   };
@@ -67,7 +72,7 @@ namespace other {
     virtual std::string name() const = 0;
 
     virtual void initialize(driver_kernel* kernel) = 0;
-    virtual void tick(driver_kernel* kernel, float dt) = 0;
+    virtual void tick(driver_kernel* kernel, double dt) = 0;
     virtual void shutdown(driver_kernel* kernel) = 0;
 
    protected:
@@ -88,11 +93,11 @@ namespace other {
     inline void set_active(bool is_active) { this->is_active = is_active; }
 
     void initialize(driver_kernel* kernel) override;
-    void tick(driver_kernel* kernel, float dt) override;
+    void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
     virtual void on_initialize() {}
-    virtual void on_tick(float dt) {}
+    virtual void on_tick(double dt) {}
     virtual void on_shutdown() {}
 
    private:

@@ -5,15 +5,10 @@
 #define OTHERLIB_OTHER_HPP
 
 #include "core/command_line.hpp"
-#include "core/defines.hpp"
 #include "core/logger.hpp"
 
 #include "driver/driver.hpp"
-
-using other::command_line;
-using other::config_table;
-using other::driver;
-using other::exit_code;
+#include "driver/subsystem_registry.hpp"
 
 namespace other {
 

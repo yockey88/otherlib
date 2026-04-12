@@ -30,12 +30,9 @@ namespace other {
     virtual ~server() = default;
 
     void on_initialize(const command_line& cmd) override;
-    void on_initialize_rendering() override;
-    void on_initialize_ui(scope<driver_ui>& ui_ptr) override;
     void on_update() override;
     void on_ui_render() override;
     void on_shutdown() override;
-    void on_shutdown_rendering() override;
 
    private:
     json::json project_cache;

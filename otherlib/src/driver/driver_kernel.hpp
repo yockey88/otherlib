@@ -40,26 +40,29 @@ namespace other {
         : driver_instance(driver_instance) {}
     virtual ~driver_kernel() = default;
 
+    void load_profile();
     void initialize();
-    void tick(float dt);
+    void tick(double dt);
     void shutdown();
 
     void update_order();
 
+    std::string list_systems() const;
+
     template <typename T, typename... Args>
-    T& add_system(driver_system_type type, Args&&... args) {
+    [[maybe_unused]] T& add_system(driver_system_type type, Args&&... args) {
       static_assert(std::derived_from<T, driver_system>, "Added system must derive from driver_system");
       OTHER_ASSERT(driver_instance != nullptr, "Driver kernel is not associated with a driver.");
 
       size_t type_id = typeid(T).hash_code();
       OTHER_ASSERT(registered_core_systems.find(type_id) == registered_core_systems.end(), "Core system of type {} is already registered.", typeid(T).name());
       registered_core_systems[type_id] = type;
+      CORE_LOG_DEBUG("Core system registered: {} with type id {}", typeid(T).name(), type_id);
 
       T* system = arena_allocator<T>{}.allocate(driver_instance, std::forward<Args>(args)...);
       OTHER_ASSERT(system != nullptr, "Failed to allocate system of type {}", typeid(T).name());
-
       builtin_systems[static_cast<size_t>(type)] = system;
-      system->initialize(this);
+
       return *system;
     }
 
@@ -157,9 +160,6 @@ namespace other {
       OTHER_ASSERT(casted_system != nullptr, "Failed to cast builtin system of type {} to type {}", static_cast<uint32_t>(type), typeid(T).name());
       return casted_system;
     }
-
-    void tick_plugins(float dt);
-    void shutdown_plugins();
   };
 
   template <typename D>

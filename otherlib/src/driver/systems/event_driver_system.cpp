@@ -10,8 +10,8 @@
 namespace other {
 
   void event_driver_system::initialize(driver_kernel* kernel) {
-    auto& driver = get_driver();
-    event_system_ptr = make_scope<event_system>(driver.get_io_context());
+    auto& network = kernel->get_core_system<network_system>();
+    event_system_ptr = make_scope<event_system>(network.io_context());
 
     /// register the core driver events that were previously in driver::initialize
     event_system_ptr->register_event("shutdown-requested");
@@ -28,20 +28,12 @@ namespace other {
     event_system_ptr->register_event("open-driver-ui-window");
     event_system_ptr->register_event("close-driver-ui-window");
 
-    event_system_ptr->register_event("console.check-command");
-    // ... etc ...
-
-    // auto& events = get_driver().get_event_system();
-    // OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
-
     // events->register_event("shutdown-requested");
     // events->add_listener("shutdown-requested", [this](const value& data) { get_driver().request_shutdown(); });
 
     /// open/close ui window events
-    event_system_ptr->register_event("open-driver-ui-window");
-    event_system_ptr->add_listener("open-driver-ui-window", std::bind_front(&event_driver_system::handle_open_ui_window_event, this));
-    event_system_ptr->register_event("close-driver-ui-window");
-    event_system_ptr->add_listener("close-driver-ui-window", std::bind_front(&event_driver_system::handle_close_ui_window_event, this));
+    event_system_ptr->add_listener("open-driver-ui-window", [this, kernel](const value& val) { handle_open_ui_window_event(kernel, val); });
+    event_system_ptr->add_listener("close-driver-ui-window", [this, kernel](const value& val) { handle_close_ui_window_event(kernel, val); });
 
     // // open/close file events
     // /// \todo ...
@@ -70,7 +62,27 @@ namespace other {
     // events->add_listener("object-driver-info", std::bind_front(&event_driver_system::handle_object_driver_info_event, this));
   }
 
-  void event_driver_system::tick(driver_kernel* kernel, float dt) {
+  void event_driver_system::tick(driver_kernel* kernel, double dt) {
+    /// move the SDL_PollEvent loop here from driver::pump_events
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      switch (event.type) {
+        case SDL_EVENT_QUIT:
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+          if (!(get_driver().current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN ||
+                get_driver().current_driver_state() == driver_state::DRIVER_STATE_STOPPED)) {
+            trigger_event(kernel, "shutdown-requested", {});
+          }
+          break;
+        default: break;
+      }
+
+      subsystem<input_system>::get()->process_event(&event);
+      // if (kernel.has_core_system<rendering_system>()) {
+      subsystem<renderer_backend>::get()->handle_event(&event);
+      // }
+    }
+    subsystem<input_system>::get()->update();
   }
 
   void event_driver_system::shutdown(driver_kernel* kernel) {
@@ -87,38 +99,17 @@ namespace other {
     return event_system_ptr;
   }
 
-  void event_driver_system::trigger_event(const std::string_view name, const value& data) {
+  void event_driver_system::trigger_event(driver_kernel* kernel, const std::string_view name, const value& data) {
     OTHER_ASSERT(event_system_ptr != nullptr, "Event system is not initialized in event driver system.");
     event_system_ptr->trigger_event(name, data);
   }
 
-  void event_driver_system::pump_events(driver_kernel& kernel) {
-    /// move the SDL_PollEvent loop here from driver::pump_events
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-      switch (event.type) {
-        case SDL_EVENT_QUIT:
-        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-          if (!(get_driver().current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN ||
-                get_driver().current_driver_state() == driver_state::DRIVER_STATE_STOPPED)) {
-            trigger_event("shutdown-requested", {});
-          }
-          break;
-        default: break;
-      }
+  void event_driver_system::handle_open_ui_window_event(driver_kernel* kernel, const value& data) {
+    if (kernel->has_core_system<rendering_system>() && data.type() == value_type::STRING) {
+      auto& rendering_sys = kernel->get_core_system<rendering_system>();
 
-      subsystem<input_system>::get()->process_event(&event);
-      // if (kernel.has_core_system<rendering_module>()) {
-      //   subsystem<renderer_backend>::get()->handle_event(&event);
-      // }
-    }
-    subsystem<input_system>::get()->update();
-  }
-
-  void event_driver_system::handle_open_ui_window_event(const value& data) {
-    if (data.type() == value_type::STRING) {
       std::string window_type_str = data;
-      get_driver().open_ui_window(window_type_str);
+      rendering_sys.open_ui_window(window_type_str);
     }
     // else if (data.type() == value_type::INT32) {
     //   int32_t window_type_int = data;
@@ -134,10 +125,12 @@ namespace other {
     }
   }
 
-  void event_driver_system::handle_close_ui_window_event(const value& data) {
-    if (data.type() == value_type::STRING) {
+  void event_driver_system::handle_close_ui_window_event(driver_kernel* kernel, const value& data) {
+    if (kernel->has_core_system<rendering_system>() && data.type() == value_type::STRING) {
+      auto& rendering_sys = kernel->get_core_system<rendering_system>();
+
       std::string window_type_str = data;
-      get_driver().close_ui_window(window_type_str);
+      rendering_sys.close_ui_window(window_type_str);
     }
     // else if (data.type() == value_type::INT32) {
     //   int32_t window_type_int = data;
@@ -153,7 +146,7 @@ namespace other {
     }
   }
 
-  // void event_driver_system::handle_list_driver_default_event(const value& data) {
+  // void event_driver_system::handle_list_driver_default_event(driver_kernel* kernel, const value& data) {
   //   filepath cwd = std::filesystem::current_path();
   //   std::stringstream ss;
   //   ss << "Current Working Directory: " << cwd.string() << "\n";
@@ -166,7 +159,7 @@ namespace other {
   //   events->trigger_event("console.output", ss.str());
   // }
 
-  // void event_driver_system::handle_list_driver_windows_event(const value& data) {
+  // void event_driver_system::handle_list_driver_windows_event(driver_kernel* kernel, const value& data) {
   //   auto& driver_ui_ptr = get_driver().get_ui();
   //   OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
 
@@ -189,22 +182,22 @@ namespace other {
   //   events->trigger_event("console.output", ss.str());
   // }
 
-  // void event_driver_system::handle_list_driver_files_event(const value& data) {
+  // void event_driver_system::handle_list_driver_files_event(driver_kernel* kernel, const value& data) {
   // }
 
-  // void event_driver_system::handle_list_driver_scenes_event(const value& data) {
+  // void event_driver_system::handle_list_driver_scenes_event(driver_kernel* kernel, const value& data) {
   // }
 
-  // void event_driver_system::handle_list_driver_assets_event(const value& data) {
+  // void event_driver_system::handle_list_driver_assets_event(driver_kernel* kernel, const value& data) {
   // }
 
-  // void event_driver_system::handle_object_driver_create_event(const value& data) {
+  // void event_driver_system::handle_object_driver_create_event(driver_kernel* kernel, const value& data) {
   // }
 
-  // void event_driver_system::handle_object_driver_destroy_event(const value& data) {
+  // void event_driver_system::handle_object_driver_destroy_event(driver_kernel* kernel, const value& data) {
   // }
 
-  // void event_driver_system::handle_object_driver_push_event(const value& data) {
+  // void event_driver_system::handle_object_driver_push_event(driver_kernel* kernel, const value& data) {
   //   CORE_LOG_DEBUG("Received object-driver-push event");
   //   scene* active_scene = get_driver().get_active_scene();
   //   if (active_scene == nullptr) {
@@ -227,7 +220,7 @@ namespace other {
   //   get_driver().push_scene_object_to_context_stack(obj);
   // }
 
-  // void event_driver_system::handle_object_driver_pop_event(const value& data) {
+  // void event_driver_system::handle_object_driver_pop_event(driver_kernel* kernel, const value& data) {
   //   CORE_LOG_DEBUG("Received object-driver-pop event");
   //   scene_object* obj = get_driver().pop_scene_object_from_context_stack();
   //   if (obj == nullptr) {
@@ -236,7 +229,7 @@ namespace other {
   //   }
   // }
 
-  // void event_driver_system::handle_object_driver_info_event(const value& data) {
+  // void event_driver_system::handle_object_driver_info_event(driver_kernel* kernel, const value& data) {
   //   if (data.type() != value_type::STRING) {
   //     CORE_LOG_ERROR("Error: Invalid data type for object-driver-info event. Expected string.");
   //     return;
