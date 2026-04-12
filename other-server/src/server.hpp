@@ -37,7 +37,7 @@ namespace other {
    private:
     json::json project_cache;
 
-    scope<server_ui> ui_ptr = nullptr;
+    // scope<server_ui> ui_ptr = nullptr;
 
     void core_update();
 

@@ -8,6 +8,7 @@
 #include "core/logger.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/subsystem_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/driver_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
@@ -20,7 +21,7 @@
 
 namespace other {
 
-  void driver_kernel::load_profile() {
+  void driver_kernel::load_profile(const std::string_view profile_name) {
     /// initialize network system regardless of whether networking is enabled or not, as some subsystems depend on it and it can handle being disabled internally
     add_system<network_system>(driver_system_type::NETWORK_DRIVER_SYSTEM);
 
@@ -29,40 +30,43 @@ namespace other {
     add_system<input_driver_system>(driver_system_type::INPUT_DRIVER_SYSTEM);
     add_system<asset_system>(driver_system_type::ASSET_DRIVER_SYSTEM);
 
-    if (driver_instance->scripting_enabled()) {
+    if (subsystem_registry::profile_includes_scripting(profile_name)) {
       add_system<scripting_system>(driver_system_type::SCRIPTING_DRIVER_SYSTEM);
     }
-    // if (driver_instance->physics_enabled()) {
+    // if (subsystem_registry::profile_includes_physics(profile_name)) {
     //   add_system<physics_system>(driver_system_type::PHYSICS_DRIVER_SYSTEM);
     // }
-    if (driver_instance->rendering_enabled()) {
+    if (subsystem_registry::profile_includes_rendering(profile_name)) {
       add_system<rendering_system>(driver_system_type::RENDERING_DRIVER_SYSTEM);
     }
-    add_system<vm_system>(driver_system_type::VM_DRIVER_SYSTEM);
-    add_system<scene_system>(driver_system_type::SCENE_DRIVER_SYSTEM);
+
+    if (profile_name != "minimal") {
+      add_system<vm_system>(driver_system_type::VM_DRIVER_SYSTEM);
+      add_system<scene_system>(driver_system_type::SCENE_DRIVER_SYSTEM);
+    }
+
+    update_order();
   }
 
   void driver_kernel::initialize() {
     CORE_LOG_INFO("Initializing driver kernel.");
 
-    update_order();
     for (const auto type : system_order) {
-      if (builtin_systems[static_cast<size_t>(type)] != nullptr) {
-        CORE_LOG_DEBUG("Initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
-        builtin_systems[static_cast<size_t>(type)]->initialize(this);
-      }
+      OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
+      CORE_LOG_DEBUG("Initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
+      builtin_systems[static_cast<size_t>(type)]->initialize(this);
     }
   }
 
   void driver_kernel::tick(double dt) {
     for (const auto type : system_order) {
-      if (builtin_systems[static_cast<size_t>(type)] != nullptr && builtin_systems[static_cast<size_t>(type)]->active()) {
-        builtin_systems[static_cast<size_t>(type)]->tick(this, dt);
-      }
+      OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
+      builtin_systems[static_cast<size_t>(type)]->tick(this, dt);
     }
 
     for (auto& [key, plugin] : plugin_systems) {
-      if (plugin != nullptr && plugin->active()) {
+      OTHER_ASSERT(plugin != nullptr, "Plugin with type {} and index {} is null.", key.type, key.index);
+      if (plugin->active()) {
         plugin->tick(this, dt);
       }
     }
@@ -71,7 +75,8 @@ namespace other {
   void driver_kernel::shutdown() {
     CORE_LOG_INFO("Shutting down driver kernel.");
     for (auto& [key, plugin] : plugin_systems) {
-      if (plugin != nullptr && plugin->active()) {
+      OTHER_ASSERT(plugin != nullptr, "Plugin with type {} and index {} is null.", key.type, key.index);
+      if (plugin->active()) {
         plugin->shutdown(this);
       }
       arena_allocator<driver_system>{}.free(plugin);
@@ -79,12 +84,11 @@ namespace other {
     plugin_systems.clear();
 
     for (auto itr = system_order.rbegin(); itr != system_order.rend(); ++itr) {
-      if (builtin_systems[static_cast<size_t>(*itr)] != nullptr) {
-        CORE_LOG_DEBUG("Shutting down builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(*itr)]->name(), *itr);
-        builtin_systems[static_cast<size_t>(*itr)]->shutdown(this);
-        arena_allocator<driver_system>{}.free(builtin_systems[static_cast<size_t>(*itr)]);
-        builtin_systems[static_cast<size_t>(*itr)] = nullptr;
-      }
+      OTHER_ASSERT(builtin_systems[static_cast<size_t>(*itr)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(*itr));
+      CORE_LOG_DEBUG("Shutting down builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(*itr)]->name(), *itr);
+      builtin_systems[static_cast<size_t>(*itr)]->shutdown(this);
+      arena_allocator<driver_system>{}.free(builtin_systems[static_cast<size_t>(*itr)]);
+      builtin_systems[static_cast<size_t>(*itr)] = nullptr;
     }
   }
 
@@ -109,9 +113,8 @@ namespace other {
     std::stringstream ss;
     ss << "Installed Driver Systems:\n";
     for (const auto type : system_order) {
-      if (builtin_systems[static_cast<size_t>(type)] != nullptr) {
-        ss << " - " << builtin_systems[static_cast<size_t>(type)]->name() << "\n";
-      }
+      OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
+      ss << " - " << builtin_systems[static_cast<size_t>(type)]->name() << "\n";
     }
     return ss.str();
   }

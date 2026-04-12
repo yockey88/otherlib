@@ -78,11 +78,10 @@ namespace other {
       }
 
       subsystem<input_system>::get()->process_event(&event);
-      // if (kernel.has_core_system<rendering_system>()) {
-      subsystem<renderer_backend>::get()->handle_event(&event);
-      // }
+      if (kernel->has_core_system<rendering_system>()) {
+        subsystem<renderer_backend>::get()->handle_event(&event);
+      }
     }
-    subsystem<input_system>::get()->update();
   }
 
   void event_driver_system::shutdown(driver_kernel* kernel) {

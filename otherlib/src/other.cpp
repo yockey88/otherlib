@@ -26,7 +26,7 @@
 
 #include "driver/subsystem_registry.hpp"
 
-extern other::exit_code other_main(const other::command_line& cmd, const other::config_table& config);
+extern other::exit_code other_main(const other::command_line& cmd, const other::config_table& config, const other::subsystem_registry& registry);
 
 #if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
   #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what())
@@ -75,7 +75,7 @@ namespace other {
       CORE_LOG_INFO("Running Other Environment driver...");
       PROFILE_SECTION("other::main");
       try {
-        res = other_main(cmd, config);
+        res = other_main(cmd, config, registry);
       } catch (const std::runtime_error& e) {
         CATCH_RUNTIME_ERROR(e);
         res = FAILURE;

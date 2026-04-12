@@ -118,7 +118,7 @@ if(TARGET otherlib::otherlib)
   ## - Platform-specific compatibility macros (NOMINMAX, WIN32_LEAN_AND_MEAN, etc.)
   ## 
   ## IMPORTANT: Consumers should NEVER define their own main() function.
-  ## Instead, implement: other::exit_code other_main(const command_line& cmd, const config_table& config)
+  ## Instead, implement: other::exit_code other_main(const command_line& cmd, const config_table& config, const other::subsystem_registry& registry);
   ## 
   ## If you need to opt-out of the automatic main() (e.g., for plugins or special cases),
   ## add to your target: target_compile_definitions(your_target PRIVATE OTHER_DISABLE_MAIN)

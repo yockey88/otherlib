@@ -97,6 +97,35 @@ namespace other {
     }
   }
 
+  bool subsystem_registry::profile_includes_scripting(const std::string_view profile_name) {
+    return profile_name == subsystem_profile::kFullProfileName ||
+      profile_name == subsystem_profile::kScriptingProfileName ||
+      profile_name == subsystem_profile::kHeadlessProfileName;
+  }
+
+  bool subsystem_registry::profile_includes_physics(const std::string_view profile_name) {
+    return profile_name == subsystem_profile::kFullProfileName ||
+      profile_name == subsystem_profile::kPhysicsProfileName ||
+      profile_name == subsystem_profile::kHeadlessProfileName;
+  }
+
+  bool subsystem_registry::profile_includes_rendering(const std::string_view profile_name) {
+    return profile_name == subsystem_profile::kFullProfileName ||
+      profile_name == subsystem_profile::kRenderingProfileName;
+  }
+
+  bool subsystem_registry::profile_includes_vm(const std::string_view profile_name) {
+    return profile_name == subsystem_profile::kFullProfileName ||
+      profile_name == subsystem_profile::kScriptingProfileName ||
+      profile_name == subsystem_profile::kHeadlessProfileName;
+  }
+
+  bool subsystem_registry::profile_includes_scene(const std::string_view profile_name) {
+    return profile_name == subsystem_profile::kFullProfileName ||
+      profile_name == subsystem_profile::kScriptingProfileName ||
+      profile_name == subsystem_profile::kHeadlessProfileName;
+  }
+
   std::vector<natural_t> subsystem_registry::resolve_dependencies(std::span<const std::string_view> requested_systems, const subsystem_definition& def) {
     std::vector<natural_t> result;
     std::unordered_map<natural_t, bool> visited;

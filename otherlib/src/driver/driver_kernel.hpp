@@ -40,7 +40,7 @@ namespace other {
         : driver_instance(driver_instance) {}
     virtual ~driver_kernel() = default;
 
-    void load_profile();
+    void load_profile(const std::string_view profile_name);
     void initialize();
     void tick(double dt);
     void shutdown();

@@ -53,12 +53,8 @@ namespace other {
   }
 
   void network_system::tick(driver_kernel* kernel, double dt) {
-    if (net_context != nullptr) {
-      net_context->io_context.poll();
-      if (net_context->io_context.stopped()) {
-        net_context->io_context.restart();
-      }
-    }
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    net_context->io_context.poll();
 
     auto msg_opt = net_context->net_thread_message_bus.receive_message();
     if (msg_opt.has_value()) {
@@ -535,6 +531,9 @@ namespace other {
     session_connect_to_response response = other_message_spec::parse<session_connect_to_response>(data);
     if (response.ack_nack == 0x01) {
       CORE_LOG_INFO("Connected to session [{}] successfully.", response.session_id);
+    } else {
+      CORE_LOG_ERROR("Failed to connect to session at [{}]", response.session_id);
+      return;
     }
 
     auto& scenes = kernel->get_core_system<scene_system>();
@@ -777,12 +776,11 @@ namespace other {
       return;
     }
 
-    CORE_LOG_DEBUG("Acknowledgment received for message {}", acked_header);
     itr->timer.cancel();
 
-    if (itr->handler.handle_msg) {
+    if (ackmsg.ack_nack == 0x01 && itr->handler.handle_msg) {
       CORE_LOG_TRACE("Invoking acknowledgment callback for message {}", acked_header);
-      itr->handler.handle_msg(acked_header, msg.data);
+      itr->handler.handle_msg(acked_header, ackmsg.extra_data);
     }
     ack_list.pending_acks.erase(itr);
   }
@@ -808,7 +806,7 @@ namespace other {
   void network_system::handle_control_pong(driver_kernel* kernel, message&& msg) {
     control_pong pong_msg = other_message_spec::parse<control_pong>(msg.data);
     if (pong_msg.session_id == 0) {
-      // clear_timeout(net_context->netw_thread_heartbeat_timeout_id);
+      clear_timeout(net_context->netw_thread_heartbeat_timeout_id);
     }
     /// else handle real session
     else {

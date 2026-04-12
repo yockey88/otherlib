@@ -19,6 +19,7 @@ namespace other {
   }
 
   void input_driver_system::tick(driver_kernel* kernel, double dt) {
+    subsystem<input_system>::get()->update();
   }
 
   void input_driver_system::shutdown(driver_kernel* kernel) {

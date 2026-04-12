@@ -65,7 +65,7 @@ namespace other {
 
     const metadata& get_metadata() const { return driver_metadata; }
 
-    void initialize(const command_line& cmd);
+    void initialize(const command_line& cmd, const subsystem_registry& registry);
     virtual void run();
     void shutdown();
 

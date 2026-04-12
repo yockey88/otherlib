@@ -22,14 +22,16 @@
 
 namespace other {
 
-  void driver::initialize(const command_line& cmd) {
+  void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
     cmd_line = cmd;
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
 
     driver_kernel_ptr = make_scope<driver_kernel>(this);
-    driver_kernel_ptr->load_profile();
+    driver_kernel_ptr->load_profile(registry.get_current_profile());
+    CORE_LOG_INFO("Registered Subsystems:\n{}", driver_kernel_ptr->list_systems());
+
     driver_kernel_ptr->initialize();
 
     load_client();
@@ -54,7 +56,7 @@ namespace other {
       }
 
       subsystem<input_system>::get()->finalize_frame();
-      if (rendering_enabled()) {
+      if (driver_kernel_ptr->has_core_system<rendering_system>()) {
         driver_kernel_ptr->get_core_system<rendering_system>().render(driver_kernel_ptr.get());
       }
 

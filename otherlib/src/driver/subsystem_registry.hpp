@@ -20,6 +20,12 @@ namespace other {
     void resolve_dependency_list_and_do_initialization(std::span<const std::string_view> requested_systems, const config_table* config);
     void shutdown_all(bool skip_logger);
 
+    static bool profile_includes_scripting(const std::string_view profile_name);
+    static bool profile_includes_physics(const std::string_view profile_name);
+    static bool profile_includes_rendering(const std::string_view profile_name);
+    static bool profile_includes_vm(const std::string_view profile_name);
+    static bool profile_includes_scene(const std::string_view profile_name);
+
     inline const std::string_view get_current_profile() const { return current_profile; }
     const std::vector<natural_t>& get_initialization_order() const { return initialization_order; }
     const std::unordered_map<natural_t, subsystem_definition>& get_registry() const { return registry; }

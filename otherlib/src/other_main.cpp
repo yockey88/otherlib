@@ -15,7 +15,7 @@ using other::command_line;
 using other::config_table;
 using other::exit_code;
 
-exit_code other_main(const command_line& cmd, const config_table& config) {
+exit_code other_main(const command_line& cmd, const config_table& config, const other::subsystem_registry& registry) {
   PROFILE_SECTION("other::main");
   CORE_LOG_INFO("Running Other Runtime [{}]", cmd.config_file);
   auto [driver_instance, driver_name] = other::driver::create(config);
@@ -26,7 +26,7 @@ exit_code other_main(const command_line& cmd, const config_table& config) {
 
   if (driver_instance != nullptr) {
     CORE_LOG_INFO("Running Other Environment driver '{}'", driver_name);
-    driver_instance->initialize(cmd);
+    driver_instance->initialize(cmd, registry);
     driver_instance->run();
     driver_instance->shutdown();
   }
