@@ -118,6 +118,15 @@ namespace other {
       --current_connections;
 
       CORE_LOG_DEBUG("Session [{}] shut down, {} connections still live", id.id, current_connections);
+    } else {
+      if (auto itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.connection_id.connection_number == id.connection_number; });
+          itr != pending_connections.end()) {
+        CORE_LOG_DEBUG("Closing pending connection [{}] session {}", id.connection_number, id.id);
+        pending_connections.erase(itr);
+        --current_connections;
+
+        CORE_LOG_DEBUG("Pending session [{}] shut down, {} connections still live", id.id, current_connections);
+      }
     }
   }
 
@@ -149,7 +158,14 @@ namespace other {
   }
 
   void network_thread::pump_thread() {
+    if (current_state.shutdown_complete) {
+      return;
+    }
+
     net_context->io_context.poll();
+    if (net_context->io_context.stopped()) {
+      net_context->io_context.restart();
+    }
 
     handle_session_closures();
     handle_stream_closures();
@@ -222,7 +238,7 @@ namespace other {
       }
     }
 
-    if (current_state.shutdown_pending && (client_endpoints.size() + udp_bindings.size()) == 0) {
+    if (current_state.shutdown_pending && (pending_connections.size() + client_endpoints.size() + udp_bindings.size()) == 0) {
       if (current_state.shutdown_complete) {
         return;
       }

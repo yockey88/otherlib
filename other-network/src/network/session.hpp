@@ -37,6 +37,9 @@ namespace other {
     void start_initialization();
     void checked_in();
     void check_in();
+    inline bool is_checked_in() const {
+      return state_machine.get_current_state() == network::SESSION_STATE_LAUNCHING;
+    }
 
     void shutdown();
     void finalize();
