@@ -98,6 +98,10 @@ namespace other {
     inline const config_table& configuration() const {
       return config;
     }
+    inline asio::io_context& get_io_context() {
+      OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in driver.");
+      return net_context->io_context;
+    }
 
     /**
      * \todo return reference to thing itself not reference to unique pointer for all functions below
