@@ -31,6 +31,7 @@
 
 #include "driver/acknowledgement_list.hpp"
 #include "driver/application_list.hpp"
+#include "driver/driver_kernel.hpp"
 #include "driver/driver_state_machine.hpp"
 #include "driver/response_list.hpp"
 #include "driver/timer_list.hpp"
@@ -41,21 +42,13 @@
 #include "vm/other_device.hpp"
 
 #include "asset/asset_handler.hpp"
-
+#include "systems/driver_system.hpp"
 
 namespace json = nlohmann;
 
 namespace other {
 
   class driver_thread;
-
-  namespace driver_mounts {
-
-    constexpr inline std::string_view kAssetMount = "assets";
-    constexpr inline std::string_view kSceneMount = "scenes";
-    constexpr inline std::string_view kScriptMount = "scripts";
-
-  }  // namespace driver_mounts
 
   class OTHER_CLASS driver {
    public:
@@ -144,6 +137,26 @@ namespace other {
       return current_mode;
     }
 
+    void request_shutdown();
+
+    void send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding);
+
+    natural_t add_scene_to_scene_graph(const filepath& scene_path);
+    natural_t create_empty_scene(const std::string_view name);
+    natural_t get_id_of_scene(const std::string_view name);
+
+    void open_ui_window(const std::string_view type);
+    void close_ui_window(const std::string_view type);
+    inline scope<driver_ui>& get_ui() {
+      OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
+      return driver_ui_ptr;
+    }
+
+    void push_scene_object_to_context_stack(scene_object* object);
+    scene_object* pop_scene_object_from_context_stack();
+
+    std::string get_driver_info_string(const std::string_view str) const;
+
    protected:
     struct network_context {
       asio::io_context io_context;
@@ -172,6 +185,7 @@ namespace other {
     application_list app_list;
 
     metadata driver_metadata;
+    scope<driver_kernel> driver_kernel_ptr = nullptr;
 
     virtual void on_initialize(const command_line& cmd) = 0;
 
@@ -199,7 +213,6 @@ namespace other {
 
     void catch_signal(int signal);
 
-    void request_shutdown();
     virtual void on_shutdown_request() {}
     virtual void on_shutdown_confirm() {}
 
@@ -214,9 +227,6 @@ namespace other {
     renderer& get_renderer_instance();
 
     filepath get_project_cache();
-
-    void open_ui_window(const std::string_view type);
-    void close_ui_window(const std::string_view type);
 
     inline lua_script& get_envrc_script() {
       OTHER_ASSERT(envrc != nullptr, "Driver environment runtime script is not loaded.");
@@ -341,6 +351,10 @@ namespace other {
     friend void bindings::native_driver_request_shutdown();
     friend native_string bindings::native_driver_get_project_name();
 
+    // std::unordered_map<system_key, driver_system*> custom_systems;
+    // std::array<driver_system*, kNumBuiltinDriverSystems> builtin_systems;
+    // std::array<driver_system*, kNumSystemSlots> active_systems;
+
     struct initialization_state {
     };
     struct shutdown_state {
@@ -414,9 +428,6 @@ namespace other {
     metadata build_metadata();
     void configure_filesystem();
 
-    void push_scene_object_to_context_stack(scene_object* object);
-    scene_object* pop_scene_object_from_context_stack();
-
     virtual void on_push_scene_object(scene_object* object) {}
     virtual void on_pop_scene_object(scene_object* object) {}
 
@@ -424,31 +435,26 @@ namespace other {
     virtual void on_viewport_resize(const glm::vec2& size) {}
     glm::vec2 viewport_size;
 
-    void handle_scene_load_empty_event(const value& data);
-    void handle_scene_load_event(const value& data);
-    void handle_scene_unload_event(const value& data);
-    void handle_scene_info_event(const value& data);
-    void handle_scene_playback_command_event(const value& data);
-    void send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding);
+    // void handle_scene_load_empty_event(const value& data);
+    // void handle_scene_load_event(const value& data);
+    // void handle_scene_unload_event(const value& data);
+    // void handle_scene_info_event(const value& data);
+    // void handle_scene_playback_command_event(const value& data);
 
-    void handle_open_ui_window_event(const value& data);
-    void handle_close_ui_window_event(const value& data);
+    // void handle_open_ui_window_event(const value& data);
+    // void handle_close_ui_window_event(const value& data);
 
-    void handle_list_driver_default_event(const value& data);
-    void handle_list_driver_windows_event(const value& data);
-    void handle_list_driver_files_event(const value& data);
-    void handle_list_driver_scenes_event(const value& data);
-    void handle_list_driver_assets_event(const value& data);
+    // void handle_list_driver_default_event(const value& data);
+    // void handle_list_driver_windows_event(const value& data);
+    // void handle_list_driver_files_event(const value& data);
+    // void handle_list_driver_scenes_event(const value& data);
+    // void handle_list_driver_assets_event(const value& data);
 
-    void handle_object_driver_create_event(const value& data);
-    void handle_object_driver_destroy_event(const value& data);
-    void handle_object_driver_push_event(const value& data);
-    void handle_object_driver_pop_event(const value& data);
-    void handle_object_driver_info_event(const value& data);
-
-    natural_t add_scene_to_scene_graph(const filepath& scene_path);
-    natural_t create_empty_scene(const std::string_view name);
-    natural_t get_id_of_scene(const std::string_view name);
+    // void handle_object_driver_create_event(const value& data);
+    // void handle_object_driver_destroy_event(const value& data);
+    // void handle_object_driver_push_event(const value& data);
+    // void handle_object_driver_pop_event(const value& data);
+    // void handle_object_driver_info_event(const value& data);
 
     void add_live_coroutine(task handle);
     void poll_coroutines();
