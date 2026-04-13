@@ -141,6 +141,10 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::input_system);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::input_system,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger
+);
 
 #endif  // OTHER_CORE_INPUT_INPUT_SYSTEM_HPP

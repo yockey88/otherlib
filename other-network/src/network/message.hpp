@@ -132,6 +132,9 @@ namespace other {
   struct session_connect_to_response : other_message_spec_impl<session_connect_to_response> {
     uint8_t ack_nack = 0;
     integer_t session_id = 0;
+
+    static std::vector<uint8_t> custom_builder(session_connect_to_response* msg);
+    static session_connect_to_response custom_parser(const std::span<const uint8_t> data);
   };
 
   struct session_check_in_response : other_message_spec_impl<session_check_in_response> {

@@ -17,8 +17,6 @@ namespace other {
     void on_initialize(const command_line&) override;
     void on_build_driver_input_map(input_map& map) override;
     void on_viewport_resize(const glm::vec2& size) override;
-
-    void on_initialize_ui(scope<driver_ui>& ui_ptr) override;
     void on_shutdown() override {}
 
     void update_running() override;

@@ -25,12 +25,14 @@
 #include "renderer/ui/unicode.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/asset_system.hpp"
 #include "ui/asset_browser_grid_node.hpp"
 #include "ui/asset_browser_widgets.hpp"
 #include "ui/inspector_widgets.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
+
 
 namespace other {
   namespace ui {
@@ -146,7 +148,8 @@ namespace other {
 
       asset_handler* handler = nullptr;
       if (driver_ptr != nullptr) {
-        handler = driver_ptr->get_asset_manager().get();
+        auto& assets = driver_ptr->get_kernel().get_core_system<asset_system>();
+        handler = assets.get_asset_manager().get();
       }
 
       auto* fs = subsystem<file_system>::get();
@@ -465,7 +468,8 @@ namespace other {
 
         /// \todo is there a better way to do this?
         if (driver_ptr != nullptr) {
-          auto& handler = driver_ptr->get_asset_manager();
+          auto& assets = driver_ptr->get_kernel().get_core_system<asset_system>();
+          auto& handler = assets.get_asset_manager();
           OTHER_ASSERT(handler != nullptr, "Asset handler should not be null");
 
           state = handler->get_asset_state(sel.handler_asset_id);

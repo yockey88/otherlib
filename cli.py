@@ -67,7 +67,6 @@ def run_subprocess(args):
 
 def run_project(out_dir, cfg, name, config_file, args, verbose = False, extra_args=None):
   run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}"]
-  # if verbose:
   run_command.append("--verbose")
   if extra_args:
     run_command.extend(extra_args)

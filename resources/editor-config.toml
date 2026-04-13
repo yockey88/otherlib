@@ -1,8 +1,9 @@
 [application]
+name = "Other Editor"
 metadata = [ 
   { key = "name", value = "Other Editor"}, 
   { key = "description", value = "Other Environment Project Editor"},
-  { key = "author", value = "Other Team"},
+  { key = "author", value = "N/A"},
   { key = "version", value = "0.1.0"} 
 ]
 core-log-level = "debug"

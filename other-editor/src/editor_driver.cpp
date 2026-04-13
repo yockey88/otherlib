@@ -16,11 +16,13 @@
 #include "object/physics_component.hpp"
 #include "object/scene_object.hpp"
 
+#include "driver/systems/scene_system.hpp"
 #include "tools/environment_console.hpp"
 #include "ui/driver_ui.hpp"
 
 #include "project_window.hpp"
 #include "status_window.hpp"
+
 
 namespace other {
 
@@ -56,13 +58,18 @@ namespace other {
     });
     get_event_system()->add_listener("force-load-scene", [this](const value& data) {
       /// capture camera id
-      scene_object& cam_obj = get_active_scene()->get_object("Camera");
+      scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object("Camera");
       camera_obj_id = cam_obj.id;
 
-      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+      camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
       OTHER_ASSERT(cam != nullptr, "Camera component is null");
       cam->camera.sensitivity = 10.0f;
     });
+
+    /// \todo load editor pipeline for debug drawing
+    get_ui()->register_window<ui::project_window>("Project", *get_event_system());
+    get_ui()->register_window<ui::status_window>("Status", *get_event_system(), this);
+    get_ui()->open_window("Status");
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
@@ -105,7 +112,7 @@ namespace other {
   }
 
   void editor_driver::on_viewport_resize(const glm::vec2& size) {
-    auto* active_scene = get_active_scene();
+    auto* active_scene = get_kernel().get_core_system<scene_system>().get_active_scene();
     if (active_scene == nullptr) {
       return;
     }
@@ -117,18 +124,6 @@ namespace other {
     }
   }
 
-  /// \todo load editor pipeline for debug drawing
-
-  void editor_driver::on_initialize_ui(scope<driver_ui>& ui_ptr) {
-    /// register editor windows
-    ui_ptr->register_window<ui::project_window>("Project", *get_event_system());
-    ui_ptr->register_window<ui::status_window>("Status", *get_event_system(), this);
-    ui_ptr->open_window("Status");
-    // ui_ptr->open_window("Project");
-
-    /// register custom project windows
-  }
-
   void editor_driver::update_running() {
     auto* input_sys = subsystem<input_system>::get();
     OTHER_ASSERT(input_sys != nullptr, "Input system is null");
@@ -137,8 +132,8 @@ namespace other {
     float vertical = input_sys->get_action_value("move_vertical");
 
     if (glm::length(move) > 0.01f || glm::abs(vertical) > 0.01f) {
-      scene_object& cam_obj = get_active_scene()->get_object(camera_obj_id);
-      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+      scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);
+      camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
       float speed = 0.1f;
 
       cam->camera.position += cam->camera.forward() * move.y * speed;
@@ -149,8 +144,8 @@ namespace other {
     // gamepad look (right stick)
     glm::vec2 look = input_sys->get_action_value_2d("look");
     if (glm::length(look) > 0.01f) {
-      scene_object& cam_obj = get_active_scene()->get_object(camera_obj_id);
-      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+      scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);
+      camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
       cam->camera.adjust_look_orientation(look.x, look.y);
     }
 
@@ -158,8 +153,8 @@ namespace other {
     if (input_sys->is_action_pressed("orbit_hold")) {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), true);
       glm::vec2 mouse_delta = input_sys->get_mouse_delta();
-      scene_object& cam_obj = get_active_scene()->get_object(camera_obj_id);
-      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+      scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);
+      camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
       cam->camera.adjust_look_orientation(mouse_delta.x * 0.1f, mouse_delta.y * 0.1f);
     } else {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), false);

@@ -46,6 +46,51 @@ namespace other {
       { subsystem_deleter<T>()(std::declval<T*>()) } -> std::same_as<void>;
     };
 
+  /**
+   * List of subsystems
+   *  - arena
+   *  - logger
+   *  - file_system
+   *  - input_system
+   *  - type_database
+   *  - physics_environment
+   *  - renderer_backend
+   *  - scripting_environment
+   *
+   * Profiles:
+   *  - core only: arena, logger, file_system, input_system, type_database
+   *  - rendering environment: core + renderer_backend
+   *  - physics environment: core + physics_environment
+   *  - scripting environment: core + scripting_environment
+   *  - headless environment: core + physics_environment, scripting_environment
+   *  - full: core + physics_environment, renderer_backend, scripting_environment
+   **/
+
+  struct subsystem_profile {
+    constexpr static std::string_view kLogger = "logger";
+    constexpr static std::string_view kArena = "arena";
+    constexpr static std::string_view kFileSystem = "file_system";
+    constexpr static std::string_view kInputSystem = "input_system";
+    constexpr static std::string_view kTypeDatabase = "type_database";
+    constexpr static std::string_view kPhysicsEnvironment = "physics_environment";
+    constexpr static std::string_view kRendererBackend = "renderer_backend";
+    constexpr static std::string_view kScriptingEnvironment = "scripting_environment";
+
+    constexpr static std::string_view kCoreProfileName = "core-profile";
+    constexpr static std::string_view kRenderingProfileName = "rendering-profile";
+    constexpr static std::string_view kPhysicsProfileName = "physics-profile";
+    constexpr static std::string_view kScriptingProfileName = "scripting-profile";
+    constexpr static std::string_view kHeadlessProfileName = "headless-profile";
+    constexpr static std::string_view kFullProfileName = "full-profile";
+
+    constexpr static std::string_view kCoreOnlyProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase };
+    constexpr static std::string_view kRenderingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kRendererBackend };
+    constexpr static std::string_view kPhysicsProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment };
+    constexpr static std::string_view kScriptingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kScriptingEnvironment };
+    constexpr static std::string_view kHeadlessProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kScriptingEnvironment };
+    constexpr static std::string_view kFullProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kRendererBackend, kScriptingEnvironment };
+  };
+
   template <typename T>
   class subsystem {
    public:
@@ -120,10 +165,28 @@ namespace other {
     subsystem& operator=(subsystem&&) = delete;
     subsystem& operator=(const subsystem&) = delete;
   };
+
   template <typename T>
-  T* subsystem<T>::instance = nullptr;
+  inline T* subsystem<T>::instance = nullptr;
   template <typename T>
-  std::mutex subsystem<T>::subsystem_mtx;
+  inline std::mutex subsystem<T>::subsystem_mtx;
+
+  class config_table;
+
+  template <typename T>
+  void initialize_subsystem(const config_table* config) {
+    subsystem<T>::get();
+  }
+
+  using subsystem_initializer = void (*)(const config_table*);
+  using subsystem_shutdown = void (*)();
+  struct subsystem_definition {
+    std::string name;
+    std::span<const std::string_view> depends_on;
+
+    subsystem_initializer initialize_fn = nullptr;
+    subsystem_shutdown shutdown_fn = nullptr;
+  };
 
 }  // namespace other
 
@@ -135,6 +198,17 @@ namespace other {
     static inline subsystem_storage_t<T> storage;                            \
     static T* ptr() { return std::launder(reinterpret_cast<T*>(&storage)); } \
     static void* address() { return reinterpret_cast<void*>(&storage); }     \
+  };
+
+#define OTHER_DEPENDENT_SUBSYSTEM(T, ...)                                    \
+  template <>                                                                \
+  struct other::subsystem_description<T> {                                   \
+    static constexpr size_t size = sizeof(T);                                \
+    static constexpr size_t alignment = alignof(T);                          \
+    static inline subsystem_storage_t<T> storage;                            \
+    static T* ptr() { return std::launder(reinterpret_cast<T*>(&storage)); } \
+    static void* address() { return reinterpret_cast<void*>(&storage); }     \
+    static constexpr std::string_view dependency_names[] = { __VA_ARGS__ };  \
   };
 
 #endif  // OTHER_CORE_SUBSYSTEM_HPP

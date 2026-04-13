@@ -118,6 +118,15 @@ namespace other {
       --current_connections;
 
       CORE_LOG_DEBUG("Session [{}] shut down, {} connections still live", id.id, current_connections);
+    } else {
+      if (auto itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.connection_id.connection_number == id.connection_number; });
+          itr != pending_connections.end()) {
+        CORE_LOG_DEBUG("Closing pending connection [{}] session {}", id.connection_number, id.id);
+        pending_connections.erase(itr);
+        --current_connections;
+
+        CORE_LOG_DEBUG("Pending session [{}] shut down, {} connections still live", id.id, current_connections);
+      }
     }
   }
 
@@ -222,7 +231,7 @@ namespace other {
       }
     }
 
-    if (current_state.shutdown_pending && (client_endpoints.size() + udp_bindings.size()) == 0) {
+    if (current_state.shutdown_pending && (pending_connections.size() + client_endpoints.size() + udp_bindings.size()) == 0) {
       if (current_state.shutdown_complete) {
         return;
       }
@@ -243,7 +252,7 @@ namespace other {
       bus.send_message(std::move(msg));
 
       current_state.shutdown_complete = true;
-      // CORE_LOG_DEBUG("All connections closed, completing network thread shutdown.");
+      CORE_LOG_INFO("Network thread shutdown complete.");
     }
   }
 
@@ -356,6 +365,7 @@ namespace other {
           itr->active_session->socket.close();
         }
       } else {
+        CORE_LOG_ERROR("Error in connection timer: {}", ec.message());
       }
     });
 
@@ -368,14 +378,19 @@ namespace other {
 
       acknowledgement ackmsg;
       ackmsg.acked_header = message_header{ .category = COMMAND, .id = SESSION_CONNECT_TO };
+      ackmsg.ack_nack = 0x01;
+
+      session_connect_to_response response;
+
       if (!ec) {
         CORE_LOG_INFO("Successfully connected to other application at {}", binding_point::write_string(bp));
 
         auto conn_itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.endpoint.ip == bp.ip && conn.endpoint.port == bp.port; });
         OTHER_ASSERT(conn_itr != pending_connections.end(), "Connection not found for endpoint {}", binding_point::write_string(bp));
 
+        conn_itr->active_session->connection_timer.cancel();
         conn_itr->active_session->check_in();
-        ackmsg.ack_nack = 1;
+        response.ack_nack = 0x01;
       } else {
         CORE_LOG_ERROR("Failed to connect to other application at {}: {}", binding_point::write_string(bp), ec.message());
 
@@ -384,9 +399,11 @@ namespace other {
         if (conn_itr != pending_connections.end()) {
           pending_connections.erase(conn_itr);
         }
-        ackmsg.ack_nack = 0;
+
+        response.ack_nack = 0x00;
       }
 
+      ackmsg.extra_data.append_range(response.as_buffer());
       ack_msg.data.append_range(ackmsg.as_buffer());
       bus.send_message(std::move(ack_msg));
     });

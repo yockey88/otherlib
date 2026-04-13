@@ -526,7 +526,11 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::type_database);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::type_database,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger
+);
 
 namespace std {
 

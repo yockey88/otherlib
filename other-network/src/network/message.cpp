@@ -192,6 +192,26 @@ namespace other {
     return msg;
   }
 
+  std::vector<uint8_t> session_connect_to_response::custom_builder(session_connect_to_response* msg) {
+    std::vector<uint8_t> data;
+
+    data.push_back(msg->ack_nack);
+    const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&msg->session_id);
+    data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
+
+    return data;
+  }
+
+  session_connect_to_response session_connect_to_response::custom_parser(const std::span<const uint8_t> data) {
+    OTHER_ASSERT(data.size() >= sizeof(uint8_t) + sizeof(integer_t), "Invalid session connect to response message size");
+
+    session_connect_to_response msg;
+    msg.ack_nack = data[0];
+    msg.session_id = *reinterpret_cast<const integer_t*>(data.data() + sizeof(uint8_t));
+
+    return msg;
+  }
+
   std::vector<uint8_t> session_information_response::custom_builder(session_information_response* msg) {
     std::vector<uint8_t> data;
 

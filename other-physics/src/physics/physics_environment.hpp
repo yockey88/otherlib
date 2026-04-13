@@ -42,6 +42,10 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::physics_environment);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::physics_environment,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger
+);
 
 #endif  // OTHER_PHYSICS_PHYSICS_PHYSICS_ENVIRONMENT_HPP

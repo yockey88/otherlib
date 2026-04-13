@@ -86,6 +86,9 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::arena);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::arena,
+  subsystem_profile::kLogger,
+);
 
 #endif  // OTHER_CORE_MEMORY_ARENA_HPP

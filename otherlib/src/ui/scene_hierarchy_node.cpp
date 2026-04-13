@@ -6,6 +6,7 @@
 #include "renderer/ui/colors.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/scene_system.hpp"
 
 namespace other {
   namespace ui {
@@ -68,7 +69,9 @@ namespace other {
 
       /// get num objects and calculate need height
       ImVec2 size = ImVec2(0, ImGui::GetContentRegionAvail().y / 4.f);
-      auto* active_scene = driver_ptr->get_active_scene();
+
+      auto& scenes = driver_ptr->get_kernel().get_core_system<scene_system>();
+      auto* active_scene = scenes.get_active_scene();
       if (active_scene == nullptr) {
         if (!ImGui::BeginChild("##scene-hierarchy", size)) {
           ImGui::EndChild();

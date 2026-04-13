@@ -74,7 +74,7 @@ namespace other {
     } catch (...) {
     }
 
-    if (!buffer.reading && !buffer.writing) {
+    if (!is_checked_in() || (!buffer.reading && !buffer.writing)) {
       CORE_LOG_DEBUG(" > Session inactive, shutting down immediately");
       thread->report_connection_closed(connection_id, session_id);
     }
