@@ -77,10 +77,7 @@ namespace other {
       tx_channel->push(std::move(shutdown_msg));
     }
 
-    while (!is_in_state(STOPPED)) {
-      std::this_thread::yield();
-    }
-    CORE_LOG_DEBUG("Thread [{}] stopped", thread_name);
+    CORE_LOG_DEBUG("Thread [{}] waiting for shutdown to complete...", thread_name);
   }
 
   void thread::force_shutdown() {
@@ -208,6 +205,8 @@ namespace other {
     } while (checkpoints.running && !stoken.stop_requested());
     if (checkpoints.force_exit) {
       CORE_LOG_WARN("Thread [{}] exiting due to force exit flag", get_thread_name());
+    } else {
+      CORE_LOG_DEBUG("Thread [{}] exiting normally", get_thread_name());
     }
 
     set_current_state(SHUTTING_DOWN);
@@ -216,6 +215,8 @@ namespace other {
     if (checkpoints.error_occurred) {
       /// do something with errors, report them, attempt recovery?, etc...
     }
+
+    set_current_state(STOPPED);
   }
 
   void thread::wait_for_initialization() {

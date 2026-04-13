@@ -37,7 +37,6 @@ namespace other {
   }
 
   void scene_system::shutdown(driver_kernel* kernel) {
-    CORE_LOG_INFO("Shutting down Scene Driver System.");
   }
 
   void scene_system::new_blank_scene(const std::string_view name) {

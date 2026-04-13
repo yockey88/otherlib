@@ -30,6 +30,7 @@ namespace other {
 
     driver_kernel_ptr = make_scope<driver_kernel>(this);
     driver_kernel_ptr->load_profile(registry.get_current_profile());
+    driver_kernel_ptr->load_plugins_from_config(this);
     CORE_LOG_INFO("Registered Subsystems:\n{}", driver_kernel_ptr->list_systems());
 
     driver_kernel_ptr->initialize();

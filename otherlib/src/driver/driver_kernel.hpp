@@ -41,6 +41,7 @@ namespace other {
     virtual ~driver_kernel() = default;
 
     void load_profile(const std::string_view profile_name);
+    void load_plugins_from_config(driver* driver_instance);
     void initialize();
     void tick(double dt);
     void shutdown();
@@ -94,7 +95,7 @@ namespace other {
     void remove_system(driver_system_type type);
 
     template <typename T, typename... Args>
-    T* install_plugin(Args&&... args) {
+    T* install_plugin(const std::string_view name, Args&&... args) {
       static_assert(std::derived_from<T, driver_plugin>, "Installed addon must derive from driver_plugin");
       OTHER_ASSERT(driver_instance != nullptr, "Driver kernel is not associated with a driver.");
       T* addon = arena_allocator<T>{}.allocate(driver_instance, std::forward<Args>(args)...);
@@ -102,13 +103,12 @@ namespace other {
 
       // OTHER_AS
 
-      return static_cast<T*>(install_plugin(addon));
+      return static_cast<T*>(install_plugin(name, addon));
     }
-    driver_system* install_plugin(driver_system* plugin);
+    driver_system* install_plugin(const std::string_view name, driver_system* plugin);
 
+    void shutdown_plugin(driver_system* plugin);
     void remove_plugin(uint32_t id, size_t index);
-    void remove_plugin(const std::string_view name);
-    void remove_plugin(driver_system* plugin);
 
     driver_plugin* get_plugin(uint32_t id, size_t index = 0);
 
@@ -147,6 +147,7 @@ namespace other {
     std::map<size_t, driver_system_type> registered_core_systems;
     std::vector<driver_system_type> system_order;
 
+    std::map<system_key, std::string> plugin_name;
     std::map<system_key, driver_system*> plugin_systems;
     std::array<driver_system*, kNumBuiltinDriverSystems> builtin_systems{};
 

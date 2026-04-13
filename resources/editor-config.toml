@@ -10,6 +10,11 @@ core-log-level = "debug"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
 
+[driver]
+plugins = [
+  { name = "Editor Management Plugin", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" }
+]
+
 [filesystem]
 mounts = [
   { name = "editor-assets", type = "physical", path = "resources/editor-assets" }

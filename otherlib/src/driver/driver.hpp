@@ -273,6 +273,27 @@ extern void destroy_driver(other::driver* instance);
     }
 #endif
 
+#ifdef OTHER_PLUGIN_LIBRARY
+  #define OTHER_PLUGIN(name)                                                                                                                 \
+    extern "C" {                                                                                                                             \
+    OTHER_API const char* other_plugin_name() { return #name; }                                                                              \
+    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) {                                                                     \
+      other::subsystem<other::arena>::set(argv->arena);                                                                                      \
+      other::subsystem<other::logger>::set(argv->logger);                                                                                    \
+      other::subsystem<other::file_system>::set(argv->file_system);                                                                          \
+      other::subsystem<other::input_system>::set(argv->input_system);                                                                        \
+      other::subsystem<other::type_database>::set(argv->type_database);                                                                      \
+      other::subsystem<other::physics_environment>::set(argv->physics_environment);                                                          \
+      other::subsystem<other::renderer_backend>::set(argv->renderer);                                                                        \
+      other::subsystem<other::scripting_environment>::set(argv->scripting_environment);                                                      \
+    }                                                                                                                                        \
+    OTHER_API other::driver* create_driver(const other::config_table* config) { return nullptr; }                                            \
+    OTHER_API void destroy_driver(other::driver* instance) {}                                                                                \
+    OTHER_API other::driver_system* create_plugin(other::driver* driver_ptr) { return other::arena_allocator<name>{}.allocate(driver_ptr); } \
+    OTHER_API void destroy_plugin(name* instance) { other::arena_allocator<name>{}.free(instance); }                                         \
+    }
+#endif
+
 #define OTHER_DRIVER(name)                                                                                       \
   OTHER_PLUGIN(name)                                                                                             \
   extern "C" {                                                                                                   \
