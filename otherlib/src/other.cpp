@@ -56,11 +56,6 @@ namespace other {
     const std::string_view profile = get_subsystem_profile(&config);
     registry.initialize_profile(profile, &config);
 
-    /**
-     * \todo register environment plugins here in subsystem registry.
-     *         - treat environment plugins as subsystems and driver plugins as driver systems
-     **/
-
     if (config.diagnostics.verbose) {
       CORE_LOG_INFO("Initialized subsystems for profile '{}':", profile);
       for (const natural_t id : registry.get_initialization_order()) {
