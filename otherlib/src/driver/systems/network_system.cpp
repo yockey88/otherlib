@@ -100,7 +100,7 @@ namespace other {
       conn_cmd.address = net_context->main_binding_point;
       connect_msg.data.append_range(conn_cmd.as_buffer());
       send_message_and_wait_acknowledgment(
-        kernel, std::move(connect_msg), std::chrono::seconds(1),
+        kernel, std::move(connect_msg), std::chrono::seconds(10),
         message_handler{
           [this, kernel](message_header h, std::span<const uint8_t> d) { on_ack_session_connect_to(kernel, h, d); },
           [this, kernel](message_header h) { on_timeout_session_connect_to(kernel, h); },
@@ -204,6 +204,10 @@ namespace other {
 
     ack_itr->timer.expires_after(timeout);
     ack_itr->timer.async_wait([this, stime = ack.sent_time](const asio::error_code& ec) {
+      if (ec && ec == asio::error::operation_aborted) {
+        return;
+      }
+
       if (!ec) {
         auto itr = std::ranges::find_if(ack_list.pending_acks, [&](const acknowledgement_list::pending_ack& ack) { return ack.sent_time == stime; });
         if (itr == ack_list.pending_acks.end()) {
@@ -782,12 +786,13 @@ namespace other {
     itr->timer.cancel();
     if (ackmsg.ack_nack == 0x01) {
       CORE_LOG_DEBUG("  - ACK");
-      if (itr->handler.handle_msg) {
-        CORE_LOG_TRACE("Invoking acknowledgment callback for message {}", acked_header);
-        itr->handler.handle_msg(acked_header, ackmsg.extra_data);
-      }
     } else {
       CORE_LOG_DEBUG("  - NACK");
+    }
+
+    if (itr->handler.handle_msg) {
+      CORE_LOG_TRACE("Invoking acknowledgment callback for message {}", acked_header);
+      itr->handler.handle_msg(acked_header, ackmsg.extra_data);
     }
   }
 
