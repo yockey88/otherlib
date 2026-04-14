@@ -45,6 +45,7 @@ namespace other {
     /// notification messages
     STREAM_RX_UDP_DATAGRAM,
     SESSION_RX_MESSAGE,
+    NETWORK_THREAD_SHUTDOWN_COMPLETE,
 
     /// control messages
     PING,

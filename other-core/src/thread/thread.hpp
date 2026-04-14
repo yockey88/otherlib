@@ -41,6 +41,7 @@ namespace other {
     void launch();
     void shutdown();
     void force_shutdown();
+    void wait_for_shutdown_complete();
 
     opt<message> receive_message(microseconds timeout = microseconds(100));
     void send_message(message&& msg);
@@ -66,6 +67,8 @@ namespace other {
     virtual void handle_pong(const session_status_response& pong) {}
     virtual void handle_shutdown_request(const session_shutdown_request& shutdown_request) {}
 
+    std::string get_thread_name();
+
    protected:
     enum message_id {
       THREAD_INITIALIZE = 0,
@@ -75,8 +78,6 @@ namespace other {
 
     void set_current_state(state new_state);
     bool is_in_state(state check_state);
-
-    std::string get_thread_name();
 
     void thread_send_message(message&& msg);
 

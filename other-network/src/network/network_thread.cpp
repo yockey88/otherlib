@@ -154,6 +154,14 @@ namespace other {
   void network_thread::on_shutdown() {
     client_endpoints.clear();
     net_context = nullptr;
+
+    message shutdown_msg;
+    shutdown_msg.header = {
+      .category = NOTIFICATION,
+      .id = NETWORK_THREAD_SHUTDOWN_COMPLETE,
+    };
+    bus.send_message(std::move(shutdown_msg));
+
     CORE_LOG_DEBUG("Network thread shutdown complete.");
   }
 
@@ -370,6 +378,10 @@ namespace other {
     });
 
     itr->active_session->socket.async_connect(ep, [this, bp](const asio::error_code& ec) {
+      if (ec && ec == asio::error::operation_aborted) {
+        return;
+      }
+
       message ack_msg;
       ack_msg.header = {
         .category = ACKNOWLEDGEMENT,

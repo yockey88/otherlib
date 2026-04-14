@@ -26,12 +26,14 @@
   #define OTHER_DYNAMIC_DRIVER
 #elif defined(OTHER_APPLICATION) && !defined(OTHER_TEST_ENVIRONMENT)
   #define OTHER_STATIC_DRIVER
+#elif defined(OTHER_PLUGIN_LIBRARY)
+  #define OTHER_PLUGIN_DYNAMIC_LIBRARY
 #else
   #define OTHER_STATIC_LIBRARY
 #endif
 
 #ifdef OTHER_ENVIRONMENT_WINDOWS
-  #ifdef OTHER_CLIENT
+  #if defined(OTHER_CLIENT) || defined(OTHER_PLUGIN_LIBRARY)
     #define OTHER_API __declspec(dllexport)
     #define OTHER_CLASS __declspec(dllexport)
     #define OTHER_ALIGN(x) __declspec(align(x))
