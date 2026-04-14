@@ -756,9 +756,7 @@ namespace other {
   }
 
   void network_system::handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg) {
-    while (net_context->net_thread->get_current_state() != thread::state::STOPPED) {
-      std::this_thread::yield();
-    }
+    net_context->net_thread->wait_for_shutdown_complete();
     CORE_LOG_DEBUG("Network thread has fully stopped.");
 
     net_context->io_context.stop();

@@ -19,6 +19,7 @@ namespace other {
       arg == thread::STARTED ||
       arg == thread::PROCESSING;
   }
+
   class thread_test_thread : public thread {
    public:
     thread_test_thread()
@@ -66,6 +67,8 @@ namespace other {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     thread_ptr->shutdown();
+    thread_ptr->wait_for_shutdown_complete();
+
     EXPECT_EQ(thread_ptr->get_current_state(), thread::STOPPED);
   }
 

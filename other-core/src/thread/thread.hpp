@@ -41,6 +41,7 @@ namespace other {
     void launch();
     void shutdown();
     void force_shutdown();
+    void wait_for_shutdown_complete();
 
     opt<message> receive_message(microseconds timeout = microseconds(100));
     void send_message(message&& msg);

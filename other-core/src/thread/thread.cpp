@@ -89,6 +89,13 @@ namespace other {
     }
   }
 
+  void thread::wait_for_shutdown_complete() {
+    CORE_LOG_DEBUG("Waiting for thread [{}] shutdown to complete...", thread_name);
+    while (!is_in_state(STOPPED)) {
+      std::this_thread::yield();
+    }
+  }
+
   opt<message> thread::receive_message(microseconds timeout) {
     if (timeout.count() == 0 && rx_channel->empty()) {
       return std::nullopt;
