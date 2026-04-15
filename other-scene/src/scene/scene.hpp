@@ -105,8 +105,8 @@ namespace other {
     scene_object& get_object(natural_t id);
     const scene_object& get_object(natural_t id) const;
 
-    scene_object* find_object(const std::string_view name);
-    scene_object* find_object(natural_t id);
+    scene_object* find_object(const std::string_view name) const;
+    scene_object* find_object(natural_t id) const;
 
     size_t get_object_count() const;
 
@@ -175,6 +175,17 @@ namespace other {
       scene_tree::node* node = storage->tree.node_at(id);
       OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       return add_component<T>(node->object, std::forward<Args>(args)...);
+    }
+
+    template <typename T>
+    T* try_get_component(natural_t id) {
+      scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+      if (has_component<T>(node->object)) {
+        return get_component<T>(node->object);
+      } else {
+        return nullptr;
+      }
     }
 
     template <typename T>

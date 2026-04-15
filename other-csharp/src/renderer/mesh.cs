@@ -3,15 +3,27 @@ using System.Collections.Generic;
 
 namespace Other
 {
+  public struct Triangle 
+  {
+    public int Vertex1;
+    public int Vertex2;
+    public int Vertex3;
+
+    public Triangle(int v1, int v2, int v3)
+    {
+      Vertex1 = v1;
+      Vertex2 = v2;
+      Vertex3 = v3;
+    }
+  }
+
   public class Mesh
   {
     private List<float> vertices;
     private List<int> indices;
-    // private List<Triangle> triangles;
-
+    private List<Triangle> triangles;
     private int vertex_count;
-    private int triangle_count;
-    private int index_count;
+    
 
     public List<float> Vertices
     {
@@ -25,13 +37,27 @@ namespace Other
       set { indices = value; }
     }
 
+    public List<Triangle> Triangles
+    {
+      get { return triangles; }
+      set { triangles = value; }
+    }
+
+    public int VertexCount
+    {
+      get { return vertex_count; }
+    }
+    public int TriangleCount
+    {
+      get { return triangles.Count; }
+    }
+
+
     public Mesh()
     {
       vertices = new List<float>();
       indices = new List<int>();
-      vertex_count = 0;
-      triangle_count = 0;
-      index_count = 0;
+      triangles = new List<Triangle>();
     }
 
     public void AddVertex(float x, float y, float z)
@@ -45,12 +71,18 @@ namespace Other
     public void AddIndex(int index)
     {
       indices.Add(index);
-      index_count++;
-
-      if (index_count % 3 == 0)
+      if (indices.Count % 3 == 0)
       {
-        triangle_count++;
+        AddTriangle();
       }
+    }
+
+    private void AddTriangle()
+    {
+      int v1 = indices[indices.Count - 3];
+      int v2 = indices[indices.Count - 2];
+      int v3 = indices[indices.Count - 1];
+      triangles.Add(new Triangle(v1, v2, v3));
     }
   }
 }

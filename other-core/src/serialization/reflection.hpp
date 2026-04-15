@@ -31,25 +31,57 @@ namespace other {
     struct serializable : refl::attr::usage::field {
       std::string_view display_name;
       bool editable = true;
-      serializable() = default;
+      constexpr serializable() = default;
+      explicit constexpr serializable(bool editable) : editable(editable) {}
       explicit constexpr serializable(const std::string_view display_name, bool editable = true)
           : display_name(std::move(display_name)), editable(editable) {}
+    };
+
+    struct native_only : refl::attr::usage::field {
+      constexpr native_only() = default;
+    };
+
+    struct version_tag : refl::attr::usage::field {
+      uint64_t version;
+      constexpr version_tag(uint64_t version) : version(version) {}
     };
 
   }  // namespace attr
 
   struct reflection_data {
+    enum : uint8_t {
+      NONE = 0,
+      SERIALIZABLE = 1 << 0,
+      SCRIPT_VISIBLE = 1 << 1,
+      READ_ONLY = 1 << 2,
+      EDITABLE = 1 << 3,
+      NATIVE_ONLY = 1 << 4,
+    };
+
     struct member {
+      struct param_desc {
+        std::string name;
+        other::value_type type;
+      };
       enum member_type {
         FIELD,
         FUNCTION,
       } type;
 
       size_t size;
+      size_t offset;
       value_type value_type;
 
       std::string name;
       opt<std::string> display_name;
+
+      // attribute flags
+      uint8_t flags = reflection_data::NONE;
+      uint32_t since_version = 0;
+
+      // functions only
+      opt<other::value_type> return_type;
+      std::vector<param_desc> parameters;
 
       std::string get_name() const;
     };
@@ -276,6 +308,9 @@ namespace other {
 
     template <typename T>
       requires reflected_type<T>
+    reflection_data* get_reflection_data();
+    template <typename T>
+      requires reflected_type<T>
     reflection_data* get_reflection_data(const T& value);
 
     bool has_type(const std::string_view type_name) const;
@@ -466,11 +501,23 @@ namespace other {
 
   template <typename T>
     requires reflected_type<T>
+  reflection_data* type_database::get_reflection_data() {
+    auto itr = data_map.find(typeid(T).hash_code());
+    if (itr != data_map.end()) {
+      CORE_LOG_TRACE("Reflection data for type '{}' already exists.", itr->second.type_name);
+      return &itr->second;
+    }
+    CORE_LOG_TRACE("No reflection data for type '{}', generating...", std::string{ refl::reflect<T>().name });
+    return get_reflection_data(T{});
+  }
+
+  template <typename T>
+    requires reflected_type<T>
   reflection_data* type_database::get_reflection_data(const T& value) {
     /// this works because its a template function, so it will be instantiated for each type T
     static const auto refl_data = refl::reflect(value);
     static const std::string refl_type_name = std::string{ refl_data.name };
-    static const uint64_t type_hash = FNV(refl_type_name);
+    static const uint64_t type_hash = typeid(T).hash_code();
 
     {
       auto it = data_map.find(type_hash);
@@ -493,28 +540,50 @@ namespace other {
 
       m.type = reflection_data::member::FIELD;
       m.name = std::string{ member.name };
-      m.display_name = {};
+
       if constexpr (refl::descriptor::is_function(member)) {
         m.type = reflection_data::member::FUNCTION;
-        if constexpr (refl::descriptor::is_property(member)) {
-          if (opt<const char*> friendly_name = refl::descriptor::get_property(member).friendly_name; friendly_name.has_value()) {
-            m.display_name = std::string{ *friendly_name };
-          }
+      }
+
+      using member_t = std::remove_cvref_t<decltype(member(value))>;
+      m.value_type = get_value_type<member_t>();
+      m.size = sizeof(member_t);
+
+      if constexpr (!refl::descriptor::is_function(member)) {
+        /// compute offset via member pointer
+        /// is there a better way to do this?
+        m.offset = reinterpret_cast<size_t>(&(static_cast<T*>(nullptr)->*member.pointer));
+      }
+
+      if constexpr (refl::descriptor::has_attribute<attr::serializable>(member)) {
+        const auto& ser = refl::descriptor::get_attribute<attr::serializable>(member);
+        m.flags |= reflection_data::SERIALIZABLE;
+        m.flags |= ser.editable ?
+          reflection_data::EDITABLE :
+          reflection_data::READ_ONLY;
+
+        if (!ser.display_name.empty()) {
+          m.display_name = ser.display_name;
         }
       }
 
-      using member_t = decltype(member(value));
+      if constexpr (refl::descriptor::has_attribute<attr::native_only>(member)) {
+        m.flags |= reflection_data::NATIVE_ONLY;
+      }
 
-      m.value_type = get_value_type<member_t>();
+      if constexpr (refl::descriptor::has_attribute<attr::version_tag>(member)) {
+        const auto& version = refl::descriptor::get_attribute<attr::version_tag>(member);
+        m.since_version = version.version;
+      }
+
       CORE_LOG_TRACE("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
       if (m.value_type == value_type::USER_TYPE) {
         if constexpr (reflected_type<member_t>) {
-          CORE_LOG_TRACE("    >  reflected member type = {}", std::string{ refl::reflect<member_t>().name });
+          CORE_LOG_TRACE("  - reflected member type = {}", std::string{ refl::reflect<member_t>().name });
         }
       }
-      m.size = sizeof(member_t);
 
-      CORE_LOG_TRACE("Adding member '{}' [{}] of type '{}' to reflection data for '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", it->second.type_name);
+      CORE_LOG_TRACE("  - Adding member '{}' [{}] of type '{}' to reflection data for '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", it->second.type_name);
       it->second.member_descriptors.push_back(m);
     });
 

@@ -7,13 +7,8 @@
 #include <SDL3/SDL_keycode.h>
 
 #include "event/event_system.hpp"
-#include "serialization/reflection.hpp"
-
-#include "physics_world/physics_body.hpp"
-#include "script/scripting_environment.hpp"
 
 #include "object/camera_component.hpp"
-#include "object/physics_component.hpp"
 #include "object/scene_object.hpp"
 
 #include "driver/systems/scene_system.hpp"
@@ -22,7 +17,6 @@
 
 #include "project_window.hpp"
 #include "status_window.hpp"
-
 
 namespace other {
 
@@ -73,7 +67,6 @@ namespace other {
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
-    /// not transparent
     {
       auto* main_ctx = map.find_context("driver-core");
       OTHER_ASSERT(main_ctx != nullptr, "Main context 'driver-core' not found");
