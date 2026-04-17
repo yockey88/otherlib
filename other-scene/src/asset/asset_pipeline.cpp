@@ -53,6 +53,19 @@ namespace other {
     }
   }
 
+  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+    scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(handler);
+    CORE_LOG_DEBUG("Building model source pipeline for model '{}', vertex count {}, index count {}", name, vertices.size(), indices.size());
+    pl->builder = model_importer::build_model_data(name, vertices, indices);
+    return pl;
+  }
+
+  void asset_pipeline::set_asset_data(asset* asset_ptr) {
+    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in set_asset_data");
+    this->asset_ptr = asset_ptr;
+    pipeline_state.success = true;
+  }
+
   void asset_pipeline::start_load(asio::thread_pool& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
     CORE_LOG_DEBUG("Starting load pipeline for asset ID: {}", asset_ptr->id);
 
@@ -89,8 +102,6 @@ namespace other {
   }
 
   void asset_pipeline::poll() {
-    OTHER_ASSERT(on_success_callback != nullptr, "on_success_callback is null in poll");
-    OTHER_ASSERT(on_failure_callback != nullptr, "on_failure_callback is null in poll");
     if (!pipeline_state.loading && !pipeline_state.unloading) {
       return;
     }
@@ -151,7 +162,6 @@ namespace other {
 
   void asset_pipeline::pipeline_complete(asset* asset_ptr) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in pipeline_complete");
-    OTHER_ASSERT(on_success_callback != nullptr, "on_success_callback is null in pipeline_complete");
     CORE_LOG_TRACE("Pipeline complete for asset ID: {}", asset_ptr->id);
 
     if (pipeline_state.loading) {
@@ -166,7 +176,6 @@ namespace other {
   }
 
   void asset_pipeline::pipeline_failed(asset* asset_ptr, const std::string& error_message) {
-    OTHER_ASSERT(on_failure_callback != nullptr, "on_failure_callback is null in pipeline_failed");
     CORE_LOG_TRACE("Pipeline failed for asset ID: {} with error: {}", asset_ptr->id, error_message);
 
     if (pipeline_state.loading) {
@@ -189,23 +198,27 @@ namespace other {
       OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
       OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
       OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
-      OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Model source file does not exist: {}", asset_ptr->load_path.string());
-
-      CORE_LOG_DEBUG("Loading model source from file: {}", asset_ptr->load_path.string());
-      model_builder builder = model_importer::load_model_data(asset_ptr->absolute_path);
-      CORE_LOG_DEBUG("Model source data loaded from file: {}", asset_ptr->load_path.string());
 
       model_source_pipeline* pl = reinterpret_cast<model_source_pipeline*>(pipeline);
       OTHER_ASSERT(pl != nullptr, "Pipeline is null!");
+      if (asset_ptr->path_hash == 0) {
+        asset_ptr->path_hash = FNV(asset_ptr->virtual_path);
+      } else {
+        OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Model source file does not exist: {}", asset_ptr->load_path.string());
+        CORE_LOG_DEBUG("Loading model source from file: {}", asset_ptr->load_path.string());
 
-      if (builder.vertices.empty() || builder.indices.empty() || builder.submeshes.empty() || builder.nodes.empty()) {
+        model_builder b = model_importer::load_model_data(asset_ptr->absolute_path);
+        CORE_LOG_DEBUG("Model source data loaded from file: {}", asset_ptr->load_path.string());
+        {
+          std::lock_guard lck{ pl->mtx };
+          pl->builder = std::move(b);
+        }
+      }
+
+      if (pl->builder.vertices.empty() || pl->builder.indices.empty() || pl->builder.submeshes.empty() || pl->builder.nodes.empty()) {
         (pl->*on_failure)(std::format("Failed to load model source: {} (data invalid)", asset_ptr->load_path.string()));
       } else {
         (pl->*on_success)();
-        {
-          std::lock_guard lck{ pl->mtx };
-          pl->builder = std::move(builder);
-        }
       }
     }
 

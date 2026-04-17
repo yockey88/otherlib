@@ -30,10 +30,6 @@ namespace other {
     static void add_tag_to_object(scene* scene, natural_t id, const std::string_view tag);
     static void remove_tag_from_object(scene* scene, natural_t id, const std::string_view tag);
 
-    static void add_component(scene* scene, natural_t id, const std::string_view name);
-    static void remove_component(scene* scene, natural_t id, const std::string_view name);
-    static bool has_component(scene* scene, natural_t id, const std::string_view name);
-
     /// lua
     /// \todo .NET
     static void attach_dotnet_behavior_to_object(scene* scene_ptr, natural_t id, const std::string_view behavior_type_name);

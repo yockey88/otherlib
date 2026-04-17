@@ -66,7 +66,7 @@ namespace other {
     obj.id = idx;
     obj.name = name;
     live_obj.object = &obj;
-    CORE_LOG_DEBUG("Created script object [{}:{}] with ID {}", name, idx, idx);
+    CORE_LOG_DEBUG(" - created script object [{}:{}] with ID {}", name, idx, idx);
 
     return idx;
   }
@@ -79,17 +79,17 @@ namespace other {
       return;
     }
 
-    CORE_LOG_DEBUG("Destroying script object with ID {}", id);
+    CORE_LOG_DEBUG(" - destroying script object with ID {}", id);
 
     script_object* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
 
     if (obj->dotnet_object != nullptr) {
-      CORE_LOG_DEBUG(" - Destroying .NET object for script object with ID {}", id);
+      CORE_LOG_DEBUG(" - destroying .NET object for script object with ID {}", id);
       detach_dotnet_object(id);
     }
     if (obj->python_object != nullptr) {
-      CORE_LOG_DEBUG(" - Destroying Python object for script object with ID {}", id);
+      CORE_LOG_DEBUG(" - destroying Python object for script object with ID {}", id);
       detach_python_object(id);
     }
     // if (obj->lua_object != nullptr) {

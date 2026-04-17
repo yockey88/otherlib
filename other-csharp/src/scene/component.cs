@@ -25,6 +25,8 @@ namespace Other
     private static readonly Dictionary<Type, ulong> component_ids = new();
     private static readonly Dictionary<FieldKey, FieldInfo> field_maps = new();
 
+    public UInt64 ObjectId => object_id;
+
     protected Component(ulong object_id) 
     {
       this.object_id = object_id;

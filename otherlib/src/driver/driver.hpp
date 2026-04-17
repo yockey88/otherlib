@@ -72,6 +72,8 @@ namespace other {
     static void destroy(const std::string& name, driver* instance);
 
     natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
+    natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    natural_t get_asset_hash(natural_t asset_id) const;
 
     void process_driver_event(driver_event event);
     void request_shutdown();
@@ -79,6 +81,7 @@ namespace other {
 
     std::string get_driver_info_string(const std::string_view str) const;
 
+    void confirm_initialization();
     void confirm_shutdown();
 
     void trigger_event(const std::string& event_name, const value& data = {});
@@ -122,6 +125,7 @@ namespace other {
       OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
       return driver_kernel_ptr->get_core_system<rendering_system>().get_driver_ui();
     }
+    renderer& get_renderer();
 
     inline driver_state current_driver_state() const {
       return state_machine.get_current_state();
@@ -158,14 +162,9 @@ namespace other {
 
    protected:
     virtual void on_initialize(const command_line& cmd) = 0;
+    virtual void on_initialization_confirm() {}
     virtual void on_update() {}
-    virtual void update_initializing() {
-      OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized in update_initializing.");
-      if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
-        CORE_LOG_DEBUG("No network role, skipping initialization wait.");
-        process_driver_event(driver_event::DRIVER_EVENT_READY);
-      }
-    }
+    virtual void update_initializing() {}
     virtual void update_running() {}
     virtual void update_shutting_down() {}
     virtual void on_shutdown() = 0;
@@ -209,6 +208,7 @@ namespace other {
     filepath get_project_cache();
 
     void update();
+    void render();
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 

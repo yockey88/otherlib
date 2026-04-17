@@ -116,7 +116,6 @@ namespace other {
       PROFILE_SECTION("model_importer::load_model_data");
 
       /// \todo read import settings from config file or environment
-      /// config_table& config = subsystem<config_manager>::get()->get_config("renderer");
 
       model_builder builder;
       OTHER_ASSERT(std::filesystem::exists(file_path), "Model file does not exist: {}", file_path.string());
@@ -138,6 +137,7 @@ namespace other {
       PROFILE_SECTION("model_importer::build_model_data--from-vertices");
 
       model_builder builder;
+      builder.name = name;
 
       builder.vertices = vertices;
       builder.indices = indices;

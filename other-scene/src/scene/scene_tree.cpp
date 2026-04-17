@@ -108,7 +108,7 @@ namespace other {
     scene_ptr->register_object(new_node->object, name, world_position);
     ++num_objects;
 
-    CORE_LOG_DEBUG("Created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
+    CORE_LOG_DEBUG(" - created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
     return *new_node->object;
   }
 

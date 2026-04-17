@@ -38,6 +38,11 @@ namespace other {
     driver_kernel_ptr->initialize();
 
     load_client();
+
+    if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
+      on_shutdown_confirm();
+      process_driver_event(driver_event::DRIVER_EVENT_READY);
+    }
   }
 
   void driver::run() {
@@ -47,26 +52,7 @@ namespace other {
     do {
       MARK_NAMED_FRAME("driver_main_loop");
       update();
-
-      switch (current_driver_state()) {
-        case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
-        case driver_state::DRIVER_STATE_RUNNING: update_running(); break;
-        case driver_state::DRIVER_STATE_SHUTTING_DOWN: update_shutting_down(); break;
-        case driver_state::DRIVER_STATE_STOPPED: break;
-        default:
-          OTHER_ASSERT(false, "Driver in unknown state {}", current_driver_state());
-          break;
-      }
-
-      subsystem<input_system>::get()->finalize_frame();
-      if (driver_kernel_ptr->has_core_system<rendering_system>()) {
-        driver_kernel_ptr->get_core_system<rendering_system>().render(driver_kernel_ptr.get());
-      }
-
-      /// \todo want to wait on asset unload for shutdown
-      // if (shutdown_state.asset_manager_shutdown && shutdown_state.network_thread_shutdown) {
-      //   process_driver_event(driver_event::DRIVER_EVENT_READY);
-      // }
+      render();
     } while (current_driver_state() != driver_state::DRIVER_STATE_STOPPED);
   }
 
@@ -161,6 +147,16 @@ namespace other {
     return driver_kernel_ptr->get_core_system<asset_system>().begin_asset_load(asset_path, on_loaded);
   }
 
+  natural_t driver::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().add_model_source_asset(name, vertices, indices);
+  }
+
+  natural_t driver::get_asset_hash(natural_t asset_id) const {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().get_asset_hash(asset_id);
+  }
+
   void driver::process_driver_event(driver_event event) {
     state_machine.handle_event(event, this);
   }
@@ -240,6 +236,12 @@ namespace other {
     return ss.str();
   }
 
+  void driver::confirm_initialization() {
+    CORE_LOG_DEBUG("Confirming initialization...");
+    on_initialization_confirm();
+    process_driver_event(driver_event::DRIVER_EVENT_READY);
+  }
+
   void driver::confirm_shutdown() {
     CORE_LOG_DEBUG("Confirming shutdown...");
     shutdown_state.network_thread_shutdown = true;
@@ -275,6 +277,14 @@ namespace other {
   scene* driver::get_active_scene() {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<scene_system>().get_active_scene();
+  }
+
+  renderer& driver::get_renderer() {
+    OTHER_ASSERT(rendering_enabled(), "Rendering is not enabled, cannot get renderer.");
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    auto& r = driver_kernel_ptr->get_core_system<rendering_system>().get_renderer();
+    OTHER_ASSERT(r != nullptr, "Renderer is not initialized.");
+    return *r;
   }
 
   driver::metadata driver::build_metadata() {
@@ -402,6 +412,34 @@ namespace other {
     poll_coroutines();
 
     on_update();
+    switch (current_driver_state()) {
+      case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
+      case driver_state::DRIVER_STATE_RUNNING: update_running(); break;
+      case driver_state::DRIVER_STATE_SHUTTING_DOWN: update_shutting_down(); break;
+      case driver_state::DRIVER_STATE_STOPPED: break;
+      default:
+        OTHER_ASSERT(false, "Driver in unknown state {}", current_driver_state());
+        break;
+    }
+
+    subsystem<input_system>::get()->finalize_frame();
+
+    /// \todo want to wait on asset unload for shutdown
+    // if (shutdown_state.asset_manager_shutdown && shutdown_state.network_thread_shutdown) {
+    //   process_driver_event(driver_event::DRIVER_EVENT_READY);
+    // }
+  }
+
+  void driver::render() {
+    if (!rendering_enabled()) {
+      return;
+    }
+    PROFILE_SECTION("driver::render");
+    on_render();
+
+    if (driver_kernel_ptr->has_core_system<rendering_system>()) {
+      driver_kernel_ptr->get_core_system<rendering_system>().render(driver_kernel_ptr.get());
+    }
   }
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
@@ -440,9 +478,6 @@ namespace other {
     scene_table.set_function("set_object_name", &scene_interface::set_object_name);
     scene_table.set_function("add_tag_to_object", &scene_interface::add_tag_to_object);
     scene_table.set_function("remove_tag_from_object", &scene_interface::remove_tag_from_object);
-    scene_table.set_function("add_component_to_object", &scene_interface::add_component);
-    scene_table.set_function("remove_component_from_object", &scene_interface::remove_component);
-    scene_table.set_function("check_if_object_has_component", &scene_interface::has_component);
     scene_table.set_function("attach_dotnet_behavior_to_object", &scene_interface::attach_dotnet_behavior_to_object);
     scene_table.set_function("attach_model_to_object", &scene_interface::attach_model_to_object);
     scene_table.set_function("attach_camera_to_object", &scene_interface::attach_camera_to_object);

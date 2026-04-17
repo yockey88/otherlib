@@ -67,11 +67,11 @@ namespace other {
       glm::vec3 specular_color;
       float specular_reflectivity;
 
+      glm::vec3 emissive_color;
       float emissivity;
-      float transparency;
 
+      float transparency;
       float shininess;
-      float padding;
     };
 
     GPU_ALIGN struct graphics_material_buffer {

@@ -26,9 +26,9 @@ namespace other {
   };
 
   struct scene_object_handle {
-    uint64_t object_id = 0;
+    natural_t scene_id = 0;
+    natural_t object_id = 0;
     uint32_t generation = 0;
-    uint32_t scene_id = 0;
   };
 
   bool validate_handle(const scene* s, scene_object_handle h);

@@ -33,22 +33,18 @@ namespace other {
   }
 
   std::pair<uint64_t, scene*> scene_graph::load_scene(const filepath& scene_path) {
-    /// check if scene already exists
+    OTHER_ASSERT(std::filesystem::exists(scene_path), "Scene file '{}' does not exist.", scene_path.string());
     if (has_scene(scene_path.stem().string())) {
       CORE_LOG_WARN("Scene with name [{}] already exists in the scene graph. Cannot load duplicate scene.", scene_path.stem().string());
-      const scene* existing_scene = g.find_item([&scene_path](const scene& s) {
-        return s.name == scene_path.stem().string();
-      });
+      const scene* existing_scene = g.find_item([&scene_path](const scene& s) { return s.name == scene_path.stem().string(); });
+      OTHER_ASSERT(existing_scene != nullptr, "Scene with name [{}] not found in scene graph after confirming its existence.", scene_path.stem().string());
       return { existing_scene->id, g.ptr_to_node_value(existing_scene->id) };
     }
 
-    scene new_scene = scene::load_scene(scene_path);
-    if (new_scene.id == 0) {
-      return { 0, nullptr };
-    }
-
-    natural_t id = g.add_node(std::move(new_scene));
-    return { id, g.ptr_to_node_value(id) };
+    auto [scene_id, scene_ptr] = create_new_scene(scene_path.stem().string());
+    OTHER_ASSERT(scene_ptr != nullptr, "Failed to create new scene for loading scene file '{}'.", scene_path.string());
+    scene_ptr->script_path = scene_path;
+    return { scene_id, scene_ptr };
   }
 
   void scene_graph::remove_scene(natural_t id) {

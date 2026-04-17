@@ -25,9 +25,12 @@ namespace other {
     void shutdown(driver_kernel* kernel) override;
 
     natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
+    natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     void begin_full_unload();
 
     scope<asset_handler>& get_asset_manager();
+
+    natural_t get_asset_hash(natural_t asset_id) const;
 
    private:
     struct loading_asset {

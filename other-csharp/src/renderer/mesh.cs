@@ -1,88 +1,75 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
 
 namespace Other
 {
-  public struct Triangle 
-  {
-    public int Vertex1;
-    public int Vertex2;
-    public int Vertex3;
-
-    public Triangle(int v1, int v2, int v3)
-    {
-      Vertex1 = v1;
-      Vertex2 = v2;
-      Vertex3 = v3;
-    }
-  }
-
   public class Mesh
   {
-    private List<float> vertices;
-    private List<int> indices;
-    private List<Triangle> triangles;
-    private int vertex_count;
-    
+    private List<Vertex> vertices;
+    private List<Index> indices;
 
-    public List<float> Vertices
+    public string Name { get; set; }
+    public List<Vertex> Vertices
     {
       get { return vertices; }
       set { vertices = value; }
     }
-
-    public List<int> Indices
+    public List<Index> Indices
     {
       get { return indices; }
       set { indices = value; }
     }
-
-    public List<Triangle> Triangles
-    {
-      get { return triangles; }
-      set { triangles = value; }
-    }
-
     public int VertexCount
     {
-      get { return vertex_count; }
+      get { return Vertices.Count; }
     }
-    public int TriangleCount
+    public int IndexCount
     {
-      get { return triangles.Count; }
+      get { return indices.Count; }
     }
 
-
-    public Mesh()
+    public Mesh(string name)
     {
-      vertices = new List<float>();
-      indices = new List<int>();
-      triangles = new List<Triangle>();
+      Name = name;
+
+      vertices = new List<Vertex>();
+      indices = new List<Index>();
     }
 
     public void AddVertex(float x, float y, float z)
     {
-      vertices.Add(x);
-      vertices.Add(y);
-      vertices.Add(z);
-      vertex_count++;
+      AddVertex(new Vec3(x, y, z));
+    }
+    public void AddVertex(Vec3 position)
+    {
+      vertices.Add(new Vertex(position));
+    }
+    public void AddVertex(Vec3 position, Vec3 normal)
+    {
+      vertices.Add(new Vertex(position, normal));
+    }
+    public void AddVertex(Vec3 position, Vec3 normal, Vec3 tangent, Vec3 bitangent)
+    {
+      vertices.Add(new Vertex(position, normal, tangent, bitangent));
+    }
+    public void AddVertex(Vec3 position, Vec3 normal, Vec3 tangent, Vec3 bitangent, Vec2 tex_coords)
+    {
+      vertices.Add(new Vertex(position, normal, tangent, bitangent, tex_coords));
+    }
+    public void AddVertex(Vec3 position, Vec3 normal, Vec3 tangent, Vec3 bitangent, Vec2 tex_coords, IntVec4 bone_ids, Vec4 bone_weights)
+    {
+      vertices.Add(new Vertex(position, normal, tangent, bitangent, tex_coords, bone_ids, bone_weights));
     }
 
-    public void AddIndex(int index)
+    public void AddIndices(int i1, int i2, int i3)
+    {
+      indices.Add(new Index(i1, i2, i3));
+    }
+    public void AddIndex(Index index)
     {
       indices.Add(index);
-      if (indices.Count % 3 == 0)
-      {
-        AddTriangle();
-      }
-    }
-
-    private void AddTriangle()
-    {
-      int v1 = indices[indices.Count - 3];
-      int v2 = indices[indices.Count - 2];
-      int v3 = indices[indices.Count - 1];
-      triangles.Add(new Triangle(v1, v2, v3));
     }
   }
 }

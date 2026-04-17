@@ -51,6 +51,8 @@ namespace other {
 
     void validate_binding_points(dotnet_host& dn_host) {
       PROFILE_SECTION("other::bindings::validate-binding-points");
+      CORE_LOG_DEBUG("Validating native function binding points...");
+
       nbool32 res = dn_host.interop().validate_binding_points();
       if (!res) {
         CORE_LOG_ERROR("One or more native functions failed to bind to managed counterparts.");
@@ -245,14 +247,6 @@ namespace other {
       .bind("SceneSetObjectVisible", bindings::native_scene_set_object_visible);
 
     bindings::binding_context{ dn_host }
-      /// OtherObject
-      .bind("GetObjectID", bindings::native_get_object_id);
-
-    bindings::binding_context{ dn_host }
-      /// Scene Object
-      .bind("GetWorldMatrix", bindings::native_transform_get_world_matrix);
-
-    bindings::binding_context{ dn_host }
       /// Events.
       .bind("EventRegister", bindings::native_event_register)
       .bind("EventTrigger", bindings::native_event_trigger)
@@ -291,6 +285,27 @@ namespace other {
       /// Networking.
       .bind("NetworkIsConnected", bindings::native_network_is_connected)
       .bind("NetworkGetRole", bindings::native_network_get_role);
+
+    bindings::binding_context{ dn_host }
+      /// OtherObject
+      .bind("ValidateObjectHandle", bindings::native_validate_object_handle)
+      .bind("GetObjectID", bindings::native_get_object_id);
+
+    bindings::binding_context{ dn_host }
+      /// Scene Object
+      .bind("GetWorldMatrix", bindings::native_transform_get_world_matrix);
+
+    bindings::binding_context{ dn_host }
+      /// Component Helpers
+      .bind("GetNumVertices", bindings::native_render_component_get_num_vertices)
+      .bind("GetNumIndices", bindings::native_render_component_get_num_indices)
+      .bind("GetMeshName", bindings::native_render_component_get_mesh_name)
+      .bind("GetMaterialName", bindings::native_render_component_get_material_name)
+      .bind("GetActiveMaterialId", bindings::native_render_component_get_active_material_id)
+      .bind("FetchMesh", bindings::native_render_component_fetch_mesh)
+      .bind("UploadMesh", bindings::native_render_component_upload_mesh)
+      .bind("FetchMaterial", bindings::native_material_fetch_material)
+      .bind("UploadMaterial", bindings::native_material_upload_material);
 
     bindings::validate_binding_points(dn_host);
   }
@@ -458,7 +473,8 @@ namespace other {
     void bind_native_types_dotnet(dotnet_host& dn_host) {
       CORE_LOG_DEBUG("Binding native types to .NET");
 
-      dotnet_object* obj = dn_host.instantiate_managed_object("Other.TypeBinder", "Binder");
+      dotnet_object* obj = nullptr;
+      // dn_host.instantiate_managed_object("Other.TypeBinder", "Binder");
 
       bind_dotnet_component<transform>(dn_host, obj);
       bind_dotnet_component<script_component>(dn_host, obj);
@@ -467,7 +483,7 @@ namespace other {
       bind_dotnet_component<light_component>(dn_host, obj);
       bind_dotnet_component<animation_controller>(dn_host, obj);
 
-      dn_host.destroy_managed_object(obj);
+      // dn_host.destroy_managed_object(obj);
     }
 
     void bind_scene_interface(driver* drv) {

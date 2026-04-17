@@ -12,6 +12,8 @@
 #include "core/subsystem.hpp"
 #include "file/filesystem.hpp"
 
+#include "model/model_importer.hpp"
+
 namespace other {
 
   std::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
@@ -119,7 +121,12 @@ namespace other {
   }
 
   natural_t asset_handler::load_asset(const filepath& file_path, load_completion_callback on_complete) {
-    natural_t asset_id = get_next_asset_id();
+    std::string extension = file_path.extension().string();
+    asset::type asset_type = asset::get_type_from_extension(extension);
+    if (asset_type == asset::type::EMPTY) {
+      CORE_LOG_ERROR("Unsupported asset file extension: {}", extension);
+      return 0;
+    }
 
     bool exists = std::filesystem::exists(file_path);
     if (!exists) {
@@ -131,16 +138,11 @@ namespace other {
     natural_t hash = FNV(absolute_path.string());
     if (auto itr = std::ranges::find_if(loaded_assets, [hash](const auto& pair) { return pair.second.path_hash == hash; });
         itr != loaded_assets.end()) {
+      CORE_LOG_WARN("Asset already loaded for path: {}. Returning existing asset ID: {}", file_path.string(), itr->second.id);
       return itr->second.id;
     }
 
-    std::string extension = file_path.extension().string();
-    asset::type asset_type = asset::get_type_from_extension(extension);
-    if (asset_type == asset::type::EMPTY) {
-      CORE_LOG_ERROR("Unsupported asset file extension: {}", extension);
-      return 0;
-    }
-
+    natural_t asset_id = get_next_asset_id();
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
                                                               .pipeline = asset_pipeline::get_asset_pipeline(asset_type, this),
                                                               .loading_asset = asset{
@@ -156,34 +158,76 @@ namespace other {
     OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
 
     auto [state_it, state_inserted] = asset_states.emplace(asset_id, asset_state_machine{});
-    if (!state_inserted) {
-      CORE_LOG_ERROR("Failed to create asset state machine for asset: {}", file_path.string());
-      asset_pipelines.erase(it);
-      return 0;
-    }
+    OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for asset ID: {}", asset_id);
     CORE_LOG_DEBUG("Beginning load for asset ID: {} (Type: {}, Path: {})", asset_id, asset_type, file_path.string());
 
     asset* loading_asset = &it->loading_asset;
     loading_asset->path_hash = hash;
-    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
 
     CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
-    auto itr = std::ranges::find_if(asset_pipelines, [id = loading_asset->id](const auto& a) { return a.loading_asset.id == id; });
-    OTHER_ASSERT(itr != asset_pipelines.end(), "Loading asset not found in asset pipelines");
-
-    itr->pipeline->start_load(
-      thread_pool, &itr->loading_asset,
-      [this, id = itr->loading_asset.id](asset* asset_ptr) {
-        OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load success callback");
-        successful_pipelines.push(id);
-      },
-      [this, id = itr->loading_asset.id](asset* asset_ptr, const std::string& error_msg) {
-        OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load failure callback");
-        failed_pipelines.push(id);
-      }
+    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
+    it->pipeline->start_load(
+      thread_pool, &it->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_load_complete, this),
+      std::bind_front(&asset_handler::notify_asset_load_failed, this)
     );
 
     return asset_id;
+  }
+
+  natural_t asset_handler::load_asset(const std::string_view engine_path, load_completion_callback on_complete) {
+    auto* fs = subsystem<file_system>::get();
+    if (fs == nullptr) {
+      CORE_LOG_ERROR("File system subsystem not available for engine path: {}", engine_path);
+      return 0;
+    }
+
+    if (!fs->file_exists(engine_path)) {
+      CORE_LOG_ERROR("Asset not found in file system: {}", engine_path);
+      return 0;
+    }
+
+    auto file = fs->open(engine_path);
+    if (file == nullptr) {
+      CORE_LOG_ERROR("Failed to open file from file system: {}", engine_path);
+      return 0;
+    }
+
+    return load_asset(file->absolute_path(), std::move(on_complete));
+  }
+
+  natural_t asset_handler::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+    CORE_LOG_DEBUG("Adding model source asset with name: {} (vertex count: {}, index count: {})", name, vertices.size(), indices.size());
+    natural_t model_id = get_next_asset_id();
+
+    auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
+                                                              .pipeline = asset_pipeline::get_model_source_pipeline(this, name, vertices, indices),
+                                                              .loading_asset = {
+                                                                .asset_type = asset::type::MODEL_SOURCE,
+                                                                .id = model_id,
+                                                                .path_hash = 0,
+                                                                .load_path = filepath{},
+                                                                .virtual_path = std::format("{}/{}", default_mount, name),
+                                                                .absolute_path = filepath{},
+                                                              },
+                                                            });
+    OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+
+    auto [state_it, state_inserted] = asset_states.emplace(model_id, asset_state_machine{});
+    OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for model source asset ID: {}", model_id);
+    CORE_LOG_DEBUG("Beginning add_model_source_asset for asset ID: {} (Name: {})", model_id, name);
+
+    asset* loading_asset = &it->loading_asset;
+
+    CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
+    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
+    it->pipeline->start_load(
+      thread_pool, &it->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_load_complete, this),
+      std::bind_front(&asset_handler::notify_asset_load_failed, this)
+    );
+
+    return model_id;
   }
 
   void asset_handler::unload_asset(natural_t asset_id) {
@@ -216,21 +260,11 @@ namespace other {
                                                                 });
     OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
 
-    CORE_LOG_TRACE("Executing unload operation for asset ID: {}", it->second.id);
-    auto itr = std::ranges::find_if(asset_pipelines, [id = it->second.id](const auto& a) { return a.loading_asset.id == id; });
-    OTHER_ASSERT(itr != asset_pipelines.end(), "Unloading asset not found in asset pipelines");
-
     loaded_assets.erase(it);
-    itr->pipeline->start_unload(
-      thread_pool, &itr->loading_asset,
-      [this, id = itr->loading_asset.id](asset* asset_ptr) {
-        OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unload success callback");
-        successful_pipelines.push(id);
-      },
-      [this, id = itr->loading_asset.id](asset* asset_ptr, const std::string& error_msg) {
-        OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unload failure callback");
-        failed_pipelines.push(id);
-      }
+    pl_itr->pipeline->start_unload(
+      thread_pool, &pl_itr->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_load_complete, this),
+      std::bind_front(&asset_handler::notify_asset_load_failed, this)
     );
   }
 
@@ -243,10 +277,16 @@ namespace other {
   }
 
   natural_t asset_handler::get_asset_hash(natural_t asset_id) const {
-    auto it = loaded_assets.find(asset_id);
-    if (it != loaded_assets.end()) {
+    if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.path_hash;
     }
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+        it != asset_pipelines.end()) {
+      if (it->loading_asset.id == asset_id) {
+        return it->loading_asset.path_hash;
+      }
+    }
+
     return 0;
   }
 
@@ -284,6 +324,16 @@ namespace other {
     return nullptr;
   }
 
+  void asset_handler::notify_asset_load_complete(asset* asset_ptr) {
+    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load success callback");
+    successful_pipelines.push(asset_ptr->id);
+  }
+
+  void asset_handler::notify_asset_load_failed(asset* asset_ptr, const std::string& error_message) {
+    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load failure callback");
+    failed_pipelines.push(asset_ptr->id);
+  }
+
   void asset_handler::on_asset_loaded(natural_t id) {
     CORE_LOG_DEBUG("Asset loaded successfully (ID: {})", id);
 
@@ -301,6 +351,7 @@ namespace other {
 
     register_asset_in_filesystem(&itr.first->second);
     state_itr->second.handle_event(asset_event::LOAD_COMPLETED);
+    CORE_LOG_INFO("Asset loaded and registered successfully (ID: {}, Virtual Path: {})", id, itr.first->second.virtual_path);
   }
 
   void asset_handler::on_asset_load_failed(natural_t id) {
@@ -314,7 +365,7 @@ namespace other {
     pending_itr->pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
-    state_itr->second.handle_event(asset_event::ERROR_EVENT);
+    state_itr->second.handle_event(asset_event::LOAD_FAILED);
   }
 
   void asset_handler::on_asset_unloaded(natural_t id) {
@@ -347,28 +398,7 @@ namespace other {
     pending_itr->pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
-    state_itr->second.handle_event(asset_event::ERROR_EVENT);
-  }
-
-  natural_t asset_handler::load_asset(const std::string_view engine_path, load_completion_callback on_complete) {
-    auto* fs = subsystem<file_system>::get();
-    if (fs == nullptr) {
-      CORE_LOG_ERROR("File system subsystem not available for engine path: {}", engine_path);
-      return 0;
-    }
-
-    if (!fs->file_exists(engine_path)) {
-      CORE_LOG_ERROR("Asset not found in file system: {}", engine_path);
-      return 0;
-    }
-
-    auto file = fs->open(engine_path);
-    if (file == nullptr) {
-      CORE_LOG_ERROR("Failed to open file from file system: {}", engine_path);
-      return 0;
-    }
-
-    return load_asset(file->absolute_path(), std::move(on_complete));
+    state_itr->second.handle_event(asset_event::UNLOAD_FAILED);
   }
 
   void asset_handler::register_asset_in_filesystem(const asset* asset_ptr) {

@@ -24,11 +24,14 @@ namespace other {
   }  // namespace detail
 
   enum asset_state {
-    UNLOADED = 0,
-    LOADING,
+    LOADING = 0,
     LOADED,
+
     OUT_OF_DATE,
+    REFRESHING,
+
     UNLOADING,
+    UNLOADED,
 
     ERROR_STATE,
     NUM_STATES = ERROR_STATE,
@@ -38,12 +41,17 @@ namespace other {
     LOAD_REQUESTED = 0,
     LOAD_COMPLETED,
     LOAD_FAILED,
+
     TIMESTAMP_UPDATED,
+    REFRESH_REQUESTED,
+    REFRESH_COMPLETED,
+    REFRESH_FAILED,
+
     UNLOAD_REQUESTED,
     UNLOAD_COMPLETED,
+    UNLOAD_FAILED,
 
-    ERROR_EVENT,
-    NUM_EVENTS = ERROR_EVENT,
+    NUM_EVENTS,
   };
 
   class asset_state_machine : public state_machine<asset_state, asset_event> {
@@ -51,22 +59,22 @@ namespace other {
     asset_state_machine()
         : state_machine<asset_state, asset_event>(asset_state::UNLOADED) {
       add_transition(asset_state::UNLOADED, asset_event::LOAD_REQUESTED, asset_state::LOADING);
+
       add_transition(asset_state::LOADING, asset_event::LOAD_COMPLETED, asset_state::LOADED);
       add_transition(asset_state::LOADING, asset_event::LOAD_FAILED, asset_state::ERROR_STATE);
+
       add_transition(asset_state::LOADED, asset_event::UNLOAD_REQUESTED, asset_state::UNLOADING);
       add_transition(asset_state::LOADED, asset_event::TIMESTAMP_UPDATED, asset_state::OUT_OF_DATE);
-      add_transition(asset_state::OUT_OF_DATE, asset_event::LOAD_REQUESTED, asset_state::LOADING);
-      add_transition(asset_state::UNLOADING, asset_event::UNLOAD_COMPLETED, asset_state::UNLOADED);
+      add_transition(asset_state::LOADED, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING);
 
-      /// all states to error state on error event
-      for (size_t s = 0; s < static_cast<size_t>(asset_state::NUM_STATES); ++s) {
-        add_transition(
-          static_cast<asset_state>(s), asset_event::ERROR_EVENT, asset_state::ERROR_STATE,
-          [](asset_state from, asset_event event, asset_state to, void* data) {
-            CORE_LOG_ERROR("Asset in ERROR_STATE after {}", static_cast<size_t>(from));
-          }
-        );
-      }
+      add_transition(asset_state::OUT_OF_DATE, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING);
+      add_transition(asset_state::OUT_OF_DATE, asset_event::UNLOAD_REQUESTED, asset_state::UNLOADING);
+
+      add_transition(asset_state::REFRESHING, asset_event::REFRESH_COMPLETED, asset_state::LOADED);
+      add_transition(asset_state::REFRESHING, asset_event::REFRESH_FAILED, asset_state::LOADED);
+
+      add_transition(asset_state::UNLOADING, asset_event::UNLOAD_COMPLETED, asset_state::UNLOADED);
+      add_transition(asset_state::UNLOADING, asset_event::UNLOAD_FAILED, asset_state::ERROR_STATE);
     }
     ~asset_state_machine() = default;
   };
@@ -99,6 +107,7 @@ namespace other {
 
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
+    natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     void unload_asset(natural_t asset_id);
 
     /// checks if asset is ready for use
@@ -168,6 +177,9 @@ namespace other {
     friend class asset_pipeline;
 
     asset* find_asset_by_path(const filepath& file_path) const;
+
+    void notify_asset_load_complete(asset* asset_ptr);
+    void notify_asset_load_failed(asset* asset_ptr, const std::string& error_message);
 
     void on_asset_loaded(natural_t id);
     void on_asset_load_failed(natural_t id);

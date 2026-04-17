@@ -8,6 +8,7 @@
 
 #include "core/defines.hpp"
 
+#include "lua/lua_script.hpp"
 #include "renderer/renderer.hpp"
 
 #include "object/component.hpp"
@@ -45,7 +46,7 @@ namespace other {
 
     ~scene();
 
-    void run_lua_file(const filepath& script_path);
+    void run_script_file();
 
     inline scene_storage& get_storage() {
       OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
@@ -126,10 +127,6 @@ namespace other {
     bool object_has_tag(natural_t id, const std::string_view tag) const;
     void add_object_tag(natural_t id, const std::string_view tag);
     void remove_object_tag(natural_t id, const std::string_view tag);
-
-    void add_component_by_name(scene_object* object, const std::string_view component_name);
-    void remove_component_by_name(scene_object* object, const std::string_view component_name);
-    bool has_component_by_name(scene_object* object, const std::string_view component_name) const;
 
     template <typename T>
       requires std::is_base_of_v<component, T>
@@ -259,6 +256,9 @@ namespace other {
     integer_t kNoStreamBinding = -1;
     integer_t update_stream_id = kNoStreamBinding;
 
+    opt<filepath> script_path = std::nullopt;
+    bool script_loaded = false;
+
     bool synchronized = true;
     bool debug_physics_rendering_enabled = false;
 
@@ -271,6 +271,8 @@ namespace other {
       bool operator==(const object_handle& other) const;
     };
     friend class scene_tree;
+
+    void run_lua_file();
 
     scene_object* from_registry_id(entt::entity entity);
 

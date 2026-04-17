@@ -38,18 +38,14 @@ namespace other {
 
     static signal_catcher catcher{ this };
     net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, &catcher));
-
-    bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
-    if (force_disable_network) {
-      CORE_LOG_INFO("Network thread is disabled, skipping network initialization.");
-      return;
-    }
-
     net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
     net_context->net_thread->launch();
     net_context->net_thread_message_bus.register_thread();
 
-    start_network(kernel);
+    bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
+    if (!force_disable_network) {
+      start_network(kernel);
+    }
   }
 
   void network_system::tick(driver_kernel* kernel, double dt) {
@@ -65,6 +61,10 @@ namespace other {
   }
 
   void network_system::shutdown(driver_kernel* kernel) {
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    net_context->net_thread->wait_for_shutdown_complete();
+    net_context->net_thread = nullptr;
+    net_context = nullptr;
   }
 
   void network_system::start_network(driver_kernel* kernel) {
@@ -138,22 +138,20 @@ namespace other {
       response.timer.cancel();
     }
 
-    if (primary_role != NONE) {
-      CORE_LOG_DEBUG("Sending shutdown request to network thread...");
-      message msg;
-      msg.header = {
-        .category = COMMAND,
-        .id = SHUTDOWN_REQUEST,
-      };
+    CORE_LOG_DEBUG("Sending shutdown request to network thread...");
+    message msg;
+    msg.header = {
+      .category = COMMAND,
+      .id = SHUTDOWN_REQUEST,
+    };
 
-      send_message_and_wait_acknowledgment(
-        kernel, std::move(msg), std::chrono::milliseconds(250),
-        message_handler{
-          [this, kernel](message_header h, std::span<const uint8_t> d) { on_ack_shutdown_request_network_thread(kernel, h, d); },
-          [this, kernel](message_header h) { on_timeout_shutdown_request_network_thread(kernel, h); },
-        }
-      );
-    }
+    send_message_and_wait_acknowledgment(
+      kernel, std::move(msg), std::chrono::milliseconds(250),
+      message_handler{
+        [this, kernel](message_header h, std::span<const uint8_t> d) { on_ack_shutdown_request_network_thread(kernel, h, d); },
+        [this, kernel](message_header h) { on_timeout_shutdown_request_network_thread(kernel, h); },
+      }
+    );
   }
 
   void network_system::send_to_network_thread(driver_kernel* kernel, message&& msg) {
@@ -407,6 +405,7 @@ namespace other {
           case STREAM_RX_UDP_DATAGRAM: handle_notification_stream_receive_udp_datagram(kernel, std::move(msg)); break;
           case SESSION_CHECK_IN: handle_notification_session_check_in(kernel, std::move(msg)); break;
           case SESSION_CLOSED: handle_notification_session_closed(kernel, std::move(msg)); break;
+          case NETWORK_THREAD_READY: handle_notification_network_thread_ready(kernel, std::move(msg)); break;
           case NETWORK_THREAD_SHUTDOWN_COMPLETE: handle_notification_network_thread_shutdown_complete(kernel, std::move(msg)); break;
           default:
             CORE_LOG_ERROR("Server received unknown notification message ID {}", msg.header.id);
@@ -757,6 +756,10 @@ namespace other {
 
     CORE_LOG_INFO("Session [{}] closed.", session_id);
     get_driver().on_notification_session_closed(session_id);
+  }
+
+  void network_system::handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg) {
+    get_driver().confirm_initialization();
   }
 
   void network_system::handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg) {

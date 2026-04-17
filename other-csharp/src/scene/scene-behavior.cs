@@ -51,6 +51,15 @@ namespace Other
       return SceneObject.HasComponent<T>();
     }
 
+    protected void AddComponent<T>() 
+      where T : Component
+    {
+      if (SceneObject != null)
+      {
+        SceneObject.AddComponent<T>();
+      }
+    }
+
     protected override void Awake()
     {
       OnAwake();

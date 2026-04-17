@@ -98,7 +98,16 @@ namespace other {
 
     active_scene = project_scene_graph->get_scene(scene_id);
     OTHER_ASSERT(active_scene != nullptr, "Scene with ID {} not found in scene graph.", scene_id);
-    CORE_LOG_DEBUG("Finalizing Scene [{}:{}] Activation.", active_scene->id, active_scene->name);
+    CORE_LOG_DEBUG("Scene [{}:{}] Activation.", active_scene->id, active_scene->name);
+
+    if (active_scene->script_path.has_value() &&
+        /// we can deactivate and reactivate scenes and we don't want to reload the script right now.
+        /// maybe in the future we will want to
+        !active_scene->script_loaded) {
+      CORE_LOG_DEBUG("Active scene has script path '{}', loading scene script.", active_scene->script_path->string());
+      active_scene->run_script_file();
+    }
+
     auto& storage = active_scene->get_storage();
     if (storage.sandbox["OnSceneActivate"].valid()) {
       CORE_LOG_DEBUG("Calling 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
@@ -113,6 +122,10 @@ namespace other {
 
     /// 60 fps fixed update
     /// \todo make fixed update time configurable
+    if (get_driver().get_event_system()->has_event("scene-update")) {
+      get_driver().get_event_system()->cancel_event("scene-update");
+    }
+
     get_driver().get_event_system()->register_timed_event("scene-update", milliseconds(16), true);
     get_driver().get_event_system()->add_listener("scene-update", [this](const value& data) {
       OTHER_ASSERT(active_scene != nullptr, "No active scene in driver during scene update event.");
@@ -126,10 +139,12 @@ namespace other {
   }
 
   void scene_system::synchronize_active_scene(natural_t scene_id) {
-    // bool network_thread_active = net_context->net_thread != nullptr;
-    // if (network_thread_active) {
-    //   network_thread_active = net_context->net_thread->is_running();
-    // }
+    bool network_thread_active = get_driver().network_enabled();
+    /// \todo should we assert instead of return?
+    /// OTHER_ASSERT(get_driver().network_enabled(), "Should not be attempting to synchronize scene because network thread is not active.");
+    if (!network_thread_active) {
+      return;
+    }
 
     // /// if we are a client and are connected to the server send the load command, if we are client and
     // ///  are not connected to a server we still set synchronized to false in case of a connection later

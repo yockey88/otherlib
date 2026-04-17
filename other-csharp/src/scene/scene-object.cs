@@ -64,10 +64,22 @@ namespace Other
       return res;
     }
 
+    public void AddComponent<T>()
+      where T : Component
+    {
+      unsafe
+      {
+        OtherABI.NativeAddComponent(ObjectID, Component.TypeId<T>());
+      }
+    }
+
     public void RemoveComponent<T>()
       where T : Component
     {
-      // OtherABI.NativeRemoveComponent(ObjectID, Fnv.Hash(typeof(T).Name));
+      unsafe
+      {
+        OtherABI.NativeRemoveComponent(ObjectID, Component.TypeId<T>());
+      }
     }
 
     public override void OnStart()
