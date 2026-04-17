@@ -20,26 +20,23 @@ namespace other {
   enum driver_system_type : uint32_t {
     /// network first because we need to create the io context and register the network system so it is accessible
     NETWORK_DRIVER_SYSTEM = 0,
-    /// use IO context from network system to instantiate event system
+    /// group 1
     EVENT_DRIVER_SYSTEM,
+    /// group 2 - might need to use events
     INPUT_DRIVER_SYSTEM,
-    /// VM/asset/scripting/rendering can probably each be launched in any order (or even asynchronously)
-    ///    because scene system depends on all of them
     ASSET_DRIVER_SYSTEM,
+    /// group3 - needs assets, and depends on inputs for certain things
     SCRIPTING_DRIVER_SYSTEM,
     RENDERING_DRIVER_SYSTEM,
+    /// group4 - primary systems managing core objects
     VM_DRIVER_SYSTEM,
-    /// scene system last because it depends on all the others to function properly
     SCENE_DRIVER_SYSTEM,
 
     /// sentinel
     NUM_BUILTIN_DRIVER_SYSTEMS,
 
-    /// plugin range, these will be launched in increasing ID order (unless a specific dependency is specificied in plugin config)
+    /// plugin range [0x1000, 0xFFFF]
     CUSTOM_DRIVER_SYSTEM_ID_START = 0x1000,
-
-    // this range reserved for plugin IDs
-
     CUSTOM_DRIVER_SYSTEM_ID_END = 0xFFFF,
   };
   constexpr static size_t kNumBuiltinDriverSystems = static_cast<size_t>(driver_system_type::NUM_BUILTIN_DRIVER_SYSTEMS);

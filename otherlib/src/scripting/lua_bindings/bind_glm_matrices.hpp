@@ -1,5 +1,5 @@
 /**
- * \file scripting/binding_utils/bind_glm_matrices.hpp
+ * \file scripting/lua_bindings/bind_glm_matrices.hpp
  **/
 #ifndef OTHERLIB_SCRIPTING_BINDING_UTILS_BIND_GLM_MATRICES_HPP
 #define OTHERLIB_SCRIPTING_BINDING_UTILS_BIND_GLM_MATRICES_HPP

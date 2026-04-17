@@ -1,7 +1,7 @@
 /**
- * \file scripting/binding_utils/bind_rendering_types_lua.cpp
+ * \file scripting/lua_bindings/bind_rendering_types_lua.cpp
  **/
-#include "scripting/binding_utils/bind_rendering_types_lua.hpp"
+#include "scripting/lua_bindings/bind_rendering_types_lua.hpp"
 
 #include "renderer/gpu_structs.hpp"
 

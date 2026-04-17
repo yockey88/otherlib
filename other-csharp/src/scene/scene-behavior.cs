@@ -31,13 +31,24 @@ namespace Other
       }
     }
 
-    protected T GetComponent<T>() where T : Core.OtherBehavior
+    protected T GetComponent<T>() 
+      where T : Component
     {
       if (SceneObject == null)
       {
         return null;
       }
       return SceneObject.GetComponent<T>();
+    }
+
+    protected bool HasComponent<T>() 
+      where T : Component
+    {
+      if (SceneObject == null)
+      {
+        return false;
+      }
+      return SceneObject.HasComponent<T>();
     }
 
     protected override void Awake()

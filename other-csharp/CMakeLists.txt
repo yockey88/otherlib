@@ -22,6 +22,7 @@ endif()
 target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/generators/native-function-generator.cs
 
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/exceptions.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/serializable-field.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/debug.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/behavior-descriptor.cs
@@ -35,6 +36,9 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/events.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/time.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/driver.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/fnv.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/type-binder.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/type-database.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/network/network.cs
 
@@ -44,10 +48,12 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui_window.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/inspector.cs
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/components.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/transform_access.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/native-component.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/native-field.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/transform.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-behavior.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/other-abi.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object-handle.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene.cs

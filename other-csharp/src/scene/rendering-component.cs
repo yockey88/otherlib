@@ -1,15 +1,13 @@
 namespace Other
 {
-  public class RenderingComponent
+  public class RenderingComponent : Component
   {
-    ulong object_id;
-
     public Mesh Mesh { get; set; }
     public Material Material { get; set; }
 
     public RenderingComponent(ulong object_id)
+      : base(object_id)
     {
-      this.object_id = object_id;  
     }
   }
 }

@@ -15,12 +15,14 @@
 
 #include "driver/driver_tasks.hpp"
 #include "driver/systems/asset_system.hpp"
-#include "scripting/dotnet_bindings.hpp"
-#include "scripting/lua_bindings.hpp"
+#include "driver/systems/scene_system.hpp"
+#include "scripting/bindings.hpp"
 #include "scripting/scene_interface.hpp"
 #include "vm/other_device.hpp"
 
 namespace other {
+
+  void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
 
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
@@ -169,6 +171,10 @@ namespace other {
       return;
     }
 
+    if (scene* s = get_active_scene(); s != nullptr && s->is_playing()) {
+      s->stop();
+    }
+
     driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
     driver_kernel_ptr->get_core_system<asset_system>().begin_full_unload();
     live_coroutines.clear();
@@ -241,6 +247,11 @@ namespace other {
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
+  void driver::trigger_event(const std::string& event_name, const value& data) {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    driver_kernel_ptr->get_core_system<event_driver_system>().trigger_event(driver_kernel_ptr.get(), event_name, data);
+  }
+
   std::string driver::get_project_name() const {
     return get_metadata().name;
   }
@@ -259,6 +270,11 @@ namespace other {
 
   bool driver::should_auto_play_scenes() const {
     return get_config_value<bool>("application.auto-play-loaded-scenes", true);
+  }
+
+  scene* driver::get_active_scene() {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<scene_system>().get_active_scene();
   }
 
   driver::metadata driver::build_metadata() {
@@ -337,6 +353,10 @@ namespace other {
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
+    do_script_interface_bindings(this);
+    /// lua gets special treatment
+    bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
+
     {
       PROFILE_SECTION("driver::initialize--client-on_initialize");
       on_initialize(cmd_line);
@@ -405,6 +425,73 @@ namespace other {
       } else {
         ++it;
       }
+    }
+  }
+
+  void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver) {
+    PROFILE_SECTION("bind_otherlib_driver_lua_functions");
+    sol::state& lua_state = lua_host.get_lua_state();
+
+    sol::table driver_table = lua_state["__other_native"]["__driver"];
+    sol::table scene_table = lua_state["__other_native"]["__scene_interface"];
+    scene_table.set_function("get_scene_clear_color", &scene_interface::get_scene_clear_color);
+    scene_table.set_function("set_scene_clear_color", &scene_interface::set_scene_clear_color);
+    scene_table.set_function("get_object_name", &scene_interface::get_object_name);
+    scene_table.set_function("set_object_name", &scene_interface::set_object_name);
+    scene_table.set_function("add_tag_to_object", &scene_interface::add_tag_to_object);
+    scene_table.set_function("remove_tag_from_object", &scene_interface::remove_tag_from_object);
+    scene_table.set_function("add_component_to_object", &scene_interface::add_component);
+    scene_table.set_function("remove_component_from_object", &scene_interface::remove_component);
+    scene_table.set_function("check_if_object_has_component", &scene_interface::has_component);
+    scene_table.set_function("attach_dotnet_behavior_to_object", &scene_interface::attach_dotnet_behavior_to_object);
+    scene_table.set_function("attach_model_to_object", &scene_interface::attach_model_to_object);
+    scene_table.set_function("attach_camera_to_object", &scene_interface::attach_camera_to_object);
+    scene_table.set_function("attach_point_light_to_object", &scene_interface::attach_point_light_to_object);
+    scene_table.set_function("attach_directional_light_to_object", &scene_interface::attach_directional_light_to_object);
+
+    driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
+    driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {
+      value val;
+      switch (data.get_type()) {
+        case sol::type::nil: break;
+        case sol::type::boolean:
+          val = value(data.as<bool>());
+          break;
+        case sol::type::number:
+          val = value(data.as<double>());
+          break;
+        case sol::type::string:
+          val = value(data.as<std::string>());
+          break;
+        case sol::type::table: {
+          sol::table tbl = data.as<sol::table>();
+          // val = lua_table_to_value(tbl);
+          CORE_LOG_DEBUG("Lua table to value conversion not yet implemented for driver event data.");
+          return;
+        } break;
+        default:
+          CORE_LOG_WARN("Unsupported data type for event user data: {}", data.get_type());
+          break;
+      }
+      host_driver->get_kernel().get_core_system<event_driver_system>().trigger_event(&host_driver->get_kernel(), event, val);
+    });
+    driver_table.set_function("process_driver_event", [host_driver](driver_event event) {
+      host_driver->process_driver_event(event);
+    });
+
+    /// now we bind dotnet types into lua types by asking the dotnet types to write their descriptor tables
+    auto* scripting_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(scripting_env != nullptr, "scripting_environment is not initialized.");
+
+    auto& dotnet_host = scripting_env->get_dotnet_host();
+    type_cache* types = dotnet_host.get_type_cache();
+    OTHER_ASSERT(types != nullptr, "dotnet_host type cache is null.");
+
+    for (auto& [type_hash, dotnet_type_ptr] : *types) {
+      sol::table type_table = dotnet_type_ptr.create_lua_descriptor(lua_state);
+      CORE_LOG_TRACE("Registering .NET type '{}' in Lua .NET type registry", dotnet_type_ptr.full_name());
+
+      lua_state["__other_native"]["__dotnet_types"][dotnet_type_ptr.full_name()] = type_table;
     }
   }
 

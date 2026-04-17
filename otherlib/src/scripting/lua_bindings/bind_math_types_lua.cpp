@@ -1,7 +1,7 @@
 /**
- * \file scripting/binding_utils/bind_math_types_lua.cpp
+ * \file scripting/lua_bindings/bind_math_types_lua.cpp
  **/
-#include "scripting/binding_utils/bind_math_types_lua.hpp"
+#include "scripting/lua_bindings/bind_math_types_lua.hpp"
 
 #include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -9,8 +9,8 @@
 
 #include "math/definitions.hpp"
 
-#include "scripting/binding_utils/bind_glm_matrices.hpp"
-#include "scripting/binding_utils/bind_glm_vectors.hpp"
+#include "scripting/lua_bindings/bind_glm_matrices.hpp"
+#include "scripting/lua_bindings/bind_glm_vectors.hpp"
 
 namespace other {
 

@@ -5,8 +5,8 @@ namespace Other
 {
   public class SceneObject : Core.OtherObject
   {
-    [NativeFunction("GetComponent")]
-    internal static unsafe delegate*<nint, UInt64, nint, void> NativeGetComponent;
+    [NativeFunction("GetWorldMatrix")]
+    unsafe private static delegate*<UInt64, float*, void> NativeGetWorldMatrix;
 
     private SceneObjectHandle handle;
     public SceneObjectHandle ObjectHandle => handle;
@@ -17,19 +17,58 @@ namespace Other
       handle = new SceneObjectHandle(ObjectID);
     }
 
-    public T AddBehavior<T>() where T : Core.OtherBehavior, new()
+    public Mat4 WorldMatrix
+    {
+      get
+      {
+        unsafe
+        {
+          float* ptr = stackalloc float[16];
+          NativeGetWorldMatrix(handle.Id, ptr);
+          return new Mat4(
+            ptr[0], ptr[1], ptr[2], ptr[3],
+            ptr[4], ptr[5], ptr[6], ptr[7],
+            ptr[8], ptr[9], ptr[10], ptr[11],
+            ptr[12], ptr[13], ptr[14], ptr[15]
+          );
+        }
+      }
+    }
+
+    public T AddBehavior<T>() 
+      where T : Core.OtherBehavior, new()
     {
       T behavior = new T();
       AddBehavior(behavior);
       return behavior;
     }
 
-#nullable enable
-    public T? GetComponent<T>() where T : Core.OtherBehavior
+    public T GetComponent<T>() 
+      where T : Component
     {
-      return Scene.GetComponent<T>(ObjectID);
+      if (!HasComponent<T>())
+      {
+        throw new MissingComponentException($"SceneObject does not have component of type {typeof(T).Name}");
+      }
+      return Activator.CreateInstance(typeof(T), ObjectHandle.Id) as T;
     }
-#nullable disable
+
+    public bool HasComponent<T>()
+      where T : Component
+    {
+      bool res = false;
+      unsafe 
+      {
+        res = OtherABI.NativeHasComponent(ObjectID, Component.TypeId<T>());
+      }
+      return res;
+    }
+
+    public void RemoveComponent<T>()
+      where T : Component
+    {
+      // OtherABI.NativeRemoveComponent(ObjectID, Fnv.Hash(typeof(T).Name));
+    }
 
     public override void OnStart()
     {

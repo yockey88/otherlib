@@ -574,11 +574,13 @@ namespace OtherCsBindings
         ImmutableArray<object> attrs = t!.GetCustomAttributes(true).ToImmutableArray();
         if (attrs == null || attrs.Length == 0)
         {
+          Logger.LogTrace($"No attributes found for type '{t.FullName}'");
           *count = 0;
           return;
         }
 
         *count = attrs.Length;
+        Logger.LogTrace($"Found {attrs.Length} attributes for type '{t.FullName}'");
 
         if (attributes == null)
         {

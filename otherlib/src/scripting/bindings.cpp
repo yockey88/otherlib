@@ -1,12 +1,21 @@
 /**
- * \file scripting/dotnet_bindings.cpp
+ * \file scripting/bindings.cpp
  **/
-#include "scripting/dotnet_bindings.hpp"
+#include "scripting/bindings.hpp"
 
-#include <imgui/imgui.h>
+#include "core/logger.hpp"
+
+#include "script/scripting_environment.hpp"
+
+#include "object/animation_controller.hpp"
+#include "object/light_component.hpp"
+#include "object/script_component.hpp"
+#include "object/transform.hpp"
 
 #include "driver/driver.hpp"
+#include "scripting/binding_descriptor.hpp"
 #include "scripting/dotnet_bindings/component_bindings.hpp"
+#include "scripting/dotnet_bindings/core_bindings.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/dotnet_bindings/environment_api_bindings.hpp"
 #include "scripting/dotnet_bindings/event_bindings.hpp"
@@ -15,8 +24,22 @@
 #include "scripting/dotnet_bindings/scene_bindings.hpp"
 #include "scripting/dotnet_bindings/scene_object_bindings.hpp"
 #include "scripting/dotnet_bindings/ui_bindings.hpp"
+#include "scripting/lua_bindings/bind_math_types_lua.hpp"
+#include "scripting/lua_bindings/bind_rendering_types_lua.hpp"
+#include "scripting/other_abi.hpp"
+#include "scripting/scene_interface.hpp"
+#include "tools/environment_console.hpp"
 
 namespace other {
+  namespace detail {
+
+    void bind_native_types_lua(sol::state& lua_state);
+    void bind_native_types_dotnet(dotnet_host& dn_host);
+    void bind_scene_interface(driver* drv);
+    void bind_abi_functions(dotnet_host& dn_host);
+
+  }  // namespace detail
+
   namespace bindings {
 
     template <typename Fn>
@@ -51,13 +74,12 @@ namespace other {
 
   }  // namespace bindings
 
-  void set_dotnet_native_driver(driver* drv) {
-    detail::set_dotnet_native_driver(drv);
-  }
-
   void bind_otherlib_dotnet_functions(dotnet_host& dn_host) {
     PROFILE_SECTION("other::bind-otherlib-dotnet-functions");
     dn_host.rediscover_binding_points();
+
+    detail::bind_native_types_dotnet(dn_host);
+    detail::bind_abi_functions(dn_host);
 
     bindings::binding_context{ dn_host }
       /// Filesystem.
@@ -224,25 +246,11 @@ namespace other {
 
     bindings::binding_context{ dn_host }
       /// OtherObject
-      .bind("GetObjectID", bindings::native_get_object_id)
-      /// Components.
-      .bind("ComponentAddByName", bindings::native_component_add_by_name)
-      .bind("ComponentRemoveByName", bindings::native_component_remove_by_name)
-      .bind("ComponentHasByName", bindings::native_component_has_by_name);
-
-    // bindings::binding_context{ dn_host }
-    //   /// SceneObject
-    //   .bind("GetComponent", bindings::native_get_component);
+      .bind("GetObjectID", bindings::native_get_object_id);
 
     bindings::binding_context{ dn_host }
-      /// Transform.
-      .bind("TransformGetPosition", bindings::native_transform_get_position)
-      .bind("TransformSetPosition", bindings::native_transform_set_position)
-      .bind("TransformGetRotation", bindings::native_transform_get_rotation)
-      .bind("TransformSetRotation", bindings::native_transform_set_rotation)
-      .bind("TransformGetScale", bindings::native_transform_get_scale)
-      .bind("TransformSetScale", bindings::native_transform_set_scale)
-      .bind("TransformGetWorldMatrix", bindings::native_transform_get_world_matrix);
+      /// Scene Object
+      .bind("GetWorldMatrix", bindings::native_transform_get_world_matrix);
 
     bindings::binding_context{ dn_host }
       /// Events.
@@ -287,4 +295,235 @@ namespace other {
     bindings::validate_binding_points(dn_host);
   }
 
+  void bind_otherlib_lua_functions(lua_host& lua_host) {
+    filepath lua_defs_path = lua_host.retrieve_script_path("global_definitions.lua");
+    filepath lua_bridge_path = lua_host.retrieve_script_path("other_bridge.lua");
+    if (!std::filesystem::exists(lua_defs_path)) {
+      CORE_LOG_ERROR("Lua global definitions script '{}' does not exist.", lua_defs_path.string());
+      return;
+    }
+
+    if (!std::filesystem::exists(lua_bridge_path)) {
+      CORE_LOG_ERROR("Lua bridge script '{}' does not exist.", lua_bridge_path.string());
+      return;
+    }
+
+    sol::state& lua_state = lua_host.get_lua_state();
+    detail::bind_native_types_lua(lua_state);
+
+    lua_state.create_named_table(
+      "__other_native",
+      "__log", lua_state.create_table_with(),
+      "__driver", lua_state.create_table_with(),
+      "__environment_console", lua_state.create_table_with(),
+      "__native_scene", lua_state.create_table_with(),
+      "__scene_interface", lua_state.create_table_with(),
+      "__component_names", lua_state.create_table_with(),
+      "__dotnet_types", lua_state.create_table_with()
+    );
+
+    lua_state.create_named_table(
+      "__lua_bridge_metadata",
+      "__paths", lua_state.create_table_with()
+    );
+
+    sol::table paths_table = lua_state["__lua_bridge_metadata"]["__paths"];
+    paths_table["script_directory"] = lua_host.get_environment_script_directory().string();
+    paths_table["global_definitions"] = lua_defs_path.string();
+    paths_table["other_bridge"] = lua_bridge_path.string();
+
+    CORE_LOG_DEBUG("Loading lua global definitions script '{}'.", lua_defs_path.string());
+    lua_state.script_file(lua_defs_path.string());
+
+    sol::table log_table = lua_state["__other_native"]["__log"];
+    log_table.set_function("send_log_message", [](spdlog::level::level_enum level, const std::string& message, const std::string& source, int line) {
+      other::subsystem<other::logger>::get()->send_log(level, 0, std::format(" [Lua] {} @ ({}:{})", message, source, line));
+    });
+
+    CORE_LOG_DEBUG("Loading lua bridge script '{}'.", lua_bridge_path.string());
+    lua_state.script_file(lua_bridge_path.string());
+  }
+
+  void do_script_interface_bindings(driver* drv) {
+    OTHER_ASSERT(drv != nullptr, "Driver pointer is null in do_script_interface_bindings.");
+
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
+
+    detail::set_dotnet_native_driver(drv);
+    abi::oe_init_abi(drv);
+  }
+
+  void do_script_interface_unbinding() {
+    abi::oe_cleanup_abi();
+  }
+
+  namespace detail {
+
+    template <typename T>
+      requires reflected_type<T>
+    std::string get_native_type_name() {
+      std::string full_name = std::string{ refl::reflect<T>().name };
+      size_t last_scope = full_name.rfind("::");
+      if (last_scope != std::string::npos) {
+        return full_name.substr(last_scope + 2);
+      }
+      return full_name;
+    }
+
+    /// \todo this @p lua_name feels fragile although changing it in the lua code on accident would be immediately obvious so maybe it's fine?
+    template <typename T>
+      requires reflected_type<T>
+    void bind_lua_component(sol::state& lua_state, const std::string_view lua_name) {
+      CORE_LOG_DEBUG(" - binding to Lua: '{}'", get_native_type_name<T>());
+      sol::usertype<T> lua_usertype = lua_state.new_usertype<T>(lua_name);
+      refl::util::for_each(refl::reflect<T>().members, [&](auto member) {
+        if constexpr (!refl::descriptor::is_function(member) && refl::descriptor::has_attribute<attr::serializable>(member)) {
+          using field_t = std::remove_cvref_t<decltype(member(std::declval<T&>()))>;
+          field_t T::* field_ptr = member.pointer;
+          std::string name = std::string{ member.name };
+          lua_usertype.set(name, field_ptr);
+          CORE_LOG_TRACE(" - Bound field '{}' of type [{}]", name, typeid(field_t).name());
+        }
+      });
+
+      /// ensures bound types are registered in the type database
+      reflection_data& _ = type_data_handler<T>::get_reflection_data(T{});
+    }
+
+    template <typename T>
+      requires reflected_type<T>
+    void bind_dotnet_component(dotnet_host& dn_host, dotnet_object* managed_binder) {
+      CORE_LOG_DEBUG(" - binding to .NET: '{}'", get_native_type_name<T>());
+
+      auto desc = make_component_descriptor<T>(get_native_type_name<T>());
+      set_ecs_lifecycle<T>(desc);
+      abi::oe_get_registry().register_component(std::move(desc));
+    }
+
+    void bind_native_types_lua(sol::state& lua_state) {
+      lua_state.new_enum(
+        "log_level",
+        "TRACE", spdlog::level::trace,
+        "DEBUG", spdlog::level::debug,
+        "INFO", spdlog::level::info,
+        "WARN", spdlog::level::warn,
+        "ERROR", spdlog::level::err,
+        "CRITICAL", spdlog::level::critical
+      );
+      lua_state.new_enum(
+        "console_message",
+        "CONSOLE_NONE", CONSOLE_MESSAGE_NONE,
+        "CONSOLE_MESSAGE", CONSOLE_MESSAGE_MESSAGE,
+        "CONSOLE_TRACE", CONSOLE_MESSAGE_TRACE,
+        "CONSOLE_DEBUG", CONSOLE_MESSAGE_DEBUG,
+        "CONSOLE_INFO", CONSOLE_MESSAGE_INFO,
+        "CONSOLE_WARN", CONSOLE_MESSAGE_WARN,
+        "CONSOLE_ERROR", CONSOLE_MESSAGE_ERROR,
+        "CONSOLE_COMMAND", CONSOLE_MESSAGE_COMMAND
+      );
+      lua_state.new_enum(
+        "driver_state",
+        "STOPPED", driver_state::DRIVER_STATE_STOPPED,
+        "INITIALIZING", driver_state::DRIVER_STATE_INITIALIZING,
+        "RUNNING", driver_state::DRIVER_STATE_RUNNING,
+        "PAUSED", driver_state::DRIVER_STATE_PAUSED,
+        "SHUTTING_DOWN", driver_state::DRIVER_STATE_SHUTTING_DOWN,
+        "NUM_DRIVER_STATES", driver_state::NUM_STATES
+      );
+      lua_state.new_enum(
+        "driver_event",
+        "START", driver_event::DRIVER_EVENT_START,
+        "READY", driver_event::DRIVER_EVENT_READY,
+        "PAUSE", driver_event::DRIVER_EVENT_PAUSE,
+        "RESUME", driver_event::DRIVER_EVENT_RESUME,
+        "STOP", driver_event::DRIVER_EVENT_STOP,
+        "NUM_DRIVER_EVENTS", driver_event::NUM_EVENTS
+      );
+
+      bind_linear_algebra_types(lua_state);
+      bind_rendering_types(lua_state);
+
+      /// bind scene components (and other native types)
+      CORE_LOG_DEBUG("Binding native scene components to Lua");
+      bind_lua_component<scene_object>(lua_state, "__native_scene_object");
+      bind_lua_component<transform>(lua_state, "__native_transform_component");
+      bind_lua_component<script_component>(lua_state, "__native_script_component");
+      bind_lua_component<render_component>(lua_state, "__native_render_component");
+      bind_lua_component<camera_component>(lua_state, "__native_camera_component");
+      bind_lua_component<light_component>(lua_state, "__native_light_component");
+      bind_lua_component<animation_controller>(lua_state, "__native_animation_controller_component");
+    }
+
+    void bind_native_types_dotnet(dotnet_host& dn_host) {
+      CORE_LOG_DEBUG("Binding native types to .NET");
+
+      dotnet_object* obj = dn_host.instantiate_managed_object("Other.TypeBinder", "Binder");
+
+      bind_dotnet_component<transform>(dn_host, obj);
+      bind_dotnet_component<script_component>(dn_host, obj);
+      bind_dotnet_component<render_component>(dn_host, obj);
+      bind_dotnet_component<camera_component>(dn_host, obj);
+      bind_dotnet_component<light_component>(dn_host, obj);
+      bind_dotnet_component<animation_controller>(dn_host, obj);
+
+      dn_host.destroy_managed_object(obj);
+    }
+
+    void bind_scene_interface(driver* drv) {
+      OTHER_ASSERT(drv != nullptr, "Driver pointer is null in bind_scene_interface.");
+    }
+
+    void bind_abi_functions(dotnet_host& dn_host) {
+      PROFILE_SECTION("other::bind-abi-functions");
+
+      bindings::binding_context{ dn_host }
+        /// Core.
+        .bind("OeFnvHash", bindings::native_oe_fnv_hash);
+
+      bindings::binding_context{ dn_host }
+        /// Validation.
+        .bind("OeValidateHandle", abi::oe_validate_handle)
+        /// Component management.
+        .bind("OeHasComponent", abi::oe_has_component)
+        .bind("OeAddComponent", abi::oe_add_component)
+        .bind("OeRemoveComponent", abi::oe_remove_component);
+
+      bindings::binding_context{ dn_host }
+        /// Field accessors - Primitives.
+        .bind("OeGetFieldBool", abi::oe_get_field_bool)
+        .bind("OeSetFieldBool", abi::oe_set_field_bool)
+        .bind("OeGetFieldI32", abi::oe_get_field_i32)
+        .bind("OeSetFieldI32", abi::oe_set_field_i32)
+        .bind("OeGetFieldU32", abi::oe_get_field_u32)
+        .bind("OeSetFieldU32", abi::oe_set_field_u32)
+        .bind("OeGetFieldI64", abi::oe_get_field_i64)
+        .bind("OeSetFieldI64", abi::oe_set_field_i64)
+        .bind("OeGetFieldU64", abi::oe_get_field_u64)
+        .bind("OeSetFieldU64", abi::oe_set_field_u64)
+        .bind("OeGetFieldF32", abi::oe_get_field_f32)
+        .bind("OeSetFieldF32", abi::oe_set_field_f32)
+        .bind("OeGetFieldF64", abi::oe_get_field_f64)
+        .bind("OeSetFieldF64", abi::oe_set_field_f64);
+
+      bindings::binding_context{ dn_host }
+        /// Field accessors - Math types.
+        .bind("OeGetFieldVec2", abi::oe_get_field_vec2)
+        .bind("OeSetFieldVec2", abi::oe_set_field_vec2)
+        .bind("OeGetFieldVec3", abi::oe_get_field_vec3)
+        .bind("OeSetFieldVec3", abi::oe_set_field_vec3)
+        .bind("OeGetFieldVec4", abi::oe_get_field_vec4)
+        .bind("OeSetFieldVec4", abi::oe_set_field_vec4)
+        .bind("OeGetFieldQuat", abi::oe_get_field_quat)
+        .bind("OeSetFieldQuat", abi::oe_set_field_quat)
+        .bind("OeGetFieldMat4", abi::oe_get_field_mat4)
+        .bind("OeSetFieldMat4", abi::oe_set_field_mat4);
+
+      bindings::binding_context{ dn_host }
+        /// Field accessors - String.
+        .bind("OeGetFieldString", abi::oe_get_field_string)
+        .bind("OeSetFieldString", abi::oe_set_field_string);
+    }
+
+  }  // namespace detail
 }  // namespace other

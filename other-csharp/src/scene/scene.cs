@@ -42,9 +42,6 @@ namespace Other
     [NativeFunction("SceneSetObjectVisible")]
     internal static unsafe delegate*<UInt64, NativeBool32, void> NativeSetObjectVisible;
 
-    [NativeFunction("SceneGetComponent")]
-    internal static unsafe delegate*<nint, UInt64, UInt32, void> NativeGetComponent;
-
     public static ulong CreateObject(string name, Vec3 position = default)
     {
       unsafe { return NativeCreateObject(name, position.X, position.Y, position.Z); }
@@ -127,25 +124,5 @@ namespace Other
 
     public static bool GetObjectVisible(ulong id) { unsafe { return NativeGetObjectVisible(id); } }
     public static void SetObjectVisible(ulong id, bool visible) { unsafe { NativeSetObjectVisible(id, visible); } }
-
-#nullable enable
-    // -- Components
-    public static T? GetComponent<T>(ulong object_id) where T : Core.OtherBehavior
-    {
-      string component_name = typeof(T).FullName!;
-
-      T? component = null;
-      unsafe
-      {
-        IntPtr result_ptr = IntPtr.Zero;
-        // NativeGetComponent((nint)component_name, object_id, (UInt32)MarshalMode.ManagedToNativeIn, &result_ptr);
-        if (result_ptr != IntPtr.Zero)
-        {
-          return OtherMemory.MarshalPointer<T>(result_ptr)!;
-        }
-      }
-      return component;
-    }
-#nullable disable
   }
 }

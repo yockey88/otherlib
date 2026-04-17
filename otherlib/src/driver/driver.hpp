@@ -30,7 +30,6 @@
 #include "driver/systems/network_system.hpp"
 #include "driver/systems/rendering_system.hpp"
 #include "plugin/plugin.hpp"
-#include "scripting/dotnet_bindings.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "ui/driver_ui.hpp"
 #include "vm/other_device.hpp"
@@ -82,11 +81,15 @@ namespace other {
 
     void confirm_shutdown();
 
+    void trigger_event(const std::string& event_name, const value& data = {});
+
     std::string get_project_name() const;
     std::string get_project_description() const;
     std::string get_project_author() const;
     std::string get_project_version() const;
     bool should_auto_play_scenes() const;
+
+    scene* get_active_scene();
 
     inline bool network_enabled() const {
       return !configuration().get_value<bool>("networking.force-disable", false);
