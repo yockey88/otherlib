@@ -112,7 +112,8 @@ namespace other {
 
   TEST_F(asset_tests, simple_async_load) {
     asio::io_context io_context;
-    scope<asset_handler> handler = make_scope<asset_handler>(io_context);
+    event_system events{ io_context };
+    scope<asset_handler> handler = make_scope<asset_handler>(events, io_context);
 
     set_up_mock_rendering_api_and_expect_mesh_creation();
 
@@ -194,7 +195,8 @@ namespace other {
     GTEST_SKIP() << "Skipping omesh test until we have a way to generate them in CI, files are too large to push to git (may have to use github lfs?)";
 
     asio::io_context io_context;
-    scope<asset_handler> handler = make_scope<asset_handler>(io_context);
+    event_system events{ io_context };
+    scope<asset_handler> handler = make_scope<asset_handler>(events, io_context);
 
     set_up_mock_rendering_api_and_expect_mesh_creation();
 

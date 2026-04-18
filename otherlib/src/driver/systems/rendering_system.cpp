@@ -22,9 +22,14 @@ namespace other {
       kernel->get_core_system<event_driver_system>().handle_open_ui_window_event(kernel, val);
     }
 
-    get_driver().get_event_system()->add_listener("viewport.resize", [this](const value& val) {
+    auto& events = *get_driver().get_event_system();
+
+    events.add_listener("viewport.resize", [this](const value& val) {
       handle_viewport_resize_event(val);
     });
+
+    events.register_event("ls.windows");
+    events.add_listener("ls.windows", [this](const value& data) { handle_ls_windows_event(&get_driver().get_kernel(), data); });
   }
 
   void rendering_system::tick(driver_kernel* kernel, double dt) {
@@ -107,6 +112,29 @@ namespace other {
     }
     viewport_size = data;
     get_driver().on_viewport_resize(viewport_size);
+  }
+
+  void rendering_system::handle_ls_windows_event(driver_kernel* kernel, const value& data) {
+    auto& driver_ui_ptr = get_driver().get_ui();
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
+
+    std::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
+    std::vector<std::string> windows = std::span<const std::string_view>(driver_ui::kBuiltinWindowNames.data(), driver_ui::NUM_BUILTIN_WINDOW_TYPES).subspan(1) |
+      std::views::transform([](const std::string_view& name) { return std::string(name); }) |
+      std::views::filter([&open_windows](const std::string& name) { return std::ranges::find(open_windows, name) == open_windows.end(); }) |
+      std::ranges::to<std::vector>();
+
+    std::stringstream ss;
+    ss << "Available Driver UI Windows:\n";
+    for (const auto& window_name : open_windows) {
+      ss << "  - " << window_name << " (open)\n";
+    }
+    for (const auto& window_name : windows) {
+      ss << "  - " << window_name << "\n";
+    }
+    auto& events = get_driver().get_event_system();
+    OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
+    events->trigger_event("console.output", ss.str());
   }
 
 }  // namespace other

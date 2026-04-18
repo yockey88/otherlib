@@ -90,11 +90,10 @@ namespace other {
       }
     }
 
-    events.register_event("ls-driver-default");
-    events.register_event("ls-driver-windows");
-    events.register_event("ls-driver-files");
-    events.register_event("ls-driver-scenes");
-    events.register_event("ls-driver-assets");
+    events.register_event("ls.files");
+    events.add_listener("ls.files", [this](const value& data) { handle_ls_event(&get_driver().get_kernel(), data); });
+    events.register_event("ls.assets");
+    events.add_listener("ls.assets", [this](const value& data) { handle_ls_assets_event(&get_driver().get_kernel(), data); });
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
@@ -153,12 +152,6 @@ namespace other {
     asset_mgr->purge_stores();
   }
 
-  void handle_ls_event(driver_kernel* kernel, const value& data);
-  void handle_ls_files_event(driver_kernel* kernel, const value& data);
-  void handle_ls_windows_event(driver_kernel* kernel, const value& data);
-  void handle_ls_scenes_event(driver_kernel* kernel, const value& data);
-  void handle_ls_assets_event(driver_kernel* kernel, const value& data);
-
   scope<asset_handler>& asset_system::get_asset_manager() {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr;
@@ -182,42 +175,15 @@ namespace other {
     for (auto& [hash, mount] : mounts) {
       std::stringstream ss;
       mount->print(ss);
+      CORE_LOG_DEBUG("Mount: {}", ss.str());
       events->trigger_event("console.output", ss.str());
     }
     for (auto& [hash, file] : files) {
       std::stringstream ss;
       file->print(ss, 1);
+      CORE_LOG_DEBUG("File: {}", ss.str());
       events->trigger_event("console.output", ss.str());
     }
-  }
-
-  void asset_system::handle_ls_windows_event(driver_kernel* kernel, const value& data) {
-    auto& driver_ui_ptr = get_driver().get_ui();
-    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
-
-    std::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
-    std::vector<std::string> windows = std::span<const std::string_view>(driver_ui::kBuiltinWindowNames.data(), driver_ui::NUM_BUILTIN_WINDOW_TYPES).subspan(1) |
-      std::views::transform([](const std::string_view& name) { return std::string(name); }) |
-      std::views::filter([&open_windows](const std::string& name) { return std::ranges::find(open_windows, name) == open_windows.end(); }) |
-      std::ranges::to<std::vector>();
-
-    std::stringstream ss;
-    ss << "Available Driver UI Windows:\n";
-    for (const auto& window_name : open_windows) {
-      ss << "  - " << window_name << " (open)\n";
-    }
-    for (const auto& window_name : windows) {
-      ss << "  - " << window_name << "\n";
-    }
-    auto& events = get_driver().get_event_system();
-    OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
-    events->trigger_event("console.output", ss.str());
-  }
-
-  void asset_system::handle_ls_files_event(driver_kernel* kernel, const value& data) {
-  }
-
-  void asset_system::handle_ls_scenes_event(driver_kernel* kernel, const value& data) {
   }
 
   void asset_system::handle_ls_assets_event(driver_kernel* kernel, const value& data) {

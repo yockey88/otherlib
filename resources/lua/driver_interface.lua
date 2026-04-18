@@ -24,7 +24,7 @@ end
 local function _deduce_list_type(args)
   if #args == 0
   then
-    return "default"
+    return "files"
   elseif #args == 1
   then
     local flag = args[1]
@@ -271,7 +271,7 @@ function _Driver:_parse_open_close_args(cmd_name, args)
 end
 
 function _Driver._parse_list_args(args)
-  local result = { type = "default" }
+  local result = { type = "files" }
   if #args == 0
   then
     return result, true

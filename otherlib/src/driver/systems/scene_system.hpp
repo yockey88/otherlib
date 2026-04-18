@@ -52,6 +52,8 @@ namespace other {
     void handle_scene_unload_event(const value& data);
     void handle_scene_info_event(const value& data);
     void handle_scene_playback_command_event(const value& data);
+
+    void handle_ls_scenes_event(driver_kernel* kernel, const value& data);
   };
 
 }  // namespace other

@@ -46,9 +46,6 @@ namespace other {
     std::deque<loading_asset> loading_asset_ids;
 
     void handle_ls_event(driver_kernel* kernel, const value& data);
-    void handle_ls_files_event(driver_kernel* kernel, const value& data);
-    void handle_ls_windows_event(driver_kernel* kernel, const value& data);
-    void handle_ls_scenes_event(driver_kernel* kernel, const value& data);
     void handle_ls_assets_event(driver_kernel* kernel, const value& data);
   };
 

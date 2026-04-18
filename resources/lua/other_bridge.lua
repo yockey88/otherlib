@@ -124,7 +124,7 @@ function _Meta._driver_interface:_OpenClose(type, args)
     -- Driver.TriggerEvent("open-requested", open_args)
   elseif parsed_args.type == "window"
   then
-    _Meta._driver_interface.TriggerEvent(string.format("%s-driver-ui-window", type), parsed_args.window_identifier)
+    self.TriggerEvent(string.format("%s-driver-ui-window", type), parsed_args.window_identifier)
   end
 end
 
@@ -135,8 +135,9 @@ function _Meta._driver_interface:_List(args)
     return
   end
 
-  local event_name = "ls-driver-" .. parsed_args.type
-  _Meta._driver_interface.TriggerEvent(event_name)
+  local event_name = "ls." .. parsed_args.type
+  print("Triggering event: " .. event_name)
+  self.TriggerEvent(event_name)
 end
 
 function _Meta._driver_interface:_ObjectOpEvent(operation, op_table)

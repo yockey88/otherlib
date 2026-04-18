@@ -60,7 +60,7 @@ namespace other {
 
     template <typename OS>
     void print(OS& os, size_t indent_level = 0) const {
-      os << std::string(indent_level * 2, ' ') << std::format("DIR[{} : {}] : {} ({:#0x})", type, dir_name, abs_path.string(), hash);
+      os << std::string(indent_level * 2, ' ') << std::format("DIR[{} : {}] : {} ({:#0x})", type, dir_name, abs_path.string(), hash) << "\n";
       for (const auto& [hash, child] : children) {
         child->print(os, indent_level + 1);
       }

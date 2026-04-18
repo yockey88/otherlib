@@ -34,6 +34,9 @@ namespace other {
     scene* get_scene(const std::string_view id);
     scene* get_scene(uint64_t id);
 
+    auto begin() { return g.begin(); }
+    auto end() { return g.end(); }
+
    private:
     graph<scene> g = {};
   };

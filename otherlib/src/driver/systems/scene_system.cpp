@@ -29,6 +29,9 @@ namespace other {
 
     events->register_event("scene.scene-activated");
 
+    events->register_event("ls.scenes");
+    events->add_listener("ls.scenes", [this](const value& data) { handle_ls_scenes_event(&get_driver().get_kernel(), data); });
+
     scene_interface::initialize(&get_driver());
   }
 
@@ -347,6 +350,21 @@ namespace other {
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
     }
+  }
+
+  void scene_system::handle_ls_scenes_event(driver_kernel* kernel, const value& data) {
+    auto& events = get_driver().get_event_system();
+    OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
+
+    auto& graph = get_scene_graph();
+
+    std::stringstream ss;
+    ss << "Scenes in Scene Graph:\n";
+    for (const auto& [id, node] : graph) {
+      ss << "  - ID: " << id << ", Name: " << node.value.name << "\n";
+    }
+
+    events->trigger_event("console.output", ss.str());
   }
 
 }  // namespace other
