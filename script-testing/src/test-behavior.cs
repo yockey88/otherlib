@@ -6,14 +6,14 @@ class TestBehavior : SceneBehavior
   protected override void OnAwake()
   {
     Mesh new_mesh = new Mesh("cube");
-    new_mesh.AddVertex(new Vec3(-0.5f, -0.5f, -0.5f), new Vec3(0, 0, -1));
-    new_mesh.AddVertex(new Vec3(0.5f, -0.5f, -0.5f), new Vec3(0, 0, -1));
-    new_mesh.AddVertex(new Vec3(0.5f, 0.5f, -0.5f), new Vec3(0, 0, -1));
-    new_mesh.AddVertex(new Vec3(-0.5f, 0.5f, -0.5f), new Vec3(0, 0, -1));
-    new_mesh.AddVertex(new Vec3(-0.5f, -0.5f, 0.5f), new Vec3(0, 0, 1));
-    new_mesh.AddVertex(new Vec3(0.5f, -0.5f, 0.5f), new Vec3(0, 0, 1));
-    new_mesh.AddVertex(new Vec3(0.5f, 0.5f, 0.5f), new Vec3(0, 0, 1));
-    new_mesh.AddVertex(new Vec3(-0.5f, 0.5f, 0.5f), new Vec3(0, 0, 1));
+    new_mesh.AddVertex(new Vec3(-0.5f, -0.5f, -0.5f), new Vec3(-1f, -1f, -1f));
+    new_mesh.AddVertex(new Vec3(0.5f, -0.5f, -0.5f), new Vec3(1f, -1f, -1f));
+    new_mesh.AddVertex(new Vec3(0.5f, 0.5f, -0.5f), new Vec3(1f, 1f, -1f));
+    new_mesh.AddVertex(new Vec3(-0.5f, 0.5f, -0.5f), new Vec3(-1f, 1f, -1f));
+    new_mesh.AddVertex(new Vec3(-0.5f, -0.5f, 0.5f), new Vec3(-1f, -1f, 1f));
+    new_mesh.AddVertex(new Vec3(0.5f, -0.5f, 0.5f), new Vec3(1f, -1f, 1f));
+    new_mesh.AddVertex(new Vec3(0.5f, 0.5f, 0.5f), new Vec3(1f, 1f, 1f));
+    new_mesh.AddVertex(new Vec3(-0.5f, 0.5f, 0.5f), new Vec3(-1f, 1f, 1f));
 
     new_mesh.AddIndices(0, 1, 2);
     new_mesh.AddIndices(0, 2, 3);
