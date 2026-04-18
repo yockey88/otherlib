@@ -37,6 +37,7 @@ namespace other {
     type asset_type = type::EMPTY;
 
     natural_t id = 0;
+    natural_t parent_id = 0;
 
     /// hash uses absolute path string to avoid issues with relative paths and different working directories
     natural_t path_hash = 0;
@@ -70,7 +71,7 @@ namespace other {
     std::string_view extension;
   };
 
-  constexpr inline size_t kNumAssetExtensions = 18;
+  constexpr inline size_t kNumAssetExtensions = 17;
   constexpr inline std::array<std::string_view, kNumAssetExtensions> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
@@ -97,11 +98,10 @@ namespace other {
     ".oinputmap",  // INPUT_MAP
     ".oeim",       // INPUT_MAP
 
-    ".orp",        // RENDERING_PIPELINE
-    ".opipeline",  // RENDERING_PIPELINE
+    ".orpl",  // RENDERING_PIPELINE
   };
 
-  constexpr inline std::array<asset_extension, kFileExtensions.size()> kAssetExtensions{
+  constexpr inline std::array<asset_extension, kNumAssetExtensions> kAssetExtensions{
     {
       { asset::TEXTURE, ".jpg" },
       { asset::TEXTURE, ".png" },
@@ -124,8 +124,7 @@ namespace other {
       { asset::INPUT_MAP, ".oinputmap" },
       { asset::INPUT_MAP, ".oeim" },
 
-      { asset::RENDERING_PIPELINE, ".orp" },
-      { asset::RENDERING_PIPELINE, ".opipeline" },
+      { asset::RENDERING_PIPELINE, ".orpl" },
     }
   };
 

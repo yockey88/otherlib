@@ -341,13 +341,18 @@ namespace other {
       return local;
     }
 
-    ref<directory> target_dir = get_or_create_mount(components[0]);
+    ref<directory> target_dir = get_or_create_mount(components[0], std::filesystem::absolute(components[0]));
     OTHER_ASSERT(target_dir != nullptr, "Failed to get or create mount '{}' while registering local file '{}'", components[0], path.string());
 
-    components = std::vector<std::string>(components.begin() + 1, components.end());
+    components = components |
+      std::views::drop(1) |
+      std::ranges::to<std::vector>();
+
+    filepath current_abs_path = target_dir->absolute_path();
     for (const auto& comp : components) {
       OTHER_ASSERT(target_dir != nullptr, "Failed to get or create directory '{}' while registering local file '{}'", comp, path.string());
-      target_dir = target_dir->get_or_add_child_directory(comp, filepath(comp));
+      target_dir = target_dir->get_or_add_child_directory(comp, current_abs_path / comp);
+      current_abs_path /= comp;
     }
     OTHER_ASSERT(target_dir != nullptr, "Failed to get or create target directory for local file '{}'", path.string());
 

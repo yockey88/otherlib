@@ -14,10 +14,13 @@
 #include "core/state_machine.hpp"
 #include "event/event_system.hpp"
 
+#include "renderer/pipeline_definition.hpp"
+
 #include "asio/asio/strand.hpp"
 #include "asio/asio/system_executor.hpp"
 #include "asset/asset.hpp"
 #include "asset/asset_pipeline.hpp"
+
 
 namespace other {
   namespace detail {
@@ -115,6 +118,7 @@ namespace other {
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
     natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
+    natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
 
     /// checks if asset is ready for use

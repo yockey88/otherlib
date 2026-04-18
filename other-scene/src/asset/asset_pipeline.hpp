@@ -9,7 +9,8 @@
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
 
-#include "asio/asio/thread_pool.hpp"
+#include "renderer/pipeline_definition.hpp"
+
 #include "asset/asset.hpp"
 
 namespace other {
@@ -36,6 +37,7 @@ namespace other {
     static scope<asset_pipeline> get_asset_pipeline(event_system& events, asset_handler* handler, asset::type type);
     static scope<asset_pipeline> get_model_source_pipeline(event_system& events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     static scope<asset_pipeline> get_scene_pipeline(event_system& events, asset_handler* handler, scene* scene_ptr);
+    static scope<asset_pipeline> get_rendering_pipeline_pipeline(event_system& events, asset_handler* handler, const pipeline_definition& definition);
 
     void set_asset_data(asset* asset_ptr);
     void start_load(executor_t& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);

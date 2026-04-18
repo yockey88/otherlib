@@ -44,6 +44,8 @@ namespace other {
     render_pipeline() = default;
     render_pipeline(pipeline_definition&& def)
         : definition(std::move(def)) {}
+    render_pipeline(const pipeline_definition& def)
+        : definition(def) {}
     virtual ~render_pipeline() = default;
 
     void initialize_pipeline(renderer* renderer_ptr);
