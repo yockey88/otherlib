@@ -36,31 +36,41 @@ namespace other {
     const std::string& name() const { return dir_name; }
     const filepath& absolute_path() const { return abs_path; }
 
-    /// child directory access
     ref<directory> get_child_directory(const std::string_view name) const;
     ref<directory> add_child_directory(const std::string_view name, const filepath& path);
     ref<directory> get_or_add_child_directory(const std::string_view name, const filepath& path);
     bool has_child_directory(const std::string_view name) const;
     bool directory_exists(const std::string_view relative_path) const;
 
-    /// file access
     ref<file_handle> get_file(const std::string_view name) const;
     ref<file_handle> add_file(ref<file_handle> file);
     void remove_file(const std::string_view name);
     void remove_file_by_path(const filepath& path);
     bool has_file(const std::string_view name) const;
 
-    /// find a file by name with optional extension filter
     ref<file_handle> find_file_by_name(const std::string_view name, const std::string_view ext = "") const;
 
-    /// list all immediate children
     std::vector<ref<directory>> child_directories() const;
     std::vector<ref<file_handle>> files() const;
 
-    /// utility to split a path string into its components
     static std::vector<std::string> split_path(const std::string_view path);
 
+    const std::map<natural_t, ref<directory>>& get_children() const { return children; }
+    const std::map<natural_t, ref<file_handle>>& get_files() const { return file_handles; }
+
+    template <typename OS>
+    void print(OS& os, size_t indent_level = 0) const {
+      os << std::string(indent_level * 2, ' ') << std::format("DIR[{} : {}] : {} ({:#0x})", type, dir_name, abs_path.string(), hash);
+      for (const auto& [hash, child] : children) {
+        child->print(os, indent_level + 1);
+      }
+      for (const auto& [hash, file] : file_handles) {
+        file->print(os, indent_level + 1);
+      }
+    }
+
    private:
+    natural_t hash = 0;
     file_type type = file_type::LOCAL;
     std::string dir_name;
     filepath abs_path;

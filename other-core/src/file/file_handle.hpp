@@ -71,6 +71,11 @@ namespace other {
     virtual natural_t read(std::span<uint8_t> buffer, natural_t offset = 0) = 0;
     virtual natural_t write(std::span<const uint8_t> data) = 0;
 
+    template <typename OS>
+    void print(OS& os, size_t indent_level) const {
+      os << std::string(indent_level, ' ') << std::format(" - FILE[{} : {}] : {} ({} bytes)", handle_type, file_name, abs_path.string(), size());
+    }
+
     /// may be null for root-level files
     directory* parent = nullptr;
 

@@ -28,12 +28,6 @@ namespace other {
       get_driver().request_shutdown();
     });
 
-    event_system_ptr->register_event("ls-driver-default");
-    event_system_ptr->register_event("ls-driver-windows");
-    event_system_ptr->register_event("ls-driver-files");
-    event_system_ptr->register_event("ls-driver-scenes");
-    event_system_ptr->register_event("ls-driver-assets");
-
     event_system_ptr->register_event("open-driver-ui-window");
     event_system_ptr->register_event("close-driver-ui-window");
 
@@ -153,51 +147,6 @@ namespace other {
       return;
     }
   }
-
-  // void event_driver_system::handle_list_driver_default_event(driver_kernel* kernel, const value& data) {
-  //   filepath cwd = std::filesystem::current_path();
-  //   std::stringstream ss;
-  //   ss << "Current Working Directory: " << cwd.string() << "\n";
-
-  //   for (auto itr = std::filesystem::directory_iterator(cwd); itr != std::filesystem::directory_iterator(); ++itr) {
-  //     ss << " - " << itr->path().filename().string() << (itr->is_directory() ? " [DIR]" : "") << "\n";
-  //   }
-
-  //   auto& events = get_driver().get_event_system();
-  //   events->trigger_event("console.output", ss.str());
-  // }
-
-  // void event_driver_system::handle_list_driver_windows_event(driver_kernel* kernel, const value& data) {
-  //   auto& driver_ui_ptr = get_driver().get_ui();
-  //   OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
-
-  //   std::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
-  //   std::vector<std::string> windows = std::span<const std::string_view>(driver_ui::kBuiltinWindowNames.data(), driver_ui::NUM_BUILTIN_WINDOW_TYPES).subspan(1) |
-  //     std::views::transform([](const std::string_view& name) { return std::string(name); }) |
-  //     std::views::filter([&open_windows](const std::string& name) { return std::ranges::find(open_windows, name) == open_windows.end(); }) |
-  //     std::ranges::to<std::vector>();
-
-  //   std::stringstream ss;
-  //   ss << "Available Driver UI Windows:\n";
-  //   for (const auto& window_name : open_windows) {
-  //     ss << "  - " << window_name << " (open)\n";
-  //   }
-  //   for (const auto& window_name : windows) {
-  //     ss << "  - " << window_name << "\n";
-  //   }
-  //   auto& events = get_driver().get_event_system();
-  //   OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
-  //   events->trigger_event("console.output", ss.str());
-  // }
-
-  // void event_driver_system::handle_list_driver_files_event(driver_kernel* kernel, const value& data) {
-  // }
-
-  // void event_driver_system::handle_list_driver_scenes_event(driver_kernel* kernel, const value& data) {
-  // }
-
-  // void event_driver_system::handle_list_driver_assets_event(driver_kernel* kernel, const value& data) {
-  // }
 
   // void event_driver_system::handle_object_driver_create_event(driver_kernel* kernel, const value& data) {
   // }

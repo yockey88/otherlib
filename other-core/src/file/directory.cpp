@@ -14,7 +14,7 @@
 namespace other {
 
   directory::directory(event_system& events, const std::string_view name, const filepath& path, file_type type)
-      : type(type), dir_name(name), abs_path(path) {
+      : hash(FNV(name)), type(type), dir_name(name), abs_path(path) {
     CORE_LOG_DEBUG("Creating directory '{}' with absolute path '{}'", dir_name, abs_path.string());
     watcher = file_watcher::make_directory_watcher(events, abs_path.empty() ? dir_name : abs_path, file_watcher::watch_mode::RECURSIVE);
     if (type == file_type::VIRTUAL) {
@@ -46,6 +46,13 @@ namespace other {
   void directory::poll() {
     if (watcher) {
       watcher->poll();
+    }
+
+    for (auto& [hash, child] : children) {
+      child->poll();
+    }
+    for (auto& [hash, file] : file_handles) {
+      file->poll();
     }
   }
 

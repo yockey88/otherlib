@@ -25,7 +25,7 @@ namespace other {
 
     event_system& events = *get_driver().get_event_system();
     auto& network = kernel->get_core_system<network_system>();
-    asset_mgr = make_scope<asset_handler>(events, network.io_context());
+    asset_mgr = make_scope<asset_handler>(events, network.io_context(), driver_mounts::kAssetMount);
 
     CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
     const auto md_mnts = get_driver().configuration().get_raw("filesystem.mounts");
@@ -90,11 +90,19 @@ namespace other {
       }
     }
 
-    asset_mgr->set_default_mount(std::string(driver_mounts::kAssetMount));
+    events.register_event("ls-driver-default");
+    events.register_event("ls-driver-windows");
+    events.register_event("ls-driver-files");
+    events.register_event("ls-driver-scenes");
+    events.register_event("ls-driver-assets");
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
     asset_mgr->update_pipelines();
+
+    auto* fs = subsystem<file_system>::get();
+    OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in asset system tick.");
+    fs->poll_files();
   }
 
   void asset_system::shutdown(driver_kernel* kernel) {
@@ -145,6 +153,12 @@ namespace other {
     asset_mgr->purge_stores();
   }
 
+  void handle_ls_event(driver_kernel* kernel, const value& data);
+  void handle_ls_files_event(driver_kernel* kernel, const value& data);
+  void handle_ls_windows_event(driver_kernel* kernel, const value& data);
+  void handle_ls_scenes_event(driver_kernel* kernel, const value& data);
+  void handle_ls_assets_event(driver_kernel* kernel, const value& data);
+
   scope<asset_handler>& asset_system::get_asset_manager() {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr;
@@ -153,6 +167,60 @@ namespace other {
   natural_t asset_system::get_asset_hash(natural_t asset_id) const {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->get_asset_hash(asset_id);
+  }
+
+  void asset_system::handle_ls_event(driver_kernel* kernel, const value& data) {
+    auto* fs = subsystem<file_system>::get();
+    OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in asset system.");
+
+    auto& events = get_driver().get_event_system();
+    OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
+
+    const auto& mounts = fs->get_all_mounts();
+    const auto& files = fs->get_all_files();
+
+    for (auto& [hash, mount] : mounts) {
+      std::stringstream ss;
+      mount->print(ss);
+      events->trigger_event("console.output", ss.str());
+    }
+    for (auto& [hash, file] : files) {
+      std::stringstream ss;
+      file->print(ss, 1);
+      events->trigger_event("console.output", ss.str());
+    }
+  }
+
+  void asset_system::handle_ls_windows_event(driver_kernel* kernel, const value& data) {
+    auto& driver_ui_ptr = get_driver().get_ui();
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
+
+    std::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
+    std::vector<std::string> windows = std::span<const std::string_view>(driver_ui::kBuiltinWindowNames.data(), driver_ui::NUM_BUILTIN_WINDOW_TYPES).subspan(1) |
+      std::views::transform([](const std::string_view& name) { return std::string(name); }) |
+      std::views::filter([&open_windows](const std::string& name) { return std::ranges::find(open_windows, name) == open_windows.end(); }) |
+      std::ranges::to<std::vector>();
+
+    std::stringstream ss;
+    ss << "Available Driver UI Windows:\n";
+    for (const auto& window_name : open_windows) {
+      ss << "  - " << window_name << " (open)\n";
+    }
+    for (const auto& window_name : windows) {
+      ss << "  - " << window_name << "\n";
+    }
+    auto& events = get_driver().get_event_system();
+    OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
+    events->trigger_event("console.output", ss.str());
+  }
+
+  void asset_system::handle_ls_files_event(driver_kernel* kernel, const value& data) {
+  }
+
+  void asset_system::handle_ls_scenes_event(driver_kernel* kernel, const value& data) {
+  }
+
+  void asset_system::handle_ls_assets_event(driver_kernel* kernel, const value& data) {
   }
 
 }  // namespace other
