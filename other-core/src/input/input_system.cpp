@@ -324,6 +324,18 @@ namespace other {
     return current.mouse.scroll;
   }
 
+  void input_system::set_deadzone(gamepad_axis axis, float dead_zone, int32_t pad_index) {
+    if (pad_index < 0 || pad_index >= static_cast<int32_t>(kMaxGamepads)) {
+      CORE_LOG_WARN("Attempted to set gamepad deadzone for invalid pad index {}.", pad_index);
+      return;
+    }
+    if (axis == gamepad_axis::LEFT_TRIGGER || axis == gamepad_axis::RIGHT_TRIGGER) {
+      map.trigger_dead_zone = dead_zone;
+    } else {
+      map.stick_dead_zone = dead_zone;
+    }
+  }
+
   bool input_system::is_gamepad_connected(int32_t index) const {
     if (index < 0 || index >= static_cast<int32_t>(kMaxGamepads)) {
       return false;

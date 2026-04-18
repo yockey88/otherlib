@@ -3,10 +3,58 @@
  **/
 #include "file/directory.hpp"
 
+#include <algorithm>
+#include <filesystem>
+#include <ranges>
+
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "file/local_file.hpp"
 
 namespace other {
+
+  directory::directory(event_system& events, const std::string_view name, const filepath& path, file_type type)
+      : hash(FNV(name)), type(type), dir_name(name), abs_path(path) {
+    CORE_LOG_DEBUG("Creating directory '{}' with absolute path '{}'", dir_name, abs_path.string());
+    watcher = file_watcher::make_directory_watcher(events, abs_path.empty() ? dir_name : abs_path, file_watcher::watch_mode::RECURSIVE);
+    if (type == file_type::VIRTUAL) {
+      abs_path = name;
+      return;
+    }
+
+    // std::ranges::for_each(std::filesystem::directory_iterator(abs_path), [this, e = &events](const auto& entry) {
+    //   OTHER_ASSERT(e != nullptr, "Event system pointer is null in directory constructor for '{}'", dir_name);
+    //   if (entry.is_directory()) {
+    //     add_child_directory(entry.path().filename().string(), entry.path());
+    //   } else if (entry.is_regular_file()) {
+    //     add_file(make_ref<local_file>(*e, entry.path()));
+    //   }
+    // });
+  }
+
+  std::string directory::to_string() const {
+    return std::format(
+      "Directory:\n - Name: {}\n - Absolute Path: {}\n - Type: {}\n - Num Children: {}\n - Num Files: {}",
+      dir_name,
+      abs_path.string(),
+      type,
+      children.size(),
+      file_handles.size()
+    );
+  }
+
+  void directory::poll() {
+    if (watcher) {
+      watcher->poll();
+    }
+
+    for (auto& [hash, child] : children) {
+      child->poll();
+    }
+    for (auto& [hash, file] : file_handles) {
+      file->poll();
+    }
+  }
 
   ref<directory> directory::get_child_directory(const std::string_view name) const {
     natural_t hash = FNV(name);
@@ -14,6 +62,7 @@ namespace other {
     if (it != children.end()) {
       return it->second;
     }
+
     return nullptr;
   }
 
@@ -27,7 +76,8 @@ namespace other {
       return it->second;
     }
 
-    auto child = make_ref<directory>(name, path);
+    CORE_LOG_DEBUG(" - adding child directory '{}' with path '{}' to '{}'", name, path.string(), dir_name);
+    auto child = make_ref<directory>(watcher->get_event_system(), name, path);
     children.insert({ hash, child });
     return child;
   }

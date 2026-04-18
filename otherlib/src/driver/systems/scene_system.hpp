@@ -25,10 +25,8 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
-    void new_blank_scene(const std::string_view name);
-    natural_t create_new_scene(const std::string_view name);
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
-    natural_t create_empty_scene(const std::string_view name);
+    natural_t create_empty_scene(const std::string_view name, bool add_asset = true);
     natural_t get_id_of_scene(const std::string_view name);
     scene* get_scene(natural_t id);
 
@@ -49,11 +47,13 @@ namespace other {
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
 
-    void handle_scene_load_empty_event(const value& data);
     void handle_scene_load_event(const value& data);
+    void handle_scene_asset_loaded_event(const value& data);
     void handle_scene_unload_event(const value& data);
     void handle_scene_info_event(const value& data);
     void handle_scene_playback_command_event(const value& data);
+
+    void handle_ls_scenes_event(driver_kernel* kernel, const value& data);
   };
 
 }  // namespace other

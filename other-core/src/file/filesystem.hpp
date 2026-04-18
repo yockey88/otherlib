@@ -13,6 +13,7 @@
 #include "core/defines.hpp"
 #include "core/ref.hpp"
 #include "core/subsystem.hpp"
+#include "event/event_system.hpp"
 #include "file/directory.hpp"
 #include "file/file_handle.hpp"
 #include "file/local_file.hpp"
@@ -23,7 +24,7 @@ namespace other {
 
   struct resolved_path {
     std::string mount_name;
-    std::string relative_path;
+    std::vector<std::string> relative_path_components;
     std::string file_name;
 
     bool is_valid() const { return !mount_name.empty(); }
@@ -48,6 +49,11 @@ namespace other {
       "/";
 #endif
 
+    void initialize_file_events(event_system& events);
+    void initialize_directory_structure(const std::vector<std::string_view>& mounts = {});
+    void shutdown_file_system();
+    void poll_files();
+
     /// parses both system and engine paths into its components
     /// e.g. "assets://textures/grass.png" -> { "assets", "textures/grass.png", "grass.png" }
     ///  or  "C:/path/to/file.txt" -> { "C", "path/to/file.txt", "file.txt" }
@@ -55,6 +61,7 @@ namespace other {
 
     ref<directory> mount_directory(const std::string_view mount_name, const filepath& path);
     ref<directory> mount_virtual(const std::string_view mount_name);
+    void add_toplevel_file(ref<file_handle> file);
 
     void unmount(const std::string_view mount_name);
 
@@ -73,18 +80,25 @@ namespace other {
     ref<file_handle> find_file(const std::string_view name, const std::string_view ext = "") const;
     ref<file_handle> open(const std::string_view engine_path) const;
 
+    ref<local_file> create_local_file(const filepath& path);
+    ref<local_file> register_local_file(const filepath& path);
+    ref<virtual_file> create_asset_virtual_file(const std::string_view virtual_path);
     ref<virtual_file> create_virtual_file(const std::string_view mount_name, const std::string_view relative_path, std::vector<uint8_t>&& initial_data = {});
     ref<virtual_file> create_virtual_file(const std::string_view mount_name, const std::string_view file_name, const std::string_view ext, std::vector<uint8_t>&& initial_data = {});
-
     ref<remote_file> register_remote_file(const std::string_view mount_name, const std::string_view relative_path, const std::string_view url);
 
     task fetch_remote(ref<remote_file> file);
     void scan_directory(const std::string_view mount_name, bool recursive = false);
 
+    const std::map<natural_t, ref<directory>>& get_all_mounts() const { return mounts; }
+    const std::map<natural_t, ref<file_handle>>& get_all_files() const { return toplevel_files; }
+
    private:
     mutable std::mutex fs_mutex;
 
+    event_system* events = nullptr;
     std::map<natural_t, ref<directory>> mounts;
+    std::map<natural_t, ref<file_handle>> toplevel_files;
 
     ref<directory> walk_or_create_path(ref<directory> root, const std::vector<std::string>& components);
     ref<directory> walk_path(ref<directory> root, const std::vector<std::string>& components) const;

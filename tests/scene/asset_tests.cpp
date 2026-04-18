@@ -7,8 +7,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "file/filesystem.hpp"
+
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/renderer_backend.hpp"
+
+#include "driver/driver_mounts.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
@@ -22,10 +26,13 @@ namespace other {
     EXPECT_EQ(asset::get_type_from_extension(".fbx"), asset::MODEL_SOURCE);
     EXPECT_EQ(asset::get_type_from_extension(".obj"), asset::MODEL_SOURCE);
     EXPECT_EQ(asset::get_type_from_extension(".cs"), asset::SCRIPT_SOURCE);
-    EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCRIPT_SOURCE);
-    EXPECT_EQ(asset::get_type_from_extension(".py"), asset::SCRIPT_SOURCE);
+    EXPECT_EQ(asset::get_type_from_extension(".dll"), asset::SCRIPT);
+    EXPECT_EQ(asset::get_type_from_extension(".so"), asset::SCRIPT);
+    EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCENE);
+    EXPECT_EQ(asset::get_type_from_extension(".py"), asset::SCRIPT);
     EXPECT_EQ(asset::get_type_from_extension(".mp3"), asset::AUDIO);
     EXPECT_EQ(asset::get_type_from_extension(".wav"), asset::AUDIO);
+    EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCENE);
     EXPECT_EQ(asset::get_type_from_extension(".unknown"), asset::EMPTY);
   }
 
@@ -40,12 +47,18 @@ namespace other {
 
     auto script_source_exts = asset::get_supported_extensions(asset::SCRIPT_SOURCE);
     EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".cs"), script_source_exts.end());
-    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".lua"), script_source_exts.end());
-    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".py"), script_source_exts.end());
+
+    auto script_exts = asset::get_supported_extensions(asset::SCRIPT);
+    EXPECT_NE(std::find(script_exts.begin(), script_exts.end(), ".dll"), script_exts.end());
+    EXPECT_NE(std::find(script_exts.begin(), script_exts.end(), ".so"), script_exts.end());
+    EXPECT_NE(std::find(script_exts.begin(), script_exts.end(), ".py"), script_exts.end());
 
     auto audio_exts = asset::get_supported_extensions(asset::AUDIO);
     EXPECT_NE(std::find(audio_exts.begin(), audio_exts.end(), ".mp3"), audio_exts.end());
     EXPECT_NE(std::find(audio_exts.begin(), audio_exts.end(), ".wav"), audio_exts.end());
+
+    auto scene_exts = asset::get_supported_extensions(asset::SCENE);
+    EXPECT_NE(std::find(scene_exts.begin(), scene_exts.end(), ".lua"), scene_exts.end());
   }
 
   MATCHER(IsLoadingOrLoaded, "") {
@@ -59,7 +72,7 @@ namespace other {
     static gpu_buffer test_vertex_buffer(resource_handle(1, resource_type::BUFFER));
     static gpu_buffer test_index_buffer(resource_handle(2, resource_type::BUFFER));
 
-    void set_up_mock_rendering_api_and_expect_mesh_creation() {
+    void set_up_mock_rendering_api_and_expect_mesh_creation(event_system& events) {
       using ::testing::_;
       /// first we have to override the rendering subsystem api to avoid nullptr dereference
       scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
@@ -95,6 +108,15 @@ namespace other {
         .Times(2);
 
       subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
+      fs->initialize_file_events(events);
+      fs->initialize_directory_structure({
+        driver_mounts::kAssetMount,
+        driver_mounts::kSceneMount,
+        driver_mounts::kScriptMount,
+      });
     }
 
     void shutdown_mock_rendering_api() {
@@ -111,10 +133,9 @@ namespace other {
   }  // namespace
 
   TEST_F(asset_tests, simple_async_load) {
-    asio::io_context io_context;
-    scope<asset_handler> handler = make_scope<asset_handler>(io_context);
+    scope<asset_handler> handler = make_scope<asset_handler>(events, io_context);
 
-    set_up_mock_rendering_api_and_expect_mesh_creation();
+    set_up_mock_rendering_api_and_expect_mesh_creation(events);
 
     dtor ___destructor_guard;
 
@@ -193,10 +214,9 @@ namespace other {
   TEST_F(asset_tests, omesh_async_load) {
     GTEST_SKIP() << "Skipping omesh test until we have a way to generate them in CI, files are too large to push to git (may have to use github lfs?)";
 
-    asio::io_context io_context;
-    scope<asset_handler> handler = make_scope<asset_handler>(io_context);
+    scope<asset_handler> handler = make_scope<asset_handler>(events, io_context);
 
-    set_up_mock_rendering_api_and_expect_mesh_creation();
+    set_up_mock_rendering_api_and_expect_mesh_creation(events);
 
     struct dtor {
       ~dtor() {

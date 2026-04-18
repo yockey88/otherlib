@@ -7,14 +7,20 @@ target_sources(other_core
 		src/core/config_table.cpp
 		src/core/defines.cpp
 		src/core/logger.cpp
+		src/core/page.cpp
+		src/core/arena_storage.cpp
 		src/core/arena.cpp
+		src/core/frame_allocator.cpp
 		src/core/arena_buffer.cpp
+
 		src/core/ref.cpp
 		src/core/ref_counted.cpp
 		src/core/value_storage.cpp
 		src/core/value.cpp
 		src/core/formatting.cpp
 
+		src/file/file_watcher.cpp
+		src/file/file_handle.cpp
 		src/file/local_file.cpp
 		src/file/virtual_file.cpp
 		src/file/remote_file.cpp
@@ -30,7 +36,9 @@ target_sources(other_core
 		src/math/coordinate_frame.cpp
 		src/math/interval.cpp
 		src/math/bounding_box.cpp
+		src/math/plane.cpp
 		src/math/ray.cpp
+		src/math/frustum.cpp
 		src/math/integrator.cpp
 		src/math/vector.cpp
 		src/math/matrix.cpp

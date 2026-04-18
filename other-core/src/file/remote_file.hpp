@@ -22,8 +22,8 @@ namespace other {
       handle_type = file_type::REMOTE;
     }
 
-    remote_file(const std::string_view name, const std::string_view ext, const std::string_view url)
-        : file_handle(name, ext, filepath(), std::string{ url }, file_type::REMOTE), remote_url(url) {}
+    remote_file(event_system& events, const std::string_view name, const std::string_view ext, const std::string_view url)
+        : file_handle(events, name, ext, filepath(), std::string{ url }, file_type::REMOTE), remote_url(url) {}
 
     ~remote_file() override {
       close();

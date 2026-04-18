@@ -35,12 +35,6 @@ namespace other {
    private:
     scope<event_system> event_system_ptr = nullptr;
 
-    // void handle_list_driver_default_event(driver_kernel* kernel, const value& data);
-    // void handle_list_driver_windows_event(driver_kernel* kernel, const value& data);
-    // void handle_list_driver_files_event(driver_kernel* kernel, const value& data);
-    // void handle_list_driver_scenes_event(driver_kernel* kernel, const value& data);
-    // void handle_list_driver_assets_event(driver_kernel* kernel, const value& data);
-
     // void handle_object_driver_create_event(driver_kernel* kernel, const value& data);
     // void handle_object_driver_destroy_event(driver_kernel* kernel, const value& data);
     // void handle_object_driver_push_event(driver_kernel* kernel, const value& data);

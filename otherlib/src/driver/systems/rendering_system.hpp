@@ -39,6 +39,8 @@ namespace other {
     glm::vec2 viewport_size = { 0.0f, 0.0f };
 
     void handle_viewport_resize_event(const value& data);
+
+    void handle_ls_windows_event(driver_kernel* kernel, const value& data);
   };
 
 }  // namespace other

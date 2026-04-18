@@ -29,7 +29,13 @@ namespace other {
 
     natural_t get_id_of_scene(const std::string_view name) const;
 
+    scene* find_scene(const filepath& scene_path);
+    scene* find_scene(const std::string& name);
+    scene* get_scene(const std::string_view id);
     scene* get_scene(uint64_t id);
+
+    auto begin() { return g.begin(); }
+    auto end() { return g.end(); }
 
    private:
     graph<scene> g = {};

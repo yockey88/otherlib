@@ -73,6 +73,12 @@ namespace other {
       subsystem<scripting_environment>::get()
     };
     CORE_LOG_DEBUG("Calling plugin binding function '{}' for plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
+    // clang-format off
+    CORE_LOG_DEBUG(" - Subsystem addresses: arena={:p}, logger={:p}, file_system={:p}, input_system={:p}, type_database={:p}, physics_environment={:p}, renderer_backend={:p}, scripting_environment={:p}",
+                   static_cast<void*>(argv.arena), static_cast<void*>(argv.logger), static_cast<void*>(argv.file_system), static_cast<void*>(argv.input_system),
+                   static_cast<void*>(argv.type_database), static_cast<void*>(argv.physics_environment), static_cast<void*>(argv.renderer), static_cast<void*>(argv.scripting_environment));
+    // clang-format on
+
     sym.get_function<void (*)(other_plugin_argv*)>()(&argv);
     CORE_LOG_DEBUG("Plugin binding function '{}' called successfully for plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
 
@@ -82,7 +88,7 @@ namespace other {
       throw std::runtime_error("Failed to insert library handle into map");
     }
 
-    CORE_LOG_DEBUG("successfylly loaded plugin library '{}'", name);
+    CORE_LOG_DEBUG("successfully loaded plugin library '{}'", name);
     return itr2->second;
   }
 

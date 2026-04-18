@@ -26,7 +26,7 @@ namespace other {
         case other::asset::SCRIPT: return script_editor::kSignature;
         // case other::asset::AUDIO: return audio_editor::kSignature;
         // case other::asset::SCENE: return scene_editor::kSignature;
-        case other::asset::SCENE_OBJECT: return scene_object::kSignature;
+        // case other::asset::SCENE_OBJECT: return scene_object::kSignature;
         default: return kTextMuted;
       }
     }
@@ -41,7 +41,7 @@ namespace other {
         case other::asset::SCRIPT: return script_editor::kHeaderTint;
         // case other::asset::AUDIO: return audio_editor::kHeaderTint;
         // case other::asset::SCENE: return scene_editor::kHeaderTint;
-        case other::asset::SCENE_OBJECT: return scene_object::kHeaderTint;
+        // case other::asset::SCENE_OBJECT: return scene_object::kHeaderTint;
         default: return asset_editor::kHeaderBG;
       }
     }
@@ -56,7 +56,7 @@ namespace other {
         case other::asset::SCRIPT: return "SCRIPT";
         case other::asset::AUDIO: return "AUDIO";
         case other::asset::SCENE: return "SCENE";
-        case other::asset::SCENE_OBJECT: return "OBJECT";
+        // case other::asset::SCENE_OBJECT: return "OBJECT";
         default: return "UNKNOWN";
       }
     }

@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_INPUT_INPUT_SYSTEM_HPP
 #define OTHER_CORE_INPUT_INPUT_SYSTEM_HPP
 
+#include <cstdint>
 #include <deque>
 
 #include <SDL3/SDL.h>
@@ -40,17 +41,13 @@ namespace other {
     void initialize();
     void shutdown();
 
-    /// call once per event *before* passing to ImGui.
     void process_event(const SDL_Event* event);
 
-    /// finalize the frame: swap buffers, evaluate actions, fire edges.
     void update();
     void finalize_frame();
 
-    /// replaces ALL contexts and actions.
     void load_input_map(input_map&& map);
 
-    /// only the topmost non-transparent context (and any transparent ones above it) will evaluate actions.
     void push_context(const std::string_view name);
     void pop_context();
 
@@ -74,6 +71,7 @@ namespace other {
     glm::vec2 get_mouse_delta() const;
     glm::vec2 get_mouse_scroll() const;
 
+    void set_deadzone(gamepad_axis axis, float dead_zone, int32_t pad_index = 0);
     bool is_gamepad_connected(int32_t index = 0) const;
     bool is_gamepad_button_down(gamepad_button btn, int32_t pad_index = 0) const;
     bool is_gamepad_button_pressed(gamepad_button btn, int32_t pad_index = 0) const;

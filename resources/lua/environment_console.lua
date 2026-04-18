@@ -144,13 +144,11 @@ function _Console:new()
     Default behavior is to list the contents of the current directory.
     Usage:
       ls (-h|--help)               Displays this help message
-      ls <directory-path>          Lists the contents of the specified directory
+      ls                           The same as 'ls -f' 
+      ls <-f|--files>              Lists all files registered in the filesystem
+      ls <-s|--scenes>             Lists all scenes in the scene graph
+      ls <-a|--assets>             Lists all assets registered in the asset manager
       ls <-w|--windows>            Lists all registered UI windows
-      
-    Features In Development:
-      ls <-f|--files>              Lists all loaded files
-      ls <-s|--scenes>             Lists all loaded scenes
-      ls <-a|--assets>             Lists all loaded assets
   ]]
   self:RegisterConsoleCommand("ls", "Prints a list of items.", function(...) _Meta:Driver():ListCommand(...) end, ls_long_description)
 

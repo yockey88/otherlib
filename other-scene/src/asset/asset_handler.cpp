@@ -12,7 +12,7 @@
 #include "core/subsystem.hpp"
 #include "file/filesystem.hpp"
 
-#include "model/model_importer.hpp"
+#include "scene/scene.hpp"
 
 namespace other {
 
@@ -144,13 +144,16 @@ namespace other {
 
     natural_t asset_id = get_next_asset_id();
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_asset_pipeline(asset_type, this),
+                                                              .pipeline = asset_pipeline::get_asset_pipeline(events, this, asset_type),
                                                               .loading_asset = asset{
                                                                 .asset_type = asset_type,
                                                                 .id = asset_id,
                                                                 .path_hash = hash,
                                                                 .load_path = file_path,
-                                                                .virtual_path = std::format("{}/{}", default_mount, file_path.string()),
+                                                                // clang-format off
+                                                                .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, 
+                                                                                asset::get_filesystem_directory(asset_type), file_path.filename().string()),
+                                                                // clang-format on
                                                                 .absolute_path = std::filesystem::absolute(absolute_path),
                                                               },
                                                               .on_complete = on_complete,
@@ -167,7 +170,7 @@ namespace other {
     CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
     state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
     it->pipeline->start_load(
-      thread_pool, &it->loading_asset,
+      executor, &it->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this)
     );
@@ -201,13 +204,13 @@ namespace other {
     natural_t model_id = get_next_asset_id();
 
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_model_source_pipeline(this, name, vertices, indices),
+                                                              .pipeline = asset_pipeline::get_model_source_pipeline(events, this, name, vertices, indices),
                                                               .loading_asset = {
                                                                 .asset_type = asset::type::MODEL_SOURCE,
                                                                 .id = model_id,
                                                                 .path_hash = 0,
                                                                 .load_path = filepath{},
-                                                                .virtual_path = std::format("{}/{}", default_mount, name),
+                                                                .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::MODEL_SOURCE), name + ".modelsource"),
                                                                 .absolute_path = filepath{},
                                                               },
                                                             });
@@ -222,12 +225,53 @@ namespace other {
     CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
     state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
     it->pipeline->start_load(
-      thread_pool, &it->loading_asset,
+      executor, &it->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this)
     );
 
     return model_id;
+  }
+
+  natural_t asset_handler::add_scene_asset(scene* scene_ptr, opt<filepath> scene_path) {
+    CORE_LOG_DEBUG("Adding scene asset with name: {} (scene pointer: {})", scene_path.has_value() ? scene_path->string() : "<no path>", static_cast<void*>(scene_ptr));
+    natural_t scene_id = get_next_asset_id();
+
+    filepath p = scene_path.value_or(filepath{});
+    filepath absolute_path = std::filesystem::absolute(p);
+    std::string name = p.filename().stem().string();
+    if (name.empty()) {
+      name = std::format("scene_{}", scene_id);
+    }
+
+    auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
+                                                              .pipeline = asset_pipeline::get_scene_pipeline(events, this, scene_ptr),
+                                                              .loading_asset = {
+                                                                .asset_type = asset::type::SCENE,
+                                                                .id = scene_id,
+                                                                .path_hash = 0,
+                                                                .load_path = scene_path.value_or(filepath{}),
+                                                                .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::SCENE), name + ".scene"),
+                                                                .absolute_path = absolute_path,
+                                                              },
+                                                            });
+    OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+
+    auto [state_it, state_inserted] = asset_states.emplace(scene_id, asset_state_machine{});
+    OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for scene asset ID: {}", scene_id);
+    CORE_LOG_DEBUG("Beginning add_scene_asset for asset ID: {} (Name: {})", scene_id, it->loading_asset.virtual_path);
+
+    asset* loading_asset = &it->loading_asset;
+
+    CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
+    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
+    it->pipeline->start_load(
+      executor, &it->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_load_complete, this),
+      std::bind_front(&asset_handler::notify_asset_load_failed, this)
+    );
+
+    return scene_id;
   }
 
   void asset_handler::unload_asset(natural_t asset_id) {
@@ -254,7 +298,7 @@ namespace other {
 
     asset::type asset_type = it->second.asset_type;
     auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                                  .pipeline = asset_pipeline::get_asset_pipeline(asset_type, this),
+                                                                  .pipeline = asset_pipeline::get_asset_pipeline(events, this, asset_type),
                                                                   /// create a copy here? or should this be a pointer?
                                                                   .loading_asset = std::move(it->second),
                                                                 });
@@ -262,7 +306,7 @@ namespace other {
 
     loaded_assets.erase(it);
     pl_itr->pipeline->start_unload(
-      thread_pool, &pl_itr->loading_asset,
+      executor, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this)
     );
@@ -351,7 +395,6 @@ namespace other {
 
     register_asset_in_filesystem(&itr.first->second);
     state_itr->second.handle_event(asset_event::LOAD_COMPLETED);
-    CORE_LOG_INFO("Asset loaded and registered successfully (ID: {}, Virtual Path: {})", id, itr.first->second.virtual_path);
   }
 
   void asset_handler::on_asset_load_failed(natural_t id) {
@@ -408,38 +451,54 @@ namespace other {
       return;
     }
 
-    const filepath& asset_path = asset_ptr->load_path;
-    if (asset_path.empty()) {
-      return;
+    /// generated/created assets are full virtual, where as all assets are registered under
+    //    a virtual path with it's local path attached to the asset itself
+    bool full_virtual_file = asset_ptr->load_path.empty();
+    /// assets are first-and-foremost identified by virtual path
+    OTHER_ASSERT(!asset_ptr->virtual_path.empty(), "Asset virtual path is empty for asset ID: {}", asset_ptr->id);
+
+    /// assets must have a mount name
+    resolved_path resolved = fs->resolve_path(asset_ptr->virtual_path);
+    OTHER_ASSERT(!resolved.mount_name.empty(), "Failed to resolve mount for asset virtual path: {}", asset_ptr->virtual_path);
+
+    ref<directory> mount = fs->get_or_create_mount(default_mount);
+    OTHER_ASSERT(mount != nullptr, "Failed to get or create mount '{}' for asset: {}", asset_ptr->virtual_path, asset_ptr->id);
+
+    std::string curr_virtual_path = mount->absolute_path().string() + std::string{ file_system::kPathSeparator };
+    ref<directory> dir_handle = mount;
+    for (const auto& piece : resolved.relative_path_components) {
+      OTHER_ASSERT(dir_handle != nullptr, "Directory handle is null after creation or retrieval for piece '{}' in asset virtual path: {}", piece, asset_ptr->virtual_path);
+      auto next = dir_handle->get_child_directory(piece);
+      if (next == nullptr) {
+        dir_handle = dir_handle->add_child_directory(piece, curr_virtual_path + piece);
+      } else {
+        dir_handle = next;
+      }
+      curr_virtual_path += std::format("/{}/", piece);
     }
 
-    CORE_LOG_DEBUG("Registering asset in filesystem: {}", asset_path.string());
-    filepath abs_asset_path = std::filesystem::absolute(asset_path);
-    std::string asset_path_str = asset_path.string();
+    OTHER_ASSERT(dir_handle != nullptr, "Final directory handle is null for asset virtual path: {}", asset_ptr->virtual_path);
+    CORE_LOG_INFO("Directory for asset ID {}: {}\n", asset_ptr->id, dir_handle->to_string());
 
-    constexpr static std::string_view kAssetMountPrefix = "assets";
-    std::string dir = asset_ptr->get_filesystem_directory();
-
-    std::string virtual_path = std::string{ kAssetMountPrefix } + std::string{ file_system::kPathSeparator } + dir;
-
-    ref<directory> mount = fs->get_or_create_mount(kAssetMountPrefix);
-    OTHER_ASSERT(mount != nullptr, "Failed to get or create mount '{}' for asset: {}", virtual_path, asset_path.string());
-
-    ref<directory> dir_handle = mount->get_child_directory(dir);
-    if (dir_handle == nullptr) {
-      dir_handle = mount->add_child_directory(dir, mount->absolute_path() / dir);
-    }
-    OTHER_ASSERT(dir_handle != nullptr, "Failed to get or create directory '{}' in mount '{}' for asset: {}", dir, virtual_path, asset_path.string());
-
-    if (mount == nullptr) {
-      CORE_LOG_ERROR("Failed to get or create default mount '{}' for asset: {}", default_mount, asset_path.string());
-      return;
+    file_type type = full_virtual_file ? file_type::VIRTUAL : file_type::LOCAL;
+    ref<file_handle> file_handle = nullptr;
+    if (type == file_type::LOCAL) {
+      OTHER_ASSERT(!asset_ptr->load_path.empty(), "Asset load path is empty for local file registration for asset ID: {}", asset_ptr->id);
+      auto file = fs->register_local_file(asset_ptr->load_path);
+      OTHER_ASSERT(file != nullptr, "Failed to register local file for asset load path: {}", asset_ptr->load_path.string());
     }
 
-    ref<file_handle> file_handle = make_ref<local_file>(abs_asset_path);
-    OTHER_ASSERT(file_handle != nullptr, "Failed to create file handle for asset: {}", asset_path.string());
+    file_handle = fs->create_asset_virtual_file(asset_ptr->virtual_path);
+    if (type == file_type::LOCAL) {
+      file_handle->set_absolute_path(asset_ptr->absolute_path);
+    } else {
+      file_handle->set_absolute_path(asset_ptr->virtual_path);
+    }
+    file_handle->set_virtual_path(asset_ptr->virtual_path);
+
+    OTHER_ASSERT(file_handle != nullptr, "Failed to create file handle for asset: {}", asset_ptr->virtual_path);
+    CORE_LOG_INFO("Asset file registered for asset [{}] of type [{}] :\n{}", asset_ptr->id, asset_ptr->asset_type, file_handle->to_string());
     dir_handle->add_file(file_handle);
-    CORE_LOG_INFO("Registered asset file for [{}] :\n{}", asset_ptr->asset_type, file_handle->to_string());
   }
 
   void asset_handler::unregister_asset_in_filesystem(const asset* asset_ptr) {
@@ -449,10 +508,8 @@ namespace other {
       return;
     }
 
-    const filepath& asset_path = asset_ptr->load_path;
-    if (asset_path.empty()) {
-      return;
-    }
+    const filepath& asset_path = asset_ptr->load_path.empty() ? asset_ptr->virtual_path : asset_ptr->load_path;
+    OTHER_ASSERT(!asset_path.empty(), "Asset path is empty for asset ID: {}", asset_ptr->id);
 
     CORE_LOG_DEBUG("Unregistering asset from filesystem: {}", asset_path.string());
     filepath abs_asset_path = std::filesystem::absolute(asset_path);

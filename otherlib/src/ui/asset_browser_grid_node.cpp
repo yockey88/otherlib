@@ -33,7 +33,6 @@
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
 
-
 namespace other {
   namespace ui {
 
@@ -51,7 +50,7 @@ namespace other {
           case asset::SCRIPT: return abw::asset_type::SCRIPT;
           case asset::AUDIO: return abw::asset_type::AUDIO;
           case asset::SCENE: return abw::asset_type::SCENE;
-          case asset::SCENE_OBJECT: return abw::asset_type::SCENE_OBJECT;
+          // case asset::SCENE_OBJECT: return abw::asset_type::SCENE_OBJECT;
           default: return abw::asset_type::UNKNOWN;
         }
       }
@@ -95,7 +94,7 @@ namespace other {
         { "Script", abw::asset_type::SCRIPT, true },
         { "Audio", abw::asset_type::AUDIO, true },
         { "Scene", abw::asset_type::SCENE, true },
-        { "Object", abw::asset_type::SCENE_OBJECT, true },
+        // { "Object", abw::asset_type::SCENE_OBJECT, true },
       };
 
       navigate_to("assets");

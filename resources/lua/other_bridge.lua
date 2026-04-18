@@ -99,7 +99,7 @@ function _Meta:LoadScene(path)
     return
   end
 
-  self:Driver().TriggerEvent("force-load-scene", real_path)
+  self:Driver().TriggerEvent("scene.load-scene", real_path)
 end
 
 _Meta._console = _Meta:get_script("environment_console")
@@ -124,7 +124,7 @@ function _Meta._driver_interface:_OpenClose(type, args)
     -- Driver.TriggerEvent("open-requested", open_args)
   elseif parsed_args.type == "window"
   then
-    _Meta._driver_interface.TriggerEvent(string.format("%s-driver-ui-window", type), parsed_args.window_identifier)
+    self.TriggerEvent(string.format("%s-driver-ui-window", type), parsed_args.window_identifier)
   end
 end
 
@@ -135,8 +135,9 @@ function _Meta._driver_interface:_List(args)
     return
   end
 
-  local event_name = "ls-driver-" .. parsed_args.type
-  _Meta._driver_interface.TriggerEvent(event_name)
+  local event_name = "ls." .. parsed_args.type
+  print("Triggering event: " .. event_name)
+  self.TriggerEvent(event_name)
 end
 
 function _Meta._driver_interface:_ObjectOpEvent(operation, op_table)
@@ -189,7 +190,7 @@ function _Meta._driver_interface:_SceneOp(args)
       return
     end
 
-    _Meta:Driver().TriggerEvent("force-load-empty-scene", _Meta._string_utils.strip_leading_and_ending_whitespace(scene_name))
+    -- _Meta:Driver().TriggerEvent("force-load-empty-scene", _Meta._string_utils.strip_leading_and_ending_whitespace(scene_name))
   elseif parsed_args.operation == "load"
   then
     local scene_path = parsed_args.scene_path
@@ -202,15 +203,15 @@ function _Meta._driver_interface:_SceneOp(args)
     _Meta:LoadScene(_Meta._string_utils.strip_leading_and_ending_whitespace(scene_path))
   elseif parsed_args.operation == "unload"
   then
-    _Meta:Driver().TriggerEvent("force-unload-scene")
+    _Meta:Driver().TriggerEvent("scene.unload-scene")
   elseif parsed_args.operation == "info"
   then
-    self.TriggerEvent("scene-info-requested")
+    self.TriggerEvent("scene.request-info")
   elseif parsed_args.operation == "play" or 
          parsed_args.operation == "pause" or 
          parsed_args.operation == "stop"
   then
-    self.TriggerEvent("scene-playback-command", parsed_args.operation)
+    self.TriggerEvent("scene.playback-command", parsed_args.operation)
   else
     _Meta:Console().PushError("Unknown scene command operation: " .. tostring(parsed_args.operation))
   end

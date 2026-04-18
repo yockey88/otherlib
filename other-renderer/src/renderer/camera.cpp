@@ -100,6 +100,7 @@ namespace other {
   void camera::calculate_matrices(const glm::ivec2& window_size) {
     get_view_matrix();
     get_projection_matrix(window_size);
+    cam_frustum.set_from_camera(position, direction, up(), fov, aspect_ratio, clip.near_plane, clip.far_plane);
   }
 
   glm::mat4& camera::get_view_matrix() {

@@ -37,6 +37,11 @@ namespace other {
       return nodes.size();
     }
 
+    auto begin() { return nodes.begin(); }
+    auto begin() const { return nodes.begin(); }
+    auto end() { return nodes.end(); }
+    auto end() const { return nodes.end(); }
+
     uint64_t add_node(T&& value) {
       auto id = get_next_id();
       auto [itr, success] = nodes.emplace(id, node{ id, std::move(value) });

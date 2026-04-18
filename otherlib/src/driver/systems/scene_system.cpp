@@ -15,16 +15,22 @@ namespace other {
     auto& events = get_driver().get_event_system();
     OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
 
-    events->register_event("force-load-empty-scene");
-    events->add_listener("force-load-empty-scene", std::bind_front(&scene_system::handle_scene_load_empty_event, this));
-    events->register_event("force-load-scene");
-    events->add_listener("force-load-scene", std::bind_front(&scene_system::handle_scene_load_event, this));
-    events->register_event("force-unload-scene");
-    events->add_listener("force-unload-scene", std::bind_front(&scene_system::handle_scene_unload_event, this));
-    events->register_event("scene-info-requested");
-    events->add_listener("scene-info-requested", std::bind_front(&scene_system::handle_scene_info_event, this));
-    events->register_event("scene-playback-command");
-    events->add_listener("scene-playback-command", std::bind_front(&scene_system::handle_scene_playback_command_event, this));
+    events->register_event("scene.load-scene");
+    events->add_listener("scene.load-scene", std::bind_front(&scene_system::handle_scene_load_event, this));
+    events->register_event("scene.asset-loaded");
+    events->add_listener("scene.asset-loaded", std::bind_front(&scene_system::handle_scene_asset_loaded_event, this));
+
+    events->register_event("scene.unload-scene");
+    events->add_listener("scene.unload-scene", std::bind_front(&scene_system::handle_scene_unload_event, this));
+    events->register_event("scene.request-info");
+    events->add_listener("scene.request-info", std::bind_front(&scene_system::handle_scene_info_event, this));
+    events->register_event("scene.playback-command");
+    events->add_listener("scene.playback-command", std::bind_front(&scene_system::handle_scene_playback_command_event, this));
+
+    events->register_event("scene.scene-activated");
+
+    events->register_event("ls.scenes");
+    events->add_listener("ls.scenes", [this](const value& data) { handle_ls_scenes_event(&get_driver().get_kernel(), data); });
 
     scene_interface::initialize(&get_driver());
   }
@@ -39,39 +45,30 @@ namespace other {
   void scene_system::shutdown(driver_kernel* kernel) {
   }
 
-  void scene_system::new_blank_scene(const std::string_view name) {
-    if (project_scene_graph->has_scene(name)) {
-      CORE_LOG_WARN("Scene with name '{}' already exists, cannot create new blank scene with duplicate name.", name);
-      return;
-    }
-
-    if (active_scene != nullptr) {
-      CORE_LOG_DEBUG("Unloading current scene [{}:{}] before creating new blank scene.", active_scene->id, active_scene->name);
-      unload_active_scene();
-    }
-
-    set_scene_to_active(create_new_scene(name));
-  }
-
-  natural_t scene_system::create_new_scene(const std::string_view name) {
-    OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
-    auto [scene_id, ptr] = project_scene_graph->create_new_scene(name);
-    OTHER_ASSERT(ptr != nullptr, "Failed to create new scene: {}", name);
-    CORE_LOG_INFO("Created new scene [{}:{}]", scene_id, name);
-    return scene_id;
-  }
-
   natural_t scene_system::add_scene_to_scene_graph(const filepath& scene_path) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
-    auto [id, scene_ptr] = project_scene_graph->load_scene(scene_path);
-    if (scene_ptr == nullptr) {
-      return 0;
+
+    if (project_scene_graph->has_scene(scene_path.filename().stem().string())) {
+      return project_scene_graph->get_scene(scene_path.filename().stem().string())->id;
     }
+
+    auto id = create_empty_scene(scene_path.filename().stem().string(), false);
+    OTHER_ASSERT(id != 0, "Failed to add scene [{}] to scene graph.", scene_path.string());
+    CORE_LOG_DEBUG("Added scene [{}] to scene graph with ID {}", scene_path.string(), id);
+
+    auto* s = get_scene(id);
+    OTHER_ASSERT(s != nullptr, "Failed to retrieve scene [{}] after adding to scene graph.", scene_path.string());
+    s->script_path = scene_path;
+
+    get_driver().add_scene_asset(s, scene_path);
     return id;
   }
 
-  natural_t scene_system::create_empty_scene(const std::string_view name) {
-    auto [id, _] = project_scene_graph->create_new_scene(name);
+  natural_t scene_system::create_empty_scene(const std::string_view name, bool add_asset) {
+    auto [id, ptr] = project_scene_graph->create_new_scene(name);
+    if (add_asset) {
+      get_driver().add_scene_asset(ptr);
+    }
     return id;
   }
 
@@ -85,9 +82,8 @@ namespace other {
   }
 
   void scene_system::set_scene_to_active(natural_t scene_id) {
-    CORE_LOG_DEBUG("Setting scene [{}] as active scene in driver.", scene_id);
+    OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
     if (active_scene != nullptr && active_scene->id == scene_id) {
-      CORE_LOG_WARN("Scene [{}] is already the active scene.", scene_id);
       return;
     }
 
@@ -95,18 +91,11 @@ namespace other {
       CORE_LOG_DEBUG("Another scene [{}:{}] is already active, unloading it first.", active_scene->id, active_scene->name);
       unload_active_scene();
     }
+    CORE_LOG_DEBUG("Setting scene [{}] to active.", scene_id);
 
     active_scene = project_scene_graph->get_scene(scene_id);
     OTHER_ASSERT(active_scene != nullptr, "Scene with ID {} not found in scene graph.", scene_id);
     CORE_LOG_DEBUG("Scene [{}:{}] Activation.", active_scene->id, active_scene->name);
-
-    if (active_scene->script_path.has_value() &&
-        /// we can deactivate and reactivate scenes and we don't want to reload the script right now.
-        /// maybe in the future we will want to
-        !active_scene->script_loaded) {
-      CORE_LOG_DEBUG("Active scene has script path '{}', loading scene script.", active_scene->script_path->string());
-      active_scene->run_script_file();
-    }
 
     auto& storage = active_scene->get_storage();
     if (storage.sandbox["OnSceneActivate"].valid()) {
@@ -136,6 +125,9 @@ namespace other {
     if (get_driver().should_auto_play_scenes()) {
       active_scene->play();
     }
+
+    auto& events = get_driver().get_event_system();
+    events->trigger_event("scene.scene-activated", active_scene->id);
   }
 
   void scene_system::synchronize_active_scene(natural_t scene_id) {
@@ -230,27 +222,27 @@ namespace other {
     return *project_scene_graph;
   }
 
-  void scene_system::handle_scene_load_empty_event(const value& data) {
-    if (data.type() != value_type::STRING) {
-      CORE_LOG_ERROR("Invalid data type for force-load-empty-scene event. Expected string.");
-      return;
-    }
+  // void scene_system::handle_scene_load_empty_event(const value& data) {
+  //   if (data.type() != value_type::STRING) {
+  //     CORE_LOG_ERROR("Invalid data type for force-load-empty-scene event. Expected string.");
+  //     return;
+  //   }
 
-    std::string scene_name = data.as_string();
-    if (project_scene_graph->has_scene(scene_name)) {
-      CORE_LOG_WARN("Scene with name [{}] already exists in the scene graph. Cannot force load empty scene with duplicate name.", scene_name);
-      return;
-    }
+  //   std::string scene_name = data.as_string();
+  //   if (project_scene_graph->has_scene(scene_name)) {
+  //     CORE_LOG_WARN("Scene with name [{}] already exists in the scene graph. Cannot force load empty scene with duplicate name.", scene_name);
+  //     return;
+  //   }
 
-    natural_t scene_id = create_empty_scene(scene_name);
-    set_scene_to_active(scene_id);
-    OTHER_ASSERT(active_scene != nullptr, "Active scene is null after creating/loading scene.");
+  //   natural_t scene_id = create_empty_scene(scene_name);
+  //   set_scene_to_active(scene_id);
+  //   OTHER_ASSERT(active_scene != nullptr, "Active scene is null after creating/loading scene.");
 
-    CORE_LOG_INFO("Created and loaded empty scene [{}:{}] from console command.", scene_id, scene_name);
-    constexpr bool is_empty = true;
-    constexpr bool requires_udp_binding = true;
-    get_driver().send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
-  }
+  //   CORE_LOG_INFO("Created and loaded empty scene [{}:{}] from console command.", scene_id, scene_name);
+  //   constexpr bool is_empty = true;
+  //   constexpr bool requires_udp_binding = true;
+  //   get_driver().send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
+  // }
 
   void scene_system::handle_scene_load_event(const value& data) {
     if (data.type() != value_type::STRING) {
@@ -273,10 +265,36 @@ namespace other {
     }
     CORE_LOG_DEBUG("Scene '{}' loaded with ID {}.", scene_path.string(), scene_id);
 
-    set_scene_to_active(scene_id);
-    OTHER_ASSERT(active_scene != nullptr, "Active scene is null after loading scene.");
+    auto* s = get_scene(scene_id);
+    OTHER_ASSERT(s != nullptr, "Scene with ID {} not found in scene graph after loading scene.", scene_id);
+    s->activate_on_load = true;
+  }
 
-    synchronize_active_scene(scene_id);
+  void scene_system::handle_scene_asset_loaded_event(const value& data) {
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for scene.asset-loaded event. Expected uint64 (scene ID).");
+    natural_t scene_id = data;
+
+    scene* s = get_scene(scene_id);
+    OTHER_ASSERT(s != nullptr, "Scene with ID {} not found in scene graph after scene asset loaded event.", scene_id);
+
+    /**
+     * \note:
+     *    - scene must be active to be bound to the native scripting interfaces so when we activate it to run the creation script, and then restore the old one.
+     *    - we don't want to do any of the other stuff associated with 'primary' activation like triggering events or synchronizing over the network,
+     *      so we set the pointer, run the script, and reset it back to the old one before doing the 'real' activation below if needed
+     **/
+    {
+      scene* curr_active = active_scene;
+      active_scene = s;
+      s->run_script_file();
+      active_scene = curr_active;
+    }
+
+    /// this happens here so it only happens once when the asset is fully loaded and registered
+    if (s->activate_on_load) {
+      set_scene_to_active(scene_id);
+      synchronize_active_scene(scene_id);
+    }
   }
 
   void scene_system::handle_scene_unload_event(const value& data) {
@@ -332,6 +350,21 @@ namespace other {
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
     }
+  }
+
+  void scene_system::handle_ls_scenes_event(driver_kernel* kernel, const value& data) {
+    auto& events = get_driver().get_event_system();
+    OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
+
+    auto& graph = get_scene_graph();
+
+    std::stringstream ss;
+    ss << "Scenes in Scene Graph:\n";
+    for (const auto& [id, node] : graph) {
+      ss << "  - ID: " << id << ", Name: " << node.value.name << "\n";
+    }
+
+    events->trigger_event("console.output", ss.str());
   }
 
 }  // namespace other

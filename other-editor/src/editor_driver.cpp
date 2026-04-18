@@ -50,13 +50,23 @@ namespace other {
       std::string proj_name = data;
       CORE_LOG_INFO("Opening project: [{}]", proj_name);
     });
-    get_event_system()->add_listener("force-load-scene", [this](const value& data) {
-      /// capture camera id
-      scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object("Camera");
-      camera_obj_id = cam_obj.id;
+    get_event_system()->add_listener("scene.scene-activated", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data for 'scene.scene-activated' event. Expected scene ID as number.");
+      auto* s = get_active_scene();
+      OTHER_ASSERT(s != nullptr, "Active scene is null when handling 'scene.scene-activated' event.");
 
-      camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
+      natural_t scene_id = data;
+      OTHER_ASSERT(s->id == scene_id, "Scene ID in 'scene.scene-activated' event does not match active scene ID. Expected {}, got {}.", s->id, scene_id);
+
+      /// capture camera id
+      if (!s->has_object("Camera")) {
+        return;
+      }
+
+      scene_object& cam_obj = s->get_object("Camera");
+      camera_component* cam = s->get_component<camera_component>(&cam_obj);
       OTHER_ASSERT(cam != nullptr, "Camera component is null");
+      camera_obj_id = cam_obj.id;
       cam->camera.sensitivity = 10.0f;
     });
 

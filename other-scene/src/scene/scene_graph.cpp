@@ -61,6 +61,27 @@ namespace other {
     return 0;
   }
 
+  scene* scene_graph::find_scene(const filepath& scene_path) {
+    std::string scene_name = scene_path.stem().string();
+    return find_scene(scene_name);
+  }
+
+  scene* scene_graph::find_scene(const std::string& name) {
+    natural_t id = get_id_of_scene(name);
+    if (id == 0) {
+      return nullptr;
+    }
+    return get_scene(id);
+  }
+
+  scene* scene_graph::get_scene(const std::string_view id) {
+    natural_t scene_id = get_id_of_scene(id);
+    if (scene_id == 0) {
+      return nullptr;
+    }
+    return get_scene(scene_id);
+  }
+
   scene* scene_graph::get_scene(natural_t id) {
     return g.ptr_to_node_value(id);
   }
