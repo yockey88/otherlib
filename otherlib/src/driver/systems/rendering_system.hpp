@@ -38,6 +38,12 @@ namespace other {
     scope<driver_ui> driver_ui_ptr = nullptr;
     glm::vec2 viewport_size = { 0.0f, 0.0f };
 
+    std::vector<natural_t> pending_rendering_pipeline_assets;
+    std::vector<natural_t> unloading_rendering_pipeline_assets;
+    std::vector<natural_t> rendering_pipeline_assets;
+
+    void configure_pipelines(driver_kernel* kernel);
+
     void handle_viewport_resize_event(const value& data);
 
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);

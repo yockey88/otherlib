@@ -148,6 +148,11 @@ namespace other {
     return asset_mgr->add_scene_asset(scene_ptr, scene_path);
   }
 
+  natural_t asset_system::add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->add_rendering_pipeline_asset(name, definition);
+  }
+
   void asset_system::begin_full_unload() {
     asset_mgr->purge_stores();
   }

@@ -11,7 +11,8 @@ namespace other {
 
   void rendering_system::initialize(driver_kernel* kernel) {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
-    renderer_ptr->add_pipeline("Rendering Pipeline", get_default_instancing_pipeline());
+
+    configure_pipelines(kernel);
 
     driver_ui_ptr = make_scope<driver_ui>(&get_driver());
     driver_ui_ptr->initialize();
@@ -54,16 +55,16 @@ namespace other {
     OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not available in driver kernel.");
     auto& asset_mgr = kernel->get_core_system<asset_system>().get_asset_manager();
 
+    render_data* data_ptr = nullptr;
+    render_data prepared_data = {};
     if (active_scene != nullptr) {
-      data = active_scene->prepare_render_data(viewport_size, asset_mgr);
-      renderer_ptr->begin_frame(&data);
-    } else {
-      renderer_ptr->begin_frame(nullptr);
+      prepared_data = active_scene->prepare_render_data(viewport_size, asset_mgr);
+      data_ptr = &prepared_data;
     }
+
+    renderer_ptr->begin_frame(data_ptr);
     renderer_ptr->render();
-
     render_ui(kernel);
-
     renderer_ptr->end_frame();
   }
 
@@ -103,6 +104,20 @@ namespace other {
   scope<driver_ui>& rendering_system::get_driver_ui() {
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized in rendering system.");
     return driver_ui_ptr;
+  }
+
+  void rendering_system::configure_pipelines(driver_kernel* kernel) {
+    OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in configure_pipelines.");
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
+
+    std::vector<std::string> pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
+    if (pipeline_names.empty()) {
+      pipeline_definition default_pipeline_def = get_default_instancing_pipeline();
+      renderer_ptr->add_pipeline("Rendering Pipeline", default_pipeline_def);
+      get_driver().add_rendering_pipeline_asset("default-rendering-pipeline", default_pipeline_def);
+    } else {
+      CORE_LOG_WARN("No rendering pipelines specified in configuration.");
+    }
   }
 
   void rendering_system::handle_viewport_resize_event(const value& data) {

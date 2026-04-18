@@ -104,7 +104,7 @@ namespace other {
       return rendering()->api()->get_texture_gpu_resource(handle);
     }
 
-    void add_pipeline(const std::string_view name, pipeline_definition&& definition) {
+    void add_pipeline(const std::string_view name, const pipeline_definition& definition) {
       uint64_t hash = FNV(name);
       auto itr = pipelines.find(hash);
       if (itr != pipelines.end()) {
@@ -112,7 +112,7 @@ namespace other {
         return;
       }
 
-      auto* pl = arena_allocator<render_pipeline>{}.allocate(std::move(definition));
+      auto* pl = arena_allocator<render_pipeline>{}.allocate(definition);
       pl->initialize_pipeline(this);
       auto [pitr, res] = pipelines.insert({ hash, pl });
       if (!res) {

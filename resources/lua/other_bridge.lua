@@ -136,7 +136,6 @@ function _Meta._driver_interface:_List(args)
   end
 
   local event_name = "ls." .. parsed_args.type
-  print("Triggering event: " .. event_name)
   self.TriggerEvent(event_name)
 end
 
