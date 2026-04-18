@@ -48,14 +48,15 @@ target_sources(otherlib
 
     # src/project/...
 
-    src/scripting/dotnet_bindings.cpp
-    src/scripting/lua_bindings.cpp
+    src/scripting/bindings.cpp
     src/scripting/scene_interface.cpp
-    src/scripting/binding_utils/bind_glm_vectors.cpp
-    src/scripting/binding_utils/bind_glm_matrices.cpp
-    src/scripting/binding_utils/bind_math_types_lua.cpp
-    src/scripting/binding_utils/bind_rendering_types_lua.cpp
+    src/scripting/binding_descriptor.cpp
+    src/scripting/lua_bindings/bind_glm_vectors.cpp
+    src/scripting/lua_bindings/bind_glm_matrices.cpp
+    src/scripting/lua_bindings/bind_math_types_lua.cpp
+    src/scripting/lua_bindings/bind_rendering_types_lua.cpp
     src/scripting/dotnet_bindings/environment_api_bindings.cpp
+    src/scripting/dotnet_bindings/core_bindings.cpp
     src/scripting/dotnet_bindings/ui_bindings.cpp
     src/scripting/dotnet_bindings/driver_bindings.cpp
     src/scripting/dotnet_bindings/scene_bindings.cpp
@@ -64,6 +65,7 @@ target_sources(otherlib
     src/scripting/dotnet_bindings/event_bindings.cpp
     src/scripting/dotnet_bindings/input_bindings.cpp
     src/scripting/dotnet_bindings/network_bindings.cpp
+    src/scripting/other_abi.cpp
 
     src/scripting/actions/action.cpp
     src/scripting/actions/callback.cpp

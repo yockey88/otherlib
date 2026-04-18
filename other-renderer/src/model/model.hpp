@@ -47,19 +47,25 @@ namespace other {
     // clang-format on
     ~model_source();
 
-    model produce_model(const std::string& name, const std::vector<uint32_t>& submesh_idxs = {});
+    inline std::string get_name() const { return name; }
+
+    model produce_model(const std::string& name = "", const std::vector<uint32_t>& submesh_idxs = {});
 
     resource_handle get_mesh_handle() const;
-
-    static std::pair<natural_t, ref<model_source>> load_model_source(const filepath& file_path);
-    static std::pair<natural_t, ref<model_source>> load_model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    size_t get_num_vertices() const;
+    size_t get_num_indices() const;
 
     /// non-const overloads (not all are provided)
+    inline std::vector<vertex>& get_vertices() { return vertices; }
+    inline std::vector<index>& get_indices() { return indices; }
+    inline std::vector<triangle>& get_triangles() { return triangles; }
     inline std::vector<submesh>& get_submeshes() { return submeshes; }
     inline std::vector<mesh_node>& get_nodes() { return nodes; }
     /// const overloads
     inline const glm::mat4& get_global_transform() const { return global_transform; }
     inline const glm::mat4& get_inverse_global_transform() const { return inverse_global_transform; }
+    inline const std::vector<vertex>& get_vertices() const { return vertices; }
+    inline const std::vector<index>& get_indices() const { return indices; }
     inline const std::vector<triangle>& get_triangles() const { return triangles; }
     inline const std::vector<submesh>& get_submeshes() const { return submeshes; }
     inline const std::vector<mesh_node>& get_nodes() const { return nodes; }
@@ -73,6 +79,8 @@ namespace other {
 
    private:
     friend struct model;
+
+    std::string name;
 
     size_t num_models_produced = 0;
 

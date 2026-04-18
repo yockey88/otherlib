@@ -149,6 +149,12 @@ namespace other {
   }
 
   void network_thread::on_start() {
+    message network_ready_msg;
+    network_ready_msg.header = {
+      .category = NOTIFICATION,
+      .id = NETWORK_THREAD_READY,
+    };
+    bus.send_message(std::move(network_ready_msg));
   }
 
   void network_thread::on_shutdown() {
@@ -441,13 +447,16 @@ namespace other {
     CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
 
     try {
-      net_context->acceptor.close();
+      if (net_context->acceptor.is_open()) {
+        net_context->acceptor.close();
+      }
     } catch (const std::exception& e) {
       CORE_LOG_ERROR("Error closing acceptor: {}", e.what());
     }
 
     for (auto& [id, binding] : udp_bindings) {
       try {
+        OTHER_ASSERT(binding.stream != nullptr, "UDP stream for binding {} is null", id);
         binding.stream->shutdown();
       } catch (const std::exception& e) {
         CORE_LOG_ERROR("Error shutting down UDP binding {}: {}", id, e.what());
@@ -456,6 +465,7 @@ namespace other {
 
     for (auto& conn : pending_connections) {
       try {
+        OTHER_ASSERT(conn.active_session != nullptr, "Active session for pending connection {} is null", conn.connection_id.connection_number);
         conn.active_session->shutdown();
       } catch (const std::exception& e) {
         CORE_LOG_ERROR("Error shutting down pending connection [{},{}]: {}", conn.connection_id.connection_number, conn.connection_id.id, e.what());
@@ -464,6 +474,7 @@ namespace other {
 
     for (auto& [id, conn] : client_endpoints) {
       try {
+        OTHER_ASSERT(conn.active_session != nullptr, "Active session for connection {} is null", id);
         conn.active_session->shutdown();
       } catch (const std::exception& e) {
         CORE_LOG_ERROR("Error shutting down connection {}: {}", id, e.what());

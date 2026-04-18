@@ -14,6 +14,7 @@ namespace other {
       : scene_ptr(nullptr), objects(make_scope<memory_pool<scene_object>>()), nodes(make_scope<std::array<node, kMaxNodes>>()) {
     OTHER_ASSERT(objects != nullptr, "Failed to allocate memory pool for scene objects.");
 
+    std::ranges::fill(generation_counters, 0);
     root = create_object();
     OTHER_ASSERT(root != nullptr, "Failed to create root node in scene tree.");
   }
@@ -22,6 +23,7 @@ namespace other {
       : scene_ptr(s), objects(make_scope<memory_pool<scene_object>>()), nodes(make_scope<std::array<node, kMaxNodes>>()) {
     OTHER_ASSERT(objects != nullptr, "Failed to allocate memory pool for scene objects.");
 
+    std::ranges::fill(generation_counters, 0);
     root = create_object();
     OTHER_ASSERT(root != nullptr, "Failed to create root node in scene tree.");
   }
@@ -106,7 +108,7 @@ namespace other {
     scene_ptr->register_object(new_node->object, name, world_position);
     ++num_objects;
 
-    CORE_LOG_DEBUG("Created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
+    CORE_LOG_DEBUG(" - created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
     return *new_node->object;
   }
 
@@ -284,6 +286,7 @@ namespace other {
     node_ptr->parent = parent_node;
     node_ptr->id = idx;
     node_ptr->object = &obj;
+    obj.generation = generation_counters[idx]++;
 
     /// these have to stay in sync with each other because they reference the index in the memory pool
     node_ptr->object->id = node_ptr->id;

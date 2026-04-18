@@ -63,7 +63,6 @@ namespace other {
     OTHER_ASSERT(inserted, "Failed to insert physics world '{}' into worlds map.", id);
 
     itr->second->initialize(id);
-    CORE_LOG_DEBUG("Created physics world '{}'.", id);
     return world;
   }
 

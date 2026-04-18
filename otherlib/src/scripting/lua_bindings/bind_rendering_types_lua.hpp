@@ -1,5 +1,5 @@
 /**
- * \file scripting/binding_utils/bind_rendering_types_lua.hpp
+ * \file scripting/lua_bindings/bind_rendering_types_lua.hpp
  **/
 #ifndef OTHERLIB_SCRIPTING_BINDING_UTILS_BIND_RENDERING_TYPES_LUA_HPP
 #define OTHERLIB_SCRIPTING_BINDING_UTILS_BIND_RENDERING_TYPES_LUA_HPP

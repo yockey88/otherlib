@@ -3,8 +3,8 @@
  **/
 #include "driver/systems/asset_system.hpp"
 
-#include "driver/driver.hpp"
 #include "driver/driver_mounts.hpp"
+#include "driver/systems/network_system.hpp"
 
 namespace other {
 
@@ -37,7 +37,7 @@ namespace other {
       CORE_LOG_DEBUG("Asset loaded callback for asset ID: {} @ path: {} (virtual path: {})", asset_ptr->id, asset_path.string(), asset_ptr->virtual_path);
 
       loading_asset_ids.erase(it);
-      get_driver().get_event_system()->trigger_event("asset-browser.refresh");
+      // get_driver().get_event_system()->trigger_event("assets.new-asset-loaded", asset_ptr->id);
     });
 
     loading_asset_ids.push_back({
@@ -48,6 +48,11 @@ namespace other {
     return asset_id;
   }
 
+  natural_t asset_system::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->add_model_source_asset(name, vertices, indices);
+  }
+
   void asset_system::begin_full_unload() {
     asset_mgr->purge_stores();
   }
@@ -55,6 +60,11 @@ namespace other {
   scope<asset_handler>& asset_system::get_asset_manager() {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr;
+  }
+
+  natural_t asset_system::get_asset_hash(natural_t asset_id) const {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_asset_hash(asset_id);
   }
 
 }  // namespace other

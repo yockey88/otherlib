@@ -11,7 +11,18 @@
 
 namespace other {
 
-  class script_object;
+  struct script_object;
+
+  enum class script_language {
+    SCRIPT_TYPE_DOTNET = 0,
+    SCRIPT_TYPE_PYTHON,
+    SCRIPT_TYPE_LUA,
+    // SCRIPT_TYPE_JAVASCRIPT,
+
+    SCRIPT_TYPE_MAX,
+    INVALID_SCRIPT_TYPE = SCRIPT_TYPE_MAX
+  };
+  constexpr static size_t kNumScriptTypes = static_cast<size_t>(script_language::SCRIPT_TYPE_MAX);
 
   class script {
    public:
@@ -20,17 +31,6 @@ namespace other {
     ~script() = default;
 
    private:
-    enum script_type {
-      SCRIPT_TYPE_CSHARP = 0,
-      SCRIPT_TYPE_PYTHON,
-      SCRIPT_TYPE_LUA,
-      // SCRIPT_TYPE_JAVASCRIPT,
-
-      SCRIPT_TYPE_MAX,
-      INVALID_SCRIPT_TYPE = SCRIPT_TYPE_MAX
-    };
-    constexpr static size_t kNumScriptTypes = SCRIPT_TYPE_MAX;
-
     struct script_object_binding_data {
       script_object* object = nullptr;
     };

@@ -29,7 +29,9 @@ namespace other {
     virtual ~asset_pipeline() = default;
 
     static scope<asset_pipeline> get_asset_pipeline(asset::type type, asset_handler* handler);
+    static scope<asset_pipeline> get_model_source_pipeline(asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
 
+    void set_asset_data(asset* asset_ptr);
     void start_load(asio::thread_pool& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
     void start_unload(asio::thread_pool& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
 

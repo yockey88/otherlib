@@ -14,8 +14,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver_mounts.hpp"
-#include "scripting/dotnet_bindings.hpp"
-#include "scripting/lua_bindings.hpp"
+#include "scripting/bindings.hpp"
 
 namespace other {
 
@@ -446,6 +445,8 @@ namespace other {
         env->dotnet_binding_assembly = env->load_dotnet_module(other_cs_path.string());
       }
 
+      /// this is the internal scripting interfaces used to glue the script code to the native environment
+      ///  this is required for main driver initialization so we load it here
       {
         PROFILE_SECTION("other::bind-environment-scripts");
         dotnet_host& dn_host = env->get_dotnet_host();

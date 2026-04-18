@@ -32,7 +32,7 @@
 IMGUI_REFLECT(glm::vec3, x, y, z);
 IMGUI_REFLECT(glm::quat, w, x, y, z);
 
-IMGUI_REFLECT(other::gpu::graphics_material, diffuse_color, diffuse_reflectivity, specular_color, specular_reflectivity, emissivity, transparency, shininess, padding);
+IMGUI_REFLECT(other::gpu::graphics_material, diffuse_color, diffuse_reflectivity, specular_color, specular_reflectivity, emissivity, transparency, shininess);
 
 IMGUI_REFLECT(other::scene_object, id, registry_id, name, visible);
 IMGUI_REFLECT(other::transform, local_position, local_rotation_quat, local_scale);

@@ -14,6 +14,10 @@ namespace other {
     PROFILE_SECTION("model_importer::load_model_data--create-model-source");
 
     std::string name = asset_ptr->load_path.filename().stem().string();
+    if (name.empty()) {
+      OTHER_ASSERT(builder.name.has_value(), "Model builder name is not set for model source asset with empty filename");
+      name = builder.name.value();
+    }
     CORE_LOG_DEBUG("Pipeline finished successfully for asset ID: {}", asset_ptr->id);
     CORE_LOG_DEBUG("Creating model source with name: {}", name);
 

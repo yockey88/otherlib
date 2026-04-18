@@ -1,7 +1,7 @@
 /**
- * \file scripting/binding_utils/bind_glm_vectors.cpp
+ * \file scripting/lua_bindings/bind_glm_vectors.cpp
  **/
-#include "scripting/binding_utils/bind_glm_vectors.hpp"
+#include "scripting/lua_bindings/bind_glm_vectors.hpp"
 
 #include <glm/glm.hpp>
 

@@ -45,7 +45,6 @@ namespace other {
       } else {
         toml::node_view node = table.at_path(toml_path);
         if (!node) {
-          std::println(std::cerr, "Config key '{}' not found.", toml_path);
           return std::nullopt;
         }
 

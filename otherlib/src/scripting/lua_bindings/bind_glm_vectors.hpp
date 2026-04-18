@@ -1,5 +1,5 @@
 /**
- * \file scripting/binding_utils/bind_glm_vectors.hpp
+ * \file scripting/lua_bindings/bind_glm_vectors.hpp
  **/
 #ifndef OTHERLIB_SCRIPTING_BINDING_UTILS_BIND_GLM_VECTORS_HPP
 #define OTHERLIB_SCRIPTING_BINDING_UTILS_BIND_GLM_VECTORS_HPP

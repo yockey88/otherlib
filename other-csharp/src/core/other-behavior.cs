@@ -62,33 +62,36 @@ namespace Other.Core
     {
       Awake();
     }
-    protected abstract void Awake();
-
     public void ObjectRemove()
     {
       Remove();
     }
-    protected abstract void Remove();
-
-    protected abstract void Enable();
-    protected abstract void Disable();
 
     public void ObjectUpdate()
     {
       Update();
     }
-    protected abstract void Update();
 
     public void ObjectLateUpdate()
     {
       LateUpdate();
     }
-    protected abstract void LateUpdate();
 
     public void ObjectFixedUpdate()
     {
       FixedUpdate();
     }
+
+    /// on load and unload
+    protected abstract void Awake();
+    protected abstract void Remove();
+    /// on enable and disable
+    protected abstract void Enable();
+    protected abstract void Disable();
+    /// primary run loop updating, rendering, physics, etc. goes here
+    protected abstract void Update();
+    protected abstract void LateUpdate();
     protected abstract void FixedUpdate();
+    /// protected virtual void Render() {}
   }
 }

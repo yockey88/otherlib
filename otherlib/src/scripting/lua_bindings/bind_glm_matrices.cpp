@@ -1,7 +1,7 @@
 /**
- * \file scripting/binding_utils/bind_glm_matrices.cpp
+ * \file scripting/lua_bindings/bind_glm_matrices.cpp
  **/
-#include "scripting/binding_utils/bind_glm_matrices.hpp"
+#include "scripting/lua_bindings/bind_glm_matrices.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_inverse.hpp>

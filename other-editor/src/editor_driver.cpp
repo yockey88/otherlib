@@ -7,13 +7,8 @@
 #include <SDL3/SDL_keycode.h>
 
 #include "event/event_system.hpp"
-#include "serialization/reflection.hpp"
-
-#include "physics_world/physics_body.hpp"
-#include "script/scripting_environment.hpp"
 
 #include "object/camera_component.hpp"
-#include "object/physics_component.hpp"
 #include "object/scene_object.hpp"
 
 #include "driver/systems/scene_system.hpp"
@@ -22,7 +17,6 @@
 
 #include "project_window.hpp"
 #include "status_window.hpp"
-
 
 namespace other {
 
@@ -73,13 +67,12 @@ namespace other {
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
-    /// not transparent
     {
       auto* main_ctx = map.find_context("driver-core");
       OTHER_ASSERT(main_ctx != nullptr, "Main context 'driver-core' not found");
 
       main_ctx->add_action("toggle_move_mode")
-        .bind_key(key_code::M, modifier_flags::CTRL);
+        .bind_key(key_code::M, modifier_flags::ALT);
     }
 
     auto& ctx = map.add_context("editor-camera-controls");
@@ -105,7 +98,7 @@ namespace other {
       .bind_gamepad_axis(gamepad_axis::RIGHT_STICK_Y, 0.5f, 1.f, 1);
 
     ctx.add_action("toggle_move_mode")
-      .bind_key(key_code::M, modifier_flags::CTRL);
+      .bind_key(key_code::M, modifier_flags::ALT);
 
     ctx.add_action("orbit_hold")
       .bind_mouse_button(mouse_button::MIDDLE);
@@ -129,7 +122,9 @@ namespace other {
     OTHER_ASSERT(input_sys != nullptr, "Input system is null");
 
     glm::vec2 move = input_sys->get_action_value_2d("move");
+    glm::vec2 look = input_sys->get_action_value_2d("look");
     float vertical = input_sys->get_action_value("move_vertical");
+    bool is_looking_around = input_sys->is_action_pressed("orbit_hold");
 
     if (glm::length(move) > 0.01f || glm::abs(vertical) > 0.01f) {
       scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);
@@ -141,16 +136,13 @@ namespace other {
       cam->camera.position += cam->camera.up() * vertical * speed;
     }
 
-    // gamepad look (right stick)
-    glm::vec2 look = input_sys->get_action_value_2d("look");
     if (glm::length(look) > 0.01f) {
       scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);
       camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
       cam->camera.adjust_look_orientation(look.x, look.y);
     }
 
-    // mouse orbit (middle-click held)
-    if (input_sys->is_action_pressed("orbit_hold")) {
+    if (is_looking_around) {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), true);
       glm::vec2 mouse_delta = input_sys->get_mouse_delta();
       scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);

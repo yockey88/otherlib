@@ -7,8 +7,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver.hpp"
-#include "scripting/dotnet_bindings.hpp"
-#include "scripting/lua_bindings.hpp"
+#include "scripting/bindings.hpp"
 #include "tools/environment_console.hpp"
 
 namespace other {
@@ -48,12 +47,8 @@ namespace other {
       loaded_dotnet_modules.push_back(assembly);
     }
 
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
-
-    set_dotnet_native_driver(&get_driver());
-    bind_otherlib_driver_lua_functions(env->get_lua_host(), &get_driver());
-    // bind_scene_object_interface_lua_functions(env->get_lua_host(), this);
+    /// bind the native driver to the scripting environment to glue user scripts to the native environment
+    do_script_interface_bindings(&get_driver());
   }
 
   void scripting_system::tick(driver_kernel* kernel, double dt) {
@@ -63,6 +58,7 @@ namespace other {
   }
 
   void scripting_system::shutdown(driver_kernel* kernel) {
+    do_script_interface_unbinding();
     for (auto& module : loaded_dotnet_modules) {
       unload_dotnet_module(module);
     }

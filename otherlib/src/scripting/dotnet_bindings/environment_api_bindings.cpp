@@ -14,9 +14,9 @@ namespace other {
       return native_string::new_str(program_files_folder.string());
     }
 
-    native_string native_get_app_data_folder(native_string app_name_str, int32_t create_flag) {
+    native_string native_get_app_data_folder(native_string app_name_str, nbool32 create_flag) {
       std::string app_name = app_name_str;
-      filepath app_data_folder = get_app_data_folder(app_name, create_flag != 0);
+      filepath app_data_folder = get_app_data_folder(app_name, create_flag);
       return native_string::new_str(app_data_folder.string());
     }
 

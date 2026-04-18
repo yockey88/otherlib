@@ -122,6 +122,7 @@ namespace other {
     void handle_notification_stream_receive_udp_datagram(driver_kernel* kernel, message&& msg);
     void handle_notification_session_check_in(driver_kernel* kernel, message&& msg);
     void handle_notification_session_closed(driver_kernel* kernel, message&& msg);
+    void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
 
     /// acknowledgments

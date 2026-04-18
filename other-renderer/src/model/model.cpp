@@ -125,7 +125,7 @@ namespace other {
                               const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const std::vector<material>& materials, const std::vector<animation>& animations, 
                               const skeleton& skel, const glm::mat4& global_transform, const glm::mat4& inverse_global_transform, const bounding_box& bounds)
       // clang-format on
-      : global_transform(global_transform), inverse_global_transform(inverse_global_transform), vertices(vertices), indices(indices), triangles(triangles), submeshes(submeshes), nodes(nodes),
+      : name(name), global_transform(global_transform), inverse_global_transform(inverse_global_transform), vertices(vertices), indices(indices), triangles(triangles), submeshes(submeshes), nodes(nodes),
         materials(materials), animations(animations), bounds(bounds), file_path("") {
     OTHER_ASSERT(!vertices.empty(), "Model source must have at least one vertex.");
     OTHER_ASSERT(!indices.empty(), "Model source must have at least one index.");
@@ -167,7 +167,7 @@ namespace other {
 
   model model_source::produce_model(const std::string& name, const std::vector<uint32_t>& submesh_idxs) {
     model m = {
-      .name = name,
+      .name = name.empty() ? this->name + "_instance_" + std::to_string(num_models_produced++) : name,
       .source = this,
       .submesh_indices = submesh_idxs.empty() ?
         (std::ranges::iota_view{ 0u, (uint32_t)submeshes.size() } | std::ranges::to<std::vector<uint32_t>>()) :
@@ -189,45 +189,12 @@ namespace other {
     return mesh_handle;
   }
 
-  std::pair<natural_t, ref<model_source>> model_source::load_model_source(const filepath& file_path) {
-    CORE_LOG_DEBUG("Attempting to load model : {}", file_path.string());
-    if (!std::filesystem::exists(file_path)) {
-      CORE_LOG_ERROR("Model file does not exist: {}", file_path.string());
-      return { 0, nullptr };
-    }
-
-    model_builder builder = model_importer::load_model_data(file_path);
-    // clang-format off
-    ref<model_source> src = make_ref<model_source>(file_path.filename().stem().string(), builder.vertices, builder.indices, builder.triangles,
-                                                                                         builder.submeshes, builder.nodes, builder.materials, builder.animations,
-                                                                                         builder.skel, builder.global_transform, builder.inverse_global_transform, builder.bounds);
-    // clang-format on
-    natural_t hash = FNV(file_path.string());
-    subsystem<renderer_backend>::get()->add_model_source(hash, src);
-
-    CORE_LOG_DEBUG("Model source loaded: {} with hash {}", file_path.string(), hash);
-    return { hash, src };
+  size_t model_source::get_num_vertices() const {
+    return vertices.size();
   }
 
-  std::pair<natural_t, ref<model_source>> model_source::load_model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
-    CORE_LOG_DEBUG("Attempting to load model source with name: {}", name);
-    if (vertices.empty() || indices.empty()) {
-      CORE_LOG_ERROR("Model source must have at least one vertex and one index.");
-      return { 0, nullptr };
-    }
-
-    model_builder builder = model_importer::build_model_data(name, vertices, indices);
-    // clang-format off
-    ref<model_source> src = make_ref<model_source>("name", builder.vertices, builder.indices, builder.triangles,
-                                                           builder.submeshes, builder.nodes, builder.materials, builder.animations,
-                                                           builder.skel, builder.global_transform, builder.inverse_global_transform, builder.bounds);
-    // clang-format on
-
-    natural_t hash = FNV(name);
-    subsystem<renderer_backend>::get()->add_model_source(hash, src);
-
-    CORE_LOG_DEBUG("Model source loaded with name: {} and hash: {}", name, hash);
-    return { hash, src };
+  size_t model_source::get_num_indices() const {
+    return indices.size();
   }
 
   animation* model_source::get_animation_by_name(const std::string& name) {
