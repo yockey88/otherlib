@@ -491,6 +491,8 @@ namespace other {
     file_handle = fs->create_asset_virtual_file(asset_ptr->virtual_path);
     if (type == file_type::LOCAL) {
       file_handle->set_absolute_path(asset_ptr->absolute_path);
+    } else {
+      file_handle->set_absolute_path(asset_ptr->virtual_path);
     }
     file_handle->set_virtual_path(asset_ptr->virtual_path);
 

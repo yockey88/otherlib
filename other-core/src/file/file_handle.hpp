@@ -72,8 +72,9 @@ namespace other {
     virtual natural_t write(std::span<const uint8_t> data) = 0;
 
     template <typename OS>
-    void print(OS& os, size_t indent_level) const {
-      os << std::string(indent_level, ' ') << std::format(" - FILE[{} : {}] : {} ({} bytes)", handle_type, file_name, abs_path.string(), size()) << "\n";
+    OS& print(OS& os, size_t indent_level = 0) const {
+      os << std::string(indent_level, ' ') << std::format(" - FILE[{} : {}] : {} ({} bytes)", handle_type, file_name, abs_path.string(), size());
+      return os;
     }
 
     /// may be null for root-level files

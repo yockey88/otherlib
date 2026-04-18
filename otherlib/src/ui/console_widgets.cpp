@@ -336,95 +336,59 @@ namespace other {
         ///          followed by values like 0x4A2F or (0, 1.5, 0) → kResultValue
         glm::vec4 msg_color = color_for_level(entry.level);
         const std::string& msg = entry.message;
+        // dl->AddText({ x, text_y }, colors::to_im_col(msg_color), msg.c_str());
 
         size_t pos = 0;
         while (pos < msg.size()) {
-          /// look for <type> spans
-          size_t angle_open = msg.find('<', pos);
-          size_t angle_close = (angle_open != std::string::npos) ? msg.find('>', angle_open) : std::string::npos;
+          enum type {
+            PLAIN,
+            TYPEWORD,
+            VALUE,
+          };
+          type chunk_type = type::PLAIN;
 
-          /// look for value patterns:  0x..., (...)
-          size_t val_start = std::string::npos;
-          size_t val_end = std::string::npos;
-
-          /// find 0x hex values
-          size_t hex_pos = msg.find("0x", pos);
-          if (hex_pos != std::string::npos && hex_pos < msg.size()) {
-            val_start = hex_pos;
-            val_end = hex_pos + 2;
-            while (val_end < msg.size() &&
-                   ((msg[val_end] >= '0' && msg[val_end] <= '9') ||
-                    (msg[val_end] >= 'A' && msg[val_end] <= 'F') ||
-                    (msg[val_end] >= 'a' && msg[val_end] <= 'f'))) {
-              val_end++;
-            }
+          if (msg[pos] == '\n' || msg[pos] == '\r') {
+            pos++;
+            text_y += line_h;
+            x = cursor.x + kPaddingX;
+            continue;
           }
 
-          /// find (...) value tuples
-          size_t paren_pos = msg.find('(', pos);
-          if (paren_pos != std::string::npos) {
-            size_t paren_close = msg.find(')', paren_pos);
-            if (paren_close != std::string::npos) {
-              const std::string_view tuple_view(msg.data() + paren_pos, paren_close - paren_pos + 1);
-              if (!detail::is_value_tuple_candidate(tuple_view)) {
-                paren_pos = std::string::npos;
-              }
+          std::span remaining(msg.data() + pos, msg.size() - pos);
+
+          std::string next_chunk = {};
+          if (std::isalpha(msg[pos]) || std::isdigit(msg[pos])) {
+            next_chunk = remaining |
+              std::views::take_while([&](char c) { return std::isalpha(c) || std::isdigit(c); }) |
+              std::ranges::to<std::string>();
+          } else if (msg[pos] == '<' || msg[pos] == '(') {
+            next_chunk = remaining |
+              std::views::take_while([&](char c) { return c != '\n' && c != '\r' && c != '>' && c != ')'; }) |
+              std::ranges::to<std::string>();
+            if (msg[pos + next_chunk.size()] == '>' || msg[pos + next_chunk.size()] == ')') {
+              next_chunk += msg[pos + next_chunk.size()];
             }
 
-            if (paren_pos != std::string::npos) {
-              /// use this if it comes before hex
-              if (val_start == std::string::npos || paren_pos < val_start) {
-                val_start = paren_pos;
-                val_end = paren_close + 1;
-              }
+            if (detail::is_type_span_candidate(next_chunk)) {
+              chunk_type = type::TYPEWORD;
+            } else if (detail::is_value_tuple_candidate(next_chunk)) {
+              chunk_type = type::VALUE;
             }
-          }
-
-          /// determine which special span comes first
-          size_t next_special = std::string::npos;
-          bool is_type_span = false;
-
-          if (angle_open != std::string::npos && angle_close != std::string::npos) {
-            const std::string_view type_view(msg.data() + angle_open, angle_close - angle_open + 1);
-            if (detail::is_type_span_candidate(type_view)) {
-              next_special = angle_open;
-              is_type_span = true;
-            }
-          }
-
-          if (val_start != std::string::npos &&
-              (next_special == std::string::npos || val_start < next_special)) {
-            next_special = val_start;
-            is_type_span = false;
-          }
-
-          if (next_special == std::string::npos || next_special >= msg.size()) {
-            /// no more special spans — draw remaining text
-            std::string_view remaining(msg.data() + pos, msg.size() - pos);
-            dl->AddText({ x, text_y }, colors::to_im_col(msg_color), remaining.data(), remaining.data() + remaining.size());
-            x += ImGui::CalcTextSize(remaining.data(), remaining.data() + remaining.size()).x;
-            break;
-          }
-
-          /// draw plain text before the special span
-          if (next_special > pos) {
-            std::string_view before(msg.data() + pos, next_special - pos);
-            dl->AddText({ x, text_y }, colors::to_im_col(msg_color), before.data(), before.data() + before.size());
-            x += ImGui::CalcTextSize(before.data(), before.data() + before.size()).x;
-          }
-
-          /// draw the special span
-          if (is_type_span) {
-            std::string_view type_text(msg.data() + angle_open, angle_close - angle_open + 1);
-            dl->AddText({ x, text_y }, colors::to_im_col(kResultType), type_text.data(), type_text.data() + type_text.size());
-            x += ImGui::CalcTextSize(type_text.data(), type_text.data() + type_text.size()).x;
-            pos = angle_close + 1;
           } else {
-            std::string_view val_text(msg.data() + val_start, val_end - val_start);
-            dl->AddText({ x, text_y }, colors::to_im_col(kResultValue), val_text.data(), val_text.data() + val_text.size());
-            x += ImGui::CalcTextSize(val_text.data(), val_text.data() + val_text.size()).x;
-            pos = val_end;
+            next_chunk = std::string(1, msg[pos]);
           }
+          pos += next_chunk.size();
+
+          auto color = colors::to_im_col([chunk_type, msg_color]() {
+            switch (chunk_type) {
+              case type::TYPEWORD: return kResultType;
+              case type::VALUE: return kResultValue;
+              default: return msg_color;
+            }
+          }());
+
+          dl->AddText({ x, text_y }, color, next_chunk.data(), next_chunk.data() + next_chunk.size());
+          x += ImGui::CalcTextSize(next_chunk.data(), next_chunk.data() + next_chunk.size()).x;
         }
 
         /// advance cursor past the row

@@ -172,18 +172,14 @@ namespace other {
     const auto& mounts = fs->get_all_mounts();
     const auto& files = fs->get_all_files();
 
+    std::stringstream ss;
     for (auto& [hash, mount] : mounts) {
-      std::stringstream ss;
-      mount->print(ss);
-      CORE_LOG_DEBUG("Mount: {}", ss.str());
-      events->trigger_event("console.output", ss.str());
+      mount->print(ss) << "\n";
     }
     for (auto& [hash, file] : files) {
-      std::stringstream ss;
-      file->print(ss, 1);
-      CORE_LOG_DEBUG("File: {}", ss.str());
-      events->trigger_event("console.output", ss.str());
+      file->print(ss) << "\n";
     }
+    CORE_LOG_INFO("Filesystem Contents:\n{}", ss.str());
   }
 
   void asset_system::handle_ls_assets_event(driver_kernel* kernel, const value& data) {

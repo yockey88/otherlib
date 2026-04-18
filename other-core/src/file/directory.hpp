@@ -59,14 +59,17 @@ namespace other {
     const std::map<natural_t, ref<file_handle>>& get_files() const { return file_handles; }
 
     template <typename OS>
-    void print(OS& os, size_t indent_level = 0) const {
-      os << std::string(indent_level * 2, ' ') << std::format("DIR[{} : {}] : {} ({:#0x})", type, dir_name, abs_path.string(), hash) << "\n";
+    OS& print(OS& os, size_t indent_level = 0) const {
+      os << std::string(indent_level, ' ') << std::format("DIR[{} : {}] : {} ({:#0x})", type, dir_name, abs_path.string(), hash);
       for (const auto& [hash, child] : children) {
+        os << "\n";
         child->print(os, indent_level + 1);
       }
       for (const auto& [hash, file] : file_handles) {
-        file->print(os, indent_level + 1);
+        os << "\n";
+        file->print(os, indent_level);
       }
+      return os;
     }
 
    private:
