@@ -3,9 +3,12 @@
  **/
 #include "asset/asset_pipeline.hpp"
 
+#include "scene/scene.hpp"
+
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
-#include "asset/model_source_pipeline.hpp"
+#include "asset/pipelines/model_source_pipeline.hpp"
+#include "asset/pipelines/scene_pipeline.hpp"
 
 namespace other {
 
@@ -14,15 +17,25 @@ namespace other {
     void load_texture(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void load_model_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void load_model(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void load_animation(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void load_script_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void load_script(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void load_audio(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void load_scene(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void load_input_map(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void load_rendering_pipeline(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void empty_loader(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
     void unload_texture(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void unload_model_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void unload_model(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void unload_animation(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void unload_script_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void unload_script(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void unload_audio(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void unload_scene(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void unload_input_map(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    void unload_rendering_pipeline(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     void empty_unloader(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
   }  // namespace detail
@@ -31,8 +44,13 @@ namespace other {
     detail::load_texture,
     detail::load_model_source,
     detail::load_model,
+    detail::load_animation,
     detail::load_script_source,
+    detail::load_script,
     detail::load_audio,
+    detail::load_scene,
+    detail::load_input_map,
+    detail::load_rendering_pipeline,
     detail::empty_loader,
   };
 
@@ -40,24 +58,34 @@ namespace other {
     detail::unload_texture,
     detail::unload_model_source,
     detail::unload_model,
+    detail::unload_animation,
     detail::unload_script_source,
+    detail::unload_script,
     detail::unload_audio,
+    detail::unload_scene,
+    detail::unload_input_map,
+    detail::unload_rendering_pipeline,
     detail::empty_unloader,
   };
 
-  scope<asset_pipeline> asset_pipeline::get_asset_pipeline(asset::type type, asset_handler* handler) {
+  scope<asset_pipeline> asset_pipeline::get_asset_pipeline(event_system& events, asset_handler* handler, asset::type type) {
     switch (type) {
-      case asset::MODEL_SOURCE: return make_scope<model_source_pipeline>(handler);
+      case asset::MODEL_SOURCE: return make_scope<model_source_pipeline>(events, handler);
+      case asset::SCENE: return make_scope<scene_pipeline>(events, handler, nullptr);
       default:
         OTHER_ASSERT(false, "No asset pipeline for asset type {}", type);
     }
   }
 
-  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
-    scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(handler);
+  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system& events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+    scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(events, handler);
     CORE_LOG_DEBUG("Building model source pipeline for model '{}', vertex count {}, index count {}", name, vertices.size(), indices.size());
     pl->builder = model_importer::build_model_data(name, vertices, indices);
     return pl;
+  }
+
+  scope<asset_pipeline> asset_pipeline::get_scene_pipeline(event_system& events, asset_handler* handler, scene* scene_ptr) {
+    return make_scope<scene_pipeline>(events, handler, scene_ptr);
   }
 
   void asset_pipeline::set_asset_data(asset* asset_ptr) {
@@ -66,7 +94,7 @@ namespace other {
     pipeline_state.success = true;
   }
 
-  void asset_pipeline::start_load(asio::thread_pool& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
+  void asset_pipeline::start_load(executor_t& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
     CORE_LOG_DEBUG("Starting load pipeline for asset ID: {}", asset_ptr->id);
 
     if (pipeline_state.loading) {
@@ -81,7 +109,7 @@ namespace other {
     );
   }
 
-  void asset_pipeline::start_unload(asio::thread_pool& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
+  void asset_pipeline::start_unload(executor_t& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
     CORE_LOG_DEBUG("Starting unload pipeline for asset ID: {}", asset_ptr->id);
 
     if (pipeline_state.unloading) {
@@ -120,7 +148,7 @@ namespace other {
     }
   }
 
-  void asset_pipeline::start_load_operation(asio::thread_pool& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure, loading_table::loader_fn_t function) {
+  void asset_pipeline::start_load_operation(executor_t& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure, loading_table::loader_fn_t function) {
     on_success_callback = on_success;
     on_failure_callback = on_failure;
     this->asset_ptr = asset_ptr;
@@ -192,6 +220,10 @@ namespace other {
   namespace detail {
 
     void load_texture(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+      OTHER_ASSERT(false, "Texture loading not implemented yet for asset ID: {}", asset_ptr->id);
     }
 
     void load_model_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
@@ -223,12 +255,71 @@ namespace other {
     }
 
     void load_model(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+      OTHER_ASSERT(false, "Model loading not implemented yet for asset ID: {}", asset_ptr->id);
+    }
+
+    void load_animation(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+      OTHER_ASSERT(false, "Animation loading not implemented yet for asset ID: {}", asset_ptr->id);
     }
 
     void load_script_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+      OTHER_ASSERT(false, "Script source loading not implemented yet for asset ID: {}", asset_ptr->id);
+    }
+
+    void load_script(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+      OTHER_ASSERT(false, "Script loading not implemented yet for asset ID: {}", asset_ptr->id);
     }
 
     void load_audio(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+      OTHER_ASSERT(false, "Audio loading not implemented yet for asset ID: {}", asset_ptr->id);
+    }
+
+    void load_scene(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+
+      scene_pipeline* pl = reinterpret_cast<scene_pipeline*>(pipeline);
+      OTHER_ASSERT(pl != nullptr, "Pipeline is null!");
+      if (asset_ptr->path_hash == 0) {
+        asset_ptr->path_hash = FNV(asset_ptr->virtual_path);
+      } else {
+        OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Scene file does not exist: {}", asset_ptr->absolute_path.string());
+        CORE_LOG_DEBUG("Loading scene from file: {}", asset_ptr->load_path.string());
+      }
+
+      OTHER_ASSERT(pl->scene_ptr != nullptr, "Scene pointer in pipeline is null");
+      CORE_LOG_DEBUG("Scene [{}] loaded successfully, running scene scripts if any.", pl->scene_ptr->id);
+      (pl->*on_success)();
+    }
+
+    void load_input_map(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+      OTHER_ASSERT(false, "Input map loading not implemented yet for asset ID: {}", asset_ptr->id);
+    }
+
+    void load_rendering_pipeline(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
+      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
+      OTHER_ASSERT(false, "Rendering pipeline loading not implemented yet for asset ID: {}", asset_ptr->id);
     }
 
     void empty_loader(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
@@ -236,6 +327,8 @@ namespace other {
     }
 
     void unload_texture(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading texture (ID: {})", asset_ptr->id);
+      OTHER_ASSERT(false, "Texture unloading not implemented yet for asset ID: {}", asset_ptr->id);
     }
 
     void unload_model_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
@@ -250,15 +343,45 @@ namespace other {
     }
 
     void unload_model(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading model (ID: {})", asset_ptr->id);
+      OTHER_ASSERT(false, "Model unloading not implemented yet for asset ID: {}", asset_ptr->id);
+    }
+
+    void unload_animation(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading animation (ID: {})", asset_ptr->id);
+      OTHER_ASSERT(false, "Animation unloading not implemented yet for asset ID: {}", asset_ptr->id);
     }
 
     void unload_script_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading script source (ID: {})", asset_ptr->id);
+      OTHER_ASSERT(false, "Script source unloading not implemented yet for asset ID: {}", asset_ptr->id);
+    }
+
+    void unload_script(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading script (ID: {})", asset_ptr->id);
+      OTHER_ASSERT(false, "Script unloading not implemented yet for asset ID: {}", asset_ptr->id);
     }
 
     void unload_audio(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading audio (ID: {})", asset_ptr->id);
+      OTHER_ASSERT(false, "Audio unloading not implemented yet for asset ID: {}", asset_ptr->id);
+    }
+
+    void unload_scene(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+    }
+
+    void unload_input_map(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading input map (ID: {})", asset_ptr->id);
+      OTHER_ASSERT(false, "Input map unloading not implemented yet for asset ID: {}", asset_ptr->id);
+    }
+
+    void unload_rendering_pipeline(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading rendering pipeline (ID: {})", asset_ptr->id);
+      OTHER_ASSERT(false, "Rendering pipeline unloading not implemented yet for asset ID: {}", asset_ptr->id);
     }
 
     void empty_unloader(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      (reinterpret_cast<asset_pipeline*>(pipeline)->*on_success)();
     }
 
   }  // namespace detail

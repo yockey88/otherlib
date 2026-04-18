@@ -5,6 +5,8 @@
 
 #include <string_view>
 
+#include "file/filesystem.hpp"
+
 #include "driver/driver.hpp"
 
 namespace other {
@@ -12,6 +14,13 @@ namespace other {
   void event_driver_system::initialize(driver_kernel* kernel) {
     auto& network = kernel->get_core_system<network_system>();
     event_system_ptr = make_scope<event_system>(network.io_context());
+
+    {
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem must be initialized before event driver system.");
+
+      fs->initialize_file_events(*event_system_ptr);
+    }
 
     /// register the core driver events that were previously in driver::initialize
     event_system_ptr->register_event("shutdown-requested");

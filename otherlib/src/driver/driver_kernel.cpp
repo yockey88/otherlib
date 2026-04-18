@@ -124,12 +124,15 @@ namespace other {
         continue;
       }
 
+      CORE_LOG_DEBUG("Calling 'create_plugin' for plugin [{}]", name);
       driver_system* (*fn)(driver*) = sym.get_function<driver_system* (*)(driver*)>();
       driver_system* plugin_instance = fn(driver_instance);
       if (plugin_instance == nullptr) {
         CORE_LOG_ERROR("Failed to create plugin instance from plugin '{}'", plugin.path);
         plugin::unload_plugin_library(name);
         continue;
+      } else {
+        CORE_LOG_DEBUG("Successfully created plugin instance for plugin [{}]", name);
       }
 
       CORE_LOG_INFO("Successfully loaded driver plugin: '{}'", plugin.name);

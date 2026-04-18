@@ -20,8 +20,8 @@ namespace other {
 
   namespace detail {
 
-    void initialize_arena(const config_table* config);
     void initialize_logger(const config_table* config);
+    void initialize_arena(const config_table* config);
     void initialize_file_system(const config_table* config);
     void initialize_input_system(const config_table* config);
     void initialize_type_database(const config_table* config);
@@ -29,8 +29,8 @@ namespace other {
     void initialize_renderer_backend(const config_table* config);
     void initialize_scripting_environment(const config_table* config);
 
-    void shutdown_arena();
     void shutdown_logger();
+    void shutdown_arena();
     void shutdown_file_system();
     void shutdown_input_system();
     void shutdown_type_database();
@@ -318,6 +318,7 @@ namespace other {
       if (primary_arena == nullptr) {
         throw std::runtime_error("Primary arena is null.");
       }
+      CORE_LOG_DEBUG("Initialized primary arena subsystem.");
     }
 
     void initialize_file_system(const config_table* config) {
@@ -325,75 +326,6 @@ namespace other {
       if (fs == nullptr) {
         throw std::runtime_error("File system subsystem is null.");
       }
-
-      CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
-      const auto md_mnts = config->get_raw("filesystem.mounts");
-      if (md_mnts) {
-        if (md_mnts.is_array_of_tables()) {
-          const auto* mounts_tables = md_mnts.as_array();
-          OTHER_ASSERT(mounts_tables != nullptr, "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
-
-          CORE_LOG_DEBUG("Found {} filesystem mount entries in configuration", mounts_tables->size());
-          for (const auto& table : *mounts_tables) {
-            OTHER_ASSERT(table.is_table(), "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
-            const auto* mount_table = table.as_table();
-            OTHER_ASSERT(mount_table != nullptr, "Invalid format for filesystem mounts in configuration. Expected an array of tables.");
-
-            auto name_itr = mount_table->find("name");
-            auto type_itr = mount_table->find("type");
-            auto path_itr = mount_table->find("path");
-            if (name_itr == mount_table->end() || type_itr == mount_table->end()) {
-              CORE_LOG_ERROR("Invalid format for filesystem mount entry in configuration. Each mount entry must contain 'name' and 'type' fields.");
-              continue;
-            }
-            if (!name_itr->second.is_string() || !type_itr->second.is_string()) {
-              CORE_LOG_ERROR("Invalid format for filesystem mount entry in configuration. 'name' and 'type' fields must be strings.");
-              continue;
-            }
-
-            std::string name = name_itr->second.as_string()->get();
-            std::string type = type_itr->second.as_string()->get();
-            /// physical is probably going to be the default use case and needs extra checking
-            if (type == "physical") {
-              if (path_itr == mount_table->end()) {
-                CORE_LOG_ERROR("Invalid format for physical filesystem mount entry in configuration. Physical mounts must contain a 'path' field.");
-                continue;
-              }
-              if (!path_itr->second.is_string()) {
-                CORE_LOG_ERROR("Invalid format for physical filesystem mount entry in configuration. 'path' field must be a string.");
-                continue;
-              }
-              std::string path_str = path_itr->second.as_string()->get();
-              filepath path(path_str);
-              if (!std::filesystem::exists(path)) {
-                CORE_LOG_ERROR("Filesystem mount path '{}' does not exist. Cannot configure filesystem mount '{}'.", path_str, name);
-                continue;
-              }
-
-              fs->mount_directory(name, path);
-            }
-            /// virtual is simpler
-            else if (type == "virtual") {
-              if (fs->is_mounted(name)) {
-                CORE_LOG_WARN("Filesystem mount '{}' is already mounted. Skipping virtual mount.", name);
-                continue;
-              }
-
-              fs->mount_virtual(name);
-            } else {
-              CORE_LOG_ERROR("Invalid filesystem mount type '{}' for mount '{}'. Supported types are 'physical' and 'virtual'.", type, name);
-            }
-          }
-        } else {
-          CORE_LOG_ERROR("Invalid format for filesystem mounts in configuration. Expected an array of tables.");
-        }
-      }
-
-      /// defaults
-      /// \todo make this more robust
-      fs->mount_virtual(driver_mounts::kAssetMount);
-      fs->mount_virtual(driver_mounts::kSceneMount);
-      fs->mount_virtual(driver_mounts::kScriptMount);
     }
 
     void initialize_input_system(const config_table* config) {

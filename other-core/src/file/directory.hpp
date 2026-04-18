@@ -25,10 +25,13 @@ namespace other {
   struct directory : public ref_counted {
     directory() = default;
 
-    directory(const std::string_view name, const filepath& path)
-        : dir_name(name), abs_path(path) {}
+    directory(event_system& events, const std::string_view name, const filepath& path, file_type type = file_type::LOCAL);
 
     ~directory() override = default;
+
+    std::string to_string() const;
+
+    void poll();
 
     const std::string& name() const { return dir_name; }
     const filepath& absolute_path() const { return abs_path; }
@@ -58,12 +61,15 @@ namespace other {
     static std::vector<std::string> split_path(const std::string_view path);
 
    private:
+    file_type type = file_type::LOCAL;
     std::string dir_name;
     filepath abs_path;
 
     /// keyed by FNV hash of the name
     std::map<natural_t, ref<directory>> children;
     std::map<natural_t, ref<file_handle>> file_handles;
+
+    scope<file_watcher> watcher = nullptr;
   };
 
 }  // namespace other

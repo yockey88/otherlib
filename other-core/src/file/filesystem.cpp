@@ -10,28 +10,76 @@
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 
+#include "directory.hpp"
+#include "file_watcher.hpp"
+
 namespace other {
+
+  void file_system::initialize_file_events(event_system& events) {
+    events.register_event("filesystem.watch-event");
+    events.add_listener("filesystem.watch-event", [this](const value& data) {
+      if (data.type() != value_type::USER_TYPE) {
+        CORE_LOG_ERROR("Received invalid file event: expected user type with file_event data");
+        return;
+      }
+      file_event event = data;
+      CORE_LOG_INFO("File event: {} - {}", event.path.string(), [&]() {
+        switch (event.type) {
+          case file_event::type::CREATED: return "Created";
+          case file_event::type::MODIFIED: return "Modified";
+          case file_event::type::DELETED: return "Deleted";
+          case file_event::type::RENAMED: return "Renamed";
+          default: return "Unknown";
+        }
+      }());
+    });
+
+    this->events = &events;
+  }
+
+  void file_system::initialize_directory_structure(const std::vector<std::string_view>& mounts) {
+    for (const auto& mount : mounts) {
+      if (!mount.empty()) {
+        mount_virtual(mount);
+      }
+    }
+
+    {
+      PROFILE_SECTION("file_system::initialize_directory_structure - mount current working directory");
+      ref<directory> cwd = mount_directory("cwd", std::filesystem::current_path());
+      OTHER_ASSERT(cwd != nullptr, "Failed to mount current working directory");
+    }
+  }
+
+  void file_system::shutdown_file_system() {
+  }
+
+  void file_system::poll_files() {
+    for (auto& [hash, mount] : mounts) {
+      mount->poll();
+      for (auto& file : mount->files()) {
+        file->poll();
+      }
+    }
+  }
 
   resolved_path file_system::resolve_path(const std::string_view engine_path) {
     resolved_path result;
 
+    std::string rel_path = {};
     auto sep_pos = engine_path.find(kPathSeparator);
     if (sep_pos == std::string_view::npos) {
-      /// no mount prefix, treat entire path as relative with empty mount
-      result.relative_path = std::string(engine_path);
-      auto components = directory::split_path(engine_path);
-      if (!components.empty()) {
-        result.file_name = components.back();
-      }
-      return result;
+      result.mount_name = "";
+    } else {
+      result.mount_name = std::string(engine_path.substr(0, sep_pos));
+      rel_path = std::string(engine_path.substr(sep_pos + kPathSeparator.size()));
     }
 
-    result.mount_name = std::string(engine_path.substr(0, sep_pos));
-    result.relative_path = std::string(engine_path.substr(sep_pos + kPathSeparator.size()));
-
-    auto components = directory::split_path(result.relative_path);
-    if (!components.empty()) {
-      result.file_name = components.back();
+    result.relative_path_components = directory::split_path(rel_path);
+    if (!result.relative_path_components.empty()) {
+      result.file_name = filepath{ result.relative_path_components.back() }.filename().stem().string();
+      /// remove filename from relative path components to get directory path components
+      result.relative_path_components.pop_back();
     }
 
     return result;
@@ -60,7 +108,7 @@ namespace other {
       return it->second;
     }
 
-    auto dir = make_ref<directory>(mount_name, std::filesystem::absolute(path));
+    auto dir = make_ref<directory>(*events, mount_name, std::filesystem::absolute(path));
     mounts.insert({ hash, dir });
 
     CORE_LOG_INFO("Mounted directory '{}' -> '{}'", mount_name, path.string());
@@ -81,11 +129,20 @@ namespace other {
     }
 
     /// virtual mounts have no disk path
-    auto dir = make_ref<directory>(mount_name, filepath{});
+    auto dir = make_ref<directory>(*events, mount_name, filepath{}, file_type::VIRTUAL);
     mounts.insert({ hash, dir });
 
     CORE_LOG_INFO("Mounted virtual directory '{}'", mount_name);
     return dir;
+  }
+
+  void file_system::add_toplevel_file(ref<file_handle> file) {
+    PROFILE_SECTION("file_system::add_toplevel_file");
+    OTHER_ASSERT(file != nullptr, "Cannot add null file handle to filesystem");
+
+    CORE_LOG_DEBUG("Adding toplevel file to filesystem : {}", file->to_string());
+    std::lock_guard lock(fs_mutex);
+    toplevel_files.insert({ FNV(file->name()), file });
   }
 
   void file_system::unmount(const std::string_view mount_name) {
@@ -112,6 +169,7 @@ namespace other {
     if (it != mounts.end()) {
       return it->second;
     }
+
     return nullptr;
   }
 
@@ -152,7 +210,7 @@ namespace other {
       return nullptr;
     }
 
-    return mount->get_file(rp.relative_path);
+    return mount->get_file(rp.file_name);
   }
 
   std::vector<std::string> file_system::mounted_names() const {
@@ -163,6 +221,43 @@ namespace other {
       names.push_back(dir->name());
     }
     return names;
+  }
+
+  bool file_system::path_exists(const std::string_view engine_path) const {
+    return file_exists(engine_path) || directory_exists(engine_path);
+  }
+
+  bool file_system::file_exists(const std::string_view engine_path) const {
+    bool is_system_file = std::filesystem::exists(filepath(engine_path)) && std::filesystem::is_regular_file(filepath(engine_path));
+    if (is_system_file) {
+      return true;
+    }
+
+    resolved_path rp = resolve_path(engine_path);
+    return false;
+  }
+
+  bool file_system::directory_exists(const std::string_view engine_path) const {
+    for (const auto& [hash, mount] : mounts) {
+      if (mount->directory_exists(engine_path)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  ref<file_handle> file_system::find_file(const std::string_view name, const std::string_view ext) const {
+    PROFILE_SECTION("file_system::find_file");
+    std::lock_guard lock(fs_mutex);
+
+    for (const auto& [hash, mount] : mounts) {
+      auto result = mount->find_file_by_name(name, ext);
+      if (result != nullptr) {
+        return result;
+      }
+    }
+
+    return nullptr;
   }
 
   ref<file_handle> file_system::open(const std::string_view engine_path) const {
@@ -180,7 +275,7 @@ namespace other {
       return nullptr;
     }
 
-    auto components = directory::split_path(rp.relative_path);
+    auto& components = rp.relative_path_components;
     if (components.empty()) {
       CORE_LOG_ERROR("Cannot open '{}': empty relative path", engine_path);
       return nullptr;
@@ -210,7 +305,7 @@ namespace other {
         disk_path /= file_name;
 
         if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
-          auto local = make_ref<local_file>(disk_path);
+          auto local = make_ref<local_file>(*events, disk_path, engine_path);
           local->parent = target_dir.raw_ptr();
           return local;
         }
@@ -223,41 +318,48 @@ namespace other {
     return file;
   }
 
-  ref<file_handle> file_system::find_file(const std::string_view name, const std::string_view ext) const {
-    PROFILE_SECTION("file_system::find_file");
-    std::lock_guard lock(fs_mutex);
-
-    for (const auto& [hash, mount] : mounts) {
-      auto result = mount->find_file_by_name(name, ext);
-      if (result != nullptr) {
-        return result;
-      }
-    }
-
-    return nullptr;
+  ref<local_file> file_system::create_local_file(const filepath& path) {
+    OTHER_ASSERT(events != nullptr, "File system events not initialized when creating local file for path: {}", path.string());
+    return make_ref<local_file>(*events, path, path.string());
   }
 
-  bool file_system::path_exists(const std::string_view engine_path) const {
-    return file_exists(engine_path) || directory_exists(engine_path);
-  }
+  ref<local_file> file_system::register_local_file(const filepath& path) {
+    OTHER_ASSERT(events != nullptr, "File system events not initialized when registering local file for path: {}", path.string());
 
-  bool file_system::file_exists(const std::string_view engine_path) const {
-    bool is_system_file = std::filesystem::exists(filepath(engine_path)) && std::filesystem::is_regular_file(filepath(engine_path));
-    if (is_system_file) {
-      return true;
+    filepath abs_path = std::filesystem::absolute(path);
+    OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_regular_file(abs_path), "Cannot register local file: path '{}' does not exist or is not a regular file", abs_path.string());
+
+    auto components = directory::split_path(path.string());
+    OTHER_ASSERT(!components.empty(), "Cannot register local file: path '{}' is empty", path.string());
+
+    filepath name = components.back();
+    components.pop_back();
+
+    if (components.empty()) {
+      ref<local_file> local = create_local_file(abs_path);
+      add_toplevel_file(local);
+      return local;
     }
 
-    resolved_path rp = resolve_path(engine_path);
-    return false;
+    ref<directory> target_dir = get_or_create_mount(components[0]);
+    OTHER_ASSERT(target_dir != nullptr, "Failed to get or create mount '{}' while registering local file '{}'", components[0], path.string());
+
+    components = std::vector<std::string>(components.begin() + 1, components.end());
+    for (const auto& comp : components) {
+      OTHER_ASSERT(target_dir != nullptr, "Failed to get or create directory '{}' while registering local file '{}'", comp, path.string());
+      target_dir = target_dir->get_or_add_child_directory(comp, filepath(comp));
+    }
+    OTHER_ASSERT(target_dir != nullptr, "Failed to get or create target directory for local file '{}'", path.string());
+
+    ref<local_file> local = create_local_file(abs_path);
+    CORE_LOG_DEBUG("Registering local file '{}' at '{}'", path.string(), local->to_string());
+    target_dir->add_file(local);
+    return local;
   }
 
-  bool file_system::directory_exists(const std::string_view engine_path) const {
-    for (const auto& [hash, mount] : mounts) {
-      if (mount->directory_exists(engine_path)) {
-        return true;
-      }
-    }
-    return false;
+  ref<virtual_file> file_system::create_asset_virtual_file(const std::string_view virtual_path) {
+    OTHER_ASSERT(events != nullptr, "File system events not initialized when creating asset virtual file for path: {}", virtual_path);
+    return make_ref<virtual_file>(*events, virtual_path);
   }
 
   ref<virtual_file> file_system::create_virtual_file(const std::string_view mount_name, const std::string_view relative_path, std::vector<uint8_t>&& initial_data) {
@@ -287,7 +389,7 @@ namespace other {
     std::string name = fp.filename().string();
     std::string ext = fp.extension().string();
 
-    auto vfile = make_ref<virtual_file>(name, ext, std::move(initial_data));
+    auto vfile = make_ref<virtual_file>(*events, name, ext, std::move(initial_data));
     vfile->parent = target_dir.raw_ptr();
 
     /// build the virtual path
@@ -309,7 +411,7 @@ namespace other {
     }
 
     std::string full_name = std::string(file_name) + std::string(ext);
-    auto vfile = make_ref<virtual_file>(full_name, ext, std::move(initial_data));
+    auto vfile = make_ref<virtual_file>(*events, full_name, ext, std::move(initial_data));
     vfile->parent = mount.raw_ptr();
 
     mount->add_file(vfile);
@@ -349,7 +451,7 @@ namespace other {
     std::string name = fp.filename().string();
     std::string ext = fp.extension().string();
 
-    auto rfile = make_ref<remote_file>(name, ext, url);
+    auto rfile = make_ref<remote_file>(*events, name, ext, url);
     rfile->parent = target_dir.raw_ptr();
 
     target_dir->add_file(rfile);
@@ -416,7 +518,7 @@ namespace other {
 
     for (const auto& entry : std::filesystem::directory_iterator(disk_path)) {
       if (entry.is_regular_file()) {
-        auto local = make_ref<local_file>(entry.path());
+        auto local = make_ref<local_file>(*events, entry.path(), filepath{ dir->absolute_path() / entry.path().filename() }.string());
         dir->add_file(local);
       } else if (entry.is_directory() && recursive) {
         std::string child_name = entry.path().filename().string();

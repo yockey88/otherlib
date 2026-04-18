@@ -831,71 +831,71 @@ namespace other {
   void network_system::handle_command_environment_load_scene(driver_kernel* kernel, integer_t session_id, message&& msg) {
     command_load_scene scene_cmd = other_message_spec::parse<command_load_scene>(msg.data);
 
-    auto& scenes = kernel->get_core_system<scene_system>();
-    natural_t scene_id = scenes.create_empty_scene(scene_cmd.scene_name);
-    scenes.set_scene_to_active(scene_id);
+    // auto& scenes = kernel->get_core_system<scene_system>();
+    // natural_t scene_id = scenes.create_empty_scene(scene_cmd.scene_name);
+    // scenes.set_scene_to_active(scene_id);
 
-    scene* active_scene = scenes.get_active_scene();
-    OTHER_ASSERT(active_scene != nullptr, "Failed to set active scene after loading empty scene");
+    // scene* active_scene = scenes.get_active_scene();
+    // OTHER_ASSERT(active_scene != nullptr, "Failed to set active scene after loading empty scene");
 
-    /// if we received this them we are the 'server' part of the UDP stream (i.e. currently hosting the scene)
-    /// so we name these in terms of us being the server
-    /// \todo check if these are ok, and if not response with better ones
-    udp_binding_information binding_info;
-    binding_info.endpoint = scene_cmd.server_udp_address;
-    binding_info.remote_endpoint = scene_cmd.udp_address;
-    binding_info.check_in_hash = active_scene->id;
+    // /// if we received this them we are the 'server' part of the UDP stream (i.e. currently hosting the scene)
+    // /// so we name these in terms of us being the server
+    // /// \todo check if these are ok, and if not response with better ones
+    // udp_binding_information binding_info;
+    // binding_info.endpoint = scene_cmd.server_udp_address;
+    // binding_info.remote_endpoint = scene_cmd.udp_address;
+    // binding_info.check_in_hash = active_scene->id;
 
-    CORE_LOG_DEBUG("Suggested Scene Endpoints local = [{}], remote = [{}]", binding_point::write_string(binding_info.endpoint), binding_point::write_string(binding_info.remote_endpoint));
-    bool request_udp_binding = scene_cmd.requires_udp_binding == 0x01;
-    if (request_udp_binding) {
-      request_scene_udp_binding(kernel, binding_info);
-    } else {
-      CORE_LOG_DEBUG("Scene '{}' does not require UDP binding.", scene_cmd.scene_name);
-    }
+    // CORE_LOG_DEBUG("Suggested Scene Endpoints local = [{}], remote = [{}]", binding_point::write_string(binding_info.endpoint), binding_point::write_string(binding_info.remote_endpoint));
+    // bool request_udp_binding = scene_cmd.requires_udp_binding == 0x01;
+    // if (request_udp_binding) {
+    //   request_scene_udp_binding(kernel, binding_info);
+    // } else {
+    //   CORE_LOG_DEBUG("Scene '{}' does not require UDP binding.", scene_cmd.scene_name);
+    // }
 
-    /// first acknowledge that we loaded the scene
-    {
-      message ack_msg;
-      ack_msg.header = {
-        .category = ACKNOWLEDGEMENT,
-        .id = ACK,
-      };
+    // /// first acknowledge that we loaded the scene
+    // {
+    //   message ack_msg;
+    //   ack_msg.header = {
+    //     .category = ACKNOWLEDGEMENT,
+    //     .id = ACK,
+    //   };
 
-      acknowledgement ackmsg;
-      ackmsg.session_id = session_id;
-      ackmsg.acked_header = msg.header;
-      ackmsg.ack_nack = 0x01;
+    //   acknowledgement ackmsg;
+    //   ackmsg.session_id = session_id;
+    //   ackmsg.acked_header = msg.header;
+    //   ackmsg.ack_nack = 0x01;
 
-      /// \todo send back final addressess, currently just echoing what was sent
-      udp_binding_information client_binding_info;
-      client_binding_info.endpoint = scene_cmd.udp_address;
-      client_binding_info.remote_endpoint = scene_cmd.server_udp_address;
-      client_binding_info.check_in_hash = active_scene->id;
-      ackmsg.extra_data.append_range(client_binding_info.as_buffer());
-      ack_msg.data.append_range(ackmsg.as_buffer());
+    //   /// \todo send back final addressess, currently just echoing what was sent
+    //   udp_binding_information client_binding_info;
+    //   client_binding_info.endpoint = scene_cmd.udp_address;
+    //   client_binding_info.remote_endpoint = scene_cmd.server_udp_address;
+    //   client_binding_info.check_in_hash = active_scene->id;
+    //   ackmsg.extra_data.append_range(client_binding_info.as_buffer());
+    //   ack_msg.data.append_range(ackmsg.as_buffer());
 
-      CORE_LOG_DEBUG("acknowledging ENVIRONMENT_LOAD_SCENE command");
-      message tx_msg;
-      tx_msg.header = {
-        .category = COMMAND,
-        .id = SESSION_TX_MESSAGE,
-      };
+    //   CORE_LOG_DEBUG("acknowledging ENVIRONMENT_LOAD_SCENE command");
+    //   message tx_msg;
+    //   tx_msg.header = {
+    //     .category = COMMAND,
+    //     .id = SESSION_TX_MESSAGE,
+    //   };
 
-      command_session_tx_message tx_session_msg;
-      tx_session_msg.session_id = session_id;
-      tx_session_msg.msg = std::move(ack_msg);
-      tx_msg.data.append_range(tx_session_msg.as_buffer());
+    //   command_session_tx_message tx_session_msg;
+    //   tx_session_msg.session_id = session_id;
+    //   tx_session_msg.msg = std::move(ack_msg);
+    //   tx_msg.data.append_range(tx_session_msg.as_buffer());
 
-      send_to_network_thread(kernel, std::move(tx_msg));
-    }
+    //   send_to_network_thread(kernel, std::move(tx_msg));
+    // }
 
-    /// scene is empty, so we are already up too date
-    if (scene_cmd.empty_scene_flag == 0x01) {
-      CORE_LOG_DEBUG("Scene '{}' is empty, no scene data to request.", scene_cmd.scene_name);
-      return;
-    }
-    active_scene->connect_remote_session(session_id);
+    // /// scene is empty, so we are already up too date
+    // if (scene_cmd.empty_scene_flag == 0x01) {
+    //   CORE_LOG_DEBUG("Scene '{}' is empty, no scene data to request.", scene_cmd.scene_name);
+    //   return;
+    // }
+    // active_scene->connect_remote_session(session_id);
   }
 
   void network_system::handle_request_session_information(driver_kernel* kernel, integer_t session_id, message&& msg) {

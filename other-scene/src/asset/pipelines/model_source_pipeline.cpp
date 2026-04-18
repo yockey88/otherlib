@@ -1,7 +1,7 @@
 /**
- * \file asset/model_source_pipeline.cpp
+ * \file asset/pipelines/model_source_pipeline.cpp
  **/
-#include "asset/model_source_pipeline.hpp"
+#include "asset/pipelines/model_source_pipeline.hpp"
 
 #include "model/model_importer.hpp"
 #include "renderer/renderer_backend.hpp"

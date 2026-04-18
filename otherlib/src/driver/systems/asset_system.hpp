@@ -12,6 +12,8 @@
 
 namespace other {
 
+  class scene;
+
   class asset_system : public core_system<asset_system> {
    public:
     asset_system(driver* driver_instance)
@@ -26,6 +28,7 @@ namespace other {
 
     natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
     natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
     void begin_full_unload();
 
     scope<asset_handler>& get_asset_manager();

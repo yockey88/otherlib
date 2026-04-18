@@ -67,8 +67,7 @@ namespace other {
 
     std::array<bool, kNumButtons> buttons{};
     std::array<float, kNumAxes> axes{};
-
-    /// Dead-zone applied axes (post-processing). The raw values are in `axes`.
+    /// with deadzone
     std::array<float, kNumAxes> axes_processed{};
 
     inline bool is_down(gamepad_button b) const { return buttons[static_cast<size_t>(b)]; }

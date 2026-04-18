@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <ranges>
 
+#include "core/defines.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 #include "math/matrix.hpp"
@@ -148,31 +149,60 @@ namespace other {
 
   void scene::run_script_file() {
     if (!script_path.has_value()) {
-      CORE_LOG_ERROR("Scene does not have a script path set. Cannot run script file.");
       return;
     }
-    switch (FNV(script_path->extension().string())) {
-      case FNV(".lua"): run_lua_file(); break;
-      default:
-        CORE_LOG_ERROR("Unsupported script file extension '{}'", script_path->extension().string());
-        break;
+
+    CORE_LOG_DEBUG("Running Lua script file '{}' in scene '{}'.", script_path->string(), name);
+    // Load and execute the Lua script
+    auto* scripting_env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment.");
+
+    lua_sandbox& sandbox = storage->sandbox;
+    lua_host& lua = scripting_env->get_lua_host();
+    sol::table scene_table = sandbox.try_load_table(&lua, *script_path);
+
+    bool scene_valid = scene_table.valid();
+    sol::table objects_table;
+    if (scene_valid) {
+      objects_table = scene_table["Objects"];
+      scene_valid = objects_table.valid();
+      if (!scene_valid) {
+        CORE_LOG_WARN("Scene Lua file '{}' does not contain a valid 'Objects' table.", script_path->string());
+      } else {
+      }
     }
 
-    script_loaded = true;
+    if (sandbox["OnSceneLoad"].valid()) {
+      CORE_LOG_DEBUG("Calling 'OnSceneLoad' from Lua file: {}", script_path->string());
+      sol::protected_function on_scene_load_fn = sandbox["OnSceneLoad"];
+      sol::protected_function_result result = on_scene_load_fn(scene_table);
+      if (!result.valid()) {
+        CORE_LOG_ERROR("Failed to execute 'OnSceneLoad' from Lua file: {}", script_path->string());
+        sol::error err = result;
+        CORE_LOG_ERROR("Lua Error: {}", err.what());
+      }
+    }
+
+    if (scene_valid) {
+      CORE_LOG_DEBUG("Loading scene objects from Lua file: {}", script_path->string());
+      for (auto& obj : objects_table) {
+        sol::table obj_table = obj.second.as<sol::table>();
+        natural_t id = obj_table["GetId"](obj_table);
+        OTHER_ASSERT(has_object(id), "Scene object with ID {} already exists!", id);
+
+        scene_object& scene_obj = get_object(id);
+        construct_object_from_lua_table(scene_obj, obj_table);
+      }
+
+      CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", name, script_path->string());
+      script_loaded = true;
+    } else {
+      CORE_LOG_ERROR("Failed to load scene '{}' from Lua file '{}'.", name, script_path->string());
+    }
   }
 
   scene scene::create_scene(const std::string& name) {
     return scene(name);
-  }
-
-  scene scene::load_scene(const filepath& scene_path) {
-    std::string ext = scene_path.extension().string();
-    switch (FNV(ext)) {
-      case FNV(".lua"): return load_from_lua_file(scene_path);
-      default:
-        CORE_LOG_ERROR("Unsupported scene file extension '{}'", ext);
-        return scene();
-    }
   }
 
   void scene::play() {
@@ -609,44 +639,41 @@ namespace other {
         return;
       }
 
+      /**
+       * \todo currently @ref render_component::model_asset_id stores the model source id since models are not individually stored in the asset handler
+       *          but we need to make it hold individual model asset IDs and do the same type of logic below except without the model source intermediary
+       **/
+
       bool changed = render.last_model_asset_id != render.model_asset_id;
-      render.last_model_asset_id = render.model_asset_id;
-
       if (changed) {
-        natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
-        CORE_LOG_INFO("Render component model asset ID changed for object ID {}. New asset hash: {}", handle.id, hash);
-
-        ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
-        if (model_src == nullptr) {
-          CORE_LOG_WARN("Model source is null for asset ID {} on object ID {}. Clearing model.", render.model_asset_id, handle.id);
-          render.obj_model = model{};
-          render.obj_model.source = nullptr;
-          return;
+        if (!asset_handler->asset_exists(render.model_asset_id)) {
+          CORE_LOG_ERROR("Render component model asset ID {} does not exist for object ID {}.", render.model_asset_id, handle.id);
+          // avoids repeated failed lookups and objects don't disappear from scene
+          render.model_asset_id = render.last_model_asset_id;
+        } else {
+          CORE_LOG_INFO("Render component model asset ID changed for object ID {}. New asset ID: {}", handle.id, render.model_asset_id);
         }
-
-        std::string obj_name = get_object(handle.id).name;
-        render.obj_model = model_src->produce_model(std::format("{}:asset-model", obj_name));
       }
 
-      bool is_loaded = asset_handler->asset_loaded(render.model_asset_id);
+      /// either they are the same or we already validated the change
+      const bool is_loaded = asset_handler->asset_loaded(render.model_asset_id);
       if (!is_loaded) {
-        if (changed) {
-          render.obj_model = model{};
-          render.obj_model.source = nullptr;
-        }
         return;
       }
 
+      natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
+      OTHER_ASSERT(hash != 0, "Asset hash is 0 for asset ID {}.", render.model_asset_id);
+
+      /// handle the case this is first load of the model asset ID/a change for this render component
+      ///  and we need to produce the model
       if (render.obj_model.source == nullptr) {
         CORE_LOG_INFO("Looking up model source for asset ID {}", render.model_asset_id);
-        /// look up source with asset handler
 
-        natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
+        /// we check the asset exists and is loaded so this can not ever be null
         ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
         OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", render.model_asset_id);
 
-        std::string obj_name = get_object(handle.id).name;
-        render.obj_model = model_src->produce_model(std::format("{}:asset-model", obj_name));
+        render.obj_model = model_src->produce_model();
       }
 
       model* draw_model = &render.obj_model;
@@ -723,6 +750,8 @@ namespace other {
           draw_model->bone_matrices.clear();
         }
       }
+
+      render.last_model_asset_id = render.model_asset_id;
     });
 
     if (debug_physics_rendering_enabled && storage->physics != nullptr) {
@@ -802,60 +831,6 @@ namespace other {
 
   bool scene::object_handle::operator==(const object_handle& other) const {
     return id == other.id && object == other.object;
-  }
-
-  void scene::run_lua_file() {
-    if (!script_path.has_value()) {
-      CORE_LOG_ERROR("No script path specified for scene '{}', cannot run Lua file.", name);
-      return;
-    }
-
-    CORE_LOG_DEBUG("Running Lua script file '{}' in scene '{}'.", script_path->string(), name);
-    // Load and execute the Lua script
-    auto* scripting_env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment.");
-
-    lua_sandbox& sandbox = storage->sandbox;
-    lua_host& lua = scripting_env->get_lua_host();
-
-    CORE_LOG_DEBUG("  - retrieving scene table");
-    sol::table scene_table = sandbox.try_load_table(&lua, *script_path);
-    sol::table objects_table;
-
-    bool scene_valid = scene_table.valid();
-    if (scene_valid) {
-      objects_table = scene_table["Objects"];
-      scene_valid = objects_table.valid();
-      if (!scene_valid) {
-        CORE_LOG_WARN("Scene Lua file '{}' does not contain a valid 'Objects' table.", script_path->string());
-      } else {
-      }
-    }
-
-    if (sandbox["OnSceneLoad"].valid()) {
-      CORE_LOG_DEBUG("Calling 'OnSceneLoad' from Lua file: {}", script_path->string());
-      sol::protected_function on_scene_load_fn = sandbox["OnSceneLoad"];
-      sol::protected_function_result result = on_scene_load_fn(scene_table);
-      if (!result.valid()) {
-        CORE_LOG_ERROR("Failed to execute 'OnSceneLoad' from Lua file: {}", script_path->string());
-        sol::error err = result;
-        CORE_LOG_ERROR("Lua Error: {}", err.what());
-      }
-    }
-
-    if (scene_valid) {
-      CORE_LOG_DEBUG("Loading scene objects from Lua file: {}", script_path->string());
-      for (auto& obj : objects_table) {
-        sol::table obj_table = obj.second.as<sol::table>();
-        natural_t id = obj_table["GetId"](obj_table);
-        OTHER_ASSERT(has_object(id), "Scene object with ID {} already exists!", id);
-
-        scene_object& scene_obj = get_object(id);
-        construct_object_from_lua_table(scene_obj, obj_table);
-      }
-
-      CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", name, script_path->string());
-    }
   }
 
   scene_object* scene::from_registry_id(entt::entity entity) {
@@ -982,13 +957,6 @@ namespace other {
     storage->physics->destroy_physics_body(physics_comp.body);
     physics_comp.shape = nullptr;
     physics_comp.body = nullptr;
-  }
-
-  scene scene::load_from_lua_file(const filepath& scene_path) {
-    scene new_scene = scene(scene_path.filename().stem().string());
-    new_scene.script_path = scene_path;
-    new_scene.run_lua_file();
-    return new_scene;
   }
 
   void scene::construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table) {

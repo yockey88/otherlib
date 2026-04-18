@@ -12,7 +12,10 @@
 
 #include "core/defines.hpp"
 #include "core/state_machine.hpp"
+#include "event/event_system.hpp"
 
+#include "asio/asio/strand.hpp"
+#include "asio/asio/system_executor.hpp"
 #include "asset/asset.hpp"
 #include "asset/asset_pipeline.hpp"
 
@@ -22,6 +25,8 @@ namespace other {
     struct load_context;
 
   }  // namespace detail
+
+  class scene;
 
   enum asset_state {
     LOADING = 0,
@@ -81,8 +86,9 @@ namespace other {
 
   class asset_handler {
    public:
-    asset_handler(asio::io_context& io_context)
-        : io_context(io_context) {}
+    asset_handler(event_system& events, asio::io_context& io_context, const std::string_view asset_mount = "assets")
+        : events(events), io_context(io_context), executor(io_context.get_executor()), default_mount(asset_mount) {
+    }
     ~asset_handler() = default;
 
     static std::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
@@ -108,6 +114,7 @@ namespace other {
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
     natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
     void unload_asset(natural_t asset_id);
 
     /// checks if asset is ready for use
@@ -135,7 +142,7 @@ namespace other {
     std::vector<natural_t> get_all_tracked_ids() const;
 
     asio::io_context& get_io_context() { return io_context; }
-    asio::thread_pool& get_thread_pool() { return thread_pool; }
+    asset_pipeline::executor_t& get_executor() { return executor; }
 
     size_t get_num_loading_assets() const { return asset_pipelines.size(); }
     size_t get_num_loaded_assets() const { return loaded_assets.size(); }
@@ -145,10 +152,9 @@ namespace other {
     // size_t process_pending_unloads(size_t max_to_process = SIZE_MAX);
 
    private:
+    event_system& events;
     asio::io_context& io_context;
-    /// \todo figure out model-source pipeline race condition, currently two models loading at the same
-    ///       time when using more than one thread causes issues
-    asio::thread_pool thread_pool{ 1 };
+    asset_pipeline::executor_t executor;
 
     struct pipeline_context {
       scope<asset_pipeline> pipeline = nullptr;

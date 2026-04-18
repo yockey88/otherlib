@@ -14,12 +14,12 @@ namespace other {
       handle_type = file_type::VIRTUAL;
     }
 
-    virtual_file(const std::string_view name, const std::string_view ext = "")
-        : file_handle(name, ext, filepath(), "", file_type::VIRTUAL) {}
+    virtual_file(event_system& events, const std::string_view name, const std::string_view ext = "")
+        : file_handle(events, filepath(name).filename().stem().string(), ext, filepath(), "", file_type::VIRTUAL) {}
 
     /// construct a virtual file pre-loaded with data
-    virtual_file(const std::string_view name, const std::string_view ext, std::vector<uint8_t>&& initial_data)
-        : file_handle(name, ext, filepath(), "", file_type::VIRTUAL), buffer(std::move(initial_data)) {}
+    virtual_file(event_system& events, const std::string_view name, const std::string_view ext, std::vector<uint8_t>&& initial_data)
+        : file_handle(events, filepath(name).filename().stem().string(), ext, filepath(), "", file_type::VIRTUAL), buffer(std::move(initial_data)) {}
 
     ~virtual_file() override {
       close();

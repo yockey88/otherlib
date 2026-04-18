@@ -21,9 +21,6 @@ namespace other {
         ImGui::Text("Scene: %s", scenes.get_active_scene()->name.c_str());
       } else {
         ImGui::Text("No scene loaded.");
-        if (ImGui::Button("Load Empty Scene")) {
-          scenes.new_blank_scene("Empty Scene");
-        }
       }
     }
 

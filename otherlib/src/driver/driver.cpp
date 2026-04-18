@@ -152,6 +152,11 @@ namespace other {
     return driver_kernel_ptr->get_core_system<asset_system>().add_model_source_asset(name, vertices, indices);
   }
 
+  natural_t driver::add_scene_asset(scene* scene_ptr, opt<filepath> scene_path) {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().add_scene_asset(scene_ptr, scene_path);
+  }
+
   natural_t driver::get_asset_hash(natural_t asset_id) const {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<asset_system>().get_asset_hash(asset_id);

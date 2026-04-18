@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 
 #include "core/defines.hpp"
+#include "math/frustum.hpp"
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
@@ -87,6 +88,8 @@ namespace other {
     glm::vec3 pixel00_loc = glm::vec3{ 0.f, 0.f, 0.f };
     glm::vec3 pixel_delta_u = glm::vec3{ 0.f, 0.f, 0.f };
     glm::vec3 pixel_delta_v = glm::vec3{ 0.f, 0.f, 0.f };
+
+    frustum cam_frustum;
 
     void reset_camera();
   };

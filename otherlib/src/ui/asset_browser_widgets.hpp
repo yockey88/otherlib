@@ -54,7 +54,6 @@ namespace other {
         SCRIPT,
         AUDIO,
         SCENE,
-        SCENE_OBJECT,
         INPUT_MAP,
         PIPELINE,
         UNKNOWN,

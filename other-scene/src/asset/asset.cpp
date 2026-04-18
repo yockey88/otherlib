@@ -25,12 +25,17 @@ namespace other {
   }
 
   std::string asset::get_filesystem_directory() const {
+    return get_filesystem_directory(asset_type);
+  }
+
+  std::string asset::get_filesystem_directory(asset::type asset_type) {
     switch (asset_type) {
       case asset::TEXTURE: return "textures";
-
       case asset::MODEL_SOURCE:
       case asset::MODEL:
         return "models";
+      case asset::ANIMATION:
+        return "animations";
 
       case asset::SCRIPT_SOURCE:
       case asset::SCRIPT:
@@ -39,8 +44,13 @@ namespace other {
       case asset::AUDIO:
         return "audio";
 
+      case asset::SCENE:
+        return "scenes";
+
+      case asset::INPUT_MAP:
+      case asset::RENDERING_PIPELINE:
       default:
-        return "other";
+        return "misc";
     }
   }
 

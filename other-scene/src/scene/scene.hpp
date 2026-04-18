@@ -8,7 +8,6 @@
 
 #include "core/defines.hpp"
 
-#include "lua/lua_script.hpp"
 #include "renderer/renderer.hpp"
 
 #include "object/component.hpp"
@@ -54,7 +53,6 @@ namespace other {
     }
 
     static scene create_scene(const std::string& name);
-    static scene load_scene(const filepath& scene_path);
 
     void play();
     void pause();
@@ -252,17 +250,21 @@ namespace other {
 
     std::string name = "Untitled Scene";
     natural_t id = 0;
+    natural_t asset_id = 0;
 
+    /// clean this up, right now this is really fragile
     integer_t kNoStreamBinding = -1;
     integer_t update_stream_id = kNoStreamBinding;
 
     opt<filepath> script_path = std::nullopt;
     bool script_loaded = false;
 
+    bool activate_on_load = false;
     bool synchronized = true;
     bool debug_physics_rendering_enabled = false;
 
    private:
+    friend class scene_tree;
     struct object_handle {
       natural_t id = 0;
       scene_object* object = nullptr;
@@ -270,9 +272,8 @@ namespace other {
       operator scene_object*() const;
       bool operator==(const object_handle& other) const;
     };
-    friend class scene_tree;
-
-    void run_lua_file();
+    struct synchronization_state {
+    };
 
     scene_object* from_registry_id(entt::entity entity);
 
@@ -292,7 +293,6 @@ namespace other {
     // void on_update_physics_component(const entt::registry&, const entt::entity entity);
     void on_destroy_physics_component(const entt::registry&, const entt::entity entity);
 
-    static scene load_from_lua_file(const filepath& scene_path);
     void construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table);
 
     bool playing = false;
