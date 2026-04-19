@@ -18,6 +18,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/arena_vector_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/arena_array_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/memory_pool_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/graph_tests.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/ref/ref_test.cpp
     

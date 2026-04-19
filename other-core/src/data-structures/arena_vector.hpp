@@ -31,6 +31,11 @@ namespace other {
     const T& operator[](natural_t i) const { return data[i]; }
 
     void reserve(natural_t new_size) {
+      if (new_size == 0) {
+        clear();
+        return;
+      }
+
       realloc_with_capacity(new_size);
       size = 0;
     }

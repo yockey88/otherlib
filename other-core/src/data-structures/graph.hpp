@@ -22,7 +22,8 @@ namespace other {
       std::vector<natural_t> sorted_node_ids;
     };
 
-    graph() = default;
+    graph()
+        : adjacency_matrix(make_ref<matrix_nxm<real_t>>(0, 0)) {}
     ~graph() { clear(); }
 
     void clear() {
@@ -42,21 +43,41 @@ namespace other {
     auto end() { return nodes.end(); }
     auto end() const { return nodes.end(); }
 
+    void remove_neighbors(uint64_t node_id) {
+      OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
+      /// easiest way is to just remove all edges leaving this node
+      for (const natural_t other_id : get_all_node_ids()) {
+        remove_edge(node_id, other_id);
+      }
+    }
+
+    std::vector<natural_t> get_neighbors(uint64_t node_id) const {
+      std::vector<natural_t> neighbors;
+      if (adjacency_matrix == nullptr) {
+        return neighbors;
+      }
+      for (const natural_t other_id : get_all_node_ids()) {
+        OTHER_ASSERT(other_id <= adjacency_matrix->cols && node_id <= adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
+        if (!detail::epsilon_zero((*adjacency_matrix)(node_id - 1, other_id - 1))) {
+          neighbors.push_back(other_id);
+        }
+      }
+      return neighbors;
+    }
+
     uint64_t add_node(T&& value) {
       auto id = get_next_id();
       auto [itr, success] = nodes.emplace(id, node{ id, std::move(value) });
-      if (!success) {
-        return 0;
+      OTHER_ASSERT(success, "Failed to add node to graph. This should never happen since IDs are unique.");
+
+      const ref<matrix_nxm<real_t>> old_adjacency = adjacency_matrix;
+      adjacency_matrix = make_ref<matrix_nxm<real_t>>(dynamic_matrix<real_t>::create_matrix(nodes.size(), nodes.size()));
+
+      for (size_t i = 0; i < old_adjacency->rows; ++i) {
+        for (size_t j = 0; j < old_adjacency->cols; ++j) {
+          (*adjacency_matrix)(i, j) = (*old_adjacency)(i, j);
+        }
       }
-
-      // auto old_adjacency = adjacency_matrix;
-      // adjacency_matrix = dynamic_matrix<real_t>::create_matrix(nodes.size(), nodes.size());
-
-      // for (size_t i = 0; i < old_adjacency->rows; ++i) {
-      //   for (size_t j = 0; j < old_adjacency->cols; ++j) {
-      //     (*adjacency_matrix)(i, j) = (*old_adjacency)(i, j);
-      //   }
-      // }
 
       return itr->first;
     }
@@ -113,21 +134,22 @@ namespace other {
     }
 
     void add_edge(uint64_t from_id, uint64_t to_id, real_t weight = 1.0) {
-      if (nodes.find(from_id) == nodes.end() || nodes.find(to_id) == nodes.end()) {
+      if (from_id >= adjacency_matrix->rows || to_id >= adjacency_matrix->cols) {
         return;
       }
+
       OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
-      OTHER_ASSERT(from_id < adjacency_matrix->cols && to_id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-      (*adjacency_matrix)(from_id, to_id) = weight;
+      OTHER_ASSERT(from_id < adjacency_matrix->rows && to_id < adjacency_matrix->cols, "Node IDs exceed adjacency matrix dimensions.");
+      (*adjacency_matrix)(from_id - 1, to_id - 1) = weight;
     }
 
     void remove_edge(uint64_t from_id, uint64_t to_id) {
-      if (nodes.find(from_id) == nodes.end() || nodes.find(to_id) == nodes.end()) {
+      if (from_id >= adjacency_matrix->rows || to_id >= adjacency_matrix->cols) {
         return;
       }
       OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
-      OTHER_ASSERT(from_id < adjacency_matrix->cols && to_id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-      (*adjacency_matrix)(from_id, to_id) = 0.0;
+      OTHER_ASSERT(from_id < adjacency_matrix->rows && to_id < adjacency_matrix->cols, "Node IDs exceed adjacency matrix dimensions.");
+      (*adjacency_matrix)(from_id - 1, to_id - 1) = 0.0;
     }
 
     topology topological_sort() const {
@@ -147,7 +169,7 @@ namespace other {
       for (const auto& node_id : get_all_node_ids()) {
         for (const auto& other_id : get_all_node_ids()) {
           OTHER_ASSERT(other_id < adjacency_matrix->cols && node_id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-          if ((*adjacency_matrix)(other_id, node_id) != 0.0) {
+          if (!detail::epsilon_zero((*adjacency_matrix)(other_id - 1, node_id - 1))) {
             in_degree[node_id]++;
           }
         }
@@ -165,8 +187,8 @@ namespace other {
 
         for (const auto& neighbor_id : get_all_node_ids()) {
           OTHER_ASSERT(neighbor_id < adj_copy->cols && current < adj_copy->rows, "Node IDs exceed adjacency matrix dimensions.");
-          if ((*adj_copy)(current, neighbor_id) != 0.0) {
-            (*adj_copy)(current, neighbor_id) = 0.0;
+          if (!detail::epsilon_zero((*adj_copy)(current - 1, neighbor_id - 1))) {
+            (*adj_copy)(current - 1, neighbor_id - 1) = 0.0;
             in_degree[neighbor_id]--;
             if (in_degree[neighbor_id] == 0) {
               no_incoming_edges.insert(neighbor_id);
@@ -183,6 +205,27 @@ namespace other {
       return topo;
     }
 
+    std::string to_string() const {
+      std::stringstream ss;
+      for (const auto& [id, node] : nodes) {
+        if constexpr (requires { std::formatter<T>{}; }) {
+          ss << std::format("[{}] = {}\n", id, node.value);
+        } else {
+          ss << std::format("[{}] = <non-streamable value>\n", id);
+        }
+        for (const auto& other_id : get_all_node_ids()) {
+          OTHER_ASSERT(other_id < adjacency_matrix->cols && id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
+          if (!detail::epsilon_zero((*adjacency_matrix)(id - 1, other_id - 1))) {
+            ss << std::format("  -> [{}] (weight: {:.3f})\n", other_id, (*adjacency_matrix)(id - 1, other_id - 1));
+          }
+        }
+      }
+      return ss.str();
+    }
+    std::string to_matrix_string() const {
+      return dynamic_matrix<real_t>::write_string(*adjacency_matrix);
+    }
+
    private:
     struct node {
       uint64_t id = 0;
@@ -191,7 +234,7 @@ namespace other {
       constexpr auto operator<=>(const node& other) const = default;
     };
     std::map<uint64_t, node> nodes;
-    ref<matrix_nxm<real_t>> adjacency_matrix = nullptr;
+    ref<matrix_nxm<real_t>> adjacency_matrix;
 
     uint64_t id_counter = 0;
     uint64_t get_next_id() {

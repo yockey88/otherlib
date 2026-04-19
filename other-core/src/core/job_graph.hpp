@@ -26,12 +26,22 @@ namespace other {
     job_graph() = default;
     ~job_graph() = default;
 
-    ref<job> insert(job::descriptor desc, std::function<void()> work);
+    job_node* get_node(natural_t id);
+
+    ref<job> insert(job::descriptor desc, work_fn work);
     ref<job> add_deferred(natural_t trigger, deferred_factory_fn factory);
     void add_dependency(natural_t parent, natural_t child);
 
+    std::vector<natural_t> collect_ready();
+    std::vector<natural_t> resolve(natural_t job_id, job::status status);
+    void mark_dispatched(natural_t job_id);
+    void cancel(natural_t job_id);
+
     natural_t node_id_from_job_id(natural_t job_id) const;
     natural_t job_id_from_node_id(natural_t node_id) const;
+
+    bool empty() const;
+    bool size() const;
 
    private:
     struct id_pair {

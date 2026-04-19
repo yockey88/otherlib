@@ -52,6 +52,7 @@ namespace other {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     if (!net_context->io_context.stopped()) {
       net_context->io_context.poll();
+      net_context->io_context.restart();
     }
 
     auto msg_opt = net_context->net_thread_message_bus.receive_message();

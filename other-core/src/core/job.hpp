@@ -25,8 +25,8 @@ namespace other {
     };
     enum status : uint8_t {
       PENDING,
-      /// waiting for dependencies or just not picked up by a worker yet
       QUEUED,
+      WAITING_FOR_DEPENDENCIES,
       RUNNING,
       COMPLETED,
       FAILED,
@@ -64,9 +64,10 @@ namespace other {
 
     void add_continuation(continuation_fn cont);
 
+    natural_t id;
+
    private:
     friend class job_graph;
-    natural_t id;
 
     std::atomic<status> current_status = status::PENDING;
     std::mutex cont_mutex;
