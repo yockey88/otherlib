@@ -15,6 +15,9 @@ namespace other {
     g.add_edge(n0, n1);
     g.add_edge(n1, n2);
 
+    CORE_LOG_DEBUG("Graph:{}", g.to_matrix_string());
+    CORE_LOG_DEBUG("Graph:\n{}", g.to_string());
+
     auto neighbors_of_1 = g.get_neighbors(n0);
     ASSERT_EQ(neighbors_of_1.size(), 1);
     EXPECT_EQ(neighbors_of_1[0], n1);

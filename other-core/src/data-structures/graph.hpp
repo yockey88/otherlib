@@ -26,6 +26,10 @@ namespace other {
         : adjacency_matrix(make_ref<matrix_nxm<real_t>>(0, 0)) {}
     ~graph() { clear(); }
 
+    inline natural_t id_to_idx(natural_t id) const {
+      return id - 1;
+    }
+
     void clear() {
       nodes.clear();
     }
@@ -57,8 +61,8 @@ namespace other {
         return neighbors;
       }
       for (const natural_t other_id : get_all_node_ids()) {
-        OTHER_ASSERT(other_id <= adjacency_matrix->cols && node_id <= adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-        if (!detail::epsilon_zero((*adjacency_matrix)(node_id - 1, other_id - 1))) {
+        OTHER_ASSERT(id_to_idx(other_id) < adjacency_matrix->cols && id_to_idx(node_id) < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
+        if (!detail::epsilon_zero((*adjacency_matrix)(id_to_idx(node_id), id_to_idx(other_id)))) {
           neighbors.push_back(other_id);
         }
       }
@@ -134,22 +138,22 @@ namespace other {
     }
 
     void add_edge(uint64_t from_id, uint64_t to_id, real_t weight = 1.0) {
-      if (from_id >= adjacency_matrix->rows || to_id >= adjacency_matrix->cols) {
+      if (id_to_idx(from_id) >= adjacency_matrix->rows || id_to_idx(to_id) >= adjacency_matrix->cols) {
         return;
       }
 
       OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
-      OTHER_ASSERT(from_id < adjacency_matrix->rows && to_id < adjacency_matrix->cols, "Node IDs exceed adjacency matrix dimensions.");
-      (*adjacency_matrix)(from_id - 1, to_id - 1) = weight;
+      OTHER_ASSERT(id_to_idx(from_id) < adjacency_matrix->rows && id_to_idx(to_id) < adjacency_matrix->cols, "Node IDs exceed adjacency matrix dimensions.");
+      (*adjacency_matrix)(id_to_idx(from_id), id_to_idx(to_id)) = weight;
     }
 
     void remove_edge(uint64_t from_id, uint64_t to_id) {
-      if (from_id >= adjacency_matrix->rows || to_id >= adjacency_matrix->cols) {
+      if (id_to_idx(from_id) >= adjacency_matrix->rows || id_to_idx(to_id) >= adjacency_matrix->cols) {
         return;
       }
       OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
-      OTHER_ASSERT(from_id < adjacency_matrix->rows && to_id < adjacency_matrix->cols, "Node IDs exceed adjacency matrix dimensions.");
-      (*adjacency_matrix)(from_id - 1, to_id - 1) = 0.0;
+      OTHER_ASSERT(id_to_idx(from_id) < adjacency_matrix->rows && id_to_idx(to_id) < adjacency_matrix->cols, "Node IDs exceed adjacency matrix dimensions.");
+      (*adjacency_matrix)(id_to_idx(from_id), id_to_idx(to_id)) = 0.0;
     }
 
     topology topological_sort() const {
@@ -168,8 +172,8 @@ namespace other {
 
       for (const auto& node_id : get_all_node_ids()) {
         for (const auto& other_id : get_all_node_ids()) {
-          OTHER_ASSERT(other_id < adjacency_matrix->cols && node_id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-          if (!detail::epsilon_zero((*adjacency_matrix)(other_id - 1, node_id - 1))) {
+          OTHER_ASSERT(id_to_idx(other_id) < adjacency_matrix->cols && id_to_idx(node_id) < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
+          if (!detail::epsilon_zero((*adjacency_matrix)(id_to_idx(other_id), id_to_idx(node_id)))) {
             in_degree[node_id]++;
           }
         }
@@ -186,9 +190,9 @@ namespace other {
         topo.sorted_node_ids.push_back(current);
 
         for (const auto& neighbor_id : get_all_node_ids()) {
-          OTHER_ASSERT(neighbor_id < adj_copy->cols && current < adj_copy->rows, "Node IDs exceed adjacency matrix dimensions.");
-          if (!detail::epsilon_zero((*adj_copy)(current - 1, neighbor_id - 1))) {
-            (*adj_copy)(current - 1, neighbor_id - 1) = 0.0;
+          OTHER_ASSERT(id_to_idx(neighbor_id) < adj_copy->cols && id_to_idx(current) < adj_copy->rows, "Node IDs exceed adjacency matrix dimensions.");
+          if (!detail::epsilon_zero((*adj_copy)(id_to_idx(current), id_to_idx(neighbor_id)))) {
+            (*adj_copy)(id_to_idx(current), id_to_idx(neighbor_id)) = 0.0;
             in_degree[neighbor_id]--;
             if (in_degree[neighbor_id] == 0) {
               no_incoming_edges.insert(neighbor_id);
@@ -214,9 +218,9 @@ namespace other {
           ss << std::format("[{}] = <non-streamable value>\n", id);
         }
         for (const auto& other_id : get_all_node_ids()) {
-          OTHER_ASSERT(other_id < adjacency_matrix->cols && id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-          if (!detail::epsilon_zero((*adjacency_matrix)(id - 1, other_id - 1))) {
-            ss << std::format("  -> [{}] (weight: {:.3f})\n", other_id, (*adjacency_matrix)(id - 1, other_id - 1));
+          OTHER_ASSERT(id_to_idx(other_id) < adjacency_matrix->cols && id_to_idx(id) < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
+          if (!detail::epsilon_zero((*adjacency_matrix)(id_to_idx(id), id_to_idx(other_id)))) {
+            ss << std::format("  -> [{}] (weight: {:.3f})\n", other_id, (*adjacency_matrix)(id_to_idx(id), id_to_idx(other_id)));
           }
         }
       }
