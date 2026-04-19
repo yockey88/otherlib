@@ -9,7 +9,7 @@
 #include "scene/scene.hpp"
 #include "scene/scene_graph.hpp"
 
-#include "driver/driver_kernel.hpp"
+#include "driver/systems/core_system.hpp"
 
 namespace other {
 

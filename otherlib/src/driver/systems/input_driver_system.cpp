@@ -27,8 +27,8 @@ namespace other {
 
   void input_driver_system::handle_input_event(driver_kernel* kernel, const input_state_change_event& event) {
     if (get_driver().rendering_enabled() && event.action_name.starts_with("focus-console-if-open")) {
-      auto& events = kernel->get_core_system<event_driver_system>();
-      auto& driver_ui_ptr = kernel->get_core_system<rendering_system>().get_driver_ui();
+      auto& events = sibling<event_driver_system>(*kernel);
+      auto& driver_ui_ptr = sibling<rendering_system>(*kernel).get_driver_ui();
       if (driver_ui_ptr != nullptr && driver_ui_ptr->is_window_open("console")) {
         std::string event_name = "console.focus" + std::string(event.action_name.substr(std::strlen("focus-console-if-open")));
         events.trigger_event(kernel, event_name);

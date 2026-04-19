@@ -20,14 +20,12 @@ namespace other {
     auto open_windows = get_driver().configuration().get_value<std::vector<std::string>>("ui.open-windows", std::vector<std::string>{});
     for (const auto& window_name : open_windows) {
       value val = window_name;
-      kernel->get_core_system<event_driver_system>().handle_open_ui_window_event(kernel, val);
+      sibling<event_driver_system>(*kernel).handle_open_ui_window_event(kernel, val);
     }
 
     auto& events = *get_driver().get_event_system();
 
-    events.add_listener("viewport.resize", [this](const value& val) {
-      handle_viewport_resize_event(val);
-    });
+    events.add_listener("viewport.resize", [this](const value& val) { handle_viewport_resize_event(val); });
 
     events.register_event("ls.windows");
     events.add_listener("ls.windows", [this](const value& data) { handle_ls_windows_event(&get_driver().get_kernel(), data); });
@@ -50,10 +48,10 @@ namespace other {
       viewport_size = window_size;
     }
 
-    auto& scenes = kernel->get_core_system<scene_system>();
+    auto& scenes = sibling<scene_system>(*kernel);
     auto* active_scene = scenes.get_active_scene();
     OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not available in driver kernel.");
-    auto& asset_mgr = kernel->get_core_system<asset_system>().get_asset_manager();
+    auto& asset_mgr = sibling<asset_system>(*kernel).get_asset_manager();
 
     render_data* data_ptr = nullptr;
     render_data prepared_data = {};

@@ -40,5 +40,14 @@ namespace Other
       return false;
     }
     public override int GetHashCode() => HashCode.Combine(X, Y, Z);
+
+    public static Vec3 Zero => new Vec3(0f, 0f, 0f);
+    public static Vec3 One => new Vec3(1f, 1f, 1f);
+    public static Vec3 Up => new Vec3(0f, 1f, 0f);
+    public static Vec3 Down => new Vec3(0f, -1f, 0f);
+    public static Vec3 Left => new Vec3(-1f, 0f, 0f);
+    public static Vec3 Right => new Vec3(1f, 0f, 0f);
+    public static Vec3 Forward => new Vec3(0f, 0f, 1f);
+    public static Vec3 Backward => new Vec3(0f, 0f, -1f);
   }
 }

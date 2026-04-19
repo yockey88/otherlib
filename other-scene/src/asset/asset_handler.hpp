@@ -21,7 +21,6 @@
 #include "asset/asset.hpp"
 #include "asset/asset_pipeline.hpp"
 
-
 namespace other {
   namespace detail {
 
@@ -105,15 +104,6 @@ namespace other {
     using load_completion_callback = std::function<void(asset*)>;
     using load_error_callback = std::function<void(asset*)>;
 
-    //  static bool is_asset_id_field(const std::string& field_name) {
-    //     /// \todo improve this by allowing users to specify which fields are asset id fields, maybe through a traits system or something
-    //     /// for now we will just assume any field named "asset_id" or ending with "_asset_id" is an asset id field
-    //     if (field_name == "asset_id" || field_name.ends_with("_asset_id")) {
-    //       return true;
-    //     }
-    //     return false;
-    // }
-
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
     natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
@@ -153,7 +143,6 @@ namespace other {
     size_t get_num_assets_in_flight() const { return asset_pipelines.size() + loaded_assets.size(); }
 
     size_t get_num_pending_unloads() const { return pending_unloads.size(); }
-    // size_t process_pending_unloads(size_t max_to_process = SIZE_MAX);
 
    private:
     event_system& events;

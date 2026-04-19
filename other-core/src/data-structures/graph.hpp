@@ -49,6 +49,15 @@ namespace other {
         return 0;
       }
 
+      // auto old_adjacency = adjacency_matrix;
+      // adjacency_matrix = dynamic_matrix<real_t>::create_matrix(nodes.size(), nodes.size());
+
+      // for (size_t i = 0; i < old_adjacency->rows; ++i) {
+      //   for (size_t j = 0; j < old_adjacency->cols; ++j) {
+      //     (*adjacency_matrix)(i, j) = (*old_adjacency)(i, j);
+      //   }
+      // }
+
       return itr->first;
     }
 

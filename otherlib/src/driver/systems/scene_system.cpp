@@ -318,7 +318,7 @@ namespace other {
     ss << "Active Scene Information:\n";
     ss << "  - Scene ID: " << active_scene->id << "\n";
     ss << "  - Scene Name: " << active_scene->name << "\n";
-    // ss << "  - Number of Objects: " << active_scene->get_num_objects() << "\n";
+    ss << "  - Number of Objects: " << active_scene->get_num_objects() << "\n";
     ss << "  - Synchronized: " << (active_scene->synchronized ? "Yes" : "No") << "\n";
 
     CORE_LOG_INFO("{}", ss.str());
@@ -338,15 +338,11 @@ namespace other {
 
     std::string command = data.as_string();
     if (command == "play") {
-      CORE_LOG_INFO("Starting scene '{}'", active_scene->name);
       active_scene->play();
     } else if (command == "pause") {
-      CORE_LOG_INFO("Pausing scene '{}'", active_scene->name);
-      active_scene->stop();
+      active_scene->pause();
     } else if (command == "stop") {
-      CORE_LOG_INFO("Stopping scene '{}'", active_scene->name);
       active_scene->stop();
-      active_scene->reset();
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
     }

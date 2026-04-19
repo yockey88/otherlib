@@ -24,7 +24,7 @@ namespace other {
     });
 
     event_system& events = *get_driver().get_event_system();
-    auto& network = kernel->get_core_system<network_system>();
+    auto& network = sibling<network_system>(*kernel);
     asset_mgr = make_scope<asset_handler>(events, network.io_context(), driver_mounts::kAssetMount);
 
     CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
@@ -188,6 +188,16 @@ namespace other {
   }
 
   void asset_system::handle_ls_assets_event(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    auto& events = get_driver().get_event_system();
+    OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
+
+    // const auto& assets = asset_mgr->get_all_assets();
+
+    // std::stringstream ss;
+    // for (const auto& [id, asset] : assets) {
+    //   ss << "Asset ID: " << id << ", Type: " << asset->type_name() << ", Virtual Path: " << asset->virtual_path << "\n";
+    // }
   }
 
 }  // namespace other

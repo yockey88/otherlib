@@ -12,12 +12,13 @@ target_sources(other_core
 		src/core/arena.cpp
 		src/core/frame_allocator.cpp
 		src/core/arena_buffer.cpp
-
 		src/core/ref.cpp
 		src/core/ref_counted.cpp
 		src/core/value_storage.cpp
 		src/core/value.cpp
 		src/core/formatting.cpp
+		src/core/job.cpp
+		src/core/coroutine.cpp
 
 		src/file/file_watcher.cpp
 		src/file/file_handle.cpp

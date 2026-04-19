@@ -14,10 +14,11 @@
 
 #include "driver/acknowledgement_list.hpp"
 #include "driver/application_list.hpp"
-#include "driver/driver_kernel.hpp"
+#include "driver/driver_system.hpp"
 #include "driver/response_list.hpp"
-#include "driver/systems/driver_system.hpp"
+#include "driver/systems/core_system.hpp"
 #include "driver/timer_list.hpp"
+
 
 namespace other {
 

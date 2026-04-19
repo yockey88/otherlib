@@ -213,6 +213,7 @@ namespace other {
 
     /// store initial state for reset
 
+    CORE_LOG_INFO("Starting scene '{}'", name);
     playing = true;
     storage->physics->start_simulation();
 
@@ -237,13 +238,14 @@ namespace other {
       return;
     }
 
+    CORE_LOG_INFO("Stopping scene '{}'", name);
+    pause();
+
     storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
       comp.scene_stop();
     });
 
-    storage->physics->stop_simulation();
-    playing = false;
-
+    reset();
     /// reset initial state
   }
 

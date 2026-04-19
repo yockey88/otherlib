@@ -20,6 +20,29 @@ namespace Other
       W = w;
     }
 
+    public Vec3 ToEulerAngles()
+    {
+      // Convert quaternion to Euler angles (in degrees)
+      float ysqr = Y * Y;
+
+      // roll (x-axis rotation)
+      float t0 = +2.0f * (W * X + Y * Z);
+      float t1 = +1.0f - 2.0f * (X * X + ysqr);
+      float roll = MathF.Atan2(t0, t1) * (180.0f / MathF.PI);
+
+      // pitch (y-axis rotation)
+      float t2 = +2.0f * (W * Y - Z * X);
+      t2 = Math.Clamp(t2, -1.0f, 1.0f);
+      float pitch = MathF.Asin(t2) * (180.0f / MathF.PI);
+
+      // yaw (z-axis rotation)
+      float t3 = +2.0f * (W * Z + X * Y);
+      float t4 = +1.0f - 2.0f * (ysqr + Z * Z);
+      float yaw = MathF.Atan2(t3, t4) * (180.0f / MathF.PI);
+
+      return new Vec3(pitch, yaw, roll);
+    }
+
     public static Quaternion operator+(Quaternion left, Quaternion right) => new Quaternion(left.X + right.X, left.Y + right.Y, left.Z + right.Z, left.W + right.W);
     public static Quaternion operator-(Quaternion left, Quaternion right) => new Quaternion(left.X - right.X, left.Y - right.Y, left.Z - right.Z, left.W - right.W);
     public static Quaternion operator*(Quaternion left, Quaternion right) => new Quaternion(left.X * right.X, left.Y * right.Y, left.Z * right.Z, left.W * right.W);

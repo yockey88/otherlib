@@ -6,7 +6,7 @@
 
 #include "dotnet/dotnet_assembly.hpp"
 
-#include "driver/driver_kernel.hpp"
+#include "driver/systems/core_system.hpp"
 
 namespace other {
 

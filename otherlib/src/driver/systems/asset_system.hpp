@@ -8,7 +8,7 @@
 
 #include "renderer/pipeline_definition.hpp"
 
-#include "driver/driver_kernel.hpp"
+#include "driver/systems/core_system.hpp"
 
 #include "asset/asset_handler.hpp"
 

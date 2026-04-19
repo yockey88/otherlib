@@ -6,8 +6,7 @@
 
 #include "input/input_system.hpp"
 
-#include "driver/driver_kernel.hpp"
-
+#include "driver/systems/core_system.hpp"
 namespace other {
 
   class input_driver_system : public core_system<input_driver_system> {

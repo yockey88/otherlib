@@ -24,8 +24,8 @@
 
 #include "driver/driver_kernel.hpp"
 #include "driver/driver_state_machine.hpp"
+#include "driver/driver_system.hpp"
 #include "driver/subsystem_registry.hpp"
-#include "driver/systems/driver_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
 #include "driver/systems/rendering_system.hpp"
@@ -184,10 +184,6 @@ namespace other {
       bool network_thread_shutdown = false;
       bool asset_manager_shutdown = false;
     };
-    struct live_coroutine {
-      task handle;
-    };
-
     shutdown_state shutdown_state;
 
     config_table config;
@@ -195,8 +191,6 @@ namespace other {
 
     metadata driver_metadata;
     scope<driver_kernel> driver_kernel_ptr = nullptr;
-
-    std::vector<live_coroutine> live_coroutines;
 
     delta_time frame_delta_time;
 
@@ -214,10 +208,6 @@ namespace other {
     void render();
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
-
-    void post_coroutine(task coro);
-    void add_live_coroutine(task handle);
-    void poll_coroutines();
 
     template <typename T>
     T get_value_from_node(const toml::node& node, const T& default_value) const {
