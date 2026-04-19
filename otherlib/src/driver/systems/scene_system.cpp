@@ -43,6 +43,10 @@ namespace other {
   }
 
   void scene_system::shutdown(driver_kernel* kernel) {
+    if (active_scene != nullptr) {
+      unload_active_scene();
+    }
+    project_scene_graph = nullptr;
   }
 
   natural_t scene_system::add_scene_to_scene_graph(const filepath& scene_path) {
@@ -123,6 +127,7 @@ namespace other {
     });
 
     if (get_driver().should_auto_play_scenes()) {
+      CORE_LOG_DEBUG("Auto-playing scene [{}:{}] on activation.", active_scene->id, active_scene->name);
       active_scene->play();
     }
 

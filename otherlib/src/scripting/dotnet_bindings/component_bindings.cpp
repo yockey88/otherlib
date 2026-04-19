@@ -3,10 +3,7 @@
  **/
 #include "scripting/dotnet_bindings/component_bindings.hpp"
 
-#include "model/model_importer.hpp"
-
 #include "object/render_component.hpp"
-#include "object/transform.hpp"
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"

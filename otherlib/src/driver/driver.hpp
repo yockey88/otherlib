@@ -140,7 +140,7 @@ namespace other {
     template <typename T>
       requires requires(T t) { T{}; }
     decltype(auto) get_config_value(const std::string_view toml_path, T default_value = {}) const {
-      return configuration().get_value(toml_path, default_value);
+      return configuration().get_value<T>(toml_path, default_value);
     }
 
     /// \todo remove this and read input map from the input map asset, or allow it to get

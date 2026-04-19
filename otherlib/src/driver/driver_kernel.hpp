@@ -31,6 +31,7 @@ namespace other {
     std::string list_systems() const;
 
     template <typename T, typename... Args>
+      requires std::derived_from<T, driver_system>
     [[maybe_unused]] T& add_system(driver_system_type type, Args&&... args) {
       static_assert(std::derived_from<T, driver_system>, "Added system must derive from driver_system");
       OTHER_ASSERT(driver_instance != nullptr, "Driver kernel is not associated with a driver.");

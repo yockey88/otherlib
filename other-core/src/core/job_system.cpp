@@ -1,20 +1,19 @@
 /**
- * \file driver/systems/job_system.cpp
+ * \file core/job_system.cpp
  **/
-#include "driver/systems/job_system.hpp"
+#include "core/job_system.hpp"
 
 #include "core/config_table.hpp"
 
-#include "driver/driver.hpp"
-
 namespace other {
 
-  void job_system::initialize(driver_kernel* kernel) {
-    initialize(get_driver().configuration());
+  void job_system::initialize(const config_table& cfg) {
+    config.worker_count = cfg.get_value<uint32_t>("worker_count", std::max(2u, std::thread::hardware_concurrency() - 1));
+    pool = make_scope<asio::thread_pool>(config.worker_count);
     OTHER_ASSERT(pool != nullptr, "Failed to create thread pool for job system.");
   }
 
-  void job_system::tick(driver_kernel* kernel, double dt) {
+  void job_system::poll() {
     std::vector<completion_record> completions;
     {
       std::lock_guard lck{ completion_mutex };
@@ -40,7 +39,7 @@ namespace other {
     }
   }
 
-  void job_system::shutdown(driver_kernel* kernel) {
+  void job_system::shutdown() {
     for (auto& c : live_coroutines) {
       c.handle.coro_handle.destroy();
     }
@@ -78,14 +77,6 @@ namespace other {
     jobs.cancel(id);
   }
 
-  void job_system::initialize(const config_table& cfg) {
-    // config.worker_count = cfg.get_value<uint32_t>("worker_count", config_variables::kDefaultWorkCount);
-    config.worker_count = std::max(2u, std::thread::hardware_concurrency() - 1);
-
-    pool = make_scope<asio::thread_pool>(config.worker_count);
-    OTHER_ASSERT(pool != nullptr, "Failed to create thread pool for job system.");
-  }
-
   void job_system::dispatch_ready() {
     auto ready = jobs.collect_ready();
     for (natural_t job_id : ready) {
@@ -118,7 +109,7 @@ namespace other {
 
     switch (aff) {
       case job::affinity::MAIN_THREAD:
-        asio::post(sibling<network_system>(get_driver().get_kernel()).io_context(), std::move(wrapped));
+        asio::post(main_io_context, std::move(wrapped));
         break;
 
       case job::affinity::WORKER_THREAD:

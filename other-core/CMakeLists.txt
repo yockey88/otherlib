@@ -19,6 +19,7 @@ target_sources(other_core
 		src/core/formatting.cpp
 		src/core/job.cpp
 		src/core/job_graph.cpp
+		src/core/job_system.cpp
 		src/core/coroutine.cpp
 
 		src/file/file_watcher.cpp

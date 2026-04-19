@@ -13,7 +13,7 @@
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
 #include "driver/systems/input_driver_system.hpp"
-#include "driver/systems/job_system.hpp"
+#include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
 #include "driver/systems/rendering_system.hpp"
 #include "driver/systems/scene_system.hpp"
@@ -25,7 +25,7 @@ namespace other {
   void driver_kernel::load_profile(const std::string_view profile_name) {
     /// initialize network system regardless of whether networking is enabled or not, as some subsystems depend on it and it handles the network-disabled case internally
     add_system<network_system>(driver_system_type::NETWORK_DRIVER_SYSTEM);
-    add_system<job_system>(driver_system_type::JOB_DRIVER_SYSTEM);
+    add_system<job_driver_system>(driver_system_type::JOB_DRIVER_SYSTEM);
 
     /// always load events/input/assets
     add_system<event_driver_system>(driver_system_type::EVENT_DRIVER_SYSTEM);

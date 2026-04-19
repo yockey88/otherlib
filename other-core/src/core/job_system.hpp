@@ -1,33 +1,25 @@
 /**
- * \file driver/systems/job_system.hpp
+ * \file core/job_system.hpp
  **/
-#ifndef OTHERLIB_DRIVER_SYSTEMS_JOB_SYSTEM_HPP
-#define OTHERLIB_DRIVER_SYSTEMS_JOB_SYSTEM_HPP
-
-#include <string>
-#include <vector>
+#ifndef OTHER_CORE_CORE_JOB_SYSTEM_HPP
+#define OTHER_CORE_CORE_JOB_SYSTEM_HPP
 
 #include "core/coroutine.hpp"
 #include "core/job.hpp"
 #include "core/job_graph.hpp"
 #include "core/scope.hpp"
 
-#include "driver/driver.hpp"
-#include "driver/systems/core_system.hpp"
-
 namespace other {
 
-  class job_system : public core_system<job_system> {
+  class job_system {
    public:
-    job_system(driver* driver_instance)
-        : core_system(driver_instance, driver_system_type::JOB_DRIVER_SYSTEM) {}
-    virtual ~job_system() = default;
+    job_system(asio::io_context& main_ctx)
+        : main_io_context(main_ctx) {}
+    ~job_system() = default;
 
-    std::string name() const override { return "Job System"; }
-
-    void initialize(driver_kernel* kernel) override;
-    void tick(driver_kernel* kernel, double dt) override;
-    void shutdown(driver_kernel* kernel) override;
+    void initialize(const config_table& cfg);
+    void poll();
+    void shutdown();
 
     ref<job> submit(job::descriptor desc, job_graph::work_fn work);
     ref<job> submit(job::descriptor desc, job_graph::work_fn work, std::span<const natural_t> dependencies);
@@ -36,11 +28,12 @@ namespace other {
 
     template <typename F>
     void post_to_main(F&& work) {
-      asio::post(sibling<network_system>(get_driver().get_kernel()).io_context(), std::forward<F>(work));
+      asio::post(main_io_context, std::forward<F>(work));
     }
 
     template <typename F>
     void post_to_worker(F&& work) {
+      OTHER_ASSERT(pool != nullptr, "Thread pool for job system is not initialized.");
       asio::post(*pool, std::forward<F>(work));
     }
 
@@ -62,6 +55,8 @@ namespace other {
       task handle;
     };
 
+    asio::io_context& main_io_context;
+
     config_variables config;
     job_graph jobs;
 
@@ -71,8 +66,6 @@ namespace other {
     mutable std::mutex completion_mutex;
     std::vector<completion_record> pending_completions;
 
-    void initialize(const config_table& cfg);
-
     void dispatch_ready();
     void dispatch_node(natural_t id);
     void on_job_complete(natural_t id, job::status status);
@@ -80,4 +73,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_DRIVER_SYSTEMS_JOB_SYSTEM_HPP
+#endif  // OTHER_CORE_CORE_JOB_SYSTEM_HPP

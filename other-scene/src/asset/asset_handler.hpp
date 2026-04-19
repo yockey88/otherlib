@@ -11,6 +11,7 @@
 #include <asio/asio.hpp>
 
 #include "core/defines.hpp"
+#include "core/job_system.hpp"
 #include "core/state_machine.hpp"
 #include "event/event_system.hpp"
 
@@ -88,8 +89,8 @@ namespace other {
 
   class asset_handler {
    public:
-    asset_handler(event_system& events, asio::io_context& io_context, const std::string_view asset_mount = "assets")
-        : events(events), io_context(io_context), executor(io_context.get_executor()), default_mount(asset_mount) {
+    asset_handler(event_system& events, asio::io_context& io_context, job_system& jobs, const std::string_view asset_mount = "assets")
+        : events(events), io_context(io_context), jobs(jobs), executor(io_context.get_executor()), default_mount(asset_mount) {
     }
     ~asset_handler() = default;
 
@@ -147,6 +148,7 @@ namespace other {
    private:
     event_system& events;
     asio::io_context& io_context;
+    job_system& jobs;
     asset_pipeline::executor_t executor;
 
     struct pipeline_context {
