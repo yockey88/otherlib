@@ -37,7 +37,7 @@ namespace other {
     const filepath& absolute_path() const { return abs_path; }
 
     ref<directory> get_child_directory(const std::string_view name) const;
-    ref<directory> add_child_directory(const std::string_view name, const filepath& path);
+    ref<directory> add_child_directory(const std::string_view name, const filepath& path = "");
     ref<directory> get_or_add_child_directory(const std::string_view name, const filepath& path);
     bool has_child_directory(const std::string_view name) const;
     bool directory_exists(const std::string_view relative_path) const;
@@ -67,7 +67,7 @@ namespace other {
       }
       for (const auto& [hash, file] : file_handles) {
         os << "\n";
-        file->print(os, indent_level);
+        file->print(os, indent_level + 1);
       }
       return os;
     }

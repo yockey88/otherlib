@@ -4,35 +4,15 @@
 #ifndef OTHERLIB_DRIVER_DRIVER_KERNEL_HPP
 #define OTHERLIB_DRIVER_DRIVER_KERNEL_HPP
 
-#include <map>
-
 #include "core/arena_allocator.hpp"
 #include "core/logger.hpp"
 
-#include "driver/systems/driver_system.hpp"
+#include "driver/driver_system.hpp"
+#include "driver/systems/driver_plugin.hpp"
 
 namespace other {
 
-  class driver_kernel;
-
-  /// CRTP base class for core driver systems
-  template <typename D>
-  class core_system : public driver_system {
-   public:
-    core_system(driver* driver_instance, uint32_t id)
-        : driver_system(driver_instance, id) {}
-
-   protected:
-    /// convenience: access a sibling system through the kernel implemented after driver_kernel is defined
-    template <typename T>
-    T& sibling(driver_kernel& kernel);
-
-    template <typename T>
-    const T& sibling(const driver_kernel& kernel) const;
-
-    template <typename T>
-    bool has_sibling(const driver_kernel& kernel) const;
-  };
+  class driver;
 
   class driver_kernel {
    public:
@@ -51,6 +31,7 @@ namespace other {
     std::string list_systems() const;
 
     template <typename T, typename... Args>
+      requires std::derived_from<T, driver_system>
     [[maybe_unused]] T& add_system(driver_system_type type, Args&&... args) {
       static_assert(std::derived_from<T, driver_system>, "Added system must derive from driver_system");
       OTHER_ASSERT(driver_instance != nullptr, "Driver kernel is not associated with a driver.");
@@ -162,24 +143,6 @@ namespace other {
       return casted_system;
     }
   };
-
-  template <typename D>
-  template <typename T>
-  T& core_system<D>::sibling(driver_kernel& kernel) {
-    return kernel.get_core_system<T>();
-  }
-
-  template <typename D>
-  template <typename T>
-  const T& core_system<D>::sibling(const driver_kernel& kernel) const {
-    return kernel.get_core_system<T>();
-  }
-
-  template <typename D>
-  template <typename T>
-  bool core_system<D>::has_sibling(const driver_kernel& kernel) const {
-    return kernel.has_core_system<T>();
-  }
 
 }  // namespace other
 

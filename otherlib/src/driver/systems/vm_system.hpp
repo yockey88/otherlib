@@ -6,7 +6,7 @@
 
 #include <queue>
 
-#include "driver/driver_kernel.hpp"
+#include "driver/systems/core_system.hpp"
 #include "vm/other_device.hpp"
 
 namespace other {

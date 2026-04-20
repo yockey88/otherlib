@@ -244,6 +244,10 @@ namespace other {
       return has_component<T>(node->object);
     }
 
+    inline size_t get_num_objects() const {
+      return storage != nullptr ? storage->tree.num_objects : 0;
+    }
+
     static std::string as_string(const scene& s);
 
     void connect_remote_session(integer_t session_id);

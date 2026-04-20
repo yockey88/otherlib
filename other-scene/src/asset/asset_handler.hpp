@@ -11,8 +11,11 @@
 #include <asio/asio.hpp>
 
 #include "core/defines.hpp"
+#include "core/job_system.hpp"
 #include "core/state_machine.hpp"
 #include "event/event_system.hpp"
+
+#include "renderer/pipeline_definition.hpp"
 
 #include "asio/asio/strand.hpp"
 #include "asio/asio/system_executor.hpp"
@@ -86,8 +89,8 @@ namespace other {
 
   class asset_handler {
    public:
-    asset_handler(event_system& events, asio::io_context& io_context, const std::string_view asset_mount = "assets")
-        : events(events), io_context(io_context), executor(io_context.get_executor()), default_mount(asset_mount) {
+    asset_handler(event_system& events, asio::io_context& io_context, job_system& jobs, const std::string_view asset_mount = "assets")
+        : events(events), io_context(io_context), jobs(jobs), executor(io_context.get_executor()), default_mount(asset_mount) {
     }
     ~asset_handler() = default;
 
@@ -102,19 +105,11 @@ namespace other {
     using load_completion_callback = std::function<void(asset*)>;
     using load_error_callback = std::function<void(asset*)>;
 
-    //  static bool is_asset_id_field(const std::string& field_name) {
-    //     /// \todo improve this by allowing users to specify which fields are asset id fields, maybe through a traits system or something
-    //     /// for now we will just assume any field named "asset_id" or ending with "_asset_id" is an asset id field
-    //     if (field_name == "asset_id" || field_name.ends_with("_asset_id")) {
-    //       return true;
-    //     }
-    //     return false;
-    // }
-
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
     natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
+    natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
 
     /// checks if asset is ready for use
@@ -149,11 +144,11 @@ namespace other {
     size_t get_num_assets_in_flight() const { return asset_pipelines.size() + loaded_assets.size(); }
 
     size_t get_num_pending_unloads() const { return pending_unloads.size(); }
-    // size_t process_pending_unloads(size_t max_to_process = SIZE_MAX);
 
    private:
     event_system& events;
     asio::io_context& io_context;
+    job_system& jobs;
     asset_pipeline::executor_t executor;
 
     struct pipeline_context {

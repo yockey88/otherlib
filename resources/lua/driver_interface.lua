@@ -28,23 +28,23 @@ local function _deduce_list_type(args)
   elseif #args == 1
   then
     local flag = args[1]
-    if flag == "-w" or flag == "--windows"
-    then
-      return "windows"
-    else if flag == "-f" or flag == "--files"
+    if flag == "-f" or flag == "--files"
     then
       return "files"
-    else if flag == "-s" or flag == "--scenes"
+    elseif flag == "-ds" or flag == "--driver-systems"
+    then
+      return "driver-systems"
+    elseif flag == "-w" or flag == "--windows"
+    then
+      return "windows"
+    elseif flag == "-s" or flag == "--scenes"
     then
       return "scenes"
-    else if flag == "-a" or flag == "--assets"
+    elseif flag == "-a" or flag == "--assets"
     then
       return "assets"
     else
       return "unknown"
-    end
-    end
-    end
     end
   end 
   return "unknown"

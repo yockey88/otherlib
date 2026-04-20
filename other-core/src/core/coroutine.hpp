@@ -8,6 +8,9 @@
 
 #include <asio/asio.hpp>
 
+#include "core/job.hpp"
+#include "core/ref.hpp"
+
 namespace other {
 
   struct null_yield {};
@@ -68,6 +71,13 @@ namespace other {
       void await_resume() const noexcept {}
     };
 
+    struct job_awaiter {
+      ref<job> job_handle;
+      bool await_ready() const noexcept;
+      void await_suspend(std::coroutine_handle<>) const noexcept {}
+      void await_resume() const noexcept {}
+    };
+
     std::coroutine_handle<promise_type> coro_handle;
 
     auto operator co_await() noexcept {
@@ -93,21 +103,10 @@ namespace other {
         last = now;
       }
     }
-  };
 
-  struct worker {
-    enum {
-      WORKER_IDLE = 0,
-      WORKER_BUSY,
-    } state = WORKER_IDLE;
-
-    template <typename Self>
-    void operator()(Self& self) {
-      switch (state) {
-        case WORKER_IDLE: break;
-        case WORKER_BUSY: break;
-        default:
-          break;
+    static task wait_for_job(const ref<job> job_handle) {
+      while (!job_handle->done()) {
+        co_await job_awaiter{ job_handle };
       }
     }
   };

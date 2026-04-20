@@ -136,7 +136,6 @@ function _Meta._driver_interface:_List(args)
   end
 
   local event_name = "ls." .. parsed_args.type
-  print("Triggering event: " .. event_name)
   self.TriggerEvent(event_name)
 end
 
@@ -203,7 +202,7 @@ function _Meta._driver_interface:_SceneOp(args)
     _Meta:LoadScene(_Meta._string_utils.strip_leading_and_ending_whitespace(scene_path))
   elseif parsed_args.operation == "unload"
   then
-    _Meta:Driver().TriggerEvent("scene.unload-scene")
+    -- _Meta:Driver().TriggerEvent("scene.unload-scene")
   elseif parsed_args.operation == "info"
   then
     self.TriggerEvent("scene.request-info")

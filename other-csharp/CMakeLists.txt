@@ -74,4 +74,4 @@ target_sources(OtherCs PRIVATE
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/util/log.cs
 )
-target_link_libraries(OtherCs PUBLIC OtherCsBindings)
+target_link_libraries(OtherCs PUBLIC OtherCsBindings Microsoft.Build)

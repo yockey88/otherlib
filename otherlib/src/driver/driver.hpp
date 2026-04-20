@@ -24,8 +24,8 @@
 
 #include "driver/driver_kernel.hpp"
 #include "driver/driver_state_machine.hpp"
+#include "driver/driver_system.hpp"
 #include "driver/subsystem_registry.hpp"
-#include "driver/systems/driver_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
 #include "driver/systems/rendering_system.hpp"
@@ -75,6 +75,7 @@ namespace other {
     natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
     natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
+    natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     natural_t get_asset_hash(natural_t asset_id) const;
 
     void process_driver_event(driver_event event);
@@ -139,7 +140,7 @@ namespace other {
     template <typename T>
       requires requires(T t) { T{}; }
     decltype(auto) get_config_value(const std::string_view toml_path, T default_value = {}) const {
-      return configuration().get_value(toml_path, default_value);
+      return configuration().get_value<T>(toml_path, default_value);
     }
 
     /// \todo remove this and read input map from the input map asset, or allow it to get
@@ -183,10 +184,6 @@ namespace other {
       bool network_thread_shutdown = false;
       bool asset_manager_shutdown = false;
     };
-    struct live_coroutine {
-      task handle;
-    };
-
     shutdown_state shutdown_state;
 
     config_table config;
@@ -194,8 +191,6 @@ namespace other {
 
     metadata driver_metadata;
     scope<driver_kernel> driver_kernel_ptr = nullptr;
-
-    std::vector<live_coroutine> live_coroutines;
 
     delta_time frame_delta_time;
 
@@ -213,10 +208,6 @@ namespace other {
     void render();
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
-
-    void post_coroutine(task coro);
-    void add_live_coroutine(task handle);
-    void poll_coroutines();
 
     template <typename T>
     T get_value_from_node(const toml::node& node, const T& default_value) const {

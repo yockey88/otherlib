@@ -114,14 +114,26 @@ namespace other {
   }
 
   scene::scene(scene&& other) {
-    *this = std::move(other);
+    this->name = std::move(other.name);
+    this->id = other.id;
+    other.id = 0;
+    other.name = "Untitled Scene";
+
+    /// unbind them from the other scene first
+    other.do_scene_unbinding();
+    this->storage = std::move(other.storage);
+    other.storage = nullptr;
+    /// then bind to this scene
+    do_scene_binding();
+
+    /// transfer tree pointer (this probably needs to be done better)
+    this->storage->tree.scene_ptr = this;
   }
 
   scene& scene::operator=(scene&& other) {
     if (this == &other) {
       return *this;
     }
-    other.do_scene_unbinding();
 
     this->name = std::move(other.name);
     this->id = other.id;
@@ -213,6 +225,7 @@ namespace other {
 
     /// store initial state for reset
 
+    CORE_LOG_INFO("Starting scene '{}'", name);
     playing = true;
     storage->physics->start_simulation();
 
@@ -237,13 +250,14 @@ namespace other {
       return;
     }
 
+    CORE_LOG_INFO("Stopping scene '{}'", name);
+    pause();
+
     storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
       comp.scene_stop();
     });
 
-    storage->physics->stop_simulation();
-    playing = false;
-
+    reset();
     /// reset initial state
   }
 

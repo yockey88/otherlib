@@ -121,6 +121,8 @@ namespace other {
   }
 
   natural_t asset_handler::load_asset(const filepath& file_path, load_completion_callback on_complete) {
+    PROFILE_SECTION("asset_handler::load_asset");
+
     std::string extension = file_path.extension().string();
     asset::type asset_type = asset::get_type_from_extension(extension);
     if (asset_type == asset::type::EMPTY) {
@@ -272,6 +274,41 @@ namespace other {
     );
 
     return scene_id;
+  }
+
+  natural_t asset_handler::add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition) {
+    CORE_LOG_DEBUG("Adding rendering pipeline asset with name: {}", name);
+    natural_t pl_id = get_next_asset_id();
+
+    std::string pl_name = std::string{ name };
+
+    auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
+                                                              .pipeline = asset_pipeline::get_rendering_pipeline_pipeline(events, this, definition),
+                                                              .loading_asset = {
+                                                                .asset_type = asset::type::RENDERING_PIPELINE,
+                                                                .id = pl_id,
+                                                                .path_hash = 0,
+                                                                .load_path = filepath{},
+                                                                .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::RENDERING_PIPELINE), pl_name + ".orpl"),
+                                                                .absolute_path = filepath{},
+                                                              },
+                                                            });
+    OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+
+    auto [state_it, state_inserted] = asset_states.emplace(pl_id, asset_state_machine{});
+    OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for rendering pipeline asset ID: {}", pl_id);
+    CORE_LOG_DEBUG("Beginning add_rendering_pipeline_asset for asset ID: {} (Name: {})", pl_id, it->loading_asset.virtual_path);
+
+    asset* loading_asset = &it->loading_asset;
+
+    CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
+    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
+    it->pipeline->start_load(
+      executor, &it->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_load_complete, this),
+      std::bind_front(&asset_handler::notify_asset_load_failed, this)
+    );
+    return pl_id;
   }
 
   void asset_handler::unload_asset(natural_t asset_id) {
@@ -470,7 +507,7 @@ namespace other {
       OTHER_ASSERT(dir_handle != nullptr, "Directory handle is null after creation or retrieval for piece '{}' in asset virtual path: {}", piece, asset_ptr->virtual_path);
       auto next = dir_handle->get_child_directory(piece);
       if (next == nullptr) {
-        dir_handle = dir_handle->add_child_directory(piece, curr_virtual_path + piece);
+        dir_handle = dir_handle->add_child_directory(piece);
       } else {
         dir_handle = next;
       }

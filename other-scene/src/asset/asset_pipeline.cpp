@@ -8,6 +8,7 @@
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
 #include "asset/pipelines/model_source_pipeline.hpp"
+#include "asset/pipelines/rendering_pipeline_pipeline.hpp"
 #include "asset/pipelines/scene_pipeline.hpp"
 
 namespace other {
@@ -86,6 +87,10 @@ namespace other {
 
   scope<asset_pipeline> asset_pipeline::get_scene_pipeline(event_system& events, asset_handler* handler, scene* scene_ptr) {
     return make_scope<scene_pipeline>(events, handler, scene_ptr);
+  }
+
+  scope<asset_pipeline> asset_pipeline::get_rendering_pipeline_pipeline(event_system& events, asset_handler* handler, const pipeline_definition& definition) {
+    return make_scope<rendering_pipeline_pipeline>(events, handler, definition);
   }
 
   void asset_pipeline::set_asset_data(asset* asset_ptr) {
@@ -319,7 +324,13 @@ namespace other {
       OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
       OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
       OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
-      OTHER_ASSERT(false, "Rendering pipeline loading not implemented yet for asset ID: {}", asset_ptr->id);
+
+      rendering_pipeline_pipeline* pl = reinterpret_cast<rendering_pipeline_pipeline*>(pipeline);
+      OTHER_ASSERT(pl != nullptr, "Pipeline is null!");
+      CORE_LOG_DEBUG("Building rendering pipeline for asset ID: {} using definition '{}'", asset_ptr->id, pl->definition.name);
+
+      /// \todo spawn sub-asset loading pipelines for any assets referenced by pipeline (shaders, etc..)
+      (pl->*on_success)();
     }
 
     void empty_loader(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {

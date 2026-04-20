@@ -33,9 +33,12 @@ namespace other {
     driver_kernel_ptr = make_scope<driver_kernel>(this);
     driver_kernel_ptr->load_profile(registry.get_current_profile());
     driver_kernel_ptr->load_plugins_from_config(this);
-    CORE_LOG_INFO("Registered Subsystems:\n{}", driver_kernel_ptr->list_systems());
-
     driver_kernel_ptr->initialize();
+
+    get_event_system()->register_event("ls.driver-systems");
+    get_event_system()->add_listener("ls.driver-systems", [this](const value& data) {
+      CORE_LOG_INFO("Driver Systems:\n{}", driver_kernel_ptr->list_systems());
+    });
 
     load_client();
 
@@ -63,7 +66,6 @@ namespace other {
       on_shutdown();
     }
 
-    live_coroutines.clear();
     driver_kernel_ptr->shutdown();
   }
 
@@ -157,6 +159,11 @@ namespace other {
     return driver_kernel_ptr->get_core_system<asset_system>().add_scene_asset(scene_ptr, scene_path);
   }
 
+  natural_t driver::add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition) {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().add_rendering_pipeline_asset(name, definition);
+  }
+
   natural_t driver::get_asset_hash(natural_t asset_id) const {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<asset_system>().get_asset_hash(asset_id);
@@ -178,7 +185,6 @@ namespace other {
 
     driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
     driver_kernel_ptr->get_core_system<asset_system>().begin_full_unload();
-    live_coroutines.clear();
 
     on_shutdown_request();
     process_driver_event(driver_event::DRIVER_EVENT_STOP);
@@ -414,7 +420,6 @@ namespace other {
     double dt = frame_delta_time;
 
     driver_kernel_ptr->tick(dt);
-    poll_coroutines();
 
     on_update();
     switch (current_driver_state()) {
@@ -449,26 +454,6 @@ namespace other {
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
     launch_process(working_dir, exe_name, args);
-  }
-
-  void driver::post_coroutine(task coro) {
-    add_live_coroutine(std::move(coro));
-  }
-
-  void driver::add_live_coroutine(task handle) {
-    live_coroutines.push_back({ handle });
-  }
-
-  void driver::poll_coroutines() {
-    for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
-      it->handle();
-      if (it->handle.coro_handle.done()) {
-        it->handle.coro_handle.destroy();
-        it = live_coroutines.erase(it);
-      } else {
-        ++it;
-      }
-    }
   }
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver) {
