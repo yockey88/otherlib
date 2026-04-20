@@ -1,14 +1,9 @@
 /**
- * \file driver/systems/driver_system.cpp
+ * \file driver/systems/driver_plugin.cpp
  **/
-#include "driver/systems/driver_system.hpp"
+#include "driver/systems/driver_plugin.hpp"
 
 namespace other {
-
-  driver& driver_system::get_driver() {
-    OTHER_ASSERT(driver_instance != nullptr, "Driver system is not associated with a driver.");
-    return *driver_instance;
-  }
 
   void driver_plugin::initialize(driver_kernel* kernel) {
     if (!active()) {

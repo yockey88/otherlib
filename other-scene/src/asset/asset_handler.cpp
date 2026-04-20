@@ -121,6 +121,8 @@ namespace other {
   }
 
   natural_t asset_handler::load_asset(const filepath& file_path, load_completion_callback on_complete) {
+    PROFILE_SECTION("asset_handler::load_asset");
+
     std::string extension = file_path.extension().string();
     asset::type asset_type = asset::get_type_from_extension(extension);
     if (asset_type == asset::type::EMPTY) {

@@ -1,6 +1,6 @@
 print("Hello from editor-rc.lua!")
 Other:Driver():OpenWindow("console")
--- Other:Driver():OpenWindow("viewport")
+Other:Driver():OpenWindow("viewport")
 -- Other:Driver():OpenWindow("scene-hierarchy")
 -- Other:Driver():OpenWindow("asset-browser")
 

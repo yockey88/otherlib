@@ -52,6 +52,7 @@ namespace other {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     if (!net_context->io_context.stopped()) {
       net_context->io_context.poll();
+      net_context->io_context.restart();
     }
 
     auto msg_opt = net_context->net_thread_message_bus.receive_message();
@@ -500,7 +501,7 @@ namespace other {
     CORE_LOG_ERROR("Timeout while waiting for acknowledgment of ENVIRONMENT_LOAD_SCENE command (header: {})", header);
     CORE_LOG_WARN("Does the active project have a scene using that name already?");
 
-    auto& scenes = kernel->get_core_system<scene_system>();
+    auto& scenes = sibling<scene_system>(*kernel);
     scenes.unload_active_scene();
   }
 
@@ -531,7 +532,7 @@ namespace other {
       return;
     }
 
-    auto& scenes = kernel->get_core_system<scene_system>();
+    auto& scenes = sibling<scene_system>(*kernel);
     scene* active_scene = scenes.get_active_scene();
     if (active_scene != nullptr) {
       /// if we connected (ack == 1) then we have to synchronize with remote
@@ -547,7 +548,7 @@ namespace other {
   void network_system::on_timeout_session_connect_to(driver_kernel* kernel, message_header header) {
     CORE_LOG_ERROR("Timeout while waiting for SESSION_CONNECT_TO response (header: {})", header);
 
-    auto& scenes = kernel->get_core_system<scene_system>();
+    auto& scenes = sibling<scene_system>(*kernel);
     scene* active_scene = scenes.get_active_scene();
     if (active_scene == nullptr) {
       /// there is no session so we cannot be synchronized
@@ -625,7 +626,7 @@ namespace other {
   }
 
   void network_system::on_respond_new_udp_stream_binding(driver_kernel* kernel, message_header header, std::span<const uint8_t> data) {
-    auto& scenes = kernel->get_core_system<scene_system>();
+    auto& scenes = sibling<scene_system>(*kernel);
     scene* active_scene = scenes.get_active_scene();
     if (active_scene == nullptr) {
       CORE_LOG_ERROR("No active scene to set UDP handle on for NEW_UDP_STREAM_BINDING response.");
@@ -682,7 +683,7 @@ namespace other {
     udp_datagram datagram = udp_msg.datagram;
 
     CORE_LOG_DEBUG("Received UDP datagram on stream ID: {} of type: {}", stream_id, static_cast<uint8_t>(datagram.type));
-    auto& scenes = kernel->get_core_system<scene_system>();
+    auto& scenes = sibling<scene_system>(*kernel);
     scene* active_scene = scenes.get_active_scene();
     if (active_scene == nullptr) {
       CORE_LOG_ERROR("No active scene to handle incoming UDP datagram.");
@@ -831,7 +832,7 @@ namespace other {
   void network_system::handle_command_environment_load_scene(driver_kernel* kernel, integer_t session_id, message&& msg) {
     command_load_scene scene_cmd = other_message_spec::parse<command_load_scene>(msg.data);
 
-    // auto& scenes = kernel->get_core_system<scene_system>();
+    // auto& scenes = sibling<scene_system>();
     // natural_t scene_id = scenes.create_empty_scene(scene_cmd.scene_name);
     // scenes.set_scene_to_active(scene_id);
 

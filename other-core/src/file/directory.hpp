@@ -67,7 +67,7 @@ namespace other {
       }
       for (const auto& [hash, file] : file_handles) {
         os << "\n";
-        file->print(os, indent_level);
+        file->print(os, indent_level + 1);
       }
       return os;
     }

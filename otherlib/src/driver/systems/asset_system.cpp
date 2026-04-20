@@ -9,6 +9,7 @@
 
 #include "driver/driver.hpp"
 #include "driver/driver_mounts.hpp"
+#include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
 
 namespace other {
@@ -24,8 +25,9 @@ namespace other {
     });
 
     event_system& events = *get_driver().get_event_system();
-    auto& network = kernel->get_core_system<network_system>();
-    asset_mgr = make_scope<asset_handler>(events, network.io_context(), driver_mounts::kAssetMount);
+    auto& network = sibling<network_system>(*kernel);
+    auto& jobs = sibling<job_driver_system>(*kernel).get_job_system();
+    asset_mgr = make_scope<asset_handler>(events, network.io_context(), jobs, driver_mounts::kAssetMount);
 
     CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
     const auto md_mnts = get_driver().configuration().get_raw("filesystem.mounts");
@@ -94,6 +96,8 @@ namespace other {
     events.add_listener("ls.files", [this](const value& data) { handle_ls_event(&get_driver().get_kernel(), data); });
     events.register_event("ls.assets");
     events.add_listener("ls.assets", [this](const value& data) { handle_ls_assets_event(&get_driver().get_kernel(), data); });
+
+    events.register_event("assets.new-asset-loaded");
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
@@ -127,7 +131,7 @@ namespace other {
       CORE_LOG_DEBUG("Asset loaded callback for asset ID: {} @ path: {} (virtual path: {})", asset_ptr->id, asset_path.string(), asset_ptr->virtual_path);
 
       loading_asset_ids.erase(it);
-      // get_driver().get_event_system()->trigger_event("assets.new-asset-loaded", asset_ptr->id);
+      get_driver().get_event_system()->trigger_event("assets.new-asset-loaded", asset_ptr->id);
     });
 
     loading_asset_ids.push_back({
@@ -188,6 +192,16 @@ namespace other {
   }
 
   void asset_system::handle_ls_assets_event(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    auto& events = get_driver().get_event_system();
+    OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
+
+    // const auto& assets = asset_mgr->get_all_assets();
+
+    // std::stringstream ss;
+    // for (const auto& [id, asset] : assets) {
+    //   ss << "Asset ID: " << id << ", Type: " << asset->type_name() << ", Virtual Path: " << asset->virtual_path << "\n";
+    // }
   }
 
 }  // namespace other

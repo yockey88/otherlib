@@ -22,8 +22,17 @@ namespace other {
       std::vector<natural_t> sorted_node_ids;
     };
 
-    graph() = default;
+    graph()
+        : adjacency_matrix(make_ref<matrix_nxm<real_t>>(0, 0)) {}
     ~graph() { clear(); }
+
+    natural_t id_to_idx(natural_t id) const {
+      if (auto itr = std::ranges::find(nodes, id, &node::id); itr != nodes.end()) {
+        return itr->index;
+      }
+      OTHER_ASSERT(false, "Node ID {} not found in graph.", id);
+      return 0;
+    }
 
     void clear() {
       nodes.clear();
@@ -42,41 +51,100 @@ namespace other {
     auto end() { return nodes.end(); }
     auto end() const { return nodes.end(); }
 
-    uint64_t add_node(T&& value) {
+    void remove_neighbors(natural_t node_id) {
+      OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
+      /// easiest way is to just remove all edges leaving this node
+      for (const natural_t other_id : get_all_node_ids()) {
+        remove_edge(node_id, other_id);
+      }
+    }
+
+    std::vector<natural_t> get_neighbors(natural_t node_id) const {
+      std::vector<natural_t> neighbors;
+      if (adjacency_matrix == nullptr) {
+        return neighbors;
+      }
+      for (const natural_t other_id : get_all_node_ids()) {
+        if (!detail::epsilon_zero((*adjacency_matrix)(id_to_idx(node_id), id_to_idx(other_id)))) {
+          neighbors.push_back(other_id);
+        }
+      }
+      return neighbors;
+    }
+
+    natural_t add_node(T&& value) {
       auto id = get_next_id();
-      auto [itr, success] = nodes.emplace(id, node{ id, std::move(value) });
-      if (!success) {
-        return 0;
+
+      node n = {
+        .id = id,
+        .index = nodes.size(),
+        .value = std::move(value),
+      };
+      nodes.push_back(std::move(n));
+
+      const ref<matrix_nxm<real_t>> old_adjacency = adjacency_matrix;
+      adjacency_matrix = make_ref<matrix_nxm<real_t>>(dynamic_matrix<real_t>::create_matrix(nodes.size(), nodes.size()));
+
+      for (size_t i = 0; i < old_adjacency->rows; ++i) {
+        for (size_t j = 0; j < old_adjacency->cols; ++j) {
+          (*adjacency_matrix)(i, j) = (*old_adjacency)(i, j);
+        }
       }
 
-      return itr->first;
+      return id;
     }
 
-    void remove_node(uint64_t id) {
-      if (auto itr = nodes.find(id); itr != nodes.end()) {
-        nodes.erase(itr);
+    void remove_node(natural_t id) {
+      OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
+      auto itr = std::ranges::find(nodes, id, &node::id);
+      if (itr == nodes.end()) {
+        CORE_LOG_ERROR("Node with ID {} not found in graph.", id);
+        return;
+      }
+
+      size_t idx = itr->index;
+      nodes.erase(itr);
+
+      const ref<matrix_nxm<real_t>> old_adjacency = adjacency_matrix;
+      adjacency_matrix = make_ref<matrix_nxm<real_t>>(dynamic_matrix<real_t>::create_matrix(nodes.size(), nodes.size()));
+      size_t new_i = 0;
+      for (size_t i = 0; i < old_adjacency->rows; ++i) {
+        if (i == idx) {
+          continue;
+        }
+        size_t new_j = 0;
+        for (size_t j = 0; j < old_adjacency->cols; ++j) {
+          if (j == idx) {
+            continue;
+          }
+          (*adjacency_matrix)(new_i, new_j) = (*old_adjacency)(i, j);
+          new_j++;
+        }
+        new_i++;
+      }
+
+      for (size_t i = 0; i < nodes.size(); ++i) {
+        nodes[i].index = i;
       }
     }
 
-    T* ptr_to_node_value(uint64_t id) {
-      if (auto itr = nodes.find(id); itr != nodes.end()) {
-        return &itr->second.value;
+    T* ptr_to_node_value(natural_t id) {
+      if (auto itr = std::ranges::find(nodes, id, &node::id); itr != nodes.end()) {
+        return &itr->value;
       }
       return nullptr;
     }
 
-    std::vector<uint64_t> get_all_node_ids() const {
-      std::vector<uint64_t> ids;
-      for (const auto& [id, node] : nodes) {
-        ids.push_back(id);
-      }
-      return ids;
+    std::vector<natural_t> get_all_node_ids() const {
+      return nodes |
+        std::views::transform(&node::id) |
+        std::ranges::to<std::vector>();
     }
 
     template <typename Pred>
       requires requires(Pred p, T t) { { p(t) } -> std::same_as<bool>; }
     T* find_item(Pred&& predicate) {
-      for (auto& [id, node] : nodes) {
+      for (auto& node : nodes) {
         if (predicate(node.value)) {
           return &node.value;
         }
@@ -87,7 +155,7 @@ namespace other {
     template <typename Pred>
       requires requires(Pred p, T t) { { p(t) } -> std::same_as<bool>; }
     const T* find_item(Pred&& predicate) const {
-      for (const auto& [id, node] : nodes) {
+      for (const auto& node : nodes) {
         if (predicate(node.value)) {
           return &node.value;
         }
@@ -98,27 +166,28 @@ namespace other {
     template <typename Func>
       requires requires(Func f, T t) { f(t); }
     void for_each_node(Func&& func) {
-      for (auto& [id, node] : nodes) {
+      for (auto& node : nodes) {
         func(node.value);
       }
     }
 
-    void add_edge(uint64_t from_id, uint64_t to_id, real_t weight = 1.0) {
-      if (nodes.find(from_id) == nodes.end() || nodes.find(to_id) == nodes.end()) {
+    void add_edge(natural_t from_id, natural_t to_id, real_t weight = 1.0) {
+      if (id_to_idx(from_id) >= adjacency_matrix->rows || id_to_idx(to_id) >= adjacency_matrix->cols) {
         return;
       }
+
       OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
-      OTHER_ASSERT(from_id < adjacency_matrix->cols && to_id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-      (*adjacency_matrix)(from_id, to_id) = weight;
+      OTHER_ASSERT(id_to_idx(from_id) < adjacency_matrix->rows && id_to_idx(to_id) < adjacency_matrix->cols, "Node IDs exceed adjacency matrix dimensions.");
+      (*adjacency_matrix)(id_to_idx(from_id), id_to_idx(to_id)) = weight;
     }
 
-    void remove_edge(uint64_t from_id, uint64_t to_id) {
-      if (nodes.find(from_id) == nodes.end() || nodes.find(to_id) == nodes.end()) {
+    void remove_edge(natural_t from_id, natural_t to_id) {
+      if (id_to_idx(from_id) >= adjacency_matrix->rows || id_to_idx(to_id) >= adjacency_matrix->cols) {
         return;
       }
       OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
-      OTHER_ASSERT(from_id < adjacency_matrix->cols && to_id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-      (*adjacency_matrix)(from_id, to_id) = 0.0;
+      OTHER_ASSERT(id_to_idx(from_id) < adjacency_matrix->rows && id_to_idx(to_id) < adjacency_matrix->cols, "Node IDs exceed adjacency matrix dimensions.");
+      (*adjacency_matrix)(id_to_idx(from_id), id_to_idx(to_id)) = 0.0;
     }
 
     topology topological_sort() const {
@@ -137,8 +206,8 @@ namespace other {
 
       for (const auto& node_id : get_all_node_ids()) {
         for (const auto& other_id : get_all_node_ids()) {
-          OTHER_ASSERT(other_id < adjacency_matrix->cols && node_id < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
-          if ((*adjacency_matrix)(other_id, node_id) != 0.0) {
+          OTHER_ASSERT(id_to_idx(other_id) < adjacency_matrix->cols && id_to_idx(node_id) < adjacency_matrix->rows, "Node IDs exceed adjacency matrix dimensions.");
+          if (!detail::epsilon_zero((*adjacency_matrix)(id_to_idx(other_id), id_to_idx(node_id)))) {
             in_degree[node_id]++;
           }
         }
@@ -148,16 +217,16 @@ namespace other {
       }
 
       /// deep copy so we can modify it as we remove edges
-      ref<dynamic_matrix<real_t>> adj_copy = dynamic_matrix<real_t>::create_matrix(*adjacency_matrix);
+      ref<dynamic_matrix<real_t>> adj_copy = make_ref<dynamic_matrix<real_t>>(dynamic_matrix<real_t>::create_matrix(*adjacency_matrix));
       while (!no_incoming_edges.empty()) {
         natural_t current = *no_incoming_edges.begin();
         no_incoming_edges.erase(no_incoming_edges.begin());
         topo.sorted_node_ids.push_back(current);
 
         for (const auto& neighbor_id : get_all_node_ids()) {
-          OTHER_ASSERT(neighbor_id < adj_copy->cols && current < adj_copy->rows, "Node IDs exceed adjacency matrix dimensions.");
-          if ((*adj_copy)(current, neighbor_id) != 0.0) {
-            (*adj_copy)(current, neighbor_id) = 0.0;
+          OTHER_ASSERT(id_to_idx(neighbor_id) < adj_copy->cols && id_to_idx(current) < adj_copy->rows, "Node IDs exceed adjacency matrix dimensions.");
+          if (!detail::epsilon_zero((*adj_copy)(id_to_idx(current), id_to_idx(neighbor_id)))) {
+            (*adj_copy)(id_to_idx(current), id_to_idx(neighbor_id)) = 0.0;
             in_degree[neighbor_id]--;
             if (in_degree[neighbor_id] == 0) {
               no_incoming_edges.insert(neighbor_id);
@@ -174,18 +243,39 @@ namespace other {
       return topo;
     }
 
+    std::string to_string() const {
+      std::stringstream ss;
+      for (const auto& node : nodes) {
+        if constexpr (requires { std::formatter<T>{}; }) {
+          ss << std::format("[{}] = {}\n", node.id, node.value);
+        } else {
+          ss << std::format("[{}] = <non-streamable value>\n", node.id);
+        }
+        for (const auto& other_id : get_all_node_ids()) {
+          if (!detail::epsilon_zero((*adjacency_matrix)(id_to_idx(node.id), id_to_idx(other_id)))) {
+            ss << std::format("  -> [{}] (weight: {:.3f})\n", other_id, (*adjacency_matrix)(id_to_idx(node.id), id_to_idx(other_id)));
+          }
+        }
+      }
+      return ss.str();
+    }
+    std::string to_matrix_string() const {
+      return dynamic_matrix<real_t>::write_string(*adjacency_matrix);
+    }
+
    private:
     struct node {
-      uint64_t id = 0;
+      natural_t id = 0;
+      natural_t index = 0;
       T value;
 
       constexpr auto operator<=>(const node& other) const = default;
     };
-    std::map<uint64_t, node> nodes;
-    ref<matrix_nxm<real_t>> adjacency_matrix = nullptr;
+    std::vector<node> nodes;
+    ref<matrix_nxm<real_t>> adjacency_matrix;
 
-    uint64_t id_counter = 0;
-    uint64_t get_next_id() {
+    natural_t id_counter = 0;
+    natural_t get_next_id() {
       return ++id_counter;
     }
   };

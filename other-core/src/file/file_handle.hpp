@@ -73,7 +73,7 @@ namespace other {
 
     template <typename OS>
     OS& print(OS& os, size_t indent_level = 0) const {
-      os << std::string(indent_level, ' ') << std::format(" - FILE[{} : {}] : {} ({} bytes)", handle_type, file_name, abs_path.string(), size());
+      os << std::string(indent_level, ' ') << std::format("FILE[{} : {}] : {} ({} bytes)", handle_type, file_name, abs_path.string(), size());
       return os;
     }
 

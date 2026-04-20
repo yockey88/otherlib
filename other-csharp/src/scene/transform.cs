@@ -22,6 +22,7 @@ namespace Other
 
     public Vec3 EulerAngles
     {
+      get => Rotation.ToEulerAngles();
       set
       {
         float deg2rad = MathF.PI / 180.0f;

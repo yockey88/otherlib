@@ -6,7 +6,6 @@
 
 #include <cstdint>
 
-#include "core/defines.hpp"
 #include "core/logger.hpp"
 
 namespace other {
@@ -18,8 +17,9 @@ namespace other {
    * \note important to note that this is also the boot order and update order of the core systems, so they should be ordered with that in mind.
    **/
   enum driver_system_type : uint32_t {
-    /// network first because we need to create the io context and register the network system so it is accessible
+    /// group 0
     NETWORK_DRIVER_SYSTEM = 0,
+    JOB_DRIVER_SYSTEM,
     /// group 1
     EVENT_DRIVER_SYSTEM,
     /// group 2 - might need to use events
@@ -78,27 +78,6 @@ namespace other {
    private:
     driver* driver_instance;
     uint32_t system_id;
-  };
-
-  class OTHER_CLASS driver_plugin : public driver_system {
-   public:
-    driver_plugin(driver* driver_instance)
-        : driver_system(driver_instance, driver_system_type::CUSTOM_DRIVER_SYSTEM_ID_END) {}
-    virtual ~driver_plugin() override = default;
-
-    bool active() const override { return is_active; }
-    inline void set_active(bool is_active) { this->is_active = is_active; }
-
-    void initialize(driver_kernel* kernel) override;
-    void tick(driver_kernel* kernel, double dt) override;
-    void shutdown(driver_kernel* kernel) override;
-
-    virtual void on_initialize() {}
-    virtual void on_tick(double dt) {}
-    virtual void on_shutdown() {}
-
-   private:
-    bool is_active = false;
   };
 
 }  // namespace other

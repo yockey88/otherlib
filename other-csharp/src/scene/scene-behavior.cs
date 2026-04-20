@@ -11,7 +11,7 @@ namespace Other
         {
           return scene_obj;
         }
-        return null;
+        throw new System.Exception("SceneBehavior must be attached to a SceneObject.");
       }
     }
 
@@ -19,10 +19,10 @@ namespace Other
     {
       get
       {
-        return SceneObject?.ObjectHandle;
+        return SceneObject!.ObjectHandle;
       }
     }
-
+    
     public Transform Transform
     {
       get
@@ -31,34 +31,9 @@ namespace Other
       }
     }
 
-    protected T GetComponent<T>() 
-      where T : Component
-    {
-      if (SceneObject == null)
-      {
-        return null;
-      }
-      return SceneObject.GetComponent<T>();
-    }
-
-    protected bool HasComponent<T>() 
-      where T : Component
-    {
-      if (SceneObject == null)
-      {
-        return false;
-      }
-      return SceneObject.HasComponent<T>();
-    }
-
-    protected void AddComponent<T>() 
-      where T : Component
-    {
-      if (SceneObject != null)
-      {
-        SceneObject.AddComponent<T>();
-      }
-    }
+    protected T GetComponent<T>() where T : Component => SceneObject.GetComponent<T>();
+    protected bool HasComponent<T>() where T : Component => SceneObject.HasComponent<T>();
+    protected void AddComponent<T>() where T : Component => SceneObject.AddComponent<T>();
 
     protected override void Awake()
     {

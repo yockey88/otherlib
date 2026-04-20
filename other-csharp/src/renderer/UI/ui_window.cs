@@ -93,7 +93,7 @@ namespace Other.Editor
     {
       if (windows.ContainsKey(window.Title))
       {
-        Core.Debug.LogWarning($"EditorWindow '{window.Title}' is already registered.");
+        Debug.Warn($"EditorWindow '{window.Title}' is already registered.");
         return;
       }
       windows.Add(window.Title, window);
@@ -119,7 +119,7 @@ namespace Other.Editor
         }
         catch (Exception e)
         {
-          Core.Debug.LogError($"Exception rendering editor window '{kvp.Key}': {e.Message}");
+          Debug.Error($"Exception rendering editor window '{kvp.Key}': {e.Message}");
         }
       }
     }
@@ -127,12 +127,12 @@ namespace Other.Editor
     public static UIWindow GetWindow(string title)
     {
       windows.TryGetValue(title, out var window);
-      return window;
+      return window!;
     }
 
     public static T GetWindow<T>(string title) where T : UIWindow
     {
-      return GetWindow(title) as T;
+      return (GetWindow(title) as T)!;
     }
 
     public static IEnumerable<string> RegisteredWindowTitles => windows.Keys;

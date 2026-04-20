@@ -12,7 +12,7 @@
 namespace other {
 
   void event_driver_system::initialize(driver_kernel* kernel) {
-    auto& network = kernel->get_core_system<network_system>();
+    auto& network = sibling<network_system>(*kernel);
     event_system_ptr = make_scope<event_system>(network.io_context());
 
     {
@@ -108,7 +108,7 @@ namespace other {
 
   void event_driver_system::handle_open_ui_window_event(driver_kernel* kernel, const value& data) {
     if (kernel->has_core_system<rendering_system>() && data.type() == value_type::STRING) {
-      auto& rendering_sys = kernel->get_core_system<rendering_system>();
+      auto& rendering_sys = sibling<rendering_system>(*kernel);
 
       std::string window_type_str = data;
       rendering_sys.open_ui_window(window_type_str);
@@ -129,7 +129,7 @@ namespace other {
 
   void event_driver_system::handle_close_ui_window_event(driver_kernel* kernel, const value& data) {
     if (kernel->has_core_system<rendering_system>() && data.type() == value_type::STRING) {
-      auto& rendering_sys = kernel->get_core_system<rendering_system>();
+      auto& rendering_sys = sibling<rendering_system>(*kernel);
 
       std::string window_type_str = data;
       rendering_sys.close_ui_window(window_type_str);
