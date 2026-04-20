@@ -4,24 +4,40 @@
 #ifndef OTHER_CORE_DATA_STRUCTURES_ARENA_VECTOR_HPP
 #define OTHER_CORE_DATA_STRUCTURES_ARENA_VECTOR_HPP
 
+#include <iterator>
+#include <ranges>
+
 #include "core/arena_allocator.hpp"
 #include "core/defines.hpp"
+#include "core/logger.hpp"
 
 namespace other {
 
   template <typename T>
   class arena_vector {
    public:
-    arena_vector() = default;
+    arena_vector() {
+      data = nullptr;
+      size = 0;
+      capacity = 0;
+      initial_allocation();
+    }
     arena_vector(arena_vector&&) = default;
     arena_vector(const arena_vector&) = delete;
     arena_vector& operator=(arena_vector&&) = default;
     arena_vector& operator=(const arena_vector&) = delete;
 
     arena_vector(T* data, natural_t size, natural_t capacity)
-        : data(data), size(size), capacity(capacity) {}
+        : data(data), size(size), capacity(capacity) {
+      OTHER_ASSERT(size <= capacity, "Size of arena_vector cannot exceed its capacity.");
+      OTHER_ASSERT(capacity == 0 || data != nullptr, "Data pointer cannot be null if capacity is greater than zero.");
+    }
     arena_vector(natural_t capacity)
-        : data(nullptr), size(0), capacity(capacity) {}
+        : data(nullptr), size(0), capacity(capacity) {
+      if (capacity > 0) {
+        realloc_with_capacity(capacity);
+      }
+    }
     arena_vector(T* data, natural_t size)
         : data(data), size(size), capacity(size) {}
 
@@ -29,6 +45,10 @@ namespace other {
 
     T& operator[](natural_t i) { return data[i]; }
     const T& operator[](natural_t i) const { return data[i]; }
+
+    inline bool empty() const { return size == 0; }
+    inline natural_t get_size() const { return size; }
+    inline natural_t get_capacity() const { return capacity; }
 
     void reserve(natural_t new_size) {
       if (new_size == 0) {
@@ -84,37 +104,93 @@ namespace other {
     }
 
     void realloc_with_capacity(natural_t new_size) {
-      if (new_size * sizeof(T) > capacity) {
-        T* new_data = allocator.allocate_block(new_size);
+      T* new_data = allocator.allocate_block(new_size);
 
-        for (natural_t i = 0; i < size; i++) {
-          new_data[i] = std::move(data[i]);
-        }
-
-        allocator.free_block(data, size);
-        data = new_data;
-        capacity = new_size * sizeof(T);
+      for (natural_t i = 0; i < size; i++) {
+        new_data[i] = std::move(data[i]);
       }
+
+      allocator.free_block(data, size);
+      data = new_data;
+      capacity = new_size * sizeof(T);
     }
 
-    struct iterator {
-      T* ptr;
+    class iterator {
+     public:
+      using iterator_category = std::random_access_iterator_tag;
+      using difference_type = std::ptrdiff_t;
+      using value_type = T;
+      using reference = T&;
+      using const_reference = reference;
+      using pointer = T*;
+      using const_pointer = pointer;
+
+      iterator() = default;
+      iterator(const iterator&) = default;
+      iterator& operator=(const iterator&) = default;
+
+      iterator(T* ptr)
+          : ptr(ptr) {}
+      ~iterator() = default;
+
+      reference operator*() noexcept { return *ptr; }
+      const_reference operator*() const noexcept { return *ptr; }
+
+      reference operator[](difference_type offset) noexcept { return *(ptr + offset); }
+      const_reference operator[](difference_type offset) const noexcept { return *(ptr + offset); }
+
+      pointer operator->() noexcept { return ptr; }
+      const_pointer operator->() const noexcept { return ptr; }
+
+      friend iterator operator+(difference_type offset, const iterator& it) { return iterator{ it.ptr + offset }; }
+      iterator operator+(difference_type offset) const { return iterator{ ptr + offset }; }
+      iterator operator+=(difference_type offset) {
+        ptr += offset;
+        return *this;
+      }
       iterator& operator++() {
         ptr++;
         return *this;
       }
-      bool operator!=(const iterator& other) const {
-        return ptr != other.ptr;
-      }
-      T& operator*() {
-        return *ptr;
+      iterator operator++(int) {
+        iterator temp = *this;
+        ptr++;
+        return temp;
       }
 
-      constexpr auto operator<=>(const iterator& other) const = default;
+      friend iterator operator-(difference_type offset, const iterator& it) { return iterator{ it.ptr - offset }; }
+      difference_type operator-(difference_type offset) const { return iterator{ ptr - offset }; }
+      iterator operator-=(difference_type offset) {
+        ptr -= offset;
+        return *this;
+      }
+      iterator& operator--() {
+        ptr--;
+        return *this;
+      }
+      iterator operator--(int) {
+        iterator temp = *this;
+        ptr--;
+        return temp;
+      }
+
+      bool operator==(const iterator& other) const { return ptr == other.ptr; }
+      bool operator!=(const iterator& other) const { return ptr != other.ptr; }
+      bool operator<(const iterator& other) const { return ptr < other.ptr; }
+      bool operator<=(const iterator& other) const { return ptr <= other.ptr; }
+      bool operator>(const iterator& other) const { return ptr > other.ptr; }
+      bool operator>=(const iterator& other) const { return ptr >= other.ptr; }
+
+     private:
+      friend class arena_vector<T>;
+      T* ptr;
     };
 
+    /// C++ range functions support
     iterator begin() { return iterator{ data }; }
+    iterator begin() const { return iterator{ data }; }
     iterator end() { return iterator{ data + size }; }
+    iterator end() const { return iterator{ data + size }; }
 
     iterator find(const T& predicate) {
       for (natural_t i = 0; i < size; i++) {
@@ -177,6 +253,10 @@ namespace other {
       }
     }
   };
+  static_assert(std::ranges::range<arena_vector<int>>, "arena_vector should satisfy range requirements.");
+  // static_assert(std::ranges::input_range<arena_vector<int>>, "arena_vector should satisfy input range requirements.");
+  // static_assert(std::ranges::forward_range<arena_vector<int>>, "arena_vector should satisfy forward range requirements.");
+  // static_assert(std::ranges::bidirectional_range<arena_vector<int>>, "arena_vector should satisfy random access range requirements.");
 
 }  // namespace other
 

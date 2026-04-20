@@ -14,7 +14,7 @@ namespace other {
 
   class job : public ref_counted {
    public:
-    enum priority : uint8_t {
+    enum class priority {
       LOW,
       MEDIUM,
       HIGH,
@@ -23,7 +23,7 @@ namespace other {
       NUM_JOB_PRIORITIES,
       INVALID_JOB_PRIORITY = NUM_JOB_PRIORITIES,
     };
-    enum status : uint8_t {
+    enum class status {
       PENDING,
       QUEUED,
       WAITING_FOR_DEPENDENCIES,
@@ -35,7 +35,7 @@ namespace other {
       NUM_JOB_STATUSES,
       INVALID_JOB_STATUS = NUM_JOB_STATUSES,
     };
-    enum affinity : uint8_t {
+    enum class affinity {
       ANY_THREAD,
       MAIN_THREAD,
       WORKER_THREAD,
@@ -45,8 +45,8 @@ namespace other {
     };
     struct descriptor {
       std::string name = "Unnamed Job";
-      priority priority = priority::LOW;
-      affinity thread_affinity = affinity::ANY_THREAD;
+      priority priority = priority::MEDIUM;
+      affinity thread_affinity = affinity::MAIN_THREAD;
     };
 
     job() = default;
@@ -54,8 +54,7 @@ namespace other {
 
     using continuation_fn = std::function<void(status)>;
 
-    inline status get_status() const { return current_status.load(std::memory_order::memory_order_acquire); }
-
+    status get_status() const;
     bool pending() const;
     bool running() const;
     bool done() const;
@@ -65,11 +64,9 @@ namespace other {
     void add_continuation(continuation_fn cont);
 
     natural_t id;
+    std::atomic<status> current_status = status::PENDING;
 
    private:
-    friend class job_graph;
-
-    std::atomic<status> current_status = status::PENDING;
     std::mutex cont_mutex;
     std::vector<continuation_fn> continuations;
   };

@@ -5,6 +5,10 @@
 
 namespace other {
 
+  job::status job::get_status() const {
+    return current_status;
+  }
+
   bool job::pending() const {
     return get_status() <= status::QUEUED;
   }

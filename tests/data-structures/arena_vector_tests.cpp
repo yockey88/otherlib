@@ -90,4 +90,34 @@ namespace other {
     EXPECT_EQ(vec.capacity, 0);
   }
 
+  TEST_F(arena_vector_tests, move_only_type) {
+    // struct move_only {
+    //   move_only(int v) : value(v) {}
+    //   move_only(const move_only&) = delete;
+    //   move_only& operator=(const move_only&) = delete;
+    //   move_only(move_only&&) = default;
+    //   move_only& operator=(move_only&&) = default;
+
+    //   int value;
+
+    //   constexpr auto operator<=>(const move_only& other) const = default;
+    // };
+
+    // arena_vector<move_only> vec;
+    // EXPECT_EQ(vec.size, 0);
+    // EXPECT_EQ(vec.capacity, 10 * sizeof(move_only));
+
+    // vec.push_back(move_only(1));
+    // vec.push_back(move_only(2));
+
+    // {
+    //   move_only m3 = move_only(3);
+    //   vec.push_back(std::move(m3));
+    // }
+
+    // vec.clear();
+    // EXPECT_EQ(vec.size, 0);
+    // EXPECT_EQ(vec.capacity, 0);
+  }
+
 }  // namespace other

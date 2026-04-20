@@ -42,6 +42,8 @@ namespace other {
     asio::thread_pool& thread_pool() { return *pool; }
     auto worker_executor() { return pool->get_executor(); }
 
+    inline uint32_t get_num_workers() const { return config.worker_count; }
+
    private:
     struct config_variables {
       constexpr static uint32_t kDefaultWorkCount = 4;

@@ -361,8 +361,8 @@ namespace other {
 
     std::stringstream ss;
     ss << "Scenes in Scene Graph:\n";
-    for (const auto& [id, node] : graph) {
-      ss << "  - ID: " << id << ", Name: " << node.value.name << "\n";
+    for (const auto& node : graph) {
+      ss << "  - ID: " << node.value.id << ", Name: " << node.value.name << "\n";
     }
 
     events->trigger_event("console.output", ss.str());

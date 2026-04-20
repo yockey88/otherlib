@@ -11,6 +11,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/core/config_table_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/reflection_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/state_machine_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/job_system_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_buffer_test.cpp

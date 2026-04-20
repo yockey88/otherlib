@@ -8,7 +8,7 @@
 namespace other {
 
   void job_system::initialize(const config_table& cfg) {
-    config.worker_count = cfg.get_value<uint32_t>("worker_count", std::max(2u, std::thread::hardware_concurrency() - 1));
+    config.worker_count = cfg.get_value<uint32_t>("application.async.worker_count", std::max(2u, std::thread::hardware_concurrency() - 1));
     pool = make_scope<asio::thread_pool>(config.worker_count);
     OTHER_ASSERT(pool != nullptr, "Failed to create thread pool for job system.");
   }
@@ -22,10 +22,11 @@ namespace other {
 
     for (const auto& [id, status] : completions) {
       auto newly_ready = jobs.resolve(id, status);
-
       for (natural_t node : newly_ready) {
         dispatch_node(node);
       }
+
+      jobs.remove(id);
     }
 
     for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
@@ -86,34 +87,42 @@ namespace other {
 
   void job_system::dispatch_node(natural_t id) {
     job_graph::job_node* node = jobs.get_node(id);
-    OTHER_ASSERT(node != nullptr, "Job node with ID {} not found for dispatch.", id);
+    if (node == nullptr) {
+      CORE_LOG_ERROR("Job node with ID {} not found for dispatch.", id);
+      return;
+    }
 
     jobs.mark_dispatched(id);
 
     auto w = node->work;
     auto aff = node->descriptor.thread_affinity;
 
+    node->handle->current_status.store(job::status::RUNNING, std::memory_order_release);
     auto wrapped = [this, w = std::move(w), id]() {
-      job::status status = job::status::COMPLETED;
+      CORE_LOG_DEBUG("Job with ID {} is starting execution.", id);
+      job::status final_status = job::status::COMPLETED;
       try {
         w();
       } catch (const std::exception& e) {
         CORE_LOG_ERROR("Exception in job with ID {}: {}", id, e.what());
-        status = job::status::FAILED;
+        final_status = job::status::FAILED;
       } catch (...) {
         CORE_LOG_ERROR("Unknown exception in job with ID {}.", id);
-        status = job::status::FAILED;
+        final_status = job::status::FAILED;
       }
-      on_job_complete(id, status);
+      on_job_complete(id, final_status);
     };
 
+    // clang-format off
+    CORE_LOG_DEBUG("Dispatching priority [{}] job [{}] with ID {} to thread pool. Affinity: {}", 
+                   node->descriptor.priority, node->descriptor.name, id, aff);
+    // clang-format on
     switch (aff) {
       case job::affinity::MAIN_THREAD:
         asio::post(main_io_context, std::move(wrapped));
         break;
 
       case job::affinity::WORKER_THREAD:
-      /// \todo choose smart, don't always have to post to thread pool, we can be smarter
       case job::affinity::ANY_THREAD:
         asio::post(*pool, std::move(wrapped));
         break;
@@ -123,8 +132,13 @@ namespace other {
   }
 
   void job_system::on_job_complete(natural_t id, job::status status) {
+    CORE_LOG_DEBUG("Job with ID {} completed with status {}.", id, status);
     std::lock_guard lck{ completion_mutex };
     pending_completions.push_back({ .id = id, .status = status });
+
+    auto j = jobs.get_node(id);
+    OTHER_ASSERT(j != nullptr, "Job node with ID {} not found in on_job_complete.", id);
+    j->handle->current_status.store(status, std::memory_order_release);
   }
 
 }  // namespace other

@@ -46,8 +46,48 @@ namespace other {
     neighbors_of_1 = g.get_neighbors(n0);
     ASSERT_TRUE(neighbors_of_1.empty());
 
+    g.remove_node(n1);
+    EXPECT_EQ(g.size(), 2);
+
+    CORE_LOG_DEBUG("Graph:{}", g.to_matrix_string());
+    CORE_LOG_DEBUG("Graph:\n{}", g.to_string());
+
     g.clear();
     EXPECT_TRUE(g.empty());
+  }
+
+  TEST_F(graph_tests, test_topological_sort) {
+    graph<int> g;
+    natural_t n0 = g.add_node(1);
+    natural_t n1 = g.add_node(2);
+    natural_t n2 = g.add_node(3);
+    natural_t n3 = g.add_node(4);
+
+    g.add_edge(n0, n1);
+    g.add_edge(n0, n2);
+    g.add_edge(n1, n3);
+    g.add_edge(n2, n3);
+
+    CORE_LOG_DEBUG("Graph:{}", g.to_matrix_string());
+    CORE_LOG_DEBUG("Graph:\n{}", g.to_string());
+
+    auto topo = g.topological_sort();
+    EXPECT_FALSE(topo.has_cycles);
+    EXPECT_EQ(topo.sorted_node_ids.size(), 4);
+    EXPECT_TRUE((topo.sorted_node_ids[0] == n0 && topo.sorted_node_ids[3] == n3) || (topo.sorted_node_ids[0] == n0 && topo.sorted_node_ids[3] == n3));
+
+    g.remove_node(n2);
+    CORE_LOG_DEBUG("Graph:{}", g.to_matrix_string());
+    CORE_LOG_DEBUG("Graph:\n{}", g.to_string());
+
+    g.remove_node(n1);
+    CORE_LOG_DEBUG("Graph:{}", g.to_matrix_string());
+    CORE_LOG_DEBUG("Graph:\n{}", g.to_string());
+
+    topo = g.topological_sort();
+    EXPECT_FALSE(topo.has_cycles);
+    EXPECT_EQ(topo.sorted_node_ids.size(), 2);
+    EXPECT_TRUE((topo.sorted_node_ids[0] == n0 && topo.sorted_node_ids[1] == n3) || (topo.sorted_node_ids[0] == n3 && topo.sorted_node_ids[1] == n0));
   }
 
 }  // namespace other

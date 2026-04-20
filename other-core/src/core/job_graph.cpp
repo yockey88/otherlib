@@ -7,9 +7,7 @@ namespace other {
 
   job_graph::job_node* job_graph::get_node(natural_t id) {
     std::lock_guard lck{ graph_mutex };
-    auto* n = find_node(node_id_from_job_id(id));
-    OTHER_ASSERT(n != nullptr, "Job with ID {} not found in job graph.", id);
-    return n;
+    return find_node(node_id_from_job_id(id));
   }
 
   ref<job> job_graph::insert(job::descriptor desc, work_fn work) {
@@ -84,10 +82,10 @@ namespace other {
 
   std::vector<natural_t> job_graph::collect_ready() {
     std::lock_guard lck{ graph_mutex };
-
     std::vector<natural_t> ready_jobs;
     work_graph.for_each_node([&ready_jobs](const job_node& node) {
-      if (!node.dispatched && node.waiting_on == 0 && !node.handle->done()) {
+      if (node.handle->current_status.load(std::memory_order_acquire) == job::status::PENDING &&
+          node.waiting_on == 0) {
         ready_jobs.push_back(node.handle->id);
       }
     });
@@ -98,7 +96,6 @@ namespace other {
       OTHER_ASSERT(node_b != nullptr, "Job with ID {} not found in job graph.", b);
       return node_a->descriptor.priority > node_b->descriptor.priority;
     });
-
     return ready_jobs;
   }
 
@@ -123,6 +120,7 @@ namespace other {
 
       child_node->waiting_on--;
       if (child_node->waiting_on == 0 && !child_node->dispatched) {
+        child_node->handle->current_status.store(job::status::QUEUED, std::memory_order_release);
         newly_ready.push_back(child_node->handle->id);
       }
     }
@@ -159,8 +157,8 @@ namespace other {
   }
 
   void job_graph::mark_dispatched(natural_t job_id) {
-    std::lock_guard lck{ graph_mutex };
     if (auto* n = find_node(node_id_from_job_id(job_id)); n != nullptr) {
+      std::lock_guard lck{ graph_mutex };
       n->dispatched = true;
       n->handle->current_status.store(job::status::QUEUED, std::memory_order_release);
     }
@@ -168,6 +166,26 @@ namespace other {
 
   void job_graph::cancel(natural_t job_id) {
     resolve(job_id, job::status::CANCELLED);
+  }
+
+  void job_graph::remove(natural_t job_id) {
+    natural_t node_id = node_id_from_job_id(job_id);
+    if (node_id == 0) {
+      return;
+    }
+
+    std::lock_guard lck{ graph_mutex };
+    job_node* node = find_node(node_id);
+    OTHER_ASSERT(node != nullptr, "Job with ID {} not found in job graph.", job_id);
+    // clang-format off
+    OTHER_ASSERT(node->handle->current_status.load(std::memory_order_acquire) == job::status::COMPLETED ||
+                 node->handle->current_status.load(std::memory_order_acquire) == job::status::FAILED ||
+                 node->handle->current_status.load(std::memory_order_acquire) == job::status::CANCELLED,
+                 "Only completed, failed, or cancelled jobs can be removed from the graph. Job ID: {}, Status: {}",
+                 job_id, static_cast<int>(node->handle->get_status()));
+    // clang-format on
+
+    // work_graph.remove_node(node_id);
   }
 
   natural_t job_graph::node_id_from_job_id(natural_t job_id) const {

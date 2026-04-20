@@ -45,7 +45,6 @@ namespace other {
       other.rows = 0;
       other.cols = 0;
     }
-
     dynamic_matrix& operator=(dynamic_matrix&& other) noexcept {
       if (this != &other) {
         rows = other.rows;
@@ -57,8 +56,31 @@ namespace other {
       return *this;
     }
 
+    dynamic_matrix(const dynamic_matrix& other)
+        : rows(other.rows), cols(other.cols) {
+      data.reserve(rows * cols);
+      for (size_t i = 0; i < rows * cols; ++i) {
+        data[i] = other.data[i];
+      }
+    }
+    dynamic_matrix& operator=(const dynamic_matrix& other) {
+      if (this != &other) {
+        rows = other.rows;
+        cols = other.cols;
+        data.reserve(rows * cols);
+        for (size_t i = 0; i < rows * cols; ++i) {
+          data[i] = other.data[i];
+        }
+      }
+      return *this;
+    }
+
     static inline dynamic_matrix create_matrix(natural_t rows, natural_t cols) {
       return dynamic_matrix(rows, cols);
+    }
+
+    static inline dynamic_matrix create_matrix(const dynamic_matrix& other) {
+      return dynamic_matrix(other);
     }
 
     template <natural_t R, natural_t C>

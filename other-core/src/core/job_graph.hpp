@@ -36,6 +36,7 @@ namespace other {
     std::vector<natural_t> resolve(natural_t job_id, job::status status);
     void mark_dispatched(natural_t job_id);
     void cancel(natural_t job_id);
+    void remove(natural_t job_id);
 
     natural_t node_id_from_job_id(natural_t job_id) const;
     natural_t job_id_from_node_id(natural_t node_id) const;
@@ -61,8 +62,8 @@ namespace other {
     std::vector<id_pair> id_pairs;
     std::vector<deferred_edge> deferred_edges;
 
-    static inline std::atomic<natural_t> next_job_id_ = 1;
-    static natural_t allocate_id() { return next_job_id_.fetch_add(1, std::memory_order_relaxed); }
+    natural_t next_job_id_ = 1;
+    natural_t allocate_id() { return next_job_id_++; }
 
     job_node* find_node(natural_t id);
   };
