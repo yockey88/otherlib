@@ -56,8 +56,6 @@ namespace other {
     };
     mutable std::mutex graph_mutex;
 
-    /// we can't use the graph's matrix because resizes would be too expensive
-    ///  and are very common
     graph<job_node> work_graph;
     std::vector<id_pair> id_pairs;
     std::vector<deferred_edge> deferred_edges;

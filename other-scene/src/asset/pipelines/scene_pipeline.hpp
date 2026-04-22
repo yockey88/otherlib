@@ -18,12 +18,7 @@ namespace other {
 
    private:
     void on_load_complete(asset* asset_ptr) override;
-    void on_load_failed(asset* asset_ptr, const std::string& error_message) override;
-
     void on_unload_complete(asset* asset_ptr) override;
-    void on_unload_failed(asset* asset_ptr, const std::string& error_message) override;
-
-    void on_pipeline_poll() override;
   };
 
 }  // namespace other

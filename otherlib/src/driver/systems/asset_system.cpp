@@ -98,6 +98,13 @@ namespace other {
     events.add_listener("ls.assets", [this](const value& data) { handle_ls_assets_event(&get_driver().get_kernel(), data); });
 
     events.register_event("assets.new-asset-loaded");
+
+    events.register_event("model-source.asset-loaded");
+    events.register_event("model-source.asset-load-failed");
+    events.register_event("scene.asset-loaded");
+    events.register_event("scene.asset-load-failed");
+    events.register_event("rendering-pipeline.asset-loaded");
+    events.register_event("rendering-pipeline.asset-load-failed");
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {

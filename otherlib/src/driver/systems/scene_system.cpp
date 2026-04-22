@@ -284,7 +284,7 @@ namespace other {
 
     /**
      * \note:
-     *    - scene must be active to be bound to the native scripting interfaces so when we activate it to run the creation script, and then restore the old one.
+     *    - scene must be active to be bound to the native scripting interfaces so we activate it to run the creation script, and then restore the old one.
      *    - we don't want to do any of the other stuff associated with 'primary' activation like triggering events or synchronizing over the network,
      *      so we set the pointer, run the script, and reset it back to the old one before doing the 'real' activation below if needed
      **/
@@ -297,6 +297,7 @@ namespace other {
 
     /// this happens here so it only happens once when the asset is fully loaded and registered
     if (s->activate_on_load) {
+      /// 'real activation'
       set_scene_to_active(scene_id);
       synchronize_active_scene(scene_id);
     }

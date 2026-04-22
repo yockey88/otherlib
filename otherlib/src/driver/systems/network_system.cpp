@@ -557,7 +557,7 @@ namespace other {
 
     /// server does this in @ref network_system::on_timeout_session_listen_for_network_thread
     if (primary_role == role::CLIENT) {
-      get_driver().process_driver_event(driver_event::DRIVER_EVENT_READY);
+      // get_driver().process_driver_event(driver_event::DRIVER_EVENT_READY);
     }
   }
 
