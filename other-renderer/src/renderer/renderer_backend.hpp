@@ -10,6 +10,7 @@
 #include "core/subsystem.hpp"
 
 #include "model/model.hpp"
+#include "model/model_source.hpp"
 #include "renderer/rendering_api.hpp"
 
 struct ImGuiContext;

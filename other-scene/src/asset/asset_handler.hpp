@@ -96,6 +96,8 @@ namespace other {
 
     static std::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
 
+    job_system& get_job_system() { return jobs; }
+
     bool idle() const { return asset_pipelines.empty(); }
     bool empty() const { return loaded_assets.empty() && idle(); }
 
@@ -146,6 +148,9 @@ namespace other {
     size_t get_num_pending_unloads() const { return pending_unloads.size(); }
 
    private:
+    friend struct detail::load_context;
+    friend class asset_pipeline;
+
     event_system& events;
     asio::io_context& io_context;
     job_system& jobs;
@@ -173,9 +178,6 @@ namespace other {
     static inline natural_t get_next_asset_id() {
       return next_asset_id++;
     }
-
-    friend struct detail::load_context;
-    friend class asset_pipeline;
 
     asset* find_asset_by_path(const filepath& file_path) const;
 

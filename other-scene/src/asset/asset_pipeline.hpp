@@ -6,6 +6,7 @@
 
 #include <asio/asio.hpp>
 
+#include "core/coroutine.hpp"
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
 
@@ -15,6 +16,7 @@
 
 namespace other {
 
+  class job_system;
   class asset_handler;
   class scene;
 
@@ -48,7 +50,7 @@ namespace other {
     void poll();
 
     struct loading_table {
-      using loader_fn_t = std::function<void(asset*, on_load_success_fn, on_load_failure_fn, void*)>;
+      using loader_fn_t = task (*)(asset_handler*, asset*, on_load_success_fn, on_load_failure_fn, void*);
       static std::array<loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> loaders;
       static std::array<loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> unloaders;
     };
@@ -56,16 +58,6 @@ namespace other {
     std::mutex mtx;
 
    protected:
-    virtual void on_load_complete(asset* asset_ptr) = 0;
-    virtual void on_load_cancel() {}
-    virtual void on_load_failed(asset* asset_ptr, const std::string& error_msg) = 0;
-
-    virtual void on_unload_complete(asset* asset_ptr) = 0;
-    virtual void on_unload_cancel() {}
-    virtual void on_unload_failed(asset* asset_ptr, const std::string& error_msg) = 0;
-
-    virtual void on_pipeline_poll() = 0;
-
     void start_load_operation(executor_t& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure, loading_table::loader_fn_t function);
 
     void pipeline_finished();
@@ -98,6 +90,8 @@ namespace other {
 
     void pipeline_complete(asset* asset_ptr);
     void pipeline_failed(asset* asset_ptr, const std::string& error_message);
+
+    // task load_asset(asset* asset_ptr);
   };
 
 }  // namespace other

@@ -23,7 +23,7 @@ namespace other {
 
     ref<job> submit(job::descriptor desc, job_graph::work_fn work);
     ref<job> submit(job::descriptor desc, job_graph::work_fn work, std::span<const natural_t> dependencies);
-    ref<job> submit_deferred(natural_t trigger_id, job_graph::deferred_factory_fn factory);
+    ref<job> submit_deferred(natural_t trigger_id, job::descriptor desc, job_graph::work_fn work);
     void post_coroutine(task coro);
 
     template <typename F>
