@@ -185,6 +185,7 @@ namespace other {
       switch (asset_ptr->asset_type) {
         case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-loaded", asset_ptr->id); break;
         case asset::SCENE: get_events().trigger_event("scene.asset-loaded", asset_ptr->id); break;
+        case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-loaded", asset_ptr->id); break;
         default:
           CORE_LOG_ERROR("No event trigger for asset type {} on load complete", asset_ptr->asset_type);
       }
@@ -192,6 +193,7 @@ namespace other {
       switch (asset_ptr->asset_type) {
         case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-unloaded", asset_ptr->id); break;
         case asset::SCENE: get_events().trigger_event("scene.asset-unloaded", asset_ptr->id); break;
+        case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-unloaded", asset_ptr->id); break;
         default:
           CORE_LOG_ERROR("No event trigger for asset type {} on unload complete", asset_ptr->asset_type);
       }
@@ -211,6 +213,7 @@ namespace other {
       switch (asset_ptr->asset_type) {
         case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-load-failed", asset_ptr->id); break;
         case asset::SCENE: get_events().trigger_event("scene.asset-load-failed", asset_ptr->id); break;
+        case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-load-failed", asset_ptr->id); break;
         default:
           CORE_LOG_ERROR("No event trigger for asset type {} on load failed", asset_ptr->asset_type);
       }
@@ -218,6 +221,7 @@ namespace other {
       switch (asset_ptr->asset_type) {
         case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-unload-failed", asset_ptr->id); break;
         case asset::SCENE: get_events().trigger_event("scene.asset-unload-failed", asset_ptr->id); break;
+        case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-unload-failed", asset_ptr->id); break;
         default:
           CORE_LOG_ERROR("No event trigger for asset type {} on unload failed", asset_ptr->asset_type);
       }

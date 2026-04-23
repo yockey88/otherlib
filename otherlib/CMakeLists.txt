@@ -99,31 +99,31 @@ target_sources(otherlib
     src/tools/project_tool.cpp
 
     src/ui/inspector_widgets.cpp
-    src/ui/hierarchy_widgets.cpp
-    src/ui/console_widgets.cpp
-    src/ui/asset_browser_widgets.cpp
-    src/ui/script_property_widget.cpp
+    src/ui/scene-hierarchy/hierarchy_widgets.cpp
+    src/ui/console/console_widgets.cpp
+    src/ui/script/script_property_widget.cpp
     src/ui/ui_widgets.cpp
-    src/ui/node_editor_canvas_node.cpp
-    src/ui/console_input_node.cpp
-    src/ui/console_history_node.cpp
-    src/ui/scene_hierarchy_node.cpp
+    src/ui/node-editor/node_editor_canvas_node.cpp
+    src/ui/console/console_input_node.cpp
+    src/ui/console/console_history_node.cpp
+    src/ui/scene-hierarchy/scene_hierarchy_node.cpp
     src/ui/property_inspector_node.cpp
-    src/ui/asset_browser_tree_node.cpp
-    src/ui/asset_browser_grid_node.cpp
-    src/ui/asset_editor_node.cpp
-    src/ui/node_editor.cpp
-    src/ui/console.cpp
+    src/ui/asset-editor/asset_editor_node.cpp
+    src/ui/node-editor/node_editor.cpp
+    src/ui/console/console.cpp
     src/ui/viewport.cpp
     src/ui/type_database.cpp
-    src/ui/asset_browser.cpp
-    src/ui/scene_hierarchy.cpp
-    src/ui/asset_editor_registry.cpp
-    src/ui/asset_editor.cpp
+    src/ui/scene-hierarchy/scene_hierarchy.cpp
+    src/ui/asset-editor/asset_editor_registry.cpp
+    src/ui/asset-editor/asset_editor.cpp
     src/ui/driver_ui.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp
+    src/ui/asset-browser/asset_browser_widgets.cpp
+    src/ui/asset-browser/asset_browser_tree_node.cpp
+    src/ui/asset-browser/asset_browser_grid_node.cpp
+    src/ui/asset-browser/asset_browser.cpp
 
     src/other.cpp
 )

@@ -24,6 +24,7 @@ namespace other {
       args::ValueFlag<std::string> cwd(parser, "working-directory", "Set the working directory for the application", { 'd', "cwd" });
       args::ValueFlag<integer_t> session_id(parser, "session-id", "Session ID to use when checking in with the server", { 's', "session-id", "sid" });
       args::ValueFlag<uint16_t> port(parser, "port", "Port to use to check in with the server, if not used, then check-in is attempted at port 49222", { 'p', "port" }, 49222);
+      args::ValueFlag<std::string> project_file(parser, "project-file", "Path to the project file to load on startup", { 'f', "project-file" });
 
       parser.ParseCLI(*argc, argv);
       args::Error err = parser.GetError();
@@ -33,21 +34,32 @@ namespace other {
           break;
 
         case args::Error::Help:
-          std::cout << parser;
-          return command_line{ .diagnostics = { .help = true } };
-
         case args::Error::Usage:
           std::cout << parser;
-          return command_line{ .diagnostics = { .usage = true } };
+          return command_line{
+            .diagnostics = {
+              .help = err == args::Error::Help,
+              .usage = err == args::Error::Usage,
+            }
+          };
 
         default:
           std::println(std::cerr, "Command Line Error [{}] : {}", err, parser.GetErrorMsg());
-          std::nullopt;
+          return std::nullopt;
       }
 
       command_line cmd;
       cmd.diagnostics.verbose = verbose.Get();
       cmd.config_file = config_file.Get();
+      if (project_file) {
+        filepath absolute_path = std::filesystem::absolute(project_file.Get());
+        if (!std::filesystem::exists(absolute_path)) {
+          std::println(std::cerr, "Project file '{}' does not exist.", absolute_path.string());
+          return std::nullopt;
+        }
+
+        cmd.project_file = absolute_path;
+      }
 
       if (session_id) {
         cmd.session_id = session_id.Get();

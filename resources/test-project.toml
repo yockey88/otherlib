@@ -1,0 +1,10 @@
+[project]
+metadata = [ 
+  { key = "name", value = "Other Editor"}, 
+  { key = "description", value = "Other Environment Project Editor"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"} 
+]
+
+[scripting]
+cs_project = "test-project/TestProject.csproj"

@@ -8,9 +8,9 @@
 #include "core/defines.hpp"
 
 #include "driver/driver.hpp"
-#include "ui/asset_browser.hpp"
-#include "ui/console.hpp"
-#include "ui/scene_hierarchy.hpp"
+#include "ui/asset-browser/asset_browser.hpp"
+#include "ui/console/console.hpp"
+#include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/type_database.hpp"
 #include "ui/viewport.hpp"
 
@@ -25,8 +25,12 @@ namespace other {
     if (main_menu_bar_open) {
       if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-          if (ImGui::MenuItem("New Project")) {}
-          if (ImGui::MenuItem("Open Project")) {}
+          if (ImGui::MenuItem("New Scene", "Ctrl+N")) {
+            events().trigger_event("scene.load-scene", value("resources/empty_scene.scene"));
+          }
+          ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Edit")) {
           ImGui::EndMenu();
         }
 
