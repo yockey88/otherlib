@@ -30,29 +30,25 @@ namespace other {
     return handle;
   }
 
-  ref<job> job_graph::add_deferred(natural_t trigger, deferred_factory_fn factory) {
-    ref<job> placeholder = make_ref<job>();
-    placeholder->id = allocate_id();
-    placeholder->current_status.store(job::status::PENDING, std::memory_order_release);
-
-    natural_t placeholder_node = work_graph.add_node({
-      .handle = placeholder,
-      .descriptor = { .name = std::format("Deferred Job Placeholder [{}]", placeholder->id) },
-      .work = []() {},
-    });
-    work_graph.add_edge(node_id_from_job_id(trigger), placeholder_node);
-    id_pairs.push_back({ .job_id = placeholder->id, .node_id = placeholder_node });
+  ref<job> job_graph::add_deferred(natural_t trigger, job::descriptor desc, work_fn work) {
+    ref<job> deferred_job = make_ref<job>();
+    deferred_job->id = allocate_id();
+    deferred_job->current_status.store(job::status::PENDING, std::memory_order_release);
 
     {
       std::lock_guard lck{ graph_mutex };
-      deferred_edges.push_back({
-        .from_job_id = trigger,
-        .factory = std::move(factory),
-        .placeholder = placeholder,
+      natural_t deferred_job_node = work_graph.add_node({
+        .handle = deferred_job,
+        .descriptor = std::move(desc),
+        .work = std::move(work),
+        // 1 for the trigger job
+        .waiting_on = 1,
       });
+      work_graph.add_edge(node_id_from_job_id(trigger), deferred_job_node);
+      id_pairs.push_back({ .job_id = deferred_job->id, .node_id = deferred_job_node });
     }
 
-    return placeholder;
+    return deferred_job;
   }
 
   void job_graph::add_dependency(natural_t parent, natural_t child) {
@@ -132,32 +128,6 @@ namespace other {
         newly_ready.push_back(child_node->handle->id);
       }
     }
-
-    // auto removed = std::ranges::remove_if(deferred_edges, [&](deferred_edge& edge) {
-    //   if (edge.from_job_id != job_id) {
-    //     return false;
-    //   }
-
-    //   if (status == job::status::FAILED || status == job::status::CANCELLED) {
-    //     edge.placeholder->current_status.store(job::status::CANCELLED, std::memory_order_release);
-    //     return true;
-    //   }
-
-    //   auto [desc, work] = edge.factory(status);
-    //   job_node node_val{
-    //     .handle = edge.placeholder,
-    //     .descriptor = std::move(desc),
-    //     .work = std::move(work),
-    //   };
-
-    //   natural_t node_id = work_graph.add_node(std::move(node_val));
-    //   natural_t job_id = edge.placeholder->id;
-    //   id_pairs.push_back({ .job_id = job_id, .node_id = node_id });
-
-    //   newly_ready.push_back(job_id);
-    //   return true;
-    // });
-    // deferred_edges.erase(removed.begin(), removed.end());
 
     work_graph.remove_neighbors(node_id_from_job_id(job_id));
 

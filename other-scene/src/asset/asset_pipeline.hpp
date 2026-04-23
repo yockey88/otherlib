@@ -58,9 +58,6 @@ namespace other {
     std::mutex mtx;
 
    protected:
-    virtual void on_load_complete(asset* asset_ptr) {}    //= 0;
-    virtual void on_unload_complete(asset* asset_ptr) {}  //= 0;
-
     void start_load_operation(executor_t& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure, loading_table::loader_fn_t function);
 
     void pipeline_finished();
@@ -94,10 +91,7 @@ namespace other {
     void pipeline_complete(asset* asset_ptr);
     void pipeline_failed(asset* asset_ptr, const std::string& error_message);
 
-    opt<filepath> get_asset_load_path(asset* asset_ptr) const;
-    opt<job::descriptor> get_asset_load_job_descriptor(asset* asset_ptr, const opt<filepath>& load_path) const;
-
-    task load_asset(asset* asset_ptr);
+    // task load_asset(asset* asset_ptr);
   };
 
 }  // namespace other

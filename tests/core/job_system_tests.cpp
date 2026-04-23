@@ -25,26 +25,24 @@ worker_count = {}
     js.initialize(cfg);
     ASSERT_EQ(js.get_num_workers(), kNumWorkers);
 
-    std::atomic<int> counter = 0;
+    int counter = 0;
 
     auto job1 = js.submit(
       /// default is medium on main thread
       { .name = "Job 1" },
       [&counter]() {
-        CORE_LOG_DEBUG("Job 1 is running on thread {}.", std::this_thread::get_id());
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        counter.fetch_add(1, std::memory_order_relaxed);
-        CORE_LOG_DEBUG("Job 1 is completed on thread {}.", std::this_thread::get_id());
+        counter++;
       }
     );
+    ASSERT_NE(job1, nullptr);
     /// main thread job with no other jobs in queue and no dependencies will be dispatched immediately
     EXPECT_EQ(job1->get_status(), job::status::RUNNING);
 
     main_ctx.poll();
-    EXPECT_EQ(job1->get_status(), job::status::COMPLETED);
-    EXPECT_EQ(counter.load(std::memory_order_relaxed), 1);
-
     js.poll();
+    EXPECT_EQ(job1->get_status(), job::status::COMPLETED);
+    EXPECT_EQ(counter, 1);
+
     js.shutdown();
   }
 
@@ -56,25 +54,28 @@ worker_count = {}
     js.initialize(cfg);
     ASSERT_EQ(js.get_num_workers(), kNumWorkers);
 
-    std::atomic<int> counter = 0;
+    int counter = 0;
 
     auto job1 = js.submit(
       { .name = "Threaded Job", .thread_affinity = job::affinity::WORKER_THREAD },
       [&counter]() {
-        CORE_LOG_DEBUG("Threaded Job is running on thread {}.", std::this_thread::get_id());
-        counter.fetch_add(1, std::memory_order_relaxed);
-        CORE_LOG_DEBUG("Threaded Job is completed on thread {}.", std::this_thread::get_id());
+        counter++;
       }
     );
+    ASSERT_NE(job1, nullptr);
     EXPECT_EQ(job1->get_status(), job::status::RUNNING);
 
-    while (counter.load(std::memory_order_relaxed) < 1) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    uint32_t max_num_polls = 10000;
+    uint32_t polls = 0;
+    do {
       main_ctx.poll();
       js.poll();
-    }
 
+      ++polls;
+    } while (!job1->done() && polls < max_num_polls);
+    ASSERT_LT(polls, max_num_polls);
     EXPECT_EQ(job1->get_status(), job::status::COMPLETED);
+    EXPECT_EQ(counter, 1);
 
     js.shutdown();
   }
@@ -87,40 +88,48 @@ worker_count = {}
     js.initialize(cfg);
     ASSERT_EQ(js.get_num_workers(), kNumWorkers);
 
-    std::atomic<int> counter = 0;
+    int counter = 0;
 
     auto job1 = js.submit(
       { .name = "Job 1" },
       [&counter]() {
-        counter.fetch_add(1, std::memory_order_relaxed);
-        CORE_LOG_DEBUG("Job 1 is ran on thread {}.", std::this_thread::get_id());
+        counter++;
       }
     );
-    auto job2 = js.submit_deferred(job1->id, [&counter](job::status s) -> job_graph::deferred_work {
-      return {
-        { .name = "Deferred Job", .priority = job::priority::HIGH, .thread_affinity = job::affinity::WORKER_THREAD },
-        [&counter]() {
-          CORE_LOG_DEBUG("Deferred Job is running on thread {}.", std::this_thread::get_id());
-          counter.fetch_add(1, std::memory_order_relaxed);
-          CORE_LOG_DEBUG("Deferred Job is completed on thread {}.", std::this_thread::get_id());
-        }
-      };
-    });
+    ASSERT_NE(job1, nullptr);
     EXPECT_EQ(job1->get_status(), job::status::RUNNING);
+
+    auto job2 = js.submit_deferred(
+      job1->id,
+      { .name = "Deferred Job", .priority = job::priority::HIGH, .thread_affinity = job::affinity::WORKER_THREAD },
+      [&counter]() {
+        counter++;
+      }
+    );
+    ASSERT_NE(job2, nullptr);
     EXPECT_EQ(job2->get_status(), job::status::PENDING);
 
-    main_ctx.poll();
-    js.poll();
-    EXPECT_EQ(job1->get_status(), job::status::COMPLETED);
-    EXPECT_EQ(job2->get_status(), job::status::RUNNING);
-
-    while (counter.load(std::memory_order_relaxed) < 2) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    const size_t max_polls = 100000;
+    size_t poll1 = 0;
+    do {
       main_ctx.poll();
       js.poll();
-    }
+      ++poll1;
+    } while (!job1->done() && poll1 < max_polls);
+    ASSERT_LT(poll1, max_polls);
+    EXPECT_EQ(job1->get_status(), job::status::COMPLETED);
+    EXPECT_EQ(job2->get_status(), job::status::RUNNING);
+    EXPECT_EQ(counter, 1);
 
+    size_t poll2 = 0;
+    do {
+      main_ctx.poll();
+      js.poll();
+      ++poll2;
+    } while (!job2->done() && poll2 < max_polls);
+    ASSERT_LT(poll2, max_polls);
     EXPECT_EQ(job2->get_status(), job::status::COMPLETED);
+    EXPECT_EQ(counter, 2);
 
     js.shutdown();
   }

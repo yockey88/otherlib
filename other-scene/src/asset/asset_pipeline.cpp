@@ -5,6 +5,8 @@
 
 #include "core/job_system.hpp"
 
+#include "model/model_source.hpp"
+
 #include "scene/scene.hpp"
 
 #include "asset/asset.hpp"
@@ -180,21 +182,19 @@ namespace other {
     CORE_LOG_TRACE("Pipeline complete for asset ID: {}", asset_ptr->id);
 
     if (pipeline_state.loading) {
-      on_load_complete(asset_ptr);
-      // switch (asset_ptr->asset_type) {
-      //   case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-loaded", asset_ptr->id); break;
-      //   case asset::SCENE: get_events().trigger_event("scene.asset-loaded", asset_ptr->id); break;
-      //   default:
-      //     CORE_LOG_ERROR("No event trigger for asset type {} on load complete", asset_ptr->asset_type);
-      // }
+      switch (asset_ptr->asset_type) {
+        case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-loaded", asset_ptr->id); break;
+        case asset::SCENE: get_events().trigger_event("scene.asset-loaded", asset_ptr->id); break;
+        default:
+          CORE_LOG_ERROR("No event trigger for asset type {} on load complete", asset_ptr->asset_type);
+      }
     } else if (pipeline_state.unloading) {
-      on_unload_complete(asset_ptr);
-      // switch (asset_ptr->asset_type) {
-      //   case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-unloaded", asset_ptr->id); break;
-      //   case asset::SCENE: get_events().trigger_event("scene.asset-unloaded", asset_ptr->id); break;
-      //   default:
-      //     CORE_LOG_ERROR("No event trigger for asset type {} on unload complete", asset_ptr->asset_type);
-      // }
+      switch (asset_ptr->asset_type) {
+        case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-unloaded", asset_ptr->id); break;
+        case asset::SCENE: get_events().trigger_event("scene.asset-unloaded", asset_ptr->id); break;
+        default:
+          CORE_LOG_ERROR("No event trigger for asset type {} on unload complete", asset_ptr->asset_type);
+      }
     }
 
     /// \todo wire events and remove this
@@ -229,60 +229,36 @@ namespace other {
     }
   }
 
-  opt<filepath> asset_pipeline::get_asset_load_path(asset* asset_ptr) const {
-    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in get_asset_load_path");
-    if (asset_ptr->path_hash != 0) {
-      return asset_ptr->absolute_path;
-    } else {
-      return asset_ptr->virtual_path;
-    }
-  }
+  // task asset_pipeline::load_asset(asset* asset_ptr) {
+  //   OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load_asset");
 
-  opt<job::descriptor> asset_pipeline::get_asset_load_job_descriptor(asset* asset_ptr, const opt<filepath>& load_path) const {
-    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in get_asset_load_job_descriptor");
-    if (!load_path.has_value()) {
-      return std::nullopt;
-    }
+  //   opt<filepath> load_path = get_asset_load_path(asset_ptr);
+  //   opt<job::descriptor> job_desc = get_asset_load_job_descriptor(asset_ptr, load_path);
 
-    return {
-      {
-        .name = std::format("[ASSET-LOAD : {}] {}", asset_ptr->asset_type, asset_ptr->id),
-        .priority = job::priority::HIGH,
-        .thread_affinity = job::affinity::WORKER_THREAD,
-      }
-    };
-  }
+  //   ref<job> load_job = nullptr;
+  //   if (job_desc.has_value()) {
+  //     // source_job = handler->get_job_system().submit(job_desc.value(), std::bind_front(&detail::load_model_from_path, std::ref(builder), load_path.value()));
 
-  task asset_pipeline::load_asset(asset* asset_ptr) {
-    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load_asset");
+  //     /// yield if we posted the job for the worker thread to pick it up
+  //     co_await task::yield();
+  //   }
 
-    opt<filepath> load_path = get_asset_load_path(asset_ptr);
-    opt<job::descriptor> job_desc = get_asset_load_job_descriptor(asset_ptr, load_path);
+  //   std::vector<natural_t> dependencies = {};
+  //   if (load_job != nullptr) {
+  //     /// it is probably done here since we yielded after posting it,
+  //     //   but just in case we can yield again until it is done
+  //     co_await task::wait_for_job(load_job);
+  //     if (load_job->get_status() != job::status::COMPLETED) {
+  //       // builder = {};
+  //     }
 
-    ref<job> load_job = nullptr;
-    if (job_desc.has_value()) {
-      // source_job = handler->get_job_system().submit(job_desc.value(), std::bind_front(&detail::load_model_from_path, std::ref(builder), load_path.value()));
+  //     dependencies.push_back(load_job->id);
+  //   } else {
+  //     // builder = reinterpret_cast<model_source_pipeline*>(pipeline)->builder;
+  //   }
 
-      /// yield if we posted the job for the worker thread to pick it up
-      co_await task::yield();
-    }
-
-    std::vector<natural_t> dependencies = {};
-    if (load_job != nullptr) {
-      /// it is probably done here since we yielded after posting it,
-      //   but just in case we can yield again until it is done
-      co_await task::wait_for_job(load_job);
-      if (load_job->get_status() != job::status::COMPLETED) {
-        // builder = {};
-      }
-
-      dependencies.push_back(load_job->id);
-    } else {
-      // builder = reinterpret_cast<model_source_pipeline*>(pipeline)->builder;
-    }
-
-    co_return;
-  }
+  //   co_return;
+  // }
 
   namespace detail {
 
@@ -396,6 +372,7 @@ namespace other {
       if (asset_ptr->path_hash == 0) {
         asset_ptr->path_hash = FNV(asset_ptr->virtual_path);
         scene_ptr = reinterpret_cast<scene_pipeline*>(pipeline)->scene_ptr;
+        scene_ptr->asset_id = asset_ptr->id;
       } else {
         OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Scene file does not exist: {}", asset_ptr->absolute_path.string());
         CORE_LOG_DEBUG("Loading scene from file: {}", asset_ptr->load_path.string());

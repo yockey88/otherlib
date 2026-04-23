@@ -29,7 +29,7 @@ namespace other {
     job_node* get_node(natural_t id);
 
     ref<job> insert(job::descriptor desc, work_fn work);
-    ref<job> add_deferred(natural_t trigger, deferred_factory_fn factory);
+    ref<job> add_deferred(natural_t trigger, job::descriptor desc, work_fn work);
     void add_dependency(natural_t parent, natural_t child);
 
     std::vector<natural_t> collect_ready();
@@ -49,16 +49,16 @@ namespace other {
       natural_t job_id;
       natural_t node_id;
     };
-    struct deferred_edge {
-      natural_t from_job_id;
-      deferred_factory_fn factory;
-      ref<job> placeholder;
-    };
+    // struct deferred_edge {
+    //   natural_t from_job_id;
+    //   deferred_factory_fn factory;
+    //   ref<job> placeholder;
+    // };
     mutable std::mutex graph_mutex;
 
     graph<job_node> work_graph;
     std::vector<id_pair> id_pairs;
-    std::vector<deferred_edge> deferred_edges;
+    // std::vector<deferred_edge> deferred_edges;
 
     natural_t next_job_id_ = 1;
     natural_t allocate_id() { return next_job_id_++; }

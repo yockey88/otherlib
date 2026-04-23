@@ -15,10 +15,6 @@ namespace other {
     ~scene_pipeline() override = default;
 
     scene* scene_ptr = nullptr;
-
-   private:
-    void on_load_complete(asset* asset_ptr) override;
-    void on_unload_complete(asset* asset_ptr) override;
   };
 
 }  // namespace other

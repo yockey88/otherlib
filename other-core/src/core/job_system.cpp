@@ -21,6 +21,13 @@ namespace other {
     }
 
     for (const auto& [id, status] : completions) {
+      {
+        auto* node = jobs.get_node(id);
+        OTHER_ASSERT(node != nullptr, "Job node with ID {} not found in job graph on completion.", id);
+        OTHER_ASSERT(node->handle != nullptr, "Job handle for job with ID {} is null on completion.", id);
+        node->handle->current_status.store(status, std::memory_order_release);
+      }
+
       auto newly_ready = jobs.resolve(id, status);
       CORE_LOG_DEBUG("Jobs ready: {}", newly_ready);
       for (natural_t node : newly_ready) {
@@ -77,9 +84,9 @@ namespace other {
     return handle;
   }
 
-  ref<job> job_system::submit_deferred(natural_t trigger_id, job_graph::deferred_factory_fn factory) {
+  ref<job> job_system::submit_deferred(natural_t trigger_id, job::descriptor desc, job_graph::work_fn work) {
     CORE_LOG_DEBUG("Submitting deferred job. Trigger: [{}].", trigger_id);
-    return jobs.add_deferred(trigger_id, std::move(factory));
+    return jobs.add_deferred(trigger_id, std::move(desc), std::move(work));
   }
 
   void job_system::post_coroutine(task coro) {
