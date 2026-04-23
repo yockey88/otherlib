@@ -130,7 +130,7 @@ namespace other {
         CORE_LOG_ERROR("Unsupported model file extension: {}", extension);
       }
 
-      return builder;
+      return std::move(builder);
     }
 
     model_builder build_model_data(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {

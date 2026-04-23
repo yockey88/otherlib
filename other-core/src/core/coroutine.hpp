@@ -48,24 +48,16 @@ namespace other {
       }
 
       void unhandled_exception() noexcept {}
-
       void return_void() noexcept {}
 
       awaiter initial_suspend() noexcept { return {}; }
-      /// we want to catch the final suspend to know when to remove the coroutine from the live list
-      /// and also to do any continuation handling
-      final_awaiter final_suspend() noexcept { return {}; }
+      awaiter final_suspend() noexcept { return {}; }
     };
 
+    /// identical to suspend_always
     struct awaiter {
       std::coroutine_handle<promise_type> handle;
 
-      bool await_ready() const noexcept { return false; }
-      void await_suspend(std::coroutine_handle<>) const noexcept {}
-      void await_resume() const noexcept {}
-    };
-
-    struct final_awaiter {
       bool await_ready() const noexcept { return false; }
       void await_suspend(std::coroutine_handle<>) const noexcept {}
       void await_resume() const noexcept {}
@@ -89,26 +81,9 @@ namespace other {
     }
 
     /// helper tasks
-    static task sleep_for(asio::chrono::milliseconds duration) {
-      auto left = duration.count();
-
-      auto now = asio::chrono::steady_clock::now();
-      auto last = now;
-
-      while (left > 0) {
-        co_await task::awaiter{};
-        now = asio::chrono::steady_clock::now();
-        auto elapsed = asio::chrono::duration_cast<asio::chrono::milliseconds>(now - last).count();
-        left -= elapsed;
-        last = now;
-      }
-    }
-
-    static task wait_for_job(const ref<job> job_handle) {
-      while (!job_handle->done()) {
-        co_await job_awaiter{ job_handle };
-      }
-    }
+    static task::awaiter yield();
+    static task sleep_for(asio::chrono::milliseconds duration);
+    static task wait_for_job(ref<job> job_handle);
   };
 
 }  // namespace other

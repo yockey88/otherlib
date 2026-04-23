@@ -130,15 +130,26 @@ namespace other {
       }
     };
 
+    constexpr static size_t kNumWorkers = 4;
+    constexpr static std::string_view kConfig =
+      R"(
+[application.async]
+worker_count = {}
+)";
+
   }  // namespace
 
   TEST_F(asset_tests, simple_async_load) {
+    dtor ___destructor_guard;
+
     job_system jobs{ io_context };
+
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
     scope<asset_handler> handler = make_scope<asset_handler>(events, io_context, jobs);
 
     set_up_mock_rendering_api_and_expect_mesh_creation(events);
-
-    dtor ___destructor_guard;
 
     filepath test_file_path = "tests/resources/models/suzanne3.fbx";
     ASSERT_EQ(std::filesystem::exists(test_file_path), true)
@@ -157,16 +168,19 @@ namespace other {
 
     /// no io-context polling yet so should still be loading
     EXPECT_THAT(handler->get_asset_state(asset_id), asset_state::LOADING);
-
     std::chrono::seconds load_timeout{ 5 };
 
     auto start_time = std::chrono::steady_clock::now();
     while (handler->get_asset_state(asset_id) == asset_state::LOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
+      jobs.poll();
       handler->update_pipelines();
     }
     ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to load";
+
+    io_context.poll();
+    jobs.poll();
 
     EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
     ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
@@ -191,6 +205,7 @@ namespace other {
     while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
+      jobs.poll();
       handler->update_pipelines();
     }
     ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to unload";

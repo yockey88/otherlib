@@ -277,14 +277,15 @@ namespace other {
 
   void scene_system::handle_scene_asset_loaded_event(const value& data) {
     OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for scene.asset-loaded event. Expected uint64 (scene ID).");
-    natural_t scene_id = data;
+    natural_t scene_asset_id = data;
+    CORE_LOG_DEBUG("Handling scene asset loaded event for scene asset ID {}.", scene_asset_id);
 
-    scene* s = get_scene(scene_id);
-    OTHER_ASSERT(s != nullptr, "Scene with ID {} not found in scene graph after scene asset loaded event.", scene_id);
+    auto* s = project_scene_graph->find_scene([scene_asset_id](const scene& s) { return s.asset_id == scene_asset_id; });
+    OTHER_ASSERT(s != nullptr, "Scene with asset ID {} not found in scene graph after scene asset loaded event.", scene_asset_id);
 
     /**
      * \note:
-     *    - scene must be active to be bound to the native scripting interfaces so when we activate it to run the creation script, and then restore the old one.
+     *    - scene must be active to be bound to the native scripting interfaces so we activate it to run the creation script, and then restore the old one.
      *    - we don't want to do any of the other stuff associated with 'primary' activation like triggering events or synchronizing over the network,
      *      so we set the pointer, run the script, and reset it back to the old one before doing the 'real' activation below if needed
      **/
@@ -297,8 +298,9 @@ namespace other {
 
     /// this happens here so it only happens once when the asset is fully loaded and registered
     if (s->activate_on_load) {
-      set_scene_to_active(scene_id);
-      synchronize_active_scene(scene_id);
+      /// 'real activation'
+      set_scene_to_active(s->id);
+      synchronize_active_scene(s->id);
     }
   }
 

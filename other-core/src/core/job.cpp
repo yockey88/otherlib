@@ -6,7 +6,7 @@
 namespace other {
 
   job::status job::get_status() const {
-    return current_status;
+    return current_status.load(std::memory_order_acquire);
   }
 
   bool job::pending() const {

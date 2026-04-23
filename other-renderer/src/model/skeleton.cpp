@@ -7,6 +7,7 @@
 
 #include "model/animation.hpp"
 #include "model/model.hpp"
+#include "model/model_source.hpp"
 
 namespace other {
 
