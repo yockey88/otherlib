@@ -19,23 +19,12 @@ namespace other {
   void driver_ui::initialize() {
     initialize_builtin_windows();
     main_menu_bar_open = driver_ptr->configuration().get_value<bool>("ui.enable-environment-menu-bar", false);
+    /// create main menu
   }
 
   void driver_ui::render() {
     if (main_menu_bar_open) {
-      if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-          if (ImGui::MenuItem("New Scene", "Ctrl+N")) {
-            events().trigger_event("scene.load-scene", value("resources/empty_scene.scene"));
-          }
-          ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit")) {
-          ImGui::EndMenu();
-        }
-
-        ImGui::EndMainMenuBar();
-      }
+      main_menu_bar.render({ main_menu_items.begin(), main_menu_items.end() });
     }
 
     render_builtin_windows();

@@ -57,6 +57,10 @@ namespace other {
           std::println(std::cerr, "Project file '{}' does not exist.", absolute_path.string());
           return std::nullopt;
         }
+        if (!std::filesystem::is_regular_file(absolute_path)) {
+          std::println(std::cerr, "Project file '{}' is not a file.", absolute_path.string());
+          return std::nullopt;
+        }
 
         cmd.project_file = absolute_path;
       }

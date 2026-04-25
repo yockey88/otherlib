@@ -10,8 +10,8 @@ namespace other {
 
   class OTHER_CLASS editor_driver : public driver {
    public:
-    editor_driver(const config_table& config)
-        : driver(config) {}
+    editor_driver(const command_line& cmd, const config_table& config)
+        : driver(cmd, config) {}
     ~editor_driver() override {}
 
     void on_initialize(const command_line&) override;

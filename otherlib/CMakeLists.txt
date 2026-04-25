@@ -41,6 +41,7 @@ target_sources(otherlib
     src/driver/systems/rendering_system.cpp
     src/driver/systems/vm_system.cpp
     src/driver/systems/scene_system.cpp
+    src/driver/systems/project_system.cpp
     src/driver/systems/driver_plugin.cpp
     src/driver/driver_kernel.cpp
     src/driver/subsystem_registry.cpp
@@ -72,12 +73,13 @@ target_sources(otherlib
     src/scripting/actions/action.cpp
     src/scripting/actions/callback.cpp
 
-    src/scripting/execution_node.cpp
-    src/scripting/execution_graph.cpp
     src/scripting/execution_nodes/source_sink_nodes.cpp
     src/scripting/execution_nodes/arithmetic_nodes.cpp
     src/scripting/execution_nodes/linear_algebra_nodes.cpp
     src/scripting/execution_nodes/transform_nodes.cpp
+    src/scripting/execution_node.cpp
+    src/scripting/execution_graph.cpp
+    src/scripting/environment_interface.cpp
 
     src/vm/opcode.cpp
     src/vm/driver_interface.cpp
@@ -98,25 +100,7 @@ target_sources(otherlib
     src/tools/environment_console.cpp
     src/tools/project_tool.cpp
 
-    src/ui/inspector_widgets.cpp
-    src/ui/scene-hierarchy/hierarchy_widgets.cpp
-    src/ui/console/console_widgets.cpp
     src/ui/script/script_property_widget.cpp
-    src/ui/ui_widgets.cpp
-    src/ui/node-editor/node_editor_canvas_node.cpp
-    src/ui/console/console_input_node.cpp
-    src/ui/console/console_history_node.cpp
-    src/ui/scene-hierarchy/scene_hierarchy_node.cpp
-    src/ui/property_inspector_node.cpp
-    src/ui/asset-editor/asset_editor_node.cpp
-    src/ui/node-editor/node_editor.cpp
-    src/ui/console/console.cpp
-    src/ui/viewport.cpp
-    src/ui/type_database.cpp
-    src/ui/scene-hierarchy/scene_hierarchy.cpp
-    src/ui/asset-editor/asset_editor_registry.cpp
-    src/ui/asset-editor/asset_editor.cpp
-    src/ui/driver_ui.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp
@@ -124,6 +108,26 @@ target_sources(otherlib
     src/ui/asset-browser/asset_browser_tree_node.cpp
     src/ui/asset-browser/asset_browser_grid_node.cpp
     src/ui/asset-browser/asset_browser.cpp
+    src/ui/asset-editor/asset_editor_registry.cpp
+    src/ui/asset-editor/asset_editor.cpp
+    src/ui/asset-editor/asset_editor_node.cpp
+    src/ui/console/console_widgets.cpp
+    src/ui/console/console_input_node.cpp
+    src/ui/console/console_history_node.cpp
+    src/ui/console/console.cpp
+    src/ui/node-editor/node_editor_canvas_node.cpp
+    src/ui/node-editor/node_editor.cpp
+    src/ui/scene-hierarchy/hierarchy_widgets.cpp
+    src/ui/scene-hierarchy/scene_hierarchy_node.cpp
+    src/ui/scene-hierarchy/scene_hierarchy.cpp
+    src/ui/menu-bar/menu_item.cpp
+    src/ui/menu-bar/menu_bar.cpp
+    src/ui/property_inspector_node.cpp
+    src/ui/inspector_widgets.cpp
+    src/ui/ui_widgets.cpp
+    src/ui/viewport.cpp
+    src/ui/type_database.cpp
+    src/ui/driver_ui.cpp
 
     src/other.cpp
 )

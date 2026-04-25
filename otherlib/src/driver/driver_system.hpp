@@ -31,6 +31,7 @@ namespace other {
     /// group4 - primary systems managing core objects
     VM_DRIVER_SYSTEM,
     SCENE_DRIVER_SYSTEM,
+    PROJECT_DRIVER_SYSTEM,
 
     /// sentinel
     NUM_BUILTIN_DRIVER_SYSTEMS,

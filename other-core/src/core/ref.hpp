@@ -8,8 +8,9 @@
 #include <type_traits>
 #include <utility>
 
-#include "arena_allocator.hpp"
-#include "defines.hpp"
+#include "core/arena_allocator.hpp"
+#include "core/logger.hpp"
+
 #include "ref_counted.hpp"
 
 namespace other {
@@ -143,10 +144,7 @@ namespace other {
       } else {
         return ref<T>(reinterpret_cast<T*>(old_ref.object));
       }
-
-      /// Unreachable
-      throw std::runtime_error("Invalid cast from ref<U> to ref<T>");
-      // throw invalid_ref_cast(typeid(T), typeid(U));
+      OTHER_ASSERT(false, "No viable conversion to construct ref with");
     }
 
     template <typename U>
@@ -175,6 +173,23 @@ namespace other {
 
     bool operator==(std::nullptr_t) const { return object == nullptr; }
     bool operator==(const ref<T>& other) const { return object == other.object; }
+
+    template <typename U>
+      requires ref_castable<T, U>
+    static ref<U> cast(ref<T> other) {
+      OTHER_ASSERT(other.object != nullptr, "Cannot cast null ref");
+      if (other.object == nullptr) {
+        return nullptr;
+      }
+      if constexpr (std::is_base_of_v<T, U>) {
+        return ref<U>(reinterpret_cast<U*>(other.object));
+      } else if constexpr (std::is_base_of_v<U, T>) {
+        return ref<U>(reinterpret_cast<U*>(other.object));
+      } else {
+        static_assert(ref_castable<T, U>, "No viable cast from ref<T> to ref<U>");
+        return nullptr;
+      }
+    }
 
    private:
     static inline arena_allocator<T> allocator;

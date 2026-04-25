@@ -318,11 +318,6 @@ namespace other {
     return file;
   }
 
-  ref<local_file> file_system::create_local_file(const filepath& path) {
-    OTHER_ASSERT(events != nullptr, "File system events not initialized when creating local file for path: {}", path.string());
-    return make_ref<local_file>(*events, path, path.string());
-  }
-
   ref<local_file> file_system::register_local_file(const filepath& path) {
     OTHER_ASSERT(events != nullptr, "File system events not initialized when registering local file for path: {}", path.string());
 
@@ -357,6 +352,7 @@ namespace other {
     OTHER_ASSERT(target_dir != nullptr, "Failed to get or create target directory for local file '{}'", path.string());
 
     ref<local_file> local = create_local_file(abs_path);
+    OTHER_ASSERT(local != nullptr, "Failed to create local file for path: {}", path.string());
     CORE_LOG_DEBUG("Registering local file '{}' at '{}'", path.string(), local->to_string());
     target_dir->add_file(local);
     return local;
@@ -487,6 +483,11 @@ namespace other {
 
     CORE_LOG_INFO("Scanning mount '{}' at '{}'", mount_name, mount->absolute_path().string());
     scan_directory_impl(mount, mount->absolute_path(), recursive);
+  }
+
+  ref<local_file> file_system::create_local_file(const filepath& path) {
+    OTHER_ASSERT(events != nullptr, "File system events not initialized when creating local file for path: {}", path.string());
+    return make_ref<local_file>(*events, path, path.string());
   }
 
   ref<directory> file_system::walk_or_create_path(ref<directory> root, const std::vector<std::string>& components) {

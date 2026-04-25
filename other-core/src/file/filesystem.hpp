@@ -80,7 +80,6 @@ namespace other {
     ref<file_handle> find_file(const std::string_view name, const std::string_view ext = "") const;
     ref<file_handle> open(const std::string_view engine_path) const;
 
-    ref<local_file> create_local_file(const filepath& path);
     ref<local_file> register_local_file(const filepath& path);
     ref<virtual_file> create_asset_virtual_file(const std::string_view virtual_path);
     ref<virtual_file> create_virtual_file(const std::string_view mount_name, const std::string_view relative_path, std::vector<uint8_t>&& initial_data = {});
@@ -99,6 +98,8 @@ namespace other {
     event_system* events = nullptr;
     std::map<natural_t, ref<directory>> mounts;
     std::map<natural_t, ref<file_handle>> toplevel_files;
+
+    ref<local_file> create_local_file(const filepath& path);
 
     ref<directory> walk_or_create_path(ref<directory> root, const std::vector<std::string>& components);
     ref<directory> walk_path(ref<directory> root, const std::vector<std::string>& components) const;

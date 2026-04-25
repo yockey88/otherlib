@@ -1,7 +1,7 @@
 [project]
 metadata = [ 
-  { key = "name", value = "Other Editor"}, 
-  { key = "description", value = "Other Environment Project Editor"},
+  { key = "name", value = "Test Project"}, 
+  { key = "description", value = "Test Project"},
   { key = "author", value = "N/A"},
   { key = "version", value = "0.1.0"} 
 ]

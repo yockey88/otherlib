@@ -24,9 +24,14 @@ namespace other {
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
 
+  driver::driver(const command_line& cmd, const config_table& config)
+      : config(config), cmd_line(cmd) {
+    this->config.project_file = cmd.project_file;
+  }
+
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
-    cmd_line = cmd;
+
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
 
@@ -69,7 +74,7 @@ namespace other {
     driver_kernel_ptr->shutdown();
   }
 
-  std::pair<driver*, std::string> driver::create(const config_table& config) {
+  std::pair<driver*, std::string> driver::create(const command_line& cmd, const config_table& config) {
     driver* driver_instance = nullptr;
 
     std::string driver_path = config.dynamic_driver_rel_path.value_or("");
@@ -79,7 +84,7 @@ namespace other {
     if (driver_path.empty()) {
       CORE_LOG_DEBUG("Creating static driver instance");
       driver_name = config.get_value<std::string>("application.name", "static-driver");
-      return { create_driver(&config), driver_name };
+      return { create_driver(&cmd, &config), driver_name };
     }
     /// otherwise attempt to load the driver and run it
     else {

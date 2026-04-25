@@ -26,6 +26,11 @@ namespace other {
     cursor = 0;
   }
 
+  std::string virtual_file::read_all_as_string() {
+    PROFILE_SECTION("virtual_file::read_all_as_string");
+    return std::string(buffer.begin(), buffer.end());
+  }
+
   std::vector<uint8_t> virtual_file::read_all() {
     PROFILE_SECTION("virtual_file::read_all");
     return buffer;

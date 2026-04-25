@@ -64,6 +64,7 @@ namespace other {
     virtual bool open(file_mode mode) = 0;
     virtual void close() = 0;
 
+    virtual std::string read_all_as_string() = 0;
     virtual std::vector<uint8_t> read_all() = 0;
 
     /// reads up to `count` bytes starting at `offset` into the provided buffer returns the number of bytes actually read

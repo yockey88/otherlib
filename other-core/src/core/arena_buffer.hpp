@@ -134,6 +134,10 @@ namespace other {
       return unchecked_ptr_at<T>(offset);
     }
 
+    const std::span<uint8_t> view_bytes() const {
+      return std::span<uint8_t>(static_cast<uint8_t*>(memory_start), offset);
+    }
+
    private:
     void* memory_start = nullptr;
     void* memory_cursor = nullptr;
