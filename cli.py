@@ -66,7 +66,7 @@ def run_subprocess(args):
     sys.exit(1)
 
 def run_project(out_dir, cfg, name, config_file, args, verbose = False, extra_args=None):
-  run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}"]
+  run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}", "-f", "test-project/test-project.toml"]
   run_command.append("--verbose")
   if extra_args:
     run_command.extend(extra_args)

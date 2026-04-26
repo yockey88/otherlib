@@ -19,7 +19,7 @@ namespace Other
       CLEANUP,
 
       NUM_BUILD_PHASES,
-      INVALID_BUILD_PHASE = BuildPhase.NUM_BUILD_PHASES,
+      INVALID_BUILD_PHASE = NUM_BUILD_PHASES,
     };
 
     enum BuildStatus

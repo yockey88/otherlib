@@ -21,6 +21,7 @@ else()
 endif()
 
 target_sources(OtherCs PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/fnv.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/exceptions.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/serializable-field.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/debug.cs
@@ -41,7 +42,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/events.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/time.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/driver.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/fnv.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/project.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/network/network.cs
 
@@ -75,4 +76,7 @@ target_sources(OtherCs PRIVATE
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/util/log.cs
 )
-target_link_libraries(OtherCs PUBLIC OtherCsBindings Microsoft.Build)
+target_link_libraries(OtherCs PUBLIC OtherCsBindings)
+
+## add package reference for Microsoft.Build and Microsoft.Build.Locator
+target_link_libraries(OtherCs PUBLIC Microsoft.Build Microsoft.Build.Locator Microsoft.Build.Utilities.Core)

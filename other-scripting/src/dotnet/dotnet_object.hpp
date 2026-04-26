@@ -33,6 +33,9 @@ namespace other {
     void write_fields();
 
     behavior_snapshot get_behavior_snapshot() const;
+
+    bool has_method(const std::string_view method_name) const;
+
     int32_t read_behavior_field_value(int32_t behavior_index, int32_t field_index, void* out_data, int32_t buffer_size);
     bool write_field_value(int32_t behavior_index, int32_t field_index, void* in_data, int32_t data_size);
 

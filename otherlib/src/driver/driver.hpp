@@ -94,6 +94,8 @@ namespace other {
     std::string get_project_version() const;
     bool should_auto_play_scenes() const;
 
+    bool project_loaded() const;
+
     scene* get_active_scene();
 
     inline bool network_enabled() const {
@@ -205,6 +207,8 @@ namespace other {
 
     void update();
     void render();
+
+    void on_project_loaded();
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 

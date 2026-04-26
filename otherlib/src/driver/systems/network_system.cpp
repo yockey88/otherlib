@@ -550,7 +550,7 @@ namespace other {
 
     auto& scenes = sibling<scene_system>(*kernel);
     scene* active_scene = scenes.get_active_scene();
-    if (active_scene == nullptr) {
+    if (active_scene != nullptr) {
       /// there is no session so we cannot be synchronized
       active_scene->synchronized = true;
     }

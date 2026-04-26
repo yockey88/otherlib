@@ -216,6 +216,8 @@ set(PYBIND11_PYTHON_VERSION "3.13")
 
 find_package(Threads REQUIRED)
 
+add_compile_definitions(OTHER_PROJECT_FILE_TOML_FORMAT)
+
 add_subdirectory(other-core)
 add_subdirectory(other-network)
 add_subdirectory(other-renderer)

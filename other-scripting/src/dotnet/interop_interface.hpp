@@ -47,6 +47,7 @@ namespace other {
   using get_type_managed_type = managed_type (*)(int32_t);
 
   /// method
+  using has_method = nbool32 (*)(int32_t, native_string);
   using get_method_name = native_string (*)(int32_t);
   using get_method_return_type = void (*)(int32_t, int32_t*);
   using get_method_accessibility = type_accessibility (*)(int32_t);

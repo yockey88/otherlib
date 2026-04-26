@@ -15,6 +15,7 @@
 
 #include "driver/driver_tasks.hpp"
 #include "driver/systems/asset_system.hpp"
+#include "driver/systems/project_system.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "scripting/bindings.hpp"
 #include "scripting/scene_interface.hpp"
@@ -43,6 +44,10 @@ namespace other {
     get_event_system()->register_event("ls.driver-systems");
     get_event_system()->add_listener("ls.driver-systems", [this](const value& data) {
       CORE_LOG_INFO("Driver Systems:\n{}", driver_kernel_ptr->list_systems());
+    });
+
+    get_event_system()->add_listener("project.loaded", [this](const value& data) {
+      on_project_loaded();
     });
 
     load_client();
@@ -290,6 +295,11 @@ namespace other {
     return get_config_value<bool>("application.auto-play-loaded-scenes", true);
   }
 
+  bool driver::project_loaded() const {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<project_system>().project_loaded();
+  }
+
   scene* driver::get_active_scene() {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<scene_system>().get_active_scene();
@@ -455,6 +465,9 @@ namespace other {
     if (driver_kernel_ptr->has_core_system<rendering_system>()) {
       driver_kernel_ptr->get_core_system<rendering_system>().render(driver_kernel_ptr.get());
     }
+  }
+
+  void driver::on_project_loaded() {
   }
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {

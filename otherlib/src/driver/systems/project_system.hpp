@@ -8,8 +8,11 @@
 
 #include "core/arena_buffer.hpp"
 #include "core/coroutine.hpp"
+#include "core/defines.hpp"
+#include "file/file_handle.hpp"
 
 #include "driver/systems/core_system.hpp"
+#include "project/project.hpp"
 
 namespace other {
 
@@ -25,22 +28,15 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
+    bool project_empty() const;
+    bool project_loading() const;
+    bool project_loaded() const;
+    bool project_unloading() const;
+
    private:
-    struct project_metadata {
-      std::string name;
-      std::string description;
-      std::string author;
-      std::string version;
-    };
-    project_metadata metadata;
-    arena_buffer file_buffer;
+    friend class project;
 
-    void process_project_file(const std::string& file_contents);
-    void process_toml(const toml::table& table);
-    void process_metadata(const toml::table& metadata_table);
-    void process_scripting_data(const toml::table& table);
-
-    task load_dotnet_project(const toml::node& node);
+    scope<project> loaded_project = nullptr;
   };
 
 }  // namespace other

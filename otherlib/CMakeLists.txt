@@ -49,7 +49,7 @@ target_sources(otherlib
 
     src/ocl/object_parser.cpp
 
-    # src/project/...
+    src/project/project.cpp
 
     src/scripting/bindings.cpp
     src/scripting/scene_interface.cpp
@@ -96,9 +96,10 @@ target_sources(otherlib
     src/vm/command_files/linker.cpp
     src/vm/command_files/ocmd_compiler.cpp
 
+    src/tools/tool.cpp
     src/tools/build_tool.cpp
-    src/tools/environment_console.cpp
     src/tools/project_tool.cpp
+    src/tools/environment_console.cpp
 
     src/ui/script/script_property_widget.cpp
     src/ui/type-bindings/value_ui.cpp

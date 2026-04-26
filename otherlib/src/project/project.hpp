@@ -4,37 +4,89 @@
 #ifndef OTHERLIB_PROJECT_PROJECT_HPP
 #define OTHERLIB_PROJECT_PROJECT_HPP
 
+#include "core/arena_buffer.hpp"
 #include "core/defines.hpp"
+#include "file/file_handle.hpp"
+
+#include "dotnet/dotnet_assembly.hpp"
 
 namespace other {
 
-  struct project_description {
-    enum type : uint16_t {
-      APPLICATION = 0,
-      MODULE,
+  class driver_kernel;
+  class project_system;
 
-      NUM_PROJECT_TYPES,
-      INVALID_PROJECT_TYPE = NUM_PROJECT_TYPES,
+  class project {
+   public:
+    enum state {
+      EMPTY = 0,
+      LOADING,
+      LOADED,
+      UNLOADING,
+
+      NUM_STATES,
+      INVALID_STATE = NUM_STATES,
     };
-    type project_type = APPLICATION;
-    std::string project_name = "NewProject";
+    struct metadata {
+      std::string name;
+      std::string description;
+      std::string author;
+      std::string version;
+    };
+    project(project_system* proj_system);
+    ~project() = default;
 
-    filepath environment_config = "${project-directory}/${project-name}.toml";
-    filepath working_directory = "${project-directory}";
-    filepath output_directory = "${project-directory}/build";
-    filepath exe_name = "${project-directory}/${project-name}.exe";
+    void load_from_file(driver_kernel* kernel, const filepath& path);
+    void unload();
+    void set_state(state new_state);
 
-    std::vector<std::string> configurations = { "Debug", "Release" };
+    inline void set_dotnet_assembly(ref<assembly> a) { project_assembly = a; }
+    inline bool is_empty() const { return current_state == EMPTY; }
+    inline bool is_loaded() const { return current_state == LOADED; }
+    inline bool is_loading() const { return current_state == LOADING; }
+    inline bool is_unloading() const { return current_state == UNLOADING; }
 
-    size_t active_configuration = 0;
-    std::vector<std::string> cmd_args = {};
+   private:
+    struct project_args {
+      std::string name;
+      std::string working_directory;
+    };
 
-    std::string version = "0.1.0";
-    std::string description = "An Other project.";
-    std::string author = "Author Name";
+    state current_state = EMPTY;
 
-    std::string license = "MIT";
+    project_system* system = nullptr;
+    metadata project_metadata;
+    arena_buffer file_buffer;
+    ref<file_handle> project_file_handle;
+    ref<assembly> project_assembly;
   };
+
+  // struct project_description {
+  //   enum type : uint16_t {
+  //     APPLICATION = 0,
+  //     MODULE,
+
+  //     NUM_PROJECT_TYPES,
+  //     INVALID_PROJECT_TYPE = NUM_PROJECT_TYPES,
+  //   };
+  //   type project_type = APPLICATION;
+  //   std::string project_name = "NewProject";
+
+  //   filepath environment_config = "${project-directory}/${project-name}.toml";
+  //   filepath working_directory = "${project-directory}";
+  //   filepath output_directory = "${project-directory}/build";
+  //   filepath exe_name = "${project-directory}/${project-name}.exe";
+
+  //   std::vector<std::string> configurations = { "Debug", "Release" };
+
+  //   size_t active_configuration = 0;
+  //   std::vector<std::string> cmd_args = {};
+
+  //   std::string version = "0.1.0";
+  //   std::string description = "An Other project.";
+  //   std::string author = "Author Name";
+
+  //   std::string license = "MIT";
+  // };
 
 }  // namespace other
 

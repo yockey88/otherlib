@@ -156,6 +156,11 @@ namespace other {
     return {};
   }
 
+  bool dotnet_object::has_method(const std::string_view method_name) const {
+    OTHER_ASSERT(dn_type != nullptr, "Type is not initialized for dotnet_object '{}'", object_name);
+    return dn_type->has_method(method_name);
+  }
+
   int32_t dotnet_object::read_behavior_field_value(int32_t behavior_index, int32_t field_index, void* out_data, int32_t buffer_size) {
     if (managed_object == nullptr) {
       return 0;
