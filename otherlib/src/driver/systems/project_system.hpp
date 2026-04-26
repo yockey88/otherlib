@@ -33,6 +33,11 @@ namespace other {
     bool project_loaded() const;
     bool project_unloading() const;
 
+    inline project& get_project() {
+      OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+      return *loaded_project;
+    }
+
    private:
     friend class project;
 

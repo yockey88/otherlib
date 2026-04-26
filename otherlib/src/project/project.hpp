@@ -39,6 +39,8 @@ namespace other {
     void unload();
     void set_state(state new_state);
 
+    inline const filepath& get_project_rc_path() const { return rc_path; }
+
     inline void set_dotnet_assembly(ref<assembly> a) { project_assembly = a; }
     inline bool is_empty() const { return current_state == EMPTY; }
     inline bool is_loaded() const { return current_state == LOADED; }
@@ -56,6 +58,8 @@ namespace other {
     project_system* system = nullptr;
     metadata project_metadata;
     arena_buffer file_buffer;
+
+    filepath rc_path;
     ref<file_handle> project_file_handle;
     ref<assembly> project_assembly;
   };

@@ -111,6 +111,14 @@ namespace other {
       }
     });
 
+    auto rc_path = scripting_table->get("projectrc-path");
+    if (rc_path && rc_path->is_string()) {
+      this->rc_path = rc_path->as_string()->get();
+      CORE_LOG_DEBUG("Project runtime configuration script path set to '{}'", this->rc_path.string());
+    } else {
+      CORE_LOG_DEBUG("No 'projectrc-path' specified in project file. Driver environment runtime script will not be loaded.");
+    }
+
     if (!waiting_for_script_load) {
       set_state(LOADED);
     }

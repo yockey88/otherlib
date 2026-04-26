@@ -468,6 +468,32 @@ namespace other {
   }
 
   void driver::on_project_loaded() {
+    auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
+    if (p.is_empty()) {
+      CORE_LOG_WARN("Project loaded event triggered but project is empty. This may indicate a problem with the project loading process.");
+      return;
+    }
+
+    filepath rc_path = p.get_project_rc_path();
+    if (!rc_path.empty() && std::filesystem::exists(rc_path)) {
+      PROFILE_SECTION("driver::on_project_loaded--run-project-rc");
+      /// run driver envrc file if it exists
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in on_project_loaded!");
+
+      /// this one has to be loaded into the host without the sandboxing of the environment
+      ///  as this is supposed to be the user's customization of the environment
+      auto& lua_host = env->get_lua_host();
+      sol::state& lua_state = lua_host.get_lua_state();
+
+      try {
+        lua_state.script_file(rc_path.string());
+      } catch (const sol::error& e) {
+        CORE_LOG_ERROR("Failed to run driver environment runtime script: {}\nLua Error: {}", rc_path.string(), e.what());
+      } catch (...) {
+        CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", rc_path.string());
+      }
+    }
   }
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
