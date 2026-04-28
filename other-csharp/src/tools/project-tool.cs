@@ -93,12 +93,16 @@ namespace Other.Toolset
       {
         FileName = "dotnet.exe",
         Arguments = $"restore \"{csproj_path}\"",
+        RedirectStandardOutput = true,
+        RedirectStandardError = true
       };
 
       var build_process_start_info = new ProcessStartInfo
       {
         FileName = "dotnet.exe",
         Arguments = $"build \"{csproj_path}\" -c {settings.config}",
+        RedirectStandardOutput = true,
+        RedirectStandardError = true
       };
 
 

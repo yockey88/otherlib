@@ -12,6 +12,11 @@ namespace other {
 
   void file_watcher::poll() {
     if (!exists) {
+      if (std::filesystem::exists(watch_path)) {
+        // file_event event{ .type = file_event::type::RECREATED, .path = watch_path };
+        // events.trigger_event("filesystem.watch-event", event);
+        exists = true;
+      }
       return;
     }
 
@@ -20,6 +25,13 @@ namespace other {
       events.trigger_event("filesystem.watch-event", event);
       exists = false;
       return;
+    }
+
+    auto last_write_time = std::filesystem::last_write_time(watch_path);
+    if (last_write_time != last_write_timestamp) {
+      file_event event{ .type = file_event::type::MODIFIED, .path = watch_path };
+      events.trigger_event("filesystem.watch-event", event);
+      last_write_timestamp = last_write_time;
     }
   }
 

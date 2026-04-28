@@ -6,7 +6,7 @@ metadata = [
   { key = "author", value = "N/A"},
   { key = "version", value = "0.1.0"} 
 ]
-core-log-level = "debug"
+core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
 

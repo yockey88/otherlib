@@ -468,10 +468,20 @@ namespace other {
   }
 
   void driver::on_project_loaded() {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+
     auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
     if (p.is_empty()) {
       CORE_LOG_WARN("Project loaded event triggered but project is empty. This may indicate a problem with the project loading process.");
       return;
+    }
+
+    /// load scenes from project
+    // driver_kernel_ptr->get_core_system<project_system>().load_project_scene_graph();
+
+    /// do this before running rc file in case rc file loads a scene
+    if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
+      /// add scene to project if not in scene list
     }
 
     filepath rc_path = p.get_project_rc_path();

@@ -150,6 +150,8 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
+      if not os.path.exists("build/other.sln"):
+        run_subprocess(["cmake", "-S", ".", "-B", "build", f"-DCMAKE_BUILD_TYPE={cfg}"])
       run_subprocess(["cmake", "--build", "build", "--config", cfg])
 
       dll_cfg = "Release"
