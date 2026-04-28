@@ -3,7 +3,7 @@ import regex as re
 
 def get_failed_test_names(content):
   pattern = re.compile(r'<testcase name="([^"]*)"')
-  failure_pattern = re.compile(rf'<testcase name="{re.escape(test_name)}".*?<failure')
+  failure_pattern = re.compile(rf'<testcase name="{pattern}".*?<failure')
   failed_test_names = content.split('<testcase name="')[1:]
   return [name.split('"')[0] for name in failed_test_names if failure_pattern.search(content)]
 

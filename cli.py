@@ -158,7 +158,6 @@ if __name__ == "__main__":
       if cfg == "Debug" or cfg == "ProfileD":
         dll_cfg = "Debug"
       copy_dlls(cfg, dll_cfg)
-
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
