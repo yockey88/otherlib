@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using OtherCsBindings;
 
@@ -101,42 +102,59 @@ namespace Other.Toolset
       {
         FileName = "dotnet.exe",
         Arguments = $"build \"{csproj_path}\" -c {settings.config}",
-        RedirectStandardOutput = true,
-        RedirectStandardError = true
+        // RedirectStandardOutput = true,
+        // RedirectStandardError = true
       };
 
+      bool need_to_restore = false;
+      string dotnet_proj_dir = Path.GetDirectoryName(csproj_path)!;
+      string obj_dir = Path.Combine(dotnet_proj_dir, "obj");
+      need_to_restore = !Directory.Exists(obj_dir) || Directory.GetFiles(obj_dir, "*.assets.json").Length == 0;
 
-      restore_process_handle = new Process()
+      if (!need_to_restore)
       {
-        StartInfo = restore_process_start_info
-      };
-      restore_process_handle.OutputDataReceived += (sender, args) => Debug.Log($"{args.Data}");
-      restore_process_handle.ErrorDataReceived += (sender, args) => Debug.Error($"ERROR: {args.Data}");
-      restore_process_handle.Exited += (sender, args) => {
-        if (restore_process_handle.ExitCode == 0)
+        Console.WriteLine("No restore needed, starting build...");
+        build_process_handle = new Process()
         {
-          Debug.Log("Restore succeeded, starting build...");
-          build_process_handle = new Process()
-          {
-            StartInfo = build_process_start_info
-          };
-          build_process_handle.Start();
-        }
-        else
-        {
-          Debug.Error($"Restore failed with exit code {restore_process_handle.ExitCode}.");
-        }
-
-        restore_process_handle.Dispose();
-        restore_process_handle = null;
-      };
-
-      
-      if (!restore_process_handle.Start())
-      {
-        Console.WriteLine($"Error: Failed to start restore process for '{csproj_path}'.");
-        restore_process_handle = null;
+          StartInfo = build_process_start_info
+        };
+        build_process_handle.Start();
         return;
+      }
+      else
+      {
+        restore_process_handle = new Process()
+        {
+          StartInfo = restore_process_start_info
+        };
+        restore_process_handle.OutputDataReceived += (sender, args) => Debug.Log($"{args.Data}");
+        restore_process_handle.ErrorDataReceived += (sender, args) => Debug.Error($"ERROR: {args.Data}");
+        restore_process_handle.Exited += (sender, args) => {
+          if (restore_process_handle.ExitCode == 0)
+          {
+            Debug.Log("Restore succeeded, starting build...");
+            build_process_handle = new Process()
+            {
+              StartInfo = build_process_start_info
+            };
+            build_process_handle.Start();
+          }
+          else
+          {
+            Debug.Error($"Restore failed with exit code {restore_process_handle.ExitCode}.");
+          }
+
+          restore_process_handle.Dispose();
+          restore_process_handle = null;
+        };
+
+        
+        if (!restore_process_handle.Start())
+        {
+          Console.WriteLine($"Error: Failed to start restore process for '{csproj_path}'.");
+          restore_process_handle = null;
+          return;
+        } 
       }
     }
 

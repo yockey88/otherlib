@@ -4,6 +4,8 @@
 #ifndef OTHERLIB_PROJECT_PROJECT_HPP
 #define OTHERLIB_PROJECT_PROJECT_HPP
 
+#include <toml++/toml.hpp>
+
 #include "core/arena_buffer.hpp"
 #include "core/defines.hpp"
 #include "file/file_handle.hpp"
@@ -48,6 +50,12 @@ namespace other {
     inline bool is_unloading() const { return current_state == UNLOADING; }
 
    private:
+    struct scene_data {
+      std::string name;
+      filepath path;
+      std::vector<std::string> incoming;
+      std::vector<std::string> outgoing;
+    };
     struct project_args {
       std::string name;
       std::string working_directory;
@@ -62,6 +70,11 @@ namespace other {
     filepath rc_path;
     ref<file_handle> project_file_handle;
     ref<assembly> project_assembly;
+
+    std::vector<scene_data> scenes_in_project;
+
+    bool process_scripting_sections(const toml::table& table, driver_kernel* kernel);
+    void process_scene_sections(const toml::table& table);
   };
 
   // struct project_description {

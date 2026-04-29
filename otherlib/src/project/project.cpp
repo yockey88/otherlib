@@ -59,65 +59,35 @@ namespace other {
     std::string file_contents = project_file_handle->read_all_as_string();
     CORE_LOG_DEBUG("\n{}", file_contents);
 
+    bool finish_load = false;
     toml::table table;
     try {
       table = toml::parse(file_contents);
-      detail::process_metadata(table, project_metadata);
-      {
-        std::stringstream ss;
-        ss << project_metadata.name << " v" << project_metadata.version << " by " << project_metadata.author;
-        if (!project_metadata.description.empty()) {
-          ss << "\n"
-             << " - " << project_metadata.description;
-        }
-        CORE_LOG_INFO("[PROJECT] {}", ss.str());
-      }
+      finish_load = true;
     } catch (const std::exception& e) {
       CORE_LOG_ERROR("Failed to parse project file: {}", e.what());
     } catch (...) {
       CORE_LOG_ERROR("An unknown error occurred while parsing the project file.");
     }
 
-    toml::node_view scripting_node = table.at_path("scripting");
-    if (!scripting_node) {
-      CORE_LOG_DEBUG("No 'scripting' section found in project file, skipping scripting data processing.");
-      return;
-    }
-    if (!scripting_node.is_table()) {
-      CORE_LOG_ERROR("Expected 'scripting' section to be a table.");
+    if (!finish_load) {
+      CORE_LOG_ERROR("Failed to load project from file '{}'", project_file_handle->virtual_path());
       return;
     }
 
-    const auto& scripting_table = scripting_node.as_table();
-    if (scripting_table == nullptr) {
-      CORE_LOG_ERROR("'scripting' section is not a valid table.");
-      return;
-    }
-
-    CORE_LOG_DEBUG("Processing project scripting data");
-
-    bool waiting_for_script_load = false;
-    scripting_table->for_each([this, kernel, &waiting_for_script_load](const toml::key& key, const toml::node& value) {
-      std::string k{ key.str() };
-
-      CORE_LOG_DEBUG("Processing scripting entry with key '{}'", k);
-      if (k == "cs_project") {
-        if (!value.is_string()) {
-          CORE_LOG_ERROR("Expected 'cs_project' value to be a string representing the path to the .csproj file.");
-        } else {
-          waiting_for_script_load = true;
-          system->sibling<job_driver_system>(*kernel).post_coroutine(detail::load_dotnet_project(this, value.as_string()->get()));
-        }
+    detail::process_metadata(table, project_metadata);
+    {
+      std::stringstream ss;
+      ss << project_metadata.name << " v" << project_metadata.version << " by " << project_metadata.author;
+      if (!project_metadata.description.empty()) {
+        ss << "\n"
+           << " - " << project_metadata.description;
       }
-    });
-
-    auto rc_path = scripting_table->get("projectrc-path");
-    if (rc_path && rc_path->is_string()) {
-      this->rc_path = rc_path->as_string()->get();
-      CORE_LOG_DEBUG("Project runtime configuration script path set to '{}'", this->rc_path.string());
-    } else {
-      CORE_LOG_DEBUG("No 'projectrc-path' specified in project file. Driver environment runtime script will not be loaded.");
+      CORE_LOG_INFO("[PROJECT] {}", ss.str());
     }
+
+    bool waiting_for_script_load = process_scripting_sections(table, kernel);
+    process_scene_sections(table);
 
     if (!waiting_for_script_load) {
       set_state(LOADED);
@@ -156,6 +126,99 @@ namespace other {
       CORE_LOG_WARN("Project state changed to unknown state {}", new_state);
     }
     current_state = new_state;
+  }
+
+  bool project::process_scripting_sections(const toml::table& table, driver_kernel* kernel) {
+    toml::node_view scripting_node = table.at_path("scripting");
+    if (!scripting_node) {
+      CORE_LOG_DEBUG("No 'scripting' section found in project file, skipping scripting data processing.");
+      return false;
+    }
+    if (!scripting_node.is_table()) {
+      CORE_LOG_ERROR("Expected 'scripting' section to be a table.");
+      return false;
+    }
+
+    const auto& scripting_table = scripting_node.as_table();
+    if (scripting_table == nullptr) {
+      CORE_LOG_ERROR("'scripting' section is not a valid table.");
+      return false;
+    }
+
+    CORE_LOG_DEBUG("Processing project scripting data");
+
+    bool waiting_for_script_load = false;
+    scripting_table->for_each([this, kernel, &waiting_for_script_load](const toml::key& key, const toml::node& value) {
+      std::string k{ key.str() };
+
+      CORE_LOG_DEBUG("Processing scripting entry with key '{}'", k);
+      if (k == "cs_project") {
+        if (!value.is_string()) {
+          CORE_LOG_ERROR("Expected 'cs_project' value to be a string representing the path to the .csproj file.");
+        } else {
+          waiting_for_script_load = true;
+          system->sibling<job_driver_system>(*kernel).post_coroutine(detail::load_dotnet_project(this, value.as_string()->get()));
+        }
+      }
+    });
+
+    auto rc_path = scripting_table->get("projectrc-path");
+    if (rc_path && rc_path->is_string()) {
+      this->rc_path = rc_path->as_string()->get();
+      CORE_LOG_DEBUG("Project runtime configuration script path set to '{}'", this->rc_path.string());
+    } else {
+      CORE_LOG_DEBUG("No 'projectrc-path' specified in project file. Driver environment runtime script will not be loaded.");
+    }
+
+    return waiting_for_script_load;
+  }
+
+  void project::process_scene_sections(const toml::table& table) {
+    toml::node_view scenes_node = table.at_path("scenes");
+    if (!scenes_node) {
+      CORE_LOG_DEBUG("No 'scenes' section found in project file, skipping scene data processing.");
+      return;
+    }
+    if (!scenes_node.is_array_of_tables()) {
+      CORE_LOG_ERROR("Expected 'scenes' section to be an array of tables.");
+      return;
+    }
+
+    const auto& scenes_array = scenes_node.as_array();
+    if (scenes_array == nullptr) {
+      CORE_LOG_ERROR("'scenes' section is not a valid array of tables.");
+      return;
+    }
+
+    CORE_LOG_DEBUG("Processing project scene data");
+
+    for (const auto& item : *scenes_array) {
+      if (!item.is_table()) {
+        CORE_LOG_ERROR("Expected each item in 'scenes' array to be a table.");
+        continue;
+      }
+      const auto& scene_table = item.as_table();
+      OTHER_ASSERT(scene_table != nullptr, "Scene item is not a table.");
+
+      scene_data data;
+
+      toml::node_view name_node = scene_table->at_path("name");
+      toml::node_view path_node = scene_table->at_path("path");
+      if (!name_node || !name_node.is_string()) {
+        CORE_LOG_ERROR("Scene entry is missing a valid 'name' field.");
+        continue;
+      }
+      if (!path_node || !path_node.is_string()) {
+        CORE_LOG_ERROR("Scene entry is missing a valid 'path' field.");
+        continue;
+      }
+
+      data.name = name_node.as_string()->get();
+      data.path = filepath(path_node.as_string()->get());
+
+      CORE_LOG_DEBUG("Added scene '{}' with path '{}' to project scene list.", data.name, data.path.string());
+      scenes_in_project.push_back(std::move(data));
+    }
   }
 
   namespace detail {

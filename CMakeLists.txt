@@ -264,6 +264,7 @@ other_install_external_headers("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefil
 other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
 other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/include")
 other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
+other_install_external_headers("jolt" "${OTHER_EXTERN_DIR}/jolt/Jolt")
 
 # ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")

@@ -477,11 +477,12 @@ namespace other {
     }
 
     /// load scenes from project
-    // driver_kernel_ptr->get_core_system<project_system>().load_project_scene_graph();
+    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
 
     /// do this before running rc file in case rc file loads a scene
     if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
       /// add scene to project if not in scene list
+      driver_kernel_ptr->get_core_system<scene_system>().unload_active_scene();
     }
 
     filepath rc_path = p.get_project_rc_path();
