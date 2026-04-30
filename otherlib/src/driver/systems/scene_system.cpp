@@ -49,14 +49,24 @@ namespace other {
     project_scene_graph = nullptr;
   }
 
-  void scene_system::load_project_scene_graph(const project& p) {
-    struct scene_info {
-      std::string name;
-      filepath path;
-      std::vector<std::string> incoming;
-      std::vector<std::string> outgoing;
-    };
-    std::vector<scene_info> scenes_to_load;
+  void scene_system::load_project_scene_graph(project& p) {
+    std::vector<project::scene>& scenes = p.get_scenes();
+    for (auto& scene_data : scenes) {
+      auto [id, ptr] = project_scene_graph->create_new_scene(scene_data.name);
+      scene_data.scene_id = id;
+
+      ptr->script_path = scene_data.path;
+      CORE_LOG_DEBUG("Loaded scene '{}' with ID {} from project.", scene_data.name, scene_data.project_id);
+    }
+
+    natural_t starting_scene_id = p.get_starting_scene_id();
+    auto itr = std::ranges::find(scenes, starting_scene_id, &project::scene::project_id);
+    if (itr != scenes.end()) {
+      CORE_LOG_DEBUG("Setting starting scene to '{}' with ID {} based on project configuration.", itr->name, itr->scene_id);
+      set_scene_to_active(itr->scene_id);
+    } else {
+      CORE_LOG_ERROR("Starting scene with ID {} specified in project configuration not found in project scenes.", starting_scene_id);
+    }
   }
 
   natural_t scene_system::add_scene_to_scene_graph(const filepath& scene_path) {
@@ -98,6 +108,7 @@ namespace other {
   void scene_system::set_scene_to_active(natural_t scene_id) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
     if (active_scene != nullptr && active_scene->id == scene_id) {
+      CORE_LOG_DEBUG("Scene [{}:{}] is already active, no need to set active again.", active_scene->id, active_scene->name);
       return;
     }
 

@@ -34,6 +34,15 @@ namespace other {
       std::string author;
       std::string version;
     };
+    struct scene {
+      std::string name;
+      filepath path;
+      natural_t project_id;
+      natural_t scene_id;
+
+      std::vector<natural_t> incoming;
+      std::vector<natural_t> outgoing;
+    };
     project(project_system* proj_system);
     ~project() = default;
 
@@ -49,15 +58,11 @@ namespace other {
     inline bool is_loading() const { return current_state == LOADING; }
     inline bool is_unloading() const { return current_state == UNLOADING; }
 
-   private:
-    struct scene_data {
-      std::string name;
-      filepath path;
-      natural_t id;
+    inline natural_t get_starting_scene_id() const { return starting_scene_id; }
+    inline std::vector<scene>& get_scenes() { return scenes_in_project; }
+    inline const std::vector<scene>& get_scenes() const { return scenes_in_project; }
 
-      std::vector<std::string> incoming;
-      std::vector<std::string> outgoing;
-    };
+   private:
     struct project_args {
       std::string name;
       std::string working_directory;
@@ -73,7 +78,8 @@ namespace other {
     ref<file_handle> project_file_handle;
     ref<assembly> project_assembly;
 
-    std::vector<scene_data> scenes_in_project;
+    std::vector<scene> scenes_in_project;
+    natural_t starting_scene_id = 0;
 
     bool process_scripting_sections(const toml::table& table, driver_kernel* kernel);
     void process_scene_sections(const toml::table& table);

@@ -11,11 +11,12 @@
 #include <string>
 #include <vector>
 
-#include <flatbuffers/flexbuffers.h>
 #include <glm/glm.hpp>
 #include <imgui/ImReflect.hpp>
 #include <magic_enum/magic_enum.hpp>
 #include <refl/refl.hpp>
+
+#include <flatbuffers/flexbuffers.h>
 
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
@@ -531,7 +532,7 @@ namespace other {
       CORE_LOG_ERROR("Failed to insert reflection data for type '{}'.", refl_type_name);
       return nullptr;
     }
-    CORE_LOG_TRACE("Stashing reflection data for type '{}'.", refl_type_name);
+    // CORE_LOG_TRACE("Stashing reflection data for type '{}'.", refl_type_name);
 
     it->second.type_hash = type_hash;
     it->second.type_name = refl_type_name;
@@ -576,20 +577,20 @@ namespace other {
         m.since_version = version.version;
       }
 
-      CORE_LOG_TRACE("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
-      if (m.value_type == value_type::USER_TYPE) {
-        if constexpr (reflected_type<member_t>) {
-          CORE_LOG_TRACE("  - reflected member type = {}", std::string{ refl::reflect<member_t>().name });
-        }
-      }
+      // CORE_LOG_TRACE("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
+      // if (m.value_type == value_type::USER_TYPE) {
+      //   if constexpr (reflected_type<member_t>) {
+      //     CORE_LOG_TRACE("  - reflected member type = {}", std::string{ refl::reflect<member_t>().name });
+      //   }
+      // }
 
-      CORE_LOG_TRACE("  - Adding member '{}' [{}] of type '{}' to reflection data for '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", it->second.type_name);
+      // CORE_LOG_TRACE("  - Adding member '{}' [{}] of type '{}' to reflection data for '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", it->second.type_name);
       it->second.member_descriptors.push_back(m);
     });
 
     for_each(refl::reflect(value).bases, [&](auto base) { it->second.base_types.push_back(base.hash); });
 
-    CORE_LOG_TRACE("Added reflection data for type '{}'.", it->second.type_name);
+    // CORE_LOG_TRACE("Added reflection data for type '{}'.", it->second.type_name);
     return &it->second;
   }
 

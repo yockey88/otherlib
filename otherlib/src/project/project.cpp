@@ -82,8 +82,7 @@ namespace other {
       std::stringstream ss;
       ss << project_metadata.name << " v" << project_metadata.version << " by " << project_metadata.author;
       if (!project_metadata.description.empty()) {
-        ss << "\n"
-           << project_metadata.description;
+        ss << " (" << project_metadata.description << ")";
       }
       CORE_LOG_INFO("[PROJECT] {}", ss.str());
     }
@@ -177,8 +176,30 @@ namespace other {
   }
 
   void project::process_scene_sections(const toml::table& table) {
-    process_scenes_table(table.at_path("scenes"));
-    process_scene_graph(table.at_path("graph"));
+    process_scenes_table(table.at_path("scene-graph.scenes"));
+    process_scene_graph(table.at_path("scene-graph.graph"));
+
+    {
+      auto starting_scene_node = table.at_path("scene-graph.starting-scene");
+      if (starting_scene_node) {
+        if (starting_scene_node.is_string()) {
+          std::string starting_scene_name = starting_scene_node.as_string()->get();
+          auto it = std::ranges::find_if(scenes_in_project, [&starting_scene_name](const scene& s) { return s.name == starting_scene_name; });
+          if (it != scenes_in_project.end()) {
+            starting_scene_id = it->project_id;
+            CORE_LOG_DEBUG("Starting scene set to '{}' with project ID {} based on project file configuration.", it->name, it->project_id);
+          } else {
+            CORE_LOG_ERROR("Starting scene name '{}' specified in project file does not match any scenes in the project.", starting_scene_name);
+          }
+        } else if (starting_scene_node.is_number()) {
+          starting_scene_id = static_cast<natural_t>(starting_scene_node.as_integer()->get());
+          CORE_LOG_DEBUG("Starting scene set to project ID {} based on project file configuration.", starting_scene_id);
+        } else {
+          CORE_LOG_ERROR("Invalid type for 'scene-graph.starting-scene' field. Expected string (scene name) or number (scene ID).");
+        }
+      }
+    }
+    CORE_LOG_DEBUG("Finished processing scene sections of project file. Total scenes in project: {}", scenes_in_project.size());
   }
 
   void project::process_scenes_table(toml::node_view<const toml::node> scenes_node) {
@@ -206,7 +227,7 @@ namespace other {
       const auto* scene_table = item.as_table();
       OTHER_ASSERT(scene_table != nullptr, "Scene item is not a table.");
 
-      scene_data data;
+      project::scene data;
 
       toml::node_view name_node = scene_table->at_path("name");
       toml::node_view path_node = scene_table->at_path("path");
@@ -227,7 +248,7 @@ namespace other {
       scenes_in_project.push_back({
         .name = name_node.as_string()->get(),
         .path = filepath(path_node.as_string()->get()),
-        .id = static_cast<natural_t>(id_node.as_integer()->get()),
+        .project_id = static_cast<natural_t>(id_node.as_integer()->get()),
       });
     }
 
@@ -275,28 +296,28 @@ namespace other {
       }
 
       natural_t scene_id = static_cast<natural_t>(name_node.as_integer()->get());
-      auto it = std::ranges::find_if(scenes_in_project, [&scene_id](const scene_data& data) { return data.id == scene_id; });
+      auto it = std::ranges::find_if(scenes_in_project, [&scene_id](const project::scene& data) { return data.project_id == scene_id; });
       if (it == scenes_in_project.end()) {
         CORE_LOG_ERROR("Scene with ID '{}' referenced in graph section does not exist in scenes list.", scene_id);
         continue;
       }
 
       for (const auto& incoming : *incoming_node.as_array()) {
-        if (!incoming.is_string()) {
-          CORE_LOG_ERROR("Expected 'incoming' array items to be strings.");
+        if (!incoming.is_number()) {
+          CORE_LOG_ERROR("Expected 'incoming' array items to be numbers.");
           CORE_LOG_ERROR("incoming item type: {}", incoming.type());
           continue;
         }
-        it->incoming.push_back(incoming.as_string()->get());
+        it->incoming.push_back(static_cast<natural_t>(incoming.as_integer()->get()));
       }
 
       for (const auto& outgoing : *outgoing_node.as_array()) {
-        if (!outgoing.is_string()) {
-          CORE_LOG_ERROR("Expected 'outgoing' array items to be strings.");
+        if (!outgoing.is_number()) {
+          CORE_LOG_ERROR("Expected 'outgoing' array items to be numbers.");
           CORE_LOG_ERROR("outgoing item type: {}", outgoing.type());
           continue;
         }
-        it->outgoing.push_back(outgoing.as_string()->get());
+        it->outgoing.push_back(static_cast<natural_t>(outgoing.as_integer()->get()));
       }
 
       CORE_LOG_DEBUG(" - Processed graph entry for scene '{}'. Incoming: {}, Outgoing: {}", scene_id, it->incoming.size(), it->outgoing.size());

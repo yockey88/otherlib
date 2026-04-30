@@ -71,6 +71,7 @@ def run_project(out_dir, cfg, name, config_file, verbose = False, extra_args=Non
   if verbose:  
     run_command.append("--verbose")
   if project_path is not None:
+    run_command.append("-f")
     run_command.append(project_path)
   
   if extra_args:

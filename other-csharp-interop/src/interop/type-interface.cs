@@ -235,14 +235,14 @@ namespace OtherCsBindings
         }
         else
         {
-          Logger.LogTrace($"Found {asm_types.Length} types in assembly {asm.FullName}");
+          // Logger.LogTrace($"Found {asm_types.Length} types in assembly {asm.FullName}");
         }
 
         if (out_types != null)
         {
           for (Int32 i = 0; i < asm_types.Length; i++)
           {
-            Logger.LogTrace($"  > Adding type {asm_types[i].FullName} to cache");
+            // Logger.LogTrace($"  > Adding type {asm_types[i].FullName} to cache");
             out_types[i] = cached_types.Add(asm_types[i]);
           }
         }
@@ -263,26 +263,26 @@ namespace OtherCsBindings
       Logger.LogTrace($"Finding suitable method '{method_name}' with {argc} arguments");
       foreach (var minfo in methods)
       {
-        Logger.LogTrace($" > Checking method '{minfo}' ({minfo.GetParameters().Length})");
+        // Logger.LogTrace($" > Checking method '{minfo}' ({minfo.GetParameters().Length})");
         ParameterInfo[] parameters = minfo.GetParameters();
         if (parameters.Length != argc)
         {
           continue;
         }
-        Logger.LogTrace($"	> Method '{minfo}' has {parameters.Length} parameters");
+        // Logger.LogTrace($"	> Method '{minfo}' has {parameters.Length} parameters");
         if (method_name == minfo.ToString())
         {
-          Logger.LogTrace($"	> Found exact match for method '{minfo}'");
+          // Logger.LogTrace($"	> Found exact match for method '{minfo}'");
           return minfo;
         }
 
         if (minfo.Name != method_name)
         {
-          Logger.LogTrace($"	!> Method '{minfo}' doesn't match the required name");
+          // Logger.LogTrace($"	!> Method '{minfo}' doesn't match the required name");
           continue;
         }
 
-        Logger.LogTrace($"	> Checking method '{minfo}' for parameter types");
+        // Logger.LogTrace($"	> Checking method '{minfo}' for parameter types");
         Int32 type_match = 0;
         for (Int32 i = 0; i < parameters.Length; i++)
         {
@@ -296,7 +296,7 @@ namespace OtherCsBindings
             ptype = ManagedType.Unknown;
           }
 
-          Logger.LogTrace($"		> Parameter {i} : {ptype} == {param_types[i]}");
+          // Logger.LogTrace($"		> Parameter {i} : {ptype} == {param_types[i]}");
           if (ptype == param_types[i])
           {
             type_match++;
@@ -305,12 +305,12 @@ namespace OtherCsBindings
 
         if (type_match == argc)
         {
-          Logger.LogTrace($"	> Found suitable method '{minfo}' with {type_match} matching parameters");
+          // Logger.LogTrace($"	> Found suitable method '{minfo}' with {type_match} matching parameters");
           return minfo;
         }
         else
         {
-          Logger.LogTrace($"	!> Method '{minfo}' has {type_match} matching parameters, expected {argc}");
+          // Logger.LogTrace($"	!> Method '{minfo}' has {type_match} matching parameters, expected {argc}");
         }
       }
 
@@ -453,7 +453,7 @@ namespace OtherCsBindings
 
         for (Int32 i = 0; i < methods.Length; i++)
         {
-          Logger.LogTrace($"  > Adding method [class : {t.Name}] {methods[i].Name} to cache");
+          // Logger.LogTrace($"  > Adding method [class : {t.Name}] {methods[i].Name} to cache");
           method_arr[i] = cached_methods.Add(methods[i]);
         }
 
@@ -496,7 +496,7 @@ namespace OtherCsBindings
 
         for (Int32 i = 0; i < fields.Length; i++)
         {
-          Logger.LogTrace($"  > Adding field [class : {t.Name}] {fields[i].Name} to cache");
+          // Logger.LogTrace($"  > Adding field [class : {t.Name}] {fields[i].Name} to cache");
           field_arr[i] = cached_fields.Add(fields[i]);
         }
       }
@@ -532,7 +532,7 @@ namespace OtherCsBindings
 
         for (Int32 i = 0; i < properties.Length; i++)
         {
-          Logger.LogTrace($"  > Adding property [class : {t.Name}] {properties[i].Name} to cache");
+          // Logger.LogTrace($"  > Adding property [class : {t.Name}] {properties[i].Name} to cache");
           arr[i] = cached_properties.Add(properties[i]);
         }
       }
@@ -574,13 +574,13 @@ namespace OtherCsBindings
         ImmutableArray<object> attrs = t!.GetCustomAttributes(true).ToImmutableArray();
         if (attrs == null || attrs.Length == 0)
         {
-          Logger.LogTrace($"No attributes found for type '{t.FullName}'");
+          // Logger.LogTrace($"No attributes found for type '{t.FullName}'");
           *count = 0;
           return;
         }
 
         *count = attrs.Length;
-        Logger.LogTrace($"Found {attrs.Length} attributes for type '{t.FullName}'");
+        // Logger.LogTrace($"Found {attrs.Length} attributes for type '{t.FullName}'");
 
         if (attributes == null)
         {
@@ -589,7 +589,7 @@ namespace OtherCsBindings
 
         for (Int32 i = 0; i < attrs.Length; i++)
         {
-          Logger.LogTrace($"  > Adding attribute [class : {t.Name}] {attrs[i].GetType().Name} to cache");
+          // Logger.LogTrace($"  > Adding attribute [class : {t.Name}] {attrs[i].GetType().Name} to cache");
           attributes[i] = cached_attributes.Add((Attribute)attrs[i]);
         }
       }
@@ -1129,14 +1129,14 @@ namespace OtherCsBindings
           var default_value_attr = pinfo!.GetCustomAttribute<DefaultValueAttribute>();
           if (default_value_attr == null)
           {
-            Logger.LogTrace($"No DefaultValueAttribute found on property '{pinfo!.Name}'.");
+            Logger.LogDebug($"No DefaultValueAttribute found on property '{pinfo!.Name}'.");
             return;
           }
 
           var value = default_value_attr.Value;
           if (value == null)
           {
-            Logger.LogTrace($"Default value for property '{pinfo!.Name}' is null.");
+            Logger.LogDebug($"Default value for property '{pinfo!.Name}' is null.");
             return;
           }
 
@@ -1159,7 +1159,7 @@ namespace OtherCsBindings
           var value = default_value_attr.Value;
           if (value == null)
           {
-            Logger.LogTrace($"Default value for field '{finfo!.Name}' is null.");
+            Logger.LogDebug($"Default value for field '{finfo!.Name}' is null.");
             return;
           }
 

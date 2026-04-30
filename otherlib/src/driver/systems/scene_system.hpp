@@ -26,7 +26,7 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
-    void load_project_scene_graph(const project& p);
+    void load_project_scene_graph(project& p);
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name, bool add_asset = true);
     natural_t get_id_of_scene(const std::string_view name);

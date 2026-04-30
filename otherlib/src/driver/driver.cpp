@@ -476,12 +476,11 @@ namespace other {
       return;
     }
 
-    /// load scenes from project
-    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
-
+    // opt<natural_t> starting_scene_id;
     /// do this before running rc file in case rc file loads a scene
     if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
       /// add scene to project if not in scene list
+      // starting_scene_id = curr_scene->id;
       driver_kernel_ptr->get_core_system<scene_system>().unload_active_scene();
     }
 
@@ -505,6 +504,14 @@ namespace other {
         CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", rc_path.string());
       }
     }
+
+    /// load scenes from project
+    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
+
+    /// restore scene?
+    // if (starting_scene_id.has_value()) {
+    //   driver_kernel_ptr->get_core_system<scene_system>().set_active_scene(starting_scene_id.value());
+    // }
   }
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
