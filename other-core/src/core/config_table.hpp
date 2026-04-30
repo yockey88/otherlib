@@ -107,6 +107,9 @@ namespace other {
     glm::uvec2 window_size = { 1920, 1080 };
     glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
+    /// project settings
+    opt<filepath> project_file = std::nullopt;
+
    private:
     template <typename T>
     bool check_type(auto n, const std::string_view toml_path) const {

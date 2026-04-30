@@ -89,7 +89,7 @@ namespace other {
     return jobs.add_deferred(trigger_id, std::move(desc), std::move(work));
   }
 
-  void job_system::post_coroutine(task coro) {
+  void job_system::post_coroutine(task&& coro) {
     live_coroutines.push_back({ .handle = std::move(coro) });
   }
 

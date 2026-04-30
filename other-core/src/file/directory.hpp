@@ -31,6 +31,8 @@ namespace other {
 
     std::string to_string() const;
 
+    void recursive_scan();
+
     void poll();
 
     const std::string& name() const { return dir_name; }
@@ -73,6 +75,8 @@ namespace other {
     }
 
    private:
+    event_system& events;
+
     natural_t hash = 0;
     file_type type = file_type::LOCAL;
     std::string dir_name;

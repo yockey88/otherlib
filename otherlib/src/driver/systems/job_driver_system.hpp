@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "core/coroutine.hpp"
 #include "core/job_system.hpp"
 
 #include "driver/driver.hpp"
@@ -28,6 +29,10 @@ namespace other {
     inline job_system& get_job_system() {
       OTHER_ASSERT(jobs != nullptr, "Job system is not initialized in job driver system.");
       return *jobs;
+    }
+
+    inline void post_coroutine(task&& t) {
+      jobs->post_coroutine(std::move(t));
     }
 
    private:

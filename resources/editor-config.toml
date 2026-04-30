@@ -27,7 +27,7 @@ ui-layout-ini = "resources/ui/editor-layout.ini"
 # ]
 
 [ui]
-enable-environment-menu-bar = false
+enable-environment-menu-bar = true
 
 [assets]
 test-model = "resources/models/spinning-torus.fbx"

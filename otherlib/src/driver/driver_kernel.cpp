@@ -15,6 +15,7 @@
 #include "driver/systems/input_driver_system.hpp"
 #include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
+#include "driver/systems/project_system.hpp"
 #include "driver/systems/rendering_system.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "driver/systems/scripting_system.hpp"
@@ -45,6 +46,7 @@ namespace other {
     if (profile_name != "minimal") {
       add_system<vm_system>(driver_system_type::VM_DRIVER_SYSTEM);
       add_system<scene_system>(driver_system_type::SCENE_DRIVER_SYSTEM);
+      add_system<project_system>(driver_system_type::PROJECT_DRIVER_SYSTEM);
     }
 
     update_order();

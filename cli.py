@@ -65,9 +65,14 @@ def run_subprocess(args):
     print(f"Error running command: {e}")
     sys.exit(1)
 
-def run_project(out_dir, cfg, name, config_file, args, verbose = False, extra_args=None):
+def run_project(out_dir, cfg, name, config_file, verbose = False, extra_args=None, project_path=None):
   run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}"]
-  run_command.append("--verbose")
+  
+  if verbose:  
+    run_command.append("--verbose")
+  if project_path is not None:
+    run_command.append(project_path)
+  
   if extra_args:
     run_command.extend(extra_args)
   run_subprocess(run_command)
@@ -150,37 +155,40 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
+      if not os.path.exists("build/other.sln"):
+        run_subprocess(["cmake", "-S", ".", "-B", "build", f"-DCMAKE_BUILD_TYPE={cfg}"])
       run_subprocess(["cmake", "--build", "build", "--config", cfg])
 
       dll_cfg = "Release"
       if cfg == "Debug" or cfg == "ProfileD":
         dll_cfg = "Debug"
       copy_dlls(cfg, dll_cfg)
-
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args, args.verbose)
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose, project_path="test-project/test-project.toml")
+    
     elif args.run_server:
-      run_project("other-server", cfg, "other_server", "server-config.toml", args, args.verbose)
+      run_project("other-server", cfg, "other_server", "server-config.toml", args.verbose)
 
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
-      run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args, args.verbose)
+      run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args.verbose)
+    
     elif args.run_terminal:
       print(f"Running Other-Terminal [{cfg}]")
-      run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args, args.verbose)
+      run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args.verbose)
+      
     elif args.run_tests:
       print("Running tests...")
       extra_args = [ "--gtest_shuffle" ]
-      
       ## TODO: fix platform specific output paths
       if cfg == "Debug" or cfg == "ProfileD":
         extra_args.append("--gtest_output=xml:other_test_results.windows.debug.xml")
       else:
         extra_args.append("--gtest_output=xml:other_test_results.windows.release.xml")
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args.verbose, extra_args=extra_args)
 
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=extra_args)
     elif args.run_test_suite is not None and len(args.run_test_suite) == 1:
       test_filter = args.run_test_suite[0]
       print(f"Running test suite with filter: {test_filter}")
@@ -190,7 +198,8 @@ if __name__ == "__main__":
         extra_args.append("--gtest_output=xml:other_test_results.windows.debug.xml")
       else:
         extra_args.append("--gtest_output=xml:other_test_results.windows.release.xml")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args, args.verbose, extra_args=extra_args)
+      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args.verbose, extra_args=extra_args)
+    
     elif args.daemon_server:
       run_subprocess(["pwsh.exe", "-File", "tools/daemon-server.ps1"])
       

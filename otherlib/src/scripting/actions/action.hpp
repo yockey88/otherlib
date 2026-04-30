@@ -19,15 +19,15 @@ namespace other {
 
     action(const std::string_view name, const std::string_view description)
         : name(name), description(description) {}
-    action(const std::string_view name, const std::string_view description, scope<callback> cb)
+    action(const std::string_view name, const std::string_view description, ref<callback> cb)
         : name(name), description(description), callback_fn(std::move(cb)) {}
     virtual ~action() = default;
 
-    void set_callback(scope<callback> cb);
+    void set_callback(ref<callback> cb);
     value execute(const std::span<value> args);
 
    private:
-    scope<callback> callback_fn;
+    ref<callback> callback_fn;
   };
 
 }  // namespace other

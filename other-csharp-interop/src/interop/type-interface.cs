@@ -600,6 +600,25 @@ namespace OtherCsBindings
     }
 
     [UnmanagedCallersOnly]
+    private static unsafe NativeBool32 HasMethod(Int32 type, NativeString method_name)
+    {
+      try
+      {
+        if (!cached_types.TryGet(type, out var t))
+        {
+          return false;
+        }
+
+        return t!.GetMethod(method_name!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static) != null;
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+        return false;
+      }
+    }
+
+    [UnmanagedCallersOnly]
     private static unsafe NativeString GetMethodName(Int32 method_info)
     {
       try

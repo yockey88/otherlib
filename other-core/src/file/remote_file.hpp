@@ -40,6 +40,7 @@ namespace other {
     bool open(file_mode mode) override;
     void close() override;
 
+    std::string read_all_as_string() override;
     std::vector<uint8_t> read_all() override;
     uint64_t read(std::span<uint8_t> buffer, uint64_t offset = 0) override;
     uint64_t write(std::span<const uint8_t> data) override;

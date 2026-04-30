@@ -38,6 +38,7 @@ namespace other {
         : name(name), handle(handle), host(host) {}
 
     void cache_types(type_cache* cache, const std::vector<int32_t>& dotnet_type_ids);
+    bool has_method(const std::string_view type_name, const std::string_view method_name) const;
 
     natural_t get_handle() const {
       return handle;

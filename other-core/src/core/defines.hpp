@@ -72,6 +72,13 @@
   #define OTHER_PROFILED_BUILD
 #endif  // !OTHER_PROFILED
 
+#ifdef OTHER_ABORT_USE_STD_TERMINATE
+  #include <cstdlib>
+  #define OTHER_ABORT() std::terminate()
+#else
+  #define OTHER_ABORT() std::abort()
+#endif  // !OTHER_ABORT_USE_STD_TERMINATE
+
 #ifndef OTHER_API
   #error "OTHER_API is not defined. Please define it for your platform."
 #endif  // !OTHER_API

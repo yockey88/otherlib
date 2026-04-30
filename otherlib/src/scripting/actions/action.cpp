@@ -5,8 +5,8 @@
 
 namespace other {
 
-  void action::set_callback(scope<callback> cb) {
-    callback_fn = std::move(cb);
+  void action::set_callback(ref<callback> cb) {
+    callback_fn = cb;
   }
 
   value action::execute(const std::span<value> args) {

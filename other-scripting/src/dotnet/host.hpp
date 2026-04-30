@@ -82,6 +82,7 @@ namespace other {
       check_type_characteristic has_attribute = nullptr;
 
       //        method
+      has_method has_method = nullptr;
       get_method_name get_method_name = nullptr;
       get_method_return_type get_method_return_type = nullptr;
       get_method_accessibility get_method_accessibility = nullptr;

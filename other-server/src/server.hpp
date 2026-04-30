@@ -25,8 +25,8 @@ namespace other {
 
   class OTHER_CLASS server : public driver {
    public:
-    server(const config_table& config)
-        : driver(config) {}
+    server(const command_line& cmd, const config_table& config)
+        : driver(cmd, config) {}
     virtual ~server() = default;
 
     void on_initialize(const command_line& cmd) override;

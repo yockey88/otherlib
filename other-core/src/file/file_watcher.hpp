@@ -46,6 +46,8 @@ namespace other {
     bool exists = false;
     event_system& events;
 
+    std::filesystem::file_time_type last_write_timestamp;
+
     filepath watch_path;
     watch_type type;
     watch_mode mode;

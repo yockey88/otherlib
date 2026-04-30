@@ -27,7 +27,7 @@
 #include "driver/systems/scene_system.hpp"
 #include "ui/component_widget.hpp"
 #include "ui/inspector_widgets.hpp"
-#include "ui/script_property_widget.hpp"
+#include "ui/script/script_property_widget.hpp"
 
 IMGUI_REFLECT(glm::vec3, x, y, z);
 IMGUI_REFLECT(glm::quat, w, x, y, z);

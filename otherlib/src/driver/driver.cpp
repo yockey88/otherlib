@@ -15,6 +15,7 @@
 
 #include "driver/driver_tasks.hpp"
 #include "driver/systems/asset_system.hpp"
+#include "driver/systems/project_system.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "scripting/bindings.hpp"
 #include "scripting/scene_interface.hpp"
@@ -24,9 +25,14 @@ namespace other {
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
 
+  driver::driver(const command_line& cmd, const config_table& config)
+      : config(config), cmd_line(cmd) {
+    this->config.project_file = cmd.project_file;
+  }
+
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
-    cmd_line = cmd;
+
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
 
@@ -38,6 +44,10 @@ namespace other {
     get_event_system()->register_event("ls.driver-systems");
     get_event_system()->add_listener("ls.driver-systems", [this](const value& data) {
       CORE_LOG_INFO("Driver Systems:\n{}", driver_kernel_ptr->list_systems());
+    });
+
+    get_event_system()->add_listener("project.loaded", [this](const value& data) {
+      on_project_loaded();
     });
 
     load_client();
@@ -69,7 +79,7 @@ namespace other {
     driver_kernel_ptr->shutdown();
   }
 
-  std::pair<driver*, std::string> driver::create(const config_table& config) {
+  std::pair<driver*, std::string> driver::create(const command_line& cmd, const config_table& config) {
     driver* driver_instance = nullptr;
 
     std::string driver_path = config.dynamic_driver_rel_path.value_or("");
@@ -79,7 +89,7 @@ namespace other {
     if (driver_path.empty()) {
       CORE_LOG_DEBUG("Creating static driver instance");
       driver_name = config.get_value<std::string>("application.name", "static-driver");
-      return { create_driver(&config), driver_name };
+      return { create_driver(&cmd, &config), driver_name };
     }
     /// otherwise attempt to load the driver and run it
     else {
@@ -285,6 +295,11 @@ namespace other {
     return get_config_value<bool>("application.auto-play-loaded-scenes", true);
   }
 
+  bool driver::project_loaded() const {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<project_system>().project_loaded();
+  }
+
   scene* driver::get_active_scene() {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<scene_system>().get_active_scene();
@@ -449,6 +464,46 @@ namespace other {
 
     if (driver_kernel_ptr->has_core_system<rendering_system>()) {
       driver_kernel_ptr->get_core_system<rendering_system>().render(driver_kernel_ptr.get());
+    }
+  }
+
+  void driver::on_project_loaded() {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+
+    auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
+    if (p.is_empty()) {
+      CORE_LOG_WARN("Project loaded event triggered but project is empty. This may indicate a problem with the project loading process.");
+      return;
+    }
+
+    /// load scenes from project
+    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
+
+    /// do this before running rc file in case rc file loads a scene
+    if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
+      /// add scene to project if not in scene list
+      driver_kernel_ptr->get_core_system<scene_system>().unload_active_scene();
+    }
+
+    filepath rc_path = p.get_project_rc_path();
+    if (!rc_path.empty() && std::filesystem::exists(rc_path)) {
+      PROFILE_SECTION("driver::on_project_loaded--run-project-rc");
+      /// run driver envrc file if it exists
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in on_project_loaded!");
+
+      /// this one has to be loaded into the host without the sandboxing of the environment
+      ///  as this is supposed to be the user's customization of the environment
+      auto& lua_host = env->get_lua_host();
+      sol::state& lua_state = lua_host.get_lua_state();
+
+      try {
+        lua_state.script_file(rc_path.string());
+      } catch (const sol::error& e) {
+        CORE_LOG_ERROR("Failed to run driver environment runtime script: {}\nLua Error: {}", rc_path.string(), e.what());
+      } catch (...) {
+        CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", rc_path.string());
+      }
     }
   }
 

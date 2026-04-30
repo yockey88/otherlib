@@ -283,7 +283,11 @@ namespace other {
 
     CORE_LOG_DEBUG("[script {}] destroying .NET object [{}]", id, obj->name);
 
-    obj->dotnet_object->invoke<>("RemoveAllBehaviors");
+    if (obj->dotnet_object->has_method("RemoveAllBehaviors")) {
+      CORE_LOG_DEBUG("[script {}] invoking RemoveAllBehaviors on .NET object before detaching", id);
+      obj->dotnet_object->invoke<>("RemoveAllBehaviors");
+    }
+
     dotnet_unregister_native_object(id);
     dotnet.destroy_managed_object(obj->dotnet_object);
     obj->dotnet_object = nullptr;

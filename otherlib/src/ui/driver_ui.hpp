@@ -8,6 +8,8 @@
 
 #include "renderer/ui/ui_window.hpp"
 
+#include "ui/menu-bar/menu_bar.hpp"
+
 namespace other {
 
   class driver;
@@ -102,6 +104,9 @@ namespace other {
     bool main_menu_bar_open = false;
     driver* driver_ptr = nullptr;
     builtin_window builtin_windows[NUM_BUILTIN_WINDOW_TYPES];
+
+    ui::menu_bar main_menu_bar;
+    std::vector<ui::menu_item> main_menu_items;
 
     std::unordered_map<natural_t, driver_window> custom_windows;
 

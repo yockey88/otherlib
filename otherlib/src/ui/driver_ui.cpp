@@ -8,9 +8,9 @@
 #include "core/defines.hpp"
 
 #include "driver/driver.hpp"
-#include "ui/asset_browser.hpp"
-#include "ui/console.hpp"
-#include "ui/scene_hierarchy.hpp"
+#include "ui/asset-browser/asset_browser.hpp"
+#include "ui/console/console.hpp"
+#include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/type_database.hpp"
 #include "ui/viewport.hpp"
 
@@ -19,19 +19,12 @@ namespace other {
   void driver_ui::initialize() {
     initialize_builtin_windows();
     main_menu_bar_open = driver_ptr->configuration().get_value<bool>("ui.enable-environment-menu-bar", false);
+    /// create main menu
   }
 
   void driver_ui::render() {
     if (main_menu_bar_open) {
-      if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-          if (ImGui::MenuItem("New Project")) {}
-          if (ImGui::MenuItem("Open Project")) {}
-          ImGui::EndMenu();
-        }
-
-        ImGui::EndMainMenuBar();
-      }
+      main_menu_bar.render({ main_menu_items.begin(), main_menu_items.end() });
     }
 
     render_builtin_windows();

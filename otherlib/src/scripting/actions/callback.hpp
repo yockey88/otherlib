@@ -21,13 +21,7 @@ namespace other {
         : std::runtime_error(message) {}
   };
 
-  template <typename R>
-  concept acceptable_return = std::is_same_v<R, void> || std::is_pointer_v<R> || std::is_trivial_v<R>;
-
-  template <typename R>
-  constexpr static inline bool is_acceptable_callback_return = acceptable_return<typename std::invoke_result_t<R>>;
-
-  struct callback {
+  struct callback : public ref_counted {
     virtual ~callback() = default;
     value call(const std::span<value> args);
 
@@ -36,9 +30,8 @@ namespace other {
   };
 
   template <typename R, typename... Args>
-    requires acceptable_return<R>
   struct native_callback : public callback {
-    using callback_type = R (*)(Args...);
+    using callback_type = std::function<R(Args...)>;
     using argument_tuple_type = std::tuple<Args...>;
 
     /// normal function types
@@ -71,7 +64,9 @@ namespace other {
   };
 
   template <typename R, typename... Args>
-    requires acceptable_return<R>
+  native_callback(R (*)(Args...)) -> native_callback<R, Args...>;
+
+  template <typename R, typename... Args>
   struct dotnet_callback : public callback {
     using argument_tuple_type = std::tuple<Args...>;
 

@@ -103,14 +103,10 @@ namespace other {
   #define GET_STACKTRACE "Stacktrace not available (no <stacktrace> support)"
 #endif
 
-#ifndef OTHER_ABORT
-  #define OTHER_ABORT std::terminate()
-#endif
-
 #define OTHER_CRITICAL_FAILURE(format, ...)                                                                  \
   do {                                                                                                       \
     CORE_LOG_CRITICAL("Critical failure!\nstacktrace =\n{}\n" format, GET_STACKTRACE VAR_ARGS(__VA_ARGS__)); \
-    OTHER_ABORT;                                                                                             \
+    OTHER_ABORT();                                                                                           \
   } while (0)
 
 #define OTHER_ASSERT(condition, format, ...)       \

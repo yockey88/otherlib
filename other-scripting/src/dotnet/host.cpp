@@ -364,6 +364,9 @@ namespace other {
     OTHER_ASSERT(interop_functions.has_attribute != nullptr, "Failed to load HasAttribute from managed assembly.");
 
     //        method
+    interop_functions.has_method = load_managed_function<has_method>(type_interface_type_str, DNET_STR("HasMethod"));
+    OTHER_ASSERT(interop_functions.has_method != nullptr, "Failed to load HasMethod from managed assembly.");
+
     interop_functions.get_method_name = load_managed_function<get_method_name>(type_interface_type_str, DNET_STR("GetMethodName"));
     OTHER_ASSERT(interop_functions.get_method_name != nullptr, "Failed to load GetMethodName from managed assembly.");
 

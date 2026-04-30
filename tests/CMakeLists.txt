@@ -37,6 +37,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/thread/message_bus_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/script_environment_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripting/callback_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/action_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/lua_script_tests.cpp
 

@@ -49,6 +49,16 @@ namespace other {
     project_scene_graph = nullptr;
   }
 
+  void scene_system::load_project_scene_graph(const project& p) {
+    struct scene_info {
+      std::string name;
+      filepath path;
+      std::vector<std::string> incoming;
+      std::vector<std::string> outgoing;
+    };
+    std::vector<scene_info> scenes_to_load;
+  }
+
   natural_t scene_system::add_scene_to_scene_graph(const filepath& scene_path) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
 
