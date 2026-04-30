@@ -17,8 +17,11 @@ def validate_test_success(results_file) -> bool:
     content = f.read()
     matches = len(pattern.findall(content))
     if matches > 0:
+      print(f"Found {matches} failed test(s) in the results.")
       test_names = get_failed_test_names(content)
-      print(f"{matches} test(s) failed: {', '.join(test_names)}")
+      print("Failed test names:")
+      for name in test_names:
+        print(f" - {name}")
       return False
     
   

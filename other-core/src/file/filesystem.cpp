@@ -336,20 +336,13 @@ namespace other {
       return local;
     }
 
-    ref<directory> target_dir = get_or_create_mount(components[0], std::filesystem::absolute(components[0]));
-    OTHER_ASSERT(target_dir != nullptr, "Failed to get or create mount '{}' while registering local file '{}'", components[0], path.string());
-
-    components = components |
-      std::views::drop(1) |
-      std::ranges::to<std::vector>();
+    filepath dir = abs_path.parent_path();
+    std::string dir_last_name = dir.filename().string();
+    ref<directory> target_dir = get_or_create_mount(dir_last_name, dir);
+    OTHER_ASSERT(target_dir != nullptr, "Failed to get or create mount '{}' while registering local file '{}'", dir_last_name, path.string());
 
     filepath current_abs_path = target_dir->absolute_path();
-    for (const auto& comp : components) {
-      OTHER_ASSERT(target_dir != nullptr, "Failed to get or create directory '{}' while registering local file '{}'", comp, path.string());
-      target_dir = target_dir->get_or_add_child_directory(comp, current_abs_path / comp);
-      current_abs_path /= comp;
-    }
-    OTHER_ASSERT(target_dir != nullptr, "Failed to get or create target directory for local file '{}'", path.string());
+    CORE_LOG_DEBUG("Registering local file '{}' in directory '{}'", path.string(), target_dir->to_string());
 
     ref<local_file> local = create_local_file(abs_path);
     OTHER_ASSERT(local != nullptr, "Failed to create local file for path: {}", path.string());
