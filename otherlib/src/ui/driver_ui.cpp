@@ -4,8 +4,12 @@
 #include "ui/driver_ui.hpp"
 
 #include <algorithm>
+#include <span>
 
 #include "core/defines.hpp"
+
+#include "dotnet/dotnet_object.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "driver/driver.hpp"
 #include "ui/asset-browser/asset_browser.hpp"
@@ -18,13 +22,27 @@ namespace other {
 
   void driver_ui::initialize() {
     initialize_builtin_windows();
+
+    main_menu_bar.main_menu_bar = true;
     main_menu_bar_open = driver_ptr->configuration().get_value<bool>("ui.enable-environment-menu-bar", false);
     /// create main menu
+
+    {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment is not initialized in driver UI initialization.");
+
+      window_registry_id = env->create_object("UIScriptWindowRegistry");
+      env->attach_dotnet_object(window_registry_id, "Other.UI.WindowRegistry");
+    }
   }
 
   void driver_ui::render() {
     if (main_menu_bar_open) {
-      main_menu_bar.render({ main_menu_items.begin(), main_menu_items.end() });
+      auto menus =
+        main_menu_bar_menus |
+        std::views::transform(&main_menu_bar_menu::menu) |
+        std::ranges::to<std::vector>();
+      main_menu_bar.render(menus);
     }
 
     render_builtin_windows();
@@ -32,6 +50,13 @@ namespace other {
   }
 
   void driver_ui::shutdown() {
+    {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment is not initialized in driver UI shutdown.");
+
+      env->destroy_object(window_registry_id);
+    }
+
     shutdown_custom_windows();
     shutdown_builtin_windows();
   }
@@ -102,6 +127,64 @@ namespace other {
       return false;
     }
     return it->open;
+  }
+
+  void driver_ui::register_main_menu_bar_sub_menu(const std::string_view menu_name, const ui::menu& sub_menu) {
+    natural_t hash = FNV(menu_name);
+    auto it = std::ranges::find_if(main_menu_bar_menus, [hash](const auto& menu) { return menu.hash == hash; });
+    if (it == main_menu_bar_menus.end()) {
+      register_main_menu_bar_menu(menu_name);
+      it = std::ranges::find_if(main_menu_bar_menus, [hash](const auto& menu) { return menu.hash == hash; });
+      OTHER_ASSERT(it != main_menu_bar_menus.end(), "Failed to find or register main menu bar menu with name '{}'", menu_name);
+    }
+
+    it->menu.sub_menus.push_back(sub_menu);
+    CORE_LOG_DEBUG("Registered main menu bar sub-menu: {}:{} [{}]", menu_name, sub_menu.name, hash);
+  }
+
+  void driver_ui::register_main_menu_bar_menu(const std::string_view menu_name) {
+    natural_t hash = FNV(menu_name);
+    if (std::ranges::find_if(main_menu_bar_menus, [hash](const auto& item) { return item.hash == hash; }) != main_menu_bar_menus.end()) {
+      CORE_LOG_ERROR("Main menu bar menu with name '{}' is already registered.", menu_name);
+      return;
+    }
+
+    main_menu_bar_menus.push_back({
+      .hash = hash,
+      .menu = {
+        .name = std::string(menu_name),
+        .sub_menus = {},
+        .items = {},
+      },
+    });
+    CORE_LOG_DEBUG("Registered main menu bar menu: {} [{}]", menu_name, hash);
+  }
+
+  void driver_ui::register_main_menu_bar_menu(const ui::menu& menu) {
+    natural_t hash = FNV(menu.name);
+    if (std::ranges::find_if(main_menu_bar_menus, [hash](const auto& item) { return item.hash == hash; }) != main_menu_bar_menus.end()) {
+      CORE_LOG_ERROR("Main menu bar menu with name '{}' is already registered.", menu.name);
+      return;
+    }
+
+    main_menu_bar_menus.push_back({
+      .hash = hash,
+      .menu = menu,
+    });
+    CORE_LOG_DEBUG("Registered main menu bar menu: {} [{}]", menu.name, hash);
+  }
+
+  void driver_ui::register_main_menu_bar_menu_item(const std::string_view menu_name, const ui::menu_item& item) {
+    natural_t hash = FNV(menu_name);
+    auto it = std::ranges::find_if(main_menu_bar_menus, [hash](const auto& menu) { return menu.hash == hash; });
+    if (it == main_menu_bar_menus.end()) {
+      register_main_menu_bar_menu(menu_name);
+      it = std::ranges::find_if(main_menu_bar_menus, [hash](const auto& menu) { return menu.hash == hash; });
+      OTHER_ASSERT(it != main_menu_bar_menus.end(), "Failed to find or register main menu bar menu with name '{}'", menu_name);
+    }
+
+    it->menu.items.push_back(item);
+    CORE_LOG_DEBUG("Registered main menu bar menu item: {}:{} [{}]", menu_name, item.name, hash);
   }
 
   event_system& driver_ui::events() {
@@ -188,36 +271,64 @@ namespace other {
         window.window_ptr->render();
       }
     }
+
+    {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment is not initialized in driver UI render.");
+
+      auto* registry = env->get_object(window_registry_id);
+      OTHER_ASSERT(registry != nullptr, "UI window registry object is null in driver UI render.");
+      OTHER_ASSERT(registry->dotnet_object != nullptr, "UI window registry .NET object is null in driver UI render.");
+      registry->dotnet_object->invoke<>("RenderAll");
+    }
   }
 
   void driver_ui::open_custom_window(const std::string_view name) {
     auto itr = custom_windows.find(FNV(name));
     if (itr == custom_windows.end()) {
-      CORE_LOG_ERROR("Unknown custom UI window requested to open: {}", name);
-      return;
-    }
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment is not initialized in driver UI open_custom_window.");
 
-    if (itr->second.window_ptr == nullptr) {
-      CORE_LOG_ERROR("Custom UI window '{}' appears to be unimplemented.", name);
-      return;
+      auto* obj = env->get_object(window_registry_id);
+      OTHER_ASSERT(obj != nullptr, "Failed to get window registry object from scripting environment in driver UI open_custom_window.");
+      OTHER_ASSERT(obj->dotnet_object != nullptr, "UI window registry .NET object is null in driver UI open_custom_window.");
+      {
+        native_string native_name = native_string::new_str(name);
+        obj->dotnet_object->invoke<>("OpenWindow", native_name);
+        native_string::free_str(native_name);
+      }
+    } else {
+      if (itr->second.window_ptr == nullptr) {
+        CORE_LOG_ERROR("Custom UI window '{}' appears to be unimplemented.", name);
+        return;
+      }
+      itr->second.window_ptr->toggle_open();
+      itr->second.open = true;
     }
-    itr->second.window_ptr->toggle_open();
-    itr->second.open = true;
   }
 
   void driver_ui::close_custom_window(const std::string_view name) {
     auto itr = custom_windows.find(FNV(name));
     if (itr == custom_windows.end()) {
-      CORE_LOG_ERROR("Unknown custom UI window requested to close: {}", name);
-      return;
-    }
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment is not initialized in driver UI close_custom_window.");
 
-    if (itr->second.window_ptr == nullptr) {
-      CORE_LOG_ERROR("Custom UI window '{}' appears to be unimplemented.", name);
-      return;
+      auto* obj = env->get_object(window_registry_id);
+      OTHER_ASSERT(obj != nullptr, "Failed to get window registry object from scripting environment in driver UI close_custom_window.");
+      OTHER_ASSERT(obj->dotnet_object != nullptr, "UI window registry .NET object is null in driver UI close_custom_window.");
+      {
+        native_string native_name = native_string::new_str(name);
+        obj->dotnet_object->invoke<>("CloseWindow", native_name);
+        native_string::free_str(native_name);
+      }
+    } else {
+      if (itr->second.window_ptr == nullptr) {
+        CORE_LOG_ERROR("Custom UI window '{}' appears to be unimplemented.", name);
+        return;
+      }
+      itr->second.window_ptr->toggle_close();
+      itr->second.open = false;
     }
-    itr->second.window_ptr->toggle_close();
-    itr->second.open = false;
   }
 
 }  // namespace other

@@ -17,7 +17,7 @@ namespace other {
     if (dotnet_id == -1 || type_interface_initialized) {
       return;
     }
-    CORE_LOG_DEBUG("Initializing dotnet_type[{}] interface", full_name());
+    // CORE_LOG_DEBUG("Initializing dotnet_type[{}] interface", full_name());
 
     dotnet_methods.clear();
     dotnet_fields.clear();
@@ -65,7 +65,7 @@ namespace other {
 
     type_interface_initialized = true;
 
-    CORE_LOG_DEBUG("dotnet_type[{}] initialized", full_name());
+    // CORE_LOG_DEBUG("dotnet_type[{}] initialized", full_name());
   }
 
   std::string dotnet_type::full_name() const {

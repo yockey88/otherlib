@@ -13,6 +13,7 @@
 namespace other {
 
   class driver;
+  class dotnet_object;
 
   class driver_ui {
    public:
@@ -61,6 +62,11 @@ namespace other {
     void close_window(const std::string_view window_name);
     bool is_window_open(const std::string_view window_name) const;
 
+    void register_main_menu_bar_menu(const std::string_view menu_name);
+    void register_main_menu_bar_menu(const ui::menu& menu);
+    void register_main_menu_bar_sub_menu(const std::string_view menu_name, const ui::menu& sub_menu);
+    void register_main_menu_bar_menu_item(const std::string_view menu_name, const ui::menu_item& item);
+
     template <typename T, typename... Args>
       requires std::derived_from<T, ui_window>
     void register_window(const std::string_view name, Args&&... args) {
@@ -100,14 +106,19 @@ namespace other {
 
       scope<ui_window> window_ptr = nullptr;
     };
+    struct main_menu_bar_menu {
+      natural_t hash;
+      ui::menu menu;
+    };
 
     bool main_menu_bar_open = false;
     driver* driver_ptr = nullptr;
     builtin_window builtin_windows[NUM_BUILTIN_WINDOW_TYPES];
 
     ui::menu_bar main_menu_bar;
-    std::vector<ui::menu_item> main_menu_items;
+    std::vector<main_menu_bar_menu> main_menu_bar_menus;
 
+    natural_t window_registry_id = 0;
     std::unordered_map<natural_t, driver_window> custom_windows;
 
     event_system& events();

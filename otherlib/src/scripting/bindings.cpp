@@ -390,7 +390,7 @@ namespace other {
     template <typename T>
       requires reflected_type<T>
     void bind_lua_component(sol::state& lua_state, const std::string_view lua_name) {
-      CORE_LOG_DEBUG(" - binding to Lua: '{}'", get_native_type_name<T>());
+      // CORE_LOG_DEBUG(" - binding to Lua: '{}'", get_native_type_name<T>());
       sol::usertype<T> lua_usertype = lua_state.new_usertype<T>(lua_name);
       refl::util::for_each(refl::reflect<T>().members, [&](auto member) {
         if constexpr (!refl::descriptor::is_function(member) && refl::descriptor::has_attribute<attr::serializable>(member)) {
@@ -398,7 +398,7 @@ namespace other {
           field_t T::* field_ptr = member.pointer;
           std::string name = std::string{ member.name };
           lua_usertype.set(name, field_ptr);
-          CORE_LOG_TRACE(" - Bound field '{}' of type [{}]", name, typeid(field_t).name());
+          // CORE_LOG_TRACE(" - Bound field '{}' of type [{}]", name, typeid(field_t).name());
         }
       });
 
@@ -409,7 +409,7 @@ namespace other {
     template <typename T>
       requires reflected_type<T>
     void bind_dotnet_component(dotnet_host& dn_host, dotnet_object* managed_binder) {
-      CORE_LOG_DEBUG(" - binding to .NET: '{}'", get_native_type_name<T>());
+      // CORE_LOG_DEBUG(" - binding to .NET: '{}'", get_native_type_name<T>());
 
       auto desc = make_component_descriptor<T>(get_native_type_name<T>());
       set_ecs_lifecycle<T>(desc);

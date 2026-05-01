@@ -5,14 +5,7 @@
 
 #include <toml++/toml.hpp>
 
-#include "file/filesystem.hpp"
-
-#include "dotnet/dotnet_object.hpp"
-#include "script/scripting_environment.hpp"
-
 #include "driver/driver.hpp"
-#include "driver/systems/job_driver_system.hpp"
-#include "tools/project_tool.hpp"
 
 namespace other {
 
@@ -20,7 +13,11 @@ namespace other {
     loaded_project = make_scope<project>(this);
     OTHER_ASSERT(loaded_project != nullptr, "Failed to create project instance");
 
-    get_driver().get_event_system()->register_event("project.loaded");
+    auto& events = *get_driver().get_event_system();
+    events.register_event("project.loaded");
+    events.register_event("project.new-project");
+    events.register_event("project.open-project");
+    events.register_event("project.save-project");
 
     const auto& config = get_driver().configuration();
     if (config.project_file.has_value()) {

@@ -71,6 +71,7 @@ def run_project(out_dir, cfg, name, config_file, verbose = False, extra_args=Non
   if verbose:  
     run_command.append("--verbose")
   if project_path is not None:
+    run_command.append("-f")
     run_command.append(project_path)
   
   if extra_args:
@@ -166,7 +167,7 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose, project_path="test-project/test-project.toml")
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose) #, project_path="test-project/test-project.toml")
     
     elif args.run_server:
       run_project("other-server", cfg, "other_server", "server-config.toml", args.verbose)

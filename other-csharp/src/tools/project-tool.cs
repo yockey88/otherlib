@@ -109,7 +109,7 @@ namespace Other.Toolset
       bool need_to_restore = false;
       string dotnet_proj_dir = Path.GetDirectoryName(csproj_path)!;
       string obj_dir = Path.Combine(dotnet_proj_dir, "obj");
-      need_to_restore = !Directory.Exists(obj_dir) || Directory.GetFiles(obj_dir, "*.assets.json").Length == 0;
+      // need_to_restore = !Directory.Exists(obj_dir) || Directory.GetFiles(obj_dir, "*.assets.json").Length == 0;
 
       if (!need_to_restore)
       {

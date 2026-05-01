@@ -203,12 +203,16 @@ namespace other {
     auto& events = get_driver().get_event_system();
     OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
 
-    // const auto& assets = asset_mgr->get_all_assets();
+    std::span<const natural_t> assets = asset_mgr->get_all_asset_ids();
 
-    // std::stringstream ss;
-    // for (const auto& [id, asset] : assets) {
-    //   ss << "Asset ID: " << id << ", Type: " << asset->type_name() << ", Virtual Path: " << asset->virtual_path << "\n";
-    // }
+    std::stringstream ss;
+    for (const natural_t id : assets) {
+      auto* asset = asset_mgr->get_asset(id);
+      if (asset != nullptr) {
+        ss << "Asset ID: " << id << ", Type: " << asset->asset_type << "[" << asset->virtual_path << "]\n";
+      }
+    }
+    CORE_LOG_INFO("Assets:\n{}", ss.str());
   }
 
 }  // namespace other

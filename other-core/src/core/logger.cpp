@@ -133,8 +133,10 @@ namespace other {
     auto now = std::chrono::system_clock::now();
     std::time_t now_time = std::chrono::system_clock::to_time_t(now);
     std::tm now_tm = *std::localtime(&now_time);
+
     std::stringstream time_stream;
     time_stream << std::put_time(&now_tm, "%Y-%m-%d %H:%M:%S");
+
     std::string time_str = time_stream.str();
     *error_log_file << "[" << time_str << "] "
                     << "LOG FAILURE ERROR: " << message << std::endl;

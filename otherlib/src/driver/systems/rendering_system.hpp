@@ -12,7 +12,6 @@
 #include "driver/systems/core_system.hpp"
 #include "ui/driver_ui.hpp"
 
-
 namespace other {
 
   class rendering_system : public core_system<rendering_system> {
@@ -23,6 +22,7 @@ namespace other {
     std::string name() const override { return "Rendering System"; }
 
     void initialize(driver_kernel* kernel) override;
+    void late_initialize(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
@@ -31,6 +31,9 @@ namespace other {
 
     void open_ui_window(const std::string_view name);
     void close_ui_window(const std::string_view name);
+
+    ui::menu build_menu(const std::string_view name, const sol::table& menu_table);
+    ui::menu_item build_menu_item(const std::string_view name, sol::function action);
 
     scope<renderer>& get_renderer();
     scope<driver_ui>& get_driver_ui();
@@ -49,6 +52,10 @@ namespace other {
     void handle_viewport_resize_event(const value& data);
 
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);
+
+    void show_open_file_dialog(const value& data);
+    void show_open_folder_dialog(const value& data);
+    void show_save_file_dialog(const value& data);
   };
 
 }  // namespace other

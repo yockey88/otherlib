@@ -100,24 +100,46 @@ namespace other {
 
     lua_callback(lua_script* script, const std::string_view function_name)
         : lua_script_ptr(script), function_name(function_name) {}
+    lua_callback(sol::function func)
+        : lua_func(func) {}
+    lua_callback(sol::function func, const std::string_view function_name)
+        : lua_func(func), function_name(function_name) {}
     virtual ~lua_callback() = default;
     value call_impl(const std::span<value> args) override {
-      if (lua_script_ptr == nullptr || !lua_script_ptr->is_valid()) {
-        throw callback_error("Lua script is not valid in lua callback.");
-      }
+      if (lua_script_ptr == nullptr) {
+        if (!lua_func.valid()) {
+          CORE_LOG_ERROR("Lua function is not valid in lua callback.");
+          return value();
+        }
 
-      auto unpacked_args = detail::unpack_args<Args...>(args);
-      if constexpr (std::is_same_v<R, void>) {
-        std::apply([this](auto&&... unpacked) { lua_script_ptr->call_function<void>(function_name, std::forward<Args>(unpacked)...); }, unpacked_args);
-        return value();
+        auto unpacked_args = detail::unpack_args<Args...>(args);
+        if constexpr (std::is_same_v<R, void>) {
+          std::apply([this](auto&&... unpacked) { lua_func(std::forward<Args>(unpacked)...); }, unpacked_args);
+          return value();
+        } else {
+          R ret = std::apply([this](auto&&... unpacked) { return lua_func(std::forward<Args>(unpacked)...); }, unpacked_args);
+          return value(ret);
+        }
       } else {
-        R ret = std::apply([this](auto&&... unpacked) { return lua_script_ptr->call_function<R>(function_name, std::forward<Args>(unpacked)...); }, unpacked_args);
-        return value(ret);
+        if (!lua_script_ptr->is_valid()) {
+          CORE_LOG_ERROR("Lua script is not valid in lua callback.");
+          return value();
+        }
+
+        auto unpacked_args = detail::unpack_args<Args...>(args);
+        if constexpr (std::is_same_v<R, void>) {
+          std::apply([this](auto&&... unpacked) { lua_script_ptr->call_function<void>(function_name, std::forward<Args>(unpacked)...); }, unpacked_args);
+          return value();
+        } else {
+          R ret = std::apply([this](auto&&... unpacked) { return lua_script_ptr->call_function<R>(function_name, std::forward<Args>(unpacked)...); }, unpacked_args);
+          return value(ret);
+        }
       }
     }
 
    private:
     lua_script* lua_script_ptr = nullptr;
+    sol::function lua_func;
     std::string function_name = "";
   };
 

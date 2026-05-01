@@ -9,6 +9,10 @@ namespace other {
     callback_fn = cb;
   }
 
+  bool action::has_callback() const {
+    return callback_fn != nullptr;
+  }
+
   value action::execute(const std::span<value> args) {
     if (callback_fn) {
       return callback_fn->call(args);

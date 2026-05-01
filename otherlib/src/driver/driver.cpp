@@ -17,6 +17,7 @@
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/scene_system.hpp"
+#include "scripting/actions/action.hpp"
 #include "scripting/bindings.hpp"
 #include "scripting/scene_interface.hpp"
 #include "vm/other_device.hpp"
@@ -476,12 +477,11 @@ namespace other {
       return;
     }
 
-    /// load scenes from project
-    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
-
+    // opt<natural_t> starting_scene_id;
     /// do this before running rc file in case rc file loads a scene
     if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
       /// add scene to project if not in scene list
+      // starting_scene_id = curr_scene->id;
       driver_kernel_ptr->get_core_system<scene_system>().unload_active_scene();
     }
 
@@ -505,6 +505,14 @@ namespace other {
         CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", rc_path.string());
       }
     }
+
+    /// load scenes from project
+    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
+
+    /// restore scene?
+    // if (starting_scene_id.has_value()) {
+    //   driver_kernel_ptr->get_core_system<scene_system>().set_active_scene(starting_scene_id.value());
+    // }
   }
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
@@ -531,6 +539,11 @@ namespace other {
 
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
     driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {
+      if (data.get_type() == sol::type::table) {
+        CORE_LOG_ERROR("Driver event '{}' triggered with unsupported data type: {}.", event, data.get_type());
+        return;
+      }
+
       value val;
       switch (data.get_type()) {
         case sol::type::nil: break;
@@ -543,12 +556,6 @@ namespace other {
         case sol::type::string:
           val = value(data.as<std::string>());
           break;
-        case sol::type::table: {
-          sol::table tbl = data.as<sol::table>();
-          // val = lua_table_to_value(tbl);
-          CORE_LOG_DEBUG("Lua table to value conversion not yet implemented for driver event data.");
-          return;
-        } break;
         default:
           CORE_LOG_WARN("Unsupported data type for event user data: {}", data.get_type());
           break;
@@ -557,6 +564,13 @@ namespace other {
     });
     driver_table.set_function("process_driver_event", [host_driver](driver_event event) {
       host_driver->process_driver_event(event);
+    });
+    driver_table.set_function("add_main_menu_bar_menu_item", [host_driver](const std::string& menu_name, sol::object menu_item_table) {
+      auto& rendering_sys = host_driver->get_kernel().get_core_system<rendering_system>();
+      auto& driver_ui = rendering_sys.get_driver_ui();
+
+      sol::table t = menu_item_table.as<sol::table>();
+      driver_ui->register_main_menu_bar_menu(rendering_sys.build_menu(menu_name, t));
     });
 
     /// now we bind dotnet types into lua types by asking the dotnet types to write their descriptor tables

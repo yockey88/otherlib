@@ -3,11 +3,22 @@
  **/
 #include "driver/systems/rendering_system.hpp"
 
+#include <SDL3/SDL_dialog.h>
+
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
 
 namespace other {
+  namespace detail {
+
+    void file_dialog_callback(void* userdata, const char* const* filelist, int32_t filter) {
+      // auto* kernel = static_cast<driver_kernel*>(userdata);
+      // value data = std::string(file);
+      // kernel->get_core_system<event_driver_system>().handle_open_project_file_dialog_event(kernel, data);
+    }
+
+  }  // namespace detail
 
   void rendering_system::initialize(driver_kernel* kernel) {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
@@ -31,10 +42,18 @@ namespace other {
     events.add_listener("ls.windows", [this](const value& data) { handle_ls_windows_event(&get_driver().get_kernel(), data); });
   }
 
+  void rendering_system::late_initialize(driver_kernel* kernel) {
+    auto& events = *get_driver().get_event_system();
+    events.add_listener("project.new-project", std::bind_front(&rendering_system::show_open_file_dialog, this));
+    events.add_listener("project.open-project", std::bind_front(&rendering_system::show_open_file_dialog, this));
+    // events.add_listener("project.save-project", std::bind_front(&rendering_system::show_save_file_dialog, this));
+  }
+
   void rendering_system::tick(driver_kernel* kernel, double dt) {
   }
 
   void rendering_system::shutdown(driver_kernel* kernel) {
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized in rendering system shutdown.");
     driver_ui_ptr->shutdown();
     driver_ui_ptr = nullptr;
 
@@ -67,31 +86,57 @@ namespace other {
   }
 
   void rendering_system::render_ui(driver_kernel* kernel) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system render_ui.");
     renderer_ptr->begin_ui_frame();
     driver_ui_ptr->render();
-    /// render C# scripts
-    // {
-    //   PROFILE_SECTION("driver::render_ui--csharp-scripts");
-    //   auto* env = subsystem<scripting_environment>::get();
-    //   dotnet_object::invoke_state_function("UIWindowRegistry.RenderAll");
-    // }
     renderer_ptr->end_ui_frame();
   }
 
   void rendering_system::open_ui_window(const std::string_view name) {
-    if (driver_ui_ptr != nullptr) {
-      driver_ui_ptr->open_window(name);
-    } else {
-      CORE_LOG_ERROR("Driver UI subsystem is not initialized. Cannot open UI window '{}'", name);
-    }
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI subsystem is not initialized. Cannot open UI window '{}'", name);
+    driver_ui_ptr->open_window(name);
   }
 
   void rendering_system::close_ui_window(const std::string_view name) {
-    if (driver_ui_ptr != nullptr) {
-      driver_ui_ptr->close_window(name);
-    } else {
-      CORE_LOG_ERROR("Driver UI subsystem is not initialized. Cannot close UI window '{}'", name);
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI subsystem is not initialized. Cannot close UI window '{}'", name);
+    driver_ui_ptr->close_window(name);
+  }
+
+  ui::menu rendering_system::build_menu(const std::string_view name, const sol::table& menu_table) {
+    ui::menu menu = {
+      .name = std::string{ name },
+      .sub_menus = {},
+      .items = {},
+    };
+
+    for (const auto& pair : menu_table) {
+      sol::table item = pair.second.as<sol::table>();
+
+      std::string item_name = item["Name"];
+      sol::optional<sol::function> action_fn = item["Action"];
+      sol::optional<sol::table> sub_items = item["SubItems"];
+
+      if (sub_items.has_value()) {
+        menu.sub_menus.push_back(build_menu(item_name, sub_items.value()));
+      } else if (action_fn.has_value()) {
+        menu.items.push_back(build_menu_item(item_name, action_fn.value()));
+      } else {
+        CORE_LOG_WARN("Menu item '{}' in menu '{}' has no action or sub-items defined.", item_name, name);
+      }
     }
+    return menu;
+  }
+
+  ui::menu_item rendering_system::build_menu_item(const std::string_view name, sol::function action_fn) {
+    ui::menu_item item = {
+      .name = std::string(name),
+      .action = std::nullopt,
+    };
+    if (action_fn.valid()) {
+      item.action = action();
+      item.action->set_callback(make_ref<lua_callback<void>>(action_fn, std::string(name) + "." + "action"));
+    }
+    return item;
   }
 
   scope<renderer>& rendering_system::get_renderer() {
@@ -148,6 +193,22 @@ namespace other {
     auto& events = get_driver().get_event_system();
     OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
     events->trigger_event("console.output", ss.str());
+  }
+
+  void rendering_system::show_open_file_dialog(const value& data) {
+    CORE_LOG_WARN("Showing open file dialog...");
+    // auto* backend = subsystem<renderer_backend>::get();
+    // OTHER_ASSERT(backend != nullptr, "Renderer backend subsystem is not initialized.");
+
+    // auto* main_window = backend->get_main_window();
+    // OTHER_ASSERT(main_window != nullptr, "Main window is not available in renderer backend.");
+    SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFILE, &detail::file_dialog_callback, nullptr, 0);
+  }
+
+  void rendering_system::show_open_folder_dialog(const value& data) {
+  }
+
+  void rendering_system::show_save_file_dialog(const value& data) {
   }
 
 }  // namespace other

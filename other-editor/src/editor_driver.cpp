@@ -12,7 +12,7 @@
 #include "object/scene_object.hpp"
 
 #include "driver/systems/scene_system.hpp"
-#include "tools/environment_console.hpp"
+#include "tools/environment_console_sink.hpp"
 #include "ui/driver_ui.hpp"
 
 #include "project_window.hpp"

@@ -5,14 +5,15 @@
 #define OTHERLIB_UI_MENU_BAR_MENU_ITEM_HPP
 
 #include <string>
-#include <vector>
+
+#include "scripting/actions/action.hpp"
 
 namespace other {
   namespace ui {
 
     struct menu_item {
       std::string name;
-      std::vector<menu_item> sub_items;
+      opt<action> action = std::nullopt;
 
       void render();
     };

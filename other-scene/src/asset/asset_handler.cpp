@@ -166,16 +166,7 @@ namespace other {
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for asset ID: {}", asset_id);
     CORE_LOG_DEBUG("Beginning load for asset ID: {} (Type: {}, Path: {})", asset_id, asset_type, file_path.string());
 
-    asset* loading_asset = &it->loading_asset;
-    loading_asset->path_hash = hash;
-
-    CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
-    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
-    it->pipeline->start_load(
-      executor, &it->loading_asset,
-      std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this)
-    );
+    begin_load(it, state_it);
 
     return asset_id;
   }
@@ -222,15 +213,7 @@ namespace other {
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for model source asset ID: {}", model_id);
     CORE_LOG_DEBUG("Beginning add_model_source_asset for asset ID: {} (Name: {})", model_id, name);
 
-    asset* loading_asset = &it->loading_asset;
-
-    CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
-    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
-    it->pipeline->start_load(
-      executor, &it->loading_asset,
-      std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this)
-    );
+    begin_load(it, state_it);
 
     return model_id;
   }
@@ -263,15 +246,7 @@ namespace other {
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for scene asset ID: {}", scene_id);
     CORE_LOG_DEBUG("Beginning add_scene_asset for asset ID: {} (Name: {})", scene_id, it->loading_asset.virtual_path);
 
-    asset* loading_asset = &it->loading_asset;
-
-    CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
-    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
-    it->pipeline->start_load(
-      executor, &it->loading_asset,
-      std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this)
-    );
+    begin_load(it, state_it);
 
     return scene_id;
   }
@@ -281,7 +256,6 @@ namespace other {
     natural_t pl_id = get_next_asset_id();
 
     std::string pl_name = std::string{ name };
-
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
                                                               .pipeline = asset_pipeline::get_rendering_pipeline_pipeline(events, this, definition),
                                                               .loading_asset = {
@@ -299,15 +273,7 @@ namespace other {
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for rendering pipeline asset ID: {}", pl_id);
     CORE_LOG_DEBUG("Beginning add_rendering_pipeline_asset for asset ID: {} (Name: {})", pl_id, it->loading_asset.virtual_path);
 
-    asset* loading_asset = &it->loading_asset;
-
-    CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
-    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
-    it->pipeline->start_load(
-      executor, &it->loading_asset,
-      std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this)
-    );
+    begin_load(it, state_it);
     return pl_id;
   }
 
@@ -349,6 +315,23 @@ namespace other {
     );
   }
 
+  asset* asset_handler::get_asset(natural_t asset_id) {
+    if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
+      return &it->second;
+    }
+
+    auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+    if (it != asset_pipelines.end()) {
+      return &it->loading_asset;
+    }
+
+    return nullptr;
+  }
+
+  std::span<const natural_t> asset_handler::get_all_asset_ids() const {
+    return std::span<const natural_t>{ all_assets.begin(), all_assets.end() };
+  }
+
   asset_state asset_handler::get_asset_state(natural_t asset_id) const {
     auto it = asset_states.find(asset_id);
     if (it != asset_states.end()) {
@@ -385,6 +368,25 @@ namespace other {
     }
 
     return 0;
+  }
+
+  void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
+    OTHER_ASSERT(pipeline_it != asset_pipelines.end(), "Invalid pipeline iterator in begin_load");
+    OTHER_ASSERT(state_it != asset_states.end(), "Invalid state machine iterator in begin_load");
+
+    asset* loading_asset = &pipeline_it->loading_asset;
+
+    CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
+    state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
+    pipeline_it->pipeline->start_load(
+      executor, &pipeline_it->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_load_complete, this),
+      std::bind_front(&asset_handler::notify_asset_load_failed, this)
+    );
+
+    if (std::ranges::find(all_assets, loading_asset->id) == all_assets.end()) {
+      all_assets.push_back(loading_asset->id);
+    }
   }
 
   asset* asset_handler::find_asset_by_path(const filepath& file_path) const {
@@ -515,7 +517,7 @@ namespace other {
     }
 
     OTHER_ASSERT(dir_handle != nullptr, "Final directory handle is null for asset virtual path: {}", asset_ptr->virtual_path);
-    CORE_LOG_INFO("Directory for asset ID {}: {}\n", asset_ptr->id, dir_handle->to_string());
+    CORE_LOG_INFO("Directory for asset ID {}: {}", asset_ptr->id, dir_handle->to_string());
 
     file_type type = full_virtual_file ? file_type::VIRTUAL : file_type::LOCAL;
     ref<file_handle> file_handle = nullptr;

@@ -3,6 +3,8 @@
  **/
 #include "value_test.hpp"
 
+#include <sol/sol.hpp>
+
 #include "core/defines.hpp"
 
 namespace other {
