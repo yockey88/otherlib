@@ -1,4 +1,5 @@
 import subprocess
+import aiohttp
 from aiohttp import web
 
 def _print_json_data(data, indent=0):
@@ -13,6 +14,10 @@ def _print_json_data(data, indent=0):
       _print_json_data(item, indent + 1)
   else:
     print(f"{indent_str}{data}")
+
+def _get_github_base_url():
+  # In a real implementation, this might be configurable or determined dynamically
+  return "https://api.github.com"
 
 class TestRunner:
   def __init__(self):
@@ -43,13 +48,42 @@ class TestRunner:
         print(f"Header: {key} = {value}")
     return data
   
+  async def _do_check_pr_get(self, request):
+    async with aiohttp.ClientSession().get(request["url"]) as resp:
+      if resp.status == 200:
+        return await resp.json()
+      else:
+        print(f"Failed to check for open pull request: HTTP {resp.status}")
+  
+  async def _check_for_open_pull_request(self, data):
+    ref = data.get("ref", "")
+    if ref.startswith("refs/heads/"):
+      branch_name = ref[len("refs/heads/"):]
+      print(f"Checking for open pull request for branch: {branch_name}")
+      
+      owner = data.get("repository", {}).get("owner", {}).get("name", "")
+      repo = data.get("repository", {}).get("name", "")
+      check_pr_request = {
+        "method": "GET",
+        "url": f"{_get_github_base_url()}/repos/{owner}/{repo}/pulls?head={owner}:{branch_name}&state=open",
+        "headers": {
+          "Accept": "application/vnd.github.v3+json",
+          # Add authentication headers if necessary
+        }
+      }
+      pr_data = await self._do_check_pr_get(check_pr_request)
+      _print_json_data(pr_data)
+      print(f"Checked for open pull request for branch: {branch_name}")
+    else:
+      print(f"Ref '{ref}' is not a branch reference. Skipping pull request check.")
+  
   async def _handle_run_test_get(self, data):
     print(f"Handling GET request with data: {data}")
     return web.Response(status=200, text="Request validated successfully")
   
   async def _handle_run_test_post(self, data):
-    for key, value in data.items():
-      _print_json_data({key: value})
+    # check if branch has open pull-request
+    await self._check_for_open_pull_request(data)
     return web.Response(status=200, text="Request validated successfully")
     
   async def get_run_tests(self, request):
