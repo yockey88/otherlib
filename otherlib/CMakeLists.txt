@@ -122,6 +122,7 @@ target_sources(otherlib
     src/ui/scene-hierarchy/scene_hierarchy_node.cpp
     src/ui/scene-hierarchy/scene_hierarchy.cpp
     src/ui/menu-bar/menu_item.cpp
+    src/ui/menu-bar/menu.cpp
     src/ui/menu-bar/menu_bar.cpp
     src/ui/property_inspector_node.cpp
     src/ui/inspector_widgets.cpp

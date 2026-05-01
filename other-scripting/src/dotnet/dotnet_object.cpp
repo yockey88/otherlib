@@ -489,14 +489,28 @@ namespace other {
   void dotnet_object::invoke_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     auto name = native_string::new_str(method_name);
-    host->interop().invoke_method(managed_object, name, argv, arg_ts, argc);
+    host->interop().invoke_instance_method(managed_object, name, argv, arg_ts, argc);
     native_string::free_str(name);
   }
 
   void dotnet_object::invoke_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     auto name = native_string::new_str(method_name);
-    host->interop().invoke_method_ret(managed_object, name, argv, arg_ts, argc, out);
+    host->interop().invoke_instance_method_ret(managed_object, name, argv, arg_ts, argc, out);
+    native_string::free_str(name);
+  }
+
+  void dotnet_object::invoke_static_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc) {
+    OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    auto name = native_string::new_str(method_name);
+    host->interop().invoke_static_method(dn_type, name, argv, arg_ts, argc);
+    native_string::free_str(name);
+  }
+
+  void dotnet_object::invoke_static_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out) {
+    OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    auto name = native_string::new_str(method_name);
+    host->interop().invoke_static_method_ret(dn_type, name, argv, arg_ts, argc, out);
     native_string::free_str(name);
   }
 

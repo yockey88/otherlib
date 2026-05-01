@@ -70,6 +70,7 @@ namespace other {
     virtual std::string name() const = 0;
 
     virtual void initialize(driver_kernel* kernel) = 0;
+    virtual void late_initialize(driver_kernel* kernel) {}
     virtual void tick(driver_kernel* kernel, double dt) = 0;
     virtual void shutdown(driver_kernel* kernel) = 0;
 

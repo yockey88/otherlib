@@ -160,4 +160,30 @@ namespace other {
     env->shutdown_script_environment();
   }
 
+  TEST_F(action_tests, lua_callback_test_with_sol_function) {
+    // GTEST_SKIP() << "Lua callback implementation needs to be redesigned";
+
+    sol::state lua_state;
+    lua_state.open_libraries(sol::lib::base);
+
+    lua_state.script(R"(
+      function add(a, b)
+        return a + b
+      end
+    )");
+
+    sol::function add_func = lua_state["add"];
+    ASSERT_TRUE(add_func.valid());
+
+    {
+      ref<callback> callback_fn = make_ref<lua_callback<int, int, int>>(add_func);
+      ASSERT_NE(callback_fn, nullptr);
+
+      std::vector<value> args = { value(20), value(22) };
+      value ret = callback_fn->call(args);
+      ASSERT_EQ(ret.type(), value_type::INT32);
+      ASSERT_EQ((int)ret, 42);
+    }
+  }
+
 }  // namespace other

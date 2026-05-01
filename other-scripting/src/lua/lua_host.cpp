@@ -7,6 +7,7 @@
 #include "core/logger.hpp"
 
 #include "lua/lua_script.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "sol/load_result.hpp"
 

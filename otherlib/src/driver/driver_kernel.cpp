@@ -155,6 +155,12 @@ namespace other {
       CORE_LOG_DEBUG("Initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
       builtin_systems[static_cast<size_t>(type)]->initialize(this);
     }
+
+    for (const auto type : system_order) {
+      OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
+      CORE_LOG_DEBUG("Late initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
+      builtin_systems[static_cast<size_t>(type)]->late_initialize(this);
+    }
   }
 
   void driver_kernel::tick(double dt) {

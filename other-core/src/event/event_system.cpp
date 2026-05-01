@@ -28,6 +28,7 @@ namespace other {
   }
 
   void event_system::trigger_event(natural_t event_id) {
+    CORE_LOG_TRACE("Triggering event with ID {}", event_id);
     std::vector<event::handler> listeners;
     value data;
     {
@@ -36,6 +37,7 @@ namespace other {
         return ctx.ev.id == event_id;
       });
       if (itr == registered_events.end()) {
+        CORE_LOG_ERROR("Attempted to trigger unregistered event ID {}", event_id);
         return;
       }
 
@@ -102,7 +104,7 @@ namespace other {
       registered_events.push_back({ ev, {} });
     }
 
-    CORE_LOG_DEBUG("Registered event with ID {}", id);
+    CORE_LOG_DEBUG("Registered event {} with ID {}", name, id);
     return id;
   }
 
@@ -119,6 +121,7 @@ namespace other {
     if (itr == registered_events.end()) {
       /// expected if event system is cleared before the timer is polled to call the final cancel,
       ///  usually will occur if clear is called before the events are fully purged
+      CORE_LOG_ERROR("Attempted to cancel unregistered event ID {}", event_id);
       return;
     }
     itr->listeners.clear();

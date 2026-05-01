@@ -6,14 +6,15 @@
 
 #include <span>
 
-#include "ui/menu-bar/menu_item.hpp"
+#include "ui/menu-bar/menu.hpp"
 
 namespace other {
   namespace ui {
 
-    class menu_bar {
-     public:
-      void render(std::span<menu_item> items);
+    struct menu_bar {
+      bool main_menu_bar = false;
+
+      void render(std::span<menu> menus);
     };
 
   }  // namespace ui

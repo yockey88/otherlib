@@ -202,6 +202,54 @@ end
 local function _process_driver_event_impl(event)
   __other_native.__driver.process_driver_event(event)
 end
+local function _add_main_menu_bar_menu_item_impl(menu_name, items)
+  __other_native.__driver.add_main_menu_bar_menu_item(menu_name, items)
+end
+
+local function _validate_menu_bar_menu_items(items)
+  if type(items) ~= "table"
+  then
+    _Meta:Console().PushError("Menu items must be provided as a table.")
+    return false
+  end
+
+  for i, item in ipairs(items)
+  do
+    if type(item) ~= "table"
+    then
+      _Meta:Console().PushError(string.format("Menu item at index %d is not a table.", i))
+      return false
+    end
+
+    if type(item.Name) ~= "string"
+    then
+      _Meta:Console().PushError(string.format("Menu item at index %d does not have a valid 'Name' field.", i))
+      return false
+    end
+
+    -- nil could be if it as SubItems instead
+    if item.Action ~= nil and type(item.Action) ~= "function"
+    then
+      _Meta:Console().PushError(string.format("Menu item at index %d does not have a valid 'Action' function.", i))
+      return false
+    end
+    
+    if item.SubItems ~= nil and type(item.SubItems) ~= "table"
+    then
+      _Meta:Console().PushError(string.format("Menu item at index %d has an invalid 'SubItems' field; it must be a table.", i))
+      return false
+    end
+    if item.SubItems ~= nil
+    then
+      if not _validate_menu_bar_menu_items(item.SubItems)
+      then
+        return false
+      end
+    end
+  end
+
+  return true
+end
 
 local _Driver = {
   State = {
@@ -353,4 +401,163 @@ function _Driver._parse_scene_op_args(args)
 end
 
 local _D = _Driver:new()
+
+function _D:AddMainMenuBarMenu(menu_name, items)
+  if menu_name == nil or menu_name == ""
+  then
+    _Meta:Console().PushError("Invalid menu name provided to AddMainMenuBarMenu")
+    return
+  end
+
+  if not _validate_menu_bar_menu_items(items)
+  then
+    _Meta:Console().PushError("Invalid items table provided to AddMainMenuBarMenu")
+    return
+  end
+
+  _add_main_menu_bar_menu_item_impl(menu_name, items)
+end
+
+function _D:_OpenClose(type, args)
+  local parsed_args, success = self:_parse_open_close_args(type, args)
+  if not success
+  then
+    return
+  end
+
+  if parsed_args.type == "file"
+  then
+    _Meta:Console().PushError("[TODO] open file requested: " .. parsed_args.path)
+    -- local open_args = {
+    --   type = "file",
+    --   path = file_path
+    -- }
+    -- Driver.TriggerEvent("open-requested", open_args)
+  elseif parsed_args.type == "window"
+  then
+    self.TriggerEvent(string.format("%s-driver-ui-window", type), parsed_args.window_identifier)
+  end
+end
+
+function _D:_List(args)
+  local parsed_args, success = self._parse_list_args(args)
+  if not success
+  then
+    return
+  end
+
+  local event_name = "ls." .. parsed_args.type
+  self.TriggerEvent(event_name)
+end
+
+function _D:_ObjectOpEvent(operation, op_table)
+  local event_name = "object-driver-" .. operation
+  if operation ~= nil and 
+    (operation == "create" or operation == "destroy" or operation == "push" or operation == "info") and
+     op_table.identifier ~= nil then
+    self.TriggerEvent(event_name, op_table.identifier)
+  end
+  if operation == "pop" 
+  then
+    self.TriggerEvent(event_name)
+  end
+end
+
+function _D:_ObjectOp(args)
+  local parsed_args, success = self._parse_object_op_args(args)
+  if not success
+  then
+    return
+  end
+
+  if parsed_args.operation == nil
+  then
+    _Meta:Console().PushError("No operation specified for object command")
+    return
+  end
+
+  if parsed_args.op_table == nil
+  then
+    _Meta:Console().PushError("No operation data specified for object command")
+    return
+  end
+
+  local event_name = "object-driver-" .. parsed_args.operation
+  self:_ObjectOpEvent(parsed_args.operation, parsed_args.op_table)
+end
+
+function _D:_SceneOp(args)
+  local parsed_args, success = self._parse_scene_op_args(args)
+  if not success
+  then return end
+
+  if parsed_args.operation == "new"
+  then
+    local scene_name = parsed_args.scene_name
+    if scene_name == nil or scene_name == ""
+    then
+      _Meta:Console().PushError("No scene name provided for new scene command")
+      return
+    end
+
+    -- _Meta:Driver().TriggerEvent("force-load-empty-scene", _Meta._string_utils.strip_leading_and_ending_whitespace(scene_name))
+  elseif parsed_args.operation == "load"
+  then
+    local scene_path = parsed_args.scene_path
+    if scene_path == nil or scene_path == ""
+    then
+      _Meta:Console().PushError("No scene path provided for load scene command")
+      return
+    end
+
+    _Meta:LoadScene(_Meta._string_utils.strip_leading_and_ending_whitespace(scene_path))
+  elseif parsed_args.operation == "unload"
+  then
+    -- _Meta:Driver().TriggerEvent("scene.unload-scene")
+  elseif parsed_args.operation == "info"
+  then
+    self.TriggerEvent("scene.request-info")
+  elseif parsed_args.operation == "play" or 
+         parsed_args.operation == "pause" or 
+         parsed_args.operation == "stop"
+  then
+    self.TriggerEvent("scene.playback-command", parsed_args.operation)
+  else
+    _Meta:Console().PushError("Unknown scene command operation: " .. tostring(parsed_args.operation))
+  end
+end
+
+function _D:OpenCommand(args)
+  self:_OpenClose("open", args)
+end
+function _D:CloseCommand(args)
+  self:_OpenClose("close", args)
+end
+
+function _D:OpenWindow(arg)
+  self:_OpenClose("open", { "--window", _Meta:String().as_string(arg) })
+end
+function _D:CloseWindow(arg)
+  self:_OpenClose("close", { "--window", _Meta:String().as_string(arg) })
+end
+
+function _D:OpenFile(arg)
+  self:_OpenClose("open", { "--file", _Meta:String().as_string(arg) })
+end
+function _D:CloseFile(arg)
+  self:_OpenClose("close", { "--file", _Meta:String().as_string(arg) })
+end
+
+function _D:ListCommand(args)
+  self:_List(args)
+end
+
+function _D:ObjectCommand(args)
+  self:_ObjectOp(args)
+end
+
+function _D:SceneCommand(args)
+  self:_SceneOp(args)
+end
+
 return _D

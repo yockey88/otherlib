@@ -53,10 +53,11 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/texture.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/material.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/mesh.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui_window.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/inspector.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/renderer.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/inspector.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui-window.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/window-registry.cs
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/other-abi.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/native-component.cs

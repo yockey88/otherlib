@@ -57,13 +57,13 @@ Vec3 = __native_vector3
 Vec4 = __native_vector4
 Quat = __native_quaternion
 
-
 _Meta._string_utils = _Meta:get_script("string_utils")
 _Meta._file_utils = _Meta:get_script("file_utils")
 _Meta._dotnet_type_cache = _Meta:get_script("dotnet_types")
 _Meta._scene_interface = _Meta:get_script("scene_interface")
 _Meta._scene_object_interface = _Meta:get_script("scene_object_interface")
 _Meta._driver_interface = _Meta:get_script("driver_interface")
+_Meta._console = _Meta:get_script("environment_console")
 
 function _Meta:String() return self._string_utils end
 function _Meta:File() return self._file_utils end
@@ -71,6 +71,7 @@ function _Meta:DotnetTypes() return self._dotnet_type_cache end
 function _Meta:Scene() return self._scene_interface end
 function _Meta:SceneObject() return self._scene_object_interface end
 function _Meta:Driver() return self._driver_interface end
+function _Meta:Console() return self._console end
 
 CoreLog = {
   Trace = function(...)    _send_log_impl(LogLevel.Trace, ...)    end,
@@ -100,153 +101,6 @@ function _Meta:LoadScene(path)
   end
 
   self:Driver().TriggerEvent("scene.load-scene", real_path)
-end
-
-_Meta._console = _Meta:get_script("environment_console")
-function _Meta:Console()
-  return self._console
-end
-
-function _Meta._driver_interface:_OpenClose(type, args)
-  local parsed_args, success = self:_parse_open_close_args(type, args)
-  if not success
-  then
-    return
-  end
-
-  if parsed_args.type == "file"
-  then
-    _Meta:Console().PushError("[TODO] open file requested: " .. parsed_args.path)
-    -- local open_args = {
-    --   type = "file",
-    --   path = file_path
-    -- }
-    -- Driver.TriggerEvent("open-requested", open_args)
-  elseif parsed_args.type == "window"
-  then
-    self.TriggerEvent(string.format("%s-driver-ui-window", type), parsed_args.window_identifier)
-  end
-end
-
-function _Meta._driver_interface:_List(args)
-  local parsed_args, success = self._parse_list_args(args)
-  if not success
-  then
-    return
-  end
-
-  local event_name = "ls." .. parsed_args.type
-  self.TriggerEvent(event_name)
-end
-
-function _Meta._driver_interface:_ObjectOpEvent(operation, op_table)
-  local event_name = "object-driver-" .. operation
-  if operation ~= nil and 
-    (operation == "create" or operation == "destroy" or operation == "push" or operation == "info") and
-     op_table.identifier ~= nil then
-    self.TriggerEvent(event_name, op_table.identifier)
-  end
-  if operation == "pop" 
-  then
-    self.TriggerEvent(event_name)
-  end
-end
-
-function _Meta._driver_interface:_ObjectOp(args)
-  local parsed_args, success = self._parse_object_op_args(args)
-  if not success
-  then
-    return
-  end
-
-  if parsed_args.operation == nil
-  then
-    _Meta:Console().PushError("No operation specified for object command")
-    return
-  end
-
-  if parsed_args.op_table == nil
-  then
-    _Meta:Console().PushError("No operation data specified for object command")
-    return
-  end
-
-  local event_name = "object-driver-" .. parsed_args.operation
-  self:_ObjectOpEvent(parsed_args.operation, parsed_args.op_table)
-end
-
-function _Meta._driver_interface:_SceneOp(args)
-  local parsed_args, success = self._parse_scene_op_args(args)
-  if not success
-  then return end
-
-  if parsed_args.operation == "new"
-  then
-    local scene_name = parsed_args.scene_name
-    if scene_name == nil or scene_name == ""
-    then
-      _Meta:Console().PushError("No scene name provided for new scene command")
-      return
-    end
-
-    -- _Meta:Driver().TriggerEvent("force-load-empty-scene", _Meta._string_utils.strip_leading_and_ending_whitespace(scene_name))
-  elseif parsed_args.operation == "load"
-  then
-    local scene_path = parsed_args.scene_path
-    if scene_path == nil or scene_path == ""
-    then
-      _Meta:Console().PushError("No scene path provided for load scene command")
-      return
-    end
-
-    _Meta:LoadScene(_Meta._string_utils.strip_leading_and_ending_whitespace(scene_path))
-  elseif parsed_args.operation == "unload"
-  then
-    -- _Meta:Driver().TriggerEvent("scene.unload-scene")
-  elseif parsed_args.operation == "info"
-  then
-    self.TriggerEvent("scene.request-info")
-  elseif parsed_args.operation == "play" or 
-         parsed_args.operation == "pause" or 
-         parsed_args.operation == "stop"
-  then
-    self.TriggerEvent("scene.playback-command", parsed_args.operation)
-  else
-    _Meta:Console().PushError("Unknown scene command operation: " .. tostring(parsed_args.operation))
-  end
-end
-
-function _Meta._driver_interface:OpenCommand(args)
-  self:_OpenClose("open", args)
-end
-function _Meta._driver_interface:CloseCommand(args)
-  self:_OpenClose("close", args)
-end
-
-function _Meta._driver_interface:OpenWindow(arg)
-  self:_OpenClose("open", { "--window", _Meta:String().as_string(arg) })
-end
-function _Meta._driver_interface:CloseWindow(arg)
-  self:_OpenClose("close", { "--window", _Meta:String().as_string(arg) })
-end
-
-function _Meta._driver_interface:OpenFile(arg)
-  self:_OpenClose("open", { "--file", _Meta:String().as_string(arg) })
-end
-function _Meta._driver_interface:CloseFile(arg)
-  self:_OpenClose("close", { "--file", _Meta:String().as_string(arg) })
-end
-
-function _Meta._driver_interface:ListCommand(args)
-  self:_List(args)
-end
-
-function _Meta._driver_interface:ObjectCommand(args)
-  self:_ObjectOp(args)
-end
-
-function _Meta._driver_interface:SceneCommand(args)
-  self:_SceneOp(args)
 end
 
 --- TODO: check if there are user commands to register from config or elsewhere and 

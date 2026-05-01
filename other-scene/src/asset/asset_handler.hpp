@@ -114,6 +114,10 @@ namespace other {
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
 
+    asset* get_asset(natural_t asset_id);
+
+    std::span<const natural_t> get_all_asset_ids() const;
+
     /// checks if asset is ready for use
     inline bool asset_loaded(natural_t asset_id) const {
       return loaded_assets.find(asset_id) != loaded_assets.end();
@@ -166,6 +170,7 @@ namespace other {
     std::queue<natural_t> successful_pipelines;
     std::queue<natural_t> failed_pipelines;
 
+    std::vector<natural_t> all_assets;
     std::unordered_map<natural_t, asset> loaded_assets;
     std::unordered_map<natural_t, asset> unloaded_assets;
     std::unordered_map<natural_t, asset_state_machine> asset_states;
@@ -178,6 +183,8 @@ namespace other {
     static inline natural_t get_next_asset_id() {
       return next_asset_id++;
     }
+
+    void begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it);
 
     asset* find_asset_by_path(const filepath& file_path) const;
 
