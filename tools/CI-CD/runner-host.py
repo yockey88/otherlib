@@ -1,55 +1,80 @@
 import subprocess
 from aiohttp import web
 
-# routes = web.RouteTableDef()
-
-def validate_run_request(request):
-  # Implement validation logic for the incoming request here
-  # For example, you might check for specific query parameters, headers, or authentication tokens
-  return True
-
-# @routes.get('/run-test')
-async def handle_run_test_request(request):
-  try:
-    if not validate_run_request(request):
-      return web.Response(status=400, text="Invalid request")
+class TestRunner:
+  def __init__(self):
+    ...
+    
+  def _validate_run_request(self, request, request_payload):
+    # check it is push event
+    if not request_payload:
+      print("Invalid request: payload is empty")
+      return False
+    
+    if request.headers.get("X-GitHub-Event") != "push":
+      print("Invalid event type: expected 'push', got '{}'".format(request.headers.get("X-GitHub-Event")))
+      return False
+    
+    if request.headers.get("Content-Type") != "application/json":
+      print("Invalid content type: expected 'application/json', got '{}'".format(request.headers.get("Content-Type")))
+      return False  
+    
+    return True
+  
+  async def _get_data(self, request):
+    data = await request.json()
+    if not self._validate_run_request(request, data):
+      raise ValueError("Invalid request")
     else:
       for key, value in request.headers.items():
         print(f"Header: {key} = {value}")
-      return web.Response(status=200, text="Request validated successfully")
-    
-  except subprocess.CalledProcessError as e: 
-    print(f"Error executing CI/CD pipeline: {e}")
-    return web.Response(status=500, text=f"Error executing CI/CD pipeline: {e}")
+    return data
   
-  except Exception as e:
-    print(f"Unexpected error: {e}")
-    return web.Response(status=500, text=f"Unexpected error: {e}")
-
-# @routes.post('/run-test')
-async def handle_run_test_post_request(request):
-  try:
-    if not validate_run_request(request):
-      return web.Response(status=400, text="Invalid request")
-    else:
-      for key, value in request.headers.items():
-        print(f"Header: {key} = {value}")
-      return web.Response(status=200, text="Request validated successfully")
-    
-  except subprocess.CalledProcessError as e: 
-    print(f"Error executing CI/CD pipeline: {e}")
-    return web.Response(status=500, text=f"Error executing CI/CD pipeline: {e}")
+  async def _handle_run_test_get(self, data):
+    print(f"Handling GET request with data: {data}")
+    return web.Response(status=200, text="Request validated successfully")
   
-  except Exception as e:
-    print(f"Unexpected error: {e}")
-    return web.Response(status=500, text=f"Unexpected error: {e}")
+  async def _handle_run_test_post(self, data):
+    for key, value in data.items():
+      print(f"Data: {key} = {value}")
+    return web.Response(status=200, text="Request validated successfully")
+    
+  async def get_run_tests(self, request):
+    try:
+      data = await self._get_data(request)
+      return await self._handle_run_test_get(data)
+      
+    except ValueError as e:
+      print(f"Validation error: {e}")
+      return web.Response(status=400, text=str(e))
+    
+    except subprocess.CalledProcessError as e: 
+      print(f"Error executing CI/CD pipeline: {e}")
+      return web.Response(status=500, text=f"Error executing CI/CD pipeline: {e}")
+    
+    except Exception as e:
+      print(f"Unexpected error: {e}")
+      return web.Response(status=500, text=f"Unexpected error: {e}")
+    
+  async def post_run_tests(self, request):
+    try:
+      data = await self._get_data(request)
+      return await self._handle_run_test_post(data)
+    
+    except subprocess.CalledProcessError as e: 
+      print(f"Error executing CI/CD pipeline: {e}")
+      return web.Response(status=500, text=f"Error executing CI/CD pipeline: {e}")
+  
+    except Exception as e:
+      print(f"Unexpected error: {e}")
+      return web.Response(status=500, text=f"Unexpected error: {e}")
 
 # async def main():
+Tester = TestRunner()
 app = web.Application()
-# app.add_routes(routes)
 app.add_routes([
-  web.get('/run-test', handle_run_test_request),
-  web.post('/run-test', handle_run_test_post_request)
+  web.get('/run-test', Tester.get_run_tests),
+  web.post('/run-test', Tester.post_run_tests)
 ])
 web.run_app(app)
 
