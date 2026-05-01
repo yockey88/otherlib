@@ -1,14 +1,12 @@
 import subprocess
 from aiohttp import web
 
-# routes = web.RouteTableDef()
-
 def validate_run_request(request):
   # Implement validation logic for the incoming request here
   # For example, you might check for specific query parameters, headers, or authentication tokens
   return True
 
-# @routes.get('/run-test')
+@routes.get('/run-test')
 async def handle_run_test_request(request):
   try:
     if not validate_run_request(request):
@@ -26,7 +24,7 @@ async def handle_run_test_request(request):
     print(f"Unexpected error: {e}")
     return web.Response(status=500, text=f"Unexpected error: {e}")
 
-# @routes.post('/run-test')
+@routes.post('/run-test')
 async def handle_run_test_post_request(request):
   try:
     if not validate_run_request(request):
@@ -43,20 +41,3 @@ async def handle_run_test_post_request(request):
   except Exception as e:
     print(f"Unexpected error: {e}")
     return web.Response(status=500, text=f"Unexpected error: {e}")
-
-# async def main():
-app = web.Application()
-# app.add_routes(routes)
-app.add_routes([
-  web.get('/run-test', handle_run_test_request),
-  web.post('/run-test', handle_run_test_post_request)
-])
-web.run_app(app)
-
-# if __name__ == "__main__":
-#   try:
-#     import asyncio
-#     asyncio.run(main())
-#   except KeyboardInterrupt:
-#     print("Runner host shutting down...")
-#   print("Runner host has stopped.")
