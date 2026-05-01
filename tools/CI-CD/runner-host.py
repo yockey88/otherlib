@@ -1,6 +1,19 @@
 import subprocess
 from aiohttp import web
 
+def _print_json_data(data, indent=0):
+  indent_str = "  " * indent
+  if isinstance(data, dict):
+    for key, value in data.items():
+      print(f"{indent_str}{key}:")
+      _print_json_data(value, indent + 1)
+  elif isinstance(data, list):
+    for index, item in enumerate(data):
+      print(f"{indent_str}[{index}]:")
+      _print_json_data(item, indent + 1)
+  else:
+    print(f"{indent_str}{data}")
+
 class TestRunner:
   def __init__(self):
     ...
@@ -36,7 +49,7 @@ class TestRunner:
   
   async def _handle_run_test_post(self, data):
     for key, value in data.items():
-      print(f"Data: {key} = {value}")
+      _print_json_data({key: value})
     return web.Response(status=200, text="Request validated successfully")
     
   async def get_run_tests(self, request):
