@@ -25,8 +25,8 @@ Other:Driver():AddMainMenuBarMenu(
 
 Other:Driver():OpenWindow("console")
 Other:Driver():OpenWindow("viewport")
+-- Other:Driver():OpenWindow("asset-browser")
 -- Other:Driver():OpenWindow("scene-hierarchy")
-Other:Driver():OpenWindow("asset-browser")
 
 -- Other:Console():RegisterConsoleCommand("testcmd", "A test command that prints its arguments", function(...)
 --   print("Test command executed with arguments:")

@@ -28,7 +28,6 @@ namespace other {
   }
 
   void event_system::trigger_event(natural_t event_id) {
-    CORE_LOG_TRACE("Triggering event with ID {}", event_id);
     std::vector<event::handler> listeners;
     value data;
     {
@@ -37,7 +36,6 @@ namespace other {
         return ctx.ev.id == event_id;
       });
       if (itr == registered_events.end()) {
-        CORE_LOG_ERROR("Attempted to trigger unregistered event ID {}", event_id);
         return;
       }
 
