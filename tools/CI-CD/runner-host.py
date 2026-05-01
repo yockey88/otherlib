@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import ssl
 from aiohttp import web
 
 routes = web.RouteTableDef()
@@ -10,16 +11,12 @@ def validate_run_request(request):
   # For example, you might check for specific query parameters, headers, or authentication tokens
   return True
 
-@routes.get('/run')
-async def handle_run_request(request):
+@routes.get('/run-test')
+async def handle_run_test_request(request):
   try:
     if not validate_run_request(request):
       return web.Response(status=400, text="Invalid request")
     else:
-      print("Received request to run CI/CD pipeline")
-      print(f"Request query: {request.query_string}")
-      print(f"Request method: {request.method}")
-      print(f"Request path: {request.path}")
       for key, value in request.headers.items():
         print(f"Header: {key} = {value}")
       return web.Response(status=200, text="Request validated successfully")
