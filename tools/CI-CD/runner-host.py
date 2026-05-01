@@ -16,12 +16,18 @@ async def handle_run_request(request):
     if not validate_run_request(request):
       return web.Response(status=400, text="Invalid request")
     else:
+      print("Received request to run CI/CD pipeline")
+      print(f"Request query: {request.query_string}")
+      print(f"Request method: {request.method}")
+      print(f"Request path: {request.path}")
+      for key, value in request.headers.items():
+        print(f"Header: {key} = {value}")
       return web.Response(status=200, text="Request validated successfully")
     
-    print("Received request to run CI/CD pipeline")
   except subprocess.CalledProcessError as e: 
     print(f"Error executing CI/CD pipeline: {e}")
     return web.Response(status=500, text=f"Error executing CI/CD pipeline: {e}")
+  
   except Exception as e:
     print(f"Unexpected error: {e}")
     return web.Response(status=500, text=f"Unexpected error: {e}")
