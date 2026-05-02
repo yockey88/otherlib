@@ -99,6 +99,10 @@ namespace other {
     }
   }
 
+  void project::generate_at(driver_kernel* kernel, const filepath& directory) {
+    OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in project generate_at.");
+  }
+
   void project::unload() {
     if (project_file_handle != nullptr && project_file_handle->is_open()) {
       project_file_handle->close();

@@ -435,6 +435,7 @@ namespace other {
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
+    /// this feels gross
     const bool should_lock = runtime_state.queued_project_file.has_value();
     if (should_lock) {
       std::lock_guard lock(runtime_state.mutex);
