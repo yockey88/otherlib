@@ -239,6 +239,7 @@ namespace other {
       return nullptr;
     } else {
       CORE_LOG_DEBUG("Created managed object [{}] of type [{}]", name, type->full_name());
+      CORE_LOG_DEBUG(" - Managed object handle: {:p}", obj->managed_object);
     }
     return obj;
   }

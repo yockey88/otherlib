@@ -209,7 +209,9 @@ namespace other {
     for (const natural_t id : assets) {
       auto* asset = asset_mgr->get_asset(id);
       if (asset != nullptr) {
-        ss << "Asset ID: " << id << ", Type: " << asset->asset_type << "[" << asset->virtual_path << "]\n";
+        ss << std::format("ID: {}, Type: {}, Path: {}", asset->id, asset->asset_type, asset->virtual_path);
+        ss << std::format(" [State: {}]", asset_mgr->get_asset_state(id));
+        ss << "\n";
       }
     }
     CORE_LOG_INFO("Assets:\n{}", ss.str());

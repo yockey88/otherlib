@@ -25,6 +25,7 @@ code-generator/
 *.d2
 
 #large local development files
+test-project/
 resources/models/
 # this is really large, don't have a better way to do this yet
 tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.fbx

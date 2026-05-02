@@ -13,7 +13,7 @@ namespace Other.UI
       this.title = title;
       this.window_flags = flags;
 
-      WindowRegistry.Register(this);
+      // WindowRegistry.Register(this);
     }
 
     public string Title

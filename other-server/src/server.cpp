@@ -28,36 +28,6 @@ namespace other {
     //   CORE_LOG_WARN("Failed to open project cache file at {}", app_folder.string());
     // }
 
-    /// create event system
-    // get_event_system()->register_event("open-project");
-    // get_event_system()->add_listener("open-project", [this](const value& data) {
-    //   /// \todo open project
-    //   CORE_LOG_DEBUG("Received request to open project");
-    //   std::string name = data;
-
-    //   filepath project_path;
-    //   filepath working_dir;
-
-    //   auto projects = project_cache["projects"];
-    //   json::json project_entry;
-    //   for (const auto& p : projects.items()) {
-    //     if (p.value().contains("name") && p.value()["name"].get<std::string>() == name) {
-    //       project_entry = p.value();
-    //       break;
-    //     }
-    //   }
-
-    //   if (project_entry.is_null()) {
-    //     CORE_LOG_ERROR("Project '{}' not found in project cache", name);
-    //     return;
-    //   }
-
-    //   std::string file = project_entry.contains("project-file") ? project_entry["project-file"].get<std::string>() : "";
-
-    //   CORE_LOG_DEBUG("Opening project '{}' at path '{}' with working directory '{}'", name, file, project_entry.at("working-directory").get<std::string>());
-    //   validate_project_and_launch(project_entry);
-    // });
-
     // get_event_system()->register_event("finalize-project");
     // get_event_system()->add_listener("finalize-project", [this](const value& data) {
     //   // post_coroutine(build_project(data, project_cache, *get_event_system()));

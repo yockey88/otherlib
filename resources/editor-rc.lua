@@ -1,16 +1,14 @@
 print("Hello from editor-rc.lua!")
 
-FileProjectMenu = 
-
 Other:Driver():AddMainMenuBarMenu(
   "File",
   {
     {
       Name = "Project",
       SubItems = {
-        { Name = "New Project", Action = function() Other:Driver():TriggerEvent("project.new-project") end },
-        { Name = "Open Project", Action = function() Other:Driver():TriggerEvent("project.open-project") end },
-        { Name = "Save Project", Action = function() Other:Driver():TriggerEvent("project.save-project") end },
+        { Name = "New Project", Action = function() Other:Driver().TriggerEvent("project.new-project") end },
+        { Name = "Open Project", Action = function() Other:Driver().TriggerEvent("project.open-project") end },
+        { Name = "Save Project", Action = function() Other:Driver().TriggerEvent("project.save-project") end },
       }
     },
     -- { 
@@ -26,7 +24,7 @@ Other:Driver():AddMainMenuBarMenu(
 Other:Driver():OpenWindow("console")
 Other:Driver():OpenWindow("viewport")
 -- Other:Driver():OpenWindow("asset-browser")
--- Other:Driver():OpenWindow("scene-hierarchy")
+Other:Driver():OpenWindow("scene-hierarchy")
 
 -- Other:Console():RegisterConsoleCommand("testcmd", "A test command that prints its arguments", function(...)
 --   print("Test command executed with arguments:")

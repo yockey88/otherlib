@@ -375,6 +375,7 @@ namespace other {
       OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
       p->set_dotnet_assembly(env->load_dotnet_module(dll_path.string()));
       p->set_state(project::LOADED);
+
       co_return;
     }
 

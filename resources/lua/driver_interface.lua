@@ -402,22 +402,6 @@ end
 
 local _D = _Driver:new()
 
-function _D:AddMainMenuBarMenu(menu_name, items)
-  if menu_name == nil or menu_name == ""
-  then
-    _Meta:Console().PushError("Invalid menu name provided to AddMainMenuBarMenu")
-    return
-  end
-
-  if not _validate_menu_bar_menu_items(items)
-  then
-    _Meta:Console().PushError("Invalid items table provided to AddMainMenuBarMenu")
-    return
-  end
-
-  _add_main_menu_bar_menu_item_impl(menu_name, items)
-end
-
 function _D:_OpenClose(type, args)
   local parsed_args, success = self:_parse_open_close_args(type, args)
   if not success
@@ -558,6 +542,26 @@ end
 
 function _D:SceneCommand(args)
   self:_SceneOp(args)
+end
+
+function _D:AddMainMenuBarMenu(menu_name, items)
+  if menu_name == nil or menu_name == ""
+  then
+    _Meta:Console().PushError("Invalid menu name provided to AddMainMenuBarMenu")
+    return
+  end
+
+  if not _validate_menu_bar_menu_items(items)
+  then
+    _Meta:Console().PushError("Invalid items table provided to AddMainMenuBarMenu")
+    return
+  end
+
+  _add_main_menu_bar_menu_item_impl(menu_name, items)
+end
+
+function _D:BrowseFilesForProject()
+  self.TriggerEvent("driver.queue-project-load")
 end
 
 return _D

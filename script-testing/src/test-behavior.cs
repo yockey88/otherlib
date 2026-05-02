@@ -6,7 +6,7 @@ using Other.Core;
 class TestBehavior : SceneBehavior
 {
   float rotation = 0.0f;
-  float rotation_speed = 45.0f; // degrees per second
+  float rotation_speed = 90.0f; // degrees per second
 
   protected override void OnAwake()
   {

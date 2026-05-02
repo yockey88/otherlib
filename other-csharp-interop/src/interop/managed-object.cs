@@ -157,7 +157,7 @@ namespace OtherCsBindings
           return IntPtr.Zero;
         }
 
-        var handle = GCHandle.Alloc(result, weak_ref ? GCHandleType.Weak : GCHandleType.Normal);
+        var handle = GCHandle.Alloc(result, GCHandleType.Normal);
         AssemblyLoader.RegisterHandle(type.Assembly, handle);
         return GCHandle.ToIntPtr(handle);
       }

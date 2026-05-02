@@ -25,7 +25,6 @@ namespace other {
 
     main_menu_bar.main_menu_bar = true;
     main_menu_bar_open = driver_ptr->configuration().get_value<bool>("ui.enable-environment-menu-bar", false);
-    /// create main menu
 
     {
       auto* env = subsystem<scripting_environment>::get();
@@ -33,6 +32,7 @@ namespace other {
 
       window_registry_id = env->create_object("UIScriptWindowRegistry");
       env->attach_dotnet_object(window_registry_id, "Other.UI.WindowRegistry");
+      CORE_LOG_DEBUG("Created UI window registry script object with ID {}", window_registry_id);
     }
   }
 

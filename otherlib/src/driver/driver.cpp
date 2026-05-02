@@ -435,6 +435,13 @@ namespace other {
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
+    const bool should_lock = runtime_state.queued_project_file.has_value();
+    if (should_lock) {
+      std::lock_guard lock(runtime_state.mutex);
+      driver_kernel_ptr->get_core_system<project_system>().load_project(driver_kernel_ptr.get(), runtime_state.queued_project_file.value());
+      runtime_state.queued_project_file = std::nullopt;
+    }
+
     driver_kernel_ptr->tick(dt);
 
     on_update();
@@ -577,16 +584,16 @@ namespace other {
     auto* scripting_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(scripting_env != nullptr, "scripting_environment is not initialized.");
 
-    auto& dotnet_host = scripting_env->get_dotnet_host();
-    type_cache* types = dotnet_host.get_type_cache();
-    OTHER_ASSERT(types != nullptr, "dotnet_host type cache is null.");
+    // auto& dotnet_host = scripting_env->get_dotnet_host();
+    // type_cache* types = dotnet_host.get_type_cache();
+    // OTHER_ASSERT(types != nullptr, "dotnet_host type cache is null.");
 
-    for (auto& [type_hash, dotnet_type_ptr] : *types) {
-      sol::table type_table = dotnet_type_ptr.create_lua_descriptor(lua_state);
-      CORE_LOG_TRACE("Registering .NET type '{}' in Lua .NET type registry", dotnet_type_ptr.full_name());
+    // for (auto& [type_hash, dotnet_type_ptr] : *types) {
+    //   sol::table type_table = dotnet_type_ptr.create_lua_descriptor(lua_state);
+    //   CORE_LOG_TRACE("Registering .NET type '{}' in Lua .NET type registry", dotnet_type_ptr.full_name());
 
-      lua_state["__other_native"]["__dotnet_types"][dotnet_type_ptr.full_name()] = type_table;
-    }
+    //   lua_state["__other_native"]["__dotnet_types"][dotnet_type_ptr.full_name()] = type_table;
+    // }
   }
 
 }  // namespace other

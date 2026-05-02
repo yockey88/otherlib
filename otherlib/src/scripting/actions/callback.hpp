@@ -39,9 +39,9 @@ namespace other {
         : function(func) {}
     /// ctor for lambas and functors
     template <typename F>
-      requires std::is_convertible_v<F, callback_type>
+      requires std::is_invocable_r_v<R, F, Args...>
     native_callback(F&& func)
-        : function(static_cast<callback_type>(func)) {}
+        : function(func) {}
 
     virtual ~native_callback() = default;
 

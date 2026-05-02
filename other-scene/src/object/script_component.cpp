@@ -10,6 +10,7 @@
 namespace other {
 
   void script_component::fixed_update(double delta_time) {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::fixed_update");
 
     auto* env = subsystem<scripting_environment>::get();
@@ -24,6 +25,7 @@ namespace other {
   }
 
   void script_component::update(double delta_time) {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::update");
 
     auto* env = subsystem<scripting_environment>::get();
@@ -38,7 +40,11 @@ namespace other {
   }
 
   void script_component::late_update(double delta_time) {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::late_update");
+    if (script_object_id < 0) {
+      return;
+    }
 
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
@@ -52,6 +58,7 @@ namespace other {
   }
 
   void script_component::scene_start() {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::scene_start");
 
     auto* env = subsystem<scripting_environment>::get();
@@ -66,6 +73,7 @@ namespace other {
   }
 
   void script_component::scene_stop() {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::scene_stop");
 
     auto* env = subsystem<scripting_environment>::get();
@@ -80,6 +88,7 @@ namespace other {
   }
 
   void script_component::add_behavior(const std::string_view behavior_type_name) {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::add_behavior");
 
     auto* env = subsystem<scripting_environment>::get();
@@ -89,6 +98,7 @@ namespace other {
   }
 
   void script_component::remove_behavior(const std::string_view behavior_type_name) {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::remove_behavior");
 
     auto* env = subsystem<scripting_environment>::get();
@@ -98,6 +108,7 @@ namespace other {
   }
 
   void script_component::remove_all_behaviors() {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::remove_all_behaviors");
 
     auto* env = subsystem<scripting_environment>::get();

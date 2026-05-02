@@ -5,6 +5,7 @@
 #define OTHERLIB_SCRIPTING_ACTIONS_ACTION_HPP
 
 #include <string>
+#include <type_traits>
 
 #include "core/scope.hpp"
 #include "core/value.hpp"
@@ -18,6 +19,9 @@ namespace other {
     std::string description;
 
     action() = default;
+
+    action(std::function<void()> callback)
+        : callback_fn(make_ref<native_callback<void>>(callback)) {}
     action(const std::string_view name, const std::string_view description)
         : name(name), description(description) {}
     action(const std::string_view name, const std::string_view description, ref<callback> cb)

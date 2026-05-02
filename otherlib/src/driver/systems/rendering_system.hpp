@@ -22,7 +22,6 @@ namespace other {
     std::string name() const override { return "Rendering System"; }
 
     void initialize(driver_kernel* kernel) override;
-    void late_initialize(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
@@ -38,6 +37,11 @@ namespace other {
     scope<renderer>& get_renderer();
     scope<driver_ui>& get_driver_ui();
 
+    using file_dialog_callback_fn = void (*)(void* userdata, const char* const* filelist, int32_t filter);
+    void show_open_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);
+    void show_open_folder_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);
+    void show_save_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);
+
    private:
     scope<renderer> renderer_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
@@ -52,10 +56,6 @@ namespace other {
     void handle_viewport_resize_event(const value& data);
 
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);
-
-    void show_open_file_dialog(const value& data);
-    void show_open_folder_dialog(const value& data);
-    void show_save_file_dialog(const value& data);
   };
 
 }  // namespace other

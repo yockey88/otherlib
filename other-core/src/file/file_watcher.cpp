@@ -12,15 +12,15 @@ namespace other {
 
   void file_watcher::poll() {
     if (!exists) {
-      if (std::filesystem::exists(watch_path)) {
-        // file_event event{ .type = file_event::type::RECREATED, .path = watch_path };
-        // events.trigger_event("filesystem.watch-event", event);
-        exists = true;
-      }
+      // if (std::filesystem::exists(watch_path)) {
+      //   // file_event event{ .type = file_event::type::RECREATED, .path = watch_path };
+      //   // events.trigger_event("filesystem.watch-event", event);
+      //   exists = true;
+      // }
       return;
     }
 
-    if (exists && !std::filesystem::exists(watch_path)) {
+    if (!std::filesystem::exists(watch_path)) {
       file_event event{ .type = file_event::type::DELETED, .path = watch_path };
       events.trigger_event("filesystem.watch-event", event);
       exists = false;
