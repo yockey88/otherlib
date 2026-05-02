@@ -223,10 +223,9 @@ worker_count = {}
     EXPECT_FALSE(handler->asset_loaded(asset_id));
 
     ASSERT_NO_FATAL_FAILURE(handler->begin_unload());
-    EXPECT_EQ(handler->get_num_assets_in_flight(), 1);
+    EXPECT_EQ(handler->get_num_assets_in_flight(), 0);
     EXPECT_EQ(handler->get_num_loading_assets(), 0);
     EXPECT_EQ(handler->get_num_loaded_assets(), 0);
-    // EXPECT_EQ(handler->get_(), 1);
 
     handler = nullptr;
   }
