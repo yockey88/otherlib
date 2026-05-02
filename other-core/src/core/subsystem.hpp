@@ -76,17 +76,17 @@ namespace other {
     constexpr static std::string_view kRendererBackend = "renderer_backend";
     constexpr static std::string_view kScriptingEnvironment = "scripting_environment";
 
-    constexpr static std::string_view kCoreProfileName = "core-profile";
-    constexpr static std::string_view kRenderingProfileName = "rendering-profile";
-    constexpr static std::string_view kPhysicsProfileName = "physics-profile";
-    constexpr static std::string_view kScriptingProfileName = "scripting-profile";
-    constexpr static std::string_view kHeadlessProfileName = "headless-profile";
-    constexpr static std::string_view kFullProfileName = "full-profile";
+    constexpr static std::string_view kMinimalProfileName = "minimal";
+    constexpr static std::string_view kMinimalRenderingProfileName = "minimal-rendering";
+    constexpr static std::string_view kMinimalPhysicsProfileName = "minimal-physics";
+    constexpr static std::string_view kMinimalScriptingProfileName = "minimal-scripting";
+    constexpr static std::string_view kHeadlessProfileName = "headless";
+    constexpr static std::string_view kFullProfileName = "full";
 
-    constexpr static std::string_view kCoreOnlyProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase };
-    constexpr static std::string_view kRenderingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kRendererBackend };
-    constexpr static std::string_view kPhysicsProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment };
-    constexpr static std::string_view kScriptingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kScriptingEnvironment };
+    constexpr static std::string_view kMinimalProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase };
+    constexpr static std::string_view kMinimalRenderingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kRendererBackend };
+    constexpr static std::string_view kMinimalPhysicsProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment };
+    constexpr static std::string_view kMinimalScriptingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kScriptingEnvironment };
     constexpr static std::string_view kHeadlessProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kScriptingEnvironment };
     constexpr static std::string_view kFullProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kRendererBackend, kScriptingEnvironment };
   };
@@ -95,6 +95,7 @@ namespace other {
   class subsystem {
    public:
     static std::mutex subsystem_mtx;
+    static bool inert;
 
     static void set(T* obj) {
       PROFILE_SECTION("subsystem<>::set");
@@ -170,6 +171,8 @@ namespace other {
   inline T* subsystem<T>::instance = nullptr;
   template <typename T>
   inline std::mutex subsystem<T>::subsystem_mtx;
+  template <typename T>
+  inline bool subsystem<T>::inert = false;
 
   class config_table;
 

@@ -17,8 +17,16 @@
 #include "scripting/bindings.hpp"
 
 namespace other {
-
   namespace detail {
+
+    bool is_valid_profile_name(const std::string_view profile_name) {
+      return profile_name == subsystem_profile::kMinimalProfileName ||
+        profile_name == subsystem_profile::kMinimalRenderingProfileName ||
+        profile_name == subsystem_profile::kMinimalPhysicsProfileName ||
+        profile_name == subsystem_profile::kMinimalScriptingProfileName ||
+        profile_name == subsystem_profile::kHeadlessProfileName ||
+        profile_name == subsystem_profile::kFullProfileName;
+    }
 
     void initialize_logger(const config_table* config);
     void initialize_arena(const config_table* config);
@@ -57,6 +65,8 @@ namespace other {
   void subsystem_registry::resolve_dependency_list_and_do_initialization(std::span<const std::string_view> requested_systems, const config_table* config) {
     initialization_order.clear();
     initialization_order = resolve_dependencies(requested_systems, subsystem_definition{});
+
+    /// mark subsystems that are not included in the profile as inert to prevent accidental initialization later
 
     for (const natural_t id : initialization_order) {
       auto it = registry.find(id);
@@ -98,31 +108,40 @@ namespace other {
 
   bool subsystem_registry::profile_includes_scripting(const std::string_view profile_name) {
     return profile_name == subsystem_profile::kFullProfileName ||
-      profile_name == subsystem_profile::kScriptingProfileName ||
+      profile_name == subsystem_profile::kMinimalScriptingProfileName ||
       profile_name == subsystem_profile::kHeadlessProfileName;
   }
 
   bool subsystem_registry::profile_includes_physics(const std::string_view profile_name) {
     return profile_name == subsystem_profile::kFullProfileName ||
-      profile_name == subsystem_profile::kPhysicsProfileName ||
+      profile_name == subsystem_profile::kMinimalPhysicsProfileName ||
       profile_name == subsystem_profile::kHeadlessProfileName;
   }
 
   bool subsystem_registry::profile_includes_rendering(const std::string_view profile_name) {
     return profile_name == subsystem_profile::kFullProfileName ||
-      profile_name == subsystem_profile::kRenderingProfileName;
+      profile_name == subsystem_profile::kMinimalRenderingProfileName;
   }
 
   bool subsystem_registry::profile_includes_vm(const std::string_view profile_name) {
     return profile_name == subsystem_profile::kFullProfileName ||
-      profile_name == subsystem_profile::kScriptingProfileName ||
+      profile_name == subsystem_profile::kMinimalScriptingProfileName ||
       profile_name == subsystem_profile::kHeadlessProfileName;
   }
 
   bool subsystem_registry::profile_includes_scene(const std::string_view profile_name) {
     return profile_name == subsystem_profile::kFullProfileName ||
-      profile_name == subsystem_profile::kScriptingProfileName ||
+      profile_name == subsystem_profile::kMinimalScriptingProfileName ||
       profile_name == subsystem_profile::kHeadlessProfileName;
+  }
+
+  void subsystem_registry::activate_necessary_subsystems_for_profile(const std::string_view profile, const config_table* config) {
+    /// one by one set inert flag to true if not needed in the profile
+    subsystem<scripting_environment>::inert = !profile_includes_scripting(profile);
+    subsystem<physics_environment>::inert = !profile_includes_physics(profile);
+    subsystem<renderer_backend>::inert = !profile_includes_rendering(profile);
+    subsystem<scripting_environment>::inert = !profile_includes_vm(profile);
+    subsystem<scripting_environment>::inert = !profile_includes_scene(profile);
   }
 
   std::vector<natural_t> subsystem_registry::resolve_dependencies(std::span<const std::string_view> requested_systems, const subsystem_definition& def) {
@@ -220,54 +239,57 @@ namespace other {
     }
 
     if (auto prof = config->try_get_value<std::string>("environment.profile"); prof.has_value() && !prof->empty()) {
-      return subsystem_profile::kFullProfileName;
+      if (detail::is_valid_profile_name(*prof)) {
+        return *prof;
+      } else {
+        std::println(std::cerr, "Invalid profile name '{}' in config. Defaulting to full profile.", *prof);
+        return subsystem_profile::kFullProfileName;
+      }
     }
 
     bool rendering_disabled = (config->rendering_backend.has_value() && config->rendering_backend.value() == "headless") || config->force_no_window;
     bool force_disable_physics = config->get_value<bool>("physics.force-disable-physics", false);
     bool force_disable_scripting = config->get_value<bool>("scripting.force-disable-scripting", false);
 
+    /// all disabled = minimal
+    if (rendering_disabled && force_disable_physics && force_disable_scripting) {
+      return subsystem_profile::kMinimalProfileName;
+    }
+
+    // all not disabled (enabled) = full
     if (!rendering_disabled && !force_disable_physics && !force_disable_scripting) {
       return subsystem_profile::kFullProfileName;
     }
-    if (rendering_disabled && !force_disable_physics && !force_disable_scripting) {
-      return subsystem_profile::kHeadlessProfileName;
-    }
 
     if (!rendering_disabled && force_disable_physics && force_disable_scripting) {
-      return subsystem_profile::kRenderingProfileName;
+      return subsystem_profile::kMinimalRenderingProfileName;
     }
     if (rendering_disabled && !force_disable_physics && force_disable_scripting) {
-      return subsystem_profile::kPhysicsProfileName;
+      return subsystem_profile::kMinimalPhysicsProfileName;
     }
-    if (!rendering_disabled && !force_disable_physics && force_disable_scripting) {
-      return subsystem_profile::kScriptingProfileName;
+    if (rendering_disabled && force_disable_physics && !force_disable_scripting) {
+      return subsystem_profile::kMinimalScriptingProfileName;
     }
 
-    return subsystem_profile::kCoreProfileName;
+    return subsystem_profile::kMinimalProfileName;
   }
 
   std::span<const std::string_view> get_required_subsystems_for_profile(const std::string_view profile_name) {
-    if (profile_name == subsystem_profile::kFullProfileName) {
-      return subsystem_profile::kFullProfile;
+    if (profile_name == subsystem_profile::kMinimalProfileName) {
+      return subsystem_profile::kMinimalProfile;
+    }
+    if (profile_name == subsystem_profile::kMinimalRenderingProfileName) {
+      return subsystem_profile::kMinimalRenderingProfile;
+    }
+    if (profile_name == subsystem_profile::kMinimalPhysicsProfileName) {
+      return subsystem_profile::kMinimalPhysicsProfile;
+    }
+    if (profile_name == subsystem_profile::kMinimalScriptingProfileName) {
+      return subsystem_profile::kMinimalScriptingProfile;
     }
     if (profile_name == subsystem_profile::kHeadlessProfileName) {
       return subsystem_profile::kHeadlessProfile;
     }
-    if (profile_name == subsystem_profile::kRenderingProfileName) {
-      return subsystem_profile::kRenderingProfile;
-    }
-    if (profile_name == subsystem_profile::kPhysicsProfileName) {
-      return subsystem_profile::kPhysicsProfile;
-    }
-    if (profile_name == subsystem_profile::kScriptingProfileName) {
-      return subsystem_profile::kScriptingProfile;
-    }
-    if (profile_name == subsystem_profile::kCoreProfileName) {
-      return subsystem_profile::kCoreOnlyProfile;
-    }
-
-    std::println(std::cerr, "Unknown subsystem profile '{}'. Defaulting to full profile.", profile_name);
     return subsystem_profile::kFullProfile;
   }
 

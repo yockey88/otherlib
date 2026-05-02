@@ -3,7 +3,7 @@
  **/
 #include "core/subsystem.hpp"
 
-#include "core/config_table.hpp"
+#include "core/logger.hpp"
 
 namespace other {
 
