@@ -17,6 +17,16 @@ void destroy_driver(other::driver* instance) {}
 }
 
 int main(int argc, char** argv) {
+  // activate all subsystems for the tests
+  other::subsystem<other::arena>::inert = false;
+  other::subsystem<other::logger>::inert = false;
+  other::subsystem<other::file_system>::inert = false;
+  other::subsystem<other::input_system>::inert = false;
+  other::subsystem<other::type_database>::inert = false;
+  other::subsystem<other::physics_environment>::inert = false;
+  other::subsystem<other::renderer_backend>::inert = false;
+  other::subsystem<other::scripting_environment>::inert = false;
+
   /// this is for the CI pipeline which will start running build, but it wil fail to find resources if running there
   other::filepath cwd = std::filesystem::current_path();
   std::println("CWD: {}", cwd.string());
