@@ -170,6 +170,8 @@ namespace other {
         .arena_native_handle = subsystem<arena>::get(),
         .logger_native_handle = subsystem<logger>::get(),
         .type_database_native_handle = subsystem<type_database>::get(),
+        // we know we can grab this here, because the scripting subsystem has to be active for us to be loading the dotnet host
+        // no reason to worry about environment profile issues here
         .scripting_environment_native_handle = subsystem<scripting_environment>::get()
       };
       entry_point(args);

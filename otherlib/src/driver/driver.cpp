@@ -54,6 +54,7 @@ namespace other {
     load_client();
 
     if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
+      CORE_LOG_DEBUG("No network role specified, starting immediately.");
       on_shutdown_confirm();
       process_driver_event(driver_event::DRIVER_EVENT_READY);
     }
