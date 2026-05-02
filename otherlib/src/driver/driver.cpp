@@ -360,25 +360,25 @@ namespace other {
   }
 
   void driver::load_client() {
-    if (subsystem<scripting_environment>::inert) {
-      return;
+    if (!subsystem<scripting_environment>::inert) {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
+
+      do_script_interface_bindings(this);
+      /// lua gets special treatment
+      bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
     }
-
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
-
-    do_script_interface_bindings(this);
-    /// lua gets special treatment
-    bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
 
     {
       PROFILE_SECTION("driver::initialize--client-on_initialize");
       on_initialize(cmd_line);
     }
 
-    {
+    if (!subsystem<scripting_environment>::inert) {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
-      /// run driver envrc file if it exists
+
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
       if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path");
           !envrc_path.empty() && std::filesystem::exists(envrc_path)) {

@@ -3,6 +3,8 @@
  **/
 #include "driver/systems/network_system.hpp"
 
+#include <cstdint>
+
 #include "core/defines.hpp"
 
 #include "driver/driver.hpp"
@@ -208,10 +210,41 @@ namespace other {
     return net_context->net_thread != nullptr && net_context->net_thread->is_running();
   }
 
+  natural_t network_system::listen_at_endpoint(const binding_point& endpoint) {
+    natural_t connection_id = generate_connection_id();
+    auto [itr, success] = active_tcp_connections.emplace(connection_id, tcp_connection{ connection_id });
+    if (!success) {
+      CORE_LOG_ERROR("Failed to create TCP connection for endpoint {}:{}", endpoint.ip, endpoint.port);
+      return 0;
+    }
+
+    message msg;
+    msg.header = {
+      .category = COMMAND,
+      .id = LISTEN_TCP_CONNECTION,
+    };
+
+    const uint8_t* endpoint_data = reinterpret_cast<const uint8_t*>(&endpoint);
+    const uint8_t* id = reinterpret_cast<const uint8_t*>(&connection_id);
+    msg.data.append_range(std::span(endpoint_data, sizeof(binding_point)));
+    msg.data.append_range(std::span(id, sizeof(natural_t)));
+
+    send_message_and_wait_acknowledgment(
+      &get_driver().get_kernel(), std::move(msg), seconds(10),
+      message_handler{
+        [this](message_header h, std::span<const uint8_t> d) { on_ack_listen_at_endpoint(&get_driver().get_kernel(), h, d); },
+        [this](message_header h) { on_timeout_listen_at_endpoint(&get_driver().get_kernel(), h); },
+      }
+    );
+
+    return connection_id;
+  }
+
   void network_system::process_network_thread_messages(driver_kernel* kernel, message&& msg) {
     switch (msg.header.category) {
       case NOTIFICATION:
         switch (msg.header.id) {
+          case NEW_TCP_CONNECTION_ACCEPTED: handle_notification_new_connection_accepted(kernel, std::move(msg)); break;
           case NETWORK_THREAD_READY: handle_notification_network_thread_ready(kernel, std::move(msg)); break;
           case NETWORK_THREAD_SHUTDOWN_COMPLETE: handle_notification_network_thread_shutdown_complete(kernel, std::move(msg)); break;
           default:
@@ -260,6 +293,12 @@ namespace other {
     }
   }
 
+  void network_system::on_ack_listen_at_endpoint(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data) {
+  }
+
+  void network_system::on_timeout_listen_at_endpoint(driver_kernel* kernel, message_header header) {
+  }
+
   void network_system::on_ack_shutdown_request_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data) {
     OTHER_ASSERT(net_context != nullptr, "Network context is null in driver.");
     OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is null in driver.");
@@ -276,6 +315,16 @@ namespace other {
     CORE_LOG_ERROR("   Data may be corrupt from unclean shutdown");
 
     net_context->net_thread->force_shutdown();
+  }
+
+  void network_system::handle_notification_new_connection_accepted(driver_kernel* kernel, message&& msg) {
+    natural_t connection_id = *reinterpret_cast<const natural_t*>(msg.data.data());
+    CORE_LOG_INFO("Network thread accepted new connection with ID {}", connection_id);
+
+    auto [itr, success] = active_tcp_connections.emplace(connection_id, tcp_connection{ connection_id });
+    OTHER_ASSERT(success, "Failed to add new TCP connection with ID {} to active connections list", connection_id);
+
+    get_driver().on_new_connection_accepted(connection_id);
   }
 
   void network_system::handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg) {

@@ -153,7 +153,7 @@ namespace other {
     virtual void on_build_driver_input_map(input_map& map) {}
     virtual void on_input_event(const input_state_change_event& event) {}
     /// notifications
-    virtual void on_notification_session_closed(integer_t session_id) {}
+    virtual void on_new_connection_accepted(natural_t connection_id) {}
     /// acknowledgments
     /// control messages
     /// command messages

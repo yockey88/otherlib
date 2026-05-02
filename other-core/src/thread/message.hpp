@@ -43,6 +43,7 @@ namespace other {
     /// notification messages
     NETWORK_THREAD_READY,
     NETWORK_THREAD_SHUTDOWN_COMPLETE,
+    NEW_TCP_CONNECTION_ACCEPTED,
 
     /// control messages
     PING,

@@ -1,40 +1,47 @@
 /**
- * \file network/connection.hpp
+ * \file connection/connection.hpp
  **/
-#ifndef OTHER_NETWORK_NETWORK_CONNECTION_HPP
-#define OTHER_NETWORK_NETWORK_CONNECTION_HPP
+#ifndef OTHER_NETWORK_CONNECTION_CONNECTION_HPP
+#define OTHER_NETWORK_CONNECTION_CONNECTION_HPP
 
 #include "core/async_buffer.hpp"
+#include "event/event_system.hpp"
 #include "thread/message.hpp"
 
-#include "network/connection_state_maching.hpp"
+#include "connection/connection_state_maching.hpp"
 #include "network/io.hpp"
+
 
 namespace other {
 
   class connection {
    public:
-    connection(io& io_context, const binding_point& endpoint)
-        : io_context(io_context), conn(this), endpoint(endpoint) {}
+    connection(natural_t id, event_system& events, io& io_context, const binding_point& endpoint)
+        : id(id), events(events), io_context(io_context), conn(this), endpoint(endpoint) {}
     virtual ~connection() = default;
 
-    static scope<connection> tcp_connection(io& io_context, const binding_point& endpoint);
-    static scope<connection> udp_connection(io& io_context, const binding_point& endpoint);
+    static scope<connection> tcp_connection(natural_t id, event_system& events, io& io_context, const binding_point& endpoint);
+    static scope<connection> udp_connection(natural_t id, event_system& events, io& io_context, const binding_point& endpoint);
 
     void listen_on_tcp_endpoint(const binding_point& endpoint);
     void connect_to_tcp_endpoint(const binding_point& endpoint);
 
     void open_udp_endpoint(const binding_point& endpoint);
 
-   protected:
-    virtual void on_accept_connection() {}
-    virtual void on_establish_connection() {}
-    virtual void on_send_udp() {}
-    virtual void on_receive_udp(const std::span<uint8_t> data, const asio::ip::udp::endpoint& endpoint) {}
+    void poll();
 
+    virtual void on_accept_tcp_connection() {}
+    virtual void on_establish_tcp_connection() {}
+
+   protected:
     void start_read_tcp();
     void start_write_tcp();
     void start_write_tcp(const std::span<uint8_t> data);
+
+    virtual void on_receive_tcp(const std::span<uint8_t> data) {}
+    virtual void on_send_tcp(size_t bytes_transferred) {}
+    virtual void on_receive_udp(const std::span<uint8_t> data, const asio::ip::udp::endpoint& endpoint) {}
+    virtual void on_send_udp(size_t bytes_transferred) {}
 
    private:
     class connector {
@@ -57,6 +64,8 @@ namespace other {
       void on_establish_connection(const asio::error_code& ec);
     };
 
+    natural_t id;
+    event_system& events;
     io& io_context;
     connector conn;
 
@@ -77,4 +86,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_NETWORK_CONNECTION_HPP
+#endif  // OTHER_NETWORK_CONNECTION_CONNECTION_HPP

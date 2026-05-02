@@ -6,6 +6,7 @@
 #include <asio/asio/ip/address_v4.hpp>
 
 #include "core/defines.hpp"
+#include "core/time.hpp"
 #include "core/timer.hpp"
 #include "thread/message.hpp"
 #include "thread/messages.hpp"
@@ -16,6 +17,22 @@ namespace other {
 
   void network_thread::on_initialize() {
     bus.register_thread();
+
+    events.register_event("connection.tcp-accepted");
+    events.add_listener("connection.tcp-accepted", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected uint64 data for connection.tcp-accepted event, got {}", data.type());
+
+      std::lock_guard lock(current_state.mutex);
+      accepted_connection_queue.push((natural_t)data);
+    });
+
+    events.register_event("connection.tcp-established");
+    events.add_listener("connection.tcp-established", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected uint64 data for connection.tcp-established event, got {}", data.type());
+
+      std::lock_guard lock(current_state.mutex);
+      established_connection_queue.push((natural_t)data);
+    });
   }
 
   void network_thread::on_start() {
@@ -42,7 +59,33 @@ namespace other {
       network_io.context.restart();
     }
 
-    auto msg = bus.receive_message(duration_cast<milliseconds>(tick_duration(10)));
+    if (accepted_connection_queue.size() > 0) {
+      std::lock_guard lock(current_state.mutex);
+      while (accepted_connection_queue.size() > 0) {
+        natural_t connection_id = accepted_connection_queue.front();
+        accepted_connection_queue.pop();
+
+        auto itr = active_connections.find(connection_id);
+        if (itr != active_connections.end()) {
+          itr->second->on_accept_tcp_connection();
+        }
+      }
+    }
+
+    if (established_connection_queue.size() > 0) {
+      std::lock_guard lock(current_state.mutex);
+      while (established_connection_queue.size() > 0) {
+        natural_t connection_id = established_connection_queue.front();
+        established_connection_queue.pop();
+
+        auto itr = active_connections.find(connection_id);
+        if (itr != active_connections.end()) {
+          itr->second->on_establish_tcp_connection();
+        }
+      }
+    }
+
+    auto msg = bus.receive_message(microseconds(1));
     if (msg.has_value()) {
       switch (msg->header.category) {
         case CONTROL:
@@ -133,7 +176,7 @@ namespace other {
     asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
 
     natural_t connection_id = generate_connection_id();
-    auto [itr, success] = active_connections.emplace(connection_id, connection::tcp_connection(network_io, endpoint));
+    auto [itr, success] = active_connections.emplace(connection_id, connection::tcp_connection(connection_id, events, network_io, endpoint));
     if (!success) {
       CORE_LOG_ERROR("Failed to create connection for endpoint {}:{}", endpoint.ip, endpoint.port);
       return;
@@ -147,7 +190,7 @@ namespace other {
     asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
 
     natural_t connection_id = generate_connection_id();
-    auto [itr, success] = active_connections.emplace(connection_id, connection::tcp_connection(network_io, endpoint));
+    auto [itr, success] = active_connections.emplace(connection_id, connection::tcp_connection(connection_id, events, network_io, endpoint));
     if (!success) {
       CORE_LOG_ERROR("Failed to create connection for endpoint {}:{}", endpoint.ip, endpoint.port);
       return;
@@ -161,7 +204,7 @@ namespace other {
     asio::ip::udp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
 
     natural_t connection_id = generate_connection_id();
-    auto [itr, success] = active_connections.emplace(connection_id, connection::udp_connection(network_io, endpoint));
+    auto [itr, success] = active_connections.emplace(connection_id, connection::udp_connection(connection_id, events, network_io, endpoint));
     if (!success) {
       CORE_LOG_ERROR("Failed to create connection for endpoint {}:{}", endpoint.ip, endpoint.port);
       return;

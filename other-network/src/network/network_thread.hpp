@@ -10,7 +10,7 @@
 #include "thread/message_bus.hpp"
 #include "thread/thread.hpp"
 
-#include "network/connection.hpp"
+#include "connection/connection.hpp"
 #include "network/io.hpp"
 
 namespace other {
@@ -19,7 +19,7 @@ namespace other {
    public:
     network_thread(message_bus& bus)
         : thread("OtherServer-Network-Thread"),
-          bus(bus), network_io{} {}
+          bus(bus), network_io{}, events(network_io.context) {}
     virtual ~network_thread() = default;
 
     inline message_bus& get_message_bus() { return bus; }
@@ -31,10 +31,12 @@ namespace other {
     struct state {
       bool shutdown_pending = false;
       bool shutdown_complete = false;
+      std::mutex mutex;
     };
     state current_state{};
 
     io network_io;
+    event_system events;
 
     natural_t connection_id_counter;
     std::map<natural_t, scope<connection>> active_connections;
@@ -42,6 +44,9 @@ namespace other {
     inline natural_t generate_connection_id() {
       return ++connection_id_counter;
     }
+
+    std::queue<natural_t> accepted_connection_queue;
+    std::queue<natural_t> established_connection_queue;
 
     void on_initialize() override;
     void on_start() override;
@@ -60,6 +65,10 @@ namespace other {
 
     static inline natural_t max_connections = 1024;
     natural_t current_connections = 0;
+
+    microseconds get_message_timeout() override {
+      return microseconds(10);
+    }
   };
 
 }  // namespace other

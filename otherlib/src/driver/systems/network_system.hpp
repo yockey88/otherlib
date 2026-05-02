@@ -7,6 +7,7 @@
 #include <asio/asio.hpp>
 #include <asio/asio/signal_set.hpp>
 
+#include "core/defines.hpp"
 #include "thread/message_bus.hpp"
 
 #include "network/message_handler.hpp"
@@ -24,6 +25,23 @@ namespace other {
       SERVER,
       CLIENT,
       NONE,
+    };
+    struct network_context {
+      asio::io_context io_context;
+      asio::signal_set signals;
+      natural_t netw_thread_heartbeat_timeout_id = 0;
+      message_bus net_thread_message_bus;
+      scope<network_thread> net_thread = nullptr;
+
+      constexpr static uint32_t kLocalhostAddress = 0x7f000001;
+      constexpr static uint32_t kPrimarySessionBindingPort = 49222;
+      constexpr static uint16_t kServerBroadcastPost0 = 50160;
+      constexpr static binding_point main_binding_point{
+        kLocalhostAddress, kPrimarySessionBindingPort
+      };
+      uint16_t next_available_server_port = kServerBroadcastPost0;
+
+      network_context() : signals(io_context, SIGINT, SIGTERM) {}
     };
 
     network_system(driver* driver_instance)
@@ -53,37 +71,38 @@ namespace other {
 
     bool network_active() const;
 
+    natural_t listen_at_endpoint(const binding_point& endpoint);
+
    private:
-    struct network_context {
-      asio::io_context io_context;
-      asio::signal_set signals;
-      natural_t netw_thread_heartbeat_timeout_id = 0;
-      message_bus net_thread_message_bus;
-      scope<network_thread> net_thread = nullptr;
-
-      constexpr static uint32_t kLocalhostAddress = 0x7f000001;
-      constexpr static uint32_t kPrimarySessionBindingPort = 49222;
-      constexpr static uint16_t kServerBroadcastPost0 = 50160;
-      constexpr static binding_point main_binding_point{
-        kLocalhostAddress, kPrimarySessionBindingPort
-      };
-      uint16_t next_available_server_port = kServerBroadcastPost0;
-
-      network_context() : signals(io_context, SIGINT, SIGTERM) {}
+    struct tcp_connection {
+      natural_t connection_id;
     };
+    natural_t next_connection_id = 1;
+    std::map<natural_t, tcp_connection> active_tcp_connections;
 
     scope<network_context> net_context = nullptr;
     acknowledgement_list ack_list;
 
+    inline natural_t generate_connection_id() {
+      while (active_tcp_connections.find(next_connection_id) != active_tcp_connections.end()) {
+        ++next_connection_id;
+      }
+      return next_connection_id;
+    }
+
     void process_network_thread_messages(driver_kernel* kernel, message&& msg);
 
     /// ack/timeout callbacks
+    void on_ack_listen_at_endpoint(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
+    void on_timeout_listen_at_endpoint(driver_kernel* kernel, message_header header);
+
     void on_ack_shutdown_request_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
     void on_timeout_shutdown_request_network_thread(driver_kernel* kernel, message_header header);
 
     // response/timeout callbacks
     /// message handlers
     /// notifications
+    void handle_notification_new_connection_accepted(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
 

@@ -24,9 +24,6 @@ namespace other {
     std::vector<action> actions;
   };
 
-  environment_interface get_menu_item_interface();
-  environment_interface get_menu_bar_interface();
-
 }  // namespace other
 
 #endif  // OTHERLIB_SCRIPTING_ENVIRONMENT_INTERFACE_HPP

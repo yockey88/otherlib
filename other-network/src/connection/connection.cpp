@@ -1,19 +1,19 @@
 /**
- * \file network/connection.cpp
+ * \file connection/connection.cpp
  **/
-#include "network/connection.hpp"
+#include "connection/connection.hpp"
 
 #include "asio/asio/error.hpp"
 #include "connection_state_maching.hpp"
 
 namespace other {
 
-  scope<connection> connection::tcp_connection(io& io_context, const binding_point& endpoint) {
-    return make_scope<connection>(io_context, endpoint);
+  scope<connection> connection::tcp_connection(natural_t id, event_system& events, io& io_context, const binding_point& endpoint) {
+    return make_scope<connection>(id, events, io_context, endpoint);
   }
 
-  scope<connection> connection::udp_connection(io& io_context, const binding_point& endpoint) {
-    return make_scope<connection>(io_context, endpoint);
+  scope<connection> connection::udp_connection(natural_t id, event_system& events, io& io_context, const binding_point& endpoint) {
+    return make_scope<connection>(id, events, io_context, endpoint);
   }
 
   void connection::listen_on_tcp_endpoint(const binding_point& endpoint) {
@@ -37,6 +37,19 @@ namespace other {
   }
 
   void connection::open_udp_endpoint(const binding_point& endpoint) {
+  }
+
+  void connection::poll() {
+    /// take from read queue
+    std::vector<uint8_t> read_data;
+    if (io_buffer.has_pending_read_data()) {
+      std::lock_guard lock(io_mutex);
+      read_data = io_buffer.read();
+    }
+
+    if (read_data.size() > 0) {
+      on_receive_tcp(read_data);
+    }
   }
 
   void connection::connector::listen_at(asio::ip::tcp::endpoint endpoint) {
@@ -96,8 +109,7 @@ namespace other {
     CORE_LOG_DEBUG("Accepted new connection from {}", socket.remote_endpoint().address().to_string());
     parent->state_machine.handle_event(connection_event::CONNECT_SUCCESS);
     tcp_socket = make_scope<asio::ip::tcp::socket>(std::move(socket));
-
-    parent->on_accept_connection();
+    parent->events.trigger_event("connection.tcp-accepted", parent->id);
   }
 
   void connection::connector::on_establish_connection(const asio::error_code& ec) {
@@ -110,7 +122,7 @@ namespace other {
 
     CORE_LOG_DEBUG("Successfully connected to {}", tcp_socket->remote_endpoint().address().to_string());
     parent->state_machine.handle_event(connection_event::CONNECT_SUCCESS);
-    parent->on_establish_connection();
+    parent->events.trigger_event("connection.tcp-established", parent->id);
   }
 
   void connection::start_read_tcp() {
