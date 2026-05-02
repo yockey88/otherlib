@@ -54,6 +54,7 @@ namespace other {
     load_client();
 
     if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
+      CORE_LOG_DEBUG("No network role specified, starting immediately.");
       on_shutdown_confirm();
       process_driver_event(driver_event::DRIVER_EVENT_READY);
     }
@@ -456,11 +457,6 @@ namespace other {
     }
 
     subsystem<input_system>::get()->finalize_frame();
-
-    /// \todo want to wait on asset unload for shutdown
-    // if (shutdown_state.asset_manager_shutdown && shutdown_state.network_thread_shutdown) {
-    //   process_driver_event(driver_event::DRIVER_EVENT_READY);
-    // }
   }
 
   void driver::render() {

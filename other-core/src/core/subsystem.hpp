@@ -113,6 +113,10 @@ namespace other {
     static void initialize() {
       PROFILE_SECTION("subsystem<>::initialize");
       if (instance == nullptr) {
+        if (inert) {
+          throw std::runtime_error(std::format("Subsystem {} is inert and cannot be initialized without an instance being set.", typeid(T).name()));
+        }
+
         std::lock_guard lock(subsystem_mtx);
         new (&subsystem_description<T>::storage) T();
         instance = std::launder(reinterpret_cast<T*>(&subsystem_description<T>::storage));
@@ -172,7 +176,8 @@ namespace other {
   template <typename T>
   inline std::mutex subsystem<T>::subsystem_mtx;
   template <typename T>
-  inline bool subsystem<T>::inert = false;
+  // subsystems explicitly activated by subsystem registration
+  inline bool subsystem<T>::inert = true;
 
   class config_table;
 

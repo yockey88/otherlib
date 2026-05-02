@@ -59,14 +59,13 @@ namespace other {
 
   void subsystem_registry::initialize_profile(const std::string_view profile, const config_table* config) {
     current_profile = profile;
+    std::println(std::cout, "Initializing subsystems for profile '{}'", profile);
     resolve_dependency_list_and_do_initialization(get_required_subsystems_for_profile(profile), config);
   }
 
   void subsystem_registry::resolve_dependency_list_and_do_initialization(std::span<const std::string_view> requested_systems, const config_table* config) {
     initialization_order.clear();
     initialization_order = resolve_dependencies(requested_systems, subsystem_definition{});
-
-    /// mark subsystems that are not included in the profile as inert to prevent accidental initialization later
 
     for (const natural_t id : initialization_order) {
       auto it = registry.find(id);
@@ -76,7 +75,6 @@ namespace other {
       }
       const subsystem_definition& def = it->second;
 
-      /// \note we can throw here because this is a critical error on initialization and there's no reasonable way to recover from it
       if (def.initialize_fn == nullptr) {
         throw std::runtime_error(std::format("Subsystem '{}' does not have an initialization function.", def.name));
       }
@@ -240,6 +238,7 @@ namespace other {
 
     if (auto prof = config->try_get_value<std::string>("environment.profile"); prof.has_value() && !prof->empty()) {
       if (detail::is_valid_profile_name(*prof)) {
+        std::println(std::cout, "Using profile '{}' from config.", *prof);
         return *prof;
       } else {
         std::println(std::cerr, "Invalid profile name '{}' in config. Defaulting to full profile.", *prof);
@@ -311,6 +310,8 @@ namespace other {
 
     void initialize_logger(const config_table* config) {
       PROFILE_SECTION("other::register-log-sinks");
+      subsystem<logger>::inert = false;
+
       logger* log = subsystem<logger>::get();
       if (log == nullptr) {
         throw std::runtime_error("Logger subsystem is null.");
@@ -336,6 +337,8 @@ namespace other {
 
     void initialize_arena(const config_table* config) {
       PROFILE_SECTION("other::detail::initialize_arena");
+      subsystem<arena>::inert = false;
+
       arena* primary_arena = subsystem<arena>::get();
       if (primary_arena == nullptr) {
         throw std::runtime_error("Primary arena is null.");
@@ -344,6 +347,8 @@ namespace other {
     }
 
     void initialize_file_system(const config_table* config) {
+      subsystem<file_system>::inert = false;
+
       file_system* fs = subsystem<file_system>::get();
       if (fs == nullptr) {
         throw std::runtime_error("File system subsystem is null.");
@@ -351,6 +356,8 @@ namespace other {
     }
 
     void initialize_input_system(const config_table* config) {
+      subsystem<input_system>::inert = false;
+
       input_system* input = subsystem<input_system>::get();
       if (input == nullptr) {
         throw std::runtime_error("Input system subsystem is null.");
@@ -358,6 +365,8 @@ namespace other {
     }
 
     void initialize_type_database(const config_table* config) {
+      subsystem<type_database>::inert = false;
+
       type_database* type_db = subsystem<type_database>::get();
       if (type_db == nullptr) {
         throw std::runtime_error("Type database subsystem is null.");
@@ -365,6 +374,8 @@ namespace other {
     }
 
     void initialize_physics_environment(const config_table* config) {
+      subsystem<physics_environment>::inert = false;
+
       physics_environment* physics_env = subsystem<physics_environment>::get();
       if (physics_env == nullptr) {
         throw std::runtime_error("Physics environment subsystem is null.");
@@ -375,6 +386,8 @@ namespace other {
     }
 
     void initialize_renderer_backend(const config_table* config) {
+      subsystem<renderer_backend>::inert = false;
+
       auto* backend = subsystem<renderer_backend>::get();
       if (backend == nullptr) {
         throw std::runtime_error("Renderer backend subsystem is null.");
@@ -384,6 +397,8 @@ namespace other {
     }
 
     void initialize_scripting_environment(const config_table* config) {
+      subsystem<scripting_environment>::inert = false;
+
       auto* env = subsystem<scripting_environment>::get();
       if (env == nullptr) {
         throw std::runtime_error("scripting_environment null in initialize!");

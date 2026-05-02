@@ -62,6 +62,8 @@ namespace other {
       return nullptr;
     }
 
+    /// \todo this is going to have to be built from environment profile
+    ///       and only plugins compatible with profile should be loadable
     other_plugin_argv argv = {
       subsystem<arena>::get(),
       subsystem<logger>::get(),

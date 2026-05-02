@@ -541,7 +541,7 @@ namespace other {
 
     /// server does this in @ref network_system::on_ack_session_listen_for_network_thread
     if (primary_role == role::CLIENT) {
-      get_driver().process_driver_event(driver_event::DRIVER_EVENT_READY);
+      get_driver().confirm_initialization();
     }
   }
 
@@ -557,7 +557,7 @@ namespace other {
 
     /// server does this in @ref network_system::on_timeout_session_listen_for_network_thread
     if (primary_role == role::CLIENT) {
-      // get_driver().process_driver_event(driver_event::DRIVER_EVENT_READY);
+      get_driver().confirm_initialization();
     }
   }
 
@@ -593,7 +593,7 @@ namespace other {
 
     /// client does this in @ref network_system::on_ack_session_connect_to
     if (primary_role == role::SERVER) {
-      get_driver().process_driver_event(driver_event::DRIVER_EVENT_READY);
+      get_driver().confirm_initialization();
     }
   }
 
@@ -602,7 +602,7 @@ namespace other {
 
     /// client does this in @ref network_system::on_timeout_session_connect_to
     if (primary_role == role::SERVER) {
-      get_driver().process_driver_event(driver_event::DRIVER_EVENT_READY);
+      get_driver().confirm_initialization();
     }
   }
 
@@ -760,7 +760,6 @@ namespace other {
   }
 
   void network_system::handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg) {
-    get_driver().confirm_initialization();
   }
 
   void network_system::handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg) {
