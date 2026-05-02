@@ -167,7 +167,7 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose) #, project_path="test-project/test-project.toml")
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose, project_path="test-project/test-project.toml")
     
     elif args.run_server:
       run_project("other-server", cfg, "other_server", "server-config.toml", args.verbose)

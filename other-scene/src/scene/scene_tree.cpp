@@ -61,7 +61,7 @@ namespace other {
   void scene_tree::destroy_all_objects() {
     if (objects != nullptr) {
       for (auto& obj : *objects) {
-        if (obj.id != 0 && scene_ptr != nullptr) {
+        if (scene_ptr != nullptr) {
           destroy_object(obj.id);
         }
       }

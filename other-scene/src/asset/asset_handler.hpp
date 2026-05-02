@@ -99,9 +99,9 @@ namespace other {
     job_system& get_job_system() { return jobs; }
 
     bool idle() const { return asset_pipelines.empty(); }
-    bool empty() const { return loaded_assets.empty() && idle(); }
+    bool empty() const { return all_assets.empty() && idle(); }
 
-    void purge_stores();
+    void begin_unload();
     void update_pipelines();
 
     using load_completion_callback = std::function<void(asset*)>;
@@ -175,6 +175,9 @@ namespace other {
     std::unordered_map<natural_t, asset> unloaded_assets;
     std::unordered_map<natural_t, asset_state_machine> asset_states;
 
+    /// normally we might want to recreate, but if we are closing the editor
+    // or doing
+    bool remove_after_unload = false;
     std::queue<natural_t> pending_unloads;
 
     std::string default_mount = "assets";
@@ -185,6 +188,7 @@ namespace other {
     }
 
     void begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it);
+    std::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
 
     asset* find_asset_by_path(const filepath& file_path) const;
 

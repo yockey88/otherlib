@@ -84,7 +84,8 @@ namespace other {
     std::string get_driver_info_string(const std::string_view str) const;
 
     void confirm_initialization();
-    void confirm_shutdown();
+    void confirm_assets_clean();
+    void confirm_network_thread_shutdown();
 
     void trigger_event(const std::string& event_name, const value& data = {});
 
@@ -193,6 +194,11 @@ namespace other {
     struct shutdown_state {
       bool network_thread_shutdown = false;
       bool asset_manager_shutdown = false;
+
+      inline bool ready_to_shutdown(driver* drv) const {
+        return drv->current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN &&
+          network_thread_shutdown && asset_manager_shutdown;
+      }
     };
     running_state runtime_state;
     shutdown_state shutdown_state;

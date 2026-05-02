@@ -47,6 +47,8 @@ namespace other {
     ~project() = default;
 
     void load_from_file(driver_kernel* kernel, const filepath& path);
+    void generate_at(driver_kernel* kernel, const filepath& directory);
+
     void unload();
     void set_state(state new_state);
 
