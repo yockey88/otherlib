@@ -194,6 +194,11 @@ namespace other {
     struct shutdown_state {
       bool network_thread_shutdown = false;
       bool asset_manager_shutdown = false;
+
+      inline bool ready_to_shutdown(driver* drv) const {
+        return drv->current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN &&
+          network_thread_shutdown && asset_manager_shutdown;
+      }
     };
     running_state runtime_state;
     shutdown_state shutdown_state;
