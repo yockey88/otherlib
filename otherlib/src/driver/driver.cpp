@@ -55,10 +55,8 @@ namespace other {
 
     load_client();
 
-    if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
-      CORE_LOG_DEBUG("No network role specified, starting immediately.");
-      on_shutdown_confirm();
-      process_driver_event(driver_event::DRIVER_EVENT_READY);
+    if (!driver_kernel_ptr->get_core_system<network_system>().network_active()) {
+      confirm_initialization();
     }
   }
 
@@ -206,42 +204,9 @@ namespace other {
     on_shutdown_request();
     process_driver_event(driver_event::DRIVER_EVENT_STOP);
 
-    if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
+    if (!driver_kernel_ptr->get_core_system<network_system>().network_active()) {
       shutdown_state.network_thread_shutdown = true;
     }
-  }
-
-  void driver::send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding) {
-    // message cmd_msg;
-    // cmd_msg.header = {
-    //   .category = COMMAND,
-    //   .id = ENVIRONMENT_LOAD_SCENE,
-    // };
-
-    // command_load_scene scene_cmd;
-    // scene_cmd.session_id_flag = client_session_id.has_value() ? 0x01 : 0x00;
-    // if (client_session_id.has_value()) {
-    //   scene_cmd.session_id = client_session_id.value();
-    // }
-
-    // scene_cmd.empty_scene_flag = is_empty ? 0x01 : 0x00;
-    // scene_cmd.requires_udp_binding = requires_udp_binding ? 0x01 : 0x00;
-    // if (requires_udp_binding) {
-    //   scene_cmd.udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-    //   scene_cmd.server_udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-    // }
-
-    // scene_cmd.scene_name = active_scene->name;
-    // cmd_msg.data.append_range(scene_cmd.as_buffer());
-
-    // CORE_LOG_DEBUG("Sending command to network thread to load empty scene '{}'", scene_name);
-    // if (scene_cmd.requires_udp_binding == 0x01) {
-    //   CORE_LOG_DEBUG("Scene '{}' requires UDP binding @ [LOCAL = {}, REMOTE = {}]", scene_name, binding_point::write_string(scene_cmd.udp_address), binding_point::write_string(scene_cmd.server_udp_address));
-    // }
-
-    // /// \todo check if server is even open
-    // CORE_LOG_INFO("sending ENVIRONMENT_LOAD_SCENE command for remote....");
-    // send_message_and_wait_acknowledgment(std::move(cmd_msg), seconds(10), message_handler{ this, &driver::on_acknowledge_command_environment_load_scene, &driver::on_timeout_environment_load_scene });
   }
 
   std::string driver::get_driver_info_string(const std::string_view str) const {

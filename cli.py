@@ -87,7 +87,7 @@ def validate_args(args, parser):
       and not args.compile_object \
       and not args.run_test_suite and not args.run_server \
       and not args.install \
-      and not args.daemon_server:
+      and not args.daemon_server and not args.run_project:
     parser.print_help()
     sys.exit(1)
 
@@ -98,6 +98,7 @@ if __name__ == "__main__":
   parser.add_argument("--regen-project", "-rg", action="store_true", help="Regenerate the project files.")
   parser.add_argument("--build", "-b", action="store_true", help="Build the project.")
   parser.add_argument("--run", "-r", action="store_true", help="Run the main driver.")
+  parser.add_argument("--run-project", "-rp", nargs=1, type=str, metavar="PROJECT_PATH", help="Run the main driver with a specific project file.")
   parser.add_argument("--run-server", "-srv", action="store_true", help="Run the server driver.")
   parser.add_argument("--run-scratch", "-rs", action="store_true", help="Run the scratch application.")
   parser.add_argument("--run-terminal", "-rt", action="store_true", help="Run the other terminal application.")
@@ -167,7 +168,15 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose, project_path="test-project/test-project.toml")
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose)
+    
+    elif args.run_project is not None and len(args.run_project) == 1:
+      project_path = args.run_project[0]
+      if not os.path.exists(project_path):
+        print(f"Error: The specified project file {project_path} does not exist.")
+        sys.exit(1)
+      print(f"Running Other-Driver [{cfg}] with project file: {project_path}")
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose, project_path=project_path)
     
     elif args.run_server:
       run_project("other-server", cfg, "other_server", "server-config.toml", args.verbose)

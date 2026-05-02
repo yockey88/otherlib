@@ -50,6 +50,11 @@ namespace other {
     VERSION_HANDSHAKE,
 
     /// command messages
+    LISTEN_TCP_CONNECTION,
+    CONNECT_TCP_CONNECTION,
+    OPEN_UDP_CONNECTION,
+    CLOSE_CONNECTION,
+
     /// request/response messages
     /// error alert messages
 
@@ -81,14 +86,6 @@ namespace other {
     static binding_point from_asio(const asio::ip::address& addr, uint16_t port);
   };
   static_assert(sizeof(binding_point) == sizeof(uint32_t) + sizeof(uint16_t), "Invalid binding_point size");
-
-  struct session_endpoint {
-    binding_point simulation;
-    binding_point control;
-
-    static std::string write_string(const session_endpoint& endpoint);
-  };
-  static_assert(sizeof(session_endpoint) == sizeof(binding_point) * 2, "Invalid session_endpoint size");
 
   struct version {
     uint16_t major;

@@ -13,11 +13,8 @@
 #include "network/network_thread.hpp"
 
 #include "driver/acknowledgement_list.hpp"
-#include "driver/application_list.hpp"
 #include "driver/driver_system.hpp"
-#include "driver/response_list.hpp"
 #include "driver/systems/core_system.hpp"
-#include "driver/timer_list.hpp"
 
 namespace other {
 
@@ -43,25 +40,18 @@ namespace other {
 
     void send_to_network_thread(driver_kernel* kernel, message&& msg);
 
+    natural_t open_tcp_connection(const binding_point& endpoint);
+
     void send_message_and_detach_acknowledgement(driver_kernel* kernel, message&& msg, message_handler handler);
     natural_t send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler);
     void cancel_acknowledgment(natural_t ack_id);
 
-    void send_message_and_detach_response(driver_kernel* kernel, message&& msg, message_handler handler);
-    natural_t send_message_and_wait_response(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler);
-    void cancel_response(natural_t response_id);
-
     void catch_signal(int signal);
-
-    natural_t set_timeout(microseconds duration, timer_list::timeout::on_timeout timeout_callback);
-    void clear_timeout(natural_t timeout_id);
 
     asio::io_context& io_context();
     message_bus& net_message_bus();
+
     bool network_active() const;
-    role get_role() const { return primary_role; }
-    opt<integer_t> primary_session_id() const { return client_session_id; }
-    application_list& registered_applications() { return app_list; }
 
    private:
     struct network_context {
@@ -81,21 +71,9 @@ namespace other {
 
       network_context() : signals(io_context, SIGINT, SIGTERM) {}
     };
-    struct open_stream {
-      integer_t stream_id = 0;
-      // ...
-    };
 
     scope<network_context> net_context = nullptr;
     acknowledgement_list ack_list;
-    response_list resp_list;
-    timer_list timeout_list;
-    application_list app_list;
-
-    role primary_role = CLIENT;
-    opt<integer_t> client_session_id;
-
-    std::vector<open_stream> active_streams;
 
     void process_network_thread_messages(driver_kernel* kernel, message&& msg);
 

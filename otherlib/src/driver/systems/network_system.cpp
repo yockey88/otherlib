@@ -50,8 +50,8 @@ namespace other {
 
   void network_system::tick(driver_kernel* kernel, double dt) {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    net_context->io_context.poll();
     if (!net_context->io_context.stopped()) {
-      net_context->io_context.poll();
       net_context->io_context.restart();
     }
 
@@ -80,9 +80,6 @@ namespace other {
     for (auto& ack : ack_list.pending_acks) {
       ack.timer.cancel();
     }
-    for (auto& response : resp_list.pending_responses) {
-      response.timer.cancel();
-    }
 
     CORE_LOG_DEBUG("Sending shutdown request to network thread...");
     message msg;
@@ -103,6 +100,10 @@ namespace other {
   void network_system::send_to_network_thread(driver_kernel* kernel, message&& msg) {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     net_context->net_thread_message_bus.send_message(std::move(msg));
+  }
+
+  natural_t network_system::open_tcp_connection(const binding_point& endpoint) {
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
   }
 
   void network_system::send_message_and_detach_acknowledgement(driver_kernel* kernel, message&& msg, message_handler handler) {
@@ -184,117 +185,12 @@ namespace other {
     }
   }
 
-  void network_system::send_message_and_detach_response(driver_kernel* kernel, message&& msg, message_handler handler) {
-    response_list::pending_response response{
-      .header = msg.header,
-      .sent_time = std::chrono::steady_clock::now(),
-      .handler = handler,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-
-    {
-      auto itr = std::find_if(resp_list.pending_responses.begin(), resp_list.pending_responses.end(), [&response](const response_list::pending_response& existing_response) {
-        return existing_response.header == response.header;
-      });
-      OTHER_ASSERT(itr == resp_list.pending_responses.end(), "Response for message ID {} already pending", response.header.id);
-    }
-
-    send_to_network_thread(kernel, std::move(msg));
-    if (handler.handle_msg == nullptr) {
-      return;
-    }
-
-    auto resp_itr = resp_list.pending_responses.insert(resp_list.pending_responses.end(), std::move(response));
-    OTHER_ASSERT(resp_itr != resp_list.pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
-  }
-
-  natural_t network_system::send_message_and_wait_response(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler) {
-    response_list::pending_response response{
-      .header = msg.header,
-      .sent_time = std::chrono::steady_clock::now(),
-      .handler = handler,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-
-    {
-      auto itr = std::find_if(resp_list.pending_responses.begin(), resp_list.pending_responses.end(), [&response](const response_list::pending_response& existing_response) {
-        return existing_response.header == response.header;
-      });
-      OTHER_ASSERT(itr == resp_list.pending_responses.end(), "Response for message ID {} already pending", response.header.id);
-    }
-
-    send_to_network_thread(kernel, std::move(msg));
-
-    response.id = resp_list.next_pending_response_id++;
-    auto resp_itr = resp_list.pending_responses.insert(resp_list.pending_responses.end(), std::move(response));
-    OTHER_ASSERT(resp_itr != resp_list.pending_responses.end(), "Failed to insert pending response for message ID {}", response.header.id);
-
-    // set up timeout
-    resp_itr->timer.expires_after(timeout);
-    resp_itr->timer.async_wait([this, stime = resp_itr->sent_time](const asio::error_code& ec) {
-      if (ec) {
-        return;
-      }
-
-      auto itr = std::ranges::find_if(resp_list.pending_responses, [&](const response_list::pending_response& resp) { return resp.sent_time == stime; });
-      OTHER_ASSERT(itr != resp_list.pending_responses.end(), "Failed to find response for timeout callback!");
-      OTHER_ASSERT(itr->handler.on_timeout != nullptr, "Timeout callback is null for message ID {}", itr->header.id);
-
-      CORE_LOG_WARN("Response timeout for message {}", itr->header);
-      itr->handler.on_timeout(itr->header);
-
-      resp_list.pending_responses.erase(itr);
-    });
-
-    return resp_itr->id;
-  }
-
-  void network_system::cancel_response(natural_t response_id) {
-    auto itr = std::ranges::find_if(resp_list.pending_responses, [&](const response_list::pending_response& resp) { return resp.id == response_id; });
-    if (itr != resp_list.pending_responses.end()) {
-      CORE_LOG_DEBUG("Cancelling pending response for message ID {}", itr->header.id);
-      itr->timer.cancel();
-      resp_list.pending_responses.erase(itr);
-    }
-  }
-
   void network_system::catch_signal(int signum) {
     if (signum == SIGINT || signum == SIGTERM) {
       CORE_LOG_INFO("Received signal {}, shutting down driver...", signum);
       get_driver().request_shutdown();
     } else {
       CORE_LOG_WARN("Received unhandled signal {}", signum);
-    }
-  }
-
-  natural_t network_system::set_timeout(microseconds duration, timer_list::timeout::on_timeout timeout_callback) {
-    timer_list::timeout new_timeout{
-      .id = timeout_list.next_timeout_id++,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-    new_timeout.timer.expires_after(duration);
-    new_timeout.timer.async_wait([this, timeout_id = new_timeout.id, timeout_callback](const asio::error_code& ec) {
-      if (ec) {
-        return;
-      }
-
-      timeout_callback(timeout_id);
-
-      auto itr = std::ranges::find_if(timeout_list.pending_timeouts, [&](const timer_list::timeout& t) { return t.id == timeout_id; });
-      if (itr != timeout_list.pending_timeouts.end()) {
-        timeout_list.pending_timeouts.erase(itr);
-      }
-    });
-    timeout_list.pending_timeouts.insert(timeout_list.pending_timeouts.end(), std::move(new_timeout));
-
-    return new_timeout.id;
-  }
-
-  void network_system::clear_timeout(natural_t timeout_id) {
-    auto itr = std::ranges::find_if(timeout_list.pending_timeouts, [&](const timer_list::timeout& t) { return t.id == timeout_id; });
-    if (itr != timeout_list.pending_timeouts.end()) {
-      itr->timer.cancel();
-      timeout_list.pending_timeouts.erase(itr);
     }
   }
 
@@ -309,7 +205,7 @@ namespace other {
   }
 
   bool network_system::network_active() const {
-    return primary_role != NONE;
+    return net_context->net_thread != nullptr && net_context->net_thread->is_running();
   }
 
   void network_system::process_network_thread_messages(driver_kernel* kernel, message&& msg) {
@@ -393,8 +289,6 @@ namespace other {
     net_context->io_context.stop();
 
     ack_list.pending_acks.clear();
-    resp_list.pending_responses.clear();
-    timeout_list.pending_timeouts.clear();
     get_driver().confirm_network_thread_shutdown();
   }
 

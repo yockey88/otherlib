@@ -79,7 +79,6 @@ namespace other {
 
     void process_driver_event(driver_event event);
     void request_shutdown();
-    void send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding);
 
     std::string get_driver_info_string(const std::string_view str) const;
 
