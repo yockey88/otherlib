@@ -53,7 +53,7 @@ namespace other {
     }
 
     subsystem_registry registry = register_all_subsystems();
-    const std::string_view profile = get_subsystem_profile(&config);
+    std::string profile = get_subsystem_profile(&config);
     registry.initialize_profile(profile, &config);
 
     if (config.diagnostics.verbose) {
@@ -65,7 +65,7 @@ namespace other {
         }
       }
 
-      CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
+      CORE_LOG_INFO("Other Environment version {}", OTHER_ENVIRONMENT_VERSION_STRING);
       CORE_LOG_DEBUG("Environment Config File: {}", cmd.config_file);
       CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
     }
@@ -173,14 +173,30 @@ namespace other {
 
   void shutdown_subsystems() {
     PROFILE_SECTION("other::shutdown_subsystems");
-    subsystem<scripting_environment>::get()->shutdown();
-    subsystem<type_database>::get()->shutdown();
-    subsystem<physics_environment>::get()->shutdown();
-    subsystem<renderer_backend>::get()->shutdown();
-    subsystem<input_system>::get()->shutdown();
-    subsystem<file_system>::get()->shutdown();
-    subsystem<arena>::get()->shutdown();
-    subsystem<logger>::get()->shutdown();
+    if (!subsystem<scripting_environment>::inert) {
+      subsystem<scripting_environment>::get()->shutdown();
+    }
+    if (!subsystem<renderer_backend>::inert) {
+      subsystem<renderer_backend>::get()->shutdown();
+    }
+    if (!subsystem<physics_environment>::inert) {
+      subsystem<physics_environment>::get()->shutdown();
+    }
+    if (!subsystem<type_database>::inert) {
+      subsystem<type_database>::get()->shutdown();
+    }
+    if (!subsystem<input_system>::inert) {
+      subsystem<input_system>::get()->shutdown();
+    }
+    if (!subsystem<file_system>::inert) {
+      subsystem<file_system>::get()->shutdown();
+    }
+    if (!subsystem<arena>::inert) {
+      subsystem<arena>::get()->shutdown();
+    }
+    if (!subsystem<logger>::inert) {
+      subsystem<logger>::get()->shutdown();
+    }
   }
 
 }  // namespace other

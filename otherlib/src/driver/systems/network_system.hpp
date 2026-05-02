@@ -19,7 +19,6 @@
 #include "driver/systems/core_system.hpp"
 #include "driver/timer_list.hpp"
 
-
 namespace other {
 
   class network_system : public core_system<network_system> {
@@ -40,7 +39,6 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
-    void start_network(driver_kernel* kernel);
     void begin_shutdown_sequence(driver_kernel* kernel);
 
     void send_to_network_thread(driver_kernel* kernel, message&& msg);
@@ -99,56 +97,24 @@ namespace other {
 
     std::vector<open_stream> active_streams;
 
-    void register_other_application(driver_kernel* kernel, integer_t session_id, application_list::other_application* app);
-    void request_scene_udp_binding(driver_kernel* kernel, udp_binding_information address);
-
     void process_network_thread_messages(driver_kernel* kernel, message&& msg);
 
     /// ack/timeout callbacks
-    void on_ack_command_environment_load_scene(driver_kernel* kernel, message_header header, std::span<const uint8_t> data);
-    void on_timeout_environment_load_scene(driver_kernel* kernel, message_header header);
     void on_ack_shutdown_request_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
     void on_timeout_shutdown_request_network_thread(driver_kernel* kernel, message_header header);
-    void on_ack_session_connect_to(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
-    void on_timeout_session_connect_to(driver_kernel* kernel, message_header header);
-    void on_ack_session_listen_for_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
-    void on_timeout_session_listen_for_network_thread(driver_kernel* kernel, message_header header);
-    // response/timeout callbacks
-    void on_respond_session_check_in(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
-    void on_respond_new_udp_stream_binding(driver_kernel* kernel, message_header header, std::span<const uint8_t> data);
-    void on_timeout_new_udp_stream_binding(driver_kernel* kernel, message_header header);
 
+    // response/timeout callbacks
     /// message handlers
     /// notifications
-    void handle_notification_stream_receive_udp_datagram(driver_kernel* kernel, message&& msg);
-    void handle_notification_session_check_in(driver_kernel* kernel, message&& msg);
-    void handle_notification_session_closed(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
 
     /// acknowledgments
     void handle_acknowledgement_ack(driver_kernel* kernel, message&& msg);
-
     /// control messages
-    void handle_control_ping(driver_kernel* kernel, message&& msg);
-    void handle_control_pong(driver_kernel* kernel, message&& msg);
-
     /// command messages
-    void handle_command_environment_load_scene(driver_kernel* kernel, integer_t session_id, message&& msg);
-
     /// request messages
-    void handle_request_session_information(driver_kernel* kernel, integer_t session_id, message&& msg);
-    void session_check_in_request(driver_kernel* kernel, integer_t session_id);
-    void session_application_information_request(driver_kernel* kernel, integer_t session_id, application_list::other_application* app = nullptr);
-
     /// response messages
-    void handle_response(driver_kernel* kernel, message&& msg);
-    void handle_response_session_information(driver_kernel* kernel, integer_t session_id, message&& msg);
-
-    /// session events
-    void print_session_information(driver_kernel* kernel, application_list::other_application* app);
-    void handle_session_event_rx_message(driver_kernel* kernel, message&& msg);
-    void handle_session_information_response(driver_kernel* kernel, integer_t session_id, session_information_response&& response);
   };
 
 }  // namespace other

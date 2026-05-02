@@ -30,8 +30,6 @@ namespace other {
     REQUEST,
     RESPONSE,
 
-    SESSION_EVENT,
-
     INFORMATION,
 
     ERROR_ALERT,
@@ -43,8 +41,6 @@ namespace other {
     ACK = 0x0001,
 
     /// notification messages
-    STREAM_RX_UDP_DATAGRAM,
-    SESSION_RX_MESSAGE,
     NETWORK_THREAD_READY,
     NETWORK_THREAD_SHUTDOWN_COMPLETE,
 
@@ -54,25 +50,7 @@ namespace other {
     VERSION_HANDSHAKE,
 
     /// command messages
-    SESSION_LISTEN_FOR,
-    SESSION_CONNECT_TO,
-    SESSION_TX_MESSAGE,
-
-    STREAM_SEND_UDP_DATAGRAM,
-
-    ENVIRONMENT_LOAD_SCENE,
-
     /// request/response messages
-    SESSION_CHECK_IN,
-    SESSION_CLOSED,
-    SESSION_SHUTDOWN,
-    SESSION_INFORMATION,
-    NEW_UDP_STREAM_BINDING,
-
-    PROJECT_CACHE_INFORMATION,
-
-    SCENE_STATE,
-
     /// error alert messages
 
     SHUTDOWN_REQUEST,
@@ -219,61 +197,6 @@ namespace other {
   }
 
   using message_channel = channel<message>;
-
-  struct field_bounds {
-    natural_t min = 0;
-    natural_t max = 0;
-  };
-  struct message_field {
-    const char* name;
-    field_bounds size = { 0, 0 };
-  };
-
-  constexpr inline message_field message_fields[] = {
-    { "msg-category", { sizeof(message_category), sizeof(message_category) } },
-    { "msg-id", { sizeof(message_id), sizeof(message_id) } },
-
-    { "session-type", { sizeof(uint16_t), sizeof(uint16_t) } },
-    { "node-id", { sizeof(uint64_t), sizeof(uint64_t) } },
-    { "layer-type", { 0, sizeof(uint8_t) } },
-    { "status", { sizeof(uint64_t), sizeof(uint64_t) } },
-
-    { "acked-header", { sizeof(message_header), sizeof(message_header) } },
-    { "ack-nack", { sizeof(uint8_t), sizeof(uint8_t) } },
-
-    { "port", { sizeof(uint16_t), sizeof(uint16_t) } },
-    { "ip", { sizeof(uint32_t), sizeof(uint32_t) } },
-
-    { "opcode", { sizeof(uint8_t), sizeof(uint8_t) } },
-    { "argc", { sizeof(uint8_t), sizeof(uint8_t) } },
-    { "argv", { 0, 0 } },
-
-    { "error-code", { sizeof(uint16_t), sizeof(uint16_t) } },
-    { "error-message", { 0, 0 } },
-  };
-
-  enum message_field_idx : uint8_t {
-    MSG_CATEGORY_FIELD = 0,
-    MSG_ID_FIELD,
-
-    SESSION_TYPE_FIELD,
-    NODE_ID_FIELD,
-    LAYER_TYPE_FIELD,
-    STATUS_FIELD,
-
-    ACKED_HEADER_FIELD,
-    ACK_NACK_FIELD,
-
-    PORT_FIELD,
-    IP_FIELD,
-
-    OPCODE_FIELD,
-    ARGC_FIELD,
-    ARGV_FIELD,
-
-    ERROR_CODE_FIELD,
-    ERROR_MESSAGE_FIELD,
-  };
 
 }  // namespace other
 

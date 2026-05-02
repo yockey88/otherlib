@@ -64,34 +64,26 @@ namespace other {
   }
 
   session_status_request session_status_request::parse(const std::vector<uint8_t>& data) {
-    auto root = flexbuffers::GetRoot(data);
-    auto map = root.AsMap();
+    const uint16_t* session_type_ptr = reinterpret_cast<const uint16_t*>(data.data());
+    const uint64_t* node_id_ptr = reinterpret_cast<const uint64_t*>(data.data() + sizeof(uint16_t));
+    const uint8_t* layer_type_ptr = reinterpret_cast<const uint8_t*>(data.data() + sizeof(uint16_t) + sizeof(uint64_t));
 
     session_status_request msg;
-
-    msg.session_type = map[message_fields[SESSION_TYPE_FIELD].name].AsUInt16();
-    msg.node_id = map[message_fields[NODE_ID_FIELD].name].AsUInt64();
-    msg.layer_type = map[message_fields[LAYER_TYPE_FIELD].name].AsUInt8();
+    msg.session_type = *session_type_ptr;
+    msg.node_id = *node_id_ptr;
+    msg.layer_type = *layer_type_ptr;
 
     return msg;
   }
 
   std::vector<uint8_t> session_status_request::build() {
-    flexbuffers::Builder builder;
-    builder.Map([&]() {
-      builder.UInt(message_fields[SESSION_TYPE_FIELD].name, session_type);
-      builder.UInt(message_fields[NODE_ID_FIELD].name, node_id);
-      builder.UInt(message_fields[LAYER_TYPE_FIELD].name, layer_type);
-    });
-    builder.Finish();
-
     std::vector<uint8_t> data;
-    auto& buffer = builder.GetBuffer();
-    data.resize(2 + buffer.size());
-
-    write_header(data, { category, id });
-    data.insert(data.end(), buffer.begin(), buffer.end());
-
+    const uint8_t* session_type_bytes = reinterpret_cast<const uint8_t*>(&session_type);
+    const uint8_t* node_id_bytes = reinterpret_cast<const uint8_t*>(&node_id);
+    const uint8_t* layer_type_bytes = reinterpret_cast<const uint8_t*>(&layer_type);
+    data.append_range(std::span(session_type_bytes, sizeof(uint16_t)));
+    data.append_range(std::span(node_id_bytes, sizeof(uint64_t)));
+    data.append_range(std::span(layer_type_bytes, sizeof(uint8_t)));
     return data;
   }
 
@@ -103,33 +95,26 @@ namespace other {
   }
 
   session_status_response session_status_response::parse(const std::vector<uint8_t>& data) {
-    auto root = flexbuffers::GetRoot(data);
-    auto map = root.AsMap();
+    const uint16_t* session_type_ptr = reinterpret_cast<const uint16_t*>(data.data());
+    const uint64_t* node_id_ptr = reinterpret_cast<const uint64_t*>(data.data() + sizeof(uint16_t));
+    const uint64_t* status_ptr = reinterpret_cast<const uint64_t*>(data.data() + sizeof(uint16_t) + sizeof(uint64_t));
 
     session_status_response msg;
-    msg.session_type = map[message_fields[SESSION_TYPE_FIELD].name].AsUInt16();
-    msg.node_id = map[message_fields[NODE_ID_FIELD].name].AsUInt64();
-    msg.status = map[message_fields[STATUS_FIELD].name].AsUInt64();
+    msg.session_type = *session_type_ptr;
+    msg.node_id = *node_id_ptr;
+    msg.status = *status_ptr;
 
     return msg;
   }
 
   std::vector<uint8_t> session_status_response::build() {
-    flexbuffers::Builder builder;
-    builder.Map([&]() {
-      builder.UInt(message_fields[SESSION_TYPE_FIELD].name, session_type);
-      builder.UInt(message_fields[NODE_ID_FIELD].name, node_id);
-      builder.UInt(message_fields[STATUS_FIELD].name, status);
-    });
-    builder.Finish();
-
     std::vector<uint8_t> data;
-    auto& buffer = builder.GetBuffer();
-    data.resize(2 + buffer.size());
-
-    write_header(data, { category, id });
-    data.insert(data.end(), buffer.begin(), buffer.end());
-
+    const uint8_t* session_type_bytes = reinterpret_cast<const uint8_t*>(&session_type);
+    const uint8_t* node_id_bytes = reinterpret_cast<const uint8_t*>(&node_id);
+    const uint8_t* status_bytes = reinterpret_cast<const uint8_t*>(&status);
+    data.append_range(std::span(session_type_bytes, sizeof(uint16_t)));
+    data.append_range(std::span(node_id_bytes, sizeof(uint64_t)));
+    data.append_range(std::span(status_bytes, sizeof(uint64_t)));
     return data;
   }
 
@@ -139,69 +124,21 @@ namespace other {
     return ss.str();
   }
 
-  session_shutdown_request session_shutdown_request::parse(const std::vector<uint8_t>& data) {
-    auto root = flexbuffers::GetRoot(data);
-    auto map = root.AsMap();
-
-    session_shutdown_request msg;
-
-    msg.session_type = map[message_fields[SESSION_TYPE_FIELD].name].AsUInt16();
-    msg.node_id = map[message_fields[NODE_ID_FIELD].name].AsUInt64();
-    msg.status = map[message_fields[STATUS_FIELD].name].AsUInt64();
-
-    return msg;
-  }
-
-  std::vector<uint8_t> session_shutdown_request::build() {
-    flexbuffers::Builder builder;
-    builder.Map([&]() {
-      builder.UInt(message_fields[SESSION_TYPE_FIELD].name, session_type);
-      builder.UInt(message_fields[NODE_ID_FIELD].name, node_id);
-      builder.UInt(message_fields[STATUS_FIELD].name, status);
-    });
-    builder.Finish();
-
-    std::vector<uint8_t> data;
-    auto& buffer = builder.GetBuffer();
-    data.resize(2 + buffer.size());
-
-    write_header(data, { category, id });
-    data.insert(data.end(), buffer.begin(), buffer.end());
-
-    return data;
-  }
-
-  std::string session_shutdown_request::write_string(const session_shutdown_request& msg) {
-    std::stringstream ss;
-    ss << std::format("[shutdown request]: session_type: {:#06x}, node_id: {}, status: {}", msg.session_type, msg.node_id, msg.status);
-    return ss.str();
-  }
-
   error_alert_msg error_alert_msg::parse(const std::vector<uint8_t>& data) {
-    auto root = flexbuffers::GetRoot(data);
-    auto map = root.AsMap();
+    const uint16_t* error_code_ptr = reinterpret_cast<const uint16_t*>(data.data());
+    const char* error_message_ptr = reinterpret_cast<const char*>(data.data() + sizeof(uint16_t));
 
     error_alert_msg msg;
-    msg.error_code = map[message_fields[ERROR_CODE_FIELD].name].AsUInt16();
-    msg.error_message = map[message_fields[ERROR_MESSAGE_FIELD].name].AsString().str();
-
+    msg.error_code = *error_code_ptr;
+    msg.error_message = std::string(error_message_ptr);
     return msg;
   }
 
   std::vector<uint8_t> error_alert_msg::build() {
-    flexbuffers::Builder builder;
-    builder.Map([&]() {
-      builder.UInt(message_fields[ERROR_CODE_FIELD].name, error_code);
-      builder.String(message_fields[ERROR_MESSAGE_FIELD].name, error_message);
-    });
-    builder.Finish();
-
     std::vector<uint8_t> data;
-    auto& buffer = builder.GetBuffer();
-    data.resize(2 + buffer.size());
-
-    write_header(data, { category, id });
-    data.insert(data.end(), buffer.begin(), buffer.end());
+    const uint8_t* error_code_bytes = reinterpret_cast<const uint8_t*>(&error_code);
+    data.append_range(std::span(error_code_bytes, sizeof(uint16_t)));
+    data.append_range(std::span(reinterpret_cast<const uint8_t*>(error_message.data()), error_message.size() + 1));
     return data;
   }
 

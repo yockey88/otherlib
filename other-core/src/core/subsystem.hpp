@@ -91,6 +91,8 @@ namespace other {
     constexpr static std::string_view kFullProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kRendererBackend, kScriptingEnvironment };
   };
 
+  void unactive_subsystem_initialization_error(const std::string_view subsystem_name);
+
   template <typename T>
   class subsystem {
    public:
@@ -114,7 +116,8 @@ namespace other {
       PROFILE_SECTION("subsystem<>::initialize");
       if (instance == nullptr) {
         if (inert) {
-          throw std::runtime_error(std::format("Subsystem {} is inert and cannot be initialized without an instance being set.", typeid(T).name()));
+          unactive_subsystem_initialization_error(typeid(T).name());
+          return;
         }
 
         std::lock_guard lock(subsystem_mtx);

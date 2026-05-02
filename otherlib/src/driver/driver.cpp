@@ -47,9 +47,11 @@ namespace other {
       CORE_LOG_INFO("Driver Systems:\n{}", driver_kernel_ptr->list_systems());
     });
 
-    get_event_system()->add_listener("project.loaded", [this](const value& data) {
-      on_project_loaded();
-    });
+    if (driver_kernel_ptr->has_core_system<project_system>()) {
+      get_event_system()->add_listener("project.loaded", [this](const value& data) {
+        on_project_loaded();
+      });
+    }
 
     load_client();
 
@@ -190,10 +192,13 @@ namespace other {
         current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
       return;
     }
+    CORE_LOG_INFO("Beginning shutdown sequence");
 
-    auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
-    scenes.unload_active_scene();
-    scenes.unload_project_scene_graph();
+    if (driver_kernel_ptr->has_core_system<scene_system>()) {
+      auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
+      scenes.unload_active_scene();
+      scenes.unload_project_scene_graph();
+    }
 
     driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
     driver_kernel_ptr->get_core_system<asset_system>().begin_full_unload();
@@ -390,6 +395,10 @@ namespace other {
   }
 
   void driver::load_client() {
+    if (subsystem<scripting_environment>::inert) {
+      return;
+    }
+
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
@@ -455,7 +464,6 @@ namespace other {
 
       case driver_state::DRIVER_STATE_SHUTTING_DOWN: {
         update_shutting_down();
-
         if (shutdown_state.ready_to_shutdown(this)) {
           on_shutdown_confirm();
           process_driver_event(driver_event::DRIVER_EVENT_READY);

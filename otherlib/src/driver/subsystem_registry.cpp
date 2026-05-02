@@ -59,8 +59,8 @@ namespace other {
 
   void subsystem_registry::initialize_profile(const std::string_view profile, const config_table* config) {
     current_profile = profile;
-    std::println(std::cout, "Initializing subsystems for profile '{}'", profile);
-    resolve_dependency_list_and_do_initialization(get_required_subsystems_for_profile(profile), config);
+    std::println(std::cout, "Initializing subsystems for profile '{}'", current_profile);
+    resolve_dependency_list_and_do_initialization(get_required_subsystems_for_profile(current_profile), config);
   }
 
   void subsystem_registry::resolve_dependency_list_and_do_initialization(std::span<const std::string_view> requested_systems, const config_table* config) {
@@ -230,10 +230,10 @@ namespace other {
     return registry;
   }
 
-  const std::string_view get_subsystem_profile(const config_table* config) {
+  std::string get_subsystem_profile(const config_table* config) {
     std::vector<std::string> profile;
     if (config == nullptr) {
-      return subsystem_profile::kFullProfileName;
+      return std::string{ subsystem_profile::kFullProfileName };
     }
 
     if (auto prof = config->try_get_value<std::string>("environment.profile"); prof.has_value() && !prof->empty()) {
@@ -242,7 +242,7 @@ namespace other {
         return *prof;
       } else {
         std::println(std::cerr, "Invalid profile name '{}' in config. Defaulting to full profile.", *prof);
-        return subsystem_profile::kFullProfileName;
+        return std::string{ subsystem_profile::kFullProfileName };
       }
     }
 
@@ -252,25 +252,25 @@ namespace other {
 
     /// all disabled = minimal
     if (rendering_disabled && force_disable_physics && force_disable_scripting) {
-      return subsystem_profile::kMinimalProfileName;
+      return std::string{ subsystem_profile::kMinimalProfileName };
     }
 
     // all not disabled (enabled) = full
     if (!rendering_disabled && !force_disable_physics && !force_disable_scripting) {
-      return subsystem_profile::kFullProfileName;
+      return std::string{ subsystem_profile::kFullProfileName };
     }
 
     if (!rendering_disabled && force_disable_physics && force_disable_scripting) {
-      return subsystem_profile::kMinimalRenderingProfileName;
+      return std::string{ subsystem_profile::kMinimalRenderingProfileName };
     }
     if (rendering_disabled && !force_disable_physics && force_disable_scripting) {
-      return subsystem_profile::kMinimalPhysicsProfileName;
+      return std::string{ subsystem_profile::kMinimalPhysicsProfileName };
     }
     if (rendering_disabled && force_disable_physics && !force_disable_scripting) {
-      return subsystem_profile::kMinimalScriptingProfileName;
+      return std::string{ subsystem_profile::kMinimalScriptingProfileName };
     }
 
-    return subsystem_profile::kMinimalProfileName;
+    return std::string{ subsystem_profile::kMinimalProfileName };
   }
 
   std::span<const std::string_view> get_required_subsystems_for_profile(const std::string_view profile_name) {

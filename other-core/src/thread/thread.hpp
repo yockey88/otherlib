@@ -4,7 +4,8 @@
 #ifndef OTHER_CORE_THREAD_THREAD_HPP
 #define OTHER_CORE_THREAD_THREAD_HPP
 
-#include <chrono>
+#include <barrier>
+#include <mutex>
 #include <thread>
 
 #include "core/defines.hpp"
@@ -29,7 +30,7 @@ namespace other {
     };
 
     thread(const std::string& thread_name)
-        : thread_name(thread_name) {}
+        : thread_name(thread_name), initialization_barrier(kNumThreads) {}
     virtual ~thread() = default;
 
     inline bool is_running() {
@@ -65,7 +66,6 @@ namespace other {
     virtual void handle_acknowledgement(const acknowledgement& ack) {}
     virtual void handle_ping(const session_status_request& ping) {}
     virtual void handle_pong(const session_status_response& pong) {}
-    virtual void handle_shutdown_request(const session_shutdown_request& shutdown_request) {}
 
     std::string get_thread_name();
 
@@ -99,6 +99,9 @@ namespace other {
       /// thread used
       bool initialized = false;
     } checkpoints;
+
+    constexpr static size_t kNumThreads = 2;
+    std::barrier<> initialization_barrier;
 
     std::mutex thread_state_mutex;
     std::jthread thread_handle;

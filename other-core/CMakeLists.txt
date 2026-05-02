@@ -3,6 +3,7 @@ target_compile_definitions(other_core PUBLIC SPDLOG_USE_STD_FORMAT=1 "ASIO_STAND
 
 target_sources(other_core
   PRIVATE
+		src/core/subsystem.cpp
 		src/core/command_line.cpp
 		src/core/config_table.cpp
 		src/core/defines.cpp

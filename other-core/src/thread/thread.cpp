@@ -26,6 +26,7 @@ namespace other {
       }
       set_current_state(LAUNCHING);
 
+      initialization_barrier.arrive_and_wait();
       run(stoken, std::move(thread_rx_channel), std::move(thread_tx_channel));
 
       {
@@ -34,9 +35,9 @@ namespace other {
       }
       set_current_state(STOPPED);
     });
-    while (!is_in_state(LAUNCHING)) {
-      std::this_thread::yield();
-    }
+
+    initialization_barrier.arrive_and_wait();
+    OTHER_ASSERT(get_current_state() == LAUNCHING, "Thread [{}] failed to enter launching state after barrier synchronization.", thread_name);
 
     OTHER_ASSERT(tx_channel != nullptr, "Thread tx channel is null");
     OTHER_ASSERT(rx_channel != nullptr, "Thread rx channel is null");

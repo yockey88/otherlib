@@ -33,10 +33,10 @@ namespace other {
     void on_shutdown() override;
 
    private:
+    natural_t connection_id = 0;
+    uint16_t config_http_port = 0;
   };
 
 }  // namespace other
-
-OTHER_DRIVER(other::server)
 
 #endif  // OTHER_SERVER_SERVER_HPP

@@ -61,19 +61,6 @@ namespace other {
   };
 
   /// request messages
-  struct session_shutdown_request : message_spec_impl<session_shutdown_request> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = SESSION_SHUTDOWN;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint64_t status = 0;
-
-    static session_shutdown_request parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_shutdown_request& msg);
-  };
-
   /// response messages
   /// session event messages
 

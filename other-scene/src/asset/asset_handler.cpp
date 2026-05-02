@@ -41,10 +41,6 @@ namespace other {
   }
 
   void asset_handler::update_pipelines() {
-    if (asset_pipelines.empty()) {
-      return;
-    }
-
     for (auto& pl : asset_pipelines) {
       pl.pipeline->poll();
     }
@@ -367,6 +363,7 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Beginning unload for asset ID: {}", asset_id);
+    CORE_LOG_DEBUG(" - asset type being unloaded: {}", get_asset(asset_id)->asset_type);
 
     state_itr->second.handle_event(asset_event::UNLOAD_REQUESTED);
 

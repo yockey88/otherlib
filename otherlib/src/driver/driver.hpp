@@ -103,14 +103,13 @@ namespace other {
       return !configuration().get_value<bool>("networking.force-disable", false);
     }
     inline bool rendering_enabled() const {
-      auto* rendering_backend = subsystem<renderer_backend>::get();
-      return !((rendering_backend->has_backend() && configuration().rendering_backend.value() == "headless") || configuration().force_no_window);
+      return !subsystem<renderer_backend>::inert;
     }
     inline bool scripting_enabled() const {
-      return !configuration().get_value<bool>("scripting.force-disable-scripting", false);
+      return !subsystem<scripting_environment>::inert;
     }
     inline bool physics_enabled() const {
-      return !configuration().get_value<bool>("physics.force-disable-physics", false);
+      return !subsystem<physics_environment>::inert;
     }
 
     inline driver_kernel& get_kernel() {
