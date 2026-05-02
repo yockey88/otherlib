@@ -43,8 +43,6 @@ namespace other {
   }
 
   void clear_storage(scope<scene_storage>& storage) {
-    storage->tree.destroy_all_objects();
-
     auto* env = subsystem<physics_environment>::get();
     OTHER_ASSERT(env != nullptr, "Physics environment subsystem is not initialized.");
 

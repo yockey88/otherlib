@@ -94,6 +94,7 @@ namespace other {
     while (!is_in_state(STOPPED)) {
       std::this_thread::yield();
     }
+    CORE_LOG_DEBUG("Thread [{}] shutdown complete", thread_name);
   }
 
   opt<message> thread::receive_message(microseconds timeout) {

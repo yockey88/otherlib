@@ -84,7 +84,8 @@ namespace other {
     std::string get_driver_info_string(const std::string_view str) const;
 
     void confirm_initialization();
-    void confirm_shutdown();
+    void confirm_assets_clean();
+    void confirm_network_thread_shutdown();
 
     void trigger_event(const std::string& event_name, const value& data = {});
 

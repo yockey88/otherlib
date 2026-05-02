@@ -41,6 +41,8 @@ namespace other {
     scene* get_scene(const std::string_view id);
     scene* get_scene(uint64_t id);
 
+    void clear();
+
     auto begin() { return g.begin(); }
     auto end() { return g.end(); }
 

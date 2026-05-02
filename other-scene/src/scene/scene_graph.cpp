@@ -86,4 +86,8 @@ namespace other {
     return g.ptr_to_node_value(id);
   }
 
+  void scene_graph::clear() {
+    g.clear();
+  }
+
 }  // namespace other

@@ -98,13 +98,25 @@ namespace other {
     events.add_listener("ls.assets", [this](const value& data) { handle_ls_assets_event(&get_driver().get_kernel(), data); });
 
     events.register_event("assets.new-asset-loaded");
+    events.register_event("assets.all-assets-unloaded");
+    events.add_listener("assets.all-assets-unloaded", [this](const value& data) {
+      get_driver().confirm_assets_clean();
+    });
 
     events.register_event("model-source.asset-loaded");
+    events.register_event("model-source.asset-unloaded");
     events.register_event("model-source.asset-load-failed");
+    events.register_event("model-source.asset-unload-failed");
+
     events.register_event("scene.asset-loaded");
+    events.register_event("scene.asset-unloaded");
     events.register_event("scene.asset-load-failed");
+    events.register_event("scene.asset-unload-failed");
+
     events.register_event("rendering-pipeline.asset-loaded");
+    events.register_event("rendering-pipeline.asset-unloaded");
     events.register_event("rendering-pipeline.asset-load-failed");
+    events.register_event("rendering-pipeline.asset-unload-failed");
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
@@ -116,7 +128,6 @@ namespace other {
   }
 
   void asset_system::shutdown(driver_kernel* kernel) {
-    asset_mgr->purge_stores();
     asset_mgr = nullptr;
 
     auto* fs = subsystem<file_system>::get();
@@ -165,7 +176,7 @@ namespace other {
   }
 
   void asset_system::begin_full_unload() {
-    asset_mgr->purge_stores();
+    asset_mgr->begin_unload();
   }
 
   scope<asset_handler>& asset_system::get_asset_manager() {
