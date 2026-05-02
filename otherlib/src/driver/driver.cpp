@@ -584,16 +584,16 @@ namespace other {
     auto* scripting_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(scripting_env != nullptr, "scripting_environment is not initialized.");
 
-    auto& dotnet_host = scripting_env->get_dotnet_host();
-    type_cache* types = dotnet_host.get_type_cache();
-    OTHER_ASSERT(types != nullptr, "dotnet_host type cache is null.");
+    // auto& dotnet_host = scripting_env->get_dotnet_host();
+    // type_cache* types = dotnet_host.get_type_cache();
+    // OTHER_ASSERT(types != nullptr, "dotnet_host type cache is null.");
 
-    for (auto& [type_hash, dotnet_type_ptr] : *types) {
-      sol::table type_table = dotnet_type_ptr.create_lua_descriptor(lua_state);
-      CORE_LOG_TRACE("Registering .NET type '{}' in Lua .NET type registry", dotnet_type_ptr.full_name());
+    // for (auto& [type_hash, dotnet_type_ptr] : *types) {
+    //   sol::table type_table = dotnet_type_ptr.create_lua_descriptor(lua_state);
+    //   CORE_LOG_TRACE("Registering .NET type '{}' in Lua .NET type registry", dotnet_type_ptr.full_name());
 
-      lua_state["__other_native"]["__dotnet_types"][dotnet_type_ptr.full_name()] = type_table;
-    }
+    //   lua_state["__other_native"]["__dotnet_types"][dotnet_type_ptr.full_name()] = type_table;
+    // }
   }
 
 }  // namespace other

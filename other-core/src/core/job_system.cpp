@@ -40,13 +40,11 @@ namespace other {
     }
 
     {
-      running_coroutines = !live_coroutines.empty();
+      running_coroutines = true;
       for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
         it->handle();
         if (it->handle.coro_handle.done()) {
           it->handle.coro_handle.destroy();
-          it = live_coroutines.erase(it);
-        } else if (!it->handle.coro_handle) {
           it = live_coroutines.erase(it);
         } else {
           ++it;
@@ -58,8 +56,8 @@ namespace other {
           live_coroutines.push_back({ .handle = std::move(pending_coroutines.front()) });
           pending_coroutines.pop();
         }
-        running_coroutines = true;
       }
+      running_coroutines = false;
     }
   }
 

@@ -25,39 +25,6 @@ namespace other {
 
     main_menu_bar.main_menu_bar = true;
     main_menu_bar_open = driver_ptr->configuration().get_value<bool>("ui.enable-environment-menu-bar", false);
-    ui::menu project_menu{
-      .name = "Project",
-      .items = {
-        ui::menu_item{
-          .name = "New Project",
-          .action = action{},
-        },
-        ui::menu_item{
-          .name = "Open Project",
-          .action = action{},
-        },
-        ui::menu_item{
-          .name = "Save Project",
-          .action = action{},
-        },
-      }
-    };
-    project_menu.items[0].action->set_callback(make_ref<native_callback<void>>([this]() { events().trigger_event("project.new-project"); }));
-    project_menu.items[1].action->set_callback(make_ref<native_callback<void>>([this]() { events().trigger_event("project.open-project"); }));
-    project_menu.items[2].action->set_callback(make_ref<native_callback<void>>([this]() { events().trigger_event("project.save-project"); }));
-
-    ui::menu file_menu{
-      .name = "File",
-      .sub_menus = { project_menu },
-      .items = {
-        ui::menu_item{
-          .name = "Exit",
-          .action = action{},
-        },
-      },
-    };
-    file_menu.items[0].action->set_callback(make_ref<native_callback<void>>([this]() { events().trigger_event("shutdown-requested"); }));
-    register_main_menu_bar_menu(file_menu);
 
     {
       auto* env = subsystem<scripting_environment>::get();
@@ -65,6 +32,7 @@ namespace other {
 
       window_registry_id = env->create_object("UIScriptWindowRegistry");
       env->attach_dotnet_object(window_registry_id, "Other.UI.WindowRegistry");
+      CORE_LOG_DEBUG("Created UI window registry script object with ID {}", window_registry_id);
     }
   }
 

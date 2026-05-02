@@ -39,14 +39,6 @@ namespace other {
 
   void scene::scene_first_construction_initialization() {
     storage = make_scene_storage(this);
-
-    // Create the root object
-    scene_object& root = storage->tree.root_object();
-    register_object(&root, "Root", glm::vec3(0.0f));
-    object_handle* tag = get_component<object_handle>(&root);
-    OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
-
-    storage->scene_root_entity = entt::entity(root.registry_id);
   }
 
   void scene::do_final_scene_destruction_cleanup() {
@@ -102,6 +94,14 @@ namespace other {
   scene::scene() {
     scene_first_construction_initialization();
     do_scene_binding();
+
+    // Create the root object
+    scene_object& root = storage->tree.root_object();
+    register_object(&root, "Root", glm::vec3(0.0f));
+    object_handle* tag = get_component<object_handle>(&root);
+    OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
+
+    storage->scene_root_entity = entt::entity(root.registry_id);
   }
 
   scene::scene(const std::string_view name) {
@@ -111,6 +111,14 @@ namespace other {
 
     scene_first_construction_initialization();
     do_scene_binding();
+
+    // Create the root object
+    scene_object& root = storage->tree.root_object();
+    register_object(&root, "Root", glm::vec3(0.0f));
+    object_handle* tag = get_component<object_handle>(&root);
+    OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
+
+    storage->scene_root_entity = entt::entity(root.registry_id);
   }
 
   scene::scene(scene&& other) {
@@ -160,7 +168,7 @@ namespace other {
   }
 
   void scene::run_script_file() {
-    if (!script_path.has_value()) {
+    if (!script_path.has_value() || script_loaded) {
       return;
     }
 
@@ -893,12 +901,8 @@ namespace other {
 
   void scene::unregister_object(scene_object* object) {
     PROFILE_SECTION("scene::unregister_object");
-
-    auto* script_env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
-
-    script_component& script = storage->registry.get<script_component>(entt::entity(object->registry_id));
-    script_env->destroy_object(script.script_object_id);
+    // auto& comb_reg = get_component<component_registry>(object);
+    // comp_reg.unregister_all();
   }
 
   void scene::on_create_render_component(const entt::registry&, const entt::entity entity) {
@@ -924,11 +928,12 @@ namespace other {
     OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
     script->script_object_id = script_env->create_object(script->object->name);
+    CORE_LOG_DEBUG("Created script object with ID {} for scene object '{}' [ID: {}] (entity {})", script->script_object_id, script->object->name, script->object->id, (natural_t)entity);
+
     script_object* object = script_env->get_object(script->script_object_id);
     OTHER_ASSERT(object != nullptr, "Failed to retrieve script object after creation for object ID {}", script->script_object_id);
 
     script_env->attach_dotnet_object(script->script_object_id, "Other.SceneObject", (void*)script->object);
-    CORE_LOG_DEBUG(" - creating script object for scene object '{}' [ID: {}] (entity {})", script->object->name, script->object->id, (natural_t)entity);
   }
 
   // void scene::on_update_script_component(const entt::registry&, const entt::entity entity) {

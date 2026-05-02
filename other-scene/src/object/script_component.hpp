@@ -20,7 +20,7 @@ namespace other {
 
   struct script_component : public component {
     scene_object* object = nullptr;
-    integer_t script_object_id = 0;
+    integer_t script_object_id = -1;
 
     /// behavior script_object IDs managed by the scripting_environment.
     /// each behavior is a separate script_object with its own dotnet_object,

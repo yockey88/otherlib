@@ -40,16 +40,6 @@ namespace other {
       log->register_sink(loggers, console_log_sink);
     }
 
-    get_event_system()->register_event("open-project");
-    get_event_system()->add_listener("open-project", [this](const value& data) {
-      if (data.type() != value_type::STRING) {
-        CORE_LOG_ERROR("Invalid data type for open-project event. Expected string.");
-        return;
-      }
-
-      std::string proj_name = data;
-      CORE_LOG_INFO("Opening project: [{}]", proj_name);
-    });
     get_event_system()->add_listener("scene.scene-activated", [this](const value& data) {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data for 'scene.scene-activated' event. Expected scene ID as number.");
       auto* s = get_active_scene();
