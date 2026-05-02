@@ -138,6 +138,11 @@ namespace other {
       return current_mode;
     }
 
+    inline void queue_project_load(const filepath& project_file) {
+      std::lock_guard lock(runtime_state.mutex);
+      runtime_state.queued_project_file = project_file;
+    }
+
     template <typename T>
       requires requires(T t) { T{}; }
     decltype(auto) get_config_value(const std::string_view toml_path, T default_value = {}) const {
@@ -181,10 +186,15 @@ namespace other {
     friend void bindings::native_driver_request_shutdown();
     friend native_string bindings::native_driver_get_project_name();
 
+    struct running_state {
+      std::mutex mutex;
+      opt<filepath> queued_project_file;
+    };
     struct shutdown_state {
       bool network_thread_shutdown = false;
       bool asset_manager_shutdown = false;
     };
+    running_state runtime_state;
     shutdown_state shutdown_state;
 
     config_table config;

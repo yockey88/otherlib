@@ -51,21 +51,22 @@ namespace other {
 
   void scene_system::load_project_scene_graph(project& p) {
     std::vector<project::scene>& scenes = p.get_scenes();
-    for (auto& scene_data : scenes) {
-      auto [id, ptr] = project_scene_graph->create_new_scene(scene_data.name);
-      scene_data.scene_id = id;
-
-      ptr->script_path = scene_data.path;
-      CORE_LOG_DEBUG("Loaded scene '{}' with ID {} from project.", scene_data.name, scene_data.project_id);
-    }
-
     natural_t starting_scene_id = p.get_starting_scene_id();
-    auto itr = std::ranges::find(scenes, starting_scene_id, &project::scene::project_id);
-    if (itr != scenes.end()) {
-      CORE_LOG_DEBUG("Setting starting scene to '{}' with ID {} based on project configuration.", itr->name, itr->scene_id);
-      set_scene_to_active(itr->scene_id);
-    } else {
-      CORE_LOG_ERROR("Starting scene with ID {} specified in project configuration not found in project scenes.", starting_scene_id);
+    for (auto& scene_data : scenes) {
+      if (!std::filesystem::exists(scene_data.path)) {
+        CORE_LOG_ERROR("Scene file '{}' for scene '{}' in project does not exist. Skipping loading this scene.", scene_data.path.string(), scene_data.name);
+        continue;
+      }
+
+      // will not run script file on load
+      scene_data.scene_id = add_scene_to_scene_graph(scene_data.path);
+      CORE_LOG_DEBUG("Loaded scene '{}' with ID {} from project.", scene_data.name, scene_data.project_id);
+
+      if (scene_data.project_id == starting_scene_id) {
+        auto* s = get_scene(scene_data.scene_id);
+        OTHER_ASSERT(s != nullptr, "Failed to find scene with ID {} in scene graph after loading project.", scene_data.scene_id);
+        s->activate_on_load = true;
+      }
     }
   }
 
@@ -121,6 +122,9 @@ namespace other {
     active_scene = project_scene_graph->get_scene(scene_id);
     OTHER_ASSERT(active_scene != nullptr, "Scene with ID {} not found in scene graph.", scene_id);
     CORE_LOG_DEBUG("Scene [{}:{}] Activation.", active_scene->id, active_scene->name);
+
+    // do this every activation, will only happen first time
+    active_scene->run_script_file();
 
     auto& storage = active_scene->get_storage();
     if (storage.sandbox["OnSceneActivate"].valid()) {
@@ -271,25 +275,34 @@ namespace other {
   // }
 
   void scene_system::handle_scene_load_event(const value& data) {
-    if (data.type() != value_type::STRING) {
-      CORE_LOG_ERROR("Invalid data type for load-scene event. Expected string.");
+    natural_t scene_id = 0;
+
+    if (data.type() == value_type::STRING) {
+      std::string scene_path_str = data.as_string();
+      filepath scene_path(scene_path_str);
+      if (!std::filesystem::exists(scene_path)) {
+        CORE_LOG_ERROR("Scene file '{}' does not exist. Cannot load scene.", scene_path.string());
+        return;
+      }
+
+      CORE_LOG_DEBUG("Loading scene '{}' and adding to scene graph.", scene_path.string());
+      scene_id = add_scene_to_scene_graph(scene_path);
+      if (scene_id == 0) {
+        CORE_LOG_ERROR("Failed to load scene from file '{}' via console command.", scene_path.string());
+        return;
+      }
+    } else if (data.type() == value_type::UINT64) {
+      scene_id = data;
+      if (project_scene_graph->get_scene(scene_id) == nullptr) {
+        CORE_LOG_ERROR("Scene with ID {} not found in scene graph. Cannot load scene.", scene_id);
+        return;
+      }
+    } else {
+      CORE_LOG_ERROR("Invalid data type for scene.load-scene event. Expected string (scene path) or uint64 (scene ID).");
       return;
     }
 
-    std::string scene_path_str = data.as_string();
-    filepath scene_path(scene_path_str);
-    if (!std::filesystem::exists(scene_path)) {
-      CORE_LOG_ERROR("Scene file '{}' does not exist. Cannot load scene.", scene_path.string());
-      return;
-    }
-
-    CORE_LOG_DEBUG("Loading scene '{}' and adding to scene graph.", scene_path.string());
-    natural_t scene_id = add_scene_to_scene_graph(scene_path);
-    if (scene_id == 0) {
-      CORE_LOG_ERROR("Failed to load scene from file '{}' via console command.", scene_path.string());
-      return;
-    }
-    CORE_LOG_DEBUG("Scene '{}' loaded with ID {}.", scene_path.string(), scene_id);
+    CORE_LOG_DEBUG("Scene loaded with ID {}.", scene_id);
 
     auto* s = get_scene(scene_id);
     OTHER_ASSERT(s != nullptr, "Scene with ID {} not found in scene graph after loading scene.", scene_id);
@@ -310,12 +323,6 @@ namespace other {
      *    - we don't want to do any of the other stuff associated with 'primary' activation like triggering events or synchronizing over the network,
      *      so we set the pointer, run the script, and reset it back to the old one before doing the 'real' activation below if needed
      **/
-    {
-      scene* curr_active = active_scene;
-      active_scene = s;
-      s->run_script_file();
-      active_scene = curr_active;
-    }
 
     /// this happens here so it only happens once when the asset is fully loaded and registered
     if (s->activate_on_load) {

@@ -4,6 +4,8 @@
 #ifndef OTHER_CORE_CORE_JOB_SYSTEM_HPP
 #define OTHER_CORE_CORE_JOB_SYSTEM_HPP
 
+#include <queue>
+
 #include "core/coroutine.hpp"
 #include "core/job.hpp"
 #include "core/job_graph.hpp"
@@ -63,6 +65,9 @@ namespace other {
     job_graph jobs;
 
     scope<asio::thread_pool> pool;
+
+    bool running_coroutines = false;
+    std::queue<task> pending_coroutines;
     std::vector<live_coroutine> live_coroutines;
 
     mutable std::mutex completion_mutex;

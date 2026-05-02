@@ -80,6 +80,10 @@ namespace other {
       coro_handle.resume();
     }
 
+    bool done() const {
+      return coro_handle == nullptr || coro_handle.done();
+    }
+
     /// helper tasks
     static task::awaiter yield();
     static task sleep_for(asio::chrono::milliseconds duration);

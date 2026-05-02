@@ -6,10 +6,7 @@
 
 #include <toml++/toml.hpp>
 
-#include "core/arena_buffer.hpp"
-#include "core/coroutine.hpp"
 #include "core/defines.hpp"
-#include "file/file_handle.hpp"
 
 #include "driver/systems/core_system.hpp"
 #include "project/project.hpp"
@@ -33,6 +30,9 @@ namespace other {
     bool project_loaded() const;
     bool project_unloading() const;
 
+    void queue_project_load(const filepath& project_file);
+    void load_project(driver_kernel* kernel, const filepath& project_file);
+
     inline project& get_project() {
       OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
       return *loaded_project;
@@ -41,7 +41,13 @@ namespace other {
    private:
     friend class project;
 
+    opt<filepath> next_project_file_to_load;
+    opt<filepath> last_loaded_project_file;
     scope<project> loaded_project = nullptr;
+
+    void handle_open_project(driver_kernel* kernel, const value& data);
+    void handle_save_project(driver_kernel* kernel, const value& data);
+    void handle_new_project(driver_kernel* kernel, const value& data);
   };
 
 }  // namespace other

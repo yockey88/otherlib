@@ -435,6 +435,13 @@ namespace other {
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
+    const bool should_lock = runtime_state.queued_project_file.has_value();
+    if (should_lock) {
+      std::lock_guard lock(runtime_state.mutex);
+      driver_kernel_ptr->get_core_system<project_system>().load_project(driver_kernel_ptr.get(), runtime_state.queued_project_file.value());
+      runtime_state.queued_project_file = std::nullopt;
+    }
+
     driver_kernel_ptr->tick(dt);
 
     on_update();

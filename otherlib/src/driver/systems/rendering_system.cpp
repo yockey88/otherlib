@@ -12,10 +12,8 @@
 namespace other {
   namespace detail {
 
-    void file_dialog_callback(void* userdata, const char* const* filelist, int32_t filter) {
-      // auto* kernel = static_cast<driver_kernel*>(userdata);
-      // value data = std::string(file);
-      // kernel->get_core_system<event_driver_system>().handle_open_project_file_dialog_event(kernel, data);
+    void file_dialog(SDL_FileDialogType type, SDL_Window* parent, rendering_system::file_dialog_callback_fn callback_fn, void* user_data, uint32_t props) {
+      SDL_ShowFileDialogWithProperties(type, callback_fn, user_data, props);
     }
 
   }  // namespace detail
@@ -40,13 +38,6 @@ namespace other {
 
     events.register_event("ls.windows");
     events.add_listener("ls.windows", [this](const value& data) { handle_ls_windows_event(&get_driver().get_kernel(), data); });
-  }
-
-  void rendering_system::late_initialize(driver_kernel* kernel) {
-    auto& events = *get_driver().get_event_system();
-    events.add_listener("project.new-project", std::bind_front(&rendering_system::show_open_file_dialog, this));
-    events.add_listener("project.open-project", std::bind_front(&rendering_system::show_open_file_dialog, this));
-    // events.add_listener("project.save-project", std::bind_front(&rendering_system::show_save_file_dialog, this));
   }
 
   void rendering_system::tick(driver_kernel* kernel, double dt) {
@@ -149,6 +140,18 @@ namespace other {
     return driver_ui_ptr;
   }
 
+  void rendering_system::show_open_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props) {
+    detail::file_dialog(SDL_FILEDIALOG_OPENFILE, nullptr, callback_fn, user_data, props);
+  }
+
+  void rendering_system::show_open_folder_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props) {
+    detail::file_dialog(SDL_FILEDIALOG_OPENFOLDER, nullptr, callback_fn, user_data, props);
+  }
+
+  void rendering_system::show_save_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props) {
+    detail::file_dialog(SDL_FILEDIALOG_SAVEFILE, nullptr, callback_fn, user_data, props);
+  }
+
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in configure_pipelines.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
@@ -193,22 +196,6 @@ namespace other {
     auto& events = get_driver().get_event_system();
     OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
     events->trigger_event("console.output", ss.str());
-  }
-
-  void rendering_system::show_open_file_dialog(const value& data) {
-    CORE_LOG_WARN("Showing open file dialog...");
-    // auto* backend = subsystem<renderer_backend>::get();
-    // OTHER_ASSERT(backend != nullptr, "Renderer backend subsystem is not initialized.");
-
-    // auto* main_window = backend->get_main_window();
-    // OTHER_ASSERT(main_window != nullptr, "Main window is not available in renderer backend.");
-    SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFILE, &detail::file_dialog_callback, nullptr, 0);
-  }
-
-  void rendering_system::show_open_folder_dialog(const value& data) {
-  }
-
-  void rendering_system::show_save_file_dialog(const value& data) {
   }
 
 }  // namespace other

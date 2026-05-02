@@ -5,6 +5,8 @@
 
 #include "core/config_table.hpp"
 
+#include "defines.hpp"
+
 namespace other {
 
   void job_system::initialize(const config_table& cfg) {
@@ -37,13 +39,26 @@ namespace other {
       jobs.remove(id);
     }
 
-    for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
-      it->handle();
-      if (it->handle.coro_handle.done()) {
-        it->handle.coro_handle.destroy();
-        it = live_coroutines.erase(it);
-      } else {
-        ++it;
+    {
+      running_coroutines = !live_coroutines.empty();
+      for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
+        it->handle();
+        if (it->handle.coro_handle.done()) {
+          it->handle.coro_handle.destroy();
+          it = live_coroutines.erase(it);
+        } else if (!it->handle.coro_handle) {
+          it = live_coroutines.erase(it);
+        } else {
+          ++it;
+        }
+      }
+
+      if (running_coroutines && pending_coroutines.size() > 0) {
+        while (!pending_coroutines.empty()) {
+          live_coroutines.push_back({ .handle = std::move(pending_coroutines.front()) });
+          pending_coroutines.pop();
+        }
+        running_coroutines = true;
       }
     }
   }
@@ -90,7 +105,12 @@ namespace other {
   }
 
   void job_system::post_coroutine(task&& coro) {
-    live_coroutines.push_back({ .handle = std::move(coro) });
+    /// this is to not invalidate the iterators of live_coroutines if we post a new coroutine from within a running coroutine
+    if (running_coroutines) {
+      pending_coroutines.push(std::move(coro));
+    } else {
+      live_coroutines.push_back({ .handle = std::move(coro) });
+    }
   }
 
   void job_system::cancel(natural_t id) {
