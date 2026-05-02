@@ -191,9 +191,9 @@ namespace other {
       return;
     }
 
-    if (scene* s = get_active_scene(); s != nullptr && s->is_playing()) {
-      s->stop();
-    }
+    auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
+    scenes.unload_active_scene();
+    scenes.unload_project_scene_graph();
 
     driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
     driver_kernel_ptr->get_core_system<asset_system>().begin_full_unload();
@@ -202,8 +202,7 @@ namespace other {
     process_driver_event(driver_event::DRIVER_EVENT_STOP);
 
     if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
-      on_shutdown_confirm();
-      process_driver_event(driver_event::DRIVER_EVENT_READY);
+      shutdown_state.network_thread_shutdown = true;
     }
   }
 
@@ -265,11 +264,14 @@ namespace other {
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
-  void driver::confirm_shutdown() {
-    CORE_LOG_DEBUG("Confirming shutdown...");
+  void driver::confirm_assets_clean() {
+    CORE_LOG_DEBUG("Confirming assets are clean...");
+    shutdown_state.asset_manager_shutdown = true;
+  }
+
+  void driver::confirm_network_thread_shutdown() {
+    CORE_LOG_INFO("Network thread shutdown confirmed.");
     shutdown_state.network_thread_shutdown = true;
-    on_shutdown_confirm();
-    process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
   void driver::trigger_event(const std::string& event_name, const value& data) {
@@ -436,6 +438,7 @@ namespace other {
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
+    /// this feels gross but we if a project file was queued we want to load it before the next frame ticks
     const bool should_lock = runtime_state.queued_project_file.has_value();
     if (should_lock) {
       std::lock_guard lock(runtime_state.mutex);
@@ -449,7 +452,16 @@ namespace other {
     switch (current_driver_state()) {
       case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
       case driver_state::DRIVER_STATE_RUNNING: update_running(); break;
-      case driver_state::DRIVER_STATE_SHUTTING_DOWN: update_shutting_down(); break;
+
+      case driver_state::DRIVER_STATE_SHUTTING_DOWN: {
+        update_shutting_down();
+
+        if (shutdown_state.ready_to_shutdown(this)) {
+          on_shutdown_confirm();
+          process_driver_event(driver_event::DRIVER_EVENT_READY);
+        }
+      } break;
+
       case driver_state::DRIVER_STATE_STOPPED: break;
       default:
         OTHER_ASSERT(false, "Driver in unknown state {}", current_driver_state());

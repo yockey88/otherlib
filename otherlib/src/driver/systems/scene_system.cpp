@@ -70,6 +70,10 @@ namespace other {
     }
   }
 
+  void scene_system::unload_project_scene_graph() {
+    project_scene_graph->clear();
+  }
+
   natural_t scene_system::add_scene_to_scene_graph(const filepath& scene_path) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
 
@@ -196,7 +200,6 @@ namespace other {
 
   void scene_system::unload_active_scene() {
     if (active_scene == nullptr) {
-      CORE_LOG_WARN("No active scene to unload in driver.");
       return;
     }
 

@@ -162,6 +162,8 @@ namespace other {
 
   scene::~scene() {
     if (storage != nullptr) {
+      storage->tree.destroy_all_objects();
+
       do_scene_unbinding();
       do_final_scene_destruction_cleanup();
     }
@@ -901,8 +903,16 @@ namespace other {
 
   void scene::unregister_object(scene_object* object) {
     PROFILE_SECTION("scene::unregister_object");
-    // auto& comb_reg = get_component<component_registry>(object);
-    // comp_reg.unregister_all();
+    {
+      // auto& comb_reg = get_component<component_registry>(object);
+      // comp_reg.unregister_all();
+    }
+
+    storage->registry.remove<script_component>(entt::entity(object->registry_id));
+    storage->registry.remove<transform>(entt::entity(object->registry_id));
+    storage->registry.remove<component_registry>(entt::entity(object->registry_id));
+    storage->registry.remove<object_handle>(entt::entity(object->registry_id));
+    storage->registry.destroy(entt::entity(object->registry_id));
   }
 
   void scene::on_create_render_component(const entt::registry&, const entt::entity entity) {

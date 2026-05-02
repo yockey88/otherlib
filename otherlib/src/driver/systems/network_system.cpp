@@ -771,7 +771,7 @@ namespace other {
     ack_list.pending_acks.clear();
     resp_list.pending_responses.clear();
     timeout_list.pending_timeouts.clear();
-    get_driver().confirm_shutdown();
+    get_driver().confirm_network_thread_shutdown();
   }
 
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {

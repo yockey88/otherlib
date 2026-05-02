@@ -36,6 +36,7 @@ namespace other {
 
     void clear() {
       nodes.clear();
+      adjacency_matrix = make_ref<matrix_nxm<real_t>>(0, 0);
     }
 
     bool empty() const {

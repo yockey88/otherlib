@@ -30,7 +30,7 @@ namespace other {
     bool project_loaded() const;
     bool project_unloading() const;
 
-    void queue_project_load(const filepath& project_file);
+    void generate_project_at(driver_kernel* kernel, const filepath& directory);
     void load_project(driver_kernel* kernel, const filepath& project_file);
 
     inline project& get_project() {
@@ -45,9 +45,9 @@ namespace other {
     opt<filepath> last_loaded_project_file;
     scope<project> loaded_project = nullptr;
 
+    void handle_new_project(driver_kernel* kernel, const value& data);
     void handle_open_project(driver_kernel* kernel, const value& data);
     void handle_save_project(driver_kernel* kernel, const value& data);
-    void handle_new_project(driver_kernel* kernel, const value& data);
   };
 
 }  // namespace other

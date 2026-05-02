@@ -31,59 +31,13 @@ namespace other {
     return out_acceptable_types;
   }
 
-  void asset_handler::purge_stores() {
-    while (!pending_unloads.empty()) {
-      natural_t asset_id = pending_unloads.front();
-      pending_unloads.pop();
-
-      if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
-        loaded_assets.erase(it);
-      }
-
-      if (auto it = unloaded_assets.find(asset_id); it != unloaded_assets.end()) {
-        unloaded_assets.erase(it);
-      }
-
-      if (auto it = asset_states.find(asset_id); it != asset_states.end()) {
-        asset_states.erase(it);
-      }
+  void asset_handler::begin_unload() {
+    remove_after_unload = true;
+    for (auto it = loaded_assets.begin(); it != loaded_assets.end();) {
+      /// add unloading pipelines for each asset to be unloaded
+      natural_t asset_id = it->first;
+      it = begin_unload(asset_id);
     }
-
-    /// \todo unload all assets, some might need cleanup that we currently ignore
-    // for (auto it = loaded_assets.begin(); it != loaded_assets.end();) {
-    //   /// add unloading pipelines for each asset to be unloaded
-    //   natural_t asset_id = it->first;
-    //   auto state_itr = asset_states.find(asset_id);
-    //   if (state_itr != asset_states.end() && state_itr->second.get_current_state() != asset_state::UNLOADING) {
-    //     CORE_LOG_DEBUG("Purging asset ID: {}", asset_id);
-
-    //     state_itr->second.handle_event(asset_event::UNLOAD_REQUESTED);
-
-    //     asset* loaded_asset = &it->second;
-
-    //     asset::type asset_type = loaded_asset->asset_type;
-    //     auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-    //                                                                   .pipeline = asset_pipeline::get_asset_pipeline(asset_type, this),
-    //                                                                   .loading_asset = std::move(*loaded_asset),
-    //                                                                 });
-    //     OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
-
-    //     CORE_LOG_TRACE("Executing unload operation for asset ID: {}", loaded_asset->id);
-    //     auto itr = std::ranges::find_if(asset_pipelines, [id = loaded_asset->id](const auto& a) { return a.loading_asset.id == id; });
-    //     OTHER_ASSERT(itr != asset_pipelines.end(), "Unloading asset not found in asset pipelines");
-    //     itr->pipeline->start_unload(
-    //       thread_pool, &itr->loading_asset,
-    //       [this, id = itr->loading_asset.id](asset* asset_ptr) {
-    //         OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unload success callback");
-    //         successful_pipelines.push(id);
-    //       },
-    //       [this, id = itr->loading_asset.id](asset* asset_ptr, const std::string& error_msg) {
-    //         OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unload failure callback");
-    //         failed_pipelines.push(id);
-    //       }
-    //     );
-    //   }
-    // }
   }
 
   void asset_handler::update_pipelines() {
@@ -116,6 +70,18 @@ namespace other {
         case asset_state::UNLOADING: on_asset_unload_failed(id); break;
         default:
           OTHER_ASSERT(false, "Asset ID {} in unexpected state after failed pipeline completion", id);
+      }
+    }
+
+    if (remove_after_unload) {
+      for (auto it = unloaded_assets.begin(); it != unloaded_assets.end();) {
+        all_assets.erase(std::ranges::find(all_assets, it->first));
+        it = unloaded_assets.erase(it);
+      }
+
+      if (all_assets.empty()) {
+        remove_after_unload = false;
+        events.trigger_event("assets.all-assets-unloaded");
       }
     }
   }
@@ -389,6 +355,40 @@ namespace other {
     }
   }
 
+  std::unordered_map<natural_t, asset>::iterator asset_handler::begin_unload(natural_t asset_id) {
+    auto state_itr = asset_states.find(asset_id);
+    if (state_itr == asset_states.end()) {
+      CORE_LOG_ERROR("Asset state machine not found for asset ID: {}", asset_id);
+      return loaded_assets.end();
+    }
+
+    if (state_itr->second.get_current_state() == asset_state::UNLOADING) {
+      return loaded_assets.end();
+    }
+
+    CORE_LOG_DEBUG("Beginning unload for asset ID: {}", asset_id);
+
+    state_itr->second.handle_event(asset_event::UNLOAD_REQUESTED);
+
+    auto it = loaded_assets.find(asset_id);
+    OTHER_ASSERT(it != loaded_assets.end(), "Asset not found in loaded assets map for asset ID: {}", asset_id);
+
+    asset::type asset_type = it->second.asset_type;
+    auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
+                                                                  .pipeline = asset_pipeline::get_asset_pipeline(events, this, asset_type),
+                                                                  .loading_asset = std::move(it->second),
+                                                                });
+    OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+
+    auto rit = loaded_assets.erase(it);
+    pl_itr->pipeline->start_unload(
+      executor, &pl_itr->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_load_complete, this),
+      std::bind_front(&asset_handler::notify_asset_load_failed, this)
+    );
+    return rit;
+  }
+
   asset* asset_handler::find_asset_by_path(const filepath& file_path) const {
     natural_t hash = FNV(std::filesystem::absolute(file_path).string());
 
@@ -542,10 +542,9 @@ namespace other {
 
   void asset_handler::unregister_asset_in_filesystem(const asset* asset_ptr) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unregister_asset_in_filesystem");
+
     auto* fs = subsystem<file_system>::get();
-    if (fs == nullptr) {
-      return;
-    }
+    OTHER_ASSERT(fs != nullptr, "File system subsystem not available in asset handler for unregistering asset from filesystem");
 
     const filepath& asset_path = asset_ptr->load_path.empty() ? asset_ptr->virtual_path : asset_ptr->load_path;
     OTHER_ASSERT(!asset_path.empty(), "Asset path is empty for asset ID: {}", asset_ptr->id);
@@ -565,6 +564,7 @@ namespace other {
       CORE_LOG_WARN("Directory '{}' not found in mount '{}' for asset: {}", dir, kAssetMountPrefix, asset_path.string());
       return;
     }
+
     dir_handle->remove_file_by_path(asset_path);
   }
 

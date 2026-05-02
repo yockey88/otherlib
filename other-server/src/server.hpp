@@ -30,29 +30,9 @@ namespace other {
     virtual ~server() = default;
 
     void on_initialize(const command_line& cmd) override;
-    void on_update() override;
-    void on_ui_render() override;
     void on_shutdown() override;
 
    private:
-    json::json project_cache;
-
-    // scope<server_ui> ui_ptr = nullptr;
-
-    void core_update();
-
-    void update_initializing() override;
-    void update_running() override;
-    void update_shutting_down() override;
-
-    void validate_project_and_launch(const json::json& project_entry);
-    void begin_other_application(const json::json& project_entry);
-
-    void on_respond_session_check_in_network_thread(message_header header, const std::span<const uint8_t> data);
-
-    void on_notification_session_closed(integer_t session_id) override;
-
-    task validate_and_build_other_application(const std::string& name, const filepath& folder, const filepath& env_config_path);
   };
 
 }  // namespace other

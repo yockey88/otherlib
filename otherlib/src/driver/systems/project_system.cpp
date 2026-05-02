@@ -83,7 +83,9 @@ namespace other {
     return loaded_project->is_unloading();
   }
 
-  void project_system::queue_project_load(const filepath& filepath) {}
+  void project_system::generate_project_at(driver_kernel* kernel, const filepath& directory) {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+  }
 
   void project_system::load_project(driver_kernel* kernel, const filepath& project_file) {
     OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in project system load_project.");
@@ -95,14 +97,15 @@ namespace other {
     last_loaded_project_file = project_file;
   }
 
+  void project_system::handle_new_project(driver_kernel* kernel, const value& data) {
+    // get_driver().trigger_event("open-driver-ui-window", "project-creator");
+  }
+
   void project_system::handle_open_project(driver_kernel* kernel, const value& data) {
     sibling<rendering_system>(*kernel).show_open_file_dialog(&detail::open_project_callback, &get_driver(), 0);
   }
 
   void project_system::handle_save_project(driver_kernel* kernel, const value& data) {
-  }
-
-  void project_system::handle_new_project(driver_kernel* kernel, const value& data) {
   }
 
 }  // namespace other
