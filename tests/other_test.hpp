@@ -5,6 +5,7 @@
 
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
+#include "core/version.hpp"
 
 #include "physics/physics_environment.hpp"
 #include "script/scripting_environment.hpp"
@@ -68,7 +69,7 @@ namespace other {
       std::string loggers[] = { "other-core-log" };
       log->register_sink(loggers, sink);
       log->register_sink(loggers, file_sink);
-      CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
+      CORE_LOG_INFO("Other Environment version {}", OTHER_ENVIRONMENT_VERSION_STRING);
     }
 
     void TearDown() override {

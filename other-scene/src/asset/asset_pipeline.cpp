@@ -401,7 +401,9 @@ namespace other {
     }
 
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      CORE_LOG_ERROR("Unimplemented load function called for asset ID: {} of type {}", asset_ptr->id, asset_ptr->asset_type);
+      OTHER_ASSERT(handler != nullptr, "Asset handler pointer is null in empty_loader");
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in empty_loader");
+      OTHER_ASSERT(false, "No loader implemented for asset type {} in empty_loader", asset_ptr->asset_type);
       co_return;
     }
 
@@ -430,40 +432,9 @@ namespace other {
     }
 
     task empty_unloader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      CORE_LOG_ERROR("Unimplemented unload function called for asset ID: {} of type {}", asset_ptr->id, asset_ptr->asset_type);
-      co_return;
-    }
-
-    void load_rendering_pipeline(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
-      OTHER_ASSERT(on_success != nullptr, "on_success callback is null");
-      OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null");
-
-      rendering_pipeline_pipeline* pl = reinterpret_cast<rendering_pipeline_pipeline*>(pipeline);
-      OTHER_ASSERT(pl != nullptr, "Pipeline is null!");
-      CORE_LOG_DEBUG("Building rendering pipeline for asset ID: {} using definition '{}'", asset_ptr->id, pl->definition.name);
-
-      /// \todo spawn sub-asset loading pipelines for any assets referenced by pipeline (shaders, etc..)
-      (pl->*on_success)();
-    }
-
-    void empty_loader(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      (reinterpret_cast<asset_pipeline*>(pipeline)->*on_success)();
-    }
-
-    void unload_model_source(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      CORE_LOG_DEBUG("Unloading model source (ID: {})", asset_ptr->id);
-
-      /// nothing to do here for now since renderer_backend handles it,
-      ///  later we will want to check if there is anything that needs to be written to disk, etc.
-      /// most of the work has to happen in the renderer_backend on the rendering thread
-      model_source_pipeline* pl = reinterpret_cast<model_source_pipeline*>(pipeline);
-      OTHER_ASSERT(pl != nullptr, "Pipeline is null!");
-      (pl->*on_success)();
-    }
-
-    void empty_unloader(asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      (reinterpret_cast<asset_pipeline*>(pipeline)->*on_success)();
+      OTHER_ASSERT(false, "No loader implemented for asset type {} in empty_loader", asset_ptr->asset_type);
+      co_return;
     }
 
   }  // namespace detail

@@ -40,7 +40,7 @@ namespace other {
   };
 
   subsystem_registry register_all_subsystems();
-  const std::string_view get_subsystem_profile(const config_table* config);
+  std::string get_subsystem_profile(const config_table* config);
   std::span<const std::string_view> get_required_subsystems_for_profile(const std::string_view profile_name);
 
 }  // namespace other

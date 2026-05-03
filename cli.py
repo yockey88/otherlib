@@ -83,11 +83,9 @@ def validate_args(args, parser):
   if not args.build and not args.regen_project \
       and not args.run and not args.run_scratch \
       and not args.run_terminal and not args.run_tests \
-      and not args.compile_serialization_schema \
-      and not args.compile_object \
       and not args.run_test_suite and not args.run_server \
       and not args.install \
-      and not args.daemon_server:
+      and not args.daemon_server and not args.run_project:
     parser.print_help()
     sys.exit(1)
 
@@ -98,13 +96,12 @@ if __name__ == "__main__":
   parser.add_argument("--regen-project", "-rg", action="store_true", help="Regenerate the project files.")
   parser.add_argument("--build", "-b", action="store_true", help="Build the project.")
   parser.add_argument("--run", "-r", action="store_true", help="Run the main driver.")
+  parser.add_argument("--run-project", "-rp", nargs=1, type=str, metavar="PROJECT_PATH", help="Run the main driver with a specific project file.")
   parser.add_argument("--run-server", "-srv", action="store_true", help="Run the server driver.")
   parser.add_argument("--run-scratch", "-rs", action="store_true", help="Run the scratch application.")
   parser.add_argument("--run-terminal", "-rt", action="store_true", help="Run the other terminal application.")
   parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
   parser.add_argument("--run-test-suite", "-ts", nargs=1, type=str, metavar="TEST_FILTER", help="Runs the test suites by passing the argument to GTests's --gtest-filter=<arg> flag.")
-  parser.add_argument("--compile-serialization-schema", "-css", type=str, help="Compile the serialization schema.")
-  parser.add_argument("--compile-object", "-co", nargs = 2, type=str, metavar=("SCHEMA_FILE", "OBJECT_FILE"), help="Compile a binary object using the <object_file> and the <schema_file>")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
   # parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
   parser.add_argument("--install", "-i", action="store_true", help="Install Other Environment to the system.")
@@ -119,38 +116,10 @@ if __name__ == "__main__":
       print(f"Error: Invalid configuration '{cfg}'. Valid options are: Debug, Release, Profile, ProfileD.")
       sys.exit(1)
 
-    if args.compile_serialization_schema is not None and os.path.exists(args.compile_serialization_schema):
-      if not args.compile_serialization_schema.endswith(".fbs"):
-        print(f"Error: The file {args.compile_serialization_schema} is not a valid FlatBuffers schema file.")
-        sys.exit(1)
-
-      if not os.path.exists("resources/simulation-configs/"):
-        os.makedirs("resources/simulation-configs/")
-
-      print(f"Compiling serialization schema: {args.compile_serialization_schema}")
-      run_subprocess(["tools/flatc.exe", "--cpp",
-                      "-o", "resources/simulation-configs/", 
-                      args.compile_serialization_schema])
-                      #  "--gen-object-api", "--gen-mutable", "--gen-all", 
-      print("Serialization schema compiled successfully.")
-
     if args.install:
       run_subprocess(["cmake", "--install", "build", "--config", cfg])
       print("Other Environment installed successfully.")
       sys.exit(0)
-
-    if args.compile_object is not None and len(args.compile_object) == 2:
-      schema_file, object_file = args.compile_object
-      if not os.path.exists(object_file) or not os.path.exists(schema_file):
-        print(f"Error: The object file {object_file} or schema file {schema_file} does not exist.")
-        sys.exit(1)
-
-      print(f"Compiling object file: {object_file} with schema: {schema_file}")
-      run_subprocess(["tools/flatc.exe", "--binary", schema_file, object_file])
-      print("Object file compiled successfully.")
-    elif args.compile_object is not None and len(args.compile_object) != 2:
-      print("Error: --compile-object requires two arguments: <object_file> and <schema_file>.")
-      sys.exit(1)
 
     if args.regen_project:
       regen_project()
@@ -158,7 +127,7 @@ if __name__ == "__main__":
     if args.build:
       if not os.path.exists("build/other.sln"):
         run_subprocess(["cmake", "-S", ".", "-B", "build", f"-DCMAKE_BUILD_TYPE={cfg}"])
-      run_subprocess(["cmake", "--build", "build", "--config", cfg])
+      run_subprocess(["cmake", "--build", "build", "--config", cfg, "--parallel"])
 
       dll_cfg = "Release"
       if cfg == "Debug" or cfg == "ProfileD":
@@ -167,7 +136,15 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose, project_path="test-project/test-project.toml")
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose)
+    
+    elif args.run_project is not None and len(args.run_project) == 1:
+      project_path = args.run_project[0]
+      if not os.path.exists(project_path):
+        print(f"Error: The specified project file {project_path} does not exist.")
+        sys.exit(1)
+      print(f"Running Other-Driver [{cfg}] with project file: {project_path}")
+      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose, project_path=project_path)
     
     elif args.run_server:
       run_project("other-server", cfg, "other_server", "server-config.toml", args.verbose)

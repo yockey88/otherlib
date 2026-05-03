@@ -73,7 +73,7 @@ function _Meta:SceneObject() return self._scene_object_interface end
 function _Meta:Driver() return self._driver_interface end
 function _Meta:Console() return self._console end
 
-CoreLog = {
+OtherLog = {
   Trace = function(...)    _send_log_impl(LogLevel.Trace, ...)    end,
   Debug = function(...)    _send_log_impl(LogLevel.Debug, ...)    end,
   Info = function(...)     _send_log_impl(LogLevel.Info, ...)     end,
@@ -81,17 +81,17 @@ CoreLog = {
   Error = function(...)    _send_log_impl(LogLevel.Error, ...)    end,
   Critical = function(...) _send_log_impl(LogLevel.Critical, ...) end,
 }
-CoreLog.Debug("[lua bridge ".. _Meta:global_definitions_path() .. "] Global Definitions Loaded")
-CoreLog.Debug("[lua bridge ".. _Meta:bridge_path() .. "] Loading Other Environment Lua Bridge")
+OtherLog.Debug("[lua bridge ".. _Meta:global_definitions_path() .. "] Global Definitions Loaded")
+OtherLog.Debug("[lua bridge ".. _Meta:bridge_path() .. "] Loading Other Environment Lua Bridge")
 
 function _Meta:LoadScene(path)
   if path == nil or path == ""
   then
-    CoreLog.Error("Invalid scene path provided to LoadScene: '%s'", tostring(path))
+    OtherLog.Error("Invalid scene path provided to LoadScene: '%s'", tostring(path))
     return
   end
 
-  CoreLog.Info(string.format("Loading scene from path: '%s'", path))
+  OtherLog.Info(string.format("Loading scene from path: '%s'", path))
 
   local real_path = _Meta._string_utils.strip_leading_and_ending_whitespace(path)
   if not _Meta._file_utils.Exists(real_path)

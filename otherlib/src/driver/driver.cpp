@@ -15,12 +15,13 @@
 
 #include "driver/driver_tasks.hpp"
 #include "driver/systems/asset_system.hpp"
+#include "driver/systems/network_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/scene_system.hpp"
-#include "scripting/actions/action.hpp"
 #include "scripting/bindings.hpp"
 #include "scripting/scene_interface.hpp"
 #include "vm/other_device.hpp"
+
 
 namespace other {
 
@@ -47,16 +48,25 @@ namespace other {
       CORE_LOG_INFO("Driver Systems:\n{}", driver_kernel_ptr->list_systems());
     });
 
-    get_event_system()->add_listener("project.loaded", [this](const value& data) {
-      on_project_loaded();
-    });
+    if (driver_kernel_ptr->has_core_system<project_system>()) {
+      get_event_system()->add_listener("project.loaded", [this](const value& data) {
+        on_project_loaded();
+      });
+    }
+
+    if (!subsystem<scripting_environment>::inert) {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
+
+      do_script_interface_bindings(this);
+      /// lua gets special treatment
+      bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
+    }
 
     load_client();
 
-    if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
-      CORE_LOG_DEBUG("No network role specified, starting immediately.");
-      on_shutdown_confirm();
-      process_driver_event(driver_event::DRIVER_EVENT_READY);
+    if (!driver_kernel_ptr->get_core_system<network_system>().network_active()) {
+      confirm_initialization();
     }
   }
 
@@ -190,10 +200,13 @@ namespace other {
         current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
       return;
     }
+    CORE_LOG_INFO("Beginning shutdown sequence");
 
-    auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
-    scenes.unload_active_scene();
-    scenes.unload_project_scene_graph();
+    if (driver_kernel_ptr->has_core_system<scene_system>()) {
+      auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
+      scenes.unload_active_scene();
+      scenes.unload_project_scene_graph();
+    }
 
     driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
     driver_kernel_ptr->get_core_system<asset_system>().begin_full_unload();
@@ -201,42 +214,9 @@ namespace other {
     on_shutdown_request();
     process_driver_event(driver_event::DRIVER_EVENT_STOP);
 
-    if (driver_kernel_ptr->get_core_system<network_system>().get_role() == network_system::NONE) {
+    if (!driver_kernel_ptr->get_core_system<network_system>().network_active()) {
       shutdown_state.network_thread_shutdown = true;
     }
-  }
-
-  void driver::send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding) {
-    // message cmd_msg;
-    // cmd_msg.header = {
-    //   .category = COMMAND,
-    //   .id = ENVIRONMENT_LOAD_SCENE,
-    // };
-
-    // command_load_scene scene_cmd;
-    // scene_cmd.session_id_flag = client_session_id.has_value() ? 0x01 : 0x00;
-    // if (client_session_id.has_value()) {
-    //   scene_cmd.session_id = client_session_id.value();
-    // }
-
-    // scene_cmd.empty_scene_flag = is_empty ? 0x01 : 0x00;
-    // scene_cmd.requires_udp_binding = requires_udp_binding ? 0x01 : 0x00;
-    // if (requires_udp_binding) {
-    //   scene_cmd.udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-    //   scene_cmd.server_udp_address = { network_context::kLocalhostAddress, net_context->next_available_server_port++ };
-    // }
-
-    // scene_cmd.scene_name = active_scene->name;
-    // cmd_msg.data.append_range(scene_cmd.as_buffer());
-
-    // CORE_LOG_DEBUG("Sending command to network thread to load empty scene '{}'", scene_name);
-    // if (scene_cmd.requires_udp_binding == 0x01) {
-    //   CORE_LOG_DEBUG("Scene '{}' requires UDP binding @ [LOCAL = {}, REMOTE = {}]", scene_name, binding_point::write_string(scene_cmd.udp_address), binding_point::write_string(scene_cmd.server_udp_address));
-    // }
-
-    // /// \todo check if server is even open
-    // CORE_LOG_INFO("sending ENVIRONMENT_LOAD_SCENE command for remote....");
-    // send_message_and_wait_acknowledgment(std::move(cmd_msg), seconds(10), message_handler{ this, &driver::on_acknowledge_command_environment_load_scene, &driver::on_timeout_environment_load_scene });
   }
 
   std::string driver::get_driver_info_string(const std::string_view str) const {
@@ -317,6 +297,22 @@ namespace other {
     return *r;
   }
 
+  void driver::input_event(const input_state_change_event& event) {
+    on_input_event(event);
+  }
+
+  void driver::data_received(natural_t id, std::vector<uint8_t> data) {
+    on_data_received(id, data);
+  }
+
+  void driver::new_connection_accepted(natural_t from_connection_id, natural_t connection_id) {
+    on_new_connection_accepted(from_connection_id, connection_id);
+  }
+
+  void driver::connection_closed(natural_t connection_id) {
+    on_connection_closed(connection_id);
+  }
+
   driver::metadata driver::build_metadata() {
     const auto md = configuration().get_raw("application.metadata");
 
@@ -390,21 +386,11 @@ namespace other {
   }
 
   void driver::load_client() {
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
-
-    do_script_interface_bindings(this);
-    /// lua gets special treatment
-    bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
-
-    {
-      PROFILE_SECTION("driver::initialize--client-on_initialize");
-      on_initialize(cmd_line);
-    }
-
-    {
+    if (!subsystem<scripting_environment>::inert) {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
-      /// run driver envrc file if it exists
+
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
       if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path");
           !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
@@ -422,6 +408,11 @@ namespace other {
         }
       }
     }
+
+    {
+      PROFILE_SECTION("driver::initialize--client-on_initialize");
+      on_initialize(cmd_line);
+    }
   }
 
   filepath driver::get_project_cache() {
@@ -438,20 +429,23 @@ namespace other {
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
-    /// this feels gross but we if a project file was queued we want to load it before the next frame ticks
-    const bool should_lock = runtime_state.queued_project_file.has_value();
-    if (should_lock) {
-      std::lock_guard lock(runtime_state.mutex);
-      driver_kernel_ptr->get_core_system<project_system>().load_project(driver_kernel_ptr.get(), runtime_state.queued_project_file.value());
-      runtime_state.queued_project_file = std::nullopt;
-    }
-
     driver_kernel_ptr->tick(dt);
 
     on_update();
     switch (current_driver_state()) {
       case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
-      case driver_state::DRIVER_STATE_RUNNING: update_running(); break;
+
+      case driver_state::DRIVER_STATE_RUNNING: {
+        /// this feels gross but we if a project file was queued we want to load it before the next frame ticks
+        const bool should_lock = runtime_state.queued_project_file.has_value();
+        if (should_lock) {
+          std::lock_guard lock(runtime_state.mutex);
+          driver_kernel_ptr->get_core_system<project_system>().load_project(driver_kernel_ptr.get(), runtime_state.queued_project_file.value());
+          runtime_state.queued_project_file = std::nullopt;
+        }
+
+        update_running();
+      } break;
 
       case driver_state::DRIVER_STATE_SHUTTING_DOWN: {
         update_shutting_down();

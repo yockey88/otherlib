@@ -10,7 +10,6 @@
 
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
-#include "core/coroutine.hpp"
 #include "core/defines.hpp"
 #include "core/delta_time.hpp"
 #include "event/event_system.hpp"
@@ -19,6 +18,7 @@
 
 #include "network/message_handler.hpp"
 #include "renderer/renderer.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "object/scene_object.hpp"
 
@@ -27,7 +27,6 @@
 #include "driver/driver_system.hpp"
 #include "driver/subsystem_registry.hpp"
 #include "driver/systems/event_driver_system.hpp"
-#include "driver/systems/network_system.hpp"
 #include "driver/systems/rendering_system.hpp"
 #include "plugin/plugin.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
@@ -79,7 +78,6 @@ namespace other {
 
     void process_driver_event(driver_event event);
     void request_shutdown();
-    void send_load_command(const std::string_view scene_name, natural_t scene_id, bool is_empty, bool requires_udp_binding);
 
     std::string get_driver_info_string(const std::string_view str) const;
 
@@ -98,19 +96,19 @@ namespace other {
     bool project_loaded() const;
 
     scene* get_active_scene();
+    renderer& get_renderer();
 
     inline bool network_enabled() const {
       return !configuration().get_value<bool>("networking.force-disable", false);
     }
     inline bool rendering_enabled() const {
-      auto* rendering_backend = subsystem<renderer_backend>::get();
-      return !((rendering_backend->has_backend() && configuration().rendering_backend.value() == "headless") || configuration().force_no_window);
+      return !subsystem<renderer_backend>::inert;
     }
     inline bool scripting_enabled() const {
-      return !configuration().get_value<bool>("scripting.force-disable-scripting", false);
+      return !subsystem<scripting_environment>::inert;
     }
     inline bool physics_enabled() const {
-      return !configuration().get_value<bool>("physics.force-disable-physics", false);
+      return !subsystem<physics_environment>::inert;
     }
 
     inline driver_kernel& get_kernel() {
@@ -130,7 +128,6 @@ namespace other {
       OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
       return driver_kernel_ptr->get_core_system<rendering_system>().get_driver_ui();
     }
-    renderer& get_renderer();
 
     inline driver_state current_driver_state() const {
       return state_machine.get_current_state();
@@ -150,27 +147,44 @@ namespace other {
       return configuration().get_value<T>(toml_path, default_value);
     }
 
+    void input_event(const input_state_change_event& event);
+    void data_received(natural_t id, std::vector<uint8_t> data);
+    void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
+    void connection_closed(natural_t connection_id);
+
     /// \todo remove this and read input map from the input map asset, or allow it to get
     ///         built from a script callback to lua or .NET scripts
     virtual void on_build_driver_input_map(input_map& map) {}
-    virtual void on_input_event(const input_state_change_event& event) {}
-    /// notifications
-    virtual void on_notification_session_closed(integer_t session_id) {}
-    /// acknowledgments
-    /// control messages
-    /// command messages
-    /// request messages
-    /// response messages
-    /// session events
-    /// error alerts
-    virtual void handle_error_alert(message&& msg) {}
-    virtual void on_push_scene_object(scene_object* object) {}
-    virtual void on_pop_scene_object(scene_object* object) {}
     virtual void on_viewport_resize(const glm::vec2& size) {}
-    virtual void on_render() {}
-    virtual void on_ui_render() {}
 
    protected:
+    template <typename... Args>
+    void invoke_driver_script_function(const std::string_view function_name, Args&&... args) {
+      if (!scripting_enabled()) {
+        CORE_LOG_WARN("Scripting is not enabled, cannot invoke driver script function '{}'", function_name);
+        return;
+      }
+
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in invoke_driver_script_function!");
+
+      sol::state& lua_state = env->get_lua_host().get_lua_state();
+      sol::object func_obj = lua_state[function_name.data()];
+      if (!func_obj.valid() || func_obj.get_type() != sol::type::function) {
+        CORE_LOG_WARN("No valid Lua function named '{}' found to invoke", function_name);
+        return;
+      }
+
+      sol::function func = func_obj.as<sol::function>();
+      try {
+        func(std::forward<Args>(args)...);
+      } catch (const sol::error& e) {
+        CORE_LOG_ERROR("Error invoking Lua function '{}': {}", function_name, e.what());
+      } catch (...) {
+        CORE_LOG_ERROR("Unknown error invoking Lua function '{}'", function_name);
+      }
+    }
+
     virtual void on_initialize(const command_line& cmd) = 0;
     virtual void on_initialization_confirm() {}
     virtual void on_update() {}
@@ -180,6 +194,30 @@ namespace other {
     virtual void on_shutdown() = 0;
     virtual void on_shutdown_request() {}
     virtual void on_shutdown_confirm() {}
+
+    virtual void on_input_event(const input_state_change_event& event) {}
+    /// notifications
+    virtual void on_data_received(natural_t id, std::span<const uint8_t> data) {}
+    virtual void on_new_connection_accepted(natural_t main_connection_id, natural_t connection_id) {}
+    virtual void on_connection_closed(natural_t connection_id) {}
+    /// acknowledgments
+    /// control messages
+    /// command messages
+    /// request messages
+    /// response messages
+    /// session events
+    /// error alerts
+
+    // other
+    virtual void on_render() {}
+    virtual void on_ui_render() {}
+
+    template <typename T>
+      requires std::derived_from<T, driver_system>
+    T& core_system() {
+      OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+      return driver_kernel_ptr->template get_core_system<T>();
+    }
 
    private:
     friend class driver_interface;

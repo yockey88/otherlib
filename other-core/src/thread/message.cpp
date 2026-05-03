@@ -3,10 +3,7 @@
  **/
 #include "thread/message.hpp"
 
-#include <format>
 #include <sstream>
-
-#include <flatbuffers/flexbuffers.h>
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
@@ -45,14 +42,6 @@ namespace other {
       OTHER_ASSERT(false, "non IPv4 IP addresses not supported currently");
     }
     return bp;
-  }
-
-  /// NOTE: we could do better, there is still a lot of duplication here...
-  ///         look into using the fields defined in the header to make it better
-
-  void message_spec::write_header(std::vector<uint8_t>& data, const message_header& header) {
-    data[0] = static_cast<uint8_t>(header.category);
-    data[1] = static_cast<uint8_t>(header.id);
   }
 
 }  // namespace other

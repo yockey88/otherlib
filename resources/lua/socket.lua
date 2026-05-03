@@ -8,7 +8,7 @@ end
 
 function socket.create_udp_stream(port)
   -- return __other_native.__network_ctx.create_udp_stream(port)
-  CoreLog.log_trace("socket.create_udp_stream is not implemented")
+  OtherLog.log_trace("socket.create_udp_stream is not implemented")
   return nil
 end
 

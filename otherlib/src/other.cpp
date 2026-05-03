@@ -19,6 +19,7 @@
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
+#include "serialization/serialization.hpp"
 
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
@@ -27,16 +28,6 @@
 #include "driver/subsystem_registry.hpp"
 
 extern other::exit_code other_main(const other::command_line& cmd, const other::config_table& config, const other::subsystem_registry& registry);
-
-#if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
-  #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what())
-  #define CATCH_EXCEPTION(e) OTHER_ASSERT(false, "Exception: {}", e.what())
-  #define CATCH_UNKNOWN_EXCEPTION() OTHER_ASSERT(false, "Unknown exception occurred.")
-#else
-  #define CATCH_RUNTIME_ERROR(e) CORE_LOG_ERROR("Runtime error: {}", e.what())
-  #define CATCH_EXCEPTION(e) CORE_LOG_ERROR("Exception: {}", e.what())
-  #define CATCH_UNKNOWN_EXCEPTION() CORE_LOG_ERROR("Unknown exception occurred.")
-#endif
 
 namespace other {
 
@@ -53,7 +44,7 @@ namespace other {
     }
 
     subsystem_registry registry = register_all_subsystems();
-    const std::string_view profile = get_subsystem_profile(&config);
+    std::string profile = get_subsystem_profile(&config);
     registry.initialize_profile(profile, &config);
 
     if (config.diagnostics.verbose) {
@@ -65,27 +56,23 @@ namespace other {
         }
       }
 
-      CORE_LOG_INFO("Other Environment version {}.{}.{}", OTHERENV_VERSION_MAJOR, OTHERENV_VERSION_MINOR, OTHERENV_VERSION_PATCH);
+      CORE_LOG_INFO("Other Environment version {}", OTHER_ENVIRONMENT_VERSION_STRING);
       CORE_LOG_DEBUG("Environment Config File: {}", cmd.config_file);
       CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
     }
 
-    exit_code res = SUCCESS;
-    {
-      CORE_LOG_INFO("Running Other Environment driver...");
+    exit_code res = FAILURE;
+
+    try {
       PROFILE_SECTION("other::main");
-      try {
-        res = other_main(cmd, config, registry);
-      } catch (const std::runtime_error& e) {
-        CATCH_RUNTIME_ERROR(e);
-        res = FAILURE;
-      } catch (const std::exception& e) {
-        CATCH_EXCEPTION(e);
-        res = FAILURE;
-      } catch (...) {
-        CATCH_UNKNOWN_EXCEPTION();
-        res = FAILURE;
+      if (config.diagnostics.verbose) {
+        CORE_LOG_DEBUG("Calling Other Main");
       }
+      res = other_main(cmd, config, registry);
+    } catch (const std::exception& e) {
+      CORE_LOG_ERROR("Unhandled exception in other_main: {}", e.what());
+    } catch (...) {
+      CORE_LOG_ERROR("An unknown error occurred in other_main.");
     }
 
     /// simply want the exit code to be the last thing in the logs
@@ -173,14 +160,30 @@ namespace other {
 
   void shutdown_subsystems() {
     PROFILE_SECTION("other::shutdown_subsystems");
-    subsystem<scripting_environment>::get()->shutdown();
-    subsystem<type_database>::get()->shutdown();
-    subsystem<physics_environment>::get()->shutdown();
-    subsystem<renderer_backend>::get()->shutdown();
-    subsystem<input_system>::get()->shutdown();
-    subsystem<file_system>::get()->shutdown();
-    subsystem<arena>::get()->shutdown();
-    subsystem<logger>::get()->shutdown();
+    if (!subsystem<scripting_environment>::inert) {
+      subsystem<scripting_environment>::get()->shutdown();
+    }
+    if (!subsystem<renderer_backend>::inert) {
+      subsystem<renderer_backend>::get()->shutdown();
+    }
+    if (!subsystem<physics_environment>::inert) {
+      subsystem<physics_environment>::get()->shutdown();
+    }
+    if (!subsystem<type_database>::inert) {
+      subsystem<type_database>::get()->shutdown();
+    }
+    if (!subsystem<input_system>::inert) {
+      subsystem<input_system>::get()->shutdown();
+    }
+    if (!subsystem<file_system>::inert) {
+      subsystem<file_system>::get()->shutdown();
+    }
+    if (!subsystem<arena>::inert) {
+      subsystem<arena>::get()->shutdown();
+    }
+    if (!subsystem<logger>::inert) {
+      subsystem<logger>::get()->shutdown();
+    }
   }
 
 }  // namespace other

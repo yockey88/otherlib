@@ -3,6 +3,8 @@
  **/
 #include "ui/node-editor/node_editor_canvas_node.hpp"
 
+#include <ranges>
+
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
