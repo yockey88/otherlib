@@ -77,9 +77,6 @@ namespace other {
     virtual void on_start() {}
     virtual void on_shutdown() {}
     virtual void pump_thread() {}
-    virtual void handle_acknowledgement(const acknowledgement& ack) {}
-    virtual void handle_ping(const session_status_request& ping) {}
-    virtual void handle_pong(const session_status_response& pong) {}
 
     std::string get_thread_name();
 

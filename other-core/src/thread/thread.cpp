@@ -388,6 +388,7 @@ namespace other {
   }
 
   void thread::handle_notification_message(const message& msg) {
+    OTHER_ASSERT(msg.get_category() == NOTIFICATION, "Invalid notification message category: {}", msg.header.category);
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported notification message: {}", msg.get_id());
@@ -397,19 +398,11 @@ namespace other {
 
   void thread::handle_acknowledgement_message(const message& msg) {
     OTHER_ASSERT(msg.get_category() == ACKNOWLEDGEMENT, "Invalid acknowledgement message category: {}", msg.header.category);
-    OTHER_ASSERT(msg.get_id() == ACK, "Invalid acknowledgement message id: {}", msg.header.id);
-
-    acknowledgement ack = other_message_spec::parse<acknowledgement>(msg.data);
-    OTHER_ASSERT(ack.acked_header.category == ACKNOWLEDGEMENT, "Invalid acknowledgement message category: {}", ack.acked_header.category);
-    OTHER_ASSERT(ack.acked_header.id == ACK, "Invalid acknowledgement message id: {}", ack.acked_header.id);
-
-    handle_acknowledgement(ack);
   }
 
   void thread::handle_control_message(const message& msg) {
+    OTHER_ASSERT(msg.get_category() == CONTROL, "Invalid control message category: {}", msg.header.category);
     switch (msg.get_id()) {
-      case PING: handle_ping(session_status_request::parse(msg.data)); break;
-      case PONG: handle_pong(session_status_response::parse(msg.data)); break;
       default:
         CORE_LOG_WARN("Thread received unsupported control message: {}", msg.get_id());
         break;
@@ -417,6 +410,7 @@ namespace other {
   }
 
   void thread::handle_command_message(const message& msg) {
+    OTHER_ASSERT(msg.get_category() == COMMAND, "Invalid command message category: {}", msg.header.category);
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported command message: {}", msg.get_id());
@@ -425,6 +419,7 @@ namespace other {
   }
 
   void thread::handle_request_message(const message& msg) {
+    OTHER_ASSERT(msg.get_category() == REQUEST, "Invalid request message category: {}", msg.header.category);
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported request message: {}", msg.get_id());
@@ -433,6 +428,7 @@ namespace other {
   }
 
   void thread::handle_response_message(const message& msg) {
+    OTHER_ASSERT(msg.get_category() == RESPONSE, "Invalid response message category: {}", msg.header.category);
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported response message: {}", msg.get_id());
@@ -441,6 +437,7 @@ namespace other {
   }
 
   void thread::handle_error_alert_message(const message& msg) {
+    OTHER_ASSERT(msg.get_category() == ERROR_ALERT, "Invalid error alert message category: {}", msg.header.category);
     CORE_LOG_ERROR("Thread received error alert: {}", msg.get_id());
     switch (msg.get_id()) {
       default:

@@ -4,88 +4,126 @@
 #ifndef OTHER_CORE_CORE_MESSAGES_HPP
 #define OTHER_CORE_CORE_MESSAGES_HPP
 
-#include "thread/message.hpp"
-#include "thread/test/new_message.hpp"
+#include <span>
+
+#include "serialization/serialization.hpp"
 
 namespace other {
-
-#pragma pack(push, 1)
-
   struct message_parsing_error : public std::runtime_error {
     message_parsing_error(const std::string& msg)
         : std::runtime_error(msg) {}
   };
 
-  /// acknowledgement messages
-  struct acknowledgement : other_message_spec_impl<acknowledgement> {
-    natural_t ack_id = 0;
-    integer_t session_id = -1;
-    message_header acked_header;
-    uint8_t ack_nack = 0;
-
-    uint16_t extra_data_length = 0;
-    std::vector<uint8_t> extra_data;
-
-    static std::vector<uint8_t> custom_builder(acknowledgement* msg);
-    static acknowledgement custom_parser(const std::span<const uint8_t> data);
-  };
-
-  /// \todo update all messages to new format, ditch flexbuffers for messaging system
-
-  /// OLD BEGIN //////////////////////////////////////////////////////////////////////////////
-  /// notification messages
-  /// control messages
-  struct session_status_request : message_spec_impl<session_status_request> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = PING;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint8_t layer_type = 0;
-
-    static session_status_request parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_status_request& msg);
-  };
-
-  struct session_status_response : message_spec_impl<session_status_response> {
-    constexpr static message_category category = CONTROL;
-    constexpr static message_id id = PONG;
-
-    uint16_t session_type = 0;
-    uint64_t node_id = 0;
-    uint64_t status = 0;
-
-    static session_status_response parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-    static std::string write_string(const session_status_response& msg);
-  };
-
-  /// request messages
-  /// response messages
-  /// session event messages
-
-  /// error alert messages
-  struct error_alert_msg : message_spec_impl<error_alert_msg> {
-    constexpr static message_category category = ERROR_ALERT;
-    constexpr static message_id id = ERROR_ALERT_ID;
-
-    uint64_t error_code = 0;
-    std::string error_message;
-
-    static error_alert_msg parse(const std::vector<uint8_t>& data);
-    std::vector<uint8_t> build();
-  };
-  /// OLD END ////////////////////////////////////////////////////////////////////////////////
-
+#pragma pack(push, 1)
 #pragma pack(pop)
 
-}  // namespace other
+  // struct other_message_spec {
+  //   virtual ~other_message_spec() = default;
 
-OTHER_REFLECT(
-  other::acknowledgement,
-  field(acked_header),
-  field(ack_nack)
-);
+  //   std::span<const uint8_t> as_buffer();
+
+  //   template <typename T>
+  //   static T parse(const std::span<const uint8_t> data);
+
+  //  protected:
+  //   uint8_t* get_data_ptr();
+  //   void initialize_data_ptr(const uint8_t* ptr, size_t size);
+
+  //   virtual void on_initialize_data() = 0;
+
+  //  private:
+  //   const uint8_t* data_ptr = nullptr;
+  //   size_t data_size = 0;
+  // };
+
+  // template <typename T>
+  // struct other_message_spec_impl : other_message_spec {
+  //   virtual ~other_message_spec_impl() = default;
+
+  //   void on_initialize_data() override {
+  //     if constexpr (requires { T::custom_builder(std::declval<T*>()); }) {
+  //       std::vector<uint8_t> built_data = T::custom_builder(reinterpret_cast<T*>(this));
+  //       initialize_data_ptr(built_data.data(), built_data.size());
+  //     } else {
+  //       std::vector<uint8_t> built_data = build_data();
+  //       initialize_data_ptr(built_data.data(), built_data.size());
+  //     }
+  //   }
+
+  //   static decltype(auto) from_buffer(const std::span<const uint8_t> data) {
+  //     if constexpr (requires { T::custom_parser(std::declval<const std::span<const uint8_t>>()); }) {
+  //       return T::custom_parser(data);
+  //     } else {
+  //       T msg = read_object(data);
+  //       return msg;
+  //     }
+  //   }
+
+  //  private:
+  //   std::vector<uint8_t> build_data() {
+  //     std::vector<uint8_t> data;
+
+  //     const T* self = reinterpret_cast<const T*>(this);
+
+  //     if constexpr (reflected_type<T>) {
+  //       refl::util::for_each(refl::reflect(*self).members, [&](auto field) {
+  //         std::string field_name = std::string{ field.name };
+  //         auto val = field(*self);
+  //         using field_t = std::remove_cvref_t<decltype(val)>;
+
+  //         if constexpr (std::is_pointer_v<field_t>) {
+  //           uintptr_t ptr_value = reinterpret_cast<uintptr_t>(val);
+  //           const uint8_t* field_ptr = reinterpret_cast<const uint8_t*>(&ptr_value);
+  //           data.append_range(std::span(field_ptr, sizeof(field_t)));
+  //         } else if constexpr (std::is_trivially_copyable_v<field_t>) {
+  //           const uint8_t* field_ptr = reinterpret_cast<const uint8_t*>(&(reinterpret_cast<const T*>(this)->*field.pointer));
+  //           data.append_range(std::span(field_ptr, sizeof(field_t)));
+  //         } else {
+  //           // CORE_LOG_ERROR("[DEV-NOTICE]: Unimplemented field type in other_message_spec_impl::build_data for field '{}'", field_name);
+  //         }
+  //       });
+  //     } else {
+  //       // CORE_LOG_ERROR("[DEV-NOTICE]: Attempted to build data for non-reflected type in other_message_spec_impl::build_data");
+  //     }
+
+  //     return data;
+  //   }
+
+  //   static T read_object(std::span<const uint8_t> data) {
+  //     T msg;
+  //     if constexpr (reflected_type<T>) {
+  //       refl::util::for_each(refl::reflect(msg).members, [&](auto field) {
+  //         std::string field_name = std::string{ field.name };
+  //         using field_t = std::remove_cvref_t<decltype(field(msg))>;
+
+  //         if constexpr (std::is_pointer_v<field_t>) {
+  //           OTHER_ASSERT(sizeof(uintptr_t) <= data.size(), "Insufficient data to read pointer field '{}' in other_message_spec_impl::read_object", field_name);
+  //           uintptr_t ptr_value = *reinterpret_cast<const uintptr_t*>(data.subspan(0, sizeof(uintptr_t)).data());
+  //           field(msg) = reinterpret_cast<typename std::remove_pointer<field_t>::type*>(ptr_value);
+  //           data = data.subspan(sizeof(uintptr_t));
+  //         } else if constexpr (std::is_trivially_copyable_v<field_t>) {
+  //           OTHER_ASSERT(sizeof(field_t) <= data.size(), "Insufficient data to read field '{}' in other_message_spec_impl::read_object", field_name);
+  //           field(msg) = *reinterpret_cast<const field_t*>(data.subspan(0, sizeof(field_t)).data());
+  //           data = data.subspan(sizeof(field_t));
+  //         } else {
+  //           // CORE_LOG_ERROR("[DEV-NOTICE]: Unimplemented field type in other_message_spec_impl::read_object for field '{}'", field_name);
+  //         }
+  //       });
+  //     } else if constexpr (std::is_trivially_copyable_v<T>) {
+  //       OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
+  //       msg = *reinterpret_cast<const T*>(data.subspan(0, sizeof(T)).data());
+  //       data = data.subspan(sizeof(T));
+  //       // CORE_LOG_ERROR("[DEV-NOTICE]: Attempted to read object for non-reflected type in other_message_spec_impl::read_object");
+  //     }
+  //     return msg;
+  //   }
+  // };
+
+  // template <typename T>
+  // T other_message_spec::parse(const std::span<const uint8_t> data) {
+  //   return other_message_spec_impl<T>::from_buffer(data);
+  // }
+
+}  // namespace other
 
 #endif  // OTHER_CORE_CORE_MESSAGES_HPP

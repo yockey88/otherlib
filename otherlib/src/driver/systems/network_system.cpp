@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "core/defines.hpp"
+#include "core/time.hpp"
 
 #include "driver/driver.hpp"
 
@@ -46,6 +47,8 @@ namespace other {
       net_context->net_thread->launch();
       net_context->net_thread_message_bus.register_thread();
     }
+
+    initialize_message_handlers();
   }
 
   void network_system::tick(driver_kernel* kernel, double dt) {
@@ -66,6 +69,8 @@ namespace other {
 
   void network_system::shutdown(driver_kernel* kernel) {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    message_handlers.clear();
+
     const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
     if (!force_disable_network) {
       net_context->net_thread->wait_for_shutdown_complete();
@@ -94,32 +99,16 @@ namespace other {
     );
   }
 
-  void network_system::send_to_network_thread(driver_kernel* kernel, message&& msg) {
-    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
-    CORE_LOG_TRACE("[NETWORK SYSTEM TX: {}]", msg.header);
-    net_context->net_thread_message_bus.send_message(std::move(msg));
-  }
-
-  natural_t network_system::send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler) {
-    natural_t ack_id = ack_list.register_ack(io_context(), msg.header, timeout, handler);
-
-    message ack_msg;
-    ack_msg.header = {
-      .category = REQUEST,
-      .id = ACK,
-    };
-    const uint8_t* ack_id_data = reinterpret_cast<const uint8_t*>(&ack_id);
-    const uint8_t* header_data = reinterpret_cast<const uint8_t*>(&msg.header);
-    ack_msg.data.append_range(std::span(ack_id_data, sizeof(natural_t)));
-    ack_msg.data.append_range(std::span(header_data, sizeof(message_header)));
-    ack_msg.data.append_range(msg.data);
-
-    send_to_network_thread(kernel, std::move(ack_msg));
-    return ack_id;
-  }
-
-  void network_system::cancel_acknowledgment(natural_t ack_id) {
-    ack_list.cancel_ack(ack_id);
+  void network_system::send_message(driver_kernel* kernel, message&& msg) {
+    bool needs_ack = message_requires_acknowledgment(msg.header);
+    if (needs_ack) {
+      message_handler handler = get_message_handler(msg.header);
+      microseconds timeout = get_message_handler_timeout(msg.header);
+      natural_t id = send_message_and_wait_acknowledgment(kernel, std::move(msg), timeout, handler);
+      CORE_LOG_DEBUG("Sent message {} with acknowledgment ID {}", msg.header, id);
+    } else {
+      send_to_network_thread(kernel, std::move(msg));
+    }
   }
 
   void network_system::catch_signal(int signum) {
@@ -173,6 +162,67 @@ namespace other {
     );
 
     return connection_id;
+  }
+
+  void network_system::initialize_message_handlers() {
+    {
+      auto [itr, success] = message_handlers.insert({
+        message_header{ COMMAND, LISTEN_TCP_CONNECTION },
+        {
+          message_handler{
+            [this](message_header h, std::span<const uint8_t> d) { on_ack_listen_at_endpoint(&get_driver().get_kernel(), h, d); },
+            [this](message_header h) { on_timeout_listen_at_endpoint(&get_driver().get_kernel(), h); },
+          },
+        },
+      });
+      OTHER_ASSERT(success, "Failed to insert message handler for LISTEN_TCP_CONNECTION");
+    }
+  }
+
+  bool network_system::message_requires_acknowledgment(const message_header& header) const {
+    return message_handlers.find(header) != message_handlers.end();
+  }
+
+  message_handler network_system::get_message_handler(const message_header& original_header) const {
+    auto itr = message_handlers.find(original_header);
+    OTHER_ASSERT(itr != message_handlers.end(), "No message handler found for header {}", original_header);
+    return itr->second;
+  }
+
+  microseconds network_system::get_message_handler_timeout(const message_header& original_header) const {
+    auto itr = message_handler_timeouts.find(original_header);
+    if (itr != message_handler_timeouts.end()) {
+      return itr->second;
+    }
+    return seconds(1);
+  }
+
+  void network_system::send_to_network_thread(driver_kernel* kernel, message&& msg) {
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    CORE_LOG_TRACE("[NETWORK SYSTEM TX: {}]", msg.header);
+    net_context->net_thread_message_bus.send_message(std::move(msg));
+  }
+
+  natural_t network_system::send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler) {
+    natural_t ack_id = ack_list.register_ack(io_context(), msg.header, timeout, handler);
+
+    message ack_msg;
+    ack_msg.header = {
+      .category = REQUEST,
+      .id = ACK,
+    };
+    const uint8_t* ack_id_data = reinterpret_cast<const uint8_t*>(&ack_id);
+    const uint8_t* header_data = reinterpret_cast<const uint8_t*>(&msg.header);
+    ack_msg.data.append_range(std::span(ack_id_data, sizeof(natural_t)));
+    ack_msg.data.append_range(std::span(header_data, sizeof(message_header)));
+    ack_msg.data.append_range(msg.data);
+
+    send_to_network_thread(kernel, std::move(ack_msg));
+    return ack_id;
+  }
+
+  void network_system::cancel_acknowledgment(natural_t ack_id) {
+    ack_list.cancel_ack(ack_id);
   }
 
   void network_system::process_network_thread_messages(driver_kernel* kernel, message&& msg) {

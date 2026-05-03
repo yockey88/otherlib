@@ -8,6 +8,7 @@
 #include <asio/asio/signal_set.hpp>
 
 #include "core/defines.hpp"
+#include "core/time.hpp"
 #include "thread/message_bus.hpp"
 
 #include "network/acknowledgement_list.hpp"
@@ -54,11 +55,8 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
+    void send_message(driver_kernel* kernel, message&& msg);
     void begin_shutdown_sequence(driver_kernel* kernel);
-    void send_to_network_thread(driver_kernel* kernel, message&& msg);
-
-    natural_t send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler);
-    void cancel_acknowledgment(natural_t ack_id);
 
     void catch_signal(int signal);
 
@@ -86,6 +84,18 @@ namespace other {
       }
       return next_connection_id;
     }
+
+    std::map<message_header, message_handler> message_handlers;
+    std::map<message_header, microseconds> message_handler_timeouts;
+
+    void initialize_message_handlers();
+    bool message_requires_acknowledgment(const message_header& header) const;
+    message_handler get_message_handler(const message_header& original_header) const;
+    microseconds get_message_handler_timeout(const message_header& original_header) const;
+
+    void send_to_network_thread(driver_kernel* kernel, message&& msg);
+    natural_t send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler);
+    void cancel_acknowledgment(natural_t ack_id);
 
     void process_network_thread_messages(driver_kernel* kernel, message&& msg);
 
