@@ -12,7 +12,6 @@ set(OTHERLIB_EXTERN_INCLUDE_DIRS
   "${OTHERLIB_INCLUDE_DIR}/extern/spdlog"
   "${OTHERLIB_INCLUDE_DIR}/extern/glm"
   "${OTHERLIB_INCLUDE_DIR}/extern/refl"
-  "${OTHERLIB_INCLUDE_DIR}/extern/flatbuffers"
   "${OTHERLIB_INCLUDE_DIR}/extern/asio"
   "${OTHERLIB_INCLUDE_DIR}/extern/glad"
   "${OTHERLIB_INCLUDE_DIR}/extern/assimp"
@@ -132,8 +131,6 @@ endfunction()
 _otherlib_setup_external_lib(SDL3 SDL3 SHARED sdl SDL3)
 _otherlib_setup_external_lib(assimp assimp SHARED assimp assimp-vc143-mt assimp-vc143-mt)
 _otherlib_setup_external_lib(glad glad STATIC glad glad)
-_otherlib_setup_external_lib(nfd nfd STATIC nativefiledialog nfd_d nfd)
-_otherlib_setup_external_lib(flatbuffers flatbuffers STATIC flatbuffers flatbuffers)
 _otherlib_setup_external_lib(python312 python STATIC python312 python312 python3)
 _otherlib_setup_external_lib(Jolt jolt STATIC jolt Jolt)
 
@@ -153,10 +150,6 @@ if(TARGET nfd::nfd)
   if(NOT TARGET nfd)
     add_library(nfd ALIAS nfd::nfd)
   endif()
-endif()
-
-if(TARGET flatbuffers::flatbuffers AND NOT TARGET flatbuffers)
-  add_library(flatbuffers ALIAS flatbuffers::flatbuffers)
 endif()
 
 if(TARGET python::python312)
@@ -240,9 +233,6 @@ if(TARGET otherlib::otherlib)
   endif()
   if(TARGET nfd::nfd)
     list(APPEND _OTHERLIB_LINK_LIBS nfd::nfd)
-  endif()
-  if(TARGET flatbuffers::flatbuffers)
-    list(APPEND _OTHERLIB_LINK_LIBS flatbuffers::flatbuffers)
   endif()
   if(TARGET python::python312)
     list(APPEND _OTHERLIB_LINK_LIBS python::python312)

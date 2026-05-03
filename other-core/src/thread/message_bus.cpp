@@ -11,8 +11,8 @@ namespace other {
     ref<channel_queue<message>> tx_queue = make_ref<channel_queue<message>>();
     ref<channel_queue<message>> rx_queue = make_ref<channel_queue<message>>();
 
-    auto [this_tx_channel, thread_rx_channel] = channel<message>::make_channel(tx_queue);
-    auto [thread_tx_channel, this_rx_channel] = channel<message>::make_channel(rx_queue);
+    auto [this_tx_channel, thread_rx_channel] = message_channel::make_channel(tx_queue);
+    auto [thread_tx_channel, this_rx_channel] = message_channel::make_channel(rx_queue);
 
     threads[0].tx_channel = std::move(this_tx_channel);
     threads[0].rx_channel = std::move(this_rx_channel);

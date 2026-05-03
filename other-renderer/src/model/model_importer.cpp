@@ -195,23 +195,23 @@ namespace other {
     }
 
     void process_other_mesh_file(const filepath& file_path, model_builder& builder) {
-      auto on_failure = [](const std::string& msg) {
-        CORE_LOG_ERROR("model_importer::process_other_mesh_file -- {}", msg);
-      };
+      // auto on_failure = [](const std::string& msg) {
+      //   CORE_LOG_ERROR("model_importer::process_other_mesh_file -- {}", msg);
+      // };
 
-      /// use memory-mapped io so this is as fast as possible
-      std::error_code ec;
-      mio::mmap_source file = mio::make_mmap_source(file_path.string(), ec);
-      if (ec) {
-        on_failure(std::format("Failed to mmap file: {}", file_path.string()));
-        return;
-      }
+      // /// use memory-mapped io so this is as fast as possible
+      // std::error_code ec;
+      // mio::mmap_source file = mio::make_mmap_source(file_path.string(), ec);
+      // if (ec) {
+      //   on_failure(std::format("Failed to mmap file: {}", file_path.string()));
+      //   return;
+      // }
 
-      std::span<const uint8_t> bytes = std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(file.data()), file.size());
-      if (bytes.empty()) {
-        on_failure(std::format("Failed to read file bytes: {}", file_path.string()));
-        return;
-      }
+      // std::span<const uint8_t> bytes = std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(file.data()), file.size());
+      // if (bytes.empty()) {
+      //   on_failure(std::format("Failed to read file bytes: {}", file_path.string()));
+      //   return;
+      // }
 
       /**
         | <mesh-block> | <mesh-length> | <vertex-index-data> | <submeshes> | <nodes> |
@@ -254,147 +254,147 @@ namespace other {
         | 4 bytes  | 4 bytes        | 4 * <num-children> | 4 bytes         | 4 * <num-submeshes> | 64 bytes          | 4 bytes       |        |
       **/
 
-      size_t cursor = 0;
-      std::span<const uint8_t> header = serialization::read_bytes(bytes, 4, cursor);
-      if (header.size() != 4 || header[0] != 'M' || header[1] != 'E' || header[2] != 'S' || header[3] != 'H') {
-        on_failure(std::format("Invalid mesh block in file: {}", file_path.string()));
-        return;
-      }
+      // size_t cursor = 0;
+      // std::span<const uint8_t> header = serialization::read_bytes(bytes, 4, cursor);
+      // if (header.size() != 4 || header[0] != 'M' || header[1] != 'E' || header[2] != 'S' || header[3] != 'H') {
+      //   on_failure(std::format("Invalid mesh block in file: {}", file_path.string()));
+      //   return;
+      // }
 
-      uint32_t mesh_length = serialization::read_value<uint32_t>(bytes, cursor);
-      if (mesh_length == 0) {
-        on_failure(std::format("Invalid mesh length in file: {}", file_path.string()));
-        return;
-      }
+      // uint32_t mesh_length = serialization::read_value<uint32_t>(bytes, cursor);
+      // if (mesh_length == 0) {
+      //   on_failure(std::format("Invalid mesh length in file: {}", file_path.string()));
+      //   return;
+      // }
 
-      std::span<const uint8_t> mesh_data = serialization::read_bytes(bytes, mesh_length, cursor);
-      std::span mesh_bytes = std::span(mesh_data.data(), mesh_data.size());
-      if (mesh_bytes.empty()) {
-        on_failure(std::format("Failed to read mesh bytes in file: {}", file_path.string()));
-        return;
-      }
+      // std::span<const uint8_t> mesh_data = serialization::read_bytes(bytes, mesh_length, cursor);
+      // std::span mesh_bytes = std::span(mesh_data.data(), mesh_data.size());
+      // if (mesh_bytes.empty()) {
+      //   on_failure(std::format("Failed to read mesh bytes in file: {}", file_path.string()));
+      //   return;
+      // }
 
-      size_t stride = vertex::stride();
-      size_t mesh_cursor = 0;
+      // size_t stride = vertex::stride();
+      // size_t mesh_cursor = 0;
 
-      uint32_t num_vertices = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-      std::span<const uint8_t> vertex_bytes = serialization::read_bytes(mesh_bytes, num_vertices * sizeof(double) * stride, mesh_cursor);
-      if (vertex_bytes.empty()) {
-        on_failure(std::format("Failed to read vertex data in file: {}", file_path.string()));
-        return;
-      }
-      OTHER_ASSERT(vertex_bytes.size() == num_vertices * sizeof(double) * stride, "Vertex data size mismatch in file: {}", file_path.string());
+      // uint32_t num_vertices = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      // std::span<const uint8_t> vertex_bytes = serialization::read_bytes(mesh_bytes, num_vertices * sizeof(double) * stride, mesh_cursor);
+      // if (vertex_bytes.empty()) {
+      //   on_failure(std::format("Failed to read vertex data in file: {}", file_path.string()));
+      //   return;
+      // }
+      // OTHER_ASSERT(vertex_bytes.size() == num_vertices * sizeof(double) * stride, "Vertex data size mismatch in file: {}", file_path.string());
 
-      // clang-format off
-        builder.vertices = vertex_bytes
-          | std::views::chunk(sizeof(double))
-          | std::views::transform([](auto chunk) { return *reinterpret_cast<const double*>(chunk.data()); })
-          | std::views::chunk(vertex::stride())
-          | std::views::transform([&](auto vertex_chunk) {
-                             vertex v;
-                             v.position = glm::vec3(static_cast<float>(vertex_chunk[0]), static_cast<float>(vertex_chunk[1]), static_cast<float>(vertex_chunk[2]));
-                             v.normal = glm::vec3(static_cast<float>(vertex_chunk[3]), static_cast<float>(vertex_chunk[4]), static_cast<float>(vertex_chunk[5]));
-                             v.tangent = glm::vec3(static_cast<float>(vertex_chunk[6]), static_cast<float>(vertex_chunk[7]), static_cast<float>(vertex_chunk[8]));
-                             v.bitangent = glm::vec3(static_cast<float>(vertex_chunk[9]), static_cast<float>(vertex_chunk[10]), static_cast<float>(vertex_chunk[11]));
-                             v.tex_coord = glm::vec2(static_cast<float>(vertex_chunk[12]), static_cast<float>(vertex_chunk[13]));
-                             return v;
-                           })
-          | std::ranges::to<std::vector<vertex>>();
-      // clang-format on
+      // // clang-format off
+      //   builder.vertices = vertex_bytes
+      //     | std::views::chunk(sizeof(double))
+      //     | std::views::transform([](auto chunk) { return *reinterpret_cast<const double*>(chunk.data()); })
+      //     | std::views::chunk(vertex::stride())
+      //     | std::views::transform([&](auto vertex_chunk) {
+      //                        vertex v;
+      //                        v.position = glm::vec3(static_cast<float>(vertex_chunk[0]), static_cast<float>(vertex_chunk[1]), static_cast<float>(vertex_chunk[2]));
+      //                        v.normal = glm::vec3(static_cast<float>(vertex_chunk[3]), static_cast<float>(vertex_chunk[4]), static_cast<float>(vertex_chunk[5]));
+      //                        v.tangent = glm::vec3(static_cast<float>(vertex_chunk[6]), static_cast<float>(vertex_chunk[7]), static_cast<float>(vertex_chunk[8]));
+      //                        v.bitangent = glm::vec3(static_cast<float>(vertex_chunk[9]), static_cast<float>(vertex_chunk[10]), static_cast<float>(vertex_chunk[11]));
+      //                        v.tex_coord = glm::vec2(static_cast<float>(vertex_chunk[12]), static_cast<float>(vertex_chunk[13]));
+      //                        return v;
+      //                      })
+      //     | std::ranges::to<std::vector<vertex>>();
+      // // clang-format on
 
-      uint32_t num_indices = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-      std::span<const uint8_t> index_bytes = serialization::read_bytes(mesh_bytes, num_indices * sizeof(uint32_t) * 3, mesh_cursor);
-      if (index_bytes.empty()) {
-        on_failure(std::format("Failed to read index data in file: {}", file_path.string()));
-        return;
-      }
-      OTHER_ASSERT(index_bytes.size() == num_indices * sizeof(uint32_t) * 3, "Index data size mismatch in file: {}", file_path.string());
+      // uint32_t num_indices = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      // std::span<const uint8_t> index_bytes = serialization::read_bytes(mesh_bytes, num_indices * sizeof(uint32_t) * 3, mesh_cursor);
+      // if (index_bytes.empty()) {
+      //   on_failure(std::format("Failed to read index data in file: {}", file_path.string()));
+      //   return;
+      // }
+      // OTHER_ASSERT(index_bytes.size() == num_indices * sizeof(uint32_t) * 3, "Index data size mismatch in file: {}", file_path.string());
 
-      // clang-format off
-        builder.indices = index_bytes
-          | std::views::chunk(sizeof(uint32_t))
-          | std::views::transform([](auto chunk) { return *reinterpret_cast<const uint32_t*>(chunk.data()); })
-          | std::views::chunk(3)
-          | std::views::transform([](auto index_chunk) {
-                            index idx;
-                            idx.v0 = index_chunk[0];
-                            idx.v1 = index_chunk[1];
-                            idx.v2 = index_chunk[2];
-                            return idx;
-                          })
-          | std::ranges::to<std::vector<index>>();
-      // clang-format on
+      // // clang-format off
+      //   builder.indices = index_bytes
+      //     | std::views::chunk(sizeof(uint32_t))
+      //     | std::views::transform([](auto chunk) { return *reinterpret_cast<const uint32_t*>(chunk.data()); })
+      //     | std::views::chunk(3)
+      //     | std::views::transform([](auto index_chunk) {
+      //                       index idx;
+      //                       idx.v0 = index_chunk[0];
+      //                       idx.v1 = index_chunk[1];
+      //                       idx.v2 = index_chunk[2];
+      //                       return idx;
+      //                     })
+      //     | std::ranges::to<std::vector<index>>();
+      // // clang-format on
 
-      uint32_t num_submeshes = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-      for (uint32_t s = 0; s < num_submeshes; ++s) {
-        submesh submesh;
-        submesh.base_vertex = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-        submesh.base_idx = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-        submesh.idx_cnt = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-        submesh.vert_cnt = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      // uint32_t num_submeshes = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      // for (uint32_t s = 0; s < num_submeshes; ++s) {
+      //   submesh submesh;
+      //   submesh.base_vertex = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //   submesh.base_idx = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //   submesh.idx_cnt = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //   submesh.vert_cnt = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
 
-        submesh.local_transform = serialization::read_value<glm::mat4>(mesh_bytes, mesh_cursor);
+      //   submesh.local_transform = serialization::read_value<glm::mat4>(mesh_bytes, mesh_cursor);
 
-        submesh.bounds.min = serialization::read_value<glm::vec3>(mesh_bytes, mesh_cursor);
-        submesh.bounds.max = serialization::read_value<glm::vec3>(mesh_bytes, mesh_cursor);
-        submesh.sub_mesh_id = serialization::read_value<natural_t>(mesh_bytes, mesh_cursor);
+      //   submesh.bounds.min = serialization::read_value<glm::vec3>(mesh_bytes, mesh_cursor);
+      //   submesh.bounds.max = serialization::read_value<glm::vec3>(mesh_bytes, mesh_cursor);
+      //   submesh.sub_mesh_id = serialization::read_value<natural_t>(mesh_bytes, mesh_cursor);
 
-        uint32_t name_length = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-        submesh.name = serialization::read_string_value(mesh_bytes, name_length, mesh_cursor);
+      //   uint32_t name_length = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //   submesh.name = serialization::read_string_value(mesh_bytes, name_length, mesh_cursor);
 
-        uint8_t rigged_byte = serialization::read_value<uint8_t>(mesh_bytes, mesh_cursor);
-        submesh.rigged = rigged_byte != 0;
+      //   uint8_t rigged_byte = serialization::read_value<uint8_t>(mesh_bytes, mesh_cursor);
+      //   submesh.rigged = rigged_byte != 0;
 
-        builder.submeshes.emplace_back(submesh);
-      }
+      //   builder.submeshes.emplace_back(submesh);
+      // }
 
-      uint32_t num_nodes = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-      for (uint32_t n = 0; n < num_nodes; ++n) {
-        mesh_node node;
+      // uint32_t num_nodes = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      // for (uint32_t n = 0; n < num_nodes; ++n) {
+      //   mesh_node node;
 
-        node.parent = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //   node.parent = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
 
-        uint32_t num_children = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-        for (uint32_t c = 0; c < num_children; ++c) {
-          uint32_t child_idx = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-          node.children.emplace_back(child_idx);
-        }
+      //   uint32_t num_children = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //   for (uint32_t c = 0; c < num_children; ++c) {
+      //     uint32_t child_idx = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //     node.children.emplace_back(child_idx);
+      //   }
 
-        uint32_t num_submeshes = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-        for (uint32_t sm = 0; sm < num_submeshes; ++sm) {
-          uint32_t submesh_id = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-          node.sub_meshes.emplace_back(submesh_id);
-        }
+      //   uint32_t num_submeshes = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //   for (uint32_t sm = 0; sm < num_submeshes; ++sm) {
+      //     uint32_t submesh_id = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //     node.sub_meshes.emplace_back(submesh_id);
+      //   }
 
-        node.local_transform = serialization::read_value<glm::mat4>(mesh_bytes, mesh_cursor);
+      //   node.local_transform = serialization::read_value<glm::mat4>(mesh_bytes, mesh_cursor);
 
-        uint32_t name_length = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
-        node.name = serialization::read_string_value(mesh_bytes, name_length, mesh_cursor);
+      //   uint32_t name_length = serialization::read_value<uint32_t>(mesh_bytes, mesh_cursor);
+      //   node.name = serialization::read_string_value(mesh_bytes, name_length, mesh_cursor);
 
-        builder.nodes.emplace_back(node);
-      }
+      //   builder.nodes.emplace_back(node);
+      // }
 
-      builder.triangles.reserve((builder.indices.size() / 3) + 1);
-      size_t i = 0;
-      for (auto& idx : builder.indices) {
-        triangle& tri = builder.triangles.emplace_back();
-        tri.id = i;
+      // builder.triangles.reserve((builder.indices.size() / 3) + 1);
+      // size_t i = 0;
+      // for (auto& idx : builder.indices) {
+      //   triangle& tri = builder.triangles.emplace_back();
+      //   tri.id = i;
 
-        vertex& v0 = builder.vertices[tri.v0_id];
-        v0.connected_triangles.emplace_back(tri.id);
+      //   vertex& v0 = builder.vertices[tri.v0_id];
+      //   v0.connected_triangles.emplace_back(tri.id);
 
-        vertex& v1 = builder.vertices[tri.v1_id];
-        v1.connected_triangles.emplace_back(tri.id);
+      //   vertex& v1 = builder.vertices[tri.v1_id];
+      //   v1.connected_triangles.emplace_back(tri.id);
 
-        vertex& v2 = builder.vertices[tri.v2_id];
-        v2.connected_triangles.emplace_back(tri.id);
+      //   vertex& v2 = builder.vertices[tri.v2_id];
+      //   v2.connected_triangles.emplace_back(tri.id);
 
-        tri.v0_id = idx.v0;
-        tri.v1_id = idx.v1;
-        tri.v2_id = idx.v2;
-        tri.centroid = (builder.vertices[tri.v0_id].position + builder.vertices[tri.v1_id].position + builder.vertices[tri.v2_id].position) / 3.0f;
-        i++;
-      }
+      //   tri.v0_id = idx.v0;
+      //   tri.v1_id = idx.v1;
+      //   tri.v2_id = idx.v2;
+      //   tri.centroid = (builder.vertices[tri.v0_id].position + builder.vertices[tri.v1_id].position + builder.vertices[tri.v2_id].position) / 3.0f;
+      //   i++;
+      // }
     }
 
     void process_assimp_file(const filepath& file_path, model_builder& builder) {

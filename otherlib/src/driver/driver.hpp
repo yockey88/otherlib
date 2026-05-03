@@ -179,6 +179,13 @@ namespace other {
     virtual void on_shutdown_request() {}
     virtual void on_shutdown_confirm() {}
 
+    template <typename T>
+      requires std::derived_from<T, driver_system>
+    T& core_system() {
+      OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+      return driver_kernel_ptr->template get_core_system<T>();
+    }
+
    private:
     friend class driver_interface;
     friend class driver_state_machine;

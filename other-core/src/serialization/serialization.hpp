@@ -5,101 +5,51 @@
 #define OTHER_CORE_SERIALIZATION_SERIALIZATION_HPP
 
 #include <span>
+#include <type_traits>
 
 #include "core/defines.hpp"
-#include "serialization/reflection.hpp"
+#include "core/logger.hpp"
 
 namespace other {
-  namespace serialization {
 
-    std::vector<uint8_t> read_file_to_bytes(const filepath& file_path);
+  struct buffer_parsing_error : public std::runtime_error {
+    buffer_parsing_error(const std::string& msg, std::string stack_trace = OTHER_STACKTRACE)
+        : std::runtime_error(std::format("Buffer Parsing Error: [{}]\n{}", msg, stack_trace)) {}
+  };
 
-    template <typename T>
-      requires(!std::same_as<T, std::string>)
-    static inline void write_value(T value, std::vector<uint8_t>& out_bytes) {
-      const uint8_t* value_bytes = reinterpret_cast<const uint8_t*>(&value);
-      out_bytes.append_range(std::span(value_bytes, sizeof(T)));
+  template <typename T>
+  concept is_readable_field =
+    std::is_trivially_constructible_v<T>;
+  template <typename T>
+  concept is_writable_field =
+    std::is_trivially_copyable_v<T>;
+
+  template <typename T>
+    requires is_readable_field<T>
+  static void validate_named_field_in_raw_buffer(const std::string_view field_name, std::span<const uint8_t> data) {
+    if (data.size() < sizeof(T)) {
+      throw buffer_parsing_error("Insufficient data to parse field '" + std::string(field_name) + "' of type " + std::string(typeid(T).name()));
+    }
+  }
+
+  template <typename T>
+    requires is_readable_field<T>
+  static T parse_named_field_from_raw_buffer(const std::string_view field_name, std::span<const uint8_t> data) {
+    validate_named_field_in_raw_buffer<T>(field_name, data);
+    return *std::launder(reinterpret_cast<const T*>(data.data()));
+  }
+
+  template <typename T>
+    requires is_writable_field<T>
+  static void append_named_field_to_raw_buffer(const std::string_view field_name, const T& value, std::vector<uint8_t>& data) {
+    const uint8_t* value_data = reinterpret_cast<const uint8_t*>(&value);
+    if (value_data == nullptr) {
+      throw buffer_parsing_error("Null data pointer when appending field '" + std::string(field_name) + "' of type " + std::string(typeid(T).name()));
     }
 
-    void write_string_value(const std::string& str, std::vector<uint8_t>& out_bytes);
+    data.append_range(std::span(value_data, sizeof(T)));
+  }
 
-    template <typename T>
-    static inline void write_list_with_2B_count(const std::vector<T>& values, std::vector<uint8_t>& out_bytes) {
-      uint16_t num_values = (uint16_t)values.size();
-      write_value(num_values, out_bytes);
-
-      if (num_values > 0) {
-        for (T v : values) {
-          write_value(v, out_bytes);
-        }
-      }
-    }
-
-    template <typename T>
-      requires reflected_type<T>
-    static inline void write_reflected_object(const T& obj, std::vector<uint8_t>& out_bytes) {
-      std::vector<uint8_t> data = type_data_handler<T>::as_bytes(obj);
-      write_value<uint64_t>((uint64_t)data.size(), out_bytes);
-      out_bytes.append_range(data);
-    }
-
-    void write_bytes(const void* data, size_t size, std::vector<uint8_t>& out_bytes);
-
-    template <typename T>
-      requires(!std::same_as<T, std::string>)
-    static inline T read_value(const std::span<const uint8_t> buffer, size_t& cursor) {
-      OTHER_ASSERT(buffer.size() >= cursor + sizeof(T), "Buffer too small to read value of size {} at cursor {}", sizeof(T), cursor);
-      std::span<const uint8_t> value_span = buffer.subspan(cursor, sizeof(T));
-      cursor += sizeof(T);
-      return *reinterpret_cast<const T*>(value_span.data());
-    }
-
-    template <typename T>
-      requires(!std::same_as<T, std::string>)
-    static inline T peek_at_value(const std::span<const uint8_t> buffer, size_t cursor) {
-      OTHER_ASSERT(buffer.size() >= cursor + sizeof(T), "Buffer too small to read value of size {} at cursor {}", sizeof(T), cursor);
-      std::span<const uint8_t> value_span = buffer.subspan(cursor, sizeof(T));
-      return *reinterpret_cast<const T*>(value_span.data());
-    }
-
-    std::string read_string_value(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor);
-    std::span<const uint8_t> read_bytes(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor);
-
-    template <typename T>
-    static inline std::vector<T> read_list_with_2B_count(const std::span<const uint8_t> buffer, size_t& cursor) {
-      uint16_t num_values = read_value<uint16_t>(buffer, cursor);
-      std::vector<T> values;
-      if (num_values > 0) {
-        std::span<const T> list_span{ (const T*)(buffer.data() + cursor), num_values };
-        cursor += num_values * sizeof(T);
-
-        values.insert(values.end(), list_span.begin(), list_span.end());
-      }
-      return values;
-    }
-
-    template <typename T>
-      requires reflected_type<T>
-    static inline T read_reflected_object_blob(const std::span<const uint8_t> buffer, uint64_t length, size_t& cursor) {
-      std::vector<uint8_t> data = { buffer.begin(), buffer.begin() + length };
-      cursor += length;
-
-      return type_data_handler<T>::from_bytes(data);
-    }
-
-    template <typename T>
-      requires reflected_type<T>
-    static inline T read_reflected_object(const std::span<const uint8_t> buffer, size_t& cursor) {
-      T obj = {};
-      uint64_t entity_data_length = read_value<uint64_t>(buffer, cursor);
-
-      const std::span<const uint8_t> entity_data = buffer.subspan(cursor);
-      obj = read_reflected_object_blob<T>(entity_data, entity_data_length, cursor);
-
-      return obj;
-    }
-
-  }  // namespace serialization
 }  // namespace other
 
 #endif  // OTHER_CORE_SERIALIZATION_SERIALIZATION_HPP

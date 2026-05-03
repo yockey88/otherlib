@@ -8,6 +8,8 @@
 #include "core/defines.hpp"
 #include "core/time.hpp"
 
+#include "network/driver_messages.hpp"
+
 #include "driver/driver.hpp"
 
 namespace other {
@@ -90,13 +92,7 @@ namespace other {
       .id = SHUTDOWN_REQUEST,
     };
 
-    send_message_and_wait_acknowledgment(
-      kernel, std::move(msg), milliseconds(250),
-      message_handler{
-        [this, kernel](message_header h, std::span<const uint8_t> d) { on_ack_shutdown_request_network_thread(kernel, h, d); },
-        [this, kernel](message_header h) { on_timeout_shutdown_request_network_thread(kernel, h); },
-      }
-    );
+    send_message(&get_driver().get_kernel(), std::move(msg));
   }
 
   void network_system::send_message(driver_kernel* kernel, message&& msg) {
@@ -148,18 +144,13 @@ namespace other {
       .id = LISTEN_TCP_CONNECTION,
     };
 
-    const uint8_t* endpoint_data = reinterpret_cast<const uint8_t*>(&endpoint);
-    const uint8_t* id = reinterpret_cast<const uint8_t*>(&connection_id);
-    msg.data.append_range(std::span(endpoint_data, sizeof(binding_point)));
-    msg.data.append_range(std::span(id, sizeof(natural_t)));
+    listen_tcp_connection_request request{
+      .endpoint = endpoint,
+      .connection_id = connection_id,
+    };
+    msg.data = serialize_message(request);
 
-    send_message_and_wait_acknowledgment(
-      &get_driver().get_kernel(), std::move(msg), seconds(1),
-      message_handler{
-        [this](message_header h, std::span<const uint8_t> d) { on_ack_listen_at_endpoint(&get_driver().get_kernel(), h, d); },
-        [this](message_header h) { on_timeout_listen_at_endpoint(&get_driver().get_kernel(), h); },
-      }
-    );
+    send_message(&get_driver().get_kernel(), std::move(msg));
 
     return connection_id;
   }
@@ -175,7 +166,22 @@ namespace other {
           },
         },
       });
+      auto [titr, timeout_success] = message_handler_timeouts.insert({ message_header{ COMMAND, LISTEN_TCP_CONNECTION }, seconds(1) });
       OTHER_ASSERT(success, "Failed to insert message handler for LISTEN_TCP_CONNECTION");
+    }
+
+    {
+      auto [itr, success] = message_handlers.insert({
+        message_header{ COMMAND, SHUTDOWN_REQUEST },
+        {
+          message_handler{
+            [this](message_header h, std::span<const uint8_t> d) { on_ack_shutdown_request_network_thread(&get_driver().get_kernel(), h, d); },
+            [this](message_header h) { on_timeout_shutdown_request_network_thread(&get_driver().get_kernel(), h); },
+          },
+        },
+      });
+      auto [titr, timeout_success] = message_handler_timeouts.insert({ message_header{ COMMAND, SHUTDOWN_REQUEST }, milliseconds(250) });
+      OTHER_ASSERT(success, "Failed to insert message handler for SHUTDOWN_REQUEST");
     }
   }
 

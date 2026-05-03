@@ -32,7 +32,9 @@ namespace other {
     send_to_thread(std::move(start_msg));
 
     std::this_thread::yield();
-    opt<message> msg_opt = receive_from_thread(get_message_timeout());
+    std::this_thread::yield();
+
+    opt<message> msg_opt = receive_from_thread(microseconds(500));
     OTHER_ASSERT(msg_opt.has_value(), "Thread [{}] did not acknowledge start message", thread_name);
     OTHER_ASSERT((msg_opt->header == message_header{ ACKNOWLEDGEMENT, ACK }), "Thread [{}] sent invalid acknowledgment for start message: {}, expected ACKNOWLEDGEMENT.ACK", thread_name, msg_opt->header);
 
@@ -177,12 +179,12 @@ namespace other {
     return thread_data->rx_channel->await_message(timeout);
   }
 
-  std::pair<scope<channel<message>>, scope<channel<message>>> thread::thread_launch_setup() {
+  std::pair<scope<message_channel>, scope<message_channel>> thread::thread_launch_setup() {
     ref<channel_queue<message>> tx_queue = make_ref<channel_queue<message>>();
     ref<channel_queue<message>> rx_queue = make_ref<channel_queue<message>>();
 
-    auto [this_tx_channel, thread_rx_channel] = channel<message>::make_channel(tx_queue);
-    auto [thread_tx_channel, this_rx_channel] = channel<message>::make_channel(rx_queue);
+    auto [this_tx_channel, thread_rx_channel] = message_channel::make_channel(tx_queue);
+    auto [thread_tx_channel, this_rx_channel] = message_channel::make_channel(rx_queue);
 
     {
       std::lock_guard lock(thread_state_mutex);
@@ -270,7 +272,7 @@ namespace other {
     return false;
   }
 
-  void thread::run(std::stop_token stoken, scope<channel<message>> thread_rx_channel, scope<channel<message>> thread_tx_channel) {
+  void thread::run(std::stop_token stoken, scope<message_channel> thread_rx_channel, scope<message_channel> thread_tx_channel) {
     threadlocal_data threadlocal_data;
     threadlocal_data.tx_channel = std::move(thread_tx_channel);
     threadlocal_data.rx_channel = std::move(thread_rx_channel);

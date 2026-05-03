@@ -57,7 +57,6 @@ target_sources(other_core
 		src/serialization/serialization.cpp
 
 		src/thread/message.cpp
-		src/thread/messages.cpp
 		src/thread/message_bus.cpp
 		src/thread/thread.cpp
 
@@ -83,6 +82,6 @@ if (CMAKE_BUILD_TYPE STREQUAL Profile)
 endif()
 
 target_link_directories(other_core PRIVATE ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_core PRIVATE flatbuffers glad Threads::Threads)
+target_link_libraries(other_core PRIVATE glad Threads::Threads)
 
 other_install_module(other_core "core")

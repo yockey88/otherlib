@@ -13,7 +13,6 @@
 #include "core/scope.hpp"
 #include "thread/channel.hpp"
 #include "thread/message.hpp"
-#include "thread/messages.hpp"
 
 namespace other {
 
@@ -110,8 +109,8 @@ namespace other {
     opt<integer_t> thread_exit_code = std::nullopt;
 
     state current_state = WAITING;
-    scope<channel<message>> tx_channel;
-    scope<channel<message>> rx_channel;
+    scope<message_channel> tx_channel;
+    scope<message_channel> rx_channel;
 
     inline bool thread_loop_condition(std::stop_token& stoken) {
       return !checkpoints.error_occurred.load(std::memory_order_acquire) &&
@@ -127,11 +126,11 @@ namespace other {
     opt<message> receive_from_thread(microseconds timeout = microseconds(100));
     opt<message> receive_from_main_thread(microseconds timeout = microseconds(100));
 
-    std::pair<scope<channel<message>>, scope<channel<message>>> thread_launch_setup();
+    std::pair<scope<message_channel>, scope<message_channel>> thread_launch_setup();
     // if false, immediately exit thread function, otherwise continue
     // this blocks thread
     bool thread_control_loop(std::stop_token& stoken);
-    void run(std::stop_token stoken, scope<channel<message>> thread_rx_channel, scope<channel<message>> thread_tx_channel);
+    void run(std::stop_token stoken, scope<message_channel> thread_rx_channel, scope<message_channel> thread_tx_channel);
 
     /// only ever called from thread where run() is executed
     void handle_init_msg(const message& msg);

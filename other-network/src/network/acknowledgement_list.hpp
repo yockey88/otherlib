@@ -5,9 +5,7 @@
 #define OTHER_NETWORK_NETWORK_ACKNOWLEDGEMENT_LIST_HPP
 
 #include "thread/message.hpp"
-#include "thread/messages.hpp"
 
-#include "network/message.hpp"
 #include "network/message_handler.hpp"
 
 namespace other {

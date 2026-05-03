@@ -19,6 +19,7 @@
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
+#include "serialization/serialization.hpp"
 
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
@@ -27,16 +28,6 @@
 #include "driver/subsystem_registry.hpp"
 
 extern other::exit_code other_main(const other::command_line& cmd, const other::config_table& config, const other::subsystem_registry& registry);
-
-#if defined(OTHER_DEBUG_BUILD) || defined(OTHER_DEBUG_AS_BUILD)
-  #define CATCH_RUNTIME_ERROR(e) OTHER_ASSERT(false, "Runtime error: {}", e.what())
-  #define CATCH_EXCEPTION(e) OTHER_ASSERT(false, "Exception: {}", e.what())
-  #define CATCH_UNKNOWN_EXCEPTION() OTHER_ASSERT(false, "Unknown exception occurred.")
-#else
-  #define CATCH_RUNTIME_ERROR(e) CORE_LOG_ERROR("Runtime error: {}", e.what())
-  #define CATCH_EXCEPTION(e) CORE_LOG_ERROR("Exception: {}", e.what())
-  #define CATCH_UNKNOWN_EXCEPTION() CORE_LOG_ERROR("Unknown exception occurred.")
-#endif
 
 namespace other {
 
@@ -74,17 +65,24 @@ namespace other {
     {
       CORE_LOG_INFO("Running Other Environment driver...");
       PROFILE_SECTION("other::main");
+
+      auto error_handler = [&](const std::string& error_msg) {
+        CORE_LOG_ERROR("!> [FATAL ERROR]: {}", error_msg);
+        res = FAILURE;
+      };
+
       try {
         res = other_main(cmd, config, registry);
+      } catch (const buffer_parsing_error& e) {
+        CORE_LOG_ERROR("A buffer was corrupted. [Arena inspection unimplemented]");
+        CORE_LOG_ERROR("Buffer parsing error: {}", e.what());
+        res = FAILURE;
       } catch (const std::runtime_error& e) {
-        CATCH_RUNTIME_ERROR(e);
-        res = FAILURE;
+        error_handler(std::format("A runtime error occurred: {}", e.what()));
       } catch (const std::exception& e) {
-        CATCH_EXCEPTION(e);
-        res = FAILURE;
+        error_handler(std::format("An unexpected error occurred: {}", e.what()));
       } catch (...) {
-        CATCH_UNKNOWN_EXCEPTION();
-        res = FAILURE;
+        error_handler("An unknown error occurred.");
       }
     }
 

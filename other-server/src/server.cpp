@@ -25,7 +25,7 @@ namespace other {
   }
 
   natural_t server::listen_at_endpoint(const binding_point& endpoint) {
-    return get_kernel().get_core_system<network_system>().listen_at_endpoint(endpoint);
+    return core_system<network_system>().listen_at_endpoint(endpoint);
   }
 
   void server::on_new_connection_accepted(natural_t connection_id) {
