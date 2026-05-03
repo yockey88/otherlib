@@ -1,0 +1,1 @@
+OtherLog.Info("Hello from server.lua!")

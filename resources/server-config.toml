@@ -16,6 +16,7 @@ core-log-file = "logs/server.log"
 ui-layout-ini = "resources/ui/server-ui-layout.ini"
 
 [scripting]
+envrc-path = "resources/server.lua"
 dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"

@@ -96,6 +96,7 @@ namespace other {
     bool project_loaded() const;
 
     scene* get_active_scene();
+    renderer& get_renderer();
 
     inline bool network_enabled() const {
       return !configuration().get_value<bool>("networking.force-disable", false);
@@ -127,7 +128,6 @@ namespace other {
       OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
       return driver_kernel_ptr->get_core_system<rendering_system>().get_driver_ui();
     }
-    renderer& get_renderer();
 
     inline driver_state current_driver_state() const {
       return state_machine.get_current_state();
@@ -147,27 +147,15 @@ namespace other {
       return configuration().get_value<T>(toml_path, default_value);
     }
 
+    void input_event(const input_state_change_event& event);
+    void data_received(natural_t id, std::vector<uint8_t> data);
+    void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
+    void connection_closed(natural_t connection_id);
+
     /// \todo remove this and read input map from the input map asset, or allow it to get
     ///         built from a script callback to lua or .NET scripts
     virtual void on_build_driver_input_map(input_map& map) {}
-    virtual void on_input_event(const input_state_change_event& event) {}
-    /// notifications
-    virtual void on_data_received(natural_t id, std::vector<uint8_t> data) {}
-    virtual void on_new_connection_accepted(natural_t main_connection_id, natural_t connection_id) {}
-    virtual void on_connection_closed(natural_t connection_id) {}
-    /// acknowledgments
-    /// control messages
-    /// command messages
-    /// request messages
-    /// response messages
-    /// session events
-    /// error alerts
-    virtual void handle_error_alert(message&& msg) {}
-    virtual void on_push_scene_object(scene_object* object) {}
-    virtual void on_pop_scene_object(scene_object* object) {}
     virtual void on_viewport_resize(const glm::vec2& size) {}
-    virtual void on_render() {}
-    virtual void on_ui_render() {}
 
    protected:
     virtual void on_initialize(const command_line& cmd) = 0;
@@ -179,6 +167,23 @@ namespace other {
     virtual void on_shutdown() = 0;
     virtual void on_shutdown_request() {}
     virtual void on_shutdown_confirm() {}
+
+    virtual void on_input_event(const input_state_change_event& event) {}
+    /// notifications
+    virtual void on_data_received(natural_t id, std::span<const uint8_t> data) {}
+    virtual void on_new_connection_accepted(natural_t main_connection_id, natural_t connection_id) {}
+    virtual void on_connection_closed(natural_t connection_id) {}
+    /// acknowledgments
+    /// control messages
+    /// command messages
+    /// request messages
+    /// response messages
+    /// session events
+    /// error alerts
+
+    // other
+    virtual void on_render() {}
+    virtual void on_ui_render() {}
 
     template <typename T>
       requires std::derived_from<T, driver_system>

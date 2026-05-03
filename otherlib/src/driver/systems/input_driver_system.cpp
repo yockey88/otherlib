@@ -36,7 +36,7 @@ namespace other {
     } else if (event.action_name == "quit") {
       return get_driver().request_shutdown();
     } else {
-      return get_driver().on_input_event(event);
+      return get_driver().input_event(event);
     }
   }
 

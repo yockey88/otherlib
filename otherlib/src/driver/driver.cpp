@@ -287,6 +287,22 @@ namespace other {
     return *r;
   }
 
+  void driver::input_event(const input_state_change_event& event) {
+    on_input_event(event);
+  }
+
+  void driver::data_received(natural_t id, std::vector<uint8_t> data) {
+    on_data_received(id, data);
+  }
+
+  void driver::new_connection_accepted(natural_t from_connection_id, natural_t connection_id) {
+    on_new_connection_accepted(from_connection_id, connection_id);
+  }
+
+  void driver::connection_closed(natural_t connection_id) {
+    on_connection_closed(connection_id);
+  }
+
   driver::metadata driver::build_metadata() {
     const auto md = configuration().get_raw("application.metadata");
 

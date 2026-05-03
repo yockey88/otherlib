@@ -33,7 +33,7 @@ enable-environment-menu-bar = true
 test-model = "resources/models/spinning-torus.fbx"
 
 [scripting]
-envrc-path = "resources/editor-rc.lua"
+envrc-path = "resources/editor.lua"
 # runtime config for dotnet host
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 # a dll satisfying the Other Environment Bindings API requirements

@@ -280,7 +280,11 @@ namespace other {
         break;
 
       case RESPONSE: break;
-      case ERROR_ALERT: get_driver().handle_error_alert(std::move(msg)); break;
+      case ERROR_ALERT:
+        CORE_LOG_ERROR("Received error alert from network thread: {}", std::string(msg.data.begin(), msg.data.end()));
+        break;
+
+        // case ERROR_ALERT: get_driver().handle_error_alert(std::move(msg)); break;
 
       default:
         CORE_LOG_ERROR("Server received unknown message category {}", msg.header.category);
@@ -321,7 +325,7 @@ namespace other {
 
   void network_system::handle_notification_rx_data(driver_kernel* kernel, message&& msg) {
     notification_rx_data notification_data = deserialize_direct<notification_rx_data>(msg.data).first;
-    get_driver().on_data_received(notification_data.connection_id, std::move(notification_data.data));
+    get_driver().data_received(notification_data.connection_id, std::move(notification_data.data));
   }
 
   void network_system::handle_notification_connect_tcp_connection(driver_kernel* kernel, message&& msg) {
@@ -332,13 +336,13 @@ namespace other {
     OTHER_ASSERT(success, "Failed to add new TCP connection with ID {} to active connections list", new_connection_id);
 
     natural_t from_connection_id = notification_data.connection_id;
-    get_driver().on_new_connection_accepted(from_connection_id, new_connection_id);
+    get_driver().new_connection_accepted(from_connection_id, new_connection_id);
   }
 
   void network_system::handle_notification_close_tcp_connection(driver_kernel* kernel, message&& msg) {
     notification_close_tcp_connection notification_data = deserialize_direct<notification_close_tcp_connection>(msg.data).first;
     natural_t connection_id = notification_data.connection_id;
-    get_driver().on_connection_closed(connection_id);
+    get_driver().connection_closed(connection_id);
   }
 
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {

@@ -6,8 +6,6 @@
 
 #include "driver/driver.hpp"
 
-#include "http-server.hpp"
-
 namespace other {
 
   class OTHER_CLASS server : public driver {
@@ -19,14 +17,10 @@ namespace other {
     void on_initialize(const command_line& cmd) override;
     void on_shutdown() override;
 
-    natural_t listen_at_endpoint(const binding_point& endpoint);
-
    private:
     uint16_t config_http_port = 0;
 
-    scope<http_server> http_server_instance;
-
-    void on_data_received(natural_t id, std::vector<uint8_t> data) override;
+    void on_data_received(natural_t id, std::span<const uint8_t> data) override;
     void on_new_connection_accepted(natural_t from_connection_id, natural_t connection_id) override;
     void on_connection_closed(natural_t connection_id) override;
   };
