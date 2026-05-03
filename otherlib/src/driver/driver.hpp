@@ -10,7 +10,6 @@
 
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
-#include "core/coroutine.hpp"
 #include "core/defines.hpp"
 #include "core/delta_time.hpp"
 #include "event/event_system.hpp"
@@ -153,7 +152,9 @@ namespace other {
     virtual void on_build_driver_input_map(input_map& map) {}
     virtual void on_input_event(const input_state_change_event& event) {}
     /// notifications
-    virtual void on_new_connection_accepted(natural_t connection_id) {}
+    virtual void on_data_received(natural_t id, std::vector<uint8_t> data) {}
+    virtual void on_new_connection_accepted(natural_t main_connection_id, natural_t connection_id) {}
+    virtual void on_connection_closed(natural_t connection_id) {}
     /// acknowledgments
     /// control messages
     /// command messages

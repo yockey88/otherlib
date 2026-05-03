@@ -13,9 +13,8 @@
 #include "dotnet/dotnet_attribute.hpp"
 #include "dotnet/dotnet_field.hpp"
 #include "dotnet/dotnet_method.hpp"
+#include "dotnet/interop_interface.hpp"
 #include "dotnet/types.hpp"
-
-#include "interop_interface.hpp"
 
 namespace other {
 

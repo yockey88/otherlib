@@ -77,12 +77,11 @@ namespace other {
       CORE_LOG_WARN("Thread [{}] is already in force exit mode, force shutdown request ignored", thread_name);
       return;
     }
+    checkpoints.force_exit.store(true, std::memory_order_release);
 
     CORE_LOG_DEBUG("Thread [{}] starting forced shutdown", thread_name);
     if (thread_handle.joinable()) {
-      checkpoints.force_exit.store(true, std::memory_order_release);
       thread_handle.request_stop();
-      thread_sync_barrier.arrive_and_wait();
       thread_handle.join();
     }
   }
@@ -246,9 +245,7 @@ namespace other {
         // on start we want init, start and on shutdown we just want shutdown
         if (msg->header == message_header{ CONTROL, THREAD_START } ||
             msg->header == message_header{ CONTROL, THREAD_SHUTDOWN }) {
-          message ack;
-          ack.header = { ACKNOWLEDGEMENT, ACK };
-
+          message ack(ACKNOWLEDGEMENT, ACK);
           const uint8_t* ack_data = reinterpret_cast<const uint8_t*>(&msg->header);
           ack.data.append_range(std::span(ack_data, sizeof(message_header)));
           send_to_main_thread(std::move(ack));

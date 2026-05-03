@@ -9,13 +9,23 @@
 
 #include "core/defines.hpp"
 #include "core/time.hpp"
+#include "thread/message.hpp"
 
 #include "network/messages.hpp"
 #include "network/network_error.hpp"
 
+#include "message.hpp"
+
 namespace other {
 
   void network_thread::receive_data(natural_t connection_id, const std::span<uint8_t> data) {
+    std::lock_guard lock(current_state.mutex);
+    pending_data.push({ connection_id, std::vector<uint8_t>(data.begin(), data.end()) });
+  }
+
+  void network_thread::notify_connection_closed(natural_t connection_id) {
+    std::lock_guard lock(current_state.mutex);
+    closed_connections.push(connection_id);
   }
 
   void network_thread::send_to_driver(message&& msg) {
@@ -25,32 +35,15 @@ namespace other {
 
   void network_thread::on_initialize() {
     bus.register_thread();
-
-    // events.register_event("connection.tcp-accepted");
-    // events.add_listener("connection.tcp-accepted", [this](const value& data) {
-    //   OTHER_ASSERT(data.type() == value_type::UINT64, "Expected uint64 data for connection.tcp-accepted event, got {}", data.type());
-    // });
-    // events.register_event("connection.tcp-established");
-    // events.add_listener("connection.tcp-established", [this](const value& data) {
-    //   OTHER_ASSERT(data.type() == value_type::UINT64, "Expected uint64 data for connection.tcp-established event, got {}", data.type());
-    // });
   }
 
   void network_thread::on_start() {
-    message network_ready_msg;
-    network_ready_msg.header = {
-      .category = NOTIFICATION,
-      .id = NETWORK_THREAD_READY,
-    };
+    message network_ready_msg(NOTIFICATION, NETWORK_THREAD_READY);
     send_to_driver(std::move(network_ready_msg));
   }
 
   void network_thread::on_shutdown() {
-    message shutdown_msg;
-    shutdown_msg.header = {
-      .category = NOTIFICATION,
-      .id = NETWORK_THREAD_SHUTDOWN_COMPLETE,
-    };
+    message shutdown_msg(NOTIFICATION, NETWORK_THREAD_SHUTDOWN_COMPLETE);
     send_to_driver(std::move(shutdown_msg));
   }
 
@@ -60,8 +53,37 @@ namespace other {
       network_io.context.restart();
     }
 
-    for (auto& [id, conn] : active_connections) {
-      conn->poll();
+    while (!closed_connections.empty()) {
+      natural_t closed_id = closed_connections.front();
+      closed_connections.pop();
+
+      auto itr = active_connections.find(closed_id);
+      OTHER_ASSERT(itr != active_connections.end(), "Received closed connection ID {} but no active connection found with that ID", closed_id);
+      itr->second->reset();
+
+      message msg(NOTIFICATION, CLOSE_TCP_CONNECTION);
+      notification_close_tcp_connection notification_data{
+        .connection_id = closed_id,
+      };
+      msg.data = serialize_direct(notification_data);
+      send_to_driver(std::move(msg));
+    }
+
+    for (auto citr = active_connections.cbegin(); citr != active_connections.cend(); ++citr) {
+      citr->second->poll();
+    }
+
+    while (!pending_data.empty()) {
+      rx_packet packet = std::move(pending_data.front());
+      pending_data.pop();
+
+      message msg(NOTIFICATION, RX_DATA);
+      notification_rx_data notification_data{
+        .connection_id = packet.connection_id,
+        .data = std::move(packet.data),
+      };
+      msg.data = serialize_direct(notification_data);
+      send_to_driver(std::move(msg));
     }
 
     auto msg = bus.receive_message(microseconds(1));
@@ -78,22 +100,19 @@ namespace other {
         return;
       }
 
-      for (auto& [id, conn] : active_connections) {
-        conn->shutdown();
-      }
+      active_connections.clear();
+      active_tcp_listeners.clear();
 
       message_header shutdown_header(COMMAND, SHUTDOWN_REQUEST);
       natural_t ack_response_id = ack_list.get_pending_ack_response(shutdown_header);
       if (ack_response_id != 0) {
-        message ack_msg;
-        ack_msg.header = {
-          .category = ACKNOWLEDGEMENT,
-          .id = ACK,
+        message ack_msg(ACKNOWLEDGEMENT, ACK);
+        acknowledgement_ack ack_data{
+          .ack_id = ack_response_id,
+          .acked_header = shutdown_header,
+          .ack = 1,
         };
-        const uint8_t* ack_id_data = reinterpret_cast<const uint8_t*>(&ack_response_id);
-        const uint8_t* original_header_data = reinterpret_cast<const uint8_t*>(&shutdown_header);
-        ack_msg.data.append_range(std::span(ack_id_data, sizeof(natural_t)));
-        ack_msg.data.append_range(std::span(original_header_data, sizeof(message_header)));
+        ack_msg.data = serialize_direct(ack_data);
         send_to_driver(std::move(ack_msg));
       }
 
@@ -120,7 +139,7 @@ namespace other {
             case LISTEN_TCP_CONNECTION: handle_command_listen_tcp_connection(std::move(*msg)); break;
             case CONNECT_TCP_CONNECTION: handle_command_connect_tcp_connection(std::move(*msg)); break;
             case OPEN_UDP_CONNECTION: handle_command_open_udp_connection(std::move(*msg)); break;
-            case CLOSE_CONNECTION: handle_command_close_connection(std::move(*msg)); break;
+            case CLOSE_TCP_CONNECTION: handle_command_close_tcp_connection(std::move(*msg)); break;
             default:
               throw std::runtime_error(std::format("Network thread received unknown COMMAND message ID {:#06x}", msg->header.id));
           }
@@ -142,7 +161,7 @@ namespace other {
     }
   }
 
-  void network_thread::accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint) {
+  void network_thread::accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id) {
     std::lock_guard lock(current_state.mutex);
 
     natural_t connection_id = generate_connection_id();
@@ -152,14 +171,19 @@ namespace other {
       return;
     }
 
-    CORE_LOG_DEBUG("Accepted new TCP connection with ID {} from {}:{}", connection_id, endpoint.ip, endpoint.port);
-    message msg;
-    msg.header = {
-      .category = NOTIFICATION,
-      .id = NEW_TCP_CONNECTION_ACCEPTED,
+    asio::ip::tcp::endpoint remote_endpoint = itr->second->remote_endpoint();
+    asio::ip::tcp::endpoint local_endpoint = itr->second->local_tcp_endpoint();
+    CORE_LOG_TRACE("[CONNECT] {} from {} ({}:{} to {}:{})", connection_id, listener_conn_id, remote_endpoint.address().to_string(), remote_endpoint.port(), local_endpoint.address().to_string(), local_endpoint.port());
+
+    binding_point local_bp = binding_point::from_asio(local_endpoint.address(), local_endpoint.port());
+    message msg(NOTIFICATION, CONNECT_TCP_CONNECTION);
+    notification_connect_tcp_connection notification_data{
+      .connection_endpoint = endpoint,
+      .endpoint = local_bp,
+      .connection_id = listener_conn_id,
+      .new_connection_id = connection_id,
     };
-    const uint8_t* id = reinterpret_cast<const uint8_t*>(&connection_id);
-    msg.data.append_range(std::span(id, sizeof(natural_t)));
+    msg.data = serialize_direct(notification_data);
     send_to_driver(std::move(msg));
 
     itr->second->start_read();
@@ -182,12 +206,19 @@ namespace other {
   void network_thread::handle_command_shutdown_request(message&& msg) {
     CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
     current_state.shutdown_pending = true;
+    for (auto& [id, listener] : active_tcp_listeners) {
+      listener->close();
+    }
+    for (auto& [id, conn] : active_connections) {
+      conn->shutdown();
+    }
   }
 
   /// \todo check for duplicate endpoints or other invalid connection parameters
 
   void network_thread::handle_command_listen_tcp_connection(message&& msg) {
-    listen_tcp_connection_request request = deserialize_message<listen_tcp_connection_request>(msg.data);
+    command_listen_tcp_connection request = deserialize_direct<command_listen_tcp_connection>(msg.data).first;
+
     binding_point endpoint = request.endpoint;
     asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
 
@@ -195,14 +226,12 @@ namespace other {
       throw port_in_use_network_error(std::format("Listener with ID {} already exists for endpoint {}:{}", request.connection_id, endpoint.ip, endpoint.port));
     }
 
-    natural_t listener_id = generate_listener_id();
-    auto [itr, success] = active_tcp_listeners.emplace(listener_id, make_scope<asio::ip::tcp::acceptor>(network_io.thread_pool, asio_endpoint));
-    if (!success) {
-      CORE_LOG_ERROR("Failed to create TCP acceptor for endpoint {}:{}", endpoint.ip, endpoint.port);
-      return;
-    }
+    auto [itr, success] = active_tcp_listeners.emplace(request.connection_id, make_scope<asio::ip::tcp::acceptor>(network_io.context, asio_endpoint));
+    /// because we verified id was free before, this should never fail
+    OTHER_ASSERT(success, "Failed to create TCP listener for endpoint {}:{}", endpoint.ip, endpoint.port);
 
-    itr->second->async_accept([this, endpoint](const asio::error_code& ec, asio::ip::tcp::socket socket) {
+    CORE_LOG_DEBUG("[LISTEN] {} @ {}", request.connection_id, endpoint);
+    itr->second->async_accept([this, endpoint, listener_conn_id = request.connection_id](const asio::error_code& ec, asio::ip::tcp::socket socket) {
       if ((ec && ec == asio::error::operation_aborted) ||
           (ec && ec == asio::error::connection_reset) ||
           (ec && ec == asio::error::timed_out) ||
@@ -213,12 +242,13 @@ namespace other {
       if (ec) {
         CORE_LOG_ERROR("Error accepting connection: {}", ec.message());
       } else {
-        accept_tcp_connection(std::move(socket), endpoint);
+        accept_tcp_connection(std::move(socket), endpoint, listener_conn_id);
       }
     });
   }
 
   void network_thread::handle_command_connect_tcp_connection(message&& msg) {
+    // notif
     // binding_point endpoint = *reinterpret_cast<const binding_point*>(msg.data.data());
     // asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
 
@@ -244,7 +274,7 @@ namespace other {
     // }
   }
 
-  void network_thread::handle_command_close_connection(message&& msg) {
+  void network_thread::handle_command_close_tcp_connection(message&& msg) {
     natural_t connection_id = *reinterpret_cast<const natural_t*>(msg.data.data());
     auto itr = active_connections.find(connection_id);
     if (itr == active_connections.end()) {
@@ -264,15 +294,14 @@ namespace other {
 
   void network_thread::handle_request_ack_process_msg(message&& msg) {
     OTHER_ASSERT(msg.data.size() >= sizeof(natural_t) + sizeof(message_header), "Invalid ACK message data size: {}", msg.data.size());
-
-    natural_t ack_id = *reinterpret_cast<const natural_t*>(msg.data.data());
+    natural_t ack_id = 0;
     message acked_msg;
-    {
-      message_header acked_header = *reinterpret_cast<const message_header*>(msg.data.data() + sizeof(natural_t));
-      std::span<const uint8_t> original_data(msg.data.data() + sizeof(natural_t) + sizeof(message_header), msg.data.size() - sizeof(natural_t) - sizeof(message_header));
 
-      acked_msg.header = acked_header;
-      acked_msg.data.append_range(original_data);
+    {
+      request_acknowledgment request_data = deserialize_direct<request_acknowledgment>(msg.data).first;
+      ack_id = request_data.ack_id;
+      acked_msg.header = request_data.original_header;
+      acked_msg.data = std::move(request_data.message_data);
     }
 
     uint8_t ack = 1;
@@ -300,12 +329,12 @@ namespace other {
         .category = ACKNOWLEDGEMENT,
         .id = ACK,
       };
-      acknowledgement ack_data{
+      acknowledgement_ack ack_data{
         .ack_id = ack_id,
         .acked_header = acked_msg.header,
         .ack = ack,
       };
-      ack_msg.data = serialize_message(ack_data);
+      ack_msg.data = serialize_direct(ack_data);
 
       send_to_driver(std::move(ack_msg));
     } else {

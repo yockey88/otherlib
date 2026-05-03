@@ -7,6 +7,7 @@
 
 #include "core/defines.hpp"
 #include "core/time.hpp"
+#include "thread/message.hpp"
 
 #include "network/messages.hpp"
 
@@ -131,7 +132,7 @@ namespace other {
   }
 
   natural_t network_system::listen_at_endpoint(const binding_point& endpoint) {
-    natural_t connection_id = generate_connection_id();
+    natural_t connection_id = network_thread::generate_connection_id();
     auto [itr, success] = active_tcp_connections.emplace(connection_id, tcp_connection{ connection_id });
     if (!success) {
       CORE_LOG_ERROR("Failed to create TCP connection for endpoint {}:{}", endpoint.ip, endpoint.port);
@@ -143,12 +144,11 @@ namespace other {
       .category = COMMAND,
       .id = LISTEN_TCP_CONNECTION,
     };
-
-    listen_tcp_connection_request request{
+    command_listen_tcp_connection request{
       .endpoint = endpoint,
       .connection_id = connection_id,
     };
-    msg.data = serialize_message(request);
+    msg.data = serialize_direct(request);
 
     send_message(&get_driver().get_kernel(), std::move(msg));
 
@@ -217,11 +217,12 @@ namespace other {
       .category = REQUEST,
       .id = ACK,
     };
-    const uint8_t* ack_id_data = reinterpret_cast<const uint8_t*>(&ack_id);
-    const uint8_t* header_data = reinterpret_cast<const uint8_t*>(&msg.header);
-    ack_msg.data.append_range(std::span(ack_id_data, sizeof(natural_t)));
-    ack_msg.data.append_range(std::span(header_data, sizeof(message_header)));
-    ack_msg.data.append_range(msg.data);
+    request_acknowledgment request_data{
+      .ack_id = ack_id,
+      .original_header = msg.header,
+      .message_data = std::move(msg.data),
+    };
+    ack_msg.data = serialize_direct(request_data);
 
     send_to_network_thread(kernel, std::move(ack_msg));
     return ack_id;
@@ -236,9 +237,11 @@ namespace other {
     switch (msg.header.category) {
       case NOTIFICATION:
         switch (msg.header.id) {
-          case NEW_TCP_CONNECTION_ACCEPTED: handle_notification_new_connection_accepted(kernel, std::move(msg)); break;
           case NETWORK_THREAD_READY: handle_notification_network_thread_ready(kernel, std::move(msg)); break;
           case NETWORK_THREAD_SHUTDOWN_COMPLETE: handle_notification_network_thread_shutdown_complete(kernel, std::move(msg)); break;
+          case RX_DATA: handle_notification_rx_data(kernel, std::move(msg)); break;
+          case CONNECT_TCP_CONNECTION: handle_notification_connect_tcp_connection(kernel, std::move(msg)); break;
+          case CLOSE_TCP_CONNECTION: handle_notification_close_tcp_connection(kernel, std::move(msg)); break;
           default:
             CORE_LOG_ERROR("Server received unknown notification message ID {}", msg.header.id);
             break;
@@ -308,16 +311,6 @@ namespace other {
     net_context->net_thread->force_shutdown();
   }
 
-  void network_system::handle_notification_new_connection_accepted(driver_kernel* kernel, message&& msg) {
-    natural_t connection_id = *reinterpret_cast<const natural_t*>(msg.data.data());
-    CORE_LOG_INFO("Network thread accepted new connection with ID {}", connection_id);
-
-    auto [itr, success] = active_tcp_connections.emplace(connection_id, tcp_connection{ connection_id });
-    OTHER_ASSERT(success, "Failed to add new TCP connection with ID {} to active connections list", connection_id);
-
-    get_driver().on_new_connection_accepted(connection_id);
-  }
-
   void network_system::handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg) {
     get_driver().confirm_initialization();
   }
@@ -326,8 +319,30 @@ namespace other {
     get_driver().confirm_network_thread_shutdown();
   }
 
+  void network_system::handle_notification_rx_data(driver_kernel* kernel, message&& msg) {
+    notification_rx_data notification_data = deserialize_direct<notification_rx_data>(msg.data).first;
+    get_driver().on_data_received(notification_data.connection_id, std::move(notification_data.data));
+  }
+
+  void network_system::handle_notification_connect_tcp_connection(driver_kernel* kernel, message&& msg) {
+    notification_connect_tcp_connection notification_data = deserialize_direct<notification_connect_tcp_connection>(msg.data).first;
+
+    natural_t new_connection_id = notification_data.new_connection_id;
+    auto [itr, success] = active_tcp_connections.emplace(new_connection_id, tcp_connection{ new_connection_id });
+    OTHER_ASSERT(success, "Failed to add new TCP connection with ID {} to active connections list", new_connection_id);
+
+    natural_t from_connection_id = notification_data.connection_id;
+    get_driver().on_new_connection_accepted(from_connection_id, new_connection_id);
+  }
+
+  void network_system::handle_notification_close_tcp_connection(driver_kernel* kernel, message&& msg) {
+    notification_close_tcp_connection notification_data = deserialize_direct<notification_close_tcp_connection>(msg.data).first;
+    natural_t connection_id = notification_data.connection_id;
+    get_driver().on_connection_closed(connection_id);
+  }
+
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {
-    acknowledgement ack_data = deserialize_message<acknowledgement>(msg.data);
+    acknowledgement_ack ack_data = deserialize_direct<acknowledgement_ack>(msg.data).first;
     if (ack_data.ack == 1) {
       CORE_LOG_DEBUG("Received acknowledgment for message {} with ACK ID {}", ack_data.acked_header, ack_data.ack_id);
       ack_list.handle_ack(ack_data.ack_id, ack_data.acked_header, {});

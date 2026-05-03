@@ -4,7 +4,6 @@
 #ifndef OTHER_SCRIPTING_DOTNET_HOST_HPP
 #define OTHER_SCRIPTING_DOTNET_HOST_HPP
 
-#include <filesystem>
 #include <map>
 
 #include <dotnet/coreclr_delegates.h>
@@ -73,7 +72,7 @@ namespace other {
       get_type_information get_assembly_types = nullptr;
       get_net_core_types get_net_core_types = nullptr;
       get_type_id get_type_id = nullptr;
-      get_type_name get_full_type_name = nullptr;
+      get_dotnet_type_name get_full_type_name = nullptr;
 
       get_type_information get_type_methods = nullptr;
       get_type_information get_type_fields = nullptr;

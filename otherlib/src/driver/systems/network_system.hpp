@@ -72,18 +72,10 @@ namespace other {
       natural_t connection_id;
     };
 
-    natural_t next_connection_id = 1;
     std::map<natural_t, tcp_connection> active_tcp_connections;
 
     scope<network_context> net_context = nullptr;
     acknowledgement_list ack_list;
-
-    inline natural_t generate_connection_id() {
-      while (active_tcp_connections.find(next_connection_id) != active_tcp_connections.end()) {
-        ++next_connection_id;
-      }
-      return next_connection_id;
-    }
 
     std::map<message_header, message_handler> message_handlers;
     std::map<message_header, microseconds> message_handler_timeouts;
@@ -109,9 +101,11 @@ namespace other {
     // response/timeout callbacks
     /// message handlers
     /// notifications
-    void handle_notification_new_connection_accepted(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
+    void handle_notification_rx_data(driver_kernel* kernel, message&& msg);
+    void handle_notification_connect_tcp_connection(driver_kernel* kernel, message&& msg);
+    void handle_notification_close_tcp_connection(driver_kernel* kernel, message&& msg);
 
     /// acknowledgments
     void handle_acknowledgement_ack(driver_kernel* kernel, message&& msg);

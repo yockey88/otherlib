@@ -28,9 +28,19 @@ namespace other {
     return core_system<network_system>().listen_at_endpoint(endpoint);
   }
 
-  void server::on_new_connection_accepted(natural_t connection_id) {
+  void server::on_data_received(natural_t id, std::vector<uint8_t> data) {
+    OTHER_ASSERT(http_server_instance != nullptr, "HTTP server instance is not initialized.");
+    http_server_instance->process_data_from_connection(id, data);
+  }
+
+  void server::on_new_connection_accepted(natural_t from_connection_id, natural_t connection_id) {
     OTHER_ASSERT(http_server_instance != nullptr, "HTTP server instance is not initialized.");
     http_server_instance->process_new_connection(connection_id);
+  }
+
+  void server::on_connection_closed(natural_t connection_id) {
+    OTHER_ASSERT(http_server_instance != nullptr, "HTTP server instance is not initialized.");
+    http_server_instance->process_closed_connection(connection_id);
   }
 
 }  // namespace other

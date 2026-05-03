@@ -26,7 +26,9 @@ namespace other {
 
     scope<http_server> http_server_instance;
 
-    void on_new_connection_accepted(natural_t connection_id) override;
+    void on_data_received(natural_t id, std::vector<uint8_t> data) override;
+    void on_new_connection_accepted(natural_t from_connection_id, natural_t connection_id) override;
+    void on_connection_closed(natural_t connection_id) override;
   };
 
 }  // namespace other

@@ -4,6 +4,7 @@
 #ifndef OTHER_NETWORK_NETWORK_MESSAGE_HPP
 #define OTHER_NETWORK_NETWORK_MESSAGE_HPP
 
+#include <string>
 #include <type_traits>
 
 #include "serialization/reflection.hpp"
@@ -17,36 +18,47 @@ namespace other {
     if (data.empty()) {
       throw buffer_parsing_error("Message data is empty");
     }
-    if (data.size() < sizeof(T)) {
-      throw buffer_parsing_error("Message data is too small to contain type " + std::string(typeid(T).name()));
-    }
-    if (std::ranges::all_of(data, [](uint8_t byte) { return byte == 0; })) {
-      throw buffer_parsing_error("Message data is all zeros, likely indicating a parsing error");
-    }
   }
 
   template <typename T>
     requires reflected_type<T>
-  std::vector<uint8_t> serialize_message(const T& value) {
+  std::vector<uint8_t> serialize_direct(const T& value, size_t level = 0) {
     std::vector<uint8_t> data;
 
+    CORE_LOG_TRACE("{}[WRITE: {}]", std::string(level * 2, ' '), get_type_name<T>());
     for_each(refl::reflect(value).members, [&](const auto member) {
       if constexpr (refl::descriptor::has_attribute<attr::serializable>(member) &&
                     !refl::descriptor::is_function(member)) {
-        std::string_view name = refl::descriptor::get_attribute<attr::serializable>(member).display_name;
+        std::string name = reflected_field_name(member);
         using member_t = std::decay_t<decltype(member(value))>;
         const auto& field_value = member(value);
 
-        if constexpr (reflected_type<member_t>) {
-          data.append_range(serialize_message(field_value));
-        }
-        //
-        else if constexpr (std::is_trivially_copyable_v<member_t>) {
-          append_named_field_to_raw_buffer(name, field_value, data);
+        if constexpr (is_buffer_type<member_t>) {
+          const auto& buffer = member(value);
+
+          if (std::ranges::size(buffer) > std::numeric_limits<uint16_t>::max()) {
+            throw buffer_parsing_error("Buffer size exceeds maximum supported size of " + std::to_string(std::numeric_limits<uint16_t>::max()));
+          }
+
+          CORE_LOG_TRACE("{}[FIELD: {}] [BLOB ({} bytes)] (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, std::ranges::size(buffer), get_value_type<T>(), data.size());
+          uint16_t buff_size = static_cast<uint16_t>(std::ranges::size(buffer));
+          append_named_field_to_raw_buffer(name + "_buff_len", buff_size, data);
+          data.append_range(buffer);
         }
         //
         else {
-          static_assert(false, "Unsupported field type for serialization in serialize_message");
+          CORE_LOG_TRACE("{}[FIELD: {}] {} (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, field_value, get_value_type<member_t>(), data.size());
+          if constexpr (reflected_type<member_t>) {
+            data.append_range(serialize_direct(field_value, level + 1));
+          }
+          //
+          else if constexpr (std::is_trivially_copyable_v<member_t>) {
+            append_named_field_to_raw_buffer(name, field_value, data);
+          }
+          //
+          else {
+            static_assert(false, "Unsupported field type for serialization in serialize_direct");
+          }
         }
       }
     });
@@ -56,34 +68,52 @@ namespace other {
 
   template <typename T>
     requires reflected_type<T>
-  T deserialize_message(std::span<const uint8_t> data) {
+  std::pair<T, size_t> deserialize_direct(std::span<const uint8_t> data, size_t level = 0) {
     validate_message_data<T>(data);
 
     T value{};
     std::span<const uint8_t> remaining_data = data;
 
+    CORE_LOG_TRACE("{}[READ: {}]", std::string(level * 2, ' '), get_type_name<T>());
     for_each(refl::reflect(value).members, [&](auto member) {
       if constexpr (refl::descriptor::has_attribute<attr::serializable>(member) &&
                     !refl::descriptor::is_function(member)) {
-        std::string_view name = refl::descriptor::get_attribute<attr::serializable>(member).display_name;
+        std::string name = reflected_field_name(member);
         using member_t = std::decay_t<decltype(member(value))>;
+        size_t offset = data.size() - remaining_data.size();
 
-        if constexpr (reflected_type<member_t>) {
-          member(value) = deserialize_message<member_t>(remaining_data);
-        }
-        //
-        else if constexpr (std::is_default_constructible_v<member_t>) {
-          member(value) = parse_named_field_from_raw_buffer<member_t>(name, remaining_data);
-          remaining_data = remaining_data.subspan(sizeof(member_t));
+        if constexpr (is_buffer_type<member_t>) {
+          uint16_t buff_size = parse_named_field_from_raw_buffer<uint16_t>(name + "_buff_len", remaining_data);
+          remaining_data = remaining_data.subspan(sizeof(uint16_t));
+          if (buff_size > remaining_data.size()) {
+            throw buffer_parsing_error("Buffer size specified in message data for field '" + name + "' exceeds remaining data size");
+          }
+
+          member(value) = std::vector<uint8_t>(remaining_data.data(), remaining_data.data() + buff_size);
+          CORE_LOG_TRACE("{}[FIELD: {}] [BLOB ({} bytes)] (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, buff_size, get_value_type<T>(), data.size() - remaining_data.size());
         }
         //
         else {
-          static_assert(false, "Unsupported field type for deserialization in deserialize_message");
+          if constexpr (reflected_type<member_t>) {
+            auto [deserialized_value, consumed_size] = deserialize_direct<member_t>(remaining_data, level + 1);
+            member(value) = deserialized_value;
+            remaining_data = remaining_data.subspan(consumed_size);
+          }
+          //
+          else if constexpr (std::is_default_constructible_v<member_t>) {
+            member(value) = parse_named_field_from_raw_buffer<member_t>(name, remaining_data);
+            remaining_data = remaining_data.subspan(sizeof(member_t));
+          }
+          //
+          else {
+            static_assert(false, "Unsupported field type for deserialization in deserialize_direct");
+          }
+          CORE_LOG_TRACE("{}[FIELD: {}] {} (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, member(value), get_value_type<member_t>(), offset);
         }
       }
     });
 
-    return value;
+    return { value, data.size() - remaining_data.size() };
   }
 
 }  // namespace other

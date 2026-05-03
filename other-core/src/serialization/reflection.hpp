@@ -28,8 +28,9 @@ namespace other {
   namespace attr {
 
     struct serializable : refl::attr::usage::field {
-      std::string_view display_name;
+      const std::string_view display_name;
       bool editable = true;
+
       constexpr serializable() = default;
       explicit constexpr serializable(bool editable) : editable(editable) {}
       explicit constexpr serializable(const std::string_view display_name, bool editable = true)
@@ -171,6 +172,22 @@ namespace other {
 
   template <typename T>
   concept reflected_type = meets_core_reflection_requirements<T> && has_type_data_handler<T>;
+
+  template <typename T>
+  constexpr static bool is_buffer_type = std::is_same_v<T, std::vector<uint8_t>>;
+
+  template <typename T>
+    requires reflected_type<T>
+  auto get_type_name() {
+    auto data = refl::reflect<T>();
+    return std::string{ data.name };
+  }
+
+  auto reflected_field_name(auto field_details) {
+    std::string mname{ field_details.name };
+    std::string dname{ refl::descriptor::get_attribute<attr::serializable>(field_details).display_name };
+    return dname.empty() ? mname : dname;
+  }
 
   struct serializer {
     struct field_writer {

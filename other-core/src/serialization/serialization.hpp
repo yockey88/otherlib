@@ -19,10 +19,10 @@ namespace other {
 
   template <typename T>
   concept is_readable_field =
-    std::is_trivially_constructible_v<T> || reflected_type<T>;
+    std::is_trivially_constructible_v<T> || reflected_type<T> || is_buffer_type<T>;
   template <typename T>
   concept is_writable_field =
-    std::is_trivially_copyable_v<T> || reflected_type<T>;
+    std::is_trivially_copyable_v<T> || reflected_type<T> || is_buffer_type<T>;
 
   template <typename T>
   constexpr bool has_reader = false;

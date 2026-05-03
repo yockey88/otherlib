@@ -24,14 +24,17 @@ namespace other {
           bus(bus), network_io{}, events(network_io.context) {}
     virtual ~network_thread() = default;
 
+    static natural_t generate_connection_id() {
+      return connection_id_counter.fetch_add(1, std::memory_order_relaxed);
+    }
+
     void receive_data(natural_t connection_id, const std::span<uint8_t> data);
+    void notify_connection_closed(natural_t connection_id);
 
     inline message_bus& get_message_bus() { return bus; }
     inline asio::io_context& get_io_context() { return network_io.context; }
 
    protected:
-    message_bus& bus;
-
     struct state {
       std::mutex mutex;
 
@@ -39,20 +42,24 @@ namespace other {
       bool shutdown_pending = false;
       bool shutdown_complete = false;
     };
-    state current_state{};
+    struct rx_packet {
+      natural_t connection_id;
+      std::vector<uint8_t> data;
+    };
 
+    message_bus& bus;
+    state current_state{};
     io network_io;
     event_system events;
 
-    natural_t listener_id_counter = 1;
-    natural_t connection_id_counter = 1;
+    static inline std::atomic<natural_t> connection_id_counter = 1;
     std::map<natural_t, scope<asio::ip::tcp::acceptor>> active_tcp_listeners;
     std::map<natural_t, scope<connection>> active_connections;
 
-    acknowledgement_list ack_list;
+    std::queue<rx_packet> pending_data;
+    std::queue<natural_t> closed_connections;
 
-    inline natural_t generate_listener_id() { return listener_id_counter++; }
-    inline natural_t generate_connection_id() { return connection_id_counter++; }
+    acknowledgement_list ack_list;
 
     void send_to_driver(message&& msg);
 
@@ -63,7 +70,7 @@ namespace other {
     void pump_thread() override;
     void process_message(opt<message>&& msg);
 
-    void accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint);
+    void accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id);
     void finalize_connection_establishment(natural_t connection_id);
 
     void handle_control_ping(message&& msg);
@@ -71,7 +78,7 @@ namespace other {
     void handle_command_listen_tcp_connection(message&& msg);
     void handle_command_connect_tcp_connection(message&& msg);
     void handle_command_open_udp_connection(message&& msg);
-    void handle_command_close_connection(message&& msg);
+    void handle_command_close_tcp_connection(message&& msg);
 
     bool immediately_acknowledge_message(const message_header& header);
     void handle_request_ack_process_msg(message&& msg);

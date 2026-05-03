@@ -44,7 +44,7 @@ namespace other {
     /// notification messages
     NETWORK_THREAD_READY,
     NETWORK_THREAD_SHUTDOWN_COMPLETE,
-    NEW_TCP_CONNECTION_ACCEPTED,
+    RX_DATA,
 
     /// control messages
     PING,
@@ -55,7 +55,7 @@ namespace other {
     LISTEN_TCP_CONNECTION,
     CONNECT_TCP_CONNECTION,
     OPEN_UDP_CONNECTION,
-    CLOSE_CONNECTION,
+    CLOSE_TCP_CONNECTION,
 
     /// request/response messages
     /// error alert messages

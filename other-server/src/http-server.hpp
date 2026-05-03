@@ -15,7 +15,9 @@ namespace other {
     http_server(server* srv_ptr, uint16_t port);
     ~http_server() = default;
 
+    void process_data_from_connection(natural_t connection_id, const std::vector<uint8_t>& data);
     void process_new_connection(natural_t connection_id);
+    void process_closed_connection(natural_t connection_id);
 
    private:
     uint16_t port;
