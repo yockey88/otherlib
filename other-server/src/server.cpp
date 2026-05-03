@@ -7,6 +7,7 @@
 #include "thread/message.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/network_system.hpp"
 
 OTHER_DRIVER(other::server)
 
@@ -17,6 +18,8 @@ namespace other {
     CORE_LOG_INFO("[HTTP Initializing] @ port {}.", config_http_port);
     binding_point endpoint{ network_system::network_context::kLocalhostAddress, config_http_port };
     core_system<network_system>().listen_at_endpoint(endpoint);
+
+    invoke_driver_script_function("InitializeHttpServer");
   }
 
   void server::on_shutdown() {

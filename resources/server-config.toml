@@ -1,5 +1,5 @@
 [environment]
-profile = "minimal"
+profile = "headless"
 
 [application]
 metadata = [ 

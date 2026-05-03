@@ -18,6 +18,7 @@
 
 #include "network/message_handler.hpp"
 #include "renderer/renderer.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "object/scene_object.hpp"
 
@@ -26,7 +27,6 @@
 #include "driver/driver_system.hpp"
 #include "driver/subsystem_registry.hpp"
 #include "driver/systems/event_driver_system.hpp"
-#include "driver/systems/network_system.hpp"
 #include "driver/systems/rendering_system.hpp"
 #include "plugin/plugin.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
@@ -158,6 +158,33 @@ namespace other {
     virtual void on_viewport_resize(const glm::vec2& size) {}
 
    protected:
+    template <typename... Args>
+    void invoke_driver_script_function(const std::string_view function_name, Args&&... args) {
+      if (!scripting_enabled()) {
+        CORE_LOG_WARN("Scripting is not enabled, cannot invoke driver script function '{}'", function_name);
+        return;
+      }
+
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in invoke_driver_script_function!");
+
+      sol::state& lua_state = env->get_lua_host().get_lua_state();
+      sol::object func_obj = lua_state[function_name.data()];
+      if (!func_obj.valid() || func_obj.get_type() != sol::type::function) {
+        CORE_LOG_WARN("No valid Lua function named '{}' found to invoke", function_name);
+        return;
+      }
+
+      sol::function func = func_obj.as<sol::function>();
+      try {
+        func(std::forward<Args>(args)...);
+      } catch (const sol::error& e) {
+        CORE_LOG_ERROR("Error invoking Lua function '{}': {}", function_name, e.what());
+      } catch (...) {
+        CORE_LOG_ERROR("Unknown error invoking Lua function '{}'", function_name);
+      }
+    }
+
     virtual void on_initialize(const command_line& cmd) = 0;
     virtual void on_initialization_confirm() {}
     virtual void on_update() {}

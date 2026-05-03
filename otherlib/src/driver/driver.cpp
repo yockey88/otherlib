@@ -15,12 +15,13 @@
 
 #include "driver/driver_tasks.hpp"
 #include "driver/systems/asset_system.hpp"
+#include "driver/systems/network_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/scene_system.hpp"
-#include "scripting/actions/action.hpp"
 #include "scripting/bindings.hpp"
 #include "scripting/scene_interface.hpp"
 #include "vm/other_device.hpp"
+
 
 namespace other {
 
@@ -51,6 +52,15 @@ namespace other {
       get_event_system()->add_listener("project.loaded", [this](const value& data) {
         on_project_loaded();
       });
+    }
+
+    if (!subsystem<scripting_environment>::inert) {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
+
+      do_script_interface_bindings(this);
+      /// lua gets special treatment
+      bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
     }
 
     load_client();
@@ -377,20 +387,6 @@ namespace other {
 
   void driver::load_client() {
     if (!subsystem<scripting_environment>::inert) {
-      auto* env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
-
-      do_script_interface_bindings(this);
-      /// lua gets special treatment
-      bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
-    }
-
-    {
-      PROFILE_SECTION("driver::initialize--client-on_initialize");
-      on_initialize(cmd_line);
-    }
-
-    if (!subsystem<scripting_environment>::inert) {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
 
       auto* env = subsystem<scripting_environment>::get();
@@ -411,6 +407,11 @@ namespace other {
           CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", envrc_path);
         }
       }
+    }
+
+    {
+      PROFILE_SECTION("driver::initialize--client-on_initialize");
+      on_initialize(cmd_line);
     }
   }
 
