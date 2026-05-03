@@ -3,6 +3,7 @@ target_sources(other_network
   PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src/connection/connection.cpp"
 
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/acknowledgement_list.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/network_thread.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/message.cpp"
 )

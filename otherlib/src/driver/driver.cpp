@@ -412,23 +412,27 @@ namespace other {
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
-    /// this feels gross but we if a project file was queued we want to load it before the next frame ticks
-    const bool should_lock = runtime_state.queued_project_file.has_value();
-    if (should_lock) {
-      std::lock_guard lock(runtime_state.mutex);
-      driver_kernel_ptr->get_core_system<project_system>().load_project(driver_kernel_ptr.get(), runtime_state.queued_project_file.value());
-      runtime_state.queued_project_file = std::nullopt;
-    }
-
     driver_kernel_ptr->tick(dt);
 
     on_update();
     switch (current_driver_state()) {
       case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
-      case driver_state::DRIVER_STATE_RUNNING: update_running(); break;
+
+      case driver_state::DRIVER_STATE_RUNNING: {
+        /// this feels gross but we if a project file was queued we want to load it before the next frame ticks
+        const bool should_lock = runtime_state.queued_project_file.has_value();
+        if (should_lock) {
+          std::lock_guard lock(runtime_state.mutex);
+          driver_kernel_ptr->get_core_system<project_system>().load_project(driver_kernel_ptr.get(), runtime_state.queued_project_file.value());
+          runtime_state.queued_project_file = std::nullopt;
+        }
+
+        update_running();
+      } break;
 
       case driver_state::DRIVER_STATE_SHUTTING_DOWN: {
         update_shutting_down();
+
         if (shutdown_state.ready_to_shutdown(this)) {
           on_shutdown_confirm();
           process_driver_event(driver_event::DRIVER_EVENT_READY);

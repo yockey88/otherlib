@@ -20,8 +20,8 @@ namespace other {
       signal_catcher(network_system* network_system_ptr)
           : network_system_ptr(network_system_ptr) {}
       void catch_signal(std::error_code ec, int signum) {
-        if ((ec && ec == asio::error::operation_aborted) ||
-            network_system_ptr == nullptr || network_system_ptr->net_context == nullptr) {
+        if (ec && ec == asio::error::operation_aborted) {
+          CORE_LOG_TRACE("Signal wait aborted");
           return;
         }
 
@@ -29,10 +29,8 @@ namespace other {
           network_system_ptr->catch_signal(signum);
         } else {
           CORE_LOG_ERROR("Error while waiting for signal: {}", ec.message());
-
-          if (network_system_ptr->get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING) {
-            network_system_ptr->net_context->signals.async_wait(std::bind_front(&signal_catcher::catch_signal, this));
-          }
+          CORE_LOG_ERROR("Shutting down because signal handling is compromised.");
+          network_system_ptr->get_driver().request_shutdown();
         }
       }
 
@@ -53,7 +51,7 @@ namespace other {
   void network_system::tick(driver_kernel* kernel, double dt) {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     net_context->io_context.poll();
-    if (!net_context->io_context.stopped()) {
+    if (net_context->io_context.stopped()) {
       net_context->io_context.restart();
     }
 
@@ -74,16 +72,13 @@ namespace other {
       net_context->net_thread = nullptr;
       net_context = nullptr;
     }
+
+    ack_list.clear();
   }
 
   void network_system::begin_shutdown_sequence(driver_kernel* kernel) {
     net_context->signals.cancel();
 
-    for (auto& ack : ack_list.pending_acks) {
-      ack.timer.cancel();
-    }
-
-    CORE_LOG_DEBUG("Sending shutdown request to network thread...");
     message msg;
     msg.header = {
       .category = COMMAND,
@@ -91,7 +86,7 @@ namespace other {
     };
 
     send_message_and_wait_acknowledgment(
-      kernel, std::move(msg), std::chrono::milliseconds(250),
+      kernel, std::move(msg), milliseconds(250),
       message_handler{
         [this, kernel](message_header h, std::span<const uint8_t> d) { on_ack_shutdown_request_network_thread(kernel, h, d); },
         [this, kernel](message_header h) { on_timeout_shutdown_request_network_thread(kernel, h); },
@@ -101,90 +96,30 @@ namespace other {
 
   void network_system::send_to_network_thread(driver_kernel* kernel, message&& msg) {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    CORE_LOG_TRACE("[NETWORK SYSTEM TX: {}]", msg.header);
     net_context->net_thread_message_bus.send_message(std::move(msg));
   }
 
-  natural_t network_system::open_tcp_connection(const binding_point& endpoint) {
-    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
-  }
-
-  void network_system::send_message_and_detach_acknowledgement(driver_kernel* kernel, message&& msg, message_handler handler) {
-    acknowledgement_list::pending_ack ack{
-      .header = msg.header,
-      .handler = handler,
-      .timer = asio::steady_timer(net_context->io_context),
-    };
-
-    {
-      auto itr = std::find_if(ack_list.pending_acks.begin(), ack_list.pending_acks.end(), [&ack](const acknowledgement_list::pending_ack& existing_ack) {
-        return existing_ack.header == ack.header;
-      });
-      OTHER_ASSERT(itr == ack_list.pending_acks.end(), "Acknowledgment for message ID {} already pending", ack.header);
-    }
-
-    send_to_network_thread(kernel, std::move(msg));
-    auto ack_itr = ack_list.pending_acks.insert(ack_list.pending_acks.end(), std::move(ack));
-    OTHER_ASSERT(ack_itr != ack_list.pending_acks.end(), "Failed to insert pending acknowledgment for message ID {}", ack.header.id);
-  }
-
   natural_t network_system::send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler) {
-    acknowledgement_list::pending_ack ack{
-      .header = msg.header,
-      .timeout_duration = timeout,
-      .handler = handler,
-      .timer = asio::steady_timer(net_context->io_context),
+    natural_t ack_id = ack_list.register_ack(io_context(), msg.header, timeout, handler);
+
+    message ack_msg;
+    ack_msg.header = {
+      .category = REQUEST,
+      .id = ACK,
     };
-    CORE_LOG_DEBUG("PENDING-ACK {} (timeout: {} us)", ack.header, ack.timeout_duration.count());
+    const uint8_t* ack_id_data = reinterpret_cast<const uint8_t*>(&ack_id);
+    const uint8_t* header_data = reinterpret_cast<const uint8_t*>(&msg.header);
+    ack_msg.data.append_range(std::span(ack_id_data, sizeof(natural_t)));
+    ack_msg.data.append_range(std::span(header_data, sizeof(message_header)));
+    ack_msg.data.append_range(msg.data);
 
-    {
-      auto itr = std::find_if(ack_list.pending_acks.begin(), ack_list.pending_acks.end(), [&ack](const acknowledgement_list::pending_ack& existing_ack) {
-        return existing_ack.header == ack.header;
-      });
-      OTHER_ASSERT(itr == ack_list.pending_acks.end(), "Acknowledgment for message ID {} already pending", ack.header);
-    }
-
-    ack.sent_time = std::chrono::steady_clock::now();
-    ack.id = ack_list.next_pending_ack_id++;
-    send_to_network_thread(kernel, std::move(msg));
-    auto ack_itr = ack_list.pending_acks.insert(ack_list.pending_acks.end(), std::move(ack));
-    OTHER_ASSERT(ack_itr != ack_list.pending_acks.end(), "Failed to insert pending acknowledgment for message ID {}", ack.header.id);
-
-    ack_itr->timer.expires_after(timeout);
-    ack_itr->timer.async_wait([this, stime = ack.sent_time](const asio::error_code& ec) {
-      if (ec && ec == asio::error::operation_aborted) {
-        return;
-      }
-
-      if (!ec) {
-        auto itr = std::ranges::find_if(ack_list.pending_acks, [&](const acknowledgement_list::pending_ack& ack) { return ack.sent_time == stime; });
-        if (itr == ack_list.pending_acks.end()) {
-          CORE_LOG_ERROR("Failed to find ack for timeout callback!");
-        }
-
-        CORE_LOG_WARN("Acknowledgment timeout for message {}", itr->header);
-        if (itr->handler.on_timeout) {
-          itr->handler.on_timeout(itr->header);
-        }
-      }
-
-      // remove from pending acks
-      auto itr = std::ranges::find_if(ack_list.pending_acks, [&](const acknowledgement_list::pending_ack& ack) { return ack.sent_time == stime; });
-      if (itr != ack_list.pending_acks.end()) {
-        CORE_LOG_DEBUG("Removing pending acknowledgment for message ID {}", itr->header.id);
-        ack_list.pending_acks.erase(itr);
-      }
-    });
-
-    return ack_itr->id;
+    send_to_network_thread(kernel, std::move(ack_msg));
+    return ack_id;
   }
 
   void network_system::cancel_acknowledgment(natural_t ack_id) {
-    auto itr = std::ranges::find_if(ack_list.pending_acks, [&](const acknowledgement_list::pending_ack& ack) { return ack.id == ack_id; });
-    if (itr != ack_list.pending_acks.end()) {
-      CORE_LOG_DEBUG("Cancelling pending acknowledgment for message ID {}", itr->header.id);
-      itr->timer.cancel();
-      ack_list.pending_acks.erase(itr);
-    }
+    ack_list.cancel_ack(ack_id);
   }
 
   void network_system::catch_signal(int signum) {
@@ -230,7 +165,7 @@ namespace other {
     msg.data.append_range(std::span(id, sizeof(natural_t)));
 
     send_message_and_wait_acknowledgment(
-      &get_driver().get_kernel(), std::move(msg), seconds(10),
+      &get_driver().get_kernel(), std::move(msg), seconds(1),
       message_handler{
         [this](message_header h, std::span<const uint8_t> d) { on_ack_listen_at_endpoint(&get_driver().get_kernel(), h, d); },
         [this](message_header h) { on_timeout_listen_at_endpoint(&get_driver().get_kernel(), h); },
@@ -241,6 +176,7 @@ namespace other {
   }
 
   void network_system::process_network_thread_messages(driver_kernel* kernel, message&& msg) {
+    CORE_LOG_TRACE("[NETWORK SYSTEM RX: {}]", msg.header);
     switch (msg.header.category) {
       case NOTIFICATION:
         switch (msg.header.id) {
@@ -294,26 +230,25 @@ namespace other {
   }
 
   void network_system::on_ack_listen_at_endpoint(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data) {
+    CORE_LOG_DEBUG("Network thread acknowledged listen at endpoint request");
   }
 
   void network_system::on_timeout_listen_at_endpoint(driver_kernel* kernel, message_header header) {
+    CORE_LOG_ERROR("Timeout waiting for network thread to acknowledge listen at endpoint request");
   }
 
   void network_system::on_ack_shutdown_request_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data) {
     OTHER_ASSERT(net_context != nullptr, "Network context is null in driver.");
     OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is null in driver.");
     CORE_LOG_DEBUG("Network thread acknowledged shutdown request");
-
     net_context->net_thread->shutdown();
   }
 
   void network_system::on_timeout_shutdown_request_network_thread(driver_kernel* kernel, message_header header) {
-    /// force shutdown
     OTHER_ASSERT(net_context != nullptr, "Network context is null in driver.");
     OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is null in driver.");
     CORE_LOG_ERROR("Timeout waiting for network thread to acknowledge shutdown request");
     CORE_LOG_ERROR("   Data may be corrupt from unclean shutdown");
-
     net_context->net_thread->force_shutdown();
   }
 
@@ -332,37 +267,18 @@ namespace other {
   }
 
   void network_system::handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg) {
-    net_context->net_thread->wait_for_shutdown_complete();
-    CORE_LOG_DEBUG("Network thread has fully stopped.");
-
-    net_context->io_context.stop();
-
-    ack_list.pending_acks.clear();
     get_driver().confirm_network_thread_shutdown();
   }
 
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {
-    acknowledgement ackmsg = other_message_spec::parse<acknowledgement>(msg.data);
-    message_header acked_header = ackmsg.acked_header;
+    const natural_t ack_id = *reinterpret_cast<const natural_t*>(msg.data.data());
+    message_header original_header = *reinterpret_cast<const message_header*>(msg.data.data() + sizeof(natural_t));
 
-    auto itr = std::find_if(ack_list.pending_acks.begin(), ack_list.pending_acks.end(), [&](const acknowledgement_list::pending_ack& ack) {
-      return acked_header == ack.header;
-    });
-    if (itr == ack_list.pending_acks.end()) {
-      CORE_LOG_ERROR("Received acknowledgment for unknown message {}", acked_header);
-      return;
+    std::span<const uint8_t> original_data = {};
+    if (msg.data.size() > sizeof(natural_t) + sizeof(message_header)) {
+      original_data = std::span(msg.data.data() + sizeof(natural_t) + sizeof(message_header), msg.data.size() - sizeof(natural_t) - sizeof(message_header));
     }
 
-    itr->timer.cancel();
-    if (ackmsg.ack_nack == 0x01) {
-      CORE_LOG_DEBUG("  - ACK");
-    } else {
-      CORE_LOG_DEBUG("  - NACK");
-    }
-
-    if (itr->handler.handle_msg) {
-      CORE_LOG_TRACE("Invoking acknowledgment callback for message {}", acked_header);
-      itr->handler.handle_msg(acked_header, ackmsg.extra_data);
-    }
+    ack_list.handle_ack(ack_id, original_header, original_data);
   }
 }  // namespace other

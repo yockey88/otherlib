@@ -10,10 +10,10 @@
 #include "core/defines.hpp"
 #include "thread/message_bus.hpp"
 
+#include "network/acknowledgement_list.hpp"
 #include "network/message_handler.hpp"
 #include "network/network_thread.hpp"
 
-#include "driver/acknowledgement_list.hpp"
 #include "driver/driver_system.hpp"
 #include "driver/systems/core_system.hpp"
 
@@ -55,12 +55,8 @@ namespace other {
     void shutdown(driver_kernel* kernel) override;
 
     void begin_shutdown_sequence(driver_kernel* kernel);
-
     void send_to_network_thread(driver_kernel* kernel, message&& msg);
 
-    natural_t open_tcp_connection(const binding_point& endpoint);
-
-    void send_message_and_detach_acknowledgement(driver_kernel* kernel, message&& msg, message_handler handler);
     natural_t send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler);
     void cancel_acknowledgment(natural_t ack_id);
 
@@ -77,6 +73,7 @@ namespace other {
     struct tcp_connection {
       natural_t connection_id;
     };
+
     natural_t next_connection_id = 1;
     std::map<natural_t, tcp_connection> active_tcp_connections;
 

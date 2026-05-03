@@ -12,10 +12,12 @@ namespace other {
 
     msg->extra_data_length = static_cast<uint16_t>(msg->extra_data.size());
 
+    const uint8_t* ack_id_bytes = reinterpret_cast<const uint8_t*>(&msg->ack_id);
     const uint8_t* session_id_bytes = reinterpret_cast<const uint8_t*>(&msg->session_id);
     const uint8_t* acked_header_bytes = reinterpret_cast<const uint8_t*>(&msg->acked_header);
     const uint8_t* ack_nack_bytes = reinterpret_cast<const uint8_t*>(&msg->ack_nack);
     const uint8_t* extra_data_length_bytes = reinterpret_cast<const uint8_t*>(&msg->extra_data_length);
+    data.append_range(std::span(ack_id_bytes, sizeof(natural_t)));
     data.append_range(std::span(session_id_bytes, sizeof(integer_t)));
     data.append_range(std::span(acked_header_bytes, sizeof(message_header)));
     data.append_range(std::span(ack_nack_bytes, sizeof(uint8_t)));
@@ -31,6 +33,9 @@ namespace other {
 
   acknowledgement acknowledgement::custom_parser(const std::span<const uint8_t> data) {
     auto bytes = std::span(data);
+
+    natural_t ack_id = *reinterpret_cast<const natural_t*>(bytes.data());
+    bytes = bytes.subspan(sizeof(natural_t));
 
     integer_t session_id = *reinterpret_cast<const integer_t*>(bytes.data());
     bytes = bytes.subspan(sizeof(integer_t));
@@ -51,6 +56,7 @@ namespace other {
     }
 
     acknowledgement msg;
+    msg.ack_id = ack_id;
     msg.session_id = session_id;
     msg.acked_header = acked_header;
     msg.ack_nack = ack_nack;

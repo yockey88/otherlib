@@ -11,77 +11,52 @@
 #include "connection/connection_state_maching.hpp"
 #include "network/io.hpp"
 
-
 namespace other {
+
+  class network_thread;
 
   class connection {
    public:
-    connection(natural_t id, event_system& events, io& io_context, const binding_point& endpoint)
-        : id(id), events(events), io_context(io_context), conn(this), endpoint(endpoint) {}
+    connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::tcp::socket tcp_socket)
+        : parent_thread(thread), id(id), events(events), io_context(io_context), local_endpoint(endpoint) {
+      conn.tcp_socket = make_scope<asio::ip::tcp::socket>(std::move(tcp_socket));
+    }
+    connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::udp::socket udp_socket)
+        : parent_thread(thread), id(id), events(events), io_context(io_context), local_endpoint(endpoint) {
+      conn.udp_socket = make_scope<asio::ip::udp::socket>(std::move(udp_socket));
+    }
     virtual ~connection() = default;
 
-    static scope<connection> tcp_connection(natural_t id, event_system& events, io& io_context, const binding_point& endpoint);
-    static scope<connection> udp_connection(natural_t id, event_system& events, io& io_context, const binding_point& endpoint);
-
-    void listen_on_tcp_endpoint(const binding_point& endpoint);
-    void connect_to_tcp_endpoint(const binding_point& endpoint);
-
-    void open_udp_endpoint(const binding_point& endpoint);
+    static scope<connection> create_tcp_connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::tcp::socket tcp_socket);
+    static scope<connection> create_udp_connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::udp::socket udp_socket);
 
     void poll();
+    void shutdown();
 
-    virtual void on_accept_tcp_connection() {}
-    virtual void on_establish_tcp_connection() {}
-
-   protected:
-    void start_read_tcp();
-    void start_write_tcp();
-    void start_write_tcp(const std::span<uint8_t> data);
-
-    virtual void on_receive_tcp(const std::span<uint8_t> data) {}
-    virtual void on_send_tcp(size_t bytes_transferred) {}
-    virtual void on_receive_udp(const std::span<uint8_t> data, const asio::ip::udp::endpoint& endpoint) {}
-    virtual void on_send_udp(size_t bytes_transferred) {}
+    void start_read();
+    void write(const std::vector<uint8_t>& data);
 
    private:
-    class connector {
-     public:
-      connector(connection* conn)
-          : parent(conn) {}
-
-      void listen_at(asio::ip::tcp::endpoint endpoint);
-      void connect_to(asio::ip::tcp::endpoint endpoint);
-
-      void send_udp(const std::span<uint8_t> data);
-      void listen_udp(const asio::ip::udp::endpoint& endpoint);
-
-      connection* parent = nullptr;
-      scope<asio::ip::tcp::acceptor> tcp_acceptor;
-      scope<asio::ip::tcp::socket> tcp_socket;
-      scope<asio::ip::udp::socket> udp_socket;
-
-      void on_accept_connection(const asio::error_code& ec, asio::ip::tcp::socket socket);
-      void on_establish_connection(const asio::error_code& ec);
+    struct socket {
+      scope<asio::ip::tcp::socket> tcp_socket = nullptr;
+      scope<asio::ip::udp::socket> udp_socket = nullptr;
     };
 
+    network_thread* parent_thread = nullptr;
+    socket conn;
+
+    constexpr static size_t kMaxReadBufferSize = 8192;
+    async_buffer<kMaxReadBufferSize> buffer;
+
     natural_t id;
+
     event_system& events;
     io& io_context;
-    connector conn;
 
-    constexpr static size_t kNetworkConnectionBufferSize = 8192;
+    binding_point local_endpoint;
 
-    std::mutex io_mutex;
-    async_buffer<kNetworkConnectionBufferSize> io_buffer;
-
-    binding_point endpoint;
-
-    connection_state_machine state_machine;
-
-    void finish_read_tcp(const asio::error_code& ec, size_t bytes_transferred);
-    void finish_read_udp(const asio::error_code& ec, size_t bytes_transferred);
-    void finish_write_tcp(const asio::error_code& ec, size_t bytes_transferred);
-    void finish_write_udp(const asio::error_code& ec, size_t bytes_transferred);
+    void finish_read(const asio::error_code& ec, size_t bytes_transferred);
+    void finish_write(const asio::error_code& ec, size_t bytes_transferred);
   };
 
 }  // namespace other

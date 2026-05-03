@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_THREAD_THREAD_HPP
 #define OTHER_CORE_THREAD_THREAD_HPP
 
+#include <atomic>
 #include <barrier>
 #include <mutex>
 #include <thread>
@@ -22,21 +23,22 @@ namespace other {
       WAITING = 0,
       LAUNCHING,
 
-      STARTED,
       PROCESSING,
+      PUMPING,
 
       SHUTTING_DOWN,
+      CRASHED,
       STOPPED,
     };
 
     thread(const std::string& thread_name)
-        : thread_name(thread_name), initialization_barrier(kNumThreads) {}
+        : thread_name(thread_name), thread_sync_barrier(kNumThreads) {}
     virtual ~thread() = default;
 
     inline bool is_running() {
-      return current_state == STARTED ||
+      return current_state == WAITING ||
         current_state == PROCESSING ||
-        current_state == WAITING;
+        current_state == PUMPING;
     }
 
     void launch();
@@ -51,6 +53,18 @@ namespace other {
 
     inline decltype(auto) aquire() {
       return std::lock_guard(thread_state_mutex);
+    }
+
+    inline bool thread_running() {
+      return checkpoints.initialized.load(std::memory_order_acquire) &&
+        checkpoints.running.load(std::memory_order_acquire) &&
+        get_current_state() != LAUNCHING &&
+        get_current_state() != SHUTTING_DOWN &&
+        get_current_state() != STOPPED;
+    }
+
+    inline bool in_error_state() {
+      return checkpoints.error_occurred.load(std::memory_order_acquire);
     }
 
     struct threadlocal_data {
@@ -70,7 +84,7 @@ namespace other {
     std::string get_thread_name();
 
    protected:
-    enum message_id {
+    enum message_id : uint16_t {
       THREAD_INITIALIZE = 0,
       THREAD_START,
       THREAD_SHUTDOWN,
@@ -79,29 +93,20 @@ namespace other {
     void set_current_state(state new_state);
     bool is_in_state(state check_state);
 
-    void thread_send_message(message&& msg);
-
-    /// add more here as needed
-
    private:
     const std::string thread_name;
-    void wait_for_ack();
 
     struct state_flags {
-      /// mixed used
+      std::atomic<bool> initialized = false;
       std::atomic<bool> running = false;
+
       std::atomic<bool> finalized = false;
-
       std::atomic<bool> error_occurred = false;
-
       std::atomic<bool> force_exit = false;
-
-      /// thread used
-      bool initialized = false;
     } checkpoints;
 
     constexpr static size_t kNumThreads = 2;
-    std::barrier<> initialization_barrier;
+    std::barrier<> thread_sync_barrier;
 
     std::mutex thread_state_mutex;
     std::jthread thread_handle;
@@ -111,16 +116,29 @@ namespace other {
     scope<channel<message>> tx_channel;
     scope<channel<message>> rx_channel;
 
+    inline bool thread_loop_condition(std::stop_token& stoken) {
+      return !checkpoints.error_occurred.load(std::memory_order_acquire) &&
+        !checkpoints.force_exit.load(std::memory_order_acquire) &&
+        !stoken.stop_requested();
+    }
+
+    void handle_thread_error(const std::string_view error_message);
+
+    void send_to_thread(message&& msg);
+    void send_to_main_thread(message&& msg);
+
+    opt<message> receive_from_thread(microseconds timeout = microseconds(100));
+    opt<message> receive_from_main_thread(microseconds timeout = microseconds(100));
+
+    std::pair<scope<channel<message>>, scope<channel<message>>> thread_launch_setup();
+    // if false, immediately exit thread function, otherwise continue
+    // this blocks thread
+    bool thread_control_loop(std::stop_token& stoken);
     void run(std::stop_token stoken, scope<channel<message>> thread_rx_channel, scope<channel<message>> thread_tx_channel);
 
     /// only ever called from thread where run() is executed
-    void wait_for_initialization();
     void handle_init_msg(const message& msg);
-
-    void wait_for_start();
     void handle_start_msg(const message& msg);
-
-    void wait_for_shutdown();
     void handle_shutdown_msg(const message& msg);
 
     void handle_message(const message& msg);

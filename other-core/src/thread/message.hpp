@@ -213,7 +213,7 @@ namespace std {
   struct formatter<other::message_header> : public formatter<std::string_view> {
     template <typename FormatContext>
     auto format(const other::message_header& header, FormatContext& ctx) const {
-      const std::string fmt = std::format("[{:#06x}:{:#06x}]", header.category, header.id);
+      const std::string fmt = std::format("[{}.{}]", other::message_category{ header.category }, other::message_id{ header.id });
       return formatter<std::string_view>::format(fmt, ctx);
     }
   };
