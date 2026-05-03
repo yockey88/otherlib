@@ -10,6 +10,9 @@
 #include "core/defines.hpp"
 #include "core/time.hpp"
 
+#include "network/messages.hpp"
+#include "network/network_error.hpp"
+
 namespace other {
 
   void network_thread::receive_data(natural_t connection_id, const std::span<uint8_t> data) {
@@ -184,8 +187,13 @@ namespace other {
   /// \todo check for duplicate endpoints or other invalid connection parameters
 
   void network_thread::handle_command_listen_tcp_connection(message&& msg) {
-    binding_point endpoint = *reinterpret_cast<const binding_point*>(msg.data.data());
+    listen_tcp_connection_request request = deserialize_message<listen_tcp_connection_request>(msg.data);
+    binding_point endpoint = request.endpoint;
     asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
+
+    if (active_tcp_listeners.find(request.connection_id) != active_tcp_listeners.end()) {
+      throw port_in_use_network_error(std::format("Listener with ID {} already exists for endpoint {}:{}", request.connection_id, endpoint.ip, endpoint.port));
+    }
 
     natural_t listener_id = generate_listener_id();
     auto [itr, success] = active_tcp_listeners.emplace(listener_id, make_scope<asio::ip::tcp::acceptor>(network_io.thread_pool, asio_endpoint));
@@ -268,13 +276,21 @@ namespace other {
     }
 
     uint8_t ack = 1;
+    message_header original_header = acked_msg.header;
     try {
       process_message(std::move(acked_msg));
+    } catch (const network_error& e) {
+      CORE_LOG_ERROR("Error handler invoked: [{}]", original_header);
+      CORE_LOG_ERROR("Failed to process message in network thread: {}", e.what());
+      ack = 0;
+    } catch (const std::runtime_error& e) {
+      CORE_LOG_ERROR("Runtime error handling acknowledgment for message {}: {}", original_header, e.what());
+      ack = 0;
     } catch (const std::exception& e) {
-      CORE_LOG_ERROR("Error handling acknowledgment for message {}: {}", acked_msg.header, e.what());
+      CORE_LOG_ERROR("Error handling acknowledgment for message {}: {}", original_header, e.what());
       ack = 0;
     } catch (...) {
-      CORE_LOG_ERROR("Unknown error handling acknowledgment for message {}", acked_msg.header);
+      CORE_LOG_ERROR("Unknown error handling acknowledgment for message {}", original_header);
       ack = 0;
     }
 
@@ -284,11 +300,12 @@ namespace other {
         .category = ACKNOWLEDGEMENT,
         .id = ACK,
       };
-      const uint8_t* ack_id_data = reinterpret_cast<const uint8_t*>(&ack_id);
-      const uint8_t* header_data = reinterpret_cast<const uint8_t*>(&acked_msg.header);
-      ack_msg.data.append_range(std::span(ack_id_data, sizeof(natural_t)));
-      ack_msg.data.append_range(std::span(header_data, sizeof(message_header)));
-      ack_msg.data.push_back(ack);
+      acknowledgement ack_data{
+        .ack_id = ack_id,
+        .acked_header = acked_msg.header,
+        .ack = ack,
+      };
+      ack_msg.data = serialize_message(ack_data);
 
       send_to_driver(std::move(ack_msg));
     } else {

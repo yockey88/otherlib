@@ -61,29 +61,18 @@ namespace other {
       CORE_LOG_DEBUG("Working Directory: {}", std::filesystem::current_path().string());
     }
 
-    exit_code res = SUCCESS;
-    {
-      CORE_LOG_INFO("Running Other Environment driver...");
+    exit_code res = FAILURE;
+
+    try {
       PROFILE_SECTION("other::main");
-
-      auto error_handler = [&](const std::string& error_msg) {
-        CORE_LOG_ERROR("!> [FATAL ERROR]: {}", error_msg);
-        res = FAILURE;
-      };
-
-      try {
-        res = other_main(cmd, config, registry);
-      } catch (const buffer_parsing_error& e) {
-        CORE_LOG_ERROR("A buffer was corrupted. [Arena inspection unimplemented]");
-        CORE_LOG_ERROR("Buffer parsing error: {}", e.what());
-        res = FAILURE;
-      } catch (const std::runtime_error& e) {
-        error_handler(std::format("A runtime error occurred: {}", e.what()));
-      } catch (const std::exception& e) {
-        error_handler(std::format("An unexpected error occurred: {}", e.what()));
-      } catch (...) {
-        error_handler("An unknown error occurred.");
+      if (config.diagnostics.verbose) {
+        CORE_LOG_DEBUG("Calling Other Main");
       }
+      res = other_main(cmd, config, registry);
+    } catch (const std::exception& e) {
+      CORE_LOG_ERROR("Unhandled exception in other_main: {}", e.what());
+    } catch (...) {
+      CORE_LOG_ERROR("An unknown error occurred in other_main.");
     }
 
     /// simply want the exit code to be the last thing in the logs

@@ -6,7 +6,6 @@
 #include <ranges>
 #include <span>
 
-#include "core/fnv.hpp"
 #include "core/logger.hpp"
 
 #include "vm/opcode.hpp"

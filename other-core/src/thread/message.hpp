@@ -16,6 +16,7 @@
 #include <asio/asio.hpp>
 
 #include "command/command.hpp"
+#include "serialization/reflection.hpp"
 #include "thread/channel.hpp"
 
 namespace other {
@@ -123,6 +124,25 @@ namespace other {
   using message_channel = channel<message>;
 
 }  // namespace other
+
+OTHER_REFLECT(
+  other::message_header,
+  field(category, other::attr::serializable("category")),
+  field(id, other::attr::serializable("id"))
+)
+
+OTHER_REFLECT(
+  other::binding_point,
+  field(port, other::attr::serializable("port")),
+  field(ip, other::attr::serializable("ip"))
+)
+
+OTHER_REFLECT(
+  other::version,
+  field(major, other::attr::serializable("major")),
+  field(minor, other::attr::serializable("minor")),
+  field(patch, other::attr::serializable("patch"))
+)
 
 namespace std {
 

@@ -7,8 +7,8 @@
 #include <span>
 #include <type_traits>
 
-#include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "serialization/reflection.hpp"
 
 namespace other {
 
@@ -19,10 +19,13 @@ namespace other {
 
   template <typename T>
   concept is_readable_field =
-    std::is_trivially_constructible_v<T>;
+    std::is_trivially_constructible_v<T> || reflected_type<T>;
   template <typename T>
   concept is_writable_field =
-    std::is_trivially_copyable_v<T>;
+    std::is_trivially_copyable_v<T> || reflected_type<T>;
+
+  template <typename T>
+  constexpr bool has_reader = false;
 
   template <typename T>
     requires is_readable_field<T>

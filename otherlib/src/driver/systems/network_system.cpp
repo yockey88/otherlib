@@ -8,7 +8,7 @@
 #include "core/defines.hpp"
 #include "core/time.hpp"
 
-#include "network/driver_messages.hpp"
+#include "network/messages.hpp"
 
 #include "driver/driver.hpp"
 
@@ -327,14 +327,13 @@ namespace other {
   }
 
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {
-    const natural_t ack_id = *reinterpret_cast<const natural_t*>(msg.data.data());
-    message_header original_header = *reinterpret_cast<const message_header*>(msg.data.data() + sizeof(natural_t));
-
-    std::span<const uint8_t> original_data = {};
-    if (msg.data.size() > sizeof(natural_t) + sizeof(message_header)) {
-      original_data = std::span(msg.data.data() + sizeof(natural_t) + sizeof(message_header), msg.data.size() - sizeof(natural_t) - sizeof(message_header));
+    acknowledgement ack_data = deserialize_message<acknowledgement>(msg.data);
+    if (ack_data.ack == 1) {
+      CORE_LOG_DEBUG("Received acknowledgment for message {} with ACK ID {}", ack_data.acked_header, ack_data.ack_id);
+      ack_list.handle_ack(ack_data.ack_id, ack_data.acked_header, {});
+    } else {
+      CORE_LOG_WARN("Received failure acknowledgment for message {} with ACK ID {}", ack_data.acked_header, ack_data.ack_id);
+      OTHER_ASSERT(false, "Received failure acknowledgment for message {} with ACK ID {}", ack_data.acked_header, ack_data.ack_id);
     }
-
-    ack_list.handle_ack(ack_id, original_header, original_data);
   }
 }  // namespace other
