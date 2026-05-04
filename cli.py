@@ -66,7 +66,7 @@ def run_subprocess(args):
     sys.exit(1)
 
 def run_project(out_dir, cfg, name, config_file, verbose = False, extra_args=None, project_path=None):
-  run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"resources/{config_file}"]
+  run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"{config_file}"]
   
   if verbose:  
     run_command.append("--verbose")
@@ -136,7 +136,7 @@ if __name__ == "__main__":
       
     if args.run:
       print(f"Running Other-Driver [{cfg}]")
-      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose)
+      run_project("other-editor", cfg, "other_editor", "resources/editor-config.toml", args.verbose)
     
     elif args.run_project is not None and len(args.run_project) == 1:
       project_path = args.run_project[0]
@@ -144,18 +144,18 @@ if __name__ == "__main__":
         print(f"Error: The specified project file {project_path} does not exist.")
         sys.exit(1)
       print(f"Running Other-Driver [{cfg}] with project file: {project_path}")
-      run_project("other-editor", cfg, "other_editor", "editor-config.toml", args.verbose, project_path=project_path)
+      run_project("other-editor", cfg, "other_editor", "resources/editor-config.toml", args.verbose, project_path=project_path)
     
     elif args.run_server:
-      run_project("other-server", cfg, "other_server", "server-config.toml", args.verbose)
+      run_project("other-server", cfg, "other_server", "server-config.toml", args.verbose, extra_args=["--cwd", "other-server"])
 
     elif args.run_scratch:
       print(f"Running Other-Scratch [{cfg}]")
-      run_project("scratch" , cfg, "gl-testing", "gl-test-config.toml", args.verbose)
+      run_project("scratch" , cfg, "gl-testing", "resources/gl-test-config.toml", args.verbose)
     
     elif args.run_terminal:
       print(f"Running Other-Terminal [{cfg}]")
-      run_project("other-terminal", cfg, "other_terminal", "dev-config.toml", args.verbose)
+      run_project("other-terminal", cfg, "other_terminal", "resources/dev-config.toml", args.verbose)
       
     elif args.run_tests:
       print("Running tests...")
@@ -165,7 +165,7 @@ if __name__ == "__main__":
         extra_args.append("--gtest_output=xml:other_test_results.windows.debug.xml")
       else:
         extra_args.append("--gtest_output=xml:other_test_results.windows.release.xml")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args.verbose, extra_args=extra_args)
+      run_project("tests", cfg, "other_tests", "resources/dev-test-config.toml", args.verbose, extra_args=extra_args)
 
     elif args.run_test_suite is not None and len(args.run_test_suite) == 1:
       test_filter = args.run_test_suite[0]
@@ -176,7 +176,7 @@ if __name__ == "__main__":
         extra_args.append("--gtest_output=xml:other_test_results.windows.debug.xml")
       else:
         extra_args.append("--gtest_output=xml:other_test_results.windows.release.xml")
-      run_project("tests", cfg, "other_tests", "dev-test-config.toml", args.verbose, extra_args=extra_args)
+      run_project("tests", cfg, "other_tests", "resources/dev-test-config.toml", args.verbose, extra_args=extra_args)
     
     elif args.daemon_server:
       run_subprocess(["pwsh.exe", "-File", "tools/daemon-server.ps1"])

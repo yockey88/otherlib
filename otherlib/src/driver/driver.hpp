@@ -16,6 +16,7 @@
 #include "input/input_system.hpp"
 #include "thread/message.hpp"
 
+#include "http/http.hpp"
 #include "network/message_handler.hpp"
 #include "renderer/renderer.hpp"
 #include "script/scripting_environment.hpp"
@@ -26,10 +27,16 @@
 #include "driver/driver_state_machine.hpp"
 #include "driver/driver_system.hpp"
 #include "driver/subsystem_registry.hpp"
+#include "driver/systems/asset_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
+#include "driver/systems/network_system.hpp"
+#include "driver/systems/project_system.hpp"
 #include "driver/systems/rendering_system.hpp"
+#include "driver/systems/scene_system.hpp"
+#include "driver/systems/scripting_system.hpp"
 #include "plugin/plugin.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
+#include "scripting/interface_registry.hpp"
 #include "ui/driver_ui.hpp"
 #include "vm/other_device.hpp"
 
@@ -159,31 +166,36 @@ namespace other {
 
    protected:
     template <typename... Args>
-    void invoke_driver_script_function(const std::string_view function_name, Args&&... args) {
+    void invoke_driver_method(const std::string_view method_name, Args&&... args) {
+      /// \todo expand on this
+      invoke_driver_script_function(method_name, std::forward<Args>(args)...);
+    }
+
+    template <typename Fn>
+      requires std::invocable<Fn>
+    void add_native_lua_function(const std::string_view function_name, Fn&& function) {
       if (!scripting_enabled()) {
-        CORE_LOG_WARN("Scripting is not enabled, cannot invoke driver script function '{}'", function_name);
+        CORE_LOG_WARN("Scripting is not enabled, cannot add native Lua function '{}'", function_name);
         return;
       }
 
       auto* env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(env != nullptr, "scripting_environment null in invoke_driver_script_function!");
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in add_native_lua_function!");
 
       sol::state& lua_state = env->get_lua_host().get_lua_state();
-      sol::object func_obj = lua_state[function_name.data()];
-      if (!func_obj.valid() || func_obj.get_type() != sol::type::function) {
-        CORE_LOG_WARN("No valid Lua function named '{}' found to invoke", function_name);
+      if (auto existing_fn = lua_state[function_name.data()]; existing_fn.valid()) {
+        CORE_LOG_ERROR("Cannot add native Lua function '{}': a function with that name already exists in the Lua environment", function_name);
         return;
       }
 
-      sol::function func = func_obj.as<sol::function>();
-      try {
-        func(std::forward<Args>(args)...);
-      } catch (const sol::error& e) {
-        CORE_LOG_ERROR("Error invoking Lua function '{}': {}", function_name, e.what());
-      } catch (...) {
-        CORE_LOG_ERROR("Unknown error invoking Lua function '{}'", function_name);
-      }
+      lua_state.set_function(function_name.data(), std::forward<Fn>(function));
     }
+
+    // void add_interface(const std::string_view interface_name, dotnet_interface_info info);
+    natural_t add_interface(const std::string_view interface_name, sol::table inteface_table);
+    // void add_interface(const std::string_view interface_name, plugin* plugin_ptr);
+
+    void http_request_received(natural_t id, const http::request& req);
 
     virtual void on_initialize(const command_line& cmd) = 0;
     virtual void on_initialization_confirm() {}
@@ -198,6 +210,7 @@ namespace other {
     virtual void on_input_event(const input_state_change_event& event) {}
     /// notifications
     virtual void on_data_received(natural_t id, std::span<const uint8_t> data) {}
+    virtual void on_http_request_received(natural_t id, const http::request& req) {}
     virtual void on_new_connection_accepted(natural_t main_connection_id, natural_t connection_id) {}
     virtual void on_connection_closed(natural_t connection_id) {}
     /// acknowledgments
@@ -224,6 +237,7 @@ namespace other {
     friend class driver_state_machine;
     friend void bindings::native_driver_request_shutdown();
     friend native_string bindings::native_driver_get_project_name();
+    friend void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
 
     struct running_state {
       std::mutex mutex;
@@ -252,7 +266,34 @@ namespace other {
     driver_state_machine state_machine;
     mode current_mode = CORE;
 
-    json::json project_cache;
+    interface_registry interfaces;
+
+    template <typename... Args>
+    void invoke_driver_script_function(const std::string_view function_name, Args&&... args) {
+      if (!scripting_enabled()) {
+        CORE_LOG_WARN("Scripting is not enabled, cannot invoke driver script function '{}'", function_name);
+        return;
+      }
+
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in invoke_driver_script_function!");
+
+      sol::state& lua_state = env->get_lua_host().get_lua_state();
+      sol::object func_obj = lua_state[function_name.data()];
+      if (!func_obj.valid() || func_obj.get_type() != sol::type::function) {
+        CORE_LOG_WARN("No valid Lua function named '{}' found to invoke", function_name);
+        return;
+      }
+
+      sol::function func = func_obj.as<sol::function>();
+      try {
+        func(std::forward<Args>(args)...);
+      } catch (const sol::error& e) {
+        CORE_LOG_ERROR("Error invoking Lua function '{}': {}", function_name, e.what());
+      } catch (...) {
+        CORE_LOG_ERROR("Unknown error invoking Lua function '{}'", function_name);
+      }
+    }
 
     metadata build_metadata();
 

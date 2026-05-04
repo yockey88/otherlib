@@ -96,6 +96,16 @@ namespace other {
     send_message(&get_driver().get_kernel(), std::move(msg));
   }
 
+  void network_system::tx_data(natural_t connection_id, std::span<const uint8_t> data) {
+    message msg{ COMMAND, TX_DATA };
+    command_tx_data tx_data{
+      .connection_id = connection_id,
+      .data = std::vector(data.begin(), data.end()),
+    };
+    msg.data = serialize_direct(tx_data);
+    send_message(&get_driver().get_kernel(), std::move(msg));
+  }
+
   void network_system::send_message(driver_kernel* kernel, message&& msg) {
     bool needs_ack = message_requires_acknowledgment(msg.header);
     if (needs_ack) {

@@ -11,17 +11,25 @@
 
 namespace other {
 
+  struct interface_method {
+    std::string name = "UnnamedMethod";
+    std::string description;
+    bool required = false;
+
+    opt<std::string> dotnet_name;
+    opt<std::string> lua_name;
+    opt<std::string> plugin_name;
+  };
+
+  struct bound_interface_method {
+    std::string method_id;
+    action method_action;
+  };
+
   struct environment_interface {
-    struct method {
-      // both nullopt => native
-      opt<std::string> dotnet_name;
-      opt<std::string> lua_name;
-
-      action act;
-    };
-
     std::string name;
-    std::vector<action> actions;
+    std::string description;
+    std::vector<interface_method> actions;
   };
 
 }  // namespace other

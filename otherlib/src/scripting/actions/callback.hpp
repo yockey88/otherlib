@@ -6,6 +6,9 @@
 
 #include <tuple>
 #include <type_traits>
+#include <vector>
+
+#include <sol/sol.hpp>
 
 #include "core/value.hpp"
 
@@ -141,6 +144,18 @@ namespace other {
     lua_script* lua_script_ptr = nullptr;
     sol::function lua_func;
     std::string function_name = "";
+  };
+
+  struct lua_table_callback : public callback {
+    lua_table_callback(sol::table table, const std::string_view method)
+        : interface_table(std::move(table)), method_name(method) {}
+    virtual ~lua_table_callback() = default;
+
+    value call_impl(const std::span<value> args) override;
+
+   private:
+    sol::table interface_table;
+    std::string method_name;
   };
 
 }  // namespace other

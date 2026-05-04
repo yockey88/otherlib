@@ -62,9 +62,21 @@ namespace other {
     }
   }
 
-  void connection::write(const std::vector<uint8_t>& data) {
+  void connection::write(const std::span<const uint8_t> data) {
     if (inactive) {
       return;
+    }
+
+    buffer.buffer_write(data);
+    if (buffer.is_writing()) {
+      return;
+    }
+
+    buffer.start_write();
+    if (is_tcp()) {
+      conn.tcp_socket->async_write_some(buffer.asio_write_buffer(), std::bind_front(&connection::finish_write, this));
+    } else if (is_udp()) {
+      conn.udp_socket->async_send_to(buffer.asio_write_buffer(), remote_endpoint_udp(), std::bind_front(&connection::finish_write, this));
     }
   }
 
@@ -106,7 +118,7 @@ namespace other {
     }
 
     buffer.finish_read(bytes_transferred);
-    buffer.start_read();
+    start_read();
   }
 
   void connection::finish_write(const asio::error_code& ec, size_t bytes_transferred) {

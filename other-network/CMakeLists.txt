@@ -6,6 +6,9 @@ target_sources(other_network
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/acknowledgement_list.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/network_thread.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/message.cpp"
+
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/http/http_response.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/http/http.cpp"
 )
 
 target_include_directories(other_network 

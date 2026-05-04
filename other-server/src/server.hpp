@@ -4,6 +4,8 @@
 #ifndef OTHER_SERVER_SERVER_HPP
 #define OTHER_SERVER_SERVER_HPP
 
+#include "http/http.hpp"
+
 #include "driver/driver.hpp"
 
 namespace other {
@@ -20,9 +22,7 @@ namespace other {
    private:
     uint16_t config_http_port = 0;
 
-    void on_data_received(natural_t id, std::span<const uint8_t> data) override;
-    void on_new_connection_accepted(natural_t from_connection_id, natural_t connection_id) override;
-    void on_connection_closed(natural_t connection_id) override;
+    void on_http_request_received(natural_t id, const http::request& req) override;
   };
 
 }  // namespace other

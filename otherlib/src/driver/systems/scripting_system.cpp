@@ -88,6 +88,11 @@ namespace other {
     subsystem<scripting_environment>::get()->unload_dotnet_module(module);
   }
 
+  lua_host& scripting_system::get_lua_host() {
+    OTHER_ASSERT(!subsystem<scripting_environment>::inert, "Scripting environment subsystem is inert, cannot get Lua host.");
+    return subsystem<scripting_environment>::get()->get_lua_host();
+  }
+
   lua_script& scripting_system::get_envrc_script() {
     OTHER_ASSERT(envrc != nullptr, "Driver environment runtime script is not loaded.");
     return *envrc;

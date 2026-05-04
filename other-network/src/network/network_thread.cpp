@@ -19,13 +19,41 @@
 namespace other {
 
   void network_thread::receive_data(natural_t connection_id, const std::span<uint8_t> data) {
-    std::lock_guard lock(current_state.mutex);
-    pending_data.push({ connection_id, std::vector<uint8_t>(data.begin(), data.end()) });
+    message msg(NOTIFICATION, RX_DATA);
+    notification_rx_data notification_data{
+      .connection_id = connection_id,
+      .data = std::vector<uint8_t>(data.begin(), data.end()),
+    };
+    msg.data = serialize_direct(notification_data);
+    send_to_driver(std::move(msg));
   }
 
   void network_thread::notify_connection_closed(natural_t connection_id) {
-    std::lock_guard lock(current_state.mutex);
-    closed_connections.push(connection_id);
+    CORE_LOG_TRACE("[CONNECTION {}] Closed", connection_id);
+    auto state_itr = connection_state_machines.find(connection_id);
+    if (state_itr != connection_state_machines.end()) {
+      // planned disconnect
+      state_itr->second.handle_event(connection_event::DISCONNECT_SUCCESS);
+
+      message msg(NOTIFICATION, CLOSE_TCP_CONNECTION);
+      notification_close_tcp_connection notification_data{
+        .connection_id = connection_id,
+      };
+      msg.data = serialize_direct(notification_data);
+      send_to_driver(std::move(msg));
+    } else {
+      CORE_LOG_ERROR("[CONNECTION {}] no state machine found for connection!", connection_id);
+    }
+  }
+
+  void network_thread::notify_connection_broken(natural_t connection_id) {
+    CORE_LOG_TRACE("[CONNECTION {}] Broken", connection_id);
+    auto state_itr = connection_state_machines.find(connection_id);
+    if (state_itr != connection_state_machines.end()) {
+      // connection lost
+    } else {
+      CORE_LOG_ERROR("[CONNECTION {}] no state machine found for connection!", connection_id);
+    }
   }
 
   void network_thread::send_to_driver(message&& msg) {
@@ -53,37 +81,8 @@ namespace other {
       network_io.context.restart();
     }
 
-    while (!closed_connections.empty()) {
-      natural_t closed_id = closed_connections.front();
-      closed_connections.pop();
-
-      auto itr = active_connections.find(closed_id);
-      OTHER_ASSERT(itr != active_connections.end(), "Received closed connection ID {} but no active connection found with that ID", closed_id);
-      itr->second->reset();
-
-      message msg(NOTIFICATION, CLOSE_TCP_CONNECTION);
-      notification_close_tcp_connection notification_data{
-        .connection_id = closed_id,
-      };
-      msg.data = serialize_direct(notification_data);
-      send_to_driver(std::move(msg));
-    }
-
     for (auto citr = active_connections.cbegin(); citr != active_connections.cend(); ++citr) {
       citr->second->poll();
-    }
-
-    while (!pending_data.empty()) {
-      rx_packet packet = std::move(pending_data.front());
-      pending_data.pop();
-
-      message msg(NOTIFICATION, RX_DATA);
-      notification_rx_data notification_data{
-        .connection_id = packet.connection_id,
-        .data = std::move(packet.data),
-      };
-      msg.data = serialize_direct(notification_data);
-      send_to_driver(std::move(msg));
     }
 
     auto msg = bus.receive_message(microseconds(1));
@@ -103,13 +102,12 @@ namespace other {
       active_connections.clear();
       active_tcp_listeners.clear();
 
-      message_header shutdown_header(COMMAND, SHUTDOWN_REQUEST);
-      natural_t ack_response_id = ack_list.get_pending_ack_response(shutdown_header);
+      natural_t ack_response_id = ack_list.get_pending_ack_response({ COMMAND, SHUTDOWN_REQUEST });
       if (ack_response_id != 0) {
         message ack_msg(ACKNOWLEDGEMENT, ACK);
         acknowledgement_ack ack_data{
           .ack_id = ack_response_id,
-          .acked_header = shutdown_header,
+          .acked_header = { COMMAND, SHUTDOWN_REQUEST },
           .ack = 1,
         };
         ack_msg.data = serialize_direct(ack_data);
@@ -140,6 +138,7 @@ namespace other {
             case CONNECT_TCP_CONNECTION: handle_command_connect_tcp_connection(std::move(*msg)); break;
             case OPEN_UDP_CONNECTION: handle_command_open_udp_connection(std::move(*msg)); break;
             case CLOSE_TCP_CONNECTION: handle_command_close_tcp_connection(std::move(*msg)); break;
+            case TX_DATA: handle_command_tx_data(std::move(*msg)); break;
             default:
               throw std::runtime_error(std::format("Network thread received unknown COMMAND message ID {:#06x}", msg->header.id));
           }
@@ -161,6 +160,27 @@ namespace other {
     }
   }
 
+  void network_thread::attempt_accept_tcp_connection(asio::error_code ec, asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id) {
+    if ((ec && ec == asio::error::operation_aborted) ||
+        (ec && ec == asio::error::connection_reset) ||
+        (ec && ec == asio::error::timed_out) ||
+        (ec && ec == asio::error::eof)) {
+      return;
+    }
+
+    if (ec) {
+      CORE_LOG_ERROR("Error accepting connection: {}", ec.message());
+    } else {
+      accept_tcp_connection(std::move(socket), endpoint, listener_conn_id);
+
+      auto itr = active_tcp_listeners.find(listener_conn_id);
+      OTHER_ASSERT(itr != active_tcp_listeners.end(), "Listener with ID {} not found after accepting connection", listener_conn_id);
+      itr->second->async_accept([this, endpoint, listener_conn_id](const asio::error_code& ec, asio::ip::tcp::socket socket) {
+        attempt_accept_tcp_connection(ec, std::move(socket), endpoint, listener_conn_id);
+      });
+    }
+  }
+
   void network_thread::accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id) {
     std::lock_guard lock(current_state.mutex);
 
@@ -170,6 +190,11 @@ namespace other {
       CORE_LOG_ERROR("Failed to create connection for endpoint {}:{}", endpoint.ip, endpoint.port);
       return;
     }
+
+    auto [state_itr, state_success] = connection_state_machines.emplace(connection_id, connection_state_machine());
+    OTHER_ASSERT(state_success, "Failed to create connection state machine for connection with ID {}", connection_id);
+
+    state_itr->second.handle_event(connection_event::CONNECT_SUCCESS);
 
     asio::ip::tcp::endpoint remote_endpoint = itr->second->remote_endpoint();
     asio::ip::tcp::endpoint local_endpoint = itr->second->local_tcp_endpoint();
@@ -230,20 +255,13 @@ namespace other {
     /// because we verified id was free before, this should never fail
     OTHER_ASSERT(success, "Failed to create TCP listener for endpoint {}:{}", endpoint.ip, endpoint.port);
 
+    auto [state_itr, state_success] = connection_state_machines.emplace(request.connection_id, connection_state_machine());
+    OTHER_ASSERT(state_success, "Failed to create connection state machine for listener with ID {}", request.connection_id);
+
+    state_itr->second.handle_event(connection_event::START_CONNECT);
     CORE_LOG_DEBUG("[LISTEN] {} @ {}", request.connection_id, endpoint);
     itr->second->async_accept([this, endpoint, listener_conn_id = request.connection_id](const asio::error_code& ec, asio::ip::tcp::socket socket) {
-      if ((ec && ec == asio::error::operation_aborted) ||
-          (ec && ec == asio::error::connection_reset) ||
-          (ec && ec == asio::error::timed_out) ||
-          (ec && ec == asio::error::eof)) {
-        return;
-      }
-
-      if (ec) {
-        CORE_LOG_ERROR("Error accepting connection: {}", ec.message());
-      } else {
-        accept_tcp_connection(std::move(socket), endpoint, listener_conn_id);
-      }
+      attempt_accept_tcp_connection(ec, std::move(socket), endpoint, listener_conn_id);
     });
   }
 
@@ -283,6 +301,19 @@ namespace other {
     }
 
     active_connections.erase(itr);
+  }
+
+  void network_thread::handle_command_tx_data(message&& msg) {
+    command_tx_data request = deserialize_direct<command_tx_data>(msg.data).first;
+
+    natural_t connection_id = request.connection_id;
+    auto itr = active_connections.find(connection_id);
+    if (itr == active_connections.end()) {
+      CORE_LOG_WARN("Received request to send data on unknown connection ID {}", connection_id);
+      return;
+    }
+
+    itr->second->write(request.data);
   }
 
   bool network_thread::immediately_acknowledge_message(const message_header& header) {

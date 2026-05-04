@@ -19,6 +19,11 @@ namespace other {
         : network_error(message) {}
   };
 
+  struct http_method_parse_error : public network_error {
+    explicit http_method_parse_error(const std::string& message)
+        : network_error(message) {}
+  };
+
 }  // namespace other
 
 #endif  // OTHER_NETWORK_NETWORK_NETWORK_ERROR_HPP

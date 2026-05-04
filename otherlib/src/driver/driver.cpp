@@ -14,14 +14,10 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver_tasks.hpp"
-#include "driver/systems/asset_system.hpp"
-#include "driver/systems/network_system.hpp"
-#include "driver/systems/project_system.hpp"
-#include "driver/systems/scene_system.hpp"
 #include "scripting/bindings.hpp"
+#include "scripting/interfaces/networking_interfaces.hpp"
 #include "scripting/scene_interface.hpp"
 #include "vm/other_device.hpp"
-
 
 namespace other {
 
@@ -37,6 +33,9 @@ namespace other {
 
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
+
+    interfaces.register_interface(get_server_interface());
+    interfaces.register_interface(get_http_server_interface());
 
     driver_kernel_ptr = make_scope<driver_kernel>(this);
     driver_kernel_ptr->load_profile(registry.get_current_profile());
@@ -302,15 +301,46 @@ namespace other {
   }
 
   void driver::data_received(natural_t id, std::vector<uint8_t> data) {
+    // call ReceiveData if http request fails to parse, don't call both
+    if (http::is_http_request(data)) {
+      opt<http::request> req_opt = http::parse_http_request(data);
+      if (req_opt.has_value()) {
+        http_request_received(id, *req_opt);
+        return;
+      }
+    }
+
+    interfaces.invoke("Other.Server", "ReceiveData", id, data);
     on_data_received(id, data);
   }
 
   void driver::new_connection_accepted(natural_t from_connection_id, natural_t connection_id) {
     on_new_connection_accepted(from_connection_id, connection_id);
+    interfaces.invoke("Other.Server", "AcceptConnection", from_connection_id, connection_id);
   }
 
   void driver::connection_closed(natural_t connection_id) {
     on_connection_closed(connection_id);
+    interfaces.invoke("Other.Server", "CloseConnection", connection_id);
+  }
+
+  natural_t driver::add_interface(const std::string_view interface_name, sol::table inteface_table) {
+    return interfaces.register_interface_binding(interface_name, std::move(inteface_table));
+  }
+
+  void driver::http_request_received(natural_t id, const http::request& req) {
+    // lua_host& lua = core_system<scripting_system>().get_lua_host();
+    // sol::table req_table = lua.get_lua_state().create_table();
+    // req_table["method"] = req.method.name;
+    // req_table["path"] = req.path;
+    // req_table["headers"] = lua.get_lua_state().create_table();
+    // for (const auto& [header_name, header_value] : req.headers) {
+    //   req_table["headers"][header_name] = header_value;
+    // }
+    // req_table["body"] = std::vector<uint8_t>(req.body);
+
+    on_http_request_received(id, req);
+    // interfaces.invoke("Other.HttpServer", "HandleHttpRequest", id, req_table);
   }
 
   driver::metadata driver::build_metadata() {
@@ -580,6 +610,9 @@ namespace other {
 
       sol::table t = menu_item_table.as<sol::table>();
       driver_ui->register_main_menu_bar_menu(rendering_sys.build_menu(menu_name, t));
+    });
+    driver_table.set_function("add_interface", [host_driver](const std::string& interface_name, sol::table interface_table) {
+      return host_driver->add_interface(interface_name, interface_table);
     });
 
     /// now we bind dotnet types into lua types by asking the dotnet types to write their descriptor tables

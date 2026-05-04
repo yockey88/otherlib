@@ -68,7 +68,8 @@ target_sources(otherlib
     src/scripting/dotnet_bindings/event_bindings.cpp
     src/scripting/dotnet_bindings/input_bindings.cpp
     src/scripting/dotnet_bindings/network_bindings.cpp
-    src/scripting/interfaces/connection_handler_interface.cpp
+    src/scripting/interfaces/networking_interfaces.cpp
+    src/scripting/interface_registry.cpp
     src/scripting/other_abi.cpp
 
     src/scripting/actions/action.cpp
