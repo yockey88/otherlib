@@ -144,7 +144,7 @@ namespace other {
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
     env->initialize_script_environment(environment->config);
 
-    lua_script* test1 = env->load_lua_file("resources/lua/test1.lua");
+    lua_script* test1 = env->load_lua_file("other-lua-interop/test1.lua");
     ASSERT_TRUE(test1->is_valid());
 
     {

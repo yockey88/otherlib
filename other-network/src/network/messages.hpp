@@ -42,6 +42,16 @@ namespace other {
     natural_t connection_id;
   };
 
+  struct command_connect_tcp_connection {
+    binding_point endpoint;
+    natural_t connection_id;
+  };
+
+  struct command_tx_data {
+    natural_t connection_id;
+    std::vector<uint8_t> data;
+  };
+
   /// request/response messages
   struct request_acknowledgment {
     natural_t ack_id;
@@ -84,6 +94,12 @@ OTHER_REFLECT(
   other::command_listen_tcp_connection,
   field(endpoint, other::attr::serializable("endpoint")),
   field(connection_id, other::attr::serializable("connection-id"))
+)
+
+OTHER_REFLECT(
+  other::command_tx_data,
+  field(connection_id, other::attr::serializable("connection-id")),
+  field(data, other::attr::serializable("data"))
 )
 
 OTHER_REFLECT(

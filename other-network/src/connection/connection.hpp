@@ -37,7 +37,7 @@ namespace other {
     void shutdown();
 
     void start_read();
-    void write(const std::vector<uint8_t>& data);
+    void write(const std::span<const uint8_t> data);
 
     asio::ip::tcp::endpoint remote_endpoint() const;
     asio::ip::udp::endpoint remote_endpoint_udp() const;

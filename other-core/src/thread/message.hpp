@@ -56,6 +56,7 @@ namespace other {
     CONNECT_TCP_CONNECTION,
     OPEN_UDP_CONNECTION,
     CLOSE_TCP_CONNECTION,
+    TX_DATA,
 
     /// request/response messages
     /// error alert messages

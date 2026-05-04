@@ -17,7 +17,7 @@ dotnet-modules = [
 ]
 
 # bridge directory for lua script (Prublit API)
-other-lua-directory = "resources/lua"
+other-lua-directory = "other-lua-interop"
 
 [assets]
 ocmd-file = "resources/ocmd-testing/test1.ocmd"

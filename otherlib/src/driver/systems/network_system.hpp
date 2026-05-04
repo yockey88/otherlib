@@ -55,6 +55,8 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
+    void tx_data(natural_t connection_id, std::span<const uint8_t> data);
+
     void send_message(driver_kernel* kernel, message&& msg);
     void begin_shutdown_sequence(driver_kernel* kernel);
 

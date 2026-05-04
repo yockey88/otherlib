@@ -251,6 +251,10 @@ local function _validate_menu_bar_menu_items(items)
   return true
 end
 
+local function _add_interface(interface_name, interface_table)
+  return __other_native.__driver.add_interface(interface_name, interface_table)
+end
+
 local _Driver = {
   State = {
     Stopped = DriverState.STOPPED,
@@ -562,6 +566,22 @@ end
 
 function _D:BrowseFilesForProject()
   self.TriggerEvent("driver.queue-project-load")
+end
+
+function _D:AddInterface(interface_name, interface_table)
+  if interface_name == nil or interface_name == ""
+  then
+    _Meta:Console().PushError("Invalid interface name provided to AddInterface")
+    return
+  end
+
+  if type(interface_table) ~= "table"
+  then
+    _Meta:Console().PushError("Invalid interface table provided to AddInterface; expected a table.")
+    return
+  end
+
+  _add_interface(interface_name, interface_table)
 end
 
 return _D

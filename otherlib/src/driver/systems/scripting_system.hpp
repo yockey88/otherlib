@@ -5,6 +5,7 @@
 #define OTHERLIB_DRIVER_SYSTEMS_SCRIPTING_SYSTEM_HPP
 
 #include "dotnet/dotnet_assembly.hpp"
+#include "lua/lua_host.hpp"
 
 #include "driver/systems/core_system.hpp"
 
@@ -26,6 +27,7 @@ namespace other {
     ref<assembly> load_dotnet_module(const std::string_view module_path);
     void unload_dotnet_module(ref<assembly> module_id);
 
+    lua_host& get_lua_host();
     lua_script& get_envrc_script();
 
    private:

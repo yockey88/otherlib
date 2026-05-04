@@ -1,0 +1,19 @@
+[environment]
+profile = "headless"
+
+[application]
+metadata = [ 
+  { key = "name", value = "Other Server"}, 
+  { key = "description", value = "Other Environment Test Server"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"} 
+]
+core-log-level = "info"
+core-log-file = "logs/server.log"
+
+[scripting]
+envrc-path = "lua/server.lua"
+dotnet-bindings = "../build/other-csharp/${build-config}/OtherCsBindings.dll"
+dotnet-runtime-config = "../other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+other-csharp = "../build/other-csharp/${build-config}/OtherCs.dll"
+other-lua-directory = "../other-lua-interop" 

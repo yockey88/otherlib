@@ -36,7 +36,7 @@ namespace other {
     }
 
     inline void write(const std::span<uint8_t> data) { std::ranges::copy(data, write_buffer); }
-    inline void buffer_write(const std::span<uint8_t> data) { write_queue.emplace_back(std::vector(data.begin(), data.end())); }
+    inline void buffer_write(const std::span<const uint8_t> data) { write_queue.emplace_back(std::vector(data.begin(), data.end())); }
     inline bool is_writing() const { return writing; }
     inline bool has_pending_write_data() const { return !write_queue.empty(); }
     std::vector<uint8_t> pending_write_data() {

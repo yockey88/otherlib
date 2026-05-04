@@ -10,11 +10,6 @@ core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
 
-[driver]
-plugins = [
-  { name = "Editor Management Plugin", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" }
-]
-
 [filesystem]
 mounts = [
   { name = "editor-assets", type = "physical", path = "resources/editor-assets" }
@@ -40,9 +35,8 @@ dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimec
 dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 # a dll satisfying the Other Environment API requirements
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
-other-lua-directory = "resources/lua"
+other-lua-directory = "other-lua-interop"
 
 dotnet-modules = [
-  "build/other-editor/dotnet/${build-config}/OtherEditorCs.dll",
-  "build/script-testing/${build-config}/DotnetTesting.dll",
+  "build/other-editor/dotnet/${build-config}/OtherEditorCs.dll"
 ]

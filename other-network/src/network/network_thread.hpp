@@ -30,6 +30,7 @@ namespace other {
 
     void receive_data(natural_t connection_id, const std::span<uint8_t> data);
     void notify_connection_closed(natural_t connection_id);
+    void notify_connection_broken(natural_t connection_id);
 
     inline message_bus& get_message_bus() { return bus; }
     inline asio::io_context& get_io_context() { return network_io.context; }
@@ -42,10 +43,6 @@ namespace other {
       bool shutdown_pending = false;
       bool shutdown_complete = false;
     };
-    struct rx_packet {
-      natural_t connection_id;
-      std::vector<uint8_t> data;
-    };
 
     message_bus& bus;
     state current_state{};
@@ -55,9 +52,7 @@ namespace other {
     static inline std::atomic<natural_t> connection_id_counter = 1;
     std::map<natural_t, scope<asio::ip::tcp::acceptor>> active_tcp_listeners;
     std::map<natural_t, scope<connection>> active_connections;
-
-    std::queue<rx_packet> pending_data;
-    std::queue<natural_t> closed_connections;
+    std::map<natural_t, connection_state_machine> connection_state_machines;
 
     acknowledgement_list ack_list;
 
@@ -70,6 +65,7 @@ namespace other {
     void pump_thread() override;
     void process_message(opt<message>&& msg);
 
+    void attempt_accept_tcp_connection(asio::error_code ec, asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id);
     void accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id);
     void finalize_connection_establishment(natural_t connection_id);
 
@@ -79,6 +75,7 @@ namespace other {
     void handle_command_connect_tcp_connection(message&& msg);
     void handle_command_open_udp_connection(message&& msg);
     void handle_command_close_tcp_connection(message&& msg);
+    void handle_command_tx_data(message&& msg);
 
     bool immediately_acknowledge_message(const message_header& header);
     void handle_request_ack_process_msg(message&& msg);
