@@ -14,8 +14,7 @@ namespace other {
                          CORE_LOG_DEBUG("Test action executed!");
                        }));
 
-    value result = test_action.execute({});
-    ASSERT_EQ(result.type(), value_type::EMPTY_TYPE);
+    ASSERT_NO_FATAL_FAILURE(test_action.execute<>());
   }
 
 }  // namespace other

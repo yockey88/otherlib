@@ -321,11 +321,11 @@ namespace other {
       log->create_logger("other-core-log", spdlog::level::trace);
       // clang-format off
       log_sink sink = {
-        1, "console-sink", "%^[%l]%$ %v (%t)",
-        (spdlog::level::level_enum)config->core_log_level, stdout_sink_fn,
+        1, "console-sink", "%^[%l]%$ %v (%t)", (spdlog::level::level_enum)config->core_log_level, 
+        stdout_sink_fn,
       };
       log_sink file_sink = {
-        2, "file-sink", "[%Y-%m-%d %H:%M:%S -  %t] [%l] %v", spdlog::level::trace,
+        2, "file-sink", "[%Y-%m-%d %H:%M:%S -  %t] [%l] %v", (spdlog::level::level_enum)config->file_log_level,
         [](const config_table& config) -> spdlog::sink_ptr { return std::make_shared<spdlog::sinks::basic_file_sink_mt>(config.core_log_file, true); },
       };
       // clang-format on

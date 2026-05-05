@@ -21,6 +21,7 @@ namespace other {
 
    private:
     uint16_t config_http_port = 0;
+    sol::table lua_server;
 
     void on_http_request_received(natural_t id, const http::request& req) override;
   };

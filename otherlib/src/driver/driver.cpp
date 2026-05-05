@@ -329,18 +329,8 @@ namespace other {
   }
 
   void driver::http_request_received(natural_t id, const http::request& req) {
-    // lua_host& lua = core_system<scripting_system>().get_lua_host();
-    // sol::table req_table = lua.get_lua_state().create_table();
-    // req_table["method"] = req.method.name;
-    // req_table["path"] = req.path;
-    // req_table["headers"] = lua.get_lua_state().create_table();
-    // for (const auto& [header_name, header_value] : req.headers) {
-    //   req_table["headers"][header_name] = header_value;
-    // }
-    // req_table["body"] = std::vector<uint8_t>(req.body);
-
     on_http_request_received(id, req);
-    // interfaces.invoke("Other.HttpServer", "HandleHttpRequest", id, req_table);
+    interfaces.invoke("Other.HttpServer", "HandleHttpRequest", id, req);
   }
 
   driver::metadata driver::build_metadata() {

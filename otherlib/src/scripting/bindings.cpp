@@ -5,6 +5,7 @@
 
 #include "core/logger.hpp"
 
+#include "http/http_request.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "object/animation_controller.hpp"
@@ -367,6 +368,49 @@ namespace other {
 
     detail::set_dotnet_native_driver(drv);
     abi::oe_init_abi(drv);
+
+    sol::state& lua_state = env->get_lua_host().get_lua_state();
+    lua_state.new_enum(
+      "HttpVerb",
+      "GET", http::verb::HTTP_GET,
+      "POST", http::verb::HTTP_POST,
+      "PUT", http::verb::HTTP_PUT,
+      "DELETE", http::verb::HTTP_DELETE,
+      "PATCH", http::verb::HTTP_PATCH,
+      "HEAD", http::verb::HTTP_HEAD,
+      "OPTIONS", http::verb::HTTP_OPTIONS
+    );
+    lua_state.new_usertype<http::method_info>(
+      "HttpMethodInfo",
+      "verb", &http::method_info::method,
+      "name", &http::method_info::name
+    );
+    lua_state.new_usertype<http::header>(
+      "HttpHeader",
+      "name", &http::header::name,
+      "value", &http::header::value
+    );
+    lua_state.new_usertype<http::request>(
+      "HttpRequest",
+      "method", &http::request::method,
+      "path", &http::request::path,
+      "query", &http::request::query_string,
+      "headers", &http::request::headers,
+      "body", &http::request::body
+    );
+    lua_state.new_usertype<http::response>(
+      "HttpResponse",
+      "status_code", &http::response::status_code,
+      "headers", &http::response::headers,
+      "body", sol::property([](const http::response& resp) { return sol::as_table(resp.body); }),
+      "set_body", [](http::response& resp, sol::table body_table) {
+        std::vector<uint8_t> body_data;
+        for (size_t i = 1; i <= body_table.size(); ++i) {
+          body_data.push_back(body_table[i]);
+        }
+        resp.body = std::move(body_data);
+      }
+    );
   }
 
   void do_script_interface_unbinding() {

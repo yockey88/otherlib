@@ -5,12 +5,13 @@
 #define OTHER_NETWORK_HTTP_HTTP_METHOD_HPP
 
 #include <array>
+#include <string>
 #include <string_view>
 
 namespace other {
   namespace http {
 
-    enum class verb {
+    enum class verb : uint8_t {
       HTTP_GET = 0,
       HTTP_POST,
       HTTP_PUT,
@@ -35,13 +36,13 @@ namespace other {
 
     struct method_info {
       verb method = verb::HTTP_GET;
-      std::string_view name{ kHttpMethodNames[0] };
+      std::string name{ kHttpMethodNames[0] };
 
-      constexpr method_info() = default;
-      constexpr method_info(verb method) : method(method), name(kHttpMethodNames[static_cast<size_t>(method)]) {}
+      method_info() = default;
+      method_info(verb method) : method(method), name(kHttpMethodNames[static_cast<size_t>(method)]) {}
     };
 
-    constexpr std::array<method_info, kNumHttpMethods> http_methods{
+    static inline std::array<method_info, kNumHttpMethods> http_methods{
       method_info{ verb::HTTP_GET },
       method_info{ verb::HTTP_POST },
       method_info{ verb::HTTP_PUT },

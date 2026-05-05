@@ -16,8 +16,7 @@ namespace other {
     std::string description;
     bool required = false;
 
-    opt<std::string> dotnet_name;
-    opt<std::string> lua_name;
+    opt<std::string> script_name;
     opt<std::string> plugin_name;
   };
 
