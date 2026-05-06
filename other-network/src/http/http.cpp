@@ -85,7 +85,7 @@ namespace other {
     response internal_error(const std::string_view error_message) {
       response response;
       response.status_code = 500;
-      response.set_body(std::string(error_message));
+      response.set_body_content(std::string(error_message), "text/plain");
       return response;
     }
 

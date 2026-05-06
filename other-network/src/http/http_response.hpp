@@ -15,8 +15,6 @@ namespace other {
 
     struct response {
       uint16_t status_code;
-      std::vector<header> headers;
-      std::vector<uint8_t> body;
 
       response() = default;
       response(uint16_t status_code) : status_code(status_code) {}
@@ -25,12 +23,19 @@ namespace other {
       response(uint16_t status_code, std::vector<header> headers, std::vector<uint8_t> body)
           : status_code(status_code), headers(std::move(headers)), body(std::move(body)) {}
 
-      void set_body(const std::string_view content, const std::string_view content_type = "text/html");
-      std::vector<uint8_t> serialize(http::version version) const;
+      void set_headers(const std::vector<header>& headers);
+      void add_header(const header& header);
 
+      void set_body(const std::vector<uint8_t>& body, const std::string_view content_type = "application/octet-stream");
+      void set_body_content(const std::string_view content, const std::string_view content_type = "text/plain");
       std::string get_response_string(http::version version) const;
 
+      std::vector<uint8_t> serialize(http::version version) const;
+
      private:
+      std::vector<header> headers;
+      std::vector<uint8_t> body;
+
       std::string status_message() const;
     };
 

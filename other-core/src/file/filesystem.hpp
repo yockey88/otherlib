@@ -49,6 +49,10 @@ namespace other {
       "/";
 #endif
 
+    static inline filepath get_cwd() {
+      return std::filesystem::current_path().string();
+    }
+
     void initialize_file_events(event_system& events);
     void initialize_directory_structure(const std::vector<std::string_view>& mounts = {});
     void shutdown_file_system();
@@ -67,7 +71,7 @@ namespace other {
 
     bool is_mounted(const std::string_view mount_name) const;
 
-    ref<file_handle> get_file(const std::string_view engine_path) const;
+    ref<file_handle> get_file(const std::string_view engine_path);
 
     std::vector<std::string> mounted_names() const;
     ref<directory> get_mount(const std::string_view mount_name) const;

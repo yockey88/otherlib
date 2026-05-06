@@ -9,16 +9,28 @@
 namespace other {
   namespace http {
 
-    void response::set_body(const std::string_view content, const std::string_view content_type) {
-      headers.push_back(header{ "Content-Type", std::string(content_type) });
-      body.assign(content.begin(), content.end());
+    void response::set_headers(const std::vector<header>& headers) {
+      this->headers = headers;
     }
 
-    std::vector<uint8_t> response::serialize(http::version ver) const {
-      std::string resp_str = get_response_string(ver);
+    void response::add_header(const header& header) {
+      for (auto& existing_header : headers) {
+        if (existing_header.name == header.name) {
+          existing_header.value = header.value;
+          return;
+        }
+      }
+      headers.push_back(header);
+    }
 
-      const uint8_t* resp_bytes = reinterpret_cast<const uint8_t*>(resp_str.data());
-      return std::vector<uint8_t>{ resp_bytes, resp_bytes + resp_str.size() };
+    void response::set_body(const std::vector<uint8_t>& body, const std::string_view content_type) {
+      headers.push_back(header{ "Content-Type", std::string(content_type) });
+      this->body = body;
+    }
+
+    void response::set_body_content(const std::string_view content, const std::string_view content_type) {
+      headers.push_back(header{ "Content-Type", std::string(content_type) });
+      body.assign(content.begin(), content.end());
     }
 
     std::string response::get_response_string(http::version ver) const {
@@ -29,6 +41,13 @@ namespace other {
         headers_str += std::format("{}: {}\r\n", header.name, header.value);
       }
       return status_line + headers_str + "\r\n" + std::string(body.begin(), body.end());
+    }
+
+    std::vector<uint8_t> response::serialize(http::version ver) const {
+      std::string resp_str = get_response_string(ver);
+
+      const uint8_t* resp_bytes = reinterpret_cast<const uint8_t*>(resp_str.data());
+      return std::vector<uint8_t>{ resp_bytes, resp_bytes + resp_str.size() };
     }
 
     std::string response::status_message() const {

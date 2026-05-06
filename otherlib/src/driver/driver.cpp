@@ -10,6 +10,7 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "file/filesystem.hpp"
 
 #include "script/scripting_environment.hpp"
 
@@ -305,13 +306,46 @@ namespace other {
     if (http::is_http_request(data)) {
       opt<http::request> req_opt = http::parse_http_request(data);
       if (req_opt.has_value()) {
-        http_request_received(id, *req_opt);
+        handle_http_request_received(id, *req_opt);
         return;
       }
     }
 
     interfaces.invoke("Other.Server", "ReceiveData", id, data);
     on_data_received(id, data);
+  }
+
+  void driver::handle_http_request_received(natural_t id, const http::request& req) {
+    // validate path, has to start with '/' and exist relative other environment cwd
+    if (req.path.empty() || req.path[0] != '/') {
+      CORE_LOG_ERROR("Invalid HTTP request path: '{}'", req.path);
+      http::response response{ 400 };
+      response.set_body_content("Bad Request", "text/plain");
+      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
+      return;
+    }
+
+    if (req.path.substr(1).starts_with("..")) {
+      CORE_LOG_ERROR("Possible directory traversal attack detected with HTTP request path: '{}'", req.path);
+      http::response response{ 400 };
+      response.set_body_content("Bad Request", "text/plain");
+      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
+      return;
+    }
+
+    // force it to be local to
+    filepath cwd = file_system::get_cwd();
+    filepath requested_path = cwd / req.path.substr(1);
+    if (std::filesystem::exists(requested_path)) {
+      http_request_received(id, req);
+    } else {
+      CORE_LOG_ERROR("Requested HTTP resource not found: '{}'", requested_path.string());
+      http::response response{ 404 };
+      response.set_body_content("Not Found", "text/plain");
+      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
+
+      /// \todo look up file handle
+    }
   }
 
   void driver::new_connection_accepted(natural_t from_connection_id, natural_t connection_id) {
@@ -329,6 +363,32 @@ namespace other {
   }
 
   void driver::http_request_received(natural_t id, const http::request& req) {
+#if OTHER_ENVIRONMENT_DEBUG
+    {
+      std::stringstream ss;
+      ss << std::format("[HTTP Request] Connection ID: {}\n", id);
+      ss << std::format(" [HTTP: {}]\n", req.method.name);
+      ss << std::format(" [HTTP: {}]\n", req.path);
+      if (!req.query_string.empty()) {
+        ss << std::format(" [HTTP: {}]\n", req.query_string);
+      }
+      if (!req.body.empty()) {
+        std::stringstream ss1;
+        for (size_t i = 0; i < std::min<size_t>(req.body.size(), 100); ++i) {
+          ss1 << std::hex << static_cast<int>(req.body[i]) << " ";
+        }
+        ss << std::format(" [HTTP: {}]:\n{}\n", req.body.size(), ss1.str());
+      }
+      if (!req.headers.empty()) {
+        ss << " [HTTP Headers]:\n";
+        for (const auto& header : req.headers) {
+          ss << std::format("  - {}: {}\n", header.name, header.value);
+        }
+      }
+      CORE_LOG_DEBUG("{}", ss.str());
+    }
+#endif
+
     on_http_request_received(id, req);
     interfaces.invoke("Other.HttpServer", "HandleHttpRequest", id, req);
   }

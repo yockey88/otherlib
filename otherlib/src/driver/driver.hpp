@@ -156,6 +156,7 @@ namespace other {
 
     void input_event(const input_state_change_event& event);
     void data_received(natural_t id, std::vector<uint8_t> data);
+    void handle_http_request_received(natural_t id, const http::request& req);
     void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
     void connection_closed(natural_t connection_id);
 

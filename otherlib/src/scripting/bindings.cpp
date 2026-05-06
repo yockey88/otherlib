@@ -400,15 +400,18 @@ namespace other {
     );
     lua_state.new_usertype<http::response>(
       "HttpResponse",
+      sol::constructors<http::response(), http::response(int)>(),
       "status_code", &http::response::status_code,
-      "headers", &http::response::headers,
-      "body", sol::property([](const http::response& resp) { return sol::as_table(resp.body); }),
-      "set_body", [](http::response& resp, sol::table body_table) {
-        std::vector<uint8_t> body_data;
-        for (size_t i = 1; i <= body_table.size(); ++i) {
-          body_data.push_back(body_table[i]);
+      "response_string", sol::property(&http::response::get_response_string),
+      "set_headers",
+      [](http::response& res, sol::table headers) {
+        for (const auto& kvp : headers) {
+          res.add_header({ .name = kvp.first.as<std::string>(), .value = kvp.second.as<std::string>() });
         }
-        resp.body = std::move(body_data);
+      },
+      "add_header",
+      [](http::response& res, const std::string& name, const std::string& value) {
+        res.add_header({ .name = name, .value = value });
       }
     );
   }
@@ -418,7 +421,6 @@ namespace other {
   }
 
   namespace detail {
-
     template <typename T>
       requires reflected_type<T>
     std::string get_native_type_name() {
