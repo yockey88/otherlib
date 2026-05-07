@@ -41,6 +41,7 @@ namespace other {
 
       natural_t shutdown_ack_id = 0;
       bool shutdown_pending = false;
+      bool shutdown_ready = false;
       bool shutdown_complete = false;
     };
 
@@ -53,6 +54,7 @@ namespace other {
     std::map<natural_t, scope<asio::ip::tcp::acceptor>> active_tcp_listeners;
     std::map<natural_t, scope<connection>> active_connections;
     std::map<natural_t, connection_state_machine> connection_state_machines;
+    std::deque<natural_t> recently_closed_connections;
 
     acknowledgement_list ack_list;
 
@@ -65,7 +67,7 @@ namespace other {
     void pump_thread() override;
     void process_message(opt<message>&& msg);
 
-    void attempt_accept_tcp_connection(asio::error_code ec, asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id);
+    void listen_tcp(natural_t id, const binding_point& endpoint, asio::error_code ec, asio::ip::tcp::socket&& socket);
     void accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id);
     void finalize_connection_establishment(natural_t connection_id);
 

@@ -1,60 +1,29 @@
 OtherLog.Info("Hello from server.lua!")
 
--- local index = {
---   status_code = 200,
---   headers = { ["Content-Type"] = "text/html" },
---   body = "<div>Hello from Other Server!</div>"
--- }
-local _HTML = [[
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chris Yockey: Software Engineer</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="main-panel-header">
-    <div class="header-panel-name">
-      <h1 id="header-name">Chris Yockey</h1>
-      <h2 id="header-title">Software Engineer</h2>
-    </div>
-    <div class="header-panel-contact">
-      <div class="contact-widget" id="LinkedIn-widget">
-        <a href="https://www.linkedin.com/in/chris-yockey/">LinkedIn</a>
-      </div>
-      <div class="contact-widget" id="GitHub-widget">
-        <a href="https://github.com/yockey88">Github</a>
-      </div>
-      <div class="contact-widget" id="Email-widget">
-        <a href="mailto:chrisyockey88@gmail.com">chrisyockey88@gmail.com</a>
-      </div>
-    </div>
-  </div>
-  <div class="main-panel-about-me">
-    <div class="about-me-panel"></div>
-    <div class="about-me-other"></div>
-  </div>
-</body>
-</html>
-]]
+local SC = require("lua.status-codes")
 
-local index = {
-  status_code = 200,
-  headers = { ["Content-Type"] = "text/html" },
-  body = _HTML
-}
 local routes = {
-  ['/'] = index --require("lua.index")
+  ['favicon.ico'] = {
+    headers = { ["Content-Type"] = "image/x-icon" },
+    body = require("lua.favicon")
+  },
+  ['/'] = {
+    headers = { ["Content-Type"] = "text/html" },
+    body = require("lua.index")
+  }
 }
 
 local function _handle_http_request(path)
   if routes[path] then
-    return routes[path]
-  else
     return {
-      status_code = 404,
+      status_code = routes[path].status_code or SC.OK,
+      headers = routes[path].headers or { ["Content-Type"] = "text/plain" },
+      body = routes[path].body or ""
+    }
+  else
+    OtherLog.Info(string.format(" [HTTP SERVER] no route found for path [%s], returning 404", path))
+    return {
+      status_code = SC.NotFound,
       headers = { ["Content-Type"] = "text/html" },
       body = "<div>404 Not Found</div>"
     }
@@ -68,11 +37,21 @@ local function _get_http_server()
     OnHttpRequest = function(id, request) --, method, path, body)
       local _response = _handle_http_request(request.path)
       local response = HttpResponse:new(_response.status_code)
+
+      response:add_header("Connection", "closed")
       if _response.headers then
         response:set_headers(_response.headers)
       end
-      
-      OtherLog.Info(string.format([[ [HTTP SERVER] serving request [%s%s], status-code = %d ]], request.method.name, request.path, response.status_code))
+      if _response.body then
+        if type(_response.body) == "string" then
+          response:set_body_content(_response.body, _response.headers["Content-Type"] or "text/plain")
+        elseif type(_response.body) == "table" then
+          -- assume it's a byte array
+          response:set_body(_response.body, _response.headers["Content-Type"] or "application/octet-stream")
+        end
+      end
+
+      OtherLog.Info(string.format([[ [HTTP SERVER] serving request [%s %s], status-code = %d ]], request.method.name, request.path, response.status_code))
       __server_native_SendHttpResponse(id, response)
     end,
   }
@@ -80,15 +59,12 @@ local function _get_http_server()
 end
 local http_server_hook = _get_http_server()
 local server_hook = {
-  OnAcceptConnection = function(id) OtherLog.Info(string.format("[SERVER] Connection %d", id)) end,
+  OnAcceptConnection = function(listening_id, connected_id) OtherLog.Info(string.format("[SERVER] Connection %d (from %d)", connected_id, listening_id)) end,
   OnReceiveData = function(id, data) end,
   OnCloseConnection = function(id) OtherLog.Info(string.format("[SERVER] Connection %d closed", id)) end,
 }
 
-function GetServerLuaInterface() return server_hook end
-function GetHttpServerLuaInterface() return http_server_hook end
 function InitializeHttpServer(port)
   Other:Driver():AddInterface("Other.Server", server_hook)
   Other:Driver():AddInterface("Other.HttpServer", http_server_hook)
 end
-

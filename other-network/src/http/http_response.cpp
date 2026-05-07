@@ -24,13 +24,22 @@ namespace other {
     }
 
     void response::set_body(const std::vector<uint8_t>& body, const std::string_view content_type) {
-      headers.push_back(header{ "Content-Type", std::string(content_type) });
+      if (auto itr = std::ranges::find_if(headers, [&](const header& h) { return h.name == "Content-Type"; });
+          itr != headers.end()) {
+        headers.erase(itr);
+      }
+      if (auto itr = std::ranges::find_if(headers, [&](const header& h) { return h.name == "Content-Length"; });
+          itr != headers.end()) {
+        headers.erase(itr);
+      }
+      add_header({ "Content-Type", std::string(content_type) });
+      add_header({ "Content-Length", std::to_string(body.size()) });
       this->body = body;
     }
 
     void response::set_body_content(const std::string_view content, const std::string_view content_type) {
-      headers.push_back(header{ "Content-Type", std::string(content_type) });
-      body.assign(content.begin(), content.end());
+      std::vector<uint8_t> body_bytes(content.begin(), content.end());
+      set_body(body_bytes, content_type);
     }
 
     std::string response::get_response_string(http::version ver) const {

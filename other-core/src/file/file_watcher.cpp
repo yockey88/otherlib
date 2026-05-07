@@ -8,6 +8,7 @@ namespace other {
   file_watcher::file_watcher(event_system& events, const filepath& path, watch_type type, watch_mode mode)
       : events(events), watch_path(path), type(type), mode(mode) {
     exists = std::filesystem::exists(watch_path);
+    last_write_timestamp = exists ? std::filesystem::last_write_time(watch_path) : std::filesystem::file_time_type::min();
   }
 
   void file_watcher::poll() {
@@ -28,7 +29,13 @@ namespace other {
     }
 
     auto last_write_time = std::filesystem::last_write_time(watch_path);
-    if (std::filesystem::is_regular_file(watch_path) && last_write_time != last_write_timestamp) {
+    if (std::filesystem::is_regular_file(watch_path)) {
+      // want to check if the gap between writes is large enough
+      auto time_since_last_write = last_write_time - last_write_timestamp;
+      if (time_since_last_write < std::chrono::milliseconds(100)) {
+        return;
+      }
+
       file_event event{ .type = file_event::type::MODIFIED, .path = watch_path };
       events.trigger_event("filesystem.watch-event", event);
       last_write_timestamp = last_write_time;

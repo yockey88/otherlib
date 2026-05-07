@@ -16,7 +16,6 @@ namespace other {
     driver_main_lua_script = subsystem<scripting_environment>::get()->load_lua_file("driver.lua");
     if (driver_main_lua_script) {
       environment_console::initialize(driver_main_lua_script);
-
     } else {
       CORE_LOG_ERROR("Failed to load driver main Lua script.");
     }
@@ -25,8 +24,8 @@ namespace other {
     get_driver().get_event_system()->add_listener("console.check-command", [this](const value& data) {
       if (data.type() == value_type::STRING) {
         std::string command = data;
-        if (driver_main_lua_script && driver_main_lua_script->has_symbol("is_command") &&
-            driver_main_lua_script->call_function<bool>("is_command", command)) {
+        if (driver_main_lua_script && driver_main_lua_script->has_symbol("__is_command") &&
+            driver_main_lua_script->call_function<bool>("__is_command", command)) {
           get_driver().get_event_system()->trigger_event("console.command", command);
         } else {
           get_driver().get_event_system()->trigger_event("console.output", command);

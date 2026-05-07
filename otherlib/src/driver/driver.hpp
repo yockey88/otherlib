@@ -12,7 +12,9 @@
 #include "core/config_table.hpp"
 #include "core/defines.hpp"
 #include "core/delta_time.hpp"
+#include "core/logger.hpp"
 #include "event/event_system.hpp"
+#include "file/filesystem.hpp"
 #include "input/input_system.hpp"
 #include "thread/message.hpp"
 
@@ -26,6 +28,7 @@
 #include "driver/driver_kernel.hpp"
 #include "driver/driver_state_machine.hpp"
 #include "driver/driver_system.hpp"
+#include "driver/driver_tasks.hpp"
 #include "driver/subsystem_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
@@ -35,8 +38,11 @@
 #include "driver/systems/scene_system.hpp"
 #include "driver/systems/scripting_system.hpp"
 #include "plugin/plugin.hpp"
+#include "scripting/bindings.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/interface_registry.hpp"
+#include "scripting/interfaces/networking_interfaces.hpp"
+#include "scripting/scene_interface.hpp"
 #include "ui/driver_ui.hpp"
 #include "vm/other_device.hpp"
 
@@ -196,6 +202,7 @@ namespace other {
 
     void http_request_received(natural_t id, const http::request& req);
 
+    virtual void on_early_initialize(const command_line& cmd) {}
     virtual void on_initialize(const command_line& cmd) = 0;
     virtual void on_initialization_confirm() {}
     virtual void on_update() {}

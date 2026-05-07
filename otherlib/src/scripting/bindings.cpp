@@ -412,7 +412,8 @@ namespace other {
       "add_header",
       [](http::response& res, const std::string& name, const std::string& value) {
         res.add_header({ .name = name, .value = value });
-      }
+      },
+      "set_body_content", &http::response::set_body_content
     );
   }
 

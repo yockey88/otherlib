@@ -8,18 +8,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 
-#include "core/defines.hpp"
-#include "core/logger.hpp"
-#include "file/filesystem.hpp"
-
-#include "script/scripting_environment.hpp"
-
-#include "driver/driver_tasks.hpp"
-#include "scripting/bindings.hpp"
-#include "scripting/interfaces/networking_interfaces.hpp"
-#include "scripting/scene_interface.hpp"
-#include "vm/other_device.hpp"
-
 namespace other {
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
@@ -317,7 +305,7 @@ namespace other {
 
   void driver::handle_http_request_received(natural_t id, const http::request& req) {
     // validate path, has to start with '/' and exist relative other environment cwd
-    if (req.path.empty() || req.path[0] != '/') {
+    if (req.path.empty()) {
       CORE_LOG_ERROR("Invalid HTTP request path: '{}'", req.path);
       http::response response{ 400 };
       response.set_body_content("Bad Request", "text/plain");
@@ -333,19 +321,7 @@ namespace other {
       return;
     }
 
-    // force it to be local to
-    filepath cwd = file_system::get_cwd();
-    filepath requested_path = cwd / req.path.substr(1);
-    if (std::filesystem::exists(requested_path)) {
-      http_request_received(id, req);
-    } else {
-      CORE_LOG_ERROR("Requested HTTP resource not found: '{}'", requested_path.string());
-      http::response response{ 404 };
-      response.set_body_content("Not Found", "text/plain");
-      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
-
-      /// \todo look up file handle
-    }
+    http_request_received(id, req);
   }
 
   void driver::new_connection_accepted(natural_t from_connection_id, natural_t connection_id) {
@@ -370,14 +346,14 @@ namespace other {
       ss << std::format(" [HTTP: {}]\n", req.method.name);
       ss << std::format(" [HTTP: {}]\n", req.path);
       if (!req.query_string.empty()) {
-        ss << std::format(" [HTTP: {}]\n", req.query_string);
+        ss << std::format(" [HTTP query: {}]\n", req.query_string);
       }
       if (!req.body.empty()) {
         std::stringstream ss1;
         for (size_t i = 0; i < std::min<size_t>(req.body.size(), 100); ++i) {
           ss1 << std::hex << static_cast<int>(req.body[i]) << " ";
         }
-        ss << std::format(" [HTTP: {}]:\n{}\n", req.body.size(), ss1.str());
+        ss << std::format(" [HTTP body: {}]:\n{}\n", req.body.size(), ss1.str());
       }
       if (!req.headers.empty()) {
         ss << " [HTTP Headers]:\n";
@@ -466,6 +442,11 @@ namespace other {
   }
 
   void driver::load_client() {
+    {
+      PROFILE_SECTION("driver::initialize--client-on_early_initialize");
+      on_early_initialize(cmd_line);
+    }
+
     if (!subsystem<scripting_environment>::inert) {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
 
