@@ -23,8 +23,6 @@ namespace other {
    * allowing path resolution through the `mount_name://path/to/file` scheme.
    **/
   struct directory : public ref_counted {
-    directory() = default;
-
     directory(event_system& events, const std::string_view name, const filepath& path, file_type type = file_type::LOCAL);
 
     ~directory() override = default;
@@ -44,7 +42,7 @@ namespace other {
     bool has_child_directory(const std::string_view name) const;
     bool directory_exists(const std::string_view relative_path) const;
 
-    ref<file_handle> get_file(const std::string_view name) const;
+    ref<file_handle> get_file(const std::string_view name);
     ref<file_handle> add_file(ref<file_handle> file);
     void remove_file(const std::string_view name);
     void remove_file_by_path(const filepath& path);

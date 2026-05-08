@@ -4,10 +4,11 @@
 #include "vm/command_files/lexer.hpp"
 
 #include <algorithm>
+#include <ranges>
 
 #include "core/logger.hpp"
 
-#include "token.hpp"
+#include "vm/command_files/token.hpp"
 
 namespace other {
   namespace {

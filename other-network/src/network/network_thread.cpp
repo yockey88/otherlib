@@ -3,145 +3,62 @@
  **/
 #include "network/network_thread.hpp"
 
+#include <cstdint>
+
 #include <asio/asio/ip/address_v4.hpp>
 
 #include "core/defines.hpp"
-#include "core/timer.hpp"
+#include "core/time.hpp"
 #include "thread/message.hpp"
-#include "thread/messages.hpp"
 
-#include "network/message.hpp"
-#include "network/udp_stream.hpp"
+#include "network/messages.hpp"
+#include "network/network_error.hpp"
+
+#include "message.hpp"
 
 namespace other {
 
-  void network_thread::report_connection_closed(natural_t connection_id, integer_t session_id) {
-    CORE_LOG_DEBUG("Reporting connection {} session {} as closed", connection_id, session_id);
-    session_closures.push({ connection_id, session_id });
+  void network_thread::receive_data(natural_t connection_id, const std::span<uint8_t> data) {
+    message msg(NOTIFICATION, RX_DATA);
+    notification_rx_data notification_data{
+      .connection_id = connection_id,
+      .data = std::vector<uint8_t>(data.begin(), data.end()),
+    };
+    msg.data = serialize_direct(notification_data);
+    send_to_driver(std::move(msg));
   }
 
-  void network_thread::report_connection_error(session* cli, const asio::error_code& ec) {
-    OTHER_ASSERT(cli != nullptr, "Client pointer is null");
-    CORE_LOG_ERROR("Connection error for client {}: {} [@ {}]", cli->session_id, ec.message(), cli->socket.remote_endpoint().address().to_string());
-    report_connection_closed(cli->connection_id, cli->session_id);
-  }
+  void network_thread::notify_connection_closed(natural_t connection_id) {
+    auto state_itr = connection_state_machines.find(connection_id);
+    if (state_itr != connection_state_machines.end()) {
+      state_itr->second.handle_event(connection_event::DISCONNECT_SUCCESS);
 
-  void network_thread::report_stream_closed(natural_t connection_id, integer_t stream_id) {
-    CORE_LOG_DEBUG("Reporting UDP stream {} on connection {} as closed", stream_id, connection_id);
-    stream_closures.push({ connection_id, stream_id });
-  }
-
-  void network_thread::report_stream_error(udp_stream* strm, const asio::error_code& ec) {
-    OTHER_ASSERT(strm != nullptr, "UDP stream pointer is null");
-    CORE_LOG_ERROR("UDP stream error for stream {}: {} [@ TX = {}, RX = {}]", strm->stream_id, ec.message(), binding_point::write_string(strm->endpoint), binding_point::write_string(strm->endpoint));
-    report_stream_closed(strm->connection_id, strm->stream_id);
-  }
-
-  void network_thread::report_connection_check_in(natural_t connection_id, integer_t session_id) {
-    auto itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.connection_id.connection_number == connection_id; });
-    if (itr == pending_connections.end()) {
-      CORE_LOG_ERROR("Failed to find connection id to report check in : {}", connection_id);
-      return;
-    }
-    /// this override works because either we opened the session and had it from the start, or the remote session
-    ///   set it and this is correct
-    itr->connection_id.id = session_id;
-
-    /// callback if any
-    auto cb_itr = check_in_listeners.find(session_id);
-    if (cb_itr != check_in_listeners.end()) {
-      cb_itr->second(session_id);
-      check_in_listeners.erase(cb_itr);
-    }
-    /// otherwise we have to report a new connection to the server
-    else {
-      message notif_msg;
-      notif_msg.header = {
-        .category = NOTIFICATION,
-        .id = SESSION_CHECK_IN,
+      message msg(NOTIFICATION, CLOSE_TCP_CONNECTION);
+      notification_close_tcp_connection notification_data{
+        .connection_id = connection_id,
       };
+      msg.data = serialize_direct(notification_data);
+      send_to_driver(std::move(msg));
 
-      notification_session_check_in check_in_msg;
-      check_in_msg.session_id = session_id;
-      notif_msg.data.append_range(check_in_msg.as_buffer());
-      bus.send_message(std::move(notif_msg));
-    }
-
-    auto [conn_itr, success] = client_endpoints.insert({ connection_id, std::move(*itr) });
-    if (conn_itr == client_endpoints.end()) {
-      CORE_LOG_ERROR("Failed to fully accept session check in : {} (connection {})", session_id, connection_id);
-      return;
-    }
-    pending_connections.erase(itr);
-
-    CORE_LOG_INFO("Session [{}] successfully checked in", session_id);
-  }
-
-  void network_thread::handle_session_closures() {
-    while (!session_closures.empty()) {
-      connection_key id = session_closures.front();
-      session_closures.pop();
-      handle_session_closed(id);
-    }
-  }
-
-  void network_thread::handle_stream_closures() {
-    while (!stream_closures.empty()) {
-      connection_key id = stream_closures.front();
-      stream_closures.pop();
-      handle_stream_closed(id);
-    }
-  }
-
-  void network_thread::handle_session_closed(connection_key id) {
-    /// \todo: don't erase the connections because they may reconnect, just mark them as closed
-    ///           we need to add a mechanism to know when to fully remove them
-    auto itr = client_endpoints.find(id.connection_number);
-    if (itr != client_endpoints.end()) {
-      CORE_LOG_DEBUG("Closing connection [{}] session {}", id.connection_number, id.id);
-      itr->second.active_session->finalize();
-
-      {
-        message msg;
-        msg.header = {
-          .category = NOTIFICATION,
-          .id = SESSION_CLOSED,
-        };
-
-        notification_session_closed closed_msg;
-        closed_msg.session_id = id.id;
-        msg.data.append_range(closed_msg.as_buffer());
-        bus.send_message(std::move(msg));
-      }
-
-      client_endpoints.erase(itr);
-      --current_connections;
-
-      CORE_LOG_DEBUG("Session [{}] shut down, {} connections still live", id.id, current_connections);
+      recently_closed_connections.push_back(connection_id);
     } else {
-      if (auto itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.connection_id.connection_number == id.connection_number; });
-          itr != pending_connections.end()) {
-        CORE_LOG_DEBUG("Closing pending connection [{}] session {}", id.connection_number, id.id);
-        pending_connections.erase(itr);
-        --current_connections;
-
-        CORE_LOG_DEBUG("Pending session [{}] shut down, {} connections still live", id.id, current_connections);
-      }
+      CORE_LOG_ERROR("[CONNECTION {}] closed connection: no state machine found!", connection_id);
     }
   }
 
-  void network_thread::handle_stream_closed(connection_key id) {
-    auto itr = udp_bindings.find(id.connection_number);
-    if (itr != udp_bindings.end()) {
-      CORE_LOG_DEBUG("Closing UDP stream binding [{}] stream {}", id.connection_number, id.id);
-
-      itr->second.stream = nullptr;
-
-      udp_bindings.erase(itr);
-      --current_connections;
-
-      CORE_LOG_DEBUG("UDP stream binding [{}] shut down. {} connections still live", id.id, current_connections);
+  void network_thread::notify_connection_broken(natural_t connection_id) {
+    CORE_LOG_TRACE("[CONNECTION {}] Broken", connection_id);
+    auto state_itr = connection_state_machines.find(connection_id);
+    if (state_itr != connection_state_machines.end()) {
+      // connection lost
+    } else {
+      CORE_LOG_ERROR("[CONNECTION {}] broken connection: no state machine found!", connection_id);
     }
+  }
+
+  void network_thread::send_to_driver(message&& msg) {
+    CORE_LOG_TRACE("[NETWORK THREAD TX: {}]", msg.header);
+    bus.send_message(std::move(msg));
   }
 
   void network_thread::on_initialize() {
@@ -149,519 +66,344 @@ namespace other {
   }
 
   void network_thread::on_start() {
-    message network_ready_msg;
-    network_ready_msg.header = {
-      .category = NOTIFICATION,
-      .id = NETWORK_THREAD_READY,
-    };
-    bus.send_message(std::move(network_ready_msg));
+    message network_ready_msg(NOTIFICATION, NETWORK_THREAD_READY);
+    send_to_driver(std::move(network_ready_msg));
   }
 
   void network_thread::on_shutdown() {
-    client_endpoints.clear();
-    net_context = nullptr;
-
-    message shutdown_msg;
-    shutdown_msg.header = {
-      .category = NOTIFICATION,
-      .id = NETWORK_THREAD_SHUTDOWN_COMPLETE,
-    };
-    bus.send_message(std::move(shutdown_msg));
-
-    CORE_LOG_DEBUG("Network thread shutdown complete.");
+    message shutdown_msg(NOTIFICATION, NETWORK_THREAD_SHUTDOWN_COMPLETE);
+    send_to_driver(std::move(shutdown_msg));
   }
 
   void network_thread::pump_thread() {
-    net_context->io_context.poll();
+    if (current_state.shutdown_ready) {
+      // we should allow user to re-open a connection with the same ID,
+      // we should only actually close these on shutdown
+      for (natural_t connection_id : recently_closed_connections) {
+        if (active_connections.find(connection_id) != active_connections.end()) {
+          active_connections.erase(connection_id);
+        }
+        if (active_tcp_listeners.find(connection_id) != active_tcp_listeners.end()) {
+          active_tcp_listeners.erase(connection_id);
+        }
+        connection_state_machines.erase(connection_id);
+      }
 
-    handle_session_closures();
-    handle_stream_closures();
+      current_state.shutdown_ready = connection_state_machines.empty();
+    }
 
-    auto msg = bus.receive_message(duration_cast<milliseconds>(tick_duration(10)));
+    network_io.context.poll();
+    if (network_io.context.stopped()) {
+      network_io.context.restart();
+    }
+
+    for (auto citr = active_connections.cbegin(); citr != active_connections.cend(); ++citr) {
+      citr->second->poll();
+    }
+
+    auto msg = bus.receive_message(microseconds(1));
+    try {
+      process_message(std::move(msg));
+    } catch (const std::exception& e) {
+      CORE_LOG_ERROR("Error processing message in network thread: {}", e.what());
+    } catch (...) {
+      CORE_LOG_ERROR("Unknown error processing message in network thread");
+    }
+
+    if (current_state.shutdown_ready) {
+      if (current_state.shutdown_complete) {
+        return;
+      }
+
+      active_connections.clear();
+      active_tcp_listeners.clear();
+
+      natural_t ack_response_id = ack_list.get_pending_ack_response({ COMMAND, SHUTDOWN_REQUEST });
+      if (ack_response_id != 0) {
+        message ack_msg(ACKNOWLEDGEMENT, ACK);
+        acknowledgement_ack ack_data{
+          .ack_id = ack_response_id,
+          .acked_header = { COMMAND, SHUTDOWN_REQUEST },
+          .ack = 1,
+        };
+        ack_msg.data = serialize_direct(ack_data);
+        send_to_driver(std::move(ack_msg));
+      }
+
+      current_state.shutdown_complete = true;
+      CORE_LOG_DEBUG("Network thread shutdown complete");
+    }
+  }
+
+  void network_thread::process_message(opt<message>&& msg) {
     if (msg.has_value()) {
+      CORE_LOG_TRACE("[NETWORK THREAD RX: {}]", msg->header);
       switch (msg->header.category) {
         case CONTROL:
           switch (msg->header.id) {
             case PING: handle_control_ping(std::move(*msg)); break;
-            // case PONG: handle_control_pong(std::move(*msg)); break;
             default:
-              CORE_LOG_WARN("Network thread received unknown CONTROL message ID {:#06x}", msg->header.id);
-              break;
+              throw std::runtime_error(std::format("Network thread received unknown CONTROL message ID {:#06x}", msg->header.id));
           }
           break;
 
         case COMMAND:
           switch (msg->header.id) {
             case SHUTDOWN_REQUEST: handle_command_shutdown_request(std::move(*msg)); break;
-            case SESSION_LISTEN_FOR: handle_command_session_listen_for(std::move(*msg)); break;
-            case SESSION_CONNECT_TO: handle_command_session_connect_to(std::move(*msg)); break;
-            case SESSION_CHECK_IN: handle_command_session_check_in(std::move(*msg)); break;
-            case SESSION_TX_MESSAGE: handle_command_session_tx_message(std::move(*msg)); break;
-            case STREAM_SEND_UDP_DATAGRAM: handle_command_stream_send_udp_datagram(std::move(*msg)); break;
-            case ENVIRONMENT_LOAD_SCENE: handle_command_environment_load_scene(std::move(*msg)); break;
+            case LISTEN_TCP_CONNECTION: handle_command_listen_tcp_connection(std::move(*msg)); break;
+            case CONNECT_TCP_CONNECTION: handle_command_connect_tcp_connection(std::move(*msg)); break;
+            case OPEN_UDP_CONNECTION: handle_command_open_udp_connection(std::move(*msg)); break;
+            case CLOSE_TCP_CONNECTION: handle_command_close_tcp_connection(std::move(*msg)); break;
+            case TX_DATA: handle_command_tx_data(std::move(*msg)); break;
             default:
-              CORE_LOG_WARN("Network thread received unknown COMMAND message ID {:#06x}", msg->header.id);
-              break;
+              throw std::runtime_error(std::format("Network thread received unknown COMMAND message ID {:#06x}", msg->header.id));
           }
           break;
 
         case REQUEST:
           switch (msg->header.id) {
-            case SESSION_CHECK_IN: handle_request_session_check_in(std::move(*msg)); break;
-            case NEW_UDP_STREAM_BINDING: handle_request_new_udp_stream_binding(std::move(*msg)); break;
+            case ACK: handle_request_ack_process_msg(std::move(*msg)); break;
             default:
-              CORE_LOG_WARN("Network thread received unknown REQUEST message ID {:#06x}", msg->header.id);
-              break;
+              throw std::runtime_error(std::format("Network thread received unknown REQUEST message ID {:#06x}", msg->header.id));
           }
           break;
 
         default:
-          CORE_LOG_WARN("Network thread received unknown message category {}", static_cast<int>(msg->header.category));
-          break;
+          throw std::runtime_error(std::format("Network thread received message with unknown category {:#06x}", msg->header.category));
       }
-    }
-
-    for (auto& conn : pending_connections) {
-      try {
-        conn.active_session->poll();
-      } catch (const network_packet_parse_error& e) {
-        CORE_LOG_ERROR("Error parsing network packet from session {}: {}", conn.connection_id.id, e.what());
-      }
-    }
-
-    for (auto& [id, conn] : client_endpoints) {
-      try {
-        conn.active_session->poll();
-      } catch (const network_packet_parse_error& e) {
-        CORE_LOG_ERROR("Error parsing network packet from session {}: {}", id, e.what());
-      }
-    }
-
-    for (auto& [binding_id, udp_binding] : udp_bindings) {
-      try {
-        udp_binding.stream->poll();
-      } catch (const network_packet_parse_error& e) {
-        CORE_LOG_ERROR("Error parsing UDP packet from stream {}: {}", binding_id, e.what());
-      }
-    }
-
-    if (current_state.shutdown_pending && (pending_connections.size() + client_endpoints.size() + udp_bindings.size()) == 0) {
-      if (current_state.shutdown_complete) {
-        return;
-      }
-
-      message msg;
-      msg.header = {
-        .category = ACKNOWLEDGEMENT,
-        .id = ACK,
-      };
-
-      acknowledgement ackmsg;
-      ackmsg.acked_header = {
-        .category = COMMAND,
-        .id = SHUTDOWN_REQUEST,
-      };
-      ackmsg.ack_nack = 1;
-      msg.data.append_range(ackmsg.as_buffer());
-      bus.send_message(std::move(msg));
-
-      current_state.shutdown_complete = true;
-      CORE_LOG_INFO("Network thread shutdown complete.");
-    }
-  }
-
-  void network_thread::accept_connections(asio::ip::tcp::socket&& socket, const asio::error_code& ec) {
-    if (ec && ec == asio::error::operation_aborted) {
-      return;
-    } else if (!ec && current_connections >= max_connections) {
-      CORE_LOG_WARN("Maximum connections reached, rejecting new connection from {}", socket.remote_endpoint().address().to_string());
-      socket.close();
-      return;
-    }
-    CORE_LOG_DEBUG("Accepted new connection from {}", socket.remote_endpoint().address().to_string());
-
-    if (!ec) {
-      natural_t conn_id = get_next_session_id();
-      auto itr = pending_connections.insert(pending_connections.end(), connection{
-                                                                         .connection_id = connection_key{ current_connections, (integer_t)conn_id },
-                                                                         .endpoint = binding_point{ socket.remote_endpoint().address().to_v4().to_uint(), static_cast<uint16_t>(socket.remote_endpoint().port()) },
-                                                                         .active_session = make_scope<session>(this, current_connections, conn_id, net_context->io_context, std::move(socket)),
-                                                                       });
-      if (itr == pending_connections.end()) {
-        CORE_LOG_ERROR("Failed to add new connection to client endpoints");
-        return;
-      }
-      ++current_connections;
-
-      CORE_LOG_INFO("New session {} accepted, starting initialization...", itr->connection_id);
-      itr->active_session->start_initialization();
-
-      // Continue accepting new connections
-      net_context->acceptor.async_accept([this](asio::error_code ec, asio::ip::tcp::socket socket) {
-        accept_connections(std::move(socket), ec);
-      });
     } else {
-      CORE_LOG_ERROR("Error accepting connection: {}", ec.message());
+      /// no message received, just continue
     }
   }
 
-  void network_thread::open_session_and_check_in_at(integer_t session_id, uint16_t port) {
-    {
-      auto itr = client_endpoints.find(session_id);
-      if (itr != client_endpoints.end()) {
-        CORE_LOG_WARN("Session ID {} is already connected", session_id);
-        return;
-      }
+  void network_thread::listen_tcp(natural_t id, const binding_point& endpoint, asio::error_code ec, asio::ip::tcp::socket&& socket) {
+    if ((ec && ec == asio::error::operation_aborted) ||
+        (ec && ec == asio::error::connection_reset) ||
+        (ec && ec == asio::error::timed_out) ||
+        (ec && ec == asio::error::eof)) {
+      notify_connection_closed(id);
+      return;
     }
 
-    natural_t connection_number = current_connections;
-    auto [itr, success] = client_endpoints.emplace(connection_number, connection{
-                                                                        .connection_id = connection_key{ connection_number, session_id },
-                                                                        .endpoint = binding_point{ 0, port },
-                                                                        .active_session = make_scope<session>(this, connection_number, session_id, net_context->io_context),
-                                                                      });
+    if (ec) {
+      CORE_LOG_ERROR("Error accepting connection on {}: {}: {}", endpoint.ip, endpoint.port, ec.message());
+      return;
+    }
+
+    accept_tcp_connection(std::move(socket), endpoint, id);
+
+    auto itr = active_tcp_listeners.find(id);
+    OTHER_ASSERT(itr != active_tcp_listeners.end(), "Listener with ID {} not found when trying to listen for next connection", id);
+    itr->second->async_accept(std::bind_front(&network_thread::listen_tcp, this, id, endpoint));
+  }
+
+  void network_thread::accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id) {
+    std::lock_guard lock(current_state.mutex);
+    if (current_state.shutdown_pending) {
+      CORE_LOG_WARN("Received new connection while shutdown pending, rejecting connection from {}", socket.remote_endpoint().address().to_string() + ":" + std::to_string(socket.remote_endpoint().port()));
+      return;
+    }
+
+    natural_t connection_id = generate_connection_id();
+    auto [itr, success] = active_connections.emplace(connection_id, connection::create_tcp_connection(this, connection_id, events, network_io, endpoint, std::move(socket)));
     if (!success) {
-      CORE_LOG_ERROR("Failed to add new connection to client endpoints");
+      CORE_LOG_ERROR("Failed to create connection for endpoint {}:{}", endpoint.ip, endpoint.port);
       return;
     }
-    ++current_connections;
 
-    CORE_LOG_DEBUG("Attempting to open check in session {} @ {}", itr->second.connection_id, binding_point::write_string(itr->second.endpoint));
+    auto [state_itr, state_success] = connection_state_machines.emplace(connection_id, connection_state_machine());
+    OTHER_ASSERT(state_success, "Failed to create connection state machine for connection with ID {}", connection_id);
 
-    asio::ip::tcp::endpoint ep(asio::ip::make_address_v4("127.0.0.1"), port);
-    itr->second.active_session->socket.async_connect(ep, [this, connection_number, session_id](const asio::error_code& ec) {
-      if (!ec) {
-        CORE_LOG_INFO("Successfully connected to other application with session ID {} (conn: {})", session_id, connection_number);
-        auto conn_itr = client_endpoints.find(connection_number);
-        OTHER_ASSERT(conn_itr != client_endpoints.end(), "Connection not found for session ID {} (conn: {})", session_id, connection_number);
-        conn_itr->second.active_session->check_in();
-      } else {
-        CORE_LOG_ERROR("Failed to connect to other application with session ID {}: {}", session_id, ec.message());
-        client_endpoints.erase(connection_number);
-      }
-    });
-    CORE_LOG_TRACE("Attempting to connect to other application at port {} for session ID {} (conn: {})", port, session_id, connection_number);
+    // skip straight to connected
+    state_itr->second.handle_event(connection_event::CONNECT_SUCCESS);
+    CORE_LOG_TRACE("[CONNECTION {}: CONNECT] listener: {}", connection_id, listener_conn_id);
+
+    asio::ip::tcp::endpoint local_endpoint = itr->second->local_tcp_endpoint();
+    binding_point local_bp = binding_point::from_asio(local_endpoint.address(), local_endpoint.port());
+    message msg(NOTIFICATION, CONNECT_TCP_CONNECTION);
+    notification_connect_tcp_connection notification_data{
+      .connection_endpoint = endpoint,
+      .endpoint = local_bp,
+      .connection_id = listener_conn_id,
+      .new_connection_id = connection_id,
+    };
+    msg.data = serialize_direct(notification_data);
+    send_to_driver(std::move(msg));
+
+    itr->second->start_read();
   }
 
-  void network_thread::open_session_and_connect_to(const binding_point& bp) {
-    CORE_LOG_INFO("Opening session and connecting to {}", binding_point::write_string(bp));
-    {
-      auto itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.endpoint.ip == bp.ip && pair.second.endpoint.port == bp.port; });
-      if (itr != client_endpoints.end()) {
-        CORE_LOG_WARN("Already connected to endpoint {}", binding_point::write_string(bp));
-        return;
-      }
-    }
+  void network_thread::finalize_connection_establishment(natural_t connection_id) {
+    std::lock_guard lock(current_state.mutex);
 
-    auto itr = pending_connections.insert(pending_connections.end(), connection{
-                                                                       .connection_id = connection_key{ current_connections, session::kInvalidSessionId },
-                                                                       .endpoint = bp,
-                                                                       .active_session = make_scope<session>(this, current_connections, session::kInvalidSessionId, net_context->io_context),
-                                                                     });
-    if (itr == pending_connections.end()) {
-      CORE_LOG_ERROR("Failed to add new connection to client endpoints");
+    auto itr = active_connections.find(connection_id);
+    if (itr == active_connections.end()) {
+      CORE_LOG_ERROR("Failed to find connection with ID {} to finalize establishment", connection_id);
       return;
     }
-    ++current_connections;
+    CORE_LOG_DEBUG("Finalized establishment of TCP connection with ID {}", connection_id);
+  }
 
-    CORE_LOG_DEBUG("Attempting to open session {} @ {}", itr->connection_id, binding_point::write_string(bp));
+  void network_thread::handle_control_ping(message&& msg) {
+  }
 
-    asio::ip::tcp::endpoint ep(asio::ip::address_v4(bp.ip), bp.port);
-    itr->active_session->connection_timer.expires_after(seconds(5));
-    itr->active_session->connection_timer.async_wait([this, stime = itr->active_session->connection_timer.expiry()](const asio::error_code& ec) {
-      if (ec && ec == asio::error::operation_aborted) {
-        return;
-      }
-
-      if (!ec) {
-        auto itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.active_session->connection_timer.expiry() == stime; });
-        if (itr != pending_connections.end()) {
-          itr->active_session->socket.close();
+  void network_thread::handle_command_shutdown_request(message&& msg) {
+    CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
+    current_state.shutdown_pending = true;
+    for (auto itr = active_tcp_listeners.begin(); itr != active_tcp_listeners.end(); ++itr) {
+      auto state_itr = connection_state_machines.find(itr->first);
+      if (state_itr != connection_state_machines.end()) {
+        if (state_itr->second.get_current_state() == connection_state::CONNECTED ||
+            state_itr->second.get_current_state() == connection_state::CONNECTING ||
+            state_itr->second.get_current_state() == connection_state::RECONNECTING) {
+          CORE_LOG_TRACE("[CONNECTION {}] Initiating shutdown of active listener", itr->first);
+          itr->second->close();
         }
-      } else {
-        CORE_LOG_ERROR("Error in connection timer: {}", ec.message());
       }
-    });
+    }
 
-    itr->active_session->socket.async_connect(ep, [this, bp](const asio::error_code& ec) {
-      if (ec && ec == asio::error::operation_aborted) {
-        return;
+    for (auto itr = active_connections.begin(); itr != active_connections.end(); ++itr) {
+      auto state_itr = connection_state_machines.find(itr->first);
+      if (state_itr != connection_state_machines.end()) {
+        if (state_itr->second.get_current_state() == connection_state::CONNECTED ||
+            state_itr->second.get_current_state() == connection_state::CONNECTING ||
+            state_itr->second.get_current_state() == connection_state::RECONNECTING) {
+          CORE_LOG_TRACE("[CONNECTION {}] Initiating shutdown of active connection", itr->first);
+          itr->second->shutdown();
+        }
       }
+    }
+  }
 
+  /// \todo check for duplicate endpoints or other invalid connection parameters
+
+  void network_thread::handle_command_listen_tcp_connection(message&& msg) {
+    command_listen_tcp_connection request = deserialize_direct<command_listen_tcp_connection>(msg.data).first;
+
+    binding_point endpoint = request.endpoint;
+    asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
+
+    if (active_tcp_listeners.find(request.connection_id) != active_tcp_listeners.end()) {
+      throw port_in_use_network_error(std::format("Listener with ID {} already exists for endpoint {}:{}", request.connection_id, endpoint.ip, endpoint.port));
+    }
+
+    auto [itr, success] = active_tcp_listeners.emplace(request.connection_id, make_scope<asio::ip::tcp::acceptor>(network_io.context, asio_endpoint));
+    /// because we verified id was free before, this should never fail
+    OTHER_ASSERT(success, "Failed to create TCP listener for endpoint {}:{}", endpoint.ip, endpoint.port);
+
+    auto [state_itr, state_success] = connection_state_machines.emplace(request.connection_id, connection_state_machine());
+    OTHER_ASSERT(state_success, "Failed to create connection state machine for listener with ID {}", request.connection_id);
+
+    state_itr->second.handle_event(connection_event::START_CONNECT);
+    CORE_LOG_TRACE("[CONNECTION {}: LISTEN] {}", request.connection_id, endpoint);
+    itr->second->async_accept(std::bind_front(&network_thread::listen_tcp, this, request.connection_id, endpoint));
+  }
+
+  void network_thread::handle_command_connect_tcp_connection(message&& msg) {
+    // notif
+    // binding_point endpoint = *reinterpret_cast<const binding_point*>(msg.data.data());
+    // asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
+
+    // natural_t connection_id = generate_connection_id();
+    // auto [itr, success] = active_connections.emplace(connection_id, connection::create_tcp_connection(this, connection_id, events, network_io, endpoint, asio::ip::tcp::socket(network_io.context)));
+    // if (!success) {
+    //   CORE_LOG_ERROR("Failed to create connection for endpoint {}:{}", endpoint.ip, endpoint.port);
+    //   return;
+    // }
+
+    // itr->second->
+  }
+
+  void network_thread::handle_command_open_udp_connection(message&& msg) {
+    // binding_point endpoint = *reinterpret_cast<const binding_point*>(msg.data.data());
+    // asio::ip::udp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
+
+    // natural_t connection_id = generate_connection_id();
+    // auto [itr, success] = active_connections.emplace(connection_id, connection::udp_connection(connection_id, events, network_io, endpoint));
+    // if (!success) {
+    //   CORE_LOG_ERROR("Failed to create connection for endpoint {}:{}", endpoint.ip, endpoint.port);
+    //   return;
+    // }
+  }
+
+  void network_thread::handle_command_close_tcp_connection(message&& msg) {
+    // natural_t connection_id = *reinterpret_cast<const natural_t*>(msg.data.data());
+    // auto itr = active_connections.find(connection_id);
+    // if (itr == active_connections.end()) {
+    //   CORE_LOG_WARN("Received request to close unknown connection ID {}", connection_id);
+    //   return;
+    // }
+
+    // active_connections.erase(itr);
+  }
+
+  void network_thread::handle_command_tx_data(message&& msg) {
+    command_tx_data request = deserialize_direct<command_tx_data>(msg.data).first;
+
+    natural_t connection_id = request.connection_id;
+    auto itr = active_connections.find(connection_id);
+    if (itr == active_connections.end()) {
+      CORE_LOG_WARN("Received request to send data on unknown connection ID {}", connection_id);
+      return;
+    }
+
+    itr->second->write(request.data);
+  }
+
+  bool network_thread::immediately_acknowledge_message(const message_header& header) {
+    if (header == message_header{ CONTROL, SHUTDOWN_REQUEST }) {
+      return false;
+    }
+    return true;
+  }
+
+  void network_thread::handle_request_ack_process_msg(message&& msg) {
+    OTHER_ASSERT(msg.data.size() >= sizeof(natural_t) + sizeof(message_header), "Invalid ACK message data size: {}", msg.data.size());
+    natural_t ack_id = 0;
+    message acked_msg;
+
+    {
+      request_acknowledgment request_data = deserialize_direct<request_acknowledgment>(msg.data).first;
+      ack_id = request_data.ack_id;
+      acked_msg.header = request_data.original_header;
+      acked_msg.data = std::move(request_data.message_data);
+    }
+
+    uint8_t ack = 1;
+    message_header original_header = acked_msg.header;
+    try {
+      process_message(std::move(acked_msg));
+    } catch (const network_error& e) {
+      CORE_LOG_ERROR("Error handler invoked: [{}]", original_header);
+      CORE_LOG_ERROR("Failed to process message in network thread: {}", e.what());
+      ack = 0;
+    } catch (const std::runtime_error& e) {
+      CORE_LOG_ERROR("Runtime error handling acknowledgment for message {}: {}", original_header, e.what());
+      ack = 0;
+    } catch (const std::exception& e) {
+      CORE_LOG_ERROR("Error handling acknowledgment for message {}: {}", original_header, e.what());
+      ack = 0;
+    } catch (...) {
+      CORE_LOG_ERROR("Unknown error handling acknowledgment for message {}", original_header);
+      ack = 0;
+    }
+
+    if (immediately_acknowledge_message(acked_msg.header)) {
       message ack_msg;
       ack_msg.header = {
         .category = ACKNOWLEDGEMENT,
         .id = ACK,
       };
+      acknowledgement_ack ack_data{
+        .ack_id = ack_id,
+        .acked_header = acked_msg.header,
+        .ack = ack,
+      };
+      ack_msg.data = serialize_direct(ack_data);
 
-      acknowledgement ackmsg;
-      ackmsg.acked_header = message_header{ .category = COMMAND, .id = SESSION_CONNECT_TO };
-      ackmsg.ack_nack = 0x01;
-
-      session_connect_to_response response;
-
-      if (!ec) {
-        CORE_LOG_INFO("Successfully connected to other application at {}", binding_point::write_string(bp));
-
-        auto conn_itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.endpoint.ip == bp.ip && conn.endpoint.port == bp.port; });
-        OTHER_ASSERT(conn_itr != pending_connections.end(), "Connection not found for endpoint {}", binding_point::write_string(bp));
-
-        conn_itr->active_session->connection_timer.cancel();
-        conn_itr->active_session->check_in();
-        response.ack_nack = 0x01;
-      } else {
-        CORE_LOG_ERROR("Failed to connect to other application at {}: {}", binding_point::write_string(bp), ec.message());
-
-        auto conn_itr = std::ranges::find_if(pending_connections, [&](const connection& conn) { return conn.endpoint.ip == bp.ip && conn.endpoint.port == bp.port; });
-        conn_itr->active_session->connection_timer.cancel();
-        if (conn_itr != pending_connections.end()) {
-          pending_connections.erase(conn_itr);
-        }
-
-        response.ack_nack = 0x00;
-      }
-
-      ackmsg.extra_data.append_range(response.as_buffer());
-      ack_msg.data.append_range(ackmsg.as_buffer());
-      bus.send_message(std::move(ack_msg));
-    });
-  }
-
-  void network_thread::handle_control_ping(message&& msg) {
-    message pong_msg;
-    pong_msg.header = {
-      .category = CONTROL,
-      .id = PONG,
-    };
-
-    integer_t session_id = session::kNetworkThreadSessionId;
-    control_pong pong;
-    // pong.timestamp = get_current_time_milliseconds();
-    pong.session_id = session_id;
-    pong_msg.data.append_range(pong.as_buffer());
-
-    bus.send_message(std::move(pong_msg));
-  }
-
-  void network_thread::handle_command_shutdown_request(message&& msg) {
-    CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
-
-    try {
-      if (net_context->acceptor.is_open()) {
-        net_context->acceptor.close();
-      }
-    } catch (const std::exception& e) {
-      CORE_LOG_ERROR("Error closing acceptor: {}", e.what());
-    }
-
-    for (auto& [id, binding] : udp_bindings) {
-      try {
-        OTHER_ASSERT(binding.stream != nullptr, "UDP stream for binding {} is null", id);
-        binding.stream->shutdown();
-      } catch (const std::exception& e) {
-        CORE_LOG_ERROR("Error shutting down UDP binding {}: {}", id, e.what());
-      }
-    }
-
-    for (auto& conn : pending_connections) {
-      try {
-        OTHER_ASSERT(conn.active_session != nullptr, "Active session for pending connection {} is null", conn.connection_id.connection_number);
-        conn.active_session->shutdown();
-      } catch (const std::exception& e) {
-        CORE_LOG_ERROR("Error shutting down pending connection [{},{}]: {}", conn.connection_id.connection_number, conn.connection_id.id, e.what());
-      }
-    }
-
-    for (auto& [id, conn] : client_endpoints) {
-      try {
-        OTHER_ASSERT(conn.active_session != nullptr, "Active session for connection {} is null", id);
-        conn.active_session->shutdown();
-      } catch (const std::exception& e) {
-        CORE_LOG_ERROR("Error shutting down connection {}: {}", id, e.what());
-      }
-    }
-
-    current_state.shutdown_pending = true;
-  }
-
-  void network_thread::handle_command_session_listen_for(message&& msg) {
-    command_session_listen_at listen_cmd = other_message_spec::parse<command_session_listen_at>(msg.data);
-    uint16_t port = listen_cmd.address.port;
-
-    net_context->acceptor = asio::ip::tcp::acceptor(net_context->io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), port));
-    CORE_LOG_INFO("Network thread listening for incoming connections on port [{}]", binding_point::write_string(listen_cmd.address));
-    net_context->acceptor.async_accept([this](asio::error_code ec, asio::ip::tcp::socket socket) {
-      accept_connections(std::move(socket), ec);
-    });
-
-    message ack_msg;
-    ack_msg.header = {
-      .category = ACKNOWLEDGEMENT,
-      .id = ACK,
-    };
-
-    acknowledgement ackmsg;
-    ackmsg.acked_header = msg.header;
-    ackmsg.ack_nack = 1;
-    ack_msg.data.append_range(ackmsg.as_buffer());
-    bus.send_message(std::move(ack_msg));
-  }
-
-  void network_thread::handle_command_session_connect_to(message&& msg) {
-    command_session_connect_to connect_cmd = other_message_spec::parse<command_session_connect_to>(msg.data);
-    const binding_point bp = connect_cmd.address;
-
-    CORE_LOG_DEBUG("CONNECT TO [{}]", binding_point::write_string(bp));
-    open_session_and_connect_to(bp);
-  }
-
-  void network_thread::handle_command_session_check_in(message&& msg) {
-    command_session_check_in_at checkin_cmd = other_message_spec::parse<command_session_check_in_at>(msg.data);
-    integer_t session_id = checkin_cmd.session_id;
-    uint16_t port = checkin_cmd.address.port;
-
-    CORE_LOG_DEBUG("CHECK-IN [{} @ {}]", session_id, port);
-    open_session_and_check_in_at(session_id, port);
-  }
-
-  void network_thread::handle_command_session_tx_message(message&& msg) {
-    command_session_tx_message tx_cmd = other_message_spec::parse<command_session_tx_message>(msg.data);
-    integer_t session_id = tx_cmd.session_id;
-    message_header msg_header = tx_cmd.msg.header;
-    auto msg_bytes = std::span(tx_cmd.msg.data);
-    CORE_LOG_DEBUG("Transmitting message to session {}: header={}, data_size={}", session_id, msg_header, msg_bytes.size());
-
-    auto itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.connection_id.id == session_id; });
-    if (itr == client_endpoints.end()) {
-      CORE_LOG_WARN("No connected session with ID {}, cannot transmit message", session_id);
-      return;
-    }
-
-    message tx_msg;
-    tx_msg.header = msg_header;
-    tx_msg.data.append_range(msg_bytes);
-    itr->second.active_session->start_write(std::move(tx_msg));
-  }
-
-  void network_thread::handle_command_stream_send_udp_datagram(message&& msg) {
-    command_stream_send_udp_datagram stream_cmd = other_message_spec::parse<command_stream_send_udp_datagram>(msg.data);
-    integer_t stream_id = stream_cmd.stream_id;
-
-    auto itr = udp_bindings.find(stream_id);
-    if (itr == udp_bindings.end()) {
-      CORE_LOG_WARN("No UDP stream binding with ID {}, cannot send datagram", stream_id);
-      return;
-    }
-
-    auto data_gram_bytes = std::span(msg.data).subspan(sizeof(integer_t));
-    itr->second.stream->send(data_gram_bytes);
-  }
-
-  void network_thread::handle_command_environment_load_scene(message&& msg) {
-    command_load_scene scene_cmd = other_message_spec::parse<command_load_scene>(msg.data);
-    if (scene_cmd.session_id_flag == 0x01) {
-      integer_t session_id = scene_cmd.session_id;
-      CORE_LOG_DEBUG("Sending command-load-scene '{}' to session {}", scene_cmd.scene_name, session_id);
-
-      auto itr = std::ranges::find_if(client_endpoints, [&](const auto& pair) { return pair.second.connection_id.id == session_id; });
-      if (itr == client_endpoints.end()) {
-        CORE_LOG_WARN("No connected session with ID {}, cannot load scene '{}'", session_id, scene_cmd.scene_name);
-        return;
-      }
-
-      itr->second.active_session->send_and_wait_response(
-        std::move(msg), message_header{ ACKNOWLEDGEMENT, ACK }, seconds(9),
-        std::bind_front(&network_thread::on_acknowledge_environment_load_scene, this)
-      );
-
+      send_to_driver(std::move(ack_msg));
     } else {
-      CORE_LOG_ERROR("Unimplemented use case for command_load_scene without session ID");
-    }
-  }
-
-  void network_thread::on_acknowledge_environment_load_scene(message&& msg) {
-    acknowledgement ack = other_message_spec::parse<acknowledgement>(msg.data);
-    auto acked_header = ack.acked_header;
-
-    CORE_LOG_DEBUG("Received acknowledgment for load-empty-scene");
-    CORE_LOG_DEBUG(" - Acked header: {}", acked_header);
-    bus.send_message(std::move(msg));
-  }
-
-  void network_thread::handle_request_session_check_in(message&& msg) {
-    session_check_in_request checkin_req = other_message_spec::parse<session_check_in_request>(msg.data);
-    integer_t session_id = checkin_req.session_id;
-
-    auto callback = [&](integer_t session_id) {
-      message msg;
-      msg.header = {
-        .category = RESPONSE,
-        .id = SESSION_CHECK_IN,
-      };
-
-      session_check_in_response resp;
-      resp.session_id = session_id;
-      msg.data.append_range(resp.as_buffer());
-
-      bus.send_message(std::move(msg));
-    };
-
-    auto [itr, inserted] = check_in_listeners.insert({ session_id, callback });
-    CORE_LOG_DEBUG(" - Registered check-in listener for session ID {}", session_id);
-  }
-
-  void network_thread::handle_request_new_udp_stream_binding(message&& msg) {
-    new_udp_stream_binding_request req = other_message_spec::parse<new_udp_stream_binding_request>(msg.data);
-    message resp_msg;
-    resp_msg.header = {
-      .category = RESPONSE,
-      .id = NEW_UDP_STREAM_BINDING,
-    };
-
-    if (req.address.port == 0 || req.remote_address.port == 0) {
-      CORE_LOG_ERROR("Cannot create UDP stream binding with port 0");
-      new_udp_stream_binding_response resp;
-      resp.ack_nack = 0;
-      resp_msg.data.append_range(resp.as_buffer());
-      bus.send_message(std::move(resp_msg));
-      return;
-    }
-
-    try {
-      integer_t binding_id = next_udp_binding_id++;
-      natural_t connection_id = current_connections++;
-
-      asio::ip::udp::endpoint endpoint(asio::ip::make_address_v4(req.address.ip), req.address.port);
-      asio::ip::udp::endpoint remote_endpoint(asio::ip::make_address_v4(req.remote_address.ip), req.remote_address.port);
-      auto [itr, success] = udp_bindings.emplace(binding_id, udp_binding{
-                                                               .connection_id = connection_key{ connection_id, binding_id },
-                                                               .endpoint = req.address,
-                                                               .stream = make_scope<udp_stream>(this, connection_id, binding_id, net_context->io_context, endpoint, remote_endpoint),
-                                                             });
-      if (!success) {
-        CORE_LOG_ERROR("Failed to create new UDP stream binding");
-        new_udp_stream_binding_response resp;
-        resp.ack_nack = 0;
-        resp_msg.data.append_range(resp.as_buffer());
-        bus.send_message(std::move(resp_msg));
-        return;
-      };
-
-      CORE_LOG_DEBUG("Creating new UDP stream {} @ [LOCAL = {}, REMOTE = {}]", itr->second.connection_id, binding_point::write_string(itr->second.stream->endpoint), binding_point::write_string(remote_endpoint));
-
-      new_udp_stream_binding_response resp;
-      resp.ack_nack = 1;
-      resp.binding_id = itr->first;
-      resp_msg.data.append_range(resp.as_buffer());
-
-      bus.send_message(std::move(resp_msg));
-      itr->second.stream->start_read();
-
-      CORE_LOG_DEBUG("Sent NEW_UDP_STREAM_BINDING response for binding ID {}", binding_id);
-    } catch (const std::exception& e) {
-      CORE_LOG_ERROR("Error creating UDP stream binding: {}", e.what());
-    } catch (...) {
-      CORE_LOG_ERROR("Unknown error creating UDP stream binding");
+      ack_list.add_pending_ack_response(ack_id, acked_msg.header);
     }
   }
 

@@ -348,7 +348,7 @@ namespace other {
     interop_functions.get_type_id = load_managed_function<get_type_id>(type_interface_type_str, DNET_STR("GetTypeId"));
     OTHER_ASSERT(interop_functions.get_type_id != nullptr, "Failed to load function from managed assembly.");
 
-    interop_functions.get_full_type_name = load_managed_function<get_type_name>(type_interface_type_str, DNET_STR("GetFullTypeName"));
+    interop_functions.get_full_type_name = load_managed_function<get_dotnet_type_name>(type_interface_type_str, DNET_STR("GetFullTypeName"));
     OTHER_ASSERT(interop_functions.get_full_type_name != nullptr, "Failed to load function from managed assembly.");
 
     interop_functions.get_type_methods = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetTypeMethods"));

@@ -13,12 +13,4 @@ namespace other {
     return callback_fn != nullptr;
   }
 
-  value action::execute(const std::span<value> args) {
-    if (callback_fn) {
-      return callback_fn->call(args);
-    } else {
-      return value();
-    }
-  }
-
 }  // namespace other

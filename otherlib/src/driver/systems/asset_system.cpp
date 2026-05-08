@@ -176,6 +176,7 @@ namespace other {
   }
 
   void asset_system::begin_full_unload() {
+    CORE_LOG_DEBUG("Beginning full unload of all assets.");
     asset_mgr->begin_unload();
   }
 

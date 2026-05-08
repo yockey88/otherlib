@@ -18,4 +18,10 @@ namespace other {
     return std::string(str_data, size());
   }
 
+  std::span<const uint8_t> value_storage::unchecked_byte_buffer_unwrap() const {
+    const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(memory());
+    OTHER_ASSERT(data_ptr != nullptr, "Byte buffer data pointer is null!");
+    return std::span<const uint8_t>(data_ptr, size());
+  }
+
 }  // namespace other

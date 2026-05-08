@@ -32,10 +32,10 @@ namespace other {
     const T* unchecked_ptr_unwrap() const { return reinterpret_cast<const T*>(data()); }
 
     template <typename T>
-      requires(!is_string_type<T> && !is_opaque_pointer<T>)
+      requires(not_string_buffer_or_pointer<T>)
     T& unchecked_unwrap() { return *unchecked_ptr_unwrap<T>(); }
     template <typename T>
-      requires(!is_string_type<T> && !is_opaque_pointer<T>)
+      requires(not_string_buffer_or_pointer<T>)
     const T& unchecked_unwrap() const { return *unchecked_ptr_unwrap<const T>(); }
 
     template <typename T>
@@ -45,9 +45,17 @@ namespace other {
       requires(is_string_type<T>)
     std::string unchecked_unwrap() const { return unchecked_string_unwrap(); }
 
+    template <typename T>
+      requires(is_byte_buffer_type<T>)
+    std::span<const uint8_t> unchecked_unwrap() const { return unchecked_byte_buffer_unwrap(); }
+    template <typename T>
+      requires(is_byte_buffer_type<T>)
+    std::span<const uint8_t> unchecked_unwrap() { return unchecked_byte_buffer_unwrap(); }
+
     void* unwrap_opaque_handle();
 
     std::string unchecked_string_unwrap() const;
+    std::span<const uint8_t> unchecked_byte_buffer_unwrap() const;
 
     friend class value;
     template <typename T>
@@ -84,6 +92,10 @@ namespace other {
         raw_data = allocator.allocate_bytes(size);
         std::memcpy(raw_data, cstr, size);
         type_size = size;
+      } else if constexpr (is_byte_buffer_type<T>) {
+        raw_data = allocator.allocate_bytes(std::ranges::size(value));
+        std::memcpy(raw_data, value.data(), std::ranges::size(value));
+        type_size = std::ranges::size(value);
       } else {
         object = allocator.allocate(value);
         type_size = sizeof(T);
@@ -106,6 +118,10 @@ namespace other {
         raw_data = allocator.allocate_bytes(size);
         std::memcpy(raw_data, cstr, size);
         type_size = size;
+      } else if constexpr (is_byte_buffer_type<T>) {
+        raw_data = allocator.allocate_bytes(std::ranges::size(value));
+        std::memcpy(raw_data, value.data(), std::ranges::size(value));
+        type_size = std::ranges::size(value);
       } else {
         object = allocator.allocate(std::move(value));
         type_size = sizeof(T);
@@ -116,7 +132,7 @@ namespace other {
       arena_allocator<T> allocator;
 
       if (val_type() != value_type::OPAQUE_HANDLE) {
-        if (val_type() == value_type::STRING) {
+        if (val_type() == value_type::STRING || val_type() == value_type::BYTE_BUFFER) {
           allocator.free_bytes(raw_data, type_size);
         } else {
           allocator.free(object);
@@ -133,7 +149,7 @@ namespace other {
     value_storage_impl& operator=(const value_storage_impl& other) = delete;
 
     void* data() override {
-      if (val_type() == value_type::STRING || val_type() == value_type::OPAQUE_HANDLE) {
+      if (raw_data_value_type()) {
         return raw_data;
       } else {
         return this->object;
@@ -141,7 +157,7 @@ namespace other {
     }
 
     const void* data() const override {
-      if (val_type() == value_type::STRING || val_type() == value_type::OPAQUE_HANDLE) {
+      if (raw_data_value_type()) {
         return raw_data;
       } else {
         return this->object;
@@ -149,17 +165,21 @@ namespace other {
     }
 
     const void* memory() const override {
-      if (val_type() == value_type::STRING || val_type() == value_type::OPAQUE_HANDLE) {
+      if (raw_data_value_type()) {
         return raw_data;
       } else {
         return this->object;
       }
     }
 
+    bool raw_data_value_type() const {
+      return val_type() == value_type::STRING || val_type() == value_type::BYTE_BUFFER || val_type() == value_type::OPAQUE_HANDLE;
+    }
+
     void reallocate(size_t new_size) override {
       arena_allocator<T> allocator;
 
-      if constexpr (is_string_type<T>) {
+      if constexpr (is_string_type<T> || is_byte_buffer_type<T>) {
         OTHER_ASSERT(new_size > 0, "New size must be greater than zero for string reallocation!");
 
         void* new_raw_data = allocator.allocate_bytes(new_size);
@@ -185,6 +205,10 @@ namespace other {
         OTHER_ASSERT(sz <= type_size, "New string size exceeds allocated size in overwrite_data!");
         std::ranges::fill(std::span(reinterpret_cast<char*>(raw_data), type_size), 0);
         std::memcpy(raw_data, data, sz);
+      } else if (val_type() == value_type::BYTE_BUFFER) {
+        OTHER_ASSERT(sz <= type_size, "New byte buffer size exceeds allocated size in overwrite_data!");
+        std::ranges::fill(std::span(reinterpret_cast<uint8_t*>(raw_data), type_size), 0);
+        std::memcpy(raw_data, data, sz);
       } else {
         OTHER_ASSERT(sz == sizeof(T), "Size mismatch in overwrite_data for non-string type!");
         std::memcpy(object, data, sz);
@@ -193,8 +217,8 @@ namespace other {
 
    private:
     size_t size() const override {
-      if constexpr (is_string_type<T>) {
-        return type_size;  // For strings, size is determined by the string's size
+      if constexpr (is_string_type<T> || is_byte_buffer_type<T>) {
+        return type_size;  // For strings and byte buffers, size is determined by the allocated size
       } else {
         return sizeof(T);  // For other types, size is fixed
       }

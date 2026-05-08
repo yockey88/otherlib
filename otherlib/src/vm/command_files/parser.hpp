@@ -4,11 +4,9 @@
 #ifndef OTHERLIB_VM_COMMAND_FILES_PARSER_HPP
 #define OTHERLIB_VM_COMMAND_FILES_PARSER_HPP
 
-#include <map>
+#include <span>
 #include <string>
 #include <vector>
-
-#include "core/defines.hpp"
 
 #include "vm/command_files/code_block.hpp"
 #include "vm/command_files/data_block.hpp"

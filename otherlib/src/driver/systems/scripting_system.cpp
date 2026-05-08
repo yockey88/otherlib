@@ -16,7 +16,6 @@ namespace other {
     driver_main_lua_script = subsystem<scripting_environment>::get()->load_lua_file("driver.lua");
     if (driver_main_lua_script) {
       environment_console::initialize(driver_main_lua_script);
-
     } else {
       CORE_LOG_ERROR("Failed to load driver main Lua script.");
     }
@@ -25,8 +24,8 @@ namespace other {
     get_driver().get_event_system()->add_listener("console.check-command", [this](const value& data) {
       if (data.type() == value_type::STRING) {
         std::string command = data;
-        if (driver_main_lua_script && driver_main_lua_script->has_symbol("is_command") &&
-            driver_main_lua_script->call_function<bool>("is_command", command)) {
+        if (driver_main_lua_script && driver_main_lua_script->has_symbol("__is_command") &&
+            driver_main_lua_script->call_function<bool>("__is_command", command)) {
           get_driver().get_event_system()->trigger_event("console.command", command);
         } else {
           get_driver().get_event_system()->trigger_event("console.output", command);
@@ -86,6 +85,11 @@ namespace other {
 
     CORE_LOG_DEBUG("Unloading script module with ID: {}", module->get_handle());
     subsystem<scripting_environment>::get()->unload_dotnet_module(module);
+  }
+
+  lua_host& scripting_system::get_lua_host() {
+    OTHER_ASSERT(!subsystem<scripting_environment>::inert, "Scripting environment subsystem is inert, cannot get Lua host.");
+    return subsystem<scripting_environment>::get()->get_lua_host();
   }
 
   lua_script& scripting_system::get_envrc_script() {

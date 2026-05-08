@@ -125,7 +125,7 @@ namespace other {
     };
     if (action_fn.valid()) {
       item.action = action();
-      item.action->set_callback(make_ref<lua_callback<void>>(action_fn, std::string(name) + "." + "action"));
+      item.action->set_callback(make_ref<lua_callback>(action_fn, std::string(name) + "." + "action"));
     }
     return item;
   }

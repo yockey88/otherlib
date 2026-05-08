@@ -6,9 +6,6 @@
 
 #include <cstdint>
 
-#include "core/defines.hpp"
-
-#include "dotnet/behavior_descriptor.hpp"
 #include "dotnet/dotnet_assembly.hpp"
 #include "dotnet/garbage_collector.hpp"
 #include "dotnet/native_string.hpp"
@@ -37,7 +34,7 @@ namespace other {
   /// TypeInterface
   using get_net_core_types = void (*)(int32_t*, int32_t*);
   using get_type_id = void (*)(native_string, int32_t*);
-  using get_type_name = native_string (*)(int32_t);
+  using get_dotnet_type_name = native_string (*)(int32_t);
   using get_base_type = void (*)(int32_t, int32_t*);
   using get_type_size = int32_t (*)(int32_t);
   using check_type_characteristic = nbool32 (*)(int32_t, int32_t);

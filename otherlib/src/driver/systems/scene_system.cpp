@@ -236,7 +236,6 @@ namespace other {
 
     CORE_LOG_DEBUG("Pushing scene object '{}' to context stack at position {}", object->name, context_stack_top);
     context_stack[context_stack_top++] = object;
-    get_driver().on_push_scene_object(context_stack[context_stack_top - 1]);
   }
 
   scene_object* scene_system::pop_scene_object_from_context_stack() {
@@ -246,7 +245,6 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Popping scene object '{}' from context stack at position {}", context_stack[context_stack_top - 1]->name, context_stack_top - 1);
-    get_driver().on_pop_scene_object(context_stack[context_stack_top - 1]);
     return context_stack[--context_stack_top];
   }
 

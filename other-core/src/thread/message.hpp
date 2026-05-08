@@ -16,6 +16,7 @@
 #include <asio/asio.hpp>
 
 #include "command/command.hpp"
+#include "serialization/reflection.hpp"
 #include "thread/channel.hpp"
 
 namespace other {
@@ -30,8 +31,6 @@ namespace other {
     REQUEST,
     RESPONSE,
 
-    SESSION_EVENT,
-
     INFORMATION,
 
     ERROR_ALERT,
@@ -43,10 +42,9 @@ namespace other {
     ACK = 0x0001,
 
     /// notification messages
-    STREAM_RX_UDP_DATAGRAM,
-    SESSION_RX_MESSAGE,
     NETWORK_THREAD_READY,
     NETWORK_THREAD_SHUTDOWN_COMPLETE,
+    RX_DATA,
 
     /// control messages
     PING,
@@ -54,25 +52,13 @@ namespace other {
     VERSION_HANDSHAKE,
 
     /// command messages
-    SESSION_LISTEN_FOR,
-    SESSION_CONNECT_TO,
-    SESSION_TX_MESSAGE,
-
-    STREAM_SEND_UDP_DATAGRAM,
-
-    ENVIRONMENT_LOAD_SCENE,
+    LISTEN_TCP_CONNECTION,
+    CONNECT_TCP_CONNECTION,
+    OPEN_UDP_CONNECTION,
+    CLOSE_TCP_CONNECTION,
+    TX_DATA,
 
     /// request/response messages
-    SESSION_CHECK_IN,
-    SESSION_CLOSED,
-    SESSION_SHUTDOWN,
-    SESSION_INFORMATION,
-    NEW_UDP_STREAM_BINDING,
-
-    PROJECT_CACHE_INFORMATION,
-
-    SCENE_STATE,
-
     /// error alert messages
 
     SHUTDOWN_REQUEST,
@@ -104,14 +90,6 @@ namespace other {
   };
   static_assert(sizeof(binding_point) == sizeof(uint32_t) + sizeof(uint16_t), "Invalid binding_point size");
 
-  struct session_endpoint {
-    binding_point simulation;
-    binding_point control;
-
-    static std::string write_string(const session_endpoint& endpoint);
-  };
-  static_assert(sizeof(session_endpoint) == sizeof(binding_point) * 2, "Invalid session_endpoint size");
-
   struct version {
     uint16_t major;
     uint16_t minor;
@@ -123,44 +101,6 @@ namespace other {
   };
   static_assert(sizeof(version) == sizeof(uint16_t) * 3, "Invalid version size");
 #pragma pack(pop)
-
-  struct message;
-
-  template <typename T>
-  concept message_spec_type = requires(T t) {
-    { T::category } -> std::same_as<message_category>;
-    { T::id } -> std::same_as<message_id>;
-    { T::parse(std::declval<const std::vector<uint8_t>&>()) } -> std::same_as<T>;
-    { t.build() } -> std::same_as<std::vector<uint8_t>>;
-  };
-
-  template <typename T, typename... Args>
-  concept self_building_message = std::constructible_from<T, Args...> && requires(const T& obj, Args&&... args) {
-    { obj.build() } -> std::same_as<message>;
-  };
-
-  template <typename T>
-  concept self_parsing_message = requires(const T& obj) {
-    { obj.parse(std::declval<const std::vector<uint8_t>&>()) } -> std::same_as<T>;
-  };
-
-  template <typename T>
-  struct message_spec_impl;
-
-  struct message_spec {
-    virtual ~message_spec() = default;
-    virtual std::vector<uint8_t> build_message() = 0;
-
-   protected:
-    void write_header(std::vector<uint8_t>& data, const message_header& header);
-  };
-
-  template <typename T>
-  struct message_spec_impl : message_spec {
-    std::vector<uint8_t> build_message() override;
-  };
-
-  using network_packet_parse_error = std::runtime_error;
 
   struct message {
     message_header header;
@@ -178,104 +118,32 @@ namespace other {
     }
     message(message_category category, uint16_t type)
         : header{ category, type } {}
-
     message(const message_header& msg_header, const std::vector<uint8_t>& msg_data)
         : header(msg_header), data(msg_data) {}
-
-    template <typename T>
-      requires self_parsing_message<T>
-    T parse_message(const std::vector<uint8_t>& data) const {
-      return T::parse(data);
-    }
   };
-
-  template <typename T>
-  std::vector<uint8_t> message_spec_impl<T>::build_message() {
-    return reinterpret_cast<T*>(this)->build();
-  }
-
-  template <typename T>
-    requires std::is_trivially_copyable_v<T>
-  T read_object_from_buffer(std::span<const uint8_t>& data) {
-    OTHER_ASSERT(!data.empty(), "Attempted to read object of type '{}' from empty buffer in other_message_spec_impl::read_object", typeid(T).name());
-    OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
-
-    OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
-    T obj = *reinterpret_cast<const T*>(data.subspan(0, sizeof(T)).data());
-    data = data.subspan(sizeof(T));
-
-    return obj;
-  }
-  template <typename T>
-    requires std::is_trivially_copyable_v<T>
-  T read_object_from_buffer(const std::span<const uint8_t>& data) {
-    OTHER_ASSERT(!data.empty(), "Attempted to read object of type '{}' from empty buffer in other_message_spec_impl::read_object", typeid(T).name());
-    OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
-
-    OTHER_ASSERT(sizeof(T) <= data.size(), "Insufficient data to read object of type '{}' in other_message_spec_impl::read_object", typeid(T).name());
-    T obj = *reinterpret_cast<const T*>(data.subspan(0, sizeof(T)).data());
-
-    return obj;
-  }
 
   using message_channel = channel<message>;
 
-  struct field_bounds {
-    natural_t min = 0;
-    natural_t max = 0;
-  };
-  struct message_field {
-    const char* name;
-    field_bounds size = { 0, 0 };
-  };
-
-  constexpr inline message_field message_fields[] = {
-    { "msg-category", { sizeof(message_category), sizeof(message_category) } },
-    { "msg-id", { sizeof(message_id), sizeof(message_id) } },
-
-    { "session-type", { sizeof(uint16_t), sizeof(uint16_t) } },
-    { "node-id", { sizeof(uint64_t), sizeof(uint64_t) } },
-    { "layer-type", { 0, sizeof(uint8_t) } },
-    { "status", { sizeof(uint64_t), sizeof(uint64_t) } },
-
-    { "acked-header", { sizeof(message_header), sizeof(message_header) } },
-    { "ack-nack", { sizeof(uint8_t), sizeof(uint8_t) } },
-
-    { "port", { sizeof(uint16_t), sizeof(uint16_t) } },
-    { "ip", { sizeof(uint32_t), sizeof(uint32_t) } },
-
-    { "opcode", { sizeof(uint8_t), sizeof(uint8_t) } },
-    { "argc", { sizeof(uint8_t), sizeof(uint8_t) } },
-    { "argv", { 0, 0 } },
-
-    { "error-code", { sizeof(uint16_t), sizeof(uint16_t) } },
-    { "error-message", { 0, 0 } },
-  };
-
-  enum message_field_idx : uint8_t {
-    MSG_CATEGORY_FIELD = 0,
-    MSG_ID_FIELD,
-
-    SESSION_TYPE_FIELD,
-    NODE_ID_FIELD,
-    LAYER_TYPE_FIELD,
-    STATUS_FIELD,
-
-    ACKED_HEADER_FIELD,
-    ACK_NACK_FIELD,
-
-    PORT_FIELD,
-    IP_FIELD,
-
-    OPCODE_FIELD,
-    ARGC_FIELD,
-    ARGV_FIELD,
-
-    ERROR_CODE_FIELD,
-    ERROR_MESSAGE_FIELD,
-  };
-
 }  // namespace other
+
+OTHER_REFLECT(
+  other::message_header,
+  field(category, other::attr::serializable("category")),
+  field(id, other::attr::serializable("id"))
+)
+
+OTHER_REFLECT(
+  other::binding_point,
+  field(port, other::attr::serializable("port")),
+  field(ip, other::attr::serializable("ip"))
+)
+
+OTHER_REFLECT(
+  other::version,
+  field(major, other::attr::serializable("major")),
+  field(minor, other::attr::serializable("minor")),
+  field(patch, other::attr::serializable("patch"))
+)
 
 namespace std {
 
@@ -292,7 +160,7 @@ namespace std {
   struct formatter<other::message_header> : public formatter<std::string_view> {
     template <typename FormatContext>
     auto format(const other::message_header& header, FormatContext& ctx) const {
-      const std::string fmt = std::format("[{:#06x}:{:#06x}]", header.category, header.id);
+      const std::string fmt = std::format("[{}.{}]", other::message_category{ header.category }, other::message_id{ header.id });
       return formatter<std::string_view>::format(fmt, ctx);
     }
   };

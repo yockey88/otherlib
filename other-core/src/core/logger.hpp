@@ -98,15 +98,17 @@ namespace other {
   /// \todo add automatic enter/exit function logger structs (raii tracing)
 
 #ifdef OTHER_STACKTRACE_AVAILABLE
-  #define GET_STACKTRACE (std::stringstream{} << std::stacktrace::current() << "\n").str()
+  #include <sstream>
+  #include <stacktrace>
+  #define OTHER_STACKTRACE (std::stringstream{} << std::stacktrace::current() << "\n").str()
 #else
-  #define GET_STACKTRACE "Stacktrace not available (no <stacktrace> support)"
+  #define OTHER_STACKTRACE "Stacktrace not available (no <stacktrace> support)"
 #endif
 
-#define OTHER_CRITICAL_FAILURE(format, ...)                                                                  \
-  do {                                                                                                       \
-    CORE_LOG_CRITICAL("Critical failure!\nstacktrace =\n{}\n" format, GET_STACKTRACE VAR_ARGS(__VA_ARGS__)); \
-    OTHER_ABORT();                                                                                           \
+#define OTHER_CRITICAL_FAILURE(format, ...)                                                                    \
+  do {                                                                                                         \
+    CORE_LOG_CRITICAL("Critical failure!\nstacktrace =\n{}\n" format, OTHER_STACKTRACE VAR_ARGS(__VA_ARGS__)); \
+    OTHER_ABORT();                                                                                             \
   } while (0)
 
 #define OTHER_ASSERT(condition, format, ...)       \

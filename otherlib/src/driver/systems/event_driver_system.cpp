@@ -8,6 +8,7 @@
 #include "file/filesystem.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/network_system.hpp"
 
 namespace other {
 

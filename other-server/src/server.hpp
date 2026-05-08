@@ -4,24 +4,11 @@
 #ifndef OTHER_SERVER_SERVER_HPP
 #define OTHER_SERVER_SERVER_HPP
 
-#include <chrono>
-
-#include <nlohmann/json.hpp>
-
-#include "core/defines.hpp"
-
-#include "renderer/renderer.hpp"
+#include "http/http.hpp"
 
 #include "driver/driver.hpp"
 
-#include "server-ui/server-ui.hpp"
-
 namespace other {
-
-  // 1/10 milli-
-  using server_time_unit_conversion = tick_conversion;
-  /// 1/10 millisecond duration type
-  using server_time_units = tick_duration;
 
   class OTHER_CLASS server : public driver {
    public:
@@ -29,14 +16,19 @@ namespace other {
         : driver(cmd, config) {}
     virtual ~server() = default;
 
+    void on_early_initialize(const command_line& cmd) override;
     void on_initialize(const command_line& cmd) override;
     void on_shutdown() override;
 
    private:
+    uint16_t config_http_port = 0;
+    filepath mount_directory;
+
+    sol::table lua_server;
+
+    void on_http_request_received(natural_t id, const http::request& req) override;
   };
 
 }  // namespace other
-
-OTHER_DRIVER(other::server)
 
 #endif  // OTHER_SERVER_SERVER_HPP

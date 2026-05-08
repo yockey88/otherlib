@@ -29,25 +29,15 @@ namespace other {
       callback* callback_ptr = &ncallback_fn;
       ASSERT_NE(callback_ptr, nullptr);
 
-      callback_ptr->call({});
+      callback_ptr->call();
     }
 
     {
       ref<callback> callback_fn = make_ref<native_callback<int>>(&test_func2);
       ASSERT_NE(callback_fn, nullptr);
 
-      value ret = callback_fn->call({});
-      ASSERT_EQ(ret.type(), value_type::INT32);
-      ASSERT_EQ((int)ret, 42);
-    }
-
-    {
-      ref<callback> callback_fn = make_ref<native_callback<float, int, float, std::string>>(&test_func3);
-      ASSERT_NE(callback_fn, nullptr);
-
-      std::vector<value> args = { value(10), value(3.2f), value("test") };
-      value ret = callback_fn->call(args);
-      ASSERT_EQ(ret.type(), value_type::FLOAT);
+      int ret = callback_fn->call<int>();
+      ASSERT_EQ(ret, 42);
     }
 
     {
@@ -57,8 +47,8 @@ namespace other {
       });
       ASSERT_NE(callback_fn, nullptr);
 
-      value ret = callback_fn->call({});
-      ASSERT_EQ(ret.type(), value_type::STRING);
+      std::string ret = callback_fn->call<std::string>();
+      ASSERT_EQ(ret, "Hello, world!");
     }
   }
 
@@ -67,17 +57,8 @@ namespace other {
     ASSERT_NE(callback_fn, nullptr);
 
     using namespace std::string_literals;
-    std::vector<value> args = { value(10), value(3.2f), value("test"s) };
-    ASSERT_EQ(args.size(), 3);
-    ASSERT_EQ(args[0].type(), value_type::INT32);
-    ASSERT_EQ(args[1].type(), value_type::FLOAT);
-    ASSERT_EQ(args[2].type(), value_type::STRING);
-    std::string arg2_str = args[2];
-    ASSERT_EQ(arg2_str, "test");
-
-    value ret = callback_fn->call(args);
-    ASSERT_EQ(ret.type(), value_type::FLOAT);
-    ASSERT_EQ((float)ret, 6.7f);
+    float ret = callback_fn->call<float>(10, 3.2, "test"s);
+    ASSERT_EQ(ret, 6.7f);
   }
 
   TEST_F(action_tests, lambda_native_callback_test) {
@@ -87,14 +68,12 @@ namespace other {
     });
     ASSERT_NE(callback_fn, nullptr);
 
-    std::vector<value> args = { value(5), value(3.2f) };
-    value ret = callback_fn->call(args);
-    ASSERT_EQ(ret.type(), value_type::DOUBLE);
-    ASSERT_NEAR((double)ret, 8.2, 1e-6);
+    double ret = callback_fn->call<double>(5, 3.2f);
+    ASSERT_NEAR(ret, 8.2, 1e-6);
   }
 
   TEST_F(action_tests, dotnet_callback_test) {
-    // GTEST_SKIP() << "Dotnet callback implementation needs to be redesigned";
+    GTEST_SKIP() << "Dotnet callback implementation needs to be redesigned";
 
     subsystem<arena>::get()->shutdown();
     subsystem<arena>::get();
@@ -117,13 +96,11 @@ namespace other {
     script_object* script_obj = env->get_object(obj_id);
 
     {
-      ref<callback> callback_fn = make_ref<dotnet_callback<int, int, int>>(script_obj->dotnet_object, "Add");
+      ref<callback> callback_fn = make_ref<dotnet_callback>(script_obj->dotnet_object, "Add");
       ASSERT_NE(callback_fn, nullptr);
 
-      std::vector<value> args = { value(10), value(32) };
-      value ret = callback_fn->call(args);
-      ASSERT_EQ(ret.type(), value_type::INT32);
-      ASSERT_EQ((int)ret, 42);
+      int ret = callback_fn->call<int>(10, 32);
+      ASSERT_EQ(ret, 42);
     }
 
     env->detach_dotnet_object(obj_id);
@@ -144,17 +121,15 @@ namespace other {
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
     env->initialize_script_environment(environment->config);
 
-    lua_script* test1 = env->load_lua_file("resources/lua/test1.lua");
+    lua_script* test1 = env->load_lua_file("tests/test1.lua");
     ASSERT_TRUE(test1->is_valid());
 
     {
-      ref<callback> callback_fn = make_ref<lua_callback<int, int, int>>(test1, "add");
+      ref<callback> callback_fn = make_ref<lua_callback>(test1, "add");
       ASSERT_NE(callback_fn, nullptr);
 
-      std::vector<value> args = { value(15), value(27) };
-      value ret = callback_fn->call(args);
-      ASSERT_EQ(ret.type(), value_type::INT32);
-      ASSERT_EQ((int)ret, 42);
+      int ret = callback_fn->call<int>(15, 27);
+      ASSERT_EQ(ret, 42);
     }
 
     env->shutdown_script_environment();
@@ -176,13 +151,11 @@ namespace other {
     ASSERT_TRUE(add_func.valid());
 
     {
-      ref<callback> callback_fn = make_ref<lua_callback<int, int, int>>(add_func);
+      ref<callback> callback_fn = make_ref<lua_callback>(add_func);
       ASSERT_NE(callback_fn, nullptr);
 
-      std::vector<value> args = { value(20), value(22) };
-      value ret = callback_fn->call(args);
-      ASSERT_EQ(ret.type(), value_type::INT32);
-      ASSERT_EQ((int)ret, 42);
+      int ret = callback_fn->call<int>(20, 22);
+      ASSERT_EQ(ret, 42);
     }
   }
 

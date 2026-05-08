@@ -4,6 +4,7 @@
 #include "vm/command_files/data_block.hpp"
 
 #include <cstdint>
+#include <ranges>
 
 #include "token.hpp"
 
