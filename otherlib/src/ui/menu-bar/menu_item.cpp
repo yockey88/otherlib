@@ -11,7 +11,7 @@ namespace other {
     void menu_item::render() {
       if (ImGui::MenuItem(name.c_str())) {
         if (action && action->has_callback()) {
-          action->execute({});
+          action->execute<>();
         }
       }
     }

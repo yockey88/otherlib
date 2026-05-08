@@ -58,7 +58,6 @@ namespace other {
     }
 
     template <typename R = void, typename... Args>
-      requires std::is_same_v<R, void> || std::is_pointer_v<R> || std::is_trivial_v<R>
     R invoke(const std::string_view method_name, Args&&... args) {
       if constexpr (std::same_as<R, void>) {
         invoke_void(method_name, std::forward<Args>(args)...);
@@ -213,8 +212,31 @@ namespace other {
     }
 
     template <typename R, typename... Args>
-      requires std::is_pointer_v<R> || std::is_trivial_v<R>
     R invoke_ret(const std::string_view method_name, Args&&... args) {
+      if constexpr (std::is_pointer_v<R> || std::is_trivial_v<R>) {
+        return invoke_trivial_pointer_ret<R, Args...>(method_name, std::forward<Args>(args)...);
+      } else if constexpr (is_stringlike_type<R>) {
+        return invoke_stringlike_ret<R, Args...>(method_name, std::forward<Args>(args)...);
+      } else {
+        static_assert(false, "Unsupported return type for invoke_ret");
+      }
+    }
+
+    template <typename... Args>
+    void invoke_static_void(const std::string_view method_name, Args&&... args) {
+      constexpr size_t argc = sizeof...(args);
+      if constexpr (argc > 0) {
+        const void* argv[argc] = {};
+        managed_type arg_ts[argc] = {};
+        detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
+        invoke_static_method_with_args(method_name, argv, arg_ts, argc);
+      } else {
+        invoke_static_method_with_args(method_name, nullptr, nullptr, 0);
+      }
+    }
+
+    template <typename R, typename... Args>
+    R invoke_trivial_pointer_ret(const std::string_view method_name, Args&&... args) {
       constexpr size_t argc = sizeof...(args);
       R ret{};
       if constexpr (argc > 0) {
@@ -236,17 +258,22 @@ namespace other {
       return std::move(ret);
     }
 
-    template <typename... Args>
-    void invoke_static_void(const std::string_view method_name, Args&&... args) {
+    template <typename R, typename... Args>
+    R invoke_stringlike_ret(const std::string_view method_name, Args&&... args) {
+      native_string ret_str = native_string::new_str("");
       constexpr size_t argc = sizeof...(args);
       if constexpr (argc > 0) {
         const void* argv[argc] = {};
         managed_type arg_ts[argc] = {};
         detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
-        invoke_static_method_with_args(method_name, argv, arg_ts, argc);
+        invoke_returning_method_args(method_name, argv, arg_ts, argc, &ret_str);
       } else {
-        invoke_static_method_with_args(method_name, nullptr, nullptr, 0);
+        invoke_returning_method_args(method_name, nullptr, nullptr, 0, &ret_str);
       }
+
+      std::string ret = ret_str;
+      native_string::free_str(ret_str);
+      return ret;
     }
   };
 

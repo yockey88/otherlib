@@ -8,17 +8,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 
-#include "core/defines.hpp"
-#include "core/logger.hpp"
-
-#include "script/scripting_environment.hpp"
-
-#include "driver/driver_tasks.hpp"
-#include "scripting/bindings.hpp"
-#include "scripting/interfaces/networking_interfaces.hpp"
-#include "scripting/scene_interface.hpp"
-#include "vm/other_device.hpp"
-
 namespace other {
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
@@ -305,13 +294,34 @@ namespace other {
     if (http::is_http_request(data)) {
       opt<http::request> req_opt = http::parse_http_request(data);
       if (req_opt.has_value()) {
-        http_request_received(id, *req_opt);
+        handle_http_request_received(id, *req_opt);
         return;
       }
     }
 
     interfaces.invoke("Other.Server", "ReceiveData", id, data);
     on_data_received(id, data);
+  }
+
+  void driver::handle_http_request_received(natural_t id, const http::request& req) {
+    // validate path, has to start with '/' and exist relative other environment cwd
+    if (req.path.empty()) {
+      CORE_LOG_ERROR("Invalid HTTP request path: '{}'", req.path);
+      http::response response{ 400 };
+      response.set_body_content("Bad Request", "text/plain");
+      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
+      return;
+    }
+
+    if (req.path.substr(1).starts_with("..")) {
+      CORE_LOG_ERROR("Possible directory traversal attack detected with HTTP request path: '{}'", req.path);
+      http::response response{ 400 };
+      response.set_body_content("Bad Request", "text/plain");
+      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
+      return;
+    }
+
+    http_request_received(id, req);
   }
 
   void driver::new_connection_accepted(natural_t from_connection_id, natural_t connection_id) {
@@ -329,18 +339,34 @@ namespace other {
   }
 
   void driver::http_request_received(natural_t id, const http::request& req) {
-    // lua_host& lua = core_system<scripting_system>().get_lua_host();
-    // sol::table req_table = lua.get_lua_state().create_table();
-    // req_table["method"] = req.method.name;
-    // req_table["path"] = req.path;
-    // req_table["headers"] = lua.get_lua_state().create_table();
-    // for (const auto& [header_name, header_value] : req.headers) {
-    //   req_table["headers"][header_name] = header_value;
-    // }
-    // req_table["body"] = std::vector<uint8_t>(req.body);
+#if OTHER_ENVIRONMENT_DEBUG
+    {
+      std::stringstream ss;
+      ss << std::format("[HTTP Request] Connection ID: {}\n", id);
+      ss << std::format(" [HTTP: {}]\n", req.method.name);
+      ss << std::format(" [HTTP: {}]\n", req.path);
+      if (!req.query_string.empty()) {
+        ss << std::format(" [HTTP query: {}]\n", req.query_string);
+      }
+      if (!req.body.empty()) {
+        std::stringstream ss1;
+        for (size_t i = 0; i < std::min<size_t>(req.body.size(), 100); ++i) {
+          ss1 << std::hex << static_cast<int>(req.body[i]) << " ";
+        }
+        ss << std::format(" [HTTP body: {}]:\n{}\n", req.body.size(), ss1.str());
+      }
+      if (!req.headers.empty()) {
+        ss << " [HTTP Headers]:\n";
+        for (const auto& header : req.headers) {
+          ss << std::format("  - {}: {}\n", header.name, header.value);
+        }
+      }
+      CORE_LOG_DEBUG("{}", ss.str());
+    }
+#endif
 
     on_http_request_received(id, req);
-    // interfaces.invoke("Other.HttpServer", "HandleHttpRequest", id, req_table);
+    interfaces.invoke("Other.HttpServer", "HandleHttpRequest", id, req);
   }
 
   driver::metadata driver::build_metadata() {
@@ -416,6 +442,11 @@ namespace other {
   }
 
   void driver::load_client() {
+    {
+      PROFILE_SECTION("driver::initialize--client-on_early_initialize");
+      on_early_initialize(cmd_line);
+    }
+
     if (!subsystem<scripting_environment>::inert) {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
 

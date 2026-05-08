@@ -114,6 +114,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/debug"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/debug"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/debug"
   )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
   set(OTHER_LIBRARIES_PATH 
@@ -121,6 +122,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/release"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/release"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/release"
   )
 endif()
 
@@ -160,6 +162,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/sol2/sol
   ${OTHER_EXTERN_DIR}/physx
   ${OTHER_EXTERN_DIR}/jolt
+  ${OTHER_EXTERN_DIR}/tinyxml2
   ${IMGUI_INCLUDE_DIRS}
 )
 set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
@@ -184,6 +187,7 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/lua
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/sol
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/tinyxml2
   ${OTHER_EXTERN_INCLUDE_DIRS}
 )
 
@@ -255,6 +259,7 @@ other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
 other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/include")
 other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
 other_install_external_headers("jolt" "${OTHER_EXTERN_DIR}/jolt/Jolt")
+other_install_external_headers("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2")
 
 # ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")
@@ -263,6 +268,7 @@ other_install_external_library("glad" "${OTHER_EXTERN_DIR}/glad/lib")
 other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
 other_install_external_library("jolt" "${OTHER_EXTERN_DIR}/jolt/lib")
 other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
+other_install_external_library("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2/lib")
   
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(DLL_CONFIG "debug")

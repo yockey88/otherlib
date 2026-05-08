@@ -94,6 +94,7 @@ namespace other {
     //// application settings
     opt<std::string> dynamic_driver_rel_path;
     uint32_t core_log_level = (spdlog::level::level_enum)spdlog::level::warn;
+    uint32_t file_log_level = (spdlog::level::level_enum)spdlog::level::trace;
     std::string core_log_file = "logs/other_env.log";
 
     /// environment settings

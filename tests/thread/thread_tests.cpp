@@ -15,8 +15,7 @@ namespace other {
     /// could be any of the following depending on what the computer is doing
     return arg == thread::LAUNCHING ||
       arg == thread::WAITING ||
-      arg == thread::PROCESSING ||
-      arg == thread::PUMPING;
+      arg == thread::PROCESSING;
   }
 
   class thread_test_thread : public thread {

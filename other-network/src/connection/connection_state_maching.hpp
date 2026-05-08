@@ -54,6 +54,9 @@ namespace other {
       add_transition(connection_state::CONNECTING, connection_event::SEND_SUCCESS, connection_state::DISCONNECTED);
       add_transition(connection_state::CONNECTING, connection_event::SEND_FAILURE_NO_RETRY, connection_state::RECONNECTING);
       add_transition(connection_state::CONNECTING, connection_event::SEND_FAILURE_RETRY, connection_state::RECONNECTING);
+      // for closing listeners/force closing connections/etc..
+      add_transition(connection_state::CONNECTING, connection_event::DISCONNECT_SUCCESS, connection_state::DISCONNECTED);
+      add_transition(connection_state::CONNECTING, connection_event::DISCONNECT_FAILURE, connection_state::DISCONNECTED);
 
       add_transition(connection_state::RECONNECTING, connection_event::CONNECT_SUCCESS, connection_state::CONNECTED);
       add_transition(connection_state::RECONNECTING, connection_event::CONNECT_FAILURE_NO_RETRY, connection_state::DISCONNECTED);

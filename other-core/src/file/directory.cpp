@@ -123,12 +123,26 @@ namespace other {
     return true;
   }
 
-  ref<file_handle> directory::get_file(const std::string_view name) const {
-    natural_t hash = FNV(name);
+  ref<file_handle> directory::get_file(const std::string_view name) {
+    const filepath path = name;
+    natural_t hash = FNV(path.filename().stem().string());
     auto it = file_handles.find(hash);
     if (it != file_handles.end()) {
       return it->second;
     }
+
+    if (type == file_type::VIRTUAL) {
+      return nullptr;
+    }
+
+    OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_directory(abs_path), "Directory '{}' has invalid path '{}'", dir_name, abs_path.string());
+    for (const auto& entry : std::filesystem::directory_iterator(abs_path)) {
+      if (entry.is_regular_file() && entry.path().filename() == path.filename()) {
+        auto local = make_ref<local_file>(events, entry.path(), filepath{ abs_path / entry.path().filename() }.string());
+        return add_file(local);
+      }
+    }
+
     return nullptr;
   }
 
@@ -139,7 +153,7 @@ namespace other {
     natural_t hash = FNV(file->name());
     auto it = file_handles.find(hash);
     if (it != file_handles.end()) {
-      CORE_LOG_WARN("File '{}' already exists in directory '{}'", file->name(), dir_name);
+      CORE_LOG_WARN("File '{}' already exists in directory '{}', overwriting existing file", file->name(), dir_name);
       return it->second;
     }
 

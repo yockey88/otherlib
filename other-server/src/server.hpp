@@ -16,11 +16,15 @@ namespace other {
         : driver(cmd, config) {}
     virtual ~server() = default;
 
+    void on_early_initialize(const command_line& cmd) override;
     void on_initialize(const command_line& cmd) override;
     void on_shutdown() override;
 
    private:
     uint16_t config_http_port = 0;
+    filepath mount_directory;
+
+    sol::table lua_server;
 
     void on_http_request_received(natural_t id, const http::request& req) override;
   };

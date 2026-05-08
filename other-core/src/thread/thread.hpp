@@ -76,6 +76,8 @@ namespace other {
     virtual void on_start() {}
     virtual void on_shutdown() {}
     virtual void pump_thread() {}
+    // return true to continue running, false to exit immediately
+    virtual bool on_thread_crash(const std::string& error_msg) { return false; }
 
     std::string get_thread_name();
 
@@ -100,6 +102,8 @@ namespace other {
       std::atomic<bool> error_occurred = false;
       std::atomic<bool> force_exit = false;
     } checkpoints;
+
+    std::string error_message;
 
     constexpr static size_t kNumThreads = 2;
     std::barrier<> thread_sync_barrier;
@@ -130,6 +134,7 @@ namespace other {
     // if false, immediately exit thread function, otherwise continue
     // this blocks thread
     bool thread_control_loop(std::stop_token& stoken);
+    void main_loop(std::stop_token& stoken);
     void run(std::stop_token stoken, scope<message_channel> thread_rx_channel, scope<message_channel> thread_tx_channel);
 
     /// only ever called from thread where run() is executed

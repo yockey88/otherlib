@@ -149,8 +149,13 @@ namespace other {
 
   void thread::handle_thread_error(const std::string_view error_message) {
     CORE_LOG_ERROR("Thread [{}] encountered error: {}", get_thread_name(), error_message);
+    {
+      std::lock_guard lock(thread_state_mutex);
+      this->error_message = std::string{ error_message };
+      thread_exit_code = -1;
+    }
+
     checkpoints.error_occurred.store(true, std::memory_order_release);
-    thread_exit_code = -1;
     set_current_state(CRASHED);
   }
 
@@ -269,6 +274,29 @@ namespace other {
     return false;
   }
 
+  void thread::main_loop(std::stop_token& stoken) {
+    do {
+      try {
+        set_current_state(WAITING);
+        opt<message> msg = receive_from_main_thread(get_message_timeout());
+        set_current_state(PROCESSING);
+        if (msg) {
+          handle_message(*msg);
+        }
+        /// no pending message
+        else {
+          pump_thread();
+        }
+      } catch (const std::runtime_error& e) {
+        handle_thread_error(std::format("Runtime error: {}", e.what()));
+      } catch (const std::exception& e) {
+        handle_thread_error(std::format("Exception: {}", e.what()));
+      } catch (...) {
+        handle_thread_error("Unknown exception occurred");
+      }
+    } while (checkpoints.running.load(std::memory_order_acquire) && thread_loop_condition(stoken));
+  }
+
   void thread::run(std::stop_token stoken, scope<message_channel> thread_rx_channel, scope<message_channel> thread_tx_channel) {
     threadlocal_data threadlocal_data;
     threadlocal_data.tx_channel = std::move(thread_tx_channel);
@@ -285,29 +313,20 @@ namespace other {
     }
 
     do {
-      try {
-        set_current_state(WAITING);
-        opt<message> msg = receive_from_main_thread(get_message_timeout());
-        if (msg) {
-          set_current_state(PROCESSING);
-          handle_message(*msg);
+      main_loop(stoken);
+
+      bool continue_running = false;
+      if (get_current_state() == CRASHED) {
+        continue_running = on_thread_crash(error_message);
+        if (continue_running) {
+          CORE_LOG_WARN("Thread [{}] is recovering from crash and will continue running", get_thread_name());
+        } else {
+          CORE_LOG_ERROR("Thread [{}] has died", get_thread_name());
+          checkpoints.running.store(false, std::memory_order_release);
         }
-        /// no pending message
-        else {
-          set_current_state(PUMPING);
-          pump_thread();
-        }
-      } catch (const std::runtime_error& e) {
-        handle_thread_error(std::format("Runtime error: {}", e.what()));
-      } catch (const std::exception& e) {
-        handle_thread_error(std::format("Exception: {}", e.what()));
-      } catch (...) {
-        handle_thread_error("Unknown exception occurred");
       }
     } while (checkpoints.running.load(std::memory_order_acquire) && thread_loop_condition(stoken));
-    if (get_current_state() == CRASHED) {
-      return;
-    }
+
     set_current_state(SHUTTING_DOWN);
     thread_sync_barrier.arrive_and_wait();
 

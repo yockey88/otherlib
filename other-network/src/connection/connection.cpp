@@ -41,12 +41,25 @@ namespace other {
   void connection::shutdown() {
     OTHER_ASSERT(parent_thread != nullptr, "Connection has null parent thread");
 
-    if (conn.tcp_socket) {
-      conn.tcp_socket->shutdown(asio::ip::tcp::socket::shutdown_both);
+    if (inactive) {
+      return;
     }
 
-    if (conn.udp_socket) {
-      conn.udp_socket->shutdown(asio::ip::udp::socket::shutdown_both);
+    try {
+      if (conn.tcp_socket) {
+        conn.tcp_socket->shutdown(asio::ip::tcp::socket::shutdown_both);
+      }
+
+      if (conn.udp_socket) {
+        conn.udp_socket->shutdown(asio::ip::udp::socket::shutdown_both);
+      }
+    } catch (const asio::system_error& e) {
+      CORE_LOG_WARN("Connection closedown was not graceful: {}", e.what());
+    } catch (const std::exception& e) {
+      CORE_LOG_WARN("Connection closedown encountered an error: {}", e.what());
+    } catch (...) {
+      CORE_LOG_WARN("Connection closedown encountered an unknown error.");
+      CORE_LOG_WARN("This may indicate that the connection was already closed or in an invalid state.");
     }
     inactive = true;
   }
@@ -56,6 +69,7 @@ namespace other {
       return;
     }
 
+    CORE_LOG_TRACE("[CONNECTION {}: READ]", id);
     buffer.start_read();
     if (is_tcp()) {
       conn.tcp_socket->async_read_some(buffer.asio_read_buffer(), std::bind_front(&connection::finish_read, this));
@@ -74,8 +88,10 @@ namespace other {
 
     buffer.start_write();
     if (is_tcp()) {
+      CORE_LOG_TRACE("[CONNECTION {}: WRITE TCP]", id);
       conn.tcp_socket->async_write_some(buffer.asio_write_buffer(), std::bind_front(&connection::finish_write, this));
     } else if (is_udp()) {
+      CORE_LOG_TRACE("[CONNECTION {}: WRITE UDP]", id);
       conn.udp_socket->async_send_to(buffer.asio_write_buffer(), remote_endpoint_udp(), std::bind_front(&connection::finish_write, this));
     }
   }
@@ -105,6 +121,8 @@ namespace other {
         (ec && ec == asio::error::connection_reset) ||
         (ec && ec == asio::error::timed_out) ||
         (ec && ec == asio::error::eof)) {
+      CORE_LOG_TRACE("[CONNECTION {}: CLOSED] Connection closed: {}", id, ec.message());
+      inactive = true;
       parent_thread->notify_connection_closed(id);
       return;
     }

@@ -12,7 +12,9 @@
 #include "core/config_table.hpp"
 #include "core/defines.hpp"
 #include "core/delta_time.hpp"
+#include "core/logger.hpp"
 #include "event/event_system.hpp"
+#include "file/filesystem.hpp"
 #include "input/input_system.hpp"
 #include "thread/message.hpp"
 
@@ -26,6 +28,7 @@
 #include "driver/driver_kernel.hpp"
 #include "driver/driver_state_machine.hpp"
 #include "driver/driver_system.hpp"
+#include "driver/driver_tasks.hpp"
 #include "driver/subsystem_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
@@ -35,8 +38,11 @@
 #include "driver/systems/scene_system.hpp"
 #include "driver/systems/scripting_system.hpp"
 #include "plugin/plugin.hpp"
+#include "scripting/bindings.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/interface_registry.hpp"
+#include "scripting/interfaces/networking_interfaces.hpp"
+#include "scripting/scene_interface.hpp"
 #include "ui/driver_ui.hpp"
 #include "vm/other_device.hpp"
 
@@ -156,6 +162,7 @@ namespace other {
 
     void input_event(const input_state_change_event& event);
     void data_received(natural_t id, std::vector<uint8_t> data);
+    void handle_http_request_received(natural_t id, const http::request& req);
     void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
     void connection_closed(natural_t connection_id);
 
@@ -165,14 +172,12 @@ namespace other {
     virtual void on_viewport_resize(const glm::vec2& size) {}
 
    protected:
-    template <typename... Args>
-    void invoke_driver_method(const std::string_view method_name, Args&&... args) {
-      /// \todo expand on this
-      invoke_driver_script_function(method_name, std::forward<Args>(args)...);
+    template <typename R = void, typename... Args>
+    R invoke_driver_method(const std::string_view method_name, Args&&... args) {
+      return invoke_driver_script_function<R, Args...>(method_name, std::forward<Args>(args)...);
     }
 
     template <typename Fn>
-      requires std::invocable<Fn>
     void add_native_lua_function(const std::string_view function_name, Fn&& function) {
       if (!scripting_enabled()) {
         CORE_LOG_WARN("Scripting is not enabled, cannot add native Lua function '{}'", function_name);
@@ -197,6 +202,7 @@ namespace other {
 
     void http_request_received(natural_t id, const http::request& req);
 
+    virtual void on_early_initialize(const command_line& cmd) {}
     virtual void on_initialize(const command_line& cmd) = 0;
     virtual void on_initialization_confirm() {}
     virtual void on_update() {}
@@ -235,9 +241,9 @@ namespace other {
    private:
     friend class driver_interface;
     friend class driver_state_machine;
+    friend void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
     friend void bindings::native_driver_request_shutdown();
     friend native_string bindings::native_driver_get_project_name();
-    friend void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
 
     struct running_state {
       std::mutex mutex;
@@ -268,11 +274,20 @@ namespace other {
 
     interface_registry interfaces;
 
-    template <typename... Args>
-    void invoke_driver_script_function(const std::string_view function_name, Args&&... args) {
+    template <typename R>
+    R default_return() {
+      if constexpr (std::is_same_v<R, void>) {
+        return;
+      } else {
+        return R{};
+      }
+    }
+
+    template <typename R = void, typename... Args>
+    R invoke_driver_script_function(const std::string_view function_name, Args&&... args) {
       if (!scripting_enabled()) {
         CORE_LOG_WARN("Scripting is not enabled, cannot invoke driver script function '{}'", function_name);
-        return;
+        return default_return<R>();
       }
 
       auto* env = subsystem<scripting_environment>::get();
@@ -282,16 +297,28 @@ namespace other {
       sol::object func_obj = lua_state[function_name.data()];
       if (!func_obj.valid() || func_obj.get_type() != sol::type::function) {
         CORE_LOG_WARN("No valid Lua function named '{}' found to invoke", function_name);
-        return;
+        return default_return<R>();
       }
 
       sol::function func = func_obj.as<sol::function>();
       try {
-        func(std::forward<Args>(args)...);
+        sol::object result = func(std::forward<Args>(args)...);
+        if constexpr (!std::is_same_v<R, void>) {
+          if (result.is<R>()) {
+            return result.as<R>();
+          } else {
+            CORE_LOG_WARN("Lua function '{}' did not return expected type", function_name);
+            return default_return<R>();
+          }
+        } else {
+          return default_return<R>();
+        }
       } catch (const sol::error& e) {
         CORE_LOG_ERROR("Error invoking Lua function '{}': {}", function_name, e.what());
+        return default_return<R>();
       } catch (...) {
         CORE_LOG_ERROR("Unknown error invoking Lua function '{}'", function_name);
+        return default_return<R>();
       }
     }
 

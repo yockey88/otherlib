@@ -29,10 +29,8 @@ namespace other {
   }
 
   void network_thread::notify_connection_closed(natural_t connection_id) {
-    CORE_LOG_TRACE("[CONNECTION {}] Closed", connection_id);
     auto state_itr = connection_state_machines.find(connection_id);
     if (state_itr != connection_state_machines.end()) {
-      // planned disconnect
       state_itr->second.handle_event(connection_event::DISCONNECT_SUCCESS);
 
       message msg(NOTIFICATION, CLOSE_TCP_CONNECTION);
@@ -41,8 +39,10 @@ namespace other {
       };
       msg.data = serialize_direct(notification_data);
       send_to_driver(std::move(msg));
+
+      recently_closed_connections.push_back(connection_id);
     } else {
-      CORE_LOG_ERROR("[CONNECTION {}] no state machine found for connection!", connection_id);
+      CORE_LOG_ERROR("[CONNECTION {}] closed connection: no state machine found!", connection_id);
     }
   }
 
@@ -52,7 +52,7 @@ namespace other {
     if (state_itr != connection_state_machines.end()) {
       // connection lost
     } else {
-      CORE_LOG_ERROR("[CONNECTION {}] no state machine found for connection!", connection_id);
+      CORE_LOG_ERROR("[CONNECTION {}] broken connection: no state machine found!", connection_id);
     }
   }
 
@@ -76,6 +76,22 @@ namespace other {
   }
 
   void network_thread::pump_thread() {
+    if (current_state.shutdown_ready) {
+      // we should allow user to re-open a connection with the same ID,
+      // we should only actually close these on shutdown
+      for (natural_t connection_id : recently_closed_connections) {
+        if (active_connections.find(connection_id) != active_connections.end()) {
+          active_connections.erase(connection_id);
+        }
+        if (active_tcp_listeners.find(connection_id) != active_tcp_listeners.end()) {
+          active_tcp_listeners.erase(connection_id);
+        }
+        connection_state_machines.erase(connection_id);
+      }
+
+      current_state.shutdown_ready = connection_state_machines.empty();
+    }
+
     network_io.context.poll();
     if (network_io.context.stopped()) {
       network_io.context.restart();
@@ -94,7 +110,7 @@ namespace other {
       CORE_LOG_ERROR("Unknown error processing message in network thread");
     }
 
-    if (current_state.shutdown_pending) {
+    if (current_state.shutdown_ready) {
       if (current_state.shutdown_complete) {
         return;
       }
@@ -114,8 +130,8 @@ namespace other {
         send_to_driver(std::move(ack_msg));
       }
 
-      CORE_LOG_DEBUG("Network thread shutdown complete");
       current_state.shutdown_complete = true;
+      CORE_LOG_DEBUG("Network thread shutdown complete");
     }
   }
 
@@ -160,29 +176,33 @@ namespace other {
     }
   }
 
-  void network_thread::attempt_accept_tcp_connection(asio::error_code ec, asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id) {
+  void network_thread::listen_tcp(natural_t id, const binding_point& endpoint, asio::error_code ec, asio::ip::tcp::socket&& socket) {
     if ((ec && ec == asio::error::operation_aborted) ||
         (ec && ec == asio::error::connection_reset) ||
         (ec && ec == asio::error::timed_out) ||
         (ec && ec == asio::error::eof)) {
+      notify_connection_closed(id);
       return;
     }
 
     if (ec) {
-      CORE_LOG_ERROR("Error accepting connection: {}", ec.message());
-    } else {
-      accept_tcp_connection(std::move(socket), endpoint, listener_conn_id);
-
-      auto itr = active_tcp_listeners.find(listener_conn_id);
-      OTHER_ASSERT(itr != active_tcp_listeners.end(), "Listener with ID {} not found after accepting connection", listener_conn_id);
-      itr->second->async_accept([this, endpoint, listener_conn_id](const asio::error_code& ec, asio::ip::tcp::socket socket) {
-        attempt_accept_tcp_connection(ec, std::move(socket), endpoint, listener_conn_id);
-      });
+      CORE_LOG_ERROR("Error accepting connection on {}: {}: {}", endpoint.ip, endpoint.port, ec.message());
+      return;
     }
+
+    accept_tcp_connection(std::move(socket), endpoint, id);
+
+    auto itr = active_tcp_listeners.find(id);
+    OTHER_ASSERT(itr != active_tcp_listeners.end(), "Listener with ID {} not found when trying to listen for next connection", id);
+    itr->second->async_accept(std::bind_front(&network_thread::listen_tcp, this, id, endpoint));
   }
 
   void network_thread::accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id) {
     std::lock_guard lock(current_state.mutex);
+    if (current_state.shutdown_pending) {
+      CORE_LOG_WARN("Received new connection while shutdown pending, rejecting connection from {}", socket.remote_endpoint().address().to_string() + ":" + std::to_string(socket.remote_endpoint().port()));
+      return;
+    }
 
     natural_t connection_id = generate_connection_id();
     auto [itr, success] = active_connections.emplace(connection_id, connection::create_tcp_connection(this, connection_id, events, network_io, endpoint, std::move(socket)));
@@ -194,12 +214,11 @@ namespace other {
     auto [state_itr, state_success] = connection_state_machines.emplace(connection_id, connection_state_machine());
     OTHER_ASSERT(state_success, "Failed to create connection state machine for connection with ID {}", connection_id);
 
+    // skip straight to connected
     state_itr->second.handle_event(connection_event::CONNECT_SUCCESS);
+    CORE_LOG_TRACE("[CONNECTION {}: CONNECT] listener: {}", connection_id, listener_conn_id);
 
-    asio::ip::tcp::endpoint remote_endpoint = itr->second->remote_endpoint();
     asio::ip::tcp::endpoint local_endpoint = itr->second->local_tcp_endpoint();
-    CORE_LOG_TRACE("[CONNECT] {} from {} ({}:{} to {}:{})", connection_id, listener_conn_id, remote_endpoint.address().to_string(), remote_endpoint.port(), local_endpoint.address().to_string(), local_endpoint.port());
-
     binding_point local_bp = binding_point::from_asio(local_endpoint.address(), local_endpoint.port());
     message msg(NOTIFICATION, CONNECT_TCP_CONNECTION);
     notification_connect_tcp_connection notification_data{
@@ -231,11 +250,28 @@ namespace other {
   void network_thread::handle_command_shutdown_request(message&& msg) {
     CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
     current_state.shutdown_pending = true;
-    for (auto& [id, listener] : active_tcp_listeners) {
-      listener->close();
+    for (auto itr = active_tcp_listeners.begin(); itr != active_tcp_listeners.end(); ++itr) {
+      auto state_itr = connection_state_machines.find(itr->first);
+      if (state_itr != connection_state_machines.end()) {
+        if (state_itr->second.get_current_state() == connection_state::CONNECTED ||
+            state_itr->second.get_current_state() == connection_state::CONNECTING ||
+            state_itr->second.get_current_state() == connection_state::RECONNECTING) {
+          CORE_LOG_TRACE("[CONNECTION {}] Initiating shutdown of active listener", itr->first);
+          itr->second->close();
+        }
+      }
     }
-    for (auto& [id, conn] : active_connections) {
-      conn->shutdown();
+
+    for (auto itr = active_connections.begin(); itr != active_connections.end(); ++itr) {
+      auto state_itr = connection_state_machines.find(itr->first);
+      if (state_itr != connection_state_machines.end()) {
+        if (state_itr->second.get_current_state() == connection_state::CONNECTED ||
+            state_itr->second.get_current_state() == connection_state::CONNECTING ||
+            state_itr->second.get_current_state() == connection_state::RECONNECTING) {
+          CORE_LOG_TRACE("[CONNECTION {}] Initiating shutdown of active connection", itr->first);
+          itr->second->shutdown();
+        }
+      }
     }
   }
 
@@ -259,10 +295,8 @@ namespace other {
     OTHER_ASSERT(state_success, "Failed to create connection state machine for listener with ID {}", request.connection_id);
 
     state_itr->second.handle_event(connection_event::START_CONNECT);
-    CORE_LOG_DEBUG("[LISTEN] {} @ {}", request.connection_id, endpoint);
-    itr->second->async_accept([this, endpoint, listener_conn_id = request.connection_id](const asio::error_code& ec, asio::ip::tcp::socket socket) {
-      attempt_accept_tcp_connection(ec, std::move(socket), endpoint, listener_conn_id);
-    });
+    CORE_LOG_TRACE("[CONNECTION {}: LISTEN] {}", request.connection_id, endpoint);
+    itr->second->async_accept(std::bind_front(&network_thread::listen_tcp, this, request.connection_id, endpoint));
   }
 
   void network_thread::handle_command_connect_tcp_connection(message&& msg) {
@@ -293,14 +327,14 @@ namespace other {
   }
 
   void network_thread::handle_command_close_tcp_connection(message&& msg) {
-    natural_t connection_id = *reinterpret_cast<const natural_t*>(msg.data.data());
-    auto itr = active_connections.find(connection_id);
-    if (itr == active_connections.end()) {
-      CORE_LOG_WARN("Received request to close unknown connection ID {}", connection_id);
-      return;
-    }
+    // natural_t connection_id = *reinterpret_cast<const natural_t*>(msg.data.data());
+    // auto itr = active_connections.find(connection_id);
+    // if (itr == active_connections.end()) {
+    //   CORE_LOG_WARN("Received request to close unknown connection ID {}", connection_id);
+    //   return;
+    // }
 
-    active_connections.erase(itr);
+    // active_connections.erase(itr);
   }
 
   void network_thread::handle_command_tx_data(message&& msg) {

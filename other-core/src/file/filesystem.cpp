@@ -195,7 +195,7 @@ namespace other {
     return mounts.find(FNV(mount_name)) != mounts.end();
   }
 
-  ref<file_handle> file_system::get_file(const std::string_view engine_path) const {
+  ref<file_handle> file_system::get_file(const std::string_view engine_path) {
     PROFILE_SECTION("file_system::get_file");
 
     resolved_path rp = resolve_path(engine_path);
@@ -210,7 +210,18 @@ namespace other {
       return nullptr;
     }
 
-    return mount->get_file(rp.file_name);
+    if (ref<file_handle> file = mount->get_file(rp.file_name);
+        file != nullptr) {
+      return file;
+    }
+
+    filepath disk_path = mount->absolute_path() / rp.file_name;
+    if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
+      return register_local_file(disk_path);
+    }
+
+    CORE_LOG_ERROR("Cannot get file '{}': file '{}' not found in mount '{}'", engine_path, rp.file_name, rp.mount_name);
+    return nullptr;
   }
 
   std::vector<std::string> file_system::mounted_names() const {

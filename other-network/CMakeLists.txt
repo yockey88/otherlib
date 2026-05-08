@@ -9,6 +9,8 @@ target_sources(other_network
 
     "${CMAKE_CURRENT_SOURCE_DIR}/src/http/http_response.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/http/http.cpp"
+
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/html/html_document.cpp"
 )
 
 target_include_directories(other_network 

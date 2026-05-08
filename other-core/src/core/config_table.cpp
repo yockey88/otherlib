@@ -23,6 +23,7 @@ namespace other {
 
     std::string driver = "";
     int32_t log_level = 0;
+    int32_t file_log_level = 0;
     std::string core_log_file = "logs/other_env.log";
 
     bool open_terminal = false;
@@ -55,27 +56,33 @@ namespace other {
     }
 
     toml::node_view log_level_node = config.table.at_path("application.core-log-level");
+    toml::node_view file_log_level_node = config.table.at_path("application.file-log-level");
     toml::node_view log_file_node = config.table.at_path("application.core-log-file");
 
-    if (log_level_node.is_integer()) {
-      log_level = log_level_node.as_integer()->get();
-    } else if (log_level_node.is_string()) {
-      std::string level_str = log_level_node.as_string()->get();
-      switch (FNV(level_str)) {
-        case FNV("trace"): log_level = 0; break;
-        case FNV("debug"): log_level = 1; break;
-        case FNV("info"): log_level = 2; break;
-        case FNV("warn"): log_level = 3; break;
-        case FNV("error"): log_level = 4; break;
-        case FNV("critical"): log_level = 5; break;
-        default:
-          log_level = 2;  // Default to info
-          break;
+    auto get_log_level = [](toml::node_view<toml::node> node, int32_t default_level) -> int32_t {
+      if (node.is_integer()) {
+        return node.as_integer()->get();
+      } else if (node.is_string()) {
+        std::string level_str = node.as_string()->get();
+        switch (FNV(level_str)) {
+          case FNV("trace"): return 0;
+          case FNV("debug"): return 1;
+          case FNV("info"): return 2;
+          case FNV("warn"): return 3;
+          case FNV("error"): return 4;
+          case FNV("critical"): return 5;
+          default:
+            return default_level;  // Default to provided default level
+        }
+      } else {
+        return default_level;
       }
-    } else {
-      log_level = 2;
-    }
+    };
+    log_level = get_log_level(log_level_node, 2);            // default = info
+    file_log_level = get_log_level(file_log_level_node, 0);  // default = trace
+
     std::println("using log level: {}", log_level);
+    std::println("using file log level: {}", file_log_level);
 
     if (log_file_node.is_string()) {
       core_log_file = log_file_node.as_string()->get();
@@ -125,6 +132,7 @@ namespace other {
       config.rendering_backend = rendering;
     }
 
+    config.file_log_level = file_log_level;
     config.core_log_level = log_level;
     config.core_log_file = core_log_file;
     config.open_terminal = open_terminal;
