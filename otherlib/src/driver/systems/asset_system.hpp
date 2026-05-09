@@ -38,7 +38,8 @@ namespace other {
 
     natural_t get_asset_hash(natural_t asset_id) const;
 
-    filepath get_local_asset_path(natural_t asset_id) const;
+    opt<filepath> get_local_asset_path(natural_t asset_id) const;
+    opt<filepath> get_virtual_asset_path(natural_t asset_id) const;
 
    private:
     scope<asset_handler> asset_mgr = nullptr;

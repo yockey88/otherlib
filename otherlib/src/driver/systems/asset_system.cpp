@@ -184,9 +184,14 @@ namespace other {
     return asset_mgr->get_asset_hash(asset_id);
   }
 
-  filepath asset_system::get_local_asset_path(natural_t asset_id) const {
+  opt<filepath> asset_system::get_local_asset_path(natural_t asset_id) const {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->get_local_asset_path(asset_id);
+  }
+
+  opt<filepath> asset_system::get_virtual_asset_path(natural_t asset_id) const {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_virtual_asset_path(asset_id);
   }
 
   void asset_system::handle_ls_event(driver_kernel* kernel, const value& data) {

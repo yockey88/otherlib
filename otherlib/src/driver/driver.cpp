@@ -192,7 +192,7 @@ namespace other {
     CORE_LOG_INFO("Beginning shutdown sequence");
 
     if (driver_kernel_ptr->has_core_system<project_system>()) {
-      driver_kernel_ptr->get_core_system<project_system>().unload_project();
+      driver_kernel_ptr->get_core_system<project_system>().unload_project(driver_kernel_ptr.get());
     }
 
     if (driver_kernel_ptr->has_core_system<scene_system>()) {
@@ -615,6 +615,8 @@ namespace other {
         .project_path = project_path,
       };
       trigger_event("native-" + std::string(event_name), data);
+    } else {
+      CORE_LOG_WARN("Received Lua table event '{}' but no handler is registered for it", event_name);
     }
   }
 

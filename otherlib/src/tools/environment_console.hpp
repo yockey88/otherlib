@@ -58,7 +58,7 @@ namespace other {
     };
     static void move_history_cursor(history_move move);
 
-    constexpr static inline size_t kInputBufferSize = 1024 * 1024;  // 1 MB
+    constexpr static inline size_t kInputBufferSize = 1024 * 64;  // 64KB should be enough for anyone
 
    private:
     /// must always use console on thread that initialized it

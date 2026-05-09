@@ -1,6 +1,6 @@
 local function _long_flag_to_short_flag(flag)
-  -- turn --flag-name into -fn and --flag into -f
-  return flag:gsub("-(-%a)%a+", "%1"):gsub("(%a)-(%a)%a+", "%1%2")
+  -- "--driver-systems" -> "-ds", "--files" -> "-f"
+  return flag:gsub("-(-%a)%a*", "%1"):gsub("(%a)-(%a)%a+", "%1%2")
 end
 
 local function _deduce_open_close_type(args)
@@ -17,26 +17,21 @@ local function _deduce_open_close_type(args)
       return "file"
     end
     --- expect ((-f|--file) <file-path>) or ((-will|--window) (window-name|window-id))
-    local flag = args[1]
-    if flag == "-f" or flag == "--file"
-    then
-      return "file"
-    elseif flag == "-w" or flag == "--window"
-    then
-      return "window"
-    else
-      return "unknown"
-    end
+    if stripped_flag == "-f"
+    then return "file"
+    elseif stripped_flag == "-w"
+    then return "window" end
   end
+
   return "unknown"
 end
-
+  
 local function _deduce_list_type(args)
   if #args == 0
   then
     return "files"
   elseif #args == 1
-  then    
+  then
     local flag = args[1]
     local stripped_flag = _Meta._string_utils.strip_leading_and_ending_whitespace(flag)
     if #stripped_flag == 0 or stripped_flag == ""
@@ -46,7 +41,6 @@ local function _deduce_list_type(args)
     then
       stripped_flag = _long_flag_to_short_flag(stripped_flag)
     end
-
 
     if stripped_flag == "-f"
     then return "files"

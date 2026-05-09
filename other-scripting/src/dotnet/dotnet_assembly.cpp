@@ -35,12 +35,14 @@ namespace other {
     OTHER_ASSERT(!path.empty(), "Assembly path cannot be empty.");
 
     PROFILE_SECTION("assembly_context::load-assembly");
-    if (std::filesystem::exists(path) && !std::filesystem::is_regular_file(path)) {
-      CORE_LOG_ERROR("Provided path '{}' is not a regular file.", path);
+
+    filepath asm_path{ path };
+    if (std::filesystem::exists(asm_path) && !std::filesystem::is_regular_file(asm_path)) {
+      CORE_LOG_ERROR("Provided path '{}' is not a regular file.", asm_path.string());
       return nullptr;
     }
 
-    natural_t assembly_handle = FNV(path);
+    natural_t assembly_handle = FNV(asm_path.string());
     {
       auto itr = assemblies.find(assembly_handle);
       if (itr != assemblies.end()) {
@@ -49,17 +51,17 @@ namespace other {
       }
     }
 
-    std::string name = filepath(path).filename().stem().string();
+    std::string name = asm_path.filename().stem().string();
     auto [itr, inserted] = assemblies.insert({ assembly_handle, make_ref<assembly>(name, assembly_handle, host) });
     OTHER_ASSERT(inserted, "Failed to insert assembly into context map");
 
     auto asm_ref = itr->second;
-    CORE_LOG_INFO("Loading assembly [{}:{}] from path: {}", asm_ref->get_handle(), asm_ref->get_name(), path);
+    CORE_LOG_INFO("Loading assembly [{}:{}] from path: {}", asm_ref->get_handle(), asm_ref->get_name(), asm_path.string());
 
-    native_string native_path = native_string::new_str(path);
+    native_string native_path = native_string::new_str(asm_path.string());
     asm_ref->dotnet_id = host->interop().load_managed_assembly(this->dotnet_id, native_path);
     if (asm_ref->dotnet_id == -1) {
-      CORE_LOG_ERROR("Failed to load assembly from path: {}", path);
+      CORE_LOG_ERROR("Failed to load assembly from path: {}", asm_path.string());
     }
 
     asm_ref->load_status = host->interop().get_last_load_status();

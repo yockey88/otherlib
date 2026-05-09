@@ -64,6 +64,7 @@ namespace other {
     inline const filepath& get_project_rc_path() const { return rc_path; }
 
     inline void set_dotnet_assembly(ref<assembly> a) { project_assembly = a; }
+    inline state get_state() const { return current_state; }
     inline bool is_empty() const { return current_state == EMPTY; }
     inline bool is_loaded() const { return current_state == LOADED; }
     inline bool is_loading() const { return current_state == LOADING; }

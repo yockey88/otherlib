@@ -32,7 +32,7 @@ namespace other {
 
     void generate_project_at(driver_kernel* kernel, const filepath& directory);
     void load_project(driver_kernel* kernel, const filepath& project_file);
-    void unload_project();
+    void unload_project(driver_kernel* kernel);
 
     inline project& get_project() {
       OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");

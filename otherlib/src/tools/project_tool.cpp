@@ -49,7 +49,15 @@ namespace other {
     OTHER_ASSERT(std::filesystem::is_directory(directory), "Path '{}' is not a directory in collect_cs_script_files.", directory.string());
 
     cs_script_files.clear();
-    for (auto itr = std::filesystem::recursive_directory_iterator(directory); itr != std::filesystem::recursive_directory_iterator(); ++itr) {
+    std::error_code ec;
+    for (auto itr = std::filesystem::recursive_directory_iterator(directory, ec);
+         itr != std::filesystem::recursive_directory_iterator();
+         itr.increment(ec)) {
+      if (ec) {
+        CORE_LOG_WARN("Error while iterating directory '{}': {}", directory.string(), ec.message());
+        break;
+      }
+
       auto& entry = *itr;
       if (entry.is_directory() && (entry.path().filename() == "bin" || entry.path().filename() == "obj")) {
         itr.disable_recursion_pending();

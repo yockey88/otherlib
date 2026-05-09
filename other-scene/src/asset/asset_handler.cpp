@@ -332,32 +332,28 @@ namespace other {
     return 0;
   }
 
-  filepath asset_handler::get_local_asset_path(natural_t asset_id) const {
+  opt<filepath> asset_handler::get_local_asset_path(natural_t asset_id) const {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.absolute_path;
     }
     if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
         it != asset_pipelines.end()) {
-      if (it->loading_asset.id == asset_id) {
-        return it->loading_asset.absolute_path;
-      }
+      return it->loading_asset.absolute_path;
     }
 
-    return filepath{};
+    return std::nullopt;
   }
 
-  filepath asset_handler::get_virtual_asset_path(natural_t asset_id) const {
+  opt<filepath> asset_handler::get_virtual_asset_path(natural_t asset_id) const {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.virtual_path;
     }
     if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
         it != asset_pipelines.end()) {
-      if (it->loading_asset.id == asset_id) {
-        return it->loading_asset.virtual_path;
-      }
+      return it->loading_asset.virtual_path;
     }
 
-    return filepath{};
+    return std::nullopt;
   }
 
   void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it) {

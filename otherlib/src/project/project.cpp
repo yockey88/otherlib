@@ -165,9 +165,7 @@ namespace other {
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
 
     ref<assembly> asm_ref = env->get_dotnet_module(dll_path.stem().string());
-    if (asm_ref == nullptr) {
-      return;
-    }
+    OTHER_ASSERT(asm_ref != nullptr, "Failed to load project assembly from '{}'", dll_path.string());
 
     project_assembly = asm_ref;
 
@@ -252,6 +250,7 @@ namespace other {
           },
           [this, kernel, t = build_tool]() {
             filepath csproj = t->get_dotnet_project_path();
+            /// \todo fixed hardcoded build configuration and output path assumptions
             filepath build = csproj.parent_path() / "bin" / "Debug" / (csproj.stem().string() + ".dll");
             if (!std::filesystem::exists(build)) {
               throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
@@ -296,13 +295,12 @@ namespace other {
         } else if (starting_scene_node.is_number()) {
           starting_scene_id = static_cast<natural_t>(starting_scene_node.as_integer()->get());
           if (std::ranges::none_of(scenes_in_project, [this](const scene& s) { return s.project_id == starting_scene_id; })) {
+            natural_t invalid_id = starting_scene_id;
             starting_scene_id = 0;
-            CORE_LOG_ERROR("Starting scene ID '{}' specified in project file does not match any scenes in the project.", starting_scene_id);
+            CORE_LOG_ERROR("Starting scene ID '{}' specified in project file does not match any scenes in the project.", invalid_id);
           } else {
             CORE_LOG_DEBUG("Starting scene set to project ID {} based on project file configuration.", starting_scene_id);
           }
-
-          CORE_LOG_DEBUG("Starting scene set to project ID {} based on project file configuration.", starting_scene_id);
         } else {
           CORE_LOG_ERROR("Invalid type for 'scene-graph.starting-scene' field. Expected string (scene name) or number (scene ID).");
         }

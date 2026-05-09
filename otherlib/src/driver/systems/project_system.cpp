@@ -55,9 +55,10 @@ namespace other {
         CORE_LOG_ERROR("Invalid data type for native-project.load event. Expected USER_TYPE containing project file path.");
         return;
       }
-      handle_project_event(kernel, data);
+      handle_project_event(kernel, (project_event_data)data);
     });
 
+    /// registered in asset_system::initialize
     events.add_listener("script.asset-loaded", [this, kernel](const value& data) { handle_script_asset_loaded(kernel, data); });
 
     const auto& config = get_driver().configuration();
@@ -110,7 +111,8 @@ namespace other {
     last_loaded_project_file = project_file;
   }
 
-  void project_system::unload_project() {
+  void project_system::unload_project(driver_kernel* kernel) {
+    OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in project system unload_project.");
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     loaded_project->unload();
   }
@@ -137,6 +139,9 @@ namespace other {
         return;
       }
       if (std::filesystem::is_directory(project_path)) {
+        if (project_path.string().ends_with(std::filesystem::path::preferred_separator)) {
+          project_path = project_path.parent_path();
+        }
         /// \todo refactor this to something more robust to check lots of possible project files
         // check if there is a same-named .toml/.oproj file in the directory and use that as the project file, if not error out
         filepath expected_toml_project_file = project_path / (project_path.filename().string() + ".toml");
@@ -153,7 +158,7 @@ namespace other {
 
       load_project(kernel, project_path);
     } else if (type == "save") {
-      handle_save_project(kernel, data);
+      // handle_save_project(kernel, data);
     }
   }
 
@@ -161,15 +166,19 @@ namespace other {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script asset loaded event data.");
 
-    natural_t asset_id = data;
-    filepath script = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
-    if (script.empty()) {
-      CORE_LOG_ERROR("Failed to get local asset path for loaded script asset with ID: {}", asset_id);
-      return;
-    }
-    OTHER_ASSERT(std::filesystem::exists(script), "Local asset path '{}' for loaded script asset with ID {} does not exist.", script.string(), asset_id);
+    if (loaded_project->is_loaded()) {
+      natural_t asset_id = data;
+      opt<filepath> script = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
+      if (!script.has_value()) {
+        CORE_LOG_ERROR("Failed to get local asset path for loaded script asset with ID: {}", asset_id);
+        return;
+      }
+      OTHER_ASSERT(std::filesystem::exists(script.value()), "Local asset path '{}' for loaded script asset with ID {} does not exist.", script.value().string(), asset_id);
 
-    loaded_project->add_built_script(script);
+      loaded_project->add_built_script(script.value());
+    } else {
+      CORE_LOG_WARN("Unimplemented handling of script asset loaded event in project", loaded_project->get_state());
+    }
   }
 
 }  // namespace other

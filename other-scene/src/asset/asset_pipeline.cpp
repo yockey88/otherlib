@@ -404,6 +404,7 @@ namespace other {
 
         auto* env = subsystem<scripting_environment>::get();
         OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+        // just checking it was successful, no need to do anything with the ref here
         ref<assembly> asm_ref = env->load_dotnet_module(script_path.string());
         if (!asm_ref) {
           call_pipeline_fn<script_pipeline>(pipeline, on_failure, std::format("Failed to load assembly for script asset: {}", script_path.string()));
@@ -413,8 +414,10 @@ namespace other {
         CORE_LOG_DEBUG("Successfully loaded assembly for script asset: {}", script_path.string());
       } else if (script_path.extension() == ".lua") {
         CORE_LOG_DEBUG("Loading Lua script from file: {}", script_path.string());
-        // } else if (script_path.extension() == ".py") {
-        //   CORE_LOG_DEBUG("Loading Python script from file: {}", script_path.string());
+        CORE_LOG_WARN("Lua scripting is not yet implemented, treating Lua script asset as empty for now");
+      } else if (script_path.extension() == ".py") {
+        CORE_LOG_DEBUG("Loading Python script from file: {}", script_path.string());
+        CORE_LOG_WARN("Python scripting is not yet implemented, treating Python script asset as empty for now");
       } else {
         OTHER_ASSERT(false, "Unsupported script type for file: {}", script_path.string());
       }

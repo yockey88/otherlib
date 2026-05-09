@@ -24,7 +24,7 @@ namespace other {
     int32_t get_build_result() const;
 
     const filepath& get_dotnet_project_path() const { return dotnet_project_path; }
-    inline std::vector<filepath> get_collected_cs_script_files() const { return cs_script_files; }
+    const std::vector<filepath>& get_collected_cs_script_files() const { return cs_script_files; }
 
    private:
     filepath dotnet_project_path;

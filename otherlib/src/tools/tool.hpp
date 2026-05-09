@@ -18,6 +18,8 @@ namespace other {
   class tool : public ref_counted {
    public:
     tool(const std::string& type_name);
+    tool(const tool&) = delete;
+    tool& operator=(const tool&) = delete;
     virtual ~tool();
 
     const std::string_view get_type_name() const { return type_name; }
