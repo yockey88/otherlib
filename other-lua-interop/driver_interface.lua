@@ -15,6 +15,9 @@ local function _deduce_open_close_type(args)
     if #stripped_flag == 0 or stripped_flag == ""
     then -- default to file if no flag provided
       return "file"
+    elseif #stripped_flag > 2
+    then
+      stripped_flag = _long_flag_to_short_flag(stripped_flag)
     end
     --- expect ((-f|--file) <file-path>) or ((-will|--window) (window-name|window-id))
     if stripped_flag == "-f"
