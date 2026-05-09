@@ -32,7 +32,7 @@ namespace other {
 
     template <typename T2>
       requires std::is_base_of_v<T, T2>
-    ref(T2* p) : object(p) {
+    ref(T2* p) : object((T*)p) {
       inc_ref();
     }
 
@@ -159,20 +159,22 @@ namespace other {
       return ref<std::remove_cvref_t<T>>(arena_allocator<std::remove_cvref_t<T>>{}.allocate(std::forward<Args>(args)...));
     }
 
+    void increment_weak() const {
+      if (object.load(std::memory_order_acquire) != nullptr) {
+        object.load(std::memory_order_acquire)->view_increment();
+      }
+    }
+    void decrement_weak() const {
+      if (object.load(std::memory_order_acquire) != nullptr) {
+        object.load(std::memory_order_acquire)->view_decrement();
+      }
+    }
+
     operator bool() { return object.load(std::memory_order_acquire) != nullptr; }
     operator bool() const { return object.load(std::memory_order_acquire) != nullptr; }
 
-    T* operator->() {
-      T* obj = object.load(std::memory_order_acquire);
-      OTHER_ASSERT(obj != nullptr, "Dereferencing null ref");
-      return obj;
-    }
-    const T* operator->() const {
-      T* obj = object.load(std::memory_order_acquire);
-      OTHER_ASSERT(obj != nullptr, "Dereferencing null ref");
-      return obj;
-    }
-
+    T* operator->() { return object.load(std::memory_order_acquire); }
+    const T* operator->() const { return object.load(std::memory_order_acquire); }
     T* raw_ptr() { return object.load(std::memory_order_acquire); }
     const T* raw_ptr() const { return object.load(std::memory_order_acquire); }
 
@@ -188,6 +190,11 @@ namespace other {
     bool operator==(const ref<T>& other) const { return object.load(std::memory_order_acquire) == other.object.load(std::memory_order_acquire); }
 
    private:
+    template <typename U>
+    friend class ref;
+    template <typename U>
+    friend class weak_ref;
+
     static inline arena_allocator<T> allocator;
 
     /// requires mutable to call IncRef and DecRef in const contexts
@@ -215,9 +222,6 @@ namespace other {
         allocator.free(ptr);
       }
     }
-
-    template <typename U>
-    friend class ref;
   };
 
   template <typename T, typename... Args>

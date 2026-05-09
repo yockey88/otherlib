@@ -10,6 +10,7 @@
 #include "dotnet/host.hpp"
 #include "dotnet/native_string.hpp"
 #include "dotnet/type_cache.hpp"
+#include "script/scripting_environment.hpp"
 
 namespace other {
 
@@ -104,19 +105,27 @@ namespace other {
 
   void assembly_context::unload_assembly(natural_t assembly_id) {
     auto itr = assemblies.find(assembly_id);
-    if (itr != assemblies.end()) {
-      CORE_LOG_INFO("Unloading assembly [{}:{}]", itr->second->get_handle(), itr->second->get_name());
-
-      /// remove types from type cache
-      for (auto* type : itr->second->types) {
-        host->get_type_cache()->remove_type(type->dotnet_id);
-      }
-
-      host->interop().unload_managed_assembly(itr->second->dotnet_id);
-      assemblies.erase(itr);
-    } else {
+    if (itr == assemblies.end()) {
       CORE_LOG_ERROR("Failed to unload assembly: ID {} not found", assembly_id);
+      return;
     }
+    CORE_LOG_INFO("Unloading assembly [{}:{}]", itr->second->get_handle(), itr->second->get_name());
+
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
+
+    /// remove types from type cache
+    for (auto* type : itr->second->types) {
+      env->invalidate_dotnet_script_objects_of_type(type->dotnet_id);
+
+      // go through all living dotnet objects and detach any that are of this type
+      // or have a behavior of this type
+      host->purge_dotnet_type(type->dotnet_id);
+      host->get_type_cache()->remove_type(type->dotnet_id);
+    }
+
+    host->interop().unload_managed_assembly(itr->second->dotnet_id);
+    assemblies.erase(itr);
   }
 
   void assembly_context::unload_all() {

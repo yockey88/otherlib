@@ -17,13 +17,14 @@ namespace other {
 
   void file_system::initialize_file_events(event_system& events) {
     events.register_event("filesystem.watch-event");
+#ifdef OTHER_ENVIRONMENT_DEBUG
     events.add_listener("filesystem.watch-event", [this](const value& data) {
       if (data.type() != value_type::USER_TYPE) {
         CORE_LOG_ERROR("Received invalid file event: expected user type with file_event data");
         return;
       }
       file_event event = data;
-      CORE_LOG_INFO("File event: {} - {}", event.path.string(), [&]() {
+      CORE_LOG_DEBUG("File event: {} - {}", event.path.string(), [&]() {
         switch (event.type) {
           case file_event::type::CREATED: return "Created";
           case file_event::type::MODIFIED: return "Modified";
@@ -33,6 +34,7 @@ namespace other {
         }
       }());
     });
+#endif  // OTHER_ENVIRONMENT_DEBUG
 
     this->events = &events;
   }

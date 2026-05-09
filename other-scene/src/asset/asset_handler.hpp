@@ -14,6 +14,7 @@
 #include "core/job_system.hpp"
 #include "core/state_machine.hpp"
 #include "event/event_system.hpp"
+#include "file/file_watcher.hpp"
 
 #include "renderer/pipeline_definition.hpp"
 
@@ -114,6 +115,8 @@ namespace other {
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
 
+    void handle_file_event(const file_event& event);
+
     asset* get_asset(natural_t asset_id);
 
     std::span<const natural_t> get_all_asset_ids() const;
@@ -152,6 +155,10 @@ namespace other {
     size_t get_num_assets_in_flight() const { return asset_pipelines.size() + loaded_assets.size(); }
 
     size_t get_num_pending_unloads() const { return pending_unloads.size(); }
+
+    inline bool is_asset_extension(const std::string_view extension) const {
+      return asset_pipeline::is_extension_supported(extension);
+    }
 
    private:
     friend struct detail::load_context;
@@ -193,6 +200,8 @@ namespace other {
     std::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
 
     asset* find_asset_by_path(const filepath& file_path) const;
+
+    void handle_asset_file_changed_event(const file_event& event);
 
     void notify_asset_load_complete(asset* asset_ptr);
     void notify_asset_load_failed(asset* asset_ptr, const std::string& error_message);

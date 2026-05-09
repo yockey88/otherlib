@@ -455,6 +455,7 @@ namespace other {
 
     void shutdown_scripting_environment() {
       PROFILE_SECTION("other::detail::shutdown_scripting_environment");
+      subsystem<scripting_environment>::get()->destroy_all_objects();
       subsystem<scripting_environment>::get()->unload_dotnet_module(subsystem<scripting_environment>::get()->dotnet_binding_assembly);
       subsystem<scripting_environment>::get()->dotnet_binding_assembly = nullptr;
       subsystem<scripting_environment>::get()->shutdown_script_environment();

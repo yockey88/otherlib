@@ -9,6 +9,7 @@
 
 #include "core/defines.hpp"
 #include "core/job_system.hpp"
+#include "core/weak_ref.hpp"
 #include "file/filesystem.hpp"
 
 #include "script/scripting_environment.hpp"
@@ -91,6 +92,15 @@ namespace other {
     }
 
     waiting_for_script_load = process_scripting_sections(table, kernel);
+    if (waiting_for_script_load && (project_scripts.csproject_path.empty() || !std::filesystem::exists(project_scripts.csproject_path))) {
+      CORE_LOG_ERROR("Project's .NET project file '{}' does not exist. Cannot load project scripts.", project_scripts.csproject_path.string());
+      waiting_for_script_load = false;
+      project_scripts.csproject_path.clear();
+    } else if (waiting_for_script_load) {
+      CORE_LOG_INFO("Loading .NET project from '{}'", project_scripts.csproject_path.string());
+      system->sibling<asset_system>(*kernel).begin_asset_load(project_scripts.csproject_path);
+    }
+
     process_scene_sections(table);
 
 #else
@@ -124,8 +134,6 @@ namespace other {
     }
     project_assembly = nullptr;
 
-    build_tool = nullptr;
-
     set_state(EMPTY);
   }
 
@@ -146,21 +154,42 @@ namespace other {
   }
 
   void project::add_built_script(const filepath& script_path) {
-    OTHER_ASSERT(build_tool != nullptr, "Project build tool is not initialized. Cannot add script to project.");
     OTHER_ASSERT(std::filesystem::exists(script_path), "Script asset file '{}' does not exist.", script_path.string());
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add built script.");
 
-    if (script_path.extension() == ".dll" && script_path.stem().string() == build_tool->get_dotnet_project_path().stem().string()) {
-      std::vector<filepath> cs_scripts = build_tool->get_collected_cs_script_files();
-      attach_project_dll(script_path, cs_scripts);
-      build_tool = nullptr;
-    } else if (script_path.extension() == ".dll") {
-      CORE_LOG_WARN("[PROJECT] DLL {} does not match project script. Skipping", script_path.string());
+    if (script_path.extension() == ".dll") {
+      attach_project_dll(script_path);
     } else {
       CORE_LOG_WARN("[PROJECT] Unimplemented script type for built script '{}'.", script_path.string());
     }
   }
 
-  void project::attach_project_dll(const filepath& dll_path, const std::vector<filepath>& cs_scripts) {
+  void project::attach_project_cs_file(const filepath& cs_file) {
+    OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach C# script file.");
+
+    if (cs_file.extension() == ".cs") {
+      project_scripts.cs_scripts.push_back(cs_file);
+    } else {
+      CORE_LOG_WARN("[PROJECT] Unimplemented script type for C# script file '{}'.", cs_file.string());
+    }
+  }
+
+  void project::add_script_file(const filepath& script_file_path) {
+    OTHER_ASSERT(std::filesystem::exists(script_file_path), "Script file '{}' does not exist.", script_file_path.string());
+    CORE_LOG_DEBUG("[PROJECT] Adding script file '{}' to project. Script files are not yet fully supported in the project system, so this may not work as expected.", script_file_path.string());
+
+    if (script_file_path.extension() == ".cs") {
+      project_scripts.cs_scripts.push_back(script_file_path);
+    } else {
+      CORE_LOG_WARN("[PROJECT] Unimplemented script type for script file '{}'.", script_file_path.string());
+    }
+  }
+
+  void project::attach_project_dll(const filepath& dll_path) {
+    OTHER_ASSERT(std::filesystem::exists(dll_path), "Project assembly file '{}' does not exist.", dll_path.string());
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach project assembly.");
+
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
 
@@ -168,14 +197,10 @@ namespace other {
     OTHER_ASSERT(asm_ref != nullptr, "Failed to load project assembly from '{}'", dll_path.string());
 
     project_assembly = asm_ref;
+    project_scripts.cs_script_source = dll_path;
 
-    for (const auto& script : cs_scripts) {
-      if (!std::filesystem::exists(script)) {
-        CORE_LOG_ERROR("Collected script file '{}' does not exist. Skipping adding it to project.", script.string());
-        continue;
-      }
-      system->sibling<asset_system>(system->get_driver().get_kernel()).begin_asset_load(script);
-    }
+    set_state(LOADED);
+    CORE_LOG_DEBUG("Successfully loaded project assembly from '{}'", dll_path.string());
   }
 
   bool project::process_scripting_sections(const toml::table& table, driver_kernel* kernel) {
@@ -198,68 +223,13 @@ namespace other {
     CORE_LOG_DEBUG("Processing project scripting data");
 
     bool waiting_for_script_load = false;
-    scripting_table->for_each([this, kernel, &waiting_for_script_load](const toml::key& key, const toml::node& value) {
+    scripting_table->for_each([this, &waiting_for_script_load](const toml::key& key, const toml::node& value) {
       std::string k{ key.str() };
 
       CORE_LOG_DEBUG("Processing scripting entry with key '{}'", k);
       if (k == "cs_project" && value.is_string()) {
+        project_scripts.csproject_path = value.as_string()->get();
         waiting_for_script_load = true;
-        auto& job_sys = system->sibling<job_driver_system>(*kernel);
-        auto& jobs = job_sys.get_job_system();
-
-        build_tool = make_ref<project_tool>();
-        ref<job> build_project_job = jobs.submit(
-          {
-            .name = std::format("Build .NET project '{}'", value.as_string()->get()),
-            .priority = job::priority::HIGH,
-            .thread_affinity = job::affinity::WORKER_THREAD,
-          },
-          [t = build_tool, path = value.as_string()->get()]() mutable {
-            OTHER_ASSERT(t != nullptr, "Failed to create project tool for building .NET project.");
-            /// create dotnet project for the loaded project
-            if (!std::filesystem::exists(path)) {
-              CORE_LOG_INFO("No .NET project file found at '{}', creating a new one.", path);
-              t->generate_dotnet_project(path);
-            }
-
-            /// .csproj file exists we go straight to building it
-            t->start_project_build(path);
-
-            do {
-              std::this_thread::yield();
-            } while (t->project_build_in_progress());
-
-            int32_t result = t->get_build_result();
-            t->cleanup_build();
-
-            if (result == 0) {
-              CORE_LOG_INFO("Successfully built .NET project '{}'", path);
-            } else {
-              throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path, result));
-            }
-          }
-        );
-        OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
-
-        ref<job> load_build_asset_job = jobs.submit_deferred(
-          build_project_job->id,
-          {
-            .name = std::format("Load built assembly for .NET project '{}'", value.as_string()->get()),
-            .priority = job::priority::HIGH,
-            .thread_affinity = job::affinity::MAIN_THREAD,
-          },
-          [this, kernel, t = build_tool]() {
-            filepath csproj = t->get_dotnet_project_path();
-            /// \todo fixed hardcoded build configuration and output path assumptions
-            filepath build = csproj.parent_path() / "bin" / "Debug" / (csproj.stem().string() + ".dll");
-            if (!std::filesystem::exists(build)) {
-              throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
-            }
-
-            system->sibling<asset_system>(*kernel).begin_asset_load(build);
-          }
-        );
-        OTHER_ASSERT(load_build_asset_job != nullptr, "Failed to create job for loading built assembly of .NET project.");
       }
     });
 

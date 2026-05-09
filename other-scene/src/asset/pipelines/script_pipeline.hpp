@@ -13,8 +13,6 @@ namespace other {
     script_pipeline(event_system& events, asset_handler* handler)
         : asset_pipeline(events, handler) {}
     ~script_pipeline() = default;
-
-    filepath script_path;
   };
 
 }  // namespace other

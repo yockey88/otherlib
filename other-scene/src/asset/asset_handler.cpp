@@ -18,16 +18,17 @@ namespace other {
 
   std::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
     std::vector<asset::type> out_acceptable_types;
-    switch (requested_type) {
-      case asset::type::MODEL:
-      case asset::type::MODEL_SOURCE:
-        return { asset::type::MODEL, asset::type::MODEL_SOURCE };
+    // switch (requested_type) {
+    //   case asset::type::MODEL:
+    //   case asset::type::MODEL_SOURCE:
+    //     return { asset::type::MODEL, asset::type::MODEL_SOURCE };
 
-      case asset::type::SCRIPT:
-      case asset::type::SCRIPT_SOURCE:
-        return { asset::type::SCRIPT, asset::type::SCRIPT_SOURCE };
-      default: break;
-    }
+    //   case asset::type::SCRIPT:
+    //   case asset::type::SCRIPT_SOURCE:
+    //   case asset::type::SCRIPT:
+    //     return { asset::type::SCRIPT, asset::type::SCRIPT_SOURCE };
+    //   default: break;
+    // }
     return out_acceptable_types;
   }
 
@@ -277,6 +278,12 @@ namespace other {
     );
   }
 
+  void asset_handler::handle_file_event(const file_event& event) {
+    if (event.type == file_event::type::MODIFIED) {
+      handle_asset_file_changed_event(event);
+    }
+  }
+
   asset* asset_handler::get_asset(natural_t asset_id) {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return &it->second;
@@ -426,6 +433,23 @@ namespace other {
     }
 
     return nullptr;
+  }
+
+  void asset_handler::handle_asset_file_changed_event(const file_event& event) {
+    OTHER_ASSERT(event.type == file_event::type::MODIFIED, "Unexpected file event type in handle_asset_file_changed_event: {}", event.type);
+
+    auto it = std::ranges::find_if(asset_pipelines, [&event](const auto& a) { return a.loading_asset.absolute_path == event.path; });
+    if (it != asset_pipelines.end()) {
+      CORE_LOG_DEBUG("File modified event for asset ID: {} at path: {}. Restarting load pipeline.", it->loading_asset.id, event.path.string());
+      auto state_it = asset_states.find(it->loading_asset.id);
+      if (state_it != asset_states.end()) {
+        begin_load(it, state_it);
+      } else {
+        CORE_LOG_ERROR("State machine not found for asset ID: {} during file modification handling", it->loading_asset.id);
+      }
+    } else {
+      CORE_LOG_DEBUG("File modified event for path: {} does not correspond to any loading asset", event.path.string());
+    }
   }
 
   void asset_handler::notify_asset_load_complete(asset* asset_ptr) {

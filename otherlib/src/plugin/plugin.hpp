@@ -4,6 +4,8 @@
 #ifndef OTHERLIB_PLUGIN_PLUGIN_HPP
 #define OTHERLIB_PLUGIN_PLUGIN_HPP
 
+#include <mutex>
+
 #include <imgui/imgui.h>
 
 #include "core/defines.hpp"
@@ -43,6 +45,7 @@ namespace other {
 
    private:
     constexpr static const char* kPluginBindingSymbolName = "bind_plugin_systems";
+    static std::mutex plugin_mutex;
     static std::map<natural_t, library_handle*> loaded_libraries;
 
     static library_handle* create_library_handle(const std::string_view plugin_path);

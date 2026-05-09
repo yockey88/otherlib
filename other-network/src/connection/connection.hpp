@@ -5,10 +5,8 @@
 #define OTHER_NETWORK_CONNECTION_CONNECTION_HPP
 
 #include "core/async_buffer.hpp"
-#include "event/event_system.hpp"
 #include "thread/message.hpp"
 
-#include "connection/connection_state_maching.hpp"
 #include "network/io.hpp"
 
 namespace other {
@@ -17,18 +15,18 @@ namespace other {
 
   class connection {
    public:
-    connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::tcp::socket tcp_socket)
-        : inactive(false), parent_thread(thread), id(id), events(events), io_context(io_context), local_endpoint(endpoint) {
+    connection(network_thread* thread, natural_t id, io& io_context, const binding_point& endpoint, asio::ip::tcp::socket tcp_socket)
+        : inactive(false), parent_thread(thread), id(id), io_context(io_context), local_endpoint(endpoint) {
       conn.tcp_socket = make_scope<asio::ip::tcp::socket>(std::move(tcp_socket));
     }
-    connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::udp::socket udp_socket)
-        : inactive(false), parent_thread(thread), id(id), events(events), io_context(io_context), local_endpoint(endpoint) {
+    connection(network_thread* thread, natural_t id, io& io_context, const binding_point& endpoint, asio::ip::udp::socket udp_socket)
+        : inactive(false), parent_thread(thread), id(id), io_context(io_context), local_endpoint(endpoint) {
       conn.udp_socket = make_scope<asio::ip::udp::socket>(std::move(udp_socket));
     }
     virtual ~connection() = default;
 
-    static scope<connection> create_tcp_connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::tcp::socket tcp_socket);
-    static scope<connection> create_udp_connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::udp::socket udp_socket);
+    static scope<connection> create_tcp_connection(network_thread* thread, natural_t id, io& io_context, const binding_point& endpoint, asio::ip::tcp::socket tcp_socket);
+    static scope<connection> create_udp_connection(network_thread* thread, natural_t id, io& io_context, const binding_point& endpoint, asio::ip::udp::socket udp_socket);
 
     inline void set_parent_connection_id(natural_t parent_id) { parent_connection_id = parent_id; }
 
@@ -61,7 +59,6 @@ namespace other {
     natural_t id;
     opt<natural_t> parent_connection_id;
 
-    event_system& events;
     io& io_context;
 
     binding_point local_endpoint;

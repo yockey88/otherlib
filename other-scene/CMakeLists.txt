@@ -1,6 +1,9 @@
 add_library(other_scene STATIC)
 target_sources(other_scene
     PRIVATE
+      src/tools/tool.cpp
+      src/tools/project_tool.cpp
+
       src/asset/asset_serialization.cpp
       src/asset/asset.cpp
       src/asset/asset_pipeline.cpp

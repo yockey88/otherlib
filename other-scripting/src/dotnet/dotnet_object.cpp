@@ -295,6 +295,15 @@ namespace other {
     return bytes;
   }
 
+  bool dotnet_object::is_behavior() const {
+    OTHER_ASSERT(dn_type != nullptr, "Type is not initialized for dotnet_object '{}'", object_name);
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    int32_t behavior_base_type_id = env->get_dotnet_host().get_behavior_base_type_id();
+    return host->interop().derived_from(dn_type->dotnet_id, behavior_base_type_id);
+  }
+
   const dotnet_field* dotnet_object::get_dotnet_field(const std::string_view field_name) {
     OTHER_ASSERT(dn_type != nullptr, "Type is not initialized for dotnet_object '{}'", object_name);
 

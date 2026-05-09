@@ -59,7 +59,9 @@ namespace other {
     });
 
     /// registered in asset_system::initialize
-    events.add_listener("script.asset-loaded", [this, kernel](const value& data) { handle_script_asset_loaded(kernel, data); });
+    events.add_listener("script-project.asset-loaded", [this, kernel](const value& data) { handle_script_project_loaded(kernel, data); });
+    events.add_listener("script-source.asset-loaded", [this, kernel](const value& data) { handle_script_source_loaded(kernel, data); });
+    events.add_listener("script-file.asset-loaded", [this, kernel](const value& data) { handle_script_file_loaded(kernel, data); });
 
     const auto& config = get_driver().configuration();
     if (config.project_file.has_value()) {
@@ -162,22 +164,63 @@ namespace other {
     }
   }
 
-  void project_system::handle_script_asset_loaded(driver_kernel* kernel, const value& data) {
+  void project_system::handle_script_project_loaded(driver_kernel* kernel, const value& data) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
-    OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script asset loaded event data.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script project loaded event data.");
 
-    if (loaded_project->is_loaded()) {
+    if (loaded_project->is_loading()) {
       natural_t asset_id = data;
       opt<filepath> script = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
       if (!script.has_value()) {
-        CORE_LOG_ERROR("Failed to get local asset path for loaded script asset with ID: {}", asset_id);
+        CORE_LOG_ERROR("Failed to get local asset path for loaded script project asset with ID: {}", asset_id);
         return;
       }
-      OTHER_ASSERT(std::filesystem::exists(script.value()), "Local asset path '{}' for loaded script asset with ID {} does not exist.", script.value().string(), asset_id);
+      OTHER_ASSERT(std::filesystem::exists(script.value()), "Local asset path '{}' for loaded script project asset with ID {} does not exist.", script.value().string(), asset_id);
 
-      loaded_project->add_built_script(script.value());
     } else {
-      CORE_LOG_WARN("Unimplemented handling of script asset loaded event in project", loaded_project->get_state());
+      CORE_LOG_WARN("Unimplemented handling of script project asset loaded event in project", loaded_project->get_state());
+    }
+  }
+
+  void project_system::handle_script_source_loaded(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script source loaded event data.");
+
+    natural_t asset_id = data;
+    opt<filepath> script_source_path = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
+
+    if (!script_source_path.has_value()) {
+      CORE_LOG_ERROR("Failed to get local asset path for loaded script source asset with ID: {}", asset_id);
+      return;
+    }
+    OTHER_ASSERT(std::filesystem::exists(script_source_path.value()), "Local asset path '{}' for loaded script source asset with ID {} does not exist.", script_source_path.value().string(), asset_id);
+    CORE_LOG_INFO("Script source loaded with path '{}' for asset ID {}", script_source_path.value().string(), asset_id);
+
+    if (loaded_project->is_loading()) {
+      loaded_project->add_built_script(script_source_path.value());
+    } else {
+      CORE_LOG_WARN("Unimplemented handling of script source asset loaded event in project for project state {}", loaded_project->get_state());
+    }
+  }
+
+  void project_system::handle_script_file_loaded(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script file loaded event data.");
+
+    natural_t asset_id = data;
+    opt<filepath> script_file_path = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
+
+    if (!script_file_path.has_value()) {
+      CORE_LOG_ERROR("Failed to get local asset path for loaded script file asset with ID: {}", asset_id);
+      return;
+    }
+    OTHER_ASSERT(std::filesystem::exists(script_file_path.value()), "Local asset path '{}' for loaded script file asset with ID {} does not exist.", script_file_path.value().string(), asset_id);
+    CORE_LOG_INFO("Script file loaded with path '{}' for asset ID {}", script_file_path.value().string(), asset_id);
+
+    if (loaded_project->is_loading()) {
+      loaded_project->add_script_file(script_file_path.value());
+    } else {
+      CORE_LOG_WARN("Unimplemented handling of script file asset loaded event in project for project state {}", loaded_project->get_state());
     }
   }
 

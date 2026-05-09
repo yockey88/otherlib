@@ -6,16 +6,15 @@
 #include "network/network_thread.hpp"
 
 #include "asio/asio/error.hpp"
-#include "connection_state_maching.hpp"
 
 namespace other {
 
-  scope<connection> connection::create_tcp_connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::tcp::socket tcp_socket) {
-    return make_scope<connection>(thread, id, events, io_context, endpoint, std::move(tcp_socket));
+  scope<connection> connection::create_tcp_connection(network_thread* thread, natural_t id, io& io_context, const binding_point& endpoint, asio::ip::tcp::socket tcp_socket) {
+    return make_scope<connection>(thread, id, io_context, endpoint, std::move(tcp_socket));
   }
 
-  scope<connection> connection::create_udp_connection(network_thread* thread, natural_t id, event_system& events, io& io_context, const binding_point& endpoint, asio::ip::udp::socket udp_socket) {
-    return make_scope<connection>(thread, id, events, io_context, endpoint, std::move(udp_socket));
+  scope<connection> connection::create_udp_connection(network_thread* thread, natural_t id, io& io_context, const binding_point& endpoint, asio::ip::udp::socket udp_socket) {
+    return make_scope<connection>(thread, id, io_context, endpoint, std::move(udp_socket));
   }
 
   void connection::poll() {

@@ -8,6 +8,8 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 
+#include "thread/thread_safety.hpp"
+
 namespace other {
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
@@ -19,6 +21,7 @@ namespace other {
 
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
+    register_main_thread();
 
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
@@ -38,7 +41,6 @@ namespace other {
 
     if (driver_kernel_ptr->has_core_system<project_system>()) {
       get_event_system()->add_listener("project.loaded", [this](const value& data) {
-        core_system<project_system>().get_project().set_state(project::state::LOADED);
         on_project_loaded();
       });
     }
@@ -60,6 +62,7 @@ namespace other {
   }
 
   void driver::run() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("driver::main_loop");
 
     CORE_LOG_DEBUG("Entering main driver loop");
@@ -71,6 +74,7 @@ namespace other {
   }
 
   void driver::shutdown() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("driver::shutdown");
     {
       PROFILE_SECTION("driver::shutdown--client-on_shutdown");
@@ -191,14 +195,14 @@ namespace other {
     }
     CORE_LOG_INFO("Beginning shutdown sequence");
 
-    if (driver_kernel_ptr->has_core_system<project_system>()) {
-      driver_kernel_ptr->get_core_system<project_system>().unload_project(driver_kernel_ptr.get());
-    }
-
     if (driver_kernel_ptr->has_core_system<scene_system>()) {
       auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
       scenes.unload_active_scene();
       scenes.unload_project_scene_graph();
+    }
+
+    if (driver_kernel_ptr->has_core_system<project_system>()) {
+      driver_kernel_ptr->get_core_system<project_system>().unload_project(driver_kernel_ptr.get());
     }
 
     driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
@@ -492,6 +496,7 @@ namespace other {
   }
 
   void driver::update() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
@@ -532,6 +537,7 @@ namespace other {
   }
 
   void driver::render() {
+    ASSERT_MAIN_THREAD();
     if (!rendering_enabled()) {
       return;
     }
@@ -544,6 +550,7 @@ namespace other {
   }
 
   void driver::on_project_loaded() {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
 
     auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
@@ -558,6 +565,9 @@ namespace other {
       // starting_scene_id = curr_scene->id;
       driver_kernel_ptr->get_core_system<scene_system>().unload_active_scene();
     }
+
+    /// load scenes from project
+    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
 
     filepath rc_path = p.get_project_rc_path();
     if (!rc_path.empty() && std::filesystem::exists(rc_path)) {
@@ -579,9 +589,6 @@ namespace other {
         CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", rc_path.string());
       }
     }
-
-    /// load scenes from project
-    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
 
     /// restore scene?
     // if (starting_scene_id.has_value()) {

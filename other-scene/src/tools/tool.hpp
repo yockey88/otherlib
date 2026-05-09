@@ -1,8 +1,8 @@
 /**
  * \file tools/tool.hpp
  **/
-#ifndef OTHERLIB_TOOLS_TOOL_HPP
-#define OTHERLIB_TOOLS_TOOL_HPP
+#ifndef OTHER_SCENE_TOOLS_TOOL_HPP
+#define OTHER_SCENE_TOOLS_TOOL_HPP
 
 #include <string_view>
 
@@ -61,4 +61,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_TOOLS_TOOL_HPP
+#endif  // OTHER_SCENE_TOOLS_TOOL_HPP

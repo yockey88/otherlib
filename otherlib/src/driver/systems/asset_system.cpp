@@ -110,10 +110,23 @@ namespace other {
       events.register_event(std::format("{}.asset-unload-failed", asset_type));
     };
     register_asset_events("model-source");
+    register_asset_events("script-project");
     register_asset_events("script-source");
+    register_asset_events("script-file");
     register_asset_events("script");
     register_asset_events("scene");
     register_asset_events("rendering-pipeline");
+
+    events.add_listener("filesystem.watch-event", [this](const value& data) {
+      if (data.type() != value_type::USER_TYPE) {
+        CORE_LOG_ERROR("Received invalid file event: expected user type with file_event data");
+        return;
+      }
+      file_event event = data;
+      if (is_asset_extension(event.path.extension().string())) {
+        asset_mgr->handle_file_event(event);
+      }
+    });
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
