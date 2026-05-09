@@ -37,7 +37,8 @@ namespace other {
     LOADED,
 
     OUT_OF_DATE,
-    REFRESHING,
+    REFRESHING_UNLOAD,
+    REFRESHING_LOAD,
 
     UNLOADING,
     UNLOADED,
@@ -74,13 +75,15 @@ namespace other {
 
       add_transition(asset_state::LOADED, asset_event::UNLOAD_REQUESTED, asset_state::UNLOADING);
       add_transition(asset_state::LOADED, asset_event::TIMESTAMP_UPDATED, asset_state::OUT_OF_DATE);
-      add_transition(asset_state::LOADED, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING);
+      add_transition(asset_state::LOADED, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING_UNLOAD);
 
-      add_transition(asset_state::OUT_OF_DATE, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING);
+      add_transition(asset_state::OUT_OF_DATE, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING_UNLOAD);
       add_transition(asset_state::OUT_OF_DATE, asset_event::UNLOAD_REQUESTED, asset_state::UNLOADING);
 
-      add_transition(asset_state::REFRESHING, asset_event::REFRESH_COMPLETED, asset_state::LOADED);
-      add_transition(asset_state::REFRESHING, asset_event::REFRESH_FAILED, asset_state::LOADED);
+      add_transition(asset_state::REFRESHING_UNLOAD, asset_event::UNLOAD_COMPLETED, asset_state::REFRESHING_LOAD);
+      add_transition(asset_state::REFRESHING_UNLOAD, asset_event::UNLOAD_FAILED, asset_state::ERROR_STATE);
+      add_transition(asset_state::REFRESHING_LOAD, asset_event::REFRESH_COMPLETED, asset_state::LOADED);
+      add_transition(asset_state::REFRESHING_LOAD, asset_event::LOAD_FAILED, asset_state::ERROR_STATE);
 
       add_transition(asset_state::UNLOADING, asset_event::UNLOAD_COMPLETED, asset_state::UNLOADED);
       add_transition(asset_state::UNLOADING, asset_event::UNLOAD_FAILED, asset_state::ERROR_STATE);
@@ -116,6 +119,8 @@ namespace other {
     void unload_asset(natural_t asset_id);
 
     void handle_file_event(const file_event& event);
+
+    void reload_asset(natural_t asset_id);
 
     asset* get_asset(natural_t asset_id);
 
@@ -187,6 +192,7 @@ namespace other {
     /// normally we might want to recreate, but if we are closing the editor
     // or doing
     bool remove_after_unload = false;
+    std::queue<natural_t> pending_loads;
     std::queue<natural_t> pending_unloads;
 
     std::string default_mount = "assets";
@@ -205,6 +211,8 @@ namespace other {
 
     void notify_asset_load_complete(asset* asset_ptr);
     void notify_asset_load_failed(asset* asset_ptr, const std::string& error_message);
+    void notify_asset_unload_complete(asset* asset_ptr);
+    void notify_asset_unload_failed(asset* asset_ptr, const std::string& error_message);
 
     void on_asset_loaded(natural_t id);
     void on_asset_load_failed(natural_t id);
