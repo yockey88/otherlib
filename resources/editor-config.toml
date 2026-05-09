@@ -17,6 +17,7 @@ mounts = [
 
 [rendering]
 ui-layout-ini = "resources/ui/editor-layout.ini"
+imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
 # pipelines = [
 #   { name = "Editor Pipeline", path = "resources/rendering/editor_pipeline.orpl" }
 # ]
