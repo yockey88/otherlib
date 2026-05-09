@@ -19,6 +19,8 @@
 namespace other {
 
   struct model_builder {
+    opt<std::string> name;
+
     uint32_t vertex_offset = 0;
     uint32_t index_offset = 0;
     std::stack<uint32_t> index_stack;

@@ -4,10 +4,7 @@
 #ifndef OTHER_CORE_THREAD_MESSAGE_BUS_HPP
 #define OTHER_CORE_THREAD_MESSAGE_BUS_HPP
 
-#include "core/timer.hpp"
-#include "thread/channel.hpp"
 #include "thread/message.hpp"
-
 
 namespace other {
 
@@ -28,8 +25,8 @@ namespace other {
 
    private:
     struct thread_data {
-      scope<channel<message>> tx_channel = nullptr;
-      scope<channel<message>> rx_channel = nullptr;
+      scope<message_channel> tx_channel = nullptr;
+      scope<message_channel> rx_channel = nullptr;
       std::thread::id thread_id = std::this_thread::get_id();
     };
 

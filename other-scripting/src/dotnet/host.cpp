@@ -170,6 +170,8 @@ namespace other {
         .arena_native_handle = subsystem<arena>::get(),
         .logger_native_handle = subsystem<logger>::get(),
         .type_database_native_handle = subsystem<type_database>::get(),
+        // we know we can grab this here, because the scripting subsystem has to be active for us to be loading the dotnet host
+        // no reason to worry about environment profile issues here
         .scripting_environment_native_handle = subsystem<scripting_environment>::get()
       };
       entry_point(args);
@@ -239,6 +241,7 @@ namespace other {
       return nullptr;
     } else {
       CORE_LOG_DEBUG("Created managed object [{}] of type [{}]", name, type->full_name());
+      CORE_LOG_DEBUG(" - Managed object handle: {:p}", obj->managed_object);
     }
     return obj;
   }
@@ -345,7 +348,7 @@ namespace other {
     interop_functions.get_type_id = load_managed_function<get_type_id>(type_interface_type_str, DNET_STR("GetTypeId"));
     OTHER_ASSERT(interop_functions.get_type_id != nullptr, "Failed to load function from managed assembly.");
 
-    interop_functions.get_full_type_name = load_managed_function<get_type_name>(type_interface_type_str, DNET_STR("GetFullTypeName"));
+    interop_functions.get_full_type_name = load_managed_function<get_dotnet_type_name>(type_interface_type_str, DNET_STR("GetFullTypeName"));
     OTHER_ASSERT(interop_functions.get_full_type_name != nullptr, "Failed to load function from managed assembly.");
 
     interop_functions.get_type_methods = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetTypeMethods"));
@@ -364,6 +367,9 @@ namespace other {
     OTHER_ASSERT(interop_functions.has_attribute != nullptr, "Failed to load HasAttribute from managed assembly.");
 
     //        method
+    interop_functions.has_method = load_managed_function<has_method>(type_interface_type_str, DNET_STR("HasMethod"));
+    OTHER_ASSERT(interop_functions.has_method != nullptr, "Failed to load HasMethod from managed assembly.");
+
     interop_functions.get_method_name = load_managed_function<get_method_name>(type_interface_type_str, DNET_STR("GetMethodName"));
     OTHER_ASSERT(interop_functions.get_method_name != nullptr, "Failed to load GetMethodName from managed assembly.");
 
@@ -425,17 +431,17 @@ namespace other {
     interop_functions.destroy_object = load_managed_function<destroy_object>(managed_object_type_str, DNET_STR("DestroyObject"));
     OTHER_ASSERT(interop_functions.destroy_object != nullptr, "Failed to load DestroyObject from managed assembly.");
 
-    // interop_functions.invoke_static_method = load_managed_function<invoke_method>(managed_object_type_str, DNET_STR("InvokeStaticMethod"));
-    // OTHER_ASSERT(interop_functions.invoke_static_method != nullptr, "Failed to load InvokeStaticMethod from managed assembly.");
+    interop_functions.invoke_instance_method = load_managed_function<invoke_method>(managed_object_type_str, DNET_STR("InvokeMethod"));
+    OTHER_ASSERT(interop_functions.invoke_instance_method != nullptr, "Failed to load InvokeMethod from managed assembly.");
 
-    // interop_functions.invoke_static_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeStaticMethodRet"));
-    // OTHER_ASSERT(interop_functions.invoke_static_method_ret != nullptr, "Failed to load InvokeStaticMethodRet from managed assembly.");
+    interop_functions.invoke_instance_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeMethodRet"));
+    OTHER_ASSERT(interop_functions.invoke_instance_method_ret != nullptr, "Failed to load InvokeMethodRet from managed assembly.");
 
-    interop_functions.invoke_method = load_managed_function<invoke_method>(managed_object_type_str, DNET_STR("InvokeMethod"));
-    OTHER_ASSERT(interop_functions.invoke_method != nullptr, "Failed to load InvokeMethod from managed assembly.");
+    interop_functions.invoke_static_method = load_managed_function<invoke_method>(managed_object_type_str, DNET_STR("InvokeStaticMethod"));
+    OTHER_ASSERT(interop_functions.invoke_static_method != nullptr, "Failed to load InvokeStaticMethod from managed assembly.");
 
-    interop_functions.invoke_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeMethodRet"));
-    OTHER_ASSERT(interop_functions.invoke_method_ret != nullptr, "Failed to load InvokeMethodRet from managed assembly.");
+    interop_functions.invoke_static_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeStaticMethodRet"));
+    OTHER_ASSERT(interop_functions.invoke_static_method_ret != nullptr, "Failed to load InvokeStaticMethodRet from managed assembly.");
 
     interop_functions.is_field_private = load_managed_function<field_is_private_checker>(managed_object_type_str, DNET_STR("IsFieldPrivate"));
     OTHER_ASSERT(interop_functions.is_field_private != nullptr, "Failed to load IsFieldPrivate from managed assembly.");

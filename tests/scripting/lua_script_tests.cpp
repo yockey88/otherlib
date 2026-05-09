@@ -12,7 +12,7 @@ namespace other {
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
     env->initialize_script_environment(environment->config);
 
-    lua_script* test1 = env->load_lua_file("resources/lua/test1.lua");
+    lua_script* test1 = env->load_lua_file("tests/test1.lua");
     ASSERT_TRUE(test1->is_valid());
 
     sol::table table1 = test1->get_symbol_as_table("table1");
@@ -45,7 +45,7 @@ namespace other {
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
     env->initialize_script_environment(environment->config);
 
-    lua_script* invalid_script = env->load_lua_file("resources/lua/non_existent.lua");
+    lua_script* invalid_script = env->load_lua_file("other-lua-interop/non_existent.lua");
     ASSERT_EQ(invalid_script, nullptr);
 
     env->shutdown_script_environment();
@@ -56,7 +56,7 @@ namespace other {
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
     env->initialize_script_environment(environment->config);
 
-    lua_script* test1 = env->load_lua_file("resources/lua/test1.lua");
+    lua_script* test1 = env->load_lua_file("tests/test1.lua");
     ASSERT_NE(test1, nullptr);
     ASSERT_TRUE(test1->is_valid());
 

@@ -1,11 +1,12 @@
 [application]
+name = "Other Editor"
 metadata = [ 
   { key = "name", value = "Other Editor"}, 
   { key = "description", value = "Other Environment Project Editor"},
-  { key = "author", value = "Other Team"},
+  { key = "author", value = "N/A"},
   { key = "version", value = "0.1.0"} 
 ]
-core-log-level = "debug"
+core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
 
@@ -16,24 +17,26 @@ mounts = [
 
 [rendering]
 ui-layout-ini = "resources/ui/editor-layout.ini"
-pipeline = { geometry_pass_shader = "resources/basic-instancing-gbuffer", shadow_map_pass_shader = "resources/basic-instancing-shadow-map", point_light_shadow_pass_shader = "resources/basic-instancing-point-light-shadow-map", shading_pass_shader = "resources/basic-shading", debug_processing_shader = "resources/debug-processing", screen_shader = "resources/basic-textured-quad" }
+imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
+# pipelines = [
+#   { name = "Editor Pipeline", path = "resources/rendering/editor_pipeline.orpl" }
+# ]
 
 [ui]
-enable-environment-menu-bar = false
+enable-environment-menu-bar = true
 
 [assets]
 test-model = "resources/models/spinning-torus.fbx"
 
 [scripting]
-envrc-path = "resources/editor-rc.lua"
-# bridge dll for C# interop (private API)
-dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
+envrc-path = "resources/editor.lua"
+# runtime config for dotnet host
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
-# client dll for C# interop (public API)
+# a dll satisfying the Other Environment Bindings API requirements
+dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
+# a dll satisfying the Other Environment API requirements
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
-
-# bridge directory for lua script (Prublit API)
-other-lua-directory = "resources/lua"
+other-lua-directory = "other-lua-interop"
 
 dotnet-modules = [
   "build/other-editor/dotnet/${build-config}/OtherEditorCs.dll"

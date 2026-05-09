@@ -26,18 +26,18 @@ namespace other {
       AUDIO,
 
       SCENE,
-      SCENE_OBJECT,
 
       INPUT_MAP,
-      PIPELINE,
+      RENDERING_PIPELINE,
 
       EMPTY,
-      NUM_ASSET_TYPES = EMPTY,
+      NUM_ASSET_TYPES,
     };
 
     type asset_type = type::EMPTY;
 
     natural_t id = 0;
+    natural_t parent_id = 0;
 
     /// hash uses absolute path string to avoid issues with relative paths and different working directories
     natural_t path_hash = 0;
@@ -53,6 +53,7 @@ namespace other {
     static std::vector<std::string> get_supported_extensions(asset::type asset_type);
 
     std::string get_filesystem_directory() const;
+    static std::string get_filesystem_directory(asset::type asset_type);
   };
 
   namespace attr {
@@ -70,7 +71,8 @@ namespace other {
     std::string_view extension;
   };
 
-  constexpr inline std::array<std::string_view, 16> kFileExtensions = {
+  constexpr inline size_t kNumAssetExtensions = 17;
+  constexpr inline std::array<std::string_view, kNumAssetExtensions> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
 
@@ -82,23 +84,24 @@ namespace other {
     ".anim",  // ANIMATION
 
     ".cs",   // SCRIPT_SOURCE
-    ".lua",  // SCRIPT_SOURCE
+    ".dll",  // SCRIPT
+    ".so",   // SCRIPT
     ".py",   // SCRIPT_SOURCE
 
     ".mp3",  // AUDIO
     ".wav",  // AUDIO
 
+    ".lua",  // SCENE
     // ".scene",         // SCENE
     // ".scene-object",  // SCENE_OBJECT
 
     ".oinputmap",  // INPUT_MAP
     ".oeim",       // INPUT_MAP
 
-    ".orp",        // PIPELINE
-    ".opipeline",  // PIPELINE
+    ".orpl",  // RENDERING_PIPELINE
   };
 
-  constexpr inline std::array<asset_extension, kFileExtensions.size()> kAssetExtensions{
+  constexpr inline std::array<asset_extension, kNumAssetExtensions> kAssetExtensions{
     {
       { asset::TEXTURE, ".jpg" },
       { asset::TEXTURE, ".png" },
@@ -110,17 +113,18 @@ namespace other {
       { asset::ANIMATION, ".anim" },
 
       { asset::SCRIPT_SOURCE, ".cs" },
-      { asset::SCRIPT_SOURCE, ".lua" },
-      { asset::SCRIPT_SOURCE, ".py" },
+      { asset::SCRIPT, ".dll" },
+      { asset::SCRIPT, ".so" },
+      { asset::SCRIPT, ".py" },
 
       { asset::AUDIO, ".mp3" },
       { asset::AUDIO, ".wav" },
 
+      { asset::SCENE, ".lua" },
       { asset::INPUT_MAP, ".oinputmap" },
       { asset::INPUT_MAP, ".oeim" },
 
-      { asset::PIPELINE, ".orp" },
-      { asset::PIPELINE, ".opipeline" },
+      { asset::RENDERING_PIPELINE, ".orpl" },
     }
   };
 

@@ -19,7 +19,8 @@ namespace other {
     if (handle == nullptr) {
       CORE_LOG_ERROR("Failed to load library '{}'", filepath);
       print_error();
-      return;
+    } else {
+      CORE_LOG_DEBUG("Successfully loaded library '{}'", filepath);
     }
   }
 
@@ -32,6 +33,8 @@ namespace other {
       if (!FreeLibrary(handle)) {
         CORE_LOG_ERROR("Failed to unload library '{}'", filepath);
         print_error();
+      } else {
+        CORE_LOG_DEBUG("Successfully unloaded library '{}'", filepath);
       }
       handle = nullptr;
     }
@@ -49,6 +52,7 @@ namespace other {
       .address = (void*)GetProcAddress(handle, sym_name.data()),
     };
     if (sym.address == nullptr) {
+      CORE_LOG_ERROR("Failed to load symbol '{}' from library '{}'", sym_name, filepath);
       print_error();
     }
     return sym;

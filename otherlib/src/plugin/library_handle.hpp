@@ -36,7 +36,7 @@ namespace other {
     virtual void unload() = 0;
 
    protected:
-    std::string_view filepath;
+    std::string filepath;
 
     std::map<natural_t, symbol> symbols;
 

@@ -9,16 +9,15 @@
 #include <map>
 #include <ranges>
 #include <string>
+#include <type_traits>
 #include <vector>
 
-#include <flatbuffers/flexbuffers.h>
 #include <glm/glm.hpp>
 #include <imgui/ImReflect.hpp>
 #include <magic_enum/magic_enum.hpp>
 #include <refl/refl.hpp>
 
 #include "core/defines.hpp"
-#include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/subsystem.hpp"
 
@@ -29,27 +28,60 @@ namespace other {
   namespace attr {
 
     struct serializable : refl::attr::usage::field {
-      std::string_view display_name;
+      const std::string_view display_name;
       bool editable = true;
-      serializable() = default;
+
+      constexpr serializable() = default;
+      explicit constexpr serializable(bool editable) : editable(editable) {}
       explicit constexpr serializable(const std::string_view display_name, bool editable = true)
           : display_name(std::move(display_name)), editable(editable) {}
+    };
+
+    struct native_only : refl::attr::usage::field {
+      constexpr native_only() = default;
+    };
+
+    struct version_tag : refl::attr::usage::field {
+      uint64_t version;
+      constexpr version_tag(uint64_t version) : version(version) {}
     };
 
   }  // namespace attr
 
   struct reflection_data {
+    enum : uint8_t {
+      NONE = 0,
+      SERIALIZABLE = 1 << 0,
+      SCRIPT_VISIBLE = 1 << 1,
+      READ_ONLY = 1 << 2,
+      EDITABLE = 1 << 3,
+      NATIVE_ONLY = 1 << 4,
+    };
+
     struct member {
+      struct param_desc {
+        std::string name;
+        other::value_type type;
+      };
       enum member_type {
         FIELD,
         FUNCTION,
       } type;
 
       size_t size;
+      size_t offset;
       value_type value_type;
 
       std::string name;
       opt<std::string> display_name;
+
+      // attribute flags
+      uint8_t flags = reflection_data::NONE;
+      uint32_t since_version = 0;
+
+      // functions only
+      opt<other::value_type> return_type;
+      std::vector<param_desc> parameters;
 
       std::string get_name() const;
     };
@@ -141,6 +173,22 @@ namespace other {
   template <typename T>
   concept reflected_type = meets_core_reflection_requirements<T> && has_type_data_handler<T>;
 
+  template <typename T>
+  constexpr static bool is_buffer_type = std::is_same_v<T, std::vector<uint8_t>>;
+
+  template <typename T>
+    requires reflected_type<T>
+  auto get_type_name() {
+    auto data = refl::reflect<T>();
+    return std::string{ data.name };
+  }
+
+  auto reflected_field_name(auto field_details) {
+    std::string mname{ field_details.name };
+    std::string dname{ refl::descriptor::get_attribute<attr::serializable>(field_details).display_name };
+    return dname.empty() ? mname : dname;
+  }
+
   struct serializer {
     struct field_writer {
       template <typename U>
@@ -199,55 +247,6 @@ namespace other {
           os << '\n';
         }
       }
-
-      template <typename U>
-      constexpr void operator()(flexbuffers::Builder& data, const U& value, uint32_t field_idx, const std::string& name) const {
-        /// we serialize both reflected types and linear algebra types to bytes
-        if constexpr (reflected_type<U> && !is_linear_algebra_type<U>) {
-          std::vector<uint8_t> bytes = serializer{}.write_fields_to_bytes(value);
-          data.Blob(name.c_str(), bytes);
-        }
-        /// we simply write the vectors in because they are simple in memory and simple to parse
-        else if constexpr (is_linear_algebra_type<U>) {
-          // for linear algebra types, we can use the blob type to store them
-          std::vector<uint8_t> bytes(sizeof(U));
-          std::memcpy(bytes.data(), &value, sizeof(U));
-          data.Blob(name.c_str(), bytes);
-        }
-        /// strings handled naturally by default case, this is for vectors, arrays, etc... of reflected types
-        else if constexpr (is_non_stringlike_container_type<U>) {
-          // std::span<typename U::value_type> values{ std::ranges::begin(value), std::ranges::size(value) };
-
-          // size_t start = data.StartVector(name.c_str());
-          // for (const auto& val : values) {
-          //   // std::vector<uint8_t> bytes = serializer{}.write_fields_to_bytes(val);
-          //   // data.Blob(name.c_str(), bytes);
-          // }
-          // data.EndVector(start, true, false);
-
-        }
-        /// simple types, int float, etc...
-        else {
-          if constexpr (is_stringlike_type<U>) {
-            data.String(name.c_str(), value);
-          } else if constexpr (std::is_same_v<U, int8_t> || std::is_same_v<U, int16_t> ||
-                               std::is_same_v<U, int32_t> || std::is_same_v<U, int64_t> || std::same_as<U, char>) {
-            data.Int(name.c_str(), static_cast<int64_t>(value));
-          } else if constexpr (std::is_same_v<U, uint8_t> || std::is_same_v<U, uint16_t> ||
-                               std::is_same_v<U, uint32_t> || std::is_same_v<U, uint64_t>) {
-            data.UInt(name.c_str(), static_cast<uint64_t>(value));
-          } else if constexpr (std::is_same_v<U, float> || std::is_same_v<U, double> ||
-                               std::is_same_v<U, long double>) {
-            data.Float(name.c_str(), static_cast<float>(value));
-          } else if constexpr (std::is_floating_point_v<U>) {
-            data.Double(name.c_str(), static_cast<double>(value));
-          } else if constexpr (std::is_same_v<U, bool>) {
-            data.Bool(name.c_str(), value);
-          } else {
-            static_assert(!std::is_same_v<U, U>, "Unsupported type for serialization.");
-          }
-        }
-      }
     };
 
     struct field_reader {
@@ -274,6 +273,9 @@ namespace other {
    public:
     type_database() = default;
 
+    template <typename T>
+      requires reflected_type<T>
+    reflection_data* get_reflection_data();
     template <typename T>
       requires reflected_type<T>
     reflection_data* get_reflection_data(const T& value);
@@ -332,116 +334,35 @@ namespace other {
     return ss.str();
   }
 
-  template <typename T>
-    requires reflected_type<T>
-  std::vector<uint8_t> serializer::write_fields_to_bytes(const T& value) const {
-    reflection_data* refl_data = type_database::get()->get_reflection_data(value);
-    OTHER_ASSERT(refl_data != nullptr, "Failed to get reflection data for type '{}'.", std::string{ refl::reflect(value).name });
+  // template <typename T>
+  //   requires reflected_type<T>
+  // T serializer::read_fields_from_bytes(const std::vector<uint8_t>& data) const {
+  //   auto outer_map = flexbuffers::GetRoot(data).AsMap();
+  //   CORE_LOG_DEBUG("Deserialized type hash: {}", outer_map["type-hash"].AsUInt64());
+  //   CORE_LOG_DEBUG("Deserialized type name: {}", outer_map["type-name"].AsString().str());
+  //   CORE_LOG_DEBUG("Deserialized number of fields: {}", outer_map["num-fields"].AsUInt64());
+  //   /**
+  //    * \todo: check num fields and type-hash against version requirements to validate version compatibility
+  //    **/
 
-    flexbuffers::Builder builder;
-    size_t start = builder.StartMap();
-    builder.UInt("type-hash", refl_data->type_hash);
-    builder.String("type-name", refl_data->type_name);
-    builder.UInt("num-fields", refl_data->member_descriptors.size());
+  //   T deserialized_obj;
+  //   for_each(refl::reflect(deserialized_obj).members, [&](auto member) {
+  //     if constexpr (refl::descriptor::has_attribute<other::attr::serializable>(member) &&
+  //                   !refl::descriptor::is_function(member)) {
+  //       std::string name = std::string{ member.name };
+  //       flexbuffers::Reference reference = outer_map[name.c_str()];
+  //       if (reference.IsNull()) {
+  //         CORE_LOG_WARN("Field '{}' not found in serialized data.", name);
+  //         return;
+  //       }
 
-    size_t idx = 0;
-    for_each(refl::reflect(value).members, [&](auto member) {
-      std::string name = std::string{ member.name };
-      if constexpr (refl::descriptor::has_attribute<attr::serializable>(member) &&
-                    !refl::descriptor::is_function(member)) {
-        field_writer{}(builder, member(value), idx, name);
-        ++idx;
-      }
-    });
-    builder.EndMap(start);
-    builder.Finish();
+  //       using member_t = std::remove_cvref_t<decltype(member(deserialized_obj))>;
+  //       member(deserialized_obj) = other::get_field<member_t>(reference, std::string{ member.name });
+  //     }
+  //   });
 
-    return builder.GetBuffer();
-  }
-
-  template <typename T>
-  decltype(auto) get_field(flexbuffers::Reference& ref, const std::string& field_name) {
-    if constexpr (other::reflected_type<T>) {
-      if constexpr (!other::is_linear_algebra_type<T>) {
-        auto blob = ref.AsBlob();
-        std::vector<uint8_t> bytes(blob.data(), blob.data() + blob.size());
-        return other::type_data_handler<T>::from_bytes(bytes);
-      } else {
-        auto blob = ref.AsBlob();
-        if constexpr (std::is_same_v<T, glm::vec2>) {
-          return *reinterpret_cast<const glm::vec2*>(blob.data());
-        } else if constexpr (std::is_same_v<T, glm::vec3>) {
-          return *reinterpret_cast<const glm::vec3*>(blob.data());
-        } else if constexpr (std::is_same_v<T, glm::vec4>) {
-          return *reinterpret_cast<const glm::vec4*>(blob.data());
-        }
-      }
-    }
-
-    else if constexpr (!other::reflected_type<T>) {
-      if constexpr (std::is_same_v<T, int8_t>) {
-        return ref.AsInt8();
-      } else if constexpr (std::is_same_v<T, int16_t>) {
-        return ref.AsInt16();
-      } else if constexpr (std::is_same_v<T, int32_t>) {
-        return ref.AsInt32();
-      } else if constexpr (std::is_same_v<T, int64_t>) {
-        return ref.AsInt64();
-      } else if constexpr (std::is_same_v<T, uint8_t>) {
-        return ref.AsUInt8();
-      } else if constexpr (std::is_same_v<T, uint16_t>) {
-        return ref.AsUInt16();
-      } else if constexpr (std::is_same_v<T, uint32_t>) {
-        return ref.AsUInt32();
-      } else if constexpr (std::is_same_v<T, uint64_t>) {
-        return ref.AsUInt64();
-      } else if constexpr (std::is_same_v<T, float>) {
-        return ref.AsFloat();
-      } else if constexpr (std::is_same_v<T, double>) {
-        return ref.AsDouble();
-      } else if constexpr (std::is_same_v<T, std::string>) {
-        return ref.AsString().str();
-      } else if constexpr (std::is_same_v<T, bool>) {
-        return ref.AsBool();
-      } else {
-        CORE_LOG_WARN("Primitive Field '{}' has unsupported value type '{}'.", field_name, other::get_value_type<T>());
-        return T{};
-      }
-    } else {
-      CORE_LOG_WARN("Field '{}' has unsupported value type '{}'.", field_name, other::get_value_type<T>());
-      return T{};
-    }
-  }
-
-  template <typename T>
-    requires reflected_type<T>
-  T serializer::read_fields_from_bytes(const std::vector<uint8_t>& data) const {
-    auto outer_map = flexbuffers::GetRoot(data).AsMap();
-    CORE_LOG_DEBUG("Deserialized type hash: {}", outer_map["type-hash"].AsUInt64());
-    CORE_LOG_DEBUG("Deserialized type name: {}", outer_map["type-name"].AsString().str());
-    CORE_LOG_DEBUG("Deserialized number of fields: {}", outer_map["num-fields"].AsUInt64());
-    /**
-     * \todo: check num fields and type-hash against version requirements to validate version compatibility
-     **/
-
-    T deserialized_obj;
-    for_each(refl::reflect(deserialized_obj).members, [&](auto member) {
-      if constexpr (refl::descriptor::has_attribute<other::attr::serializable>(member) &&
-                    !refl::descriptor::is_function(member)) {
-        std::string name = std::string{ member.name };
-        flexbuffers::Reference reference = outer_map[name.c_str()];
-        if (reference.IsNull()) {
-          CORE_LOG_WARN("Field '{}' not found in serialized data.", name);
-          return;
-        }
-
-        using member_t = std::remove_cvref_t<decltype(member(deserialized_obj))>;
-        member(deserialized_obj) = other::get_field<member_t>(reference, std::string{ member.name });
-      }
-    });
-
-    return deserialized_obj;
-  }
+  //   return deserialized_obj;
+  // }
 
   template <typename T>
     requires reflected_type<T>
@@ -466,11 +387,23 @@ namespace other {
 
   template <typename T>
     requires reflected_type<T>
+  reflection_data* type_database::get_reflection_data() {
+    auto itr = data_map.find(typeid(T).hash_code());
+    if (itr != data_map.end()) {
+      CORE_LOG_TRACE("Reflection data for type '{}' already exists.", itr->second.type_name);
+      return &itr->second;
+    }
+    CORE_LOG_TRACE("No reflection data for type '{}', generating...", std::string{ refl::reflect<T>().name });
+    return get_reflection_data(T{});
+  }
+
+  template <typename T>
+    requires reflected_type<T>
   reflection_data* type_database::get_reflection_data(const T& value) {
     /// this works because its a template function, so it will be instantiated for each type T
     static const auto refl_data = refl::reflect(value);
     static const std::string refl_type_name = std::string{ refl_data.name };
-    static const uint64_t type_hash = FNV(refl_type_name);
+    static const uint64_t type_hash = typeid(T).hash_code();
 
     {
       auto it = data_map.find(type_hash);
@@ -484,7 +417,7 @@ namespace other {
       CORE_LOG_ERROR("Failed to insert reflection data for type '{}'.", refl_type_name);
       return nullptr;
     }
-    CORE_LOG_TRACE("Stashing reflection data for type '{}'.", refl_type_name);
+    // CORE_LOG_TRACE("Stashing reflection data for type '{}'.", refl_type_name);
 
     it->second.type_hash = type_hash;
     it->second.type_name = refl_type_name;
@@ -493,40 +426,66 @@ namespace other {
 
       m.type = reflection_data::member::FIELD;
       m.name = std::string{ member.name };
-      m.display_name = {};
+
       if constexpr (refl::descriptor::is_function(member)) {
         m.type = reflection_data::member::FUNCTION;
-        if constexpr (refl::descriptor::is_property(member)) {
-          if (opt<const char*> friendly_name = refl::descriptor::get_property(member).friendly_name; friendly_name.has_value()) {
-            m.display_name = std::string{ *friendly_name };
-          }
-        }
       }
 
-      using member_t = decltype(member(value));
-
+      using member_t = std::remove_cvref_t<decltype(member(value))>;
       m.value_type = get_value_type<member_t>();
-      CORE_LOG_TRACE("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
-      if (m.value_type == value_type::USER_TYPE) {
-        if constexpr (reflected_type<member_t>) {
-          CORE_LOG_TRACE("    >  reflected member type = {}", std::string{ refl::reflect<member_t>().name });
-        }
-      }
       m.size = sizeof(member_t);
 
-      CORE_LOG_TRACE("Adding member '{}' [{}] of type '{}' to reflection data for '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", it->second.type_name);
+      if constexpr (!refl::descriptor::is_function(member)) {
+        /// compute offset via member pointer
+        /// is there a better way to do this?
+        m.offset = reinterpret_cast<size_t>(&(static_cast<T*>(nullptr)->*member.pointer));
+      }
+
+      if constexpr (refl::descriptor::has_attribute<attr::serializable>(member)) {
+        const auto& ser = refl::descriptor::get_attribute<attr::serializable>(member);
+        m.flags |= reflection_data::SERIALIZABLE;
+        m.flags |= ser.editable ?
+          reflection_data::EDITABLE :
+          reflection_data::READ_ONLY;
+
+        if (!ser.display_name.empty()) {
+          m.display_name = ser.display_name;
+        }
+      }
+
+      if constexpr (refl::descriptor::has_attribute<attr::native_only>(member)) {
+        m.flags |= reflection_data::NATIVE_ONLY;
+      }
+
+      if constexpr (refl::descriptor::has_attribute<attr::version_tag>(member)) {
+        const auto& version = refl::descriptor::get_attribute<attr::version_tag>(member);
+        m.since_version = version.version;
+      }
+
+      // CORE_LOG_TRACE("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
+      // if (m.value_type == value_type::USER_TYPE) {
+      //   if constexpr (reflected_type<member_t>) {
+      //     CORE_LOG_TRACE("  - reflected member type = {}", std::string{ refl::reflect<member_t>().name });
+      //   }
+      // }
+
+      // CORE_LOG_TRACE("  - Adding member '{}' [{}] of type '{}' to reflection data for '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", it->second.type_name);
       it->second.member_descriptors.push_back(m);
     });
 
     for_each(refl::reflect(value).bases, [&](auto base) { it->second.base_types.push_back(base.hash); });
 
-    CORE_LOG_TRACE("Added reflection data for type '{}'.", it->second.type_name);
+    // CORE_LOG_TRACE("Added reflection data for type '{}'.", it->second.type_name);
     return &it->second;
   }
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::type_database);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::type_database,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger
+);
 
 namespace std {
 

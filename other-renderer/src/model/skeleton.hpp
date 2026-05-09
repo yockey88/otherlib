@@ -4,10 +4,10 @@
 #ifndef OTHER_RENDERER_MODEL_SKELETON_HPP
 #define OTHER_RENDERER_MODEL_SKELETON_HPP
 
+#include <glm/glm.hpp>
+
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
-
-#include "glm/fwd.hpp"
 
 namespace other {
 

@@ -44,6 +44,8 @@ namespace other {
     render_pipeline() = default;
     render_pipeline(pipeline_definition&& def)
         : definition(std::move(def)) {}
+    render_pipeline(const pipeline_definition& def)
+        : definition(def) {}
     virtual ~render_pipeline() = default;
 
     void initialize_pipeline(renderer* renderer_ptr);
@@ -105,6 +107,7 @@ namespace other {
     void validate();
     void destroy_resources();
 
+    void build_pass(const pipeline_pass_definition& pass_def, render_graph::pass_builder& builder);
     void upload_to_handle(resource_handle handle, const void* data, size_t size);
 
     renderer* get_renderer() const;
@@ -115,6 +118,8 @@ namespace other {
     executor_fn make_draw_scene_executor();
     executor_fn make_fullscreen_quad_executor(const pipeline_executor_definition& exec, const std::string& pass_name);
     executor_fn make_noop_executor();
+
+    opt<resource_handle> get_shader_handle(const std::string_view shader_name) const;
 
     static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
   };

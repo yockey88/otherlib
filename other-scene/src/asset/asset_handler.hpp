@@ -11,8 +11,14 @@
 #include <asio/asio.hpp>
 
 #include "core/defines.hpp"
+#include "core/job_system.hpp"
 #include "core/state_machine.hpp"
+#include "event/event_system.hpp"
 
+#include "renderer/pipeline_definition.hpp"
+
+#include "asio/asio/strand.hpp"
+#include "asio/asio/system_executor.hpp"
 #include "asset/asset.hpp"
 #include "asset/asset_pipeline.hpp"
 
@@ -23,12 +29,17 @@ namespace other {
 
   }  // namespace detail
 
+  class scene;
+
   enum asset_state {
-    UNLOADED = 0,
-    LOADING,
+    LOADING = 0,
     LOADED,
+
     OUT_OF_DATE,
+    REFRESHING,
+
     UNLOADING,
+    UNLOADED,
 
     ERROR_STATE,
     NUM_STATES = ERROR_STATE,
@@ -38,12 +49,17 @@ namespace other {
     LOAD_REQUESTED = 0,
     LOAD_COMPLETED,
     LOAD_FAILED,
+
     TIMESTAMP_UPDATED,
+    REFRESH_REQUESTED,
+    REFRESH_COMPLETED,
+    REFRESH_FAILED,
+
     UNLOAD_REQUESTED,
     UNLOAD_COMPLETED,
+    UNLOAD_FAILED,
 
-    ERROR_EVENT,
-    NUM_EVENTS = ERROR_EVENT,
+    NUM_EVENTS,
   };
 
   class asset_state_machine : public state_machine<asset_state, asset_event> {
@@ -51,55 +67,56 @@ namespace other {
     asset_state_machine()
         : state_machine<asset_state, asset_event>(asset_state::UNLOADED) {
       add_transition(asset_state::UNLOADED, asset_event::LOAD_REQUESTED, asset_state::LOADING);
+
       add_transition(asset_state::LOADING, asset_event::LOAD_COMPLETED, asset_state::LOADED);
       add_transition(asset_state::LOADING, asset_event::LOAD_FAILED, asset_state::ERROR_STATE);
+
       add_transition(asset_state::LOADED, asset_event::UNLOAD_REQUESTED, asset_state::UNLOADING);
       add_transition(asset_state::LOADED, asset_event::TIMESTAMP_UPDATED, asset_state::OUT_OF_DATE);
-      add_transition(asset_state::OUT_OF_DATE, asset_event::LOAD_REQUESTED, asset_state::LOADING);
-      add_transition(asset_state::UNLOADING, asset_event::UNLOAD_COMPLETED, asset_state::UNLOADED);
+      add_transition(asset_state::LOADED, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING);
 
-      /// all states to error state on error event
-      for (size_t s = 0; s < static_cast<size_t>(asset_state::NUM_STATES); ++s) {
-        add_transition(
-          static_cast<asset_state>(s), asset_event::ERROR_EVENT, asset_state::ERROR_STATE,
-          [](asset_state from, asset_event event, asset_state to, void* data) {
-            CORE_LOG_ERROR("Asset in ERROR_STATE after {}", static_cast<size_t>(from));
-          }
-        );
-      }
+      add_transition(asset_state::OUT_OF_DATE, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING);
+      add_transition(asset_state::OUT_OF_DATE, asset_event::UNLOAD_REQUESTED, asset_state::UNLOADING);
+
+      add_transition(asset_state::REFRESHING, asset_event::REFRESH_COMPLETED, asset_state::LOADED);
+      add_transition(asset_state::REFRESHING, asset_event::REFRESH_FAILED, asset_state::LOADED);
+
+      add_transition(asset_state::UNLOADING, asset_event::UNLOAD_COMPLETED, asset_state::UNLOADED);
+      add_transition(asset_state::UNLOADING, asset_event::UNLOAD_FAILED, asset_state::ERROR_STATE);
     }
     ~asset_state_machine() = default;
   };
 
   class asset_handler {
    public:
-    asset_handler(asio::io_context& io_context)
-        : io_context(io_context) {}
+    asset_handler(event_system& events, asio::io_context& io_context, job_system& jobs, const std::string_view asset_mount = "assets")
+        : events(events), io_context(io_context), jobs(jobs), executor(io_context.get_executor()), default_mount(asset_mount) {
+    }
     ~asset_handler() = default;
 
     static std::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
 
-    bool idle() const { return asset_pipelines.empty(); }
-    bool empty() const { return loaded_assets.empty() && idle(); }
+    job_system& get_job_system() { return jobs; }
 
-    void purge_stores();
+    bool idle() const { return asset_pipelines.empty(); }
+    bool empty() const { return all_assets.empty() && idle(); }
+
+    void begin_unload();
     void update_pipelines();
 
     using load_completion_callback = std::function<void(asset*)>;
     using load_error_callback = std::function<void(asset*)>;
 
-    //  static bool is_asset_id_field(const std::string& field_name) {
-    //     /// \todo improve this by allowing users to specify which fields are asset id fields, maybe through a traits system or something
-    //     /// for now we will just assume any field named "asset_id" or ending with "_asset_id" is an asset id field
-    //     if (field_name == "asset_id" || field_name.ends_with("_asset_id")) {
-    //       return true;
-    //     }
-    //     return false;
-    // }
-
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
+    natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
+    natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
+
+    asset* get_asset(natural_t asset_id);
+
+    std::span<const natural_t> get_all_asset_ids() const;
 
     /// checks if asset is ready for use
     inline bool asset_loaded(natural_t asset_id) const {
@@ -126,20 +143,22 @@ namespace other {
     std::vector<natural_t> get_all_tracked_ids() const;
 
     asio::io_context& get_io_context() { return io_context; }
-    asio::thread_pool& get_thread_pool() { return thread_pool; }
+    asset_pipeline::executor_t& get_executor() { return executor; }
 
     size_t get_num_loading_assets() const { return asset_pipelines.size(); }
     size_t get_num_loaded_assets() const { return loaded_assets.size(); }
     size_t get_num_assets_in_flight() const { return asset_pipelines.size() + loaded_assets.size(); }
 
     size_t get_num_pending_unloads() const { return pending_unloads.size(); }
-    // size_t process_pending_unloads(size_t max_to_process = SIZE_MAX);
 
    private:
+    friend struct detail::load_context;
+    friend class asset_pipeline;
+
+    event_system& events;
     asio::io_context& io_context;
-    /// \todo figure out model-source pipeline race condition, currently two models loading at the same
-    ///       time when using more than one thread causes issues
-    asio::thread_pool thread_pool{ 1 };
+    job_system& jobs;
+    asset_pipeline::executor_t executor;
 
     struct pipeline_context {
       scope<asset_pipeline> pipeline = nullptr;
@@ -151,10 +170,14 @@ namespace other {
     std::queue<natural_t> successful_pipelines;
     std::queue<natural_t> failed_pipelines;
 
+    std::vector<natural_t> all_assets;
     std::unordered_map<natural_t, asset> loaded_assets;
     std::unordered_map<natural_t, asset> unloaded_assets;
     std::unordered_map<natural_t, asset_state_machine> asset_states;
 
+    /// normally we might want to recreate, but if we are closing the editor
+    // or doing
+    bool remove_after_unload = false;
     std::queue<natural_t> pending_unloads;
 
     std::string default_mount = "assets";
@@ -164,10 +187,13 @@ namespace other {
       return next_asset_id++;
     }
 
-    friend struct detail::load_context;
-    friend class asset_pipeline;
+    void begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it);
+    std::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
 
     asset* find_asset_by_path(const filepath& file_path) const;
+
+    void notify_asset_load_complete(asset* asset_ptr);
+    void notify_asset_load_failed(asset* asset_ptr, const std::string& error_message);
 
     void on_asset_loaded(natural_t id);
     void on_asset_load_failed(natural_t id);

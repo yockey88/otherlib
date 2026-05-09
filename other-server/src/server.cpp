@@ -4,250 +4,128 @@
 #include "server.hpp"
 
 #include <filesystem>
+#include <string>
 
-#include "core/coroutine.hpp"
 #include "core/defines.hpp"
 #include "thread/message.hpp"
 
-#include "script/scripting_environment.hpp"
-
 #include "driver/driver.hpp"
 
-#include "server_tasks.hpp"
+OTHER_DRIVER(other::server)
 
 namespace other {
+  namespace {
 
-  void server::on_initialize(const command_line& cmd) {
-    filepath app_folder = get_project_cache();
-
-    std::ifstream file(app_folder);
-    if (file.is_open()) {
-      file >> project_cache;
-      file.close();
-    } else {
-      CORE_LOG_WARN("Failed to open project cache file at {}", app_folder.string());
+    std::string lua_name(const std::string& name) {
+      return "__server_native_" + name;
     }
 
-    /// create event system
-    get_event_system()->register_event("open-project");
-    get_event_system()->add_listener("open-project", [this](const value& data) {
-      /// \todo open project
-      CORE_LOG_DEBUG("Received request to open project");
-      std::string name = data;
+  }  // namespace
 
-      filepath project_path;
-      filepath working_dir;
+  void server::on_early_initialize(const command_line& cmd) {
+    // http server
+    {
+      opt<filepath> directory = std::nullopt;
+      if (configuration().has_path("server.mount-directory")) {
+        directory = configuration().get_value<std::string>("server.mount-directory");
+        if (directory.has_value()) {
+          const filepath& dir = directory.value();
+          const filepath abspath = std::filesystem::absolute(dir);
 
-      auto projects = project_cache["projects"];
-      json::json project_entry;
-      for (const auto& p : projects.items()) {
-        if (p.value().contains("name") && p.value()["name"].get<std::string>() == name) {
-          project_entry = p.value();
-          break;
+          const bool abs_exists = std::filesystem::exists(abspath);
+          if (!abs_exists) {
+            directory = file_system::get_cwd();
+          } else {
+            directory = abspath;
+          }
+
+          OTHER_ASSERT(!directory.value().empty(), "Mount directory should have a value at this point");
+          OTHER_ASSERT(std::filesystem::exists(directory.value()), "Mount directory should exist at this point");
+        } else {
+          CORE_LOG_ERROR("Failed to parse mount directory from config value: '{}'", configuration().get_value<std::string>("server.mount-directory"));
+          directory = file_system::get_cwd();
         }
       }
+      OTHER_ASSERT(directory.has_value(), "Mount directory config value is invalid");
+      mount_directory = directory.value();
+      CORE_LOG_INFO("Server mount directory: '{}'", mount_directory.string());
+    }
 
-      if (project_entry.is_null()) {
-        CORE_LOG_ERROR("Project '{}' not found in project cache", name);
-        return;
+    {
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem should be available");
+
+      ref<directory> mount_dir = fs->mount_directory("server_mount", mount_directory);
+      OTHER_ASSERT(mount_dir != nullptr, "Failed to mount server directory");
+      CORE_LOG_INFO("Mounted server directory: {}", mount_dir->to_string());
+    }
+
+    // configure lua interface
+    add_native_lua_function(lua_name("GetMountDirectory"), [this]() {
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem should be available");
+
+      ref<directory> mount = fs->get_mount("server_mount");
+      OTHER_ASSERT(mount != nullptr, "Server mount directory not found in file system");
+      return mount->absolute_path().string();
+    });
+    add_native_lua_function(lua_name("ReadFileToHttpBody"), [this](const std::string& path) -> std::vector<uint8_t> {
+      const filepath full_path = path;
+      if (std::filesystem::exists(full_path) && std::filesystem::is_regular_file(full_path)) {
+        std::ifstream file_stream(full_path, std::ios::binary);
+        if (!file_stream) {
+          CORE_LOG_ERROR("Failed to open file at path: '{}'", full_path.string());
+          return {};
+        }
+        std::vector<uint8_t> data((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
+        return data;
       }
 
-      std::string file = project_entry.contains("project-file") ? project_entry["project-file"].get<std::string>() : "";
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem should be available");
+      ref<directory> mount = fs->get_mount("server_mount");
+      OTHER_ASSERT(mount != nullptr, "Server mount directory not found in file system");
 
-      CORE_LOG_DEBUG("Opening project '{}' at path '{}' with working directory '{}'", name, file, project_entry.at("working-directory").get<std::string>());
-      validate_project_and_launch(project_entry);
+      ref<file_handle> file = mount->get_file(path);
+      if (file == nullptr) {
+        CORE_LOG_ERROR("File '{}' not found in server mount directory", path);
+        return {};
+      }
+      return file->read_all();
     });
+    add_native_lua_function(lua_name("SendHttpResponse"), [this](natural_t id, const http::response& response) {
+      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
+    });
+    add_native_lua_function(lua_name("FileExists"), [this](const std::string& path) -> bool {
+      const filepath full_path = path;
+      if (std::filesystem::exists(full_path) && std::filesystem::is_regular_file(full_path)) {
+        return true;
+      }
 
-    get_event_system()->register_event("finalize-project");
-    get_event_system()->add_listener("finalize-project", [this](const value& data) {
-      post_coroutine(build_project(data, project_cache, *get_event_system()));
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem should be available");
+      ref<directory> mount = fs->get_mount("server_mount");
+      OTHER_ASSERT(mount != nullptr, "Server mount directory not found in file system");
+
+      ref<file_handle> file = mount->get_file(path);
+      return file != nullptr;
     });
   }
 
-  void server::on_initialize_rendering() {
-    std::string backend = configuration().rendering_backend.value();
-    if (backend == "headless") {
-      get_renderer_instance().add_pipeline("Headless Pipeline", get_empty_pipeline());
-    } else {
-      get_renderer_instance().add_pipeline("UI Pipeline", get_default_instancing_pipeline());
-    }
-  }
+  void server::on_initialize(const command_line& cmd) {
+    // http port
+    config_http_port = configuration().get_value("server.main-http-port", uint16_t(8080));
+    binding_point endpoint{ network_system::network_context::kLocalhostAddress, config_http_port };
 
-  void server::on_initialize_ui(scope<driver_ui>& ui_ptr) {
-    ///  \todo replace this function with UI that can be loaded from a file
-    ///         or attached through .NET scripts
-    this->ui_ptr = make_scope<server_ui>(get_event_system(), project_cache);
-  }
-
-  void server::on_update() {
-  }
-
-  void server::on_ui_render() {
-    ui_ptr->render();
+    // initialize lua side
+    invoke_driver_method("InitializeHttpServer", config_http_port);
+    core_system<network_system>().listen_at_endpoint(endpoint);
   }
 
   void server::on_shutdown() {
-    CORE_LOG_INFO("Server shutdown complete.");
   }
 
-  void server::on_shutdown_rendering() {
-    std::string backend = configuration().rendering_backend.value();
-    if (backend == "headless") {
-      get_renderer_instance().remove_pipeline("Headless Pipeline");
-    } else {
-      get_renderer_instance().remove_pipeline("UI Pipeline");
-    }
-  }
-
-  void server::core_update() {
-    pump_events();
-  }
-
-  void server::update_initializing() {}
-
-  void server::update_running() {}
-
-  void server::update_shutting_down() {}
-
-  void server::validate_project_and_launch(const json::json& project_entry) {
-    std::string name = project_entry.at("name").get<std::string>();
-
-    json::json launch_info = project_entry.at("build");
-    std::string type = launch_info.at("type").get<std::string>();
-
-    enum class launch_type {
-      OTHER_APPLICATION_EXE,
-      UNKNOWN,
-    };
-
-    launch_type ltype = launch_type::UNKNOWN;
-    if (type == "other-application") {
-      ltype = launch_type::OTHER_APPLICATION_EXE;
-    } else {
-      CORE_LOG_ERROR("Unknown launch type '{}' for project '{}'", type, name);
-      return;
-    }
-
-    switch (ltype) {
-      case launch_type::OTHER_APPLICATION_EXE: {
-        begin_other_application(project_entry);
-      } break;
-
-      case launch_type::UNKNOWN:
-      default:
-        CORE_LOG_ERROR("Unhandled launch type for project '{}'", name);
-        break;
-    }
-  }
-
-  std::string replace_all_substrings_with(std::string str, const std::string& from, const std::string& to) {
-    size_t start_pos = 0;
-    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-      str.replace(start_pos, from.length(), to);
-      start_pos += to.length();  // Move past the replaced substring to avoid infinite loops if 'to' contains 'from'
-    }
-    return str;
-  }
-
-  void server::begin_other_application(const json::json& project_entry) {
-    /// launch other application with command line args specifying the server's current command port, the project configuration
-    ///   and the working directory
-    /// set an event listener for 'session-initial-check-in' to register other-application with the server
-    /// respond to the ping with server data
-
-#if 0
-  #define TESTING_COROS
-#endif
-    // post_coroutine(validate_and_build_other_application("OtherApp", working_dir, exe_name));
-#ifdef TESTING_COROS
-#else
-
-    std::string name = project_entry.at("name").get<std::string>();
-    filepath project_file = filepath(project_entry.at("project-file").get<std::string>());
-    filepath working_dir = project_entry.at("working-directory").get<std::string>();
-    json::json build_info = project_entry.at("build");
-
-    opt<filepath> output_file = build_info.contains("output-file") ? filepath(build_info.at("output-file").get<std::string>()) : opt<filepath>{};
-    filepath exe_name = build_info.contains("executable") ? filepath(build_info.at("executable").get<std::string>()) : filepath("OtherApp.exe");
-    std::vector<std::string> args = build_info.contains("args") ? build_info.at("args").get<std::vector<std::string> >() : std::vector<std::string>{};
-
-    static integer_t next_id = 1;
-    integer_t id = next_id++;
-    auto itr = app_list.pending_apps.insert(app_list.pending_apps.end(), application_list::other_application{ .id = id, .working_directory = working_dir, .executable = exe_name, .args = args });
-    OTHER_ASSERT(itr != app_list.pending_apps.end(), "Failed to begin Other application : {}  [{}]", id, exe_name.string());
-
-    CORE_LOG_DEBUG("Starting Other application : {}", id);
-    itr->executable = replace_all_substrings_with(itr->executable->string(), "${configuration}", "Debug");
-
-    CORE_LOG_DEBUG("Launching Other application executable '{}' @ [{}]:", itr->executable->string(), working_dir.string());
-    for (const auto& arg : itr->args) {
-      CORE_LOG_DEBUG("   - {}", arg);
-    }
-
-    /// \todo: build the project and validate it is correct first
-    // project_description proj_desc = {
-    //   .project_type = project_description::APPLICATION,
-    //   .name = name,
-    //   .working_directory = working_dir,
-    //   .output_directory = output_file.has_value() ? output_file->parent_path() : working_dir / filepath("build"),
-    //   .exe_name = output_file.has_value() ? *output_file : working_dir / filepath("build") / exe_name,
-    //   .configurations = { "Debug", "Release" },
-    //   .active_configuration = 0,
-    //   .cmd_args = args,
-    //   .version = "0.1.0",
-    //   .description = "An Other application.",
-    //   .author = "Author Name",
-    //   .license = "MIT",
-    // };
-    // if (project_entry.contains("project-file")) {
-    //   proj_desc.override_file_name = project_entry.at("project-file").get<std::string>();
-    // }
-    // build_tool bt;
-    // bt.start_build(proj_desc);
-
-    session_check_in_request(itr->id);
-
-    itr->args.insert(itr->args.begin(), project_file.string());
-    itr->args.append_range(std::vector<std::string>{ "--sid", std::to_string(itr->id) });
-    itr->args.append_range(std::vector<std::string>{ "--port", std::to_string(net_context->main_binding_point.port) });
-    launch_detached_process(*itr->working_directory, *itr->executable, itr->args);
-#endif
-  }
-
-  // void server::on_timeout_request_session_information_network_thread(message_header header) {
-  //   CORE_LOG_WARN("Network thread timed out waiting for session information response for session [{}]", header.id);
-  // }
-
-  void server::on_notification_session_closed(integer_t session_id) {
-    auto app_itr = app_list.other_apps.find(session_id);
-    if (app_itr != app_list.other_apps.end()) {
-      CORE_LOG_INFO("Other application [{}] has disconnected", app_itr->second.get_name());
-      app_itr->second.connected = false;
-      /// don't remove from list, it might reconnect
-      /// \todo set a timeout to remove it after a while if needed
-    } else {
-      /// ignore because there may be open sessions that aren't other applications
-    }
-  }
-
-  task server::validate_and_build_other_application(const std::string& name, const filepath& folder, const filepath& env_config_path) {
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
-
-    integer_t builder_obj_id = env->create_object("Builder");
-    OTHER_ASSERT(builder_obj_id != -1, "Failed to create Builder object in scripting environment");
-
-    env->attach_dotnet_object(builder_obj_id, "Other.BuildTool");
-    // co_await task::awaiter{};
-
-    CORE_LOG_DEBUG("Validating and building Other application '{}' in folder '{}'", name, folder.string());
-    script_object* builder_obj = env->get_object(builder_obj_id);
-    OTHER_ASSERT(builder_obj != nullptr, "Failed to retrieve Builder object from scripting environment");
-
-    builder_obj->dotnet_object->invoke("ValidateAndBuildOtherApplication");  //, name, folder.string(), env_config_path.string());
-
-    env->destroy_object(builder_obj_id);
-    co_return;
+  void server::on_http_request_received(natural_t id, const http::request& req) {
   }
 
 }  // namespace other

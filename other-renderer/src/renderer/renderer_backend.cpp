@@ -180,7 +180,6 @@ namespace other {
       return it->second;
     }
 
-    CORE_LOG_ERROR("Model source with handle {} not found.", handle);
     return nullptr;
   }
 

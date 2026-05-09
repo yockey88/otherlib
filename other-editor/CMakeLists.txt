@@ -4,4 +4,5 @@ add_static_driver(other_editor
   src/status_window.cpp
 )
 
+add_subdirectory(plugins)
 add_subdirectory(dotnet)

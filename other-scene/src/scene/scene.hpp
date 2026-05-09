@@ -45,7 +45,7 @@ namespace other {
 
     ~scene();
 
-    void run_lua_file(const filepath& script_path);
+    void run_script_file();
 
     inline scene_storage& get_storage() {
       OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
@@ -53,9 +53,9 @@ namespace other {
     }
 
     static scene create_scene(const std::string& name);
-    static scene load_scene(const filepath& scene_path);
 
     void play();
+    void pause();
     void stop();
     void reset();
     bool is_playing() const {
@@ -104,8 +104,8 @@ namespace other {
     scene_object& get_object(natural_t id);
     const scene_object& get_object(natural_t id) const;
 
-    scene_object* find_object(const std::string_view name);
-    scene_object* find_object(natural_t id);
+    scene_object* find_object(const std::string_view name) const;
+    scene_object* find_object(natural_t id) const;
 
     size_t get_object_count() const;
 
@@ -125,10 +125,6 @@ namespace other {
     bool object_has_tag(natural_t id, const std::string_view tag) const;
     void add_object_tag(natural_t id, const std::string_view tag);
     void remove_object_tag(natural_t id, const std::string_view tag);
-
-    void add_component_by_name(scene_object* object, const std::string_view component_name);
-    void remove_component_by_name(scene_object* object, const std::string_view component_name);
-    bool has_component_by_name(scene_object* object, const std::string_view component_name) const;
 
     template <typename T>
       requires std::is_base_of_v<component, T>
@@ -174,6 +170,17 @@ namespace other {
       scene_tree::node* node = storage->tree.node_at(id);
       OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
       return add_component<T>(node->object, std::forward<Args>(args)...);
+    }
+
+    template <typename T>
+    T* try_get_component(natural_t id) {
+      scene_tree::node* node = storage->tree.node_at(id);
+      OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+      if (has_component<T>(node->object)) {
+        return get_component<T>(node->object);
+      } else {
+        return nullptr;
+      }
     }
 
     template <typename T>
@@ -237,20 +244,31 @@ namespace other {
       return has_component<T>(node->object);
     }
 
+    inline size_t get_num_objects() const {
+      return storage != nullptr ? storage->tree.num_objects : 0;
+    }
+
     static std::string as_string(const scene& s);
 
     void connect_remote_session(integer_t session_id);
 
     std::string name = "Untitled Scene";
     natural_t id = 0;
+    natural_t asset_id = 0;
 
+    /// clean this up, right now this is really fragile
     integer_t kNoStreamBinding = -1;
     integer_t update_stream_id = kNoStreamBinding;
 
+    opt<filepath> script_path = std::nullopt;
+    bool script_loaded = false;
+
+    bool activate_on_load = false;
     bool synchronized = true;
     bool debug_physics_rendering_enabled = false;
 
    private:
+    friend class scene_tree;
     struct object_handle {
       natural_t id = 0;
       scene_object* object = nullptr;
@@ -258,7 +276,8 @@ namespace other {
       operator scene_object*() const;
       bool operator==(const object_handle& other) const;
     };
-    friend class scene_tree;
+    struct synchronization_state {
+    };
 
     scene_object* from_registry_id(entt::entity entity);
 
@@ -278,7 +297,6 @@ namespace other {
     // void on_update_physics_component(const entt::registry&, const entt::entity entity);
     void on_destroy_physics_component(const entt::registry&, const entt::entity entity);
 
-    static scene load_from_lua_file(const filepath& scene_path);
     void construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table);
 
     bool playing = false;

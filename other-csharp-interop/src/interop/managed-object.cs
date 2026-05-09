@@ -157,7 +157,7 @@ namespace OtherCsBindings
           return IntPtr.Zero;
         }
 
-        var handle = GCHandle.Alloc(result, weak_ref ? GCHandleType.Weak : GCHandleType.Normal);
+        var handle = GCHandle.Alloc(result, GCHandleType.Normal);
         AssemblyLoader.RegisterHandle(type.Assembly, handle);
         return GCHandle.ToIntPtr(handle);
       }
@@ -242,6 +242,80 @@ namespace OtherCsBindings
 
         var marshalled_parameters = OtherMemory.MarshalParameterArray(parameters, count, method_info);
         object? value = method_info.Invoke(target, marshalled_parameters);
+        if (value == null)
+        {
+          return;
+        }
+
+        OtherMemory.MarshalReturn(value, method_info.ReturnType, res);
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+      }
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe void InvokeStaticMethod(IntPtr handle, NativeString method_name, IntPtr parameters, ManagedType* param_types, int count)
+    {
+      try
+      {
+        if (method_name == null)
+        {
+          throw new ArgumentNullException($"{nameof(method_name)} cannot be null.");
+        }
+
+        var target = GCHandle.FromIntPtr(handle).Target;
+        if (target == null)
+        {
+          throw new NullReferenceException($"Target object for invoking method [{method_name}]({count}) is null.");
+        }
+
+        Type target_type = target.GetType();
+        MethodInfo? minfo = TryGetMethodInfo(target_type, method_name, param_types, count, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+        if (minfo == null)
+        {
+          throw new MissingMethodException($"Method '{target_type.FullName}.{method_name}[{count}]' not found.");
+        }
+
+        var marshalled_parameters = OtherMemory.MarshalParameterArray(parameters, count, minfo);
+        minfo.Invoke(target, marshalled_parameters);
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+      }
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe void InvokeStaticMethodRet(IntPtr handle, NativeString name, IntPtr parameters, ManagedType* param_types, Int32 count, IntPtr res)
+    {
+      try
+      {
+        if (name == null)
+        {
+          Logger.LogError($"{nameof(name)} cannot be null.");
+          return;
+        }
+
+        var target = GCHandle.FromIntPtr(handle).Target;
+
+        if (target == null)
+        {
+          Logger.LogError($"Target object for invoking method [{name}]({count}) is null.");
+          return;
+        }
+
+        var target_type = target.GetType();
+        var method_info = TryGetMethodInfo(target_type, name, param_types, count, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+        if (method_info == null)
+        {
+          Logger.LogError($"Method ['{target_type.Name}.{name}'] was not found");
+          return;
+        }
+
+        var marshalled_parameters = OtherMemory.MarshalParameterArray(parameters, count, method_info);
+        object? value = method_info.Invoke(null, marshalled_parameters);
         if (value == null)
         {
           return;

@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <print>
+#include <ranges>
 
 #include "core/fnv.hpp"
 

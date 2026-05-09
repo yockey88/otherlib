@@ -29,7 +29,7 @@ namespace other {
     ~build_tool() = default;
 
     /// returns json blob with build results and info
-    void start_build(const project_description& project);
+    // void start_build(const project_description& project);
     void poll_project_build();
     void finalize_build();
 
@@ -62,7 +62,7 @@ namespace other {
     script_object* build_tool_obj = nullptr;
 
     build_status curr_build_status = BUILD_STATUS_NOT_STARTED;
-    project_description project = {};
+    // project_description project = {};
 
     enum build_phase {
       VALIDATE_GENERATE_FILES = 0,

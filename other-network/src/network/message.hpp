@@ -4,255 +4,118 @@
 #ifndef OTHER_NETWORK_NETWORK_MESSAGE_HPP
 #define OTHER_NETWORK_NETWORK_MESSAGE_HPP
 
-#include "thread/message.hpp"
-#include "thread/test/new_message.hpp"
+#include <string>
+#include <type_traits>
 
-#include "network/udp_datagram.hpp"
+#include "serialization/reflection.hpp"
+#include "serialization/serialization.hpp"
 
 namespace other {
 
-#pragma pack(push, 1)
-  struct message_header_tcp {
-    message_header header;
-    uint32_t packet_size = 0;
-  };
+  template <typename T>
+    requires reflected_type<T>
+  void validate_message_data(std::span<const uint8_t> data) {
+    if (data.empty()) {
+      throw buffer_parsing_error("Message data is empty");
+    }
+  }
 
-  struct network_packet_header {
-    uint32_t packet_size = 0;
-    uint16_t packet_type = 0;
-    uint16_t num_messages = 0;
-  };
-#pragma pack(pop)
+  template <typename T>
+    requires reflected_type<T>
+  std::vector<uint8_t> serialize_direct(const T& value, size_t level = 0) {
+    std::vector<uint8_t> data;
 
-  struct tcp_packet {
-    constexpr static inline size_t kMaxSize = 1448 - sizeof(network_packet_header);
+    CORE_LOG_TRACE("{}[WRITE: {}]", std::string(level * 2, ' '), get_type_name<T>());
+    for_each(refl::reflect(value).members, [&](const auto member) {
+      if constexpr (refl::descriptor::has_attribute<attr::serializable>(member) &&
+                    !refl::descriptor::is_function(member)) {
+        std::string name = reflected_field_name(member);
+        using member_t = std::decay_t<decltype(member(value))>;
+        const auto& field_value = member(value);
 
-    network_packet_header net_header;
-    std::vector<message> messages;
-  };
+        if constexpr (is_buffer_type<member_t>) {
+          const auto& buffer = member(value);
 
-#pragma pack(push, 1)
+          if (std::ranges::size(buffer) > std::numeric_limits<uint16_t>::max()) {
+            throw buffer_parsing_error("Buffer size exceeds maximum supported size of " + std::to_string(std::numeric_limits<uint16_t>::max()));
+          }
 
-  struct udp_binding_information;
+          CORE_LOG_TRACE("{}[FIELD: {}] [BLOB ({} bytes)] (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, std::ranges::size(buffer), get_value_type<T>(), data.size());
+          uint16_t buff_size = static_cast<uint16_t>(std::ranges::size(buffer));
+          append_named_field_to_raw_buffer(name + "_buff_len", buff_size, data);
+          data.append_range(buffer);
+        }
+        //
+        else {
+          CORE_LOG_TRACE("{}[FIELD: {}] {} (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, field_value, get_value_type<member_t>(), data.size());
+          if constexpr (reflected_type<member_t>) {
+            data.append_range(serialize_direct(field_value, level + 1));
+          }
+          //
+          else if constexpr (std::is_trivially_copyable_v<member_t>) {
+            append_named_field_to_raw_buffer(name, field_value, data);
+          }
+          //
+          else {
+            static_assert(false, "Unsupported field type for serialization in serialize_direct");
+          }
+        }
+      }
+    });
 
-  /// notification messages
-  struct notification_session_check_in : other_message_spec_impl<notification_session_check_in> {
-    integer_t session_id = 0;
-  };
+    return data;
+  }
 
-  struct notification_session_closed : other_message_spec_impl<notification_session_closed> {
-    integer_t session_id = 0;
-  };
+  template <typename T>
+    requires reflected_type<T>
+  std::pair<T, size_t> deserialize_direct(std::span<const uint8_t> data, size_t level = 0) {
+    validate_message_data<T>(data);
 
-  struct notification_stream_rx_datagram : other_message_spec_impl<notification_stream_rx_datagram> {
-    integer_t stream_id = 0;
-    udp_datagram datagram;
+    T value{};
+    std::span<const uint8_t> remaining_data = data;
 
-    static std::vector<uint8_t> custom_builder(notification_stream_rx_datagram* msg);
-    static notification_stream_rx_datagram custom_parser(const std::span<const uint8_t> data);
-  };
+    CORE_LOG_TRACE("{}[READ: {}]", std::string(level * 2, ' '), get_type_name<T>());
+    for_each(refl::reflect(value).members, [&](auto member) {
+      if constexpr (refl::descriptor::has_attribute<attr::serializable>(member) &&
+                    !refl::descriptor::is_function(member)) {
+        std::string name = reflected_field_name(member);
+        using member_t = std::decay_t<decltype(member(value))>;
+        size_t offset = data.size() - remaining_data.size();
 
-  /// acknowledgement messages
+        if constexpr (is_buffer_type<member_t>) {
+          uint16_t buff_size = parse_named_field_from_raw_buffer<uint16_t>(name + "_buff_len", remaining_data);
+          remaining_data = remaining_data.subspan(sizeof(uint16_t));
+          if (buff_size > remaining_data.size()) {
+            throw buffer_parsing_error("Buffer size specified in message data for field '" + name + "' exceeds remaining data size");
+          }
 
-  /// control messages
-  struct control_ping : other_message_spec_impl<control_ping> {
-    integer_t session_id = 0;
-  };
+          member(value) = std::vector<uint8_t>(remaining_data.data(), remaining_data.data() + buff_size);
+          CORE_LOG_TRACE("{}[FIELD: {}] [BLOB ({} bytes)] (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, buff_size, get_value_type<T>(), data.size() - remaining_data.size());
+        }
+        //
+        else {
+          if constexpr (reflected_type<member_t>) {
+            auto [deserialized_value, consumed_size] = deserialize_direct<member_t>(remaining_data, level + 1);
+            member(value) = deserialized_value;
+            remaining_data = remaining_data.subspan(consumed_size);
+          }
+          //
+          else if constexpr (std::is_default_constructible_v<member_t>) {
+            member(value) = parse_named_field_from_raw_buffer<member_t>(name, remaining_data);
+            remaining_data = remaining_data.subspan(sizeof(member_t));
+          }
+          //
+          else {
+            static_assert(false, "Unsupported field type for deserialization in deserialize_direct");
+          }
+          CORE_LOG_TRACE("{}[FIELD: {}] {} (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, member(value), get_value_type<member_t>(), offset);
+        }
+      }
+    });
 
-  struct control_pong : other_message_spec_impl<control_pong> {
-    integer_t session_id = 0;
-  };
+    return { value, data.size() - remaining_data.size() };
+  }
 
-  /// command messages
-  struct command_session_connect_to : other_message_spec_impl<command_session_connect_to> {
-    binding_point address;
-  };
-
-  struct command_session_listen_at : other_message_spec_impl<command_session_listen_at> {
-    binding_point address;
-  };
-
-  struct command_session_check_in_at : other_message_spec_impl<command_session_check_in_at> {
-    integer_t session_id = 0;
-    binding_point address;
-  };
-
-  struct command_session_tx_message : other_message_spec_impl<command_session_tx_message> {
-    integer_t session_id = 0;
-    message msg;
-
-    static std::vector<uint8_t> custom_builder(command_session_tx_message* msg);
-    static command_session_tx_message custom_parser(const std::span<const uint8_t> data);
-  };
-
-  struct command_load_scene : other_message_spec_impl<command_load_scene> {
-    uint8_t session_id_flag = 0;
-    integer_t session_id = 0;
-
-    /// if true (1) then the scene does not have to be synchronized over UDP,
-    /// if false (0) then the scene requires UDP synchronization
-    uint8_t empty_scene_flag = 0;
-
-    uint8_t requires_udp_binding = 0;
-    binding_point udp_address;
-    binding_point server_udp_address;
-
-    std::string scene_name;
-
-    static std::vector<uint8_t> custom_builder(command_load_scene* msg);
-    static command_load_scene custom_parser(const std::span<const uint8_t> data);
-  };
-
-  struct command_stream_send_udp_datagram : other_message_spec_impl<command_stream_send_udp_datagram> {
-    integer_t stream_id = 0;
-    udp_datagram datagram;
-
-    static std::vector<uint8_t> custom_builder(command_stream_send_udp_datagram* msg);
-    static command_stream_send_udp_datagram custom_parser(const std::span<const uint8_t> data);
-  };
-
-  /// request messages
-  struct session_check_in_request : other_message_spec_impl<session_check_in_request> {
-    integer_t session_id = 0;
-  };
-
-  struct session_information_request : other_message_spec_impl<session_information_request> {
-    uint8_t project_data_flag = 0;
-    uint8_t name_flag = 0;
-    uint8_t executable_flag = 0;
-    uint8_t working_directory_flag = 0;
-  };
-
-  struct new_udp_stream_binding_request : other_message_spec_impl<new_udp_stream_binding_request> {
-    binding_point address;
-    binding_point remote_address;
-  };
-
-  /// response messages
-  struct session_connect_to_response : other_message_spec_impl<session_connect_to_response> {
-    uint8_t ack_nack = 0;
-    integer_t session_id = 0;
-  };
-
-  struct session_check_in_response : other_message_spec_impl<session_check_in_response> {
-    integer_t session_id = 0;
-  };
-
-  struct session_information_response : other_message_spec_impl<session_information_response> {
-    uint8_t project_data_flag = 0;
-
-    uint8_t name_flag = 0;
-    std::string name;
-
-    uint8_t executable_flag = 0;
-    std::string executable;
-
-    uint8_t working_directory_flag = 0;
-    std::string working_directory;
-
-    static std::vector<uint8_t> custom_builder(session_information_response* msg);
-    static session_information_response custom_parser(const std::span<const uint8_t> data);
-  };
-
-  struct udp_handle;
-
-  struct new_udp_stream_binding_response : other_message_spec_impl<new_udp_stream_binding_response> {
-    uint8_t ack_nack = 0;
-    integer_t binding_id = 0;
-  };
-
-  /// session event messages
-  struct session_event_rx_message : other_message_spec_impl<session_event_rx_message> {
-    integer_t session_id = 0;
-    message msg;
-
-    static std::vector<uint8_t> custom_builder(session_event_rx_message* msg);
-    static session_event_rx_message custom_parser(const std::span<const uint8_t> data);
-  };
-
-  /// information
-  struct udp_binding_information : other_message_spec_impl<udp_binding_information> {
-    binding_point endpoint;
-    binding_point remote_endpoint;
-    uint64_t check_in_hash = 0;
-  };
-
-  /// error alert messages
-
-#pragma pack(pop)
 }  // namespace other
-
-OTHER_REFLECT(
-  other::notification_session_check_in,
-  field(session_id)
-);
-
-OTHER_REFLECT(
-  other::notification_session_closed,
-  field(session_id)
-);
-
-OTHER_REFLECT(
-  other::control_ping,
-  field(session_id)
-);
-
-OTHER_REFLECT(
-  other::control_pong,
-  field(session_id)
-);
-
-OTHER_REFLECT(
-  other::command_session_connect_to,
-  field(address)
-);
-
-OTHER_REFLECT(
-  other::command_session_listen_at,
-  field(address)
-);
-
-OTHER_REFLECT(
-  other::command_session_check_in_at,
-  field(session_id),
-  field(address)
-)
-
-OTHER_REFLECT(
-  other::session_check_in_request,
-  field(session_id)
-);
-
-OTHER_REFLECT(
-  other::session_information_request,
-  field(project_data_flag),
-  field(name_flag),
-  field(executable_flag),
-  field(working_directory_flag)
-);
-
-OTHER_REFLECT(
-  other::new_udp_stream_binding_request,
-  field(address),
-  field(remote_address)
-);
-
-OTHER_REFLECT(
-  other::new_udp_stream_binding_response,
-  field(ack_nack),
-  field(binding_id)
-)
-
-OTHER_REFLECT(
-  other::session_check_in_response,
-  field(session_id)
-);
-
-OTHER_REFLECT(
-  other::udp_binding_information,
-  field(endpoint),
-  field(remote_endpoint),
-  field(check_in_hash)
-);
 
 #endif  // OTHER_NETWORK_NETWORK_MESSAGE_HPP

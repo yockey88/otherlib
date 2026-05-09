@@ -82,7 +82,7 @@ endif()
 set(COMPILE_OPTIONS "")
 if(BUILD_PLATFORM STREQUAL "WINDOWS")
   add_compile_definitions("OTHER_ENVIRONMENT_WINDOWS" ${BUILD_CONFIG_MACRO} "HAS_SEH_EXCEPTIONS" "NOMINMAX")
-  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /bigobj")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /bigobj")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0A00") # Windows 10+
   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWIN32_LEAN_AND_MEAN")
@@ -112,23 +112,22 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(OTHER_LIBRARIES_PATH 
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
-    # "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/debug"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/debug"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/debug"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/debug"
   )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
   set(OTHER_LIBRARIES_PATH 
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/lib/release"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/release"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/release"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/release"
   )
 endif()
 
 set(ASSIMP_NAME "assimp-vc143-mt")
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} 
-  "${CMAKE_CURRENT_SOURCE_DIR}/extern/flatbuffers/lib"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib"
 )
   
@@ -146,7 +145,6 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/spdlog
   ${OTHER_EXTERN_DIR}/glm
   ${OTHER_EXTERN_DIR}/refl
-  ${OTHER_EXTERN_DIR}/flatbuffers
   ${OTHER_EXTERN_DIR}/asio
   ${OTHER_EXTERN_DIR}/spdlog
   ${OTHER_EXTERN_DIR}/sdl
@@ -158,13 +156,13 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/dotnet
   ${OTHER_EXTERN_DIR}/entt
   ${OTHER_EXTERN_DIR}/pybind11/include
-  ${OTHER_EXTERN_DIR}/nativefiledialog/src
   ${OTHER_EXTERN_DIR}/json
   ${OTHER_EXTERN_DIR}/sol2
   ${OTHER_EXTERN_DIR}/sol2/lua
   ${OTHER_EXTERN_DIR}/sol2/sol
   ${OTHER_EXTERN_DIR}/physx
   ${OTHER_EXTERN_DIR}/jolt
+  ${OTHER_EXTERN_DIR}/tinyxml2
   ${IMGUI_INCLUDE_DIRS}
 )
 set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
@@ -174,7 +172,6 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/spdlog
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/glm
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/refl
-  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/flatbuffers
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/asio
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/spdlog
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sdl
@@ -186,11 +183,11 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/dotnet
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/entt
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/pybind11/include
-  # ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/nativefiledialog/src
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/json
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/lua
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/sol
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/tinyxml2
   ${OTHER_EXTERN_INCLUDE_DIRS}
 )
 
@@ -205,7 +202,6 @@ set(DOTNET_INCLUDE_DIRECTORY
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/json"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/mio"
-  # "${CMAKE_CURRENT_SOURCE_DIR}/extern/nativefiledialog/src"
 )
 set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
 set(DOTNET_LIBRARIES nethost)
@@ -215,6 +211,8 @@ set(PYBIND11_FINDPYTHON ON)
 set(PYBIND11_PYTHON_VERSION "3.13")
 
 find_package(Threads REQUIRED)
+
+add_compile_definitions(OTHER_PROJECT_FILE_TOML_FORMAT)
 
 add_subdirectory(other-core)
 add_subdirectory(other-network)
@@ -247,7 +245,6 @@ other_install_external_headers("tomlplusplus" "${OTHER_EXTERN_DIR}/tomlplusplus"
 other_install_external_headers("spdlog" "${OTHER_EXTERN_DIR}/spdlog")
 other_install_external_headers("glm" "${OTHER_EXTERN_DIR}/glm")
 other_install_external_headers("refl" "${OTHER_EXTERN_DIR}/refl")
-other_install_external_headers("flatbuffers" "${OTHER_EXTERN_DIR}/flatbuffers")
 other_install_external_headers("asio" "${OTHER_EXTERN_DIR}/asio")
 other_install_external_headers("glad" "${OTHER_EXTERN_DIR}/glad/include")
 other_install_external_headers("assimp" "${OTHER_EXTERN_DIR}/assimp")
@@ -258,20 +255,20 @@ other_install_external_headers("entt" "${OTHER_EXTERN_DIR}/entt")
 other_install_external_headers("sdl" "${OTHER_EXTERN_DIR}/sdl")
 other_install_external_headers("imgui" "${IMGUI_INCLUDE_DIRS}")
 other_install_external_headers("pybind11" "${OTHER_EXTERN_DIR}/pybind11/include")
-other_install_external_headers("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefiledialog/src")
 other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
 other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/include")
 other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
+other_install_external_headers("jolt" "${OTHER_EXTERN_DIR}/jolt/Jolt")
+other_install_external_headers("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2")
 
 # ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")
 other_install_external_library("assimp" "${OTHER_EXTERN_DIR}/assimp/lib")
 other_install_external_library("glad" "${OTHER_EXTERN_DIR}/glad/lib")
-other_install_external_library("nativefiledialog" "${OTHER_EXTERN_DIR}/nativefiledialog/lib")
-other_install_external_library("flatbuffers" "${OTHER_EXTERN_DIR}/flatbuffers/lib")
 other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
 other_install_external_library("jolt" "${OTHER_EXTERN_DIR}/jolt/lib")
 other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
+other_install_external_library("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2/lib")
   
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(DLL_CONFIG "debug")

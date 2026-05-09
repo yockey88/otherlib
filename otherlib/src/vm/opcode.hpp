@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <string>
 
+#include "core/defines.hpp"
+
 namespace other {
 
   struct other_command_device;
@@ -39,6 +41,7 @@ namespace other {
    *   |-------------------------|
    **/
 
+#pragma pack(push, 1)
   struct instruction {
     constexpr static uint32_t kCategoryMask = 0xF0000000;
     constexpr static uint8_t kCategoryShift = 28;
@@ -91,6 +94,8 @@ namespace other {
     uint8_t type_nibble() const { return static_cast<uint8_t>((opcode & kTypeMask) >> kTypeShift); }
   };
   static_assert(sizeof(instruction) == sizeof(uint32_t), "Instruction size must be the same as uint32_t");
+
+#pragma pack(pop)
 
   static uint8_t get_category_nibble(uint32_t opcode) {
     return static_cast<uint8_t>((opcode & instruction::kCategoryMask) >> instruction::kCategoryShift);

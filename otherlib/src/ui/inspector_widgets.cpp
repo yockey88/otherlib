@@ -9,7 +9,7 @@
 #include "renderer/ui/ui_helpers.hpp"
 #include "renderer/ui/unicode.hpp"
 
-#include "ui/asset_browser_widgets.hpp"
+#include "ui/asset-browser/asset_browser_widgets.hpp"
 
 #include "asset/asset_handler.hpp"
 #include "imgui.h"

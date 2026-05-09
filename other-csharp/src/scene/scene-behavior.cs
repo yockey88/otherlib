@@ -1,5 +1,6 @@
 namespace Other
 {
+  /// simply defers all functions to user's implementations
   public class SceneBehavior : Core.OtherBehavior
   {
     public SceneObject SceneObject
@@ -10,7 +11,7 @@ namespace Other
         {
           return scene_obj;
         }
-        return null;
+        throw new System.Exception("SceneBehavior must be attached to a SceneObject.");
       }
     }
 
@@ -18,10 +19,10 @@ namespace Other
     {
       get
       {
-        return SceneObject?.ObjectHandle;
+        return SceneObject!.ObjectHandle;
       }
     }
-
+    
     public Transform Transform
     {
       get
@@ -29,6 +30,10 @@ namespace Other
         return Handle?.Transform;
       }
     }
+
+    protected T GetComponent<T>() where T : Component => SceneObject.GetComponent<T>();
+    protected bool HasComponent<T>() where T : Component => SceneObject.HasComponent<T>();
+    protected void AddComponent<T>() where T : Component => SceneObject.AddComponent<T>();
 
     protected override void Awake()
     {
@@ -42,18 +47,18 @@ namespace Other
     }
     protected virtual void OnRemove() {}
 
-    public override void Enable()
+    protected override void Enable()
     {
       OnEnable();
     }
-    public virtual void OnEnable() {}
+    protected virtual void OnEnable() {}
 
-    public override void Disable()
+    protected override void Disable()
     {
       OnDisable();
     }
-    public virtual void OnDisable() {}
-    
+    protected virtual void OnDisable() {}
+
     protected override void Update()
     {
       OnUpdate();

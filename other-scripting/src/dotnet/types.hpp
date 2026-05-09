@@ -6,7 +6,6 @@
 
 #include <concepts>
 #include <cstdint>
-#include <string>
 #include <type_traits>
 
 #include "serialization/reflection.hpp"
@@ -84,11 +83,8 @@ namespace other {
 
     template <typename T>
     concept dotnet_stringlike = std::same_as<T, native_string>;
-    template <typename T>
-    concept allowable_dotnet_arg = dotnet_stringlike<std::remove_cvref_t<T>> || !is_stringlike_type<std::remove_cvref_t<T>>;
 
     template <typename A, size_t I>
-      requires allowable_dotnet_arg<A>
     inline void add_to_array_at_index(const void** args_arr, managed_type* param_types, A&& in_arg) {
       param_types[I] = get_managed_type<A>();
       if constexpr (std::is_pointer_v<std::remove_reference_t<A>>) {

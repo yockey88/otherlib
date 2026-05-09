@@ -4,7 +4,6 @@
 #ifndef OTHER_SCRIPTING_DOTNET_HOST_HPP
 #define OTHER_SCRIPTING_DOTNET_HOST_HPP
 
-#include <filesystem>
 #include <map>
 
 #include <dotnet/coreclr_delegates.h>
@@ -73,7 +72,7 @@ namespace other {
       get_type_information get_assembly_types = nullptr;
       get_net_core_types get_net_core_types = nullptr;
       get_type_id get_type_id = nullptr;
-      get_type_name get_full_type_name = nullptr;
+      get_dotnet_type_name get_full_type_name = nullptr;
 
       get_type_information get_type_methods = nullptr;
       get_type_information get_type_fields = nullptr;
@@ -82,6 +81,7 @@ namespace other {
       check_type_characteristic has_attribute = nullptr;
 
       //        method
+      has_method has_method = nullptr;
       get_method_name get_method_name = nullptr;
       get_method_return_type get_method_return_type = nullptr;
       get_method_accessibility get_method_accessibility = nullptr;
@@ -109,10 +109,10 @@ namespace other {
       /// ManagedObject
       create_object create_object = nullptr;
       destroy_object destroy_object = nullptr;
+      invoke_method invoke_instance_method = nullptr;
+      invoke_method_ret invoke_instance_method_ret = nullptr;
       invoke_method invoke_static_method = nullptr;
       invoke_method_ret invoke_static_method_ret = nullptr;
-      invoke_method invoke_method = nullptr;
-      invoke_method_ret invoke_method_ret = nullptr;
       field_is_private_checker is_field_private = nullptr;
       field_setter_getter set_field = nullptr;
       field_setter_getter get_field = nullptr;

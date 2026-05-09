@@ -22,6 +22,16 @@ namespace other {
     CORE_LOG_INFO("Cleared all events and listeners");
   }
 
+  /**
+   * \note IMPORTANT: Do not use the logger in event_system::trigger_event
+   *                  there are log sinks that need to trigger events and loggers are not re-entrant
+   *                  so the logger can deadlock if the event system attempts to log during event triggering.
+   *                  This is not a problem for event handlers that are not the specific event handlers used by log sinks
+   * \todo add an 'event log' so that we can produce a history of registered/triggered events without risking deadlock
+   *       it would also be nice so that we can expose an event system scene component or something of the like and users
+   *       could use it to debug events
+   **/
+
   void event_system::trigger_event(const std::string_view name) {
     natural_t event_id = FNV(name);
     trigger_event(event_id);
@@ -102,7 +112,7 @@ namespace other {
       registered_events.push_back({ ev, {} });
     }
 
-    CORE_LOG_DEBUG("Registered event with ID {}", id);
+    CORE_LOG_DEBUG("Registered event {} with ID {}", name, id);
     return id;
   }
 
@@ -119,6 +129,7 @@ namespace other {
     if (itr == registered_events.end()) {
       /// expected if event system is cleared before the timer is polled to call the final cancel,
       ///  usually will occur if clear is called before the events are fully purged
+      CORE_LOG_ERROR("Attempted to cancel unregistered event ID {}", event_id);
       return;
     }
     itr->listeners.clear();

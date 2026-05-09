@@ -404,7 +404,7 @@ namespace other {
         constexpr inline glm::vec4 kScript = hex_col_to_rgba(IM_COL32(60, 190, 110, 255));
         constexpr inline glm::vec4 kAudio = hex_col_to_rgba(IM_COL32(210, 80, 170, 255));
         constexpr inline glm::vec4 kScene = hex_col_to_rgba(IM_COL32(225, 140, 50, 255));
-        constexpr inline glm::vec4 kSceneObject = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));
+        // constexpr inline glm::vec4 kSceneObject = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));
         constexpr inline glm::vec4 kFolder = hex_col_to_rgba(IM_COL32(217, 122, 29, 255));
         constexpr inline glm::vec4 kUnknown = hex_col_to_rgba(IM_COL32(107, 107, 107, 255));
       }  // namespace asset

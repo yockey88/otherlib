@@ -8,6 +8,9 @@
 
 #include <asio/asio.hpp>
 
+#include "core/job.hpp"
+#include "core/ref.hpp"
+
 namespace other {
 
   struct null_yield {};
@@ -45,15 +48,13 @@ namespace other {
       }
 
       void unhandled_exception() noexcept {}
-
       void return_void() noexcept {}
 
       awaiter initial_suspend() noexcept { return {}; }
-      /// we want to catch the final suspend to know when to remove the coroutine from the live list
-      /// and also to do any continuation handling
-      final_awaiter final_suspend() noexcept { return {}; }
+      awaiter final_suspend() noexcept { return {}; }
     };
 
+    /// identical to suspend_always
     struct awaiter {
       std::coroutine_handle<promise_type> handle;
 
@@ -62,8 +63,9 @@ namespace other {
       void await_resume() const noexcept {}
     };
 
-    struct final_awaiter {
-      bool await_ready() const noexcept { return false; }
+    struct job_awaiter {
+      ref<job> job_handle;
+      bool await_ready() const noexcept;
       void await_suspend(std::coroutine_handle<>) const noexcept {}
       void await_resume() const noexcept {}
     };
@@ -78,38 +80,14 @@ namespace other {
       coro_handle.resume();
     }
 
+    bool done() const {
+      return coro_handle == nullptr || coro_handle.done();
+    }
+
     /// helper tasks
-    static task sleep_for(asio::chrono::milliseconds duration) {
-      auto left = duration.count();
-
-      auto now = asio::chrono::steady_clock::now();
-      auto last = now;
-
-      while (left > 0) {
-        co_await task::awaiter{};
-        now = asio::chrono::steady_clock::now();
-        auto elapsed = asio::chrono::duration_cast<asio::chrono::milliseconds>(now - last).count();
-        left -= elapsed;
-        last = now;
-      }
-    }
-  };
-
-  struct worker {
-    enum {
-      WORKER_IDLE = 0,
-      WORKER_BUSY,
-    } state = WORKER_IDLE;
-
-    template <typename Self>
-    void operator()(Self& self) {
-      switch (state) {
-        case WORKER_IDLE: break;
-        case WORKER_BUSY: break;
-        default:
-          break;
-      }
-    }
+    static task::awaiter yield();
+    static task sleep_for(asio::chrono::milliseconds duration);
+    static task wait_for_job(ref<job> job_handle);
   };
 
 }  // namespace other

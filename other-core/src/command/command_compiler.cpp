@@ -4,7 +4,6 @@
 #include "command/command_compiler.hpp"
 
 #include "core/logger.hpp"
-#include "core/registers.hpp"
 
 // #include "environment/terminal.hpp"
 

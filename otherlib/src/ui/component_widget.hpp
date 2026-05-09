@@ -18,10 +18,12 @@
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/asset_system.hpp"
 #include "ui/inspector_widgets.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
+
 
 namespace other {
 
@@ -75,7 +77,9 @@ namespace other {
           if (asset_type != asset::type::EMPTY) {
             std::string asset_name = asset_display_name_for_id(field_value, handler);
             opt<natural_t> dropped_id = inspector::property_asset_slot(display_name, field_value, asset_name, asset_type);
-            auto& asset_manager = drvr->get_asset_manager();
+
+            auto& assets = drvr->get_kernel().get_core_system<asset_system>();
+            auto& asset_manager = assets.get_asset_manager();
 
             bool asset_dropped = dropped_id.has_value() && dropped_id.value() != field_value;
             bool asset_exists = asset_dropped && asset_manager->asset_exists(*dropped_id);

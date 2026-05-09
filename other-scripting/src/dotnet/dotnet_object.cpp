@@ -156,6 +156,11 @@ namespace other {
     return {};
   }
 
+  bool dotnet_object::has_method(const std::string_view method_name) const {
+    OTHER_ASSERT(dn_type != nullptr, "Type is not initialized for dotnet_object '{}'", object_name);
+    return dn_type->has_method(method_name);
+  }
+
   int32_t dotnet_object::read_behavior_field_value(int32_t behavior_index, int32_t field_index, void* out_data, int32_t buffer_size) {
     if (managed_object == nullptr) {
       return 0;
@@ -218,24 +223,24 @@ namespace other {
      | 2 byte         |            | 1 byte     | 8 bytes        |            |
     **/
 
-    const auto& fields = dn_type->get_fields();
+    // const auto& fields = dn_type->get_fields();
 
-    size_t num_fields = std::ranges::count_if(fields, [](const dotnet_field& f) { return !detail::is_dotnet_builtin(f.name()); });
-    serialization::write_value<uint16_t>((uint16_t)num_fields, bytes);
+    // size_t num_fields = std::ranges::count_if(fields, [](const dotnet_field& f) { return !detail::is_dotnet_builtin(f.name()); });
+    // serialization::write_value<uint16_t>((uint16_t)num_fields, bytes);
 
-    for (const auto& f : fields) {
-      if (detail::is_dotnet_builtin(f.name())) {
-        continue;
-      }
+    // for (const auto& f : fields) {
+    //   if (detail::is_dotnet_builtin(f.name())) {
+    //     continue;
+    //   }
 
-      auto storage_itr = load_field(f.name(), f.get_type());
-      OTHER_ASSERT(storage_itr != field_storage.end(), "Failed to load field storage for field '{}'", f.name());
-      serialization::write_value<uint16_t>((uint16_t)f.name().size(), bytes);
-      serialization::write_string_value(f.name(), bytes);
-      serialization::write_value<uint8_t>((uint8_t)storage_itr->second.stored_type, bytes);
-      serialization::write_value<uint64_t>(storage_itr->second.size, bytes);
-      serialization::write_bytes(storage_itr->second.data, storage_itr->second.size, bytes);
-    }
+    //   auto storage_itr = load_field(f.name(), f.get_type());
+    //   OTHER_ASSERT(storage_itr != field_storage.end(), "Failed to load field storage for field '{}'", f.name());
+    //   serialization::write_value<uint16_t>((uint16_t)f.name().size(), bytes);
+    //   serialization::write_string_value(f.name(), bytes);
+    //   serialization::write_value<uint8_t>((uint8_t)storage_itr->second.stored_type, bytes);
+    //   serialization::write_value<uint64_t>(storage_itr->second.size, bytes);
+    //   serialization::write_bytes(storage_itr->second.data, storage_itr->second.size, bytes);
+    // }
 
     return bytes;
   }
@@ -244,48 +249,48 @@ namespace other {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null!");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null!");
 
-    uint64_t cursor = 0;
+    // uint64_t cursor = 0;
 
-    uint16_t num_fields = serialization::read_value<uint16_t>(buffer, cursor);
-    const auto& fields = dn_type->get_fields();
+    // uint16_t num_fields = serialization::read_value<uint16_t>(buffer, cursor);
+    // const auto& fields = dn_type->get_fields();
 
-    OTHER_ASSERT(num_fields == fields.size() - std::ranges::count_if(fields, [](const dotnet_field& f) { return detail::is_dotnet_builtin(f.name()); }), "Invalid number of fields!");
+    // OTHER_ASSERT(num_fields == fields.size() - std::ranges::count_if(fields, [](const dotnet_field& f) { return detail::is_dotnet_builtin(f.name()); }), "Invalid number of fields!");
 
-    for (uint64_t i = 0; i < num_fields; ++i) {
-      uint16_t field_name_len = serialization::read_value<uint16_t>(buffer, cursor);
-      std::string name = serialization::read_string_value(buffer, field_name_len, cursor);
+    // for (uint64_t i = 0; i < num_fields; ++i) {
+    //   uint16_t field_name_len = serialization::read_value<uint16_t>(buffer, cursor);
+    //   std::string name = serialization::read_string_value(buffer, field_name_len, cursor);
 
-      uint8_t type = serialization::read_value<uint8_t>(buffer, cursor);
-      uint64_t data_len = serialization::read_value<uint64_t>(buffer, cursor);
+    //   uint8_t type = serialization::read_value<uint8_t>(buffer, cursor);
+    //   uint64_t data_len = serialization::read_value<uint64_t>(buffer, cursor);
 
-      auto storage_itr = load_field(name, (value_type)type);
-      OTHER_ASSERT(storage_itr != field_storage.end(), "Failed to load field storage!");
+    //   auto storage_itr = load_field(name, (value_type)type);
+    //   OTHER_ASSERT(storage_itr != field_storage.end(), "Failed to load field storage!");
 
-      std::span<const uint8_t> field_blob = buffer.subspan(cursor, data_len);
-      cursor += data_len;
+    //   std::span<const uint8_t> field_blob = buffer.subspan(cursor, data_len);
+    //   cursor += data_len;
 
-      storage_itr->second.load_from_bytes(field_blob.data(), field_blob.size());
-      write_storage_to_field(storage_itr, name);
-    }
+    //   storage_itr->second.load_from_bytes(field_blob.data(), field_blob.size());
+    //   write_storage_to_field(storage_itr, name);
+    // }
   }
 
   std::vector<uint8_t> dotnet_object::serialize_field_to_bytes(const std::string_view name) {
-    const auto& fields = dn_type->get_fields();
-    auto itr = std::ranges::find_if(fields, [&](const dotnet_field& f) { return f.name() == name; });
+    // const auto& fields = dn_type->get_fields();
+    // auto itr = std::ranges::find_if(fields, [&](const dotnet_field& f) { return f.name() == name; });
 
     std::vector<uint8_t> bytes = {};
-    if (itr == fields.end()) {
-      CORE_LOG_ERROR("Failed to find field {} on type {}", name, dn_type->full_name());
-      return bytes;
-    }
+    // if (itr == fields.end()) {
+    //   CORE_LOG_ERROR("Failed to find field {} on type {}", name, dn_type->full_name());
+    //   return bytes;
+    // }
 
-    auto storage_itr = load_field(itr->name(), itr->get_type());
-    OTHER_ASSERT(storage_itr != field_storage.end(), "Failed to load field storage for field '{}'", itr->name());
-    serialization::write_value<uint16_t>((uint16_t)itr->name().size(), bytes);
-    serialization::write_string_value(itr->name(), bytes);
-    serialization::write_value<uint8_t>((uint8_t)storage_itr->second.stored_type, bytes);
-    serialization::write_value<uint64_t>(storage_itr->second.size, bytes);
-    serialization::write_bytes(storage_itr->second.data, storage_itr->second.size, bytes);
+    // auto storage_itr = load_field(itr->name(), itr->get_type());
+    // OTHER_ASSERT(storage_itr != field_storage.end(), "Failed to load field storage for field '{}'", itr->name());
+    // serialization::write_value<uint16_t>((uint16_t)itr->name().size(), bytes);
+    // serialization::write_string_value(itr->name(), bytes);
+    // serialization::write_value<uint8_t>((uint8_t)storage_itr->second.stored_type, bytes);
+    // serialization::write_value<uint64_t>(storage_itr->second.size, bytes);
+    // serialization::write_bytes(storage_itr->second.data, storage_itr->second.size, bytes);
 
     return bytes;
   }
@@ -484,14 +489,28 @@ namespace other {
   void dotnet_object::invoke_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     auto name = native_string::new_str(method_name);
-    host->interop().invoke_method(managed_object, name, argv, arg_ts, argc);
+    host->interop().invoke_instance_method(managed_object, name, argv, arg_ts, argc);
     native_string::free_str(name);
   }
 
   void dotnet_object::invoke_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     auto name = native_string::new_str(method_name);
-    host->interop().invoke_method_ret(managed_object, name, argv, arg_ts, argc, out);
+    host->interop().invoke_instance_method_ret(managed_object, name, argv, arg_ts, argc, out);
+    native_string::free_str(name);
+  }
+
+  void dotnet_object::invoke_static_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc) {
+    OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    auto name = native_string::new_str(method_name);
+    host->interop().invoke_static_method(dn_type, name, argv, arg_ts, argc);
+    native_string::free_str(name);
+  }
+
+  void dotnet_object::invoke_static_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out) {
+    OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    auto name = native_string::new_str(method_name);
+    host->interop().invoke_static_method_ret(dn_type, name, argv, arg_ts, argc, out);
     native_string::free_str(name);
   }
 

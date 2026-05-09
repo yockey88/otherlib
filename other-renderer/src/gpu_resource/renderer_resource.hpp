@@ -77,24 +77,4 @@ namespace std {
 
 }  // namespace std
 
-OTHER_REFLECT(
-  other::access_flags
-)
-
-OTHER_REFLECT(
-  other::resource_type
-)
-
-OTHER_REFLECT(
-  other::resource_handle,
-  field(id, other::attr::serializable()),
-  field(name_hash, other::attr::serializable()),
-  field(type, other::attr::serializable())
-)
-
-OTHER_REFLECT(
-  other::resource,
-  field(res_handle, other::attr::serializable())
-)
-
 #endif  // OTHER_RENDERER_RESOURCE_RENDERER_RESOURCE_HPP

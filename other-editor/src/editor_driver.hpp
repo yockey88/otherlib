@@ -10,15 +10,13 @@ namespace other {
 
   class OTHER_CLASS editor_driver : public driver {
    public:
-    editor_driver(const config_table& config)
-        : driver(config) {}
+    editor_driver(const command_line& cmd, const config_table& config)
+        : driver(cmd, config) {}
     ~editor_driver() override {}
 
     void on_initialize(const command_line&) override;
     void on_build_driver_input_map(input_map& map) override;
     void on_viewport_resize(const glm::vec2& size) override;
-
-    void on_initialize_ui(scope<driver_ui>& ui_ptr) override;
     void on_shutdown() override {}
 
     void update_running() override;

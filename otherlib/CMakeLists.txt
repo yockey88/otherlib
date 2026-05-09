@@ -31,29 +31,57 @@ target_sources(otherlib
     src/plugin/library_handle.cpp
     src/plugin/plugin.cpp
       
+    src/driver/driver_system.cpp
+    src/driver/systems/network_system.cpp
+    src/driver/systems/job_driver_system.cpp
+    src/driver/systems/event_driver_system.cpp
+    src/driver/systems/input_driver_system.cpp
+    src/driver/systems/asset_system.cpp
+    src/driver/systems/scripting_system.cpp
+    src/driver/systems/rendering_system.cpp
+    src/driver/systems/vm_system.cpp
+    src/driver/systems/scene_system.cpp
+    src/driver/systems/project_system.cpp
+    src/driver/systems/driver_plugin.cpp
+    src/driver/driver_kernel.cpp
+    src/driver/subsystem_registry.cpp
     src/driver/driver.cpp
 
     src/ocl/object_parser.cpp
 
-    # src/project/...
+    src/project/project.cpp
 
-    src/scripting/dotnet_bindings.cpp
-    src/scripting/lua_bindings.cpp
+    src/scripting/bindings.cpp
     src/scripting/scene_interface.cpp
-    src/scripting/binding_utils/bind_glm_vectors.cpp
-    src/scripting/binding_utils/bind_glm_matrices.cpp
-    src/scripting/binding_utils/bind_math_types_lua.cpp
-    src/scripting/binding_utils/bind_rendering_types_lua.cpp
+    src/scripting/binding_descriptor.cpp
+    src/scripting/lua_bindings/bind_glm_vectors.cpp
+    src/scripting/lua_bindings/bind_glm_matrices.cpp
+    src/scripting/lua_bindings/bind_math_types_lua.cpp
+    src/scripting/lua_bindings/bind_rendering_types_lua.cpp
+    src/scripting/dotnet_bindings/environment_api_bindings.cpp
+    src/scripting/dotnet_bindings/core_bindings.cpp
+    src/scripting/dotnet_bindings/ui_bindings.cpp
+    src/scripting/dotnet_bindings/driver_bindings.cpp
+    src/scripting/dotnet_bindings/scene_bindings.cpp
+    src/scripting/dotnet_bindings/scene_object_bindings.cpp
+    src/scripting/dotnet_bindings/component_bindings.cpp
+    src/scripting/dotnet_bindings/event_bindings.cpp
+    src/scripting/dotnet_bindings/input_bindings.cpp
+    src/scripting/dotnet_bindings/network_bindings.cpp
+    src/scripting/interfaces/networking_interfaces.cpp
+    src/scripting/interface_registry.cpp
+    src/scripting/other_abi.cpp
 
     src/scripting/actions/action.cpp
     src/scripting/actions/callback.cpp
 
-    src/scripting/execution_node.cpp
-    src/scripting/execution_graph.cpp
     src/scripting/execution_nodes/source_sink_nodes.cpp
     src/scripting/execution_nodes/arithmetic_nodes.cpp
     src/scripting/execution_nodes/linear_algebra_nodes.cpp
     src/scripting/execution_nodes/transform_nodes.cpp
+    src/scripting/execution_node.cpp
+    src/scripting/execution_graph.cpp
+    src/scripting/environment_interface.cpp
 
     src/vm/opcode.cpp
     src/vm/driver_interface.cpp
@@ -70,36 +98,40 @@ target_sources(otherlib
     src/vm/command_files/linker.cpp
     src/vm/command_files/ocmd_compiler.cpp
 
+    src/tools/tool.cpp
     src/tools/build_tool.cpp
-    src/tools/environment_console.cpp
     src/tools/project_tool.cpp
+    src/tools/environment_console.cpp
 
-    src/ui/inspector_widgets.cpp
-    src/ui/hierarchy_widgets.cpp
-    src/ui/console_widgets.cpp
-    src/ui/asset_browser_widgets.cpp
-    src/ui/script_property_widget.cpp
-    src/ui/ui_widgets.cpp
-    src/ui/node_editor_canvas_node.cpp
-    src/ui/console_input_node.cpp
-    src/ui/console_history_node.cpp
-    src/ui/scene_hierarchy_node.cpp
-    src/ui/property_inspector_node.cpp
-    src/ui/asset_browser_tree_node.cpp
-    src/ui/asset_browser_grid_node.cpp
-    src/ui/asset_editor_node.cpp
-    src/ui/node_editor.cpp
-    src/ui/console.cpp
-    src/ui/viewport.cpp
-    src/ui/type_database.cpp
-    src/ui/asset_browser.cpp
-    src/ui/scene_hierarchy.cpp
-    src/ui/asset_editor_registry.cpp
-    src/ui/asset_editor.cpp
-    src/ui/driver_ui.cpp
+    src/ui/script/script_property_widget.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp
+    src/ui/asset-browser/asset_browser_widgets.cpp
+    src/ui/asset-browser/asset_browser_tree_node.cpp
+    src/ui/asset-browser/asset_browser_grid_node.cpp
+    src/ui/asset-browser/asset_browser.cpp
+    src/ui/asset-editor/asset_editor_registry.cpp
+    src/ui/asset-editor/asset_editor.cpp
+    src/ui/asset-editor/asset_editor_node.cpp
+    src/ui/console/console_widgets.cpp
+    src/ui/console/console_input_node.cpp
+    src/ui/console/console_history_node.cpp
+    src/ui/console/console.cpp
+    src/ui/node-editor/node_editor_canvas_node.cpp
+    src/ui/node-editor/node_editor.cpp
+    src/ui/scene-hierarchy/hierarchy_widgets.cpp
+    src/ui/scene-hierarchy/scene_hierarchy_node.cpp
+    src/ui/scene-hierarchy/scene_hierarchy.cpp
+    src/ui/menu-bar/menu_item.cpp
+    src/ui/menu-bar/menu.cpp
+    src/ui/menu-bar/menu_bar.cpp
+    src/ui/property_inspector_node.cpp
+    src/ui/inspector_widgets.cpp
+    src/ui/ui_widgets.cpp
+    src/ui/viewport.cpp
+    src/ui/type_database.cpp
+    src/ui/driver_ui.cpp
 
     src/other.cpp
 )

@@ -3,6 +3,8 @@
  **/
 #include "value_test.hpp"
 
+#include <sol/sol.hpp>
+
 #include "core/defines.hpp"
 
 namespace other {
@@ -326,6 +328,19 @@ namespace other {
 
     auto tup = other::detail::unpack_args<>(vec);
     ASSERT_EQ(std::tuple_size<decltype(tup)>::value, 0);
+  }
+
+  TEST_F(value_test, byte_buffer_test) {
+    std::vector<uint8_t> buffer = { 0xDE, 0xAD, 0xBE, 0xEF };
+    value byte_buffer_val(buffer);
+    CORE_LOG_INFO("type: {}, size: {}", byte_buffer_val.type(), byte_buffer_val.size());
+
+    ASSERT_FALSE(byte_buffer_val.is_empty());
+    ASSERT_EQ(byte_buffer_val.size(), buffer.size());
+    ASSERT_EQ(byte_buffer_val.type(), value_type::BYTE_BUFFER);
+
+    std::vector<uint8_t> retrieved_buffer = byte_buffer_val;
+    ASSERT_EQ(retrieved_buffer, buffer);
   }
 
 }  // namespace other

@@ -22,8 +22,8 @@ namespace other {
       handle_type = file_type::REMOTE;
     }
 
-    remote_file(const std::string_view name, const std::string_view ext, const std::string_view url)
-        : file_handle(name, ext, filepath(), std::string{ url }, file_type::REMOTE), remote_url(url) {}
+    remote_file(event_system& events, const std::string_view name, const std::string_view ext, const std::string_view url)
+        : file_handle(events, name, ext, filepath(), std::string{ url }, file_type::REMOTE), remote_url(url) {}
 
     ~remote_file() override {
       close();
@@ -40,6 +40,7 @@ namespace other {
     bool open(file_mode mode) override;
     void close() override;
 
+    std::string read_all_as_string() override;
     std::vector<uint8_t> read_all() override;
     uint64_t read(std::span<uint8_t> buffer, uint64_t offset = 0) override;
     uint64_t write(std::span<const uint8_t> data) override;

@@ -19,7 +19,7 @@ namespace Other
       CLEANUP,
 
       NUM_BUILD_PHASES,
-      INVALID_BUILD_PHASE = BuildPhase.NUM_BUILD_PHASES,
+      INVALID_BUILD_PHASE = NUM_BUILD_PHASES,
     };
 
     enum BuildStatus
@@ -110,7 +110,7 @@ namespace Other
         }
         else
         {
-          Core.Debug.LogWarning($"Unknown template file '{filename}', skipping.");
+          Debug.Warn($"Unknown template file '{filename}', skipping.");
           continue;
         }
 
@@ -147,7 +147,7 @@ namespace Other
       //     Core.Debug.LogError(e.Data);
       //   }
       // };
-      Core.Debug.Log($"Generating build solution in '{project.working_dir}/build'...");
+      Debug.Log($"Generating build solution in '{project.working_dir}/build'...");
 
       current_build_status = BuildStatus.GENERATING_BUILD_SYSTEM;
       process_handle.Start();
@@ -177,7 +177,7 @@ namespace Other
       //     Core.Debug.LogError(e.Data);
       //   }
       // };
-      Core.Debug.Log($"Building project solution in '{project.working_dir}/build'...");
+      Debug.Log($"Building project solution in '{project.working_dir}/build'...");
 
       current_build_status = BuildStatus.CURRENTLY_BUILDING;
       process_handle.Start();
@@ -190,7 +190,7 @@ namespace Other
         string proj_pwd = args.WorkingDirectory;
         if (!Directory.Exists(proj_pwd))
         {
-          Core.Debug.LogError($"Working directory '{proj_pwd}' does not exist, cannot create project.");
+          Debug.Error($"Working directory '{proj_pwd}' does not exist, cannot create project.");
           return;
         }
 
@@ -225,7 +225,7 @@ namespace Other
           }
           catch (Exception e)
           {
-            Core.Debug.LogError($"Failed to generate file from template '{file_data.template_path}': {e.Message}");
+            Debug.Error($"Failed to generate file from template '{file_data.template_path}': {e.Message}");
           }
         }
 
@@ -233,7 +233,7 @@ namespace Other
       }
       catch (Exception e)
       {
-        Core.Debug.LogError($"Exception while creating project: {e.Message}");
+        Debug.Error($"Exception while creating project: {e.Message}");
       }
     }
 
@@ -259,12 +259,12 @@ namespace Other
           {
             process_handle = null;
 
-            Core.Debug.Log("Build system generation completed successfully.");
+            Debug.Log("Build system generation completed successfully.");
             BuildSolution();
           }
           else
           {
-            Core.Debug.LogError($"Build system generation failed with exit code {process_handle.ExitCode}.");
+            Debug.Error($"Build system generation failed with exit code {process_handle.ExitCode}.");
             current_build_status = BuildStatus.BUILD_STATUS_FAILED;
           }
         }
@@ -274,12 +274,12 @@ namespace Other
           {
             process_handle = null;
 
-            Core.Debug.Log("Project build completed successfully.");
+            Debug.Log("Project build completed successfully.");
             current_build_status = BuildStatus.BUILD_STATUS_SUCCESS;
           }
           else
           {
-            Core.Debug.LogError($"Project build failed with exit code {process_handle.ExitCode}.");
+            Debug.Error($"Project build failed with exit code {process_handle.ExitCode}.");
             current_build_status = BuildStatus.BUILD_STATUS_FAILED;
           }
         }
@@ -300,23 +300,23 @@ namespace Other
         process_handle = null;
       }
 
-      Core.Debug.Log("Finalized build process.");
+      Debug.Log("Finalized build process.");
     }
 
     private void WriteTemplatedFile(string template_path, string destination_path)
     {
       if (!File.Exists(template_path))
       {
-        Core.Debug.LogError($"Template file '{template_path}' does not exist.");
+        Debug.Error($"Template file '{template_path}' does not exist.");
         return;
       }
 
       if (File.Exists(destination_path))
       {
-        Core.Debug.LogWarning($"Destination file '{destination_path}' already exists, Overwriting.");
+        Debug.Warn($"Destination file '{destination_path}' already exists, Overwriting.");
       }
 
-      Core.Debug.Log($"Generating file '{destination_path}' from template '{template_path}'.");
+      Debug.Log($"Generating file '{destination_path}' from template '{template_path}'.");
       
       string content = File.ReadAllText(template_path);
       content = content.Replace("${project-name}", project.name)
@@ -356,7 +356,7 @@ namespace Other
       }
       else if (!string.IsNullOrEmpty(ext))
       {
-        Core.Debug.LogWarning($"Project name has unexpected extension '{ext}', expected '{expected_ext}'. Ignoring possible extension.");
+        Debug.Warn($"Project name has unexpected extension '{ext}', expected '{expected_ext}'. Ignoring possible extension.");
       }
 
       /// lower-case, spaces to hyphens, alphanumeric and hyphens only
@@ -368,25 +368,25 @@ namespace Other
     {
       if (string.IsNullOrEmpty(args.Name))
       {
-        Core.Debug.LogError("Project name is empty.");
+        Debug.Error("Project name is empty.");
         return false;
       }
 
       if (string.IsNullOrEmpty(args.WorkingDirectory))
       {
-        Core.Debug.LogError("Working directory is empty.");
+        Debug.Error("Working directory is empty.");
         return false;
       }
 
       if (!Directory.Exists(args.WorkingDirectory))
       {
-        Core.Debug.LogError($"Working directory '{args.WorkingDirectory}' does not exist.");
+        Debug.Error($"Working directory '{args.WorkingDirectory}' does not exist.");
         return false;
       }
 
       if (string.IsNullOrEmpty(args.FileName))
       {
-        Core.Debug.LogError("Project file name is empty.");
+        Debug.Error("Project file name is empty.");
         return false;
       }
 
@@ -402,11 +402,11 @@ namespace Other
         string ext = Path.GetExtension(args.Name);
         if (!string.IsNullOrEmpty(ext) && ext != ".toml")
         {
-          Core.Debug.LogWarning($"Project name has unexpected extension '{ext}', expected '.toml'. Ignoring possible extension and renaming file.");
+          Debug.Warn($"Project name has unexpected extension '{ext}', expected '.toml'. Ignoring possible extension and renaming file.");
         }
         else
         {
-          Log("No project file specified, generating from project name.");
+          SendLog("No project file specified, generating from project name.");
         }
         file_name = GetFileVersionOfProjectName(args.Name);
       }
@@ -415,12 +415,12 @@ namespace Other
         string ext = Path.GetExtension(file_name);
         if (ext != ".toml")
         {
-          Core.Debug.LogWarning($"Project file has unexpected extension '{ext}', expected '.toml'. Ignoring possible extension and renaming file.");
+          Debug.Warn($"Project file has unexpected extension '{ext}', expected '.toml'. Ignoring possible extension and renaming file.");
           file_name = GetFileVersionOfProjectName(file_name);
         }
         else
         {
-          Log($"Using specified project file name: {file_name}.");
+          SendLog($"Using specified project file name: {file_name}.");
         }
       }
 
@@ -439,14 +439,14 @@ namespace Other
       }
       else
       {
-        Core.Debug.LogWarning($"Unknown project type '{args.project_type}', defaulting to 'Application'.");
+        Debug.Warn($"Unknown project type '{args.project_type}', defaulting to 'Application'.");
         return ProjectConfig.ProjectType.APPLICATION;
       }
     }
 
-    private void Log(string message, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
+    private void SendLog(string message, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
     {
-      Core.Debug.Log(message, Logger.LogLevel.Debug, memberName, lineNumber);
+      Debug.Log(message, memberName, lineNumber);
     }
 
     private struct ProjectDescription

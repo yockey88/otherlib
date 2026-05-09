@@ -9,7 +9,7 @@
 #include <filesystem>
 #include <format>
 #include <optional>
-#include <ranges>
+#include <span>
 #include <string>
 #include <type_traits>
 
@@ -20,18 +20,22 @@
 #include <glm/gtx/quaternion.hpp>
 #include <magic_enum/magic_enum.hpp>
 
+#include <sol/sol.hpp>
+
 #define bit(x) (1ll << x)
 
 #ifdef OTHER_CLIENT
   #define OTHER_DYNAMIC_DRIVER
 #elif defined(OTHER_APPLICATION) && !defined(OTHER_TEST_ENVIRONMENT)
   #define OTHER_STATIC_DRIVER
+#elif defined(OTHER_PLUGIN_LIBRARY)
+  #define OTHER_PLUGIN_DYNAMIC_LIBRARY
 #else
   #define OTHER_STATIC_LIBRARY
 #endif
 
 #ifdef OTHER_ENVIRONMENT_WINDOWS
-  #ifdef OTHER_CLIENT
+  #if defined(OTHER_CLIENT) || defined(OTHER_PLUGIN_LIBRARY)
     #define OTHER_API __declspec(dllexport)
     #define OTHER_CLASS __declspec(dllexport)
     #define OTHER_ALIGN(x) __declspec(align(x))
@@ -70,6 +74,13 @@
   #define OTHER_PROFILED_BUILD
 #endif  // !OTHER_PROFILED
 
+#ifdef OTHER_ABORT_USE_STD_TERMINATE
+  #include <cstdlib>
+  #define OTHER_ABORT() std::terminate()
+#else
+  #define OTHER_ABORT() std::abort()
+#endif  // !OTHER_ABORT_USE_STD_TERMINATE
+
 #ifndef OTHER_API
   #error "OTHER_API is not defined. Please define it for your platform."
 #endif  // !OTHER_API
@@ -83,10 +94,12 @@
 namespace other {
 
   template <typename T>
-  concept not_string_or_pointer = !std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
-  template <typename T>
   concept is_pointer_type = std::is_pointer_v<std::remove_cvref_t<T>>;
 
+  template <typename T>
+  concept is_opaque_pointer = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, void*>;
+  template <typename T>
+  concept is_byte_buffer_type = std::is_same_v<std::remove_cvref_t<T>, std::vector<uint8_t>> || std::is_same_v<std::remove_cvref_t<T>, std::span<const uint8_t>>;
   template <typename T>
   concept is_character_array_ptr = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, char*>;
   template <typename T>
@@ -100,11 +113,13 @@ namespace other {
     is_character_array<T>;
   template <typename T>
   constexpr inline bool kIsStringType = is_string_type<T>;
+  template <typename T>
+  concept not_string_buffer_or_pointer = !is_pointer_type<T> && !is_string_type<T> && !is_byte_buffer_type<T> && !is_opaque_pointer<T>;
+  template <typename T>
+  concept string_buffer_table_or_pointer = !not_string_buffer_or_pointer<T>;
 
   template <typename T>
-  concept is_opaque_pointer = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, void*>;
-  template <typename T>
-  concept is_acceptable_value_type = is_character_array<T> || !is_opaque_pointer<T>;
+  concept is_acceptable_value_type = is_character_array<T> || !is_opaque_pointer<T> || is_byte_buffer_type<T>;
 
   enum exit_code : uint8_t {
     SUCCESS = 0,
@@ -192,6 +207,7 @@ namespace other {
     /// user types
     USER_TYPE,
     OPAQUE_HANDLE,
+    BYTE_BUFFER,
 
     /// error/misc
     EMPTY_TYPE,
@@ -248,6 +264,8 @@ namespace other {
       return value_type::QUATERNION;
     } else if constexpr (std::is_same_v<no_cvref_t, void*>) {
       return value_type::OPAQUE_HANDLE;
+    } else if constexpr (is_byte_buffer_type<T>) {
+      return value_type::BYTE_BUFFER;
     } else {
       return value_type::USER_TYPE;
     }
@@ -279,6 +297,7 @@ namespace other {
       case value_type::MAT4: return sizeof(glm::mat4);
       case value_type::QUATERNION: return sizeof(glm::quat);
       case value_type::OPAQUE_HANDLE: return sizeof(void*);
+      case value_type::BYTE_BUFFER: return 0;
       default: return sizeof(void*);
     }
   }
@@ -333,6 +352,10 @@ namespace other {
       return value_type::MAT4;
     } else if (lc_str == "quaternion" || lc_str == "quat") {
       return value_type::QUATERNION;
+    } else if (lc_str == "opaque-handle") {
+      return value_type::OPAQUE_HANDLE;
+    } else if (lc_str == "byte-buffer") {
+      return value_type::BYTE_BUFFER;
     } else {
       return value_type::USER_TYPE;
     }
@@ -364,6 +387,7 @@ namespace other {
       case value_type::MAT4: return "mat4";
       case value_type::QUATERNION: return "quaternion";
       case value_type::OPAQUE_HANDLE: return "opaque-handle";
+      case value_type::BYTE_BUFFER: return "byte-buffer";
       case value_type::USER_TYPE: return "user-type";
       default: return "unknown";
     }

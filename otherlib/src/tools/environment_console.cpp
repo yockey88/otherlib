@@ -60,7 +60,7 @@ namespace other {
 
         bool is_command = false;
         if (console_lua_script != nullptr) {
-          is_command = console_lua_script->call_function<bool>("is_command", input.input_text);
+          is_command = console_lua_script->call_function<bool>("__is_command", input.input_text);
         }
 
         int32_t type_flags = input.message_type;
@@ -75,7 +75,7 @@ namespace other {
         });
 
         if (is_command && console_lua_script != nullptr) {
-          console_lua_script->call_function<void>("handle_console_command", std::string(input.input_text));
+          console_lua_script->call_function<void>("__handle_console_command", std::string(input.input_text));
         } else {
         }
       }

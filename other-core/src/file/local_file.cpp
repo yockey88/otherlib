@@ -49,6 +49,26 @@ namespace other {
     current_mode = file_mode::CLOSED;
   }
 
+  std::string local_file::read_all_as_string() {
+    PROFILE_SECTION("local_file::read_all_as_string");
+
+    bool was_open = is_open();
+    if (!was_open) {
+      if (!open(file_mode::READ)) {
+        return {};
+      }
+    }
+
+    std::stringstream ss;
+    ss << stream.rdbuf();
+
+    if (!was_open) {
+      close();
+    }
+
+    return ss.str();
+  }
+
   std::vector<uint8_t> local_file::read_all() {
     PROFILE_SECTION("local_file::read_all");
 

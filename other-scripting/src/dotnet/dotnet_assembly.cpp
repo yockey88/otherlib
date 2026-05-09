@@ -21,6 +21,15 @@ namespace other {
     CORE_LOG_DEBUG("Loaded [{}] types from assembly {}", types.size(), handle);
   }
 
+  bool assembly::has_method(const std::string_view type_name, const std::string_view method_name) const {
+    auto* t = host->get_type_cache()->get_type(type_name);
+    if (t == nullptr) {
+      return false;
+    }
+
+    return t->has_method(method_name);
+  }
+
   ref<assembly> assembly_context::load_assembly(const std::string_view path) {
     OTHER_ASSERT(host != nullptr, "DotNet host is not initialized.");
     OTHER_ASSERT(!path.empty(), "Assembly path cannot be empty.");
