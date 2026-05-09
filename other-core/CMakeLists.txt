@@ -13,7 +13,6 @@ target_sources(other_core
 		src/core/arena.cpp
 		src/core/frame_allocator.cpp
 		src/core/arena_buffer.cpp
-		src/core/ref.cpp
 		src/core/ref_counted.cpp
 		src/core/value_storage.cpp
 		src/core/value.cpp
