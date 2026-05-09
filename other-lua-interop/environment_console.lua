@@ -39,6 +39,10 @@ function _Console:ListCommand(args)
   _Meta:Driver():ListCommand(args)
 end
 
+function _Console:ProjectCommand(args)
+  _Meta:Driver():ProjectCommand(args)
+end
+
 function _Console:ObjectCommand(args)
   _Meta:Driver():ObjectCommand(args)
 end
@@ -151,6 +155,17 @@ function _Console:new()
       ls <-w |--windows>           Lists all registered UI windows
   ]]
   self:RegisterConsoleCommand("ls", "Prints a list of items.", function(...) _Meta:Driver():ListCommand(...) end, ls_long_description)
+
+  local project_long_description = [[
+  [project Command]
+    Provides various project management functions such as creating, loading, and saving projects.
+    Usage:
+      project (-h |--help)                                Displays this help message
+      project <-n |--new> <project-name> <project-path>   Creates a new empty project with the specified name at the specified path
+      project <-l |--load> <project-path>                 Loads a project from the specified path
+      project <-s |--save>                                 Saves the current project to its current path, or to a new path if one is specified
+  ]]
+  self:RegisterConsoleCommand("project", "Manipulate, create, and manage Other Environment projects", function(...) _Meta:Driver():ProjectCommand(...) end, project_long_description)
 
   -- local object_long_description = [[
   -- [object Command]

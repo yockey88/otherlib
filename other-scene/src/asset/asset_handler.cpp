@@ -332,6 +332,34 @@ namespace other {
     return 0;
   }
 
+  filepath asset_handler::get_local_asset_path(natural_t asset_id) const {
+    if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
+      return it->second.absolute_path;
+    }
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+        it != asset_pipelines.end()) {
+      if (it->loading_asset.id == asset_id) {
+        return it->loading_asset.absolute_path;
+      }
+    }
+
+    return filepath{};
+  }
+
+  filepath asset_handler::get_virtual_asset_path(natural_t asset_id) const {
+    if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
+      return it->second.virtual_path;
+    }
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+        it != asset_pipelines.end()) {
+      if (it->loading_asset.id == asset_id) {
+        return it->loading_asset.virtual_path;
+      }
+    }
+
+    return filepath{};
+  }
+
   void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
     OTHER_ASSERT(pipeline_it != asset_pipelines.end(), "Invalid pipeline iterator in begin_load");
     OTHER_ASSERT(state_it != asset_states.end(), "Invalid state machine iterator in begin_load");
@@ -423,13 +451,17 @@ namespace other {
     auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
     OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Loaded asset not found in loading assets");
 
-    auto itr = loaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
-    OTHER_ASSERT(itr.second, "Failed to insert loaded asset into loaded assets map");
+    auto [itr, success] = loaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
+    OTHER_ASSERT(success, "Failed to insert loaded asset into loaded assets map");
+
+    if (pending_itr->on_complete) {
+      pending_itr->on_complete(&itr->second);
+    }
 
     pending_itr->pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
-    register_asset_in_filesystem(&itr.first->second);
+    register_asset_in_filesystem(&itr->second);
     state_itr->second.handle_event(asset_event::LOAD_COMPLETED);
   }
 
@@ -496,6 +528,8 @@ namespace other {
     /// assets must have a mount name
     resolved_path resolved = fs->resolve_path(asset_ptr->virtual_path);
     OTHER_ASSERT(!resolved.mount_name.empty(), "Failed to resolve mount for asset virtual path: {}", asset_ptr->virtual_path);
+
+    CORE_LOG_DEBUG("Resolved path: {}", resolved);
 
     ref<directory> mount = fs->get_or_create_mount(default_mount);
     OTHER_ASSERT(mount != nullptr, "Failed to get or create mount '{}' for asset: {}", asset_ptr->virtual_path, asset_ptr->id);

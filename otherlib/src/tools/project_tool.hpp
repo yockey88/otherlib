@@ -23,8 +23,16 @@ namespace other {
     void cleanup_build();
     int32_t get_build_result() const;
 
+    const filepath& get_dotnet_project_path() const { return dotnet_project_path; }
+    inline std::vector<filepath> get_collected_cs_script_files() const { return cs_script_files; }
+
    private:
     filepath dotnet_project_path;
+
+    std::vector<filepath> cs_script_files;
+    /// \todo should we do this for lua?
+
+    void collect_cs_script_files(const filepath& directory);
   };
 
 }  // namespace other

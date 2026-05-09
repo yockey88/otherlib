@@ -139,7 +139,7 @@ namespace other {
     PROFILE_SECTION("scripting_environment::load-dotnet-module");
     if (!std::filesystem::exists(module_path)) {
       CORE_LOG_ERROR("Module file does not exist: {}", module_path);
-      return 0;
+      return nullptr;
     }
 
     ref<assembly> asm_ref = dotnet_load_context->load_assembly(module_path);

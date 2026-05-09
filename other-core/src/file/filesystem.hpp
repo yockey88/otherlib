@@ -112,6 +112,24 @@ namespace other {
 
 }  // namespace other
 
+namespace std {
+
+  template <>
+  struct formatter<other::resolved_path> : public formatter<std::string_view> {
+    auto format(const other::resolved_path& path, format_context& ctx) const {
+      std::string resolved_str = std::format("Mount: '{}', File Name: '{}'", path.mount_name, path.file_name) + "\n";
+      for (int i = 0; i < path.relative_path_components.size(); ++i) {
+        resolved_str += path.relative_path_components[i];
+        if (i < path.relative_path_components.size() - 1) {
+          resolved_str += "/";
+        }
+      }
+      return formatter<std::string_view>::format(resolved_str, ctx);
+    }
+  };
+
+}  // namespace std
+
 OTHER_DEPENDENT_SUBSYSTEM(
   other::file_system,
   subsystem_profile::kArena,

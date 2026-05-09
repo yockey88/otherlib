@@ -49,7 +49,7 @@ namespace other {
       }
     }
 
-    std::string name = std::filesystem::path(path).filename().stem().string();
+    std::string name = filepath(path).filename().stem().string();
     auto [itr, inserted] = assemblies.insert({ assembly_handle, make_ref<assembly>(name, assembly_handle, host) });
     OTHER_ASSERT(inserted, "Failed to insert assembly into context map");
 

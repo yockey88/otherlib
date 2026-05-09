@@ -83,7 +83,7 @@ namespace other {
     static std::pair<driver*, std::string> create(const command_line& cmd, const config_table& config);
     static void destroy(const std::string& name, driver* instance);
 
-    natural_t begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded = nullptr);
+    natural_t begin_asset_load(const filepath& asset_path);
     natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
@@ -333,6 +333,9 @@ namespace other {
     void on_project_loaded();
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
+
+    bool is_table_event(const std::string_view event_name) const;
+    void handle_driver_event_with_lua_table(const std::string_view event_name, const sol::table& event_data);
 
     template <typename T>
     T get_value_from_node(const toml::node& node, const T& default_value) const {

@@ -7,25 +7,28 @@
 
 #include <toml++/toml.hpp>
 
+#include "core/defines.hpp"
+#include "core/job_system.hpp"
 #include "file/filesystem.hpp"
 
 #include "script/scripting_environment.hpp"
 
 #include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/project_system.hpp"
-#include "tools/project_tool.hpp"
 
 namespace other {
   namespace detail {
 
     void process_metadata(const toml::table& table, project::metadata& metadata);
-    task load_dotnet_project(project* p, filepath csproj_path);
 
   }  // namespace detail
 
   project::project(project_system* proj_system)
       : system(proj_system) {
     OTHER_ASSERT(system != nullptr, "Project system pointer is null in project constructor.");
+  }
+
+  project::~project() {
   }
 
   void project::load_from_file(driver_kernel* kernel, const filepath& path) {
@@ -104,6 +107,10 @@ namespace other {
   }
 
   void project::unload() {
+    if (current_state == EMPTY) {
+      return;
+    }
+
     if (project_file_handle != nullptr && project_file_handle->is_open()) {
       project_file_handle->close();
     }
@@ -116,6 +123,10 @@ namespace other {
       env->unload_dotnet_module(project_assembly);
     }
     project_assembly = nullptr;
+
+    build_tool = nullptr;
+
+    set_state(EMPTY);
   }
 
   void project::set_state(state new_state) {
@@ -132,6 +143,41 @@ namespace other {
       CORE_LOG_WARN("Project state changed to unknown state {}", new_state);
     }
     current_state = new_state;
+  }
+
+  void project::add_built_script(const filepath& script_path) {
+    OTHER_ASSERT(build_tool != nullptr, "Project build tool is not initialized. Cannot add script to project.");
+    OTHER_ASSERT(std::filesystem::exists(script_path), "Script asset file '{}' does not exist.", script_path.string());
+
+    if (script_path.extension() == ".dll" && script_path.stem().string() == build_tool->get_dotnet_project_path().stem().string()) {
+      std::vector<filepath> cs_scripts = build_tool->get_collected_cs_script_files();
+      attach_project_dll(script_path, cs_scripts);
+      build_tool = nullptr;
+    } else if (script_path.extension() == ".dll") {
+      CORE_LOG_WARN("[PROJECT] DLL {} does not match project script. Skipping", script_path.string());
+    } else {
+      CORE_LOG_WARN("[PROJECT] Unimplemented script type for built script '{}'.", script_path.string());
+    }
+  }
+
+  void project::attach_project_dll(const filepath& dll_path, const std::vector<filepath>& cs_scripts) {
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+
+    ref<assembly> asm_ref = env->get_dotnet_module(dll_path.stem().string());
+    if (asm_ref == nullptr) {
+      return;
+    }
+
+    project_assembly = asm_ref;
+
+    for (const auto& script : cs_scripts) {
+      if (!std::filesystem::exists(script)) {
+        CORE_LOG_ERROR("Collected script file '{}' does not exist. Skipping adding it to project.", script.string());
+        continue;
+      }
+      system->sibling<asset_system>(system->get_driver().get_kernel()).begin_asset_load(script);
+    }
   }
 
   bool project::process_scripting_sections(const toml::table& table, driver_kernel* kernel) {
@@ -158,13 +204,63 @@ namespace other {
       std::string k{ key.str() };
 
       CORE_LOG_DEBUG("Processing scripting entry with key '{}'", k);
-      if (k == "cs_project") {
-        if (!value.is_string()) {
-          CORE_LOG_ERROR("Expected 'cs_project' value to be a string representing the path to the .csproj file.");
-        } else {
-          waiting_for_script_load = true;
-          system->sibling<job_driver_system>(*kernel).post_coroutine(detail::load_dotnet_project(this, value.as_string()->get()));
-        }
+      if (k == "cs_project" && value.is_string()) {
+        waiting_for_script_load = true;
+        auto& job_sys = system->sibling<job_driver_system>(*kernel);
+        auto& jobs = job_sys.get_job_system();
+
+        build_tool = make_ref<project_tool>();
+        ref<job> build_project_job = jobs.submit(
+          {
+            .name = std::format("Build .NET project '{}'", value.as_string()->get()),
+            .priority = job::priority::HIGH,
+            .thread_affinity = job::affinity::WORKER_THREAD,
+          },
+          [t = build_tool, path = value.as_string()->get()]() mutable {
+            OTHER_ASSERT(t != nullptr, "Failed to create project tool for building .NET project.");
+            /// create dotnet project for the loaded project
+            if (!std::filesystem::exists(path)) {
+              CORE_LOG_INFO("No .NET project file found at '{}', creating a new one.", path);
+              t->generate_dotnet_project(path);
+            }
+
+            /// .csproj file exists we go straight to building it
+            t->start_project_build(path);
+
+            do {
+              std::this_thread::yield();
+            } while (t->project_build_in_progress());
+
+            int32_t result = t->get_build_result();
+            t->cleanup_build();
+
+            if (result == 0) {
+              CORE_LOG_INFO("Successfully built .NET project '{}'", path);
+            } else {
+              throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path, result));
+            }
+          }
+        );
+        OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
+
+        ref<job> load_build_asset_job = jobs.submit_deferred(
+          build_project_job->id,
+          {
+            .name = std::format("Load built assembly for .NET project '{}'", value.as_string()->get()),
+            .priority = job::priority::HIGH,
+            .thread_affinity = job::affinity::MAIN_THREAD,
+          },
+          [this, kernel, t = build_tool]() {
+            filepath csproj = t->get_dotnet_project_path();
+            filepath build = csproj.parent_path() / "bin" / "Debug" / (csproj.stem().string() + ".dll");
+            if (!std::filesystem::exists(build)) {
+              throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
+            }
+
+            system->sibling<asset_system>(*kernel).begin_asset_load(build);
+          }
+        );
+        OTHER_ASSERT(load_build_asset_job != nullptr, "Failed to create job for loading built assembly of .NET project.");
       }
     });
 
@@ -180,6 +276,8 @@ namespace other {
   }
 
   void project::process_scene_sections(const toml::table& table) {
+    PROFILE_SECTION("project::process_scene_sections");
+
     process_scenes_table(table.at_path("scene-graph.scenes"));
     process_scene_graph(table.at_path("scene-graph.graph"));
 
@@ -197,6 +295,13 @@ namespace other {
           }
         } else if (starting_scene_node.is_number()) {
           starting_scene_id = static_cast<natural_t>(starting_scene_node.as_integer()->get());
+          if (std::ranges::none_of(scenes_in_project, [this](const scene& s) { return s.project_id == starting_scene_id; })) {
+            starting_scene_id = 0;
+            CORE_LOG_ERROR("Starting scene ID '{}' specified in project file does not match any scenes in the project.", starting_scene_id);
+          } else {
+            CORE_LOG_DEBUG("Starting scene set to project ID {} based on project file configuration.", starting_scene_id);
+          }
+
           CORE_LOG_DEBUG("Starting scene set to project ID {} based on project file configuration.", starting_scene_id);
         } else {
           CORE_LOG_ERROR("Invalid type for 'scene-graph.starting-scene' field. Expected string (scene name) or number (scene ID).");
@@ -335,53 +440,6 @@ namespace other {
   }
 
   namespace detail {
-
-    task load_dotnet_project(project* p, filepath csproj_path) {
-      OTHER_ASSERT(p != nullptr, "Project pointer is null in load_dotnet_project.");
-      CORE_LOG_INFO("Loading .NET project from'{}'", csproj_path.string());
-
-      project_tool tool;
-
-      /// create dotnet project for the loaded project
-      if (!std::filesystem::exists(csproj_path)) {
-        CORE_LOG_INFO("No .NET project file found at '{}', creating a new one.", csproj_path.string());
-        tool.generate_dotnet_project(csproj_path);
-      }
-
-      /// .csproj file exists we go straight to building it
-      tool.start_project_build(csproj_path);
-
-      do {
-        co_await task::yield();
-      } while (tool.project_build_in_progress());
-
-      int32_t result = tool.get_build_result();
-      tool.cleanup_build();
-
-      if (result != 0) {
-        CORE_LOG_ERROR("Failed to build .NET project '{}', build process exited with code {}.", csproj_path.string(), result);
-        co_return;
-      }
-
-      filepath filename = csproj_path.filename().replace_extension("dll");
-      filepath directory = csproj_path.parent_path() / "bin" / "Debug";
-      filepath dll_path = directory / filename;
-
-      /// check dll exists and load it
-      if (!std::filesystem::exists(dll_path)) {
-        CORE_LOG_ERROR("Expected compiled .NET assembly '{}' does not exist after building the project.", dll_path.string());
-        co_return;
-      }
-
-      CORE_LOG_INFO("Successfully built .NET project. Loading assembly from '{}'", dll_path.string());
-
-      auto* env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
-      p->set_dotnet_assembly(env->load_dotnet_module(dll_path.string()));
-      p->set_state(project::LOADED);
-
-      co_return;
-    }
 
     void process_metadata(const toml::table& table, project::metadata& metadata) {
       toml::node_view md = table.at_path("project.metadata");

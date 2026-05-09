@@ -138,6 +138,8 @@ namespace other {
     asset_state get_asset_state_by_path_hash(natural_t path_hash) const;
     natural_t get_asset_hash(natural_t asset_id) const;
     natural_t get_asset_id_by_path_hash(natural_t path_hash) const;
+    filepath get_local_asset_path(natural_t asset_id) const;
+    filepath get_virtual_asset_path(natural_t asset_id) const;
 
     const asset* get_loaded_asset(natural_t asset_id) const;
     std::vector<natural_t> get_all_tracked_ids() const;

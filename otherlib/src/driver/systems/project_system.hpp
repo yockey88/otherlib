@@ -32,6 +32,7 @@ namespace other {
 
     void generate_project_at(driver_kernel* kernel, const filepath& directory);
     void load_project(driver_kernel* kernel, const filepath& project_file);
+    void unload_project();
 
     inline project& get_project() {
       OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
@@ -48,6 +49,9 @@ namespace other {
     void handle_new_project(driver_kernel* kernel, const value& data);
     void handle_open_project(driver_kernel* kernel, const value& data);
     void handle_save_project(driver_kernel* kernel, const value& data);
+    void handle_project_event(driver_kernel* kernel, const project_event_data& data);
+
+    void handle_script_asset_loaded(driver_kernel* kernel, const value& data);
   };
 
 }  // namespace other

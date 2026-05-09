@@ -15,7 +15,7 @@ namespace other {
 
   struct script_object;
 
-  class tool {
+  class tool : public ref_counted {
    public:
     tool(const std::string& type_name);
     virtual ~tool();
