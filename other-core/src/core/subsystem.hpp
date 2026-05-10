@@ -102,14 +102,13 @@ namespace other {
 
     static void set(T* obj) {
       PROFILE_SECTION("subsystem<>::set");
-      if (obj == nullptr) {
-        throw std::runtime_error("Cannot set subsystem instance to null.");
-      }
       std::lock_guard lock(subsystem_mtx);
       instance = obj;
 
       if constexpr (requires(T t) { { T::on_set(std::declval<T*>()) } -> std::same_as<void>; }) {
-        T::on_set(obj);
+        if (obj != nullptr) {
+          T::on_set(obj);
+        }
       }
     }
 

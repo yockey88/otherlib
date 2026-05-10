@@ -7,9 +7,11 @@
 #include <string>
 
 #include "core/defines.hpp"
-#include "thread/message.hpp"
 
 #include "driver/driver.hpp"
+
+#include "message/message.hpp"
+
 
 OTHER_DRIVER(other::server)
 
@@ -125,7 +127,7 @@ namespace other {
 
     // initialize lua side
     invoke_driver_method("InitializeHttpServer", config_http_port);
-    // core_system<network_system>().listen_at_endpoint(endpoint);
+    core_system<network_system>().listen_at_endpoint(endpoint, "tcp");
   }
 
   void server::on_shutdown() {

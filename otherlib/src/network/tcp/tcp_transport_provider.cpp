@@ -3,12 +3,11 @@
  **/
 #include "network/tcp/tcp_transport_provider.hpp"
 
-#include "thread/message.hpp"
-
-#include "network/messages.hpp"
 #include "network/network_thread.hpp"
 
 #include "asio/asio/ip/address.hpp"
+#include "message/message.hpp"
+#include "message/messages.hpp"
 
 namespace other {
 
@@ -53,27 +52,26 @@ namespace other {
     OTHER_ASSERT(recently_closed_connections.empty(), "Recently closed connections should be empty on shutdown.");
   }
 
-  natural_t tcp_transport_provider::start_listen(const binding_point& endpoint) {
-    natural_t listener_id = network_thread::generate_connection_id();
+  void tcp_transport_provider::on_start_listen(natural_t conn_id, const binding_point& endpoint) {
     asio::ip::tcp::endpoint asio_endpoint(asio::ip::address_v4(endpoint.ip), endpoint.port);
 
-    OTHER_ASSERT(active_tcp_listeners.find(listener_id) == active_tcp_listeners.end(), "Listener ID {} is already in use", listener_id);
+    OTHER_ASSERT(active_tcp_listeners.find(conn_id) == active_tcp_listeners.end(), "Listener ID {} is already in use", conn_id);
 
-    auto [itr, success] = active_tcp_listeners.emplace(listener_id, make_scope<asio::ip::tcp::acceptor>(net_io_ref().context, asio_endpoint));
     /// because we verified id was free before, this should never fail
+    auto [itr, success] = active_tcp_listeners.emplace(conn_id, make_scope<asio::ip::tcp::acceptor>(net_io_ref().context, asio_endpoint));
     OTHER_ASSERT(success, "Failed to create TCP listener for endpoint {}:{}", endpoint.ip, endpoint.port);
 
-    auto [state_itr, state_success] = connection_state_machines.emplace(listener_id, connection_state_machine());
-    OTHER_ASSERT(state_success, "Failed to create connection state machine for listener with ID {}", listener_id);
+    auto [state_itr, state_success] = connection_state_machines.emplace(conn_id, connection_state_machine());
+    OTHER_ASSERT(state_success, "Failed to create connection state machine for listener with ID {}", conn_id);
+
+    host_thread_ref().register_listener_route(conn_id, this, itr->second.get());
 
     state_itr->second.handle_event(connection_event::START_CONNECT);
-    CORE_LOG_TRACE("[CONNECTION {}: LISTEN] {}", listener_id, endpoint);
-    itr->second->async_accept(std::bind_front(&tcp_transport_provider::on_accepted, this, listener_id, endpoint));
-    return listener_id;
+    CORE_LOG_TRACE("[CONNECTION {}: LISTEN] {}", conn_id, endpoint);
+    itr->second->async_accept(std::bind_front(&tcp_transport_provider::on_accepted, this, conn_id, endpoint));
   }
 
-  natural_t tcp_transport_provider::start_connect(const binding_point& endpoint) {
-    natural_t id = network_thread::generate_connection_id();
+  void tcp_transport_provider::on_start_connect(natural_t conn_id, const binding_point& endpoint) {
     CORE_LOG_WARN("TCP connect unimplemented: attempted to connect to {}:{}", endpoint.ip, endpoint.port);
     // auto [state_itr, state_success] = connection_state_machines.emplace(id, connection_state_machine());
     // OTHER_ASSERT(state_success, "Failed to create connection state machine for connection with ID {}", id);
@@ -87,8 +85,6 @@ namespace other {
 
     // itr->second->start_connect();
     // CORE_LOG_TRACE("[CONNECTION {}: CONNECT] {}", id, endpoint);
-
-    return id;
   }
 
   void tcp_transport_provider::tx_data(natural_t connection_id, std::span<const uint8_t> data) {
@@ -122,11 +118,12 @@ namespace other {
     } else {
       itr->second->shutdown();
     }
+  }
 
-    auto state_itr = connection_state_machines.find(connection_id);
-    if (state_itr != connection_state_machines.end()) {
-      state_itr->second.handle_event(connection_event::DISCONNECT_SUCCESS);
-    }
+  void tcp_transport_provider::connection_removed(natural_t connection_id) {
+    active_connections.erase(connection_id);
+    active_tcp_listeners.erase(connection_id);
+    connection_state_machines.erase(connection_id);
   }
 
   void tcp_transport_provider::on_rx_data(natural_t connection_id, std::span<const uint8_t> data) {
@@ -140,24 +137,13 @@ namespace other {
   }
 
   void tcp_transport_provider::on_connection_socket_closed(natural_t connection_id) {
-    {
-      auto state_itr = connection_state_machines.find(connection_id);
-      if (state_itr == connection_state_machines.end()) {
-        CORE_LOG_ERROR("[CONNECTION {}] closed connection: no state machine found!", connection_id);
-        return;
-      }
-
-      state_itr->second.handle_event(connection_event::DISCONNECT_SUCCESS);
+    auto state_itr = connection_state_machines.find(connection_id);
+    if (state_itr == connection_state_machines.end()) {
+      CORE_LOG_ERROR("[CONNECTION {}] closed connection: no state machine found!", connection_id);
+      return;
     }
 
-    message msg(NOTIFICATION, CLOSE_TCP_CONNECTION);
-    notification_close_tcp_connection notification_data{
-      .connection_id = connection_id,
-    };
-    msg.data = serialize_direct(notification_data);
-    host_thread_ref().send_to_driver(std::move(msg));
-
-    host_thread_ref().mark_route_recently_closed(connection_id);
+    state_itr->second.handle_event(connection_event::DISCONNECT_SUCCESS);
   }
 
   void tcp_transport_provider::on_connection_socket_broken(natural_t connection_id) {
@@ -175,7 +161,7 @@ namespace other {
         (ec && ec == asio::error::connection_reset) ||
         (ec && ec == asio::error::timed_out) ||
         (ec && ec == asio::error::eof)) {
-      on_connection_socket_closed(id);
+      connection_socket_closed(id);
       return;
     }
 
@@ -222,15 +208,13 @@ namespace other {
       conn_itr->second->start_read();
     }
 
-    // T2: legacy bus path. T3 will replace this with
-    // host_->deliver_connection_opened(connection_id, ...) and route via
-    // the priority chain.
-    message msg(NOTIFICATION, CONNECT_TCP_CONNECTION);
-    notification_connect_tcp_connection notification_data{
+    message msg(NOTIFICATION, CONNECT_CONNECTION);
+    notification_connect_connection notification_data{
       .connection_endpoint = endpoint,
       .endpoint = local_bp,
       .connection_id = listener_conn_id,
       .new_connection_id = connection_id,
+      .transport_hash = hash(),
     };
     msg.data = serialize_direct(notification_data);
     host_thread_ref().send_to_driver(std::move(msg));

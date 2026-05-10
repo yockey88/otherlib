@@ -64,8 +64,8 @@ local function _get_http_server()
 end
 local http_server_hook = _get_http_server()
 local server_hook = {
-  OnAcceptConnection = function(listening_id, connected_id) OtherLog.Info(string.format("[SERVER] Connection %d (from %d)", connected_id, listening_id)) end,
   OnReceiveData = function(id, data) end,
+  OnAcceptConnection = function(listening_id, connected_id) OtherLog.Info(string.format("[SERVER] Connection %d (from %d)", connected_id, listening_id)) end,
   OnCloseConnection = function(id) OtherLog.Info(string.format("[SERVER] Connection %d closed", id)) end,
 }
 

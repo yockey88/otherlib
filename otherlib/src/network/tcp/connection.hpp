@@ -1,13 +1,12 @@
 /**
  * \file network/tcp/connection.hpp
  **/
-#ifndef OTHER_NETWORK_TCP_CONNECTION_HPP
-#define OTHER_NETWORK_TCP_CONNECTION_HPP
+#ifndef OTHERLIB_NETWORK_TCP_CONNECTION_HPP
+#define OTHERLIB_NETWORK_TCP_CONNECTION_HPP
 
 #include "core/async_buffer.hpp"
-#include "thread/message.hpp"
 
-#include "network/io.hpp"
+#include "message/message.hpp"
 
 namespace other {
 
@@ -56,4 +55,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_TCP_CONNECTION_HPP
+#endif  // OTHERLIB_NETWORK_TCP_CONNECTION_HPP

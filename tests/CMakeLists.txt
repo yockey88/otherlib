@@ -35,7 +35,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/parser-combinator/parser_combinator_tests.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/thread/thread_tests.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/thread/message_bus_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/message/message_bus_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/script_environment_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/callback_tests.cpp

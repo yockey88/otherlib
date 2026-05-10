@@ -21,7 +21,7 @@ namespace other {
 
     if (buffer.has_pending_read_data()) {
       auto data = buffer.read();
-      provider->on_rx_data(id, data);
+      provider->rx_data(id, data);
     }
   }
 
@@ -114,7 +114,7 @@ namespace other {
         (ec && ec == asio::error::eof)) {
       CORE_LOG_TRACE("[CONNECTION {}: CLOSED] Connection closed: {}", id, ec.message());
       inactive = true;
-      provider->on_connection_socket_closed(id);
+      provider->connection_socket_closed(id);
       return;
     }
     if (inactive) {
