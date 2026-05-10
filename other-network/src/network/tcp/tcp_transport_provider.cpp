@@ -119,10 +119,14 @@ namespace other {
       } else {
         CORE_LOG_WARN("Attempted to close non-existent connection with ID {}", connection_id);
       }
-      return;
+    } else {
+      itr->second->shutdown();
     }
 
-    itr->second->shutdown();
+    auto state_itr = connection_state_machines.find(connection_id);
+    if (state_itr != connection_state_machines.end()) {
+      state_itr->second.handle_event(connection_event::DISCONNECT_SUCCESS);
+    }
   }
 
   void tcp_transport_provider::on_rx_data(natural_t connection_id, std::span<const uint8_t> data) {
