@@ -10,6 +10,7 @@
 #include "thread/message.hpp"
 
 #include "network/messages.hpp"
+#include "network/tcp/tcp_transport_provider.hpp"
 
 #include "driver/driver.hpp"
 
@@ -47,6 +48,11 @@ namespace other {
     const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
     if (!force_disable_network) {
       net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
+
+      register_transport_provider(make_scope<tcp_transport_provider>());
+      // register_transport_provider(make_scope<udp_transport_provider>());
+      // register_transport_provider(make_scope<loopback_transport_provider>());
+
       net_context->net_thread->launch();
       net_context->net_thread_message_bus.register_thread();
     }
@@ -56,6 +62,7 @@ namespace other {
 
   void network_system::tick(driver_kernel* kernel, double dt) {
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+
     net_context->io_context.poll();
     if (net_context->io_context.stopped()) {
       net_context->io_context.restart();
@@ -78,22 +85,85 @@ namespace other {
     if (!force_disable_network) {
       net_context->net_thread->wait_for_shutdown_complete();
       net_context->net_thread = nullptr;
+      net_context->registered_transport_providers.clear();
       net_context = nullptr;
     }
 
     ack_list.clear();
   }
 
-  void network_system::begin_shutdown_sequence(driver_kernel* kernel) {
-    net_context->signals.cancel();
+  natural_t network_system::register_transport_provider(scope<transport_provider> provider) {
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    OTHER_ASSERT(provider != nullptr, "Cannot register null transport provider.");
+
+    const std::string name = provider->name();
+    natural_t id = FNV(name);
+    if (net_context->registered_transport_providers.find(id) != net_context->registered_transport_providers.end()) {
+      CORE_LOG_ERROR("Failed to register transport provider with name '{}', a provider with the same name already exists.", name);
+      return 0;
+    }
+
+    CORE_LOG_INFO("Registering transport provider '{}'", name);
+    auto [itr, success] = net_context->registered_transport_providers.emplace(id, std::move(provider));
+    OTHER_ASSERT(success, "Failed to register transport provider: {}!", name);
+
+    net_context->net_thread->register_provider(itr->second.get());
+
+    return id;
+  }
+
+  void network_system::set_default_packet_sink(packet_sink* sink) {
+    // net_context->default_packet_sink = sink;
+  }
+
+  natural_t network_system::listen_at_endpoint(const binding_point& ep, const std::string_view transport_name, packet_sink* sink) {
+    natural_t connection_id = network_thread::generate_connection_id();
+    auto [itr, success] = active_tcp_connections.emplace(connection_id, tcp_connection{ connection_id });
+    if (!success) {
+      CORE_LOG_ERROR("Failed to create TCP connection for endpoint {}:{}", ep.ip, ep.port);
+      return 0;
+    }
 
     message msg;
     msg.header = {
       .category = COMMAND,
-      .id = SHUTDOWN_REQUEST,
+      .id = LISTEN_TCP_CONNECTION,
     };
+    command_listen_tcp_connection request{
+      .endpoint = ep,
+      .connection_id = connection_id,
+      .transport_hash = FNV(transport_name),
+    };
+    msg.data = serialize_direct(request);
 
     send_message(&get_driver().get_kernel(), std::move(msg));
+
+    return connection_id;
+  }
+
+  natural_t network_system::connect(const binding_point& ep, const std::string_view transport_name, packet_sink* sink) {
+    natural_t connection_id = network_thread::generate_connection_id();
+    auto [itr, success] = active_tcp_connections.emplace(connection_id, tcp_connection{ connection_id });
+    if (!success) {
+      CORE_LOG_ERROR("Failed to create TCP connection for endpoint {}:{}", ep.ip, ep.port);
+      return 0;
+    }
+
+    message msg;
+    msg.header = {
+      .category = COMMAND,
+      .id = CONNECT_TCP_CONNECTION,
+    };
+    command_connect_tcp_connection request{
+      .endpoint = ep,
+      .connection_id = connection_id,
+      .transport_hash = FNV(transport_name),
+    };
+    msg.data = serialize_direct(request);
+
+    send_message(&get_driver().get_kernel(), std::move(msg));
+
+    return connection_id;
   }
 
   void network_system::tx_data(natural_t connection_id, std::span<const uint8_t> data) {
@@ -116,6 +186,18 @@ namespace other {
     } else {
       send_to_network_thread(kernel, std::move(msg));
     }
+  }
+
+  void network_system::begin_shutdown_sequence(driver_kernel* kernel) {
+    net_context->signals.cancel();
+
+    message msg;
+    msg.header = {
+      .category = COMMAND,
+      .id = SHUTDOWN_REQUEST,
+    };
+
+    send_message(&get_driver().get_kernel(), std::move(msg));
   }
 
   void network_system::catch_signal(int signum) {

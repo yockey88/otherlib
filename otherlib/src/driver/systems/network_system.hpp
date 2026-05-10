@@ -14,6 +14,7 @@
 #include "network/acknowledgement_list.hpp"
 #include "network/message_handler.hpp"
 #include "network/network_thread.hpp"
+#include "network/transport_provider.hpp"
 
 #include "driver/driver_system.hpp"
 #include "driver/systems/core_system.hpp"
@@ -33,6 +34,7 @@ namespace other {
       natural_t netw_thread_heartbeat_timeout_id = 0;
       message_bus net_thread_message_bus;
       scope<network_thread> net_thread = nullptr;
+      std::unordered_map<natural_t, scope<transport_provider>> registered_transport_providers;
 
       constexpr static uint32_t kLocalhostAddress = 0x7f000001;
       constexpr static uint32_t kPrimarySessionBindingPort = 49222;
@@ -54,6 +56,13 @@ namespace other {
     void initialize(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
+
+    natural_t register_transport_provider(scope<transport_provider> provider);
+
+    void set_default_packet_sink(packet_sink* sink);
+
+    natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp", packet_sink* sink = nullptr);
+    natural_t connect(const binding_point& ep, const std::string_view transport_name = "tcp", packet_sink* sink = nullptr);
 
     void tx_data(natural_t connection_id, std::span<const uint8_t> data);
 

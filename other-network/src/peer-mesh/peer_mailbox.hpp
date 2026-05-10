@@ -1,8 +1,8 @@
 /**
- * \file peer/peer_mailbox.hpp
+ * \file peer-mesh/peer_mailbox.hpp
  **/
-#ifndef OTHER_NETWORK_PEER_PEER_MAILBOX_HPP
-#define OTHER_NETWORK_PEER_PEER_MAILBOX_HPP
+#ifndef OTHER_NETWORK_PEER_MESH_PEER_MAILBOX_HPP
+#define OTHER_NETWORK_PEER_MESH_PEER_MAILBOX_HPP
 
 #include <vector>
 
@@ -17,4 +17,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_PEER_PEER_MAILBOX_HPP
+#endif  // OTHER_NETWORK_PEER_MESH_PEER_MAILBOX_HPP

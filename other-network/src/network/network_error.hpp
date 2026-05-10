@@ -14,6 +14,11 @@ namespace other {
         : std::runtime_error(message) {}
   };
 
+  struct invalid_provider_network_error : public network_error {
+    explicit invalid_provider_network_error(const std::string& message)
+        : network_error(message) {}
+  };
+
   struct port_in_use_network_error : public network_error {
     explicit port_in_use_network_error(const std::string& message)
         : network_error(message) {}
