@@ -6,25 +6,40 @@
 #include "core/job_system.hpp"
 
 #include "model/model_source.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "scene/scene.hpp"
+
+#include "tools/project_tool.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
 #include "asset/pipelines/model_source_pipeline.hpp"
 #include "asset/pipelines/rendering_pipeline_pipeline.hpp"
 #include "asset/pipelines/scene_pipeline.hpp"
+#include "asset/pipelines/script_file_pipeline.hpp"
+#include "asset/pipelines/script_pipeline.hpp"
+#include "asset/pipelines/script_project_pipeline.hpp"
+#include "asset/pipelines/script_source_pipeline.hpp"
 
 namespace other {
 
   namespace detail {
 
     task load_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_script_file(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_script(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
     task unload_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_script_file(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_script(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task empty_unloader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -36,8 +51,10 @@ namespace other {
     detail::load_model_source,
     detail::empty_loader,  // detail::load_model,
     detail::empty_loader,  // detail::load_animation,
-    detail::empty_loader,  // detail::load_script_source,
-    detail::empty_loader,  // detail::load_script,
+    detail::load_script_project,
+    detail::load_script_source,
+    detail::load_script_file,
+    detail::load_script,
     detail::empty_loader,  // detail::load_audio,
     detail::load_scene,    // detail::load_scene,
     detail::empty_loader,  // detail::load_input_map,
@@ -50,8 +67,10 @@ namespace other {
     detail::unload_model_source,
     detail::empty_unloader,  // detail::unload_model,
     detail::empty_unloader,  // detail::unload_animation,
-    detail::empty_unloader,  // detail::unload_script_source,
-    detail::empty_unloader,  // detail::unload_script,
+    detail::unload_script_project,
+    detail::unload_script_source,
+    detail::unload_script_file,
+    detail::unload_script,
     detail::empty_unloader,  // detail::unload_audio,
     detail::unload_scene,    // detail::unload_scene,
     detail::empty_unloader,  // detail::unload_input_map,
@@ -59,9 +78,17 @@ namespace other {
     detail::empty_unloader,
   };
 
+  bool asset_pipeline::is_extension_supported(const std::string_view extension) {
+    return std::ranges::find_if(kAssetExtensions, [extension](const auto& ext) { return ext.extension == extension; }) != kAssetExtensions.end();
+  }
+
   scope<asset_pipeline> asset_pipeline::get_asset_pipeline(event_system& events, asset_handler* handler, asset::type type) {
     switch (type) {
       case asset::MODEL_SOURCE: return make_scope<model_source_pipeline>(events, handler);
+      case asset::SCRIPT_PROJECT: return make_scope<script_project_pipeline>(events, handler);
+      case asset::SCRIPT_SOURCE: return make_scope<script_source_pipeline>(events, handler);
+      case asset::SCRIPT_FILE: return make_scope<script_file_pipeline>(events, handler);
+      case asset::SCRIPT: return make_scope<script_pipeline>(events, handler);
       case asset::SCENE: return make_scope<scene_pipeline>(events, handler, nullptr);
       case asset::RENDERING_PIPELINE: return make_scope<rendering_pipeline_pipeline>(events, handler, pipeline_definition{});
       default:
@@ -184,6 +211,10 @@ namespace other {
     if (pipeline_state.loading) {
       switch (asset_ptr->asset_type) {
         case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-loaded", asset_ptr->id); break;
+        case asset::SCRIPT_PROJECT: get_events().trigger_event("script-project.asset-loaded", asset_ptr->id); break;
+        case asset::SCRIPT_SOURCE: get_events().trigger_event("script-source.asset-loaded", asset_ptr->id); break;
+        case asset::SCRIPT_FILE: get_events().trigger_event("script-file.asset-loaded", asset_ptr->id); break;
+        case asset::SCRIPT: get_events().trigger_event("script.asset-loaded", asset_ptr->id); break;
         case asset::SCENE: get_events().trigger_event("scene.asset-loaded", asset_ptr->id); break;
         case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-loaded", asset_ptr->id); break;
         default:
@@ -192,6 +223,10 @@ namespace other {
     } else if (pipeline_state.unloading) {
       switch (asset_ptr->asset_type) {
         case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-unloaded", asset_ptr->id); break;
+        case asset::SCRIPT_PROJECT: get_events().trigger_event("script-project.asset-unloaded", asset_ptr->id); break;
+        case asset::SCRIPT_SOURCE: get_events().trigger_event("script-source.asset-unloaded", asset_ptr->id); break;
+        case asset::SCRIPT_FILE: get_events().trigger_event("script-file.asset-unloaded", asset_ptr->id); break;
+        case asset::SCRIPT: get_events().trigger_event("script.asset-unloaded", asset_ptr->id); break;
         case asset::SCENE: get_events().trigger_event("scene.asset-unloaded", asset_ptr->id); break;
         case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-unloaded", asset_ptr->id); break;
         default:
@@ -212,6 +247,10 @@ namespace other {
     if (pipeline_state.loading) {
       switch (asset_ptr->asset_type) {
         case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-load-failed", asset_ptr->id); break;
+        case asset::SCRIPT_PROJECT: get_events().trigger_event("script-project.asset-load-failed", asset_ptr->id); break;
+        case asset::SCRIPT_SOURCE: get_events().trigger_event("script-source.asset-load-failed", asset_ptr->id); break;
+        case asset::SCRIPT_FILE: get_events().trigger_event("script-file.asset-load-failed", asset_ptr->id); break;
+        case asset::SCRIPT: get_events().trigger_event("script.asset-load-failed", asset_ptr->id); break;
         case asset::SCENE: get_events().trigger_event("scene.asset-load-failed", asset_ptr->id); break;
         case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-load-failed", asset_ptr->id); break;
         default:
@@ -220,6 +259,10 @@ namespace other {
     } else if (pipeline_state.unloading) {
       switch (asset_ptr->asset_type) {
         case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-unload-failed", asset_ptr->id); break;
+        case asset::SCRIPT_PROJECT: get_events().trigger_event("script-project.asset-unload-failed", asset_ptr->id); break;
+        case asset::SCRIPT_SOURCE: get_events().trigger_event("script-source.asset-unload-failed", asset_ptr->id); break;
+        case asset::SCRIPT_FILE: get_events().trigger_event("script-file.asset-unload-failed", asset_ptr->id); break;
+        case asset::SCRIPT: get_events().trigger_event("script.asset-unload-failed", asset_ptr->id); break;
         case asset::SCENE: get_events().trigger_event("scene.asset-unload-failed", asset_ptr->id); break;
         case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-unload-failed", asset_ptr->id); break;
         default:
@@ -276,9 +319,8 @@ namespace other {
 
     template <typename T, typename Fn, typename... Args>
     void call_pipeline_fn(void* pipeline, Fn function, Args&&... args) {
-      T* pl = reinterpret_cast<T*>(pipeline);
-      OTHER_ASSERT(pl != nullptr, "Pipeline pointer is null in call_pipeline_fn");
-      (pl->*function)(std::forward<Args>(args)...);
+      OTHER_ASSERT(pipeline != nullptr, "Pipeline pointer is null in call_pipeline_fn");
+      (reinterpret_cast<T*>(pipeline)->*function)(std::forward<Args>(args)...);
     }
 
     task load_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
@@ -357,9 +399,9 @@ namespace other {
       );
 
       /// waiting on this will also wait on the first job
-      while (!store_job->done()) {
+      do {
         co_await task::yield();
-      }
+      } while (!store_job->done());
       OTHER_ASSERT(store_job->done(), "Store job for model source asset in invalid state. Status: {}", store_job->get_status());
 
       if (store_job->get_status() == job::status::COMPLETED) {
@@ -367,6 +409,147 @@ namespace other {
       } else {
         call_pipeline_fn<model_source_pipeline>(pipeline, on_failure, std::format("Failed to finalize model source asset: {}", source_path.string()));
       }
+    }
+
+    task load_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      filepath project_path = asset_ptr->absolute_path;
+
+      auto& jobs = handler->get_job_system();
+
+      ref<project_tool> build_tool = make_ref<project_tool>();
+      natural_t build_id = 0;
+      {
+        ref<job> build_project_job = jobs.submit(
+          {
+            .name = std::format("Build .NET project '{}'", project_path.string()),
+            .thread_affinity = job::affinity::WORKER_THREAD,
+          },
+          [t = build_tool, path = project_path]() mutable {
+            OTHER_ASSERT(t != nullptr, "Failed to create project tool for building .NET project.");
+            /// create dotnet project for the loaded project
+            if (!std::filesystem::exists(path)) {
+              CORE_LOG_INFO("No .NET project file found at '{}', creating a new one.", path.string());
+              t->generate_dotnet_project(path);
+            }
+
+            /// .csproj file exists we go straight to building it
+            t->start_project_build(path);
+
+            do {
+              std::this_thread::yield();
+            } while (t->project_build_in_progress());
+
+            int32_t result = t->get_build_result();
+            t->cleanup_build();
+
+            if (result == 0) {
+              CORE_LOG_INFO("Successfully built .NET project '{}'", path.string());
+            } else {
+              throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path.string(), result));
+            }
+          }
+        );
+        OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
+        build_id = build_project_job->id;
+      }
+
+      ref<job> load_build_asset_job = jobs.submit_deferred(
+        build_id,
+        {
+          .name = std::format("Load built assembly for .NET project '{}'", project_path.string()),
+          .priority = job::priority::HIGH,
+          .thread_affinity = job::affinity::MAIN_THREAD,
+        },
+        [h = handler, t = build_tool, project_path]() {
+          filepath csproj = t->get_dotnet_project_path();
+          /// \todo fixed hardcoded build configuration and output path assumptions
+          filepath build = csproj.parent_path() / "bin" / "Debug" / (csproj.stem().string() + ".dll");
+          if (!std::filesystem::exists(build)) {
+            throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
+          }
+
+          h->load_asset(build);
+
+          std::error_code ec;
+          for (auto it = std::filesystem::recursive_directory_iterator(csproj.parent_path(), ec);
+               it != std::filesystem::recursive_directory_iterator();
+               it.increment(ec)) {
+            // skip build files/generated files
+            if (it->is_directory() && (it->path().filename() == "obj" || it->path().filename() == "bin")) {
+              it.disable_recursion_pending();
+              continue;
+            }
+
+            if (it->is_regular_file() && it->path().extension() == ".cs") {
+              h->load_asset(it->path());
+            }
+          }
+        }
+      );
+      OTHER_ASSERT(load_build_asset_job != nullptr, "Failed to create job for loading built assembly of .NET project.");
+
+      do {
+        co_await task::yield();
+      } while (!load_build_asset_job->done());
+
+      call_pipeline_fn<script_project_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task load_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      filepath script_path = asset_ptr->absolute_path;
+      OTHER_ASSERT(std::filesystem::exists(script_path), "Script file does not exist: {}", script_path.string());
+      if (script_path.extension() == ".dll" || script_path.extension() == ".so" /* || script_path.extension() == ".dylib" ? */) {
+        CORE_LOG_DEBUG("Loading C# script from file: {}", script_path.string());
+
+        auto* env = subsystem<scripting_environment>::get();
+        OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+        // just checking it was successful, no need to do anything with the ref here
+        ref<assembly> asm_ref = env->load_dotnet_module(script_path.string());
+        if (!asm_ref) {
+          call_pipeline_fn<script_pipeline>(pipeline, on_failure, std::format("Failed to load assembly for script asset: {}", script_path.string()));
+          co_return;
+        }
+
+        CORE_LOG_DEBUG("Successfully loaded assembly for script asset: {}", script_path.string());
+      } else if (script_path.extension() == ".lua") {
+        CORE_LOG_DEBUG("Loading Lua script from file: {}", script_path.string());
+        CORE_LOG_WARN("Lua scripting is not yet implemented, treating Lua script asset as empty for now");
+      } else if (script_path.extension() == ".py") {
+        CORE_LOG_DEBUG("Loading Python script from file: {}", script_path.string());
+        CORE_LOG_WARN("Python scripting is not yet implemented, treating Python script asset as empty for now");
+      } else {
+        OTHER_ASSERT(false, "Unsupported script type for file: {}", script_path.string());
+      }
+
+      call_pipeline_fn<script_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task load_script_file(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      filepath script_path = asset_ptr->absolute_path;
+      OTHER_ASSERT(std::filesystem::exists(script_path), "Script file does not exist: {}", script_path.string());
+      CORE_LOG_DEBUG("Loading script file from file: {}", script_path.string());
+
+      /// \todo implement loading script files (lua, py, etc)
+
+      call_pipeline_fn<script_file_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task load_script(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      /// \todo implement this
+      co_await task::yield();
+      call_pipeline_fn<script_source_pipeline>(pipeline, on_success);
+      co_return;
     }
 
     task load_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
@@ -408,7 +591,7 @@ namespace other {
     }
 
     task unload_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      CORE_LOG_DEBUG("Unloading mode source (ID: {})", asset_ptr->id);
+      CORE_LOG_DEBUG("Unloading model source (ID: {})", asset_ptr->id);
 
       auto* renderer = subsystem<renderer_backend>::get();
       OTHER_ASSERT(renderer != nullptr, "Renderer backend subsystem is not available in unload_scene");
@@ -418,8 +601,32 @@ namespace other {
       co_return;
     }
 
+    task unload_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading script project (ID: {})", asset_ptr->id);
+      call_pipeline_fn<script_project_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task unload_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading script source (ID: {})", asset_ptr->id);
+      call_pipeline_fn<script_source_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task unload_script_file(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading script file (ID: {})", asset_ptr->id);
+      call_pipeline_fn<script_file_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task unload_script(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      CORE_LOG_DEBUG("Unloading script (ID: {})", asset_ptr->id);
+      call_pipeline_fn<script_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
     task unload_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      CORE_LOG_DEBUG("Unloading model source (ID: {})", asset_ptr->id);
+      CORE_LOG_DEBUG("Unloading scene (ID: {})", asset_ptr->id);
 
       call_pipeline_fn<scene_pipeline>(pipeline, on_success);
       co_return;

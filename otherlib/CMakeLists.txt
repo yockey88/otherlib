@@ -98,9 +98,7 @@ target_sources(otherlib
     src/vm/command_files/linker.cpp
     src/vm/command_files/ocmd_compiler.cpp
 
-    src/tools/tool.cpp
     src/tools/build_tool.cpp
-    src/tools/project_tool.cpp
     src/tools/environment_console.cpp
 
     src/ui/script/script_property_widget.cpp

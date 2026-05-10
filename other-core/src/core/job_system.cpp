@@ -40,6 +40,7 @@ namespace other {
     }
 
     {
+      std::lock_guard lck{ live_coroutines_mutex };
       running_coroutines = true;
       for (auto it = live_coroutines.begin(); it != live_coroutines.end();) {
         it->handle();
@@ -105,8 +106,10 @@ namespace other {
   void job_system::post_coroutine(task&& coro) {
     /// this is to not invalidate the iterators of live_coroutines if we post a new coroutine from within a running coroutine
     if (running_coroutines) {
+      std::lock_guard lck{ pending_coroutines_mutex };
       pending_coroutines.push(std::move(coro));
     } else {
+      std::lock_guard lck{ live_coroutines_mutex };
       live_coroutines.push_back({ .handle = std::move(coro) });
     }
   }

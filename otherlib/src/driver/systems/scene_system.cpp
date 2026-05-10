@@ -50,9 +50,7 @@ namespace other {
   }
 
   void scene_system::load_project_scene_graph(project& p) {
-    std::vector<project::scene>& scenes = p.get_scenes();
-    natural_t starting_scene_id = p.get_starting_scene_id();
-    for (auto& scene_data : scenes) {
+    for (auto& scene_data : p.get_scenes()) {
       if (!std::filesystem::exists(scene_data.path)) {
         CORE_LOG_ERROR("Scene file '{}' for scene '{}' in project does not exist. Skipping loading this scene.", scene_data.path.string(), scene_data.name);
         continue;
@@ -61,11 +59,15 @@ namespace other {
       // will not run script file on load
       scene_data.scene_id = add_scene_to_scene_graph(scene_data.path);
       CORE_LOG_DEBUG("Loaded scene '{}' with ID {} from project.", scene_data.name, scene_data.project_id);
+    }
 
-      if (scene_data.project_id == starting_scene_id) {
-        auto* s = get_scene(scene_data.scene_id);
-        OTHER_ASSERT(s != nullptr, "Failed to find scene with ID {} in scene graph after loading project.", scene_data.scene_id);
-        s->activate_on_load = true;
+    natural_t starting_scene_id = p.get_starting_scene_id();
+    CORE_LOG_INFO("Project starting scene ID: {}", starting_scene_id);
+
+    for (const auto& scene_data : p.get_scenes()) {
+      if (scene_data.scene_id == starting_scene_id) {
+        set_scene_to_active(scene_data.scene_id);
+        break;
       }
     }
   }

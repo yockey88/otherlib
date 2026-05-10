@@ -1,8 +1,8 @@
 /**
  * \file tools/tool.hpp
  **/
-#ifndef OTHERLIB_TOOLS_TOOL_HPP
-#define OTHERLIB_TOOLS_TOOL_HPP
+#ifndef OTHER_SCENE_TOOLS_TOOL_HPP
+#define OTHER_SCENE_TOOLS_TOOL_HPP
 
 #include <string_view>
 
@@ -15,9 +15,11 @@ namespace other {
 
   struct script_object;
 
-  class tool {
+  class tool : public ref_counted {
    public:
     tool(const std::string& type_name);
+    tool(const tool&) = delete;
+    tool& operator=(const tool&) = delete;
     virtual ~tool();
 
     const std::string_view get_type_name() const { return type_name; }
@@ -59,4 +61,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_TOOLS_TOOL_HPP
+#endif  // OTHER_SCENE_TOOLS_TOOL_HPP

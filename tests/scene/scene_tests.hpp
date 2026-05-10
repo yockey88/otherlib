@@ -38,6 +38,7 @@ namespace other {
       testing_asm = nullptr;
       dotnet_asm = nullptr;
 
+      subsystem<scripting_environment>::get()->destroy_all_objects();
       subsystem<scripting_environment>::get()->shutdown_script_environment();
 
       subsystem<arena>::get()->shutdown();

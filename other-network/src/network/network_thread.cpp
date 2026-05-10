@@ -205,7 +205,7 @@ namespace other {
     }
 
     natural_t connection_id = generate_connection_id();
-    auto [itr, success] = active_connections.emplace(connection_id, connection::create_tcp_connection(this, connection_id, events, network_io, endpoint, std::move(socket)));
+    auto [itr, success] = active_connections.emplace(connection_id, connection::create_tcp_connection(this, connection_id, network_io, endpoint, std::move(socket)));
     if (!success) {
       CORE_LOG_ERROR("Failed to create connection for endpoint {}:{}", endpoint.ip, endpoint.port);
       return;

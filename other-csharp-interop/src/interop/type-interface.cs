@@ -562,6 +562,25 @@ namespace OtherCsBindings
     }
 
     [UnmanagedCallersOnly]
+    private static NativeBool32 IsDerivedFrom(Int32 type, Int32 base_type)
+    {
+      try
+      {
+        if (!cached_types.TryGet(type, out var t) || !cached_types.TryGet(base_type, out var b))
+        {
+          return false;
+        }
+
+        return t!.IsSubclassOf(b!);
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+        return false;
+      }
+    }
+
+    [UnmanagedCallersOnly]
     private static unsafe void GetAttributes(Int32 type, Int32* attributes, Int32* count)
     {
       try

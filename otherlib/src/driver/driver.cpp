@@ -8,6 +8,8 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 
+#include "thread/thread_safety.hpp"
+
 namespace other {
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
@@ -19,6 +21,7 @@ namespace other {
 
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
+    register_main_thread();
 
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
@@ -59,6 +62,7 @@ namespace other {
   }
 
   void driver::run() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("driver::main_loop");
 
     CORE_LOG_DEBUG("Entering main driver loop");
@@ -70,6 +74,7 @@ namespace other {
   }
 
   void driver::shutdown() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("driver::shutdown");
     {
       PROFILE_SECTION("driver::shutdown--client-on_shutdown");
@@ -154,9 +159,9 @@ namespace other {
     plugin::unload_plugin_library(name);
   }
 
-  natural_t driver::begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded) {
+  natural_t driver::begin_asset_load(const filepath& asset_path) {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
-    return driver_kernel_ptr->get_core_system<asset_system>().begin_asset_load(asset_path, on_loaded);
+    return driver_kernel_ptr->get_core_system<asset_system>().begin_asset_load(asset_path);
   }
 
   natural_t driver::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
@@ -194,6 +199,10 @@ namespace other {
       auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
       scenes.unload_active_scene();
       scenes.unload_project_scene_graph();
+    }
+
+    if (driver_kernel_ptr->has_core_system<project_system>()) {
+      driver_kernel_ptr->get_core_system<project_system>().unload_project(driver_kernel_ptr.get());
     }
 
     driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
@@ -489,6 +498,7 @@ namespace other {
   }
 
   void driver::update() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("driver::update");
     double dt = frame_delta_time;
 
@@ -529,6 +539,7 @@ namespace other {
   }
 
   void driver::render() {
+    ASSERT_MAIN_THREAD();
     if (!rendering_enabled()) {
       return;
     }
@@ -541,6 +552,7 @@ namespace other {
   }
 
   void driver::on_project_loaded() {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
 
     auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
@@ -549,13 +561,15 @@ namespace other {
       return;
     }
 
-    // opt<natural_t> starting_scene_id;
     /// do this before running rc file in case rc file loads a scene
     if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
       /// add scene to project if not in scene list
       // starting_scene_id = curr_scene->id;
       driver_kernel_ptr->get_core_system<scene_system>().unload_active_scene();
     }
+
+    /// load scenes from project
+    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
 
     filepath rc_path = p.get_project_rc_path();
     if (!rc_path.empty() && std::filesystem::exists(rc_path)) {
@@ -578,9 +592,6 @@ namespace other {
       }
     }
 
-    /// load scenes from project
-    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
-
     /// restore scene?
     // if (starting_scene_id.has_value()) {
     //   driver_kernel_ptr->get_core_system<scene_system>().set_active_scene(starting_scene_id.value());
@@ -589,6 +600,33 @@ namespace other {
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
     launch_process(working_dir, exe_name, args);
+  }
+
+  bool driver::is_table_event(const std::string_view event_name) const {
+    /// for now we hardcode this but eventually we want to be able to register these from lua or from plugins
+    static std::unordered_set<std::string_view> table_events = {
+      "project.load",
+      "project.save",
+      "project.close",
+    };
+
+    return table_events.contains(event_name);
+  }
+
+  void driver::handle_driver_event_with_lua_table(const std::string_view event_name, const sol::table& event_data) {
+    if (event_name.starts_with("project.")) {
+      std::string project_name = event_data["project_name"].get_or(std::string("unknown"));
+      std::string project_path = event_data["project_path"].get_or(std::string("unknown"));
+
+      project_event_data data = {
+        .type = std::string(event_name).substr(std::string("project.").size()),
+        .project_name = project_name,
+        .project_path = project_path,
+      };
+      trigger_event("native-" + std::string(event_name), data);
+    } else {
+      CORE_LOG_WARN("Received Lua table event '{}' but no handler is registered for it", event_name);
+    }
   }
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver) {
@@ -612,7 +650,7 @@ namespace other {
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
     driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {
       if (data.get_type() == sol::type::table) {
-        CORE_LOG_ERROR("Driver event '{}' triggered with unsupported data type: {}.", event, data.get_type());
+        host_driver->handle_driver_event_with_lua_table(event, data.as<sol::table>());
         return;
       }
 

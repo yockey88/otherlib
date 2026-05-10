@@ -41,6 +41,7 @@ namespace other {
     ref<directory> get_or_add_child_directory(const std::string_view name, const filepath& path);
     bool has_child_directory(const std::string_view name) const;
     bool directory_exists(const std::string_view relative_path) const;
+    bool contains_path(const filepath& path) const;
 
     ref<file_handle> get_file(const std::string_view name);
     ref<file_handle> add_file(ref<file_handle> file);

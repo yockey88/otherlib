@@ -3,6 +3,8 @@
  **/
 #include "tools/environment_console.hpp"
 
+#include <ranges>
+
 #include "lua/lua_script.hpp"
 
 namespace other {
@@ -104,17 +106,21 @@ namespace other {
     if (!console_initialized) {
       return;
     }
-    if (text.empty()) {
+
+    std::string trimmed_text = std::string(text) |
+      std::views::drop_while([](char c) { return std::isspace(static_cast<unsigned char>(c)); }) | std::views::reverse |
+      std::views::drop_while([](char c) { return std::isspace(static_cast<unsigned char>(c)); }) | std::views::reverse |
+      std::ranges::to<std::string>();
+    if (trimmed_text.empty()) {
       return;
     }
-    if (text.length() >= kInputBufferSize) {
-      CORE_LOG_ERROR("Environment console input text exceeds maximum length of {} characters.", kInputBufferSize - 1);
-      return;
+    if (trimmed_text.length() >= kInputBufferSize) {
+      trimmed_text = trimmed_text.substr(0, kInputBufferSize - 1);
     }
 
     std::lock_guard lock(input_mutex);
     input_queue.push({
-      .input_text = std::string{ text },
+      .input_text = std::move(trimmed_text),
       .message_type = type,
       .timestamp = time_point,
     });

@@ -67,6 +67,8 @@ namespace other {
     scope<asio::thread_pool> pool;
 
     bool running_coroutines = false;
+    std::mutex pending_coroutines_mutex;
+    std::mutex live_coroutines_mutex;
     std::queue<task> pending_coroutines;
     std::vector<live_coroutine> live_coroutines;
 

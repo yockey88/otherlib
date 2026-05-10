@@ -10,6 +10,7 @@
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 #include "math/matrix.hpp"
+#include "thread/thread_safety.hpp"
 
 #include "model/model.hpp"
 #include "model/skeleton.hpp"
@@ -38,15 +39,18 @@
 namespace other {
 
   void scene::scene_first_construction_initialization() {
+    ASSERT_MAIN_THREAD();
     storage = make_scene_storage(this);
   }
 
   void scene::do_final_scene_destruction_cleanup() {
+    ASSERT_MAIN_THREAD();
     clear_storage(storage);
     storage = nullptr;
   }
 
   void scene::do_scene_binding() {
+    ASSERT_MAIN_THREAD();
     storage->registry.on_construct<script_component>().connect<&scene::on_create_script_component>(this);
     // storage->registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
     storage->registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
@@ -80,6 +84,7 @@ namespace other {
   }
 
   void scene::do_scene_unbinding() {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
 
     storage->registry.on_construct<physics_component>().disconnect<&scene::on_create_physics_component>(this);
@@ -92,6 +97,7 @@ namespace other {
   }
 
   scene::scene() {
+    ASSERT_MAIN_THREAD();
     scene_first_construction_initialization();
     do_scene_binding();
 
@@ -105,6 +111,7 @@ namespace other {
   }
 
   scene::scene(const std::string_view name) {
+    ASSERT_MAIN_THREAD();
     static natural_t next_id = 1;
     this->name = name;
     this->id = next_id++;
@@ -122,6 +129,7 @@ namespace other {
   }
 
   scene::scene(scene&& other) {
+    ASSERT_MAIN_THREAD();
     this->name = std::move(other.name);
     this->id = other.id;
     other.id = 0;
@@ -139,6 +147,7 @@ namespace other {
   }
 
   scene& scene::operator=(scene&& other) {
+    ASSERT_MAIN_THREAD();
     if (this == &other) {
       return *this;
     }
@@ -161,6 +170,7 @@ namespace other {
   }
 
   scene::~scene() {
+    ASSERT_MAIN_THREAD();
     if (storage != nullptr) {
       storage->tree.destroy_all_objects();
 
@@ -170,6 +180,7 @@ namespace other {
   }
 
   void scene::run_script_file() {
+    ASSERT_MAIN_THREAD();
     if (!script_path.has_value() || script_loaded) {
       return;
     }
@@ -224,10 +235,12 @@ namespace other {
   }
 
   scene scene::create_scene(const std::string& name) {
+    ASSERT_MAIN_THREAD();
     return scene(name);
   }
 
   void scene::play() {
+    ASSERT_MAIN_THREAD();
     if (storage == nullptr) {
       CORE_LOG_ERROR("Cannot play scene because storage is not initialized.");
       return;
@@ -245,6 +258,7 @@ namespace other {
   }
 
   void scene::pause() {
+    ASSERT_MAIN_THREAD();
     if (storage == nullptr) {
       CORE_LOG_ERROR("Cannot pause scene because storage is not initialized.");
       return;
@@ -255,6 +269,7 @@ namespace other {
   }
 
   void scene::stop() {
+    ASSERT_MAIN_THREAD();
     if (storage == nullptr) {
       CORE_LOG_ERROR("Cannot stop scene because storage is not initialized.");
       return;
@@ -272,18 +287,22 @@ namespace other {
   }
 
   void scene::reset() {
+    ASSERT_MAIN_THREAD();
     /// restore initial state
   }
 
   void scene::enable_physics_debug_rendering() {
+    ASSERT_MAIN_THREAD();
     debug_physics_rendering_enabled = true;
   }
 
   void scene::disable_physics_debug_rendering() {
+    ASSERT_MAIN_THREAD();
     debug_physics_rendering_enabled = false;
   }
 
   void scene::fixed_update(double delta_time) {
+    ASSERT_MAIN_THREAD();
     if (!playing) {
       return;
     }
@@ -316,6 +335,7 @@ namespace other {
   }
 
   void scene::update(double delta_time) {
+    ASSERT_MAIN_THREAD();
     if (!playing) {
       return;
     }
@@ -350,6 +370,7 @@ namespace other {
   }
 
   void scene::late_update(double delta_time) {
+    ASSERT_MAIN_THREAD();
     if (!playing) {
       return;
     }
@@ -371,6 +392,7 @@ namespace other {
   }
 
   scene_object& scene::root_object() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_root_object");
 
     scene_tree::node* root_node = storage->tree.node_at(0);
@@ -381,21 +403,25 @@ namespace other {
   }
 
   scene_object& scene::create_object(const std::string& name, scene_object* parent_object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::create_object_with_name");
     return create_object(name, glm::vec3(0.f), parent_object);
   }
 
   scene_object& scene::create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::create_object");
     return storage->tree.create_object(name, world_position, parent_object);
   }
 
   scene_object& scene::add_object(scene_object* object, const transform& transformation, scene_object* parent_object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::add_object");
     return storage->tree.add_object(object, transformation, parent_object);
   }
 
   void scene::add_objects(const std::span<serialization::parsed_scene_object> objects) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::add_objects");
     for (serialization::parsed_scene_object& obj : objects) {
       add_object(&obj.object, obj.obj_transform, &get_object(obj.parent_id));
@@ -414,16 +440,19 @@ namespace other {
   }
 
   scene_object* scene::get_parent(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_parent");
     return storage->tree.get_parent(id);
   }
 
   const scene_object* scene::get_parent(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_parent_const");
     return const_cast<scene*>(this)->get_parent(id);
   }
 
   scene_object* scene::get_parent(scene_object* object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_parent");
     if (object == nullptr) {
       return nullptr;
@@ -432,6 +461,7 @@ namespace other {
   }
 
   const scene_object* scene::get_parent(const scene_object* object) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_parent_const");
     if (object == nullptr) {
       return nullptr;
@@ -440,6 +470,7 @@ namespace other {
   }
 
   std::vector<uint64_t> scene::get_children_ids(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children_ids");
     const scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
@@ -453,6 +484,7 @@ namespace other {
   }
 
   std::vector<uint64_t> scene::get_children_ids(const scene_object* object) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children_ids");
     if (object == nullptr) {
       return {};
@@ -461,6 +493,7 @@ namespace other {
   }
 
   std::vector<scene_object*> scene::get_children(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children");
 
     const scene_tree::node* node = storage->tree.node_at(id);
@@ -479,6 +512,7 @@ namespace other {
   }
 
   std::vector<scene_object*> scene::get_children(const scene_object* object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children");
 
     if (object == nullptr) {
@@ -488,28 +522,33 @@ namespace other {
   }
 
   std::vector<uint64_t> scene::get_all_object_ids() const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_all_object_ids");
     return storage->tree.get_all_object_ids();
   }
 
   void scene::destroy_object(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::destroy_object");
     storage->tree.destroy_object(id);
   }
 
   bool scene::has_object(const std::string_view name) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::has_object_by_id");
     auto* node = storage->tree.find_object_by_name(name);
     return node != nullptr;
   }
 
   bool scene::has_object(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::has_object_by_id");
     scene_tree::node* node = storage->tree.node_at(id);
     return node != nullptr && node->object != nullptr;
   }
 
   scene_object& scene::get_object(const std::string_view name) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object_by_name");
     auto* node = storage->tree.find_object_by_name(name);
     OTHER_ASSERT(node != nullptr, "Scene object with name '{}' not found in scene '{}'.", name, this->name);
@@ -517,6 +556,7 @@ namespace other {
   }
 
   const scene_object& scene::get_object(const std::string_view name) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object_by_name_const");
     auto* node = storage->tree.find_object_by_name(name);
     OTHER_ASSERT(node != nullptr, "Scene object with name '{}' not found in scene '{}'.", name, this->name);
@@ -524,6 +564,7 @@ namespace other {
   }
 
   scene_object& scene::get_object(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object");
     scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
@@ -531,6 +572,7 @@ namespace other {
   }
 
   const scene_object& scene::get_object(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object_const");
     const scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
@@ -538,22 +580,26 @@ namespace other {
   }
 
   scene_object* scene::find_object(const std::string_view name) const {
+    ASSERT_MAIN_THREAD();
     scene_object* n = storage->tree.find_object_by_name(name);
     return n != nullptr ? n : nullptr;
   }
 
   scene_object* scene::find_object(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     scene_tree::node* node = storage->tree.node_at(id);
     return (node != nullptr && node->object != nullptr) ? node->object : nullptr;
   }
 
   size_t scene::get_object_count() const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object_count");
     OTHER_ASSERT(storage->tree.nodes != nullptr, "Scene tree nodes are not initialized.");
     return storage->tree.get_object_count();
   }
 
   transform& scene::get_transform(scene_object* object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform");
     OTHER_ASSERT(object != nullptr, "Cannot get transform from a null scene object.");
 
@@ -565,6 +611,7 @@ namespace other {
   }
 
   const transform& scene::get_transform(const scene_object* object) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform_const");
     OTHER_ASSERT(object != nullptr, "Cannot get transform from a null scene object.");
 
@@ -576,6 +623,7 @@ namespace other {
   }
 
   void scene::set_transform(scene_object* object, const transform& t) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::set_transform");
     OTHER_ASSERT(object != nullptr, "Cannot set transform on a null scene object.");
 
@@ -584,6 +632,7 @@ namespace other {
   }
 
   glm::mat4 scene::get_world_transform(scene_object* obj) const {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(obj != nullptr, "Cannot get world transform from a null scene object.");
     PROFILE_SECTION("scene::get_world_transform");
 
@@ -591,6 +640,7 @@ namespace other {
   }
 
   glm::mat4 scene::get_world_transform(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_world_transform");
 
     const scene_tree::node* node = storage->tree.node_at(id);
@@ -607,6 +657,7 @@ namespace other {
   }
 
   transform& scene::get_transform(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform_by_id");
 
     scene_tree::node* node = storage->tree.node_at(id);
@@ -615,6 +666,7 @@ namespace other {
   }
 
   const transform& scene::get_transform(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform_by_id");
 
     const scene_tree::node* node = storage->tree.node_at(id);
@@ -623,6 +675,7 @@ namespace other {
   }
 
   void scene::set_transform(natural_t id, const transform& t) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::set_transform_by_id");
 
     scene_tree::node* node = storage->tree.node_at(id);
@@ -631,6 +684,7 @@ namespace other {
   }
 
   render_data scene::prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::prepare_render_data");
 
     render_data data;
@@ -805,11 +859,13 @@ namespace other {
   }
 
   bool scene::object_has_tag(natural_t id, const std::string_view tag) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::object_has_tag");
     return storage->tree.node_has_tag(id, tag);
   }
 
   void scene::add_object_tag(natural_t id, const std::string_view tag) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::add_object_tag");
     scene_tree::node* n = storage->tree.node_at(id);
     OTHER_ASSERT(n != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
@@ -817,6 +873,7 @@ namespace other {
   }
 
   void scene::remove_object_tag(natural_t id, const std::string_view tag) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::remove_object_tag");
     scene_tree::node* n = storage->tree.node_at(id);
     OTHER_ASSERT(n != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
@@ -824,6 +881,7 @@ namespace other {
   }
 
   std::string scene::as_string(const scene& s) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::as_string");
 
     std::string result = "Scene Object Count: " + std::to_string(s.get_object_count()) + "\n";
@@ -838,6 +896,7 @@ namespace other {
   }
 
   void scene::connect_remote_session(integer_t session_id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::connect_remote_session");
 
     scene_object& root = root_object();
@@ -849,15 +908,18 @@ namespace other {
   }
 
   scene::object_handle::operator scene_object*() const {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(object != nullptr, "Object handle is null, cannot convert to scene_object*.");
     return object;
   }
 
   bool scene::object_handle::operator==(const object_handle& other) const {
+    ASSERT_MAIN_THREAD();
     return id == other.id && object == other.object;
   }
 
   scene_object* scene::from_registry_id(entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::from_registry_id");
 
     object_handle* handle = storage->registry.try_get<object_handle>(entity);
@@ -869,6 +931,7 @@ namespace other {
   }
 
   void scene::register_object(scene_object* object, const std::string& name, const glm::vec3& world_position) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::register_object");
 
     OTHER_ASSERT(name.size() > 0, "Scene object name cannot be empty.");
@@ -897,11 +960,13 @@ namespace other {
   }
 
   void scene::register_object(scene_object* object, const std::string& name, const transform& transformation) {
+    ASSERT_MAIN_THREAD();
     register_object(object, name, transformation.local_position);
     set_transform(object, transformation);
   }
 
   void scene::unregister_object(scene_object* object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::unregister_object");
     {
       // auto& comb_reg = get_component<component_registry>(object);
@@ -916,15 +981,19 @@ namespace other {
   }
 
   void scene::on_create_render_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
   }
 
   void scene::on_update_render_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
   }
 
   void scene::on_destroy_render_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
   }
 
   void scene::on_create_script_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::on_create_script_component");
 
     script_component* script = storage->registry.try_get<script_component>(entity);
@@ -950,6 +1019,7 @@ namespace other {
   // }
 
   void scene::on_destroy_script_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::on_destroy_script_component");
 
     auto* script_env = subsystem<scripting_environment>::get();
@@ -960,6 +1030,7 @@ namespace other {
   }
 
   void scene::on_create_physics_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::on_create_physics_component");
 
     physics_component& physics_comp = storage->registry.get<physics_component>(entity);
@@ -977,6 +1048,7 @@ namespace other {
   // void scene::on_update_physics_component(const entt::registry&, const entt::entity entity) {}
 
   void scene::on_destroy_physics_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::on_destroy_physics_component");
 
     physics_component& physics_comp = storage->registry.get<physics_component>(entity);
@@ -989,6 +1061,7 @@ namespace other {
   }
 
   void scene::construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::construct_object_from_lua_table");
 
     CORE_LOG_DEBUG("Constructing scene object '{}' from Lua table.", scene_obj.name);

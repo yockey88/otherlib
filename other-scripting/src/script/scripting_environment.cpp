@@ -30,15 +30,21 @@ namespace other {
     python.call_entry_point();
   }
 
-  void scripting_environment::shutdown_script_environment() {
+  void scripting_environment::destroy_all_objects() {
     for (auto& obj : live_objects) {
       if (obj.object != nullptr) {
         destroy_object(obj.index);
       }
     }
+  }
+
+  void scripting_environment::shutdown_script_environment() {
+    // clang-format off
+    OTHER_ASSERT(std::ranges::all_of(live_objects, [](const live_script_object& obj) { return obj.status == live_script_object::DESTROYED; }), 
+                 "Script leaks detected");
+    // clang-format on
 
     python.unload_host();
-
     {
       if (dotnet_load_context == nullptr) {
         CORE_LOG_ERROR("DotNet load context is not initialized.");
@@ -66,6 +72,7 @@ namespace other {
     obj.id = idx;
     obj.name = name;
     live_obj.object = &obj;
+    live_obj.status = live_script_object::LIVE;
     CORE_LOG_DEBUG(" - created script object [{}:{}] with ID {}", name, idx, idx);
 
     return idx;
@@ -97,7 +104,8 @@ namespace other {
     // }
 
     script_object_pool->free(id);
-    live_objects[id] = live_script_object{};
+    live_objects[id].object = nullptr;
+    live_objects[id].status = live_script_object::DESTROYED;
   }
 
   void scripting_environment::dotnet_register_native_object(integer_t id, const std::string_view type_name) {
@@ -139,7 +147,7 @@ namespace other {
     PROFILE_SECTION("scripting_environment::load-dotnet-module");
     if (!std::filesystem::exists(module_path)) {
       CORE_LOG_ERROR("Module file does not exist: {}", module_path);
-      return 0;
+      return nullptr;
     }
 
     ref<assembly> asm_ref = dotnet_load_context->load_assembly(module_path);
@@ -187,12 +195,25 @@ namespace other {
     }
   }
 
+  bool scripting_environment::dotnet_object_is_behavior(integer_t id) {
+    script_object* obj = get_object(id);
+    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+    if (obj->dotnet_object != nullptr) {
+      return obj->dotnet_object->is_behavior();
+    } else {
+      CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
+      return false;
+    }
+  }
+
   void scripting_environment::attach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name) {
     PROFILE_SECTION("scripting_environment::attach_dotnet_behavior");
 
     script_object* parent = get_object(parent_id);
     OTHER_ASSERT(parent != nullptr, "Script object with ID {} does not exist.", parent_id);
     OTHER_ASSERT(parent->dotnet_object != nullptr, "Script object with ID {} does not have a .NET object attached.", parent_id);
+
+    /// \todo check if this is actually a behavior type
 
     CORE_LOG_DEBUG("[script {}] attaching behavior '{}' to object '{}'", parent_id, behavior_name, parent->name);
 
@@ -269,6 +290,29 @@ namespace other {
     /// invoke RemoveAllBehaviors on the parent SceneObject's managed object
     if (parent->dotnet_object != nullptr) {
       parent->dotnet_object->invoke<>("RemoveAllBehaviors");
+    }
+  }
+
+  void scripting_environment::invalidate_dotnet_script_objects_of_type(int32_t dotnet_type_id) {
+    PROFILE_SECTION("scripting_environment::invalidate_dotnet_script_objects_of_type");
+    CORE_LOG_DEBUG("Invalidating script objects with .NET type ID {}", dotnet_type_id);
+
+    for (auto& live_obj : live_objects) {
+      if (live_obj.status == live_script_object::LIVE && live_obj.object != nullptr) {
+        script_object* obj = live_obj.object;
+        if (obj->dotnet_object == nullptr || obj->dotnet_object->dn_type == nullptr) {
+          continue;
+        }
+
+        // check if behavior and remove behavior if it matches the type being invalidated
+        if (obj->dotnet_object->is_behavior() && obj->dotnet_object->dn_type->dotnet_id == dotnet_type_id) {
+          CORE_LOG_DEBUG(" - invalidating behavior script object [{}:{}] with ID {} due to matching .NET type ID {}", obj->name, obj->id, obj->id, dotnet_type_id);
+          destroy_object(obj->id);
+        } else if (obj->dotnet_object->dn_type->dotnet_id == dotnet_type_id) {
+          CORE_LOG_DEBUG(" - invalidating script object [{}:{}] with ID {} due to matching .NET type ID {}", obj->name, obj->id, obj->id, dotnet_type_id);
+          detach_dotnet_object(obj->id);
+        }
+      }
     }
   }
 

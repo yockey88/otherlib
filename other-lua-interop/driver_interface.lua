@@ -1,3 +1,8 @@
+local function _long_flag_to_short_flag(flag)
+  -- "--driver-systems" -> "-ds", "--files" -> "-f"
+  return flag:gsub("-(-%a)%a*", "%1"):gsub("(%a)-(%a)%a+", "%1%2")
+end
+
 local function _deduce_open_close_type(args)
   if #args == 1
   then
@@ -5,22 +10,25 @@ local function _deduce_open_close_type(args)
     return "file"
   elseif #args == 2
   then
-    --- expect ((-f|--file) <file-path>) or ((-will|--window) (window-name|window-id))
     local flag = args[1]
-    if flag == "-f" or flag == "--file"
-    then
+    local stripped_flag = _Meta._string_utils.strip_leading_and_ending_whitespace(flag)
+    if #stripped_flag == 0 or stripped_flag == ""
+    then -- default to file if no flag provided
       return "file"
-    else if flag == "-w" or flag == "--window"
+    elseif #stripped_flag > 2
     then
-      return "window"
-    else
-      return "unknown"
+      stripped_flag = _long_flag_to_short_flag(stripped_flag)
     end
-    end
-  end 
+    --- expect ((-f|--file) <file-path>) or ((-will|--window) (window-name|window-id))
+    if stripped_flag == "-f"
+    then return "file"
+    elseif stripped_flag == "-w"
+    then return "window" end
+  end
+
   return "unknown"
 end
-
+  
 local function _deduce_list_type(args)
   if #args == 0
   then
@@ -28,26 +36,84 @@ local function _deduce_list_type(args)
   elseif #args == 1
   then
     local flag = args[1]
-    if flag == "-f" or flag == "--files"
-    then
+    local stripped_flag = _Meta._string_utils.strip_leading_and_ending_whitespace(flag)
+    if #stripped_flag == 0 or stripped_flag == ""
+    then -- default to files if no flag provided
       return "files"
-    elseif flag == "-ds" or flag == "--driver-systems"
+    elseif #stripped_flag > 2
     then
-      return "driver-systems"
-    elseif flag == "-w" or flag == "--windows"
-    then
-      return "windows"
-    elseif flag == "-s" or flag == "--scenes"
-    then
-      return "scenes"
-    elseif flag == "-a" or flag == "--assets"
-    then
-      return "assets"
-    else
-      return "unknown"
+      stripped_flag = _long_flag_to_short_flag(stripped_flag)
     end
-  end 
+
+    if stripped_flag == "-f"
+    then return "files"
+    elseif stripped_flag == "-ds"
+    then return "driver-systems"
+    elseif stripped_flag == "-w"
+    then return "windows"
+    elseif stripped_flag == "-s"
+    then return "scenes"
+    elseif stripped_flag == "-a"
+    then return "assets"
+    else return "unknown"
+    end
+  end
   return "unknown"
+end
+
+local function _deduce_project_op_type(args)
+  if #args == 0 then
+    return "unknown"
+  end
+
+  local operation = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
+  if operation == "--new" or operation == "-n"
+  then return "new" end
+  if operation == "--load" or operation == "-l"
+  then return "load" end
+  if operation == "--save" or operation == "-s"
+  then return "save" end
+
+  return "unknown"
+end
+
+local function _parse_project_args(args)
+  local result = { type = "unknown" }
+  if #args < 1 then
+    return result
+  end
+
+  -- for new and load, expect a project name or path as the second argument
+  local op = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
+  if op == "--load" or op == "-l" then
+    if #args < 2
+    then return result end
+
+    result.type = "load"
+    result.args = {
+      project_name = nil,
+      project_path = _Meta._string_utils.strip_leading_and_ending_whitespace(args[2]),
+    }
+  elseif op == "--new" or op == "-n" then
+    if #args < 2
+    then return result end
+
+    result.type = "new"
+    result.args = {
+      project_name = _Meta._string_utils.strip_leading_and_ending_whitespace(args[2]),
+      project_path = nil,
+    }
+
+    -- we also expect a path, if there is none then cwd will be used
+    if #args >= 3 then
+      result.args.project_path = _Meta._string_utils.strip_leading_and_ending_whitespace(args[3])
+    end
+  elseif op == "--save" or op == "-s" then
+    result.type = "save"
+    -- get project name/path from active project
+  end
+
+  return result
 end
 
 local function _deduce_object_op_type(args)
@@ -57,13 +123,13 @@ local function _deduce_object_op_type(args)
   end
   
   local operation = _Meta._string_utils.strip_leading_and_ending_whitespace(args[1])
-  if operation == "--create" or operation == "-c" 
+  if operation == "--create" or operation == "-c"
   then return "create" end
-  if operation == "--delete" or operation == "-d" 
+  if operation == "--delete" or operation == "-d"
   then return "delete" end
-  if operation == "--push"   or operation == "-pu" 
+  if operation == "--push"   or operation == "-pu"
   then return "push" end
-  if operation == "--pop"    or operation == "-po" 
+  if operation == "--pop"    or operation == "-po"
   then return "pop" end
   if operation == "--info"   or operation == "-i"
   then return "info" end
@@ -332,7 +398,7 @@ function _Driver._parse_list_args(args)
   result.type = _deduce_list_type(args)
   if result.type == "unknown"
   then
-    _Meta:Console().PushError("Unknown arguments for list command.")
+    _Meta:Console().PushError("Usage: ls [options] (see ls --help for more details)")
     return {}, false
   end
 
@@ -343,11 +409,30 @@ function _Driver._parse_list_args(args)
   return result, true
 end
 
+function _Driver._parse_project_op_args(args)
+  if #args == 0 then
+    _Meta:Console().PushError("No arguments provided for project command.")
+    _Meta:Console().PushError("Usage: project [options...] <arguments>... (see project --help for more details)")
+    return {}, false
+  end
+
+  local result = _parse_project_args(args)
+  if result.type == nil or result.type == "unknown"
+  then
+    _Meta:Console().PushError("Unknown arguments for project command.")
+    _Meta:Console().PushError("Usage: project [options...] <arguments>... (see project --help for more details)")
+    return {}, false
+  end
+
+  return result, true
+end
+
 function _Driver._parse_object_op_args(args)
   local result = {}
   if #args < 1
   then
-    _Meta:Console().PushError("Usage: object <operation> [options...]")
+    _Meta:Console().PushError("No arguments provided for object command.")
+    _Meta:Console().PushError("Usage: object <operation> [options...] (see object --help for more details)")
     return {}, false
   end
 
@@ -355,6 +440,7 @@ function _Driver._parse_object_op_args(args)
   if result.operation == "unknown"
   then
     _Meta:Console().PushError("Unknown operation for object command.")
+    _Meta:Console().PushError("Usage: object <operation> [options...] (see object --help for more details)") 
     return {}, false
   end
 
@@ -362,7 +448,8 @@ function _Driver._parse_object_op_args(args)
   result.op_table = _build_object_arg_table(result.operation, args)
   if result.op_table == nil
   then
-    _Meta:Console().PushError("Failed to parse arguments for object command.")
+    _Meta:Console().PushError("Invalid arguments for object command operation: " .. result.operation)
+    _Meta:Console().PushError("Usage: object <operation> [options...] (see object --help for more details)")
     return {}, false
   end
 
@@ -436,6 +523,17 @@ function _D:_List(args)
 
   local event_name = "ls." .. parsed_args.type
   self.TriggerEvent(event_name)
+end
+
+function _D:_Project(args)
+  local parsed_args, success = self._parse_project_op_args(args)
+  if not success
+  then
+    return
+  end
+
+  local event_name = "project." .. parsed_args.type
+  self.TriggerEvent(event_name, parsed_args.args)
 end
 
 function _D:_ObjectOpEvent(operation, op_table)
@@ -538,6 +636,10 @@ end
 
 function _D:ListCommand(args)
   self:_List(args)
+end
+
+function _D:ProjectCommand(args)
+  self:_Project(args)
 end
 
 function _D:ObjectCommand(args)

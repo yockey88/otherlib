@@ -103,20 +103,30 @@ namespace other {
       get_driver().confirm_assets_clean();
     });
 
-    events.register_event("model-source.asset-loaded");
-    events.register_event("model-source.asset-unloaded");
-    events.register_event("model-source.asset-load-failed");
-    events.register_event("model-source.asset-unload-failed");
+    auto register_asset_events = [&events](const std::string& asset_type) {
+      events.register_event(std::format("{}.asset-loaded", asset_type));
+      events.register_event(std::format("{}.asset-unloaded", asset_type));
+      events.register_event(std::format("{}.asset-load-failed", asset_type));
+      events.register_event(std::format("{}.asset-unload-failed", asset_type));
+    };
+    register_asset_events("model-source");
+    register_asset_events("script-project");
+    register_asset_events("script-source");
+    register_asset_events("script-file");
+    register_asset_events("script");
+    register_asset_events("scene");
+    register_asset_events("rendering-pipeline");
 
-    events.register_event("scene.asset-loaded");
-    events.register_event("scene.asset-unloaded");
-    events.register_event("scene.asset-load-failed");
-    events.register_event("scene.asset-unload-failed");
-
-    events.register_event("rendering-pipeline.asset-loaded");
-    events.register_event("rendering-pipeline.asset-unloaded");
-    events.register_event("rendering-pipeline.asset-load-failed");
-    events.register_event("rendering-pipeline.asset-unload-failed");
+    events.add_listener("filesystem.watch-event", [this](const value& data) {
+      if (data.type() != value_type::USER_TYPE) {
+        CORE_LOG_ERROR("Received invalid file event: expected user type with file_event data");
+        return;
+      }
+      file_event event = data;
+      if (is_asset_extension(event.path.extension().string())) {
+        asset_mgr->handle_file_event(event);
+      }
+    });
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
@@ -135,7 +145,7 @@ namespace other {
     fs->shutdown_file_system();
   }
 
-  natural_t asset_system::begin_asset_load(const filepath& asset_path, std::function<void(natural_t)> on_loaded) {
+  natural_t asset_system::begin_asset_load(const filepath& asset_path) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     CORE_LOG_DEBUG("Loading asset at path: {}", asset_path.string());
 
@@ -143,7 +153,7 @@ namespace other {
       OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null.");
 
       auto it = std::ranges::find_if(loading_asset_ids, [asset_ptr](const auto& entry) {
-        return entry.asset_id == asset_ptr->id;
+        return entry == asset_ptr->id;
       });
       OTHER_ASSERT(it != loading_asset_ids.end(), "Loading asset ID not found in tracking list.");
       CORE_LOG_DEBUG("Asset loaded callback for asset ID: {} @ path: {} (virtual path: {})", asset_ptr->id, asset_path.string(), asset_ptr->virtual_path);
@@ -152,10 +162,7 @@ namespace other {
       get_driver().get_event_system()->trigger_event("assets.new-asset-loaded", asset_ptr->id);
     });
 
-    loading_asset_ids.push_back({
-      .asset_id = asset_id,
-      .on_loaded = on_loaded,
-    });
+    loading_asset_ids.push_back(asset_id);
 
     return asset_id;
   }
@@ -188,6 +195,16 @@ namespace other {
   natural_t asset_system::get_asset_hash(natural_t asset_id) const {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->get_asset_hash(asset_id);
+  }
+
+  opt<filepath> asset_system::get_local_asset_path(natural_t asset_id) const {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_local_asset_path(asset_id);
+  }
+
+  opt<filepath> asset_system::get_virtual_asset_path(natural_t asset_id) const {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_virtual_asset_path(asset_id);
   }
 
   void asset_system::handle_ls_event(driver_kernel* kernel, const value& data) {

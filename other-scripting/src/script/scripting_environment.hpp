@@ -22,6 +22,8 @@ namespace other {
     virtual ~scripting_environment() = default;
 
     void initialize_script_environment(const config_table& configuration);
+
+    void destroy_all_objects();
     void shutdown_script_environment();
 
     integer_t create_object(const std::string_view name);
@@ -45,10 +47,12 @@ namespace other {
     void reset_dotnet_environment();
 
     bool dotnet_object_has_attribute(integer_t id, const std::string_view attr_name);
+    bool dotnet_object_is_behavior(integer_t id);
 
     void attach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name);
     void detach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name);
     void detach_all_dotnet_behaviors(integer_t parent_id);
+    void invalidate_dotnet_script_objects_of_type(int32_t dotnet_type_id);
 
     template <typename... Args>
     void attach_dotnet_object(integer_t id, const std::string_view type_name, Args&&... ctor_args) {
@@ -168,6 +172,11 @@ namespace other {
 
    private:
     struct live_script_object {
+      enum {
+        LIVE,
+        DESTROYED
+      };
+      int8_t status = DESTROYED;
       size_t index = 0;
       script_object* object = nullptr;
     };

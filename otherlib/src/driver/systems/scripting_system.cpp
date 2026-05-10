@@ -3,6 +3,8 @@
  **/
 #include "driver/systems/scripting_system.hpp"
 
+#include "thread/thread_safety.hpp"
+
 #include "lua/lua_script.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -10,9 +12,11 @@
 #include "scripting/bindings.hpp"
 #include "tools/environment_console.hpp"
 
+
 namespace other {
 
   void scripting_system::initialize(driver_kernel* kernel) {
+    ASSERT_MAIN_THREAD();
     driver_main_lua_script = subsystem<scripting_environment>::get()->load_lua_file("driver.lua");
     if (driver_main_lua_script) {
       environment_console::initialize(driver_main_lua_script);
@@ -51,12 +55,14 @@ namespace other {
   }
 
   void scripting_system::tick(driver_kernel* kernel, double dt) {
+    ASSERT_MAIN_THREAD();
     if (environment_console::is_initialized()) {
       environment_console::poll();
     }
   }
 
   void scripting_system::shutdown(driver_kernel* kernel) {
+    ASSERT_MAIN_THREAD();
     do_script_interface_unbinding();
     for (auto& module : loaded_dotnet_modules) {
       unload_dotnet_module(module);
@@ -67,6 +73,7 @@ namespace other {
   }
 
   ref<assembly> scripting_system::load_dotnet_module(const std::string_view module_path) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scripting_system::load_dotnet_module");
     CORE_LOG_DEBUG("Loading script module from path: {}", module_path);
     filepath path(module_path);
@@ -78,6 +85,7 @@ namespace other {
   }
 
   void scripting_system::unload_dotnet_module(ref<assembly> module) {
+    ASSERT_MAIN_THREAD();
     if (module == nullptr) {
       CORE_LOG_ERROR("Cannot unload a null module.");
       return;
@@ -88,11 +96,13 @@ namespace other {
   }
 
   lua_host& scripting_system::get_lua_host() {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(!subsystem<scripting_environment>::inert, "Scripting environment subsystem is inert, cannot get Lua host.");
     return subsystem<scripting_environment>::get()->get_lua_host();
   }
 
   lua_script& scripting_system::get_envrc_script() {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(envrc != nullptr, "Driver environment runtime script is not loaded.");
     return *envrc;
   }

@@ -26,6 +26,7 @@ namespace other {
     std::string mount_name;
     std::vector<std::string> relative_path_components;
     std::string file_name;
+    std::string extension;
 
     bool is_valid() const { return !mount_name.empty(); }
   };
@@ -76,6 +77,7 @@ namespace other {
     std::vector<std::string> mounted_names() const;
     ref<directory> get_mount(const std::string_view mount_name) const;
     ref<directory> get_or_create_mount(const std::string_view mount_name, const filepath& path = "");
+    resolved_path deep_search_for_mount(const filepath& path) const;
 
     bool path_exists(const std::string_view engine_path) const;
     bool file_exists(const std::string_view engine_path) const;
@@ -111,6 +113,24 @@ namespace other {
   };
 
 }  // namespace other
+
+namespace std {
+
+  template <>
+  struct formatter<other::resolved_path> : public formatter<std::string_view> {
+    auto format(const other::resolved_path& path, format_context& ctx) const {
+      std::string formatted = std::format("Mount: '{}', File Name: '{}'\n", path.mount_name, path.file_name);
+      if (!path.relative_path_components.empty()) {
+        formatted += path.relative_path_components[0];
+        for (size_t i = 1; i < path.relative_path_components.size(); ++i) {
+          formatted += "/" + path.relative_path_components[i];
+        }
+      }
+      return formatter<std::string_view>::format(formatted, ctx);
+    }
+  };
+
+}  // namespace std
 
 OTHER_DEPENDENT_SUBSYSTEM(
   other::file_system,
