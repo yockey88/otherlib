@@ -40,11 +40,13 @@ namespace other {
   struct command_listen_tcp_connection {
     binding_point endpoint;
     natural_t connection_id;
+    natural_t transport_hash;
   };
 
   struct command_connect_tcp_connection {
     binding_point endpoint;
     natural_t connection_id;
+    natural_t transport_hash;
   };
 
   struct command_tx_data {
@@ -93,7 +95,15 @@ OTHER_REFLECT(
 OTHER_REFLECT(
   other::command_listen_tcp_connection,
   field(endpoint, other::attr::serializable("endpoint")),
-  field(connection_id, other::attr::serializable("connection-id"))
+  field(connection_id, other::attr::serializable("connection-id")),
+  field(transport_hash, other::attr::serializable("transport-hash"))
+)
+
+OTHER_REFLECT(
+  other::command_connect_tcp_connection,
+  field(endpoint, other::attr::serializable("endpoint")),
+  field(connection_id, other::attr::serializable("connection-id")),
+  field(transport_hash, other::attr::serializable("transport-hash"))
 )
 
 OTHER_REFLECT(
