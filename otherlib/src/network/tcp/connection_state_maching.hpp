@@ -1,8 +1,8 @@
 /**
  * \file network/connect_state_machine.hpp
  **/
-#ifndef OTHER_NETWORK_CONNECTION_STATE_MACHINE_HPP
-#define OTHER_NETWORK_CONNECTION_STATE_MACHINE_HPP
+#ifndef OTHERLIB_NETWORK_TCP_CONNECTION_STATE_MACHING_HPP
+#define OTHERLIB_NETWORK_TCP_CONNECTION_STATE_MACHING_HPP
 
 #include "core/state_machine.hpp"
 
@@ -78,4 +78,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_CONNECTION_STATE_MACHINE_HPP
+#endif  // OTHERLIB_NETWORK_TCP_CONNECTION_STATE_MACHING_HPP

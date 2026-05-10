@@ -19,6 +19,9 @@ namespace other {
     this->config.project_file = cmd.project_file;
   }
 
+  driver::~driver() {
+  }
+
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
     register_main_thread();
@@ -31,7 +34,6 @@ namespace other {
 
     driver_kernel_ptr = make_scope<driver_kernel>(this);
     driver_kernel_ptr->load_profile(registry.get_current_profile());
-    driver_kernel_ptr->load_plugins_from_config(this);
     driver_kernel_ptr->initialize();
 
     get_event_system()->register_event("ls.driver-systems");
@@ -53,8 +55,6 @@ namespace other {
       /// lua gets special treatment
       bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
     }
-
-    load_client();
 
     if (!driver_kernel_ptr->get_core_system<network_system>().network_active()) {
       confirm_initialization();
@@ -238,6 +238,12 @@ namespace other {
   void driver::confirm_initialization() {
     CORE_LOG_DEBUG("Confirming initialization...");
     on_initialization_confirm();
+
+    load_client();
+
+    driver_kernel_ptr->load_plugins_from_config(this);
+    on_system_initialization();
+
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
@@ -296,53 +302,6 @@ namespace other {
 
   void driver::input_event(const input_state_change_event& event) {
     on_input_event(event);
-  }
-
-  void driver::data_received(natural_t id, std::vector<uint8_t> data) {
-    // call ReceiveData if http request fails to parse, don't call both
-    if (http::is_http_request(data)) {
-      opt<http::request> req_opt = http::parse_http_request(data);
-      if (req_opt.has_value()) {
-        handle_http_request_received(id, *req_opt);
-        return;
-      }
-    }
-
-    interfaces.invoke("Other.Server", "ReceiveData", id, data);
-    on_data_received(id, data);
-  }
-
-  void driver::handle_http_request_received(natural_t id, const http::request& req) {
-    CORE_LOG_DEBUG("Attempting to handle HTTP request for path '{}'", req.path);
-    /// \todo we should probably do a lot more security checks here?
-    if (req.path.empty()) {
-      CORE_LOG_ERROR("Invalid HTTP request path: '{}'", req.path);
-      http::response response{ 400 };
-      response.set_body_content("Bad Request", "text/plain");
-      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
-      return;
-    }
-
-    if (req.path.substr(1).starts_with("..")) {
-      CORE_LOG_ERROR("Possible directory traversal attack detected with HTTP request path: '{}'", req.path);
-      http::response response{ 400 };
-      response.set_body_content("Bad Request", "text/plain");
-      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
-      return;
-    }
-
-    CORE_LOG_DEBUG(" - HTTP request accepted", req.path);
-    http_request_received(id, req);
-  }
-
-  void driver::new_connection_accepted(natural_t from_connection_id, natural_t connection_id) {
-    on_new_connection_accepted(from_connection_id, connection_id);
-    interfaces.invoke("Other.Server", "AcceptConnection", from_connection_id, connection_id);
-  }
-
-  void driver::connection_closed(natural_t connection_id) {
-    on_connection_closed(connection_id);
-    interfaces.invoke("Other.Server", "CloseConnection", connection_id);
   }
 
   natural_t driver::add_interface(const std::string_view interface_name, sol::table inteface_table) {

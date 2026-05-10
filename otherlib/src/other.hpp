@@ -8,6 +8,7 @@
 #include "core/logger.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/driver_kernel.hpp"
 #include "driver/subsystem_registry.hpp"
 
 namespace other {

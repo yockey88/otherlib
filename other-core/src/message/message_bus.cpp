@@ -1,7 +1,7 @@
 /**
- * \file thread/message_bus.cpp
+ * \file message/message_bus.cpp
  **/
-#include "thread/message_bus.hpp"
+#include "message/message_bus.hpp"
 
 #include <cstdint>
 

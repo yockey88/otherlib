@@ -14,7 +14,8 @@
 
 #include "script/scripting_environment.hpp"
 
-#include "driver/systems/job_driver_system.hpp"
+#include "driver/driver.hpp"
+#include "driver/systems/asset_system.hpp"
 #include "driver/systems/project_system.hpp"
 
 namespace other {

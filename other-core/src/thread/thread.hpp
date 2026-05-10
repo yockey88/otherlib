@@ -12,7 +12,9 @@
 #include "core/defines.hpp"
 #include "core/scope.hpp"
 #include "thread/channel.hpp"
-#include "thread/message.hpp"
+
+#include "message/message.hpp"
+
 
 namespace other {
 

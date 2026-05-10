@@ -20,6 +20,7 @@ namespace other {
     /// group 0
     NETWORK_DRIVER_SYSTEM = 0,
     JOB_DRIVER_SYSTEM,
+    PEER_MESH_DRIVER_SYSTEM,
     /// group 1
     EVENT_DRIVER_SYSTEM,
     /// group 2 - might need to use events

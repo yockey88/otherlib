@@ -1,3 +1,8 @@
+[driver]
+plugins = [
+  { name = "Other Management", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" }
+] 
+
 [application]
 name = "Other Editor"
 metadata = [ 

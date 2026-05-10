@@ -1,7 +1,7 @@
 /**
- * \file thread/message.cpp
+ * \file message/messages.cpp
  **/
-#include "thread/message.hpp"
+#include "message/messages.hpp"
 
 #include <sstream>
 

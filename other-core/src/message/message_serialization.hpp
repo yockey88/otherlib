@@ -1,14 +1,33 @@
 /**
- * \file network/message.hpp
+ * \file message/message_serialization.hpp
  **/
-#ifndef OTHER_NETWORK_NETWORK_MESSAGE_HPP
-#define OTHER_NETWORK_NETWORK_MESSAGE_HPP
-
-#include <string>
-#include <type_traits>
+#ifndef OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
+#define OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
 
 #include "serialization/reflection.hpp"
 #include "serialization/serialization.hpp"
+
+#include "message/message_fields.hpp"
+
+namespace other {
+  namespace attr {
+
+    struct msg_field : public refl::attr::usage::field {
+      const std::string_view name;
+      const message_field field_type;
+      const value_type value_type;
+
+      constexpr msg_field() = delete;
+      constexpr msg_field(message_field field_type)
+          : name(kMessageFieldNames[static_cast<uint16_t>(field_type)]), field_type(field_type),
+            value_type(kMessageFieldTypes[static_cast<uint16_t>(field_type)]) {}
+    };
+
+  }  // namespace attr
+}  // namespace other
+
+#define OTHER_MSG_FIELD(name, type) \
+  field(name, other::attr::msg_field(other::message_field::type), other::attr::serializable(std::string_view(#name)))
 
 namespace other {
 
@@ -27,7 +46,7 @@ namespace other {
 
     CORE_LOG_TRACE("{}[WRITE: {}]", std::string(level * 2, ' '), get_type_name<T>());
     for_each(refl::reflect(value).members, [&](const auto member) {
-      if constexpr (refl::descriptor::has_attribute<attr::serializable>(member) &&
+      if constexpr (refl::descriptor::has_attribute<attr::msg_field>(member) &&
                     !refl::descriptor::is_function(member)) {
         std::string name = reflected_field_name(member);
         using member_t = std::decay_t<decltype(member(value))>;
@@ -76,7 +95,7 @@ namespace other {
 
     CORE_LOG_TRACE("{}[READ: {}]", std::string(level * 2, ' '), get_type_name<T>());
     for_each(refl::reflect(value).members, [&](auto member) {
-      if constexpr (refl::descriptor::has_attribute<attr::serializable>(member) &&
+      if constexpr (refl::descriptor::has_attribute<attr::msg_field>(member) &&
                     !refl::descriptor::is_function(member)) {
         std::string name = reflected_field_name(member);
         using member_t = std::decay_t<decltype(member(value))>;
@@ -118,4 +137,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_NETWORK_MESSAGE_HPP
+#endif  // OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP

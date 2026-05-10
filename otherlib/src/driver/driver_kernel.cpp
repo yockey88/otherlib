@@ -15,6 +15,7 @@
 #include "driver/systems/input_driver_system.hpp"
 #include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
+#include "driver/systems/peer_mesh_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/rendering_system.hpp"
 #include "driver/systems/scene_system.hpp"
@@ -27,6 +28,7 @@ namespace other {
     /// initialize network system regardless of whether networking is enabled or not, as some subsystems depend on it and it handles the network-disabled case internally
     add_system<network_system>(driver_system_type::NETWORK_DRIVER_SYSTEM);
     add_system<job_driver_system>(driver_system_type::JOB_DRIVER_SYSTEM);
+    add_system<peer_mesh_system>(driver_system_type::PEER_MESH_DRIVER_SYSTEM);
 
     /// always load events/input/assets
     add_system<event_driver_system>(driver_system_type::EVENT_DRIVER_SYSTEM);
@@ -141,9 +143,6 @@ namespace other {
 
       CORE_LOG_INFO("Successfully loaded driver plugin: '{}'", plugin.name);
       install_plugin(name, plugin_instance);
-
-      /// \todo maybe we should keep track of the loaded plugins in the kernel so that we can unload them properly on shutdown?
-      ///         - if we do this, we should also keep track of the library handles so that we can unload the libraries as well.
     }
   }
 

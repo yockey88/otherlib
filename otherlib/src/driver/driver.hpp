@@ -16,10 +16,8 @@
 #include "event/event_system.hpp"
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
-#include "thread/message.hpp"
 
 #include "http/http.hpp"
-#include "network/message_handler.hpp"
 #include "renderer/renderer.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -32,6 +30,7 @@
 #include "driver/subsystem_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
+#include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/rendering_system.hpp"
@@ -45,6 +44,8 @@
 #include "scripting/scene_interface.hpp"
 #include "ui/driver_ui.hpp"
 #include "vm/other_device.hpp"
+
+#include "message/message.hpp"
 
 namespace json = nlohmann;
 
@@ -72,7 +73,7 @@ namespace other {
     bool dynamic = false;
 
     driver(const command_line& cmd, const config_table& config);
-    virtual ~driver() = default;
+    virtual ~driver();
 
     const metadata& get_metadata() const { return driver_metadata; }
 
@@ -133,6 +134,10 @@ namespace other {
       return config;
     }
 
+    inline job_system& get_job_system() {
+      OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+      return driver_kernel_ptr->get_core_system<job_driver_system>().get_job_system();
+    }
     inline scope<event_system>& get_event_system() {
       OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
       return driver_kernel_ptr->get_core_system<event_driver_system>().events();
@@ -161,10 +166,10 @@ namespace other {
     }
 
     void input_event(const input_state_change_event& event);
-    void data_received(natural_t id, std::vector<uint8_t> data);
-    void handle_http_request_received(natural_t id, const http::request& req);
-    void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
-    void connection_closed(natural_t connection_id);
+    // void data_received(natural_t id, std::vector<uint8_t> data);
+    // void handle_http_request_received(natural_t id, const http::request& req);
+    // void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
+    // void connection_closed(natural_t connection_id);
 
     /// \todo remove this and read input map from the input map asset, or allow it to get
     ///         built from a script callback to lua or .NET scripts
@@ -204,6 +209,7 @@ namespace other {
 
     virtual void on_early_initialize(const command_line& cmd) {}
     virtual void on_initialize(const command_line& cmd) = 0;
+    virtual void on_system_initialization() {}
     virtual void on_initialization_confirm() {}
     virtual void on_update() {}
     virtual void update_initializing() {}
@@ -372,19 +378,10 @@ extern void destroy_driver(other::driver* instance);
 #endif
 
 #ifdef OTHER_DYNAMIC_DRIVER
-  #define OTHER_PLUGIN(name)                                                            \
-    extern "C" {                                                                        \
-    OTHER_API const char* other_plugin_name() { return #name; }                         \
-    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) {                \
-      other::subsystem<other::arena>::set(argv->arena);                                 \
-      other::subsystem<other::logger>::set(argv->logger);                               \
-      other::subsystem<other::file_system>::set(argv->file_system);                     \
-      other::subsystem<other::input_system>::set(argv->input_system);                   \
-      other::subsystem<other::type_database>::set(argv->type_database);                 \
-      other::subsystem<other::physics_environment>::set(argv->physics_environment);     \
-      other::subsystem<other::renderer_backend>::set(argv->renderer);                   \
-      other::subsystem<other::scripting_environment>::set(argv->scripting_environment); \
-    }                                                                                   \
+  #define OTHER_PLUGIN(name)                                                                                                   \
+    extern "C" {                                                                                                               \
+    OTHER_API const char* other_plugin_name() { return #name; }                                                                \
+    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) { other::plugin::on_enter(other_plugin_name(), argv); } \
     }
 
 #endif
@@ -398,24 +395,14 @@ extern void destroy_driver(other::driver* instance);
 #endif
 
 #ifdef OTHER_PLUGIN_LIBRARY
-  #define OTHER_PLUGIN(name)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  \
-    extern "C" {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              \
-    OTHER_API const char* other_plugin_name() { return #name; }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
-      other::subsystem<other::arena>::set(argv->arena);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-      other::subsystem<other::logger>::set(argv->logger);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-      other::subsystem<other::file_system>::set(argv->file_system);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-      other::subsystem<other::input_system>::set(argv->input_system);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-      other::subsystem<other::type_database>::set(argv->type_database);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-      other::subsystem<other::physics_environment>::set(argv->physics_environment);                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-      other::subsystem<other::renderer_backend>::set(argv->renderer);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-      other::subsystem<other::scripting_environment>::set(argv->scripting_environment);                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-      CORE_LOG_DEBUG("Plugin '{}' bound to subsystems: arena={:p}, logger={:p}, file_system={:p}, input_system={:p}, type_database={:p}, physics_environment={:p}, renderer_backend={:p}, scripting_environment={:p}", #name, static_cast<void*>(argv->arena), static_cast<void*>(argv->logger), static_cast<void*>(argv->file_system), static_cast<void*>(argv->input_system), static_cast<void*>(argv->type_database), static_cast<void*>(argv->physics_environment), static_cast<void*>(argv->renderer), static_cast<void*>(argv->scripting_environment)); \
-    }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-    OTHER_API other::driver* create_driver(const other::command_line* cmd, const other::config_table* config) { return nullptr; }                                                                                                                                                                                                                                                                                                                                                                                                                             \
-    OTHER_API void destroy_driver(other::driver* instance) {}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 \
-    OTHER_API other::driver_system* create_plugin(other::driver* driver_ptr) { return other::arena_allocator<name>{}.allocate(driver_ptr); }                                                                                                                                                                                                                                                                                                                                                                                                                  \
-    OTHER_API void destroy_plugin(name* instance) { other::arena_allocator<name>{}.free(instance); }                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
+  #define OTHER_PLUGIN(name)                                                                                                                 \
+    extern "C" {                                                                                                                             \
+    OTHER_API const char* other_plugin_name() { return #name; }                                                                              \
+    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) { other::plugin::on_enter(other_plugin_name(), argv); }               \
+    OTHER_API other::driver* create_driver(const other::command_line* cmd, const other::config_table* config) { return nullptr; }            \
+    OTHER_API void destroy_driver(other::driver* instance) {}                                                                                \
+    OTHER_API other::driver_system* create_plugin(other::driver* driver_ptr) { return other::arena_allocator<name>{}.allocate(driver_ptr); } \
+    OTHER_API void destroy_plugin(name* instance) { other::arena_allocator<name>{}.free(instance); }                                         \
     }
 #endif
 

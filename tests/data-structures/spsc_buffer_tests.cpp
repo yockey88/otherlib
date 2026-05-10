@@ -141,4 +141,35 @@ namespace other {
     consumer.join();
   }
 
+  TEST_F(spsc_buffer_tests, thread_safety_2) {
+    using packet_t = std::vector<uint8_t>;
+    spsc_buffer<packet_t, 1000> buffer;
+
+    std::thread producer([&buffer]() {
+      for (int i = 0; i < 1000; ++i) {
+        packet_t p = { static_cast<uint8_t>(i & 0xFF) };
+        buffer.push(std::move(p));
+      }
+    });
+
+    std::thread consumer([&buffer]() {
+      int expected_value = 0;
+      while (expected_value < 1000) {
+        if (buffer.empty()) {
+          std::this_thread::yield();
+          continue;
+        }
+
+        auto item = buffer.pop();
+        if (item.has_value()) {
+          EXPECT_EQ(item.value()[0], static_cast<uint8_t>(expected_value & 0xFF));
+          ++expected_value;
+        }
+      }
+    });
+
+    producer.join();
+    consumer.join();
+  }
+
 }  // namespace other

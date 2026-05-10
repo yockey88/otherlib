@@ -6,8 +6,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest-matchers.h>
 
-#include "thread/message.hpp"
 #include "thread/thread.hpp"
+
+#include "message/message.hpp"
+
 
 namespace other {
 

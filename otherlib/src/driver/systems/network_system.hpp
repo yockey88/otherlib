@@ -9,15 +9,16 @@
 
 #include "core/defines.hpp"
 #include "core/time.hpp"
-#include "thread/message_bus.hpp"
 
 #include "network/acknowledgement_list.hpp"
-#include "network/message_handler.hpp"
 #include "network/network_thread.hpp"
 #include "network/transport_provider.hpp"
 
 #include "driver/driver_system.hpp"
 #include "driver/systems/core_system.hpp"
+
+#include "message/message.hpp"
+#include "message/message_bus.hpp"
 
 namespace other {
 
@@ -34,6 +35,8 @@ namespace other {
       natural_t netw_thread_heartbeat_timeout_id = 0;
       message_bus net_thread_message_bus;
       scope<network_thread> net_thread = nullptr;
+
+      std::unordered_map<natural_t, scope<packet_sink>> registered_packet_sinks;
       std::unordered_map<natural_t, scope<transport_provider>> registered_transport_providers;
 
       constexpr static uint32_t kLocalhostAddress = 0x7f000001;
@@ -45,6 +48,13 @@ namespace other {
       uint16_t next_available_server_port = kServerBroadcastPost0;
 
       network_context() : signals(io_context, SIGINT, SIGTERM) {}
+
+      inline natural_t generate_packet_sink_id() {
+        return packet_sink_id_counter++;
+      }
+
+     private:
+      natural_t packet_sink_id_counter = 1;
     };
 
     network_system(driver* driver_instance)
@@ -58,11 +68,12 @@ namespace other {
     void shutdown(driver_kernel* kernel) override;
 
     natural_t register_transport_provider(scope<transport_provider> provider);
+    natural_t register_transport_listener(const std::string_view transport_name, scope<packet_sink> sink);
+    natural_t attach_connection_listener(natural_t connection_id, scope<packet_sink> sink);
+    void attach_connection_listener(natural_t connection_id, natural_t sink_id);
 
-    void set_default_packet_sink(packet_sink* sink);
-
-    natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp", packet_sink* sink = nullptr);
-    natural_t connect(const binding_point& ep, const std::string_view transport_name = "tcp", packet_sink* sink = nullptr);
+    natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp", natural_t preferred_sink_id = 0);
+    natural_t connect(const binding_point& ep, const std::string_view transport_name = "tcp", natural_t preferred_sink_id = 0);
 
     void tx_data(natural_t connection_id, std::span<const uint8_t> data);
 
@@ -76,15 +87,7 @@ namespace other {
 
     bool network_active() const;
 
-    natural_t listen_at_endpoint(const binding_point& endpoint);
-
    private:
-    struct tcp_connection {
-      natural_t connection_id;
-    };
-
-    std::map<natural_t, tcp_connection> active_tcp_connections;
-
     scope<network_context> net_context = nullptr;
     acknowledgement_list ack_list;
 
@@ -114,10 +117,6 @@ namespace other {
     /// notifications
     void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
-    void handle_notification_rx_data(driver_kernel* kernel, message&& msg);
-    void handle_notification_connect_tcp_connection(driver_kernel* kernel, message&& msg);
-    void handle_notification_close_tcp_connection(driver_kernel* kernel, message&& msg);
-
     /// acknowledgments
     void handle_acknowledgement_ack(driver_kernel* kernel, message&& msg);
     /// control messages

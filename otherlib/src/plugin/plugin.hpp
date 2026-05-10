@@ -25,6 +25,7 @@ namespace other {
   class physics_environment;
   class renderer_backend;
   class scripting_environment;
+  class driver;
   struct OTHER_CLASS other_plugin_argv {
     arena* arena = nullptr;
     logger* logger = nullptr;
@@ -43,12 +44,18 @@ namespace other {
 
     static void unload_plugin_library(const std::string_view plugin_name);
 
+    /// FROM PLUGIN SIDE ONLY:
+    static void on_enter(const std::string_view pl_name, other_plugin_argv* argv);
+
    private:
     constexpr static const char* kPluginBindingSymbolName = "bind_plugin_systems";
     static std::mutex plugin_mutex;
     static std::map<natural_t, library_handle*> loaded_libraries;
 
     static library_handle* create_library_handle(const std::string_view plugin_path);
+
+    static void set_subsystem_flags(const std::string_view pl_name, other_plugin_argv* argv);
+    static void plugin_binding(const std::string_view pl_name, other_plugin_argv* argv);
   };
 
 }  // namespace other

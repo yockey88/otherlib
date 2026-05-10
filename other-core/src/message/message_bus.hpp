@@ -1,10 +1,10 @@
 /**
- * \file thread/message_bus.hpp
+ * \file message/message_bus.hpp
  **/
-#ifndef OTHER_CORE_THREAD_MESSAGE_BUS_HPP
-#define OTHER_CORE_THREAD_MESSAGE_BUS_HPP
+#ifndef OTHER_CORE_MESSAGE_MESSAGE_BUS_HPP
+#define OTHER_CORE_MESSAGE_MESSAGE_BUS_HPP
 
-#include "thread/message.hpp"
+#include "message/message.hpp"
 
 namespace other {
 
@@ -38,4 +38,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_THREAD_MESSAGE_BUS_HPP
+#endif  // OTHER_CORE_MESSAGE_MESSAGE_BUS_HPP
