@@ -1,6 +1,6 @@
 set(OTHERLIB_VERSION_MAJOR "0")
 set(OTHERLIB_VERSION_MINOR "0")
-set(OTHERLIB_VERSION_PATCH "1")
+set(OTHERLIB_VERSION_PATCH "2")
 configure_version_header(
   "otherlib_version.hpp"
   "OTHERLIB"
