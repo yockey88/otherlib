@@ -33,7 +33,7 @@ namespace other {
           bus(bus), network_io{} {}
     virtual ~network_thread() = default;
 
-    static natural_t generate_connection_id() {
+    inline natural_t generate_connection_id() {
       natural_t new_id = connection_id_counter.fetch_add(1, std::memory_order_relaxed);
       CORE_LOG_TRACE("[NEW CONN ID: {}]", new_id);
       return new_id;
@@ -70,7 +70,7 @@ namespace other {
     state current_state{};
     io network_io;
 
-    static inline std::atomic<natural_t> connection_id_counter = 1;
+    std::atomic<natural_t> connection_id_counter = 1;
 
     std::map<natural_t, connection_route> active_connections;
     std::map<natural_t, listener_route> active_listeners;

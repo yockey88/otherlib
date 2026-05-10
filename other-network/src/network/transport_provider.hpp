@@ -48,6 +48,8 @@ namespace other {
       ASSERT_MAIN_THREAD();
       OTHER_ASSERT(sink != nullptr, "Cannot register a null packet sink.");
       OTHER_ASSERT(!registered_listeners.contains(sink), "Packet sink is already registered.");
+
+      CORE_LOG_TRACE("[TRANSPORT {}] Registering packet sink at address {:p}", name(), static_cast<const void*>(sink));
       registered_listeners.insert(sink);
       on_registered_packet_sink(sink);
     }
@@ -57,6 +59,8 @@ namespace other {
       ASSERT_MAIN_THREAD();
       OTHER_ASSERT(sink != nullptr, "Cannot unregister a null packet sink.");
       OTHER_ASSERT(registered_listeners.contains(sink), "Packet sink is not registered and cannot be unregistered.");
+
+      CORE_LOG_TRACE("[TRANSPORT {}] Unregistering packet sink at address {:p}", name(), static_cast<const void*>(sink));
       registered_listeners.erase(sink);
       on_unregistered_packet_sink(sink);
     }
@@ -71,6 +75,7 @@ namespace other {
     virtual void connection_removed(natural_t connection_id) {}
 
     void rx_data(natural_t connection_id, std::span<const uint8_t> data);
+    void connection_accepted(natural_t listener_id, const binding_point& endpoint);
     void connection_socket_closed(natural_t connection_id);
     void connection_socket_broken(natural_t connection_id);
 
@@ -97,6 +102,7 @@ namespace other {
     virtual void on_start_connect(natural_t conn_id, const binding_point& endpoint) = 0;
 
     virtual void on_rx_data(natural_t connection_id, std::span<const uint8_t> data) {}
+    virtual void on_connection_accepted(natural_t listener_id, const binding_point& endpoint) {}
     virtual void on_connection_socket_closed(natural_t connection_id) {}
     virtual void on_connection_socket_broken(natural_t connection_id) {}
 

@@ -6,21 +6,24 @@
 namespace other {
 
   void driver_plugin::initialize(driver_kernel* kernel) {
+    OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in driver_plugin::initialize.");
     if (!active()) {
-      on_initialize();
+      on_initialize(*kernel);
       set_active(true);
     }
   }
 
   void driver_plugin::tick(driver_kernel* kernel, double dt) {
+    OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in driver_plugin::tick.");
     if (active()) {
-      on_tick(dt);
+      on_tick(*kernel, dt);
     }
   }
 
   void driver_plugin::shutdown(driver_kernel* kernel) {
+    OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in driver_plugin::shutdown.");
     if (active()) {
-      on_shutdown();
+      on_shutdown(*kernel);
       set_active(false);
     }
   }

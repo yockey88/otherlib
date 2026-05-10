@@ -16,13 +16,13 @@ namespace other {
     virtual ~packet_sink() = default;
 
     /// any thread accept main
-    void rx_data(natural_t from_peer_id, std::vector<uint8_t> data);
+    void rx_data(natural_t from_peer_id, std::span<const uint8_t> data);
     void connection_opened(natural_t peer_id);
     void connection_closed(natural_t peer_id);
 
    protected:
     /// called on MAIN THREAD
-    virtual void on_rx_data(natural_t from_peer_id, std::vector<uint8_t> data) = 0;
+    virtual void on_rx_data(natural_t from_peer_id, std::span<const uint8_t> data) = 0;
     virtual void on_connection_opened(natural_t peer_id) = 0;
     virtual void on_connection_closed(natural_t peer_id) = 0;
 

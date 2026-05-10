@@ -9,6 +9,7 @@
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
+#include "thread/thread_safety.hpp"
 
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
@@ -153,6 +154,7 @@ namespace other {
   }
 
   void plugin::on_enter(const std::string_view pl_name, other_plugin_argv* argv) {
+    register_main_thread();
     set_subsystem_flags(pl_name, argv);
     plugin_binding(pl_name, argv);
   }

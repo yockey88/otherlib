@@ -13,18 +13,6 @@ namespace other {
     return make_scope<connection>(provider, id, endpoint, std::move(tcp_socket));
   }
 
-  void connection::poll() {
-    OTHER_ASSERT(provider != nullptr, "Connection has null provider");
-    if (inactive) {
-      return;
-    }
-
-    if (buffer.has_pending_read_data()) {
-      auto data = buffer.read();
-      provider->rx_data(id, data);
-    }
-  }
-
   void connection::reset() {
     OTHER_ASSERT(provider != nullptr, "Connection has null provider");
 
@@ -57,7 +45,7 @@ namespace other {
       return;
     }
 
-    CORE_LOG_TRACE("[CONNECTION {}: READ]", id);
+    CORE_LOG_TRACE("[CONNECTION {}: START READ]", id);
     buffer.start_read();
     tcp_socket->async_read_some(buffer.asio_read_buffer(), std::bind_front(&connection::finish_read, this));
   }
@@ -73,7 +61,7 @@ namespace other {
     }
 
     buffer.start_write();
-    CORE_LOG_TRACE("[CONNECTION {}: WRITE TCP]", id);
+    CORE_LOG_TRACE("[CONNECTION {}: START WRITE TCP]", id);
     tcp_socket->async_write_some(buffer.asio_write_buffer(), std::bind_front(&connection::finish_write, this));
   }
 
@@ -92,19 +80,20 @@ namespace other {
         (ec && ec == asio::error::connection_reset) ||
         (ec && ec == asio::error::timed_out) ||
         (ec && ec == asio::error::eof)) {
-      // CORE_LOG_TRACE("[CONNECTION {}: CONNECT FAILED] Connection failed to connect: {}", id, ec.message());
-      // inactive = true;
-      // parent_thread->notify_connection_closed(id);
+      CORE_LOG_TRACE("[CONNECTION {}: CONNECT FAILED] Connection failed to connect: {}", id, ec.message());
+      inactive = true;
+      provider->connection_socket_closed(id);
       return;
     }
 
-    // if (ec) {
-    //   CORE_LOG_ERROR("Error connecting TCP connection {}: {}", id, ec.message());
-    //   return;
-    // }
+    if (ec) {
+      CORE_LOG_ERROR("Error connecting TCP connection {}: {}", id, ec.message());
+      return;
+    }
 
-    // CORE_LOG_TRACE("[CONNECTION {}: CONNECT SUCCESS]", id);
-    // start_read();
+    CORE_LOG_TRACE("[CONNECTION {}: CONNECT SUCCESS]", id);
+    start_read();
+    provider->connection_accepted(id, local_endpoint);
   }
 
   void connection::finish_read(const asio::error_code& ec, size_t bytes_transferred) {
@@ -126,7 +115,13 @@ namespace other {
       return;
     }
 
+    CORE_LOG_TRACE("[CONNECTION {}: FINISH READ] Read {} bytes", id, bytes_transferred);
     buffer.finish_read(bytes_transferred);
+
+    auto data = buffer.read();
+    CORE_LOG_TRACE("[CONNECTION {}: RX DATA] Received {} bytes", id, data.size());
+    provider->rx_data(id, data);
+
     start_read();
   }
 
@@ -147,10 +142,11 @@ namespace other {
       return;
     }
 
+    CORE_LOG_TRACE("[CONNECTION {}: FINISH WRITE] Wrote {} bytes", id, bytes_transferred);
     buffer.finish_write();
     if (buffer.has_pending_write_data()) {
-      buffer.start_write();
-      tcp_socket->async_write_some(buffer.asio_write_buffer(), std::bind_front(&connection::finish_write, this));
+      auto data = buffer.pending_write_data();
+      write(data);
     }
   }
 

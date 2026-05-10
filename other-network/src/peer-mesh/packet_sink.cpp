@@ -5,19 +5,18 @@
 
 #include "thread/thread_safety.hpp"
 
-
 namespace other {
 
-  void packet_sink::rx_data(natural_t from_peer_id, std::vector<uint8_t> data) {
+  void packet_sink::rx_data(natural_t from_peer_id, std::span<const uint8_t> data) {
     jobs.submit(
       {
         .name = "packet_sink::on_rx_data",
         .priority = job::priority::HIGH,
         .thread_affinity = job::affinity::MAIN_THREAD,
       },
-      [this, id = from_peer_id, d = std::move(data)]() {
+      [this, id = from_peer_id, d = std::vector<uint8_t>(data.begin(), data.end())]() {
         ASSERT_MAIN_THREAD();
-        on_rx_data(id, std::move(d));
+        on_rx_data(id, d);
       }
     );
   }

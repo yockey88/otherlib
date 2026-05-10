@@ -117,10 +117,6 @@ namespace other {
     /// notifications
     void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
-    void handle_notification_rx_data(driver_kernel* kernel, message&& msg);
-    void handle_notification_connect_connection(driver_kernel* kernel, message&& msg);
-    void handle_notification_close_connection(driver_kernel* kernel, message&& msg);
-
     /// acknowledgments
     void handle_acknowledgement_ack(driver_kernel* kernel, message&& msg);
     /// control messages

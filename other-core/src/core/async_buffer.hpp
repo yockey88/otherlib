@@ -51,7 +51,6 @@ namespace other {
       writing = true;
       auto write_data = pending_write_data();
       OTHER_ASSERT(write_data.size() <= kBufferSize, "Pending write data size {} exceeds async buffer capacity of {}", write_data.size(), kBufferSize);
-
       std::ranges::copy(write_data, write_buffer.begin());
     }
     void finish_write() {

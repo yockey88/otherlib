@@ -24,7 +24,6 @@ namespace other {
 
     inline void set_parent_connection_id(natural_t parent_id) { parent_connection_id = parent_id; }
 
-    void poll();
     void reset();  // sort of shutdown, but keep if reconnect is requested
     void shutdown();
 

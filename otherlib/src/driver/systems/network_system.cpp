@@ -109,7 +109,7 @@ namespace other {
       return 0;
     }
 
-    CORE_LOG_INFO("Registering transport provider '{}'", provider->name());
+    CORE_LOG_INFO("Registering transport provider '{}' ({:#010x})", provider->name(), id);
     auto [itr, success] = net_context->registered_transport_providers.emplace(id, std::move(provider));
     OTHER_ASSERT(success, "Failed to register transport provider: {}!", itr->second->name());
 
@@ -135,7 +135,7 @@ namespace other {
       std::views::transform([](unsigned char c) { return std::tolower(c); }) |
       std::ranges::to<std::string>()
     );
-    net_context->net_thread->register_transport_listener(id, hash, itr->second.get());
+    net_context->net_thread->register_transport_listener(hash, id, itr->second.get());
 
     return id;
   }
@@ -173,7 +173,9 @@ namespace other {
 
   natural_t network_system::listen_at_endpoint(const binding_point& ep, const std::string_view transport_name, natural_t preferred_sink_id) {
     ASSERT_MAIN_THREAD();
-    natural_t connection_id = network_thread::generate_connection_id();
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is not initialized in network system.");
+    natural_t connection_id = net_context->net_thread->generate_connection_id();
     message msg(COMMAND, LISTEN_CONNECTION);
     command_listen_connection request{
       .endpoint = ep,
@@ -366,9 +368,6 @@ namespace other {
         switch (msg.id) {
           case NETWORK_THREAD_READY: handle_notification_network_thread_ready(kernel, std::move(msg)); break;
           case NETWORK_THREAD_SHUTDOWN_COMPLETE: handle_notification_network_thread_shutdown_complete(kernel, std::move(msg)); break;
-          case RX_DATA: handle_notification_rx_data(kernel, std::move(msg)); break;
-          case CONNECT_CONNECTION: handle_notification_connect_connection(kernel, std::move(msg)); break;
-          case CLOSE_CONNECTION: handle_notification_close_connection(kernel, std::move(msg)); break;
           default:
             CORE_LOG_ERROR("Server received unknown notification message ID {}", msg.id);
             break;
@@ -454,22 +453,6 @@ namespace other {
   void network_system::handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg) {
     ASSERT_MAIN_THREAD();
     get_driver().confirm_network_thread_shutdown();
-  }
-
-  void network_system::handle_notification_rx_data(driver_kernel* kernel, message&& msg) {
-    ASSERT_MAIN_THREAD();
-    notification_rx_data notification_data = deserialize_direct<notification_rx_data>(msg.data).first;
-    // get_driver().data_received(notification_data.connection_id, std::move(notification_data.data));
-  }
-
-  void network_system::handle_notification_connect_connection(driver_kernel* kernel, message&& msg) {
-    ASSERT_MAIN_THREAD();
-    notification_connect_connection notification_data = deserialize_direct<notification_connect_connection>(msg.data).first;
-  }
-
-  void network_system::handle_notification_close_connection(driver_kernel* kernel, message&& msg) {
-    ASSERT_MAIN_THREAD();
-    notification_close_connection notification_data = deserialize_direct<notification_close_connection>(msg.data).first;
   }
 
   void network_system::handle_acknowledgement_ack(driver_kernel* kernel, message&& msg) {

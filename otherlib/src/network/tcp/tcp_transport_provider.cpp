@@ -14,9 +14,6 @@ namespace other {
   void tcp_transport_provider::on_initialize() {}
 
   void tcp_transport_provider::on_tick() {
-    for (auto citr = active_connections.cbegin(); citr != active_connections.cend(); ++citr) {
-      citr->second->poll();
-    }
   }
 
   void tcp_transport_provider::on_begin_shutdown() {
@@ -127,13 +124,6 @@ namespace other {
   }
 
   void tcp_transport_provider::on_rx_data(natural_t connection_id, std::span<const uint8_t> data) {
-    message msg(NOTIFICATION, RX_DATA);
-    notification_rx_data notification_data{
-      .connection_id = connection_id,
-      .data = std::vector<uint8_t>(data.begin(), data.end()),
-    };
-    msg.data = serialize_direct(notification_data);
-    host_thread_ref().send_to_driver(std::move(msg));
   }
 
   void tcp_transport_provider::on_connection_socket_closed(natural_t connection_id) {
@@ -179,13 +169,12 @@ namespace other {
 
   void tcp_transport_provider::register_new_connection(asio::ip::tcp::socket&& socket, const binding_point& endpoint, natural_t listener_conn_id) {
     OTHER_ASSERT(host_thread_ref().is_shutdown_pending() == false, "tcp_transport_provider has null host");
-
     if (host_thread_ref().is_shutdown_pending()) {
       CORE_LOG_WARN("Received new connection while shutdown pending, rejecting connection from {}", socket.remote_endpoint().address().to_string() + ":" + std::to_string(socket.remote_endpoint().port()));
       return;
     }
 
-    natural_t connection_id = network_thread::generate_connection_id();
+    natural_t connection_id = host_thread_ref().generate_connection_id();
     binding_point local_bp = {};
     {
       auto [conn_itr, conn_success] = active_connections.emplace(connection_id, connection::create_tcp_connection(this, connection_id, endpoint, std::move(socket)));
@@ -208,16 +197,7 @@ namespace other {
       conn_itr->second->start_read();
     }
 
-    message msg(NOTIFICATION, CONNECT_CONNECTION);
-    notification_connect_connection notification_data{
-      .connection_endpoint = endpoint,
-      .endpoint = local_bp,
-      .connection_id = listener_conn_id,
-      .new_connection_id = connection_id,
-      .transport_hash = hash(),
-    };
-    msg.data = serialize_direct(notification_data);
-    host_thread_ref().send_to_driver(std::move(msg));
+    connection_accepted(connection_id, local_bp);
   }
 
 }  // namespace other

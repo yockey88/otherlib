@@ -11,7 +11,7 @@
 #include "driver/driver.hpp"
 
 #include "message/message.hpp"
-
+#include "tcp_listener.hpp"
 
 OTHER_DRIVER(other::server)
 
@@ -128,6 +128,9 @@ namespace other {
     // initialize lua side
     invoke_driver_method("InitializeHttpServer", config_http_port);
     core_system<network_system>().listen_at_endpoint(endpoint, "tcp");
+
+    auto& job_system = get_job_system();
+    core_system<other::network_system>().register_transport_listener("tcp", make_scope<tcp_listener>(job_system));
   }
 
   void server::on_shutdown() {

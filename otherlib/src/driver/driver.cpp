@@ -35,8 +35,6 @@ namespace other {
     driver_kernel_ptr = make_scope<driver_kernel>(this);
     driver_kernel_ptr->load_profile(registry.get_current_profile());
     driver_kernel_ptr->initialize();
-    on_system_initialization();
-    driver_kernel_ptr->load_plugins_from_config(this);
 
     get_event_system()->register_event("ls.driver-systems");
     get_event_system()->add_listener("ls.driver-systems", [this](const value& data) {
@@ -57,8 +55,6 @@ namespace other {
       /// lua gets special treatment
       bind_otherlib_driver_lua_functions(env->get_lua_host(), this);
     }
-
-    load_client();
 
     if (!driver_kernel_ptr->get_core_system<network_system>().network_active()) {
       confirm_initialization();
@@ -242,6 +238,12 @@ namespace other {
   void driver::confirm_initialization() {
     CORE_LOG_DEBUG("Confirming initialization...");
     on_initialization_confirm();
+
+    load_client();
+
+    driver_kernel_ptr->load_plugins_from_config(this);
+    on_system_initialization();
+
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
