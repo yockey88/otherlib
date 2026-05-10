@@ -1,11 +1,15 @@
 OtherLog.Info("Hello from server.lua!")
 
 local SC = require("lua.status-codes")
-
+local H = require("lua.headers")
 local routes = {
   ['favicon.ico'] = {
     headers = { ["Content-Type"] = "image/x-icon" },
     body = require("lua.favicon")
+  },
+  ['style.css'] = {
+    headers = { ["Content-Type"] = "text/css" },
+    body = require("lua.style")
   },
   ['/'] = {
     headers = { ["Content-Type"] = "text/html" },
@@ -53,6 +57,7 @@ local function _get_http_server()
 
       OtherLog.Info(string.format([[ [HTTP SERVER] serving request [%s %s], status-code = %d ]], request.method.name, request.path, response.status_code))
       __server_native_SendHttpResponse(id, response)
+      OtherLog.Debug(string.format([[   - response sent for request [%s %s] ]], request.method.name, request.path))
     end,
   }
   return http_server_hook

@@ -313,7 +313,8 @@ namespace other {
   }
 
   void driver::handle_http_request_received(natural_t id, const http::request& req) {
-    // validate path, has to start with '/' and exist relative other environment cwd
+    CORE_LOG_DEBUG("Attempting to handle HTTP request for path '{}'", req.path);
+    /// \todo we should probably do a lot more security checks here?
     if (req.path.empty()) {
       CORE_LOG_ERROR("Invalid HTTP request path: '{}'", req.path);
       http::response response{ 400 };
@@ -330,6 +331,7 @@ namespace other {
       return;
     }
 
+    CORE_LOG_DEBUG(" - HTTP request accepted", req.path);
     http_request_received(id, req);
   }
 

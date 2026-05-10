@@ -70,6 +70,7 @@ namespace other {
       return mount->absolute_path().string();
     });
     add_native_lua_function(lua_name("ReadFileToHttpBody"), [this](const std::string& path) -> std::vector<uint8_t> {
+      CORE_LOG_DEBUG("Attempting to read file '{}' to HTTP body", path);
       const filepath full_path = path;
       if (std::filesystem::exists(full_path) && std::filesystem::is_regular_file(full_path)) {
         std::ifstream file_stream(full_path, std::ios::binary);
@@ -78,8 +79,10 @@ namespace other {
           return {};
         }
         std::vector<uint8_t> data((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
+        CORE_LOG_DEBUG(" - read {} bytes from '{}'", data.size(), path);
         return data;
       }
+      CORE_LOG_DEBUG(" - attempting to register local file for path '{}'", path);
 
       auto* fs = subsystem<file_system>::get();
       OTHER_ASSERT(fs != nullptr, "File system subsystem should be available");
@@ -91,6 +94,8 @@ namespace other {
         CORE_LOG_ERROR("File '{}' not found in server mount directory", path);
         return {};
       }
+
+      CORE_LOG_DEBUG(" - read {} bytes from '{}'", file->size(), path);
       return file->read_all();
     });
     add_native_lua_function(lua_name("SendHttpResponse"), [this](natural_t id, const http::response& response) {
@@ -98,7 +103,8 @@ namespace other {
     });
     add_native_lua_function(lua_name("FileExists"), [this](const std::string& path) -> bool {
       const filepath full_path = path;
-      if (std::filesystem::exists(full_path) && std::filesystem::is_regular_file(full_path)) {
+      if (std::filesystem::exists(full_path) &&
+          std::filesystem::is_regular_file(full_path)) {
         return true;
       }
 

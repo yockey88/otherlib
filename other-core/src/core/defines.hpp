@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <new>
 #include <optional>
 #include <span>
 #include <string>
@@ -92,6 +93,8 @@
 #endif  // !OTHER_ALIGN
 
 namespace other {
+
+  constexpr static size_t kCacheLineSize = std::hardware_destructive_interference_size;
 
   template <typename T>
   concept is_pointer_type = std::is_pointer_v<std::remove_cvref_t<T>>;
