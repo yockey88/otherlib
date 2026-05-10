@@ -13,7 +13,6 @@ target_sources(other_core
 		src/core/arena.cpp
 		src/core/frame_allocator.cpp
 		src/core/arena_buffer.cpp
-		src/core/ref.cpp
 		src/core/ref_counted.cpp
 		src/core/value_storage.cpp
 		src/core/value.cpp
@@ -56,6 +55,7 @@ target_sources(other_core
 		src/serialization/parser_combinators.cpp
 		src/serialization/serialization.cpp
 
+		src/thread/thread_safety.cpp
 		src/thread/message.cpp
 		src/thread/message_bus.cpp
 		src/thread/thread.cpp

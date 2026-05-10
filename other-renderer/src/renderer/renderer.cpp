@@ -3,7 +3,10 @@
  **/
 #include "renderer/renderer.hpp"
 
+#include <SDL3/SDL_mouse.h>
+
 #include "core/defines.hpp"
+#include "thread/thread_safety.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/draw_command.hpp"
@@ -11,11 +14,10 @@
 #include "renderer/render_pipeline.hpp"
 #include "renderer/renderer_backend.hpp"
 
-#include "SDL3/SDL_mouse.h"
-
 namespace other {
 
   void renderer::begin_frame(render_data* data) {
+    ASSERT_MAIN_THREAD();
     if (data != nullptr) {
       scene_data = data;
       rendering()->api()->set_clear_color(data->clear_color);
@@ -24,6 +26,7 @@ namespace other {
   }
 
   void renderer::render() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("renderer::render");
     for (const auto& [id, pl] : pipelines) {
       if (pl->is_valid()) {
@@ -36,11 +39,13 @@ namespace other {
   }
 
   void renderer::end_frame() {
+    ASSERT_MAIN_THREAD();
     rendering()->api()->end_frame();
     scene_data = nullptr;
   }
 
   opt<resource_handle> renderer::get_pipeline_output(const std::string_view pipeline_name) const {
+    ASSERT_MAIN_THREAD();
     uint64_t hash = FNV(pipeline_name);
     auto itr = pipelines.find(hash);
     if (itr == pipelines.end()) {
@@ -58,14 +63,17 @@ namespace other {
   }
 
   void renderer::begin_ui_frame() {
+    ASSERT_MAIN_THREAD();
     rendering()->api()->begin_ui_frame();
   }
 
   void renderer::end_ui_frame() {
+    ASSERT_MAIN_THREAD();
     rendering()->api()->end_ui_frame();
   }
 
   glm::ivec2 renderer::get_window_size() {
+    ASSERT_MAIN_THREAD();
     SDL_Window* window = rendering()->api()->window_handle();
     if (window == nullptr) {
       CORE_LOG_ERROR("SDL window handle is null, cannot get window size.");
@@ -83,10 +91,12 @@ namespace other {
   }
 
   void renderer::set_clear_color(const glm::vec4& color) {
+    ASSERT_MAIN_THREAD();
     rendering()->api()->set_clear_color(color);
   }
 
   glm::vec2 renderer::get_mouse_position() {
+    ASSERT_MAIN_THREAD();
     SDL_Window* window = rendering()->api()->window_handle();
     if (window == nullptr) {
       return {};
@@ -98,18 +108,22 @@ namespace other {
   }
 
   resource_handle renderer::create_resource(const std::string& name, resource_type type) {
+    ASSERT_MAIN_THREAD();
     return rendering()->api()->create_resource(name, type);
   }
 
   void renderer::destroy_resource(const resource_handle& handle) {
+    ASSERT_MAIN_THREAD();
     rendering()->api()->destroy_resource(handle);
   }
 
   bool renderer::resource_exists(const resource_handle& handle) {
+    ASSERT_MAIN_THREAD();
     return rendering()->api()->resource_exists(handle);
   }
 
   void renderer::remove_pipeline(const std::string_view name) {
+    ASSERT_MAIN_THREAD();
     uint64_t hash = FNV(name);
     auto itr = pipelines.find(hash);
     if (itr == pipelines.end()) {
@@ -124,6 +138,7 @@ namespace other {
   }
 
   void renderer::execute_draw_calls(render_graph::node* current_node) {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(current_node != nullptr, "Current node must not be null.");
 
     if (scene_data == nullptr || scene_data->draw_calls.empty()) {
@@ -185,6 +200,7 @@ namespace other {
   }
 
   renderer_backend* renderer::rendering() {
+    ASSERT_MAIN_THREAD();
     return subsystem<renderer_backend>::get();
   }
 

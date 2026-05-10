@@ -3,30 +3,38 @@
  */
 #include "core/ref_counted.hpp"
 
+#include <atomic>
+
 namespace other {
 
+  /// \note relaxed works from increment b/c you already own a reference to the object,
+  //          so you've established a happens-before relationship and the ref is safe to increment
+  //        decrement requires acq_rel to avoid two threads racing to decrement count to 0 and then
+  //          both seeing a count of 0 after decrement which would lead to double-free
+  //        count needs to see the most up-to-date value of ref_count to know when it hits 0, so it needs acquire semantics
+
   void ref_counted::view_increment() const {
-    views++;
+    views.fetch_add(1, std::memory_order_relaxed);
   }
 
   void ref_counted::view_decrement() const {
-    views--;
+    views.fetch_sub(1, std::memory_order_acq_rel);
   }
 
-  void ref_counted::increment() {
-    ref_count++;
+  natural_t ref_counted::increment() {
+    return ref_count.fetch_add(1, std::memory_order_relaxed);
   }
 
-  void ref_counted::decrement() {
-    ref_count--;
+  natural_t ref_counted::decrement() {
+    return ref_count.fetch_sub(1, std::memory_order_acq_rel);
   }
 
   natural_t ref_counted::view_count() const {
-    return views;
+    return views.load(std::memory_order_acquire);
   }
 
   natural_t ref_counted::count() const {
-    return ref_count;
+    return ref_count.load(std::memory_order_acquire);
   }
 
 }  // namespace other

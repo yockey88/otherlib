@@ -36,6 +36,8 @@ namespace other {
     }
     virtual ~asset_pipeline() = default;
 
+    static bool is_extension_supported(const std::string_view extension);
+
     static scope<asset_pipeline> get_asset_pipeline(event_system& events, asset_handler* handler, asset::type type);
     static scope<asset_pipeline> get_model_source_pipeline(event_system& events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     static scope<asset_pipeline> get_scene_pipeline(event_system& events, asset_handler* handler, scene* scene_ptr);

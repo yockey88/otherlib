@@ -14,20 +14,23 @@
 
 #include "scene/scene.hpp"
 
+#include "asset.hpp"
+
 namespace other {
 
   std::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
     std::vector<asset::type> out_acceptable_types;
-    switch (requested_type) {
-      case asset::type::MODEL:
-      case asset::type::MODEL_SOURCE:
-        return { asset::type::MODEL, asset::type::MODEL_SOURCE };
+    // switch (requested_type) {
+    //   case asset::type::MODEL:
+    //   case asset::type::MODEL_SOURCE:
+    //     return { asset::type::MODEL, asset::type::MODEL_SOURCE };
 
-      case asset::type::SCRIPT:
-      case asset::type::SCRIPT_SOURCE:
-        return { asset::type::SCRIPT, asset::type::SCRIPT_SOURCE };
-      default: break;
-    }
+    //   case asset::type::SCRIPT:
+    //   case asset::type::SCRIPT_SOURCE:
+    //   case asset::type::SCRIPT:
+    //     return { asset::type::SCRIPT, asset::type::SCRIPT_SOURCE };
+    //   default: break;
+    // }
     return out_acceptable_types;
   }
 
@@ -50,8 +53,14 @@ namespace other {
       successful_pipelines.pop();
 
       switch (get_asset_state(id)) {
-        case asset_state::LOADING: on_asset_loaded(id); break;
-        case asset_state::UNLOADING: on_asset_unloaded(id); break;
+        case asset_state::LOADING:
+        case asset_state::REFRESHING_LOAD:
+          on_asset_loaded(id);
+          break;
+        case asset_state::UNLOADING:
+        case asset_state::REFRESHING_UNLOAD:
+          on_asset_unloaded(id);
+          break;
         default:
           OTHER_ASSERT(false, "Asset ID {} in unexpected state after successful pipeline completion", id);
       }
@@ -62,8 +71,14 @@ namespace other {
       failed_pipelines.pop();
 
       switch (get_asset_state(id)) {
-        case asset_state::LOADING: on_asset_load_failed(id); break;
-        case asset_state::UNLOADING: on_asset_unload_failed(id); break;
+        case asset_state::LOADING:
+        case asset_state::REFRESHING_LOAD:
+          on_asset_load_failed(id);
+          break;
+        case asset_state::UNLOADING:
+        case asset_state::REFRESHING_UNLOAD:
+          on_asset_unload_failed(id);
+          break;
         default:
           OTHER_ASSERT(false, "Asset ID {} in unexpected state after failed pipeline completion", id);
       }
@@ -247,11 +262,12 @@ namespace other {
     }
 
     if (state_itr->second.get_current_state() == asset_state::UNLOADING) {
+      CORE_LOG_WARN("Asset ID {} is already unloading. Ignoring duplicate unload request.", asset_id);
       return;
     }
 
     if (state_itr->second.get_current_state() == asset_state::LOADING) {
-      // pending_unloads.push(asset_id);
+      pending_unloads.push(asset_id);
       return;
     }
     CORE_LOG_DEBUG("Unloading asset ID: {}", asset_id);
@@ -274,6 +290,48 @@ namespace other {
       executor, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this)
+    );
+  }
+
+  void asset_handler::handle_file_event(const file_event& event) {
+    if (event.type == file_event::type::MODIFIED) {
+      handle_asset_file_changed_event(event);
+    }
+  }
+
+  void asset_handler::reload_asset(natural_t asset_id) {
+    if (!asset_loaded(asset_id)) {
+      CORE_LOG_WARN("Asset ID {} is not currently loaded. Cannot reload asset that is not loaded.", asset_id);
+      return;
+    }
+
+    auto state_it = asset_states.find(asset_id);
+    if (state_it == asset_states.end()) {
+      CORE_LOG_ERROR("Asset state machine not found for asset ID: {}", asset_id);
+      return;
+    }
+    OTHER_ASSERT(state_it->second.get_current_state() == asset_state::LOADED, "Asset ID {} is not loaded, cannot refresh", asset_id);
+
+    asset asset_to_reload;
+    {
+      auto it = loaded_assets.find(asset_id);
+      OTHER_ASSERT(it != loaded_assets.end(), "Asset not found in loaded assets map for asset ID: {}", asset_id);
+      asset_to_reload = std::move(it->second);
+      loaded_assets.erase(it);
+    }
+
+    auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
+                                                                  .pipeline = asset_pipeline::get_asset_pipeline(events, this, asset_to_reload.asset_type),
+                                                                  .loading_asset = std::move(asset_to_reload),
+                                                                });
+    OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+
+    state_it->second.handle_event(asset_event::REFRESH_REQUESTED, &pl_itr->loading_asset);
+
+    pl_itr->pipeline->start_unload(
+      executor, &pl_itr->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_unload_complete, this),
+      std::bind_front(&asset_handler::notify_asset_unload_failed, this)
     );
   }
 
@@ -330,6 +388,30 @@ namespace other {
     }
 
     return 0;
+  }
+
+  opt<filepath> asset_handler::get_local_asset_path(natural_t asset_id) const {
+    if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
+      return it->second.absolute_path;
+    }
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+        it != asset_pipelines.end()) {
+      return it->loading_asset.absolute_path;
+    }
+
+    return std::nullopt;
+  }
+
+  opt<filepath> asset_handler::get_virtual_asset_path(natural_t asset_id) const {
+    if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
+      return it->second.virtual_path;
+    }
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+        it != asset_pipelines.end()) {
+      return it->loading_asset.virtual_path;
+    }
+
+    return std::nullopt;
   }
 
   void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
@@ -404,6 +486,19 @@ namespace other {
     return nullptr;
   }
 
+  void asset_handler::handle_asset_file_changed_event(const file_event& event) {
+    OTHER_ASSERT(event.type == file_event::type::MODIFIED, "Unexpected file event type in handle_asset_file_changed_event: {}", event.type);
+
+    asset* asset_ptr = find_asset_by_path(event.path);
+    if (asset_ptr == nullptr) {
+      CORE_LOG_ERROR("Received file change event for path: {}, but no matching asset was found", event.path.string());
+      return;
+    }
+
+    CORE_LOG_DEBUG("Handling file change event for asset ID: {} (Path: {})", asset_ptr->id, event.path.string());
+    // reload_asset(asset_ptr->id);
+  }
+
   void asset_handler::notify_asset_load_complete(asset* asset_ptr) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load success callback");
     successful_pipelines.push(asset_ptr->id);
@@ -414,23 +509,46 @@ namespace other {
     failed_pipelines.push(asset_ptr->id);
   }
 
+  void asset_handler::notify_asset_unload_complete(asset* asset_ptr) {
+    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unload success callback");
+    successful_pipelines.push(asset_ptr->id);
+  }
+
+  void asset_handler::notify_asset_unload_failed(asset* asset_ptr, const std::string& error_message) {
+    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unload failure callback");
+    failed_pipelines.push(asset_ptr->id);
+  }
+
   void asset_handler::on_asset_loaded(natural_t id) {
     CORE_LOG_DEBUG("Asset loaded successfully (ID: {})", id);
 
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
-    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
-    OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Loaded asset not found in loading assets");
+    if (state_itr->second.get_current_state() == asset_state::LOADING ||
+        state_itr->second.get_current_state() == asset_state::REFRESHING_LOAD) {
+      auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
+      OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Loaded asset not found in loading assets");
 
-    auto itr = loaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
-    OTHER_ASSERT(itr.second, "Failed to insert loaded asset into loaded assets map");
+      auto [itr, success] = loaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
+      OTHER_ASSERT(success, "Failed to insert loaded asset into loaded assets map");
 
-    pending_itr->pipeline = nullptr;
-    asset_pipelines.erase(pending_itr);
+      if (pending_itr->on_complete) {
+        pending_itr->on_complete(&itr->second);
+      }
 
-    register_asset_in_filesystem(&itr.first->second);
-    state_itr->second.handle_event(asset_event::LOAD_COMPLETED);
+      pending_itr->pipeline = nullptr;
+      asset_pipelines.erase(pending_itr);
+
+      if (state_itr->second.get_current_state() == asset_state::REFRESHING_LOAD) {
+        state_itr->second.handle_event(asset_event::REFRESH_COMPLETED);
+      } else {
+        register_asset_in_filesystem(&itr->second);
+        state_itr->second.handle_event(asset_event::LOAD_COMPLETED);
+      }
+    } else {
+      OTHER_ASSERT(false, "Asset ID {} in unexpected state after successful load completion", id);
+    }
   }
 
   void asset_handler::on_asset_load_failed(natural_t id) {
@@ -459,11 +577,18 @@ namespace other {
     auto it = unloaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
     OTHER_ASSERT(it.second, "Failed to insert unloaded asset into unloaded assets map");
 
-    unregister_asset_in_filesystem(&it.first->second);
-    state_itr->second.handle_event(asset_event::UNLOAD_COMPLETED);
+    if (state_itr->second.get_current_state() == asset_state::UNLOADING) {
+      unregister_asset_in_filesystem(&it.first->second);
+      state_itr->second.handle_event(asset_event::UNLOAD_COMPLETED);
 
-    pending_itr->pipeline = nullptr;
-    asset_pipelines.erase(pending_itr);
+      pending_itr->pipeline = nullptr;
+      asset_pipelines.erase(pending_itr);
+    } else if (state_itr->second.get_current_state() == asset_state::REFRESHING_UNLOAD) {
+      // begin load again with the same asset data to refresh it
+      begin_load(pending_itr, state_itr);
+    } else {
+      OTHER_ASSERT(false, "Asset ID {} in unexpected state after successful unload completion", id);
+    }
   }
 
   void asset_handler::on_asset_unload_failed(natural_t id) {
@@ -486,6 +611,7 @@ namespace other {
     if (fs == nullptr) {
       return;
     }
+    CORE_LOG_DEBUG("Registering asset in filesystem: {} (ID: {})", asset_ptr->virtual_path, asset_ptr->id);
 
     /// generated/created assets are full virtual, where as all assets are registered under
     //    a virtual path with it's local path attached to the asset itself
@@ -496,6 +622,8 @@ namespace other {
     /// assets must have a mount name
     resolved_path resolved = fs->resolve_path(asset_ptr->virtual_path);
     OTHER_ASSERT(!resolved.mount_name.empty(), "Failed to resolve mount for asset virtual path: {}", asset_ptr->virtual_path);
+
+    CORE_LOG_DEBUG("Resolved path: {}", resolved);
 
     ref<directory> mount = fs->get_or_create_mount(default_mount);
     OTHER_ASSERT(mount != nullptr, "Failed to get or create mount '{}' for asset: {}", asset_ptr->virtual_path, asset_ptr->id);

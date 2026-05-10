@@ -11,6 +11,7 @@
 #include "thread/thread.hpp"
 
 #include "connection/connection.hpp"
+#include "connection/connection_state_maching.hpp"
 #include "network/io.hpp"
 
 #include "acknowledgement_list.hpp"
@@ -21,7 +22,7 @@ namespace other {
    public:
     network_thread(message_bus& bus)
         : thread("OtherServer-Network-Thread"),
-          bus(bus), network_io{}, events(network_io.context) {}
+          bus(bus), network_io{} {}
     virtual ~network_thread() = default;
 
     static natural_t generate_connection_id() {
@@ -35,7 +36,7 @@ namespace other {
     inline message_bus& get_message_bus() { return bus; }
     inline asio::io_context& get_io_context() { return network_io.context; }
 
-   protected:
+   private:
     struct state {
       std::mutex mutex;
 
@@ -48,7 +49,6 @@ namespace other {
     message_bus& bus;
     state current_state{};
     io network_io;
-    event_system events;
 
     static inline std::atomic<natural_t> connection_id_counter = 1;
     std::map<natural_t, scope<asio::ip::tcp::acceptor>> active_tcp_listeners;

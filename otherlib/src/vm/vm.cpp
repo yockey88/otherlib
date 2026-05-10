@@ -5,6 +5,7 @@
 
 #include "core/arena_allocator.hpp"
 #include "core/logger.hpp"
+#include "thread/thread_safety.hpp"
 
 #include "vm/command_files/ocmd_headers.hpp"
 #include "vm/control_table.hpp"
@@ -13,6 +14,7 @@
 namespace other {
 
   void vm::initialize_device(other_command_device* device) {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null device!");
 
     device->memory = arena_allocator<other_command_device::memory_t>{}.allocate();
@@ -34,6 +36,7 @@ namespace other {
   }
 
   void vm::shutdown_device(other_command_device* device) {
+    ASSERT_MAIN_THREAD();
     if (device == nullptr) {
       return;
     }
@@ -45,6 +48,7 @@ namespace other {
   }
 
   void vm::update_device_timers(other_command_device* device) {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null device!");
     if (device->delay_timer > 0) {
       --device->delay_timer;
@@ -55,6 +59,7 @@ namespace other {
   }
 
   void vm::step(other_command_device* device) {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null VM device!");
     OTHER_ASSERT(device->memory != nullptr, "Null VM device memory!");
     if (device->stopped) {
@@ -70,11 +75,13 @@ namespace other {
   }
 
   void vm::activate_builtin_control_table(other_command_device* device, control_tables table) {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null VM device!");
     load_builtin_control_table(device, table);
   }
 
   void vm::load_bytes_to_address(other_command_device* device, uint64_t address, const uint8_t* data, size_t size) {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device, "Device is null!");
     OTHER_ASSERT(device->memory, "Device memory is null");
     OTHER_ASSERT(address + size < other_command_device::kMemorySize, "Address out of bounds!");
@@ -88,6 +95,7 @@ namespace other {
   }
 
   void vm::load_program_from_bytes(other_command_device* device, const std::span<const uint8_t> bytes) {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device, "Device is null!");
     OTHER_ASSERT(device->memory, "Device memory is null");
 
@@ -101,6 +109,7 @@ namespace other {
   }
 
   void vm::write_instruction_at_address(other_command_device* device, uint64_t address, const instruction& instr) {
+    ASSERT_MAIN_THREAD();
     vm::load_bytes_to_address(device, address, reinterpret_cast<const uint8_t*>(&instr.opcode), sizeof(instr.opcode));
   }
 

@@ -3,6 +3,8 @@
  **/
 #include <gtest/gtest.h>
 
+#include "thread/thread_safety.hpp"
+
 #include "other_test.hpp"
 
 using other::command_line;
@@ -17,6 +19,8 @@ void destroy_driver(other::driver* instance) {}
 }
 
 int main(int argc, char** argv) {
+  other::disable_thread_check();
+
   // activate all subsystems for the tests
   other::subsystem<other::arena>::inert = false;
   other::subsystem<other::logger>::inert = false;

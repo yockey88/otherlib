@@ -1,8 +1,8 @@
 /**
  * \file tools/project_tool.hpp
  **/
-#ifndef OTHERLIB_TOOLS_PROJECT_TOOL_HPP
-#define OTHERLIB_TOOLS_PROJECT_TOOL_HPP
+#ifndef OTHER_SCENE_TOOLS_PROJECT_TOOL_HPP
+#define OTHER_SCENE_TOOLS_PROJECT_TOOL_HPP
 
 #include "core/coroutine.hpp"
 
@@ -23,10 +23,12 @@ namespace other {
     void cleanup_build();
     int32_t get_build_result() const;
 
+    const filepath& get_dotnet_project_path() const { return dotnet_project_path; }
+
    private:
     filepath dotnet_project_path;
   };
 
 }  // namespace other
 
-#endif  // OTHERLIB_TOOLS_PROJECT_TOOL_HPP
+#endif  // OTHER_SCENE_TOOLS_PROJECT_TOOL_HPP

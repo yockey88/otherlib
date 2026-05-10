@@ -123,6 +123,21 @@ namespace other {
     return true;
   }
 
+  bool directory::contains_path(const filepath& path) const {
+    if (type == file_type::VIRTUAL) {
+      return false;
+    }
+
+    std::string path_str = path.string();
+    std::string abs_path_str = abs_path.string();
+
+    // check if the given path is contained in this directory in any way (no matter how many subdirectories down it is)
+    filepath this_path = abs_path;
+    filepath target_path = std::filesystem::absolute(path);
+
+    return target_path.string().starts_with(this_path.string());
+  }
+
   ref<file_handle> directory::get_file(const std::string_view name) {
     const filepath path = name;
     natural_t hash = FNV(path.filename().stem().string());

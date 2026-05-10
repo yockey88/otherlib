@@ -80,6 +80,8 @@ namespace other {
       get_type_information get_attributes = nullptr;
       check_type_characteristic has_attribute = nullptr;
 
+      is_derived_from derived_from = nullptr;
+
       //        method
       has_method has_method = nullptr;
       get_method_name get_method_name = nullptr;
@@ -158,6 +160,9 @@ namespace other {
     assembly_context* create_assembly_context(const std::string_view name);
     void destroy_assembly_context(natural_t context_id);
 
+    int32_t get_behavior_base_type_id();
+    void purge_dotnet_type(int32_t dotnet_type_id);
+
     template <typename... Args>
     dotnet_object* instantiate_managed_object(const std::string_view type_name, const std::string_view name, Args&&... args) {
       dotnet_type* type = get_type_cache()->get_type(type_name);
@@ -204,13 +209,16 @@ namespace other {
     std::basic_string<char_t> dotnet_runtime_config;
 
     std::map<natural_t, assembly_context> assembly_contexts;
+    std::map<natural_t, dotnet_object> managed_objects;
 
-    std::map<uint64_t, dotnet_object> managed_objects;
+    opt<int32_t> behavior_base_type_id = std::nullopt;
+
+    std::map<natural_t, dotnet_object>::iterator destroy_managed_object(std::map<natural_t, dotnet_object>::iterator obj_itr);
 
     filepath get_bindings_assembly_path() const;
 
     dotnet_object* new_object(const std::string_view name, dotnet_type* type);
-    void remove_object(const std::string_view name);
+    std::map<natural_t, dotnet_object>::iterator remove_object(const std::string_view name);
 
     void bind_interop_table();
     void bind_native_functions();

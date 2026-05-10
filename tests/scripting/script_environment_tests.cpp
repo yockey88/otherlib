@@ -98,6 +98,7 @@ namespace other {
 
     EXPECT_NO_FATAL_FAILURE(env->destroy_object(obj_id));
 
+    EXPECT_NO_FATAL_FAILURE(env->destroy_all_objects());
     EXPECT_NO_FATAL_FAILURE(env->unload_dotnet_module(dotnet_asm));
     EXPECT_NO_FATAL_FAILURE(env->shutdown_script_environment());
     EXPECT_NO_FATAL_FAILURE(env->initialize_script_environment(environment->config));
@@ -151,6 +152,7 @@ namespace other {
       EXPECT_NO_FATAL_FAILURE(env->unload_dotnet_module(dotnet_asm));
     }
 
+    EXPECT_NO_FATAL_FAILURE(env->destroy_all_objects());
     EXPECT_NO_FATAL_FAILURE(env->shutdown_script_environment());
   }
 

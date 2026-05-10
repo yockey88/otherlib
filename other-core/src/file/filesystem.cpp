@@ -23,7 +23,7 @@ namespace other {
         return;
       }
       file_event event = data;
-      CORE_LOG_INFO("File event: {} - {}", event.path.string(), [&]() {
+      CORE_LOG_DEBUG("File event: {} - {}", event.path.string(), [&]() {
         switch (event.type) {
           case file_event::type::CREATED: return "Created";
           case file_event::type::MODIFIED: return "Modified";
@@ -78,6 +78,7 @@ namespace other {
     result.relative_path_components = directory::split_path(rel_path);
     if (!result.relative_path_components.empty()) {
       result.file_name = filepath{ result.relative_path_components.back() }.filename().stem().string();
+      result.extension = filepath{ result.relative_path_components.back() }.extension().string();
       /// remove filename from relative path components to get directory path components
       result.relative_path_components.pop_back();
     }
@@ -188,6 +189,25 @@ namespace other {
       }
       return mount_directory(mount_name, path);
     }
+  }
+
+  resolved_path file_system::deep_search_for_mount(const filepath& path) const {
+    PROFILE_SECTION("file_system::deep_search_for_mount");
+
+    std::lock_guard lock(fs_mutex);
+    for (const auto& [hash, mount] : mounts) {
+      if (mount->contains_path(path)) {
+        resolved_path rp;
+        rp.mount_name = mount->name();
+        rp.file_name = path.filename().stem().string();
+        rp.extension = path.filename().extension().string();
+        rp.relative_path_components = directory::split_path(std::filesystem::relative(path, mount->absolute_path()).string());
+        rp.relative_path_components.pop_back();  // remove filename from relative path components
+        return rp;
+      }
+    }
+
+    return {};
   }
 
   bool file_system::is_mounted(const std::string_view mount_name) const {

@@ -218,12 +218,46 @@ namespace other {
 
       interop_functions.unload_assembly_load_context(itr->second.dotnet_id);
       itr->second.dotnet_id = -1;
-      // itr->second.assemblies.clear();
 
       assembly_contexts.erase(itr);
       CORE_LOG_DEBUG("Destroyed assembly context with ID {}", context_id);
     } else {
       CORE_LOG_ERROR("Failed to destroy assembly context: ID {} not found", context_id);
+    }
+  }
+
+  int32_t dotnet_host::get_behavior_base_type_id() {
+    if (behavior_base_type_id.has_value()) {
+      return behavior_base_type_id.value();
+    }
+
+    constexpr std::string_view behavior_base_type_name = "Other.Core.OtherBehavior";
+    auto* type_cache = get_type_cache();
+    OTHER_ASSERT(type_cache != nullptr, "Type cache is null");
+
+    for (const auto& [id, type] : *type_cache) {
+      CORE_LOG_DEBUG("comparing type '{}' with behavior base type '{}'", type.full_name(), behavior_base_type_name);
+      if (type.full_name() == behavior_base_type_name) {
+        behavior_base_type_id = id;
+        return id;
+      }
+    }
+    CORE_LOG_ERROR("Failed to find behavior base type ID for '{}'", behavior_base_type_name);
+    return -1;
+  }
+
+  void dotnet_host::purge_dotnet_type(int32_t dotnet_type_id) {
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
+
+    for (auto itr = managed_objects.begin(); itr != managed_objects.end();) {
+      if (itr->second.dn_type != nullptr && itr->second.dn_type->dotnet_id == dotnet_type_id) {
+        CORE_LOG_DEBUG("Purging managed object '{}' of type ID {} due to type purge", itr->second.object_name, dotnet_type_id);
+
+        itr = destroy_managed_object(itr);
+      } else {
+        ++itr;
+      }
     }
   }
 
@@ -256,7 +290,20 @@ namespace other {
     interop_functions.destroy_object(obj->managed_object);
     obj->managed_object = nullptr;
 
-    remove_object(obj->object_name);
+    [[maybe_unused]] auto _ = remove_object(obj->object_name);
+  }
+
+  std::map<natural_t, dotnet_object>::iterator dotnet_host::destroy_managed_object(std::map<natural_t, dotnet_object>::iterator obj_itr) {
+    OTHER_ASSERT(obj_itr != managed_objects.end(), "Invalid object iterator");
+    if (obj_itr->second.managed_object == nullptr) {
+      CORE_LOG_ERROR("Cannot destroy object: managed_object is null");
+      return obj_itr;
+    }
+
+    interop_functions.destroy_object(obj_itr->second.managed_object);
+    obj_itr->second.managed_object = nullptr;
+
+    return remove_object(obj_itr->second.object_name);
   }
 
   filepath dotnet_host::get_bindings_assembly_path() const {
@@ -277,14 +324,15 @@ namespace other {
     return &itr->second;
   }
 
-  void dotnet_host::remove_object(const std::string_view name) {
+  std::map<natural_t, dotnet_object>::iterator dotnet_host::remove_object(const std::string_view name) {
     CORE_LOG_DEBUG("Removing managed object '{}'", name);
     auto it = managed_objects.find(FNV(name));
     if (it != managed_objects.end()) {
-      managed_objects.erase(it);
+      return managed_objects.erase(it);
     } else {
       CORE_LOG_ERROR("Failed to remove managed object: Object with name '{}' not found.", name);
     }
+    return managed_objects.end();
   }
 
   void dotnet_host::bind_interop_table() {
@@ -365,6 +413,9 @@ namespace other {
 
     interop_functions.has_attribute = load_managed_function<check_type_characteristic>(type_interface_type_str, DNET_STR("HasAttribute"));
     OTHER_ASSERT(interop_functions.has_attribute != nullptr, "Failed to load HasAttribute from managed assembly.");
+
+    interop_functions.derived_from = load_managed_function<is_derived_from>(type_interface_type_str, DNET_STR("IsDerivedFrom"));
+    OTHER_ASSERT(interop_functions.derived_from != nullptr, "Failed to load IsDerivedFrom from managed assembly.");
 
     //        method
     interop_functions.has_method = load_managed_function<has_method>(type_interface_type_str, DNET_STR("HasMethod"));

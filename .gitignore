@@ -10,10 +10,10 @@ dockerfile
 
 # environment files
 .vs*/
-# testing with vs code copilot features, don't share
+.cache/
+# testing ai (gross), don't share
 .github/*.md
 .github/prompts/
-.cache/
 
 # scratch work/local-test-results
 artifacts/

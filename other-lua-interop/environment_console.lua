@@ -39,6 +39,10 @@ function _Console:ListCommand(args)
   _Meta:Driver():ListCommand(args)
 end
 
+function _Console:ProjectCommand(args)
+  _Meta:Driver():ProjectCommand(args)
+end
+
 function _Console:ObjectCommand(args)
   _Meta:Driver():ObjectCommand(args)
 end
@@ -125,9 +129,9 @@ function _Console:new()
     %s files, windows, scenes, and other resources.
     If no flags are provided, the command assumes a file path is given and attempts to %s the file accordingly.
     Usage:
-      %s (-h|--help)                             Displays this help message
-      %s <-f|--file>? <file-path>                %s the specified file in the appropriate manner based on file type
-      %s <-w|--window> <window-name|window-id>   %s the UI window with the given name or ID
+      %s -h|--help                           Displays this help message
+      %s -f|--file   file-path               %s the specified file in the appropriate manner based on file type
+      %s -w|--window window-name|window-id   %s the UI window with the given name or ID
   ]]
   local format_help_string = function(name, cmd, action)
     return string.format(open_close_help_message, name, action, cmd, cmd, cmd, action, cmd, action)
@@ -143,14 +147,25 @@ function _Console:new()
     Prints a list that take various forms depending on the arguments.
     Default behavior is to list the contents of the current directory.
     Usage:
-      ls (-h |--help)              Displays this help message
-      ls <-f |--files>?            Lists all files registered in the filesystem
-      ls <-ds|--driver-systems>    Lists all currently loaded driver systems
-      ls <-s |--scenes>            Lists all scenes in the scene graph
-      ls <-a |--assets>            Lists all assets registered in the asset manager
-      ls <-w |--windows>           Lists all registered UI windows
+      ls -h|--help              Displays this help message
+      ls [-f|--files]           Lists all files registered in the filesystem
+      ls -ds|--driver-systems    Lists all currently loaded driver systems
+      ls -s|--scenes            Lists all scenes in the scene graph
+      ls -a|--assets            Lists all assets registered in the asset manager
+      ls -w|--windows           Lists all registered UI windows
   ]]
   self:RegisterConsoleCommand("ls", "Prints a list of items.", function(...) _Meta:Driver():ListCommand(...) end, ls_long_description)
+
+  local project_long_description = [[
+  [project Command]
+    Provides various project management functions such as creating, loading, and saving projects.
+    Usage:
+      project -h|--help                              Displays this help message
+      project -n|--new project-name [project-path]   Creates a new empty project with the specified name at the specified path
+      project -l|--load project-path                 Loads a project from the specified path
+      project -s|--save [project-path]               Saves the current project to its current path, or to a new path if one is specified
+  ]]
+  self:RegisterConsoleCommand("project", "Manipulate, create, and manage Other Environment projects", function(...) _Meta:Driver():ProjectCommand(...) end, project_long_description)
 
   -- local object_long_description = [[
   -- [object Command]
@@ -178,15 +193,15 @@ function _Console:new()
   [scene Command]
     Performs various operations on the current scene.
     Usage:
-      scene (-h |--help)                         Displays this help message
-      scene (-n |--new) <scene-name>             Creates a new empty scene with the specified name
-      scene (-l |--load) <scene-path>            Loads a scene from the specified path
-      scene (-ul|--unload)                       Unloads the current scene
-      scene (-i |--info) [scene-name|scene-path] Displays information about the current scene or the specified scene
+      scene play                               Starts or resumes scene play
+      scene pause                              Pauses scene play
+      scene stop                               Stops scene play and resets to the beginning
 
-      scene play                                Starts or resumes scene play
-      scene pause                               Pauses scene play
-      scene stop                                Stops scene play and resets to the beginning
+      scene -h|--help                          Displays this help message
+      scene -n|--new scene-name                Creates a new empty scene with the specified name
+      scene -l|--load scene-path               Loads a scene from the specified path
+      scene -u|--unload                        Unloads the current scene
+      scene -i|--info) [scene-name|scene-path] Displays information about the current scene or the specified scene
   ]]
   self:RegisterConsoleCommand("scene", "Performs various operations on the current scene.", function(...) _Meta:Driver():SceneCommand(...) end, scene_long_description)
 

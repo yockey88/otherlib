@@ -38,6 +38,7 @@ namespace other {
   using get_base_type = void (*)(int32_t, int32_t*);
   using get_type_size = int32_t (*)(int32_t);
   using check_type_characteristic = nbool32 (*)(int32_t, int32_t);
+  using is_derived_from = nbool32 (*)(int32_t, int32_t);
   using is_type_sz_array = nbool32 (*)(int32_t);
   using get_element_type = void (*)(int32_t, int32_t*);
   using get_type_information = void (*)(int32_t, int32_t*, int32_t*);

@@ -16,6 +16,7 @@
 
 namespace other {
 
+  std::mutex plugin::plugin_mutex;
   std::map<natural_t, library_handle*> plugin::loaded_libraries;
 
   library_handle* plugin::load_plugin_library(const std::string_view plugin_path) {
@@ -84,6 +85,7 @@ namespace other {
     sym.get_function<void (*)(other_plugin_argv*)>()(&argv);
     CORE_LOG_DEBUG("Plugin binding function '{}' called successfully for plugin '{}'", plugin::kPluginBindingSymbolName, plugin_path);
 
+    std::lock_guard lock(plugin_mutex);
     auto [itr2, success] = loaded_libraries.insert({ hash, std::move(lib_handle) });
     if (!success || itr2 == loaded_libraries.end()) {
       CORE_LOG_ERROR("Failed to insert library handle into map for plugin '{}'", plugin_path);
@@ -100,6 +102,7 @@ namespace other {
       return nullptr;
     }
 
+    std::lock_guard lock(plugin_mutex);
     natural_t hash = FNV(plugin_name);
     auto it = loaded_libraries.find(hash);
     if (it != loaded_libraries.end()) {
@@ -117,6 +120,7 @@ namespace other {
       return;
     }
 
+    std::lock_guard lock(plugin_mutex);
     auto it = loaded_libraries.find(FNV(plugin_name));
     if (it != loaded_libraries.end()) {
       lib_handle->unload();

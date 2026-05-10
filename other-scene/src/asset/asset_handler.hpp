@@ -14,6 +14,7 @@
 #include "core/job_system.hpp"
 #include "core/state_machine.hpp"
 #include "event/event_system.hpp"
+#include "file/file_watcher.hpp"
 
 #include "renderer/pipeline_definition.hpp"
 
@@ -36,7 +37,8 @@ namespace other {
     LOADED,
 
     OUT_OF_DATE,
-    REFRESHING,
+    REFRESHING_UNLOAD,
+    REFRESHING_LOAD,
 
     UNLOADING,
     UNLOADED,
@@ -73,13 +75,15 @@ namespace other {
 
       add_transition(asset_state::LOADED, asset_event::UNLOAD_REQUESTED, asset_state::UNLOADING);
       add_transition(asset_state::LOADED, asset_event::TIMESTAMP_UPDATED, asset_state::OUT_OF_DATE);
-      add_transition(asset_state::LOADED, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING);
+      add_transition(asset_state::LOADED, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING_UNLOAD);
 
-      add_transition(asset_state::OUT_OF_DATE, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING);
+      add_transition(asset_state::OUT_OF_DATE, asset_event::REFRESH_REQUESTED, asset_state::REFRESHING_UNLOAD);
       add_transition(asset_state::OUT_OF_DATE, asset_event::UNLOAD_REQUESTED, asset_state::UNLOADING);
 
-      add_transition(asset_state::REFRESHING, asset_event::REFRESH_COMPLETED, asset_state::LOADED);
-      add_transition(asset_state::REFRESHING, asset_event::REFRESH_FAILED, asset_state::LOADED);
+      add_transition(asset_state::REFRESHING_UNLOAD, asset_event::UNLOAD_COMPLETED, asset_state::REFRESHING_LOAD);
+      add_transition(asset_state::REFRESHING_UNLOAD, asset_event::UNLOAD_FAILED, asset_state::ERROR_STATE);
+      add_transition(asset_state::REFRESHING_LOAD, asset_event::REFRESH_COMPLETED, asset_state::LOADED);
+      add_transition(asset_state::REFRESHING_LOAD, asset_event::LOAD_FAILED, asset_state::ERROR_STATE);
 
       add_transition(asset_state::UNLOADING, asset_event::UNLOAD_COMPLETED, asset_state::UNLOADED);
       add_transition(asset_state::UNLOADING, asset_event::UNLOAD_FAILED, asset_state::ERROR_STATE);
@@ -114,6 +118,10 @@ namespace other {
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
 
+    void handle_file_event(const file_event& event);
+
+    void reload_asset(natural_t asset_id);
+
     asset* get_asset(natural_t asset_id);
 
     std::span<const natural_t> get_all_asset_ids() const;
@@ -138,6 +146,8 @@ namespace other {
     asset_state get_asset_state_by_path_hash(natural_t path_hash) const;
     natural_t get_asset_hash(natural_t asset_id) const;
     natural_t get_asset_id_by_path_hash(natural_t path_hash) const;
+    opt<filepath> get_local_asset_path(natural_t asset_id) const;
+    opt<filepath> get_virtual_asset_path(natural_t asset_id) const;
 
     const asset* get_loaded_asset(natural_t asset_id) const;
     std::vector<natural_t> get_all_tracked_ids() const;
@@ -150,6 +160,10 @@ namespace other {
     size_t get_num_assets_in_flight() const { return asset_pipelines.size() + loaded_assets.size(); }
 
     size_t get_num_pending_unloads() const { return pending_unloads.size(); }
+
+    inline bool is_asset_extension(const std::string_view extension) const {
+      return asset_pipeline::is_extension_supported(extension);
+    }
 
    private:
     friend struct detail::load_context;
@@ -178,6 +192,7 @@ namespace other {
     /// normally we might want to recreate, but if we are closing the editor
     // or doing
     bool remove_after_unload = false;
+    std::queue<natural_t> pending_loads;
     std::queue<natural_t> pending_unloads;
 
     std::string default_mount = "assets";
@@ -192,8 +207,12 @@ namespace other {
 
     asset* find_asset_by_path(const filepath& file_path) const;
 
+    void handle_asset_file_changed_event(const file_event& event);
+
     void notify_asset_load_complete(asset* asset_ptr);
     void notify_asset_load_failed(asset* asset_ptr, const std::string& error_message);
+    void notify_asset_unload_complete(asset* asset_ptr);
+    void notify_asset_unload_failed(asset* asset_ptr, const std::string& error_message);
 
     void on_asset_loaded(natural_t id);
     void on_asset_load_failed(natural_t id);

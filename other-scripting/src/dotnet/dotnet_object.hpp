@@ -57,6 +57,8 @@ namespace other {
       return dn_type->get_attribute<T>(attr_name, field_name);
     }
 
+    bool is_behavior() const;
+
     template <typename R = void, typename... Args>
     R invoke(const std::string_view method_name, Args&&... args) {
       if constexpr (std::same_as<R, void>) {

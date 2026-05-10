@@ -12,11 +12,18 @@
 
 #include "dotnet/dotnet_assembly.hpp"
 
+#include "tools/project_tool.hpp"
+
 namespace other {
 
   class driver_kernel;
   class project_system;
 
+  struct project_event_data {
+    std::string type;
+    std::string project_name;
+    std::string project_path;
+  };
   class project {
    public:
     enum state {
@@ -43,8 +50,14 @@ namespace other {
       std::vector<natural_t> incoming;
       std::vector<natural_t> outgoing;
     };
+    struct script_data {
+      filepath csproject_path;
+      filepath cs_script_source;
+      std::vector<filepath> cs_scripts;
+    };
+
     project(project_system* proj_system);
-    ~project() = default;
+    ~project();
 
     void load_from_file(driver_kernel* kernel, const filepath& path);
     void generate_at(driver_kernel* kernel, const filepath& directory);
@@ -52,9 +65,13 @@ namespace other {
     void unload();
     void set_state(state new_state);
 
+    void add_built_script(const filepath& script_asset_path);
+    void add_script_file(const filepath& script_file_path);
+
     inline const filepath& get_project_rc_path() const { return rc_path; }
 
     inline void set_dotnet_assembly(ref<assembly> a) { project_assembly = a; }
+    inline state get_state() const { return current_state; }
     inline bool is_empty() const { return current_state == EMPTY; }
     inline bool is_loaded() const { return current_state == LOADED; }
     inline bool is_loading() const { return current_state == LOADING; }
@@ -80,8 +97,12 @@ namespace other {
     ref<file_handle> project_file_handle;
     ref<assembly> project_assembly;
 
-    std::vector<scene> scenes_in_project;
     natural_t starting_scene_id = 0;
+    std::vector<scene> scenes_in_project;
+    script_data project_scripts;
+
+    void attach_project_dll(const filepath& dll_path);
+    void attach_project_cs_file(const filepath& cs_file);
 
     bool process_scripting_sections(const toml::table& table, driver_kernel* kernel);
     void process_scene_sections(const toml::table& table);

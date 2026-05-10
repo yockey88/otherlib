@@ -3,12 +3,15 @@
  **/
 #include "scripting/dotnet_bindings/component_bindings.hpp"
 
+#include "thread/thread_safety.hpp"
+
 #include "object/render_component.hpp"
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/dotnet_bindings/scene_bindings.hpp"
+
 
 namespace other {
   namespace detail {
@@ -20,6 +23,7 @@ namespace other {
   namespace bindings {
 
     void native_transform_get_world_matrix(natural_t id, float* out_matrix) {
+      ASSERT_MAIN_THREAD();
       OTHER_ASSERT(out_matrix != nullptr, "Output matrix pointer is null.");
 
       scene* active_scene = detail::get_active_scene_checked();
@@ -30,6 +34,7 @@ namespace other {
     }
 
     void native_render_component_get_num_vertices(natural_t object_id, int32_t* out_vertex_count) {
+      ASSERT_MAIN_THREAD();
       OTHER_ASSERT(out_vertex_count != nullptr, "Output vertex count pointer is null.");
 
       scene* active_scene = detail::get_active_scene_checked();
@@ -46,6 +51,7 @@ namespace other {
     }
 
     void native_render_component_get_num_indices(natural_t object_id, int32_t* out_index_count) {
+      ASSERT_MAIN_THREAD();
       OTHER_ASSERT(out_index_count != nullptr, "Output index count pointer is null.");
 
       scene* active_scene = detail::get_active_scene_checked();
@@ -62,6 +68,7 @@ namespace other {
     }
 
     void native_render_component_get_active_material_id(natural_t object_id, uint64_t* out_material_id) {
+      ASSERT_MAIN_THREAD();
       OTHER_ASSERT(out_material_id != nullptr, "Output material ID pointer is null.");
 
       scene* active_scene = detail::get_active_scene_checked();
@@ -77,6 +84,7 @@ namespace other {
     }
 
     native_string native_render_component_get_mesh_name(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
 
@@ -96,6 +104,7 @@ namespace other {
     }
 
     native_string native_render_component_get_material_name(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
 
@@ -116,6 +125,7 @@ namespace other {
     }
 
     void native_render_component_fetch_mesh(natural_t object_id, float* out_vertex_data, int32_t* out_num_vertices, int32_t* out_index_data, int32_t* out_num_indices) {
+      ASSERT_MAIN_THREAD();
       OTHER_ASSERT(out_vertex_data != nullptr, "Output vertex data pointer is null.");
       OTHER_ASSERT(out_index_data != nullptr, "Output index data pointer is null.");
       OTHER_ASSERT(out_num_vertices != nullptr, "Output vertex count pointer is null.");
@@ -143,6 +153,7 @@ namespace other {
     }
 
     void native_render_component_upload_mesh(natural_t object_id, native_string name, const float* vertex_data, const int32_t* vertex_count, const int32_t* index_data, const int32_t* index_count) {
+      ASSERT_MAIN_THREAD();
       OTHER_ASSERT(vertex_data != nullptr, "Vertex data pointer is null.");
       OTHER_ASSERT(index_data != nullptr, "Index data pointer is null.");
       OTHER_ASSERT(vertex_count != nullptr, "Vertex count pointer is null.");
@@ -179,6 +190,7 @@ namespace other {
     void native_material_fetch_material(natural_t object_id, glm::vec3* out_diffuse_color, float* out_diffuse_reflectivity, glm::vec3* out_specular_color, float* out_specular_reflectivity, glm::vec3* out_emissive_color, float* out_emissivity, 
                                         float* out_shininess, float* out_transparency) {
       // clang-format on
+      ASSERT_MAIN_THREAD();
       OTHER_ASSERT(out_diffuse_color != nullptr, "Output diffuse color pointer is null.");
       OTHER_ASSERT(out_diffuse_reflectivity != nullptr, "Output diffuse reflectivity pointer is null.");
       OTHER_ASSERT(out_specular_color != nullptr, "Output specular color pointer is null.");
@@ -206,6 +218,7 @@ namespace other {
     void native_material_upload_material(natural_t object_id, native_string mat_name, const glm::vec3* diffuse_color, const float* diffuse_reflectivity, const glm::vec3* specular_color, const float* specular_reflectivity, const glm::vec3* emissive_color, const float* emissivity,
                                         const float* transparency, const float* shininess) {
       // clang-format on
+      ASSERT_MAIN_THREAD();
       OTHER_ASSERT(diffuse_color != nullptr, "Input diffuse color pointer is null.");
       OTHER_ASSERT(diffuse_reflectivity != nullptr, "Input diffuse reflectivity pointer is null.");
       OTHER_ASSERT(specular_color != nullptr, "Input specular color pointer is null.");

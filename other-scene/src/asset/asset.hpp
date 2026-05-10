@@ -20,7 +20,9 @@ namespace other {
       MODEL,
       ANIMATION,
 
+      SCRIPT_PROJECT,
       SCRIPT_SOURCE,
+      SCRIPT_FILE,
       SCRIPT,
 
       AUDIO,
@@ -83,14 +85,19 @@ namespace other {
     /// usually actually just loaded from fbx with model source
     ".anim",  // ANIMATION
 
-    ".cs",   // SCRIPT_SOURCE
-    ".dll",  // SCRIPT
-    ".so",   // SCRIPT
-    ".py",   // SCRIPT_SOURCE
+    ".csproj",  // SCRIPT_PROJECT
+    ".cs",      // SCRIPT_FILE
+    ".dll",     // SCRIPT_SOURCE
+    ".so",      // SCRIPT_SOURCE
+
+    /// no real extension since scripts can be anything loaded out of a script source
+    ".os",  // SCRIPT
 
     ".mp3",  // AUDIO
     ".wav",  // AUDIO
 
+    /// fix this so that we load lua as SCRIPT_FILE
+    //  involves fixing scene loading
     ".lua",  // SCENE
     // ".scene",         // SCENE
     // ".scene-object",  // SCENE_OBJECT
@@ -112,10 +119,10 @@ namespace other {
 
       { asset::ANIMATION, ".anim" },
 
-      { asset::SCRIPT_SOURCE, ".cs" },
-      { asset::SCRIPT, ".dll" },
-      { asset::SCRIPT, ".so" },
-      { asset::SCRIPT, ".py" },
+      { asset::SCRIPT_PROJECT, ".csproj" },
+      { asset::SCRIPT_SOURCE, ".dll" },
+      { asset::SCRIPT_SOURCE, ".so" },
+      { asset::SCRIPT_FILE, ".cs" },
 
       { asset::AUDIO, ".mp3" },
       { asset::AUDIO, ".wav" },

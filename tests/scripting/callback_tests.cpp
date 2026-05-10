@@ -109,6 +109,7 @@ namespace other {
     subsystem<scripting_environment>::get()->unload_dotnet_module(dotnet_asm);
     testing_asm = nullptr;
     dotnet_asm = nullptr;
+    subsystem<scripting_environment>::get()->destroy_all_objects();
     subsystem<scripting_environment>::get()->shutdown_script_environment();
 
     subsystem<arena>::get()->shutdown();
@@ -132,6 +133,7 @@ namespace other {
       ASSERT_EQ(ret, 42);
     }
 
+    env->destroy_all_objects();
     env->shutdown_script_environment();
   }
 
