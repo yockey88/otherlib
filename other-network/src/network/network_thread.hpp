@@ -10,13 +10,18 @@
 #include "thread/message_bus.hpp"
 #include "thread/thread.hpp"
 
-#include "connection/connection.hpp"
-#include "connection/connection_state_maching.hpp"
+#include "network/acknowledgement_list.hpp"
+#include "network/connection_route.hpp"
 #include "network/io.hpp"
+#include "network/listener_route.hpp"
 
-#include "acknowledgement_list.hpp"
+#include "tcp/connection.hpp"
+#include "tcp/connection_state_maching.hpp"
+
 
 namespace other {
+
+  class transport_provider;
 
   class network_thread : public thread {
    public:
@@ -29,10 +34,16 @@ namespace other {
       return connection_id_counter.fetch_add(1, std::memory_order_relaxed);
     }
 
-    void receive_data(natural_t connection_id, const std::span<uint8_t> data);
-    void notify_connection_closed(natural_t connection_id);
-    void notify_connection_broken(natural_t connection_id);
+    void register_provider(transport_provider* provider);
+    transport_provider* get_provider_by_name(const std::string& name);
 
+    void register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle);
+    void register_listener_route(natural_t listener_id, transport_provider* provider, void* opaque_handle);
+    void mark_route_recently_closed(natural_t connection_id);
+
+    void send_to_driver(message&& msg);
+
+    inline bool is_shutdown_pending() const { return current_state.shutdown_pending; }
     inline message_bus& get_message_bus() { return bus; }
     inline asio::io_context& get_io_context() { return network_io.context; }
 
@@ -51,14 +62,15 @@ namespace other {
     io network_io;
 
     static inline std::atomic<natural_t> connection_id_counter = 1;
-    std::map<natural_t, scope<asio::ip::tcp::acceptor>> active_tcp_listeners;
-    std::map<natural_t, scope<connection>> active_connections;
-    std::map<natural_t, connection_state_machine> connection_state_machines;
+
+    std::map<natural_t, connection_route> active_connections;
+    std::map<natural_t, listener_route> active_listeners;
     std::deque<natural_t> recently_closed_connections;
 
-    acknowledgement_list ack_list;
+    std::mutex providers_mutex;
+    std::vector<transport_provider*> providers;
 
-    void send_to_driver(message&& msg);
+    acknowledgement_list ack_list;
 
     void on_initialize() override;
     void on_start() override;
@@ -66,10 +78,6 @@ namespace other {
 
     void pump_thread() override;
     void process_message(opt<message>&& msg);
-
-    void listen_tcp(natural_t id, const binding_point& endpoint, asio::error_code ec, asio::ip::tcp::socket&& socket);
-    void accept_tcp_connection(asio::ip::tcp::socket socket, const binding_point& endpoint, natural_t listener_conn_id);
-    void finalize_connection_establishment(natural_t connection_id);
 
     void handle_control_ping(message&& msg);
     void handle_command_shutdown_request(message&& msg);

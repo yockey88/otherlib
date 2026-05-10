@@ -1,8 +1,8 @@
 /**
- * \file peer/peer_actor_host.hpp
+ * \file peer-mesh/peer_actor_host.hpp
  **/
-#ifndef OTHER_NETWORK_PEER_PEER_ACTOR_HOST_HPP
-#define OTHER_NETWORK_PEER_PEER_ACTOR_HOST_HPP
+#ifndef OTHER_NETWORK_PEER_MESH_PEER_ACTOR_HOST_HPP
+#define OTHER_NETWORK_PEER_MESH_PEER_ACTOR_HOST_HPP
 
 #include <vector>
 
@@ -20,4 +20,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_PEER_PEER_ACTOR_HOST_HPP
+#endif  // OTHER_NETWORK_PEER_MESH_PEER_ACTOR_HOST_HPP

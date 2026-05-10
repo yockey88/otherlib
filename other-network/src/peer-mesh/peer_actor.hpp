@@ -1,8 +1,8 @@
 /**
- * \file peer/peer_actor.hpp
+ * \file peer-mesh/peer_actor.hpp
  **/
-#ifndef OTHER_NETWORK_PEER_PEER_ACTOR_HPP
-#define OTHER_NETWORK_PEER_PEER_ACTOR_HPP
+#ifndef OTHER_NETWORK_PEER_MESH_PEER_ACTOR_HPP
+#define OTHER_NETWORK_PEER_MESH_PEER_ACTOR_HPP
 
 #include "core/defines.hpp"
 
@@ -21,9 +21,9 @@ namespace other {
     peer_actor(const peer_actor&) = delete;
     peer_actor& operator=(const peer_actor&) = delete;
 
-    virtual void on_connection_established() {}                            // WORKER
-    virtual void on_connection_lost(std::error_code reason) {}             // WORKER
-    virtual void on_packet_received(std::span<const uint8_t> packet) = 0;  // WORKER
+    virtual void on_connection_established() {}
+    virtual void on_connection_lost(std::error_code reason) {}
+    virtual void on_packet_received(std::span<const uint8_t> packet) = 0;
 
     inline natural_t get_peer_id() const { return peer_id; }
 
@@ -40,4 +40,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_PEER_PEER_ACTOR_HPP
+#endif  // OTHER_NETWORK_PEER_MESH_PEER_ACTOR_HPP

@@ -1,8 +1,8 @@
 /**
- * \file peer/packet_sink.hpp
+ * \file peer-mesh/packet_sink.hpp
  **/
-#ifndef OTHER_NETWORK_PEER_PACKET_SINK_HPP
-#define OTHER_NETWORK_PEER_PACKET_SINK_HPP
+#ifndef OTHER_NETWORK_PEER_MESH_PACKET_SINK_HPP
+#define OTHER_NETWORK_PEER_MESH_PACKET_SINK_HPP
 
 #include "core/defines.hpp"
 
@@ -19,4 +19,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_PEER_PACKET_SINK_HPP
+#endif  // OTHER_NETWORK_PEER_MESH_PACKET_SINK_HPP
