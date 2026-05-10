@@ -37,6 +37,7 @@ namespace other {
     ASSERT_EQ(vec_key3[3], 4);
     ASSERT_EQ(vec_key3[4], 5);
 
+    env->destroy_all_objects();
     env->shutdown_script_environment();
   }
 
@@ -48,6 +49,7 @@ namespace other {
     lua_script* invalid_script = env->load_lua_file("other-lua-interop/non_existent.lua");
     ASSERT_EQ(invalid_script, nullptr);
 
+    env->destroy_all_objects();
     env->shutdown_script_environment();
   }
 
@@ -68,6 +70,7 @@ namespace other {
     int result = test1->call_function<int>("add", 5, 7);
     ASSERT_EQ(result, 12);
 
+    env->destroy_all_objects();
     env->shutdown_script_environment();
   }
 

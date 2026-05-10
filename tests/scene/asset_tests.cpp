@@ -25,11 +25,10 @@ namespace other {
     EXPECT_EQ(asset::get_type_from_extension(".png"), asset::TEXTURE);
     EXPECT_EQ(asset::get_type_from_extension(".fbx"), asset::MODEL_SOURCE);
     EXPECT_EQ(asset::get_type_from_extension(".obj"), asset::MODEL_SOURCE);
-    EXPECT_EQ(asset::get_type_from_extension(".cs"), asset::SCRIPT_SOURCE);
-    EXPECT_EQ(asset::get_type_from_extension(".dll"), asset::SCRIPT);
-    EXPECT_EQ(asset::get_type_from_extension(".so"), asset::SCRIPT);
-    EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCENE);
-    EXPECT_EQ(asset::get_type_from_extension(".py"), asset::SCRIPT);
+    EXPECT_EQ(asset::get_type_from_extension(".csproj"), asset::SCRIPT_PROJECT);
+    EXPECT_EQ(asset::get_type_from_extension(".dll"), asset::SCRIPT_SOURCE);
+    EXPECT_EQ(asset::get_type_from_extension(".so"), asset::SCRIPT_SOURCE);
+    EXPECT_EQ(asset::get_type_from_extension(".cs"), asset::SCRIPT_FILE);
     EXPECT_EQ(asset::get_type_from_extension(".mp3"), asset::AUDIO);
     EXPECT_EQ(asset::get_type_from_extension(".wav"), asset::AUDIO);
     EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCENE);
@@ -45,13 +44,15 @@ namespace other {
     EXPECT_NE(std::find(model_source_exts.begin(), model_source_exts.end(), ".fbx"), model_source_exts.end());
     EXPECT_NE(std::find(model_source_exts.begin(), model_source_exts.end(), ".obj"), model_source_exts.end());
 
-    auto script_source_exts = asset::get_supported_extensions(asset::SCRIPT_SOURCE);
-    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".cs"), script_source_exts.end());
+    auto script_project_exts = asset::get_supported_extensions(asset::SCRIPT_PROJECT);
+    EXPECT_NE(std::find(script_project_exts.begin(), script_project_exts.end(), ".csproj"), script_project_exts.end());
 
-    auto script_exts = asset::get_supported_extensions(asset::SCRIPT);
-    EXPECT_NE(std::find(script_exts.begin(), script_exts.end(), ".dll"), script_exts.end());
-    EXPECT_NE(std::find(script_exts.begin(), script_exts.end(), ".so"), script_exts.end());
-    EXPECT_NE(std::find(script_exts.begin(), script_exts.end(), ".py"), script_exts.end());
+    auto script_source_exts = asset::get_supported_extensions(asset::SCRIPT_SOURCE);
+    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".dll"), script_source_exts.end());
+    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".so"), script_source_exts.end());
+
+    auto script_file_exts = asset::get_supported_extensions(asset::SCRIPT_FILE);
+    EXPECT_NE(std::find(script_file_exts.begin(), script_file_exts.end(), ".cs"), script_file_exts.end());
 
     auto audio_exts = asset::get_supported_extensions(asset::AUDIO);
     EXPECT_NE(std::find(audio_exts.begin(), audio_exts.end(), ".mp3"), audio_exts.end());
