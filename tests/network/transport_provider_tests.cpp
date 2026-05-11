@@ -49,4 +49,35 @@ namespace other {
     mock_provider = nullptr;
   }
 
+  TEST_F(transport_provider_tests, lifecycle_asserts) {
+    using ::testing::AtLeast;
+
+    scope<mock_transport_provider> mock_provider = make_scope<mock_transport_provider>();
+    EXPECT_CALL(*mock_provider, name()).WillRepeatedly(testing::Return("MockTransport"));
+    EXPECT_CALL(*mock_provider, on_initialize()).Times(1);
+    EXPECT_CALL(*mock_provider, on_tick()).Times(AtLeast(1));
+    EXPECT_CALL(*mock_provider, on_begin_shutdown()).Times(1);
+    EXPECT_CALL(*mock_provider, on_shutdown()).Times(1);
+
+    message_bus bus;
+    network_thread thread{ bus };
+    io net_io;
+
+    ASSERT_DEATH(mock_provider->initialize(nullptr, nullptr), ".*");
+    ASSERT_DEATH(mock_provider->initialize(&thread, nullptr), ".*");
+    ASSERT_DEATH(mock_provider->initialize(nullptr, &net_io), ".*");
+
+    mock_provider->initialize(&thread, &net_io);
+    ASSERT_DEATH(mock_provider->initialize(&thread, &net_io), ".*");
+
+    mock_provider->tick();
+    mock_provider->begin_shutdown();
+    mock_provider->shutdown();
+    ASSERT_DEATH(mock_provider->tick(), ".*");
+    ASSERT_DEATH(mock_provider->begin_shutdown(), ".*");
+    ASSERT_DEATH(mock_provider->shutdown(), ".*");
+
+    mock_provider = nullptr;
+  }
+
 }  // namespace other
