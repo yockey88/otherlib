@@ -267,6 +267,7 @@ namespace other {
       PROFILE_SECTION("driver::confirm_initialization--on_initialize");
       on_initialize();
     }
+
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
