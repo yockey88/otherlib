@@ -53,10 +53,6 @@ namespace other {
     if (!force_disable_network) {
       net_context->net_thread = make_scope<network_thread>(net_context->net_thread_message_bus);
 
-      register_transport_provider(make_scope<tcp_transport_provider>());
-      // register_transport_provider(make_scope<udp_transport_provider>());
-      // register_transport_provider(make_scope<loopback_transport_provider>());
-
       net_context->net_thread->launch();
       net_context->net_thread_message_bus.register_thread();
     }
