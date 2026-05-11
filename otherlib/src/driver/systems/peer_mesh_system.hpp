@@ -15,7 +15,7 @@
 
 namespace other {
 
-  class peer_mesh_system : public core_system<peer_mesh_system> {
+  class OTHER_CLASS peer_mesh_system : public core_system<peer_mesh_system> {
    public:
     peer_mesh_system(driver* driver)
         : core_system(driver, driver_system_type::PEER_MESH_DRIVER_SYSTEM) {}

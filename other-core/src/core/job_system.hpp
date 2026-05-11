@@ -13,7 +13,7 @@
 
 namespace other {
 
-  class job_system {
+  class OTHER_CLASS job_system {
    public:
     job_system(asio::io_context& main_ctx)
         : main_io_context(main_ctx) {}

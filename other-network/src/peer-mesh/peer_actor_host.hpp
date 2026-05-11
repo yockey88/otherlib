@@ -14,10 +14,9 @@
 
 #include "peer-mesh/peer_actor.hpp"
 
-
 namespace other {
 
-  class peer_actor_host : public ref_counted {
+  class OTHER_CLASS peer_actor_host : public ref_counted {
    public:
     peer_actor_host(job_system& jobs)  //, const binding_point& bp)
         : jobs(jobs) {}

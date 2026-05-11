@@ -45,19 +45,14 @@ namespace other {
 
     {
       std::lock_guard lock(providers_mutex);
-      auto provider_itr = std::ranges::find_if(providers, [transport_hash](transport_provider* p) {
+      for (auto* p : providers) {
         OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-        return p->hash() == transport_hash;
-      });
-      if (provider_itr == providers.end()) {
-        CORE_LOG_ERROR("Failed to register transport listener: no provider found with hash {:#010x}", transport_hash);
-        return;
+        if (p->hash() == transport_hash) {
+          CORE_LOG_DEBUG(" - registering sink ID {} with provider '{}'", id, p->name());
+          p->register_packet_sink(sink);
+          return;
+        }
       }
-
-      transport_provider* provider = *provider_itr;
-      OTHER_ASSERT(provider != nullptr, "Provider with hash {:#010x} is null", transport_hash);
-      CORE_LOG_DEBUG(" - found provider '{}' for transport hash {:#010x}", provider->name(), transport_hash);
-      provider->register_packet_sink(sink);
     }
   }
 

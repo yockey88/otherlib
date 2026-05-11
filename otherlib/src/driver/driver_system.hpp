@@ -55,7 +55,7 @@ namespace other {
     constexpr auto operator<=>(const system_key&) const = default;
   };
 
-  class driver_system {
+  class OTHER_CLASS driver_system {
    public:
     driver_system(driver* driver, uint32_t id)
         : driver_instance(driver), system_id(id) {

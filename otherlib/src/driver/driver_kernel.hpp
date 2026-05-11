@@ -14,7 +14,7 @@ namespace other {
 
   class driver;
 
-  class driver_kernel {
+  class OTHER_CLASS driver_kernel {
    public:
     driver_kernel(driver* driver_instance)
         : driver_instance(driver_instance) {}
@@ -24,6 +24,7 @@ namespace other {
     void load_plugins_from_config(driver* driver_instance);
     void initialize();
     void tick(double dt);
+    void unload_plugins();
     void shutdown();
 
     void update_order();

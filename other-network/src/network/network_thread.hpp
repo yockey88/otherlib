@@ -22,7 +22,7 @@ namespace other {
 
   class transport_provider;
 
-  class network_thread : public thread {
+  class OTHER_CLASS network_thread : public thread {
    public:
     struct target {
       natural_t id = 0;

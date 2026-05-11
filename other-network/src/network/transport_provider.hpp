@@ -21,7 +21,7 @@ namespace other {
   class network_thread;
   class packet_sink;
 
-  class transport_provider {
+  class OTHER_CLASS transport_provider {
    public:
     transport_provider() = default;
     transport_provider(const transport_provider&) = delete;
@@ -29,13 +29,7 @@ namespace other {
     virtual ~transport_provider() = default;
 
     virtual std::string name() const = 0;
-    inline natural_t hash() const {
-      return FNV(
-        name() |
-        std::views::transform([](unsigned char c) { return std::tolower(c); }) |
-        std::ranges::to<std::string>()
-      );
-    }
+    natural_t hash() const;
 
     // lifecycle called from network thread
     void initialize(network_thread* host_thread, io* net_io);

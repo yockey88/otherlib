@@ -176,15 +176,16 @@ namespace other {
     }
   }
 
-  void driver_kernel::shutdown() {
-    CORE_LOG_INFO("Shutting down driver kernel.");
+  void driver_kernel::unload_plugins() {
     for (auto itr = plugin_systems.begin(); itr != plugin_systems.end();) {
       OTHER_ASSERT(itr->second != nullptr, "Plugin with type {} and index {} is null.", itr->first.type, itr->first.index);
       shutdown_plugin(itr->second);
       itr = plugin_systems.erase(itr);
     }
     plugin_systems.clear();
+  }
 
+  void driver_kernel::shutdown() {
     for (auto itr = system_order.rbegin(); itr != system_order.rend(); ++itr) {
       OTHER_ASSERT(builtin_systems[static_cast<size_t>(*itr)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(*itr));
       CORE_LOG_DEBUG("Shutting down builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(*itr)]->name(), *itr);
