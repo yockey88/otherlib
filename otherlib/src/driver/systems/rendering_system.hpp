@@ -14,7 +14,7 @@
 
 namespace other {
 
-  class rendering_system : public core_system<rendering_system> {
+  class OTHER_CLASS rendering_system : public core_system<rendering_system> {
    public:
     rendering_system(driver* driver_instance)
         : core_system<rendering_system>(driver_instance, static_cast<uint32_t>(driver_system_type::RENDERING_DRIVER_SYSTEM)) {}

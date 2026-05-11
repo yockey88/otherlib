@@ -20,6 +20,7 @@ namespace other {
     /// group 0
     NETWORK_DRIVER_SYSTEM = 0,
     JOB_DRIVER_SYSTEM,
+    PEER_MESH_DRIVER_SYSTEM,
     /// group 1
     EVENT_DRIVER_SYSTEM,
     /// group 2 - might need to use events
@@ -54,7 +55,7 @@ namespace other {
     constexpr auto operator<=>(const system_key&) const = default;
   };
 
-  class driver_system {
+  class OTHER_CLASS driver_system {
    public:
     driver_system(driver* driver, uint32_t id)
         : driver_instance(driver), system_id(id) {

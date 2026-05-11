@@ -21,9 +21,9 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
-    virtual void on_initialize() {}
-    virtual void on_tick(double dt) {}
-    virtual void on_shutdown() {}
+    virtual void on_initialize(driver_kernel& kernel) {}
+    virtual void on_tick(driver_kernel& kernel, double dt) {}
+    virtual void on_shutdown(driver_kernel& kernel) {}
 
    private:
     bool is_active = false;

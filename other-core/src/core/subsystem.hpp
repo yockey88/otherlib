@@ -102,14 +102,13 @@ namespace other {
 
     static void set(T* obj) {
       PROFILE_SECTION("subsystem<>::set");
-      if (obj == nullptr) {
-        throw std::runtime_error("Cannot set subsystem instance to null.");
-      }
       std::lock_guard lock(subsystem_mtx);
       instance = obj;
 
       if constexpr (requires(T t) { { T::on_set(std::declval<T*>()) } -> std::same_as<void>; }) {
-        T::on_set(obj);
+        if (obj != nullptr) {
+          T::on_set(obj);
+        }
       }
     }
 
@@ -165,6 +164,28 @@ namespace other {
 
    protected:
     subsystem() = default;
+
+    T& get_instance() {
+      T* ptr = get();
+      if (inert) {
+        unactive_subsystem_initialization_error(typeid(T).name());
+        throw std::runtime_error(std::format("Attempted to access uninitialized subsystem {}", typeid(T).name()));
+      } else if (ptr == nullptr) {
+        throw std::runtime_error(std::format("Subsystem {} is not initialized", typeid(T).name()));
+      }
+      return *ptr;
+    }
+
+    static T& instance_ref() {
+      T* ptr = get();
+      if (inert) {
+        unactive_subsystem_initialization_error(typeid(T).name());
+        throw std::runtime_error(std::format("Attempted to access uninitialized subsystem {}", typeid(T).name()));
+      } else if (ptr == nullptr) {
+        throw std::runtime_error(std::format("Subsystem {} is not initialized", typeid(T).name()));
+      }
+      return *ptr;
+    }
 
    private:
     static T* instance;

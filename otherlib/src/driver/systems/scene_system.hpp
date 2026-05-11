@@ -14,7 +14,7 @@
 
 namespace other {
 
-  class scene_system : public core_system<scene_system> {
+  class OTHER_CLASS scene_system : public core_system<scene_system> {
    public:
     scene_system(driver* driver_instance)
         : core_system(driver_instance, driver_system_type::SCENE_DRIVER_SYSTEM) {}

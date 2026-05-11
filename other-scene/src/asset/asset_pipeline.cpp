@@ -346,7 +346,7 @@ namespace other {
         source_job = handler->get_job_system().submit(
           {
             .name = std::format("Load Model Source Asset {}", asset_ptr->id),
-            .priority = job::priority::HIGH,
+            .priority = job::priority::LOW,
             /// this should run on worker thread since it could take aribitrarily long
             .thread_affinity = job::affinity::WORKER_THREAD,
           },
@@ -367,7 +367,7 @@ namespace other {
       auto store_job = handler->get_job_system().submit(
         {
           .name = std::format("Finalize Load Model Source Asset {}", asset_ptr->id),
-          .priority = job::priority::HIGH,
+          .priority = job::priority::LOW,
           /// this job runs on main thread because it is gonna upload to the gpu
           .thread_affinity = job::affinity::MAIN_THREAD,
         },
@@ -424,6 +424,7 @@ namespace other {
         ref<job> build_project_job = jobs.submit(
           {
             .name = std::format("Build .NET project '{}'", project_path.string()),
+            .priority = job::priority::LOW,
             .thread_affinity = job::affinity::WORKER_THREAD,
           },
           [t = build_tool, path = project_path]() mutable {
@@ -459,7 +460,7 @@ namespace other {
         build_id,
         {
           .name = std::format("Load built assembly for .NET project '{}'", project_path.string()),
-          .priority = job::priority::HIGH,
+          .priority = job::priority::LOW,
           .thread_affinity = job::affinity::MAIN_THREAD,
         },
         [h = handler, t = build_tool, project_path]() {

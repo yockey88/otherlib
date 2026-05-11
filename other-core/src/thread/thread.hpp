@@ -12,11 +12,12 @@
 #include "core/defines.hpp"
 #include "core/scope.hpp"
 #include "thread/channel.hpp"
-#include "thread/message.hpp"
+
+#include "message/message.hpp"
 
 namespace other {
 
-  class thread {
+  class OTHER_CLASS thread {
    public:
     enum state {
       WAITING = 0,

@@ -7,9 +7,11 @@
 #include <string>
 
 #include "core/defines.hpp"
-#include "thread/message.hpp"
 
 #include "driver/driver.hpp"
+
+#include "message/message.hpp"
+// #include "tcp_listener.hpp"
 
 OTHER_DRIVER(other::server)
 
@@ -22,7 +24,7 @@ namespace other {
 
   }  // namespace
 
-  void server::on_early_initialize(const command_line& cmd) {
+  void server::on_early_initialize() {
     // http server
     {
       opt<filepath> directory = std::nullopt;
@@ -118,14 +120,17 @@ namespace other {
     });
   }
 
-  void server::on_initialize(const command_line& cmd) {
+  void server::on_initialize() {
     // http port
     config_http_port = configuration().get_value("server.main-http-port", uint16_t(8080));
     binding_point endpoint{ network_system::network_context::kLocalhostAddress, config_http_port };
 
     // initialize lua side
     invoke_driver_method("InitializeHttpServer", config_http_port);
-    // core_system<network_system>().listen_at_endpoint(endpoint);
+    core_system<network_system>().listen_at_endpoint(endpoint, "tcp");
+
+    // auto& job_system = get_job_system();
+    // core_system<other::network_system>().register_transport_listener("tcp", make_scope<tcp_listener>(job_system));
   }
 
   void server::on_shutdown() {

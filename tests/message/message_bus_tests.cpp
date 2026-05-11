@@ -1,13 +1,13 @@
 /**
- * \file thread/message_bus_tests.cpp
+ * \file message/message_bus_tests.cpp
  **/
 #include <barrier>
 #include <chrono>
 #include <ratio>
 
-#include "thread/message_bus.hpp"
+#include "message/message_bus.hpp"
 
-#include "thread_tests.hpp"
+#include "../thread/thread_tests.hpp"
 
 namespace other {
 
@@ -23,15 +23,16 @@ namespace other {
       opt<message> msg = bus.receive_message(std::chrono::milliseconds(500));
       ASSERT_TRUE(msg.has_value());
 
-      ASSERT_EQ(msg->header.category, 0xBEEF);
-      ASSERT_EQ(msg->header.id, 0xDEAD);
+      ASSERT_EQ(msg->category, 0xBEEF);
+      ASSERT_EQ(msg->id, 0xDEAD);
       ASSERT_EQ(msg->data.size(), 3);
       ASSERT_EQ(msg->data[0], 0x01);
       ASSERT_EQ(msg->data[1], 0x02);
       ASSERT_EQ(msg->data[2], 0x03);
 
       message resp_msg = {};
-      resp_msg.header = message_header{ .category = 0xCAFE, .id = 0xFACE };
+      resp_msg.category = 0xCAFE;
+      resp_msg.id = 0xFACE;
       resp_msg.data = { 0x04, 0x05, 0x06 };
       bus.send_message(std::move(resp_msg));
     } };
@@ -41,14 +42,15 @@ namespace other {
       sync_point.arrive_and_wait();
 
       message msg = {};
-      msg.header = message_header{ .category = 0xBEEF, .id = 0xDEAD };
+      msg.category = 0xBEEF;
+      msg.id = 0xDEAD;
       msg.data = { 0x01, 0x02, 0x03 };
       bus.send_message(std::move(msg));
 
       opt<message> recv_msg = bus.receive_message(std::chrono::milliseconds(500));
       ASSERT_TRUE(recv_msg.has_value());
-      ASSERT_EQ(recv_msg->header.category, 0xCAFE);
-      ASSERT_EQ(recv_msg->header.id, 0xFACE);
+      ASSERT_EQ(recv_msg->category, 0xCAFE);
+      ASSERT_EQ(recv_msg->id, 0xFACE);
 
       ASSERT_EQ(recv_msg->data.size(), 3);
       ASSERT_EQ(recv_msg->data[0], 0x04);
@@ -91,7 +93,7 @@ namespace other {
       {
         std::thread t2 = std::thread{ [&]() {
           message send_msg = {};
-          send_msg.header = message_header{ .category = 0xDEAD };
+          send_msg.category = 0xDEAD;
           bus.send_message(std::move(send_msg));  // not registered yet
         } };
       },

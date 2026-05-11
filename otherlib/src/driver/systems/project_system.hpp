@@ -13,7 +13,7 @@
 
 namespace other {
 
-  class project_system : public core_system<project_system> {
+  class OTHER_CLASS project_system : public core_system<project_system> {
    public:
     project_system(driver* driver_instance)
         : core_system(driver_instance, driver_system_type::PROJECT_DRIVER_SYSTEM) {}

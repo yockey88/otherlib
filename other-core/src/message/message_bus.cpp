@@ -1,7 +1,7 @@
 /**
- * \file thread/message_bus.cpp
+ * \file message/message_bus.cpp
  **/
-#include "thread/message_bus.hpp"
+#include "message/message_bus.hpp"
 
 #include <cstdint>
 
@@ -75,6 +75,22 @@ namespace other {
     }
 
     threads[index].tx_channel->push(std::move(msg));
+  }
+
+  bool message_bus::has_message() {
+    uint8_t index = 0;
+    {
+      std::lock_guard lock(thread_data_mutex);
+      if (threads[0].thread_id == std::this_thread::get_id()) {
+        index = 0;
+      } else if (threads[1].thread_id == std::this_thread::get_id()) {
+        index = 1;
+      } else {
+        OTHER_ASSERT(false, "Thread not registered with message message_bus");
+      }
+    }
+
+    return threads[index].rx_channel->empty() == false;
   }
 
 }  // namespace other

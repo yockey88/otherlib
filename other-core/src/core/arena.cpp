@@ -22,23 +22,23 @@ namespace other {
   void* arena::allocate(size_t size, size_t alignment) {
     PROFILE_SECTION("arena::allocate");
     OTHER_ASSERT(size <= page::kPageSize, "Allocation size {} is too large for Arena.", size);
-    arena* instance = subsystem_description<arena>::ptr();
-    std::lock_guard lock_arena_mutex(instance->arena_mutex);
+    auto& instance = instance_ref();
+    std::lock_guard lock_arena_mutex(instance.arena_mutex);
 
-    size_t padding = instance->get_allocation_padding(size, alignment);
+    size_t padding = instance.get_allocation_padding(size, alignment);
 
     size_t actual_space_needed = size + padding;
-    padding = instance->check_page_and_recalculate_padding(size, alignment, actual_space_needed);
-    return instance->do_allocation(size, alignment, padding, actual_space_needed);
+    padding = instance.check_page_and_recalculate_padding(size, alignment, actual_space_needed);
+    return instance.do_allocation(size, alignment, padding, actual_space_needed);
   }
 
   void arena::free(void* ptr, std::size_t size) {
     PROFILE_SECTION("arena::free");
-    arena* instance = subsystem_description<arena>::ptr();
-    std::lock_guard lock_arena_mutex(instance->arena_mutex);
+    auto& instance = instance_ref();
+    std::lock_guard lock_arena_mutex(instance.arena_mutex);
 
-    instance->allocated_memory -= size;
-    instance->live_allocations--;
+    instance.allocated_memory -= size;
+    instance.live_allocations--;
     PROFILE_DEALLOCATION(ptr);
 
     /// do nothing for now, allocators handle calling destructors and zeroing memory
@@ -47,11 +47,11 @@ namespace other {
 
   void arena::free(void* ptr) {
     PROFILE_SECTION("arena::free");
-    arena* instance = subsystem_description<arena>::ptr();
-    std::lock_guard lock_arena_mutex(instance->arena_mutex);
+    auto& instance = instance_ref();
+    std::lock_guard lock_arena_mutex(instance.arena_mutex);
 
     //// be nice to have size info here but oh well
-    instance->live_allocations--;
+    instance.live_allocations--;
     PROFILE_DEALLOCATION(ptr);
   }
 
@@ -66,26 +66,27 @@ namespace other {
 
   void arena::free_region(void* ptr) {
     PROFILE_SECTION("arena::free_region");
-    std::lock_guard lock_arena_mutex(arena_mutex);
-    this->free(ptr);
+    auto& instance = get_instance();
+    std::lock_guard lock_arena_mutex(instance.arena_mutex);
+    instance.free(ptr);
   }
 
   page* arena::request_memory_page() {
-    arena* instance = subsystem_description<arena>::ptr();
-    std::lock_guard lock_arena_mutex(instance->arena_mutex);
-    return instance->storage.create_page();
+    auto& instance = instance_ref();
+    std::lock_guard lock_arena_mutex(instance.arena_mutex);
+    return instance.storage.create_page();
   }
 
   void arena::free_memory_page(page* region) {
-    arena* instance = subsystem_description<arena>::ptr();
-    std::lock_guard lock_arena_mutex(instance->arena_mutex);
-    instance->storage.free_page(region);
+    auto& instance = instance_ref();
+    std::lock_guard lock_arena_mutex(instance.arena_mutex);
+    instance.storage.free_page(region);
   }
 
   page* arena::get_current_page() {
-    arena* instance = subsystem_description<arena>::ptr();
-    std::lock_guard lock_arena_mutex(instance->arena_mutex);
-    return current_page;
+    auto& instance = instance_ref();
+    std::lock_guard lock_arena_mutex(instance.arena_mutex);
+    return instance.current_page;
   }
 
   size_t arena::get_allocation_padding(size_t size, size_t alignment) const {

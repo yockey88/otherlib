@@ -6,8 +6,6 @@
 
 #include <asio/asio.hpp>
 
-#include "thread/message.hpp"
-#include "thread/message_bus.hpp"
 #include "thread/thread.hpp"
 
 #include "network/acknowledgement_list.hpp"
@@ -15,27 +13,38 @@
 #include "network/io.hpp"
 #include "network/listener_route.hpp"
 
-#include "tcp/connection.hpp"
-#include "tcp/connection_state_maching.hpp"
+#include "message/message_bus.hpp"
+#include "message/message_fields.hpp"
 
+#include "peer-mesh/packet_sink.hpp"
 
 namespace other {
 
   class transport_provider;
 
-  class network_thread : public thread {
+  class OTHER_CLASS network_thread : public thread {
    public:
+    struct target {
+      natural_t id = 0;
+      packet_sink* sink = nullptr;
+    };
     network_thread(message_bus& bus)
         : thread("OtherServer-Network-Thread"),
           bus(bus), network_io{} {}
     virtual ~network_thread() = default;
 
-    static natural_t generate_connection_id() {
-      return connection_id_counter.fetch_add(1, std::memory_order_relaxed);
+    inline natural_t generate_connection_id() {
+      natural_t new_id = connection_id_counter.fetch_add(1, std::memory_order_relaxed);
+      CORE_LOG_TRACE("[NEW CONN ID: {}]", new_id);
+      return new_id;
     }
 
     void register_provider(transport_provider* provider);
-    transport_provider* get_provider_by_name(const std::string& name);
+    void register_packet_sink(natural_t id, packet_sink* sink);
+
+    void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);
+    void attach_connection_listener(natural_t connection_id, natural_t id, packet_sink* sink);
+    void attach_connection_listener(natural_t connection_id, natural_t sink_id);
 
     void register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle);
     void register_listener_route(natural_t listener_id, transport_provider* provider, void* opaque_handle);
@@ -61,14 +70,16 @@ namespace other {
     state current_state{};
     io network_io;
 
-    static inline std::atomic<natural_t> connection_id_counter = 1;
+    std::atomic<natural_t> connection_id_counter = 1;
 
     std::map<natural_t, connection_route> active_connections;
     std::map<natural_t, listener_route> active_listeners;
     std::deque<natural_t> recently_closed_connections;
 
     std::mutex providers_mutex;
+    std::mutex sink_mutex;
     std::vector<transport_provider*> providers;
+    std::vector<target> packet_sinks;
 
     acknowledgement_list ack_list;
 
@@ -81,10 +92,9 @@ namespace other {
 
     void handle_control_ping(message&& msg);
     void handle_command_shutdown_request(message&& msg);
-    void handle_command_listen_tcp_connection(message&& msg);
-    void handle_command_connect_tcp_connection(message&& msg);
-    void handle_command_open_udp_connection(message&& msg);
-    void handle_command_close_tcp_connection(message&& msg);
+    void handle_command_listen_connection(message&& msg);
+    void handle_command_connect_connection(message&& msg);
+    void handle_command_close_connection(message&& msg);
     void handle_command_tx_data(message&& msg);
 
     bool immediately_acknowledge_message(const message_header& header);
@@ -100,4 +110,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_NETWORK_THREAD_HPP
+#endif  // OTHER_NETWORK_NETWORK_THREAD_HPP

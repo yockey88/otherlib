@@ -14,7 +14,7 @@ namespace other {
         : driver(cmd, config) {}
     ~editor_driver() override {}
 
-    void on_initialize(const command_line&) override;
+    void on_initialize() override;
     void on_build_driver_input_map(input_map& map) override;
     void on_viewport_resize(const glm::vec2& size) override;
     void on_shutdown() override {}

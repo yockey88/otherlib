@@ -6,7 +6,8 @@
 #include <atomic>
 
 #include "core/logger.hpp"
-#include "thread/message.hpp"
+
+#include "message/message_fields.hpp"
 
 namespace other {
 
@@ -36,11 +37,15 @@ namespace other {
 
     opt<message> msg_opt = receive_from_thread(microseconds(500));
     OTHER_ASSERT(msg_opt.has_value(), "Thread [{}] did not acknowledge start message", thread_name);
-    OTHER_ASSERT((msg_opt->header == message_header{ ACKNOWLEDGEMENT, ACK }), "Thread [{}] sent invalid acknowledgment for start message: {}, expected ACKNOWLEDGEMENT.ACK", thread_name, msg_opt->header);
+    // clang-format off
+    OTHER_ASSERT((message_header{ msg_opt->category, msg_opt->id } == message_header{ ACKNOWLEDGEMENT, ACK }), 
+                 "Thread [{}] sent invalid acknowledgment for start message: {}, expected ACKNOWLEDGEMENT.ACK",
+                 thread_name, message_header{ msg_opt->category, msg_opt->id });
+    // clang-format on
 
     message_header mh = *reinterpret_cast<const message_header*>(msg_opt->data.data());
     OTHER_ASSERT((mh == message_header{ CONTROL, THREAD_START }), "Received ACK with unexpected original message header: {}, expected CONTROL.THREAD_START", mh);
-    CORE_LOG_TRACE("[MAIN-THREAD RX: {}.{}]", message_category{ msg_opt->header.category }, thread::message_id{ msg_opt->header.id });
+    CORE_LOG_TRACE("[MAIN-THREAD RX: {}.{}]", message_category{ msg_opt->category }, thread::message_id{ msg_opt->id });
   }
 
   void thread::shutdown() {
@@ -106,8 +111,8 @@ namespace other {
       }
       return;
     }
-    OTHER_ASSERT((shutdown_complete_msg->header == message_header{ ACKNOWLEDGEMENT, ACK }), "Thread [{}] sent invalid acknowledgment for shutdown complete message: {}, expected ACKNOWLEDGEMENT.ACK", thread_name, shutdown_complete_msg->header);
-    CORE_LOG_TRACE("[MAIN-THREAD RX: {}.{}]", message_category{ shutdown_complete_msg->header.category }, thread::message_id{ shutdown_complete_msg->header.id });
+    OTHER_ASSERT((message_header{ shutdown_complete_msg->category, shutdown_complete_msg->id } == message_header{ ACKNOWLEDGEMENT, ACK }), "Thread [{}] sent invalid acknowledgment for shutdown complete message: {}, expected ACKNOWLEDGEMENT.ACK", thread_name, message_header{ shutdown_complete_msg->category, shutdown_complete_msg->id });
+    CORE_LOG_TRACE("[MAIN-THREAD RX: {}.{}]", message_category{ shutdown_complete_msg->category }, thread::message_id{ shutdown_complete_msg->id });
     message_header mh = *reinterpret_cast<const message_header*>(shutdown_complete_msg->data.data());
     OTHER_ASSERT((mh == message_header{ CONTROL, THREAD_SHUTDOWN }), "Received ACK with unexpected original message header: {}, expected CONTROL.THREAD_SHUTDOWN", mh);
     CORE_LOG_DEBUG("Thread [{}] shutdown complete", thread_name);
@@ -161,14 +166,14 @@ namespace other {
 
   void thread::send_to_thread(message&& msg) {
     OTHER_ASSERT(tx_channel != nullptr, "Thread tx channel is null");
-    CORE_LOG_TRACE("[MAIN-THREAD TX: {}.{}]", message_category{ msg.header.category }, thread::message_id{ msg.header.id });
+    CORE_LOG_TRACE("[MAIN-THREAD TX: {}.{}]", message_category{ msg.category }, thread::message_id{ msg.id });
     tx_channel->push(std::move(msg));
   }
 
   void thread::send_to_main_thread(message&& msg) {
     OTHER_ASSERT(thread_data != nullptr, "Thread data is null");
     OTHER_ASSERT(thread_data->rx_channel != nullptr, "Thread rx channel is null");
-    CORE_LOG_TRACE("[THREAD TX: {}.{}]", message_category{ msg.header.category }, thread::message_id{ msg.header.id });
+    CORE_LOG_TRACE("[THREAD TX: {}.{}]", message_category{ msg.category }, thread::message_id{ msg.id });
     thread_data->tx_channel->push(std::move(msg));
   }
 
@@ -211,31 +216,31 @@ namespace other {
           }
           continue;
         }
-        CORE_LOG_TRACE("[THREAD CTRL RX: {}.{}]", message_category{ msg->header.category }, thread::message_id{ msg->header.id });
+        CORE_LOG_TRACE("[THREAD CTRL RX: {}.{}]", message_category{ msg->category }, thread::message_id{ msg->id });
 
-        if (msg->header.category != CONTROL) {
-          CORE_LOG_ERROR("Unexpected message category received during thread control loop: {}, expected CONTROL", msg->header.category);
+        if (msg->category != CONTROL) {
+          CORE_LOG_ERROR("Unexpected message category received during thread control loop: {}, expected CONTROL", msg->category);
           checkpoints.error_occurred.store(true, std::memory_order_release);
           continue;
         }
-        if (msg->header.id != THREAD_INITIALIZE && msg->header.id != THREAD_START && msg->header.id != THREAD_SHUTDOWN) {
-          CORE_LOG_ERROR("Unexpected message ID received during thread control loop: {}, expected THREAD_INITIALIZE, THREAD_START or THREAD_SHUTDOWN", msg->header.id);
+        if (msg->id != THREAD_INITIALIZE && msg->id != THREAD_START && msg->id != THREAD_SHUTDOWN) {
+          CORE_LOG_ERROR("Unexpected message ID received during thread control loop: {}, expected THREAD_INITIALIZE, THREAD_START or THREAD_SHUTDOWN", msg->id);
           checkpoints.error_occurred.store(true, std::memory_order_release);
           continue;
         }
 
-        if (msg->header == message_header{ CONTROL, THREAD_INITIALIZE }) {
+        if (message_header{ msg->category, msg->id } == message_header{ CONTROL, THREAD_INITIALIZE }) {
           OTHER_ASSERT(!checkpoints.initialized.load(std::memory_order_acquire), "Thread [{}] received initialization message but is already initialized.", thread_name);
           checkpoints.initialized.store(true, std::memory_order_release);
           on_initialize();
           CORE_LOG_DEBUG("Thread [{}] initialized", thread_name);
-        } else if (msg->header == message_header{ CONTROL, THREAD_START }) {
+        } else if (message_header{ msg->category, msg->id } == message_header{ CONTROL, THREAD_START }) {
           OTHER_ASSERT(checkpoints.initialized.load(std::memory_order_acquire), "Thread [{}] received start message but is not initialized.", thread_name);
           OTHER_ASSERT(!checkpoints.running.load(std::memory_order_acquire), "Thread [{}] received start message but is already running.", thread_name);
           checkpoints.running.store(true, std::memory_order_release);
           on_start();
           CORE_LOG_DEBUG("Thread [{}] started", thread_name);
-        } else if (msg->header == message_header{ CONTROL, THREAD_SHUTDOWN }) {
+        } else if (message_header{ msg->category, msg->id } == message_header{ CONTROL, THREAD_SHUTDOWN }) {
           OTHER_ASSERT(checkpoints.initialized.load(std::memory_order_acquire), "Thread [{}] received shutdown message but is not initialized.", thread_name);
           OTHER_ASSERT(checkpoints.running.load(std::memory_order_acquire), "Thread [{}] received shutdown message but is not running.", thread_name);
           checkpoints.initialized.store(false, std::memory_order_release);
@@ -248,10 +253,11 @@ namespace other {
         }
 
         // on start we want init, start and on shutdown we just want shutdown
-        if (msg->header == message_header{ CONTROL, THREAD_START } ||
-            msg->header == message_header{ CONTROL, THREAD_SHUTDOWN }) {
+        if (message_header{ msg->category, msg->id } == message_header{ CONTROL, THREAD_START } ||
+            message_header{ msg->category, msg->id } == message_header{ CONTROL, THREAD_SHUTDOWN }) {
           message ack(ACKNOWLEDGEMENT, ACK);
-          const uint8_t* ack_data = reinterpret_cast<const uint8_t*>(&msg->header);
+          message_header original_header = { msg->category, msg->id };
+          const uint8_t* ack_data = reinterpret_cast<const uint8_t*>(&original_header);
           ack.data.append_range(std::span(ack_data, sizeof(message_header)));
           send_to_main_thread(std::move(ack));
           return true;
@@ -343,7 +349,7 @@ namespace other {
     /// use raw header bc custom message type
     OTHER_ASSERT(!checkpoints.initialized.load(std::memory_order_acquire), "Thread [{}] received initialization message but is already initialized.", thread_name);
 
-    if (msg.header.category == CONTROL && msg.header.id == THREAD_INITIALIZE) {
+    if (msg.category == CONTROL && msg.id == THREAD_INITIALIZE) {
       checkpoints.initialized.store(true, std::memory_order_release);
       checkpoints.error_occurred.store(false, std::memory_order_release);
       on_initialize();
@@ -360,7 +366,7 @@ namespace other {
     OTHER_ASSERT(!checkpoints.running.load(std::memory_order_acquire), "Thread [{}] received start message but is already running.", thread_name);
 
     /// use raw header bc custom message type
-    if (msg.header.category == CONTROL && msg.header.id == THREAD_START) {
+    if (msg.category == CONTROL && msg.id == THREAD_START) {
       checkpoints.running.store(true, std::memory_order_release);
       checkpoints.error_occurred.store(false, std::memory_order_release);
       on_start();
@@ -377,7 +383,7 @@ namespace other {
     OTHER_ASSERT(checkpoints.running.load(std::memory_order_acquire), "Thread [{}] received shutdown message but is not running or in error state.", thread_name);
 
     /// use raw header bc custom message type
-    if (msg.header.id == THREAD_SHUTDOWN) {
+    if (msg.id == THREAD_SHUTDOWN) {
       checkpoints.running.store(false, std::memory_order_release);
       checkpoints.error_occurred.store(false, std::memory_order_release);
       on_shutdown();
@@ -390,7 +396,7 @@ namespace other {
   }
 
   void thread::handle_message(const message& msg) {
-    CORE_LOG_TRACE("[THREAD RX: {}]", msg.header);
+    CORE_LOG_TRACE("[THREAD RX: {}]", message_header{ msg.category, msg.id });
     switch (msg.get_category()) {
       case message_category::NOTIFICATION: handle_notification_message(msg); break;
       case message_category::ACKNOWLEDGEMENT: handle_acknowledgement_message(msg); break;
@@ -406,7 +412,7 @@ namespace other {
   }
 
   void thread::handle_notification_message(const message& msg) {
-    OTHER_ASSERT(msg.get_category() == NOTIFICATION, "Invalid notification message category: {}", msg.header.category);
+    OTHER_ASSERT(msg.get_category() == NOTIFICATION, "Invalid notification message category: {}", message_header{ msg.category, msg.id });
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported notification message: {}", msg.get_id());
@@ -415,11 +421,11 @@ namespace other {
   }
 
   void thread::handle_acknowledgement_message(const message& msg) {
-    OTHER_ASSERT(msg.get_category() == ACKNOWLEDGEMENT, "Invalid acknowledgement message category: {}", msg.header.category);
+    OTHER_ASSERT(msg.get_category() == ACKNOWLEDGEMENT, "Invalid acknowledgement message category: {}", message_header{ msg.category, msg.id });
   }
 
   void thread::handle_control_message(const message& msg) {
-    OTHER_ASSERT(msg.get_category() == CONTROL, "Invalid control message category: {}", msg.header.category);
+    OTHER_ASSERT(msg.get_category() == CONTROL, "Invalid control message category: {}", message_header{ msg.category, msg.id });
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported control message: {}", msg.get_id());
@@ -428,7 +434,7 @@ namespace other {
   }
 
   void thread::handle_command_message(const message& msg) {
-    OTHER_ASSERT(msg.get_category() == COMMAND, "Invalid command message category: {}", msg.header.category);
+    OTHER_ASSERT(msg.get_category() == COMMAND, "Invalid command message category: {}", message_header{ msg.category, msg.id });
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported command message: {}", msg.get_id());
@@ -437,7 +443,7 @@ namespace other {
   }
 
   void thread::handle_request_message(const message& msg) {
-    OTHER_ASSERT(msg.get_category() == REQUEST, "Invalid request message category: {}", msg.header.category);
+    OTHER_ASSERT(msg.get_category() == REQUEST, "Invalid request message category: {}", message_header{ msg.category, msg.id });
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported request message: {}", msg.get_id());
@@ -446,7 +452,7 @@ namespace other {
   }
 
   void thread::handle_response_message(const message& msg) {
-    OTHER_ASSERT(msg.get_category() == RESPONSE, "Invalid response message category: {}", msg.header.category);
+    OTHER_ASSERT(msg.get_category() == RESPONSE, "Invalid response message category: {}", message_header{ msg.category, msg.id });
     switch (msg.get_id()) {
       default:
         CORE_LOG_WARN("Thread received unsupported response message: {}", msg.get_id());
@@ -455,7 +461,7 @@ namespace other {
   }
 
   void thread::handle_error_alert_message(const message& msg) {
-    OTHER_ASSERT(msg.get_category() == ERROR_ALERT, "Invalid error alert message category: {}", msg.header.category);
+    OTHER_ASSERT(msg.get_category() == ERROR_ALERT, "Invalid error alert message category: {}", message_header{ msg.category, msg.id });
     CORE_LOG_ERROR("Thread received error alert: {}", msg.get_id());
     switch (msg.get_id()) {
       default:

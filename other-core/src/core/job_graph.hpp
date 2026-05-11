@@ -10,7 +10,7 @@
 
 namespace other {
 
-  class job_graph {
+  class OTHER_CLASS job_graph {
    public:
     using deferred_work = std::pair<job::descriptor, std::function<void()>>;
     using work_fn = std::function<void()>;

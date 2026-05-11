@@ -7,15 +7,29 @@
 #include <vector>
 
 #include "core/defines.hpp"
+#include "core/job_system.hpp"
+#include "core/ref_counted.hpp"
+
+#include "message/message.hpp"
+
+#include "peer-mesh/peer_actor.hpp"
 
 namespace other {
 
-  class peer_actor_host {
+  class OTHER_CLASS peer_actor_host : public ref_counted {
    public:
+    peer_actor_host(job_system& jobs)  //, const binding_point& bp)
+        : jobs(jobs) {}
     virtual ~peer_actor_host() = default;
 
-    virtual void tx_data(natural_t to_peer_id, std::vector<uint8_t> data) = 0;
-    virtual void post_to_main_thread(std::function<void()> work_fn) = 0;
+    void post_to_main(std::function<void()> func);
+
+    virtual void tx_data(natural_t peer_id, std::span<const uint8_t> data) = 0;
+    virtual peer_actor::peer_metadata get_peer_metadata(natural_t peer_id) const = 0;
+    virtual void request_disconnect(natural_t peer_id, std::error_code reason) = 0;
+
+   private:
+    job_system& jobs;
   };
 
 }  // namespace other

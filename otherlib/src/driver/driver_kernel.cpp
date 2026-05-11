@@ -15,6 +15,7 @@
 #include "driver/systems/input_driver_system.hpp"
 #include "driver/systems/job_driver_system.hpp"
 #include "driver/systems/network_system.hpp"
+#include "driver/systems/peer_mesh_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/rendering_system.hpp"
 #include "driver/systems/scene_system.hpp"
@@ -27,6 +28,7 @@ namespace other {
     /// initialize network system regardless of whether networking is enabled or not, as some subsystems depend on it and it handles the network-disabled case internally
     add_system<network_system>(driver_system_type::NETWORK_DRIVER_SYSTEM);
     add_system<job_driver_system>(driver_system_type::JOB_DRIVER_SYSTEM);
+    add_system<peer_mesh_system>(driver_system_type::PEER_MESH_DRIVER_SYSTEM);
 
     /// always load events/input/assets
     add_system<event_driver_system>(driver_system_type::EVENT_DRIVER_SYSTEM);
@@ -141,9 +143,6 @@ namespace other {
 
       CORE_LOG_INFO("Successfully loaded driver plugin: '{}'", plugin.name);
       install_plugin(name, plugin_instance);
-
-      /// \todo maybe we should keep track of the loaded plugins in the kernel so that we can unload them properly on shutdown?
-      ///         - if we do this, we should also keep track of the library handles so that we can unload the libraries as well.
     }
   }
 
@@ -177,15 +176,16 @@ namespace other {
     }
   }
 
-  void driver_kernel::shutdown() {
-    CORE_LOG_INFO("Shutting down driver kernel.");
+  void driver_kernel::unload_plugins() {
     for (auto itr = plugin_systems.begin(); itr != plugin_systems.end();) {
       OTHER_ASSERT(itr->second != nullptr, "Plugin with type {} and index {} is null.", itr->first.type, itr->first.index);
       shutdown_plugin(itr->second);
       itr = plugin_systems.erase(itr);
     }
     plugin_systems.clear();
+  }
 
+  void driver_kernel::shutdown() {
     for (auto itr = system_order.rbegin(); itr != system_order.rend(); ++itr) {
       OTHER_ASSERT(builtin_systems[static_cast<size_t>(*itr)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(*itr));
       CORE_LOG_DEBUG("Shutting down builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(*itr)]->name(), *itr);

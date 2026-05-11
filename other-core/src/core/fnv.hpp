@@ -10,10 +10,10 @@
 
 namespace other {
 
-  static constexpr natural_t kFnvOffsetBasis = 0xBCF29CE484222325;
-  static constexpr natural_t kFnvPrime = 0x100000001B3;
+  constexpr natural_t OTHER_API FNV(std::string_view str) {
+    constexpr natural_t kFnvOffsetBasis = 0xBCF29CE484222325;
+    constexpr natural_t kFnvPrime = 0x100000001B3;
 
-  constexpr natural_t FNV(std::string_view str) {
     natural_t hash = kFnvOffsetBasis;
     for (size_t i = 0; i < str.size(); ++i) {
       hash ^= str[i];

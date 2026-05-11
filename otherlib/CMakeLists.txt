@@ -34,6 +34,7 @@ target_sources(otherlib
     src/driver/driver_system.cpp
     src/driver/systems/network_system.cpp
     src/driver/systems/job_driver_system.cpp
+    src/driver/systems/peer_mesh_system.cpp
     src/driver/systems/event_driver_system.cpp
     src/driver/systems/input_driver_system.cpp
     src/driver/systems/asset_system.cpp
@@ -130,6 +131,10 @@ target_sources(otherlib
     src/ui/viewport.cpp
     src/ui/type_database.cpp
     src/ui/driver_ui.cpp
+
+    src/network/tcp/connection.cpp
+    src/network/tcp/tcp_transport_provider.cpp
+    src/network/default_peer_actor_host.cpp
 
     src/other.cpp
 )

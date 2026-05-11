@@ -11,7 +11,7 @@
 
 namespace other {
 
-  class vm_system : public core_system<vm_system> {
+  class OTHER_CLASS vm_system : public core_system<vm_system> {
    public:
     vm_system(driver* driver_instance)
         : core_system<vm_system>(driver_instance, static_cast<uint32_t>(driver_system_type::VM_DRIVER_SYSTEM)) {}

@@ -10,9 +10,12 @@ namespace other {
 
   class peer_actor_host;
 
-  class peer_actor {
+  class OTHER_CLASS peer_actor {
    public:
     struct peer_metadata {
+      natural_t connection_id = 0;
+      uint32_t role = 0;
+      std::string_view transport_name;
     };
     peer_actor(natural_t peer_id, peer_actor_host* host)
         : peer_id(peer_id), host(host) {}

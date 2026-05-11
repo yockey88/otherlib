@@ -9,12 +9,11 @@
 #include "core/coroutine.hpp"
 #include "core/job_system.hpp"
 
-#include "driver/driver.hpp"
 #include "driver/systems/core_system.hpp"
 
 namespace other {
 
-  class job_driver_system : public core_system<job_driver_system> {
+  class OTHER_CLASS job_driver_system : public core_system<job_driver_system> {
    public:
     job_driver_system(driver* driver_instance)
         : core_system(driver_instance, driver_system_type::JOB_DRIVER_SYSTEM) {}

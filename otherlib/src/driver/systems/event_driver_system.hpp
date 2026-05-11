@@ -12,7 +12,7 @@
 
 namespace other {
 
-  class event_driver_system : public core_system<event_driver_system> {
+  class OTHER_CLASS event_driver_system : public core_system<event_driver_system> {
    public:
     event_driver_system(driver* driver_instance)
         : core_system(driver_instance, driver_system_type::EVENT_DRIVER_SYSTEM) {}

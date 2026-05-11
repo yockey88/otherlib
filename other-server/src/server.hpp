@@ -16,8 +16,8 @@ namespace other {
         : driver(cmd, config) {}
     virtual ~server() = default;
 
-    void on_early_initialize(const command_line& cmd) override;
-    void on_initialize(const command_line& cmd) override;
+    void on_early_initialize() override;
+    void on_initialize() override;
     void on_shutdown() override;
 
    private:

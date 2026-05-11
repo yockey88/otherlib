@@ -55,9 +55,10 @@ target_sources(other_core
 		src/serialization/parser_combinators.cpp
 		src/serialization/serialization.cpp
 
+		src/message/message_bus.cpp
+		src/message/messages.cpp
+
 		src/thread/thread_safety.cpp
-		src/thread/message.cpp
-		src/thread/message_bus.cpp
 		src/thread/thread.cpp
 
 		src/event/event_system.cpp
