@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <unordered_map>
 
+#include "core/enum_formatter.hpp"
 #include "core/formatting.hpp"
 #include "core/logger.hpp"
 

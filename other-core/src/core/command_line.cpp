@@ -9,6 +9,7 @@
 #include <args.hxx>
 
 #include "core/defines.hpp"
+#include "core/enum_formatter.hpp"
 #include "core/profiler.hpp"
 
 namespace other {

@@ -3,9 +3,9 @@
  **/
 #include "core/value.hpp"
 
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
-
-#include "value.hpp"
+#include "core/value_type_size.hpp"
 
 namespace other {
 

@@ -24,7 +24,7 @@ target_include_directories(other_physics
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/physics>
 )
-
+target_precompile_headers(other_physics REUSE_FROM other_core)
 target_link_directories(other_physics 
   PUBLIC
     $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}> 

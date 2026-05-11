@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_FILE_FILE_HANDLE_HPP
 #define OTHER_CORE_FILE_FILE_HANDLE_HPP
 
+#include "core/enum_formatter.hpp"
 #include "core/ref_counted.hpp"
 #include "file/file_watcher.hpp"
 

@@ -3,6 +3,8 @@
  **/
 #include "model/vertex.hpp"
 
+#include "core/enum_formatter.hpp"
+
 namespace other {
   namespace {
 

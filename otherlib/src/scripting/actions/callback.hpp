@@ -8,8 +8,6 @@
 #include <type_traits>
 #include <vector>
 
-#include <sol/sol.hpp>
-
 #include "core/value.hpp"
 
 #include "dotnet/dotnet_object.hpp"
@@ -17,6 +15,7 @@
 
 #include "forward.hpp"
 #include "table.hpp"
+
 
 namespace other {
 

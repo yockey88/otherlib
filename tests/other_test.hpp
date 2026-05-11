@@ -5,6 +5,7 @@
 
 #include "core/arena.hpp"
 #include "core/command_line.hpp"
+#include "core/logger_sinks.hpp"
 #include "core/version.hpp"
 
 #include "physics/physics_environment.hpp"
@@ -67,8 +68,8 @@ namespace other {
       // clang-format on
 
       std::string loggers[] = { "other-core-log" };
-      log->register_sink(loggers, sink);
-      log->register_sink(loggers, file_sink);
+      log->register_sink(loggers, &sink);
+      log->register_sink(loggers, &file_sink);
       CORE_LOG_INFO("Other Environment version {}", OTHER_ENVIRONMENT_VERSION_STRING);
     }
 

@@ -3,9 +3,9 @@
  **/
 #include "physics/backends/jolt_api.hpp"
 
-#include "math/matrix.hpp"
-
-#include "physics_world/physics_world.hpp"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 // clang-format off
 #define JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
@@ -30,6 +30,10 @@
 #include <Jolt/Renderer/DebugRenderer.h>
 #include <Jolt/Renderer/DebugRendererSimple.h>
 // clang-format on
+
+#include "math/matrix.hpp"
+
+#include "physics_world/physics_world.hpp"
 
 namespace other {
   namespace Layers {

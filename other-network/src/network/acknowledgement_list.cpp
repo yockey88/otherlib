@@ -3,6 +3,8 @@
  **/
 #include "network/acknowledgement_list.hpp"
 
+#include "core/enum_formatter.hpp"
+
 namespace other {
 
   void acknowledgement_list::poll() {

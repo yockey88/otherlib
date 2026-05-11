@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <map>
 #include <span>
 
 #if __has_include(<stacktrace>)
@@ -15,28 +16,15 @@
 #endif
 #include <string>
 
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_sinks.h>
-#include <spdlog/sinks/wincolor_sink.h>
-#include <spdlog/spdlog.h>
+#include <spdlog/common.h>
+#include <spdlog/logger.h>
 
 #include "core/defines.hpp"
 #include "core/subsystem.hpp"
 
 namespace other {
 
-  class config_table;
-
-  using sink_fn = std::function<spdlog::sink_ptr(const config_table& config)>;
-  struct log_sink {
-    uint16_t id;
-    std::string sink_name;
-    std::string sink_pattern;
-    spdlog::level::level_enum level;
-
-    sink_fn sink_factory = nullptr;
-  };
-
+  struct log_sink;
   class logger : public subsystem<logger> {
    public:
     logger() = default;
@@ -49,7 +37,7 @@ namespace other {
     }
 
     natural_t create_logger(const std::string& name, spdlog::level::level_enum level);
-    void register_sink(const std::span<const std::string> logs, const log_sink& sink);
+    void register_sink(const std::span<const std::string> logs, log_sink* sink);
 
     void send_log(spdlog::level::level_enum level, natural_t log_idx, const std::string_view msg);
 

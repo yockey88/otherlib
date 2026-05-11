@@ -6,6 +6,7 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 
+#include "core/logger_sinks.hpp"
 #include "event/event_system.hpp"
 
 #include "object/camera_component.hpp"
@@ -37,7 +38,7 @@ namespace other {
       };
 
       std::string loggers[] = { "other-editor-log", "other-core-log" };
-      log->register_sink(loggers, console_log_sink);
+      log->register_sink(loggers, &console_log_sink);
     }
 
     get_event_system()->add_listener("scene.scene-activated", [this](const value& data) {

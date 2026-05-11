@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "core/arena_allocator.hpp"
-#include "core/logger.hpp"
 #include "core/ref_counted.hpp"
 
 namespace other {
@@ -114,7 +113,6 @@ namespace other {
         U* p = old_ref.object.load(std::memory_order_acquire);
         return ref<T>(reinterpret_cast<T*>(p));
       }
-      OTHER_ASSERT(false, "No viable conversion to construct ref with");
     }
 
     template <typename U>

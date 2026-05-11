@@ -7,90 +7,15 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <format>
 #include <new>
 #include <optional>
 #include <span>
 #include <string>
 #include <type_traits>
 
-#define GLM_ENABLE_EXPERIMENTAL
-// #define GLM_FORCE_QUAT_DATA_WXYZ
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <magic_enum/magic_enum.hpp>
+#include <glm/fwd.hpp>
 
-#include <sol/sol.hpp>
-
-#define bit(x) (1ll << x)
-
-#ifdef OTHER_CLIENT
-  #define OTHER_DYNAMIC_DRIVER
-#elif defined(OTHER_APPLICATION) && !defined(OTHER_TEST_ENVIRONMENT)
-  #define OTHER_STATIC_DRIVER
-#elif defined(OTHER_PLUGIN_LIBRARY)
-  #define OTHER_PLUGIN_DYNAMIC_LIBRARY
-#else
-  #define OTHER_STATIC_LIBRARY
-#endif
-
-#ifdef OTHER_ENVIRONMENT_WINDOWS
-  #if defined(OTHER_CLIENT) || defined(OTHER_PLUGIN_LIBRARY)
-    #define OTHER_API __declspec(dllexport)
-    #define OTHER_CLASS __declspec(dllexport)
-    #define OTHER_ALIGN(x) __declspec(align(x))
-  #else
-    #define OTHER_API
-    #define OTHER_CLASS
-    #define OTHER_ALIGN(x)
-  #endif  // OTHER_CLIENT
-#endif    // OTHER_ENVIRONMENT_WINDOWS
-
-#ifdef OTHER_ENVIRONMENT_LINUX
-  #ifdef OTHER_CLIENT
-    #define OTHER_API __attribute__((visibility("default")))
-    #define OTHER_CLASS __attribute__((visibility("default")))
-    #define OTHER_ALIGN(x) __attribute__((aligned(x)))
-  #else
-    #define OTHER_API
-    #define OTHER_CLASS
-    #define OTHER_ALIGN(x)
-  #endif  // OTHER_CLIENT
-#endif    // OTHER_ENVIRONMENT_LINUX
-
-#ifdef OTHER_ENVIRONMENT_DEBUG
-  #define OTHER_DEBUG_BUILD
-#endif  // !OTHER_DEBUG
-
-#ifdef OTHER_ENVIRONMENT_RELEASE
-  #define OTHER_RELEASE_BUILD
-#endif  // !OTHER_RELEASE
-
-#ifdef OTHER_ENVIRONMENT_PROFILE
-  #define OTHER_PROFILE_BUILD
-#endif  // !OTHER_PROFILE
-
-#ifdef OTHER_ENVIRONMENT_PROFILED
-  #define OTHER_PROFILED_BUILD
-#endif  // !OTHER_PROFILED
-
-#ifdef OTHER_ABORT_USE_STD_TERMINATE
-  #include <cstdlib>
-  #define OTHER_ABORT() std::terminate()
-#else
-  #define OTHER_ABORT() std::abort()
-#endif  // !OTHER_ABORT_USE_STD_TERMINATE
-
-#ifndef OTHER_API
-  #error "OTHER_API is not defined. Please define it for your platform."
-#endif  // !OTHER_API
-#ifndef OTHER_CLASS
-  #error "OTHER_CLASS is not defined. Please define it for your platform."
-#endif  // !OTHER_CLASS
-#ifndef OTHER_ALIGN
-  #error "OTHER_ALIGN is not defined. Please define it for your platform."
-#endif  // !OTHER_ALIGN
+#include "core/build_config.hpp"
 
 namespace other {
 
@@ -274,37 +199,6 @@ namespace other {
     }
   }
 
-  static inline size_t get_value_type_size(value_type type) {
-    switch (type) {
-      case value_type::OEBOOL: return sizeof(bool);
-      case value_type::CHAR: return sizeof(char);
-      case value_type::STRING: return 0;  /// string size is dynamic
-      case value_type::INT8: return sizeof(int8_t);
-      case value_type::INT16: return sizeof(int16_t);
-      case value_type::INT32: return sizeof(int32_t);
-      case value_type::INT64: return sizeof(int64_t);
-      case value_type::UINT8: return sizeof(uint8_t);
-      case value_type::UINT16: return sizeof(uint16_t);
-      case value_type::UINT32: return sizeof(uint32_t);
-      case value_type::UINT64: return sizeof(uint64_t);
-      case value_type::FLOAT: return sizeof(float);
-      case value_type::DOUBLE: return sizeof(double);
-      case value_type::VEC2: return sizeof(glm::vec2);
-      case value_type::VEC3: return sizeof(glm::vec3);
-      case value_type::VEC4: return sizeof(glm::vec4);
-      case value_type::IVEC2: return sizeof(glm::ivec2);
-      case value_type::IVEC3: return sizeof(glm::ivec3);
-      case value_type::IVEC4: return sizeof(glm::ivec4);
-      case value_type::MAT2: return sizeof(glm::mat2);
-      case value_type::MAT3: return sizeof(glm::mat3);
-      case value_type::MAT4: return sizeof(glm::mat4);
-      case value_type::QUATERNION: return sizeof(glm::quat);
-      case value_type::OPAQUE_HANDLE: return sizeof(void*);
-      case value_type::BYTE_BUFFER: return 0;
-      default: return sizeof(void*);
-    }
-  }
-
   static inline value_type get_value_type_from_string(const std::string_view type_str) {
     std::string lc_str = std::string{ type_str };
     std::ranges::transform(lc_str, lc_str.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -410,22 +304,5 @@ namespace other {
   void launch_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
 }  // namespace other
-
-namespace std {
-
-  template <typename T>
-    requires std::is_enum_v<T>
-  struct formatter<T> : public formatter<std::string_view> {
-    template <typename FormatContext>
-    auto format(const T& value, FormatContext& ctx) const {
-      auto enum_name = magic_enum::enum_name(value);
-      if (enum_name.empty()) {
-        return formatter<std::string_view>::format("Invalid enum value", ctx);
-      }
-      return formatter<std::string_view>::format(enum_name, ctx);
-    }
-  };
-
-}  // namespace std
 
 #endif  // OTHER_CORE_CORE_DEFINES_HPP
