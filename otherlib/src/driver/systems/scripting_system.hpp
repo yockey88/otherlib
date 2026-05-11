@@ -13,7 +13,7 @@ namespace other {
 
   class lua_script;
 
-  class scripting_system : public core_system<scripting_system> {
+  class OTHER_CLASS scripting_system : public core_system<scripting_system> {
    public:
     scripting_system(driver* driver_instance)
         : core_system(driver_instance, static_cast<uint32_t>(driver_system_type::SCRIPTING_DRIVER_SYSTEM)) {}

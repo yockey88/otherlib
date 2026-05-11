@@ -9,7 +9,7 @@
 #include "driver/systems/core_system.hpp"
 namespace other {
 
-  class input_driver_system : public core_system<input_driver_system> {
+  class OTHER_CLASS input_driver_system : public core_system<input_driver_system> {
    public:
     input_driver_system(driver* driver_instance)
         : core_system(driver_instance, static_cast<uint32_t>(driver_system_type::INPUT_DRIVER_SYSTEM)) {}

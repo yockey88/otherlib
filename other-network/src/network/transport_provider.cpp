@@ -9,9 +9,22 @@
 
 namespace other {
 
+  natural_t transport_provider::hash() const {
+    std::string n = name();
+    if (n.empty()) {
+      CORE_LOG_ERROR("Transport provider has an empty name, which is not allowed. Please override the name() method to return a non-empty name.");
+      return 0;
+    }
+
+    auto lowercase_name = n | std::views::transform([](unsigned char c) { return std::tolower(c); }) | std::ranges::to<std::string>();
+    return FNV(lowercase_name);
+  }
+
   void transport_provider::initialize(network_thread* host_thread, io* net_io) {
     OTHER_ASSERT(host_thread != nullptr, "Host thread pointer is null when initializing transport provider.");
     OTHER_ASSERT(net_io != nullptr, "Network IO pointer is null when initializing transport provider.");
+    OTHER_ASSERT(this->host_thread == nullptr, "Transport provider is already initialized with a host thread.");
+    OTHER_ASSERT(this->net_io == nullptr, "Transport provider is already initialized with a network IO context.");
 
     this->host_thread = host_thread;
     this->net_io = net_io;
@@ -21,14 +34,19 @@ namespace other {
 
   void transport_provider::tick() {
     OTHER_ASSERT(net_io != nullptr, "Network IO pointer is null when ticking transport provider.");
+    OTHER_ASSERT(host_thread != nullptr, "Host thread pointer is null when ticking transport provider.");
     on_tick();
   }
 
   void transport_provider::begin_shutdown() {
+    OTHER_ASSERT(net_io != nullptr, "Network IO pointer is null when beginning shutdown of transport provider.");
+    OTHER_ASSERT(host_thread != nullptr, "Host thread pointer is null when beginning shutdown of transport provider.");
     on_begin_shutdown();
   }
 
   void transport_provider::shutdown() {
+    OTHER_ASSERT(net_io != nullptr, "Network IO pointer is null when shutting down transport provider.");
+    OTHER_ASSERT(host_thread != nullptr, "Host thread pointer is null when shutting down transport provider.");
     on_shutdown();
 
     registered_listeners.clear();

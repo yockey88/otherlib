@@ -45,19 +45,14 @@ namespace other {
 
     {
       std::lock_guard lock(providers_mutex);
-      auto provider_itr = std::ranges::find_if(providers, [transport_hash](transport_provider* p) {
+      for (auto* p : providers) {
         OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-        return p->hash() == transport_hash;
-      });
-      if (provider_itr == providers.end()) {
-        CORE_LOG_ERROR("Failed to register transport listener: no provider found with hash {:#010x}", transport_hash);
-        return;
+        if (p->hash() == transport_hash) {
+          CORE_LOG_DEBUG(" - registering sink ID {} with provider '{}'", id, p->name());
+          p->register_packet_sink(sink);
+          return;
+        }
       }
-
-      transport_provider* provider = *provider_itr;
-      OTHER_ASSERT(provider != nullptr, "Provider with hash {:#010x} is null", transport_hash);
-      CORE_LOG_DEBUG(" - found provider '{}' for transport hash {:#010x}", provider->name(), transport_hash);
-      provider->register_packet_sink(sink);
     }
   }
 
@@ -120,10 +115,12 @@ namespace other {
 
   void network_thread::on_initialize() {
     bus.register_thread();
-
-    for (auto* p : providers) {
-      OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-      p->initialize(this, &network_io);
+    {
+      std::lock_guard lock(providers_mutex);
+      for (auto* p : providers) {
+        OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
+        p->initialize(this, &network_io);
+      }
     }
   }
 
@@ -133,11 +130,14 @@ namespace other {
   }
 
   void network_thread::on_shutdown() {
-    for (auto* p : providers) {
-      OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-      p->shutdown();
+    {
+      std::lock_guard lock(providers_mutex);
+      for (auto* p : providers) {
+        OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
+        p->shutdown();
+      }
+      providers.clear();
     }
-    providers.clear();
 
     message shutdown_msg(NOTIFICATION, NETWORK_THREAD_SHUTDOWN_COMPLETE);
     send_to_driver(std::move(shutdown_msg));
@@ -154,9 +154,12 @@ namespace other {
       // we should only actually close these on shutdown
       for (natural_t connection_id : recently_closed_connections) {
         CORE_LOG_DEBUG("Cleaning up connection ID {}", connection_id);
-        for (auto& provider : providers) {
-          OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
-          provider->connection_removed(connection_id);
+        {
+          std::lock_guard lock(providers_mutex);
+          for (auto& provider : providers) {
+            OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
+            provider->connection_removed(connection_id);
+          }
         }
 
         active_connections.erase(connection_id);
@@ -169,9 +172,12 @@ namespace other {
       current_state.shutdown_ready = connections_shutdown && listeners_shutdown;
     }
 
-    for (auto& provider : providers) {
-      OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
-      provider->tick();
+    {
+      std::lock_guard lock(providers_mutex);
+      for (auto& provider : providers) {
+        OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
+        provider->tick();
+      }
     }
 
     auto msg = bus.receive_message(microseconds(1));

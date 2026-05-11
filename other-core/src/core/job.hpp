@@ -12,7 +12,7 @@
 
 namespace other {
 
-  class job : public ref_counted {
+  class OTHER_CLASS job : public ref_counted {
    public:
     enum class priority {
       LOW,

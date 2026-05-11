@@ -10,7 +10,7 @@ namespace other {
 
   class peer_actor_host;
 
-  class peer_actor {
+  class OTHER_CLASS peer_actor {
    public:
     struct peer_metadata {
       natural_t connection_id = 0;

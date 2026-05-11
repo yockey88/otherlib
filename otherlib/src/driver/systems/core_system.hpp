@@ -13,7 +13,7 @@ namespace other {
 
   /// CRTP base class for core driver systems
   template <typename D>
-  class core_system : public driver_system {
+  class OTHER_CLASS core_system : public driver_system {
    public:
     core_system(driver* driver_instance, uint32_t id)
         : driver_system(driver_instance, id) {}

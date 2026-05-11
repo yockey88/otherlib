@@ -9,7 +9,7 @@
 
 namespace other {
 
-  class packet_sink {
+  class OTHER_CLASS packet_sink {
    public:
     packet_sink(job_system& jobs, const std::string& name = "UnnamedPacketSink")
         : jobs(jobs), name(name) {}

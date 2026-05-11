@@ -36,13 +36,8 @@ namespace other {
 
     driver_kernel_ptr = make_scope<driver_kernel>(this);
     driver_kernel_ptr->load_profile(registry.get_current_profile());
-    driver_kernel_ptr->load_plugins_from_config(this);
     on_system_initialization();
 
-    {
-      PROFILE_SECTION("driver::initialize--on_early_initialize");
-      on_early_initialize();
-    }
     driver_kernel_ptr->initialize();
 
     get_event_system()->register_event("ls.driver-systems");
@@ -85,12 +80,14 @@ namespace other {
   void driver::shutdown() {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("driver::shutdown");
+
     {
       PROFILE_SECTION("driver::shutdown--client-on_shutdown");
       on_shutdown();
     }
 
     driver_kernel_ptr->shutdown();
+    driver_kernel_ptr->unload_plugins();
   }
 
   std::pair<driver*, std::string> driver::create(const command_line& cmd, const config_table& config) {
@@ -257,12 +254,19 @@ namespace other {
       // net_system.register_transport_provider(make_scope<loopback_transport_provider>());
     }
 
+    {
+      PROFILE_SECTION("driver::initialize--on_early_initialize");
+      on_early_initialize();
+    }
+
+    driver_kernel_ptr->load_plugins_from_config(this);
     load_client();
 
     {
       PROFILE_SECTION("driver::confirm_initialization--on_initialize");
       on_initialize();
     }
+
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 

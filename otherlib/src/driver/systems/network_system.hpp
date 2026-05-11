@@ -22,7 +22,7 @@
 
 namespace other {
 
-  class network_system : public core_system<network_system> {
+  class OTHER_CLASS network_system : public core_system<network_system> {
    public:
     enum role {
       SERVER,
