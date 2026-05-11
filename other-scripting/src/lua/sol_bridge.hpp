@@ -7,7 +7,6 @@
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/load_result.hpp>
 #include <sol/protected_function_result.hpp>
-#include <sol/sol.hpp>
 
 namespace other {
 

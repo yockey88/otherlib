@@ -6,6 +6,7 @@
 #include <imgui/backends/imgui_impl_sdl3.h>
 
 #include "core/defines.hpp"
+#include "core/enum_formatter.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 

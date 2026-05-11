@@ -46,10 +46,6 @@ target_sources(other_core
 		src/math/vector.cpp
 		src/math/matrix.cpp
 		src/math/dynamic_vector.cpp
-		
-		src/command/command_parser.cpp
-		src/command/command_compiler.cpp
-		src/command/command_executor.cpp
 
 		src/serialization/reflection.cpp
 		src/serialization/parser_combinators.cpp
@@ -73,6 +69,15 @@ target_include_directories(other_core
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/core>		
 )
+
+target_precompile_headers(other_core PUBLIC
+  <algorithm> <cstdint> <filesystem> <format> <memory>
+  <optional> <span> <string> <string_view> <type_traits> <vector>
+  src/core/build_config.hpp
+  src/core/defines.hpp
+  src/core/logger.hpp
+)
+
 foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
   target_include_directories(other_core PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
 endforeach()

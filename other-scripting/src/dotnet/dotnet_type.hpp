@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <sol/sol.hpp>
-
 #include "dotnet/dotnet_attribute.hpp"
 #include "dotnet/dotnet_field.hpp"
 #include "dotnet/dotnet_method.hpp"
@@ -68,8 +66,6 @@ namespace other {
       }
       return dotnet_fields;
     }
-
-    sol::table create_lua_descriptor(sol::state& lua_state);
 
     int32_t dotnet_id = -1;
 

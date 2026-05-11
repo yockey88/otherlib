@@ -4,7 +4,7 @@
 #ifndef OTHER_CORE_PROFILER_HPP
 #define OTHER_CORE_PROFILER_HPP
 
-#include "core/defines.hpp"
+#include "core/build_config.hpp"
 
 #ifdef OTHER_PROFILE_BUILD
   #define OTHER_INCLUDE_PROFILING

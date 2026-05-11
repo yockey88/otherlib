@@ -9,6 +9,7 @@
 #include <asio/asio/ip/address_v4.hpp>
 
 #include "core/defines.hpp"
+#include "core/enum_formatter.hpp"
 #include "core/time.hpp"
 
 #include "network/network_error.hpp"

@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_INPUT_INPUT_ACTION_HPP
 #define OTHER_CORE_INPUT_INPUT_ACTION_HPP
 
+#include <functional>
 #include <string>
 
 #include "core/defines.hpp"

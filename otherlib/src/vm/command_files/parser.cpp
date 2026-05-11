@@ -6,6 +6,7 @@
 #include <ranges>
 #include <span>
 
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
 #include "vm/opcode.hpp"

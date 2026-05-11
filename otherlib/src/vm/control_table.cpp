@@ -3,6 +3,7 @@
  **/
 #include "vm/control_table.hpp"
 
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
 #include "vm/driver_interface.hpp"

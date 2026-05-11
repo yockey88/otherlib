@@ -4,8 +4,6 @@
 #ifndef OTHER_SCENE_OBJECT_SCENE_OBJECT_HPP
 #define OTHER_SCENE_OBJECT_SCENE_OBJECT_HPP
 
-#include <sol/sol.hpp>
-
 #include "core/defines.hpp"
 #include "serialization/reflection.hpp"
 

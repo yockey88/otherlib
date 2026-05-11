@@ -3,6 +3,8 @@
  **/
 #include "network_thread_test_runner.hpp"
 
+#include "core/enum_formatter.hpp"
+
 #include "gtest/gtest.h"
 
 namespace other {

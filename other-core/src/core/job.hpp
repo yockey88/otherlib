@@ -5,6 +5,7 @@
 #define OTHER_CORE_CORE_JOB_HPP
 
 #include <atomic>
+#include <functional>
 #include <mutex>
 
 #include "core/defines.hpp"

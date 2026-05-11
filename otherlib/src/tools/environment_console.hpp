@@ -4,6 +4,7 @@
 #ifndef OTHERLIB_TOOLS_ENVIRONMENT_CONSOLE_HPP
 #define OTHERLIB_TOOLS_ENVIRONMENT_CONSOLE_HPP
 
+#include <array>
 #include <mutex>
 #include <queue>
 

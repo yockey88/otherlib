@@ -3,6 +3,10 @@
  **/
 #include "physics_world/physics_body.hpp"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
+
 #include "math/matrix.hpp"
 
 namespace other {

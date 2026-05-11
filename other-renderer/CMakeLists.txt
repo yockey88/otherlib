@@ -37,7 +37,7 @@ target_include_directories(other_renderer
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/renderer>
 )
-
+target_precompile_headers(other_renderer REUSE_FROM other_core)
 target_link_directories(other_renderer PUBLIC 
   $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}>
   $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>

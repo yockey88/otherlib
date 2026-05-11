@@ -12,6 +12,7 @@
 #include <imgui/backends/imgui_impl_opengl3.h>
 #include <imgui/backends/imgui_impl_sdl3.h>
 
+#include "core/enum_formatter.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"

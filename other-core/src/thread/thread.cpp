@@ -5,6 +5,7 @@
 
 #include <atomic>
 
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
 #include "message/message_fields.hpp"

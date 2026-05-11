@@ -5,6 +5,7 @@
 
 #include <imgui/imgui.h>
 
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
 #include "SDL3/SDL_keycode.h"
