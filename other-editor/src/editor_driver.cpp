@@ -20,7 +20,7 @@
 
 namespace other {
 
-  void editor_driver::on_initialize(const command_line& cmd) {
+  void editor_driver::on_initialize() {
     CORE_LOG_INFO("Initialized editor driver.");
 
     {

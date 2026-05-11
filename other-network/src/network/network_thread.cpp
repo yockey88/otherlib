@@ -22,6 +22,8 @@ namespace other {
   void network_thread::register_provider(transport_provider* provider) {
     OTHER_ASSERT(provider != nullptr, "Cannot register null provider");
     std::lock_guard lock(providers_mutex);
+
+    provider->initialize(this, &network_io);
     providers.push_back(provider);
     CORE_LOG_DEBUG(" - network system registered transport provider '{}' ({:#010x})", provider->name(), provider->hash());
   }

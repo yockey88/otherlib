@@ -24,7 +24,7 @@ namespace other {
 
   }  // namespace
 
-  void server::on_early_initialize(const command_line& cmd) {
+  void server::on_early_initialize() {
     // http server
     {
       opt<filepath> directory = std::nullopt;
@@ -120,7 +120,7 @@ namespace other {
     });
   }
 
-  void server::on_initialize(const command_line& cmd) {
+  void server::on_initialize() {
     // http port
     config_http_port = configuration().get_value("server.main-http-port", uint16_t(8080));
     binding_point endpoint{ network_system::network_context::kLocalhostAddress, config_http_port };

@@ -10,6 +10,8 @@
 
 #include "thread/thread_safety.hpp"
 
+#include "network/tcp/tcp_transport_provider.hpp"
+
 namespace other {
 
   void bind_otherlib_driver_lua_functions(lua_host& lua_host, driver* host_driver);
@@ -34,6 +36,13 @@ namespace other {
 
     driver_kernel_ptr = make_scope<driver_kernel>(this);
     driver_kernel_ptr->load_profile(registry.get_current_profile());
+    driver_kernel_ptr->load_plugins_from_config(this);
+    on_system_initialization();
+
+    {
+      PROFILE_SECTION("driver::initialize--on_early_initialize");
+      on_early_initialize();
+    }
     driver_kernel_ptr->initialize();
 
     get_event_system()->register_event("ls.driver-systems");
@@ -236,14 +245,24 @@ namespace other {
   }
 
   void driver::confirm_initialization() {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     CORE_LOG_DEBUG("Confirming initialization...");
     on_initialization_confirm();
 
+    if (network_enabled()) {
+      OTHER_ASSERT(driver_kernel_ptr->has_core_system<network_system>(), "Network system is not initialized in driver kernel.");
+      auto& net_system = driver_kernel_ptr->get_core_system<network_system>();
+      net_system.register_transport_provider(make_scope<tcp_transport_provider>());
+      // net_system.register_transport_provider(make_scope<udp_transport_provider>());
+      // net_system.register_transport_provider(make_scope<loopback_transport_provider>());
+    }
+
     load_client();
 
-    driver_kernel_ptr->load_plugins_from_config(this);
-    on_system_initialization();
-
+    {
+      PROFILE_SECTION("driver::confirm_initialization--on_initialize");
+      on_initialize();
+    }
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
@@ -412,11 +431,6 @@ namespace other {
   }
 
   void driver::load_client() {
-    {
-      PROFILE_SECTION("driver::initialize--client-on_early_initialize");
-      on_early_initialize(cmd_line);
-    }
-
     if (!subsystem<scripting_environment>::inert) {
       PROFILE_SECTION("driver::initialize--client-run-envrc");
 
@@ -438,11 +452,6 @@ namespace other {
           CORE_LOG_ERROR("Failed to run driver environment runtime script: {}", envrc_path);
         }
       }
-    }
-
-    {
-      PROFILE_SECTION("driver::initialize--client-on_initialize");
-      on_initialize(cmd_line);
     }
   }
 

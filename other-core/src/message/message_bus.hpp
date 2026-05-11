@@ -23,6 +23,8 @@ namespace other {
     opt<message> receive_message(microseconds timeout = microseconds(10));
     void send_message(message&& msg);
 
+    bool has_message();
+
    private:
     struct thread_data {
       scope<message_channel> tx_channel = nullptr;

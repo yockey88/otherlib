@@ -207,8 +207,8 @@ namespace other {
 
     void http_request_received(natural_t id, const http::request& req);
 
-    virtual void on_early_initialize(const command_line& cmd) {}
-    virtual void on_initialize(const command_line& cmd) = 0;
+    virtual void on_early_initialize() {}
+    virtual void on_initialize() = 0;
     virtual void on_system_initialization() {}
     virtual void on_initialization_confirm() {}
     virtual void on_update() {}
