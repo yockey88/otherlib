@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "core/defines.hpp"
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 #include "core/ref.hpp"
 #include "core/value_storage.hpp"

@@ -13,6 +13,7 @@
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
 #include "core/value.hpp"
+#include "core/value_type_size.hpp"
 
 #include "dotnet/behavior_descriptor.hpp"
 #include "dotnet/dotnet_field.hpp"

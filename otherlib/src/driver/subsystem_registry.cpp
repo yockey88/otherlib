@@ -5,6 +5,7 @@
 
 #include "core/arena.hpp"
 #include "core/logger.hpp"
+#include "core/logger_sinks.hpp"
 #include "core/subsystem.hpp"
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
@@ -331,8 +332,8 @@ namespace other {
       // clang-format on
 
       std::string loggers[] = { "other-core-log" };
-      log->register_sink(loggers, sink);
-      log->register_sink(loggers, file_sink);
+      log->register_sink(loggers, &sink);
+      log->register_sink(loggers, &file_sink);
     }
 
     void initialize_arena(const config_table* config) {
