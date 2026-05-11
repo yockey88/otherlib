@@ -81,14 +81,13 @@ namespace other {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("driver::shutdown");
 
-    driver_kernel_ptr->unload_plugins();
-
     {
       PROFILE_SECTION("driver::shutdown--client-on_shutdown");
       on_shutdown();
     }
 
     driver_kernel_ptr->shutdown();
+    driver_kernel_ptr->unload_plugins();
   }
 
   std::pair<driver*, std::string> driver::create(const command_line& cmd, const config_table& config) {

@@ -115,10 +115,12 @@ namespace other {
 
   void network_thread::on_initialize() {
     bus.register_thread();
-
-    for (auto* p : providers) {
-      OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-      p->initialize(this, &network_io);
+    {
+      std::lock_guard lock(providers_mutex);
+      for (auto* p : providers) {
+        OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
+        p->initialize(this, &network_io);
+      }
     }
   }
 
@@ -128,11 +130,14 @@ namespace other {
   }
 
   void network_thread::on_shutdown() {
-    for (auto* p : providers) {
-      OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
-      p->shutdown();
+    {
+      std::lock_guard lock(providers_mutex);
+      for (auto* p : providers) {
+        OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
+        p->shutdown();
+      }
+      providers.clear();
     }
-    providers.clear();
 
     message shutdown_msg(NOTIFICATION, NETWORK_THREAD_SHUTDOWN_COMPLETE);
     send_to_driver(std::move(shutdown_msg));
@@ -149,9 +154,12 @@ namespace other {
       // we should only actually close these on shutdown
       for (natural_t connection_id : recently_closed_connections) {
         CORE_LOG_DEBUG("Cleaning up connection ID {}", connection_id);
-        for (auto& provider : providers) {
-          OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
-          provider->connection_removed(connection_id);
+        {
+          std::lock_guard lock(providers_mutex);
+          for (auto& provider : providers) {
+            OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
+            provider->connection_removed(connection_id);
+          }
         }
 
         active_connections.erase(connection_id);
@@ -164,9 +172,12 @@ namespace other {
       current_state.shutdown_ready = connections_shutdown && listeners_shutdown;
     }
 
-    for (auto& provider : providers) {
-      OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
-      provider->tick();
+    {
+      std::lock_guard lock(providers_mutex);
+      for (auto& provider : providers) {
+        OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
+        provider->tick();
+      }
     }
 
     auto msg = bus.receive_message(microseconds(1));

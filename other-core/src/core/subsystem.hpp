@@ -165,6 +165,28 @@ namespace other {
    protected:
     subsystem() = default;
 
+    T& get_instance() {
+      T* ptr = get();
+      if (inert) {
+        unactive_subsystem_initialization_error(typeid(T).name());
+        throw std::runtime_error(std::format("Attempted to access uninitialized subsystem {}", typeid(T).name()));
+      } else if (ptr == nullptr) {
+        throw std::runtime_error(std::format("Subsystem {} is not initialized", typeid(T).name()));
+      }
+      return *ptr;
+    }
+
+    static T& instance_ref() {
+      T* ptr = get();
+      if (inert) {
+        unactive_subsystem_initialization_error(typeid(T).name());
+        throw std::runtime_error(std::format("Attempted to access uninitialized subsystem {}", typeid(T).name()));
+      } else if (ptr == nullptr) {
+        throw std::runtime_error(std::format("Subsystem {} is not initialized", typeid(T).name()));
+      }
+      return *ptr;
+    }
+
    private:
     static T* instance;
 
