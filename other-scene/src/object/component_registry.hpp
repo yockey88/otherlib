@@ -35,7 +35,7 @@ namespace other {
 
     template <typename T>
       requires std::is_base_of_v<component, T>
-    void remove_component(T& comp) {
+    void remove_component() {
       if (!registered_component_types.contains(typeid(T).hash_code())) {
         CORE_LOG_WARN("Component of type '{}' is not registered in the component registry.", typeid(T).name());
         return;

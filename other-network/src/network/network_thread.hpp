@@ -4,141 +4,110 @@
 #ifndef OTHER_NETWORK_NETWORK_NETWORK_THREAD_HPP
 #define OTHER_NETWORK_NETWORK_NETWORK_THREAD_HPP
 
-#include <thread>
-
 #include <asio/asio.hpp>
 
-#include "thread/message.hpp"
-#include "thread/message_bus.hpp"
 #include "thread/thread.hpp"
 
-#include "network/session.hpp"
-#include "network/udp_stream.hpp"
+#include "network/acknowledgement_list.hpp"
+#include "network/connection_route.hpp"
+#include "network/io.hpp"
+#include "network/listener_route.hpp"
+
+#include "message/message_bus.hpp"
+#include "message/message_fields.hpp"
+
+#include "peer-mesh/packet_sink.hpp"
 
 namespace other {
 
-  class network_thread : public thread {
+  class transport_provider;
+
+  class OTHER_CLASS network_thread : public thread {
    public:
+    struct target {
+      natural_t id = 0;
+      packet_sink* sink = nullptr;
+    };
     network_thread(message_bus& bus)
         : thread("OtherServer-Network-Thread"),
-          bus(bus), net_context{ std::make_unique<network_context>() } {}
+          bus(bus), network_io{} {}
     virtual ~network_thread() = default;
 
-    void report_connection_closed(natural_t connection_id, integer_t session_id);
-    void report_connection_error(session* cli, const asio::error_code& ec);
-
-    void report_stream_closed(natural_t connection_id, integer_t stream_id);
-    void report_stream_error(udp_stream* strm, const asio::error_code& ec);
-
-    void report_connection_check_in_begin(natural_t connection_id, integer_t session_id);
-    void report_connection_check_in(natural_t connection_id, integer_t session_id);
-
-    inline integer_t get_next_session_id() {
-      static integer_t next_id = 1;
-      return next_id++;
+    inline natural_t generate_connection_id() {
+      natural_t new_id = connection_id_counter.fetch_add(1, std::memory_order_relaxed);
+      CORE_LOG_TRACE("[NEW CONN ID: {}]", new_id);
+      return new_id;
     }
 
-    message_bus& get_message_bus() {
-      return bus;
-    }
+    void register_provider(transport_provider* provider);
+    void register_packet_sink(natural_t id, packet_sink* sink);
 
-    asio::io_context& get_io_context() {
-      return net_context->io_context;
-    }
+    void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);
+    void attach_connection_listener(natural_t connection_id, natural_t id, packet_sink* sink);
+    void attach_connection_listener(natural_t connection_id, natural_t sink_id);
 
-    struct connection_key {
-      natural_t connection_number = 0;
-      integer_t id = 0;
-    };
+    void register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle);
+    void register_listener_route(natural_t listener_id, transport_provider* provider, void* opaque_handle);
+    void mark_route_recently_closed(natural_t connection_id);
 
-   protected:
-    message_bus& bus;
+    void send_to_driver(message&& msg);
 
+    inline bool is_shutdown_pending() const { return current_state.shutdown_pending; }
+    inline message_bus& get_message_bus() { return bus; }
+    inline asio::io_context& get_io_context() { return network_io.context; }
+
+   private:
     struct state {
+      std::mutex mutex;
+
+      natural_t shutdown_ack_id = 0;
       bool shutdown_pending = false;
+      bool shutdown_ready = false;
       bool shutdown_complete = false;
     };
+
+    message_bus& bus;
     state current_state{};
+    io network_io;
 
-    struct network_context {
-      asio::io_context io_context;
-      asio::ip::tcp::acceptor acceptor;
+    std::atomic<natural_t> connection_id_counter = 1;
 
-      network_context()
-          : acceptor(io_context) {}
-    };
-    std::unique_ptr<network_context> net_context = nullptr;
+    std::map<natural_t, connection_route> active_connections;
+    std::map<natural_t, listener_route> active_listeners;
+    std::deque<natural_t> recently_closed_connections;
 
-    struct connection {
-      connection_key connection_id;
-      binding_point endpoint;
-      scope<session> active_session = nullptr;
-    };
-    std::deque<connection> pending_connections;
-    std::unordered_map<integer_t, connection> client_endpoints;
+    std::mutex providers_mutex;
+    std::mutex sink_mutex;
+    std::vector<transport_provider*> providers;
+    std::vector<target> packet_sinks;
 
-    using event_callback = std::function<void(integer_t)>;
-    std::unordered_map<integer_t, event_callback> check_in_listeners;
-
-    struct udp_binding {
-      connection_key connection_id;
-      binding_point endpoint;
-
-      scope<udp_stream> stream = nullptr;
-    };
-    uint16_t next_local_udp_port = 60000;
-    integer_t next_udp_binding_id = 1;
-    std::map<natural_t, udp_binding> udp_bindings;
-
-    std::queue<connection_key> session_closures;
-    std::queue<connection_key> stream_closures;
-
-    void handle_session_closures();
-    void handle_stream_closures();
-
-    void handle_session_closed(connection_key session_id);
-    void handle_stream_closed(connection_key stream_id);
+    acknowledgement_list ack_list;
 
     void on_initialize() override;
     void on_start() override;
     void on_shutdown() override;
 
     void pump_thread() override;
-
-    void accept_connections(asio::ip::tcp::socket&& socket, const asio::error_code& ec);
-
-    void open_session_and_check_in_at(integer_t session_id, uint16_t port);
-    void open_session_and_connect_to(const binding_point& bp);
+    void process_message(opt<message>&& msg);
 
     void handle_control_ping(message&& msg);
-
     void handle_command_shutdown_request(message&& msg);
-    void handle_command_session_listen_for(message&& msg);
-    void handle_command_session_connect_to(message&& msg);
-    void handle_command_session_check_in(message&& msg);
-    void handle_command_session_tx_message(message&& msg);
-    void handle_command_stream_send_udp_datagram(message&& msg);
-    void handle_command_environment_load_scene(message&& msg);
-    void on_acknowledge_environment_load_scene(message&& msg);
+    void handle_command_listen_connection(message&& msg);
+    void handle_command_connect_connection(message&& msg);
+    void handle_command_close_connection(message&& msg);
+    void handle_command_tx_data(message&& msg);
 
-    void handle_request_session_check_in(message&& msg);
-    void handle_request_new_udp_stream_binding(message&& msg);
+    bool immediately_acknowledge_message(const message_header& header);
+    void handle_request_ack_process_msg(message&& msg);
 
     static inline natural_t max_connections = 1024;
     natural_t current_connections = 0;
+
+    microseconds get_message_timeout() override {
+      return microseconds(10);
+    }
   };
 
 }  // namespace other
 
-namespace std {
-
-  template <>
-  struct formatter<other::network_thread::connection_key> : public formatter<std::string_view> {
-    auto format(const other::network_thread::connection_key& key, format_context& ctx) const {
-      return formatter<std::string_view>::format(std::format("[{},{}]", key.connection_number, key.id), ctx);
-    }
-  };
-
-}  // namespace std
-
-#endif  // OTHER_NETWORK_THREAD_HPP
+#endif  // OTHER_NETWORK_NETWORK_THREAD_HPP

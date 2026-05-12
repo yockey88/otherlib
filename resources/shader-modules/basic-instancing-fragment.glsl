@@ -5,7 +5,9 @@ struct material {
   vec3 specular_color;
   float specular_reflect;
 
+  vec3 emissive_color;
   float emissivity;
+  
   float transparency;
   float shininess;
 };

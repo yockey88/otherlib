@@ -6,6 +6,7 @@
 #include <imgui/backends/imgui_impl_sdl3.h>
 
 #include "core/defines.hpp"
+#include "core/enum_formatter.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 
@@ -126,7 +127,7 @@ namespace other {
       return { 0, resource_type::EMPTY };
     }
 
-    CORE_LOG_DEBUG("Created resource of type: {}, ID: {}", type, handle.id);
+    CORE_LOG_DEBUG("      Created resource of type: {}, ID: {}", type, handle.id);
     set_resource_name(handle, name);
     return handle;
   }

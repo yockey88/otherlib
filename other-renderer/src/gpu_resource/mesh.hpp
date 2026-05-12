@@ -92,14 +92,4 @@ namespace other {
 
 }  // namespace other
 
-// OTHER_REFLECT(
-//   other::mesh,
-//   field(vertex_buffer_handle, other::attr::serializable()),
-//   field(index_buffer_handle, other::attr::serializable()),
-//   field(prim_type, other::attr::serializable()),
-//   field(vert_count, other::attr::serializable()),
-//   field(index_count, other::attr::serializable()),
-//   field(attributes, other::attr::serializable())
-// )
-
 #endif  // OTHER_RENDERER_GPU_RESOURCE_MESH_HPP

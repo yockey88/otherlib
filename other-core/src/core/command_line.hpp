@@ -30,6 +30,8 @@ namespace other {
     /// rest of command line arguments without specific options
     std::vector<std::string> args;
 
+    opt<filepath> project_file = std::nullopt;  // Path to the project file to load on startup, if applicable
+
     static command_line parse(int* argc, char* argv[]);
   };
 

@@ -36,6 +36,17 @@ namespace other {
     current_mode = file_mode::CLOSED;
   }
 
+  std::string remote_file::read_all_as_string() {
+    PROFILE_SECTION("remote_file::read_all_as_string");
+
+    if (fetch_state != remote_fetch_state::COMPLETE) {
+      CORE_LOG_WARN("Attempting to read remote file '{}' before fetch is complete", file_name);
+      return {};
+    }
+
+    return std::string(cached_data.begin(), cached_data.end());
+  }
+
   std::vector<uint8_t> remote_file::read_all() {
     PROFILE_SECTION("remote_file::read_all");
 

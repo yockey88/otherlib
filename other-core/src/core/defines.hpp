@@ -7,107 +7,27 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <format>
+#include <new>
 #include <optional>
-#include <ranges>
+#include <span>
 #include <string>
 #include <type_traits>
 
-#define GLM_ENABLE_EXPERIMENTAL
-// #define GLM_FORCE_QUAT_DATA_WXYZ
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <magic_enum/magic_enum.hpp>
+#include <glm/fwd.hpp>
 
-#define bit(x) (1ll << x)
-
-#ifdef OTHER_APPLICATION
-  #define OTHER_STATIC_DRIVER
-#else
-  #define OTHER_DYNAMIC_DRIVER
-#endif
-
-#ifdef OTHER_ENVIRONMENT_WINDOWS
-  #ifdef OTHER_CLIENT
-    #ifndef OTHER_API
-      #define OTHER_API extern "C" __declspec(dllexport)
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS __declspec(dllexport)
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x) __declspec(align(x))
-    #endif
-  #endif
-  #ifdef OTHER_APPLICATION
-    #ifndef OTHER_API
-      #define OTHER_API static inline
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x)
-    #endif
-  #else
-    #ifndef OTHER_API
-      #define OTHER_API
-    #endif
-    #ifndef OTHER_CLASS
-      #define OTHER_CLASS
-    #endif
-    #ifndef OTHER_ALIGN
-      #define OTHER_ALIGN(x)
-    #endif
-  #endif  // OTHER_CLIENT
-#endif    // OTHER_ENVIRONMENT_WINDOWS
-
-#ifdef OTHER_ENVIRONMENT_LINUX
-  #ifdef OTHER_CLIENT
-    #define OTHER_API __attribute__((visibility("default")))
-    #define OTHER_CLASS __attribute__((visibility("default")))
-    #define OTHER_ALIGN(x) __attribute__((aligned(x)))
-  #else
-    #define OTHER_API
-    #define OTHER_CLASS
-    #define OTHER_ALIGN(x)
-  #endif  // OTHER_CLIENT
-#endif    // OTHER_ENVIRONMENT_LINUX
-
-#ifdef OTHER_ENVIRONMENT_DEBUG
-  #define OTHER_DEBUG_BUILD
-#endif  // !OTHER_DEBUG
-
-#ifdef OTHER_ENVIRONMENT_RELEASE
-  #define OTHER_RELEASE_BUILD
-#endif  // !OTHER_RELEASE
-
-#ifdef OTHER_ENVIRONMENT_PROFILE
-  #define OTHER_PROFILE_BUILD
-#endif  // !OTHER_PROFILE
-
-#ifdef OTHER_ENVIRONMENT_PROFILED
-  #define OTHER_PROFILED_BUILD
-#endif  // !OTHER_PROFILED
-
-#ifndef OTHER_API
-  #error "OTHER_API is not defined. Please define it for your platform."
-#endif  // !OTHER_API
-#ifndef OTHER_CLASS
-  #error "OTHER_CLASS is not defined. Please define it for your platform."
-#endif  // !OTHER_CLASS
-#ifndef OTHER_ALIGN
-  #error "OTHER_ALIGN is not defined. Please define it for your platform."
-#endif  // !OTHER_ALIGN
+#include "core/build_config.hpp"
 
 namespace other {
 
-  template <typename T>
-  concept not_string_or_pointer = !std::is_pointer_v<std::remove_cvref_t<T>> && !std::is_same_v<std::remove_cvref_t<T>, std::string> && !std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
+  constexpr static size_t kCacheLineSize = std::hardware_destructive_interference_size;
+
   template <typename T>
   concept is_pointer_type = std::is_pointer_v<std::remove_cvref_t<T>>;
 
+  template <typename T>
+  concept is_opaque_pointer = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, void*>;
+  template <typename T>
+  concept is_byte_buffer_type = std::is_same_v<std::remove_cvref_t<T>, std::vector<uint8_t>> || std::is_same_v<std::remove_cvref_t<T>, std::span<const uint8_t>>;
   template <typename T>
   concept is_character_array_ptr = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, char*>;
   template <typename T>
@@ -121,11 +41,13 @@ namespace other {
     is_character_array<T>;
   template <typename T>
   constexpr inline bool kIsStringType = is_string_type<T>;
+  template <typename T>
+  concept not_string_buffer_or_pointer = !is_pointer_type<T> && !is_string_type<T> && !is_byte_buffer_type<T> && !is_opaque_pointer<T>;
+  template <typename T>
+  concept string_buffer_table_or_pointer = !not_string_buffer_or_pointer<T>;
 
   template <typename T>
-  concept is_opaque_pointer = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, void*>;
-  template <typename T>
-  concept is_acceptable_value_type = is_character_array<T> || !is_opaque_pointer<T>;
+  concept is_acceptable_value_type = is_character_array<T> || !is_opaque_pointer<T> || is_byte_buffer_type<T>;
 
   enum exit_code : uint8_t {
     SUCCESS = 0,
@@ -213,6 +135,7 @@ namespace other {
     /// user types
     USER_TYPE,
     OPAQUE_HANDLE,
+    BYTE_BUFFER,
 
     /// error/misc
     EMPTY_TYPE,
@@ -269,38 +192,10 @@ namespace other {
       return value_type::QUATERNION;
     } else if constexpr (std::is_same_v<no_cvref_t, void*>) {
       return value_type::OPAQUE_HANDLE;
+    } else if constexpr (is_byte_buffer_type<T>) {
+      return value_type::BYTE_BUFFER;
     } else {
       return value_type::USER_TYPE;
-    }
-  }
-
-  static inline size_t get_value_type_size(value_type type) {
-    switch (type) {
-      case value_type::OEBOOL: return sizeof(bool);
-      case value_type::CHAR: return sizeof(char);
-      case value_type::STRING: return 0;  /// string size is dynamic
-      case value_type::INT8: return sizeof(int8_t);
-      case value_type::INT16: return sizeof(int16_t);
-      case value_type::INT32: return sizeof(int32_t);
-      case value_type::INT64: return sizeof(int64_t);
-      case value_type::UINT8: return sizeof(uint8_t);
-      case value_type::UINT16: return sizeof(uint16_t);
-      case value_type::UINT32: return sizeof(uint32_t);
-      case value_type::UINT64: return sizeof(uint64_t);
-      case value_type::FLOAT: return sizeof(float);
-      case value_type::DOUBLE: return sizeof(double);
-      case value_type::VEC2: return sizeof(glm::vec2);
-      case value_type::VEC3: return sizeof(glm::vec3);
-      case value_type::VEC4: return sizeof(glm::vec4);
-      case value_type::IVEC2: return sizeof(glm::ivec2);
-      case value_type::IVEC3: return sizeof(glm::ivec3);
-      case value_type::IVEC4: return sizeof(glm::ivec4);
-      case value_type::MAT2: return sizeof(glm::mat2);
-      case value_type::MAT3: return sizeof(glm::mat3);
-      case value_type::MAT4: return sizeof(glm::mat4);
-      case value_type::QUATERNION: return sizeof(glm::quat);
-      case value_type::OPAQUE_HANDLE: return sizeof(void*);
-      default: return sizeof(void*);
     }
   }
 
@@ -354,6 +249,10 @@ namespace other {
       return value_type::MAT4;
     } else if (lc_str == "quaternion" || lc_str == "quat") {
       return value_type::QUATERNION;
+    } else if (lc_str == "opaque-handle") {
+      return value_type::OPAQUE_HANDLE;
+    } else if (lc_str == "byte-buffer") {
+      return value_type::BYTE_BUFFER;
     } else {
       return value_type::USER_TYPE;
     }
@@ -385,6 +284,7 @@ namespace other {
       case value_type::MAT4: return "mat4";
       case value_type::QUATERNION: return "quaternion";
       case value_type::OPAQUE_HANDLE: return "opaque-handle";
+      case value_type::BYTE_BUFFER: return "byte-buffer";
       case value_type::USER_TYPE: return "user-type";
       default: return "unknown";
     }
@@ -404,22 +304,5 @@ namespace other {
   void launch_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
 }  // namespace other
-
-namespace std {
-
-  template <typename T>
-    requires std::is_enum_v<T>
-  struct formatter<T> : public formatter<std::string_view> {
-    template <typename FormatContext>
-    auto format(const T& value, FormatContext& ctx) const {
-      auto enum_name = magic_enum::enum_name(value);
-      if (enum_name.empty()) {
-        return formatter<std::string_view>::format("Invalid enum value", ctx);
-      }
-      return formatter<std::string_view>::format(enum_name, ctx);
-    }
-  };
-
-}  // namespace std
 
 #endif  // OTHER_CORE_CORE_DEFINES_HPP

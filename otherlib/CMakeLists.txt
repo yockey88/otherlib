@@ -1,6 +1,6 @@
 set(OTHERLIB_VERSION_MAJOR "0")
 set(OTHERLIB_VERSION_MINOR "0")
-set(OTHERLIB_VERSION_PATCH "1")
+set(OTHERLIB_VERSION_PATCH "2")
 configure_version_header(
   "otherlib_version.hpp"
   "OTHERLIB"
@@ -31,29 +31,58 @@ target_sources(otherlib
     src/plugin/library_handle.cpp
     src/plugin/plugin.cpp
       
+    src/driver/driver_system.cpp
+    src/driver/systems/network_system.cpp
+    src/driver/systems/job_driver_system.cpp
+    src/driver/systems/peer_mesh_system.cpp
+    src/driver/systems/event_driver_system.cpp
+    src/driver/systems/input_driver_system.cpp
+    src/driver/systems/asset_system.cpp
+    src/driver/systems/scripting_system.cpp
+    src/driver/systems/rendering_system.cpp
+    src/driver/systems/vm_system.cpp
+    src/driver/systems/scene_system.cpp
+    src/driver/systems/project_system.cpp
+    src/driver/systems/driver_plugin.cpp
+    src/driver/driver_kernel.cpp
+    src/driver/subsystem_registry.cpp
     src/driver/driver.cpp
 
-    src/rendering-pipelines/empty_pipeline.cpp
-    src/rendering-pipelines/default_instancing_pipeline.cpp
-    src/rendering-pipelines/scriptable_pipeline.cpp
+    src/ocl/object_parser.cpp
 
-    src/scripting/dotnet_bindings.cpp
-    src/scripting/lua_bindings.cpp
+    src/project/project.cpp
+
+    src/scripting/bindings.cpp
     src/scripting/scene_interface.cpp
-    src/scripting/binding_utils/bind_glm_vectors.cpp
-    src/scripting/binding_utils/bind_glm_matrices.cpp
-    src/scripting/binding_utils/bind_math_types_lua.cpp
-    src/scripting/binding_utils/bind_rendering_types_lua.cpp
+    src/scripting/binding_descriptor.cpp
+    src/scripting/lua_bindings/bind_glm_vectors.cpp
+    src/scripting/lua_bindings/bind_glm_matrices.cpp
+    src/scripting/lua_bindings/bind_math_types_lua.cpp
+    src/scripting/lua_bindings/bind_rendering_types_lua.cpp
+    src/scripting/dotnet_bindings/environment_api_bindings.cpp
+    src/scripting/dotnet_bindings/core_bindings.cpp
+    src/scripting/dotnet_bindings/ui_bindings.cpp
+    src/scripting/dotnet_bindings/driver_bindings.cpp
+    src/scripting/dotnet_bindings/scene_bindings.cpp
+    src/scripting/dotnet_bindings/scene_object_bindings.cpp
+    src/scripting/dotnet_bindings/component_bindings.cpp
+    src/scripting/dotnet_bindings/event_bindings.cpp
+    src/scripting/dotnet_bindings/input_bindings.cpp
+    src/scripting/dotnet_bindings/network_bindings.cpp
+    src/scripting/interfaces/networking_interfaces.cpp
+    src/scripting/interface_registry.cpp
+    src/scripting/other_abi.cpp
 
     src/scripting/actions/action.cpp
     src/scripting/actions/callback.cpp
 
-    src/scripting/execution_node.cpp
-    src/scripting/execution_graph.cpp
     src/scripting/execution_nodes/source_sink_nodes.cpp
     src/scripting/execution_nodes/arithmetic_nodes.cpp
     src/scripting/execution_nodes/linear_algebra_nodes.cpp
     src/scripting/execution_nodes/transform_nodes.cpp
+    src/scripting/execution_node.cpp
+    src/scripting/execution_graph.cpp
+    src/scripting/environment_interface.cpp
 
     src/vm/opcode.cpp
     src/vm/driver_interface.cpp
@@ -73,32 +102,39 @@ target_sources(otherlib
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp
 
-    src/ui/inspector_widgets.cpp
-    src/ui/hierarchy_widgets.cpp
-    src/ui/console_widgets.cpp
-    src/ui/asset_browser_widgets.cpp
-    src/ui/script_property_widget.cpp
-    src/ui/ui_widgets.cpp
-    src/ui/node_editor_canvas_node.cpp
-    src/ui/console_input_node.cpp
-    src/ui/console_history_node.cpp
-    src/ui/scene_hierarchy_node.cpp
-    src/ui/property_inspector_node.cpp
-    src/ui/asset_browser_tree_node.cpp
-    src/ui/asset_browser_grid_node.cpp
-    src/ui/asset_editor_node.cpp
-    src/ui/node_editor.cpp
-    src/ui/console.cpp
-    src/ui/viewport.cpp
-    src/ui/type_database.cpp
-    src/ui/asset_browser.cpp
-    src/ui/scene_hierarchy.cpp
-    src/ui/asset_editor_registry.cpp
-    src/ui/asset_editor.cpp
-    src/ui/driver_ui.cpp
+    src/ui/script/script_property_widget.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp
+    src/ui/asset-browser/asset_browser_widgets.cpp
+    src/ui/asset-browser/asset_browser_tree_node.cpp
+    src/ui/asset-browser/asset_browser_grid_node.cpp
+    src/ui/asset-browser/asset_browser.cpp
+    src/ui/asset-editor/asset_editor_registry.cpp
+    src/ui/asset-editor/asset_editor.cpp
+    src/ui/asset-editor/asset_editor_node.cpp
+    src/ui/console/console_widgets.cpp
+    src/ui/console/console_input_node.cpp
+    src/ui/console/console_history_node.cpp
+    src/ui/console/console.cpp
+    src/ui/node-editor/node_editor_canvas_node.cpp
+    src/ui/node-editor/node_editor.cpp
+    src/ui/scene-hierarchy/hierarchy_widgets.cpp
+    src/ui/scene-hierarchy/scene_hierarchy_node.cpp
+    src/ui/scene-hierarchy/scene_hierarchy.cpp
+    src/ui/menu-bar/menu_item.cpp
+    src/ui/menu-bar/menu.cpp
+    src/ui/menu-bar/menu_bar.cpp
+    src/ui/property_inspector_node.cpp
+    src/ui/inspector_widgets.cpp
+    src/ui/ui_widgets.cpp
+    src/ui/viewport.cpp
+    src/ui/type_database.cpp
+    src/ui/driver_ui.cpp
+
+    src/network/tcp/connection.cpp
+    src/network/tcp/tcp_transport_provider.cpp
+    src/network/default_peer_actor_host.cpp
 
     src/other.cpp
 )
@@ -120,9 +156,14 @@ target_include_directories(otherlib
     $<BUILD_INTERFACE:${PLATFORM_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
 )
+target_precompile_headers(otherlib REUSE_FROM other_core)
 
 foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
-  target_include_directories(otherlib PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
+  target_include_directories(otherlib 
+    PUBLIC 
+      $<BUILD_INTERFACE:${extern_dir}>
+      $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>    
+  )
 endforeach()
 
 target_link_directories(otherlib PUBLIC 
@@ -139,6 +180,15 @@ target_link_libraries(otherlib PUBLIC other_scene other_audio other_renderer oth
 add_library(otherlib_main STATIC src/other_main.cpp)
 target_link_libraries(otherlib_main PUBLIC otherlib)
 target_include_directories(otherlib_main PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
+)
+
+add_executable(otherlib_driver)
+target_sources(otherlib_driver PRIVATE src/other_main.cpp)
+target_compile_definitions(otherlib_driver PRIVATE OTHER_CLIENT)
+target_link_libraries(otherlib_driver PUBLIC otherlib)
+target_include_directories(otherlib_driver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
 )

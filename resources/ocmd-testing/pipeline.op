@@ -1,0 +1,131 @@
+-- comment
+
+/-- 
+  long 
+  comment
+--/
+
+object shader geometry_pass_shader
+begin
+  vertex_path = "resources/basic-instancing-gbuffer.vert"
+  fragment_path = "resources/basic-instancing-gbuffer.frag"
+  defines = { "MAX_OBJECTS" = "256"  "MAX_BONES" = "256" }
+end
+
+object shader shadow_map_shader
+begin
+  vertex_path = "resources/shadow-map-instancing.vert"
+  fragment_path = "resources/shadow-map.frag"
+end
+
+object shader shading_pass_shader 
+begin
+  vertex_path = "resources/fullscreen-quad.vert"
+  fragment_path = "resources/deferred-shading.frag"
+end
+
+object shader screen_shader
+begin
+  vertex_path = "resources/fullscreen-quad.vert"
+  fragment_path = "resources/to-screen.frag"
+end
+
+object pass geometry
+begin
+  type = render_pass,
+  shader_name = "geometry_pass_shader",
+  inputs = [
+    material_buffer : 0,
+    model_buffer : 1,
+    camera_buffer : 2,
+    bone_buffer : 3,
+  ],
+  outputs = [
+    color_texture : color,
+    normal_texture : color,
+    position_texture : color,
+  ],
+  executor = draw_scene,
+end
+
+object pass shadow_map
+begin
+  pass_type = render_pass,
+  shader_name = "shadow_map_shader",
+  inputs = [
+    model_buffer : 1,
+  ],
+  output = [
+    ambient_shadow_map : depth
+  ],
+  execturo = draw_scene,
+end,
+
+object pass shading
+begin
+  pass_type = render_pass,
+  shader_name = shading_pass_shader,
+  clear_color = vec4(0.2f, 0.2f, 0.2f, 1.f),
+  inputs = [
+    color_texture : color,
+    normal_texture : color,
+    position_texture : color,
+    ambient_shadow_map : depth,
+    direction_light_buffer : depth,
+    point_light_buffer : depth,
+    camera_buffer : depth,
+  ],
+  outputs = [
+    screen_texture : color,
+  ],
+  executor =  fullscreen_quad,
+  uniforms = [
+    OE_gbuff_albedo : 0,
+    OE_gbuff_normal : 1,
+    OE_gbuff_position : 2,
+    OE_gbuff_map : 3
+  ]
+end,
+
+object buffer camera_buffer : uniform_buffer dynamic @camera
+
+object pipeline default_instancing
+begin
+  buffers = [
+    camera_buffer,
+    buffer model_buffer : uniform_buffer dynamic @model
+    buffer bone_buffer  : uniform_buffer dynamic @bone
+    buffer material_buffer : storage_buffer dynamic @material
+    buffer point_light_buffer : storage_buffer dynamic @point_light
+    buffer direction_light_buffer : storage_buffer dynamic @direction_light
+  ],
+  textures = [
+    texture color_texture : texture_2d rgba32u
+    texture normal_texture : texture_2d rgba16f
+    texture position_texture : texture_2d rgba16f
+    texture ambient_shadow_map : texture_2d depthf
+    texture screen_texture : texture_2d rgba16f @screen
+  ],
+  shaders = [
+
+  ],
+  passes = [
+    geometry,
+    shadow_map,
+    shading,
+    pass to_screen
+    begin
+      pass_type = render_pass,
+      shader_name = "screen_shader",
+      create_framebuffer = false,
+      inputs = [
+        screen_texture: color
+      ],
+      execturo = fullscreen_quad,
+      uniforms = [
+        OE_texture : 0,
+        OE_exposure : 1,
+      ]
+    end,
+  ],
+end

@@ -29,7 +29,22 @@ namespace other {
 
     natural_t get_id_of_scene(const std::string_view name) const;
 
+    scene* find_scene(const filepath& scene_path);
+    scene* find_scene(const std::string& name);
+
+    template <typename Fn>
+      requires std::invocable<Fn, const scene&> && std::same_as<std::invoke_result_t<Fn, const scene&>, bool>
+    scene* find_scene(Fn fn) {
+      return g.find_item([&fn](const scene& s) { return fn(s); });
+    }
+
+    scene* get_scene(const std::string_view id);
     scene* get_scene(uint64_t id);
+
+    void clear();
+
+    auto begin() { return g.begin(); }
+    auto end() { return g.end(); }
 
    private:
     graph<scene> g = {};

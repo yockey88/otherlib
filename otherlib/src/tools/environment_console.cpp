@@ -3,6 +3,8 @@
  **/
 #include "tools/environment_console.hpp"
 
+#include <ranges>
+
 #include "lua/lua_script.hpp"
 
 namespace other {
@@ -60,7 +62,7 @@ namespace other {
 
         bool is_command = false;
         if (console_lua_script != nullptr) {
-          is_command = console_lua_script->call_function<bool>("is_command", input.input_text);
+          is_command = console_lua_script->call_function<bool>("__is_command", input.input_text);
         }
 
         int32_t type_flags = input.message_type;
@@ -75,7 +77,7 @@ namespace other {
         });
 
         if (is_command && console_lua_script != nullptr) {
-          console_lua_script->call_function<void>("handle_console_command", std::string(input.input_text));
+          console_lua_script->call_function<void>("__handle_console_command", std::string(input.input_text));
         } else {
         }
       }
@@ -104,17 +106,21 @@ namespace other {
     if (!console_initialized) {
       return;
     }
-    if (text.empty()) {
+
+    std::string trimmed_text = std::string(text) |
+      std::views::drop_while([](char c) { return std::isspace(static_cast<unsigned char>(c)); }) | std::views::reverse |
+      std::views::drop_while([](char c) { return std::isspace(static_cast<unsigned char>(c)); }) | std::views::reverse |
+      std::ranges::to<std::string>();
+    if (trimmed_text.empty()) {
       return;
     }
-    if (text.length() >= kInputBufferSize) {
-      CORE_LOG_ERROR("Environment console input text exceeds maximum length of {} characters.", kInputBufferSize - 1);
-      return;
+    if (trimmed_text.length() >= kInputBufferSize) {
+      trimmed_text = trimmed_text.substr(0, kInputBufferSize - 1);
     }
 
     std::lock_guard lock(input_mutex);
     input_queue.push({
-      .input_text = std::string{ text },
+      .input_text = std::move(trimmed_text),
       .message_type = type,
       .timestamp = time_point,
     });

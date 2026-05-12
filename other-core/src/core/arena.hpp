@@ -10,54 +10,29 @@
 #endif
 #include <mutex>
 
+#include "core/arena_storage.hpp"
+#include "core/page.hpp"
 #include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 
 namespace other {
 
-  struct arena_storage {
-    static inline constexpr size_t kPageSize = 2 * 64 * 4096u;  // 128 MB
-    static inline constexpr size_t kAlignment = 16;
-    static inline constexpr size_t kMaxPages = 64;
-    static inline constexpr size_t kMaxMemoryAllowed = kMaxPages * kPageSize;
-
-    struct page {
-      size_t cursor = 0;
-      /// \todo this alignment is not not correct for all types and causes
-      ///       issue with things like asio::io_context (if we don't include it here it will be 1 byte aligned)
-      alignas(kAlignment) uint8_t storage[kPageSize] = {};
-
-      void* data() { return &storage[0]; }
-      const void* data() const { return &storage[0]; }
-
-      void* get_ptr_at(size_t offset);
-    };
-
-    page* allocate_page(size_t idx);
-    void free_page(size_t index);
-
-    page* get_page(size_t idx);
-
-   private:
-#ifdef OTHER_TEST_ENVIRONMENT
-    friend class arena_test;
-#endif
-    page* pages[kMaxPages];
-  };
+  struct page;
 
   class arena : public subsystem<arena> {
    public:
-    using page = arena_storage::page;
-
     arena() = default;
     ~arena();
 
-    static void* allocate(size_t size, size_t alignment = arena_storage::kAlignment);
+    static void* allocate(size_t size, size_t alignment = page::kAlignment);
     static void free(void* ptr, size_t size);
     static void free(void* ptr);
 
-    void* request_region(size_t size, size_t alignment = arena_storage::kAlignment);
+    void* request_region(size_t size, size_t alignment = page::kAlignment);
     void free_region(void* ptr);
+
+    static page* request_memory_page();
+    static void free_memory_page(page* region);
 
     page* get_current_page();
 
@@ -65,8 +40,8 @@ namespace other {
     PROFILE_MUTEX_TYPE(std::mutex, arena_mutex);
     page* current_page = nullptr;
 
-   private:
     arena_storage storage;
+    // free_list free_list;
     size_t page_allocation_cursor = 0;
     size_t total_allocations = 0;
     size_t allocated_memory = 0;
@@ -74,6 +49,9 @@ namespace other {
 
     size_t live_allocations = 0;
 
+    size_t get_allocation_padding(size_t size, size_t alignment) const;
+    size_t check_page_and_recalculate_padding(size_t size, size_t alignment, size_t space_needed);
+    void* do_allocation(size_t size, size_t alignment, size_t padding, size_t final_size);
     void allocate_page();
 
 #ifdef OTHER_TEST_ENVIRONMENT
@@ -86,6 +64,9 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::arena);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::arena,
+  subsystem_profile::kLogger,
+);
 
 #endif  // OTHER_CORE_MEMORY_ARENA_HPP

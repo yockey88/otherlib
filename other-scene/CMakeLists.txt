@@ -1,10 +1,12 @@
 add_library(other_scene STATIC)
 target_sources(other_scene
     PRIVATE
+      src/tools/tool.cpp
+      src/tools/project_tool.cpp
+
       src/asset/asset_serialization.cpp
       src/asset/asset.cpp
       src/asset/asset_pipeline.cpp
-      src/asset/model_source_pipeline.cpp
       src/asset/asset_handler.cpp
 
       src/object/component.cpp
@@ -27,7 +29,7 @@ target_include_directories(other_scene
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scene>
 )
-
+target_precompile_headers(other_scene REUSE_FROM other_core)
 target_link_directories(other_scene PRIVATE ${OTHER_LIBRARIES_PATH})
 target_link_libraries(other_scene PRIVATE other_audio other_renderer other_physics other_scripting other_network other_core)
 

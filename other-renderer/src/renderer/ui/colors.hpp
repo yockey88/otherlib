@@ -45,6 +45,34 @@ namespace other {
         return colors::rgba_to_hex(c);
       }
 
+      static inline ImU32 im_col_with_multiplier(const ImColor& col, float factor) {
+        const ImVec4& color_val = col.Value;
+        float hue, sat, val;
+        ImGui::ColorConvertRGBtoHSV(color_val.x, color_val.y, color_val.z, hue, sat, val);
+        return ImColor::HSV(hue, sat, std::min(val * factor, 1.f));
+      }
+
+      static inline ImU32 im_col_with_saturation_multiplier(const ImColor& col, float factor) {
+        const ImVec4& col_raw = col.Value;
+        float hue, sat, val;
+        ImGui::ColorConvertRGBtoHSV(col_raw.x, col_raw.y, col_raw.z, hue, sat, val);
+        return ImColor::HSV(hue, std::min(sat * factor, 1.0f), val);
+      }
+
+      static inline glm::vec4 color_with_multiplier(const glm::vec4& col, float factor) {
+        ImU32 mod_col = im_col_with_multiplier({ col.r, col.g, col.b, col.a }, factor);
+        return hex_col_to_rgba(mod_col);
+      }
+
+      static inline glm::vec4 color_with_saturation_multiplier(const glm::vec4& col, float factor) {
+        ImU32 mod_col = im_col_with_saturation_multiplier({ col.r, col.g, col.b, col.a }, factor);
+        return hex_col_to_rgba(mod_col);
+      }
+
+      static inline glm::vec4 mute_by_factor(const glm::vec4& col, float factor) {
+        return color_with_saturation_multiplier(col, factor);
+      }
+
       //  Pure Hues
       constexpr inline glm::vec4 kRed = hex_col_to_rgba(IM_COL32(255, 0, 0, 255));
       constexpr inline glm::vec4 kBalancedRed = hex_col_to_rgba(IM_COL32(255, 50, 50, 255));
@@ -376,7 +404,7 @@ namespace other {
         constexpr inline glm::vec4 kScript = hex_col_to_rgba(IM_COL32(60, 190, 110, 255));
         constexpr inline glm::vec4 kAudio = hex_col_to_rgba(IM_COL32(210, 80, 170, 255));
         constexpr inline glm::vec4 kScene = hex_col_to_rgba(IM_COL32(225, 140, 50, 255));
-        constexpr inline glm::vec4 kSceneObject = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));
+        // constexpr inline glm::vec4 kSceneObject = hex_col_to_rgba(IM_COL32(235, 120, 90, 255));
         constexpr inline glm::vec4 kFolder = hex_col_to_rgba(IM_COL32(217, 122, 29, 255));
         constexpr inline glm::vec4 kUnknown = hex_col_to_rgba(IM_COL32(107, 107, 107, 255));
       }  // namespace asset

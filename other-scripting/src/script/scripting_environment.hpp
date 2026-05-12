@@ -22,6 +22,8 @@ namespace other {
     virtual ~scripting_environment() = default;
 
     void initialize_script_environment(const config_table& configuration);
+
+    void destroy_all_objects();
     void shutdown_script_environment();
 
     integer_t create_object(const std::string_view name);
@@ -45,10 +47,12 @@ namespace other {
     void reset_dotnet_environment();
 
     bool dotnet_object_has_attribute(integer_t id, const std::string_view attr_name);
+    bool dotnet_object_is_behavior(integer_t id);
 
     void attach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name);
     void detach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name);
     void detach_all_dotnet_behaviors(integer_t parent_id);
+    void invalidate_dotnet_script_objects_of_type(int32_t dotnet_type_id);
 
     template <typename... Args>
     void attach_dotnet_object(integer_t id, const std::string_view type_name, Args&&... ctor_args) {
@@ -59,18 +63,17 @@ namespace other {
       if (obj->dotnet_object != nullptr) {
         CORE_LOG_WARN("Script object with ID {} already has a .NET object attached. Detaching previous object.", id);
         detach_dotnet_object(id);
-      } else {
-        OTHER_ASSERT(obj->dotnet_object == nullptr, "Script object with ID {} already has a .NET object attached.", id);
+      }
 
-        CORE_LOG_DEBUG("[script {}] creating .NET object [{} {}]'", id, type_name, obj->name);
-        obj->dotnet_object = dotnet.instantiate_managed_object(type_name, obj->name, std::forward<Args>(ctor_args)...);
+      OTHER_ASSERT(obj->dotnet_object == nullptr, "Script object with ID {} already has a .NET object attached.", id);
 
+      CORE_LOG_DEBUG("[script {}] creating .NET object [{} {}]'", id, type_name, obj->name);
+      obj->dotnet_object = dotnet.instantiate_managed_object(type_name, obj->name, std::forward<Args>(ctor_args)...);
+      if (obj->dotnet_object != nullptr) {
         dotnet_register_native_object(id, type_name);
-        if (obj->dotnet_object == nullptr) {
-          CORE_LOG_ERROR("Failed to attach .NET object of type {} to script object with ID {}", type_name, id);
-          return;
-        }
         obj->dotnet_object->load_fields();
+      } else {
+        CORE_LOG_ERROR("Failed to attach .NET object of type {} to script object with ID {}", type_name, id);
       }
     }
 
@@ -169,6 +172,11 @@ namespace other {
 
    private:
     struct live_script_object {
+      enum {
+        LIVE,
+        DESTROYED
+      };
+      int8_t status = DESTROYED;
       size_t index = 0;
       script_object* object = nullptr;
     };
@@ -211,6 +219,13 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::scripting_environment);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::scripting_environment,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger,
+  subsystem_profile::kFileSystem,
+  subsystem_profile::kInputSystem,
+  subsystem_profile::kTypeDatabase,
+);
 
 #endif  // OTHER_SCRIPTING_SCRIPT_SCRIPTING_ENVIRONMENT_HPP

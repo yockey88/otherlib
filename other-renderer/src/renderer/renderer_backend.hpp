@@ -10,6 +10,7 @@
 #include "core/subsystem.hpp"
 
 #include "model/model.hpp"
+#include "model/model_source.hpp"
 #include "renderer/rendering_api.hpp"
 
 struct ImGuiContext;
@@ -18,6 +19,8 @@ namespace other {
   class renderer_backend : public subsystem<renderer_backend> {
    public:
     renderer_backend() = default;
+
+    static void on_set(renderer_backend* instance);
 
     SDL_Window* get_main_window() const { return rendering_api_instance->window_handle(); }
 
@@ -59,6 +62,11 @@ namespace other {
 
 }  // namespace other
 
-OTHER_SUBSYSTEM(other::renderer_backend);
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::renderer_backend,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger,
+  subsystem_profile::kFileSystem
+);
 
 #endif  // OTHER_RENDERER_RENDERER_RENDERER_BACKEND_HPP

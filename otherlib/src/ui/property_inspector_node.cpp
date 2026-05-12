@@ -23,14 +23,16 @@
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/asset_system.hpp"
+#include "driver/systems/scene_system.hpp"
 #include "ui/component_widget.hpp"
 #include "ui/inspector_widgets.hpp"
-#include "ui/script_property_widget.hpp"
+#include "ui/script/script_property_widget.hpp"
 
 IMGUI_REFLECT(glm::vec3, x, y, z);
 IMGUI_REFLECT(glm::quat, w, x, y, z);
 
-IMGUI_REFLECT(other::gpu::graphics_material, diffuse_color, diffuse_reflectivity, specular_color, specular_reflectivity, emissivity, transparency, shininess, padding);
+IMGUI_REFLECT(other::gpu::graphics_material, diffuse_color, diffuse_reflectivity, specular_color, specular_reflectivity, emissivity, transparency, shininess);
 
 IMGUI_REFLECT(other::scene_object, id, registry_id, name, visible);
 IMGUI_REFLECT(other::transform, local_position, local_rotation_quat, local_scale);
@@ -106,7 +108,8 @@ namespace other {
 
       bool changed = false;
       OTHER_ASSERT(driver_ptr != nullptr, "Driver is null");
-      asset_handler* handler = driver_ptr->get_asset_manager().get();
+      auto& assets = driver_ptr->get_kernel().get_core_system<asset_system>();
+      asset_handler* handler = assets.get_asset_manager().get();
       OTHER_ASSERT(handler != nullptr, "Asset handler is null");
       if (is_open) {
         changed = component_widget<T>{}(component_name, *comp, active_scene, object, handler, driver_ptr);
@@ -141,7 +144,8 @@ namespace other {
       } else {
         natural_t obj_id = selected_object_ids.front();
 
-        auto* active_scene = driver_ptr->get_active_scene();
+        auto& scenes = driver_ptr->get_kernel().get_core_system<scene_system>();
+        auto* active_scene = scenes.get_active_scene();
         OTHER_ASSERT(active_scene != nullptr, "Active scene is null, cannot render properties.");
 
         scene_object& obj = active_scene->get_object(obj_id);
@@ -162,7 +166,9 @@ namespace other {
           "Graphics Object", active_scene, &obj,
           [](render_component* comp, scene_object* object, scene* active_scene, driver* drvr) {
             natural_t new_asset_id = comp->model_asset_id;
-            auto& handler = drvr->get_asset_manager();
+
+            auto& assets = drvr->get_kernel().get_core_system<asset_system>();
+            auto& handler = assets.get_asset_manager();
             OTHER_ASSERT(handler != nullptr, "Asset handler is null in render_component on_modified callback");
 
             auto* asset = handler->get_loaded_asset(new_asset_id);

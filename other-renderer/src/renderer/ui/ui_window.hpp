@@ -12,7 +12,9 @@
 
 namespace other {
 
-  class OTHER_CLASS ui_window {
+  class driver;
+
+  class ui_window {
    public:
     struct window_root : public ui_node {
       window_root(ui_window* parent)
@@ -78,7 +80,7 @@ namespace other {
     virtual void on_render_footer() {}
     virtual void on_render_end() {}
 
-    integer_t script_object_id = 0;
+    integer_t script_object_id = -1;
 
     bool is_window_open() const { return state.open; }
     bool was_window_just_closed() const { return state.just_closed; }
@@ -96,6 +98,7 @@ namespace other {
       bool is_focused = false;
     } state;
     uint32_t window_flags = 0;
+
     std::unordered_map<natural_t, scope<ui_node>> node_map;
 
     event_system& events;

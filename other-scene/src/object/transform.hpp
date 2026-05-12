@@ -50,7 +50,7 @@ namespace other {
 
 OTHER_REFLECT(
   other::transform,
-  field(local_basis, other::attr::serializable()),
+  field(local_basis, other::attr::serializable(false)),  /// read only
   field(local_position, other::attr::serializable("Position")),
   field(local_scale, other::attr::serializable("Scale")),
   field(local_rotation_quat, other::attr::serializable("Rotation"))

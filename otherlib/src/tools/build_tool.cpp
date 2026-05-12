@@ -10,50 +10,50 @@
 
 namespace other {
 
-  void build_tool::start_build(const project_description& project) {
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
+  // void build_tool::start_build(const project_description& project) {
+  //   auto* env = subsystem<scripting_environment>::get();
+  //   OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized");
 
-    this->project = project;
+  //   this->project = project;
 
-    build_tool_obj_id = env->create_object("Builder");
-    if (build_tool_obj_id == -1) {
-      CORE_LOG_ERROR("Failed to create Builder object to build project {}", project.project_name);
-      build_tool_obj = nullptr;
-      curr_build_status = BUILD_STATUS_FAILED;
-      return;
-    }
+  //   build_tool_obj_id = env->create_object("Builder");
+  //   if (build_tool_obj_id == -1) {
+  //     CORE_LOG_ERROR("Failed to create Builder object to build project {}", project.project_name);
+  //     build_tool_obj = nullptr;
+  //     curr_build_status = BUILD_STATUS_FAILED;
+  //     return;
+  //   }
 
-    CORE_LOG_DEBUG("Attaching Builder object to scripting environment to build project '{}'", project.project_name);
-    env->attach_dotnet_object(build_tool_obj_id, "Other.BuildTool");
-    /// suspend just to let the engine breathe
-    CORE_LOG_DEBUG("Began building project '{}'", project.project_name);
+  //   CORE_LOG_DEBUG("Attaching Builder object to scripting environment to build project '{}'", project.project_name);
+  //   env->attach_dotnet_object(build_tool_obj_id, "Other.BuildTool");
+  //   /// suspend just to let the engine breathe
+  //   CORE_LOG_DEBUG("Began building project '{}'", project.project_name);
 
-    build_tool_obj = env->get_object(build_tool_obj_id);
-    if (build_tool_obj == nullptr) {
-      env->destroy_object(build_tool_obj_id);
-      CORE_LOG_ERROR("Failed to retrieve Builder object from scripting environment to build project {}", project.project_name);
-      build_tool_obj = nullptr;
-      curr_build_status = BUILD_STATUS_FAILED;
-      return;
-    }
+  //   build_tool_obj = env->get_object(build_tool_obj_id);
+  //   if (build_tool_obj == nullptr) {
+  //     env->destroy_object(build_tool_obj_id);
+  //     CORE_LOG_ERROR("Failed to retrieve Builder object from scripting environment to build project {}", project.project_name);
+  //     build_tool_obj = nullptr;
+  //     curr_build_status = BUILD_STATUS_FAILED;
+  //     return;
+  //   }
 
-    struct build_args_ {
-      native_string project_type;
-      native_string name;
-      native_string filename;
-      native_string working_directory;
-    } args;
-    /// \todo make project type selectable
-    args.project_type = "Application";
-    args.name = project.project_name;
-    args.filename = project.environment_config.string();
-    args.working_directory = project.working_directory.string();
+  //   struct build_args_ {
+  //     native_string project_type;
+  //     native_string name;
+  //     native_string filename;
+  //     native_string working_directory;
+  //   } args;
+  //   /// \todo make project type selectable
+  //   args.project_type = "Application";
+  //   args.name = project.project_name;
+  //   args.filename = project.environment_config.string();
+  //   args.working_directory = project.working_directory.string();
 
-    CORE_LOG_DEBUG("Invoking CreateProject on Builder object for project '{}'", project.project_name);
-    build_tool_obj->dotnet_object->invoke<>("CreateProject", args);
-    curr_build_status = (build_status)build_tool_obj->dotnet_object->invoke<int32_t>("GetBuildStatus");
-  }
+  //   CORE_LOG_DEBUG("Invoking CreateProject on Builder object for project '{}'", project.project_name);
+  //   build_tool_obj->dotnet_object->invoke<>("CreateProject", args);
+  //   curr_build_status = (build_status)build_tool_obj->dotnet_object->invoke<int32_t>("GetBuildStatus");
+  // }
 
   void build_tool::poll_project_build() {
     if (build_tool_obj == nullptr) {

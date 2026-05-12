@@ -15,18 +15,17 @@ target_sources(other_renderer
       src/model/skeleton.cpp
       src/model/model_importer.cpp
       src/model/model.cpp
+      src/model/model_source.cpp
       
       src/renderer/window_manager.cpp
-      
       src/renderer/rendering_api.cpp
       src/renderer/renderer_backend.cpp
       src/renderer/backends/opengl_api.cpp
-
       src/renderer/camera.cpp
       src/renderer/render_graph.cpp
+      src/renderer/pipeline_definition.cpp
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
-
       src/renderer/ui/unicode.cpp
       src/renderer/ui/ui_helpers.cpp
       src/renderer/ui/ui_node.cpp
@@ -38,7 +37,7 @@ target_include_directories(other_renderer
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/renderer>
 )
-
+target_precompile_headers(other_renderer REUSE_FROM other_core)
 target_link_directories(other_renderer PUBLIC 
   $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}>
   $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>

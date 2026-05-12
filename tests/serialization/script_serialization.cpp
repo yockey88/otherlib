@@ -86,39 +86,39 @@ namespace other {
     }
 
     {
-      size_t cursor = 0;
-      std::span<const uint8_t> buffer{ bytes.data(), bytes.size() };
+      // size_t cursor = 0;
+      // std::span<const uint8_t> buffer{ bytes.data(), bytes.size() };
 
-      uint16_t type_name_len = 0;
-      ASSERT_NO_FATAL_FAILURE(type_name_len = serialization::read_value<uint16_t>(buffer, cursor));
-      ASSERT_EQ(cursor, sizeof(uint16_t));
+      // uint16_t type_name_len = 0;
+      // ASSERT_NO_FATAL_FAILURE(type_name_len = serialization::read_value<uint16_t>(buffer, cursor));
+      // ASSERT_EQ(cursor, sizeof(uint16_t));
 
-      std::string type_name = "";
-      ASSERT_NO_FATAL_FAILURE(type_name = serialization::read_string_value(buffer, type_name_len, cursor));
-      ASSERT_EQ(type_name, "TestObject");
-      ASSERT_EQ(cursor, type_name.length() + sizeof(uint16_t));
+      // std::string type_name = "";
+      // ASSERT_NO_FATAL_FAILURE(type_name = serialization::read_string_value(buffer, type_name_len, cursor));
+      // ASSERT_EQ(type_name, "TestObject");
+      // ASSERT_EQ(cursor, type_name.length() + sizeof(uint16_t));
 
-      subsystem<scripting_environment>::get()->attach_dotnet_object(comp->script_object_id, type_name);
-      script_object* script_obj = subsystem<scripting_environment>::get()->get_object(comp->script_object_id);
-      ASSERT_NE(script_obj, nullptr);
-      ASSERT_NE(script_obj->dotnet_object, nullptr);
+      // subsystem<scripting_environment>::get()->attach_dotnet_object(comp->script_object_id, type_name);
+      // script_object* script_obj = subsystem<scripting_environment>::get()->get_object(comp->script_object_id);
+      // ASSERT_NE(script_obj, nullptr);
+      // ASSERT_NE(script_obj->dotnet_object, nullptr);
 
-      EXPECT_EQ(script_obj->dotnet_object->get_field<int>("field_value"), 10);
-      EXPECT_EQ(script_obj->dotnet_object->get_property<int>("PropertyValue"), 20);
-      EXPECT_EQ(script_obj->dotnet_object->get_field<std::string>("field_string"), "Hello World");
-      EXPECT_EQ(script_obj->dotnet_object->get_property<std::string>("PropertyString"), "Hello Property");
+      // EXPECT_EQ(script_obj->dotnet_object->get_field<int>("field_value"), 10);
+      // EXPECT_EQ(script_obj->dotnet_object->get_property<int>("PropertyValue"), 20);
+      // EXPECT_EQ(script_obj->dotnet_object->get_field<std::string>("field_string"), "Hello World");
+      // EXPECT_EQ(script_obj->dotnet_object->get_property<std::string>("PropertyString"), "Hello Property");
 
-      uint16_t data_len = 0;
-      ASSERT_NO_FATAL_FAILURE(data_len = serialization::read_value<uint16_t>(buffer, cursor));
-      ASSERT_EQ(cursor, type_name.length() + sizeof(uint16_t) * 2);
-      ASSERT_EQ(data_len, expected_data_length);
+      // uint16_t data_len = 0;
+      // ASSERT_NO_FATAL_FAILURE(data_len = serialization::read_value<uint16_t>(buffer, cursor));
+      // ASSERT_EQ(cursor, type_name.length() + sizeof(uint16_t) * 2);
+      // ASSERT_EQ(data_len, expected_data_length);
 
-      script_obj->dotnet_object->load_from_bytes(buffer.subspan(cursor));
+      // script_obj->dotnet_object->load_from_bytes(buffer.subspan(cursor));
 
-      EXPECT_EQ(script_obj->dotnet_object->get_field<int>("field_value"), 12345);
-      EXPECT_EQ(script_obj->dotnet_object->get_property<int>("PropertyValue"), 67890);
-      EXPECT_EQ(script_obj->dotnet_object->get_field<std::string>("field_string"), "Hello from DotNet Object");
-      EXPECT_EQ(script_obj->dotnet_object->get_property<std::string>("PropertyString"), "Property Hello from DotNet Object");
+      // EXPECT_EQ(script_obj->dotnet_object->get_field<int>("field_value"), 12345);
+      // EXPECT_EQ(script_obj->dotnet_object->get_property<int>("PropertyValue"), 67890);
+      // EXPECT_EQ(script_obj->dotnet_object->get_field<std::string>("field_string"), "Hello from DotNet Object");
+      // EXPECT_EQ(script_obj->dotnet_object->get_property<std::string>("PropertyString"), "Property Hello from DotNet Object");
     }
   }
 

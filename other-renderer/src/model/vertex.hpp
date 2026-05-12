@@ -61,6 +61,16 @@ namespace other {
     void calculate_offsets();
   };
 
+  struct raw_vertex_data {
+    float position[3] = { 0.f, 0.f, 0.f };
+    float normal[3] = { 0.f, 0.f, 1.f };
+    float tangent[3] = { 1.f, 0.f, 0.f };
+    float bitangent[3] = { 0.f, 1.f, 0.f };
+    float tex_coord[2] = { 0.f, 0.f };
+    int bone_ids[4] = { 0, 0, 0, 0 };
+    float bone_weights[4] = { 0.f, 0.f, 0.f, 0.f };
+  };
+
   struct vertex {
     /// CPU side vertex data
     uint32_t id = 0;
@@ -81,6 +91,8 @@ namespace other {
     static size_t stride();
 
     static buffer_layout get_buffer_layout();
+
+    inline std::vector<float> to_gpu_buffer() const { return to_gpu_buffer(*this); }
     static std::vector<float> to_gpu_buffer(const vertex& v);
     static std::vector<float> to_gpu_buffer(const std::vector<vertex>& v);
   };

@@ -5,8 +5,14 @@
 
 #include <source_location>
 
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/sinks/wincolor_sink.h>
+#include <spdlog/spdlog.h>
+
 #include "core/config_table.hpp"
 #include "core/fnv.hpp"
+#include "core/logger_sinks.hpp"
 #include "core/profiler.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
@@ -33,46 +39,51 @@ namespace other {
     return id;
   }
 
-  void logger::register_sink(const std::span<const std::string> logs, const log_sink& sink) {
+  void logger::register_sink(const std::span<const std::string> logs, log_sink* sink) {
     PROFILE_SECTION("logger::register-sink");
 
-    if (sink.sink_factory == nullptr) {
-      log_failure_error(std::format("Sink factory for {} is null.", sink.sink_name));
+    if (sink == nullptr) {
+      log_failure_error("Sink is null.");
       return;
     }
 
-    if (sink.id == 0) {
-      log_failure_error(std::format("Sink ID for {} is 0.", sink.sink_name));
+    if (sink->sink_factory == nullptr) {
+      log_failure_error(std::format("Sink factory for {} is null.", sink->sink_name));
       return;
     }
 
-    if (sink.sink_name.empty()) {
-      log_failure_error(std::format("Sink name for {} is empty.", sink.sink_name));
+    if (sink->id == 0) {
+      log_failure_error(std::format("Sink ID for {} is 0.", sink->sink_name));
       return;
     }
 
-    if (sink.sink_pattern.empty()) {
-      log_failure_error(std::format("Sink pattern for {} is empty.", sink.sink_name));
+    if (sink->sink_name.empty()) {
+      log_failure_error(std::format("Sink name for {} is empty.", sink->sink_name));
       return;
     }
 
-    auto sink_ptr = sink.sink_factory(*current_config_table);
+    if (sink->sink_pattern.empty()) {
+      log_failure_error(std::format("Sink pattern for {} is empty.", sink->sink_name));
+      return;
+    }
+
+    auto sink_ptr = sink->sink_factory(*current_config_table);
     if (sink_ptr == nullptr) {
-      log_failure_error(std::format("Failed to create sink for {}.", sink.sink_name));
-      return;
-    }
-
-    auto [itr, inserted] = sinks.insert({ sink.id, std::move(sink_ptr) });
-    if (!inserted) {
-      log_failure_error(std::format("Sink with ID {} ({}) already exists.", sink.id, sink.sink_name));
+      log_failure_error(std::format("Failed to create sink for {}.", sink->sink_name));
       return;
     }
 
     std::unique_lock lock(log_mutex);
     {
+      auto [itr, inserted] = sinks.insert({ sink->id, std::move(sink_ptr) });
+      if (!inserted) {
+        log_failure_error(std::format("Sink with ID {} ({}) already exists.", sink->id, sink->sink_name));
+        return;
+      }
+
       auto& sink_ptr = itr->second;
-      sink_ptr->set_pattern(sink.sink_pattern);
-      sink_ptr->set_level(sink.level);
+      sink_ptr->set_pattern(sink->sink_pattern);
+      sink_ptr->set_level(sink->level);
       for (const auto& log : logs) {
         if (log.empty()) {
           continue;
@@ -133,8 +144,10 @@ namespace other {
     auto now = std::chrono::system_clock::now();
     std::time_t now_time = std::chrono::system_clock::to_time_t(now);
     std::tm now_tm = *std::localtime(&now_time);
+
     std::stringstream time_stream;
     time_stream << std::put_time(&now_tm, "%Y-%m-%d %H:%M:%S");
+
     std::string time_str = time_stream.str();
     *error_log_file << "[" << time_str << "] "
                     << "LOG FAILURE ERROR: " << message << std::endl;

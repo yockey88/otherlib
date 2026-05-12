@@ -1,12 +1,18 @@
 add_library(other_network STATIC)
 target_sources(other_network
-    PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/udp_stream.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/network/network_thread.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/network/message.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/network/session.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/network/session_protocol_handler.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/network/protocols/check_in_protocol.cpp"
+  PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/transport_provider.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/acknowledgement_list.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/network/network_thread.cpp"
+
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/packet_sink.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/peer_state_machine.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/peer_actor.cpp"
+
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/http/http_response.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/http/http.cpp"
+
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/html/html_document.cpp"
 )
 
 target_include_directories(other_network 

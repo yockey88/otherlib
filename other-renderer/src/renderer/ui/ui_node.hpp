@@ -8,7 +8,7 @@
 #include <stack>
 #include <string_view>
 
-#include <glm/fwd.hpp>
+#include <glm/glm.hpp>
 
 #include "core/defines.hpp"
 #include "core/fnv.hpp"

@@ -1,0 +1,8 @@
+[application]
+metadata.info = { name = "${application-name}", description = "${application-description}", author = "${application-author}", version = "${application-version}" }
+core-log-level = "info"
+core-log-file = "logs/test2.log"
+
+[rendering]
+backend = "opengl"
+window-size = { width = 1920, height = 1080 }

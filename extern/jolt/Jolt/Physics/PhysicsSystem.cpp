@@ -157,6 +157,7 @@ void PhysicsSystem::GatherIslandStats()
 		{
 			Body &body = mBodyManager.GetBody(*body_id);
 			MotionProperties::SimulationStats &out_stats = body.GetMotionProperties()->GetSimulationStats();
+			++out_stats.mNumCollisionSteps;
 			out_stats.mNumVelocitySteps = stats.mNumVelocitySteps;
 			out_stats.mNumPositionSteps = stats.mNumPositionSteps;
 			if (body.GetMotionType() == EMotionType::Dynamic)
@@ -211,7 +212,7 @@ EPhysicsUpdateError PhysicsSystem::Update(float inDeltaTime, int inCollisionStep
 
 	// Calculate ratio between current and previous frame delta time to scale initial constraint forces
 	float step_delta_time = inDeltaTime / inCollisionSteps;
-	float warm_start_impulse_ratio = mPhysicsSettings.mConstraintWarmStart && mPreviousStepDeltaTime > 0.0f? step_delta_time / mPreviousStepDeltaTime : 0.0f;
+	float warm_start_impulse_ratio = mPreviousStepDeltaTime > 0.0f? step_delta_time / mPreviousStepDeltaTime : 0.0f;
 	mPreviousStepDeltaTime = step_delta_time;
 
 	// Create the context used for passing information between jobs
@@ -1096,6 +1097,7 @@ void PhysicsSystem::ProcessBodyPair(ContactAllocator &ioContactAllocator, const 
 		settings.mActiveEdgeMode = mPhysicsSettings.mCheckActiveEdges? EActiveEdgeMode::CollideOnlyWithActive : EActiveEdgeMode::CollideWithAll;
 		settings.mMaxSeparationDistance = body1->IsSensor() || body2->IsSensor()? 0.0f : mPhysicsSettings.mSpeculativeContactDistance;
 		settings.mActiveEdgeMovementDirection = body1->GetLinearVelocity() - body2->GetLinearVelocity();
+		settings.mInternalEdgeRemovalVertexToleranceSq = mPhysicsSettings.mInternalEdgeRemovalVertexToleranceSq;
 
 		// Create shape filter
 		SimShapeFilterWrapper shape_filter(mSimShapeFilter, body1);
@@ -1407,7 +1409,7 @@ void PhysicsSystem::JobSolveVelocityConstraints(PhysicsUpdateContext *ioContext,
 	Constraint **active_constraints = ioContext->mActiveConstraints;
 
 	// Only the first step to correct for the delta time difference in the previous update
-	float warm_start_impulse_ratio = ioStep->mIsFirst? ioContext->mWarmStartImpulseRatio : 1.0f;
+	float warm_start_impulse_ratio = mPhysicsSettings.mConstraintWarmStart? (ioStep->mIsFirst? ioContext->mWarmStartImpulseRatio : 1.0f) : 0.0f;
 
 	bool check_islands = true, check_split_islands = mPhysicsSettings.mUseLargeIslandSplitter;
 	for (;;)
@@ -1505,6 +1507,9 @@ void PhysicsSystem::JobSolveVelocityConstraints(PhysicsUpdateContext *ioContext,
 		#ifdef JPH_TRACK_SIMULATION_STATS
 			uint64 start_tick = GetProcessorTickCount();
 		#endif
+
+			// Convert indices to offsets so that we lose one indirection in the solver. We couldn't do this earlier as we need constraint indices to build islands.
+			mContactManager.ConstraintIdxToConstraintOffset(contacts_begin, contacts_end);
 
 			// Sorting is costly but needed for a deterministic simulation, allow the user to turn this off
 			if (mPhysicsSettings.mDeterministicSimulation)
@@ -2214,9 +2219,8 @@ void PhysicsSystem::JobResolveCCDContacts(PhysicsUpdateContext *ioContext, Physi
 						float inv_m2 = body2.GetMotionPropertiesUnchecked() != nullptr? contact_settings.mInvMassScale2 * body2.GetMotionPropertiesUnchecked()->GetInverseMassUnchecked() : 0.0f;
 
 						// Solve contact constraint
-						AxisConstraintPart contact_constraint;
-						contact_constraint.CalculateConstraintPropertiesWithMassOverride(body1, inv_m1, contact_settings.mInvInertiaScale1, r1_plus_u, body2, inv_m2, contact_settings.mInvInertiaScale2, r2, ccd_body->mContactNormal, normal_velocity_bias);
-						contact_constraint.SolveVelocityConstraintWithMassOverride(body1, inv_m1, body2, inv_m2, ccd_body->mContactNormal, -FLT_MAX, FLT_MAX);
+						ConcreteContactConstraintPart contact_constraint;
+						contact_constraint.SolveVelocityConstraint(body1, inv_m1, contact_settings.mInvInertiaScale1, r1_plus_u, body2, inv_m2, contact_settings.mInvInertiaScale2, r2, ccd_body->mContactNormal, normal_velocity_bias, -FLT_MAX, FLT_MAX);
 
 						// Apply friction
 						if (contact_settings.mCombinedFriction > 0.0f)
@@ -2232,9 +2236,8 @@ void PhysicsSystem::JobResolveCCDContacts(PhysicsUpdateContext *ioContext, Physi
 								// Calculate max friction impulse
 								float max_lambda_f = contact_settings.mCombinedFriction * contact_constraint.GetTotalLambda();
 
-								AxisConstraintPart friction;
-								friction.CalculateConstraintPropertiesWithMassOverride(body1, inv_m1, contact_settings.mInvInertiaScale1, r1_plus_u, body2, inv_m2, contact_settings.mInvInertiaScale2, r2, friction_direction);
-								friction.SolveVelocityConstraintWithMassOverride(body1, inv_m1, body2, inv_m2, friction_direction, -max_lambda_f, max_lambda_f);
+								ConcreteContactConstraintPart friction;
+								friction.SolveVelocityConstraint(body1, inv_m1, contact_settings.mInvInertiaScale1, r1_plus_u, body2, inv_m2, contact_settings.mInvInertiaScale2, r2, friction_direction, 0.0f, -max_lambda_f, max_lambda_f);
 							}
 						}
 

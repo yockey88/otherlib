@@ -20,23 +20,26 @@ namespace other {
       MODEL,
       ANIMATION,
 
+      SCRIPT_PROJECT,
       SCRIPT_SOURCE,
+      SCRIPT_FILE,
       SCRIPT,
 
       AUDIO,
 
       SCENE,
-      SCENE_OBJECT,
 
       INPUT_MAP,
+      RENDERING_PIPELINE,
 
       EMPTY,
-      NUM_ASSET_TYPES = EMPTY,
+      NUM_ASSET_TYPES,
     };
 
     type asset_type = type::EMPTY;
 
     natural_t id = 0;
+    natural_t parent_id = 0;
 
     /// hash uses absolute path string to avoid issues with relative paths and different working directories
     natural_t path_hash = 0;
@@ -52,6 +55,7 @@ namespace other {
     static std::vector<std::string> get_supported_extensions(asset::type asset_type);
 
     std::string get_filesystem_directory() const;
+    static std::string get_filesystem_directory(asset::type asset_type);
   };
 
   namespace attr {
@@ -69,7 +73,8 @@ namespace other {
     std::string_view extension;
   };
 
-  constexpr inline std::array<std::string_view, 13> kFileExtensions = {
+  constexpr inline size_t kNumAssetExtensions = 17;
+  constexpr inline std::array<std::string_view, kNumAssetExtensions> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
 
@@ -80,21 +85,30 @@ namespace other {
     /// usually actually just loaded from fbx with model source
     ".anim",  // ANIMATION
 
-    ".cs",   // SCRIPT_SOURCE
-    ".lua",  // SCRIPT_SOURCE
-    ".py",   // SCRIPT_SOURCE
+    ".csproj",  // SCRIPT_PROJECT
+    ".cs",      // SCRIPT_FILE
+    ".dll",     // SCRIPT_SOURCE
+    ".so",      // SCRIPT_SOURCE
+
+    /// no real extension since scripts can be anything loaded out of a script source
+    ".os",  // SCRIPT
 
     ".mp3",  // AUDIO
     ".wav",  // AUDIO
 
+    /// fix this so that we load lua as SCRIPT_FILE
+    //  involves fixing scene loading
+    ".lua",  // SCENE
     // ".scene",         // SCENE
     // ".scene-object",  // SCENE_OBJECT
 
     ".oinputmap",  // INPUT_MAP
-    ".oeim",
+    ".oeim",       // INPUT_MAP
+
+    ".orpl",  // RENDERING_PIPELINE
   };
 
-  constexpr inline std::array<asset_extension, kFileExtensions.size()> kAssetExtensions{
+  constexpr inline std::array<asset_extension, kNumAssetExtensions> kAssetExtensions{
     {
       { asset::TEXTURE, ".jpg" },
       { asset::TEXTURE, ".png" },
@@ -105,15 +119,19 @@ namespace other {
 
       { asset::ANIMATION, ".anim" },
 
-      { asset::SCRIPT_SOURCE, ".cs" },
-      { asset::SCRIPT_SOURCE, ".lua" },
-      { asset::SCRIPT_SOURCE, ".py" },
+      { asset::SCRIPT_PROJECT, ".csproj" },
+      { asset::SCRIPT_SOURCE, ".dll" },
+      { asset::SCRIPT_SOURCE, ".so" },
+      { asset::SCRIPT_FILE, ".cs" },
 
       { asset::AUDIO, ".mp3" },
       { asset::AUDIO, ".wav" },
 
+      { asset::SCENE, ".lua" },
       { asset::INPUT_MAP, ".oinputmap" },
       { asset::INPUT_MAP, ".oeim" },
+
+      { asset::RENDERING_PIPELINE, ".orpl" },
     }
   };
 

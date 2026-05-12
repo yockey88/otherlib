@@ -7,8 +7,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "file/filesystem.hpp"
+
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/renderer_backend.hpp"
+
+#include "driver/driver_mounts.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
@@ -21,11 +25,13 @@ namespace other {
     EXPECT_EQ(asset::get_type_from_extension(".png"), asset::TEXTURE);
     EXPECT_EQ(asset::get_type_from_extension(".fbx"), asset::MODEL_SOURCE);
     EXPECT_EQ(asset::get_type_from_extension(".obj"), asset::MODEL_SOURCE);
-    EXPECT_EQ(asset::get_type_from_extension(".cs"), asset::SCRIPT_SOURCE);
-    EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCRIPT_SOURCE);
-    EXPECT_EQ(asset::get_type_from_extension(".py"), asset::SCRIPT_SOURCE);
+    EXPECT_EQ(asset::get_type_from_extension(".csproj"), asset::SCRIPT_PROJECT);
+    EXPECT_EQ(asset::get_type_from_extension(".dll"), asset::SCRIPT_SOURCE);
+    EXPECT_EQ(asset::get_type_from_extension(".so"), asset::SCRIPT_SOURCE);
+    EXPECT_EQ(asset::get_type_from_extension(".cs"), asset::SCRIPT_FILE);
     EXPECT_EQ(asset::get_type_from_extension(".mp3"), asset::AUDIO);
     EXPECT_EQ(asset::get_type_from_extension(".wav"), asset::AUDIO);
+    EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCENE);
     EXPECT_EQ(asset::get_type_from_extension(".unknown"), asset::EMPTY);
   }
 
@@ -38,14 +44,22 @@ namespace other {
     EXPECT_NE(std::find(model_source_exts.begin(), model_source_exts.end(), ".fbx"), model_source_exts.end());
     EXPECT_NE(std::find(model_source_exts.begin(), model_source_exts.end(), ".obj"), model_source_exts.end());
 
+    auto script_project_exts = asset::get_supported_extensions(asset::SCRIPT_PROJECT);
+    EXPECT_NE(std::find(script_project_exts.begin(), script_project_exts.end(), ".csproj"), script_project_exts.end());
+
     auto script_source_exts = asset::get_supported_extensions(asset::SCRIPT_SOURCE);
-    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".cs"), script_source_exts.end());
-    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".lua"), script_source_exts.end());
-    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".py"), script_source_exts.end());
+    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".dll"), script_source_exts.end());
+    EXPECT_NE(std::find(script_source_exts.begin(), script_source_exts.end(), ".so"), script_source_exts.end());
+
+    auto script_file_exts = asset::get_supported_extensions(asset::SCRIPT_FILE);
+    EXPECT_NE(std::find(script_file_exts.begin(), script_file_exts.end(), ".cs"), script_file_exts.end());
 
     auto audio_exts = asset::get_supported_extensions(asset::AUDIO);
     EXPECT_NE(std::find(audio_exts.begin(), audio_exts.end(), ".mp3"), audio_exts.end());
     EXPECT_NE(std::find(audio_exts.begin(), audio_exts.end(), ".wav"), audio_exts.end());
+
+    auto scene_exts = asset::get_supported_extensions(asset::SCENE);
+    EXPECT_NE(std::find(scene_exts.begin(), scene_exts.end(), ".lua"), scene_exts.end());
   }
 
   MATCHER(IsLoadingOrLoaded, "") {
@@ -59,7 +73,7 @@ namespace other {
     static gpu_buffer test_vertex_buffer(resource_handle(1, resource_type::BUFFER));
     static gpu_buffer test_index_buffer(resource_handle(2, resource_type::BUFFER));
 
-    void set_up_mock_rendering_api_and_expect_mesh_creation() {
+    void set_up_mock_rendering_api_and_expect_mesh_creation(event_system& events) {
       using ::testing::_;
       /// first we have to override the rendering subsystem api to avoid nullptr dereference
       scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
@@ -95,6 +109,15 @@ namespace other {
         .Times(2);
 
       subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
+      fs->initialize_file_events(events);
+      fs->initialize_directory_structure({
+        driver_mounts::kAssetMount,
+        driver_mounts::kSceneMount,
+        driver_mounts::kScriptMount,
+      });
     }
 
     void shutdown_mock_rendering_api() {
@@ -108,15 +131,26 @@ namespace other {
       }
     };
 
+    constexpr static size_t kNumWorkers = 4;
+    constexpr static std::string_view kConfig =
+      R"(
+[application.async]
+worker_count = {}
+)";
+
   }  // namespace
 
   TEST_F(asset_tests, simple_async_load) {
-    asio::io_context io_context;
-    scope<asset_handler> handler = make_scope<asset_handler>(io_context);
-
-    set_up_mock_rendering_api_and_expect_mesh_creation();
-
     dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, io_context, jobs);
+
+    set_up_mock_rendering_api_and_expect_mesh_creation(events);
 
     filepath test_file_path = "tests/resources/models/suzanne3.fbx";
     ASSERT_EQ(std::filesystem::exists(test_file_path), true)
@@ -135,16 +169,19 @@ namespace other {
 
     /// no io-context polling yet so should still be loading
     EXPECT_THAT(handler->get_asset_state(asset_id), asset_state::LOADING);
-
     std::chrono::seconds load_timeout{ 5 };
 
     auto start_time = std::chrono::steady_clock::now();
     while (handler->get_asset_state(asset_id) == asset_state::LOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
+      jobs.poll();
       handler->update_pipelines();
     }
     ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to load";
+
+    io_context.poll();
+    jobs.poll();
 
     EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
     ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
@@ -169,6 +206,7 @@ namespace other {
     while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
            std::chrono::steady_clock::now() - start_time < load_timeout) {
       io_context.poll();
+      jobs.poll();
       handler->update_pipelines();
     }
     ASSERT_LT(std::chrono::steady_clock::now() - start_time, load_timeout) << "Timed out waiting for asset to unload";
@@ -185,7 +223,10 @@ namespace other {
     EXPECT_FALSE(handler->asset_loading(asset_id));
     EXPECT_FALSE(handler->asset_loaded(asset_id));
 
-    ASSERT_NO_FATAL_FAILURE(handler->purge_stores());
+    ASSERT_NO_FATAL_FAILURE(handler->begin_unload());
+    EXPECT_EQ(handler->get_num_assets_in_flight(), 0);
+    EXPECT_EQ(handler->get_num_loading_assets(), 0);
+    EXPECT_EQ(handler->get_num_loaded_assets(), 0);
 
     handler = nullptr;
   }
@@ -193,10 +234,10 @@ namespace other {
   TEST_F(asset_tests, omesh_async_load) {
     GTEST_SKIP() << "Skipping omesh test until we have a way to generate them in CI, files are too large to push to git (may have to use github lfs?)";
 
-    asio::io_context io_context;
-    scope<asset_handler> handler = make_scope<asset_handler>(io_context);
+    job_system jobs{ io_context };
+    scope<asset_handler> handler = make_scope<asset_handler>(events, io_context, jobs);
 
-    set_up_mock_rendering_api_and_expect_mesh_creation();
+    set_up_mock_rendering_api_and_expect_mesh_creation(events);
 
     struct dtor {
       ~dtor() {
@@ -254,7 +295,7 @@ namespace other {
     EXPECT_EQ(handler->get_num_loaded_assets(), 1);
     EXPECT_EQ(handler->get_num_pending_unloads(), 1);
 
-    ASSERT_NO_FATAL_FAILURE(handler->purge_stores());
+    ASSERT_NO_FATAL_FAILURE(handler->begin_unload());
     EXPECT_EQ(handler->get_num_assets_in_flight(), 0);
     EXPECT_EQ(handler->get_num_loading_assets(), 0);
     EXPECT_EQ(handler->get_num_loaded_assets(), 0);

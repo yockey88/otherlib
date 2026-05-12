@@ -10,7 +10,6 @@
 
 namespace other {
 
-  struct other_command_device;
   class driver;
 
   class driver_interface {

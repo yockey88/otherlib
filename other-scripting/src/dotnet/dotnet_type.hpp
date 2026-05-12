@@ -8,14 +8,11 @@
 #include <string>
 #include <vector>
 
-#include <sol/sol.hpp>
-
 #include "dotnet/dotnet_attribute.hpp"
 #include "dotnet/dotnet_field.hpp"
 #include "dotnet/dotnet_method.hpp"
+#include "dotnet/interop_interface.hpp"
 #include "dotnet/types.hpp"
-
-#include "interop_interface.hpp"
 
 namespace other {
 
@@ -51,6 +48,7 @@ namespace other {
     bool has_field(const std::string_view field_name) const;
     bool is_field_property(const std::string_view field_name) const;
 
+    bool has_method(const std::string_view method_name) const;
     // dotnet_method* get_method(int32_t method_id);
 
     dotnet_object* instantiate_object(const std::string_view name, const void** argv, const managed_type* arg_ts, size_t argc);
@@ -68,8 +66,6 @@ namespace other {
       }
       return dotnet_fields;
     }
-
-    sol::table create_lua_descriptor(sol::state& lua_state);
 
     int32_t dotnet_id = -1;
 

@@ -46,6 +46,9 @@ public:
 	void								SetRotation(QuatArg inRotation)					{ mRotation = inRotation; }
 	RMat44								GetWorldTransform() const						{ return RMat44::sRotationTranslation(mRotation, mPosition); }
 
+	/// Access to the hair settings object which contains the configuration of the hair
+	const HairSettings *				GetHairSettings() const							{ return mSettings; }
+
 	/// The hair will be initialized in its default pose with zero velocity at the new position and rotation during the next update
 	void								OnTeleported()									{ mTeleported = true; }
 
@@ -96,8 +99,8 @@ public:
 	const Float3 *						GetScalpVertices() const						{ return mScalpVertices; }
 	const Float3 *						GetPositions() const							{ return mPositions; }
 	const Quat *						GetRotations() const							{ return mRotations; }
-	StridedPtr<const Float3>			GetVelocities() const							{ return { &mVelocities->mVelocity, sizeof(JPH_HairVelocity) }; }
-	StridedPtr<const Float3>			GetAngularVelocities() const					{ return { &mVelocities->mAngularVelocity, sizeof(JPH_HairVelocity) }; }
+	StridedPtr<const Float3>			GetVelocities() const							{ return { (const Float3 *)&mVelocities->mVelocity, sizeof(JPH_HairVelocity) }; }
+	StridedPtr<const Float3>			GetAngularVelocities() const					{ return { (const Float3 *)&mVelocities->mAngularVelocity, sizeof(JPH_HairVelocity) }; }
 	const Float4 *						GetGridVelocityAndDensity() const				{ return mVelocityAndDensity; }
 	const Float3 *						GetRenderPositions() const						{ return mRenderPositions; }
 

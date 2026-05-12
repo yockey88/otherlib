@@ -6,9 +6,11 @@
 #include <cstdint>
 #include <ranges>
 
+#include "core/defines.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 #include "math/matrix.hpp"
+#include "thread/thread_safety.hpp"
 
 #include "model/model.hpp"
 #include "model/skeleton.hpp"
@@ -37,23 +39,18 @@
 namespace other {
 
   void scene::scene_first_construction_initialization() {
+    ASSERT_MAIN_THREAD();
     storage = make_scene_storage(this);
-
-    // Create the root object
-    scene_object& root = storage->tree.root_object();
-    register_object(&root, "Root", glm::vec3(0.0f));
-    object_handle* tag = get_component<object_handle>(&root);
-    OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
-
-    storage->scene_root_entity = entt::entity(root.registry_id);
   }
 
   void scene::do_final_scene_destruction_cleanup() {
+    ASSERT_MAIN_THREAD();
     clear_storage(storage);
     storage = nullptr;
   }
 
   void scene::do_scene_binding() {
+    ASSERT_MAIN_THREAD();
     storage->registry.on_construct<script_component>().connect<&scene::on_create_script_component>(this);
     // storage->registry.on_update<script_component>().connect<&scene::on_update_script_component>(this);
     storage->registry.on_destroy<script_component>().connect<&scene::on_destroy_script_component>(this);
@@ -71,38 +68,23 @@ namespace other {
       scene_table.set_function(
         "create_scene_object",
         sol::overload(
-          [this](const std::string& name) -> natural_t {
-            scene_object& new_obj = this->create_object(name);
-            return new_obj.id;
-          },
-          [this](const std::string& name, const glm::vec3& world_position) -> natural_t {
-            scene_object& new_obj = this->create_object(name, world_position);
-            return new_obj.id;
-          }
+          [this](const std::string& name) -> natural_t { return this->create_object(name).id; },
+          [this](const std::string& name, const glm::vec3& world_position) -> natural_t { return this->create_object(name, world_position).id; }
         )
       );
+
       scene_table["name"] = name;
       scene_table["id"] = id;
       scene_table["set_clear_color"] = [this](glm::vec4 color) {
         this->storage->clear_color = color;
       };
-
-      scene_table["create_scene_object"] = sol::overload(
-        [this](const std::string& name) -> natural_t {
-          scene_object& new_obj = this->create_object(name);
-          return new_obj.id;
-        },
-        [this](const std::string& name, const glm::vec3& world_position) -> natural_t {
-          scene_object& new_obj = this->create_object(name, world_position);
-          return new_obj.id;
-        }
-      );
     } else {
       CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
     }
   }
 
   void scene::do_scene_unbinding() {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
 
     storage->registry.on_construct<physics_component>().disconnect<&scene::on_create_physics_component>(this);
@@ -115,29 +97,60 @@ namespace other {
   }
 
   scene::scene() {
+    ASSERT_MAIN_THREAD();
     scene_first_construction_initialization();
     do_scene_binding();
+
+    // Create the root object
+    scene_object& root = storage->tree.root_object();
+    register_object(&root, "Root", glm::vec3(0.0f));
+    object_handle* tag = get_component<object_handle>(&root);
+    OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
+
+    storage->scene_root_entity = entt::entity(root.registry_id);
   }
 
   scene::scene(const std::string_view name) {
+    ASSERT_MAIN_THREAD();
     static natural_t next_id = 1;
     this->name = name;
     this->id = next_id++;
 
     scene_first_construction_initialization();
     do_scene_binding();
+
+    // Create the root object
+    scene_object& root = storage->tree.root_object();
+    register_object(&root, "Root", glm::vec3(0.0f));
+    object_handle* tag = get_component<object_handle>(&root);
+    OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
+
+    storage->scene_root_entity = entt::entity(root.registry_id);
   }
 
   scene::scene(scene&& other) {
+    ASSERT_MAIN_THREAD();
+    this->name = std::move(other.name);
+    this->id = other.id;
+    other.id = 0;
+    other.name = "Untitled Scene";
+
+    /// unbind them from the other scene first
     other.do_scene_unbinding();
-    *this = std::move(other);
+    this->storage = std::move(other.storage);
+    other.storage = nullptr;
+    /// then bind to this scene
+    do_scene_binding();
+
+    /// transfer tree pointer (this probably needs to be done better)
+    this->storage->tree.scene_ptr = this;
   }
 
   scene& scene::operator=(scene&& other) {
+    ASSERT_MAIN_THREAD();
     if (this == &other) {
       return *this;
     }
-    other.do_scene_unbinding();
 
     this->name = std::move(other.name);
     this->id = other.id;
@@ -157,48 +170,54 @@ namespace other {
   }
 
   scene::~scene() {
+    ASSERT_MAIN_THREAD();
     if (storage != nullptr) {
+      storage->tree.destroy_all_objects();
+
       do_scene_unbinding();
       do_final_scene_destruction_cleanup();
     }
   }
 
-  void scene::run_lua_file(const filepath& script_path) {
-    CORE_LOG_DEBUG("Running Lua script file '{}' in scene '{}'.", script_path.string(), name);
+  void scene::run_script_file() {
+    ASSERT_MAIN_THREAD();
+    if (!script_path.has_value() || script_loaded) {
+      return;
+    }
+
+    CORE_LOG_DEBUG("Running Lua script file '{}' in scene '{}'.", script_path->string(), name);
     // Load and execute the Lua script
     auto* scripting_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment.");
 
     lua_sandbox& sandbox = storage->sandbox;
     lua_host& lua = scripting_env->get_lua_host();
-
-    CORE_LOG_DEBUG("  - retrieving scene table");
-    sol::table scene_table = sandbox.try_load_table(&lua, script_path);
-    sol::table objects_table;
+    sol::table scene_table = sandbox.try_load_table(&lua, *script_path);
 
     bool scene_valid = scene_table.valid();
+    sol::table objects_table;
     if (scene_valid) {
       objects_table = scene_table["Objects"];
       scene_valid = objects_table.valid();
       if (!scene_valid) {
-        CORE_LOG_WARN("Scene Lua file '{}' does not contain a valid 'Objects' table.", script_path.string());
+        CORE_LOG_WARN("Scene Lua file '{}' does not contain a valid 'Objects' table.", script_path->string());
       } else {
       }
     }
 
     if (sandbox["OnSceneLoad"].valid()) {
-      CORE_LOG_DEBUG("Calling 'OnSceneLoad' from Lua file: {}", script_path.string());
+      CORE_LOG_DEBUG("Calling 'OnSceneLoad' from Lua file: {}", script_path->string());
       sol::protected_function on_scene_load_fn = sandbox["OnSceneLoad"];
       sol::protected_function_result result = on_scene_load_fn(scene_table);
       if (!result.valid()) {
-        CORE_LOG_ERROR("Failed to execute 'OnSceneLoad' from Lua file: {}", script_path.string());
+        CORE_LOG_ERROR("Failed to execute 'OnSceneLoad' from Lua file: {}", script_path->string());
         sol::error err = result;
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
     }
 
     if (scene_valid) {
-      CORE_LOG_DEBUG("Loading scene objects from Lua file: {}", script_path.string());
+      CORE_LOG_DEBUG("Loading scene objects from Lua file: {}", script_path->string());
       for (auto& obj : objects_table) {
         sol::table obj_table = obj.second.as<sol::table>();
         natural_t id = obj_table["GetId"](obj_table);
@@ -208,48 +227,82 @@ namespace other {
         construct_object_from_lua_table(scene_obj, obj_table);
       }
 
-      CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", name, script_path.string());
+      CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", name, script_path->string());
+      script_loaded = true;
+    } else {
+      CORE_LOG_ERROR("Failed to load scene '{}' from Lua file '{}'.", name, script_path->string());
     }
   }
 
   scene scene::create_scene(const std::string& name) {
+    ASSERT_MAIN_THREAD();
     return scene(name);
   }
 
-  scene scene::load_scene(const filepath& scene_path) {
-    std::string ext = scene_path.extension().string();
-    switch (FNV(ext)) {
-      case FNV(".lua"): return load_from_lua_file(scene_path);
-      default:
-        CORE_LOG_ERROR("Unsupported scene file extension '{}'", ext);
-        return scene();
-    }
-  }
-
   void scene::play() {
+    ASSERT_MAIN_THREAD();
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot play scene because storage is not initialized.");
+      return;
+    }
+
     /// store initial state for reset
+
+    CORE_LOG_INFO("Starting scene '{}'", name);
     playing = true;
     storage->physics->start_simulation();
+
+    storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
+      comp.scene_start();
+    });
   }
 
-  void scene::stop() {
+  void scene::pause() {
+    ASSERT_MAIN_THREAD();
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot pause scene because storage is not initialized.");
+      return;
+    }
+
     storage->physics->stop_simulation();
     playing = false;
   }
 
+  void scene::stop() {
+    ASSERT_MAIN_THREAD();
+    if (storage == nullptr) {
+      CORE_LOG_ERROR("Cannot stop scene because storage is not initialized.");
+      return;
+    }
+
+    CORE_LOG_INFO("Stopping scene '{}'", name);
+    pause();
+
+    storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
+      comp.scene_stop();
+    });
+
+    reset();
+    /// reset initial state
+  }
+
   void scene::reset() {
+    ASSERT_MAIN_THREAD();
     /// restore initial state
   }
 
   void scene::enable_physics_debug_rendering() {
+    ASSERT_MAIN_THREAD();
     debug_physics_rendering_enabled = true;
   }
 
   void scene::disable_physics_debug_rendering() {
+    ASSERT_MAIN_THREAD();
     debug_physics_rendering_enabled = false;
   }
 
   void scene::fixed_update(double delta_time) {
+    ASSERT_MAIN_THREAD();
     if (!playing) {
       return;
     }
@@ -282,6 +335,7 @@ namespace other {
   }
 
   void scene::update(double delta_time) {
+    ASSERT_MAIN_THREAD();
     if (!playing) {
       return;
     }
@@ -316,6 +370,7 @@ namespace other {
   }
 
   void scene::late_update(double delta_time) {
+    ASSERT_MAIN_THREAD();
     if (!playing) {
       return;
     }
@@ -337,6 +392,7 @@ namespace other {
   }
 
   scene_object& scene::root_object() {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_root_object");
 
     scene_tree::node* root_node = storage->tree.node_at(0);
@@ -347,21 +403,25 @@ namespace other {
   }
 
   scene_object& scene::create_object(const std::string& name, scene_object* parent_object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::create_object_with_name");
     return create_object(name, glm::vec3(0.f), parent_object);
   }
 
   scene_object& scene::create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::create_object");
     return storage->tree.create_object(name, world_position, parent_object);
   }
 
   scene_object& scene::add_object(scene_object* object, const transform& transformation, scene_object* parent_object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::add_object");
     return storage->tree.add_object(object, transformation, parent_object);
   }
 
   void scene::add_objects(const std::span<serialization::parsed_scene_object> objects) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::add_objects");
     for (serialization::parsed_scene_object& obj : objects) {
       add_object(&obj.object, obj.obj_transform, &get_object(obj.parent_id));
@@ -380,16 +440,19 @@ namespace other {
   }
 
   scene_object* scene::get_parent(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_parent");
     return storage->tree.get_parent(id);
   }
 
   const scene_object* scene::get_parent(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_parent_const");
     return const_cast<scene*>(this)->get_parent(id);
   }
 
   scene_object* scene::get_parent(scene_object* object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_parent");
     if (object == nullptr) {
       return nullptr;
@@ -398,6 +461,7 @@ namespace other {
   }
 
   const scene_object* scene::get_parent(const scene_object* object) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_parent_const");
     if (object == nullptr) {
       return nullptr;
@@ -406,6 +470,7 @@ namespace other {
   }
 
   std::vector<uint64_t> scene::get_children_ids(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children_ids");
     const scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
@@ -419,6 +484,7 @@ namespace other {
   }
 
   std::vector<uint64_t> scene::get_children_ids(const scene_object* object) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children_ids");
     if (object == nullptr) {
       return {};
@@ -427,6 +493,7 @@ namespace other {
   }
 
   std::vector<scene_object*> scene::get_children(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children");
 
     const scene_tree::node* node = storage->tree.node_at(id);
@@ -445,6 +512,7 @@ namespace other {
   }
 
   std::vector<scene_object*> scene::get_children(const scene_object* object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children");
 
     if (object == nullptr) {
@@ -454,28 +522,33 @@ namespace other {
   }
 
   std::vector<uint64_t> scene::get_all_object_ids() const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_all_object_ids");
     return storage->tree.get_all_object_ids();
   }
 
   void scene::destroy_object(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::destroy_object");
     storage->tree.destroy_object(id);
   }
 
   bool scene::has_object(const std::string_view name) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::has_object_by_id");
     auto* node = storage->tree.find_object_by_name(name);
     return node != nullptr;
   }
 
   bool scene::has_object(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::has_object_by_id");
     scene_tree::node* node = storage->tree.node_at(id);
     return node != nullptr && node->object != nullptr;
   }
 
   scene_object& scene::get_object(const std::string_view name) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object_by_name");
     auto* node = storage->tree.find_object_by_name(name);
     OTHER_ASSERT(node != nullptr, "Scene object with name '{}' not found in scene '{}'.", name, this->name);
@@ -483,6 +556,7 @@ namespace other {
   }
 
   const scene_object& scene::get_object(const std::string_view name) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object_by_name_const");
     auto* node = storage->tree.find_object_by_name(name);
     OTHER_ASSERT(node != nullptr, "Scene object with name '{}' not found in scene '{}'.", name, this->name);
@@ -490,6 +564,7 @@ namespace other {
   }
 
   scene_object& scene::get_object(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object");
     scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
@@ -497,29 +572,34 @@ namespace other {
   }
 
   const scene_object& scene::get_object(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object_const");
     const scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     return *node->object;
   }
 
-  scene_object* scene::find_object(const std::string_view name) {
+  scene_object* scene::find_object(const std::string_view name) const {
+    ASSERT_MAIN_THREAD();
     scene_object* n = storage->tree.find_object_by_name(name);
     return n != nullptr ? n : nullptr;
   }
 
-  scene_object* scene::find_object(natural_t id) {
+  scene_object* scene::find_object(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     scene_tree::node* node = storage->tree.node_at(id);
     return (node != nullptr && node->object != nullptr) ? node->object : nullptr;
   }
 
   size_t scene::get_object_count() const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_object_count");
     OTHER_ASSERT(storage->tree.nodes != nullptr, "Scene tree nodes are not initialized.");
     return storage->tree.get_object_count();
   }
 
   transform& scene::get_transform(scene_object* object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform");
     OTHER_ASSERT(object != nullptr, "Cannot get transform from a null scene object.");
 
@@ -531,6 +611,7 @@ namespace other {
   }
 
   const transform& scene::get_transform(const scene_object* object) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform_const");
     OTHER_ASSERT(object != nullptr, "Cannot get transform from a null scene object.");
 
@@ -542,6 +623,7 @@ namespace other {
   }
 
   void scene::set_transform(scene_object* object, const transform& t) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::set_transform");
     OTHER_ASSERT(object != nullptr, "Cannot set transform on a null scene object.");
 
@@ -550,6 +632,7 @@ namespace other {
   }
 
   glm::mat4 scene::get_world_transform(scene_object* obj) const {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(obj != nullptr, "Cannot get world transform from a null scene object.");
     PROFILE_SECTION("scene::get_world_transform");
 
@@ -557,6 +640,7 @@ namespace other {
   }
 
   glm::mat4 scene::get_world_transform(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_world_transform");
 
     const scene_tree::node* node = storage->tree.node_at(id);
@@ -573,6 +657,7 @@ namespace other {
   }
 
   transform& scene::get_transform(natural_t id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform_by_id");
 
     scene_tree::node* node = storage->tree.node_at(id);
@@ -581,6 +666,7 @@ namespace other {
   }
 
   const transform& scene::get_transform(natural_t id) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform_by_id");
 
     const scene_tree::node* node = storage->tree.node_at(id);
@@ -589,6 +675,7 @@ namespace other {
   }
 
   void scene::set_transform(natural_t id, const transform& t) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::set_transform_by_id");
 
     scene_tree::node* node = storage->tree.node_at(id);
@@ -597,6 +684,7 @@ namespace other {
   }
 
   render_data scene::prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::prepare_render_data");
 
     render_data data;
@@ -629,44 +717,41 @@ namespace other {
         return;
       }
 
+      /**
+       * \todo currently @ref render_component::model_asset_id stores the model source id since models are not individually stored in the asset handler
+       *          but we need to make it hold individual model asset IDs and do the same type of logic below except without the model source intermediary
+       **/
+
       bool changed = render.last_model_asset_id != render.model_asset_id;
-      render.last_model_asset_id = render.model_asset_id;
-
       if (changed) {
-        natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
-        CORE_LOG_INFO("Render component model asset ID changed for object ID {}. New asset hash: {}", handle.id, hash);
-
-        ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
-        if (model_src == nullptr) {
-          CORE_LOG_WARN("Model source is null for asset ID {} on object ID {}. Clearing model.", render.model_asset_id, handle.id);
-          render.obj_model = model{};
-          render.obj_model.source = nullptr;
-          return;
+        if (!asset_handler->asset_exists(render.model_asset_id)) {
+          CORE_LOG_ERROR("Render component model asset ID {} does not exist for object ID {}.", render.model_asset_id, handle.id);
+          // avoids repeated failed lookups and objects don't disappear from scene
+          render.model_asset_id = render.last_model_asset_id;
+        } else {
+          CORE_LOG_INFO("Render component model asset ID changed for object ID {}. New asset ID: {}", handle.id, render.model_asset_id);
         }
-
-        std::string obj_name = get_object(handle.id).name;
-        render.obj_model = model_src->produce_model(std::format("{}:asset-model", obj_name), render.submesh_indices);
       }
 
-      bool is_loaded = asset_handler->asset_loaded(render.model_asset_id);
+      /// either they are the same or we already validated the change
+      const bool is_loaded = asset_handler->asset_loaded(render.model_asset_id);
       if (!is_loaded) {
-        if (changed) {
-          render.obj_model = model{};
-          render.obj_model.source = nullptr;
-        }
         return;
       }
 
+      natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
+      OTHER_ASSERT(hash != 0, "Asset hash is 0 for asset ID {}.", render.model_asset_id);
+
+      /// handle the case this is first load of the model asset ID/a change for this render component
+      ///  and we need to produce the model
       if (render.obj_model.source == nullptr) {
         CORE_LOG_INFO("Looking up model source for asset ID {}", render.model_asset_id);
-        /// look up source with asset handler
 
-        natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
+        /// we check the asset exists and is loaded so this can not ever be null
         ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
         OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", render.model_asset_id);
 
-        std::string obj_name = get_object(handle.id).name;
-        render.obj_model = model_src->produce_model(std::format("{}:asset-model", obj_name), render.submesh_indices);
+        render.obj_model = model_src->produce_model();
       }
 
       model* draw_model = &render.obj_model;
@@ -743,6 +828,8 @@ namespace other {
           draw_model->bone_matrices.clear();
         }
       }
+
+      render.last_model_asset_id = render.model_asset_id;
     });
 
     if (debug_physics_rendering_enabled && storage->physics != nullptr) {
@@ -772,11 +859,13 @@ namespace other {
   }
 
   bool scene::object_has_tag(natural_t id, const std::string_view tag) const {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::object_has_tag");
     return storage->tree.node_has_tag(id, tag);
   }
 
   void scene::add_object_tag(natural_t id, const std::string_view tag) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::add_object_tag");
     scene_tree::node* n = storage->tree.node_at(id);
     OTHER_ASSERT(n != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
@@ -784,98 +873,15 @@ namespace other {
   }
 
   void scene::remove_object_tag(natural_t id, const std::string_view tag) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::remove_object_tag");
     scene_tree::node* n = storage->tree.node_at(id);
     OTHER_ASSERT(n != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
     n->tags.erase(std::remove_if(n->tags.begin(), n->tags.end(), [&](const object_tag& t) { return t.name == tag; }), n->tags.end());
   }
 
-  void scene::add_component_by_name(scene_object* object, const std::string_view component_name) {
-    OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
-
-    auto* type_data = subsystem<type_database>::get()->get_reflection_data(component_name);
-    if (type_data == nullptr) {
-      CORE_LOG_ERROR("Component type '{}' not found in type database.", component_name);
-      return;
-    }
-
-    auto itr = storage->reflection_data.component_types.find(type_data->type_hash);
-    if (itr == storage->reflection_data.component_types.end()) {
-      CORE_LOG_ERROR("Component type '{}' not registered in scene reflection data.", component_name);
-      return;
-    }
-
-    if (!itr->second.add_fn) {
-      CORE_LOG_ERROR("Component type '{}' does not have a valid add function.", component_name);
-      return;
-    }
-    if (!itr->second.has_fn) {
-      CORE_LOG_ERROR("Component type '{}' does not have a valid has function.", component_name);
-      return;
-    }
-
-    if (itr->second.has_fn(storage->registry, object->registry_id, storage->sandbox, itr->second.custom_registration.has_fn)) {
-      CORE_LOG_WARN("Scene object '{}' already has component of type '{}'.", object->name, component_name);
-      return;
-    }
-    itr->second.add_fn(storage->registry, object->registry_id, storage->sandbox, itr->second.custom_registration.add_fn);
-  }
-
-  void scene::remove_component_by_name(scene_object* object, const std::string_view component_name) {
-    OTHER_ASSERT(object != nullptr, "Cannot remove component from a null scene object.");
-
-    auto* type_data = subsystem<type_database>::get()->get_reflection_data(component_name);
-    if (type_data == nullptr) {
-      CORE_LOG_ERROR("Component type '{}' not found in type database.", component_name);
-      return;
-    }
-
-    auto itr = storage->reflection_data.component_types.find(type_data->type_hash);
-    if (itr == storage->reflection_data.component_types.end()) {
-      CORE_LOG_ERROR("Component type '{}' not registered in scene reflection data.", component_name);
-      return;
-    }
-
-    if (!itr->second.remove_fn) {
-      CORE_LOG_ERROR("Component type '{}' does not have a valid remove function.", component_name);
-      return;
-    }
-    if (!itr->second.has_fn) {
-      CORE_LOG_ERROR("Component type '{}' does not have a valid has function.", component_name);
-      return;
-    }
-
-    if (!itr->second.has_fn(storage->registry, object->registry_id, storage->sandbox, itr->second.custom_registration.has_fn)) {
-      CORE_LOG_WARN("Scene object '{}' does not have component of type '{}'.", object->name, component_name);
-      return;
-    }
-    itr->second.remove_fn(storage->registry, object->registry_id, storage->sandbox, itr->second.custom_registration.remove_fn);
-  }
-
-  bool scene::has_component_by_name(scene_object* object, const std::string_view component_name) const {
-    OTHER_ASSERT(object != nullptr, "Cannot check component on a null scene object.");
-
-    auto* type_data = subsystem<type_database>::get()->get_reflection_data(component_name);
-    if (type_data == nullptr) {
-      CORE_LOG_ERROR("Component type '{}' not found in type database.", component_name);
-      return false;
-    }
-
-    auto itr = storage->reflection_data.component_types.find(type_data->type_hash);
-    if (itr == storage->reflection_data.component_types.end()) {
-      CORE_LOG_ERROR("Component type '{}' not registered in scene reflection data.", component_name);
-      return false;
-    }
-
-    if (!itr->second.has_fn) {
-      CORE_LOG_ERROR("Component type '{}' does not have a valid has function.", component_name);
-      return false;
-    }
-
-    return itr->second.has_fn(storage->registry, object->registry_id, storage->sandbox, itr->second.custom_registration.has_fn);
-  }
-
   std::string scene::as_string(const scene& s) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::as_string");
 
     std::string result = "Scene Object Count: " + std::to_string(s.get_object_count()) + "\n";
@@ -890,6 +896,7 @@ namespace other {
   }
 
   void scene::connect_remote_session(integer_t session_id) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::connect_remote_session");
 
     scene_object& root = root_object();
@@ -901,15 +908,18 @@ namespace other {
   }
 
   scene::object_handle::operator scene_object*() const {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(object != nullptr, "Object handle is null, cannot convert to scene_object*.");
     return object;
   }
 
   bool scene::object_handle::operator==(const object_handle& other) const {
+    ASSERT_MAIN_THREAD();
     return id == other.id && object == other.object;
   }
 
   scene_object* scene::from_registry_id(entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::from_registry_id");
 
     object_handle* handle = storage->registry.try_get<object_handle>(entity);
@@ -921,12 +931,13 @@ namespace other {
   }
 
   void scene::register_object(scene_object* object, const std::string& name, const glm::vec3& world_position) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::register_object");
 
     OTHER_ASSERT(name.size() > 0, "Scene object name cannot be empty.");
     OTHER_ASSERT(object != nullptr, "Cannot register a null scene object.");
 
-    CORE_LOG_DEBUG("Registering scene object '{}' in scene '{}'", name, this->name);
+    CORE_LOG_DEBUG(" - registering scene object '{}' in scene '{}'", name, this->name);
     entt::entity entity = storage->registry.create();
     object->name = name;
     object->registry_id = (uint32_t)entity;
@@ -949,30 +960,40 @@ namespace other {
   }
 
   void scene::register_object(scene_object* object, const std::string& name, const transform& transformation) {
+    ASSERT_MAIN_THREAD();
     register_object(object, name, transformation.local_position);
     set_transform(object, transformation);
   }
 
   void scene::unregister_object(scene_object* object) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::unregister_object");
+    {
+      // auto& comb_reg = get_component<component_registry>(object);
+      // comp_reg.unregister_all();
+    }
 
-    auto* script_env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
-
-    script_component& script = storage->registry.get<script_component>(entt::entity(object->registry_id));
-    script_env->destroy_object(script.script_object_id);
+    storage->registry.remove<script_component>(entt::entity(object->registry_id));
+    storage->registry.remove<transform>(entt::entity(object->registry_id));
+    storage->registry.remove<component_registry>(entt::entity(object->registry_id));
+    storage->registry.remove<object_handle>(entt::entity(object->registry_id));
+    storage->registry.destroy(entt::entity(object->registry_id));
   }
 
   void scene::on_create_render_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
   }
 
   void scene::on_update_render_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
   }
 
   void scene::on_destroy_render_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
   }
 
   void scene::on_create_script_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::on_create_script_component");
 
     script_component* script = storage->registry.try_get<script_component>(entity);
@@ -986,17 +1007,19 @@ namespace other {
     OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
     script->script_object_id = script_env->create_object(script->object->name);
+    CORE_LOG_DEBUG("Created script object with ID {} for scene object '{}' [ID: {}] (entity {})", script->script_object_id, script->object->name, script->object->id, (natural_t)entity);
+
     script_object* object = script_env->get_object(script->script_object_id);
     OTHER_ASSERT(object != nullptr, "Failed to retrieve script object after creation for object ID {}", script->script_object_id);
 
     script_env->attach_dotnet_object(script->script_object_id, "Other.SceneObject", (void*)script->object);
-    CORE_LOG_DEBUG("Creating script object for scene object '{}' [ID: {}] (entity {})", script->object->name, script->object->id, (natural_t)entity);
   }
 
   // void scene::on_update_script_component(const entt::registry&, const entt::entity entity) {
   // }
 
   void scene::on_destroy_script_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::on_destroy_script_component");
 
     auto* script_env = subsystem<scripting_environment>::get();
@@ -1007,6 +1030,7 @@ namespace other {
   }
 
   void scene::on_create_physics_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::on_create_physics_component");
 
     physics_component& physics_comp = storage->registry.get<physics_component>(entity);
@@ -1024,6 +1048,7 @@ namespace other {
   // void scene::on_update_physics_component(const entt::registry&, const entt::entity entity) {}
 
   void scene::on_destroy_physics_component(const entt::registry&, const entt::entity entity) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::on_destroy_physics_component");
 
     physics_component& physics_comp = storage->registry.get<physics_component>(entity);
@@ -1035,13 +1060,8 @@ namespace other {
     physics_comp.body = nullptr;
   }
 
-  scene scene::load_from_lua_file(const filepath& scene_path) {
-    scene new_scene = scene(scene_path.filename().stem().string());
-    new_scene.run_lua_file(scene_path);
-    return new_scene;
-  }
-
   void scene::construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table) {
+    ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::construct_object_from_lua_table");
 
     CORE_LOG_DEBUG("Constructing scene object '{}' from Lua table.", scene_obj.name);
@@ -1068,7 +1088,7 @@ namespace other {
 
     set_transform(&scene_obj, obj_transform);
 
-    std::optional<sol::table> dotnet = scripts_table[".NET"];
+    opt<sol::table> dotnet = obj_table["DotNetClasses"];
     // opt<sol::table> lua_scripts = scripts_table["Lua"];
     if (dotnet.has_value() && dotnet->valid()) {
       script_component* script_comp = get_component<script_component>(&scene_obj);
@@ -1077,98 +1097,17 @@ namespace other {
       auto* scripting_env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment");
 
-      CORE_LOG_DEBUG(" - attaching .NET scripts to script object ID {}", script_comp->script_object_id);
-      for (auto& item : dotnet.value()) {
-        std::string script_name = item.first.as<std::string>();
-        sol::table script_data = item.second.as<sol::table>();
-
-        opt<std::string> class_name = script_data["ClassName"];
-        if (!class_name.has_value()) {
+      CORE_LOG_DEBUG(" - attaching .NET scripts to script object ID {} ({} scripts)", script_comp->script_object_id, dotnet->size());
+      for (const auto& kv : *dotnet) {
+        const auto& script_name = kv.first.as<std::string>();
+        if (!kv.second.is<std::string>()) {
+          CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not have a valid class name string, skipping.", script_name, scene_obj.id);
           continue;
         }
 
-        scripting_env->attach_dotnet_object(script_comp->script_object_id, class_name.value());
-        script_object* obj = scripting_env->get_object(script_comp->script_object_id);
-        OTHER_ASSERT(obj != nullptr, "Failed to retrieve .NET script object after attachment for object ID {}", script_comp->script_object_id);
-
-        if (obj->dotnet_object == nullptr) {
-          CORE_LOG_ERROR(" - .NET script object '{}' for object ID {} has null dotnet_object after attachment.", script_name, script_comp->script_object_id);
-          continue;
-        }
-
-        CORE_LOG_DEBUG(" - attaching serialized .NET object '{}' to script object ID {}", script_name, script_comp->script_object_id);
-        sol::table fields_table = script_data["Fields"];
-
-        for (auto& field_item : fields_table) {
-          std::string field_name = field_item.first.as<std::string>();
-          if (field_name.contains("k__BackingField") || field_name.starts_with("<") ||
-              /// not sure what this one is but one of the type contains a mysterious generated 'value__' field (enums?? what does it mean?)
-              field_name == "value__") {
-            continue;
-          }
-
-          if (obj->dotnet_object->get_dotnet_field(field_name) == nullptr) {
-            CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not have field '{}' defined in the class.", script_name, script_comp->script_object_id, field_name);
-            continue;
-          }
-
-          auto* dn_field = obj->dotnet_object->get_dotnet_field(field_name);
-          OTHER_ASSERT(dn_field != nullptr, " - .NET script '{}' for object ID {} does not have field '{}' defined in the class.", script_name, script_comp->script_object_id, field_name);
-
-          sol::table field_value = field_item.second;
-          value_type val_type = field_value["Type"];
-          if (val_type == value_type::EMPTY_TYPE) {
-            CORE_LOG_ERROR("   - field '{}' on .NET script '{}' for object ID {} has EMPTY_TYPE, skipping.", field_name, script_name, script_comp->script_object_id);
-            continue;
-          }
-          if (val_type != dn_field->get_type()) {
-            CORE_LOG_ERROR("   - field '{}' on .NET script '{}' for object ID {} has mismatched type (Lua: {}, .NET: {}), skipping.", field_name, script_name, script_comp->script_object_id, val_type, dn_field->get_type());
-            continue;
-          }
-
-          if (dn_field->is_property()) {
-          } else {
-          }
-
-          value val;
-          switch (val_type) {
-            case value_type::CHAR: val = value(field_value["Value"].get<char>()); break;
-            case value_type::OEBOOL: val = value(field_value["Value"].get<bool>()); break;
-            case value_type::INT8: val = value(field_value["Value"].get<int8_t>()); break;
-            case value_type::UINT8: val = value(field_value["Value"].get<uint8_t>()); break;
-            case value_type::INT16: val = value(field_value["Value"].get<int16_t>()); break;
-            case value_type::UINT16: val = value(field_value["Value"].get<uint16_t>()); break;
-            case value_type::INT32: val = value(field_value["Value"].get<int32_t>()); break;
-            case value_type::UINT32: val = value(field_value["Value"].get<uint32_t>()); break;
-            case value_type::INT64: val = value(field_value["Value"].get<int64_t>()); break;
-            case value_type::UINT64: val = value(field_value["Value"].get<uint64_t>()); break;
-            case value_type::FLOAT: val = value(field_value["Value"].get<float>()); break;
-            case value_type::DOUBLE: val = value(field_value["Value"].get<double>()); break;
-            case value_type::STRING: val = value(field_value["Value"].get<std::string>()); break;
-            case value_type::VEC2: {
-              sol::table vec_table = field_value["Value"];
-              glm::vec2 vec_val = glm::vec2{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f) };
-              val = value(vec_val);
-            } break;
-            case value_type::VEC3: {
-              sol::table vec_table = field_value["Value"];
-              glm::vec3 vec_val = glm::vec3{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f), vec_table["z"].get_or(0.0f) };
-              val = value(vec_val);
-            } break;
-            case value_type::VEC4: {
-              sol::table vec_table = field_value["Value"];
-              glm::vec4 vec_val = glm::vec4{ vec_table["x"].get_or(0.0f), vec_table["y"].get_or(0.0f), vec_table["z"].get_or(0.0f), vec_table["w"].get_or(0.0f) };
-              val = value(vec_val);
-            } break;
-            default: break;
-          }
-
-          if (val.type() == value_type::EMPTY_TYPE) {
-            CORE_LOG_ERROR("   - could not convert field '{}' value to valid .NET value for script '{}' on object ID {}", field_name, script_name, script_comp->script_object_id);
-            continue;
-          }
-          obj->dotnet_object->set_field(field_name, val);
-        }
+        const auto& class_name = kv.second.as<std::string>();
+        CORE_LOG_DEBUG("   - attaching .NET script '{}' with class name '{}' to script object ID {}", script_name, class_name, script_comp->script_object_id);
+        scripting_env->attach_dotnet_object(script_comp->script_object_id, class_name);
       }
     }
 

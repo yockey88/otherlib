@@ -6,7 +6,7 @@
 #include <ranges>
 #include <span>
 
-#include "core/fnv.hpp"
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
 #include "vm/opcode.hpp"
@@ -158,10 +158,10 @@ namespace other {
           section.jump_labels.back().instruction_index = instr.instruction_index;
         }
 
-        std::vector<token> arg_tokens = raw_instruction::get_argument_tokens_for_instruction(category_and_type, instr_tokens);
-        for (natural_t i = 0; i < arg_tokens.size(); ++i) {
-          instr.arguments[i] = arg_tokens[i];
-        }
+        // std::vector<token> arg_tokens = raw_instruction::get_argument_tokens_for_instruction(category_and_type, instr_tokens);
+        // for (natural_t i = 0; i < arg_tokens.size(); ++i) {
+        //   instr.arguments[i] = arg_tokens[i];
+        // }
       } else {
         consume();
       }
@@ -421,34 +421,34 @@ namespace other {
 
   uint32_t ocmd_parser::get_opcode_category_and_type_from_token(const token& tok) const {
     // clang-format off
-    if (tok.type == TOKEN_TYPE_KW_STOPDEV) { return OPCODE_STOPDEV; }
-    if (tok.type == TOKEN_TYPE_KW_DUMP) { return OPCODE_DUMP; }
-    if (tok.type == TOKEN_TYPE_KW_DUMPX) { return OPCODE_DUMPX; }
-    if (tok.type == TOKEN_TYPE_KW_WRITE) { return OPCODE_WRITE_X_TO_MEM; }
-    if (tok.type == TOKEN_TYPE_KW_LOAD) { return OPCODE_LOAD_X_FROM_MEM; }
-    if (tok.type == TOKEN_TYPE_KW_SET) { return OPCODE_LOAD_X_DIRECT; }
-    if (tok.type == TOKEN_TYPE_KW_IWRITE) { return OPCODE_INDIRECT_WRITE_X_TO_MEM; }
-    if (tok.type == TOKEN_TYPE_KW_CMP) { return OPCODE_COMPARE_X_Y_SET_Z; }
-    if (tok.type == TOKEN_TYPE_KW_CMPGT) { return OPCODE_COMPARE_GT_X_Y_SET_Z; }
-    if (tok.type == TOKEN_TYPE_KW_CMPLT) { return OPCODE_COMPARE_LT_X_Y_SET_Z; }
-    if (tok.type == TOKEN_TYPE_KW_AND) { return OPCODE_X_AND_Y_SET_Z; }
-    if (tok.type == TOKEN_TYPE_KW_OR) { return OPCODE_X_OR_Y_SET_Z; }
-    if (tok.type == TOKEN_TYPE_KW_XOR) { return OPCODE_X_XOR_Y_SET_Z; }
-    if (tok.type == TOKEN_TYPE_KW_LSHIFT) { return OPCODE_SHIFT_LEFT_X_BY_Y; }
-    if (tok.type == TOKEN_TYPE_KW_RSHIFT) { return OPCODE_SHIFT_RIGHT_X_BY_Y; }
-    if (tok.type == TOKEN_TYPE_KW_GOTO || 
-        tok.type == TOKEN_TYPE_KW_JMP) { return OPCODE_GOTO; }
-    if (tok.type == TOKEN_TYPE_KW_JE) { return OPCODE_JUMP_IF_ZERO; }
-    if (tok.type == TOKEN_TYPE_KW_JNE) { return OPCODE_JUMP_IF_NOT_ZERO; }
-    if (tok.type == TOKEN_TYPE_KW_CALL) { return OPCODE_CALL_AT; }
-    if (tok.type == TOKEN_TYPE_KW_RET) { return OPCODE_RETURN; }
-    if (tok.type == TOKEN_TYPE_KW_RETX) { return OPCODE_RETURN_VALUE_IN_X; }
-    if (tok.type == TOKEN_TYPE_KW_ADD) { return OPCODE_ADD_X_Y_TO_X; }
-    if (tok.type == TOKEN_TYPE_KW_SUB) { return OPCODE_SUB_X_Y_TO_X; }
-    if (tok.type == TOKEN_TYPE_KW_MUL) { return OPCODE_MUL_X_Y_TO_X; }
-    if (tok.type == TOKEN_TYPE_KW_DIV) { return OPCODE_DIV_X_Y_TO_X; }
-    if (tok.type == TOKEN_TYPE_KW_MOD) { return OPCODE_MOD_X_Y_TO_X; }
-    if (tok.type == TOKEN_TYPE_KW_LOADSCN) { return OPCODE_LOAD_SCENE_WITH_ID_AT; }
+    // if (tok.type == TOKEN_TYPE_KW_STOPDEV) { return OPCODE_STOPDEV; }
+    // if (tok.type == TOKEN_TYPE_KW_DUMP) { return OPCODE_DUMP; }
+    // if (tok.type == TOKEN_TYPE_KW_DUMPX) { return OPCODE_DUMPX; }
+    // if (tok.type == TOKEN_TYPE_KW_WRITE) { return OPCODE_WRITE_X_TO_MEM; }
+    // if (tok.type == TOKEN_TYPE_KW_LOAD) { return OPCODE_LOAD_X_FROM_MEM; }
+    // if (tok.type == TOKEN_TYPE_KW_SET) { return OPCODE_LOAD_X_DIRECT; }
+    // if (tok.type == TOKEN_TYPE_KW_IWRITE) { return OPCODE_INDIRECT_WRITE_X_TO_MEM; }
+    // if (tok.type == TOKEN_TYPE_KW_CMP) { return OPCODE_COMPARE_X_Y_SET_Z; }
+    // if (tok.type == TOKEN_TYPE_KW_CMPGT) { return OPCODE_COMPARE_GT_X_Y_SET_Z; }
+    // if (tok.type == TOKEN_TYPE_KW_CMPLT) { return OPCODE_COMPARE_LT_X_Y_SET_Z; }
+    // if (tok.type == TOKEN_TYPE_KW_AND) { return OPCODE_X_AND_Y_SET_Z; }
+    // if (tok.type == TOKEN_TYPE_KW_OR) { return OPCODE_X_OR_Y_SET_Z; }
+    // if (tok.type == TOKEN_TYPE_KW_XOR) { return OPCODE_X_XOR_Y_SET_Z; }
+    // if (tok.type == TOKEN_TYPE_KW_LSHIFT) { return OPCODE_SHIFT_LEFT_X_BY_Y; }
+    // if (tok.type == TOKEN_TYPE_KW_RSHIFT) { return OPCODE_SHIFT_RIGHT_X_BY_Y; }
+    // if (tok.type == TOKEN_TYPE_KW_GOTO || 
+    //     tok.type == TOKEN_TYPE_KW_JMP) { return OPCODE_GOTO; }
+    // if (tok.type == TOKEN_TYPE_KW_JE) { return OPCODE_JUMP_IF_ZERO; }
+    // if (tok.type == TOKEN_TYPE_KW_JNE) { return OPCODE_JUMP_IF_NOT_ZERO; }
+    // if (tok.type == TOKEN_TYPE_KW_CALL) { return OPCODE_CALL_AT; }
+    // if (tok.type == TOKEN_TYPE_KW_RET) { return OPCODE_RETURN; }
+    // if (tok.type == TOKEN_TYPE_KW_RETX) { return OPCODE_RETURN_VALUE_IN_X; }
+    // if (tok.type == TOKEN_TYPE_KW_ADD) { return OPCODE_ADD_X_Y_TO_X; }
+    // if (tok.type == TOKEN_TYPE_KW_SUB) { return OPCODE_SUB_X_Y_TO_X; }
+    // if (tok.type == TOKEN_TYPE_KW_MUL) { return OPCODE_MUL_X_Y_TO_X; }
+    // if (tok.type == TOKEN_TYPE_KW_DIV) { return OPCODE_DIV_X_Y_TO_X; }
+    // if (tok.type == TOKEN_TYPE_KW_MOD) { return OPCODE_MOD_X_Y_TO_X; }
+    // if (tok.type == TOKEN_TYPE_KW_LOADSCN) { return OPCODE_LOAD_SCENE_WITH_ID_AT; }
     // clang-format on
     throw parse_error("Unknown opcode token: " + tok.text);
   }

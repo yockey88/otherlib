@@ -3,19 +3,27 @@ target_compile_definitions(other_core PUBLIC SPDLOG_USE_STD_FORMAT=1 "ASIO_STAND
 
 target_sources(other_core
   PRIVATE
+		src/core/subsystem.cpp
 		src/core/command_line.cpp
 		src/core/config_table.cpp
 		src/core/defines.cpp
 		src/core/logger.cpp
+		src/core/page.cpp
+		src/core/arena_storage.cpp
 		src/core/arena.cpp
+		src/core/frame_allocator.cpp
 		src/core/arena_buffer.cpp
-		src/core/registers.cpp
-		src/core/ref.cpp
 		src/core/ref_counted.cpp
 		src/core/value_storage.cpp
 		src/core/value.cpp
 		src/core/formatting.cpp
+		src/core/job.cpp
+		src/core/job_graph.cpp
+		src/core/job_system.cpp
+		src/core/coroutine.cpp
 
+		src/file/file_watcher.cpp
+		src/file/file_handle.cpp
 		src/file/local_file.cpp
 		src/file/virtual_file.cpp
 		src/file/remote_file.cpp
@@ -31,25 +39,22 @@ target_sources(other_core
 		src/math/coordinate_frame.cpp
 		src/math/interval.cpp
 		src/math/bounding_box.cpp
+		src/math/plane.cpp
 		src/math/ray.cpp
+		src/math/frustum.cpp
 		src/math/integrator.cpp
 		src/math/vector.cpp
 		src/math/matrix.cpp
 		src/math/dynamic_vector.cpp
-		src/math/dynamic_matrix.cpp
-		
-		src/command/command_parser.cpp
-		src/command/command_compiler.cpp
-		src/command/command_executor.cpp
 
 		src/serialization/reflection.cpp
 		src/serialization/parser_combinators.cpp
 		src/serialization/serialization.cpp
 
-		src/thread/message.cpp
-		src/thread/test/new_message.cpp
-		src/thread/messages.cpp
-		src/thread/message_bus.cpp
+		src/message/message_bus.cpp
+		src/message/messages.cpp
+
+		src/thread/thread_safety.cpp
 		src/thread/thread.cpp
 
 		src/event/event_system.cpp
@@ -64,16 +69,25 @@ target_include_directories(other_core
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/core>		
 )
+
+target_precompile_headers(other_core PUBLIC
+  <algorithm> <cstdint> <filesystem> <format> <memory>
+  <optional> <span> <string> <string_view> <type_traits> <vector>
+  src/core/build_config.hpp
+  src/core/defines.hpp
+  src/core/logger.hpp
+)
+
 foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
   target_include_directories(other_core PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
 endforeach()
 
-if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
+if (CMAKE_BUILD_TYPE STREQUAL Profile)
 	target_sources(other_core PRIVATE ${OTHER_EXTERN_DIR}/tracy/tracy/TracyClient.cpp)
 	target_include_directories(other_core PRIVATE ${OTHER_EXTERN_DIR}/tracy)
 endif()
 
 target_link_directories(other_core PRIVATE ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_core PRIVATE flatbuffers glad Threads::Threads)
+target_link_libraries(other_core PRIVATE glad Threads::Threads)
 
 other_install_module(other_core "core")

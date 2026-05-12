@@ -26,7 +26,7 @@ namespace other {
 
   void arena_test::print_current_page() {
     arena* a = subsystem<arena>::get();
-    arena::page* current_page = a->get_current_page();
+    page* current_page = a->get_current_page();
 
     std::stringstream ss;
     if (current_page) {
@@ -53,10 +53,10 @@ namespace other {
     uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
 
     arena* a = subsystem<arena>::get();
-    arena::page* page = a->get_current_page();
+    page* page = a->get_current_page();
     EXPECT_NE(page, nullptr) << "Current page is null during memory boundary test.";
     EXPECT_GE(addr, reinterpret_cast<uintptr_t>(page->data())) << "Pointer is below page start address.";
-    EXPECT_LT(addr + size, reinterpret_cast<uintptr_t>(page->data()) + arena_storage::kPageSize) << "Pointer exceeds page end address.";
+    EXPECT_LT(addr + size, reinterpret_cast<uintptr_t>(page->data()) + page::kPageSize) << "Pointer exceeds page end address.";
   }
 
   void* arena_test::allocate_and_verify(size_t size) {
@@ -98,7 +98,7 @@ namespace other {
     ASSERT_LE(a->page_allocation_cursor, a->storage.kMaxPages) << "Page allocation cursor exceeds maximum number pages.";
     ASSERT_NE(a->get_current_page(), nullptr) << "Current page is null after verification.";
     ASSERT_GT(a->get_current_page()->cursor, 0) << "Current page cursor is negative.";
-    ASSERT_LT(a->get_current_page()->cursor, arena_storage::kPageSize) << "Current page cursor exceeds page size limit.";
+    ASSERT_LT(a->get_current_page()->cursor, page::kPageSize) << "Current page cursor exceeds page size limit.";
   }
 
   TEST_F(arena_test, basic_allocation) {
@@ -109,7 +109,7 @@ namespace other {
     /// make sure it is 16-byte aligned
     verify_alignment(ptr, kAlignment);
 
-    arena::page* current_page = a->get_current_page();
+    page* current_page = a->get_current_page();
     ASSERT_NE(current_page, nullptr) << "Current page is null after allocation.";
     ASSERT_EQ(current_page->cursor, kTestBlockSize) << "Current page cursor does not match allocation size.";
 

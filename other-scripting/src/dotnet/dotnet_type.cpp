@@ -17,7 +17,7 @@ namespace other {
     if (dotnet_id == -1 || type_interface_initialized) {
       return;
     }
-    CORE_LOG_DEBUG("Initializing dotnet_type[{}] interface", full_name());
+    // CORE_LOG_DEBUG("Initializing dotnet_type[{}] interface", full_name());
 
     dotnet_methods.clear();
     dotnet_fields.clear();
@@ -65,7 +65,7 @@ namespace other {
 
     type_interface_initialized = true;
 
-    CORE_LOG_DEBUG("dotnet_type[{}] initialized", full_name());
+    // CORE_LOG_DEBUG("dotnet_type[{}] initialized", full_name());
   }
 
   std::string dotnet_type::full_name() const {
@@ -167,6 +167,21 @@ namespace other {
     return itr->is_property();
   }
 
+  bool dotnet_type::has_method(const std::string_view method_name) const {
+    OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    OTHER_ASSERT(dotnet_id != -1, "dotnet_id is invalid: {}", dotnet_id);
+
+    if (method_name.empty()) {
+      CORE_LOG_ERROR("Method name cannot be empty");
+      return false;
+    }
+
+    native_string method_name_str = native_string::new_str(method_name);
+    bool has_method = host->interop().has_method(dotnet_id, method_name_str);
+    native_string::free_str(method_name_str);
+    return has_method;
+  }
+
   dotnet_object* dotnet_type::instantiate_object(const std::string_view name, const void** argv, const managed_type* arg_ts, size_t argc) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     if (dotnet_id == -1) {
@@ -183,80 +198,6 @@ namespace other {
     OTHER_ASSERT(obj->managed_object != nullptr, "dotnet_object has no managed object associated with it");
 
     host->destroy_managed_object(obj);
-  }
-
-  sol::table dotnet_type::create_lua_descriptor(sol::state& lua_state) {
-    sol::table type_table = lua_state.create_table_with(
-      "FullTypeName", full_name(),
-      /// this includes all namespaces except the class name, e.g. "System.Collections.Generic"
-      "NameSpace", namespace_name(),
-      "ClassName", class_name(),
-      "DotNetID", dotnet_id
-    );
-
-    type_table["Attributes"] = lua_state.create_table();
-    type_table["Methods"] = lua_state.create_table();
-    type_table["Fields"] = lua_state.create_table();
-
-    for (const auto& attr : dotnet_attributes) {
-      type_table["Attributes"][attr.attribute.name()] = lua_state.create_table_with(
-        "Name", attr.attribute.name(),
-        "DotNetID", attr.attribute.dotnet_id
-      );
-    }
-
-    for (auto& method : dotnet_methods) {
-      sol::table method_table = type_table["Methods"][method.name()] = lua_state.create_table_with(
-        "Name", method.name(),
-        "DotNetID", method.dotnet_id
-      );
-      /// \todo
-      // method_table["ReturnType"] = method.get_return_type();
-
-      /// \todo
-      // sol::table param_table = method_table["Parameters"] = lua_state.create_table();
-      // const auto& params = method.get_parameters();
-      // for (size_t i = 0; i < params.size(); ++i) {
-      //   const auto& param = params[i];
-      //   sol::table ptable = param_table[i + 1] = lua_state.create_table_with(
-      //     "Name", param.name(),
-      //     "Type", param.get_type(),
-      //     "IsOut", param.is_out(),
-      //     "IsRef", param.is_ref()
-      //   );
-      // }
-    }
-
-    for (const auto& field : dotnet_fields) {
-      sol::table field_table = type_table["Fields"][field.name()] = lua_state.create_table_with(
-        "Name", field.name(),
-        "Type", field.get_type(),
-        "DotNetID", field.dotnet_id,
-        "IsProperty", field.is_property()
-      );
-
-      value val = field.get_default_value();
-      switch (val.type()) {
-        case value_type::CHAR: field_table["Value"] = (char)val; break;
-        case value_type::OEBOOL: field_table["Value"] = (bool)val; break;
-        case value_type::INT8: field_table["Value"] = (int8_t)val; break;
-        case value_type::INT16: field_table["Value"] = (int16_t)val; break;
-        case value_type::INT32: field_table["Value"] = (int32_t)val; break;
-        case value_type::INT64: field_table["Value"] = (int64_t)val; break;
-        case value_type::UINT8: field_table["Value"] = (uint8_t)val; break;
-        case value_type::UINT16: field_table["Value"] = (uint16_t)val; break;
-        case value_type::UINT32: field_table["Value"] = (uint32_t)val; break;
-        case value_type::UINT64: field_table["Value"] = (uint64_t)val; break;
-        case value_type::FLOAT: field_table["Value"] = (float)val; break;
-        case value_type::DOUBLE: field_table["Value"] = (double)val; break;
-        case value_type::STRING: field_table["Value"] = (std::string)val; break;
-        default:
-          // CORE_LOG_WARN("Unsupported default value type '{}' for field '{}'", static_cast<int>(val.type()), field.name());
-          break;
-      }
-    }
-
-    return type_table;
   }
 
   void dotnet_type::fill_out_type_information(std::vector<int32_t>& dotnet_ids, get_type_information fn) {

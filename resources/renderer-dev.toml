@@ -8,7 +8,7 @@ window-size = { width = 1920, height = 1080 }
 
 
 [scripting]
-other-lua-directory = "resources/lua"
+other-lua-directory = "other-lua-interop"
 dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"

@@ -4,8 +4,6 @@
 #ifndef OTHER_SCENE_OBJECT_SCENE_OBJECT_HPP
 #define OTHER_SCENE_OBJECT_SCENE_OBJECT_HPP
 
-#include <sol/sol.hpp>
-
 #include "core/defines.hpp"
 #include "serialization/reflection.hpp"
 
@@ -17,11 +15,21 @@ namespace other {
     natural_t id = 0;
     uint32_t registry_id = 0;
 
+    // incremented on reuse, helps detect stale references
+    uint32_t generation = 0;
     std::string name = "SceneObject";
     bool visible = true;
 
     scene_object() = default;
   };
+
+  struct scene_object_handle {
+    natural_t scene_id = 0;
+    natural_t object_id = 0;
+    uint32_t generation = 0;
+  };
+
+  bool validate_handle(const scene* s, scene_object_handle h);
 
 }  // namespace other
 

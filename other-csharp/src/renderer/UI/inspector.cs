@@ -7,13 +7,13 @@ namespace Other
   [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
   public class InspectorFieldAttribute : Attribute
   {
-    public string DisplayName { get; set; }
-    public string Tooltip { get; set; }
+    public string? DisplayName { get; set; }
+    public string? Tooltip { get; set; }
     public float Min { get; set; } = float.MinValue;
     public float Max { get; set; } = float.MaxValue;
     public bool ReadOnly { get; set; } = false;
 
-    public InspectorFieldAttribute(string display_name = null)
+    public InspectorFieldAttribute(string? display_name = null)
     {
       DisplayName = display_name;
     }
@@ -80,10 +80,10 @@ namespace Other
         {
           if (group_open) 
           {
-            UI.TreePop();
+            UIBindings.TreePop();
           }
           current_group = group_attr.GroupName;
-          group_open = UI.CollapsingHeader(current_group);
+          group_open = UIBindings.CollapsingHeader(current_group);
           if (!group_open) 
           {
             continue;
@@ -93,7 +93,7 @@ namespace Other
         {
           if (group_open) 
           {
-            UI.TreePop();
+            UIBindings.TreePop();
           }
           current_group = null;
           group_open = false;
@@ -106,7 +106,7 @@ namespace Other
 
         if (field.GetCustomAttribute<InspectorSeparatorAttribute>() != null)
         { 
-          UI.Separator();
+          UIBindings.Separator();
         }
 
         string label = inspector_attr?.DisplayName ?? field.Name;
@@ -115,113 +115,122 @@ namespace Other
         DrawField(target, field, label, inspector_attr, read_only);
         if (inspector_attr?.Tooltip != null)
         {
-          UI.HelpMarker(inspector_attr.Tooltip);
+          UIBindings.HelpMarker(inspector_attr.Tooltip);
         }
       }
 
       if (group_open) 
       {
-        UI.TreePop();
+        UIBindings.TreePop();
       }
     }
 
-    private static void DrawField(object target, FieldInfo field, string label, InspectorFieldAttribute attr, bool read_only)
+    private static void DrawField(object target, FieldInfo field, string label, InspectorFieldAttribute? attr, bool read_only)
     {
       Type ft = field.FieldType;
-      object val = field.GetValue(target);
+      object? val = field.GetValue(target);
 
-      if (ft == typeof(float))
+      if (ft == typeof(float) && val != null)
       {
-        float f = (float)val;
+        float f = (float)val!;
         var range_attr = field.GetCustomAttribute<RangeAttribute>();
         bool changed;
         if (range_attr != null)
         {
-          changed = UI.SliderFloat(label, ref f, range_attr.Min, range_attr.Max);
+          changed = UIBindings.SliderFloat(label, ref f, range_attr.Min, range_attr.Max);
         }
         else
         {
-          changed = UI.DragFloat(label, ref f);
+          changed = UIBindings.DragFloat(label, ref f);
         }
         if (changed && !read_only) field.SetValue(target, f);
       }
-      else if (ft == typeof(int))
+      else if (ft == typeof(int) && val != null)
       {
         int i = (int)val;
         var range_attr = field.GetCustomAttribute<RangeAttribute>();
         bool changed;
         if (range_attr != null)
         {
-          changed = UI.SliderInt(label, ref i, (int)range_attr.Min, (int)range_attr.Max);
+          changed = UIBindings.SliderInt(label, ref i, (int)range_attr.Min, (int)range_attr.Max);
         }
         else
         {
-          changed = UI.InputInt(label, ref i);
+          changed = UIBindings.InputInt(label, ref i);
         }
         if (changed && !read_only)
         {
           field.SetValue(target, i);
         }
       }
-      else if (ft == typeof(bool))
+      else if (ft == typeof(bool) && val != null)
       {
         bool b = (bool)val;
-        if (UI.Checkbox(label, ref b) && !read_only)
+        if (UIBindings.Checkbox(label, ref b) && !read_only)
         {
           field.SetValue(target, b);
         }
       }
-      else if (ft == typeof(Vec2))
+      else if (ft == typeof(Vec2) && val != null)
       {
         // Vec2 v = (Vec2)val;
-        // bool changed = UI.DragFloat2(label, ref v);
+        // bool changed = UIBindings.DragFloat2(label, ref v);
         // if (changed && !read_only)
         // {
         //   field.SetValue(target, v);
         // }
       }
-      else if (ft == typeof(Vec3))
+      else if (ft == typeof(Vec3) && val != null)
       {
         Vec3 v = (Vec3)val;
         bool is_color = field.GetCustomAttribute<ColorFieldAttribute>() != null;
         bool changed;
         if (is_color)
         {
-          changed = UI.ColorEdit3(label, ref v);
+          changed = UIBindings.ColorEdit3(label, ref v);
         }
         else
         {
-          changed = UI.DragFloat3(label, ref v);
+          changed = UIBindings.DragFloat3(label, ref v);
         }
         if (changed && !read_only)
         {
           field.SetValue(target, v);
         }
       }
-      else if (ft == typeof(Vec4))
+      else if (ft == typeof(Vec4) && val != null)
       {
         Vec4 v = (Vec4)val;
         bool is_color = field.GetCustomAttribute<ColorFieldAttribute>() != null;
         if (is_color)
         {
-          if (UI.ColorEdit4(label, ref v) && !read_only)
+          if (UIBindings.ColorEdit4(label, ref v) && !read_only)
           {
             field.SetValue(target, v);
           }
         }
         else
         {
-          UI.LabelText(label, v.ToString());
+          // string? tooltip = attr?.Tooltip;
+          string? val_str = v.ToString();
+          if (val_str != null)
+          {
+            UIBindings.LabelText(label, val_str);
+          }
+          else
+          {
+            UIBindings.LabelText(label, "(null)");
+          }
         }
       }
-      else if (ft == typeof(string))
+      else if (ft == typeof(string) && val != null)
       {
         string s = (string)val ?? "";
-        UI.LabelText(label, s);
+        UIBindings.LabelText(label, s);
       }
       else
       {
-        UI.LabelText(label, val?.ToString() ?? "(null)");
+        UIBindings.LabelText(label, val?.ToString() ?? "(null)");
       }
     }
   }

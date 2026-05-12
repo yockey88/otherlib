@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "core/defines.hpp"
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 #include "core/ref.hpp"
 #include "core/value_storage.hpp"
@@ -57,10 +58,10 @@ namespace other {
     void clear();
 
     template <typename T>
-      requires not_string_or_pointer<T>
+      requires not_string_buffer_or_pointer<T>
     operator T&() { return unwrap_as<T>(); }
     template <typename T>
-      requires not_string_or_pointer<T>
+      requires not_string_buffer_or_pointer<T>
     operator const T&() const { return unwrap_as<T>(); }
 
     template <typename T>
@@ -74,6 +75,13 @@ namespace other {
       return as_string();
     }
 
+    template <typename T>
+      requires is_byte_buffer_type<T>
+    operator T() const {
+      auto byte_span = as_byte_buffer();
+      return std::vector<uint8_t>(byte_span.begin(), byte_span.end());
+    }
+
     std::string as_string() {
       check<std::string>();
       return storage->unchecked_string_unwrap();
@@ -81,6 +89,10 @@ namespace other {
     std::string as_string() const {
       check<std::string>();
       return storage->unchecked_string_unwrap();
+    }
+    std::span<const uint8_t> as_byte_buffer() const {
+      check<std::span<const uint8_t>>();
+      return storage->unchecked_byte_buffer_unwrap();
     }
 
     operator void*() {
@@ -91,7 +103,7 @@ namespace other {
     size_t size() const;
     value_type type() const;
 
-    void aquire();
+    void acquire();
     void release();
 
     value_storage& get_mutable_storage() {
@@ -109,20 +121,20 @@ namespace other {
     ref<value_storage> storage = nullptr;
 
     template <typename T>
-      requires not_string_or_pointer<T>
+      requires not_string_buffer_or_pointer<T>
     T& unwrap_as() {
       check<T>();
       return storage->unchecked_unwrap<T>();
     }
     template <typename T>
-      requires not_string_or_pointer<T>
+      requires not_string_buffer_or_pointer<T>
     const T& unwrap_as() const {
       check<T>();
       return storage->unchecked_unwrap<const T>();
     }
 
     template <typename T>
-      requires is_pointer_type<T>
+      requires(is_pointer_type<T>)
     T* ptr() {
       if (storage == nullptr || storage->size() != sizeof(T) || storage->val_type() != get_value_type<T>()) {
         return nullptr;
@@ -131,7 +143,7 @@ namespace other {
     }
 
     template <typename T>
-      requires is_pointer_type<T>
+      requires(is_pointer_type<T> || is_byte_buffer_type<T>)
     const T* ptr() const {
       if (storage == nullptr || storage->size() != sizeof(T) || storage->val_type() != get_value_type<T>()) {
         return nullptr;
@@ -148,6 +160,10 @@ namespace other {
         OTHER_ASSERT(storage->val_type() == value_type::STRING, "Value type mismatch! stored type: {}, requested type: {}", storage->val_type(), get_value_type<T>());
         const char* str_data = reinterpret_cast<const char*>(storage->data());
         OTHER_ASSERT(str_data != nullptr, "String data pointer is null!");
+      } else if constexpr (is_byte_buffer_type<T>) {
+        OTHER_ASSERT(storage->val_type() == value_type::BYTE_BUFFER, "Value type mismatch! stored type: {}, requested type: {}", storage->val_type(), get_value_type<T>());
+        const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(storage->data());
+        OTHER_ASSERT(data_ptr != nullptr, "Byte buffer data pointer is null!");
       } else {
         OTHER_ASSERT(storage->size() >= sizeof(T), "Size mismatch! stored type: {}, requested type: {}", storage->size(), sizeof(T));
       }

@@ -3,11 +3,19 @@
 // SPDX-License-Identifier: MIT
 
 #include <Jolt/Jolt.h>
+
+#ifdef JPH_USE_CPU_COMPUTE
+
 #include <Jolt/Compute/CPU/ComputeSystemCPU.h>
 #include <Jolt/Compute/CPU/ComputeQueueCPU.h>
 #include <Jolt/Compute/CPU/ComputeBufferCPU.h>
 
 JPH_NAMESPACE_BEGIN
+
+JPH_IMPLEMENT_RTTI_VIRTUAL(ComputeSystemCPU)
+{
+	JPH_ADD_BASE_CLASS(ComputeSystemCPU, ComputeSystem)
+}
 
 ComputeShaderResult ComputeSystemCPU::CreateComputeShader(const char *inName, uint32 inGroupSizeX, uint32 inGroupSizeY, uint32 inGroupSizeZ)
 {
@@ -44,3 +52,5 @@ ComputeSystemResult CreateComputeSystemCPU()
 }
 
 JPH_NAMESPACE_END
+
+#endif // JPH_USE_CPU_COMPUTE

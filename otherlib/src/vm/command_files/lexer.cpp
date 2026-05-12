@@ -4,10 +4,11 @@
 #include "vm/command_files/lexer.hpp"
 
 #include <algorithm>
+#include <ranges>
 
 #include "core/logger.hpp"
 
-#include "token.hpp"
+#include "vm/command_files/token.hpp"
 
 namespace other {
   namespace {
@@ -469,7 +470,34 @@ namespace other {
     if (str == "mod") return TOKEN_TYPE_KW_MOD;
     if (str == "loadscn") return TOKEN_TYPE_KW_LOADSCN;
 
+    if (str == "begin") return TOKEN_TYPE_KW_BEGIN;
     if (str == "end") return TOKEN_TYPE_KW_END;
+
+    if (str == "object") return TOKEN_TYPE_KW_OBJECT;
+
+    if (str == "asset") return TOKEN_TYPE_KW_ASSET;
+    if (str == "scene") return TOKEN_TYPE_KW_SCENE;
+
+    if (str == "model_source") return TOKEN_TYPE_KW_MODEL_SOURCE;
+    if (str == "model") return TOKEN_TYPE_KW_MODEL;
+    if (str == "animation") return TOKEN_TYPE_KW_ANIMATION;
+
+    if (str == "script_source") return TOKEN_TYPE_KW_SCRIPT_SOURCE;
+    if (str == "script") return TOKEN_TYPE_KW_SCRIPT;
+
+    if (str == "audio") return TOKEN_TYPE_KW_AUDIO;
+
+    if (str == "scene") return TOKEN_TYPE_KW_SCENE;
+    if (str == "scene_object") return TOKEN_TYPE_KW_SCENE_OBJECT;
+
+    if (str == "input_map") return TOKEN_TYPE_KW_INPUT_MAP;
+    if (str == "pipeline") return TOKEN_TYPE_KW_PIPELINE;
+
+    if (str == "pass") return TOKEN_TYPE_KW_PASS;
+    if (str == "shader") return TOKEN_TYPE_KW_SHADER;
+    if (str == "texture") return TOKEN_TYPE_KW_TEXTURE;
+    if (str == "buffer") return TOKEN_TYPE_KW_BUFFER;
+    if (str == "tag") return TOKEN_TYPE_KW_TAG;
 
     if (str == "r0" || str == "r1" || str == "r2" || str == "r3" || str == "r4" ||
         str == "r5" || str == "r6" || str == "r7" || str == "r8" || str == "r9" ||

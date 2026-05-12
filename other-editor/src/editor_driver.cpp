@@ -3,26 +3,22 @@
  **/
 #include "editor_driver.hpp"
 
-#include "event/event_system.hpp"
-#include "serialization/reflection.hpp"
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_keycode.h>
 
-#include "physics_world/physics_body.hpp"
-#include "script/scripting_environment.hpp"
+#include "core/logger_sinks.hpp"
+#include "event/event_system.hpp"
 
 #include "object/camera_component.hpp"
-#include "object/physics_component.hpp"
 #include "object/scene_object.hpp"
 
-#include "rendering-pipelines/empty_pipeline.hpp"
-#include "tools/environment_console.hpp"
+#include "driver/systems/scene_system.hpp"
+#include "tools/environment_console_sink.hpp"
 #include "ui/driver_ui.hpp"
-
-#include "SDL3/SDL_events.h"
-#include "SDL3/SDL_keycode.h"
 
 namespace other {
 
-  void editor_driver::on_initialize(const command_line& cmd) {
+  void editor_driver::on_initialize() {
     CORE_LOG_INFO("Initialized editor driver.");
 
     {
@@ -39,57 +35,37 @@ namespace other {
       };
 
       std::string loggers[] = { "other-editor-log", "other-core-log" };
-      log->register_sink(loggers, console_log_sink);
+      log->register_sink(loggers, &console_log_sink);
     }
 
-    get_event_system()->register_event("open-project");
-    get_event_system()->add_listener("open-project", [this](const value& data) {
-      if (data.type() != value_type::STRING) {
-        CORE_LOG_ERROR("Invalid data type for open-project event. Expected string.");
-        return;
-      }
+    get_event_system()->add_listener("scene.scene-activated", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data for 'scene.scene-activated' event. Expected scene ID as number.");
+      auto* s = get_active_scene();
+      OTHER_ASSERT(s != nullptr, "Active scene is null when handling 'scene.scene-activated' event.");
 
-      std::string proj_name = data;
-      CORE_LOG_INFO("Opening project: [{}]", proj_name);
-    });
+      natural_t scene_id = data;
+      OTHER_ASSERT(s->id == scene_id, "Scene ID in 'scene.scene-activated' event does not match active scene ID. Expected {}, got {}.", s->id, scene_id);
 
-    get_event_system()->register_event("edit-project");
-    get_event_system()->add_listener("edit-project", [this](const value& data) {
-      if (data.type() != value_type::STRING) {
-        CORE_LOG_ERROR("Invalid data type for edit-project event. Expected string.");
-        return;
-      }
-
-      std::string proj_name = data;
-      CORE_LOG_INFO("Editing project: [{}]", proj_name);
-    });
-    get_event_system()->add_listener("force-load-scene", [this](const value& data) {
       /// capture camera id
-      scene_object& cam_obj = get_active_scene()->get_object("Camera");
-      camera_obj_id = cam_obj.id;
+      if (!s->has_object("Camera")) {
+        return;
+      }
 
-      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+      scene_object& cam_obj = s->get_object("Camera");
+      camera_component* cam = s->get_component<camera_component>(&cam_obj);
       OTHER_ASSERT(cam != nullptr, "Camera component is null");
+      camera_obj_id = cam_obj.id;
       cam->camera.sensitivity = 10.0f;
-
-      // scene_object& my_obj = get_active_scene()->get_object("MyObject");
-      // scene_object& floor_obj = get_active_scene()->get_object("Floor");
-
-      // get_active_scene()->add_component<physics_component>(&my_obj, physics_component{ physics_body_settings{ .body_type = BODY_TYPE_DYNAMIC } });
-      // get_active_scene()->add_component<physics_component>(&floor_obj, physics_component{ physics_body_settings{ .body_type = BODY_TYPE_STATIC } });
     });
-
-    process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
-    /// not transparent
     {
       auto* main_ctx = map.find_context("driver-core");
       OTHER_ASSERT(main_ctx != nullptr, "Main context 'driver-core' not found");
 
       main_ctx->add_action("toggle_move_mode")
-        .bind_key(key_code::M, modifier_flags::CTRL);
+        .bind_key(key_code::M, modifier_flags::ALT);
     }
 
     auto& ctx = map.add_context("editor-camera-controls");
@@ -115,14 +91,14 @@ namespace other {
       .bind_gamepad_axis(gamepad_axis::RIGHT_STICK_Y, 0.5f, 1.f, 1);
 
     ctx.add_action("toggle_move_mode")
-      .bind_key(key_code::M, modifier_flags::CTRL);
+      .bind_key(key_code::M, modifier_flags::ALT);
 
     ctx.add_action("orbit_hold")
       .bind_mouse_button(mouse_button::MIDDLE);
   }
 
   void editor_driver::on_viewport_resize(const glm::vec2& size) {
-    auto* active_scene = get_active_scene();
+    auto* active_scene = get_kernel().get_core_system<scene_system>().get_active_scene();
     if (active_scene == nullptr) {
       return;
     }
@@ -134,28 +110,18 @@ namespace other {
     }
   }
 
-  void editor_driver::on_initialize_ui(scope<driver_ui>& ui_ptr) {
-    get_event_system()->register_event("editor:main-menu:file:new-project");
-    get_event_system()->add_listener("editor:main-menu:file:new-project", [this](const value& data) {
-      CORE_LOG_INFO("New Project menu item selected.");
-    });
-
-    get_event_system()->register_event("editor:main-menu:file:open-project");
-    get_event_system()->add_listener("editor:main-menu:file:open-project", [this](const value& data) {
-      CORE_LOG_INFO("Open Project menu item selected.");
-    });
-  }
-
   void editor_driver::update_running() {
     auto* input_sys = subsystem<input_system>::get();
     OTHER_ASSERT(input_sys != nullptr, "Input system is null");
 
     glm::vec2 move = input_sys->get_action_value_2d("move");
+    glm::vec2 look = input_sys->get_action_value_2d("look");
     float vertical = input_sys->get_action_value("move_vertical");
+    bool is_looking_around = input_sys->is_action_pressed("orbit_hold");
 
     if (glm::length(move) > 0.01f || glm::abs(vertical) > 0.01f) {
-      scene_object& cam_obj = get_active_scene()->get_object(camera_obj_id);
-      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+      scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);
+      camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
       float speed = 0.1f;
 
       cam->camera.position += cam->camera.forward() * move.y * speed;
@@ -163,30 +129,42 @@ namespace other {
       cam->camera.position += cam->camera.up() * vertical * speed;
     }
 
-    // gamepad look (right stick)
-    glm::vec2 look = input_sys->get_action_value_2d("look");
     if (glm::length(look) > 0.01f) {
-      scene_object& cam_obj = get_active_scene()->get_object(camera_obj_id);
-      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+      scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);
+      camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
       cam->camera.adjust_look_orientation(look.x, look.y);
     }
 
-    // mouse orbit (middle-click held)
-    if (input_sys->is_action_pressed("orbit_hold")) {
+    if (is_looking_around) {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), true);
       glm::vec2 mouse_delta = input_sys->get_mouse_delta();
-      scene_object& cam_obj = get_active_scene()->get_object(camera_obj_id);
-      camera_component* cam = get_active_scene()->get_component<camera_component>(&cam_obj);
+      scene_object& cam_obj = get_kernel().get_core_system<scene_system>().get_active_scene()->get_object(camera_obj_id);
+      camera_component* cam = get_kernel().get_core_system<scene_system>().get_active_scene()->get_component<camera_component>(&cam_obj);
       cam->camera.adjust_look_orientation(mouse_delta.x * 0.1f, mouse_delta.y * 0.1f);
     } else {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), false);
     }
   }
 
-  void editor_driver::update_initializing() {
-    using namespace std::string_literals;
-    // trigger_event("force-load-scene", "resources/scenes/scene1.lua"s);
-    // process_driver_event(driver_event::DRIVER_EVENT_READY);
+  input_map editor_driver::get_default_editor_input_map() {
+    input_map map;
+    map.name = "editor-default";
+    map.stick_dead_zone = 0.15f;
+    map.trigger_dead_zone = 0.05f;
+
+    {
+      auto& ctx = map.add_context("global", /* transparent */ true);
+
+      /// quit / close
+      ctx.add_action("quit")
+        .bind_key(key_code::Q, modifier_flags::CTRL);
+
+      /// toggle fullscreen
+      ctx.add_action("toggle_fullscreen")
+        .bind_key(key_code::F11);
+    }
+
+    return map;
   }
 
   void editor_driver::on_input_event(const input_state_change_event& event) {
@@ -205,3 +183,5 @@ namespace other {
   }
 
 }  // namespace other
+
+OTHER_DRIVER(other::editor_driver);

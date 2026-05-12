@@ -5,6 +5,7 @@
 
 #include <imgui/imgui.h>
 
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
 #include "SDL3/SDL_keycode.h"
@@ -17,20 +18,26 @@ namespace other {
     /// SDL_INIT_GAMEPAD implies SDL_INIT_JOYSTICK
     /// we do this in case the other environment has inputs configured for gamepad
     ///   even without a render backend loaded.
-    if (!SDL_WasInit(SDL_INIT_GAMEPAD)) {
-      if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
-        CORE_LOG_ERROR("Failed to initialize SDL gamepad subsystem: {}", SDL_GetError());
+    {
+      PROFILE_SECTION("input_system::initialize--sdl");
+      if (!SDL_WasInit(SDL_INIT_GAMEPAD)) {
+        if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
+          CORE_LOG_ERROR("Failed to initialize SDL gamepad subsystem: {}", SDL_GetError());
+        }
       }
     }
 
     /// enumerate already-connected gamepads  plugged in before launch
     int count = 0;
-    SDL_JoystickID* joysticks = SDL_GetGamepads(&count);
-    if (joysticks) {
-      for (int i = 0; i < count; ++i) {
-        handle_gamepad_added(joysticks[i]);
+    {
+      PROFILE_SECTION("input_system::initialize--sdl-enumerate-gamepads");
+      SDL_JoystickID* joysticks = SDL_GetGamepads(&count);
+      if (joysticks) {
+        for (int i = 0; i < count; ++i) {
+          handle_gamepad_added(joysticks[i]);
+        }
+        SDL_free(joysticks);
       }
-      SDL_free(joysticks);
     }
 
     staging.clear();
@@ -41,8 +48,6 @@ namespace other {
   }
 
   void input_system::shutdown() {
-    CORE_LOG_INFO("Shutting down input system.");
-
     for (auto& entry : sdl_gamepads) {
       if (entry.handle) {
         SDL_CloseGamepad(entry.handle);
@@ -318,6 +323,18 @@ namespace other {
 
   glm::vec2 input_system::get_mouse_scroll() const {
     return current.mouse.scroll;
+  }
+
+  void input_system::set_deadzone(gamepad_axis axis, float dead_zone, int32_t pad_index) {
+    if (pad_index < 0 || pad_index >= static_cast<int32_t>(kMaxGamepads)) {
+      CORE_LOG_WARN("Attempted to set gamepad deadzone for invalid pad index {}.", pad_index);
+      return;
+    }
+    if (axis == gamepad_axis::LEFT_TRIGGER || axis == gamepad_axis::RIGHT_TRIGGER) {
+      map.trigger_dead_zone = dead_zone;
+    } else {
+      map.stick_dead_zone = dead_zone;
+    }
   }
 
   bool input_system::is_gamepad_connected(int32_t index) const {

@@ -3,10 +3,69 @@
  **/
 #include "file/directory.hpp"
 
+#include <algorithm>
+#include <filesystem>
+#include <ranges>
+
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "file/local_file.hpp"
 
 namespace other {
+
+  directory::directory(event_system& events, const std::string_view name, const filepath& path, file_type type)
+      : events(events), hash(FNV(name)), type(type), dir_name(name), abs_path(path) {
+    watcher = file_watcher::make_directory_watcher(events, abs_path.empty() ? dir_name : abs_path, file_watcher::watch_mode::RECURSIVE);
+    if (type == file_type::VIRTUAL) {
+      abs_path = name;
+      return;
+    }
+  }
+
+  std::string directory::to_string() const {
+    return std::format(
+      "Directory:\n - Name: {}\n - Absolute Path: {}\n - Type: {}\n - Num Children: {}\n - Num Files: {}",
+      dir_name,
+      abs_path.string(),
+      type,
+      children.size(),
+      file_handles.size()
+    );
+  }
+
+  void directory::recursive_scan() {
+    if (type == file_type::VIRTUAL) {
+      return;
+    }
+    if (!std::filesystem::exists(abs_path) || !std::filesystem::is_directory(abs_path)) {
+      CORE_LOG_ERROR("Cannot scan directory '{}': path '{}' does not exist or is not a directory", dir_name, abs_path.string());
+      return;
+    }
+
+    for (const auto& entry : std::filesystem::directory_iterator(abs_path)) {
+      if (entry.is_regular_file()) {
+        auto local = make_ref<local_file>(events, entry.path(), filepath{ abs_path / entry.path().filename() }.string());
+        add_file(local);
+      } else if (entry.is_directory()) {
+        std::string child_name = entry.path().filename().string();
+        auto child_dir = add_child_directory(child_name, entry.path());
+        child_dir->recursive_scan();
+      }
+    }
+  }
+
+  void directory::poll() {
+    if (watcher) {
+      watcher->poll();
+    }
+
+    for (auto& [hash, child] : children) {
+      child->poll();
+    }
+    for (auto& [hash, file] : file_handles) {
+      file->poll();
+    }
+  }
 
   ref<directory> directory::get_child_directory(const std::string_view name) const {
     natural_t hash = FNV(name);
@@ -14,6 +73,7 @@ namespace other {
     if (it != children.end()) {
       return it->second;
     }
+
     return nullptr;
   }
 
@@ -27,7 +87,8 @@ namespace other {
       return it->second;
     }
 
-    auto child = make_ref<directory>(name, path);
+    CORE_LOG_DEBUG(" - adding child directory '{}' with path '{}' to '{}'", name, path.string(), dir_name);
+    auto child = make_ref<directory>(events, name, path, path.empty() ? file_type::VIRTUAL : file_type::LOCAL);
     children.insert({ hash, child });
     return child;
   }
@@ -62,12 +123,41 @@ namespace other {
     return true;
   }
 
-  ref<file_handle> directory::get_file(const std::string_view name) const {
-    natural_t hash = FNV(name);
+  bool directory::contains_path(const filepath& path) const {
+    if (type == file_type::VIRTUAL) {
+      return false;
+    }
+
+    std::string path_str = path.string();
+    std::string abs_path_str = abs_path.string();
+
+    // check if the given path is contained in this directory in any way (no matter how many subdirectories down it is)
+    filepath this_path = abs_path;
+    filepath target_path = std::filesystem::absolute(path);
+
+    return target_path.string().starts_with(this_path.string());
+  }
+
+  ref<file_handle> directory::get_file(const std::string_view name) {
+    const filepath path = name;
+    natural_t hash = FNV(path.filename().stem().string());
     auto it = file_handles.find(hash);
     if (it != file_handles.end()) {
       return it->second;
     }
+
+    if (type == file_type::VIRTUAL) {
+      return nullptr;
+    }
+
+    OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_directory(abs_path), "Directory '{}' has invalid path '{}'", dir_name, abs_path.string());
+    for (const auto& entry : std::filesystem::directory_iterator(abs_path)) {
+      if (entry.is_regular_file() && entry.path().filename() == path.filename()) {
+        auto local = make_ref<local_file>(events, entry.path(), filepath{ abs_path / entry.path().filename() }.string());
+        return add_file(local);
+      }
+    }
+
     return nullptr;
   }
 
@@ -78,7 +168,7 @@ namespace other {
     natural_t hash = FNV(file->name());
     auto it = file_handles.find(hash);
     if (it != file_handles.end()) {
-      CORE_LOG_WARN("File '{}' already exists in directory '{}'", file->name(), dir_name);
+      CORE_LOG_WARN("File '{}' already exists in directory '{}', overwriting existing file", file->name(), dir_name);
       return it->second;
     }
 

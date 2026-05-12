@@ -4,7 +4,6 @@
 #ifndef OTHER_SCRIPTING_DOTNET_HOST_HPP
 #define OTHER_SCRIPTING_DOTNET_HOST_HPP
 
-#include <filesystem>
 #include <map>
 
 #include <dotnet/coreclr_delegates.h>
@@ -73,7 +72,7 @@ namespace other {
       get_type_information get_assembly_types = nullptr;
       get_net_core_types get_net_core_types = nullptr;
       get_type_id get_type_id = nullptr;
-      get_type_name get_full_type_name = nullptr;
+      get_dotnet_type_name get_full_type_name = nullptr;
 
       get_type_information get_type_methods = nullptr;
       get_type_information get_type_fields = nullptr;
@@ -81,7 +80,10 @@ namespace other {
       get_type_information get_attributes = nullptr;
       check_type_characteristic has_attribute = nullptr;
 
+      is_derived_from derived_from = nullptr;
+
       //        method
+      has_method has_method = nullptr;
       get_method_name get_method_name = nullptr;
       get_method_return_type get_method_return_type = nullptr;
       get_method_accessibility get_method_accessibility = nullptr;
@@ -109,10 +111,10 @@ namespace other {
       /// ManagedObject
       create_object create_object = nullptr;
       destroy_object destroy_object = nullptr;
+      invoke_method invoke_instance_method = nullptr;
+      invoke_method_ret invoke_instance_method_ret = nullptr;
       invoke_method invoke_static_method = nullptr;
       invoke_method_ret invoke_static_method_ret = nullptr;
-      invoke_method invoke_method = nullptr;
-      invoke_method_ret invoke_method_ret = nullptr;
       field_is_private_checker is_field_private = nullptr;
       field_setter_getter set_field = nullptr;
       field_setter_getter get_field = nullptr;
@@ -157,6 +159,9 @@ namespace other {
 
     assembly_context* create_assembly_context(const std::string_view name);
     void destroy_assembly_context(natural_t context_id);
+
+    int32_t get_behavior_base_type_id();
+    void purge_dotnet_type(int32_t dotnet_type_id);
 
     template <typename... Args>
     dotnet_object* instantiate_managed_object(const std::string_view type_name, const std::string_view name, Args&&... args) {
@@ -204,13 +209,16 @@ namespace other {
     std::basic_string<char_t> dotnet_runtime_config;
 
     std::map<natural_t, assembly_context> assembly_contexts;
+    std::map<natural_t, dotnet_object> managed_objects;
 
-    std::map<uint64_t, dotnet_object> managed_objects;
+    opt<int32_t> behavior_base_type_id = std::nullopt;
+
+    std::map<natural_t, dotnet_object>::iterator destroy_managed_object(std::map<natural_t, dotnet_object>::iterator obj_itr);
 
     filepath get_bindings_assembly_path() const;
 
     dotnet_object* new_object(const std::string_view name, dotnet_type* type);
-    void remove_object(const std::string_view name);
+    std::map<natural_t, dotnet_object>::iterator remove_object(const std::string_view name);
 
     void bind_interop_table();
     void bind_native_functions();

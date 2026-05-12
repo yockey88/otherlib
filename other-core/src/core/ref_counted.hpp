@@ -19,8 +19,8 @@ namespace other {
     void view_increment() const;
     void view_decrement() const;
 
-    void increment();
-    void decrement();
+    natural_t increment();
+    natural_t decrement();
 
     natural_t view_count() const;
     natural_t count() const;

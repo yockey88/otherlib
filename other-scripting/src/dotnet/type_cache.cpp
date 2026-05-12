@@ -21,11 +21,14 @@ namespace other {
 
   void type_cache::remove_type(int32_t dotnet_handle) {
     auto itr = cached_types.find(dotnet_handle);
-    if (itr != cached_types.end()) {
-      name_cache.erase(FNV(itr->second.full_name()));
-      id_cache.erase(dotnet_handle);
-      cached_types.erase(itr);
+    if (itr == cached_types.end()) {
+      CORE_LOG_ERROR("Failed to remove .NET type [{}] from cache: not found", dotnet_handle);
+      return;
     }
+
+    name_cache.erase(FNV(itr->second.full_name()));
+    id_cache.erase(dotnet_handle);
+    cached_types.erase(itr);
   }
 
   void type_cache::clear_cache(dotnet_host* host) {

@@ -18,8 +18,8 @@ namespace other {
     static constexpr size_t kTestBlockSize = 64;
     static constexpr size_t kLargeBlockSize = 1024;
     static constexpr size_t kMaxTestAllocations = 1000;
-    static constexpr size_t kPageSize = arena_storage::kPageSize;
-    static constexpr size_t kAlignment = arena_storage::kAlignment;
+    static constexpr size_t kPageSize = page::kPageSize;
+    static constexpr size_t kAlignment = page::kAlignment;
 
     struct test_allocation_data {
       void* ptr;

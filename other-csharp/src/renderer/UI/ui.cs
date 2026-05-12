@@ -4,7 +4,7 @@ using System;
 
 namespace Other
 {
-  public static class UI
+  public static class UIBindings
   {
     [NativeFunction("BeginWindow")]
     internal static unsafe delegate*<NativeString, int, NativeBool32> NativeBeginWindow;

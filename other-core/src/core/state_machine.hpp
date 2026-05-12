@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <unordered_map>
 
+#include "core/enum_formatter.hpp"
 #include "core/formatting.hpp"
 #include "core/logger.hpp"
 
@@ -49,7 +50,7 @@ namespace other {
       auto itr = std::ranges::find_if(transitions, [event](const transition& t) { return t.event == event; });
       if (itr != transitions.end()) {
         ST next_state = itr->to;
-        OTHER_ASSERT(next_state < ST::NUM_STATES, "Next state is invalid");
+        OTHER_ASSERT(next_state < ST::NUM_STATES, "Transition [{}] = {} => [{}] is invalid", current, event, next_state);
         CORE_LOG_TRACE("FSM[{}]: Event '{}': '{}' => '{}'", typeid(*this).name(), event, current, next_state);
 
         on_exit_state(current);

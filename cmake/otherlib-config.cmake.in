@@ -12,7 +12,6 @@ set(OTHERLIB_EXTERN_INCLUDE_DIRS
   "${OTHERLIB_INCLUDE_DIR}/extern/spdlog"
   "${OTHERLIB_INCLUDE_DIR}/extern/glm"
   "${OTHERLIB_INCLUDE_DIR}/extern/refl"
-  "${OTHERLIB_INCLUDE_DIR}/extern/flatbuffers"
   "${OTHERLIB_INCLUDE_DIR}/extern/asio"
   "${OTHERLIB_INCLUDE_DIR}/extern/glad"
   "${OTHERLIB_INCLUDE_DIR}/extern/assimp"
@@ -22,6 +21,8 @@ set(OTHERLIB_EXTERN_INCLUDE_DIRS
   "${OTHERLIB_INCLUDE_DIR}/extern/entt"
   "${OTHERLIB_INCLUDE_DIR}/extern/sdl"
   "${OTHERLIB_INCLUDE_DIR}/extern/python312"
+  "${OTHERLIB_INCLUDE_DIR}/extern/sol2"
+  "${OTHERLIB_INCLUDE_DIR}/extern/json"
   "${OTHERLIB_INCLUDE_DIR}/third_party"
 )
 
@@ -42,7 +43,21 @@ function(_otherlib_setup_external_lib TARGET_NAME NAMESPACE LIB_TYPE HEADER_SUBD
     NO_DEFAULT_PATH
   )
 
-  if(${TARGET_NAME}_LIBRARY)
+  find_library(${TARGET_NAME}_LIBRARY_RELEASE
+    NAMES ${LIB_NAMES}
+    PATHS "${OTHERLIB_LIB_DIR}"
+    PATH_SUFFIXES release
+    NO_DEFAULT_PATH
+  )
+
+  find_library(${TARGET_NAME}_LIBRARY_DEBUG
+    NAMES ${LIB_NAMES}
+    PATHS "${OTHERLIB_LIB_DIR}"
+    PATH_SUFFIXES debug
+    NO_DEFAULT_PATH
+  )
+
+  if(${TARGET_NAME}_LIBRARY OR ${TARGET_NAME}_LIBRARY_RELEASE OR ${TARGET_NAME}_LIBRARY_DEBUG)
     set(FULL_TARGET "${NAMESPACE}::${TARGET_NAME}")
     
     if(NOT TARGET ${FULL_TARGET})
@@ -50,14 +65,60 @@ function(_otherlib_setup_external_lib TARGET_NAME NAMESPACE LIB_TYPE HEADER_SUBD
       
       if(LIB_TYPE STREQUAL "STATIC")
         set_target_properties(${FULL_TARGET} PROPERTIES
-          IMPORTED_LOCATION "${${TARGET_NAME}_LIBRARY}"
           INTERFACE_INCLUDE_DIRECTORIES "${OTHERLIB_INCLUDE_DIR}/extern/${HEADER_SUBDIR}"
         )
+
+        if(${TARGET_NAME}_LIBRARY_RELEASE)
+          set_property(TARGET ${FULL_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+          set_property(TARGET ${FULL_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILE)
+          set_target_properties(${FULL_TARGET} PROPERTIES
+            IMPORTED_LOCATION_RELEASE "${${TARGET_NAME}_LIBRARY_RELEASE}"
+            IMPORTED_LOCATION_PROFILE "${${TARGET_NAME}_LIBRARY_RELEASE}"
+          )
+        endif()
+
+        if(${TARGET_NAME}_LIBRARY_DEBUG)
+          set_property(TARGET ${FULL_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
+          set_property(TARGET ${FULL_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILED)
+          set_target_properties(${FULL_TARGET} PROPERTIES
+            IMPORTED_LOCATION_DEBUG "${${TARGET_NAME}_LIBRARY_DEBUG}"
+            IMPORTED_LOCATION_PROFILED "${${TARGET_NAME}_LIBRARY_DEBUG}"
+          )
+        endif()
+
+        if(${TARGET_NAME}_LIBRARY AND NOT ${TARGET_NAME}_LIBRARY_RELEASE AND NOT ${TARGET_NAME}_LIBRARY_DEBUG)
+          set_target_properties(${FULL_TARGET} PROPERTIES
+            IMPORTED_LOCATION "${${TARGET_NAME}_LIBRARY}"
+          )
+        endif()
       else()
         set_target_properties(${FULL_TARGET} PROPERTIES
-          IMPORTED_IMPLIB "${${TARGET_NAME}_LIBRARY}"
           INTERFACE_INCLUDE_DIRECTORIES "${OTHERLIB_INCLUDE_DIR}/extern/${HEADER_SUBDIR}"
         )
+
+        if(${TARGET_NAME}_LIBRARY_RELEASE)
+          set_property(TARGET ${FULL_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+          set_property(TARGET ${FULL_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILE)
+          set_target_properties(${FULL_TARGET} PROPERTIES
+            IMPORTED_IMPLIB_RELEASE "${${TARGET_NAME}_LIBRARY_RELEASE}"
+            IMPORTED_IMPLIB_PROFILE "${${TARGET_NAME}_LIBRARY_RELEASE}"
+          )
+        endif()
+
+        if(${TARGET_NAME}_LIBRARY_DEBUG)
+          set_property(TARGET ${FULL_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
+          set_property(TARGET ${FULL_TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILED)
+          set_target_properties(${FULL_TARGET} PROPERTIES
+            IMPORTED_IMPLIB_DEBUG "${${TARGET_NAME}_LIBRARY_DEBUG}"
+            IMPORTED_IMPLIB_PROFILED "${${TARGET_NAME}_LIBRARY_DEBUG}"
+          )
+        endif()
+
+        if(${TARGET_NAME}_LIBRARY AND NOT ${TARGET_NAME}_LIBRARY_RELEASE AND NOT ${TARGET_NAME}_LIBRARY_DEBUG)
+          set_target_properties(${FULL_TARGET} PROPERTIES
+            IMPORTED_IMPLIB "${${TARGET_NAME}_LIBRARY}"
+          )
+        endif()
       endif()
     endif()
     
@@ -68,11 +129,10 @@ endfunction()
 
 ## Setup external library targets
 _otherlib_setup_external_lib(SDL3 SDL3 SHARED sdl SDL3)
-_otherlib_setup_external_lib(assimp assimp SHARED assimp assimp-vc143-mtd assimp-vc143-mt)
+_otherlib_setup_external_lib(assimp assimp SHARED assimp assimp-vc143-mt assimp-vc143-mt)
 _otherlib_setup_external_lib(glad glad STATIC glad glad)
-_otherlib_setup_external_lib(nfd nfd STATIC nativefiledialog nfd_d nfd)
-_otherlib_setup_external_lib(flatbuffers flatbuffers STATIC flatbuffers flatbuffers)
 _otherlib_setup_external_lib(python312 python STATIC python312 python312 python3)
+_otherlib_setup_external_lib(Jolt jolt STATIC jolt Jolt)
 
 ## Create convenience aliases
 if(TARGET SDL3::SDL3 AND NOT TARGET SDL3)
@@ -92,16 +152,18 @@ if(TARGET nfd::nfd)
   endif()
 endif()
 
-if(TARGET flatbuffers::flatbuffers AND NOT TARGET flatbuffers)
-  add_library(flatbuffers ALIAS flatbuffers::flatbuffers)
-endif()
-
 if(TARGET python::python312)
   if(NOT TARGET python312)
     add_library(python312 ALIAS python::python312)
   endif()
   if(NOT TARGET python3)
     add_library(python3 ALIAS python::python312)
+  endif()
+endif()
+
+if (TARGET jolt::Jolt)
+  if(NOT TARGET Jolt)
+    add_library(Jolt ALIAS jolt::Jolt)
   endif()
 endif()
 
@@ -116,7 +178,7 @@ if(TARGET otherlib::otherlib)
   ## - Platform-specific compatibility macros (NOMINMAX, WIN32_LEAN_AND_MEAN, etc.)
   ## 
   ## IMPORTANT: Consumers should NEVER define their own main() function.
-  ## Instead, implement: other::exit_code other_main(const command_line& cmd, const config_table& config)
+  ## Instead, implement: other::exit_code other_main(const command_line& cmd, const config_table& config, const other::subsystem_registry& registry);
   ## 
   ## If you need to opt-out of the automatic main() (e.g., for plugins or special cases),
   ## add to your target: target_compile_definitions(your_target PRIVATE OTHER_DISABLE_MAIN)
@@ -172,11 +234,11 @@ if(TARGET otherlib::otherlib)
   if(TARGET nfd::nfd)
     list(APPEND _OTHERLIB_LINK_LIBS nfd::nfd)
   endif()
-  if(TARGET flatbuffers::flatbuffers)
-    list(APPEND _OTHERLIB_LINK_LIBS flatbuffers::flatbuffers)
-  endif()
   if(TARGET python::python312)
     list(APPEND _OTHERLIB_LINK_LIBS python::python312)
+  endif()
+  if(TARGET jolt::Jolt)
+    list(APPEND _OTHERLIB_LINK_LIBS jolt::Jolt)
   endif()
   if(TARGET Threads::Threads)
     list(APPEND _OTHERLIB_LINK_LIBS Threads::Threads)
@@ -209,4 +271,4 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/otherlib-targets.cmake")
 
 ## Include helper macros for creating Other drivers/applications
-include("${CMAKE_CURRENT_LIST_DIR}/add_other_driver.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/other_driver.cmake")
