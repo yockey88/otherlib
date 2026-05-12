@@ -8,20 +8,20 @@
 
 namespace other {
 
-  class editor_driver;
+  class driver;
 
   namespace ui {
 
     class status_window : public ui_window {
      public:
-      status_window(event_system& event_sys, editor_driver* driver)
+      status_window(event_system& event_sys, driver* driver)
           : ui_window(event_sys, "Status"), driver_ptr(driver) {}
       ~status_window() override = default;
 
       void on_render_body() override;
 
      private:
-      editor_driver* driver_ptr = nullptr;
+      driver* driver_ptr = nullptr;
     };
 
   }  // namespace ui

@@ -3,9 +3,8 @@
  **/
 #include "status_window.hpp"
 
+#include "driver/driver.hpp"
 #include "driver/systems/scene_system.hpp"
-
-#include "editor_driver.hpp"
 
 namespace other {
   namespace ui {

@@ -20,6 +20,8 @@
 #include "message/message.hpp"
 #include "message/message_bus.hpp"
 
+#include "peer-mesh/peer_actor_host.hpp"
+
 namespace other {
 
   class OTHER_CLASS network_system : public core_system<network_system> {
