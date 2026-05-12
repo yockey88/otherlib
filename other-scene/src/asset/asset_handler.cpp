@@ -642,7 +642,7 @@ namespace other {
     }
 
     OTHER_ASSERT(dir_handle != nullptr, "Final directory handle is null for asset virtual path: {}", asset_ptr->virtual_path);
-    CORE_LOG_INFO("Directory for asset ID {}: {}", asset_ptr->id, dir_handle->to_string());
+    CORE_LOG_DEBUG("Directory for asset ID {}: {}", asset_ptr->id, dir_handle->to_string());
 
     file_type type = full_virtual_file ? file_type::VIRTUAL : file_type::LOCAL;
     ref<file_handle> file_handle = nullptr;
@@ -661,7 +661,7 @@ namespace other {
     file_handle->set_virtual_path(asset_ptr->virtual_path);
 
     OTHER_ASSERT(file_handle != nullptr, "Failed to create file handle for asset: {}", asset_ptr->virtual_path);
-    CORE_LOG_INFO("Asset file registered for asset [{}] of type [{}] :\n{}", asset_ptr->id, asset_ptr->asset_type, file_handle->to_string());
+    CORE_LOG_DEBUG("Asset file registered for asset [{}] of type [{}] :\n{}", asset_ptr->id, asset_ptr->asset_type, file_handle->to_string());
     dir_handle->add_file(file_handle);
   }
 

@@ -190,7 +190,7 @@ namespace other {
     ss << std::format("physics_environment={:p}\n", static_cast<void*>(argv->physics_environment));
     ss << std::format("renderer_backend={:p}\n", static_cast<void*>(argv->renderer));
     ss << std::format("scripting_environment={:p}", static_cast<void*>(argv->scripting_environment));
-    CORE_LOG_INFO("Plugin '{}' initialized with subsystems: {}", pl_name, ss.str());
+    CORE_LOG_DEBUG("Plugin '{}' initialized with subsystems: {}", pl_name, ss.str());
   }
 
 }  // namespace other
