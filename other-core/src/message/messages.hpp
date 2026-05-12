@@ -5,6 +5,7 @@
 #define OTHER_CORE_MESSAGE_MESSAGES_HPP
 
 #include "core/defines.hpp"
+#include "core/enum_formatter.hpp"
 
 #include "message/message_defines.hpp"
 #include "message/message_serialization.hpp"

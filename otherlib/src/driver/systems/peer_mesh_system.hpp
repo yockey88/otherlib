@@ -23,26 +23,11 @@ namespace other {
 
     std::string name() const override { return "Peer Mesh System"; }
 
-    void register_peer_actor_host(ref<peer_actor_host> host);
-
     void initialize(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
    private:
-    struct actor_state {
-      scope<peer_actor> actor;
-      peer_mailbox mailbox;
-      std::atomic<bool> scheduled{ false };
-      std::atomic<bool> alive{ true };
-    };
-
-    ref<peer_actor_host> actor_host;
-
-    peer_graph graph;
-
-    std::unordered_map<natural_t, actor_state> peer_actors;
-    std::unordered_map<natural_t, natural_t> connection_id_to_peer_id;
   };
 
 }  // namespace other

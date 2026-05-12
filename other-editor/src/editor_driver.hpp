@@ -37,6 +37,7 @@ namespace other {
     bool pressing_mouse_wheel = false;
     bool move_toggled_on = false;
 
+    input_map get_default_editor_input_map();
     void on_input_event(const input_state_change_event& event) override;
   };
 

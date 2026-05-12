@@ -16,9 +16,6 @@
 #include "tools/environment_console_sink.hpp"
 #include "ui/driver_ui.hpp"
 
-#include "project_window.hpp"
-#include "status_window.hpp"
-
 namespace other {
 
   void editor_driver::on_initialize() {
@@ -60,11 +57,6 @@ namespace other {
       camera_obj_id = cam_obj.id;
       cam->camera.sensitivity = 10.0f;
     });
-
-    /// \todo load editor pipeline for debug drawing
-    get_ui()->register_window<ui::project_window>("Project", *get_event_system());
-    get_ui()->register_window<ui::status_window>("Status", *get_event_system(), this);
-    get_ui()->open_window("Status");
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
@@ -152,6 +144,27 @@ namespace other {
     } else {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), false);
     }
+  }
+
+  input_map editor_driver::get_default_editor_input_map() {
+    input_map map;
+    map.name = "editor-default";
+    map.stick_dead_zone = 0.15f;
+    map.trigger_dead_zone = 0.05f;
+
+    {
+      auto& ctx = map.add_context("global", /* transparent */ true);
+
+      /// quit / close
+      ctx.add_action("quit")
+        .bind_key(key_code::Q, modifier_flags::CTRL);
+
+      /// toggle fullscreen
+      ctx.add_action("toggle_fullscreen")
+        .bind_key(key_code::F11);
+    }
+
+    return map;
   }
 
   void editor_driver::on_input_event(const input_state_change_event& event) {
