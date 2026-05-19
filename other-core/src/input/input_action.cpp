@@ -32,8 +32,7 @@ namespace other {
   }
 
   input_action& input_context::add_action(const std::string& action_name, action_value_type type) {
-    actions.emplace_back(action_name, type);
-    return actions.back();
+    return actions.emplace_back(action_name, type);
   }
 
   input_action* input_context::find_action(natural_t action_id) {
@@ -55,8 +54,7 @@ namespace other {
   }
 
   input_context& input_map::add_context(const std::string& ctx_name, bool transparent) {
-    contexts.emplace_back(ctx_name, transparent);
-    return contexts.back();
+    return contexts.emplace_back(ctx_name, transparent);
   }
 
   input_context* input_map::find_context(const std::string_view ctx_name) {

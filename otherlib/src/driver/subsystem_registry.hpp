@@ -23,6 +23,7 @@ namespace other {
     static bool profile_includes_scripting(const std::string_view profile_name);
     static bool profile_includes_physics(const std::string_view profile_name);
     static bool profile_includes_rendering(const std::string_view profile_name);
+    static bool profile_includes_audio(const std::string_view profile_name);
     static bool profile_includes_vm(const std::string_view profile_name);
     static bool profile_includes_scene(const std::string_view profile_name);
 

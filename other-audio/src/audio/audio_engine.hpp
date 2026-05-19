@@ -6,7 +6,10 @@
 
 #include <miniaudio/miniaudio.h>
 
+#include "core/ref.hpp"
 #include "core/subsystem.hpp"
+
+#include "audio_device/audio_device.hpp"
 
 namespace other {
 
@@ -19,9 +22,21 @@ namespace other {
     void shutdown();
 
    private:
-    ma_engine engine;
+    ma_resource_manager resource_manager;
+    ma_context context;
+
+    // natural_t next_device_id = 1;
+    // natural_t generate_device_id() {
+    //   return next_device_id++;
+    // }
   };
 
 }  // namespace other
+
+OTHER_DEPENDENT_SUBSYSTEM(
+  other::audio_engine,
+  subsystem_profile::kArena,
+  subsystem_profile::kLogger
+);
 
 #endif  // OTHER_AUDIO_AUDIO_AUDIO_ENGINE_HPP

@@ -85,6 +85,7 @@ def validate_args(args, parser):
       and not args.run_terminal and not args.run_tests \
       and not args.run_test_suite and not args.run_server \
       and not args.install \
+      and not args.clean and not args.clean_build \
       and not args.daemon_server and not args.run_project:
     parser.print_help()
     sys.exit(1)
@@ -95,6 +96,8 @@ if __name__ == "__main__":
   parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output.")
   parser.add_argument("--regen-project", "-rg", action="store_true", help="Regenerate the project files.")
   parser.add_argument("--build", "-b", action="store_true", help="Build the project.")
+  parser.add_argument("--clean", "-cl", action="store_true", help="Clean the build directory.")
+  parser.add_argument("--clean-build", "-cb", action="store_true", help="Clean the build directory and rebuild the project.")
   parser.add_argument("--run", "-r", action="store_true", help="Run the main driver.")
   parser.add_argument("--run-project", "-rp", nargs=1, type=str, metavar="PROJECT_PATH", help="Run the main driver with a specific project file.")
   parser.add_argument("--run-server", "-srv", action="store_true", help="Run the server driver.")
@@ -123,6 +126,14 @@ if __name__ == "__main__":
 
     if args.regen_project:
       regen_project()
+      
+    if args.clean or args.clean_build:
+      if os.path.exists("build"):
+        run_subprocess(["cmake", "--build", "build", "--target", "clean"])
+      if args.clean_build:
+        args.build = True
+      else:
+        sys.exit(0)
 
     if args.build:
       if not os.path.exists("build/other.sln"):

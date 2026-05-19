@@ -10,6 +10,7 @@
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
 
+#include "audio/audio_engine.hpp"
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
@@ -37,6 +38,7 @@ namespace other {
     void initialize_physics_environment(const config_table* config);
     void initialize_renderer_backend(const config_table* config);
     void initialize_scripting_environment(const config_table* config);
+    void initialize_audio_engine(const config_table* config);
 
     void shutdown_logger();
     void shutdown_arena();
@@ -46,6 +48,7 @@ namespace other {
     void shutdown_physics_environment();
     void shutdown_renderer_backend();
     void shutdown_scripting_environment();
+    void shutdown_audio_engine();
 
   }  // namespace detail
 
@@ -118,6 +121,11 @@ namespace other {
   }
 
   bool subsystem_registry::profile_includes_rendering(const std::string_view profile_name) {
+    return profile_name == subsystem_profile::kFullProfileName ||
+      profile_name == subsystem_profile::kMinimalRenderingProfileName;
+  }
+
+  bool subsystem_registry::profile_includes_audio(const std::string_view profile_name) {
     return profile_name == subsystem_profile::kFullProfileName ||
       profile_name == subsystem_profile::kMinimalRenderingProfileName;
   }
@@ -226,6 +234,12 @@ namespace other {
       subsystem_description<scripting_environment>::dependency_names,
       detail::initialize_scripting_environment,
       detail::shutdown_scripting_environment,
+    });
+    registry.register_subsystem({
+      "audio_engine",
+      subsystem_description<audio_engine>::dependency_names,
+      detail::initialize_audio_engine,
+      detail::shutdown_audio_engine,
     });
 
     return registry;
@@ -427,6 +441,17 @@ namespace other {
       }
     }
 
+    void initialize_audio_engine(const config_table* config) {
+      subsystem<audio_engine>::inert = false;
+
+      auto* audio = subsystem<audio_engine>::get();
+      if (audio == nullptr) {
+        throw std::runtime_error("Audio engine subsystem is null.");
+      }
+
+      audio->initialize();
+    }
+
     void shutdown_logger() {
       CORE_LOG_INFO("Shutting down logger subsystem.");
       subsystem<logger>::get()->shutdown();
@@ -460,6 +485,10 @@ namespace other {
       subsystem<scripting_environment>::get()->unload_dotnet_module(subsystem<scripting_environment>::get()->dotnet_binding_assembly);
       subsystem<scripting_environment>::get()->dotnet_binding_assembly = nullptr;
       subsystem<scripting_environment>::get()->shutdown_script_environment();
+    }
+
+    void shutdown_audio_engine() {
+      subsystem<audio_engine>::get()->shutdown();
     }
 
   }  // namespace detail

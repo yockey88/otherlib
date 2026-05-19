@@ -115,6 +115,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/debug"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/debug"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/debug"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/miniaudio/lib/debug"
   )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
   set(OTHER_LIBRARIES_PATH 
@@ -123,6 +124,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/release"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/release"
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/release"
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/miniaudio/lib/release"
   )
 endif()
 
@@ -163,6 +165,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/physx
   ${OTHER_EXTERN_DIR}/jolt
   ${OTHER_EXTERN_DIR}/tinyxml2
+  ${OTHER_EXTERN_DIR}/miniaudio
   ${IMGUI_INCLUDE_DIRS}
 )
 set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
@@ -188,6 +191,7 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/lua
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/sol
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/tinyxml2
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/miniaudio
   ${OTHER_EXTERN_INCLUDE_DIRS}
 )
 
@@ -215,6 +219,7 @@ find_package(Threads REQUIRED)
 add_compile_definitions(OTHER_PROJECT_FILE_TOML_FORMAT)
 
 add_subdirectory(other-core)
+add_subdirectory(other-audio)
 add_subdirectory(other-network)
 add_subdirectory(other-renderer)
 add_subdirectory(other-scripting)
@@ -234,7 +239,7 @@ if (BUILD_OTHER_TESTS)
   add_subdirectory(tests)
 endif()
 
-if (BUILD_SCRATCH_PROGRAMS AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
   add_subdirectory(scratch)
 endif()
 
@@ -260,6 +265,7 @@ other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/includ
 other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
 other_install_external_headers("jolt" "${OTHER_EXTERN_DIR}/jolt/Jolt")
 other_install_external_headers("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2")
+other_install_external_headers("miniaudio" "${OTHER_EXTERN_DIR}/miniaudio")
 
 # ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")
@@ -269,6 +275,7 @@ other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
 other_install_external_library("jolt" "${OTHER_EXTERN_DIR}/jolt/lib")
 other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
 other_install_external_library("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2/lib")
+other_install_external_library("miniaudio" "${OTHER_EXTERN_DIR}/miniaudio/lib")
   
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
   set(DLL_CONFIG "debug")

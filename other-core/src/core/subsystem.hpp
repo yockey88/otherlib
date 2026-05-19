@@ -57,6 +57,7 @@ namespace other {
    *  - physics_environment
    *  - renderer_backend
    *  - scripting_environment
+   *  - audio_engine
    *
    * Profiles:
    *  - core only: arena, logger, file_system, input_system, type_database
@@ -64,7 +65,7 @@ namespace other {
    *  - physics environment: core + physics_environment
    *  - scripting environment: core + scripting_environment
    *  - headless environment: core + physics_environment, scripting_environment
-   *  - full: core + physics_environment, renderer_backend, scripting_environment
+   *  - full: core + physics_environment, renderer_backend, scripting_environment, audio_engine
    **/
 
   struct subsystem_profile {
@@ -76,20 +77,66 @@ namespace other {
     constexpr static std::string_view kPhysicsEnvironment = "physics_environment";
     constexpr static std::string_view kRendererBackend = "renderer_backend";
     constexpr static std::string_view kScriptingEnvironment = "scripting_environment";
+    constexpr static std::string_view kAudioEngine = "audio_engine";
 
     constexpr static std::string_view kMinimalProfileName = "minimal";
+    constexpr static std::string_view kMinimalProfile[] = {
+      kLogger,
+      kArena,
+      kFileSystem,
+      kInputSystem,
+      kTypeDatabase,
+    };
     constexpr static std::string_view kMinimalRenderingProfileName = "minimal-rendering";
+    constexpr static std::string_view kMinimalRenderingProfile[] = {
+      kLogger,
+      kArena,
+      kFileSystem,
+      kInputSystem,
+      kTypeDatabase,
+      kRendererBackend,
+      kAudioEngine,
+    };
     constexpr static std::string_view kMinimalPhysicsProfileName = "minimal-physics";
+    constexpr static std::string_view kMinimalPhysicsProfile[] = {
+      kLogger,
+      kArena,
+      kFileSystem,
+      kInputSystem,
+      kTypeDatabase,
+      kPhysicsEnvironment,
+    };
     constexpr static std::string_view kMinimalScriptingProfileName = "minimal-scripting";
+    constexpr static std::string_view kMinimalScriptingProfile[] = {
+      kLogger,
+      kArena,
+      kFileSystem,
+      kInputSystem,
+      kTypeDatabase,
+      kScriptingEnvironment,
+    };
     constexpr static std::string_view kHeadlessProfileName = "headless";
+    constexpr static std::string_view kHeadlessProfile[] = {
+      kLogger,
+      kArena,
+      kFileSystem,
+      kInputSystem,
+      kTypeDatabase,
+      kPhysicsEnvironment,
+      kScriptingEnvironment,
+    };
     constexpr static std::string_view kFullProfileName = "full";
-
-    constexpr static std::string_view kMinimalProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase };
-    constexpr static std::string_view kMinimalRenderingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kRendererBackend };
-    constexpr static std::string_view kMinimalPhysicsProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment };
-    constexpr static std::string_view kMinimalScriptingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kScriptingEnvironment };
-    constexpr static std::string_view kHeadlessProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kScriptingEnvironment };
-    constexpr static std::string_view kFullProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kRendererBackend, kScriptingEnvironment };
+    constexpr static std::string_view kFullProfile[] = {
+      kLogger,
+      kArena,
+      kFileSystem,
+      kInputSystem,
+      kTypeDatabase,
+      kPhysicsEnvironment,
+      kRendererBackend,
+      kScriptingEnvironment,
+      kAudioEngine,
+    };
   };
 
   void unactive_subsystem_initialization_error(const std::string_view subsystem_name);

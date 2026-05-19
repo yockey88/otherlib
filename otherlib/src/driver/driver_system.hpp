@@ -29,6 +29,7 @@ namespace other {
     /// group3 - needs assets, and depends on inputs for certain things
     SCRIPTING_DRIVER_SYSTEM,
     RENDERING_DRIVER_SYSTEM,
+    AUDIO_DRIVER_SYSTEM,
     /// group4 - primary systems managing core objects
     VM_DRIVER_SYSTEM,
     SCENE_DRIVER_SYSTEM,

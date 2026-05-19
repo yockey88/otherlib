@@ -40,6 +40,7 @@ target_sources(otherlib
     src/driver/systems/asset_system.cpp
     src/driver/systems/scripting_system.cpp
     src/driver/systems/rendering_system.cpp
+    src/driver/systems/audio_system.cpp
     src/driver/systems/vm_system.cpp
     src/driver/systems/scene_system.cpp
     src/driver/systems/project_system.cpp
