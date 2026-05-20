@@ -5,15 +5,20 @@
 #define OTHER_NETWORK_PEER_MESH_PACKET_SINK_HPP
 
 #include "core/defines.hpp"
+#include "core/interfaces.hpp"
 #include "core/job_system.hpp"
 
 namespace other {
 
   class OTHER_CLASS packet_sink {
+    OTHER_ENVIRONMENT_INTERFACE("Network", "PacketSink");
+
    public:
-    packet_sink(job_system& jobs, const std::string& name = "UnnamedPacketSink")
-        : jobs(jobs), name(name) {}
+    packet_sink(const std::string& name = "UnnamedPacketSink")
+        : name(name) {}
     virtual ~packet_sink() = default;
+
+    void set_job_system(job_system* jobs);
 
     /// any thread accept main
     void rx_data(natural_t from_peer_id, std::span<const uint8_t> data);
@@ -27,7 +32,7 @@ namespace other {
     virtual void on_connection_closed(natural_t peer_id) = 0;
 
    private:
-    job_system& jobs;
+    job_system* jobs;
     const std::string name;
   };
 

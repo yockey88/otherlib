@@ -5,6 +5,7 @@
 #define OTHER_RENDERER_UI_UI_WINDOW_HPP
 
 #include "core/defines.hpp"
+#include "core/interfaces.hpp"
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
 
@@ -15,6 +16,8 @@ namespace other {
   class driver;
 
   class ui_window {
+    OTHER_ENVIRONMENT_INTERFACE("Renderer", "UIWindow");
+
    public:
     struct window_root : public ui_node {
       window_root(ui_window* parent)

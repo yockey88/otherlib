@@ -114,35 +114,35 @@ namespace other {
       }
 
       filepath path = plugin.path;
-      std::string name = path.filename().stem().string();
+      register_plugin(path, lib);
 
-      auto sym_res = lib->get_symbol("create_plugin");
-      if (!sym_res.has_value()) {
-        CORE_LOG_ERROR("Failed to get symbol 'create_plugin' from plugin '{}'", plugin.path);
-        plugin::unload_plugin_library(name);
-        continue;
-      }
+      // auto sym_res = lib->get_symbol("create_plugin");
+      // if (!sym_res.has_value()) {
+      //   CORE_LOG_ERROR("Failed to get symbol 'create_plugin' from plugin '{}'", plugin.path);
+      //   plugin::unload_plugin_library(name);
+      //   continue;
+      // }
 
-      symbol& sym = sym_res.value();
-      if (sym.address == nullptr) {
-        CORE_LOG_ERROR("Failed to load symbol 'create_plugin' from plugin '{}'", plugin.path);
-        plugin::unload_plugin_library(name);
-        continue;
-      }
+      // symbol& sym = sym_res.value();
+      // if (sym.address == nullptr) {
+      //   CORE_LOG_ERROR("Failed to load symbol 'create_plugin' from plugin '{}'", plugin.path);
+      //   plugin::unload_plugin_library(name);
+      //   continue;
+      // }
 
-      CORE_LOG_DEBUG("Calling 'create_plugin' for plugin [{}]", name);
-      driver_system* (*fn)(driver*) = sym.get_function<driver_system* (*)(driver*)>();
-      driver_system* plugin_instance = fn(driver_instance);
-      if (plugin_instance == nullptr) {
-        CORE_LOG_ERROR("Failed to create plugin instance from plugin '{}'", plugin.path);
-        plugin::unload_plugin_library(name);
-        continue;
-      } else {
-        CORE_LOG_DEBUG("Successfully created plugin instance for plugin [{}]", name);
-      }
+      // CORE_LOG_DEBUG("Calling 'create_plugin' for plugin [{}]", name);
+      // driver_system* (*fn)(driver*) = sym.get_function<driver_system* (*)(driver*)>();
+      // driver_system* plugin_instance = fn(driver_instance);
+      // if (plugin_instance == nullptr) {
+      //   CORE_LOG_ERROR("Failed to create plugin instance from plugin '{}'", plugin.path);
+      //   plugin::unload_plugin_library(name);
+      //   continue;
+      // } else {
+      //   CORE_LOG_DEBUG("Successfully created plugin instance for plugin [{}]", name);
+      // }
 
-      CORE_LOG_INFO("Successfully loaded driver plugin: '{}'", plugin.name);
-      install_plugin(name, plugin_instance);
+      // CORE_LOG_INFO("Successfully loaded driver plugin: '{}'", plugin.name);
+      // install_plugin(name, plugin_instance);
     }
   }
 
@@ -307,6 +307,31 @@ namespace other {
     driver_plugin* plugin = dynamic_cast<driver_plugin*>(itr->second);
     OTHER_ASSERT(plugin != nullptr, "Failed to cast plugin with type {} and index {} to driver_plugin.", id, index);
     return plugin;
+  }
+
+  void driver_kernel::register_plugin(const filepath& path, library_handle* lib) {
+    std::string name = path.filename().stem().string();
+
+    opt<symbol> manifest_symbol = lib->get_symbol(kManifestFunctionSymbolName);
+    if (!manifest_symbol.has_value()) {
+      CORE_LOG_ERROR("Failed to find manifest symbol '{}' in plugin '{}'", kManifestFunctionSymbolName, path.string());
+      return;
+    }
+
+    symbol& sym = manifest_symbol.value();
+    OTHER_ASSERT(sym.address != nullptr, "Manifest symbol '{}' is null in plugin '{}'", kManifestFunctionSymbolName, path.string());
+    plugin_manifest* (*get_manifest_fn)() = sym.get_function<plugin_manifest* (*)()>();
+    plugin_manifest* manifest = get_manifest_fn();
+    if (manifest == nullptr) {
+      CORE_LOG_ERROR("Plugin manifest is null in plugin '{}'", path.string());
+      return;
+    }
+
+    CORE_LOG_DEBUG("Registering Plugin for interface: [{}]", manifest->interface_hash);
+    CORE_LOG_DEBUG(" - Class: {}", manifest->class_name);
+    CORE_LOG_DEBUG(" - Plugin Instance Name: {}", manifest->plugin_instance_name);
+    // CORE_LOG_DEBUG(" - Version: {}.{}.{}", manifest->version.major, manifest->version.minor, manifest->version.patch);
+    // CORE_LOG_DEBUG(" - Description: {}", manifest->description);
   }
 
 }  // namespace other

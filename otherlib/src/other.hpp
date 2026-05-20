@@ -4,12 +4,17 @@
 #ifndef OTHERLIB_OTHER_HPP
 #define OTHERLIB_OTHER_HPP
 
-#include "core/command_line.hpp"
+// clang-format off
+#include "core/build_config.hpp"
+#include "core/defines.hpp"
+// clang-format on
+
 #include "core/logger.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/driver_kernel.hpp"
 #include "driver/subsystem_registry.hpp"
+#include "plugin/plugin.hpp"
 
 namespace other {
 

@@ -1,9 +1,8 @@
-add_library(other_management_plugin SHARED 
-  management-plugin/other_editor_management.cpp
-  management-plugin/tcp_listener.cpp
-  management-plugin/status_window.cpp
-)
-target_link_libraries(other_management_plugin PRIVATE otherlib)
-target_compile_definitions(other_management_plugin PRIVATE
-  OTHER_PLUGIN_LIBRARY
-)
+macro(add_plugin name file)
+  add_library(${name} SHARED ${file})
+  target_link_libraries(${name} PRIVATE otherlib)
+  target_compile_definitions(${name} PRIVATE OTHER_PLUGIN_LIBRARY)
+endmacro()
+
+add_plugin(other_management_plugin other_editor_management.cpp)
+add_plugin(tcp_side_channel_plugin tcp_side_channel.cpp)

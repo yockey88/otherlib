@@ -1,6 +1,7 @@
 [driver]
 plugins = [
-  { name = "Other Management", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" }
+  # { name = "Other Management", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" },
+  { name = "Tcp Side Channel", path = "build/other-editor/plugins/${build-config}/tcp_side_channel_plugin.dll" }
 ] 
 
 [application]

@@ -9,10 +9,12 @@
 
 #include "driver/driver_system.hpp"
 #include "driver/systems/driver_plugin.hpp"
+#include "plugin/plugin_manifest.hpp"
 
 namespace other {
 
   class driver;
+  class library_handle;
 
   class OTHER_CLASS driver_kernel {
    public:
@@ -133,6 +135,8 @@ namespace other {
     std::map<system_key, driver_system*> plugin_systems;
     std::array<driver_system*, kNumBuiltinDriverSystems> builtin_systems{};
 
+    std::vector<plugin_manifest> loaded_plugins;
+
     template <typename T>
       requires std::derived_from<T, driver_system>
     T* builtin_system_as(driver_system_type type) {
@@ -143,6 +147,8 @@ namespace other {
       OTHER_ASSERT(casted_system != nullptr, "Failed to cast builtin system of type {} to type {}", static_cast<uint32_t>(type), typeid(T).name());
       return casted_system;
     }
+
+    void register_plugin(const filepath& path, library_handle* lib);
   };
 
 }  // namespace other

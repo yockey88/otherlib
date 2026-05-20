@@ -27,4 +27,6 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
+// OTHER_PROVIDES(other::ui::status_window, other::ui_window, "status_window")
+
 #endif  // OTHER_EDITOR_STATUS_WINDOW_HPP

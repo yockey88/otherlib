@@ -100,7 +100,7 @@ namespace other {
     if (driver_path.empty()) {
       CORE_LOG_DEBUG("Creating static driver instance");
       driver_name = config.get_value<std::string>("application.name", "static-driver");
-      return { create_driver(&cmd, &config), driver_name };
+      return { ::otherlib_create_driver(&cmd, &config), driver_name };
     }
     /// otherwise attempt to load the driver and run it
     else {
@@ -147,7 +147,7 @@ namespace other {
 
     if (!instance->dynamic) {
       CORE_LOG_DEBUG("Destroying driver instance.");
-      destroy_driver(instance);
+      ::otherlib_destroy_driver(instance);
       return;
     }
 
@@ -195,8 +195,7 @@ namespace other {
   }
 
   void driver::request_shutdown() {
-    if (current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN ||
-        current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
+    if (current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN || current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
       return;
     }
     CORE_LOG_INFO("Beginning shutdown sequence");
@@ -441,8 +440,7 @@ namespace other {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
-      if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path");
-          !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+      if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path"); !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
         /// this one has to be loaded into the host without the sandboxing of the environment
         ///  as this is supposed to be the user's customization of the environment
         auto& lua_host = env->get_lua_host();

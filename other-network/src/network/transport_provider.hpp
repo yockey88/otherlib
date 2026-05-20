@@ -10,6 +10,7 @@
 
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
+#include "core/interfaces.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "network/io.hpp"
@@ -22,6 +23,8 @@ namespace other {
   class packet_sink;
 
   class OTHER_CLASS transport_provider {
+    OTHER_ENVIRONMENT_INTERFACE("Network", "TransportProvider");
+
    public:
     transport_provider() = default;
     transport_provider(const transport_provider&) = delete;

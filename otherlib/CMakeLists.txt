@@ -157,6 +157,7 @@ target_include_directories(otherlib
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
 )
 target_precompile_headers(otherlib REUSE_FROM other_core)
+target_compile_definitions(otherlib PRIVATE OTHERLIB_STATIC_LIBRARY)
 
 foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
   target_include_directories(otherlib 
@@ -192,6 +193,7 @@ target_include_directories(otherlib_driver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
 )
+target_compile_definitions(otherlib_driver PRIVATE OTHER_CLIENT)
 
 other_install_module(otherlib "")
 install(
