@@ -8,9 +8,13 @@
 #include <asio/asio/signal_set.hpp>
 #include <nlohmann/json.hpp>
 
+// clang-format off
+#include "core/defines.hpp"
+#include "core/build_config.hpp"
+// clang-format on
+
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
-#include "core/defines.hpp"
 #include "core/delta_time.hpp"
 #include "core/logger.hpp"
 #include "event/event_system.hpp"
@@ -37,6 +41,7 @@
 #include "driver/systems/scene_system.hpp"
 #include "driver/systems/scripting_system.hpp"
 #include "plugin/plugin.hpp"
+#include "plugin/plugin_interface.hpp"
 #include "scripting/bindings.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/interface_registry.hpp"
@@ -55,6 +60,10 @@ namespace other {
   struct asset;
 
   class OTHER_CLASS driver {
+   public:
+    constexpr static const std::string_view kDynamicDriverFactorySymbolName = "otherlib_create_driver";
+    constexpr static const std::string_view kDynamicDriverDestroySymbolName = "otherlib_destroy_driver";
+
    public:
     /// the various modes of the driver that can be set
     ///  with '/' commands in the console.
@@ -349,68 +358,20 @@ namespace other {
     }
   };
 
-#ifndef DRIVER_NEW
-  #define DRIVER_NEW(name, cmd, config) other::arena_allocator<name>{}.allocate(*cmd, *config)
-#endif
-#ifndef DRIVER_DELETE
-  #define DRIVER_DELETE(instance) other::arena_allocator<other::driver>{}.free(instance)
-#endif
-
 }  // namespace other
-#define RUN_DRIVER(name, cmd, config)                      \
-  {                                                        \
-    other::driver* runtime = create_driver(&cmd, &config); \
-    if (!runtime) {                                        \
-      CORE_LOG_ERROR("Failed to create {} driver", #name); \
-      return other::exit_code::FAILURE;                    \
-    }                                                      \
-    runtime->initialize(cmd);                              \
-    runtime->run();                                        \
-    runtime->shutdown();                                   \
-    destroy_driver(runtime);                               \
+
+#define OTHER_DRIVER(name)                                                                                                              \
+  OTHER_PLUGIN(name_##_otherlib_driver, "", "", "")                                                                                     \
+  extern "C" OTHER_API ::other::driver* otherlib_create_driver(const ::other::command_line* cmd, const ::other::config_table* config) { \
+    return ::other::arena_allocator<name>{}.allocate(*cmd, *config);                                                                    \
+  }                                                                                                                                     \
+  extern "C" OTHER_API void otherlib_destroy_driver(::other::driver* instance) {                                                        \
+    ::other::arena_allocator<::other::driver>{}.free(instance);                                                                         \
   }
 
-#if defined(OTHER_STATIC_LIBRARY) && !defined(OTHER_TEST_ENVIRONMENT)
 extern "C" {
-extern other::driver* create_driver(const other::command_line* cmd, const other::config_table* config);
-extern void destroy_driver(other::driver* instance);
+extern ::other::driver* otherlib_create_driver(const ::other::command_line* cmd, const ::other::config_table* config);
+extern void otherlib_destroy_driver(::other::driver* instance);
 }
-#endif
-
-#ifdef OTHER_DYNAMIC_DRIVER
-  #define OTHER_PLUGIN(name)                                                                                                   \
-    extern "C" {                                                                                                               \
-    OTHER_API const char* other_plugin_name() { return #name; }                                                                \
-    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) { other::plugin::on_enter(other_plugin_name(), argv); } \
-    }
-
-#endif
-
-#ifdef OTHER_STATIC_DRIVER
-  #define OTHER_PLUGIN(name)                                              \
-    extern "C" {                                                          \
-    OTHER_API const char* other_plugin_name() { return nullptr; }         \
-    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) {} \
-    }
-#endif
-
-#ifdef OTHER_PLUGIN_LIBRARY
-  #define OTHER_PLUGIN(name)                                                                                                                 \
-    extern "C" {                                                                                                                             \
-    OTHER_API const char* other_plugin_name() { return #name; }                                                                              \
-    OTHER_API void bind_plugin_systems(other::other_plugin_argv* argv) { other::plugin::on_enter(other_plugin_name(), argv); }               \
-    OTHER_API other::driver* create_driver(const other::command_line* cmd, const other::config_table* config) { return nullptr; }            \
-    OTHER_API void destroy_driver(other::driver* instance) {}                                                                                \
-    OTHER_API other::driver_system* create_plugin(other::driver* driver_ptr) { return other::arena_allocator<name>{}.allocate(driver_ptr); } \
-    OTHER_API void destroy_plugin(name* instance) { other::arena_allocator<name>{}.free(instance); }                                         \
-    }
-#endif
-
-#define OTHER_DRIVER(name)                                                                                                                            \
-  OTHER_PLUGIN(name)                                                                                                                                  \
-  extern "C" {                                                                                                                                        \
-  OTHER_API other::driver* create_driver(const other::command_line* cmd, const other::config_table* config) { return DRIVER_NEW(name, cmd, config); } \
-  OTHER_API void destroy_driver(other::driver* instance) { DRIVER_DELETE(instance); }                                                                 \
-  }
 
 #endif  // OTHERLIB_DRIVER_DRIVER_HPP

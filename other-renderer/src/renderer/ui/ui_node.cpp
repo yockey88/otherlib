@@ -59,7 +59,7 @@ namespace other {
     on_render_end();
   }
 
-  natural_t ui_node::add_child_node(scope<ui_node>& node) {
+  natural_t ui_node::add_child_node(ref<ui_node> node) {
     return add_node_to(node /* this-node */);
   }
 
@@ -67,7 +67,7 @@ namespace other {
     return containing_window->get_event_system();
   }
 
-  natural_t ui_node::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
+  natural_t ui_node::add_node_to(ref<ui_node> node, const std::string_view remaining_search_pattern) {
     OTHER_ASSERT(node != nullptr, "Cannot add null child node to UI node {}", node_title);
     if (remaining_search_pattern.empty()) {
       node->containing_window = containing_window;

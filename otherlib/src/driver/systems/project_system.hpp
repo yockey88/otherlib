@@ -54,6 +54,9 @@ namespace other {
     void handle_script_project_loaded(driver_kernel* kernel, const value& data);
     void handle_script_source_loaded(driver_kernel* kernel, const value& data);
     void handle_script_file_loaded(driver_kernel* kernel, const value& data);
+
+    void load_plugin(const std::string& plugin_name, const filepath& plugin_path);
+    void unload_plugins();
   };
 
 }  // namespace other

@@ -21,11 +21,12 @@ namespace other {
 
   }  // namespace detail
 
-  ui_window::ui_window(event_system& events, const std::string_view title, bool open, int32_t flags)
+  ui_window::ui_window(event_system* events, const std::string_view title, bool open, int32_t flags)
       : id(FNV(title)), title(title), window_flags(flags), events(events) {
     /// add root
     {
-      auto [itr, inserted] = node_map.emplace(0, make_scope<window_root>(this));
+      OTHER_ASSERT(events != nullptr, "Event system pointer is null in UI window {}", title);
+      auto [itr, inserted] = node_map.emplace(0, make_ref<window_root>(this));
       OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
       itr->second->parent = 0xFFFFFFFF;
     }
@@ -95,52 +96,51 @@ namespace other {
     state.just_closed = true;
   }
 
-  natural_t ui_window::add_node(scope<ui_node> node) {
+  natural_t ui_window::add_node(ref<ui_node> node) {
     natural_t id = node->id;
-    auto [itr, inserted] = node_map.emplace(id, std::move(node));
+    auto [itr, inserted] = node_map.emplace(id, node);
     OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
 
     CORE_LOG_DEBUG("Added UI node with ID {} to window {}", itr->first, title);
     return add_node_to(itr->second);
   }
 
-  natural_t ui_window::add_node(scope<ui_node> node, const std::string_view parent_search_pattern) {
+  natural_t ui_window::add_node(ref<ui_node> node, const std::string_view parent_search_pattern) {
     natural_t id = node->id;
     if (node_map.find(node->id) != node_map.end()) {
       CORE_LOG_ERROR("UI node with ID {} already exists in window {}", id, title);
       return 0;
     }
 
-    auto [itr, inserted] = node_map.emplace(id, std::move(node));
+    auto [itr, inserted] = node_map.emplace(id, node);
     OTHER_ASSERT(inserted, "UI node with ID {} already exists in window {}", itr->first, title);
 
     return add_node_to(itr->second, parent_search_pattern);
   }
 
-  natural_t ui_window::add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern) {
+  natural_t ui_window::add_node_to(ref<ui_node> node, const std::string_view remaining_search_pattern) {
     OTHER_ASSERT(node != nullptr, "Cannot add null node to UI window {}", title);
     auto root_itr = node_map.find(0);
     OTHER_ASSERT(root_itr != node_map.end(), "UI window {} has no root node", title);
     return root_itr->second->add_node_to(node, remaining_search_pattern);
   }
 
-  scope<ui_node>& ui_window::get_node(natural_t node_id) {
+  ref<ui_node> ui_window::get_node(natural_t node_id) {
     auto itr = node_map.find(node_id);
     OTHER_ASSERT(itr != node_map.end(), "UI node with ID {} not found in window {}", node_id, title);
     return itr->second;
   }
 
-  scope<ui_node>& ui_window::get_node_by_name(const std::string_view node_name) {
+  ref<ui_node> ui_window::get_node_by_name(const std::string_view node_name) {
     for (auto& [id, node] : node_map) {
       if (node->node_title == node_name) {
         return node;
       }
     }
-    OTHER_ASSERT(false, "UI node with name '{}' not found in window {}", node_name, title);
-    return node_map.begin()->second;  // to satisfy compiler, will never reach here due to assert
+    return nullptr;
   }
 
-  scope<ui_node>& ui_window::get_node_by_search_pattern(const std::string_view search_pattern) {
+  ref<ui_node> ui_window::get_node_by_search_pattern(const std::string_view search_pattern) {
     if (search_pattern.empty()) {
       OTHER_ASSERT(false, "Search pattern is empty in window {}", title);
     }

@@ -54,7 +54,7 @@ namespace other {
     update_order();
   }
 
-  void driver_kernel::load_plugins_from_config(driver* driver_instance) {
+  void driver_kernel::load_driver_plugins_from_config(driver* driver_instance) {
     const auto& configuration = driver_instance->configuration();
     const toml::node_view plugins_node = configuration.get_raw("driver.plugins");
     if (!plugins_node || !plugins_node.is_array_of_tables()) {
@@ -114,35 +114,7 @@ namespace other {
       }
 
       filepath path = plugin.path;
-      std::string name = path.filename().stem().string();
-
-      auto sym_res = lib->get_symbol("create_plugin");
-      if (!sym_res.has_value()) {
-        CORE_LOG_ERROR("Failed to get symbol 'create_plugin' from plugin '{}'", plugin.path);
-        plugin::unload_plugin_library(name);
-        continue;
-      }
-
-      symbol& sym = sym_res.value();
-      if (sym.address == nullptr) {
-        CORE_LOG_ERROR("Failed to load symbol 'create_plugin' from plugin '{}'", plugin.path);
-        plugin::unload_plugin_library(name);
-        continue;
-      }
-
-      CORE_LOG_DEBUG("Calling 'create_plugin' for plugin [{}]", name);
-      driver_system* (*fn)(driver*) = sym.get_function<driver_system* (*)(driver*)>();
-      driver_system* plugin_instance = fn(driver_instance);
-      if (plugin_instance == nullptr) {
-        CORE_LOG_ERROR("Failed to create plugin instance from plugin '{}'", plugin.path);
-        plugin::unload_plugin_library(name);
-        continue;
-      } else {
-        CORE_LOG_DEBUG("Successfully created plugin instance for plugin [{}]", name);
-      }
-
-      CORE_LOG_INFO("Successfully loaded driver plugin: '{}'", plugin.name);
-      install_plugin(name, plugin_instance);
+      register_driver_plugin(path, lib);
     }
   }
 
@@ -173,6 +145,22 @@ namespace other {
       if (plugin->active()) {
         plugin->tick(this, dt);
       }
+    }
+  }
+
+  void driver_kernel::unload_project_plugins() {
+    auto& reg = environment_registries[static_cast<size_t>(interface_scope::PROJECT)];
+    for (const auto& plugin_info : reg.provided_plugins) {
+      reg.registry.uninstall_plugin(plugin_info.library_name);
+      plugin::unload_plugin_library(plugin_info.library_name);
+    }
+  }
+
+  void driver_kernel::unload_driver_plugins() {
+    auto& reg = environment_registries[static_cast<size_t>(interface_scope::DRIVER)];
+    for (const auto& plugin_info : reg.provided_plugins) {
+      reg.registry.uninstall_plugin(plugin_info.library_name);
+      plugin::unload_plugin_library(plugin_info.library_name);
     }
   }
 
@@ -226,6 +214,10 @@ namespace other {
     return ss.str();
   }
 
+  void driver_kernel::register_project_plugin(const filepath& plugin_name, library_handle* plugin_library) {
+    register_plugin(environment_registries[static_cast<size_t>(interface_scope::PROJECT)], plugin_name, plugin_library);
+  }
+
   void driver_kernel::remove_system(driver_system_type type) {
     OTHER_ASSERT(type < kNumBuiltinDriverSystems, "Invalid builtin system type: {}", static_cast<uint32_t>(type));
     driver_system* system = builtin_systems[static_cast<size_t>(type)];
@@ -236,35 +228,6 @@ namespace other {
     system->shutdown(this);
     arena_allocator<driver_system>{}.free(system);
     builtin_systems[static_cast<size_t>(type)] = nullptr;
-  }
-
-  driver_system* driver_kernel::install_plugin(const std::string_view name, driver_system* plugin) {
-    OTHER_ASSERT(plugin != nullptr, "Cannot install null plugin.");
-
-    auto already_installed_plugins =
-      plugin_systems | std::views::keys |
-      std::views::filter([&](const system_key& key) { return key.type <= driver_system_type::CUSTOM_DRIVER_SYSTEM_ID_END && key.type >= driver_system_type::CUSTOM_DRIVER_SYSTEM_ID_START; }) |
-      std::ranges::to<std::vector>();
-
-    if (std::ranges::size(already_installed_plugins) >= kNumCustomSystemSlots) {
-      CORE_LOG_ERROR("Failed to install plugin of type {}. Maximum number of plugins already installed.", kNumCustomSystemSlots);
-      return nullptr;
-    }
-
-    uint32_t type = std::ranges::size(already_installed_plugins) + kCustomSystemIdStart;
-    plugin->force_override_id(type);
-
-    system_key key{
-      .type = type,
-      .index = std::ranges::size(already_installed_plugins),
-    };
-    auto [itr, inserted] = plugin_systems.insert({ key, plugin });
-    OTHER_ASSERT(inserted, "Failed to insert plugin into plugin systems map");
-    auto [name_itr, name_inserted] = plugin_name.insert({ key, std::string(name) });
-    OTHER_ASSERT(name_inserted, "Failed to insert plugin name into plugin name map");
-
-    itr->second->initialize(this);
-    return itr->second;
   }
 
   void driver_kernel::shutdown_plugin(driver_system* plugin) {
@@ -307,6 +270,34 @@ namespace other {
     driver_plugin* plugin = dynamic_cast<driver_plugin*>(itr->second);
     OTHER_ASSERT(plugin != nullptr, "Failed to cast plugin with type {} and index {} to driver_plugin.", id, index);
     return plugin;
+  }
+
+  void driver_kernel::register_plugin(plugin_registry& registry, const filepath& path, library_handle* lib) {
+    std::string name = path.filename().stem().string();
+
+    opt<symbol> manifest_symbol = lib->get_symbol(kManifestFunctionSymbolName);
+    if (!manifest_symbol.has_value()) {
+      CORE_LOG_ERROR("Failed to find manifest symbol '{}' in plugin '{}'", kManifestFunctionSymbolName, path.string());
+      return;
+    }
+
+    symbol& sym = manifest_symbol.value();
+    OTHER_ASSERT(sym.address != nullptr, "Manifest symbol '{}' is null in plugin '{}'", kManifestFunctionSymbolName, path.string());
+    plugin_manifest* (*get_manifest_fn)() = sym.get_function<plugin_manifest* (*)()>();
+    plugin_manifest* manifest_ptr = get_manifest_fn();
+    if (manifest_ptr == nullptr) {
+      CORE_LOG_ERROR("Plugin manifest is null in plugin '{}'", path.string());
+      return;
+    }
+
+    auto& manifest = *manifest_ptr;
+    auto id = registry.registry.install_from_manifest(name, manifest);
+    registry.provided_plugins.push_back({ name, id });
+    CORE_LOG_DEBUG("Registered driver plugin '{}' with id {} from library '{}'", name, id, path.string());
+  }
+
+  void driver_kernel::register_driver_plugin(const filepath& path, library_handle* lib) {
+    register_plugin(environment_registries[static_cast<size_t>(interface_scope::DRIVER)], path, lib);
   }
 
 }  // namespace other

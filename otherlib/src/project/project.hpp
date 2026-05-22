@@ -106,6 +106,7 @@ namespace other {
 
     bool process_scripting_sections(const toml::table& table, driver_kernel* kernel);
     void process_scene_sections(const toml::table& table);
+    void process_project_plugins(const toml::table& table);
     void process_scenes_table(toml::node_view<const toml::node> scenes_node);
     void process_scene_graph(toml::node_view<const toml::node> graph_node);
   };

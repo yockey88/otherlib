@@ -17,6 +17,8 @@
 
 #include "core/build_config.hpp"
 
+#define bit(x) (1ll << x)
+
 namespace other {
 
   constexpr static size_t kCacheLineSize = std::hardware_destructive_interference_size;

@@ -71,7 +71,8 @@ namespace std {
   struct formatter<other::resource_handle> : formatter<string_view> {
     template <typename FormatContext>
     auto format(const other::resource_handle& handle, FormatContext& ctx) const {
-      return formatter<string_view>::format(std::format("[{}:{}]", handle.id, handle.type), ctx);
+      constexpr static std::string_view kFmtStr = "[{}:{}]";
+      return std::format_to(ctx.out(), kFmtStr, handle.id, handle.type);
     }
   };
 

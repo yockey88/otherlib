@@ -22,6 +22,7 @@ namespace other {
     std::string name() const override { return "Rendering System"; }
 
     void initialize(driver_kernel* kernel) override;
+    void late_initialize(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 

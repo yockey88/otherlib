@@ -9,7 +9,7 @@ namespace other {
   namespace ui {
 
     asset_browser::asset_browser(event_system& events, driver* driver)
-        : ui_window(events, "Assets", true, ImGuiWindowFlags_None) {
+        : ui_window(&events, "Assets", true, ImGuiWindowFlags_None) {
       events.register_event("asset-browser.navigate");
       events.register_event("asset-browser.refresh");
       events.register_event("asset-browser.open-asset");

@@ -8,7 +8,7 @@
 
 class tcp_listener : public other::packet_sink {
  public:
-  tcp_listener(other::job_system& jobs)
+  tcp_listener(other::job_system* jobs)
       : packet_sink(jobs, "TcpListener") {}
   ~tcp_listener() override = default;
 

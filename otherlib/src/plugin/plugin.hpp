@@ -11,6 +11,7 @@
 #include "core/defines.hpp"
 
 #include "plugin/library_handle.hpp"
+#include "plugin/plugin_interface.hpp"
 
 #define XSTRINGIFY(a) STRINGIFY(a)
 #define STRINGIFY(a) #a

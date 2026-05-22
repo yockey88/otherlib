@@ -100,7 +100,7 @@ namespace other {
     if (driver_path.empty()) {
       CORE_LOG_DEBUG("Creating static driver instance");
       driver_name = config.get_value<std::string>("application.name", "static-driver");
-      return { create_driver(&cmd, &config), driver_name };
+      return { ::otherlib_create_driver(&cmd, &config), driver_name };
     }
     /// otherwise attempt to load the driver and run it
     else {
@@ -114,19 +114,19 @@ namespace other {
       driver_name = filepath(driver_path).filename().stem().string();
       CORE_LOG_DEBUG("Loaded plugin library [{}] : {}", driver_name, driver_path);
 
-      auto sym_res = lib_handle->get_symbol("create_driver");
+      auto sym_res = lib_handle->get_symbol(driver::kDynamicDriverFactorySymbolName);
       if (!sym_res.has_value()) {
-        CORE_LOG_ERROR("Failed to get symbol 'create_driver' from plugin '{}'", driver_path);
+        CORE_LOG_ERROR("Failed to get symbol '{}' from plugin '{}'", driver::kDynamicDriverFactorySymbolName, driver_path);
         return { nullptr, "" };
       }
 
       symbol& sym = sym_res.value();
       if (sym.address == nullptr) {
-        CORE_LOG_ERROR("Failed to load symbol 'create_driver' from plugin '{}'", driver_path);
+        CORE_LOG_ERROR("Failed to load symbol '{}' from plugin '{}'", driver::kDynamicDriverFactorySymbolName, driver_path);
         return { nullptr, "" };
       }
 
-      CORE_LOG_DEBUG("calling 'create_driver' from plugin [{}]", driver_name);
+      CORE_LOG_DEBUG("calling '{}' from plugin [{}]", driver::kDynamicDriverFactorySymbolName, driver_name);
       driver* (*fn)(const config_table*) = sym.get_function<driver* (*)(const config_table*)>();
       driver_instance = fn(&config);
       CORE_LOG_DEBUG("Loaded driver [{}]", driver_name);
@@ -147,20 +147,20 @@ namespace other {
 
     if (!instance->dynamic) {
       CORE_LOG_DEBUG("Destroying driver instance.");
-      destroy_driver(instance);
+      ::otherlib_destroy_driver(instance);
       return;
     }
 
     library_handle* lib_handle = plugin::get_plugin_library(name);
     OTHER_ASSERT(lib_handle != nullptr, "Failed to get plugin library: {}", name);
 
-    auto sym_res = lib_handle->get_symbol("destroy_driver");
-    OTHER_ASSERT(sym_res.has_value(), "Failed to get symbol 'destroy_driver' from plugin '{}'", name);
+    auto sym_res = lib_handle->get_symbol(driver::kDynamicDriverDestroySymbolName);
+    OTHER_ASSERT(sym_res.has_value(), "Failed to get symbol '{}' from plugin '{}'", driver::kDynamicDriverDestroySymbolName, name);
 
     symbol& sym = sym_res.value();
-    OTHER_ASSERT(sym.address != nullptr, "Failed to load symbol 'destroy_driver' from plugin '{}'", name);
+    OTHER_ASSERT(sym.address != nullptr, "Failed to load symbol '{}' from plugin '{}'", driver::kDynamicDriverDestroySymbolName, name);
 
-    CORE_LOG_DEBUG("calling 'destroy_driver' from plugin [{}]", name);
+    CORE_LOG_DEBUG("calling '{}' from plugin [{}]", driver::kDynamicDriverDestroySymbolName, name);
     sym.get_function<void (*)(driver*)>()(instance);
     plugin::unload_plugin_library(name);
   }
@@ -195,8 +195,7 @@ namespace other {
   }
 
   void driver::request_shutdown() {
-    if (current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN ||
-        current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
+    if (current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN || current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
       return;
     }
     CORE_LOG_INFO("Beginning shutdown sequence");
@@ -259,7 +258,7 @@ namespace other {
       on_early_initialize();
     }
 
-    driver_kernel_ptr->load_plugins_from_config(this);
+    driver_kernel_ptr->load_driver_plugins_from_config(this);
     load_client();
 
     {
@@ -441,8 +440,7 @@ namespace other {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
-      if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path");
-          !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+      if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path"); !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
         /// this one has to be loaded into the host without the sandboxing of the environment
         ///  as this is supposed to be the user's customization of the environment
         auto& lua_host = env->get_lua_host();
@@ -497,6 +495,8 @@ namespace other {
 
         if (shutdown_state.ready_to_shutdown(this)) {
           on_shutdown_confirm();
+
+          driver_kernel_ptr->unload_driver_plugins();
           process_driver_event(driver_event::DRIVER_EVENT_READY);
         }
       } break;

@@ -41,10 +41,15 @@ namespace other {
 
     void register_provider(transport_provider* provider);
     void register_packet_sink(natural_t id, packet_sink* sink);
+    void unregister_provider(transport_provider* provider);
+    void unregister_packet_sink(natural_t id);
 
     void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);
     void attach_connection_listener(natural_t connection_id, natural_t id, packet_sink* sink);
     void attach_connection_listener(natural_t connection_id, natural_t sink_id);
+    void unregister_transport_listener(natural_t sink_id);
+    void unregister_connection_listener(natural_t connection_id);
+    void detach_connection_listener(natural_t connection_id);
 
     void register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle);
     void register_listener_route(natural_t listener_id, transport_provider* provider, void* opaque_handle);
