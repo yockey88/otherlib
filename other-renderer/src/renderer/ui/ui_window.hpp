@@ -112,6 +112,12 @@ namespace other {
     void refresh(bool current_state);
   };
 
+  inline auto ui_window_args(event_system* jobs) {
+    return [jobs]() {
+      return std::tuple<event_system*>{ jobs };
+    };
+  }
+
 }  // namespace other
 
 #endif  // OTHER_RENDERER_UI_UI_WINDOW_HPP

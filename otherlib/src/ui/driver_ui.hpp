@@ -67,21 +67,15 @@ namespace other {
     void register_main_menu_bar_sub_menu(const std::string_view menu_name, const ui::menu& sub_menu);
     void register_main_menu_bar_menu_item(const std::string_view menu_name, const ui::menu_item& item);
 
+    natural_t register_window(const std::string_view name, scope<ui_window> window);
     template <typename T, typename... Args>
       requires std::derived_from<T, ui_window>
-    void register_window(const std::string_view name, Args&&... args) {
-      natural_t hash = FNV(name);
-      auto [itr, inserted] = custom_windows.emplace(hash, driver_window{
-                                                            .name = std::string(name),
-                                                            .hash = hash,
-                                                            .window_ptr = make_scope<T>(std::forward<Args>(args)...),
-                                                          });
-      if (!inserted) {
-        CORE_LOG_ERROR("Failed to register custom window with name '{}'.", name);
-      } else {
-        CORE_LOG_DEBUG("Registered custom window: {} [{}]", name, hash);
-      }
+    natural_t register_window(const std::string_view name, Args&&... args) {
+      return register_window(name, make_scope<T>(std::forward<Args>(args)...));
     }
+
+    void unregister_window(natural_t id);
+    void unregister_window(const std::string_view name);
 
    private:
     struct builtin_window {

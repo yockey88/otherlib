@@ -30,11 +30,28 @@ namespace other {
       CORE_LOG_ERROR("Failed to install plugin '{}' for interface [{}].", plugin_name, reg_interface.interface_full_name);
       return 0;
     }
+    reg_interface.providers.push_back({
+      std::string{ plugin_name },
+      provider_id,
+    });
 
     return provider_id;
   }
 
-  void environment_registry::revoke_all_from(std::string_view plugin_name) {
+  void environment_registry::uninstall_plugin(std::string_view plugin_name) {
+    auto interface_itr = std::ranges::find_if(registered_interfaces, [&](const registered_interface& reg_interface) {
+      return std::ranges::find(reg_interface.providers, plugin_name, &plugin_provider::plugin_name) != reg_interface.providers.end();
+    });
+    if (interface_itr == registered_interfaces.end()) {
+      CORE_LOG_ERROR("Failed to find any registered interface provided by plugin '{}'", plugin_name);
+      return;
+    }
+
+    auto provider_itr = std::ranges::find(interface_itr->providers, plugin_name, &plugin_provider::plugin_name);
+    OTHER_ASSERT(provider_itr != interface_itr->providers.end(), "Failed to find plugin provider '{}' in registered interface [{}]", plugin_name, interface_itr->interface_full_name);
+    OTHER_ASSERT(interface_itr->revoke_thunk != nullptr, "Registered interface [{}] does not have a valid revoke thunk for plugin '{}'", interface_itr->interface_full_name, plugin_name);
+    interface_itr->revoke_thunk(provider_itr->provider_id);
+    interface_itr->providers.erase(provider_itr);
   }
 
 }  // namespace other

@@ -103,7 +103,7 @@ namespace other {
     }
 
     process_scene_sections(table);
-
+    process_project_plugins(table);
 #else
     static_assert(false, "No project file format defined. define OTHER_PROJECT_FILE_XXX_FORMAT macro.");
 #endif
@@ -127,6 +127,8 @@ namespace other {
     }
     project_file_handle = nullptr;
     file_buffer.release();
+
+    system->unload_plugins();
 
     if (project_assembly != nullptr) {
       auto* env = subsystem<scripting_environment>::get();
@@ -278,6 +280,65 @@ namespace other {
       }
     }
     CORE_LOG_DEBUG("Finished processing scene sections of project file. Total scenes in project: {}", scenes_in_project.size());
+  }
+
+  void project::process_project_plugins(const toml::table& table) {
+    toml::node_view plugins_node = table.at_path("project.plugins");
+    if (!plugins_node) {
+      CORE_LOG_DEBUG("No 'plugins' section found in project file, skipping project plugin processing.");
+      return;
+    }
+    if (!plugins_node.is_array_of_tables()) {
+      CORE_LOG_ERROR("Expected 'plugins' section to be an array of tables.");
+      return;
+    }
+
+    const auto* plugins_array = plugins_node.as_array();
+    if (plugins_array == nullptr) {
+      CORE_LOG_ERROR("'plugins' section is not a valid array of tables.");
+      return;
+    }
+
+    for (const auto& item : *plugins_array) {
+      if (!item.is_table()) {
+        CORE_LOG_ERROR("Expected each item in 'plugins' array to be a table.");
+        continue;
+      }
+      const auto* plugin_table = item.as_table();
+      OTHER_ASSERT(plugin_table != nullptr, "Plugin item is not a table.");
+
+      toml::node_view name_node = plugin_table->at_path("name");
+      toml::node_view path_node = plugin_table->at_path("path");
+
+      if (!name_node || !path_node) {
+        CORE_LOG_ERROR("Plugin entry is missing required 'name' or 'path' field.");
+        CORE_LOG_ERROR("!name_node: {}, !path_node: {}", !name_node, !path_node);
+        continue;
+      }
+      if (!name_node.is_string() || !path_node.is_string()) {
+        CORE_LOG_ERROR("Plugin entry 'name' and 'path' fields must be strings.");
+        CORE_LOG_ERROR("name_node type: {}, path_node type: {}", name_node.type(), path_node.type());
+        continue;
+      }
+
+      std::string plugin_name = name_node.as_string()->get();
+      filepath plugin_path = perform_tag_replacement(path_node.as_string()->get());
+      CORE_LOG_DEBUG("Project plugin specified in project file: '{}' at path '{}'", plugin_name, plugin_path.string());
+      if (!std::filesystem::exists(plugin_path)) {
+        CORE_LOG_ERROR("Plugin file '{}' specified in project file does not exist.", plugin_path.string());
+        continue;
+      }
+      if (!std::filesystem::is_regular_file(plugin_path)) {
+        CORE_LOG_ERROR("Plugin file '{}' specified in project file is not a regular file.", plugin_path.string());
+        continue;
+      }
+      if (plugin_path.extension() != ".dll" && plugin_path.extension() != ".so" && plugin_path.extension() != ".dylib") {
+        CORE_LOG_ERROR("Plugin file '{}' specified in project file does not have a valid library extension (.dll, .so, .dylib).", plugin_path.string());
+        continue;
+      }
+
+      system->load_plugin(plugin_name, plugin_path);
+    }
   }
 
   void project::process_scenes_table(toml::node_view<const toml::node> scenes_node) {

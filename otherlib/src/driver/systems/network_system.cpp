@@ -63,23 +63,23 @@ namespace other {
   void network_system::late_initialize(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
 
-    auto declare_interfaces_in_registry = [this](environment_registry& reg) {
-      reg.declare_interface<transport_provider>(
+    auto register_interfaces_in_registry = [this](environment_registry& reg) {
+      reg.register_interface<transport_provider>(
         [this](scope<transport_provider> p) { return register_transport_provider(std::move(p)); },
         [this](natural_t id) { unregister_transport_provider(id); },
         no_args(),                       // empty
         interface_cardinality::MULTIPLE  // don't want too many
       );
 
-      reg.declare_interface<packet_sink>(
+      reg.register_interface<packet_sink>(
         [this](scope<packet_sink> s, plugin_param_view params) { return register_transport_listener(params.get_or("transport", "generic"), std::move(s)); },
         [this](natural_t id) { unregister_transport_listener(id); },
         packet_sink_args(&get_driver().get_job_system()),
         interface_cardinality::MULTIPLE  // don't want too many
       );
     };
-    declare_interfaces_in_registry(kernel->driver_registry());
-    declare_interfaces_in_registry(kernel->project_registry());
+    register_interfaces_in_registry(kernel->driver_registry());
+    register_interfaces_in_registry(kernel->project_registry());
   }
 
   void network_system::tick(driver_kernel* kernel, double dt) {

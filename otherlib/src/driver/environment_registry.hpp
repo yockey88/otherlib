@@ -46,7 +46,7 @@ namespace other {
     template <typename T, typename Args>
       requires kIsEnvironmentInterface<T> && std::invocable<Args> &&
       std::convertible_to<std::invoke_result_t<Args>, typename T::construction_args_t>
-    void declare_interface(
+    void register_interface(
       std::function<natural_t(scope<T>)> on_provided, std::function<void(natural_t)> on_revoked,
       Args&& args_producer, interface_cardinality card = interface_cardinality::MULTIPLE
     );
@@ -54,15 +54,19 @@ namespace other {
     template <typename T, typename Args>
       requires kIsEnvironmentInterface<T> && std::invocable<Args> &&
       std::convertible_to<std::invoke_result_t<Args>, typename T::construction_args_t>
-    void declare_interface(
+    void register_interface(
       std::function<natural_t(scope<T>, plugin_param_view)> on_provided, std::function<void(natural_t)> on_revoked,
       Args&& args_producer, interface_cardinality card = interface_cardinality::MULTIPLE
     );
 
     natural_t install_from_manifest(std::string_view plugin_name, const plugin_manifest& m);
-    void revoke_all_from(std::string_view plugin_name);
+    void uninstall_plugin(std::string_view plugin_name);
 
    private:
+    struct plugin_provider {
+      std::string plugin_name;
+      natural_t provider_id;
+    };
     struct registered_interface {
       natural_t interface_hash;
       std::string interface_full_name;
@@ -71,7 +75,7 @@ namespace other {
       std::function<void(natural_t)> revoke_thunk;
       std::function<natural_t(void*, plugin_param_view)> install_thunk;
 
-      std::vector<natural_t> providers;
+      std::vector<plugin_provider> providers;
 
       inline std::vector<std::string> get_name_components() const {
         return interface_full_name |
@@ -88,7 +92,7 @@ namespace other {
   template <typename T, typename Args>
     requires kIsEnvironmentInterface<T> && std::invocable<Args> &&
     std::convertible_to<std::invoke_result_t<Args>, typename T::construction_args_t>
-  void environment_registry::declare_interface(std::function<natural_t(scope<T>)> on_provided, std::function<void(natural_t)> on_revoked, Args&& args_producer, interface_cardinality card) {
+  void environment_registry::register_interface(std::function<natural_t(scope<T>)> on_provided, std::function<void(natural_t)> on_revoked, Args&& args_producer, interface_cardinality card) {
     if (std::ranges::find(registered_interfaces, T::kInterfaceHash, &registered_interface::interface_hash) != registered_interfaces.end()) {
       CORE_LOG_ERROR("Interface {} is already declared in environment registry for scope {}.", T::kFullInterfaceName, static_cast<uint32_t>(registry_scope));
       return;
@@ -117,7 +121,7 @@ namespace other {
   template <typename T, typename Args>
     requires kIsEnvironmentInterface<T> && std::invocable<Args> &&
     std::convertible_to<std::invoke_result_t<Args>, typename T::construction_args_t>
-  void environment_registry::declare_interface(std::function<natural_t(scope<T>, plugin_param_view)> on_provided, std::function<void(natural_t)> on_revoked, Args&& args_producer, interface_cardinality card) {
+  void environment_registry::register_interface(std::function<natural_t(scope<T>, plugin_param_view)> on_provided, std::function<void(natural_t)> on_revoked, Args&& args_producer, interface_cardinality card) {
     if (std::ranges::find(registered_interfaces, T::kInterfaceHash, &registered_interface::interface_hash) != registered_interfaces.end()) {
       CORE_LOG_ERROR("Interface {} is already declared in environment registry for scope {}.", T::kFullInterfaceName, static_cast<uint32_t>(registry_scope));
       return;

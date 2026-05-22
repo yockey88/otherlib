@@ -41,16 +41,19 @@ namespace other {
   }
 
   void rendering_system::late_initialize(driver_kernel* kernel) {
-    auto declare_interfaces_in_registry = [this](environment_registry& reg) {
-      // reg.declare_interface<ui_window>(
-      //   [this](scope<ui_window> s) { return driver_ui_ptr->register_window(std::move(s)); },
-      //   [this](natural_t id) { driver_ui_ptr->unregister_window(id); },
-      //   no_args(),                       // empty
-      //   interface_cardinality::MULTIPLE  // don't want too many
-      // );
+    auto register_interfaces_in_registry = [this](environment_registry& reg) {
+      reg.register_interface<ui_window>(
+        [this](scope<ui_window> s, plugin_param_view params) {
+          auto name = params.get_or("name", "Unnamed Window");
+          return driver_ui_ptr->register_window(name, std::move(s));
+        },
+        [this](natural_t id) { driver_ui_ptr->unregister_window(id); },
+        ui_window_args(get_driver().get_event_system().get()),
+        interface_cardinality::MULTIPLE  // don't want too many
+      );
     };
-    declare_interfaces_in_registry(kernel->driver_registry());
-    declare_interfaces_in_registry(kernel->project_registry());
+    register_interfaces_in_registry(kernel->driver_registry());
+    register_interfaces_in_registry(kernel->project_registry());
   }
 
   void rendering_system::tick(driver_kernel* kernel, double dt) {

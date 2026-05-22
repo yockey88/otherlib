@@ -148,10 +148,18 @@ namespace other {
     }
   }
 
+  void driver_kernel::unload_project_plugins() {
+    auto& reg = environment_registries[static_cast<size_t>(interface_scope::PROJECT)];
+    for (const auto& plugin_info : reg.provided_plugins) {
+      reg.registry.uninstall_plugin(plugin_info.library_name);
+      plugin::unload_plugin_library(plugin_info.library_name);
+    }
+  }
+
   void driver_kernel::unload_driver_plugins() {
     auto& reg = environment_registries[static_cast<size_t>(interface_scope::DRIVER)];
     for (const auto& plugin_info : reg.provided_plugins) {
-      // reg.registry.uninstall(plugin_info.plugin_id);
+      reg.registry.uninstall_plugin(plugin_info.library_name);
       plugin::unload_plugin_library(plugin_info.library_name);
     }
   }
@@ -206,6 +214,10 @@ namespace other {
     return ss.str();
   }
 
+  void driver_kernel::register_project_plugin(const filepath& plugin_name, library_handle* plugin_library) {
+    register_plugin(environment_registries[static_cast<size_t>(interface_scope::PROJECT)], plugin_name, plugin_library);
+  }
+
   void driver_kernel::remove_system(driver_system_type type) {
     OTHER_ASSERT(type < kNumBuiltinDriverSystems, "Invalid builtin system type: {}", static_cast<uint32_t>(type));
     driver_system* system = builtin_systems[static_cast<size_t>(type)];
@@ -216,35 +228,6 @@ namespace other {
     system->shutdown(this);
     arena_allocator<driver_system>{}.free(system);
     builtin_systems[static_cast<size_t>(type)] = nullptr;
-  }
-
-  driver_system* driver_kernel::install_plugin(const std::string_view name, driver_system* plugin) {
-    OTHER_ASSERT(plugin != nullptr, "Cannot install null plugin.");
-
-    auto already_installed_plugins =
-      plugin_systems | std::views::keys |
-      std::views::filter([&](const system_key& key) { return key.type <= driver_system_type::CUSTOM_DRIVER_SYSTEM_ID_END && key.type >= driver_system_type::CUSTOM_DRIVER_SYSTEM_ID_START; }) |
-      std::ranges::to<std::vector>();
-
-    if (std::ranges::size(already_installed_plugins) >= kNumCustomSystemSlots) {
-      CORE_LOG_ERROR("Failed to install plugin of type {}. Maximum number of plugins already installed.", kNumCustomSystemSlots);
-      return nullptr;
-    }
-
-    uint32_t type = std::ranges::size(already_installed_plugins) + kCustomSystemIdStart;
-    plugin->force_override_id(type);
-
-    system_key key{
-      .type = type,
-      .index = std::ranges::size(already_installed_plugins),
-    };
-    auto [itr, inserted] = plugin_systems.insert({ key, plugin });
-    OTHER_ASSERT(inserted, "Failed to insert plugin into plugin systems map");
-    auto [name_itr, name_inserted] = plugin_name.insert({ key, std::string(name) });
-    OTHER_ASSERT(name_inserted, "Failed to insert plugin name into plugin name map");
-
-    itr->second->initialize(this);
-    return itr->second;
   }
 
   void driver_kernel::shutdown_plugin(driver_system* plugin) {
@@ -289,7 +272,7 @@ namespace other {
     return plugin;
   }
 
-  void driver_kernel::register_driver_plugin(const filepath& path, library_handle* lib) {
+  void driver_kernel::register_plugin(plugin_registry& registry, const filepath& path, library_handle* lib) {
     std::string name = path.filename().stem().string();
 
     opt<symbol> manifest_symbol = lib->get_symbol(kManifestFunctionSymbolName);
@@ -308,10 +291,13 @@ namespace other {
     }
 
     auto& manifest = *manifest_ptr;
-    auto& reg = environment_registries[static_cast<size_t>(interface_scope::DRIVER)];
-    auto id = reg.registry.install_from_manifest(name, manifest);
-    reg.provided_plugins.push_back({ name, id });
+    auto id = registry.registry.install_from_manifest(name, manifest);
+    registry.provided_plugins.push_back({ name, id });
     CORE_LOG_DEBUG("Registered driver plugin '{}' with id {} from library '{}'", name, id, path.string());
+  }
+
+  void driver_kernel::register_driver_plugin(const filepath& path, library_handle* lib) {
+    register_plugin(environment_registries[static_cast<size_t>(interface_scope::DRIVER)], path, lib);
   }
 
 }  // namespace other

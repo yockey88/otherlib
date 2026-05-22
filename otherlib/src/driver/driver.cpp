@@ -87,7 +87,6 @@ namespace other {
     }
 
     driver_kernel_ptr->shutdown();
-    driver_kernel_ptr->unload_driver_plugins();
     driver_kernel_ptr->unload_plugins();
   }
 
@@ -496,6 +495,8 @@ namespace other {
 
         if (shutdown_state.ready_to_shutdown(this)) {
           on_shutdown_confirm();
+
+          driver_kernel_ptr->unload_driver_plugins();
           process_driver_event(driver_event::DRIVER_EVENT_READY);
         }
       } break;

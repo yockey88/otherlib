@@ -27,6 +27,7 @@ namespace other {
     void load_driver_plugins_from_config(driver* driver_instance);
     void initialize();
     void tick(double dt);
+    void unload_project_plugins();
     void unload_driver_plugins();
     void unload_plugins();
     void shutdown();
@@ -34,6 +35,8 @@ namespace other {
     void update_order();
 
     std::string list_systems() const;
+
+    void register_project_plugin(const filepath& plugin_name, library_handle* plugin_library);
 
     template <typename T, typename... Args>
       requires std::derived_from<T, driver_system>
@@ -79,19 +82,6 @@ namespace other {
     }
 
     void remove_system(driver_system_type type);
-
-    template <typename T, typename... Args>
-    T* install_plugin(const std::string_view name, Args&&... args) {
-      static_assert(std::derived_from<T, driver_plugin>, "Installed addon must derive from driver_plugin");
-      OTHER_ASSERT(driver_instance != nullptr, "Driver kernel is not associated with a driver.");
-      T* addon = arena_allocator<T>{}.allocate(driver_instance, std::forward<Args>(args)...);
-      OTHER_ASSERT(addon != nullptr, "Failed to allocate addon of type {}", typeid(T).name());
-
-      // OTHER_AS
-
-      return static_cast<T*>(install_plugin(name, addon));
-    }
-    driver_system* install_plugin(const std::string_view name, driver_system* plugin);
 
     void shutdown_plugin(driver_system* plugin);
     void remove_plugin(uint32_t id, size_t index);
@@ -174,6 +164,7 @@ namespace other {
       return casted_system;
     }
 
+    void register_plugin(plugin_registry& registry, const filepath& path, library_handle* lib);
     void register_driver_plugin(const filepath& path, library_handle* lib);
   };
 

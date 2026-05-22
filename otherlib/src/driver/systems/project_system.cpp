@@ -224,4 +224,27 @@ namespace other {
     }
   }
 
+  void project_system::load_plugin(const std::string& plugin_name, const filepath& plugin_path) {
+    OTHER_ASSERT(std::filesystem::exists(plugin_path), "Plugin file '{}' does not exist.", plugin_path.string());
+    OTHER_ASSERT(std::filesystem::is_regular_file(plugin_path), "Plugin file '{}' is not a regular file.", plugin_path.string());
+    // clang-format off
+    OTHER_ASSERT(plugin_path.extension() == ".dll" || plugin_path.extension() == ".so" || plugin_path.extension() == ".dylib", 
+                 "Plugin file '{}' does not have a valid dynamic library extension.", plugin_path.string());
+    // clang-format on
+
+    CORE_LOG_INFO("Loading project plugin: '{}' @ {}", plugin_name, plugin_path.string());
+    auto* lib = plugin::load_plugin_library(plugin_path.string());
+    if (lib == nullptr) {
+      CORE_LOG_ERROR("Failed to load project plugin library: {}", plugin_path.string());
+      return;
+    }
+
+    auto& driver_kernel = get_driver().get_kernel();
+    driver_kernel.register_project_plugin(plugin_path, lib);
+  }
+
+  void project_system::unload_plugins() {
+    get_driver().get_kernel().unload_project_plugins();
+  }
+
 }  // namespace other
