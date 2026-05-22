@@ -13,7 +13,7 @@ namespace other {
   namespace ui {
 
     scene_hierarchy::scene_hierarchy(event_system& events, driver* drvr)
-        : ui_window(events, "Scene Hierarchy"), driver_ptr(drvr) {
+        : ui_window(&events, "Scene Hierarchy"), driver_ptr(drvr) {
       get_event_system().register_event("ui.scene-hierarchy.object-selected");
       get_event_system().add_listener("ui.scene-hierarchy.object-selected", [this](const value& data) {
         if (data.type() != value_type::UINT64) {
@@ -25,8 +25,8 @@ namespace other {
         select_scene_object(obj_id);
       });
 
-      hierarchy_node_id = add_node(make_scope<scene_hierarchy_node>(this, drvr));
-      property_inspector_node_id = add_node(make_scope<property_inspector_node>(this, drvr));
+      hierarchy_node_id = add_node(make_ref<scene_hierarchy_node>(this, drvr));
+      property_inspector_node_id = add_node(make_ref<property_inspector_node>(this, drvr));
     }
 
     void scene_hierarchy::on_post_render_nodes() {

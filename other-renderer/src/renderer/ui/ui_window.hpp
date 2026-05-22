@@ -5,6 +5,7 @@
 #define OTHER_RENDERER_UI_UI_WINDOW_HPP
 
 #include "core/defines.hpp"
+#include "core/interfaces.hpp"
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
 
@@ -15,6 +16,8 @@ namespace other {
   class driver;
 
   class ui_window {
+    OTHER_ENVIRONMENT_INTERFACE("Renderer", "UIWindow", event_system*);
+
    public:
     struct window_root : public ui_node {
       window_root(ui_window* parent)
@@ -23,7 +26,7 @@ namespace other {
     };
 
    public:
-    ui_window(event_system& events, const std::string_view title, bool open = true, int32_t flags = 0);
+    ui_window(event_system* events, const std::string_view title, bool open = true, int32_t flags = 0);
     virtual ~ui_window() = default;
 
     void initialize();
@@ -35,34 +38,37 @@ namespace other {
     void toggle_open();
     void toggle_close();
 
-    natural_t add_node(scope<ui_node> node);
-    natural_t add_node(scope<ui_node> node, const std::string_view parent_search_pattern);
-    natural_t add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern = "");
+    natural_t add_node(ref<ui_node> node);
+    natural_t add_node(ref<ui_node> node, const std::string_view parent_search_pattern);
+    natural_t add_node_to(ref<ui_node> node, const std::string_view remaining_search_pattern = "");
 
-    scope<ui_node>& get_node(natural_t node_id);
-    scope<ui_node>& get_node_by_name(const std::string_view node_name);
-    scope<ui_node>& get_node_by_search_pattern(const std::string_view search_pattern);
+    ref<ui_node> get_node(natural_t node_id);
+    ref<ui_node> get_node_by_name(const std::string_view node_name);
+    ref<ui_node> get_node_by_search_pattern(const std::string_view search_pattern);
 
     template <typename T>
     T& get_node_as(natural_t node_id) {
-      auto& node = get_node(node_id);
+      auto node = get_node(node_id);
       OTHER_ASSERT(node != nullptr, "UI node with ID {} is null in window {}", node_id, title);
 
-      auto* casted_node = dynamic_cast<T*>(node.get());
+      auto* casted_node = dynamic_cast<T*>(node.raw_ptr());
       OTHER_ASSERT(casted_node != nullptr, "UI node with ID {} is not of requested type in window {}", node_id, title);
       return *casted_node;
     }
     template <typename T>
     T& get_node_as(const std::string_view search_pattern) {
-      auto& node = get_node_by_search_pattern(search_pattern);
+      auto node = get_node_by_search_pattern(search_pattern);
       OTHER_ASSERT(node != nullptr, "UI node with search pattern '{}' is null in window {}", search_pattern, title);
 
-      auto* casted_node = dynamic_cast<T*>(node.get());
+      auto* casted_node = dynamic_cast<T*>(node.raw_ptr());
       OTHER_ASSERT(casted_node != nullptr, "UI node with search pattern '{}' is not of requested type in window {}", search_pattern, title);
       return *casted_node;
     }
 
-    event_system& get_event_system() { return events; }
+    event_system& get_event_system() {
+      OTHER_ASSERT(events != nullptr, "Event system pointer is null in UI window {}", title);
+      return *events;
+    }
 
     natural_t id = 0;
     std::string title;
@@ -99,12 +105,18 @@ namespace other {
     } state;
     uint32_t window_flags = 0;
 
-    std::unordered_map<natural_t, scope<ui_node>> node_map;
+    std::unordered_map<natural_t, ref<ui_node>> node_map;
 
-    event_system& events;
+    event_system* events;
 
     void refresh(bool current_state);
   };
+
+  inline auto ui_window_args(event_system* jobs) {
+    return [jobs]() {
+      return std::tuple<event_system*>{ jobs };
+    };
+  }
 
 }  // namespace other
 

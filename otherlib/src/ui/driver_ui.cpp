@@ -187,6 +187,44 @@ namespace other {
     CORE_LOG_DEBUG("Registered main menu bar menu item: {}:{} [{}]", menu_name, item.name, hash);
   }
 
+  natural_t driver_ui::register_window(const std::string_view name, scope<ui_window> window) {
+    natural_t hash = FNV(name);
+    auto [itr, inserted] = custom_windows.emplace(hash, driver_window{
+                                                          .name = std::string(name),
+                                                          .hash = hash,
+                                                          .window_ptr = std::move(window),
+                                                        });
+    if (!inserted) {
+      CORE_LOG_ERROR("Failed to register custom window with name '{}'.", name);
+    } else {
+      CORE_LOG_DEBUG("Registered custom window: {} [{}]", name, hash);
+    }
+    return hash;
+  }
+
+  void driver_ui::unregister_window(natural_t id) {
+    auto it = custom_windows.find(id);
+    if (it == custom_windows.end()) {
+      CORE_LOG_ERROR("Failed to unregister custom window with ID {}: no such window registered.", id);
+      return;
+    }
+
+    CORE_LOG_DEBUG("Unregistered custom window: {} [{}]", it->second.name, id);
+    custom_windows.erase(it);
+  }
+
+  void driver_ui::unregister_window(const std::string_view name) {
+    natural_t hash = FNV(name);
+    auto it = custom_windows.find(hash);
+    if (it == custom_windows.end()) {
+      CORE_LOG_ERROR("Failed to unregister custom window with name '{}': no such window registered.", name);
+      return;
+    }
+
+    CORE_LOG_DEBUG("Unregistered custom window: {} [{}]", name, hash);
+    custom_windows.erase(it);
+  }
+
   event_system& driver_ui::events() {
     OTHER_ASSERT(driver_ptr != nullptr, "Driver pointer is null in driver UI.");
     return *driver_ptr->get_event_system();

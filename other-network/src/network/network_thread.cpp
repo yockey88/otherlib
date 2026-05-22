@@ -38,6 +38,33 @@ namespace other {
     CORE_LOG_DEBUG(" - network system registered packet sink [{}] at address {:p}", id, static_cast<const void*>(sink));
   }
 
+  void network_thread::unregister_provider(transport_provider* provider) {
+    OTHER_ASSERT(provider != nullptr, "Cannot unregister null provider");
+    std::lock_guard lock(providers_mutex);
+
+    auto itr = std::ranges::find(providers, provider);
+    if (itr == providers.end()) {
+      CORE_LOG_ERROR("Failed to unregister transport provider '{}': provider not found in registered providers list.", provider->name());
+      return;
+    }
+
+    provider->shutdown();
+    providers.erase(itr);
+    CORE_LOG_DEBUG(" - network system unregistered transport provider '{}' ({:#010x})", provider->name(), provider->hash());
+  }
+
+  void network_thread::unregister_packet_sink(natural_t id) {
+    std::lock_guard lock(sink_mutex);
+    auto itr = std::ranges::find(packet_sinks, id, &target::id);
+    if (itr == packet_sinks.end()) {
+      CORE_LOG_ERROR("Failed to unregister packet sink with ID {}: no such packet sink registered.", id);
+      return;
+    }
+
+    CORE_LOG_DEBUG(" - network system unregistered packet sink [{}] at address {:p}", id, static_cast<const void*>(itr->sink));
+    packet_sinks.erase(itr);
+  }
+
   void network_thread::register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink) {
     OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink");
 
@@ -49,7 +76,7 @@ namespace other {
       for (auto* p : providers) {
         OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
         if (p->hash() == transport_hash) {
-          CORE_LOG_DEBUG(" - registering sink ID {} with provider '{}'", id, p->name());
+          CORE_LOG_INFO("Packet Sink [{}] subscribed to tranport '{}'", id, p->name());
           p->register_packet_sink(sink);
           return;
         }
@@ -73,9 +100,12 @@ namespace other {
   }
 
   void network_thread::attach_connection_listener(natural_t connection_id, natural_t sink_id) {
-    if (std::ranges::find(packet_sinks, sink_id, &target::id) == packet_sinks.end()) {
-      CORE_LOG_ERROR("Failed to attach connection listener: no packet sink found with ID {}", sink_id);
-      return;
+    {
+      std::lock_guard lock(sink_mutex);
+      if (std::ranges::find(packet_sinks, sink_id, &target::id) == packet_sinks.end()) {
+        CORE_LOG_ERROR("Failed to attach connection listener: no packet sink found with ID {}", sink_id);
+        return;
+      }
     }
 
     auto conn = active_connections.find(connection_id);
@@ -85,6 +115,13 @@ namespace other {
     }
 
     conn->second.sink = std::ranges::find(packet_sinks, sink_id, &target::id)->sink;
+  }
+
+  void network_thread::unregister_transport_listener(natural_t sink_id) {
+  }
+  void network_thread::unregister_connection_listener(natural_t connection_id) {
+  }
+  void network_thread::detach_connection_listener(natural_t connection_id) {
   }
 
   void network_thread::register_connection_route(natural_t connection_id, transport_provider* provider, void* opaque_handle) {

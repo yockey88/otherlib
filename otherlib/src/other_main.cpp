@@ -3,11 +3,11 @@
  **/
 #include "other.hpp"
 
-#ifdef OTHER_CLIENT
+#ifdef OTHER_DYNAMIC_DRIVER
 extern "C" {
 /// for building this as the exe in which case a dynamic driver gets loaded and we don't need these
-other::driver* create_driver(const other::command_line* cmd, const other::config_table* config) { return nullptr; }
-void destroy_driver(other::driver* instance) {}
+other::driver* otherlib_create_driver(const other::command_line* cmd, const other::config_table* config) { return nullptr; }
+void otherlib_destroy_driver(other::driver* instance) {}
 }
 #endif
 
