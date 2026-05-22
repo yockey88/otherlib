@@ -12,6 +12,7 @@
 
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
+#include "core/interfaces.hpp"
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
 
@@ -21,7 +22,9 @@ namespace other {
 
   class ui_window;
 
-  class OTHER_CLASS ui_node {
+  class OTHER_CLASS ui_node : public ref_counted {
+    OTHER_ENVIRONMENT_INTERFACE("Renderer", "UINode", ui_window*);
+
    public:
     ui_node(ui_window* parent, const std::string_view node_title, const glm::vec2& size_arg = { 0.f, 0.f }, int32_t child_flags = 0, int32_t window_flags = 0)
         : id(FNV(node_title)), node_title(node_title), size(size_arg), flags(child_flags), window_flags(window_flags), containing_window(parent) {}
@@ -30,8 +33,8 @@ namespace other {
     void refresh();
     void render();
 
-    natural_t add_child_node(scope<ui_node>& node);
-    natural_t add_node_to(scope<ui_node>& node, const std::string_view remaining_search_pattern = "");
+    natural_t add_child_node(ref<ui_node> node);
+    natural_t add_node_to(ref<ui_node> node, const std::string_view remaining_search_pattern = "");
 
     void set_size(const glm::vec2& new_size) { size = new_size; }
     glm::vec2 get_size() const { return size; }

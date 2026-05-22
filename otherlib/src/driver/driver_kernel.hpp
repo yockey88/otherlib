@@ -8,6 +8,7 @@
 #include "core/logger.hpp"
 
 #include "driver/driver_system.hpp"
+#include "driver/environment_registry.hpp"
 #include "driver/systems/driver_plugin.hpp"
 #include "plugin/plugin_manifest.hpp"
 
@@ -23,9 +24,10 @@ namespace other {
     virtual ~driver_kernel() = default;
 
     void load_profile(const std::string_view profile_name);
-    void load_plugins_from_config(driver* driver_instance);
+    void load_driver_plugins_from_config(driver* driver_instance);
     void initialize();
     void tick(double dt);
+    void unload_driver_plugins();
     void unload_plugins();
     void shutdown();
 
@@ -125,6 +127,13 @@ namespace other {
       return casted_system;
     }
 
+    inline environment_registry& get_environment_registry(interface_scope scope) {
+      return environment_registries[static_cast<size_t>(scope)].registry;
+    }
+    inline environment_registry& global_registry() { return get_environment_registry(interface_scope::GLOBAL); }
+    inline environment_registry& driver_registry() { return get_environment_registry(interface_scope::DRIVER); }
+    inline environment_registry& project_registry() { return get_environment_registry(interface_scope::PROJECT); }
+
    private:
     driver* driver_instance;
 
@@ -135,7 +144,24 @@ namespace other {
     std::map<system_key, driver_system*> plugin_systems;
     std::array<driver_system*, kNumBuiltinDriverSystems> builtin_systems{};
 
-    std::vector<plugin_manifest> loaded_plugins;
+    struct plugin_library_info {
+      std::string library_name;
+      natural_t plugin_id;
+    };
+
+    struct plugin_registry {
+      environment_registry registry;
+      std::vector<plugin_library_info> provided_plugins;
+
+      plugin_registry(interface_scope scope)
+          : registry(scope) {}
+    };
+
+    std::array<plugin_registry, kNumInterfaceScopes> environment_registries{
+      plugin_registry(interface_scope::GLOBAL),
+      plugin_registry(interface_scope::DRIVER),
+      plugin_registry(interface_scope::PROJECT),
+    };
 
     template <typename T>
       requires std::derived_from<T, driver_system>
@@ -148,7 +174,7 @@ namespace other {
       return casted_system;
     }
 
-    void register_plugin(const filepath& path, library_handle* lib);
+    void register_driver_plugin(const filepath& path, library_handle* lib);
   };
 
 }  // namespace other

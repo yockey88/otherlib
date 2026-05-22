@@ -87,6 +87,7 @@ namespace other {
     }
 
     driver_kernel_ptr->shutdown();
+    driver_kernel_ptr->unload_driver_plugins();
     driver_kernel_ptr->unload_plugins();
   }
 
@@ -114,19 +115,19 @@ namespace other {
       driver_name = filepath(driver_path).filename().stem().string();
       CORE_LOG_DEBUG("Loaded plugin library [{}] : {}", driver_name, driver_path);
 
-      auto sym_res = lib_handle->get_symbol("create_driver");
+      auto sym_res = lib_handle->get_symbol(driver::kDynamicDriverFactorySymbolName);
       if (!sym_res.has_value()) {
-        CORE_LOG_ERROR("Failed to get symbol 'create_driver' from plugin '{}'", driver_path);
+        CORE_LOG_ERROR("Failed to get symbol '{}' from plugin '{}'", driver::kDynamicDriverFactorySymbolName, driver_path);
         return { nullptr, "" };
       }
 
       symbol& sym = sym_res.value();
       if (sym.address == nullptr) {
-        CORE_LOG_ERROR("Failed to load symbol 'create_driver' from plugin '{}'", driver_path);
+        CORE_LOG_ERROR("Failed to load symbol '{}' from plugin '{}'", driver::kDynamicDriverFactorySymbolName, driver_path);
         return { nullptr, "" };
       }
 
-      CORE_LOG_DEBUG("calling 'create_driver' from plugin [{}]", driver_name);
+      CORE_LOG_DEBUG("calling '{}' from plugin [{}]", driver::kDynamicDriverFactorySymbolName, driver_name);
       driver* (*fn)(const config_table*) = sym.get_function<driver* (*)(const config_table*)>();
       driver_instance = fn(&config);
       CORE_LOG_DEBUG("Loaded driver [{}]", driver_name);
@@ -154,13 +155,13 @@ namespace other {
     library_handle* lib_handle = plugin::get_plugin_library(name);
     OTHER_ASSERT(lib_handle != nullptr, "Failed to get plugin library: {}", name);
 
-    auto sym_res = lib_handle->get_symbol("destroy_driver");
-    OTHER_ASSERT(sym_res.has_value(), "Failed to get symbol 'destroy_driver' from plugin '{}'", name);
+    auto sym_res = lib_handle->get_symbol(driver::kDynamicDriverDestroySymbolName);
+    OTHER_ASSERT(sym_res.has_value(), "Failed to get symbol '{}' from plugin '{}'", driver::kDynamicDriverDestroySymbolName, name);
 
     symbol& sym = sym_res.value();
-    OTHER_ASSERT(sym.address != nullptr, "Failed to load symbol 'destroy_driver' from plugin '{}'", name);
+    OTHER_ASSERT(sym.address != nullptr, "Failed to load symbol '{}' from plugin '{}'", driver::kDynamicDriverDestroySymbolName, name);
 
-    CORE_LOG_DEBUG("calling 'destroy_driver' from plugin [{}]", name);
+    CORE_LOG_DEBUG("calling '{}' from plugin [{}]", driver::kDynamicDriverDestroySymbolName, name);
     sym.get_function<void (*)(driver*)>()(instance);
     plugin::unload_plugin_library(name);
   }
@@ -258,7 +259,7 @@ namespace other {
       on_early_initialize();
     }
 
-    driver_kernel_ptr->load_plugins_from_config(this);
+    driver_kernel_ptr->load_driver_plugins_from_config(this);
     load_client();
 
     {

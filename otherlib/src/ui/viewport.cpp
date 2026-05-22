@@ -26,8 +26,7 @@ namespace other {
 
       void on_render_node_body() override {
         auto size = ImGui::GetContentRegionAvail();
-        if (size.x != previous_size.x ||
-            size.y != previous_size.y) {
+        if (size.x != previous_size.x || size.y != previous_size.y) {
           events().trigger_event("viewport.resize", glm::vec2(size.x, size.y));
         }
         previous_size = size;
@@ -55,9 +54,9 @@ namespace other {
     };
 
     viewport::viewport(event_system& events, scope<renderer>& renderer_ptr, driver* driver_ptr)
-        : ui_window(events, "Viewport"), driver_ptr(driver_ptr) {
+        : ui_window(&events, "Viewport"), driver_ptr(driver_ptr) {
       events.register_event("viewport.resize");
-      add_node(make_scope<viewport_node>(renderer_ptr, driver_ptr, this, "ViewportNode"));
+      add_node(make_ref<viewport_node>(renderer_ptr, driver_ptr, this, "ViewportNode"));
     }
 
   }  // namespace ui

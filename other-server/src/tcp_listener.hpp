@@ -8,8 +8,8 @@
 
 class tcp_listener : public other::packet_sink {
  public:
-  tcp_listener()
-      : packet_sink("TcpListener") {}
+  tcp_listener(other::job_system* jobs)
+      : packet_sink(jobs, "TcpListener") {}
   ~tcp_listener() override = default;
 
   void on_rx_data(other::natural_t from_peer_id, std::span<const uint8_t> data) override;

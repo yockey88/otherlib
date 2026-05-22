@@ -4,7 +4,13 @@
 #ifndef OTHER_CORE_BUILD_CONFIG_HPP
 #define OTHER_CORE_BUILD_CONFIG_HPP
 
-#define bit(x) (1ll << x)
+#if defined(__GNUC__) || defined(__clang__)
+  #define OTHER_WEAK __attribute__((weak))
+#elif defined(_MSC_VER)
+  #define OTHER_WEAK __declspec(selectany)
+#else
+  #define OTHER_WEAK inline
+#endif
 
 #ifdef OTHER_CLIENT
   #define OTHER_DYNAMIC_DRIVER

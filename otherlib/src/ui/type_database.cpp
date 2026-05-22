@@ -25,9 +25,9 @@ namespace other {
     };
 
     type_database::type_database(event_system& event)
-        : ui_window(event, "Type Database") {
-      auto type_list_node = make_scope<type_list>(this);
-      add_node(std::move(type_list_node));
+        : ui_window(&event, "Type Database") {
+      auto type_list_node = make_ref<type_list>(this);
+      add_node(type_list_node);
     }
 
   }  // namespace ui

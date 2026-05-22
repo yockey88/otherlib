@@ -66,13 +66,15 @@ namespace other {
     std::string name() const override { return "Network System"; }
 
     void initialize(driver_kernel* kernel) override;
+    void late_initialize(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
     natural_t register_transport_provider(scope<transport_provider> provider);
+    void unregister_transport_provider(natural_t provider_id);
+
     natural_t register_transport_listener(const std::string_view transport_name, scope<packet_sink> sink);
-    natural_t attach_connection_listener(natural_t connection_id, scope<packet_sink> sink);
-    void attach_connection_listener(natural_t connection_id, natural_t sink_id);
+    void unregister_transport_listener(natural_t sink_id);
 
     natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp", natural_t preferred_sink_id = 0);
     natural_t connect(const binding_point& ep, const std::string_view transport_name = "tcp", natural_t preferred_sink_id = 0);

@@ -44,6 +44,7 @@ target_sources(otherlib
     src/driver/systems/scene_system.cpp
     src/driver/systems/project_system.cpp
     src/driver/systems/driver_plugin.cpp
+    src/driver/environment_registry.cpp
     src/driver/driver_kernel.cpp
     src/driver/subsystem_registry.cpp
     src/driver/driver.cpp

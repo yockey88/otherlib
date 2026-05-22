@@ -60,6 +60,28 @@ namespace other {
     initialize_message_handlers();
   }
 
+  void network_system::late_initialize(driver_kernel* kernel) {
+    ASSERT_MAIN_THREAD();
+
+    auto declare_interfaces_in_registry = [this](environment_registry& reg) {
+      reg.declare_interface<transport_provider>(
+        [this](scope<transport_provider> p) { return register_transport_provider(std::move(p)); },
+        [this](natural_t id) { unregister_transport_provider(id); },
+        no_args(),                       // empty
+        interface_cardinality::MULTIPLE  // don't want too many
+      );
+
+      reg.declare_interface<packet_sink>(
+        [this](scope<packet_sink> s, plugin_param_view params) { return register_transport_listener(params.get_or("transport", "generic"), std::move(s)); },
+        [this](natural_t id) { unregister_transport_listener(id); },
+        packet_sink_args(&get_driver().get_job_system()),
+        interface_cardinality::MULTIPLE  // don't want too many
+      );
+    };
+    declare_interfaces_in_registry(kernel->driver_registry());
+    declare_interfaces_in_registry(kernel->project_registry());
+  }
+
   void network_system::tick(driver_kernel* kernel, double dt) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
@@ -122,7 +144,7 @@ namespace other {
     natural_t id = net_context->generate_packet_sink_id();
     OTHER_ASSERT(net_context->registered_packet_sinks.find(id) == net_context->registered_packet_sinks.end(), "Packet sink ID {} is already in use.", id);
 
-    CORE_LOG_INFO("Registering packet sink [{}]", id);
+    CORE_LOG_INFO("Registering packet sink [{}] to transport [{}]", id, transport_name);
     auto [itr, success] = net_context->registered_packet_sinks.emplace(id, std::move(sink));
     OTHER_ASSERT(success, "Failed to register packet sink with ID {}!", id);
 
@@ -136,35 +158,34 @@ namespace other {
     return id;
   }
 
-  natural_t network_system::attach_connection_listener(natural_t connection_id, scope<packet_sink> sink) {
-    ASSERT_MAIN_THREAD();
-    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
-    OTHER_ASSERT(sink != nullptr, "Cannot attach null packet sink.");
-
-    natural_t id = net_context->generate_packet_sink_id();
-    OTHER_ASSERT(net_context->registered_packet_sinks.find(id) == net_context->registered_packet_sinks.end(), "Packet sink ID {} is already in use.", id);
-
-    CORE_LOG_INFO("Attaching packet sink [{}] to connection ID {}", id, connection_id);
-    auto [itr, success] = net_context->registered_packet_sinks.emplace(id, std::move(sink));
-    OTHER_ASSERT(success, "Failed to attach packet sink with ID {} to connection ID {}!", id, connection_id);
-
-    net_context->net_thread->register_packet_sink(id, itr->second.get());
-    net_context->net_thread->attach_connection_listener(connection_id, id);
-
-    return connection_id;
-  }
-
-  void network_system::attach_connection_listener(natural_t connection_id, natural_t sink_id) {
+  void network_system::unregister_transport_provider(natural_t provider_id) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
 
-    if (!net_context->registered_packet_sinks.contains(sink_id)) {
-      CORE_LOG_ERROR("Failed to attach packet sink with ID {} to connection ID {}: no such packet sink registered.", sink_id, connection_id);
+    auto itr = net_context->registered_transport_providers.find(provider_id);
+    if (itr == net_context->registered_transport_providers.end()) {
+      CORE_LOG_ERROR("Failed to unregister transport provider with ID {}: no such provider registered.", provider_id);
       return;
     }
 
-    CORE_LOG_INFO("Attaching packet sink [{}] to connection ID {}", sink_id, connection_id);
-    // net_context->net_thread->attach_connection_listener(connection_id, sink_id);
+    CORE_LOG_INFO("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
+    net_context->net_thread->unregister_provider(itr->second.get());
+    net_context->registered_transport_providers.erase(itr);
+  }
+
+  void network_system::unregister_transport_listener(natural_t sink_id) {
+    ASSERT_MAIN_THREAD();
+    OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+
+    auto itr = net_context->registered_packet_sinks.find(sink_id);
+    if (itr == net_context->registered_packet_sinks.end()) {
+      CORE_LOG_ERROR("Failed to unregister packet sink with ID {}: no such packet sink registered.", sink_id);
+      return;
+    }
+
+    CORE_LOG_INFO("Unregistering packet sink [{}]", sink_id);
+    net_context->net_thread->unregister_packet_sink(sink_id);
+    net_context->registered_packet_sinks.erase(itr);
   }
 
   natural_t network_system::listen_at_endpoint(const binding_point& ep, const std::string_view transport_name, natural_t preferred_sink_id) {

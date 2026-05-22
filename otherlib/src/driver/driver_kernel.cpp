@@ -54,7 +54,7 @@ namespace other {
     update_order();
   }
 
-  void driver_kernel::load_plugins_from_config(driver* driver_instance) {
+  void driver_kernel::load_driver_plugins_from_config(driver* driver_instance) {
     const auto& configuration = driver_instance->configuration();
     const toml::node_view plugins_node = configuration.get_raw("driver.plugins");
     if (!plugins_node || !plugins_node.is_array_of_tables()) {
@@ -114,35 +114,7 @@ namespace other {
       }
 
       filepath path = plugin.path;
-      register_plugin(path, lib);
-
-      // auto sym_res = lib->get_symbol("create_plugin");
-      // if (!sym_res.has_value()) {
-      //   CORE_LOG_ERROR("Failed to get symbol 'create_plugin' from plugin '{}'", plugin.path);
-      //   plugin::unload_plugin_library(name);
-      //   continue;
-      // }
-
-      // symbol& sym = sym_res.value();
-      // if (sym.address == nullptr) {
-      //   CORE_LOG_ERROR("Failed to load symbol 'create_plugin' from plugin '{}'", plugin.path);
-      //   plugin::unload_plugin_library(name);
-      //   continue;
-      // }
-
-      // CORE_LOG_DEBUG("Calling 'create_plugin' for plugin [{}]", name);
-      // driver_system* (*fn)(driver*) = sym.get_function<driver_system* (*)(driver*)>();
-      // driver_system* plugin_instance = fn(driver_instance);
-      // if (plugin_instance == nullptr) {
-      //   CORE_LOG_ERROR("Failed to create plugin instance from plugin '{}'", plugin.path);
-      //   plugin::unload_plugin_library(name);
-      //   continue;
-      // } else {
-      //   CORE_LOG_DEBUG("Successfully created plugin instance for plugin [{}]", name);
-      // }
-
-      // CORE_LOG_INFO("Successfully loaded driver plugin: '{}'", plugin.name);
-      // install_plugin(name, plugin_instance);
+      register_driver_plugin(path, lib);
     }
   }
 
@@ -173,6 +145,14 @@ namespace other {
       if (plugin->active()) {
         plugin->tick(this, dt);
       }
+    }
+  }
+
+  void driver_kernel::unload_driver_plugins() {
+    auto& reg = environment_registries[static_cast<size_t>(interface_scope::DRIVER)];
+    for (const auto& plugin_info : reg.provided_plugins) {
+      // reg.registry.uninstall(plugin_info.plugin_id);
+      plugin::unload_plugin_library(plugin_info.library_name);
     }
   }
 
@@ -309,7 +289,7 @@ namespace other {
     return plugin;
   }
 
-  void driver_kernel::register_plugin(const filepath& path, library_handle* lib) {
+  void driver_kernel::register_driver_plugin(const filepath& path, library_handle* lib) {
     std::string name = path.filename().stem().string();
 
     opt<symbol> manifest_symbol = lib->get_symbol(kManifestFunctionSymbolName);
@@ -321,17 +301,17 @@ namespace other {
     symbol& sym = manifest_symbol.value();
     OTHER_ASSERT(sym.address != nullptr, "Manifest symbol '{}' is null in plugin '{}'", kManifestFunctionSymbolName, path.string());
     plugin_manifest* (*get_manifest_fn)() = sym.get_function<plugin_manifest* (*)()>();
-    plugin_manifest* manifest = get_manifest_fn();
-    if (manifest == nullptr) {
+    plugin_manifest* manifest_ptr = get_manifest_fn();
+    if (manifest_ptr == nullptr) {
       CORE_LOG_ERROR("Plugin manifest is null in plugin '{}'", path.string());
       return;
     }
 
-    CORE_LOG_DEBUG("Registering Plugin for interface: [{}]", manifest->interface_hash);
-    CORE_LOG_DEBUG(" - Class: {}", manifest->class_name);
-    CORE_LOG_DEBUG(" - Plugin Instance Name: {}", manifest->plugin_instance_name);
-    // CORE_LOG_DEBUG(" - Version: {}.{}.{}", manifest->version.major, manifest->version.minor, manifest->version.patch);
-    // CORE_LOG_DEBUG(" - Description: {}", manifest->description);
+    auto& manifest = *manifest_ptr;
+    auto& reg = environment_registries[static_cast<size_t>(interface_scope::DRIVER)];
+    auto id = reg.registry.install_from_manifest(name, manifest);
+    reg.provided_plugins.push_back({ name, id });
+    CORE_LOG_DEBUG("Registered driver plugin '{}' with id {} from library '{}'", name, id, path.string());
   }
 
 }  // namespace other

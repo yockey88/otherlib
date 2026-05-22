@@ -11,11 +11,11 @@
 namespace other {
 
   class OTHER_CLASS packet_sink {
-    OTHER_ENVIRONMENT_INTERFACE("Network", "PacketSink");
+    OTHER_ENVIRONMENT_INTERFACE("Network", "PacketSink", job_system*);
 
    public:
-    packet_sink(const std::string& name = "UnnamedPacketSink")
-        : name(name) {}
+    packet_sink(job_system* jobs, const std::string& name)
+        : jobs(jobs), name(name) {}
     virtual ~packet_sink() = default;
 
     void set_job_system(job_system* jobs);
@@ -35,6 +35,12 @@ namespace other {
     job_system* jobs;
     const std::string name;
   };
+
+  inline auto packet_sink_args(job_system* jobs) {
+    return [jobs]() {
+      return std::tuple<job_system*>{ jobs };
+    };
+  }
 
 }  // namespace other
 

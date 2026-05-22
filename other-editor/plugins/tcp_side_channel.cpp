@@ -1,14 +1,17 @@
 /**
  * \file plugins/tcp_side_channel.hpp
  **/
+#include "driver/driver.hpp"
 #include "plugin/plugin.hpp"
 
 #include "peer-mesh/packet_sink.hpp"
 
+using other::packet_sink;
+
 class OTHER_CLASS tcp_side_channel : public other::packet_sink {
  public:
-  tcp_side_channel()
-      : packet_sink("TcpSideChannel") {}
+  tcp_side_channel(other::job_system* jobs)
+      : packet_sink(jobs, "TcpSideChannel") {}
   ~tcp_side_channel() override = default;
 
   void on_rx_data(other::natural_t from_peer_id, std::span<const uint8_t> data) override {
@@ -26,5 +29,5 @@ class OTHER_CLASS tcp_side_channel : public other::packet_sink {
   }
 };
 
-OTHER_PROVIDES(tcp_side_channel, other::packet_sink, "tcp_recorder")
-OTHER_PLUGIN(tcp_side_channel)
+OTHER_PROVIDES(tcp_side_channel, other::packet_sink, "tcp_recorder", OTHER_PARAMS(OTHER_PARAM("transport", "tcp")))
+OTHER_PLUGIN(tcp_recorder, "0.0.1", "N/A", "records TCP traffic for debugging purposes")

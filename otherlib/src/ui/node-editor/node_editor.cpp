@@ -21,8 +21,8 @@ namespace other {
   namespace ui {
 
     node_editor::node_editor(event_system& events)
-        : ui_window(events, "Node Editor", true, ImGuiWindowFlags_NoCollapse) {
-      canvas_id = add_node(make_scope<node_editor_canvas_node>(this));
+        : ui_window(&events, "Node Editor", true, ImGuiWindowFlags_NoCollapse) {
+      canvas_id = add_node(make_ref<node_editor_canvas_node>(this));
       events.register_event("remove-node");
       events.register_event("break-node-link");
       events.add_listener("remove-node", [this](const value& data) {

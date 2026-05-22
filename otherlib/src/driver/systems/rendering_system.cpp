@@ -40,6 +40,19 @@ namespace other {
     events.add_listener("ls.windows", [this](const value& data) { handle_ls_windows_event(&get_driver().get_kernel(), data); });
   }
 
+  void rendering_system::late_initialize(driver_kernel* kernel) {
+    auto declare_interfaces_in_registry = [this](environment_registry& reg) {
+      // reg.declare_interface<ui_window>(
+      //   [this](scope<ui_window> s) { return driver_ui_ptr->register_window(std::move(s)); },
+      //   [this](natural_t id) { driver_ui_ptr->unregister_window(id); },
+      //   no_args(),                       // empty
+      //   interface_cardinality::MULTIPLE  // don't want too many
+      // );
+    };
+    declare_interfaces_in_registry(kernel->driver_registry());
+    declare_interfaces_in_registry(kernel->project_registry());
+  }
+
   void rendering_system::tick(driver_kernel* kernel, double dt) {
   }
 
