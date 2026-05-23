@@ -14,8 +14,8 @@ using other::exit_code;
 /// have to define for linking
 exit_code other_main(const command_line& cmd, const config_table& config) { return exit_code::FAILURE; }
 extern "C" {
-other::driver* create_driver(const other::command_line* cmd, const other::config_table* config) { return nullptr; }
-void destroy_driver(other::driver* instance) {}
+other::driver* otherlib_create_driver(const other::command_line* cmd, const other::config_table* config) { return nullptr; }
+void otherlib_destroy_driver(other::driver* instance) {}
 }
 
 int main(int argc, char** argv) {

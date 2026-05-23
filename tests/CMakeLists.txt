@@ -5,7 +5,7 @@ endif()
 enable_testing()
 
 add_executable(other_tests)
-target_compile_definitions(other_tests PRIVATE "OTHER_TEST_ENVIRONMENT")
+target_compile_definitions(other_tests PRIVATE OTHER_TEST_ENVIRONMENT)
 target_sources(other_tests
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/core/config_table_tests.cpp
@@ -51,6 +51,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/network_thread_test_runner.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/vm/parsing_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/vm/vm_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/other_test_main.cpp
 )
