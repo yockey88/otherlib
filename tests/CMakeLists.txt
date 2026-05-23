@@ -49,6 +49,9 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/network/transport_provider_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/network_thread_test_runner.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/vm/parsing_tests.cpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/other_test_main.cpp
 )
 target_include_directories(other_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

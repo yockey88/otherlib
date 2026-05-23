@@ -27,7 +27,6 @@ namespace other {
     void shutdown(driver_kernel* kernel) override;
 
     void render(driver_kernel* kernel);
-    void render_ui(driver_kernel* kernel);
 
     void open_ui_window(const std::string_view name);
     void close_ui_window(const std::string_view name);

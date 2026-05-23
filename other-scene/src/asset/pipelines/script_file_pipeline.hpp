@@ -10,7 +10,7 @@ namespace other {
 
   class script_file_pipeline : public asset_pipeline {
    public:
-    script_file_pipeline(event_system& events, asset_handler* handler)
+    script_file_pipeline(event_system* events, asset_handler* handler)
         : asset_pipeline(events, handler) {}
     ~script_file_pipeline() = default;
 

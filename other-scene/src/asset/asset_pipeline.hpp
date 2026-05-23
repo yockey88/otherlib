@@ -7,6 +7,7 @@
 #include <asio/asio.hpp>
 
 #include "core/coroutine.hpp"
+#include "core/interfaces.hpp"
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
 
@@ -21,6 +22,8 @@ namespace other {
   class scene;
 
   class asset_pipeline {
+    OTHER_ENVIRONMENT_INTERFACE("Asset", "Pipeline", event_system*, asset_handler*);
+
    public:
     using executor_t = asio::thread_pool::executor_type;
     // asio::strand<asio::io_context::executor_type>;
@@ -31,18 +34,19 @@ namespace other {
     using on_load_success_fn = void (asset_pipeline::*)();
     using on_load_failure_fn = void (asset_pipeline::*)(const std::string&);
 
-    asset_pipeline(event_system& events, asset_handler* handler)
+    asset_pipeline(event_system* events, asset_handler* handler)
         : events(events), handler(handler) {
+      OTHER_ASSERT(events != nullptr, "Event system is null in asset_pipeline");
       OTHER_ASSERT(handler != nullptr, "Asset handler is null in asset_pipeline");
     }
     virtual ~asset_pipeline() = default;
 
     static bool is_extension_supported(const std::string_view extension);
 
-    static scope<asset_pipeline> get_asset_pipeline(event_system& events, asset_handler* handler, asset::type type);
-    static scope<asset_pipeline> get_model_source_pipeline(event_system& events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
-    static scope<asset_pipeline> get_scene_pipeline(event_system& events, asset_handler* handler, scene* scene_ptr);
-    static scope<asset_pipeline> get_rendering_pipeline_pipeline(event_system& events, asset_handler* handler, const pipeline_definition& definition);
+    static scope<asset_pipeline> get_asset_pipeline(event_system* events, asset_handler* handler, asset::type type);
+    static scope<asset_pipeline> get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    static scope<asset_pipeline> get_scene_pipeline(event_system* events, asset_handler* handler, scene* scene_ptr);
+    static scope<asset_pipeline> get_rendering_pipeline_pipeline(event_system* events, asset_handler* handler, const pipeline_definition& definition);
 
     void set_asset_data(asset* asset_ptr);
     void start_load(executor_t& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
@@ -66,8 +70,14 @@ namespace other {
     void pipeline_finished();
     void pipeline_failed(const std::string& error_message);
 
-    event_system& get_events() { return events; }
-    asset_handler& get_handler() { return *handler; }
+    event_system& get_events() {
+      OTHER_ASSERT(events != nullptr, "Events is null in asset_pipeline::get_events");
+      return *events;
+    }
+    asset_handler& get_handler() {
+      OTHER_ASSERT(events != nullptr, "Asset handler is null in asset_pipeline::get_handler");
+      return *handler;
+    }
 
     void reset();
 
@@ -82,7 +92,7 @@ namespace other {
 
     std::string error_message = "";
 
-    event_system& events;
+    event_system* events;
 
     asset* asset_ptr = nullptr;
 
@@ -96,6 +106,12 @@ namespace other {
 
     // task load_asset(asset* asset_ptr);
   };
+
+  static inline auto asset_pipeline_args(event_system* events, asset_handler* handler) {
+    return [events, handler]() {
+      return std::tuple<event_system*, asset_handler*>{ events, handler };
+    };
+  }
 
 }  // namespace other
 

@@ -88,15 +88,12 @@ namespace other {
 
     renderer_ptr->begin_frame(data_ptr);
     renderer_ptr->render();
-    render_ui(kernel);
-    renderer_ptr->end_frame();
-  }
 
-  void rendering_system::render_ui(driver_kernel* kernel) {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system render_ui.");
     renderer_ptr->begin_ui_frame();
     driver_ui_ptr->render();
     renderer_ptr->end_ui_frame();
+
+    renderer_ptr->end_frame();
   }
 
   void rendering_system::open_ui_window(const std::string_view name) {

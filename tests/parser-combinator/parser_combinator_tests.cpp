@@ -677,7 +677,7 @@ namespace other {
     ref<parser<std::string>> header_parser = match_identifier_and_strip_parens();
     auto skip_newline = skip('\n');
     // clang-format off
-  auto line_splitter = into<std::vector<std::vector<std::string>>>(split_string_on('\n'), split_string_on('=')) |
+    auto line_splitter = into<std::vector<std::vector<std::string>>>(split_string_on('\n'), split_string_on('=')) |
     [](const std::vector<std::vector<std::string>>& data) -> std::vector<std::vector<std::string>> {
       return data |
         std::views::filter([](const std::vector<std::string>& data) { return !data.empty(); }) |
@@ -778,6 +778,7 @@ namespace other {
     EXPECT_EQ(value_data[2][0], "key_5");
     EXPECT_EQ(value_data[2][1], "1");
   }
+
   TEST_F(parser_combinator_tests, maybe_parser) {
     auto maybe_c = maybe(char_parser('c'));
 

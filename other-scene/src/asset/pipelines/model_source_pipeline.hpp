@@ -13,7 +13,7 @@ namespace other {
 
   class model_source_pipeline : public asset_pipeline {
    public:
-    model_source_pipeline(event_system& events, asset_handler* handler)
+    model_source_pipeline(event_system* events, asset_handler* handler)
         : asset_pipeline(events, handler) {}
     ~model_source_pipeline() override = default;
 

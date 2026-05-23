@@ -14,6 +14,7 @@
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
+#include "asset/pipelines/asset_declaration_pipeline.hpp"
 #include "asset/pipelines/model_source_pipeline.hpp"
 #include "asset/pipelines/rendering_pipeline_pipeline.hpp"
 #include "asset/pipelines/scene_pipeline.hpp"
@@ -33,6 +34,7 @@ namespace other {
     task load_script(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
     task unload_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -42,6 +44,7 @@ namespace other {
     task unload_script(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task empty_unloader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
   }  // namespace detail
@@ -56,9 +59,10 @@ namespace other {
     detail::load_script_file,
     detail::load_script,
     detail::empty_loader,  // detail::load_audio,
-    detail::load_scene,    // detail::load_scene,
+    detail::load_scene,
     detail::empty_loader,  // detail::load_input_map,
     detail::load_rendering_pipeline,
+    detail::load_asset_declaration,
     detail::empty_loader,
   };
 
@@ -72,9 +76,10 @@ namespace other {
     detail::unload_script_file,
     detail::unload_script,
     detail::empty_unloader,  // detail::unload_audio,
-    detail::unload_scene,    // detail::unload_scene,
+    detail::unload_scene,
     detail::empty_unloader,  // detail::unload_input_map,
     detail::unload_rendering_pipeline,
+    detail::unload_asset_declaration,
     detail::empty_unloader,
   };
 
@@ -82,7 +87,7 @@ namespace other {
     return std::ranges::find_if(kAssetExtensions, [extension](const auto& ext) { return ext.extension == extension; }) != kAssetExtensions.end();
   }
 
-  scope<asset_pipeline> asset_pipeline::get_asset_pipeline(event_system& events, asset_handler* handler, asset::type type) {
+  scope<asset_pipeline> asset_pipeline::get_asset_pipeline(event_system* events, asset_handler* handler, asset::type type) {
     switch (type) {
       case asset::MODEL_SOURCE: return make_scope<model_source_pipeline>(events, handler);
       case asset::SCRIPT_PROJECT: return make_scope<script_project_pipeline>(events, handler);
@@ -91,23 +96,24 @@ namespace other {
       case asset::SCRIPT: return make_scope<script_pipeline>(events, handler);
       case asset::SCENE: return make_scope<scene_pipeline>(events, handler, nullptr);
       case asset::RENDERING_PIPELINE: return make_scope<rendering_pipeline_pipeline>(events, handler, pipeline_definition{});
+      case asset::ASSET_DECLARATION: return make_scope<asset_declaration_pipeline>(events, handler);
       default:
         OTHER_ASSERT(false, "No asset pipeline for asset type {}", type);
     }
   }
 
-  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system& events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
     CORE_LOG_DEBUG("Building model source pipeline for model '{}', vertex count {}, index count {}", name, vertices.size(), indices.size());
     scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(events, handler);
     pl->builder = model_importer::build_model_data(name, vertices, indices);
     return pl;
   }
 
-  scope<asset_pipeline> asset_pipeline::get_scene_pipeline(event_system& events, asset_handler* handler, scene* scene_ptr) {
+  scope<asset_pipeline> asset_pipeline::get_scene_pipeline(event_system* events, asset_handler* handler, scene* scene_ptr) {
     return make_scope<scene_pipeline>(events, handler, scene_ptr);
   }
 
-  scope<asset_pipeline> asset_pipeline::get_rendering_pipeline_pipeline(event_system& events, asset_handler* handler, const pipeline_definition& definition) {
+  scope<asset_pipeline> asset_pipeline::get_rendering_pipeline_pipeline(event_system* events, asset_handler* handler, const pipeline_definition& definition) {
     return make_scope<rendering_pipeline_pipeline>(events, handler, definition);
   }
 
@@ -128,6 +134,8 @@ namespace other {
       return;
     }
 
+    /// \todo look up custom asset loader if need be (will have to reference symbol in plugin)
+
     pipeline_state.loading = true;
     start_load_operation(
       execution_pool, asset_ptr, on_success, on_failure,
@@ -147,6 +155,8 @@ namespace other {
       CORE_LOG_WARN("Pipeline is currently loading for asset ID: {}. Cannot unload while loading.", asset_ptr->id);
       return;
     }
+
+    /// \todo look up custom asset unloader if need be (will have to reference symbol in plugin)
 
     pipeline_state.unloading = true;
     start_load_operation(
@@ -557,14 +567,56 @@ namespace other {
       co_return;
     }
 
+    task load_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+      OTHER_ASSERT(std::filesystem::exists(asset_ptr->load_path), "Asset declaration does not exist! {}", asset_ptr->load_path.string());
+
+      toml::table table;
+      try {
+        std::string contents;
+        {
+          std::stringstream ss;
+          std::ifstream file(asset_ptr->load_path);
+          if (!file.is_open()) {
+            call_pipeline_fn<asset_declaration_pipeline>(pipeline, on_failure, std::format("Asset declarataion loading error: {} could not be found", asset_ptr->load_path.string()));
+            co_return;
+          }
+
+          ss << file.rdbuf();
+          contents = ss.str();
+        }
+        table = toml::parse(contents);
+      } catch (const std::exception& e) {
+        call_pipeline_fn<asset_declaration_pipeline>(pipeline, on_failure, std::format("Asset declarataion loading error: {}", e.what()));
+        co_return;
+      }
+
+      if (!table.contains("asset-type")) {
+        call_pipeline_fn<asset_declaration_pipeline>(pipeline, on_failure, "Asset declaration is missing asset type!");
+        co_return;
+      }
+
+      auto& type_node = table.at("asset-type");
+      if (!type_node.is_string()) {
+        call_pipeline_fn<asset_declaration_pipeline>(pipeline, on_failure, std::format("Asset type must be of stype [string]. it is of type: {}", type_node.type()));
+        co_return;
+      }
+
+      std::string type = type_node.as_string()->get();
+      CORE_LOG_DEBUG("Loading Asset Declaration of type: {}", type);
+
+      call_pipeline_fn<asset_declaration_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      OTHER_ASSERT(handler != nullptr, "Asset handler pointer is null in empty_loader");
-      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in empty_loader");
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       OTHER_ASSERT(false, "No loader implemented for asset type {} in empty_loader", asset_ptr->asset_type);
       co_return;
     }
 
     task unload_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading model source (ID: {})", asset_ptr->id);
 
       auto* renderer = subsystem<renderer_backend>::get();
@@ -576,44 +628,55 @@ namespace other {
     }
 
     task unload_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading script project (ID: {})", asset_ptr->id);
       call_pipeline_fn<script_project_pipeline>(pipeline, on_success);
       co_return;
     }
 
     task unload_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading script source (ID: {})", asset_ptr->id);
       call_pipeline_fn<script_source_pipeline>(pipeline, on_success);
       co_return;
     }
 
     task unload_script_file(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading script file (ID: {})", asset_ptr->id);
       call_pipeline_fn<script_file_pipeline>(pipeline, on_success);
       co_return;
     }
 
     task unload_script(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading script (ID: {})", asset_ptr->id);
       call_pipeline_fn<script_pipeline>(pipeline, on_success);
       co_return;
     }
 
     task unload_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading scene (ID: {})", asset_ptr->id);
-
       call_pipeline_fn<scene_pipeline>(pipeline, on_success);
       co_return;
     }
 
     task unload_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading rendering pipeline (ID: {})", asset_ptr->id);
       call_pipeline_fn<rendering_pipeline_pipeline>(pipeline, on_success);
       co_return;
     }
 
+    task unload_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+      call_pipeline_fn<asset_declaration_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
     task empty_unloader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
-      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       OTHER_ASSERT(false, "No loader implemented for asset type {} in empty_loader", asset_ptr->asset_type);
       co_return;
     }

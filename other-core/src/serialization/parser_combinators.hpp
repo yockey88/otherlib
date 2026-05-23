@@ -472,6 +472,7 @@ namespace other {
       }
     }
   };
+
   template <typename CT>
   ref<parser<CT>> many(const ref<parser<typename CT::value_type>>& parser) {
     return make_ref<parse_many<CT>>(parser);
@@ -509,6 +510,7 @@ namespace other {
   ref<parser<T>> one_or_more(const ref<parser<typename T::value_type>>& parser) {
     return make_ref<parse_one_or_more<T>>(parser);
   }
+
   template <typename T1, typename T2>
   struct parser_sequence : parser<T2> {
     const ref<parser<T1>> parser1;
