@@ -14,9 +14,8 @@ namespace other {
     ocmd_compiler() = default;
     ~ocmd_compiler() = default;
 
+    // static std::vector<uint8_t> parse_and_assemble_assembly_file(const filepath& path);
     static std::vector<uint8_t> compile_single_translation_unit(const std::string_view source_code);
-
-   private:
   };
 
 }  // namespace other
