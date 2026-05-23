@@ -78,79 +78,78 @@ namespace other {
     }
 
     for (const auto& [tag, handle] : tagged_buffer_handles) {
-      switch (tag) {
-        case resource_tag::CAMERA: {
-          if (data->primary_camera != nullptr) {
-            gpu::camera_data cam = data->primary_camera->to_gpu_data();
-            upload_to_handle(handle, &cam, sizeof(gpu::camera_data));
-          }
-        } break;
+      // switch (tag) {
+      //   case resource_tag::camera: {
+      //     if (data->primary_camera != nullptr) {
+      //       gpu::camera_data cam = data->primary_camera->to_gpu_data();
+      //       upload_to_handle(handle, &cam, sizeof(gpu::camera_data));
+      //     }
+      //   } break;
 
-        /// \todo find a way to bulk-upload models/materials/bones
-        case resource_tag::MODEL: break;
-        case resource_tag::MATERIAL: break;
-        case resource_tag::BONE: break;
+      //   /// \todo find a way to bulk-upload models/materials/bones
+      //   case resource_tag::model: break;
+      //   case resource_tag::material: break;
+      //   case resource_tag::bone: break;
 
-        case resource_tag::POINT_LIGHT: {
-          gpu::point_light_buffer buf{};
-          for (size_t i = 0; i < data->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-            buf.lights[i] = data->point_lights[i];
-          }
-          upload_to_handle(handle, &buf, sizeof(gpu::point_light_buffer));
-        } break;
+      //   case resource_tag::point_light: {
+      //     gpu::point_light_buffer buf{};
+      //     for (size_t i = 0; i < data->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+      //       buf.lights[i] = data->point_lights[i];
+      //     }
+      //     upload_to_handle(handle, &buf, sizeof(gpu::point_light_buffer));
+      //   } break;
 
-        case resource_tag::DIRECTION_LIGHT: {
-          gpu::directional_light_buffer dir_light_buffer_data;
-          for (size_t i = 0; i < data->ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
-            dir_light_buffer_data.lights[i] = data->ambient_lights[i];
-          }
-          upload_to_handle(handle, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+      //   case resource_tag::direction_light: {
+      //     gpu::directional_light_buffer dir_light_buffer_data;
+      //     for (size_t i = 0; i < data->ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
+      //       dir_light_buffer_data.lights[i] = data->ambient_lights[i];
+      //     }
+      //     upload_to_handle(handle, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
 
-          glm::mat4 light_space_matrix = glm::mat4(1.0f);
-          glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
+      //     glm::mat4 light_space_matrix = glm::mat4(1.0f);
+      //     glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
 
-          if (definition.shadow_map_pass_name.has_value() &&
-              data->scene_ambient_light != nullptr) {
-            if (!definition.light_space_matrix_uniform_name.has_value()) {
-              CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
-              definition.shadow_map_pass_name = std::nullopt;  // avoid trying to set it every frame if it's not defined
-            }
+      //     if (definition.shadow_map_pass_name.has_value() && data->scene_ambient_light != nullptr) {
+      //       if (!definition.light_space_matrix_uniform_name.has_value()) {
+      //         CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
+      //         definition.shadow_map_pass_name = std::nullopt;  // avoid trying to set it every frame if it's not defined
+      //       }
 
-            dir_light_buffer_data.lights[0] = *data->scene_ambient_light;
+      //       dir_light_buffer_data.lights[0] = *data->scene_ambient_light;
 
-            float near_plane = 1.0f, far_plane = 10.f;
-            glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+      //       float near_plane = 1.0f, far_plane = 10.f;
+      //       glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
 
-            /// tiny shift to avoid nans
-            glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
-            glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
+      //       /// tiny shift to avoid nans
+      //       glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
+      //       glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
 
-            light_space_matrix = light_projection * light_view;
-            get_pass_shader(*definition.shadow_map_pass_name)
-              ->bind()
-              .set_uniform(*definition.light_space_matrix_uniform_name, light_space_matrix)
-              .unbind();
-          }
+      //       light_space_matrix = light_projection * light_view;
+      //       get_pass_shader(*definition.shadow_map_pass_name)
+      //         ->bind()
+      //         .set_uniform(*definition.light_space_matrix_uniform_name, light_space_matrix)
+      //         .unbind();
+      //     }
 
-          if (definition.shading_pass_name.has_value()) {
-            shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
-            if (shading_shader != nullptr) {
-              int32_t num_point = static_cast<int32_t>(
-                data->point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data->point_lights.size()
-              );
-              int32_t num_dir = static_cast<int32_t>(data->scene_ambient_light != nullptr ? 1 : 0);
+      //     if (definition.shading_pass_name.has_value()) {
+      //       shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
+      //       if (shading_shader != nullptr) {
+      //         int32_t num_point = static_cast<int32_t>(
+      //           data->point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data->point_lights.size()
+      //         );
+      //         int32_t num_dir = static_cast<int32_t>(data->scene_ambient_light != nullptr ? 1 : 0);
 
-              shading_shader->bind()
-                .set_uniform("OE_light_space_matrix", light_space_matrix)
-                .set_uniform("OE_light_position", light_pos)
-                .set_uniform("OE_num_point_lights", num_point)
-                .set_uniform("OE_num_direction_lights", num_dir)
-                .unbind();
-            }
-          }
-        } break;
-        default: break;
-      }
+      //         shading_shader->bind()
+      //           .set_uniform("OE_light_space_matrix", light_space_matrix)
+      //           .set_uniform("OE_light_position", light_pos)
+      //           .set_uniform("OE_num_point_lights", num_point)
+      //           .set_uniform("OE_num_direction_lights", num_dir)
+      //           .unbind();
+      //       }
+      //     }
+      //   } break;
+      //   default: break;
+      // }
     }
   }
 
@@ -329,19 +328,19 @@ namespace other {
   }
 
   void render_pipeline::build_tag_maps() {
-    for (const auto& [hash, res] : buffer_resources) {
-      if (res.tag != resource_tag::NONE && !tagged_buffer_handles.contains(res.tag)) {
-        tagged_buffer_handles[res.tag] = res.handle;
-      }
-    }
-    for (const auto& [hash, res] : texture_resources) {
-      if (res.tag != resource_tag::NONE && !tagged_texture_handles.contains(res.tag)) {
-        tagged_texture_handles[res.tag] = res.handle;
-      }
-      if (res.tag == resource_tag::SCREEN) {
-        screen_texture_handle = res.handle;
-      }
-    }
+    // for (const auto& [hash, res] : buffer_resources) {
+    //   if (res.tag != resource_tag::none && !tagged_buffer_handles.contains(res.tag)) {
+    //     tagged_buffer_handles[res.tag] = res.handle;
+    //   }
+    // }
+    // for (const auto& [hash, res] : texture_resources) {
+    //   if (res.tag != resource_tag::none && !tagged_texture_handles.contains(res.tag)) {
+    //     tagged_texture_handles[res.tag] = res.handle;
+    //   }
+    //   if (res.tag == resource_tag::screen) {
+    //     screen_texture_handle = res.handle;
+    //   }
+    // }
   }
 
   void render_pipeline::build_passes_from_def() {
@@ -363,7 +362,7 @@ namespace other {
   void render_pipeline::validate() {
     for (resource_tag tag : definition.required_tags) {
       if (!tagged_buffer_handles.contains(tag) && !tagged_texture_handles.contains(tag)) {
-        CORE_LOG_ERROR("Pipeline [{}] requires tag [{}] but no resource provides it.", definition.name, resource_tag_to_string(tag));
+        // CORE_LOG_ERROR("Pipeline [{}] requires tag [{}] but no resource provides it.", definition.name, resource_tag_to_string(tag));
         valid = false;
         return;
       }

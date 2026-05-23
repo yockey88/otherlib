@@ -147,9 +147,9 @@ namespace other {
 
     PROFILE_SECTION("renderer::execute_draw_calls");
 
-    opt<resource_handle> material_buffer_handle = current_frame_resources.find(resource_tag::MATERIAL);
-    opt<resource_handle> model_buffer_handle = current_frame_resources.find(resource_tag::MODEL);
-    opt<resource_handle> bone_buffer_handle = current_frame_resources.find(resource_tag::BONE);
+    opt<resource_handle> material_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kMaterialTag));
+    opt<resource_handle> model_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kModelTag));
+    opt<resource_handle> bone_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kBoneTag));
 
     gpu_buffer* material_buffer = nullptr;
     gpu_buffer* model_buffer = nullptr;

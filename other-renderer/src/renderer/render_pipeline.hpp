@@ -76,7 +76,7 @@ namespace other {
     struct named_resource {
       std::string name;
       resource_handle handle;
-      resource_tag tag = resource_tag::NONE;
+      resource_tag tag = resource_tag::none();
     };
 
     std::map<natural_t, named_resource> buffer_resources;   /// keyed by FNV(name)

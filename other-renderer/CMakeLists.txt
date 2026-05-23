@@ -17,6 +17,7 @@ target_sources(other_renderer
       src/model/model.cpp
       src/model/model_source.cpp
       
+      src/renderer/resource_tag.cpp
       src/renderer/window_manager.cpp
       src/renderer/rendering_api.cpp
       src/renderer/renderer_backend.cpp
