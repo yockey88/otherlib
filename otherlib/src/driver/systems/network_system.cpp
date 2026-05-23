@@ -67,15 +67,15 @@ namespace other {
       reg.register_interface<transport_provider>(
         [this](scope<transport_provider> p) { return register_transport_provider(std::move(p)); },
         [this](natural_t id) { unregister_transport_provider(id); },
-        no_args(),                       // empty
-        interface_cardinality::MULTIPLE  // don't want too many
+        no_args(),  // empty
+        interface_cardinality::MULTIPLE
       );
 
       reg.register_interface<packet_sink>(
         [this](scope<packet_sink> s, plugin_param_view params) { return register_transport_listener(params.get_or("transport", "generic"), std::move(s)); },
         [this](natural_t id) { unregister_transport_listener(id); },
         packet_sink_args(&get_driver().get_job_system()),
-        interface_cardinality::MULTIPLE  // don't want too many
+        interface_cardinality::MULTIPLE
       );
     };
     register_interfaces_in_registry(kernel->driver_registry());

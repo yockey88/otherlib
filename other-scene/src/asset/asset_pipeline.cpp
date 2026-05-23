@@ -206,33 +206,17 @@ namespace other {
 
   void asset_pipeline::pipeline_complete(asset* asset_ptr) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in pipeline_complete");
+    OTHER_ASSERT(pipeline_state.loading || pipeline_state.unloading, "Pipeline is not in loading or unloading state in pipeline_complete");
     CORE_LOG_TRACE("Pipeline complete for asset ID: {}", asset_ptr->id);
 
+    std::string event_name = "";
     if (pipeline_state.loading) {
-      switch (asset_ptr->asset_type) {
-        case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-loaded", asset_ptr->id); break;
-        case asset::SCRIPT_PROJECT: get_events().trigger_event("script-project.asset-loaded", asset_ptr->id); break;
-        case asset::SCRIPT_SOURCE: get_events().trigger_event("script-source.asset-loaded", asset_ptr->id); break;
-        case asset::SCRIPT_FILE: get_events().trigger_event("script-file.asset-loaded", asset_ptr->id); break;
-        case asset::SCRIPT: get_events().trigger_event("script.asset-loaded", asset_ptr->id); break;
-        case asset::SCENE: get_events().trigger_event("scene.asset-loaded", asset_ptr->id); break;
-        case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-loaded", asset_ptr->id); break;
-        default:
-          CORE_LOG_ERROR("No event trigger for asset type {} on load complete", asset_ptr->asset_type);
-      }
+      event_name = "asset-loaded";
     } else if (pipeline_state.unloading) {
-      switch (asset_ptr->asset_type) {
-        case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-unloaded", asset_ptr->id); break;
-        case asset::SCRIPT_PROJECT: get_events().trigger_event("script-project.asset-unloaded", asset_ptr->id); break;
-        case asset::SCRIPT_SOURCE: get_events().trigger_event("script-source.asset-unloaded", asset_ptr->id); break;
-        case asset::SCRIPT_FILE: get_events().trigger_event("script-file.asset-unloaded", asset_ptr->id); break;
-        case asset::SCRIPT: get_events().trigger_event("script.asset-unloaded", asset_ptr->id); break;
-        case asset::SCENE: get_events().trigger_event("scene.asset-unloaded", asset_ptr->id); break;
-        case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-unloaded", asset_ptr->id); break;
-        default:
-          CORE_LOG_ERROR("No event trigger for asset type {} on unload complete", asset_ptr->asset_type);
-      }
+      event_name = "asset-unloaded";
     }
+
+    get_events().trigger_event(get_asset_event_name(asset_ptr->asset_type, event_name), asset_ptr->id);
 
     /// \todo wire events and remove this
     if (on_success_callback != nullptr) {
@@ -241,34 +225,19 @@ namespace other {
   }
 
   void asset_pipeline::pipeline_failed(asset* asset_ptr, const std::string& error_message) {
+    OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in pipeline_failed");
+    OTHER_ASSERT(pipeline_state.loading || pipeline_state.unloading, "Pipeline is not in loading or unloading state in pipeline_failed");
+
     CORE_LOG_ERROR("Pipeline failed for asset ID: {}", asset_ptr->id);
     CORE_LOG_ERROR(" - Error message: {}", error_message);
 
+    std::string event_name = "";
     if (pipeline_state.loading) {
-      switch (asset_ptr->asset_type) {
-        case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-load-failed", asset_ptr->id); break;
-        case asset::SCRIPT_PROJECT: get_events().trigger_event("script-project.asset-load-failed", asset_ptr->id); break;
-        case asset::SCRIPT_SOURCE: get_events().trigger_event("script-source.asset-load-failed", asset_ptr->id); break;
-        case asset::SCRIPT_FILE: get_events().trigger_event("script-file.asset-load-failed", asset_ptr->id); break;
-        case asset::SCRIPT: get_events().trigger_event("script.asset-load-failed", asset_ptr->id); break;
-        case asset::SCENE: get_events().trigger_event("scene.asset-load-failed", asset_ptr->id); break;
-        case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-load-failed", asset_ptr->id); break;
-        default:
-          CORE_LOG_ERROR("No event trigger for asset type {} on load failed", asset_ptr->asset_type);
-      }
+      event_name = "asset-load-failed";
     } else if (pipeline_state.unloading) {
-      switch (asset_ptr->asset_type) {
-        case asset::MODEL_SOURCE: get_events().trigger_event("model-source.asset-unload-failed", asset_ptr->id); break;
-        case asset::SCRIPT_PROJECT: get_events().trigger_event("script-project.asset-unload-failed", asset_ptr->id); break;
-        case asset::SCRIPT_SOURCE: get_events().trigger_event("script-source.asset-unload-failed", asset_ptr->id); break;
-        case asset::SCRIPT_FILE: get_events().trigger_event("script-file.asset-unload-failed", asset_ptr->id); break;
-        case asset::SCRIPT: get_events().trigger_event("script.asset-unload-failed", asset_ptr->id); break;
-        case asset::SCENE: get_events().trigger_event("scene.asset-unload-failed", asset_ptr->id); break;
-        case asset::RENDERING_PIPELINE: get_events().trigger_event("rendering-pipeline.asset-unload-failed", asset_ptr->id); break;
-        default:
-          CORE_LOG_ERROR("No event trigger for asset type {} on unload failed", asset_ptr->asset_type);
-      }
+      event_name = "asset-unload-failed";
     }
+    get_events().trigger_event(get_asset_event_name(asset_ptr->asset_type, event_name), std::make_tuple(asset_ptr->id, error_message));
 
     /// \todo wire events and remove this
     if (on_failure_callback != nullptr) {
@@ -416,6 +385,25 @@ namespace other {
 
       filepath project_path = asset_ptr->absolute_path;
 
+      //  launch all project files since they are simple and are only registered in the correct place,
+      //  if does not exist, then path is generated in the build job below
+      if (std::filesystem::exists(project_path)) {
+        std::error_code ec;
+        for (auto it = std::filesystem::recursive_directory_iterator(project_path.parent_path(), ec);
+             it != std::filesystem::recursive_directory_iterator();
+             it.increment(ec)) {
+          // skip build files/generated files
+          if (it->is_directory() && (it->path().filename() == "obj" || it->path().filename() == "bin")) {
+            it.disable_recursion_pending();
+            continue;
+          }
+
+          if (it->is_regular_file() && it->path().extension() == ".cs") {
+            handler->load_asset(it->path());
+          }
+        }
+      }
+
       auto& jobs = handler->get_job_system();
 
       ref<project_tool> build_tool = make_ref<project_tool>();
@@ -472,21 +460,6 @@ namespace other {
           }
 
           h->load_asset(build);
-
-          std::error_code ec;
-          for (auto it = std::filesystem::recursive_directory_iterator(csproj.parent_path(), ec);
-               it != std::filesystem::recursive_directory_iterator();
-               it.increment(ec)) {
-            // skip build files/generated files
-            if (it->is_directory() && (it->path().filename() == "obj" || it->path().filename() == "bin")) {
-              it.disable_recursion_pending();
-              continue;
-            }
-
-            if (it->is_regular_file() && it->path().extension() == ".cs") {
-              h->load_asset(it->path());
-            }
-          }
         }
       );
       OTHER_ASSERT(load_build_asset_job != nullptr, "Failed to create job for loading built assembly of .NET project.");

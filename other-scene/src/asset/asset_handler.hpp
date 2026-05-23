@@ -26,7 +26,10 @@
 namespace other {
   namespace detail {
 
-    struct load_context;
+    static inline int32_t get_concurrency_limit() {
+      int32_t concurrency = std::thread::hardware_concurrency();
+      return concurrency > 0 ? concurrency : 4;
+    }
 
   }  // namespace detail
 
@@ -94,7 +97,7 @@ namespace other {
   class asset_handler {
    public:
     asset_handler(event_system& events, asio::io_context& io_context, job_system& jobs, const std::string_view asset_mount = "assets")
-        : events(events), io_context(io_context), jobs(jobs), executor(io_context.get_executor()), default_mount(asset_mount) {
+        : events(events), jobs(jobs), io_context(io_context), thread_pool(detail::get_concurrency_limit()), executor(thread_pool.get_executor()), default_mount(asset_mount) {
     }
     ~asset_handler() = default;
 
@@ -166,12 +169,13 @@ namespace other {
     }
 
    private:
-    friend struct detail::load_context;
     friend class asset_pipeline;
 
     event_system& events;
-    asio::io_context& io_context;
     job_system& jobs;
+
+    asio::io_context& io_context;
+    asio::thread_pool thread_pool;
     asset_pipeline::executor_t executor;
 
     struct pipeline_context {

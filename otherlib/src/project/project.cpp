@@ -225,6 +225,7 @@ namespace other {
 
     CORE_LOG_DEBUG("Processing project scripting data");
 
+    // fix this, this is kind of messy
     bool waiting_for_script_load = false;
     scripting_table->for_each([this, &waiting_for_script_load](const toml::key& key, const toml::node& value) {
       std::string k{ key.str() };
