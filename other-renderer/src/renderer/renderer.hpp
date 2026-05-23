@@ -12,11 +12,12 @@
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/gpu_structs.hpp"
+#include "renderer/pipeline_definition.hpp"
+#include "renderer/render_executor_registry.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
 #include "renderer/renderer_backend.hpp"
-
-#include "pipeline_definition.hpp"
+#include "renderer/resource_tag_registry.hpp"
 
 namespace other {
 
@@ -66,6 +67,9 @@ namespace other {
     renderer(const config_table& config)
         : config(config) {}
     virtual ~renderer() = default;
+
+    render_executor_registry& get_executor_registry() { return executor_registry; }
+    resource_tag_registry& get_tag_registry() { return tag_registry; }
 
     void begin_frame(render_data* data);
     void render();
@@ -125,6 +129,7 @@ namespace other {
 
     void remove_pipeline(const std::string_view name);
 
+    virtual void dispatch_compute(shader* shader_ptr, uint32_t x, uint32_t y, uint32_t z);
     virtual void execute_draw_calls(render_graph::node* current_node);
 
     constexpr static inline size_t kMaxDrawCalls = 1024;
@@ -139,6 +144,9 @@ namespace other {
 
     frame_resources current_frame_resources;
     render_data* scene_data = nullptr;
+
+    render_executor_registry executor_registry;
+    resource_tag_registry tag_registry;
 
     std::map<natural_t, render_pipeline*> pipelines;
   };

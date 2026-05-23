@@ -86,7 +86,7 @@ namespace other {
           { .resource_name = "normal_texture", .attachment = framebuffer::COLOR },
           { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
         },
-        .executor = { .type = executor_type::DRAW_SCENE },
+        .executor = { .name = "draw_scene" },
       },
       // fix this to read color_texture and output to screen_texture
       {
@@ -98,7 +98,7 @@ namespace other {
           { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
         },
         .executor = {
-          .type = executor_type::FULLSCREEN_QUAD,
+          .name = "fullscreen_quad",
           .uniforms = {
             { "OE_texture", value(int32_t{ 0 }) },
             { "OE_exposure", value(1.0f) },
@@ -189,7 +189,7 @@ namespace other {
           { .resource_name = "normal_texture", .attachment = framebuffer::COLOR },
           { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
         },
-        .executor = { .type = executor_type::DRAW_SCENE },
+        .executor = { .name = "draw_scene" },
       },
       // shadow map pass
       {
@@ -202,7 +202,7 @@ namespace other {
         .outputs = {
           { .resource_name = "ambient_shadow_map", .attachment = framebuffer::DEPTH },
         },
-        .executor = { .type = executor_type::DRAW_SCENE },
+        .executor = { .name = "draw_scene" },
       },
       // shading pass
       {
@@ -223,7 +223,7 @@ namespace other {
           { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
         },
         .executor = {
-          .type = executor_type::FULLSCREEN_QUAD,
+          .name = "fullscreen_quad",
           .uniforms = {
             { "OE_gbuff_albedo", value(int32_t{ 0 }) },
             { "OE_gbuff_normal", value(int32_t{ 1 }) },
@@ -241,7 +241,7 @@ namespace other {
           { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
         },
         .executor = {
-          .type = executor_type::FULLSCREEN_QUAD,
+          .name = "fullscreen_quad",
           .uniforms = {
             { "OE_texture", value(int32_t{ 0 }) },
             { "OE_exposure", value(1.0f) },
@@ -254,6 +254,7 @@ namespace other {
       resource_tag(resource_tag::kCameraTag),
       resource_tag(resource_tag::kModelTag),
       resource_tag(resource_tag::kMaterialTag),
+      resource_tag(resource_tag::kDirectionLightTag)
     };
 
     return def;

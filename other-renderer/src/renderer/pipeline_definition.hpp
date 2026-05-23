@@ -59,10 +59,10 @@ namespace other {
   };
 
   struct pipeline_executor_definition {
-    executor_type type = executor_type::DRAW_SCENE;
+    std::string name = "noop";
 
     std::map<std::string, value> uniforms;
-    opt<std::string> script_entry;
+    std::map<std::string, value> params;
   };
 
   struct pipeline_pass_definition {

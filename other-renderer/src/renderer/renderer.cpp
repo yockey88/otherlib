@@ -137,6 +137,11 @@ namespace other {
     pipelines.erase(itr);
   }
 
+  void renderer::dispatch_compute(shader* shader_ptr, uint32_t x, uint32_t y, uint32_t z) {
+    ASSERT_MAIN_THREAD();
+    OTHER_ASSERT(shader_ptr != nullptr, "Shader Pointer is null in dispatch_compute");
+  }
+
   void renderer::execute_draw_calls(render_graph::node* current_node) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(current_node != nullptr, "Current node must not be null.");

@@ -16,10 +16,17 @@ namespace other {
       SDL_ShowFileDialogWithProperties(type, callback_fn, user_data, props);
     }
 
+    render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*);
+    render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*);
+    render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+
   }  // namespace detail
 
   void rendering_system::initialize(driver_kernel* kernel) {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
+    register_builtin_resource_tags();
+    register_builtin_render_executors();
 
     configure_pipelines(kernel);
 
@@ -165,6 +172,106 @@ namespace other {
     detail::file_dialog(SDL_FILEDIALOG_SAVEFILE, nullptr, callback_fn, user_data, props);
   }
 
+  void rendering_system::register_builtin_resource_tags() {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in register_builtin_resource_tags.");
+
+    auto& reg = renderer_ptr->get_tag_registry();
+    reg.register_binder(resource_tag(resource_tag::kCameraTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      if (!d.primary_camera) {
+        return;
+      }
+
+      auto gpu = d.primary_camera->to_gpu_data();
+      r.upload_buffer(h, &gpu, sizeof(gpu));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kModelTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      // r.upload_buffer(h, d.model_buffers.data(), d.model_buffers.size() * sizeof(gpu::model_matrix_buffer));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kMaterialTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      // r.upload_buffer(h, d.material_buffers.data(), d.material_buffers.size() * sizeof(gpu::material_buffer));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kBoneTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      if (d.bone_buffers.empty()) {
+        return;
+      }
+      // r.upload_buffer(h, d.bone_buffers.data(), d.bone_buffers.size() * sizeof(gpu::bone_matrix_buffer));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kPointLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::point_light_buffer buf{};
+      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+        buf.lights[i] = d.point_lights[i];
+      }
+      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kDirectionLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::directional_light_buffer dir_light_buffer_data;
+      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
+        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
+      }
+      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+
+      glm::mat4 light_space_matrix = glm::mat4(1.0f);
+      glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
+
+      if (r.has_shadow_map_pass() && d.scene_ambient_light != nullptr) {
+        if (!r.has_light_space_matrix_uniform()) {
+          CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
+          r.clear_shadow_map_pass_name();  // avoid trying to set it every frame if it's not defined
+        }
+
+        dir_light_buffer_data.lights[0] = *d.scene_ambient_light;
+
+        float near_plane = 1.0f, far_plane = 10.f;
+        glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+
+        /// tiny shift to avoid nans
+        glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
+
+        light_space_matrix = light_projection * light_view;
+        r.get_shadow_map_pass()
+          ->bind()
+          .set_uniform(r.light_space_matrix_uniform(), light_space_matrix)
+          .unbind();
+      }
+
+      if (r.has_shading_pass_name()) {
+        shader* shading_shader = r.get_shading_pass();
+        if (shading_shader != nullptr) {
+          int32_t num_point = static_cast<int32_t>(
+            d.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : d.point_lights.size()
+          );
+          int32_t num_dir = static_cast<int32_t>(d.scene_ambient_light != nullptr ? 1 : 0);
+
+          shading_shader->bind()
+            .set_uniform("OE_light_space_matrix", light_space_matrix)
+            .set_uniform("OE_light_position", light_pos)
+            .set_uniform("OE_num_point_lights", num_point)
+            .set_uniform("OE_num_direction_lights", num_dir)
+            .unbind();
+        }
+      }
+    });
+
+    // screen is simply a marker tag, render_pipeline tracks screen_texture_handle separately for to-screen blit
+    reg.register_binder(resource_tag(resource_tag::kScreenTag), [](render_pipeline&, const render_data&, resource_handle) {});
+  }
+
+  void rendering_system::register_builtin_render_executors() {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is null while registering executors!");
+
+    auto& reg = renderer_ptr->get_executor_registry();
+    reg.register_executor("noop", &detail::make_noop);
+    reg.register_executor("draw_scene", &detail::make_draw_scene);
+    reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
+    reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
+  }
+
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in configure_pipelines.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
@@ -211,4 +318,42 @@ namespace other {
     events->trigger_event("console.output", ss.str());
   }
 
+  namespace detail {
+
+    render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*) {
+      return [](renderer&, render_graph::node*, void*) {
+      };
+    }
+
+    render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*) {
+      return [](renderer& r, render_graph::node* node, void*) {
+        r.execute_draw_calls(node);
+      };
+    }
+
+    render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl) {
+      resource_handle quad = pl->get_quad_mesh_handle();
+      return [quad, uniforms = def.executor.uniforms, pass_name = def.name, pl](renderer& r, render_graph::node*, void*) {
+        auto* sh = pl->get_pass_shader(pass_name);
+        OTHER_ASSERT(sh, "fullscreen_quad: no shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
+        r.get_resource<mesh>(quad).draw();
+      };
+    }
+
+    render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl) {
+      // params: { "groups" = [int, int, int] }
+      const auto& params = def.executor.params;
+      auto it = params.find("groups");
+      OTHER_ASSERT(it != params.end(), "compute_dispatch: pass '{}' missing 'groups' param", def.name);
+
+      glm::vec3 g = it->second;
+      return [g, pass_name = def.name, pl](renderer& r, render_graph::node*, void*) {
+        auto* sh = pl->get_pass_shader(pass_name);
+        OTHER_ASSERT(sh, "compute_dispatch: no shader for pass '{}'", pass_name);
+        r.dispatch_compute(sh, g.x, g.y, g.z);
+      };
+    };
+
+  }  // namespace detail
 }  // namespace other

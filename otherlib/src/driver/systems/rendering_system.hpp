@@ -51,10 +51,12 @@ namespace other {
     std::vector<natural_t> unloading_rendering_pipeline_assets;
     std::vector<natural_t> rendering_pipeline_assets;
 
+    void register_builtin_resource_tags();
+    void register_builtin_render_executors();
+
     void configure_pipelines(driver_kernel* kernel);
 
     void handle_viewport_resize_event(const value& data);
-
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);
   };
 
