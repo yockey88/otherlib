@@ -214,48 +214,6 @@ namespace other {
         dir_light_buffer_data.lights[i] = d.ambient_lights[i];
       }
       r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
-
-      glm::mat4 light_space_matrix = glm::mat4(1.0f);
-      glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
-
-      if (r.has_shadow_map_pass() && d.scene_ambient_light != nullptr) {
-        if (!r.has_light_space_matrix_uniform()) {
-          CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
-          r.clear_shadow_map_pass_name();  // avoid trying to set it every frame if it's not defined
-        }
-
-        dir_light_buffer_data.lights[0] = *d.scene_ambient_light;
-
-        float near_plane = 1.0f, far_plane = 10.f;
-        glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-
-        /// tiny shift to avoid nans
-        glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
-
-        light_space_matrix = light_projection * light_view;
-        r.get_shadow_map_pass()
-          ->bind()
-          .set_uniform(r.light_space_matrix_uniform(), light_space_matrix)
-          .unbind();
-      }
-
-      if (r.has_shading_pass_name()) {
-        shader* shading_shader = r.get_shading_pass();
-        if (shading_shader != nullptr) {
-          int32_t num_point = static_cast<int32_t>(
-            d.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : d.point_lights.size()
-          );
-          int32_t num_dir = static_cast<int32_t>(d.scene_ambient_light != nullptr ? 1 : 0);
-
-          shading_shader->bind()
-            .set_uniform("OE_light_space_matrix", light_space_matrix)
-            .set_uniform("OE_light_position", light_pos)
-            .set_uniform("OE_num_point_lights", num_point)
-            .set_uniform("OE_num_direction_lights", num_dir)
-            .unbind();
-        }
-      }
     });
 
     // screen is simply a marker tag, render_pipeline tracks screen_texture_handle separately for to-screen blit

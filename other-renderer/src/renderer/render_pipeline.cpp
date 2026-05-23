@@ -96,6 +96,8 @@ namespace other {
         (binder)(*this, *data, named.handle);
       }
     }
+
+    apply_lighting_uniforms(*data);
   }
 
   void render_pipeline::render_frame(renderer* renderer_ptr) {
@@ -263,6 +265,48 @@ namespace other {
 
   std::string render_pipeline::light_space_matrix_uniform() const {
     return *definition.light_space_matrix_uniform_name;
+  }
+
+  void render_pipeline::apply_lighting_uniforms(const render_data& data) {
+    glm::mat4 light_space_matrix = glm::mat4(1.0f);
+    glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
+
+    if (definition.shadow_map_pass_name.has_value() && data.scene_ambient_light != nullptr) {
+      if (!definition.light_space_matrix_uniform_name.has_value()) {
+        CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
+        definition.shadow_map_pass_name = std::nullopt;  // avoid trying to set it every frame if it's not defined
+      }
+
+      float near_plane = 1.0f, far_plane = 10.f;
+      glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+
+      /// tiny shift to avoid nans
+      glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
+      glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
+
+      light_space_matrix = light_projection * light_view;
+      get_pass_shader(*definition.shadow_map_pass_name)
+        ->bind()
+        .set_uniform(*definition.light_space_matrix_uniform_name, light_space_matrix)
+        .unbind();
+    }
+
+    if (definition.shading_pass_name.has_value()) {
+      shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
+      if (shading_shader != nullptr) {
+        int32_t num_point = static_cast<int32_t>(
+          data.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data.point_lights.size()
+        );
+        int32_t num_dir = static_cast<int32_t>(data.scene_ambient_light != nullptr ? 1 : 0);
+
+        shading_shader->bind()
+          .set_uniform("OE_light_space_matrix", light_space_matrix)
+          .set_uniform("OE_light_position", light_pos)
+          .set_uniform("OE_num_point_lights", num_point)
+          .set_uniform("OE_num_direction_lights", num_dir)
+          .unbind();
+      }
+    }
   }
 
   void render_pipeline::override_pass_executor(const std::string_view pass_name, executor_fn&& fn) {
