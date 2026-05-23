@@ -27,4 +27,5 @@ class OTHER_CLASS other_editor_management_plugin : public other::driver_plugin {
   }
 };
 
+OTHER_PROVIDES(other_editor_management_plugin, other::driver_plugin, "other-editor");
 OTHER_PLUGIN("Editor Management", "0.0.1", "N/A", "")

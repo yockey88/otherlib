@@ -103,19 +103,19 @@ namespace other {
       get_driver().confirm_assets_clean();
     });
 
-    auto register_asset_events = [&events](const std::string& asset_type) {
-      events.register_event(std::format("{}.asset-loaded", asset_type));
-      events.register_event(std::format("{}.asset-unloaded", asset_type));
-      events.register_event(std::format("{}.asset-load-failed", asset_type));
-      events.register_event(std::format("{}.asset-unload-failed", asset_type));
+    auto register_asset_events = [&events](asset::type asset_type) {
+      events.register_event(other::get_asset_event_name(asset_type, "asset-loaded"));
+      events.register_event(other::get_asset_event_name(asset_type, "asset-unloaded"));
+      events.register_event(other::get_asset_event_name(asset_type, "asset-load-failed"));
+      events.register_event(other::get_asset_event_name(asset_type, "asset-unload-failed"));
     };
-    register_asset_events("model-source");
-    register_asset_events("script-project");
-    register_asset_events("script-source");
-    register_asset_events("script-file");
-    register_asset_events("script");
-    register_asset_events("scene");
-    register_asset_events("rendering-pipeline");
+    register_asset_events(asset::MODEL_SOURCE);
+    register_asset_events(asset::SCRIPT_PROJECT);
+    register_asset_events(asset::SCRIPT_SOURCE);
+    register_asset_events(asset::SCRIPT_FILE);
+    register_asset_events(asset::SCRIPT);
+    register_asset_events(asset::SCENE);
+    register_asset_events(asset::RENDERING_PIPELINE);
 
     events.add_listener("filesystem.watch-event", [this](const value& data) {
       if (data.type() != value_type::USER_TYPE) {

@@ -121,6 +121,16 @@ namespace other {
   void driver_kernel::initialize() {
     CORE_LOG_INFO("Initializing driver kernel.");
 
+    {
+      auto& driver_reg = environment_registries[static_cast<size_t>(interface_scope::DRIVER)];
+      driver_reg.registry.register_interface<driver_plugin>(
+        [this](scope<driver_plugin> p) { return 0; },
+        [this](natural_t id) {},
+        driver_plugin_args(driver_instance),  // empty
+        interface_cardinality::MULTIPLE
+      );
+    }
+
     for (const auto type : system_order) {
       OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
       CORE_LOG_DEBUG("Initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);

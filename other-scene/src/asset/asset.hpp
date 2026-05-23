@@ -68,9 +68,38 @@ namespace other {
 
   }  // namespace attr
 
+  struct asset_name {
+    const std::string_view tag_name;
+    const std::string_view display_name;
+    constexpr asset_name(const std::string_view tag, const std::string_view display)
+        : tag_name(tag), display_name(display) {}
+  };
   struct asset_extension {
     asset::type asset_type;
     std::string_view extension;
+  };
+
+  constexpr inline size_t kNumAssetTypes = static_cast<size_t>(asset::type::NUM_ASSET_TYPES);
+  constexpr inline std::array<asset_name, kNumAssetTypes> kAssetTypeNames = {
+    asset_name{ "texture", "Texture" },
+
+    asset_name{ "model-source", "Model Source" },
+    asset_name{ "model", "Model" },
+    asset_name{ "animation", "Animation" },
+
+    asset_name{ "script-project", "Script Project" },
+    asset_name{ "script-source", "Script Source" },
+    asset_name{ "script-file", "Script File" },
+    asset_name{ "script", "Script" },
+
+    asset_name{ "audio", "Audio" },
+
+    asset_name{ "scene", "Scene" },
+
+    asset_name{ "input-map", "Input Map" },
+    asset_name{ "rendering-pipeline", "Rendering Pipeline" },
+
+    asset_name{ "empty", "Empty" },
   };
 
   constexpr inline size_t kNumAssetExtensions = 17;
@@ -134,6 +163,16 @@ namespace other {
       { asset::RENDERING_PIPELINE, ".orpl" },
     }
   };
+
+  constexpr std::string_view get_asset_type_tag_name(asset::type type) {
+    OTHER_ASSERT(type >= 0 && type < asset::type::NUM_ASSET_TYPES, "Invalid asset type: {}", type);
+    return kAssetTypeNames[static_cast<size_t>(type)].tag_name;
+  }
+
+  static inline std::string get_asset_event_name(asset::type type, const std::string_view event) {
+    OTHER_ASSERT(type >= 0 && type < asset::type::NUM_ASSET_TYPES, "Invalid asset type: {}", type);
+    return std::format("{}.{}", get_asset_type_tag_name(type), event);
+  }
 
 }  // namespace other
 

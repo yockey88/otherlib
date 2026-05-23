@@ -22,7 +22,8 @@ namespace other {
 
   class asset_pipeline {
    public:
-    using executor_t = asio::strand<asio::io_context::executor_type>;
+    using executor_t = asio::thread_pool::executor_type;
+    // asio::strand<asio::io_context::executor_type>;
 
     using on_asset_loaded = std::function<void(asset*)>;
     using on_asset_load_failed = std::function<void(asset*, const std::string&)>;
