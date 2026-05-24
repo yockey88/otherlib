@@ -5,12 +5,13 @@
 
 #include <SDL3/SDL_dialog.h>
 
+#include "renderer/default_pass_executor_resolver.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "render/default_pass_executor_resolver.hpp"
-
 
 namespace other {
   namespace detail {
