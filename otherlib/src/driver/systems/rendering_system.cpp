@@ -109,6 +109,13 @@ namespace other {
       data_ptr = &prepared_data;
     }
 
+    if (data_ptr != nullptr) {
+      auto& registry = renderer_ptr->get_debug_stream_registry();  // see F3
+      for (const auto& [name, def] : registry.entries()) {
+        data_ptr->debug_data.configure_stream(def.name, def.element_size, def.max_per_frame);
+      }
+    }
+
     renderer_ptr->begin_frame(data_ptr);
     renderer_ptr->render();
 
@@ -259,6 +266,47 @@ namespace other {
     reg.register_executor("debug_stream", &detail::make_debug_stream);
   }
 
+  void rendering_system::register_buildin_renderer_debug_streams() {
+    auto& reg = renderer_ptr->get_debug_stream_registry();
+
+    // reg.register_stream("debug.lines", debug_stream_definition{
+    //                                      .element_size = sizeof(debug_line),
+    //                                      .max_per_frame = 4096,
+    //                                      .draw_recipe = {
+    //                                        .shader = "debug_line_shader",
+    //                                        .topology = mesh::primitive_type::LINES,
+    //                                        .vertex_layout = {
+    //                                          { .name = "position", .type = mesh::attribute_type::FLOAT, .count = 3, .offset = 0 },
+    //                                          { .name = "color", .type = mesh::attribute_type::FLOAT, .count = 4, .offset = 3 },
+    //                                        },
+    //                                      },
+    //                                    });
+
+    // reg.register_stream("debug.triangles", debug_stream_definition{
+    //                                          .element_size = sizeof(debug_triangle),
+    //                                          .max_per_frame = 2048,
+    //                                          .draw_recipe = {
+    //                                            .shader = "debug_tri_shader",
+    //                                            .topology = mesh::primitive_type::TRIANGLES,
+    //                                            .vertex_layout = {
+    //                                              { .name = "position", .type = mesh::attribute_type::FLOAT, .count = 3, .offset = 0 },
+    //                                              { .name = "color", .type = mesh::attribute_type::FLOAT, .count = 4, .offset = 3 },
+    //                                            },
+    //                                          },
+    //                                        });
+
+    // // Load the recipe shaders once at registration time so the first frame
+    // // doesn't hit them lazily on draw_debug_stream.
+    // for (auto* shader_name : { "debug_line_shader", "debug_tri_shader" }) {
+    //   resource_handle h = shader::create(
+    //     shader_name,
+    //     std::format("resources/{}.vert", shader_name),
+    //     std::format("resources/{}.frag", shader_name)
+    //   );
+    //   renderer_ptr->register_debug_stream_shader(shader_name, h);  // adds to map
+    // }
+  }
+
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in configure_pipelines.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
@@ -363,14 +411,12 @@ namespace other {
 
       return [stream_name = std::move(stream_name), pass_name = def.name](pass_context& ctx) {
         auto& streams = ctx.get_frame_data().debug_data;
-        // auto& reg = ctx.get_renderer().get_debug_stream_registry();
-        // for (const auto& name : names) {
-        //   const auto* def = reg.find(name);
-        //   if (def == nullptr || streams.count(name) == 0) {
-        //     continue;
-        //   }
-        //   ctx.draw_debug_stream(name, *def, streams.view(name), streams.count(name));
-        // }
+        auto* stream = ctx.get_renderer().get_debug_stream_registry().find(stream_name);
+        if (stream == nullptr) {
+          CORE_LOG_ERROR("Debug stream '{}' not found for pass '{}'", stream_name, pass_name);
+          return;
+        }
+        ctx.draw_debug_stream(stream_name, *stream, streams.view(stream_name), streams.count(stream_name));
       };
     }
 

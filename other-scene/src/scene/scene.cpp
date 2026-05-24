@@ -832,28 +832,28 @@ namespace other {
       render.last_model_asset_id = render.model_asset_id;
     });
 
-    if (debug_physics_rendering_enabled && storage->physics != nullptr) {
-      physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();
+    // if (debug_physics_rendering_enabled && storage->physics != nullptr) {
+    //   physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();
 
-      auto lines_w_colors = std::views::zip(debug_data.debug_lines, debug_data.debug_line_colors);
-      data.debug_data.debug_lines.append_range(lines_w_colors | std::views::transform([](const std::pair<physics_api::line, glm::vec4>& pair) {
-                                                 return debug_line{
-                                                   .start = pair.first.start,
-                                                   .end = pair.first.end,
-                                                   .color = pair.second,
-                                                 };
-                                               }));
+    //   auto lines_w_colors = std::views::zip(debug_data.debug_lines, debug_data.debug_line_colors);
+    //   data.debug_data.debug_lines.append_range(lines_w_colors | std::views::transform([](const std::pair<physics_api::line, glm::vec4>& pair) {
+    //                                              return debug_line{
+    //                                                .start = pair.first.start,
+    //                                                .end = pair.first.end,
+    //                                                .color = pair.second,
+    //                                              };
+    //                                            }));
 
-      auto triangles_w_colors = std::views::zip(debug_data.debug_triangles, debug_data.debug_triangle_colors);
-      data.debug_data.debug_triangles.append_range(triangles_w_colors | std::views::transform([](const std::pair<physics_api::triangle, glm::vec4>& pair) {
-                                                     return debug_triangle{
-                                                       .v0 = pair.first.v0,
-                                                       .v1 = pair.first.v1,
-                                                       .v2 = pair.first.v2,
-                                                       .color = pair.second,
-                                                     };
-                                                   }));
-    }
+    //   auto triangles_w_colors = std::views::zip(debug_data.debug_triangles, debug_data.debug_triangle_colors);
+    //   data.debug_data.debug_triangles.append_range(triangles_w_colors | std::views::transform([](const std::pair<physics_api::triangle, glm::vec4>& pair) {
+    //                                                  return debug_triangle{
+    //                                                    .v0 = pair.first.v0,
+    //                                                    .v1 = pair.first.v1,
+    //                                                    .v2 = pair.first.v2,
+    //                                                    .color = pair.second,
+    //                                                  };
+    //                                                }));
+    // }
 
     return data;
   }
