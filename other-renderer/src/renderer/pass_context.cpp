@@ -83,19 +83,17 @@ namespace other {
     if (count == 0) return;
     OTHER_ASSERT(data.size() == def.element_size * count, "draw_debug_stream('{}'): data.size()={} but element_size*count={}", stream_name, data.size(), def.element_size * count);
 
-    // Resolve the recipe shader by name once per call. Caches into a stream
-    // mesh that lives on the renderer keyed by stream name.
     resource_handle stream_mesh = renderer_ptr->get_or_create_debug_stream_mesh(stream_name, def.draw_recipe);
     auto& mesh_res = renderer_ptr->get_resource<mesh>(stream_mesh);
     mesh_res.upload_vertex_buffer(std::format("{}.vertices", stream_name), count, data.data(), data.size())
       .finalize_mesh();
 
-    // Bind the shader the recipe asked for, then draw.
     auto shader_handle = renderer_ptr->get_debug_stream_shader_handle(def.draw_recipe.shader);
     OTHER_ASSERT(shader_handle.has_value(), "draw_debug_stream('{}'): shader '{}' not loaded", stream_name, def.draw_recipe.shader);
 
     auto& sh = renderer_ptr->get_resource<shader>(*shader_handle);
     sh.bind();
+    // camera stuff??
     renderer_ptr->rendering()->api()->draw_mesh(stream_mesh, def.draw_recipe.topology, count);
     sh.unbind();
   }

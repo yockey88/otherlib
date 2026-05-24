@@ -27,6 +27,10 @@ namespace other {
         : name(name), type(type) {
       size = num_components();
     }
+    vertex_attribute(value_type type, const std::string& name, size_t idx, size_t offset)
+        : name(name), type(type), idx(idx), offset(offset) {
+      size = num_components();
+    }
   };
 
   struct buffer_layout {

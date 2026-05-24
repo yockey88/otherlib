@@ -227,8 +227,6 @@ namespace other {
     auto& api = rendering()->api();
     OTHER_ASSERT(api != nullptr, "Rendering API is null in execute_draw_calls.");
 
-    // Locate the running pipeline + pass runtime via the node's pass id.
-    // (Stage 2 hoists this into the pass_context so the renderer doesn't need to know about pipelines here.)
     render_pipeline* pl = get_pass_pipeline(current_node->pass->id);
     OTHER_ASSERT(pl != nullptr, "execute_draw_calls: no pipeline owns pass id {}", current_node->pass->id);
 

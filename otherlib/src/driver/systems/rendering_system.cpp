@@ -267,7 +267,7 @@ namespace other {
   }
 
   void rendering_system::register_buildin_renderer_debug_streams() {
-    auto& reg = renderer_ptr->get_debug_stream_registry();
+    // auto& reg = renderer_ptr->get_debug_stream_registry();
 
     // reg.register_stream("debug.lines", debug_stream_definition{
     //                                      .element_size = sizeof(debug_line),
@@ -276,8 +276,8 @@ namespace other {
     //                                        .shader = "debug_line_shader",
     //                                        .topology = mesh::primitive_type::LINES,
     //                                        .vertex_layout = {
-    //                                          { .name = "position", .type = mesh::attribute_type::FLOAT, .count = 3, .offset = 0 },
-    //                                          { .name = "color", .type = mesh::attribute_type::FLOAT, .count = 4, .offset = 3 },
+    //                                          vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
+    //                                          vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
     //                                        },
     //                                      },
     //                                    });
@@ -289,8 +289,8 @@ namespace other {
     //                                            .shader = "debug_tri_shader",
     //                                            .topology = mesh::primitive_type::TRIANGLES,
     //                                            .vertex_layout = {
-    //                                              { .name = "position", .type = mesh::attribute_type::FLOAT, .count = 3, .offset = 0 },
-    //                                              { .name = "color", .type = mesh::attribute_type::FLOAT, .count = 4, .offset = 3 },
+    //                                              vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
+    //                                              vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
     //                                            },
     //                                          },
     //                                        });
