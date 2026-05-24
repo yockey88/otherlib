@@ -303,7 +303,18 @@ namespace other {
             { "OE_exposure", value(1.0f) },
           },
         },
-      }
+      },
+      // {
+      //   .name = "debug-overlay",
+      //   .pass_type = render_pass::RENDER_PASS,
+      //   .shader_name = "",  // each stream uses its recipe shader
+      //   .create_framebuffer = false,
+      //   .depends_on = { "to-screen" },
+      //   .executor = {
+      //     .name = "debug_stream",
+      //     .params = { { "streams", value(std::vector<std::string>{ "debug.lines", "debug.triangles" }) } },
+      //   },
+      // },
     };
     def.required_tags = {
       resource_tag(resource_tag::kCameraTag),

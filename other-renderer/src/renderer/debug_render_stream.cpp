@@ -14,6 +14,7 @@ namespace other {
       CORE_LOG_ERROR("Debug stream with name [{}] already exists. Ignoring registration.", name);
       return;
     }
+    defn.name = std::string(name);
     defs.insert({ hash, std::move(defn) });
   }
 
@@ -26,23 +27,12 @@ namespace other {
     return &itr->second;
   }
 
-  template <typename T>
-  void debug_streams::submit(std::string_view stream_name, const T& item) {
-    auto [itr, inserted] = storages.try_emplace(FNV(stream_name), stream_storage{ sizeof(T), 0, {} });
-    stream_storage& storage = itr->second;
-    if (!inserted) {
-      if (storage.element_size != sizeof(T)) {
-        CORE_LOG_ERROR("Debug stream '{}' already has element size {}, cannot submit item of size {}", stream_name, storage.element_size, sizeof(T));
-        return;
-      }
-    }
-    if (storage.count >= storage.bytes.size() / storage.element_size) {
-      CORE_LOG_WARNING("Debug stream '{}' has reached maximum capacity of {} elements, cannot submit more items", stream_name, storage.count);
-      return;
-    }
-    const uint8_t* item_bytes = reinterpret_cast<const uint8_t*>(&item);
-    storage.bytes.append_range(std::span<const uint8_t>(item_bytes, sizeof(T)));
-    storage.count++;
+  void debug_streams::configure_stream(std::string_view stream_name, size_t elt_size, size_t max_per_frame) {
+    natural_t hash = FNV(stream_name);
+    auto [itr, _] = storages.try_emplace(hash, stream_storage{});
+    itr->second.element_size = elt_size;
+    itr->second.max_per_frame = max_per_frame;
+    itr->second.bytes.reserve(elt_size * max_per_frame);
   }
 
   std::span<const uint8_t> debug_streams::view(std::string_view stream_name) const {
@@ -67,6 +57,27 @@ namespace other {
       return 0;
     }
     return itr->second.element_size;
+  }
+
+  void debug_streams::clear() {
+    for (auto& [_, storage] : storages) {
+      storage.bytes.clear();
+      storage.count = 0;
+    }
+  }
+
+  debug_streams::stream_storage& debug_streams::ensure_storage(std::string_view name, size_t element_size) {
+    natural_t hash = FNV(name);
+    auto [itr, inserted] = storages.try_emplace(hash, stream_storage{
+                                                        .element_size = element_size,
+                                                        .max_per_frame = 0,  // populated by configure_stream
+                                                        .count = 0,
+                                                        .bytes = {},
+                                                      });
+    if (inserted) {
+      itr->second.bytes.reserve(element_size * 64);
+    }
+    return itr->second;
   }
 
 }  // namespace other

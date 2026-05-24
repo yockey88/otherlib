@@ -11,6 +11,15 @@ namespace other {
   void frame_node::start_pass(renderer* renderer_ptr) const {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
 
+    pass_begin_info info{
+      .framebuffer = pass->framebuffer_handle,
+      .render_area_size = pass->size,
+      .clear_color = pass->clear_color,  // see note
+      .clear_depth = std::nullopt,
+      .pass_type = pass->pass_type,
+    };
+    renderer_ptr->rendering()->api()->begin_pass(info);
+
     if (pass->shader_handle.has_value()) {
       pass->bind_pass(renderer_ptr);
       for (const auto& [binding_point, buffer] : input_buffers) {
@@ -47,6 +56,8 @@ namespace other {
       }
       pass->unbind_pass(renderer_ptr);
     }
+
+    renderer_ptr->rendering()->api()->end_pass();
   }
 
 }  // namespace other

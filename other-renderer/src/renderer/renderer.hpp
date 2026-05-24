@@ -41,11 +41,6 @@ namespace other {
     glm::vec4 color;
   };
 
-  struct debug_rendering_data {
-    std::vector<debug_line> debug_lines;
-    std::vector<debug_triangle> debug_triangles;
-  };
-
   struct render_data {
     glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
 
@@ -62,8 +57,7 @@ namespace other {
     std::vector<gpu::model_matrix_buffer> model_buffers;
     std::vector<gpu::bone_matrix_buffer> bone_buffers;
 
-    debug_rendering_data debug_data;
-    debug_streams debug_streams_data;
+    debug_streams debug_data;
   };
 
   class renderer {
@@ -75,6 +69,7 @@ namespace other {
     render_executor_registry& get_executor_registry() { return executor_registry; }
     frame_binding_registry& get_binding_registry() { return binding_registry; }
     pass_executor_resolver* get_pass_executor_resolver() { return pass_exec_resolver; }
+    debug_stream_registry& get_debug_stream_registry() { return debug_stream_registry; }
 
     void initialize_pass_resolver(pass_executor_resolver* resolver);
 
@@ -84,6 +79,8 @@ namespace other {
     void end_frame();
 
     opt<resource_handle> get_pipeline_output(const std::string_view pipeline_name) const;
+    resource_handle get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_recipe& recipe);
+    opt<resource_handle> get_debug_stream_shader_handle(std::string_view shader_name);
 
     void begin_ui_frame();
     void end_ui_frame();
@@ -143,7 +140,6 @@ namespace other {
 
     void remove_pipeline(const std::string_view name);
 
-    virtual void dispatch_compute(shader* shader_ptr, uint32_t x, uint32_t y, uint32_t z);
     virtual void execute_draw_calls(frame_node* current_node);
 
     constexpr static inline size_t kMaxDrawCalls = 1024;
@@ -152,6 +148,7 @@ namespace other {
     renderer_backend* rendering();
 
    private:
+    friend struct frame_node;
     friend class render_pipeline;
     friend class render_graph;
     friend class pass_context;
@@ -166,6 +163,8 @@ namespace other {
     frame_binding_registry binding_registry;
     debug_stream_registry debug_stream_registry;
 
+    std::map<natural_t, resource_handle> debug_stream_meshes;
+    std::map<natural_t, resource_handle> debug_stream_shaders;
     std::map<natural_t, render_pipeline*> pipelines;
 
     render_pipeline* get_pass_pipeline(natural_t pass_id) const;

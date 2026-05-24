@@ -78,6 +78,30 @@ namespace other {
     return pipeline->get_screen_texture();
   }
 
+  resource_handle renderer::get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_recipe& recipe) {
+    natural_t key = FNV(stream_name);
+    if (auto itr = debug_stream_meshes.find(key); itr != debug_stream_meshes.end()) {
+      return itr->second;
+    }
+    auto handle = create_resource(std::format("__debug.mesh.{}", stream_name), resource_type::MESH);
+    auto& m = get_resource<mesh>(handle);
+    m.set_primitive_type(recipe.topology);
+    for (const auto& attr : recipe.vertex_layout) {
+      m.add_attribute(attr.name, attr.type, attr.size, attr.offset);
+    }
+    debug_stream_meshes.insert({ key, handle });
+    return handle;
+  }
+
+  opt<resource_handle> renderer::get_debug_stream_shader_handle(std::string_view shader_name) {
+    natural_t key = FNV(shader_name);
+    if (auto itr = debug_stream_shaders.find(key); itr != debug_stream_shaders.end()) {
+      return itr->second;
+    }
+    CORE_LOG_ERROR("renderer: debug stream shader '{}' not registered before first draw", shader_name);
+    return std::nullopt;
+  }
+
   void renderer::begin_ui_frame() {
     ASSERT_MAIN_THREAD();
     rendering()->api()->begin_ui_frame();
@@ -190,11 +214,6 @@ namespace other {
     pipeline->shutdown_pipeline();
     arena_allocator<render_pipeline>{}.free(pipeline);
     pipelines.erase(itr);
-  }
-
-  void renderer::dispatch_compute(shader* shader_ptr, uint32_t x, uint32_t y, uint32_t z) {
-    ASSERT_MAIN_THREAD();
-    OTHER_ASSERT(shader_ptr != nullptr, "Shader Pointer is null in dispatch_compute");
   }
 
   void renderer::execute_draw_calls(frame_node* current_node) {

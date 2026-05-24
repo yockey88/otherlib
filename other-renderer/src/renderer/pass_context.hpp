@@ -8,15 +8,16 @@
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "gpu_resource/shader.hpp"
+#include "renderer/debug_render_stream.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/frame_binding_definition.hpp"
 #include "renderer/frame_binding_registry.hpp"
+#include "renderer/frame_node.hpp"
 #include "renderer/render_pass.hpp"
 
 namespace other {
 
   struct render_data;
-  struct frame_node;
   class renderer;
   class render_pipeline;
 
@@ -44,14 +45,19 @@ namespace other {
     void draw_quad();
     void draw_stream();
     void submit_draw_call(const draw_call& call, const mesh_key& key);
-
     void dispatch(const glm::uvec3& groups, shader::compute_barrier_type barrier);
+    void draw_debug_stream(std::string_view stream_name, const debug_stream_definition& def, std::span<const uint8_t> data, size_t count);
 
     template <typename T>
-    void emit_debug(std::string_view stream_name, const T& entry);
+    void emit_debug(std::string_view stream_name, const T& entry) {
+    }
 
     template <typename T>
-    void set_uniform(std::string_view name, const T& value);
+    void set_uniform(std::string_view name, const T& value) {
+      auto* sh = shader_for_pass();
+      OTHER_ASSERT(sh != nullptr, "pass_context::set_uniform('{}'): pass '{}' has no shader bound", name, node->pass->name);
+      sh->set_uniform(name, value);
+    }
 
    private:
     renderer* renderer_ptr;

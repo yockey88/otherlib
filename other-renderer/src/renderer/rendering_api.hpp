@@ -81,8 +81,8 @@ namespace other {
     virtual void begin_pass(const pass_begin_info& info) = 0;
     virtual void end_pass() = 0;
 
-    virtual void bind_set(uint32_t set_index, std::span<const binding_record>) = 0;
-    virtual void set_dynamic_offsets(uint32_t set_index, std::span<const uint32_t>) = 0;
+    virtual void bind_set(uint32_t set_index, std::span<const binding_record> records) = 0;
+    virtual void set_dynamic_offsets(uint32_t set_index, std::span<const uint32_t> offsets) = 0;
 
     virtual void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) = 0;
 

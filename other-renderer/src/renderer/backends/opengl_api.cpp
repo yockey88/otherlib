@@ -179,15 +179,75 @@ namespace other {
   }
 
   void opengl_api::begin_pass(const pass_begin_info& info) {
+    PROFILE_SECTION("opengl_api::begin_pass");
+    if (info.framebuffer.has_value()) {
+      glBindFramebuffer(GL_FRAMEBUFFER, get_resource_handle(info.framebuffer->id));
+    } else {
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+    glViewport(0, 0, info.render_area_size.x, info.render_area_size.y);
+
+    GLbitfield clear_mask = 0;
+    if (info.clear_color.has_value()) {
+      const auto& c = *info.clear_color;
+      glClearColor(c.r, c.g, c.b, c.a);
+      clear_mask |= GL_COLOR_BUFFER_BIT;
+    }
+    if (info.clear_depth.has_value()) {
+      glClearDepth(*info.clear_depth);
+      clear_mask |= GL_DEPTH_BUFFER_BIT;
+    }
+    if (clear_mask != 0) {
+      glClear(clear_mask);
+    }
+
+    CHECKGL();
   }
 
   void opengl_api::end_pass() {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    CHECKGL();
   }
 
-  void opengl_api::bind_set(uint32_t set_index, std::span<const binding_record>) {
+  void opengl_api::bind_set(uint32_t set_index, std::span<const binding_record> records) {
+    PROFILE_SECTION("opengl_api::bind_set");
+    // OpenGL has no concept of descriptor sets — set_index is ignored.
+    // Each record maps to the matching glBindBufferRange / glBindTextureUnit /
+    // glBindImageTexture per its binding_type.
+    for (const binding_record& r : records) {
+      switch (r.type) {
+        case binding_type::UNIFORM_BUFFER:
+        case binding_type::STORAGE_BUFFER:
+        case binding_type::DRAW_INDIRECT_BUFFER: {
+          const GLenum target = buffer_type_from_binding(r.type);
+          const GLuint gpu = (GLuint)get_resource_handle(r.handle.id);
+          if (r.size == 0) {
+            glBindBufferBase(target, r.binding_point, gpu);
+          } else {
+            glBindBufferRange(target, r.binding_point, gpu, r.offset, r.size);
+          }
+          break;
+        }
+        case binding_type::TEXTURE_2D:
+        case binding_type::TEXTURE_ARRAY: {
+          const GLuint gpu = (GLuint)get_resource_handle(r.handle.id);
+          glBindTextureUnit(r.binding_point, gpu);
+          break;
+        }
+        case binding_type::STORAGE_IMAGE: {
+          const GLuint gpu = (GLuint)get_resource_handle(r.handle.id);
+          glBindImageTexture(r.binding_point, gpu, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+          break;
+        }
+        default:
+          OTHER_ASSERT(false, "opengl_api::bind_set: unhandled binding_type {}", int(r.type));
+      }
+    }
+    CHECKGL();
   }
 
-  void opengl_api::set_dynamic_offsets(uint32_t set_index, std::span<const uint32_t>) {
+  void opengl_api::set_dynamic_offsets(uint32_t, std::span<const uint32_t>) {
+    // no-op opengl
   }
 
   void opengl_api::execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) {
