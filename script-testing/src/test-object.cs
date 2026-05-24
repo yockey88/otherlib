@@ -38,17 +38,23 @@ class TestObject
 
   public void DisplayInfo()
   {
-    Debug.Log($"Filesystem.GetProgramFilesFolder(): {Other.Core.Filesystem.GetProgramFilesFolder("MyApp")}");
-    Debug.Log($"Filesystem.GetAppDataFolder(): {Other.Core.Filesystem.GetAppDataFolder("MyApp")}");
-    Debug.Log($"Field Value: {field_value}");
-    Debug.Log($"Property Value: {PropertyValue}");
-    Debug.Log($"Field String: {field_string}");
-    Debug.Log($"Property String: {PropertyString}");
+    Console.WriteLine("TestObject Information:");
+    Console.WriteLine($"Field Value: {field_value}");
+    Console.WriteLine($"Property Value: {PropertyValue}");
+    Console.WriteLine($"Field String: {field_string}");
+    Console.WriteLine($"Property String: {PropertyString}");
   }
 
   public int GetValue(int value)
   {
     Debug.Log($"Received value: {value}");
     return value * 2;
+  }
+
+  [CallbackBinding("Math.Square")]
+  public static int StaticMethod(int x)
+  {
+    Console.WriteLine($"StaticMethod called: {x} * {x} = {x * x}.");
+    return x * x;
   }
 }

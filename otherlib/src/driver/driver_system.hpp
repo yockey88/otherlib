@@ -75,7 +75,6 @@ namespace other {
     virtual void tick(driver_kernel* kernel, double dt) = 0;
     virtual void shutdown(driver_kernel* kernel) = 0;
 
-   protected:
     driver& get_driver();
 
    private:

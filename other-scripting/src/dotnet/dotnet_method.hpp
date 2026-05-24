@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <string>
 
+#include "dotnet/dotnet_attribute.hpp"
+
 namespace other {
 
   class dotnet_host;
@@ -20,6 +22,14 @@ namespace other {
 
     dotnet_type* get_return_type();
 
+    void initialize_method();
+
+    bool is_static() const;
+
+    bool has_attribute(const std::string_view attr_name) const;
+    void get_attribute(const std::string_view attr_name, const std::string_view field_name, void* out) const;
+    std::vector<std::string> get_attribute_names() const;
+
     std::string name() const;
 
     int32_t dotnet_id = -1;
@@ -28,6 +38,8 @@ namespace other {
     dotnet_host* host = nullptr;
     dotnet_type* type = nullptr;
     dotnet_type* return_type = nullptr;
+
+    std::vector<dotnet_attribute> attributes;
   };
 
 }  // namespace other

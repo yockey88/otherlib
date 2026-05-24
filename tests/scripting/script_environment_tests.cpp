@@ -14,13 +14,7 @@ namespace other {
     EXPECT_NO_FATAL_FAILURE(env->initialize_script_environment(environment->config));
 
     ref<assembly> dotnet_asm = nullptr;
-#ifdef OTHER_ENVIRONMENT_DEBUG
-    EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll_debug.string()));
-#elif defined(OTHER_ENVIRONMENT_RELEASE)
-    EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll_release.string()));
-#else
-  #error "Unknown build configuration!"
-#endif
+    EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll.string()));
     ASSERT_NE(dotnet_asm, nullptr);
 
     integer_t obj_id = 0;
@@ -35,13 +29,7 @@ namespace other {
 
     {
       ref<assembly> testing_asm = nullptr;
-#ifdef OTHER_ENVIRONMENT_DEBUG
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_debug.string()));
-#elif defined(OTHER_ENVIRONMENT_RELEASE)
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_release.string()));
-#else
-  #error "Unknown build configuration!"
-#endif
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll.string()));
       ASSERT_NE(testing_asm, nullptr);
 
       EXPECT_NO_FATAL_FAILURE(env->attach_dotnet_object(obj_id, "TestObject"));
@@ -72,13 +60,7 @@ namespace other {
 
     {
       ref<assembly> testing_asm = nullptr;
-#ifdef OTHER_ENVIRONMENT_DEBUG
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_debug.string()));
-#elif defined(OTHER_ENVIRONMENT_RELEASE)
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_release.string()));
-#else
-  #error "Unknown build configuration!"
-#endif
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll.string()));
       ASSERT_NE(testing_asm, nullptr);
 
       EXPECT_NO_FATAL_FAILURE(env->attach_dotnet_object(obj_id, "TestObject"));
@@ -107,22 +89,10 @@ namespace other {
       ref<assembly> dotnet_asm = nullptr;
       ref<assembly> testing_asm = nullptr;
 
-#ifdef OTHER_ENVIRONMENT_DEBUG
-      EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll_debug.string()));
-#elif defined(OTHER_ENVIRONMENT_RELEASE)
-      EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll_release.string()));
-#else
-  #error "Unknown build configuration!"
-#endif
+      EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll.string()));
       ASSERT_NE(dotnet_asm, nullptr);
 
-#ifdef OTHER_ENVIRONMENT_DEBUG
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_debug.string()));
-#elif defined(OTHER_ENVIRONMENT_RELEASE)
-      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll_release.string()));
-#else
-  #error "Unknown build configuration!"
-#endif
+      EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll.string()));
       ASSERT_NE(testing_asm, nullptr);
 
       integer_t obj_id = 0;
@@ -154,6 +124,56 @@ namespace other {
 
     EXPECT_NO_FATAL_FAILURE(env->destroy_all_objects());
     EXPECT_NO_FATAL_FAILURE(env->shutdown_script_environment());
+  }
+
+  TEST_F(script_environment_tests, call_static_dotnet_method) {
+    auto* env = subsystem<scripting_environment>::get();
+    ASSERT_NE(env, nullptr);
+
+    EXPECT_NO_FATAL_FAILURE(env->initialize_script_environment(environment->config));
+
+    ref<assembly> dotnet_asm = nullptr;
+    ref<assembly> testing_asm = nullptr;
+    EXPECT_NO_FATAL_FAILURE(dotnet_asm = env->load_dotnet_module(main_other_dll.string()));
+    EXPECT_NO_FATAL_FAILURE(testing_asm = env->load_dotnet_module(testing_dll.string()));
+    ASSERT_NE(dotnet_asm, nullptr);
+    ASSERT_NE(testing_asm, nullptr);
+
+    {
+      integer_t obj_id = 0;
+      EXPECT_NO_FATAL_FAILURE(obj_id = env->create_object("MyObject"));
+      ASSERT_GE(obj_id, 0);
+
+      script_object* script_obj = nullptr;
+      EXPECT_NO_FATAL_FAILURE(script_obj = env->get_object(obj_id));
+      ASSERT_NE(script_obj, nullptr);
+      EXPECT_EQ(script_obj->dotnet_object, nullptr);
+
+      EXPECT_NO_FATAL_FAILURE(env->attach_dotnet_object(obj_id, "TestObject"));
+      EXPECT_NO_FATAL_FAILURE(script_obj = env->get_object(obj_id));
+      ASSERT_NE(script_obj, nullptr);
+      ASSERT_NE(script_obj->dotnet_object, nullptr);
+
+      int res = -1;
+      EXPECT_NO_FATAL_FAILURE(res = script_obj->dotnet_object->invoke<int>("StaticMethod", int{ 5 }));
+      EXPECT_EQ(res, 25);
+
+      EXPECT_NO_FATAL_FAILURE(env->destroy_object(obj_id));
+    }
+
+    {
+      int res = -1;
+      EXPECT_NO_FATAL_FAILURE(res = env->call_static_dotnet_method<int>("TestObject", "StaticMethod", int{ 6 }));
+      EXPECT_EQ(res, 36);
+    }
+
+    EXPECT_NO_FATAL_FAILURE(env->destroy_all_objects());
+
+    EXPECT_NO_FATAL_FAILURE(env->unload_dotnet_module(testing_asm));
+    EXPECT_NO_FATAL_FAILURE(env->unload_dotnet_module(dotnet_asm));
+    EXPECT_NO_FATAL_FAILURE(env->shutdown_script_environment());
+
+    ASSERT_NE(testing_asm, nullptr);
   }
 
 }  // namespace other

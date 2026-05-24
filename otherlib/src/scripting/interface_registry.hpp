@@ -15,6 +15,8 @@ namespace other {
     natural_t register_interface(const environment_interface& env_interface);
     natural_t register_interface_binding(const std::string_view interface_name, sol::table interface_table);
 
+    natural_t register_named_callback(const std::string_view callback_name, ref<callback> callback_ref);
+
     template <typename... Args>
     void invoke(const std::string_view interface_name, const std::string_view method_name, Args&&... args) {
       if (!has_interface_method(interface_name, method_name)) {
@@ -39,6 +41,25 @@ namespace other {
       return invoke_method_on_binding<R, Args...>(id, interface_name, method_name, std::forward<Args>(args)...);
     }
 
+    template <typename R = void, typename... Args>
+    R invoke_callback(const std::string_view callback_name, Args&&... args) {
+      auto cb_itr = bound_callbacks.find(FNV(callback_name));
+      if (cb_itr == bound_callbacks.end()) {
+        CORE_LOG_WARN("Attempted to invoke unknown callback '{}'.", callback_name);
+        return R{};
+      }
+
+      try {
+        return cb_itr->second.callback_ref->template call<R, Args...>(std::forward<Args>(args)...);
+      } catch (const std::exception& e) {
+        CORE_LOG_ERROR("Error invoking callback '{}': {}", callback_name, e.what());
+        return R{};
+      } catch (...) {
+        CORE_LOG_ERROR("Unknown error invoking callback '{}'.", callback_name);
+        return R{};
+      }
+    }
+
    private:
     struct bound_interface {
       natural_t interface_id;
@@ -49,15 +70,22 @@ namespace other {
 
       std::vector<bound_interface_method> methods;
     };
+    struct bound_callback {
+      std::string name;
+      ref<callback> callback_ref;
+    };
 
     natural_t interface_id_counter = 0;
     natural_t interface_binding_count = 0;
+    natural_t callback_id_counter = 0;
 
     inline natural_t generate_interface_id() { return ++interface_id_counter; }
     inline natural_t generate_interface_binding_id() { return ++interface_binding_count; }
+    inline natural_t generate_callback_id() { return ++callback_id_counter; }
 
     std::map<natural_t, environment_interface> interfaces;
     std::map<natural_t, bound_interface> bound_interfaces;
+    std::map<natural_t, bound_callback> bound_callbacks;
 
     bool has_interface_method(const std::string_view interface_name, const std::string_view method_name) const;
 

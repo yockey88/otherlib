@@ -12,7 +12,9 @@
 #include "core/value.hpp"
 #include "serialization/reflection.hpp"
 
+#include "dotnet/dotnet_attribute.hpp"
 #include "dotnet/native_string.hpp"
+
 
 namespace other {
 
@@ -80,6 +82,8 @@ namespace other {
     dotnet_type* type = nullptr;
 
     value_type valtype = value_type::EMPTY_TYPE;
+
+    std::vector<dotnet_attribute> attributes;
 
     struct field_flags {
       bool is_property = false;

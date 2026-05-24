@@ -198,7 +198,7 @@ namespace OtherCsBindings
         }
 
         Type target_type = target.GetType();
-        MethodInfo? minfo = TryGetMethodInfo(target_type, method_name, param_types, count, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        MethodInfo? minfo = TryGetMethodInfo(target_type, method_name, param_types, count, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
         if (minfo == null)
         {
           throw new MissingMethodException($"Method '{target_type.FullName}.{method_name}[{count}]' not found.");
@@ -233,7 +233,7 @@ namespace OtherCsBindings
         }
 
         var target_type = target.GetType();
-        var method_info = TryGetMethodInfo(target_type, name, param_types, count, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        var method_info = TryGetMethodInfo(target_type, name, param_types, count, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
         if (method_info == null)
         {
           Logger.LogError($"Method ['{target_type.Name}.{name}'] was not found");
@@ -256,7 +256,7 @@ namespace OtherCsBindings
     }
 
     [UnmanagedCallersOnly]
-    private static unsafe void InvokeStaticMethod(IntPtr handle, NativeString method_name, IntPtr parameters, ManagedType* param_types, int count)
+    private static unsafe void InvokeStaticMethod(NativeString type_name, NativeString method_name, IntPtr parameters, ManagedType* param_types, int count)
     {
       try
       {
@@ -265,13 +265,7 @@ namespace OtherCsBindings
           throw new ArgumentNullException($"{nameof(method_name)} cannot be null.");
         }
 
-        var target = GCHandle.FromIntPtr(handle).Target;
-        if (target == null)
-        {
-          throw new NullReferenceException($"Target object for invoking method [{method_name}]({count}) is null.");
-        }
-
-        Type target_type = target.GetType();
+        Type target_type = Type.GetType(type_name!, throwOnError: true)!;
         MethodInfo? minfo = TryGetMethodInfo(target_type, method_name, param_types, count, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
         if (minfo == null)
         {
@@ -279,7 +273,7 @@ namespace OtherCsBindings
         }
 
         var marshalled_parameters = OtherMemory.MarshalParameterArray(parameters, count, minfo);
-        minfo.Invoke(target, marshalled_parameters);
+        minfo.Invoke(null, marshalled_parameters);
       }
       catch (Exception ex)
       {
@@ -288,7 +282,7 @@ namespace OtherCsBindings
     }
 
     [UnmanagedCallersOnly]
-    private static unsafe void InvokeStaticMethodRet(IntPtr handle, NativeString name, IntPtr parameters, ManagedType* param_types, Int32 count, IntPtr res)
+    private static unsafe void InvokeStaticMethodRet(NativeString type_name, NativeString name, IntPtr parameters, ManagedType* param_types, Int32 count, IntPtr res)
     {
       try
       {
@@ -298,15 +292,18 @@ namespace OtherCsBindings
           return;
         }
 
-        var target = GCHandle.FromIntPtr(handle).Target;
-
-        if (target == null)
+        string full_type_name = type_name.ToString() ?? string.Empty;
+        if (string.IsNullOrEmpty(full_type_name))
         {
-          Logger.LogError($"Target object for invoking method [{name}]({count}) is null.");
+          Logger.LogError($"{nameof(type_name)} cannot be null or empty.");
           return;
         }
 
-        var target_type = target.GetType();
+        Type? target_type = TypeInterface.GetType(full_type_name);
+        if (target_type == null)
+        {
+          throw new TypeLoadException($"Type '{full_type_name}' could not be found.");
+        }
         var method_info = TryGetMethodInfo(target_type, name, param_types, count, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
         if (method_info == null)
         {

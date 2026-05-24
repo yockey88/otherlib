@@ -5,12 +5,11 @@
 
 #include <SDL3/SDL_dialog.h>
 
-#include "renderer/default_pass_executor_resolver.hpp"
-
 #include "driver/driver.hpp"
 #include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
+#include "render/default_pass_executor_resolver.hpp"
 
 namespace other {
   namespace detail {
@@ -62,20 +61,15 @@ namespace other {
         interface_cardinality::MULTIPLE  // don't want too many
       );
       reg.register_interface<pass_executor_resolver>(
-        [this](scope<pass_executor_resolver> s, plugin_param_view params) {
-          opt<std::string_view> pipeline_name = params.get("pipeline");
-          opt<std::string_view> pass_name = params.get("pass");
-          if (!pipeline_name.has_value() || !pass_name.has_value()) {
-            // clang-format off
-            CORE_LOG_ERROR("Pass executor interface can only be attached to a specific pipeline and specific pass! pipeline: {}, pass: {}",
-                            pipeline_name.has_value() ? *pipeline_name : "<empty>", pass_name.has_value() ? *pass_name : "<empty>");
-            // clang-format on
-          }
+        [this](scope<pass_executor_resolver> s) {
+          renderer_ptr->initialize_pass_resolver(s.get());
           return 0;
         },
-        [this](natural_t id) {},
+        [this](natural_t id) {
+          renderer_ptr->initialize_pass_resolver(nullptr);
+        },
         no_args(),
-        interface_cardinality::MULTIPLE
+        interface_cardinality::SINGLE
       );
     };
     register_interfaces_in_registry(kernel->driver_registry());
@@ -256,8 +250,8 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
 
     std::string pass_resolver = get_driver().get_config_value<std::string>("rendering.pass-resolver", "default");
-    if (pass_resolver == "default") {
-      pass_resolver_ptr = make_scope<default_pass_executor_resolver>(kernel->has_core_system<scripting_system>());
+    if (pass_resolver == "default" && kernel->has_core_system<scripting_system>()) {
+      pass_resolver_ptr = make_scope<default_pass_executor_resolver>(&kernel->get_core_system<scripting_system>());
     } else {
       OTHER_ASSERT(false, "Pass resolver plugin lookup not implemented yet!");
     }

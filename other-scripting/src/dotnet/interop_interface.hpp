@@ -42,6 +42,7 @@ namespace other {
   using is_type_sz_array = nbool32 (*)(int32_t);
   using get_element_type = void (*)(int32_t, int32_t*);
   using get_type_information = void (*)(int32_t, int32_t*, int32_t*);
+  using is_method_static = nbool32 (*)(int32_t);
   using get_type_managed_type = managed_type (*)(int32_t);
 
   /// method
@@ -73,6 +74,8 @@ namespace other {
   using destroy_object = void (*)(void*);
   using invoke_method = void (*)(void*, native_string, const void**, const managed_type*, int32_t);
   using invoke_method_ret = void (*)(void*, native_string, const void**, const managed_type*, int32_t, void*);
+  using invoke_static_method = void (*)(native_string, native_string, const void**, const managed_type*, int32_t);
+  using invoke_static_method_ret = void (*)(native_string, native_string, const void**, const managed_type*, int32_t, void*);
   using field_is_private_checker = nbool32 (*)(void*, native_string);
   using field_setter_getter = void (*)(void*, native_string, void*);
   using string_field_setter_getter = void (*)(void*, native_string, native_string*);

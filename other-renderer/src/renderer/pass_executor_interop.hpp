@@ -11,15 +11,12 @@ namespace other {
   class renderer;
   class render_pipeline;
 
-  /// `params` is a tagged-binary blob (see pass_params_codec.hpp). It is
-  /// stable for the lifetime of the pass executor (captured by the bridge).
   struct pass_invocation_interop {
     renderer* renderer_ptr;
     render_graph::node* node;
     render_pipeline* pipeline;
     const uint8_t* params;
     uint32_t params_size;
-    // alignment + room for flags/etc.
     uint32_t reserved = 0;
   };
 

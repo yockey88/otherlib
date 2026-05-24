@@ -28,6 +28,11 @@ namespace other {
     void* native_function;
   };
 
+  struct callback_binding {
+    std::string binding_name;
+    std::string full_type_and_method_name;
+  };
+
   class dotnet_host;
   class dotnet_type;
   class type_cache;
@@ -39,6 +44,8 @@ namespace other {
 
     void cache_types(type_cache* cache, const std::vector<int32_t>& dotnet_type_ids);
     bool has_method(const std::string_view type_name, const std::string_view method_name) const;
+
+    std::vector<callback_binding> get_native_function_bindings() const;
 
     natural_t get_handle() const {
       return handle;
@@ -78,6 +85,7 @@ namespace other {
 
     ref<assembly> load_assembly(const std::string_view path);
     ref<assembly> get_assembly_by_name(const std::string_view name);
+    ref<assembly> get_assembly_by_id(natural_t id);
     void unload_assembly(natural_t assembly_id);
     void unload_all();
 
