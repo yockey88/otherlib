@@ -49,6 +49,8 @@ namespace other {
     scope<asset_handler> asset_mgr = nullptr;
     std::deque<natural_t> loading_asset_ids;
 
+    void mount_mounts(driver_kernel* kernel);
+
     void handle_ls_event(driver_kernel* kernel, const value& data);
     void handle_ls_assets_event(driver_kernel* kernel, const value& data);
   };

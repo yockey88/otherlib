@@ -14,6 +14,7 @@
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/pipeline_definition.hpp"
 #include "renderer/render_graph.hpp"
+#include "renderer/resource_tag.hpp"
 
 namespace other {
 
@@ -64,6 +65,28 @@ namespace other {
     const std::string& get_name() const { return definition.name; }
     inline bool is_valid() const { return valid; }
 
+    void upload_buffer(resource_handle handle, const void* data, size_t size);
+    void upload_to_handle(resource_handle handle, const void* data, size_t size);
+    opt<resource_handle> find_buffer_by_name(const std::string_view name) const;
+    opt<resource_handle> find_texture_by_name(const std::string_view name) const;
+    opt<resource_handle> find_tagged(resource_tag tag) const;
+    shader* get_pass_shader(const std::string_view pass_name);
+
+    resource_handle get_quad_mesh_handle() const;
+
+    static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
+
+    /// \todo: remove these
+    bool has_shadow_map_pass() const;
+    void clear_shadow_map_pass_name();
+    shader* get_shadow_map_pass();
+
+    bool has_shading_pass_name() const;
+    shader* get_shading_pass();
+
+    bool has_light_space_matrix_uniform() const;
+    std::string light_space_matrix_uniform() const;
+
    private:
     pipeline_definition definition;
     bool valid = false;
@@ -76,7 +99,7 @@ namespace other {
     struct named_resource {
       std::string name;
       resource_handle handle;
-      resource_tag tag = resource_tag::NONE;
+      resource_tag tag = resource_tag::none();
     };
 
     std::map<natural_t, named_resource> buffer_resources;   /// keyed by FNV(name)
@@ -92,11 +115,7 @@ namespace other {
     using executor_fn = render_graph::pass_executor;
     std::map<std::string, executor_fn> executor_overrides;
 
-    void upload_buffer(resource_handle handle, const void* data, size_t size);
-    opt<resource_handle> find_buffer_by_name(const std::string_view name) const;
-    opt<resource_handle> find_texture_by_name(const std::string_view name) const;
-    opt<resource_handle> find_tagged(resource_tag tag) const;
-    shader* get_pass_shader(const std::string_view pass_name);
+    void apply_lighting_uniforms(const render_data& data);
 
     void override_pass_executor(const std::string_view pass_name, executor_fn&& fn);
 
@@ -108,20 +127,14 @@ namespace other {
     void destroy_resources();
 
     void build_pass(const pipeline_pass_definition& pass_def, render_graph::pass_builder& builder);
-    void upload_to_handle(resource_handle handle, const void* data, size_t size);
 
     renderer* get_renderer() const;
     glm::ivec2 resolve_size(bool use_window, const glm::ivec2& fixed) const;
     bool is_buffer_resource(const std::string_view name) const;
 
     executor_fn make_executor(const pipeline_pass_definition& pass);
-    executor_fn make_draw_scene_executor();
-    executor_fn make_fullscreen_quad_executor(const pipeline_executor_definition& exec, const std::string& pass_name);
-    executor_fn make_noop_executor();
 
     opt<resource_handle> get_shader_handle(const std::string_view shader_name) const;
-
-    static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
   };
 
 }  // namespace other

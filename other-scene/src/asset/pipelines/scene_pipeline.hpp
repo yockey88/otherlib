@@ -10,7 +10,7 @@ namespace other {
 
   class scene_pipeline : public asset_pipeline {
    public:
-    scene_pipeline(event_system& events, asset_handler* handler, scene* scene_ptr)
+    scene_pipeline(event_system* events, asset_handler* handler, scene* scene_ptr)
         : asset_pipeline(events, handler), scene_ptr(scene_ptr) {}
     ~scene_pipeline() override = default;
 

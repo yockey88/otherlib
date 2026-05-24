@@ -5,7 +5,10 @@
 
 #include <SDL3/SDL_dialog.h>
 
+#include "renderer/default_pass_executor_resolver.hpp"
+
 #include "driver/driver.hpp"
+#include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
 
@@ -16,10 +19,17 @@ namespace other {
       SDL_ShowFileDialogWithProperties(type, callback_fn, user_data, props);
     }
 
+    render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*);
+    render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*);
+    render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+
   }  // namespace detail
 
   void rendering_system::initialize(driver_kernel* kernel) {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
+    register_builtin_resource_tags();
+    register_builtin_render_executors();
 
     configure_pipelines(kernel);
 
@@ -51,6 +61,22 @@ namespace other {
         ui_window_args(get_driver().get_event_system().get()),
         interface_cardinality::MULTIPLE  // don't want too many
       );
+      reg.register_interface<pass_executor_resolver>(
+        [this](scope<pass_executor_resolver> s, plugin_param_view params) {
+          opt<std::string_view> pipeline_name = params.get("pipeline");
+          opt<std::string_view> pass_name = params.get("pass");
+          if (!pipeline_name.has_value() || !pass_name.has_value()) {
+            // clang-format off
+            CORE_LOG_ERROR("Pass executor interface can only be attached to a specific pipeline and specific pass! pipeline: {}, pass: {}",
+                            pipeline_name.has_value() ? *pipeline_name : "<empty>", pass_name.has_value() ? *pass_name : "<empty>");
+            // clang-format on
+          }
+          return 0;
+        },
+        [this](natural_t id) {},
+        no_args(),
+        interface_cardinality::MULTIPLE
+      );
     };
     register_interfaces_in_registry(kernel->driver_registry());
     register_interfaces_in_registry(kernel->project_registry());
@@ -65,6 +91,8 @@ namespace other {
     driver_ui_ptr = nullptr;
 
     renderer_ptr->remove_pipeline("Rendering Pipeline");
+    pass_resolver_ptr = nullptr;
+    renderer_ptr = nullptr;
   }
 
   void rendering_system::render(driver_kernel* kernel) {
@@ -88,15 +116,12 @@ namespace other {
 
     renderer_ptr->begin_frame(data_ptr);
     renderer_ptr->render();
-    render_ui(kernel);
-    renderer_ptr->end_frame();
-  }
 
-  void rendering_system::render_ui(driver_kernel* kernel) {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system render_ui.");
     renderer_ptr->begin_ui_frame();
     driver_ui_ptr->render();
     renderer_ptr->end_ui_frame();
+
+    renderer_ptr->end_frame();
   }
 
   void rendering_system::open_ui_window(const std::string_view name) {
@@ -168,9 +193,76 @@ namespace other {
     detail::file_dialog(SDL_FILEDIALOG_SAVEFILE, nullptr, callback_fn, user_data, props);
   }
 
+  void rendering_system::register_builtin_resource_tags() {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in register_builtin_resource_tags.");
+
+    auto& reg = renderer_ptr->get_tag_registry();
+    reg.register_binder(resource_tag(resource_tag::kCameraTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      if (!d.primary_camera) {
+        return;
+      }
+
+      auto gpu = d.primary_camera->to_gpu_data();
+      r.upload_buffer(h, &gpu, sizeof(gpu));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kModelTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      // r.upload_buffer(h, d.model_buffers.data(), d.model_buffers.size() * sizeof(gpu::model_matrix_buffer));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kMaterialTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      // r.upload_buffer(h, d.material_buffers.data(), d.material_buffers.size() * sizeof(gpu::material_buffer));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kBoneTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      if (d.bone_buffers.empty()) {
+        return;
+      }
+      // r.upload_buffer(h, d.bone_buffers.data(), d.bone_buffers.size() * sizeof(gpu::bone_matrix_buffer));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kPointLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::point_light_buffer buf{};
+      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+        buf.lights[i] = d.point_lights[i];
+      }
+      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
+    });
+
+    reg.register_binder(resource_tag(resource_tag::kDirectionLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::directional_light_buffer dir_light_buffer_data;
+      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
+        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
+      }
+      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+    });
+
+    // screen is simply a marker tag, render_pipeline tracks screen_texture_handle separately for to-screen blit
+    reg.register_binder(resource_tag(resource_tag::kScreenTag), [](render_pipeline&, const render_data&, resource_handle) {});
+  }
+
+  void rendering_system::register_builtin_render_executors() {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is null while registering executors!");
+
+    auto& reg = renderer_ptr->get_executor_registry();
+    reg.register_executor("noop", &detail::make_noop);
+    reg.register_executor("draw_scene", &detail::make_draw_scene);
+    reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
+    reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
+  }
+
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in configure_pipelines.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
+
+    std::string pass_resolver = get_driver().get_config_value<std::string>("rendering.pass-resolver", "default");
+    if (pass_resolver == "default") {
+      pass_resolver_ptr = make_scope<default_pass_executor_resolver>(kernel->has_core_system<scripting_system>());
+    } else {
+      OTHER_ASSERT(false, "Pass resolver plugin lookup not implemented yet!");
+    }
+    OTHER_ASSERT(pass_resolver_ptr != nullptr, "Pass resolver is null!");
+    renderer_ptr->initialize_pass_resolver(pass_resolver_ptr.get());
 
     std::vector<std::string> pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
     if (pipeline_names.empty()) {
@@ -214,4 +306,42 @@ namespace other {
     events->trigger_event("console.output", ss.str());
   }
 
+  namespace detail {
+
+    render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*) {
+      return [](renderer&, render_graph::node*, void*) {
+      };
+    }
+
+    render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*) {
+      return [](renderer& r, render_graph::node* node, void*) {
+        r.execute_draw_calls(node);
+      };
+    }
+
+    render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl) {
+      resource_handle quad = pl->get_quad_mesh_handle();
+      return [quad, uniforms = def.executor.uniforms, pass_name = def.name, pl](renderer& r, render_graph::node*, void*) {
+        auto* sh = pl->get_pass_shader(pass_name);
+        OTHER_ASSERT(sh, "fullscreen_quad: no shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
+        r.get_resource<mesh>(quad).draw();
+      };
+    }
+
+    render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl) {
+      // params: { "groups" = [int, int, int] }
+      const auto& params = def.executor.params;
+      auto it = params.find("groups");
+      OTHER_ASSERT(it != params.end(), "compute_dispatch: pass '{}' missing 'groups' param", def.name);
+
+      glm::vec3 g = it->second;
+      return [g, pass_name = def.name, pl](renderer& r, render_graph::node*, void*) {
+        auto* sh = pl->get_pass_shader(pass_name);
+        OTHER_ASSERT(sh, "compute_dispatch: no shader for pass '{}'", pass_name);
+        r.dispatch_compute(sh, g.x, g.y, g.z);
+      };
+    };
+
+  }  // namespace detail
 }  // namespace other

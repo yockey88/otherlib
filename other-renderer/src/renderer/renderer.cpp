@@ -16,6 +16,11 @@
 
 namespace other {
 
+  void renderer::initialize_pass_resolver(pass_executor_resolver* resolver) {
+    OTHER_ASSERT(resolver != nullptr, "Pass resolver cannot be null!");
+    pass_exec_resolver = resolver;
+  }
+
   void renderer::begin_frame(render_data* data) {
     ASSERT_MAIN_THREAD();
     if (data != nullptr) {
@@ -70,6 +75,12 @@ namespace other {
   void renderer::end_ui_frame() {
     ASSERT_MAIN_THREAD();
     rendering()->api()->end_ui_frame();
+  }
+
+  render_graph::pass_executor renderer::attempt_executor_resolution(const std::string_view name, const pipeline_pass_definition& def, render_pipeline* pl) {
+    OTHER_ASSERT(pl != nullptr, "Pipeline can not be null while resolving a pass executor!");
+    OTHER_ASSERT(pass_exec_resolver != nullptr, "Pass resolver could not be resolved!");
+    return pass_exec_resolver->resolve_executor(name, def, pl);
   }
 
   glm::ivec2 renderer::get_window_size() {
@@ -137,6 +148,11 @@ namespace other {
     pipelines.erase(itr);
   }
 
+  void renderer::dispatch_compute(shader* shader_ptr, uint32_t x, uint32_t y, uint32_t z) {
+    ASSERT_MAIN_THREAD();
+    OTHER_ASSERT(shader_ptr != nullptr, "Shader Pointer is null in dispatch_compute");
+  }
+
   void renderer::execute_draw_calls(render_graph::node* current_node) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(current_node != nullptr, "Current node must not be null.");
@@ -147,9 +163,9 @@ namespace other {
 
     PROFILE_SECTION("renderer::execute_draw_calls");
 
-    opt<resource_handle> material_buffer_handle = current_frame_resources.find(resource_tag::MATERIAL);
-    opt<resource_handle> model_buffer_handle = current_frame_resources.find(resource_tag::MODEL);
-    opt<resource_handle> bone_buffer_handle = current_frame_resources.find(resource_tag::BONE);
+    opt<resource_handle> material_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kMaterialTag));
+    opt<resource_handle> model_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kModelTag));
+    opt<resource_handle> bone_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kBoneTag));
 
     gpu_buffer* material_buffer = nullptr;
     gpu_buffer* model_buffer = nullptr;

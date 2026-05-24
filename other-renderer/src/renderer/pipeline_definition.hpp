@@ -28,7 +28,7 @@ namespace other {
     std::string name;
     gpu_buffer::buf_type type = gpu_buffer::buf_type::UNIFORM_BUFFER;
     gpu_buffer::usage usage = gpu_buffer::usage::DYNAMIC;
-    resource_tag tag = resource_tag::NONE;
+    resource_tag tag = resource_tag::none();
   };
 
   struct pipeline_texture_definition {
@@ -37,7 +37,7 @@ namespace other {
     glm::ivec2 fixed_size = { 1080, 720 };
     texture::tex_type type = texture::tex_type::TEXTURE_2D;
     texture::format format = texture::format::RGBA16F;
-    resource_tag tag = resource_tag::NONE;
+    resource_tag tag = resource_tag::none();
 
     opt<std::pair<texture::filter, texture::filter>> filters;
     opt<std::tuple<texture::wrap, texture::wrap, texture::wrap>> wraps;
@@ -59,10 +59,10 @@ namespace other {
   };
 
   struct pipeline_executor_definition {
-    executor_type type = executor_type::DRAW_SCENE;
+    std::string name = "noop";
 
     std::map<std::string, value> uniforms;
-    opt<std::string> script_entry;
+    std::map<std::string, value> params;
   };
 
   struct pipeline_pass_definition {

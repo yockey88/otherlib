@@ -430,6 +430,7 @@ namespace other {
     CORE_LOG_DEBUG("\nFinished processing application metadata from configuration.\nResult: name='{}', description='{}', author='{}', version='{}'\n", 
                     data.name, data.description, data.author, data.version);
     // clang-format on
+
     return data;
   }
 
