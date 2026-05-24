@@ -16,6 +16,11 @@
 
 namespace other {
 
+  void renderer::initialize_pass_resolver(pass_executor_resolver* resolver) {
+    OTHER_ASSERT(resolver != nullptr, "Pass resolver cannot be null!");
+    pass_exec_resolver = resolver;
+  }
+
   void renderer::begin_frame(render_data* data) {
     ASSERT_MAIN_THREAD();
     if (data != nullptr) {
@@ -70,6 +75,12 @@ namespace other {
   void renderer::end_ui_frame() {
     ASSERT_MAIN_THREAD();
     rendering()->api()->end_ui_frame();
+  }
+
+  render_graph::pass_executor renderer::attempt_executor_resolution(const std::string_view name, const pipeline_pass_definition& def, render_pipeline* pl) {
+    OTHER_ASSERT(pl != nullptr, "Pipeline can not be null while resolving a pass executor!");
+    OTHER_ASSERT(pass_exec_resolver != nullptr, "Pass resolver could not be resolved!");
+    return pass_exec_resolver->resolve_executor(name, def, pl);
   }
 
   glm::ivec2 renderer::get_window_size() {

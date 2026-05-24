@@ -12,6 +12,7 @@
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/gpu_structs.hpp"
+#include "renderer/pass_executor_resolver.hpp"
 #include "renderer/pipeline_definition.hpp"
 #include "renderer/render_executor_registry.hpp"
 #include "renderer/render_graph.hpp"
@@ -71,6 +72,8 @@ namespace other {
     render_executor_registry& get_executor_registry() { return executor_registry; }
     resource_tag_registry& get_tag_registry() { return tag_registry; }
 
+    void initialize_pass_resolver(pass_executor_resolver* resolver);
+
     void begin_frame(render_data* data);
     void render();
     void end_frame();
@@ -79,6 +82,8 @@ namespace other {
 
     void begin_ui_frame();
     void end_ui_frame();
+
+    render_graph::pass_executor attempt_executor_resolution(const std::string_view name, const pipeline_pass_definition& def, render_pipeline* pl);
 
     inline const config_table& get_config() const { return config; }
 
@@ -145,6 +150,7 @@ namespace other {
     frame_resources current_frame_resources;
     render_data* scene_data = nullptr;
 
+    pass_executor_resolver* pass_exec_resolver = nullptr;
     render_executor_registry executor_registry;
     resource_tag_registry tag_registry;
 

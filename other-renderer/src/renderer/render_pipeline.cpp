@@ -480,6 +480,11 @@ namespace other {
 
     /// set up executor and check for runtime override
     auto executor = make_executor(pass_def);
+    if (executor == nullptr) {
+      CORE_LOG_ERROR("Failed to create render pass executor for pass {}! invalid executor: {}", pass_def.name, pass_def.executor.name);
+      return;
+    }
+
     auto override_itr = executor_overrides.find(pass_def.name);
     if (override_itr != executor_overrides.end()) {
       executor = override_itr->second;
@@ -505,6 +510,8 @@ namespace other {
   }
 
   render_pipeline::executor_fn render_pipeline::make_executor(const pipeline_pass_definition& pass) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is null in make_executor!");
+
     const std::string& name = pass.executor.name;
     OTHER_ASSERT(!name.empty(), "pipeline '{}' / pass '{}': executor name is empty", definition.name, pass.name);
 
@@ -513,10 +520,9 @@ namespace other {
       return it->second;
     }
 
-    // script prefix routes through the resolver bridge\
-    // if (name.starts_with("script:")) {
-    //   // return script_executor_factory::make(pass, this);
-    // }
+    if (name.contains(":")) {
+      return renderer_ptr->attempt_executor_resolution(name, pass, this);
+    }
 
     auto& reg = renderer_ptr->get_executor_registry();
     auto factory = reg.find(name);

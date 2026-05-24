@@ -5,7 +5,10 @@
 
 #include <SDL3/SDL_dialog.h>
 
+#include "renderer/default_pass_executor_resolver.hpp"
+
 #include "driver/driver.hpp"
+#include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
 
@@ -58,6 +61,22 @@ namespace other {
         ui_window_args(get_driver().get_event_system().get()),
         interface_cardinality::MULTIPLE  // don't want too many
       );
+      reg.register_interface<pass_executor_resolver>(
+        [this](scope<pass_executor_resolver> s, plugin_param_view params) {
+          opt<std::string_view> pipeline_name = params.get("pipeline");
+          opt<std::string_view> pass_name = params.get("pass");
+          if (!pipeline_name.has_value() || !pass_name.has_value()) {
+            // clang-format off
+            CORE_LOG_ERROR("Pass executor interface can only be attached to a specific pipeline and specific pass! pipeline: {}, pass: {}",
+                            pipeline_name.has_value() ? *pipeline_name : "<empty>", pass_name.has_value() ? *pass_name : "<empty>");
+            // clang-format on
+          }
+          return 0;
+        },
+        [this](natural_t id) {},
+        no_args(),
+        interface_cardinality::MULTIPLE
+      );
     };
     register_interfaces_in_registry(kernel->driver_registry());
     register_interfaces_in_registry(kernel->project_registry());
@@ -72,6 +91,8 @@ namespace other {
     driver_ui_ptr = nullptr;
 
     renderer_ptr->remove_pipeline("Rendering Pipeline");
+    pass_resolver_ptr = nullptr;
+    renderer_ptr = nullptr;
   }
 
   void rendering_system::render(driver_kernel* kernel) {
@@ -233,6 +254,15 @@ namespace other {
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in configure_pipelines.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
+
+    std::string pass_resolver = get_driver().get_config_value<std::string>("rendering.pass-resolver", "default");
+    if (pass_resolver == "default") {
+      pass_resolver_ptr = make_scope<default_pass_executor_resolver>(kernel->has_core_system<scripting_system>());
+    } else {
+      OTHER_ASSERT(false, "Pass resolver plugin lookup not implemented yet!");
+    }
+    OTHER_ASSERT(pass_resolver_ptr != nullptr, "Pass resolver is null!");
+    renderer_ptr->initialize_pass_resolver(pass_resolver_ptr.get());
 
     std::vector<std::string> pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
     if (pipeline_names.empty()) {
