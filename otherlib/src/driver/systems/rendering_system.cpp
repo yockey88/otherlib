@@ -61,20 +61,15 @@ namespace other {
         interface_cardinality::MULTIPLE  // don't want too many
       );
       reg.register_interface<pass_executor_resolver>(
-        [this](scope<pass_executor_resolver> s, plugin_param_view params) {
-          opt<std::string_view> pipeline_name = params.get("pipeline");
-          opt<std::string_view> pass_name = params.get("pass");
-          if (!pipeline_name.has_value() || !pass_name.has_value()) {
-            // clang-format off
-            CORE_LOG_ERROR("Pass executor interface can only be attached to a specific pipeline and specific pass! pipeline: {}, pass: {}",
-                            pipeline_name.has_value() ? *pipeline_name : "<empty>", pass_name.has_value() ? *pass_name : "<empty>");
-            // clang-format on
-          }
+        [this](scope<pass_executor_resolver> s) {
+          renderer_ptr->initialize_pass_resolver(s.get());
           return 0;
         },
-        [this](natural_t id) {},
+        [this](natural_t id) {
+          renderer_ptr->initialize_pass_resolver(nullptr);
+        },
         no_args(),
-        interface_cardinality::MULTIPLE
+        interface_cardinality::SINGLE
       );
     };
     register_interfaces_in_registry(kernel->driver_registry());
