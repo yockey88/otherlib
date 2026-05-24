@@ -19,6 +19,18 @@ namespace other {
     }
   }
 
+  shader::compute_barrier_type compute_barrier_type_from_string(const std::string_view str) {
+    natural_t hash = FNV(str);
+    switch (hash) {
+      case FNV("shader_image_access"): return shader::compute_barrier_type::SHADER_IMAGE_ACCESS;
+      case FNV("shader_storage"): return shader::compute_barrier_type::SHADER_STORAGE;
+      case FNV("uniform"): return shader::compute_barrier_type::UNIFORM_BARRIER;
+      case FNV("all"): return shader::compute_barrier_type::ALL_BARRIER;
+      case FNV("none"): [[fallthrough]];
+      default: return shader::compute_barrier_type::NONE;
+    }
+  }
+
   std::string_view executor_type_to_string(executor_type type) {
     switch (type) {
       case executor_type::DRAW_SCENE: return "draw_scene";
@@ -27,6 +39,17 @@ namespace other {
       case executor_type::NOOP: return "noop";
       case executor_type::SCRIPT: return "script";
       default: return "noop";
+    }
+  }
+
+  gpu_buffer::buf_type buffer_type_from_binding(binding_type type) {
+    switch (type) {
+      case binding_type::UNIFORM_BUFFER: return gpu_buffer::buf_type::UNIFORM_BUFFER;
+      case binding_type::STORAGE_BUFFER: return gpu_buffer::buf_type::STORAGE_BUFFER;
+      case binding_type::DRAW_INDIRECT_BUFFER: return gpu_buffer::buf_type::DRAW_INDIRECT_BUFFER;
+      default:
+        OTHER_ASSERT(false, "Unsupported binding type {} for buffer resource", type);
+        return gpu_buffer::buf_type::UNIFORM_BUFFER;
     }
   }
 
@@ -120,7 +143,6 @@ namespace other {
     def.shadow_map_pass_name = "shadow-map-pass";
     def.shading_pass_name = "shading-pass";
     def.light_space_matrix_uniform_name = "OE_light_space_matrix";
-
     def.name = "default-instancing";
     def.version = 1;
 
@@ -190,6 +212,40 @@ namespace other {
           { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
         },
         .executor = { .name = "draw_scene" },
+        .bindings = {
+          {
+            .name = "per_draw.material",
+            .tag = resource_tag(resource_tag::kMaterialTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::STORAGE_BUFFER,
+            .binding = 0,
+            .element_size = sizeof(gpu::graphics_material_buffer),
+          },
+          {
+            .name = "per_draw.model",
+            .tag = resource_tag(resource_tag::kModelTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 1,
+            .element_size = sizeof(gpu::model_matrix_buffer),
+          },
+          {
+            .name = "per_frame.camera",
+            .tag = resource_tag(resource_tag::kCameraTag),
+            .scope = binding_scope::PER_FRAME,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 2,
+            .element_size = sizeof(gpu::camera_data),
+          },
+          {
+            .name = "per_draw.bones",
+            .tag = resource_tag(resource_tag::kBoneTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 3,
+            .element_size = sizeof(gpu::bone_matrix_buffer),
+          },
+        },
       },
       // shadow map pass
       {
@@ -249,12 +305,13 @@ namespace other {
         },
       }
     };
-
     def.required_tags = {
       resource_tag(resource_tag::kCameraTag),
       resource_tag(resource_tag::kModelTag),
       resource_tag(resource_tag::kMaterialTag),
-      resource_tag(resource_tag::kDirectionLightTag)
+      resource_tag(resource_tag::kBoneTag),
+      resource_tag(resource_tag::kPointLightTag),
+      resource_tag(resource_tag::kDirectionLightTag),
     };
 
     return def;

@@ -15,14 +15,24 @@ namespace other {
     default_pass_executor_resolver(scripting_system* system)
         : system(system) {}
     ~default_pass_executor_resolver() override {}
+
+    bool can_resolve_executor(std::string_view name) const override;
+    bool can_resolve_frame_binder(resource_tag tag) const override;
+    bool can_resolve_draw_binder(resource_tag tag) const override;
+    bool can_resolve_instance_binder(resource_tag tag) const override;
+
     render_graph::pass_executor resolve_executor(std::string_view target, const pipeline_pass_definition& def, render_pipeline* pl) override;
-    resource_tag_binder_fn_t resolve_binder(std::string_view target, resource_tag tag) override;
+    per_frame_producer_fn resolve_frame_binder(std::string_view target, resource_tag tag) override;
+    per_draw_producer_fn resolve_draw_binder(std::string_view target, resource_tag tag) override;
+    per_instance_producer_fn resolve_instance_binder(std::string_view target, resource_tag tag) override;
 
    private:
     scripting_system* system;
 
     render_graph::pass_executor create_callback_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl);
-    resource_tag_binder_fn_t create_callback_tag_binder(const std::string_view entry, resource_tag tag);
+    per_frame_producer_fn create_callback_frame_binder(const std::string_view entry, resource_tag tag);
+    per_draw_producer_fn create_callback_draw_binder(const std::string_view entry, resource_tag tag);
+    per_instance_producer_fn create_callback_instance_binder(const std::string_view entry, resource_tag tag);
   };
 
 }  // namespace other

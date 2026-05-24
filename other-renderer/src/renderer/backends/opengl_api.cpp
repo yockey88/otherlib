@@ -168,8 +168,6 @@ namespace other {
     PROFILE_SECTION("opengl_api::on_begin_frame");
     glm::vec3 clear_color = get_clear_color();
 
-    // auto window_size = get_window_size();
-    // glViewport(0, 0, window_size.x, window_size.y);
     glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   }
@@ -178,6 +176,18 @@ namespace other {
     PROFILE_SECTION("opengl_api::on_end_frame");
     SDL_GL_MakeCurrent(native_window(), gl_ctx(get_gpu_context()));
     SDL_GL_SwapWindow(native_window());
+  }
+
+  void opengl_api::begin_pass(const pass_begin_info& info) {
+  }
+
+  void opengl_api::end_pass() {
+  }
+
+  void opengl_api::bind_set(uint32_t set_index, std::span<const binding_record>) {
+  }
+
+  void opengl_api::set_dynamic_offsets(uint32_t set_index, std::span<const uint32_t>) {
   }
 
   void opengl_api::execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) {
@@ -701,8 +711,9 @@ namespace other {
       CORE_LOG_ERROR("Buffer resource with ID {} not found in buffer resources.", handle.id);
       return;
     }
-    if (data == nullptr) {
-      size = 0;
+    if (size == 0) {
+      CORE_LOG_ERROR("Buffer data size must be greater than 0 for buffer resource with ID {}.", handle.id);
+      return;
     }
 
     uint32_t buffer_id = itr->second;
@@ -726,24 +737,18 @@ namespace other {
       CORE_LOG_ERROR("Buffer resource with ID {} not found in buffer resources.", handle.id);
       return;
     }
-    if (data == nullptr || size == 0) {
-      return;  // No data to upload
-    }
 
     uint32_t buffer_id = itr->second;
-    if (buf_itr->second.get_buffer_type() == gpu_buffer::buf_type::UNIFORM_BUFFER ||
-        buf_itr->second.get_buffer_type() == gpu_buffer::buf_type::STORAGE_BUFFER) {
-      glBindBufferRange(get_gl_buffer_type(buf_itr->second.get_buffer_type()), 0, buffer_id, start, size);
-    } else {
-      glBindBuffer(get_gl_buffer_type(buf_itr->second.get_buffer_type()), buffer_id);
+    const auto type = buf_itr->second.get_buffer_type();
+    const GLenum gl_type = get_gl_buffer_type(type);
+    const bool indexed = (type == gpu_buffer::buf_type::UNIFORM_BUFFER || type == gpu_buffer::buf_type::STORAGE_BUFFER);
+
+    glBindBuffer(gl_type, buffer_id);
+    glBufferSubData(gl_type, start, size, data);
+    if (indexed) {
+      glBindBufferRange(gl_type, binding_point, buffer_id, start, size);
     }
-    glBufferSubData(get_gl_buffer_type(buf_itr->second.get_buffer_type()), start, size, data);
-    if (buf_itr->second.get_buffer_type() == gpu_buffer::buf_type::UNIFORM_BUFFER ||
-        buf_itr->second.get_buffer_type() == gpu_buffer::buf_type::STORAGE_BUFFER) {
-      glBindBufferBase(get_gl_buffer_type(buf_itr->second.get_buffer_type()), 0, buffer_id);
-    } else {
-      glBindBuffer(get_gl_buffer_type(buf_itr->second.get_buffer_type()), 0);
-    }
+    glBindBuffer(gl_type, 0);
     CHECKGL();
   }
 
@@ -1234,6 +1239,20 @@ namespace other {
 
     glUniformMatrix4fv(shader_id, 1, transpose ? GL_TRUE : GL_FALSE, glm::value_ptr(value));
     CHECKGL();
+  }
+
+  uint32_t opengl_api::uniform_buffer_offset_alignment() const {
+    GLint alignment = 0;
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
+    CHECKGL();
+    return static_cast<uint32_t>(alignment);
+  }
+
+  uint32_t opengl_api::storage_buffer_offset_alignment() const {
+    GLint alignment = 0;
+    glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &alignment);
+    CHECKGL();
+    return static_cast<uint32_t>(alignment);
   }
 
   int32_t opengl_api::get_gpu_api_window_flags() const {

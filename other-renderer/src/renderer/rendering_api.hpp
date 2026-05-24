@@ -21,9 +21,27 @@
 #include "gpu_resource/texture.hpp"
 #include "model/vertex.hpp"
 #include "renderer/draw_command.hpp"
+#include "renderer/pipeline_definition.hpp"
+#include "renderer/render_pass.hpp"
 #include "renderer/window_manager.hpp"
 
 namespace other {
+
+  struct pass_begin_info {
+    opt<resource_handle> framebuffer;  // none = swapchain
+    glm::ivec2 render_area_size;
+    opt<glm::vec4> clear_color;
+    opt<float> clear_depth;
+    render_pass::type pass_type;
+  };
+
+  struct binding_record {
+    uint32_t binding_point;
+    binding_type type;
+    resource_handle handle;
+    size_t offset = 0;  // for PER_DRAW_CALL dynamic offsets
+    size_t size = 0;    // 0 = whole resource
+  };
 
   class rendering_api {
    public:
@@ -59,6 +77,12 @@ namespace other {
 
     virtual void on_begin_frame(scope<window_manager>& window_mgr) = 0;
     virtual void on_end_frame(scope<window_manager>& window_mgr) = 0;
+
+    virtual void begin_pass(const pass_begin_info& info) = 0;
+    virtual void end_pass() = 0;
+
+    virtual void bind_set(uint32_t set_index, std::span<const binding_record>) = 0;
+    virtual void set_dynamic_offsets(uint32_t set_index, std::span<const uint32_t>) = 0;
 
     virtual void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) = 0;
 
@@ -111,6 +135,9 @@ namespace other {
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose = false) = 0;
+
+    virtual uint32_t uniform_buffer_offset_alignment() const = 0;
+    virtual uint32_t storage_buffer_offset_alignment() const = 0;
 
     resource_handle create_resource(const std::string_view name, resource_type type);
     void destroy_resource(const resource_handle& handle);

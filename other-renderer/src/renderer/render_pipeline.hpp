@@ -12,6 +12,7 @@
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/frame_node.hpp"
 #include "renderer/pipeline_definition.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/resource_tag.hpp"
@@ -40,8 +41,31 @@ namespace other {
     }
   };
 
+  struct per_pass_binding_state {
+    std::vector<resource_handle> per_frame_handles;
+    struct draw_ring {
+      resource_handle ring_buffer;  // GPU-side
+      uint8_t* cpu_staging;         // CPU-side
+      uint32_t capacity;
+      uint32_t element_size;
+      uint32_t stride;  // element_size aligned up to the required alignment for the buffer type
+      uint32_t head;    // bytes consumed this frame
+      uint32_t binding_point;
+      uint32_t set;  // needed for some rendering apis, gl ignores, vk uses, dx12 uses sort of..., etc.
+    };
+    std::vector<draw_ring> per_draw_rings;
+  };
+
+  struct pass_runtime {
+    natural_t pass_id;
+    const pipeline_pass_definition* def;
+    per_pass_binding_state state;
+  };
+
   class render_pipeline {
    public:
+    static constexpr uint32_t kMaxFramesInFlight = 3;
+
     render_pipeline() = default;
     render_pipeline(pipeline_definition&& def)
         : definition(std::move(def)) {}
@@ -52,10 +76,16 @@ namespace other {
     void initialize_pipeline(renderer* renderer_ptr);
     void shutdown_pipeline();
 
+    bool has_pass(natural_t pass_id) const;
+    pass_runtime& get_pass_runtime(natural_t pass_id);
+
     bool reload(pipeline_definition&& new_def);
 
     void prepare_frame(render_data* data);
+    void bind_frame_resources(const render_data& data);
+    void bind_draw_resources(pass_runtime& runtime, const render_data& data, size_t draw_index);
     void render_frame(renderer* renderer_ptr);
+    void reset_draw_buffers();
 
     ImTextureID get_final_output_texture_id();
     resource_handle get_screen_texture() const;
@@ -75,17 +105,6 @@ namespace other {
     resource_handle get_quad_mesh_handle() const;
 
     static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
-
-    /// \todo: remove these
-    bool has_shadow_map_pass() const;
-    void clear_shadow_map_pass_name();
-    shader* get_shadow_map_pass();
-
-    bool has_shading_pass_name() const;
-    shader* get_shading_pass();
-
-    bool has_light_space_matrix_uniform() const;
-    std::string light_space_matrix_uniform() const;
 
    private:
     pipeline_definition definition;
@@ -112,8 +131,13 @@ namespace other {
     opt<resource_handle> screen_texture_handle;
     opt<resource_handle> quad_mesh_handle;
 
+    std::map<natural_t, pass_runtime> pass_runtimes;
+
     using executor_fn = render_graph::pass_executor;
     std::map<std::string, executor_fn> executor_overrides;
+
+    void build_pass_runtimes();
+    void destroy_pass_runtimes();
 
     void apply_lighting_uniforms(const render_data& data);
 

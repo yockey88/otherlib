@@ -8,6 +8,8 @@
 
 #include <glm/glm.hpp>
 
+#include "thread/thread_safety.hpp"
+
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/render_graph.hpp"
@@ -44,16 +46,30 @@ namespace other {
     build_passes_from_def();
     graph->end_pipeline();
 
+    build_pass_runtimes();
+
     validate();
   }
 
   void render_pipeline::shutdown_pipeline() {
     destroy_resources();
 
+    destroy_pass_runtimes();
+
     arena_allocator<render_graph>{}.free(graph);
     graph = nullptr;
 
     renderer_ptr = nullptr;
+  }
+
+  bool render_pipeline::has_pass(natural_t pass_id) const {
+    return pass_runtimes.find(pass_id) != pass_runtimes.end();
+  }
+
+  pass_runtime& render_pipeline::get_pass_runtime(natural_t pass_id) {
+    auto itr = pass_runtimes.find(pass_id);
+    OTHER_ASSERT(itr != pass_runtimes.end(), "Pass runtime with id {} not found.", pass_id);
+    return itr->second;
   }
 
   bool render_pipeline::reload(pipeline_definition&& new_def) {
@@ -77,27 +93,96 @@ namespace other {
       return;
     }
 
-    auto& reg = renderer_ptr->get_tag_registry();
-    for (const auto& [_, named] : buffer_resources) {
-      if (named.tag.is_none()) {
-        continue;
-      }
-
-      if (auto binder = reg.find(named.tag)) {
-        (binder)(*this, *data, named.handle);
-      }
-    }
-    for (const auto& [_, named] : texture_resources) {
-      if (named.tag.is_none()) {
-        continue;
-      }
-
-      if (auto binder = reg.find(named.tag)) {
-        (binder)(*this, *data, named.handle);
-      }
-    }
-
+    bind_frame_resources(*data);
     apply_lighting_uniforms(*data);
+  }
+
+  void render_pipeline::bind_frame_resources(const render_data& data) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("render_pipeline::pump_pipeline_per_frame_bindings");
+
+    auto& reg = renderer_ptr->get_binding_registry();
+
+    std::unordered_set<uint64_t> visited;
+    for (auto& [pass_id, runtime] : pass_runtimes) {
+      OTHER_ASSERT(runtime.def != nullptr, "pass_runtime[{}] has null def", pass_id);
+
+      for (size_t i = 0; i < runtime.def->bindings.size(); ++i) {
+        const auto& bd = runtime.def->bindings[i];
+        if (bd.scope != binding_scope::PER_FRAME || bd.tag.is_none()) {
+          continue;
+        }
+
+        auto handle_opt = find_tagged(bd.tag);
+        // clang-format off
+        OTHER_ASSERT(handle_opt.has_value(), "pipeline '{}' pass '{}' binding '{}': no resource for tag '{}' but a producer is declared", 
+                     definition.name, runtime.def->name, bd.name, bd.tag.value());
+        // clang-format on
+
+        const resource_handle handle = *handle_opt;
+        const uint64_t key = (uint64_t(bd.tag.value()) << 32) | handle.id;
+        if (!visited.insert(key).second) {
+          runtime.state.per_frame_handles[i] = handle;
+          continue;
+        }
+
+        auto binder = reg.find_per_frame(bd.tag);
+        if (binder == nullptr) {
+          auto* resolver = renderer_ptr->get_pass_executor_resolver();
+          if (resolver != nullptr) {
+            binder = resolver->resolve_frame_binder("default", bd.tag);
+          }
+        }
+
+        if (binder == nullptr) {
+          // some tags (kScreenTag) legitimately have no producer
+          runtime.state.per_frame_handles[i] = handle;
+          continue;
+        }
+
+        binder(*this, data, handle);
+        runtime.state.per_frame_handles[i] = handle;
+      }
+    }
+  }
+
+  void render_pipeline::bind_draw_resources(pass_runtime& runtime, const render_data& data, size_t draw_index) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("render_pipeline::bind_draw_resources");
+    auto& reg = renderer_ptr->get_binding_registry();
+    auto& api = renderer_ptr->rendering()->api();
+    OTHER_ASSERT(api != nullptr, "Rendering API is null in bind_draw_resources.");
+
+    for (size_t i = 0; i < runtime.def->bindings.size(); ++i) {
+      const auto& bd = runtime.def->bindings[i];
+      if (bd.scope != binding_scope::PER_DRAW_CALL) {
+        continue;
+      }
+
+      auto& ring = runtime.state.per_draw_rings[i];
+      OTHER_ASSERT(ring.ring_buffer.id != 0, "pass '{}' binding '{}': per-draw ring not allocated", runtime.def->name, bd.name);
+      // clang-format off
+      OTHER_ASSERT(ring.head + ring.element_size <= ring.capacity, "pass '{}' binding '{}': per-draw ring exhausted at draw {} (head={}, element={}, capacity={})", 
+                   runtime.def->name, bd.name, draw_index, ring.head, ring.element_size, ring.capacity);
+      // clang-format on
+
+      auto producer = reg.find_per_draw(bd.tag);
+      if (producer == nullptr) {
+        auto* resolver = renderer_ptr->get_pass_executor_resolver();
+        OTHER_ASSERT(resolver != nullptr, "pass '{}' binding '{}': no producer for tag '{}' and no resolver available", runtime.def->name, bd.name, bd.tag.value());
+
+        producer = resolver->resolve_draw_binder("default", bd.tag);
+      }
+      if (producer == nullptr) {
+        OTHER_ASSERT(false, "pass '{}' binding '{}': no producer for tag '{}'", runtime.def->name, bd.name, bd.tag.value());
+        continue;
+      }
+
+      std::span<uint8_t> slice{ ring.cpu_staging + ring.head, ring.element_size };
+      producer(data, draw_index, slice);
+      api->buffer_range(ring.ring_buffer, ring.binding_point, ring.head, ring.element_size, ring.cpu_staging + ring.head);
+      ring.head += ring.stride;
+    }
   }
 
   void render_pipeline::render_frame(renderer* renderer_ptr) {
@@ -107,23 +192,71 @@ namespace other {
     auto& g = graph->get_graph();
     const auto& execs = graph->get_executors();
     const auto& sort = graph->get_topological_sort();
-
     if (sort.empty()) {
       return;
     }
 
-    for (const natural_t id : sort) {
-      auto node_itr = g.nodes.find(id);
-      OTHER_ASSERT(node_itr != g.nodes.end(), "Node with id {} not found in graph.", id);
+    {
+      PROFILE_SECTION("render_pipeline::render_frame--execute_passes");
+      for (const natural_t id : sort) {
+        PROFILE_SECTION("render_pipeline::render_frame--execute_passes--pass");
+        auto node_itr = g.nodes.find(id);
+        OTHER_ASSERT(node_itr != g.nodes.end(), "Node with id {} not found in graph.", id);
 
-      auto& n = node_itr->second;
-      const auto* pass = n.pass;
-      auto exec_itr = execs.find(pass->id);
-      OTHER_ASSERT(exec_itr != execs.end(), "Executor for pass {} not found.", id);
+        frame_node& n = node_itr->second;
+        const render_pass* pass = n.pass;
+        OTHER_ASSERT(pass != nullptr, "Node {} has null pass", id);
 
-      n.start_pass(renderer_ptr);
-      exec_itr->second(*renderer_ptr, &n, pass->user_data);
-      n.end_pass(renderer_ptr);
+        auto runtime_itr = pass_runtimes.find(pass->id);
+        OTHER_ASSERT(runtime_itr != pass_runtimes.end(), "Pass runtime for pass id {} not built — was build_pass_runtimes() called?", pass->id);
+        pass_runtime& runtime = runtime_itr->second;
+
+        auto exec_itr = execs.find(pass->id);
+        OTHER_ASSERT(exec_itr != execs.end(), "Executor for pass {} (id {}) not found.", pass->name, pass->id);
+        const render_graph::pass_executor& exec = exec_itr->second;
+
+        frame_binding_view bv{
+          .defs = std::span{ runtime.def->bindings },
+          .per_frame_handles = std::span{ runtime.state.per_frame_handles },
+          .per_draw_offsets = {},
+        };
+        pass_diagnostics diag{};
+
+        const uint32_t iters = std::max<uint32_t>(runtime.def->iterations_per_frame, 1u);
+
+        {
+          PROFILE_SECTION("render_pipeline::render_frame--execute_passes--pass--iterations");
+          for (uint32_t iter = 0; iter < iters; ++iter) {
+            diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
+
+            n.start_pass(renderer_ptr);
+            {
+              pass_context ctx{
+                renderer_ptr,
+                this,
+                &n,
+                frame_render_data,
+                bv,
+                &diag,
+              };
+              exec(ctx);
+            }
+            n.end_pass(renderer_ptr);
+          }
+        }
+
+        for (auto& ring : runtime.state.per_draw_rings) {
+          ring.head = 0;
+        }
+      }
+    }
+  }
+
+  void render_pipeline::reset_draw_buffers() {
+    for (auto& [_, runtime] : pass_runtimes) {
+      for (auto& ring : runtime.state.per_draw_rings) {
+        ring.head = 0;
+      }
     }
   }
 
@@ -238,33 +371,125 @@ namespace other {
       }
     }
   }
+  namespace {
 
-  bool render_pipeline::has_shadow_map_pass() const {
-    return definition.shadow_map_pass_name.has_value();
+    constexpr uint32_t align_up(uint32_t value, uint32_t align) {
+      OTHER_ASSERT(align > 0 && (align & (align - 1)) == 0, "align_up: alignment must be a power of two, got {}", align);
+      return (value + align - 1) & ~(align - 1);
+    }
+
+  }  // namespace
+
+  void render_pipeline::build_pass_runtimes() {
+    pass_runtimes.clear();
+    auto& reg = renderer_ptr->get_binding_registry();
+
+    for (const auto& pass_def : definition.passes) {
+      natural_t pass_name_hash = FNV(pass_def.name);
+      auto nodes_view = graph->get_graph().nodes | std::views::values;
+      render_pass* pass = nullptr;
+      {
+        auto itr = std::ranges::find_if(nodes_view, [&](const frame_node& node) { return FNV(node.pass->name) == pass_name_hash; });
+        if (itr == std::ranges::end(nodes_view)) {
+          CORE_LOG_ERROR("No node found in graph for pass '{}'", pass_def.name);
+          continue;
+        }
+        frame_node& n = *itr;
+        pass = n.pass;
+      }
+
+      OTHER_ASSERT(pass != nullptr, "Node for pass '{}' has null pass pointer", pass_def.name);
+
+      auto [itr, inserted] = pass_runtimes.insert({ pass->id, {} });
+      OTHER_ASSERT(inserted, "Pass runtime for pass '{}' already exists", pass_def.name);
+      pass_runtime& runtime = itr->second;
+      runtime.pass_id = pass->id;
+      runtime.def = &pass_def;
+      runtime.state.per_frame_handles.resize(pass_def.bindings.size());
+      runtime.state.per_draw_rings.resize(pass_def.bindings.size());
+
+      for (size_t i = 0; i < pass_def.bindings.size(); ++i) {
+        const auto& bd = pass_def.bindings[i];
+
+        if (bd.scope == binding_scope::PER_DRAW_CALL || bd.scope == binding_scope::PER_INSTANCE) {
+          OTHER_ASSERT(bd.element_size > 0, "pipeline '{}' pass '{}' binding '{}': per-draw bindings must specify element_size > 0", definition.name, pass_def.name, bd.name);
+
+          uint32_t align = 1;
+          switch (bd.type) {
+            case binding_type::UNIFORM_BUFFER: align = renderer_ptr->rendering()->api()->uniform_buffer_offset_alignment(); break;
+            case binding_type::STORAGE_BUFFER: align = renderer_ptr->rendering()->api()->storage_buffer_offset_alignment(); break;
+            /// \todo is this correct?
+            case binding_type::DRAW_INDIRECT_BUFFER: align = 4; break;
+            default:
+              OTHER_ASSERT(false, "binding '{}' has type {} but a per-draw ring was requested", bd.name, int(bd.type));
+          }
+
+          const uint32_t stride = align_up(bd.element_size, align);
+          const uint32_t expected = pass_def.expected_max_draws.value_or(renderer::kMaxDrawCalls);
+          const uint32_t capacity = stride * expected;  // * kMaxFramesInFlight;
+          // clang-format off
+          CORE_LOG_DEBUG("Attempting to allocate per-draw ring buffer for pass '{}' binding '{}': element_size={}, expected_max_draws={}, capacity={}", 
+                         pass_def.name, bd.name, bd.element_size, expected, capacity);
+          // clang-format on
+
+          auto handle = renderer_ptr->create_resource(std::format("{}.{}.ring", pass_def.name, bd.name), resource_type::BUFFER);
+          runtime.state.per_draw_rings[i] = {
+            .ring_buffer = handle,
+            .cpu_staging = (uint8_t*)arena::allocate(capacity),
+            .capacity = capacity,
+            .element_size = bd.element_size,
+            .stride = stride,
+            .head = 0,
+            .binding_point = bd.binding,
+            .set = bd.set,
+          };
+
+          gpu_buffer& buf = renderer_ptr->get_resource<gpu_buffer>(handle);
+          buf.set_buffer_type(buffer_type_from_binding(bd.type))
+            .set_usage(gpu_buffer::usage::DYNAMIC)
+            .set_data(nullptr, capacity)
+            .finalize_buffer();
+        }
+
+        bool ok = true;
+        switch (bd.scope) {
+          case binding_scope::PER_PIPELINE:
+            ok = true;
+            break;
+          case binding_scope::PER_FRAME:
+            ok = !bd.tag.is_none() && (reg.find_per_frame(bd.tag) != nullptr || renderer_ptr->frame_binder_resolves(bd.tag));
+            break;
+          case binding_scope::PER_DRAW_CALL:
+            ok = !bd.tag.is_none() && (reg.find_per_draw(bd.tag) != nullptr || renderer_ptr->draw_binder_resolves(bd.tag));
+            break;
+          case binding_scope::PER_INSTANCE:
+            ok = !bd.tag.is_none() && (reg.find_per_instance(bd.tag) != nullptr || renderer_ptr->instance_binder_resolves(bd.tag));
+            break;
+          default:
+            OTHER_ASSERT(false, "Unsupported binding scope {} for pass '{}', binding '{}'", int(bd.scope), pass_def.name, bd.name);
+        }
+
+        if (!ok) {
+          // clang-format off
+          CORE_LOG_ERROR("pipeline '{}' pass '{}': no producer for binding '{}' (scope={}, tag={})", 
+                         definition.name, pass_def.name, bd.name, int(bd.scope), bd.tag.value());
+          // clang-format on
+          valid = false;
+        }
+      }
+    }
   }
 
-  void render_pipeline::clear_shadow_map_pass_name() {
-    definition.shadow_map_pass_name = std::nullopt;
-  }
-
-  shader* render_pipeline::get_shadow_map_pass() {
-    return get_pass_shader(*definition.shadow_map_pass_name);
-  }
-
-  bool render_pipeline::has_shading_pass_name() const {
-    return definition.shading_pass_name.has_value();
-  }
-
-  shader* render_pipeline::get_shading_pass() {
-    return get_pass_shader(*definition.shading_pass_name);
-  }
-
-  bool render_pipeline::has_light_space_matrix_uniform() const {
-    return definition.light_space_matrix_uniform_name.has_value();
-  }
-
-  std::string render_pipeline::light_space_matrix_uniform() const {
-    return *definition.light_space_matrix_uniform_name;
+  void render_pipeline::destroy_pass_runtimes() {
+    for (auto& [_, runtime] : pass_runtimes) {
+      for (auto& ring : runtime.state.per_draw_rings) {
+        if (ring.ring_buffer.id != 0) {
+          renderer_ptr->destroy_resource(ring.ring_buffer);
+        }
+        arena::free(ring.cpu_staging, ring.capacity);
+      }
+    }
+    pass_runtimes.clear();
   }
 
   void render_pipeline::apply_lighting_uniforms(const render_data& data) {
@@ -425,9 +650,14 @@ namespace other {
       }
     }
 
-    valid = graph->is_valid();
-    if (!valid) {
+    const bool graph_valid = graph->is_valid();
+    // const bool needs_screen = ...
+    const bool has_screen = std::ranges::any_of(definition.textures, [&](const auto& t) { return t.tag == resource_tag(resource_tag::kScreenTag); });
+    const bool pipeline_valid = graph_valid && has_screen;
+    if (!pipeline_valid) {
       CORE_LOG_ERROR("Pipeline [{}] has valid resources but render graph is invalid.", definition.name);
+    } else {
+      valid = true;
     }
   }
 

@@ -28,8 +28,7 @@ namespace other {
     (*subsystem<renderer_backend>::get()->api()->get_resource_as<gpu_buffer>(handle))
       .set_binding_name(std::string{ name })
       .set_buffer_type(type)
-      .set_usage(buf_usage)
-      .finalize_buffer();
+      .set_usage(buf_usage);
     return handle;
   }
 
@@ -85,20 +84,21 @@ namespace other {
   }
 
   gpu_buffer& gpu_buffer::set_data(const void* data, size_t size) {
-    if (data == nullptr || size == 0) {
-      CORE_LOG_ERROR("Invalid buffer data: data is null or size is zero.");
+    current_size = size;
+    if (current_size == 0) {
+      CORE_LOG_ERROR("Invalid buffer data: size is zero.");
       return *this;
     }
     buffer_data.clear();
-    buffer_data.resize(size);
+    buffer_data.resize(current_size);
     if (data != nullptr) {
-      std::memcpy(buffer_data.data(), data, size);
+      std::memcpy(buffer_data.data(), data, current_size);
     }
     return *this;
   }
 
   gpu_buffer& gpu_buffer::set_buffer_at(size_t offset, const void* data, size_t size) {
-    if (offset + size > buffer_data.size()) {
+    if (offset + size > current_size) {
       CORE_LOG_ERROR("Buffer overflow: trying to write beyond buffer size.");
       return *this;
     }
@@ -107,19 +107,17 @@ namespace other {
   }
 
   gpu_buffer& gpu_buffer::upload_range(size_t start, size_t size, const void* data) {
-    if (start + size > buffer_data.size()) {
+    if (start + size > current_size) {
       CORE_LOG_ERROR("Buffer overflow: trying to write beyond buffer size.");
       return *this;
     }
     std::memcpy(buffer_data.data() + start, data, size);
     subsystem<renderer_backend>::get()->api()->buffer_range(handle(), binding_point, start, get_data_size(), get_data());
-    current_size = buffer_data.size();
     return *this;
   }
 
   gpu_buffer& gpu_buffer::upload_buffer() {
     subsystem<renderer_backend>::get()->api()->buffer_data(handle(), binding_point, get_data(), get_data_size());
-    current_size = get_data_size();
     return *this;
   }
 
@@ -144,7 +142,6 @@ namespace other {
   }
 
   size_t gpu_buffer::get_data_size() {
-    current_size = get_data() == nullptr ? 0 : buffer_data.size();
     return current_size;
   }
 

@@ -11,69 +11,6 @@
 
 namespace other {
 
-  void render_pass::bind_pass(renderer* renderer_ptr) {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
-
-    if (shader_handle.has_value()) {
-      if (framebuffer_handle.has_value()) {
-        renderer_ptr->get_resource<framebuffer>(*framebuffer_handle).bind();
-      }
-      renderer_ptr->get_resource<shader>(*shader_handle).bind();
-    }
-  }
-
-  void render_pass::unbind_pass(renderer* renderer_ptr) {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
-
-    if (shader_handle.has_value()) {
-      if (framebuffer_handle.has_value()) {
-        renderer_ptr->get_resource<framebuffer>(*framebuffer_handle).unbind();
-      }
-      renderer_ptr->get_resource<shader>(*shader_handle).unbind();
-    }
-  }
-
-  void render_graph::node::start_pass(renderer* renderer_ptr) const {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
-
-    if (pass->shader_handle.has_value()) {
-      pass->bind_pass(renderer_ptr);
-      for (const auto& [binding_point, buffer] : input_buffers) {
-        renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
-          .set_shader_resource(binding_point, *pass->shader_handle)
-          .bind();
-      }
-      for (const auto& [binding_point, buffer] : output_buffers) {
-        renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
-          .set_shader_resource(binding_point, *pass->shader_handle)
-          .bind();
-      }
-
-      for (const auto& [id, tex] : input_textures) {
-        renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
-      }
-    }
-    /// set other pipeline state options here
-  }
-
-  void render_graph::node::end_pass(renderer* renderer_ptr) const {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
-
-    if (pass->shader_handle.has_value()) {
-      for (const auto& [id, tex] : input_textures) {
-        renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
-      }
-
-      for (const auto& [binding_point, buffer] : output_buffers) {
-        renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
-      }
-      for (const auto& [binding_point, buffer] : input_buffers) {
-        renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
-      }
-      pass->unbind_pass(renderer_ptr);
-    }
-  }
-
   render_graph::pass_builder& render_graph::pass_builder::set_clear_color(const glm::vec4& clear_color) {
     pass.clear_color = clear_color;
     return *this;
@@ -186,11 +123,11 @@ namespace other {
       return;
     }
 
-    std::vector<node> nodes;
+    std::vector<frame_node> nodes;
     nodes.reserve(passes.size());
 
     for (auto& [id, pass] : passes) {
-      auto& n = nodes.emplace_back() = node{
+      auto& n = nodes.emplace_back() = frame_node{
         .id = get_next_node_id(),
         .pass = &pass.pass,
       };
@@ -264,24 +201,6 @@ namespace other {
       return;
     }
 
-    auto& last_pass_index = topological_sort.back();
-    auto& last_pass = pass_graph.nodes.at(last_pass_index);
-    if (last_pass.pass->pass_type == render_pass::type::COMPUTE_PASS) {
-      CORE_LOG_ERROR("Last pass in the render graph is a compute pass, which is not supported in the current implementation.");
-      return;
-    }
-
-    if (last_pass.output_textures.size() > 1) {
-      CORE_LOG_ERROR("If the last pass has an output texture, it must have exactly one, texture has {} outputs.", last_pass.output_textures.size());
-      output_texture_handle = std::nullopt;
-      graph_valid = false;
-      return;
-    }
-    if (last_pass.output_buffers.size() == 1) {
-      output_texture_handle = last_pass.output_textures.begin()->second.handle;
-    } else {
-      /// using default backbuffer
-    }
     graph_valid = true;
   }
 

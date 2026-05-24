@@ -10,7 +10,9 @@
 #include "core/config_table.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/debug_render_stream.hpp"
 #include "renderer/draw_command.hpp"
+#include "renderer/frame_binding_registry.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/pass_executor_resolver.hpp"
 #include "renderer/pipeline_definition.hpp"
@@ -18,12 +20,12 @@
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
 #include "renderer/renderer_backend.hpp"
-#include "renderer/resource_tag_registry.hpp"
 
 namespace other {
 
   class renderer_backend;
 
+  struct frame_node;
   class render_pipeline;
   class camera;
 
@@ -61,6 +63,7 @@ namespace other {
     std::vector<gpu::bone_matrix_buffer> bone_buffers;
 
     debug_rendering_data debug_data;
+    debug_streams debug_streams_data;
   };
 
   class renderer {
@@ -70,11 +73,13 @@ namespace other {
     virtual ~renderer() = default;
 
     render_executor_registry& get_executor_registry() { return executor_registry; }
-    resource_tag_registry& get_tag_registry() { return tag_registry; }
+    frame_binding_registry& get_binding_registry() { return binding_registry; }
+    pass_executor_resolver* get_pass_executor_resolver() { return pass_exec_resolver; }
 
     void initialize_pass_resolver(pass_executor_resolver* resolver);
 
     void begin_frame(render_data* data);
+    void bind_frame_bindings(const render_data& data);
     void render();
     void end_frame();
 
@@ -83,6 +88,10 @@ namespace other {
     void begin_ui_frame();
     void end_ui_frame();
 
+    bool executor_resolves(const std::string_view name) const;
+    bool frame_binder_resolves(const resource_tag& tag) const;
+    bool draw_binder_resolves(const resource_tag& tag) const;
+    bool instance_binder_resolves(const resource_tag& tag) const;
     render_graph::pass_executor attempt_executor_resolution(const std::string_view name, const pipeline_pass_definition& def, render_pipeline* pl);
 
     inline const config_table& get_config() const { return config; }
@@ -135,7 +144,7 @@ namespace other {
     void remove_pipeline(const std::string_view name);
 
     virtual void dispatch_compute(shader* shader_ptr, uint32_t x, uint32_t y, uint32_t z);
-    virtual void execute_draw_calls(render_graph::node* current_node);
+    virtual void execute_draw_calls(frame_node* current_node);
 
     constexpr static inline size_t kMaxDrawCalls = 1024;
 
@@ -143,7 +152,9 @@ namespace other {
     renderer_backend* rendering();
 
    private:
+    friend class render_pipeline;
     friend class render_graph;
+    friend class pass_context;
 
     config_table config;
 
@@ -152,9 +163,12 @@ namespace other {
 
     pass_executor_resolver* pass_exec_resolver = nullptr;
     render_executor_registry executor_registry;
-    resource_tag_registry tag_registry;
+    frame_binding_registry binding_registry;
+    debug_stream_registry debug_stream_registry;
 
     std::map<natural_t, render_pipeline*> pipelines;
+
+    render_pipeline* get_pass_pipeline(natural_t pass_id) const;
   };
 
 }  // namespace other

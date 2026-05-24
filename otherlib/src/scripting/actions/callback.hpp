@@ -93,6 +93,8 @@ namespace other {
         auto* env = subsystem<scripting_environment>::get();
         OTHER_ASSERT(env != nullptr, "scripting_environment subsystem is not available.");
         return env->call_static_dotnet_method<Ret>(type_name.value(), method_name, std::forward<CallArgs>(args)...);
+      } else {
+        throw callback_error("Invalid state in dotnet callback: no object or type name.");
       }
     }
 
