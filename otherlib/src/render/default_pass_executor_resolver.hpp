@@ -21,16 +21,8 @@ namespace other {
    private:
     scripting_system* system;
 
-    std::string get_dotnet_class_name(const std::string_view entry);
-    std::string get_dotnet_method_name(const std::string_view entry);
-
-    render_graph::pass_executor dotnet_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl);
-    render_graph::pass_executor lua_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl);
-    render_graph::pass_executor vm_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl);
-
-    resource_tag_binder_fn_t dotnet_make_resource_tag_binder(const std::string_view entry, resource_tag tag);
-    resource_tag_binder_fn_t lua_make_resource_tag_binder(const std::string_view entry, resource_tag tag);
-    resource_tag_binder_fn_t vm_make_resource_tag_binder(const std::string_view entry, resource_tag tag);
+    render_graph::pass_executor create_callback_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl);
+    resource_tag_binder_fn_t create_callback_tag_binder(const std::string_view entry, resource_tag tag);
   };
 
 }  // namespace other

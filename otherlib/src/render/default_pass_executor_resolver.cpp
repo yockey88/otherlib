@@ -4,6 +4,7 @@
 #include "render/default_pass_executor_resolver.hpp"
 
 #include <format>
+#include <string>
 
 #include "renderer/pass_executor_interop.hpp"
 #include "script/scripting_environment.hpp"
@@ -20,17 +21,10 @@ namespace other {
     std::string_view host = target.substr(0, colon);
     std::string_view entry = target.substr(colon + 1);
 
-    if (host == "cs") {
-      return dotnet_make_pass_executor(entry, def, pl);
+    if (host == "cs" || host == "lua" || host == "vm" || host == "plugin") {
+      return create_callback_executor(entry, def, pl);
     }
-
-    if (host == "lua") {
-      return lua_make_pass_executor(entry, def, pl);
-    }
-
-    if (host == "vm") {
-      return vm_make_pass_executor(entry, def, pl);
-    }
+    /// \todo handle other host types here
 
     return nullptr;
   }
@@ -41,48 +35,20 @@ namespace other {
     std::string_view host = target.substr(0, colon);
     std::string_view entry = target.substr(colon + 1);
 
-    if (host == "cs") {
-      return dotnet_make_resource_tag_binder(entry, tag);
-    }
-
-    if (host == "lua") {
-      return lua_make_resource_tag_binder(entry, tag);
-    }
-
-    if (host == "vm") {
-      return vm_make_resource_tag_binder(entry, tag);
+    if (host == "cs" || host == "lua" || host == "vm") {
+      return create_callback_tag_binder(entry, tag);
     }
 
     return nullptr;
   }
 
-  // name will be arbitrary number of namespace/class names and then '.Method()'
-  // Example.Class.Method()
-  std::string default_pass_executor_resolver::get_dotnet_class_name(const std::string_view entry) {
-    std::string e{ entry };
-    auto last_dot = e.find_last_of('.');
-    OTHER_ASSERT(last_dot != std::string::npos, "Inalid .NET class name in pass resolver!");
-    return e.substr(0, last_dot);
-  }
-
-  std::string default_pass_executor_resolver::get_dotnet_method_name(const std::string_view entry) {
-    std::string e{ entry };
-    auto last_dot = e.find_last_of('.');
-    OTHER_ASSERT(last_dot != std::string::npos, "Inalid .NET class name in pass resolver!");
-    return e.substr(last_dot + 1, e.size() - (last_dot + 1));
-  }
-
-  render_graph::pass_executor default_pass_executor_resolver::dotnet_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl) {
+  render_graph::pass_executor default_pass_executor_resolver::create_callback_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl) {
     if (system == nullptr || subsystem<scripting_environment>::inert) {
       return nullptr;
     }
-    std::string entry_str{ entry };
-    return [this, e = entry_str, p = pl](renderer& r, render_graph::node* n, void* ud) {
+    return [this, e = std::string{ entry }, p = pl](renderer& r, render_graph::node* n, void* ud) {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "scripting_environment null in dotnet_make_pass_executor!");
-      std::string class_name = get_dotnet_class_name(e);
-      std::string method_name = get_dotnet_method_name(e);
-
       pass_invocation_interop interop{
         .renderer_ptr = &r,
         .node = n,
@@ -90,44 +56,17 @@ namespace other {
         .params = nullptr,
         .params_size = 0,
       };
-      std::string full_method_name = std::format("{}.{}", class_name, method_name);
-      system->get_driver().get_interface_registry().invoke_callback<>(full_method_name, &interop);
+      system->get_driver().get_interface_registry().invoke_callback<>(e, &interop);
     };
   }
 
-  render_graph::pass_executor default_pass_executor_resolver::lua_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl) {
+  resource_tag_binder_fn_t default_pass_executor_resolver::create_callback_tag_binder(const std::string_view entry, resource_tag tag) {
     if (system == nullptr || subsystem<scripting_environment>::inert) {
       return nullptr;
     }
-    return nullptr;
-  }
-
-  render_graph::pass_executor default_pass_executor_resolver::vm_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl) {
-    if (system == nullptr || subsystem<scripting_environment>::inert) {
-      return nullptr;
-    }
-    return nullptr;
-  }
-
-  resource_tag_binder_fn_t default_pass_executor_resolver::dotnet_make_resource_tag_binder(const std::string_view entry, resource_tag tag) {
-    if (system == nullptr || subsystem<scripting_environment>::inert) {
-      return nullptr;
-    }
-    return nullptr;
-  }
-
-  resource_tag_binder_fn_t default_pass_executor_resolver::lua_make_resource_tag_binder(const std::string_view entry, resource_tag tag) {
-    if (system == nullptr || subsystem<scripting_environment>::inert) {
-      return nullptr;
-    }
-    return nullptr;
-  }
-
-  resource_tag_binder_fn_t default_pass_executor_resolver::vm_make_resource_tag_binder(const std::string_view entry, resource_tag tag) {
-    if (system == nullptr || subsystem<scripting_environment>::inert) {
-      return nullptr;
-    }
-    return nullptr;
+    return [this, e = std::string{ entry }](render_pipeline& p, const render_data& d, resource_handle h) {
+      CORE_LOG_ERROR("Invoking resource tag binder callback [{}] on resource handle [{}]", e, h.id);
+    };
   }
 
 }  // namespace other
