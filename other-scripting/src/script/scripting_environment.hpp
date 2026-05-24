@@ -43,6 +43,7 @@ namespace other {
 
     ref<assembly> load_dotnet_module(const std::string_view module_path);
     ref<assembly> get_dotnet_module(const std::string_view module_name);
+    ref<assembly> get_dotnet_module_by_asset_path(const filepath& asset_path);
     void unload_dotnet_module(ref<assembly> module_id);
     void reset_dotnet_environment();
 
@@ -97,6 +98,11 @@ namespace other {
         CORE_LOG_ERROR("Script object with ID {} does not have a .NET object attached.", id);
         return default_return_value<R>();
       }
+    }
+
+    template <typename R = void, typename... Args>
+    R call_static_dotnet_method(const std::string_view type_name, const std::string_view function_name, Args&&... ctor_args) {
+      return dotnet.invoke_static<R>(type_name, function_name, std::forward<Args>(ctor_args)...);
     }
 
     template <typename FT>
@@ -215,6 +221,8 @@ namespace other {
         return R{};
       }
     }
+
+    void invoke_static_method_with_args(const std::string_view type_name, const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc);
   };
 
 }  // namespace other

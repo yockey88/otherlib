@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Reflection;
 using System.Text;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 #nullable enable
@@ -125,7 +126,7 @@ namespace OtherCsBindings
 
       if (type == null)
       {
-        return null;
+        type = cached_types.FirstOrDefault(t => t.FullName == name);
       }
 
       return type;
@@ -211,6 +212,26 @@ namespace OtherCsBindings
       }
     }
 
+    internal static Type? GetType(string name)
+    {
+      try
+      {
+        Type? type = FindType(name);
+        if (type == null)
+        {
+          Logger.LogError($"Type '{name}' not found.");
+          return null;
+        }
+
+        return type;
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+        return null;
+      }
+    }
+
     [UnmanagedCallersOnly]
     private static unsafe void GetAssemblyTypes(Int32 asm_id, Int32* out_types, Int32* out_type_count)
     {
@@ -235,14 +256,14 @@ namespace OtherCsBindings
         }
         else
         {
-          // Logger.LogTrace($"Found {asm_types.Length} types in assembly {asm.FullName}");
+          Logger.LogTrace($"Found {asm_types.Length} types in assembly {asm.FullName}");
         }
 
         if (out_types != null)
         {
           for (Int32 i = 0; i < asm_types.Length; i++)
           {
-            // Logger.LogTrace($"  > Adding type {asm_types[i].FullName} to cache");
+            Logger.LogTrace($"  > Adding type {asm_types[i].FullName} to cache");
             out_types[i] = cached_types.Add(asm_types[i]);
           }
         }
@@ -744,6 +765,25 @@ namespace OtherCsBindings
       catch (Exception ex)
       {
         Host.HandleException(ex);
+      }
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe NativeBool32 IsMethodStatic(Int32 method_info)
+    {
+      try
+      {
+        if (!cached_methods.TryGet(method_info, out var minfo))
+        {
+          return false;
+        }
+
+        return minfo!.IsStatic;
+      }
+      catch (Exception ex)
+      {
+        Host.HandleException(ex);
+        return false;
       }
     }
 

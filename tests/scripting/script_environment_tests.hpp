@@ -10,11 +10,8 @@ namespace other {
 
   class script_environment_tests : public other_test {
    protected:
-    filepath main_other_dll_debug = "build/other-csharp/Debug/OtherCs.dll";
-    filepath main_other_dll_release = "build/other-csharp/Release/OtherCs.dll";
-
-    filepath testing_dll_debug = "build/script-testing/Debug/DotnetTesting.dll";
-    filepath testing_dll_release = "build/script-testing/Release/DotnetTesting.dll";
+    filepath main_other_dll = perform_tag_replacement("build/other-csharp/${build-config}/OtherCs.dll");
+    filepath testing_dll = perform_tag_replacement("build/script-testing/${build-config}/DotnetTesting.dll");
   };
 
 }  // namespace other

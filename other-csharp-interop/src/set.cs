@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 #nullable enable
@@ -50,6 +51,11 @@ namespace OtherCsBindings
     public void Clear()
     {
       elements.Clear();
+    }
+
+    public T? FirstOrDefault(Func<T, bool> fn)
+    {
+      return elements.Values.FirstOrDefault(fn);
     }
   }
 }

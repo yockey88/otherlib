@@ -1,10 +1,15 @@
 /**
- * \file renderer/default_pass_executor_resolver.cpp
+ * \file render/default_pass_executor_resolver.cpp
  **/
-#include "renderer/default_pass_executor_resolver.hpp"
+#include "render/default_pass_executor_resolver.hpp"
+
+#include <format>
 
 #include "renderer/pass_executor_interop.hpp"
 #include "script/scripting_environment.hpp"
+
+#include "driver/driver.hpp"
+#include "driver/systems/scripting_system.hpp"
 
 namespace other {
 
@@ -68,35 +73,60 @@ namespace other {
   }
 
   render_graph::pass_executor default_pass_executor_resolver::dotnet_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl) {
-    if (!scripts_enabled) {
+    if (system == nullptr || subsystem<scripting_environment>::inert) {
       return nullptr;
     }
     std::string entry_str{ entry };
     return [this, e = entry_str, p = pl](renderer& r, render_graph::node* n, void* ud) {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "scripting_environment null in dotnet_make_pass_executor!");
+      std::string class_name = get_dotnet_class_name(e);
+      std::string method_name = get_dotnet_method_name(e);
 
+      pass_invocation_interop interop{
+        .renderer_ptr = &r,
+        .node = n,
+        .pipeline = p,
+        .params = nullptr,
+        .params_size = 0,
+      };
+      std::string full_method_name = std::format("{}.{}", class_name, method_name);
+      system->get_driver().get_interface_registry().invoke_callback<>(full_method_name, &interop);
     };
   }
 
   render_graph::pass_executor default_pass_executor_resolver::lua_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl) {
-    if (!scripts_enabled) {
+    if (system == nullptr || subsystem<scripting_environment>::inert) {
       return nullptr;
     }
     return nullptr;
   }
 
   render_graph::pass_executor default_pass_executor_resolver::vm_make_pass_executor(const std::string_view entry, const pipeline_pass_definition def, render_pipeline* pl) {
+    if (system == nullptr || subsystem<scripting_environment>::inert) {
+      return nullptr;
+    }
     return nullptr;
   }
 
   resource_tag_binder_fn_t default_pass_executor_resolver::dotnet_make_resource_tag_binder(const std::string_view entry, resource_tag tag) {
+    if (system == nullptr || subsystem<scripting_environment>::inert) {
+      return nullptr;
+    }
     return nullptr;
   }
 
   resource_tag_binder_fn_t default_pass_executor_resolver::lua_make_resource_tag_binder(const std::string_view entry, resource_tag tag) {
+    if (system == nullptr || subsystem<scripting_environment>::inert) {
+      return nullptr;
+    }
     return nullptr;
   }
 
   resource_tag_binder_fn_t default_pass_executor_resolver::vm_make_resource_tag_binder(const std::string_view entry, resource_tag tag) {
+    if (system == nullptr || subsystem<scripting_environment>::inert) {
+      return nullptr;
+    }
     return nullptr;
   }
 

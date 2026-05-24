@@ -31,6 +31,34 @@ namespace other {
     return t->has_method(method_name);
   }
 
+  std::vector<callback_binding> assembly::get_native_function_bindings() const {
+    // for each type in assembly check method for CallbackBindingAttribute and if it exists add to list of bindings to return
+    std::vector<callback_binding> bindings;
+
+    for (auto* type : types) {
+      OTHER_ASSERT(type != nullptr, "Null type found in assembly [{}:{}]", handle, name);
+      for (const auto& method : type->get_methods()) {
+        if (method.has_attribute("CallbackBindingAttribute")) {
+          native_string method_name;
+          method.get_attribute("CallbackBindingAttribute", "BindingName", &method_name);
+          std::string method_name_view = method_name;
+
+          if (!method_name_view.empty()) {
+            bindings.push_back({
+              .binding_name = method_name_view,
+              .full_type_and_method_name = std::format("{}.{}", type->full_name(), method.name()),
+            });
+            CORE_LOG_DEBUG("Found native callback binding: {} -> {}.{}", method_name_view, type->full_name(), method.name());
+          } else {
+            CORE_LOG_ERROR("CallbackBindingAttribute found on method '{}.{}' but BindingName field is empty!", type->full_name(), method.name());
+          }
+        }
+      }
+    }
+
+    return bindings;
+  }
+
   ref<assembly> assembly_context::load_assembly(const std::string_view path) {
     OTHER_ASSERT(host != nullptr, "DotNet host is not initialized.");
     OTHER_ASSERT(!path.empty(), "Assembly path cannot be empty.");
@@ -99,7 +127,18 @@ namespace other {
         return asm_ref;
       }
     }
+
     CORE_LOG_ERROR("Assembly with name '{}' not found in context [{}:{}]", name, handle, this->name);
+    return nullptr;
+  }
+
+  ref<assembly> assembly_context::get_assembly_by_id(natural_t id) {
+    auto itr = assemblies.find(id);
+    if (itr != assemblies.end()) {
+      return itr->second;
+    }
+
+    CORE_LOG_ERROR("Assembly with ID '{}' not found in context [{}:{}]", id, handle, name);
     return nullptr;
   }
 

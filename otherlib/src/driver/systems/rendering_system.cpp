@@ -5,12 +5,12 @@
 
 #include <SDL3/SDL_dialog.h>
 
-#include "renderer/default_pass_executor_resolver.hpp"
-
 #include "driver/driver.hpp"
 #include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
+#include "render/default_pass_executor_resolver.hpp"
+
 
 namespace other {
   namespace detail {
@@ -256,8 +256,8 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
 
     std::string pass_resolver = get_driver().get_config_value<std::string>("rendering.pass-resolver", "default");
-    if (pass_resolver == "default") {
-      pass_resolver_ptr = make_scope<default_pass_executor_resolver>(kernel->has_core_system<scripting_system>());
+    if (pass_resolver == "default" && kernel->has_core_system<scripting_system>()) {
+      pass_resolver_ptr = make_scope<default_pass_executor_resolver>(&kernel->get_core_system<scripting_system>());
     } else {
       OTHER_ASSERT(false, "Pass resolver plugin lookup not implemented yet!");
     }

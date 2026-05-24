@@ -43,6 +43,20 @@ namespace other {
 
   void dotnet_field::initialize_field() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    std::vector<int32_t> attribute_ids;
+    int32_t num_attributes = 0;
+
+    host->interop().get_field_attributes(dotnet_id, nullptr, &num_attributes);
+    attribute_ids.resize(num_attributes);
+    host->interop().get_field_attributes(dotnet_id, attribute_ids.data(), &num_attributes);
+
+    attributes.reserve(attribute_ids.size());
+    for (int32_t attribute_id : attribute_ids) {
+      int32_t attribute_type_id = -1;
+      host->interop().get_attribute_type(attribute_id, &attribute_type_id);
+      attributes.emplace_back(host, attribute_type_id, attribute_id);
+    }
+
     host->interop().get_field_value_type(dotnet_id, (uint8_t*)&valtype);
   }
 

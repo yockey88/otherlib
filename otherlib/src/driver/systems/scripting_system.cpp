@@ -12,7 +12,6 @@
 #include "scripting/bindings.hpp"
 #include "tools/environment_console.hpp"
 
-
 namespace other {
 
   void scripting_system::initialize(driver_kernel* kernel) {
@@ -28,8 +27,7 @@ namespace other {
     get_driver().get_event_system()->add_listener("console.check-command", [this](const value& data) {
       if (data.type() == value_type::STRING) {
         std::string command = data;
-        if (driver_main_lua_script && driver_main_lua_script->has_symbol("__is_command") &&
-            driver_main_lua_script->call_function<bool>("__is_command", command)) {
+        if (driver_main_lua_script && driver_main_lua_script->has_symbol("__is_command") && driver_main_lua_script->call_function<bool>("__is_command", command)) {
           get_driver().get_event_system()->trigger_event("console.command", command);
         } else {
           get_driver().get_event_system()->trigger_event("console.output", command);
@@ -52,6 +50,35 @@ namespace other {
 
     /// bind the native driver to the scripting environment to glue user scripts to the native environment
     do_script_interface_bindings(&get_driver());
+
+    event_system& events = *get_driver().get_event_system();
+    events.add_listener("script-source.asset-loaded", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected uint64 asset ID for script source asset-loaded event");
+      uint64_t asset_id = data;
+
+      asset* asset_ptr = get_driver().get_asset(asset_id);
+      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null for asset ID: {}", asset_id);
+      if (asset_ptr->asset_type != asset::type::SCRIPT_SOURCE) {
+        CORE_LOG_ERROR("Received script-source.asset-loaded event for asset ID {} but asset type is not SCRIPT_SOURCE", asset_id);
+        return;
+      }
+
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
+
+      ref<assembly> asm_ref = env->get_dotnet_module_by_asset_path(asset_ptr->absolute_path);
+      OTHER_ASSERT(asm_ref != nullptr, "Failed to load .NET assembly for script asset: {}", asset_ptr->absolute_path.string());
+
+      std::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
+      CORE_LOG_DEBUG("Found {} native callback bindings in assembly [{}:{}]", bindings.size(), asm_ref->get_handle(), asm_ref->get_name());
+      for (const auto& binding : bindings) {
+        auto last_dot = binding.full_type_and_method_name.find_last_of('.');
+        std::string type_name = binding.full_type_and_method_name.substr(0, last_dot);
+        std::string method_name = binding.full_type_and_method_name.substr(last_dot + 1);
+        CORE_LOG_INFO("Native Callback Binding registered: {} -> {}.{}", binding.binding_name, type_name, method_name);
+        get_driver().get_interface_registry().register_named_callback(binding.binding_name, make_ref<dotnet_callback>(type_name, method_name));
+      }
+    });
   }
 
   void scripting_system::tick(driver_kernel* kernel, double dt) {
@@ -81,7 +108,20 @@ namespace other {
       CORE_LOG_ERROR("Script module path does not exist: {}", module_path);
       return nullptr;
     }
-    return subsystem<scripting_environment>::get()->load_dotnet_module(path.string());
+    ref<assembly> asm_ref = subsystem<scripting_environment>::get()->load_dotnet_module(path.string());
+    OTHER_ASSERT(asm_ref != nullptr, "Failed to load .NET assembly from path: {}", module_path);
+
+    std::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
+    CORE_LOG_DEBUG("Found {} native callback bindings in assembly [{}:{}]", bindings.size(), asm_ref->get_handle(), asm_ref->get_name());
+    for (const auto& binding : bindings) {
+      auto last_dot = binding.full_type_and_method_name.find_last_of('.');
+      std::string type_name = binding.full_type_and_method_name.substr(0, last_dot);
+      std::string method_name = binding.full_type_and_method_name.substr(last_dot + 1);
+      CORE_LOG_INFO("Native Callback Binding registered: {} -> {}.{}", binding.binding_name, type_name, method_name);
+      get_driver().get_interface_registry().register_named_callback(binding.binding_name, make_ref<dotnet_callback>(type_name, method_name));
+    }
+
+    return asm_ref;
   }
 
   void scripting_system::unload_dotnet_module(ref<assembly> module) {

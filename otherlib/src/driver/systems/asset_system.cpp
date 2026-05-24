@@ -118,6 +118,11 @@ namespace other {
     asset_mgr->begin_unload();
   }
 
+  asset* asset_system::get_asset(natural_t asset_id) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_asset(asset_id);
+  }
+
   scope<asset_handler>& asset_system::get_asset_manager() {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr;
