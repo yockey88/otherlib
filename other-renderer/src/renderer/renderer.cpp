@@ -10,6 +10,7 @@
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/draw_command.hpp"
+#include "renderer/frame_node.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/render_pipeline.hpp"
 #include "renderer/renderer_backend.hpp"
@@ -28,6 +29,16 @@ namespace other {
       rendering()->api()->set_clear_color(data->clear_color);
     }
     rendering()->api()->begin_frame();
+  }
+
+  void renderer::bind_frame_bindings(const render_data& data) {
+    ASSERT_MAIN_THREAD();
+    for (auto& [_, pl] : pipelines) {
+      if (!pl->is_valid()) {
+        continue;
+      }
+      pl->bind_frame_resources(data);
+    }
   }
 
   void renderer::render() {
@@ -67,6 +78,30 @@ namespace other {
     return pipeline->get_screen_texture();
   }
 
+  resource_handle renderer::get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_recipe& recipe) {
+    natural_t key = FNV(stream_name);
+    if (auto itr = debug_stream_meshes.find(key); itr != debug_stream_meshes.end()) {
+      return itr->second;
+    }
+    auto handle = create_resource(std::format("__debug.mesh.{}", stream_name), resource_type::MESH);
+    auto& m = get_resource<mesh>(handle);
+    m.set_primitive_type(recipe.topology);
+    for (const auto& attr : recipe.vertex_layout) {
+      m.add_attribute(attr.name, attr.type, attr.size, attr.offset);
+    }
+    debug_stream_meshes.insert({ key, handle });
+    return handle;
+  }
+
+  opt<resource_handle> renderer::get_debug_stream_shader_handle(std::string_view shader_name) {
+    natural_t key = FNV(shader_name);
+    if (auto itr = debug_stream_shaders.find(key); itr != debug_stream_shaders.end()) {
+      return itr->second;
+    }
+    CORE_LOG_ERROR("renderer: debug stream shader '{}' not registered before first draw", shader_name);
+    return std::nullopt;
+  }
+
   void renderer::begin_ui_frame() {
     ASSERT_MAIN_THREAD();
     rendering()->api()->begin_ui_frame();
@@ -75,6 +110,34 @@ namespace other {
   void renderer::end_ui_frame() {
     ASSERT_MAIN_THREAD();
     rendering()->api()->end_ui_frame();
+  }
+
+  bool renderer::executor_resolves(const std::string_view name) const {
+    if (pass_exec_resolver == nullptr) {
+      return false;
+    }
+    return pass_exec_resolver->can_resolve_executor(name);
+  }
+
+  bool renderer::frame_binder_resolves(const resource_tag& tag) const {
+    if (pass_exec_resolver == nullptr) {
+      return false;
+    }
+    return pass_exec_resolver->can_resolve_frame_binder(tag);
+  }
+
+  bool renderer::draw_binder_resolves(const resource_tag& tag) const {
+    if (pass_exec_resolver == nullptr) {
+      return false;
+    }
+    return pass_exec_resolver->can_resolve_draw_binder(tag);
+  }
+
+  bool renderer::instance_binder_resolves(const resource_tag& tag) const {
+    if (pass_exec_resolver == nullptr) {
+      return false;
+    }
+    return pass_exec_resolver->can_resolve_instance_binder(tag);
   }
 
   render_graph::pass_executor renderer::attempt_executor_resolution(const std::string_view name, const pipeline_pass_definition& def, render_pipeline* pl) {
@@ -153,76 +216,49 @@ namespace other {
     pipelines.erase(itr);
   }
 
-  void renderer::dispatch_compute(shader* shader_ptr, uint32_t x, uint32_t y, uint32_t z) {
-    ASSERT_MAIN_THREAD();
-    OTHER_ASSERT(shader_ptr != nullptr, "Shader Pointer is null in dispatch_compute");
-  }
-
-  void renderer::execute_draw_calls(render_graph::node* current_node) {
-    ASSERT_MAIN_THREAD();
+  void renderer::execute_draw_calls(frame_node* current_node) {
     OTHER_ASSERT(current_node != nullptr, "Current node must not be null.");
-
+    ASSERT_MAIN_THREAD();
     if (scene_data == nullptr || scene_data->draw_calls.empty()) {
       return;
     }
-
     PROFILE_SECTION("renderer::execute_draw_calls");
 
-    opt<resource_handle> material_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kMaterialTag));
-    opt<resource_handle> model_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kModelTag));
-    opt<resource_handle> bone_buffer_handle = current_frame_resources.find(resource_tag(resource_tag::kBoneTag));
+    auto& api = rendering()->api();
+    OTHER_ASSERT(api != nullptr, "Rendering API is null in execute_draw_calls.");
 
-    gpu_buffer* material_buffer = nullptr;
-    gpu_buffer* model_buffer = nullptr;
-    gpu_buffer* bone_buffer = nullptr;
+    render_pipeline* pl = get_pass_pipeline(current_node->pass->id);
+    OTHER_ASSERT(pl != nullptr, "execute_draw_calls: no pipeline owns pass id {}", current_node->pass->id);
 
-    if (material_buffer_handle.has_value()) {
-      material_buffer = rendering()->api()->get_resource_as<gpu_buffer>(*material_buffer_handle);
-      OTHER_ASSERT(material_buffer != nullptr, "Material buffer resource handle is invalid.");
-    }
-    if (model_buffer_handle.has_value()) {
-      model_buffer = rendering()->api()->get_resource_as<gpu_buffer>(*model_buffer_handle);
-      OTHER_ASSERT(model_buffer != nullptr, "Model buffer resource handle is invalid.");
-    }
-    if (bone_buffer_handle.has_value()) {
-      bone_buffer = rendering()->api()->get_resource_as<gpu_buffer>(*bone_buffer_handle);
-      OTHER_ASSERT(bone_buffer != nullptr, "Bone buffer resource handle is invalid.");
-    }
-
+    pass_runtime& runtime = pl->get_pass_runtime(current_node->pass->id);
     for (natural_t i = 0; i < scene_data->num_draw_calls; ++i) {
-      draw_call& call = scene_data->draw_calls[i];
+      const draw_call& call = scene_data->draw_calls[i];
       if (call.instance_count == 0) {
         continue;
       }
 
-      mesh_key& key = scene_data->mesh_keys[i];
-      gpu::graphics_material_buffer& cpu_material_storage = scene_data->material_buffers[i];
-      gpu::model_matrix_buffer& cpu_model_storage = scene_data->model_buffers[i];
-      gpu::bone_matrix_buffer& bone_buffer_data = scene_data->bone_buffers[i];
+      pl->bind_draw_resources(runtime, *scene_data, i);
 
-      if (material_buffer != nullptr) {
-        material_buffer
-          ->set_data(&cpu_material_storage, sizeof(gpu::graphics_material_buffer))
-          .finalize_buffer();
-      }
-      if (model_buffer != nullptr) {
-        model_buffer
-          ->set_data(&cpu_model_storage, sizeof(gpu::model_matrix_buffer))
-          .finalize_buffer();
-      }
-      if (bone_buffer != nullptr) {
-        bone_buffer
-          ->set_data(&bone_buffer_data, sizeof(gpu::bone_matrix_buffer))
-          .finalize_buffer();
-      }
-
-      rendering()->api()->execute_draw_call(key.render_state, key.draw_mode, call);
+      const auto& key = scene_data->mesh_keys[i];
+      api->execute_draw_call(key.render_state, key.draw_mode, call);
     }
   }
 
   renderer_backend* renderer::rendering() {
     ASSERT_MAIN_THREAD();
     return subsystem<renderer_backend>::get();
+  }
+
+  render_pipeline* renderer::get_pass_pipeline(natural_t pass_id) const {
+    for (const auto& [_, pl] : pipelines) {
+      if (!pl->is_valid()) {
+        continue;
+      }
+      if (pl->has_pass(pass_id)) {
+        return pl;
+      }
+    }
+    return nullptr;
   }
 
 }  // namespace other

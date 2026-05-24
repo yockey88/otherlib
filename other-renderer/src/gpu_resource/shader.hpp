@@ -32,8 +32,11 @@ namespace other {
     enum compute_barrier_type : uint8_t {
       NONE = 0,
       SHADER_IMAGE_ACCESS,
-      /// add more here...
+      SHADER_STORAGE,
+      UNIFORM_BARRIER,
+      // add more as needed...
 
+      ALL_BARRIER,
       NUM_BARRIER_TYPES
     };
 

@@ -11,7 +11,8 @@
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/shader.hpp"
 #include "gpu_resource/texture.hpp"
-#include "renderer/render_graph.hpp"
+#include "renderer/frame_binding_definition.hpp"
+#include "renderer/render_pass.hpp"
 #include "renderer/resource_tag.hpp"
 
 namespace other {
@@ -80,6 +81,12 @@ namespace other {
     pipeline_executor_definition executor;
 
     std::vector<std::string> depends_on;
+    std::vector<frame_binding_definition> bindings;
+
+    // for passes that need to run multiple times per frame, i.e cascaded shadow maps
+    uint32_t iterations_per_frame = 1;
+    // for passes that use the "draw_scene" executor, used to provision per-draw-call resources
+    opt<uint32_t> expected_max_draws;
   };
 
   struct pipeline_definition {
@@ -100,7 +107,9 @@ namespace other {
   };
 
   executor_type executor_type_from_string(const std::string_view str);
+  shader::compute_barrier_type compute_barrier_type_from_string(const std::string_view str);
   std::string_view executor_type_to_string(executor_type type);
+  gpu_buffer::buf_type buffer_type_from_binding(binding_type type);
 
   pipeline_definition get_basic_geometry_only_pipeline();
   pipeline_definition get_default_instancing_pipeline();

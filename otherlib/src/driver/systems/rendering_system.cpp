@@ -22,6 +22,7 @@ namespace other {
     render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*);
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
 
   }  // namespace detail
 
@@ -108,6 +109,13 @@ namespace other {
       data_ptr = &prepared_data;
     }
 
+    if (data_ptr != nullptr) {
+      auto& registry = renderer_ptr->get_debug_stream_registry();  // see F3
+      for (const auto& [name, def] : registry.entries()) {
+        data_ptr->debug_data.configure_stream(def.name, def.element_size, def.max_per_frame);
+      }
+    }
+
     renderer_ptr->begin_frame(data_ptr);
     renderer_ptr->render();
 
@@ -190,8 +198,8 @@ namespace other {
   void rendering_system::register_builtin_resource_tags() {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in register_builtin_resource_tags.");
 
-    auto& reg = renderer_ptr->get_tag_registry();
-    reg.register_binder(resource_tag(resource_tag::kCameraTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+    auto& reg = renderer_ptr->get_binding_registry();
+    reg.register_per_frame(resource_tag(resource_tag::kCameraTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
       if (!d.primary_camera) {
         return;
       }
@@ -200,22 +208,7 @@ namespace other {
       r.upload_buffer(h, &gpu, sizeof(gpu));
     });
 
-    reg.register_binder(resource_tag(resource_tag::kModelTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      // r.upload_buffer(h, d.model_buffers.data(), d.model_buffers.size() * sizeof(gpu::model_matrix_buffer));
-    });
-
-    reg.register_binder(resource_tag(resource_tag::kMaterialTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      // r.upload_buffer(h, d.material_buffers.data(), d.material_buffers.size() * sizeof(gpu::material_buffer));
-    });
-
-    reg.register_binder(resource_tag(resource_tag::kBoneTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      if (d.bone_buffers.empty()) {
-        return;
-      }
-      // r.upload_buffer(h, d.bone_buffers.data(), d.bone_buffers.size() * sizeof(gpu::bone_matrix_buffer));
-    });
-
-    reg.register_binder(resource_tag(resource_tag::kPointLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+    reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
       gpu::point_light_buffer buf{};
       for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
         buf.lights[i] = d.point_lights[i];
@@ -223,7 +216,7 @@ namespace other {
       r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
     });
 
-    reg.register_binder(resource_tag(resource_tag::kDirectionLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+    reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
       gpu::directional_light_buffer dir_light_buffer_data;
       for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
         dir_light_buffer_data.lights[i] = d.ambient_lights[i];
@@ -232,7 +225,34 @@ namespace other {
     });
 
     // screen is simply a marker tag, render_pipeline tracks screen_texture_handle separately for to-screen blit
-    reg.register_binder(resource_tag(resource_tag::kScreenTag), [](render_pipeline&, const render_data&, resource_handle) {});
+    reg.register_per_frame(resource_tag(resource_tag::kScreenTag), [](render_pipeline&, const render_data&, resource_handle) {});
+
+    reg.register_per_draw(resource_tag(resource_tag::kModelTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(data.size() == sizeof(gpu::model_matrix_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::model_matrix_buffer));
+
+      const auto& models = d.model_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&models), sizeof(gpu::model_matrix_buffer) };
+      std::ranges::copy(bytes, data.begin());
+    });
+
+    reg.register_per_draw(resource_tag(resource_tag::kMaterialTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> out) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(out.size() == sizeof(gpu::graphics_material_buffer), "Data span size {} does not match expected size {}", out.size(), sizeof(gpu::graphics_material_buffer));
+
+      const auto& materials = d.material_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&materials), sizeof(gpu::graphics_material_buffer) };
+      std::ranges::copy(bytes, out.begin());
+    });
+
+    reg.register_per_draw(resource_tag(resource_tag::kBoneTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> out) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(out.size() == sizeof(gpu::bone_matrix_buffer), "Data span size {} does not match expected size {}", out.size(), sizeof(gpu::bone_matrix_buffer));
+
+      const auto& bones = d.bone_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&bones), sizeof(gpu::bone_matrix_buffer) };
+      std::ranges::copy(bytes, out.begin());
+    });
   }
 
   void rendering_system::register_builtin_render_executors() {
@@ -243,6 +263,48 @@ namespace other {
     reg.register_executor("draw_scene", &detail::make_draw_scene);
     reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
     reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
+    reg.register_executor("debug_stream", &detail::make_debug_stream);
+  }
+
+  void rendering_system::register_buildin_renderer_debug_streams() {
+    // auto& reg = renderer_ptr->get_debug_stream_registry();
+
+    // reg.register_stream("debug.lines", debug_stream_definition{
+    //                                      .element_size = sizeof(debug_line),
+    //                                      .max_per_frame = 4096,
+    //                                      .draw_recipe = {
+    //                                        .shader = "debug_line_shader",
+    //                                        .topology = mesh::primitive_type::LINES,
+    //                                        .vertex_layout = {
+    //                                          vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
+    //                                          vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
+    //                                        },
+    //                                      },
+    //                                    });
+
+    // reg.register_stream("debug.triangles", debug_stream_definition{
+    //                                          .element_size = sizeof(debug_triangle),
+    //                                          .max_per_frame = 2048,
+    //                                          .draw_recipe = {
+    //                                            .shader = "debug_tri_shader",
+    //                                            .topology = mesh::primitive_type::TRIANGLES,
+    //                                            .vertex_layout = {
+    //                                              vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
+    //                                              vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
+    //                                            },
+    //                                          },
+    //                                        });
+
+    // // Load the recipe shaders once at registration time so the first frame
+    // // doesn't hit them lazily on draw_debug_stream.
+    // for (auto* shader_name : { "debug_line_shader", "debug_tri_shader" }) {
+    //   resource_handle h = shader::create(
+    //     shader_name,
+    //     std::format("resources/{}.vert", shader_name),
+    //     std::format("resources/{}.frag", shader_name)
+    //   );
+    //   renderer_ptr->register_debug_stream_shader(shader_name, h);  // adds to map
+    // }
   }
 
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
@@ -303,39 +365,60 @@ namespace other {
   namespace detail {
 
     render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*) {
-      return [](renderer&, render_graph::node*, void*) {
+      return [](pass_context& ctx) {
       };
     }
 
     render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*) {
-      return [](renderer& r, render_graph::node* node, void*) {
-        r.execute_draw_calls(node);
+      return [](pass_context& ctx) {
+        ctx.draw_stream();
       };
     }
 
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl) {
       resource_handle quad = pl->get_quad_mesh_handle();
-      return [quad, uniforms = def.executor.uniforms, pass_name = def.name, pl](renderer& r, render_graph::node*, void*) {
+      return [quad, uniforms = def.executor.uniforms, pass_name = def.name, pl](pass_context& ctx) {
         auto* sh = pl->get_pass_shader(pass_name);
         OTHER_ASSERT(sh, "fullscreen_quad: no shader bound for pass '{}'", pass_name);
         render_pipeline::apply_uniforms(*sh, uniforms);
-        r.get_resource<mesh>(quad).draw();
+        ctx.draw_quad();
       };
     }
 
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl) {
-      // params: { "groups" = [int, int, int] }
       const auto& params = def.executor.params;
-      auto it = params.find("groups");
-      OTHER_ASSERT(it != params.end(), "compute_dispatch: pass '{}' missing 'groups' param", def.name);
+      auto groups_it = params.find("groups");
+      OTHER_ASSERT(groups_it != params.end(), "compute_dispatch: pass '{}' missing 'groups' param", def.name);
+      glm::vec3 groups = groups_it->second;
 
-      glm::vec3 g = it->second;
-      return [g, pass_name = def.name, pl](renderer& r, render_graph::node*, void*) {
-        auto* sh = pl->get_pass_shader(pass_name);
-        OTHER_ASSERT(sh, "compute_dispatch: no shader for pass '{}'", pass_name);
-        r.dispatch_compute(sh, g.x, g.y, g.z);
+      shader::compute_barrier_type barrier = shader::compute_barrier_type::NONE;
+      if (auto b_it = params.find("barrier"); b_it != params.end()) {
+        barrier = compute_barrier_type_from_string(b_it->second);
+      }
+      return [g = groups, b = barrier, pass_name = def.name](pass_context& ctx) {
+        auto* sh = ctx.shader_for_pass();
+        OTHER_ASSERT(sh != nullptr, "compute_dispatch: no shader bound for pass '{}'", pass_name);
+        sh->bind();
+        ctx.dispatch(glm::uvec3(g), b);
       };
     };
+
+    render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl) {
+      const auto& params = def.executor.params;
+      auto stream_it = params.find("stream");
+      OTHER_ASSERT(stream_it != params.end(), "debug_stream: pass '{}' missing 'stream' param", def.name);
+      std::string stream_name = stream_it->second;
+
+      return [stream_name = std::move(stream_name), pass_name = def.name](pass_context& ctx) {
+        auto& streams = ctx.get_frame_data().debug_data;
+        auto* stream = ctx.get_renderer().get_debug_stream_registry().find(stream_name);
+        if (stream == nullptr) {
+          CORE_LOG_ERROR("Debug stream '{}' not found for pass '{}'", stream_name, pass_name);
+          return;
+        }
+        ctx.draw_debug_stream(stream_name, *stream, streams.view(stream_name), streams.count(stream_name));
+      };
+    }
 
   }  // namespace detail
 }  // namespace other

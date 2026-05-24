@@ -25,6 +25,8 @@ namespace other {
       UNIFORM_BUFFER,
       STORAGE_BUFFER,
 
+      DRAW_INDIRECT_BUFFER,
+
       /// add more here...
 
       NUM_BUFFER_TYPES
@@ -63,7 +65,7 @@ namespace other {
     opt<resource_handle> shader_resource_handle;
 
     usage buf_usage = usage::STATIC;
-    buf_type buffer_type = buf_type::VERTEX_BUFFER;
+    buf_type buffer_type = buf_type::UNIFORM_BUFFER;
     std::vector<uint8_t> buffer_data;
 
     uint8_t* get_data();

@@ -35,6 +35,12 @@ namespace other {
     void on_begin_frame(scope<window_manager>& window_mgr) override;
     void on_end_frame(scope<window_manager>& window_mgr) override;
 
+    void begin_pass(const pass_begin_info& info) override;
+    void end_pass() override;
+
+    void bind_set(uint32_t set_index, std::span<const binding_record> records) override;
+    void set_dynamic_offsets(uint32_t, std::span<const uint32_t>) override;
+
     void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) override;
 
     void begin_ui_frame_backend_newframe() override;
@@ -83,6 +89,9 @@ namespace other {
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose = false) override;
+
+    uint32_t uniform_buffer_offset_alignment() const override;
+    uint32_t storage_buffer_offset_alignment() const override;
 
    private:
     std::map<natural_t, uint32_t> gpu_resources;
