@@ -50,7 +50,11 @@ target_sources(other_tests
 
     ${CMAKE_CURRENT_SOURCE_DIR}/network_thread_test_runner.cpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/vm/parsing_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/vm/lexer_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/vm/simple_parsing_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/vm/oasm_parsing_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/vm/oasm_parsing2_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/vm/simple_compiling_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/vm/vm_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scratch_tests.cpp

@@ -8,7 +8,7 @@
 
 #include "core/defines.hpp"
 
-#include "vm/command_files/parser.hpp"
+#include "vm/command_files/oasm_parser.hpp"
 
 #include "code_block.hpp"
 

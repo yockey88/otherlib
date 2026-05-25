@@ -105,6 +105,15 @@ namespace other {
     return static_cast<uint8_t>((opcode & instruction::kTypeMask) >> instruction::kTypeShift);
   }
 
+  enum opcode_categories : uint8_t {
+    OPCODE_CATEGORY_DEVICE_CONTROL = 0x0,
+    OPCODE_CATEGORY_LOAD_STORE_LOGICAL = 0x1,
+    OPCODE_CATEGORY_PROGRAM_FLOW = 0x2,
+    OPCODE_CATEGORY_ARITHMETIC = 0x3,
+    OPCODE_CATEGORY_SCENE_TABLE = 0x4,
+    // ...
+  };
+
   std::string opcode_to_simple_string(uint32_t opcode);
   std::string opcode_to_detailed_string(uint32_t opcode);
 
@@ -113,6 +122,7 @@ namespace other {
 
   uint32_t opcode_set_category(uint32_t opcode, uint8_t category);
   uint32_t opcode_set_type(uint32_t opcode, uint8_t type);
+  uint32_t opcode_with_category_and_type(uint8_t category, uint8_t type);
   uint32_t opcode_set_x_register(uint32_t opcode, uint8_t x);
   uint32_t opcode_set_y_register(uint32_t opcode, uint8_t y);
   uint32_t opcode_set_z_register(uint32_t opcode, uint8_t z);
@@ -154,6 +164,8 @@ namespace other {
   uint32_t opcode_dump_registers();
   /// 0x02xx0000
   uint32_t opcode_dump_register_x(uint8_t x);
+  /// 0x03xxnnnn
+  uint32_t opcode_dump_memory_at(uint8_t x, uint16_t n);
 
   /// 1 table (load/store/logical)
   /// 10xxnnnn

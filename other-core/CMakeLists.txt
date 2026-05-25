@@ -82,7 +82,7 @@ foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
   target_include_directories(other_core PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
 endforeach()
 
-if (CMAKE_BUILD_TYPE STREQUAL Profile)
+if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
 	target_sources(other_core PRIVATE ${OTHER_EXTERN_DIR}/tracy/tracy/TracyClient.cpp)
 	target_include_directories(other_core PRIVATE ${OTHER_EXTERN_DIR}/tracy)
 endif()

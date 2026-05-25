@@ -97,7 +97,7 @@ target_sources(otherlib
     src/vm/command_files/code_block.cpp
     src/vm/command_files/data_block.cpp
     src/vm/command_files/lexer.cpp
-    src/vm/command_files/parser.cpp
+    src/vm/command_files/oasm_parser.cpp
     src/vm/command_files/assembler.cpp
     src/vm/command_files/linker.cpp
     src/vm/command_files/ocmd_compiler.cpp

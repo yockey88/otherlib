@@ -34,6 +34,7 @@ namespace other {
     uint32_t get_group0_category();
     uint32_t group0_opcode(uint8_t type);
     uint32_t group0_opcode_with_register(uint8_t type, uint8_t reg);
+    uint32_t group0_opcode_with_register_and_address(uint8_t type, uint8_t reg, uint16_t addr);
 
     uint32_t get_group1_category();
     uint32_t group1_opcode(uint8_t type, uint8_t reg, uint16_t addr);
@@ -81,6 +82,10 @@ namespace other {
 
   uint32_t opcode_set_type(uint32_t opcode, uint8_t type) {
     return detail::opcode_set_value_with_mask(opcode, type, instruction::kTypeMask, instruction::kTypeShift);
+  }
+
+  uint32_t opcode_with_category_and_type(uint8_t category, uint8_t type) {
+    return opcode_set_category(opcode_set_type(0, type), category);
   }
 
   uint32_t opcode_set_x_register(uint32_t opcode, uint8_t x) {
@@ -138,6 +143,10 @@ namespace other {
 
   uint32_t opcode_dump_register_x(uint8_t x) {
     return detail::group0_opcode_with_register(0x02, x);
+  }
+
+  uint32_t opcode_dump_memory_at(uint8_t x, uint16_t n) {
+    return detail::group0_opcode_with_register_and_address(0x03, x, n);
   }
   /// group 0 end -----------------
 
@@ -288,6 +297,10 @@ namespace other {
 
     uint32_t group0_opcode_with_register(uint8_t type, uint8_t reg) {
       return opcode_set_x_register(opcode_set_type(get_group0_category(), type), reg);
+    }
+
+    uint32_t group0_opcode_with_register_and_address(uint8_t type, uint8_t reg, uint16_t addr) {
+      return opcode_set_lower(opcode_set_x_register(opcode_set_type(get_group0_category(), type), reg), addr);
     }
 
     uint32_t get_group1_category() {

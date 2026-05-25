@@ -41,10 +41,11 @@ namespace other {
   }
 
   static inline bool is_ocmd_keyword(const std::string_view str) {
-    return std::ranges::find(kOcmdKeywords, str) != kOcmdKeywords.end();
+    return std::ranges::find(kKeywordTokens, str, &keyword_token::text) != kKeywordTokens.end();
   }
 
   std::vector<token> ocmd_lexer::tokenize() {
+    tokens.emplace_back(TOKEN_TYPE_SOURCE_START, "", 1, 1);
     while (!finished()) {
       try {
         char c = current();
@@ -75,6 +76,7 @@ namespace other {
       }
     }
 
+    tokens.emplace_back(TOKEN_TYPE_EOF, "", current_line, current_column);
     return tokens;
   }
 
@@ -89,20 +91,20 @@ namespace other {
   }
 
   void ocmd_lexer::handle_numeric() {
-    while (is_numeric(current())) {
+    do {
       advance();
-      if (finished()) {
-        break;
-      }
-    }
+    } while (!finished() && is_numeric(current()));
 
     if (check('.')) {
       handle_floating_point();
-    } else if (check('e') || check('E')) {
-      handle_scientific_notation();
     } else {
       if (check('x') || check('X')) {
         handle_hexadecimal();
+      } else if (std::isxdigit(current())) {
+        while (!finished() && std::isxdigit(static_cast<unsigned char>(current()))) {
+          advance();
+        }
+        add_token(TOKEN_TYPE_HEX_LITERAL);
       } else {
         add_token(TOKEN_TYPE_INTEGER_LITERAL);
       }
@@ -426,87 +428,12 @@ namespace other {
   }
 
   token_type ocmd_lexer::get_keyword_type(const std::string_view& source_str) const {
-    auto str = source_str | std::views::transform([](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); }) | std::ranges::to<std::string>();
-
-    if (str == "byte") return TOKEN_TYPE_KW_I8_TYPE;
-    if (str == "ubyte") return TOKEN_TYPE_KW_U8_TYPE;
-    if (str == "short" || str == "int16") return TOKEN_TYPE_KW_I16_TYPE;
-    if (str == "ushort" || str == "uint16") return TOKEN_TYPE_KW_U16_TYPE;
-    if (str == "int" || str == "int32") return TOKEN_TYPE_KW_I32_TYPE;
-    if (str == "uint" || str == "uint32") return TOKEN_TYPE_KW_U32_TYPE;
-    if (str == "long" || str == "int64") return TOKEN_TYPE_KW_I64_TYPE;
-    if (str == "ulong" || str == "uint64") return TOKEN_TYPE_KW_U64_TYPE;
-    if (str == "float" || str == "float32") return TOKEN_TYPE_KW_F32_TYPE;
-    if (str == "double" || str == "float64") return TOKEN_TYPE_KW_F64_TYPE;
-    if (str == "string") return TOKEN_TYPE_KW_STRING_TYPE;
-    if (str == "blob") return TOKEN_TYPE_KW_BLOB_TYPE;
-    if (str == "user_type") return TOKEN_TYPE_KW_USER_DEFINED_TYPE;
-
-    if (str == "stopdev") return TOKEN_TYPE_KW_STOPDEV;
-    if (str == "dump") return TOKEN_TYPE_KW_DUMP;
-    if (str == "dumpx") return TOKEN_TYPE_KW_DUMPX;
-    if (str == "write") return TOKEN_TYPE_KW_WRITE;
-    if (str == "load") return TOKEN_TYPE_KW_LOAD;
-    if (str == "set") return TOKEN_TYPE_KW_SET;
-    if (str == "iwrite") return TOKEN_TYPE_KW_IWRITE;
-    if (str == "cmp") return TOKEN_TYPE_KW_CMP;
-    if (str == "cmpgt") return TOKEN_TYPE_KW_CMPGT;
-    if (str == "cmplt") return TOKEN_TYPE_KW_CMPLT;
-    if (str == "and") return TOKEN_TYPE_KW_AND;
-    if (str == "or") return TOKEN_TYPE_KW_OR;
-    if (str == "xor") return TOKEN_TYPE_KW_XOR;
-    if (str == "lshift") return TOKEN_TYPE_KW_LSHIFT;
-    if (str == "rshift") return TOKEN_TYPE_KW_RSHIFT;
-    if (str == "goto") return TOKEN_TYPE_KW_GOTO;
-    if (str == "je") return TOKEN_TYPE_KW_JE;
-    if (str == "jne") return TOKEN_TYPE_KW_JNE;
-    if (str == "call") return TOKEN_TYPE_KW_CALL;
-    if (str == "ret") return TOKEN_TYPE_KW_RET;
-    if (str == "retx") return TOKEN_TYPE_KW_RETX;
-    if (str == "add") return TOKEN_TYPE_KW_ADD;
-    if (str == "sub") return TOKEN_TYPE_KW_SUB;
-    if (str == "mul") return TOKEN_TYPE_KW_MUL;
-    if (str == "div") return TOKEN_TYPE_KW_DIV;
-    if (str == "mod") return TOKEN_TYPE_KW_MOD;
-    if (str == "loadscn") return TOKEN_TYPE_KW_LOADSCN;
-
-    if (str == "begin") return TOKEN_TYPE_KW_BEGIN;
-    if (str == "end") return TOKEN_TYPE_KW_END;
-
-    if (str == "object") return TOKEN_TYPE_KW_OBJECT;
-
-    if (str == "asset") return TOKEN_TYPE_KW_ASSET;
-    if (str == "scene") return TOKEN_TYPE_KW_SCENE;
-
-    if (str == "model_source") return TOKEN_TYPE_KW_MODEL_SOURCE;
-    if (str == "model") return TOKEN_TYPE_KW_MODEL;
-    if (str == "animation") return TOKEN_TYPE_KW_ANIMATION;
-
-    if (str == "script_source") return TOKEN_TYPE_KW_SCRIPT_SOURCE;
-    if (str == "script") return TOKEN_TYPE_KW_SCRIPT;
-
-    if (str == "audio") return TOKEN_TYPE_KW_AUDIO;
-
-    if (str == "scene") return TOKEN_TYPE_KW_SCENE;
-    if (str == "scene_object") return TOKEN_TYPE_KW_SCENE_OBJECT;
-
-    if (str == "input_map") return TOKEN_TYPE_KW_INPUT_MAP;
-    if (str == "pipeline") return TOKEN_TYPE_KW_PIPELINE;
-
-    if (str == "pass") return TOKEN_TYPE_KW_PASS;
-    if (str == "shader") return TOKEN_TYPE_KW_SHADER;
-    if (str == "texture") return TOKEN_TYPE_KW_TEXTURE;
-    if (str == "buffer") return TOKEN_TYPE_KW_BUFFER;
-    if (str == "tag") return TOKEN_TYPE_KW_TAG;
-
-    if (str == "r0" || str == "r1" || str == "r2" || str == "r3" || str == "r4" ||
-        str == "r5" || str == "r6" || str == "r7" || str == "r8" || str == "r9" ||
-        str == "ra" || str == "rb" || str == "rc" || str == "rd" || str == "re" ||
-        str == "rf" || str == "rflag") {
-      return TOKEN_TYPE_REGISTER;
+    auto it = std::ranges::find(kKeywordTokens, source_str, &keyword_token::text);
+    if (it != kKeywordTokens.end()) {
+      return it->type;
+    } else {
+      throw lex_error("Keyword not found for string: " + std::string(source_str));
     }
-
-    return TOKEN_TYPE_IDENTIFIER;
   }
 
 }  // namespace other

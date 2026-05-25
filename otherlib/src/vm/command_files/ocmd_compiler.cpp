@@ -3,34 +3,26 @@
  **/
 #include "vm/command_files/ocmd_compiler.hpp"
 
-#include "vm/command_files/assembler.hpp"
-#include "vm/command_files/lexer.hpp"
-#include "vm/command_files/linker.hpp"
-#include "vm/command_files/parser.hpp"
+#include "vm/opcode.hpp"
 
 namespace other {
 
-  std::vector<uint8_t> ocmd_compiler::compile_single_translation_unit(const std::string_view source_code) {
-    ocmd_lexer lexer{ source_code };
-    const auto tokens = lexer.tokenize();
-    if (tokens.empty()) {
-      return {};
-    }
-
-    ocmd_parser parser{ tokens };
-    const auto ir = parser.parse();
-    if (ir.code_blocks.empty() || ir.data_blocks.empty()) {
-      return {};
-    }
-
-    ocmd_assembler assembler{ ir };
-    const auto object_code = assembler.assemble();
-    if (object_code.code.empty() || object_code.data.empty()) {
-      return {};
-    }
-
-    ocmd_linker linker{ object_code };
-    return linker.link();
+  std::vector<uint8_t> ocmd_compiler::compile() {
+    compile_to_byte_code();
+    compile_to_binary();
+    return emitted_data;
   }
+
+  void ocmd_compiler::compile_to_byte_code() {
+    for (const auto& code_blk_ir : ir.code_blocks) {
+      for (const auto& instr_ir : code_blk_ir.instructions) {
+        instruction instr;
+        instr.opcode = instr_ir.category_and_type;
+        // set opcode fields based on instruction arguments
+      }
+    }
+  }
+
+  void ocmd_compiler::compile_to_binary() {}
 
 }  // namespace other

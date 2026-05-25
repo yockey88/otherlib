@@ -39,6 +39,8 @@ namespace other {
       return data_type::OCMD_DATA_TYPE_F64;
     } else if (label == "string") {
       return data_type::OCMD_DATA_TYPE_STRING;
+    } else if (label == "address") {
+      return data_type::OCMD_DATA_TYPE_ADDRESS;
     } else if (label == "blob") {
       return data_type::OCMD_DATA_TYPE_BLOB;
     } else if (label == "user_type") {
@@ -60,23 +62,34 @@ namespace other {
   data_type data_object::deduce_data_type_from_tokens(const std::vector<token>& value_tokens) {
     /// check if blob is of the form DE AD BE EF which shows as either all HEX_LITERAL or mix of HEX_LITERAL and INTEGER_LITERAL, but
     /// we don't want to misinterpret integer literals like "123456" as blob, we will interpret any thing more than two 123 456 as blob or 0x123456 as blob,
-    /// but not single integer literals
 
-    if (std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_HEX_LITERAL; }) ||
-        (value_tokens.size() > 1 && std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_HEX_LITERAL || tok.type == TOKEN_TYPE_INTEGER_LITERAL; }))) {
-      return data_type::OCMD_DATA_TYPE_BLOB;
-    } else if (std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_STRING_LITERAL; })) {
-      return data_type::OCMD_DATA_TYPE_STRING;
-    }
-    /// default to int32 for integer literals, can fix later
-    else if (std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_INTEGER_LITERAL; })) {
-      return data_type::OCMD_DATA_TYPE_I32;
-    }
-    /// default to float32 for floating-point literals, can fix later
-    else if (std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_FLOATING_POINT_LITERAL; })) {
-      return data_type::OCMD_DATA_TYPE_F32;
+    const bool all_hex_literal = std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_HEX_LITERAL; });
+    const bool all_integer_literal = std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_INTEGER_LITERAL; });
+    const bool some_hex_literal = std::ranges::any_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_HEX_LITERAL; });
+    const bool some_integer_literal = std::ranges::any_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_INTEGER_LITERAL; });
+    const bool alL_string_literal = std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_STRING_LITERAL; });
+    const bool no_string_literal = std::ranges::none_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_STRING_LITERAL; });
+
+    if (value_tokens.size() > 1) {
+      if (all_hex_literal || all_integer_literal || (some_hex_literal && some_integer_literal && no_string_literal)) {
+        return data_type::OCMD_DATA_TYPE_BLOB;
+      } else if (alL_string_literal) {
+        return data_type::OCMD_DATA_TYPE_STRING;
+      } else {
+        throw data_object_error("Cannot deduce data type for multiple tokens that are not all hex literals or all integer literals or all string literals");
+      }
     } else {
-      return data_type::OCMD_DATA_TYPE_INVALID;
+      if (all_hex_literal) {
+        return data_type::OCMD_DATA_TYPE_BLOB;
+      } else if (all_integer_literal) {
+        return data_type::OCMD_DATA_TYPE_I64;
+      } else if (alL_string_literal) {
+        return data_type::OCMD_DATA_TYPE_STRING;
+      } else if (value_tokens[0].type == TOKEN_TYPE_FLOATING_POINT_LITERAL) {
+        return data_type::OCMD_DATA_TYPE_F64;
+      } else {
+        throw data_object_error("Cannot deduce data type for single token that is not a hex literal or an integer literal or a string literal");
+      }
     }
   }
 
@@ -115,6 +128,11 @@ namespace other {
       case OCMD_DATA_TYPE_F32: return raw_data_from_value<float>(std::stof(value_token.text));
       case OCMD_DATA_TYPE_F64: return raw_data_from_value<double>(std::stod(value_token.text));
       case OCMD_DATA_TYPE_STRING: return std::vector<uint8_t>(value_token.text.begin(), value_token.text.end());
+      case OCMD_DATA_TYPE_ADDRESS: {
+        const int base = value_token.text.starts_with("0x") ? 16 : 10;
+        const uint16_t value = static_cast<uint16_t>(std::stoul(value_token.text, nullptr, base));
+        return raw_data_from_value<uint16_t>(value);
+      }
 
       case OCMD_DATA_TYPE_BLOB: {
         std::string raw_txt = value_token.text;
@@ -124,16 +142,17 @@ namespace other {
 
         return raw_txt |
           /// split data blob string on spaces and then trim white space and then filter if empty
-          std::views::split(' ') | std::views::transform([](auto&& byte_str_view) { return trim_beginning_and_end(byte_str_view | std::ranges::to<std::string>()); }) |
-          std::views::filter([](auto&& byte_str_view) { return !byte_str_view.empty(); }) |
+          std::views::split(' ') |
+          std::views::transform([](auto&& byte_str_view) { return trim_beginning_and_end(byte_str_view | std::ranges::to<std::string>()); }) |
+          std::views::filter([](auto&& byte_str_view) { return !std::ranges::empty(byte_str_view); }) |
           /// turn each piece into a vector of uint8_t depending on how many bytes are in the string then flatten and collect
-          std::views::transform([](const std::string& byte_str) {
+          std::views::transform([](auto&& byte_str_view) {
+                 const std::string byte_str = byte_str_view | std::ranges::to<std::string>();
                  size_t num_bytes = byte_str.size() / 2 + (byte_str.size() % 2 != 0 ? 1 : 0);
-                 std::vector<uint8_t> bytes;
+
+                 std::vector<uint8_t> bytes = {};
                  for (size_t i = 0; i < num_bytes; ++i) {
-                   std::string byte_hex = byte_str.substr(i * 2, 2);
-                   uint8_t byte = static_cast<uint8_t>(std::stoul(byte_hex, nullptr, 16));
-                   bytes.push_back(byte);
+                   bytes.push_back(static_cast<uint8_t>(std::stoul(byte_str.substr(i * 2, 2), nullptr, 16)));
                  }
                  return bytes;
                }) |

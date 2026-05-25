@@ -103,6 +103,30 @@ namespace other {
       CORE_LOG_DEBUG("R[{}] = {:#018x}", x, device->registers[x].to_u64());
     }
 
+    /// 03xxnnnn - Dump memory at address n
+    void execute_dump_memory_at(other_command_device* device) {
+      // dump range [n, n + reg(x)] in a hexdump format
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      natural_t val_in_x = device->registers[x].to_u64();
+
+      uint16_t n = device->current_instruction.lower;
+      void* ptr = device->memory->ptr_to(n + device->program_start_address);
+      size_t bytes_to_dump = std::min<size_t>(val_in_x, 256);  // limit to 256 bytes
+      const uint8_t* byte_ptr = static_cast<const uint8_t*>(ptr);
+      std::stringstream ss;
+      ss << std::format("Memory dump at address {:#06x} ({} bytes):\n", n, bytes_to_dump);
+      for (size_t i = 0; i < bytes_to_dump; ++i) {
+        if (i % 16 == 0) {
+          ss << std::format("{:#06x}: ", n + i);
+        }
+        ss << std::format("{:02x} ", byte_ptr[i]);
+        if (i % 16 == 15 || i == bytes_to_dump - 1) {
+          ss << "\n";
+        }
+      }
+      CORE_LOG_DEBUG("MEM[{:#06x}] length = {}:\n{}", n, bytes_to_dump, ss.str());
+    }
+
     /////////////////////// 1XXX /////////////////////
     /// 10xxnnnn MEM[n] = R[x]
     void execute_write_x_to_memory(other_command_device* device) {
@@ -312,6 +336,7 @@ namespace other {
       execute_stop_device,
       execute_dump_registers,
       execute_dump_register_x,
+      execute_dump_memory_at,
     };
     constexpr other_command_executor kLoadTable[] = {
       execute_write_x_to_memory,
@@ -413,6 +438,13 @@ namespace other {
     void execute_decompiler_dump_register_x(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       emit_instruction_log(device, std::format("[DUMP-REGISTER-X] x={}", x));
+    }
+
+    /// 03xxnnnn - Dump memory at address n
+    void execute_decompiler_dump_memory_at(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint16_t n = device->current_instruction.lower;
+      emit_instruction_log(device, std::format("[DUMP-MEMORY-AT] x={} n={:#06x}", x, n));
     }
 
     /////////////////////// 1XXX /////////////////////
@@ -584,6 +616,7 @@ namespace other {
       execute_decompiler_stop_device,
       execute_decompiler_dump_registers,
       execute_decompiler_dump_register_x,
+      execute_decompiler_dump_memory_at,
     };
     constexpr other_command_executor kDecompilerLoadTable[] = {
       execute_decompiler_write_x_to_memory,

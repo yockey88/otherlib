@@ -13,6 +13,12 @@
 
 namespace other {
 
+  struct data_object_error : public std::runtime_error {
+    data_object_error(const std::string& msg)
+        : std::runtime_error(msg) {}
+    ~data_object_error() override = default;
+  };
+
   enum data_type {
     OCMD_DATA_TYPE_I8,
     OCMD_DATA_TYPE_U8,
@@ -25,6 +31,7 @@ namespace other {
     OCMD_DATA_TYPE_F32,
     OCMD_DATA_TYPE_F64,
     OCMD_DATA_TYPE_STRING,
+    OCMD_DATA_TYPE_ADDRESS,
     OCMD_DATA_TYPE_BLOB,
     OCMD_DATA_TYPE_USER_DEFINED,
 

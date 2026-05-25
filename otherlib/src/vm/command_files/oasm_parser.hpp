@@ -1,37 +1,29 @@
 /**
- * \file vm/command_files/parser.hpp
+ * \file vm/command_files/oasm_parser.hpp
  **/
-#ifndef OTHERLIB_VM_COMMAND_FILES_PARSER_HPP
-#define OTHERLIB_VM_COMMAND_FILES_PARSER_HPP
+#ifndef OTHERLIB_VM_COMMAND_FILES_OASM_PARSER_HPP
+#define OTHERLIB_VM_COMMAND_FILES_OASM_PARSER_HPP
 
 #include <span>
 #include <string>
 #include <vector>
 
-#include "vm/command_files/code_block.hpp"
-#include "vm/command_files/data_block.hpp"
+#include "vm/command_files/ocmd_ir.hpp"
 #include "vm/command_files/token.hpp"
 
 namespace other {
 
-  struct ocmd_ir {
-    struct definition {
-      std::string name;
-      token value = { TOKEN_TYPE_INVALID, "", 0, 0 };
-    };
-
-    std::vector<definition> definitions = {};
-    std::vector<code_block> code_blocks = {};
-    std::vector<data_block> data_blocks = {};
-
-    bool valid = false;
+  class ocmd_parse_error : public std::runtime_error {
+   public:
+    ocmd_parse_error(const std::string& msg)
+        : std::runtime_error(msg) {}
   };
 
-  class ocmd_parser {
+  class oasm_parser {
    public:
-    ocmd_parser(const std::vector<token>& tokens)
+    oasm_parser(const std::vector<token>& tokens)
         : tokens(tokens) {}
-    ~ocmd_parser() = default;
+    ~oasm_parser() = default;
 
     ocmd_ir parse();
 
@@ -70,7 +62,7 @@ namespace other {
       std::vector<data_object_ir> objects = {};
     };
 
-    struct block_section_ir {
+    struct section_ir {
       std::vector<code_section_ir> sections = {};
       std::vector<data_section_ir> data_sections = {};
     };
@@ -80,20 +72,21 @@ namespace other {
 
     size_t cursor = 0;
 
-    block_section_ir parse_sections();
+    section_ir parse_sections();
+    void parse_directive(section_ir& sections);
+    void parse_keyword_directive(section_ir& sections, const token& directive_token);
+    void parse_identifier_directive(section_ir& sections, const token& identifier_token);
+    void parse_definition(section_ir& sections);
+
     code_section_ir parse_code_block();
-    data_section_ir parse_data_block();
+    data_section_ir parse_data_block(const token& directive_token);
 
     void process_code_sections(std::vector<code_section_ir>& sections);
     void process_data_sections(std::vector<data_section_ir>& sections);
 
-    bool is_type_keyword(const token& tok) const;
-    bool is_instruction_keyword(const token& tok) const;
-    bool is_eol_marker(const token& tok) const;
-    // bool is_return_instruction(uint32_t category_and_type) const;
-
     const token& peek(size_t offset) const;
     const token& current() const;
+
     const std::span<const token> look_from_now(size_t count = 0) const;
 
     void consume();
@@ -103,9 +96,10 @@ namespace other {
     bool check(token_type type) const;
     bool check_next(token_type type) const;
 
+    uint32_t get_instruction_parity(uint32_t category_and_type) const;
     uint32_t get_opcode_category_and_type_from_token(const token& tok) const;
   };
 
 }  // namespace other
 
-#endif  // OTHERLIB_VM_COMMAND_FILES_PARSER_HPP
+#endif  // OTHERLIB_VM_COMMAND_FILES_OASM_PARSER_HPP

@@ -3,6 +3,7 @@
  **/
 #include "vm/command_files/code_block.hpp"
 
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
 #include "vm/opcode.hpp"
@@ -13,10 +14,11 @@ namespace other {
   namespace {
 
     uint8_t instruction_register_index_from_token(const token& tok) {
-      if (tok.type != TOKEN_TYPE_REGISTER) {
+      if (tok.type < TOKEN_TYPE_KW_R0 || tok.type > TOKEN_TYPE_KW_RFLAG) {
         throw std::runtime_error("Token is not a register: " + tok.text);
       }
 
+      if ("r0" == tok.text) return 0x00;
       if ("r1" == tok.text) return 0x01;
       if ("r2" == tok.text) return 0x02;
       if ("r3" == tok.text) return 0x03;
@@ -45,7 +47,7 @@ namespace other {
       .type = tok.type,
     };
 
-    if (tok.type == TOKEN_TYPE_REGISTER) {
+    if (tok.type >= TOKEN_TYPE_KW_R0 && tok.type <= TOKEN_TYPE_KW_RFLAG) {
       arg.value = instruction_register_index_from_token(tok);
     } else if (tok.type == TOKEN_TYPE_ADDRESS) {
       arg.value = static_cast<uint16_t>(std::stoul(tok.text, nullptr, 16));
@@ -61,7 +63,6 @@ namespace other {
       /// mark as unresolved address for now
       arg.value = 0xFFFF;
     }
-
     return arg;
   }
 

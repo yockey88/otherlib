@@ -9,24 +9,21 @@ namespace other {
 
     static const std::string kSimpleInput1 =
       R"(
-    object pipeline my_pipeline
-    begin
+    pipeline "my_pipeline" {
       name = "My Pipeline"
-    end
+    }
     )";
 
     static const std::string kSimpleInput1NoName =
       R"(
-    object pipeline 
-    begin
+    pipeline "my_pipeline" {
       name = "My Pipeline"
-    end
+    }
     )";
 
     static const std::string kSimpleInput2 =
       R"(
-  object pipeline my_pipeline
-  begin
+  pipeline "my_pipeline" {
     name = "My Pipeline"
     buffers = [
       buffer camera_buffer          : uniform_buffer dynamic @camera
@@ -35,7 +32,7 @@ namespace other {
       buffer point_light_buffer     : storage_buffer dynamic @point_light
       buffer direction_light_buffer : storage_buffer dynamic @direction_light
     ]
-  end
+  }
     )";
 
   }  // namespace

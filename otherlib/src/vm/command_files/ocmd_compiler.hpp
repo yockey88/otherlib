@@ -7,15 +7,30 @@
 #include <string_view>
 #include <vector>
 
+#include "vm/command_files/ocmd_ir.hpp"
+
 namespace other {
 
   class ocmd_compiler {
    public:
-    ocmd_compiler() = default;
+    ocmd_compiler(const ocmd_ir& ir)
+        : ir(ir) {}
     ~ocmd_compiler() = default;
 
-    // static std::vector<uint8_t> parse_and_assemble_assembly_file(const filepath& path);
-    static std::vector<uint8_t> compile_single_translation_unit(const std::string_view source_code);
+    std::vector<uint8_t> compile();
+
+   private:
+    const ocmd_ir& ir;
+
+    std::vector<uint32_t> emitted_opcodes;
+    std::vector<uint8_t> emitted_data;
+
+    inline void emit_opcode(uint32_t opcode) {
+      emitted_opcodes.push_back(opcode);
+    }
+
+    void compile_to_byte_code();
+    void compile_to_binary();
   };
 
 }  // namespace other
