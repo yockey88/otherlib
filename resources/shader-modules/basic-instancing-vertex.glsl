@@ -20,11 +20,11 @@ layout (std140, binding = 2) uniform camera_buffer {
   mat4 projection_matrix;
 };
 
-layout (std140) uniform model_buffer {
+layout (std140, binding = 1) uniform model_buffer {
   mat4 models[MAX_OBJECTS];
 };
 
-layout (std140) uniform bone_buffer {
+layout (std140, binding = 3) uniform bone_buffer {
   mat4 bones[MAX_OBJECTS];
   int use_bones;
 };

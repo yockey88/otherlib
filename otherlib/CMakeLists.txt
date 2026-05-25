@@ -53,6 +53,8 @@ target_sources(otherlib
 
     src/project/project.cpp
 
+    src/render/default_pass_executor_resolver.cpp
+
     src/scripting/bindings.cpp
     src/scripting/scene_interface.cpp
     src/scripting/binding_descriptor.cpp

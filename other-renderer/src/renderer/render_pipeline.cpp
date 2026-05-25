@@ -8,6 +8,8 @@
 
 #include <glm/glm.hpp>
 
+#include "thread/thread_safety.hpp"
+
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/render_graph.hpp"
@@ -44,16 +46,30 @@ namespace other {
     build_passes_from_def();
     graph->end_pipeline();
 
+    build_pass_runtimes();
+
     validate();
   }
 
   void render_pipeline::shutdown_pipeline() {
     destroy_resources();
 
+    destroy_pass_runtimes();
+
     arena_allocator<render_graph>{}.free(graph);
     graph = nullptr;
 
     renderer_ptr = nullptr;
+  }
+
+  bool render_pipeline::has_pass(natural_t pass_id) const {
+    return pass_runtimes.find(pass_id) != pass_runtimes.end();
+  }
+
+  pass_runtime& render_pipeline::get_pass_runtime(natural_t pass_id) {
+    auto itr = pass_runtimes.find(pass_id);
+    OTHER_ASSERT(itr != pass_runtimes.end(), "Pass runtime with id {} not found.", pass_id);
+    return itr->second;
   }
 
   bool render_pipeline::reload(pipeline_definition&& new_def) {
@@ -77,80 +93,95 @@ namespace other {
       return;
     }
 
-    for (const auto& [tag, handle] : tagged_buffer_handles) {
-      switch (tag) {
-        case resource_tag::CAMERA: {
-          if (data->primary_camera != nullptr) {
-            gpu::camera_data cam = data->primary_camera->to_gpu_data();
-            upload_to_handle(handle, &cam, sizeof(gpu::camera_data));
+    bind_frame_resources(*data);
+    apply_lighting_uniforms(*data);
+  }
+
+  void render_pipeline::bind_frame_resources(const render_data& data) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("render_pipeline::pump_pipeline_per_frame_bindings");
+
+    auto& reg = renderer_ptr->get_binding_registry();
+
+    std::unordered_set<uint64_t> visited;
+    for (auto& [pass_id, runtime] : pass_runtimes) {
+      OTHER_ASSERT(runtime.def != nullptr, "pass_runtime[{}] has null def", pass_id);
+
+      for (size_t i = 0; i < runtime.def->bindings.size(); ++i) {
+        const auto& bd = runtime.def->bindings[i];
+        if (bd.scope != binding_scope::PER_FRAME || bd.tag.is_none()) {
+          continue;
+        }
+
+        auto handle_opt = find_tagged(bd.tag);
+        // clang-format off
+        OTHER_ASSERT(handle_opt.has_value(), "pipeline '{}' pass '{}' binding '{}': no resource for tag '{}' but a producer is declared", 
+                     definition.name, runtime.def->name, bd.name, bd.tag.value());
+        // clang-format on
+
+        const resource_handle handle = *handle_opt;
+        const uint64_t key = (uint64_t(bd.tag.value()) << 32) | handle.id;
+        if (!visited.insert(key).second) {
+          runtime.state.per_frame_handles[i] = handle;
+          continue;
+        }
+
+        auto binder = reg.find_per_frame(bd.tag);
+        if (binder == nullptr) {
+          auto* resolver = renderer_ptr->get_pass_executor_resolver();
+          if (resolver != nullptr) {
+            binder = resolver->resolve_frame_binder("default", bd.tag);
           }
-        } break;
+        }
 
-        /// \todo find a way to bulk-upload models/materials/bones
-        case resource_tag::MODEL: break;
-        case resource_tag::MATERIAL: break;
-        case resource_tag::BONE: break;
+        if (binder == nullptr) {
+          // some tags (kScreenTag) legitimately have no producer
+          runtime.state.per_frame_handles[i] = handle;
+          continue;
+        }
 
-        case resource_tag::POINT_LIGHT: {
-          gpu::point_light_buffer buf{};
-          for (size_t i = 0; i < data->point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-            buf.lights[i] = data->point_lights[i];
-          }
-          upload_to_handle(handle, &buf, sizeof(gpu::point_light_buffer));
-        } break;
-
-        case resource_tag::DIRECTION_LIGHT: {
-          gpu::directional_light_buffer dir_light_buffer_data;
-          for (size_t i = 0; i < data->ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
-            dir_light_buffer_data.lights[i] = data->ambient_lights[i];
-          }
-          upload_to_handle(handle, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
-
-          glm::mat4 light_space_matrix = glm::mat4(1.0f);
-          glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
-
-          if (definition.shadow_map_pass_name.has_value() &&
-              data->scene_ambient_light != nullptr) {
-            if (!definition.light_space_matrix_uniform_name.has_value()) {
-              CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
-              definition.shadow_map_pass_name = std::nullopt;  // avoid trying to set it every frame if it's not defined
-            }
-
-            dir_light_buffer_data.lights[0] = *data->scene_ambient_light;
-
-            float near_plane = 1.0f, far_plane = 10.f;
-            glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-
-            /// tiny shift to avoid nans
-            glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
-            glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
-
-            light_space_matrix = light_projection * light_view;
-            get_pass_shader(*definition.shadow_map_pass_name)
-              ->bind()
-              .set_uniform(*definition.light_space_matrix_uniform_name, light_space_matrix)
-              .unbind();
-          }
-
-          if (definition.shading_pass_name.has_value()) {
-            shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
-            if (shading_shader != nullptr) {
-              int32_t num_point = static_cast<int32_t>(
-                data->point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data->point_lights.size()
-              );
-              int32_t num_dir = static_cast<int32_t>(data->scene_ambient_light != nullptr ? 1 : 0);
-
-              shading_shader->bind()
-                .set_uniform("OE_light_space_matrix", light_space_matrix)
-                .set_uniform("OE_light_position", light_pos)
-                .set_uniform("OE_num_point_lights", num_point)
-                .set_uniform("OE_num_direction_lights", num_dir)
-                .unbind();
-            }
-          }
-        } break;
-        default: break;
+        binder(*this, data, handle);
+        runtime.state.per_frame_handles[i] = handle;
       }
+    }
+  }
+
+  void render_pipeline::bind_draw_resources(pass_runtime& runtime, const render_data& data, size_t draw_index) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("render_pipeline::bind_draw_resources");
+    auto& reg = renderer_ptr->get_binding_registry();
+    auto& api = renderer_ptr->rendering()->api();
+    OTHER_ASSERT(api != nullptr, "Rendering API is null in bind_draw_resources.");
+
+    for (size_t i = 0; i < runtime.def->bindings.size(); ++i) {
+      const auto& bd = runtime.def->bindings[i];
+      if (bd.scope != binding_scope::PER_DRAW_CALL) {
+        continue;
+      }
+
+      auto& ring = runtime.state.per_draw_rings[i];
+      OTHER_ASSERT(ring.ring_buffer.id != 0, "pass '{}' binding '{}': per-draw ring not allocated", runtime.def->name, bd.name);
+      // clang-format off
+      OTHER_ASSERT(ring.head + ring.element_size <= ring.capacity, "pass '{}' binding '{}': per-draw ring exhausted at draw {} (head={}, element={}, capacity={})", 
+                   runtime.def->name, bd.name, draw_index, ring.head, ring.element_size, ring.capacity);
+      // clang-format on
+
+      auto producer = reg.find_per_draw(bd.tag);
+      if (producer == nullptr) {
+        auto* resolver = renderer_ptr->get_pass_executor_resolver();
+        OTHER_ASSERT(resolver != nullptr, "pass '{}' binding '{}': no producer for tag '{}' and no resolver available", runtime.def->name, bd.name, bd.tag.value());
+
+        producer = resolver->resolve_draw_binder("default", bd.tag);
+      }
+      if (producer == nullptr) {
+        OTHER_ASSERT(false, "pass '{}' binding '{}': no producer for tag '{}'", runtime.def->name, bd.name, bd.tag.value());
+        continue;
+      }
+
+      std::span<uint8_t> slice{ ring.cpu_staging + ring.head, ring.element_size };
+      producer(data, draw_index, slice);
+      api->buffer_range(ring.ring_buffer, ring.binding_point, ring.head, ring.element_size, ring.cpu_staging + ring.head);
+      ring.head += ring.stride;
     }
   }
 
@@ -161,23 +192,71 @@ namespace other {
     auto& g = graph->get_graph();
     const auto& execs = graph->get_executors();
     const auto& sort = graph->get_topological_sort();
-
     if (sort.empty()) {
       return;
     }
 
-    for (const natural_t id : sort) {
-      auto node_itr = g.nodes.find(id);
-      OTHER_ASSERT(node_itr != g.nodes.end(), "Node with id {} not found in graph.", id);
+    {
+      PROFILE_SECTION("render_pipeline::render_frame--execute_passes");
+      for (const natural_t id : sort) {
+        PROFILE_SECTION("render_pipeline::render_frame--execute_passes--pass");
+        auto node_itr = g.nodes.find(id);
+        OTHER_ASSERT(node_itr != g.nodes.end(), "Node with id {} not found in graph.", id);
 
-      auto& n = node_itr->second;
-      const auto* pass = n.pass;
-      auto exec_itr = execs.find(pass->id);
-      OTHER_ASSERT(exec_itr != execs.end(), "Executor for pass {} not found.", id);
+        frame_node& n = node_itr->second;
+        const render_pass* pass = n.pass;
+        OTHER_ASSERT(pass != nullptr, "Node {} has null pass", id);
 
-      n.start_pass(renderer_ptr);
-      exec_itr->second(*renderer_ptr, &n, pass->user_data);
-      n.end_pass(renderer_ptr);
+        auto runtime_itr = pass_runtimes.find(pass->id);
+        OTHER_ASSERT(runtime_itr != pass_runtimes.end(), "Pass runtime for pass id {} not built — was build_pass_runtimes() called?", pass->id);
+        pass_runtime& runtime = runtime_itr->second;
+
+        auto exec_itr = execs.find(pass->id);
+        OTHER_ASSERT(exec_itr != execs.end(), "Executor for pass {} (id {}) not found.", pass->name, pass->id);
+        const render_graph::pass_executor& exec = exec_itr->second;
+
+        frame_binding_view bv{
+          .defs = std::span{ runtime.def->bindings },
+          .per_frame_handles = std::span{ runtime.state.per_frame_handles },
+          .per_draw_offsets = {},
+        };
+        pass_diagnostics diag{};
+
+        const uint32_t iters = std::max<uint32_t>(runtime.def->iterations_per_frame, 1u);
+
+        {
+          PROFILE_SECTION("render_pipeline::render_frame--execute_passes--pass--iterations");
+          for (uint32_t iter = 0; iter < iters; ++iter) {
+            diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
+
+            n.start_pass(renderer_ptr);
+            {
+              pass_context ctx{
+                renderer_ptr,
+                this,
+                &n,
+                frame_render_data,
+                bv,
+                &diag,
+              };
+              exec(ctx);
+            }
+            n.end_pass(renderer_ptr);
+          }
+        }
+
+        for (auto& ring : runtime.state.per_draw_rings) {
+          ring.head = 0;
+        }
+      }
+    }
+  }
+
+  void render_pipeline::reset_draw_buffers() {
+    for (auto& [_, runtime] : pass_runtimes) {
+      for (auto& ring : runtime.state.per_draw_rings) {
+        ring.head = 0;
+      }
     }
   }
 
@@ -205,6 +284,10 @@ namespace other {
       CORE_LOG_ERROR("Cannot upload to buffer [{}] — resource does not exist.", handle);
       return;
     }
+    get_renderer()->get_resource<gpu_buffer>(handle).set_data(data, size).finalize_buffer();
+  }
+
+  void render_pipeline::upload_to_handle(resource_handle handle, const void* data, size_t size) {
     get_renderer()->get_resource<gpu_buffer>(handle).set_data(data, size).finalize_buffer();
   }
 
@@ -251,6 +334,204 @@ namespace other {
       return nullptr;
     }
     return &get_renderer()->get_resource<shader>(*itr->second.pass->shader_handle);
+  }
+
+  resource_handle render_pipeline::get_quad_mesh_handle() const {
+    OTHER_ASSERT(quad_mesh_handle.has_value(), "Render pipeline does not have quad mesh for screen texture!");
+    return *quad_mesh_handle;
+  }
+
+  void render_pipeline::apply_uniforms(shader& s, const std::map<std::string, value>& uniforms) {
+    for (const auto& [name, val] : uniforms) {
+      switch (val.type()) {
+        case value_type::INT8: s.set_uniform(name, (int8_t)val); break;
+        case value_type::UINT8: s.set_uniform(name, (uint8_t)val); break;
+        case value_type::INT16: s.set_uniform(name, (int16_t)val); break;
+        case value_type::UINT16: s.set_uniform(name, (uint16_t)val); break;
+        case value_type::INT32: s.set_uniform(name, (int32_t)val); break;
+        case value_type::UINT32: s.set_uniform(name, (uint32_t)val); break;
+        case value_type::INT64: s.set_uniform(name, (int64_t)val); break;
+        case value_type::UINT64: s.set_uniform(name, (uint64_t)val); break;
+        case value_type::FLOAT: s.set_uniform(name, (float)val); break;
+        case value_type::VEC3: {
+          glm::vec3 v = val;
+          s.set_uniform(name, v);
+        } break;
+        case value_type::VEC4: {
+          glm::vec4 v = val;
+          s.set_uniform(name, v);
+        } break;
+        case value_type::MAT4: {
+          glm::mat4 v = val;
+          s.set_uniform(name, v);
+        } break;
+        default:
+          CORE_LOG_WARN("Unsupported uniform value_type {} for '{}'.", static_cast<int>(val.type()), name);
+          break;
+      }
+    }
+  }
+  namespace {
+
+    constexpr uint32_t align_up(uint32_t value, uint32_t align) {
+      OTHER_ASSERT(align > 0 && (align & (align - 1)) == 0, "align_up: alignment must be a power of two, got {}", align);
+      return (value + align - 1) & ~(align - 1);
+    }
+
+  }  // namespace
+
+  void render_pipeline::build_pass_runtimes() {
+    pass_runtimes.clear();
+    auto& reg = renderer_ptr->get_binding_registry();
+
+    for (const auto& pass_def : definition.passes) {
+      natural_t pass_name_hash = FNV(pass_def.name);
+      auto nodes_view = graph->get_graph().nodes | std::views::values;
+      render_pass* pass = nullptr;
+      {
+        auto itr = std::ranges::find_if(nodes_view, [&](const frame_node& node) { return FNV(node.pass->name) == pass_name_hash; });
+        if (itr == std::ranges::end(nodes_view)) {
+          CORE_LOG_ERROR("No node found in graph for pass '{}'", pass_def.name);
+          continue;
+        }
+        frame_node& n = *itr;
+        pass = n.pass;
+      }
+
+      OTHER_ASSERT(pass != nullptr, "Node for pass '{}' has null pass pointer", pass_def.name);
+
+      auto [itr, inserted] = pass_runtimes.insert({ pass->id, {} });
+      OTHER_ASSERT(inserted, "Pass runtime for pass '{}' already exists", pass_def.name);
+      pass_runtime& runtime = itr->second;
+      runtime.pass_id = pass->id;
+      runtime.def = &pass_def;
+      runtime.state.per_frame_handles.resize(pass_def.bindings.size());
+      runtime.state.per_draw_rings.resize(pass_def.bindings.size());
+
+      for (size_t i = 0; i < pass_def.bindings.size(); ++i) {
+        const auto& bd = pass_def.bindings[i];
+
+        if (bd.scope == binding_scope::PER_DRAW_CALL || bd.scope == binding_scope::PER_INSTANCE) {
+          OTHER_ASSERT(bd.element_size > 0, "pipeline '{}' pass '{}' binding '{}': per-draw bindings must specify element_size > 0", definition.name, pass_def.name, bd.name);
+
+          uint32_t align = 1;
+          switch (bd.type) {
+            case binding_type::UNIFORM_BUFFER: align = renderer_ptr->rendering()->api()->uniform_buffer_offset_alignment(); break;
+            case binding_type::STORAGE_BUFFER: align = renderer_ptr->rendering()->api()->storage_buffer_offset_alignment(); break;
+            /// \todo is this correct?
+            case binding_type::DRAW_INDIRECT_BUFFER: align = 4; break;
+            default:
+              OTHER_ASSERT(false, "binding '{}' has type {} but a per-draw ring was requested", bd.name, int(bd.type));
+          }
+
+          const uint32_t stride = align_up(bd.element_size, align);
+          const uint32_t expected = pass_def.expected_max_draws.value_or(renderer::kMaxDrawCalls);
+          const uint32_t capacity = stride * expected;  // * kMaxFramesInFlight;
+          // clang-format off
+          CORE_LOG_DEBUG("Attempting to allocate per-draw ring buffer for pass '{}' binding '{}': element_size={}, expected_max_draws={}, capacity={}", 
+                         pass_def.name, bd.name, bd.element_size, expected, capacity);
+          // clang-format on
+
+          auto handle = renderer_ptr->create_resource(std::format("{}.{}.ring", pass_def.name, bd.name), resource_type::BUFFER);
+          runtime.state.per_draw_rings[i] = {
+            .ring_buffer = handle,
+            .cpu_staging = (uint8_t*)arena::allocate(capacity),
+            .capacity = capacity,
+            .element_size = bd.element_size,
+            .stride = stride,
+            .head = 0,
+            .binding_point = bd.binding,
+            .set = bd.set,
+          };
+
+          gpu_buffer& buf = renderer_ptr->get_resource<gpu_buffer>(handle);
+          buf.set_buffer_type(buffer_type_from_binding(bd.type))
+            .set_usage(gpu_buffer::usage::DYNAMIC)
+            .set_data(nullptr, capacity)
+            .finalize_buffer();
+        }
+
+        bool ok = true;
+        switch (bd.scope) {
+          case binding_scope::PER_PIPELINE:
+            ok = true;
+            break;
+          case binding_scope::PER_FRAME:
+            ok = !bd.tag.is_none() && (reg.find_per_frame(bd.tag) != nullptr || renderer_ptr->frame_binder_resolves(bd.tag));
+            break;
+          case binding_scope::PER_DRAW_CALL:
+            ok = !bd.tag.is_none() && (reg.find_per_draw(bd.tag) != nullptr || renderer_ptr->draw_binder_resolves(bd.tag));
+            break;
+          case binding_scope::PER_INSTANCE:
+            ok = !bd.tag.is_none() && (reg.find_per_instance(bd.tag) != nullptr || renderer_ptr->instance_binder_resolves(bd.tag));
+            break;
+          default:
+            OTHER_ASSERT(false, "Unsupported binding scope {} for pass '{}', binding '{}'", int(bd.scope), pass_def.name, bd.name);
+        }
+
+        if (!ok) {
+          // clang-format off
+          CORE_LOG_ERROR("pipeline '{}' pass '{}': no producer for binding '{}' (scope={}, tag={})", 
+                         definition.name, pass_def.name, bd.name, int(bd.scope), bd.tag.value());
+          // clang-format on
+          valid = false;
+        }
+      }
+    }
+  }
+
+  void render_pipeline::destroy_pass_runtimes() {
+    for (auto& [_, runtime] : pass_runtimes) {
+      for (auto& ring : runtime.state.per_draw_rings) {
+        if (ring.ring_buffer.id != 0) {
+          renderer_ptr->destroy_resource(ring.ring_buffer);
+        }
+        arena::free(ring.cpu_staging, ring.capacity);
+      }
+    }
+    pass_runtimes.clear();
+  }
+
+  void render_pipeline::apply_lighting_uniforms(const render_data& data) {
+    glm::mat4 light_space_matrix = glm::mat4(1.0f);
+    glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
+
+    if (definition.shadow_map_pass_name.has_value() && data.scene_ambient_light != nullptr) {
+      if (!definition.light_space_matrix_uniform_name.has_value()) {
+        CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
+        definition.shadow_map_pass_name = std::nullopt;  // avoid trying to set it every frame if it's not defined
+      }
+
+      float near_plane = 1.0f, far_plane = 10.f;
+      glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+
+      /// tiny shift to avoid nans
+      glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
+      glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
+
+      light_space_matrix = light_projection * light_view;
+      get_pass_shader(*definition.shadow_map_pass_name)
+        ->bind()
+        .set_uniform(*definition.light_space_matrix_uniform_name, light_space_matrix)
+        .unbind();
+    }
+
+    if (definition.shading_pass_name.has_value()) {
+      shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
+      if (shading_shader != nullptr) {
+        int32_t num_point = static_cast<int32_t>(
+          data.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data.point_lights.size()
+        );
+        int32_t num_dir = static_cast<int32_t>(data.scene_ambient_light != nullptr ? 1 : 0);
+
+        shading_shader->bind()
+          .set_uniform("OE_light_space_matrix", light_space_matrix)
+          .set_uniform("OE_light_position", light_pos)
+          .set_uniform("OE_num_point_lights", num_point)
+          .set_uniform("OE_num_direction_lights", num_dir)
+          .unbind();
+      }
+    }
   }
 
   void render_pipeline::override_pass_executor(const std::string_view pass_name, executor_fn&& fn) {
@@ -308,7 +589,7 @@ namespace other {
 
     bool needs_quad = false;
     for (const auto& pass : definition.passes) {
-      if (pass.executor.type == executor_type::FULLSCREEN_QUAD) {
+      if (pass.executor.name == "fullscreen_quad") {
         needs_quad = true;
         break;
       }
@@ -330,15 +611,15 @@ namespace other {
 
   void render_pipeline::build_tag_maps() {
     for (const auto& [hash, res] : buffer_resources) {
-      if (res.tag != resource_tag::NONE && !tagged_buffer_handles.contains(res.tag)) {
+      if (res.tag != resource_tag::none() && !tagged_buffer_handles.contains(res.tag)) {
         tagged_buffer_handles[res.tag] = res.handle;
       }
     }
     for (const auto& [hash, res] : texture_resources) {
-      if (res.tag != resource_tag::NONE && !tagged_texture_handles.contains(res.tag)) {
+      if (res.tag != resource_tag::none() && !tagged_texture_handles.contains(res.tag)) {
         tagged_texture_handles[res.tag] = res.handle;
       }
-      if (res.tag == resource_tag::SCREEN) {
+      if (res.tag == resource_tag(resource_tag::kScreenTag)) {
         screen_texture_handle = res.handle;
       }
     }
@@ -363,15 +644,20 @@ namespace other {
   void render_pipeline::validate() {
     for (resource_tag tag : definition.required_tags) {
       if (!tagged_buffer_handles.contains(tag) && !tagged_texture_handles.contains(tag)) {
-        CORE_LOG_ERROR("Pipeline [{}] requires tag [{}] but no resource provides it.", definition.name, resource_tag_to_string(tag));
+        // CORE_LOG_ERROR("Pipeline [{}] requires tag [{}] but no resource provides it.", definition.name, resource_tag_to_string(tag));
         valid = false;
         return;
       }
     }
 
-    valid = graph->is_valid();
-    if (!valid) {
+    const bool graph_valid = graph->is_valid();
+    // const bool needs_screen = ...
+    const bool has_screen = std::ranges::any_of(definition.textures, [&](const auto& t) { return t.tag == resource_tag(resource_tag::kScreenTag); });
+    const bool pipeline_valid = graph_valid && has_screen;
+    if (!pipeline_valid) {
       CORE_LOG_ERROR("Pipeline [{}] has valid resources but render graph is invalid.", definition.name);
+    } else {
+      valid = true;
     }
   }
 
@@ -424,6 +710,11 @@ namespace other {
 
     /// set up executor and check for runtime override
     auto executor = make_executor(pass_def);
+    if (executor == nullptr) {
+      CORE_LOG_ERROR("Failed to create render pass executor for pass {}! invalid executor: {}", pass_def.name, pass_def.executor.name);
+      return;
+    }
+
     auto override_itr = executor_overrides.find(pass_def.name);
     if (override_itr != executor_overrides.end()) {
       executor = override_itr->second;
@@ -431,10 +722,6 @@ namespace other {
 
     builder.execution_callback(std::move(executor));
     builder.end_pass();
-  }
-
-  void render_pipeline::upload_to_handle(resource_handle handle, const void* data, size_t size) {
-    get_renderer()->get_resource<gpu_buffer>(handle).set_data(data, size).finalize_buffer();
   }
 
   renderer* render_pipeline::get_renderer() const {
@@ -453,47 +740,24 @@ namespace other {
   }
 
   render_pipeline::executor_fn render_pipeline::make_executor(const pipeline_pass_definition& pass) {
-    switch (pass.executor.type) {
-      case executor_type::DRAW_SCENE: return make_draw_scene_executor();
-      case executor_type::FULLSCREEN_QUAD: return make_fullscreen_quad_executor(pass.executor, pass.name);
-      case executor_type::COMPUTE_DISPATCH:
-        /// \todo: compute dispatch executor
-        CORE_LOG_WARN("Compute dispatch executor not yet implemented for pass [{}].", pass.name);
-        return make_noop_executor();
-      case executor_type::SCRIPT:
-        /// \todo: script executor via .NET
-        CORE_LOG_WARN("Script executor not yet implemented for pass [{}].", pass.name);
-        return make_noop_executor();
-      case executor_type::NOOP:
-      default: return make_noop_executor();
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is null in make_executor!");
+
+    const std::string& name = pass.executor.name;
+    OTHER_ASSERT(!name.empty(), "pipeline '{}' / pass '{}': executor name is empty", definition.name, pass.name);
+
+    // per-pipeline override wins
+    if (auto it = executor_overrides.find(pass.name); it != executor_overrides.end()) {
+      return it->second;
     }
-  }
 
-  render_pipeline::executor_fn render_pipeline::make_draw_scene_executor() {
-    return [](renderer& r, render_graph::node* node, void*) {
-      r.execute_draw_calls(node);
-    };
-  }
+    if (name.contains(":")) {
+      return renderer_ptr->attempt_executor_resolution(name, pass, this);
+    }
 
-  render_pipeline::executor_fn render_pipeline::make_fullscreen_quad_executor(const pipeline_executor_definition& exec, const std::string& pass_name) {
-    OTHER_ASSERT(quad_mesh_handle.has_value(), "Fullscreen quad mesh not created but needed by pass [{}].", pass_name);
-
-    resource_handle quad = *quad_mesh_handle;
-    auto uniforms = exec.uniforms;
-    std::string pname = pass_name;
-
-    return [this, quad, uniforms, pname](renderer& r, render_graph::node*, void*) {
-      shader* s = get_pass_shader(pname);
-      if (s != nullptr) {
-        apply_uniforms(*s, uniforms);
-      }
-      r.get_resource<mesh>(quad).draw();
-    };
-  }
-
-  render_pipeline::executor_fn render_pipeline::make_noop_executor() {
-    return [](renderer&, render_graph::node*, void*) {
-    };
+    auto& reg = renderer_ptr->get_executor_registry();
+    auto factory = reg.find(name);
+    OTHER_ASSERT(factory, "pipeline '{}' / pass '{}': no executor registered for '{}'", definition.name, pass.name, name);
+    return (factory)(pass, this);
   }
 
   opt<resource_handle> render_pipeline::get_shader_handle(const std::string_view shader_name) const {
@@ -501,37 +765,6 @@ namespace other {
       return shader_itr->second;
     }
     return std::nullopt;
-  }
-
-  void render_pipeline::apply_uniforms(shader& s, const std::map<std::string, value>& uniforms) {
-    for (const auto& [name, val] : uniforms) {
-      switch (val.type()) {
-        case value_type::INT8: s.set_uniform(name, (int8_t)val); break;
-        case value_type::UINT8: s.set_uniform(name, (uint8_t)val); break;
-        case value_type::INT16: s.set_uniform(name, (int16_t)val); break;
-        case value_type::UINT16: s.set_uniform(name, (uint16_t)val); break;
-        case value_type::INT32: s.set_uniform(name, (int32_t)val); break;
-        case value_type::UINT32: s.set_uniform(name, (uint32_t)val); break;
-        case value_type::INT64: s.set_uniform(name, (int64_t)val); break;
-        case value_type::UINT64: s.set_uniform(name, (uint64_t)val); break;
-        case value_type::FLOAT: s.set_uniform(name, (float)val); break;
-        case value_type::VEC3: {
-          glm::vec3 v = val;
-          s.set_uniform(name, v);
-        } break;
-        case value_type::VEC4: {
-          glm::vec4 v = val;
-          s.set_uniform(name, v);
-        } break;
-        case value_type::MAT4: {
-          glm::mat4 v = val;
-          s.set_uniform(name, v);
-        } break;
-        default:
-          CORE_LOG_WARN("Unsupported uniform value_type {} for '{}'.", static_cast<int>(val.type()), name);
-          break;
-      }
-    }
   }
 
 }  // namespace other

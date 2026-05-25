@@ -19,6 +19,18 @@ namespace other {
     }
   }
 
+  shader::compute_barrier_type compute_barrier_type_from_string(const std::string_view str) {
+    natural_t hash = FNV(str);
+    switch (hash) {
+      case FNV("shader_image_access"): return shader::compute_barrier_type::SHADER_IMAGE_ACCESS;
+      case FNV("shader_storage"): return shader::compute_barrier_type::SHADER_STORAGE;
+      case FNV("uniform"): return shader::compute_barrier_type::UNIFORM_BARRIER;
+      case FNV("all"): return shader::compute_barrier_type::ALL_BARRIER;
+      case FNV("none"): [[fallthrough]];
+      default: return shader::compute_barrier_type::NONE;
+    }
+  }
+
   std::string_view executor_type_to_string(executor_type type) {
     switch (type) {
       case executor_type::DRAW_SCENE: return "draw_scene";
@@ -30,23 +42,34 @@ namespace other {
     }
   }
 
+  gpu_buffer::buf_type buffer_type_from_binding(binding_type type) {
+    switch (type) {
+      case binding_type::UNIFORM_BUFFER: return gpu_buffer::buf_type::UNIFORM_BUFFER;
+      case binding_type::STORAGE_BUFFER: return gpu_buffer::buf_type::STORAGE_BUFFER;
+      case binding_type::DRAW_INDIRECT_BUFFER: return gpu_buffer::buf_type::DRAW_INDIRECT_BUFFER;
+      default:
+        OTHER_ASSERT(false, "Unsupported binding type {} for buffer resource", type);
+        return gpu_buffer::buf_type::UNIFORM_BUFFER;
+    }
+  }
+
   pipeline_definition get_basic_geometry_only_pipeline() {
     pipeline_definition def;
     def.name = "basic-geometry-only";
     def.version = 1;
 
     def.buffers = {
-      { .name = "material_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::MATERIAL },
-      { .name = "camera_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::CAMERA },
-      { .name = "model_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::MODEL },
-      { .name = "bone_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::BONE },
+      { .name = "material_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kMaterialTag) },
+      { .name = "camera_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) },
+      { .name = "model_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kModelTag) },
+      { .name = "bone_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kBoneTag) },
     };
 
     def.textures = {
       { .name = "color_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA32U },
       { .name = "normal_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F },
       { .name = "position_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F },
-      { .name = "screen_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F, .tag = resource_tag::SCREEN },
+      { .name = "screen_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F, .tag = resource_tag(resource_tag::kScreenTag) },
     };
 
     const std::vector<shader::setting> std_defines = {
@@ -86,7 +109,7 @@ namespace other {
           { .resource_name = "normal_texture", .attachment = framebuffer::COLOR },
           { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
         },
-        .executor = { .type = executor_type::DRAW_SCENE },
+        .executor = { .name = "draw_scene" },
       },
       // fix this to read color_texture and output to screen_texture
       {
@@ -98,7 +121,7 @@ namespace other {
           { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
         },
         .executor = {
-          .type = executor_type::FULLSCREEN_QUAD,
+          .name = "fullscreen_quad",
           .uniforms = {
             { "OE_texture", value(int32_t{ 0 }) },
             { "OE_exposure", value(1.0f) },
@@ -108,8 +131,8 @@ namespace other {
     };
 
     def.required_tags = {
-      resource_tag::CAMERA,
-      resource_tag::MODEL,
+      resource_tag(resource_tag::kCameraTag),
+      resource_tag(resource_tag::kModelTag),
     };
 
     return def;
@@ -120,17 +143,16 @@ namespace other {
     def.shadow_map_pass_name = "shadow-map-pass";
     def.shading_pass_name = "shading-pass";
     def.light_space_matrix_uniform_name = "OE_light_space_matrix";
-
     def.name = "default-instancing";
     def.version = 1;
 
     def.buffers = {
-      { .name = "camera_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::CAMERA },
-      { .name = "model_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::MODEL },
-      { .name = "bone_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::BONE },
-      { .name = "point_light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::POINT_LIGHT },
-      { .name = "direction_light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::DIRECTION_LIGHT },
-      { .name = "material_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag::MATERIAL },
+      { .name = "camera_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) },
+      { .name = "model_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kModelTag) },
+      { .name = "bone_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kBoneTag) },
+      { .name = "point_light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kPointLightTag) },
+      { .name = "direction_light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kDirectionLightTag) },
+      { .name = "material_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kMaterialTag) },
     };
 
     def.textures = {
@@ -138,7 +160,7 @@ namespace other {
       { .name = "normal_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F },
       { .name = "position_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F },
       { .name = "ambient_shadow_map", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::DEPTHF },
-      { .name = "screen_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F, .tag = resource_tag::SCREEN },
+      { .name = "screen_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F, .tag = resource_tag(resource_tag::kScreenTag) },
     };
 
     const std::vector<shader::setting> std_defines = {
@@ -189,7 +211,41 @@ namespace other {
           { .resource_name = "normal_texture", .attachment = framebuffer::COLOR },
           { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
         },
-        .executor = { .type = executor_type::DRAW_SCENE },
+        .executor = { .name = "draw_scene" },
+        .bindings = {
+          {
+            .name = "per_draw.material",
+            .tag = resource_tag(resource_tag::kMaterialTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::STORAGE_BUFFER,
+            .binding = 0,
+            .element_size = sizeof(gpu::graphics_material_buffer),
+          },
+          {
+            .name = "per_draw.model",
+            .tag = resource_tag(resource_tag::kModelTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 1,
+            .element_size = sizeof(gpu::model_matrix_buffer),
+          },
+          {
+            .name = "per_frame.camera",
+            .tag = resource_tag(resource_tag::kCameraTag),
+            .scope = binding_scope::PER_FRAME,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 2,
+            .element_size = sizeof(gpu::camera_data),
+          },
+          {
+            .name = "per_draw.bones",
+            .tag = resource_tag(resource_tag::kBoneTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 3,
+            .element_size = sizeof(gpu::bone_matrix_buffer),
+          },
+        },
       },
       // shadow map pass
       {
@@ -202,7 +258,7 @@ namespace other {
         .outputs = {
           { .resource_name = "ambient_shadow_map", .attachment = framebuffer::DEPTH },
         },
-        .executor = { .type = executor_type::DRAW_SCENE },
+        .executor = { .name = "draw_scene" },
       },
       // shading pass
       {
@@ -223,7 +279,7 @@ namespace other {
           { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
         },
         .executor = {
-          .type = executor_type::FULLSCREEN_QUAD,
+          .name = "fullscreen_quad",
           .uniforms = {
             { "OE_gbuff_albedo", value(int32_t{ 0 }) },
             { "OE_gbuff_normal", value(int32_t{ 1 }) },
@@ -241,19 +297,32 @@ namespace other {
           { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
         },
         .executor = {
-          .type = executor_type::FULLSCREEN_QUAD,
+          .name = "fullscreen_quad",
           .uniforms = {
             { "OE_texture", value(int32_t{ 0 }) },
             { "OE_exposure", value(1.0f) },
           },
         },
-      }
+      },
+      // {
+      //   .name = "debug-overlay",
+      //   .pass_type = render_pass::RENDER_PASS,
+      //   .shader_name = "",  // each stream uses its recipe shader
+      //   .create_framebuffer = false,
+      //   .depends_on = { "to-screen" },
+      //   .executor = {
+      //     .name = "debug_stream",
+      //     .params = { { "streams", value(std::vector<std::string>{ "debug.lines", "debug.triangles" }) } },
+      //   },
+      // },
     };
-
     def.required_tags = {
-      resource_tag::CAMERA,
-      resource_tag::MODEL,
-      resource_tag::MATERIAL,
+      resource_tag(resource_tag::kCameraTag),
+      resource_tag(resource_tag::kModelTag),
+      resource_tag(resource_tag::kMaterialTag),
+      resource_tag(resource_tag::kBoneTag),
+      resource_tag(resource_tag::kPointLightTag),
+      resource_tag(resource_tag::kDirectionLightTag),
     };
 
     return def;

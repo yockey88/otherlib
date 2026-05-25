@@ -34,6 +34,8 @@ namespace other {
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void begin_full_unload();
 
+    asset* get_asset(natural_t asset_id);
+
     scope<asset_handler>& get_asset_manager();
 
     natural_t get_asset_hash(natural_t asset_id) const;
@@ -48,6 +50,8 @@ namespace other {
    private:
     scope<asset_handler> asset_mgr = nullptr;
     std::deque<natural_t> loading_asset_ids;
+
+    void mount_mounts(driver_kernel* kernel);
 
     void handle_ls_event(driver_kernel* kernel, const value& data);
     void handle_ls_assets_event(driver_kernel* kernel, const value& data);

@@ -14,7 +14,8 @@ namespace other {
   class dotnet_attribute {
    public:
     dotnet_attribute(dotnet_host* host, int32_t type_id, int32_t dotnet_id)
-        : host(host), type_dotnet_id(type_id), dotnet_id(dotnet_id) {}
+        : host(host), type_dotnet_id(type_id), dotnet_id(dotnet_id) {
+    }
     ~dotnet_attribute() {}
 
     std::string name() const;
@@ -24,6 +25,10 @@ namespace other {
     int32_t type_dotnet_id = -1;
     int32_t dotnet_id = 0;
   };
+
+  bool dotnet_attribute_has_dotnet_attribute(const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name);
+  std::vector<dotnet_attribute>::const_iterator find_dotnet_attribute(const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name);
+  bool dotnet_attribute_get_attribute_object(dotnet_host* host, const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name, const std::string_view field_name, void* out);
 
 }  // namespace other
 

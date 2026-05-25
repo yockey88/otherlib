@@ -24,6 +24,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/fnv.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/exceptions.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/serializable-field.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/callback_binding_attribute.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/debug.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/behavior-descriptor.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/other-object.cs

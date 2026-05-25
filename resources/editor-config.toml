@@ -15,10 +15,8 @@ metadata = [
 core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
-
-[filesystem]
-mounts = [
-  { name = "editor-assets", type = "physical", path = "resources/editor-assets" }
+assets = [
+  { name = "pipeline-declaration", path = "resources/editor-assets/default-pipeline.toml" }
 ]
 
 [rendering]
@@ -29,10 +27,8 @@ imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
 # ]
 
 [ui]
+# only read when subsystem module is loaded
 enable-environment-menu-bar = true
-
-[assets]
-test-model = "resources/models/spinning-torus.fbx"
 
 [scripting]
 envrc-path = "resources/editor.lua"

@@ -121,6 +121,8 @@ namespace other {
     scene* get_active_scene();
     renderer& get_renderer();
 
+    asset* get_asset(natural_t asset_id);
+
     inline bool network_enabled() const {
       return !configuration().get_value<bool>("networking.force-disable", false);
     }
@@ -154,6 +156,10 @@ namespace other {
     inline scope<driver_ui>& get_ui() {
       OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
       return driver_kernel_ptr->get_core_system<rendering_system>().get_driver_ui();
+    }
+
+    inline interface_registry& get_interface_registry() {
+      return interfaces;
     }
 
     inline driver_state current_driver_state() const {

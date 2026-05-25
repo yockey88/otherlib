@@ -28,6 +28,12 @@ namespace other {
     MOCK_METHOD(void, on_begin_frame, (scope<window_manager> & window_mgr), (override));
     MOCK_METHOD(void, on_end_frame, (scope<window_manager> & window_mgr), (override));
 
+    MOCK_METHOD(void, begin_pass, (const pass_begin_info& info), (override));
+    MOCK_METHOD(void, end_pass, (), (override));
+
+    MOCK_METHOD(void, bind_set, (uint32_t set_index, std::span<const binding_record>), (override));
+    MOCK_METHOD(void, set_dynamic_offsets, (uint32_t set_index, std::span<const uint32_t>), (override));
+
     MOCK_METHOD(void, execute_draw_call, (render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call), (override));
 
     MOCK_METHOD(void, begin_ui_frame_backend_newframe, (), (override));
@@ -76,6 +82,9 @@ namespace other {
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::vec3& value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::vec4& value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose), (override));
+
+    MOCK_METHOD(uint32_t, uniform_buffer_offset_alignment, (), (const, override));
+    MOCK_METHOD(uint32_t, storage_buffer_offset_alignment, (), (const, override));
 
     MOCK_METHOD(int32_t, get_gpu_api_window_flags, (), (const, override));
 

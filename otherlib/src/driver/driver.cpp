@@ -322,6 +322,11 @@ namespace other {
     return *r;
   }
 
+  asset* driver::get_asset(natural_t asset_id) {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().get_asset(asset_id);
+  }
+
   void driver::input_event(const input_state_change_event& event) {
     on_input_event(event);
   }
@@ -430,6 +435,7 @@ namespace other {
     CORE_LOG_DEBUG("\nFinished processing application metadata from configuration.\nResult: name='{}', description='{}', author='{}', version='{}'\n", 
                     data.name, data.description, data.author, data.version);
     // clang-format on
+
     return data;
   }
 

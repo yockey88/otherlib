@@ -115,15 +115,14 @@ namespace other {
 
     auto absolute_path = std::filesystem::absolute(file_path);
     natural_t hash = FNV(absolute_path.string());
-    if (auto itr = std::ranges::find_if(loaded_assets, [hash](const auto& pair) { return pair.second.path_hash == hash; });
-        itr != loaded_assets.end()) {
+    if (auto itr = std::ranges::find_if(loaded_assets, [hash](const auto& pair) { return pair.second.path_hash == hash; }); itr != loaded_assets.end()) {
       CORE_LOG_WARN("Asset already loaded for path: {}. Returning existing asset ID: {}", file_path.string(), itr->second.id);
       return itr->second.id;
     }
 
     natural_t asset_id = get_next_asset_id();
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_asset_pipeline(events, this, asset_type),
+                                                              .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_type),
                                                               .loading_asset = asset{
                                                                 .asset_type = asset_type,
                                                                 .id = asset_id,
@@ -174,7 +173,7 @@ namespace other {
     natural_t model_id = get_next_asset_id();
 
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_model_source_pipeline(events, this, name, vertices, indices),
+                                                              .pipeline = asset_pipeline::get_model_source_pipeline(&events, this, name, vertices, indices),
                                                               .loading_asset = {
                                                                 .asset_type = asset::type::MODEL_SOURCE,
                                                                 .id = model_id,
@@ -207,7 +206,7 @@ namespace other {
     }
 
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_scene_pipeline(events, this, scene_ptr),
+                                                              .pipeline = asset_pipeline::get_scene_pipeline(&events, this, scene_ptr),
                                                               .loading_asset = {
                                                                 .asset_type = asset::type::SCENE,
                                                                 .id = scene_id,
@@ -234,7 +233,7 @@ namespace other {
 
     std::string pl_name = std::string{ name };
     auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_rendering_pipeline_pipeline(events, this, definition),
+                                                              .pipeline = asset_pipeline::get_rendering_pipeline_pipeline(&events, this, definition),
                                                               .loading_asset = {
                                                                 .asset_type = asset::type::RENDERING_PIPELINE,
                                                                 .id = pl_id,
@@ -279,7 +278,7 @@ namespace other {
 
     asset::type asset_type = it->second.asset_type;
     auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                                  .pipeline = asset_pipeline::get_asset_pipeline(events, this, asset_type),
+                                                                  .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_type),
                                                                   /// create a copy here? or should this be a pointer?
                                                                   .loading_asset = std::move(it->second),
                                                                 });
@@ -321,7 +320,7 @@ namespace other {
     }
 
     auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                                  .pipeline = asset_pipeline::get_asset_pipeline(events, this, asset_to_reload.asset_type),
+                                                                  .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_to_reload.asset_type),
                                                                   .loading_asset = std::move(asset_to_reload),
                                                                 });
     OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
@@ -364,8 +363,7 @@ namespace other {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.path_hash;
     }
-    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
-        it != asset_pipelines.end()) {
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
       if (it->loading_asset.id == asset_id) {
         return it->loading_asset.path_hash;
       }
@@ -394,8 +392,7 @@ namespace other {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.absolute_path;
     }
-    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
-        it != asset_pipelines.end()) {
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
       return it->loading_asset.absolute_path;
     }
 
@@ -406,8 +403,7 @@ namespace other {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.virtual_path;
     }
-    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
-        it != asset_pipelines.end()) {
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
       return it->loading_asset.virtual_path;
     }
 
@@ -454,7 +450,7 @@ namespace other {
 
     asset::type asset_type = it->second.asset_type;
     auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                                  .pipeline = asset_pipeline::get_asset_pipeline(events, this, asset_type),
+                                                                  .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_type),
                                                                   .loading_asset = std::move(it->second),
                                                                 });
     OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
@@ -525,8 +521,7 @@ namespace other {
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
-    if (state_itr->second.get_current_state() == asset_state::LOADING ||
-        state_itr->second.get_current_state() == asset_state::REFRESHING_LOAD) {
+    if (state_itr->second.get_current_state() == asset_state::LOADING || state_itr->second.get_current_state() == asset_state::REFRESHING_LOAD) {
       auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
       OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Loaded asset not found in loading assets");
 

@@ -11,7 +11,8 @@
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/shader.hpp"
 #include "gpu_resource/texture.hpp"
-#include "renderer/render_graph.hpp"
+#include "renderer/frame_binding_definition.hpp"
+#include "renderer/render_pass.hpp"
 #include "renderer/resource_tag.hpp"
 
 namespace other {
@@ -28,7 +29,7 @@ namespace other {
     std::string name;
     gpu_buffer::buf_type type = gpu_buffer::buf_type::UNIFORM_BUFFER;
     gpu_buffer::usage usage = gpu_buffer::usage::DYNAMIC;
-    resource_tag tag = resource_tag::NONE;
+    resource_tag tag = resource_tag::none();
   };
 
   struct pipeline_texture_definition {
@@ -37,7 +38,7 @@ namespace other {
     glm::ivec2 fixed_size = { 1080, 720 };
     texture::tex_type type = texture::tex_type::TEXTURE_2D;
     texture::format format = texture::format::RGBA16F;
-    resource_tag tag = resource_tag::NONE;
+    resource_tag tag = resource_tag::none();
 
     opt<std::pair<texture::filter, texture::filter>> filters;
     opt<std::tuple<texture::wrap, texture::wrap, texture::wrap>> wraps;
@@ -59,10 +60,10 @@ namespace other {
   };
 
   struct pipeline_executor_definition {
-    executor_type type = executor_type::DRAW_SCENE;
+    std::string name = "noop";
 
     std::map<std::string, value> uniforms;
-    opt<std::string> script_entry;
+    std::map<std::string, value> params;
   };
 
   struct pipeline_pass_definition {
@@ -80,6 +81,12 @@ namespace other {
     pipeline_executor_definition executor;
 
     std::vector<std::string> depends_on;
+    std::vector<frame_binding_definition> bindings;
+
+    // for passes that need to run multiple times per frame, i.e cascaded shadow maps
+    uint32_t iterations_per_frame = 1;
+    // for passes that use the "draw_scene" executor, used to provision per-draw-call resources
+    opt<uint32_t> expected_max_draws;
   };
 
   struct pipeline_definition {
@@ -100,7 +107,9 @@ namespace other {
   };
 
   executor_type executor_type_from_string(const std::string_view str);
+  shader::compute_barrier_type compute_barrier_type_from_string(const std::string_view str);
   std::string_view executor_type_to_string(executor_type type);
+  gpu_buffer::buf_type buffer_type_from_binding(binding_type type);
 
   pipeline_definition get_basic_geometry_only_pipeline();
   pipeline_definition get_default_instancing_pipeline();

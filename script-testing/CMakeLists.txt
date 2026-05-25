@@ -5,11 +5,10 @@ add_library(DotnetTesting SHARED)
 set_target_properties(DotnetTesting PROPERTIES
   DOTNET_SDK "Microsoft.NET.Sdk"
   DOTNET_TARGET_FRAMEWORK "net9.0"
-  VS_GLOBAL_AllowUnsafeBlocks "false"
+  VS_GLOBAL_AllowUnsafeBlocks "true"
 )
 
 target_sources(DotnetTesting PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/test-object.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/test-behavior.cs
 )
 target_link_libraries(DotnetTesting PRIVATE OtherCs)

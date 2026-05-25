@@ -6,8 +6,10 @@
 #include <SDL3/SDL_dialog.h>
 
 #include "driver/driver.hpp"
+#include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
+#include "render/default_pass_executor_resolver.hpp"
 
 namespace other {
   namespace detail {
@@ -16,10 +18,18 @@ namespace other {
       SDL_ShowFileDialogWithProperties(type, callback_fn, user_data, props);
     }
 
+    render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*);
+    render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*);
+    render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
+
   }  // namespace detail
 
   void rendering_system::initialize(driver_kernel* kernel) {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
+    register_builtin_resource_tags();
+    register_builtin_render_executors();
 
     configure_pipelines(kernel);
 
@@ -51,6 +61,17 @@ namespace other {
         ui_window_args(get_driver().get_event_system().get()),
         interface_cardinality::MULTIPLE  // don't want too many
       );
+      reg.register_interface<pass_executor_resolver>(
+        [this](scope<pass_executor_resolver> s) {
+          renderer_ptr->initialize_pass_resolver(s.get());
+          return 0;
+        },
+        [this](natural_t id) {
+          renderer_ptr->initialize_pass_resolver(nullptr);
+        },
+        no_args(),
+        interface_cardinality::SINGLE
+      );
     };
     register_interfaces_in_registry(kernel->driver_registry());
     register_interfaces_in_registry(kernel->project_registry());
@@ -65,6 +86,8 @@ namespace other {
     driver_ui_ptr = nullptr;
 
     renderer_ptr->remove_pipeline("Rendering Pipeline");
+    pass_resolver_ptr = nullptr;
+    renderer_ptr = nullptr;
   }
 
   void rendering_system::render(driver_kernel* kernel) {
@@ -86,17 +109,21 @@ namespace other {
       data_ptr = &prepared_data;
     }
 
+    if (data_ptr != nullptr) {
+      auto& registry = renderer_ptr->get_debug_stream_registry();  // see F3
+      for (const auto& [name, def] : registry.entries()) {
+        data_ptr->debug_data.configure_stream(def.name, def.element_size, def.max_per_frame);
+      }
+    }
+
     renderer_ptr->begin_frame(data_ptr);
     renderer_ptr->render();
-    render_ui(kernel);
-    renderer_ptr->end_frame();
-  }
 
-  void rendering_system::render_ui(driver_kernel* kernel) {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system render_ui.");
     renderer_ptr->begin_ui_frame();
     driver_ui_ptr->render();
     renderer_ptr->end_ui_frame();
+
+    renderer_ptr->end_frame();
   }
 
   void rendering_system::open_ui_window(const std::string_view name) {
@@ -168,9 +195,130 @@ namespace other {
     detail::file_dialog(SDL_FILEDIALOG_SAVEFILE, nullptr, callback_fn, user_data, props);
   }
 
+  void rendering_system::register_builtin_resource_tags() {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in register_builtin_resource_tags.");
+
+    auto& reg = renderer_ptr->get_binding_registry();
+    reg.register_per_frame(resource_tag(resource_tag::kCameraTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      if (!d.primary_camera) {
+        return;
+      }
+
+      auto gpu = d.primary_camera->to_gpu_data();
+      r.upload_buffer(h, &gpu, sizeof(gpu));
+    });
+
+    reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::point_light_buffer buf{};
+      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+        buf.lights[i] = d.point_lights[i];
+      }
+      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
+    });
+
+    reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::directional_light_buffer dir_light_buffer_data;
+      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
+        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
+      }
+      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+    });
+
+    // screen is simply a marker tag, render_pipeline tracks screen_texture_handle separately for to-screen blit
+    reg.register_per_frame(resource_tag(resource_tag::kScreenTag), [](render_pipeline&, const render_data&, resource_handle) {});
+
+    reg.register_per_draw(resource_tag(resource_tag::kModelTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(data.size() == sizeof(gpu::model_matrix_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::model_matrix_buffer));
+
+      const auto& models = d.model_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&models), sizeof(gpu::model_matrix_buffer) };
+      std::ranges::copy(bytes, data.begin());
+    });
+
+    reg.register_per_draw(resource_tag(resource_tag::kMaterialTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> out) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(out.size() == sizeof(gpu::graphics_material_buffer), "Data span size {} does not match expected size {}", out.size(), sizeof(gpu::graphics_material_buffer));
+
+      const auto& materials = d.material_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&materials), sizeof(gpu::graphics_material_buffer) };
+      std::ranges::copy(bytes, out.begin());
+    });
+
+    reg.register_per_draw(resource_tag(resource_tag::kBoneTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> out) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(out.size() == sizeof(gpu::bone_matrix_buffer), "Data span size {} does not match expected size {}", out.size(), sizeof(gpu::bone_matrix_buffer));
+
+      const auto& bones = d.bone_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&bones), sizeof(gpu::bone_matrix_buffer) };
+      std::ranges::copy(bytes, out.begin());
+    });
+  }
+
+  void rendering_system::register_builtin_render_executors() {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is null while registering executors!");
+
+    auto& reg = renderer_ptr->get_executor_registry();
+    reg.register_executor("noop", &detail::make_noop);
+    reg.register_executor("draw_scene", &detail::make_draw_scene);
+    reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
+    reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
+    reg.register_executor("debug_stream", &detail::make_debug_stream);
+  }
+
+  void rendering_system::register_buildin_renderer_debug_streams() {
+    // auto& reg = renderer_ptr->get_debug_stream_registry();
+
+    // reg.register_stream("debug.lines", debug_stream_definition{
+    //                                      .element_size = sizeof(debug_line),
+    //                                      .max_per_frame = 4096,
+    //                                      .draw_recipe = {
+    //                                        .shader = "debug_line_shader",
+    //                                        .topology = mesh::primitive_type::LINES,
+    //                                        .vertex_layout = {
+    //                                          vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
+    //                                          vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
+    //                                        },
+    //                                      },
+    //                                    });
+
+    // reg.register_stream("debug.triangles", debug_stream_definition{
+    //                                          .element_size = sizeof(debug_triangle),
+    //                                          .max_per_frame = 2048,
+    //                                          .draw_recipe = {
+    //                                            .shader = "debug_tri_shader",
+    //                                            .topology = mesh::primitive_type::TRIANGLES,
+    //                                            .vertex_layout = {
+    //                                              vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
+    //                                              vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
+    //                                            },
+    //                                          },
+    //                                        });
+
+    // // Load the recipe shaders once at registration time so the first frame
+    // // doesn't hit them lazily on draw_debug_stream.
+    // for (auto* shader_name : { "debug_line_shader", "debug_tri_shader" }) {
+    //   resource_handle h = shader::create(
+    //     shader_name,
+    //     std::format("resources/{}.vert", shader_name),
+    //     std::format("resources/{}.frag", shader_name)
+    //   );
+    //   renderer_ptr->register_debug_stream_shader(shader_name, h);  // adds to map
+    // }
+  }
+
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in configure_pipelines.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
+
+    std::string pass_resolver = get_driver().get_config_value<std::string>("rendering.pass-resolver", "default");
+    if (pass_resolver == "default" && kernel->has_core_system<scripting_system>()) {
+      pass_resolver_ptr = make_scope<default_pass_executor_resolver>(&kernel->get_core_system<scripting_system>());
+    } else {
+      OTHER_ASSERT(false, "Pass resolver plugin lookup not implemented yet!");
+    }
+    OTHER_ASSERT(pass_resolver_ptr != nullptr, "Pass resolver is null!");
+    renderer_ptr->initialize_pass_resolver(pass_resolver_ptr.get());
 
     std::vector<std::string> pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
     if (pipeline_names.empty()) {
@@ -214,4 +362,63 @@ namespace other {
     events->trigger_event("console.output", ss.str());
   }
 
+  namespace detail {
+
+    render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*) {
+      return [](pass_context& ctx) {
+      };
+    }
+
+    render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*) {
+      return [](pass_context& ctx) {
+        ctx.draw_stream();
+      };
+    }
+
+    render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl) {
+      resource_handle quad = pl->get_quad_mesh_handle();
+      return [quad, uniforms = def.executor.uniforms, pass_name = def.name, pl](pass_context& ctx) {
+        auto* sh = pl->get_pass_shader(pass_name);
+        OTHER_ASSERT(sh, "fullscreen_quad: no shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
+        ctx.draw_quad();
+      };
+    }
+
+    render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl) {
+      const auto& params = def.executor.params;
+      auto groups_it = params.find("groups");
+      OTHER_ASSERT(groups_it != params.end(), "compute_dispatch: pass '{}' missing 'groups' param", def.name);
+      glm::vec3 groups = groups_it->second;
+
+      shader::compute_barrier_type barrier = shader::compute_barrier_type::NONE;
+      if (auto b_it = params.find("barrier"); b_it != params.end()) {
+        barrier = compute_barrier_type_from_string(b_it->second);
+      }
+      return [g = groups, b = barrier, pass_name = def.name](pass_context& ctx) {
+        auto* sh = ctx.shader_for_pass();
+        OTHER_ASSERT(sh != nullptr, "compute_dispatch: no shader bound for pass '{}'", pass_name);
+        sh->bind();
+        ctx.dispatch(glm::uvec3(g), b);
+      };
+    };
+
+    render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl) {
+      const auto& params = def.executor.params;
+      auto stream_it = params.find("stream");
+      OTHER_ASSERT(stream_it != params.end(), "debug_stream: pass '{}' missing 'stream' param", def.name);
+      std::string stream_name = stream_it->second;
+
+      return [stream_name = std::move(stream_name), pass_name = def.name](pass_context& ctx) {
+        auto& streams = ctx.get_frame_data().debug_data;
+        auto* stream = ctx.get_renderer().get_debug_stream_registry().find(stream_name);
+        if (stream == nullptr) {
+          CORE_LOG_ERROR("Debug stream '{}' not found for pass '{}'", stream_name, pass_name);
+          return;
+        }
+        ctx.draw_debug_stream(stream_name, *stream, streams.view(stream_name), streams.count(stream_name));
+      };
+    }
+
+  }  // namespace detail
 }  // namespace other

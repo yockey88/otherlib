@@ -436,6 +436,9 @@ namespace other {
     interop_functions.get_method_attributes = load_managed_function<get_type_information>(type_interface_type_str, DNET_STR("GetMethodAttributes"));
     OTHER_ASSERT(interop_functions.get_method_attributes != nullptr, "Failed to load GetMethodAttributes from managed assembly.");
 
+    interop_functions.is_method_static = load_managed_function<is_method_static>(type_interface_type_str, DNET_STR("IsMethodStatic"));
+    OTHER_ASSERT(interop_functions.is_method_static != nullptr, "Failed to load IsMethodStatic from managed assembly.");
+
     //       field
     interop_functions.has_field = load_managed_function<field_property_checker>(type_interface_type_str, DNET_STR("HasField"));
     OTHER_ASSERT(interop_functions.has_field != nullptr, "Failed to load HasField from managed assembly.");
@@ -488,10 +491,10 @@ namespace other {
     interop_functions.invoke_instance_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeMethodRet"));
     OTHER_ASSERT(interop_functions.invoke_instance_method_ret != nullptr, "Failed to load InvokeMethodRet from managed assembly.");
 
-    interop_functions.invoke_static_method = load_managed_function<invoke_method>(managed_object_type_str, DNET_STR("InvokeStaticMethod"));
+    interop_functions.invoke_static_method = load_managed_function<invoke_static_method>(managed_object_type_str, DNET_STR("InvokeStaticMethod"));
     OTHER_ASSERT(interop_functions.invoke_static_method != nullptr, "Failed to load InvokeStaticMethod from managed assembly.");
 
-    interop_functions.invoke_static_method_ret = load_managed_function<invoke_method_ret>(managed_object_type_str, DNET_STR("InvokeStaticMethodRet"));
+    interop_functions.invoke_static_method_ret = load_managed_function<invoke_static_method_ret>(managed_object_type_str, DNET_STR("InvokeStaticMethodRet"));
     OTHER_ASSERT(interop_functions.invoke_static_method_ret != nullptr, "Failed to load InvokeStaticMethodRet from managed assembly.");
 
     interop_functions.is_field_private = load_managed_function<field_is_private_checker>(managed_object_type_str, DNET_STR("IsFieldPrivate"));
@@ -582,6 +585,22 @@ namespace other {
     }
 
     return handle;
+  }
+
+  void dotnet_host::invoke_static_method_with_args(const std::string_view type_name, const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc) {
+    auto type = native_string::new_str(type_name);
+    auto name = native_string::new_str(method_name);
+    interop().invoke_static_method(type, name, argv, arg_ts, argc);
+    native_string::free_str(name);
+    native_string::free_str(type);
+  }
+
+  void dotnet_host::invoke_static_returning_method_args(const std::string_view type_name, const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out) {
+    auto type = native_string::new_str(type_name);
+    auto name = native_string::new_str(method_name);
+    interop().invoke_static_method_ret(type, name, argv, arg_ts, argc, out);
+    native_string::free_str(name);
+    native_string::free_str(type);
   }
 
   namespace {

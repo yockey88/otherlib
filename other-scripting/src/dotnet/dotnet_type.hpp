@@ -74,12 +74,7 @@ namespace other {
 
     std::vector<dotnet_method> dotnet_methods = {};
     std::vector<dotnet_field> dotnet_fields = {};
-
-    struct attribute_data {
-      int32_t type_dotnet_id = -1;
-      dotnet_attribute attribute;
-    };
-    std::vector<attribute_data> dotnet_attributes = {};
+    std::vector<dotnet_attribute> dotnet_attributes = {};
 
     bool type_interface_initialized = false;
 

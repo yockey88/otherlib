@@ -156,6 +156,7 @@ namespace other {
     } else {
       CORE_LOG_DEBUG("Loaded assembly [{}:{}] from path: {}", asm_ref->get_handle(), asm_ref->get_name(), module_path);
     }
+
     return asm_ref;
   }
 
@@ -163,6 +164,12 @@ namespace other {
     OTHER_ASSERT(dotnet_load_context != nullptr, "DotNet load context is not initialized.");
     OTHER_ASSERT(!module_name.empty(), "Module name cannot be empty.");
     return dotnet_load_context->get_assembly_by_name(module_name);
+  }
+
+  ref<assembly> scripting_environment::get_dotnet_module_by_asset_path(const filepath& asset_path) {
+    OTHER_ASSERT(dotnet_load_context != nullptr, "DotNet load context is not initialized.");
+    OTHER_ASSERT(!asset_path.empty(), "Asset path cannot be empty.");
+    return dotnet_load_context->get_assembly_by_id(FNV(asset_path.string()));
   }
 
   void scripting_environment::unload_dotnet_module(ref<assembly> module) {

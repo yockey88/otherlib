@@ -13,75 +13,23 @@
 
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/frame_node.hpp"
+#include "renderer/pass_context.hpp"
+#include "renderer/render_pass.hpp"
 
 namespace other {
 
-  class renderer;
-  class render_graph;
-  struct render_pass {
-    enum type {
-      RENDER_PASS = 0,
-      COMPUTE_PASS,
-    } pass_type = RENDER_PASS;
-    natural_t id = 0;
-    opt<resource_handle> framebuffer_handle = std::nullopt;
-    opt<resource_handle> shader_handle = {};
-    void* user_data = nullptr;
-
-    /// for other dynamic resource binding later
-    natural_t next_texture_id = 0;
-    natural_t next_buffer_id = 0;
-
-    std::string name;
-    glm::ivec2 size = { 0, 0 };
-    glm::vec4 clear_color = { 0.2, 0.2, 0.2, 1.0 };
-
-    struct texture_resource {
-      framebuffer::attachment_type type;
-      natural_t slot;
-      access_flags flags;
-      resource_handle handle;
-    };
-    struct buffer_resource {
-      natural_t binding_point;
-      access_flags flags;
-      resource_handle handle;
-    };
-
-    std::map<natural_t, texture_resource> texture_resources;
-    std::map<natural_t, buffer_resource> buffer_resources;
-
-    void bind_pass(renderer* renderer_ptr);
-    void unbind_pass(renderer* renderer_ptr);
-  };
-
   class render_graph {
    public:
-    struct node {
-      natural_t id;
-      render_pass* pass = nullptr;
-
-      std::map<natural_t, render_pass::buffer_resource> input_buffers;
-      std::map<natural_t, render_pass::buffer_resource> output_buffers;
-      std::map<natural_t, render_pass::texture_resource> input_textures;
-      std::map<natural_t, render_pass::texture_resource> output_textures;
-
-      void start_pass(renderer* renderer_ptr) const;
-      void end_pass(renderer* renderer_ptr) const;
-
-      bool operator==(const node& other) const { return id == other.id && pass == other.pass; }
-    };
     /// \todo can we use the graph structure from core/graph.hpp instead?
     ///        this has special implementation considerations because of the
     ///        rendering passes and their resources but maybe we can still do it?
     struct graph {
-      std::map<natural_t, node> nodes;
+      std::map<natural_t, frame_node> nodes;
       std::map<natural_t, std::vector<natural_t>> edges;
     };
 
-    /// \todo finish scripting and use actions:
-    ///           using pass_executor = action<renderer&, node*, void*>;
-    using pass_executor = std::function<void(renderer& render, node*, void*)>;
+    using pass_executor = std::function<void(pass_context&)>;
 
     struct pass_builder {
       pass_builder(render_graph& graph, render_pass& pass)

@@ -48,6 +48,14 @@ namespace other {
     return new_binding_id;
   }
 
+  natural_t interface_registry::register_named_callback(const std::string_view callback_name, ref<callback> callback_ref) {
+    natural_t new_id = generate_callback_id();
+    auto [it, inserted] = bound_callbacks.emplace(FNV(callback_name), bound_callback{ .name = std::string{ callback_name }, .callback_ref = std::move(callback_ref) });
+    OTHER_ASSERT(inserted, "Failed to register named callback '{}'.", callback_name);
+    CORE_LOG_DEBUG("[CALLBACK] Registered named callback '{}' with ID {}", callback_name, new_id);
+    return new_id;
+  }
+
   bool interface_registry::has_interface_method(const std::string_view interface_name, const std::string_view method_name) const {
     auto itr = std::ranges::find_if(interfaces, [&interface_name](const auto& pair) { return pair.second.name == interface_name; });
     if (itr == interfaces.end()) {

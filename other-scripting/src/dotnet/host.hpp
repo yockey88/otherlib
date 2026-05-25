@@ -89,6 +89,7 @@ namespace other {
       get_method_accessibility get_method_accessibility = nullptr;
       get_type_information get_method_parameter_types = nullptr;
       get_type_information get_method_attributes = nullptr;
+      is_method_static is_method_static = nullptr;
 
       //       field
       field_property_checker has_field = nullptr;
@@ -113,8 +114,8 @@ namespace other {
       destroy_object destroy_object = nullptr;
       invoke_method invoke_instance_method = nullptr;
       invoke_method_ret invoke_instance_method_ret = nullptr;
-      invoke_method invoke_static_method = nullptr;
-      invoke_method_ret invoke_static_method_ret = nullptr;
+      invoke_static_method invoke_static_method = nullptr;
+      invoke_static_method_ret invoke_static_method_ret = nullptr;
       field_is_private_checker is_field_private = nullptr;
       field_setter_getter set_field = nullptr;
       field_setter_getter get_field = nullptr;
@@ -197,6 +198,15 @@ namespace other {
       return &loaded_types;
     }
 
+    template <typename R = void, typename... Args>
+    R invoke_static(const std::string_view type_name, const std::string_view method_name, Args&&... args) {
+      if constexpr (std::is_same_v<R, void>) {
+        invoke_static_void(type_name, method_name, std::forward<Args>(args)...);
+      } else {
+        return invoke_static_ret_impl<R, Args...>(type_name, method_name, std::forward<Args>(args)...);
+      }
+    }
+
    private:
     void* hostfxr_lib = nullptr;
     clr_functions coreclr;
@@ -231,6 +241,74 @@ namespace other {
       PROFILE_SECTION("dotnet_host::load-managed-function--by-type-and-method");
       const char_t* dotnetlib_path = dotnet_binding_assembly.data();
       return (Fn)(load_managed_function(dotnetlib_path, type_name, method_name, delegate_type));
+    }
+
+    void invoke_static_method_with_args(const std::string_view type_name, const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc);
+    void invoke_static_returning_method_args(const std::string_view type_name, const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out);
+
+    template <typename... Args>
+    void invoke_static_void(const std::string_view type_name, const std::string_view method_name, Args&&... args) {
+      constexpr size_t argc = sizeof...(args);
+      if constexpr (argc > 0) {
+        const void* argv[argc] = {};
+        managed_type arg_ts[argc] = {};
+        detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
+        invoke_static_method_with_args(type_name, method_name, argv, arg_ts, argc);
+      } else {
+        invoke_static_method_with_args(type_name, method_name, nullptr, nullptr, 0);
+      }
+    }
+
+    template <typename R, typename... Args>
+    R invoke_static_ret_impl(const std::string_view type_name, const std::string_view method_name, Args&&... args) {
+      if constexpr (std::is_pointer_v<R> || std::is_trivial_v<R>) {
+        return invoke_static_trivial_pointer_ret<R, Args...>(type_name, method_name, std::forward<Args>(args)...);
+      } else if constexpr (is_stringlike_type<R>) {
+        return invoke_static_stringlike_ret<R, Args...>(type_name, method_name, std::forward<Args>(args)...);
+      } else {
+        static_assert(false, "Unsupported return type for invoke_static_ret");
+      }
+    }
+
+    template <typename R, typename... Args>
+    R invoke_static_trivial_pointer_ret(const std::string_view type_name, const std::string_view method_name, Args&&... args) {
+      constexpr size_t argc = sizeof...(args);
+      R ret{};
+      if constexpr (argc > 0) {
+        const void* argv[argc] = {};
+        managed_type arg_ts[argc] = {};
+        detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
+        if constexpr (std::is_pointer_v<R>) {
+          invoke_static_returning_method_args(type_name, method_name, argv, arg_ts, argc, (void*)ret);
+        } else {
+          invoke_static_returning_method_args(type_name, method_name, argv, arg_ts, argc, &ret);
+        }
+      } else {
+        if constexpr (std::is_pointer_v<R>) {
+          invoke_static_returning_method_args(type_name, method_name, nullptr, nullptr, 0, (void*)ret);
+        } else {
+          invoke_static_returning_method_args(type_name, method_name, nullptr, nullptr, 0, &ret);
+        }
+      }
+      return std::move(ret);
+    }
+
+    template <typename R, typename... Args>
+    R invoke_static_stringlike_ret(const std::string_view type_name, const std::string_view method_name, Args&&... args) {
+      native_string ret_str = native_string::new_str("");
+      constexpr size_t argc = sizeof...(args);
+      if constexpr (argc > 0) {
+        const void* argv[argc] = {};
+        managed_type arg_ts[argc] = {};
+        detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
+        invoke_static_returning_method_args(type_name, method_name, argv, arg_ts, argc, &ret_str);
+      } else {
+        invoke_static_returning_method_args(type_name, method_name, nullptr, nullptr, 0, &ret_str);
+      }
+
+      std::string ret = ret_str;
+      native_string::free_str(ret_str);
+      return ret;
     }
   };
 

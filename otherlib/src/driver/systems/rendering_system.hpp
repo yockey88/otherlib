@@ -6,6 +6,7 @@
 
 #include "core/scope.hpp"
 
+#include "renderer/pass_executor_resolver.hpp"
 #include "renderer/renderer.hpp"
 
 #include "driver/driver_kernel.hpp"
@@ -27,7 +28,6 @@ namespace other {
     void shutdown(driver_kernel* kernel) override;
 
     void render(driver_kernel* kernel);
-    void render_ui(driver_kernel* kernel);
 
     void open_ui_window(const std::string_view name);
     void close_ui_window(const std::string_view name);
@@ -45,6 +45,7 @@ namespace other {
 
    private:
     scope<renderer> renderer_ptr = nullptr;
+    scope<pass_executor_resolver> pass_resolver_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
     glm::vec2 viewport_size = { 0.0f, 0.0f };
 
@@ -52,10 +53,13 @@ namespace other {
     std::vector<natural_t> unloading_rendering_pipeline_assets;
     std::vector<natural_t> rendering_pipeline_assets;
 
+    void register_builtin_resource_tags();
+    void register_builtin_render_executors();
+    void register_buildin_renderer_debug_streams();
+
     void configure_pipelines(driver_kernel* kernel);
 
     void handle_viewport_resize_event(const value& data);
-
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);
   };
 

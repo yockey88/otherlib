@@ -69,16 +69,6 @@ namespace other {
       }
     }
 
-    template <typename R = void, typename... Args>
-      requires std::is_same_v<R, void> || std::is_pointer_v<R> || std::is_trivial_v<R>
-    R invoke_static(const std::string_view method_name, Args&&... args) {
-      if constexpr (std::same_as<R, void>) {
-        invoke_static_void(method_name, std::forward<Args>(args)...);
-      } else {
-        return invoke_static_ret<R>(method_name, std::forward<Args>(args)...);
-      }
-    }
-
     const dotnet_field* get_dotnet_field(const std::string_view field_name);
     dotnet_field::storage& get_field_storage(const std::string_view field_name);
     const dotnet_field::storage& get_field_storage(const std::string_view field_name) const;
@@ -198,9 +188,6 @@ namespace other {
     void invoke_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc);
     void invoke_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out);
 
-    void invoke_static_method_with_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc);
-    void invoke_static_returning_method_args(const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out);
-
     template <typename... Args>
     void invoke_void(const std::string_view method_name, Args&&... args) {
       constexpr size_t argc = sizeof...(args);
@@ -222,19 +209,6 @@ namespace other {
         return invoke_stringlike_ret<R, Args...>(method_name, std::forward<Args>(args)...);
       } else {
         static_assert(false, "Unsupported return type for invoke_ret");
-      }
-    }
-
-    template <typename... Args>
-    void invoke_static_void(const std::string_view method_name, Args&&... args) {
-      constexpr size_t argc = sizeof...(args);
-      if constexpr (argc > 0) {
-        const void* argv[argc] = {};
-        managed_type arg_ts[argc] = {};
-        detail::create_opaque_handle_array<Args...>(argv, arg_ts, std::forward<Args>(args)..., std::make_index_sequence<argc>{});
-        invoke_static_method_with_args(method_name, argv, arg_ts, argc);
-      } else {
-        invoke_static_method_with_args(method_name, nullptr, nullptr, 0);
       }
     }
 

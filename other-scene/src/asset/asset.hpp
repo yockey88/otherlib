@@ -32,6 +32,8 @@ namespace other {
       INPUT_MAP,
       RENDERING_PIPELINE,
 
+      ASSET_DECLARATION,
+
       EMPTY,
       NUM_ASSET_TYPES,
     };
@@ -74,6 +76,7 @@ namespace other {
     constexpr asset_name(const std::string_view tag, const std::string_view display)
         : tag_name(tag), display_name(display) {}
   };
+
   struct asset_extension {
     asset::type asset_type;
     std::string_view extension;
@@ -99,10 +102,12 @@ namespace other {
     asset_name{ "input-map", "Input Map" },
     asset_name{ "rendering-pipeline", "Rendering Pipeline" },
 
+    asset_name{ "asset-declaration", "Asset Declaration" },
+
     asset_name{ "empty", "Empty" },
   };
 
-  constexpr inline size_t kNumAssetExtensions = 17;
+  constexpr inline size_t kNumAssetExtensions = 18;
   constexpr inline std::array<std::string_view, kNumAssetExtensions> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
@@ -135,6 +140,8 @@ namespace other {
     ".oeim",       // INPUT_MAP
 
     ".orpl",  // RENDERING_PIPELINE
+
+    ".toml"
   };
 
   constexpr inline std::array<asset_extension, kNumAssetExtensions> kAssetExtensions{
@@ -161,6 +168,8 @@ namespace other {
       { asset::INPUT_MAP, ".oeim" },
 
       { asset::RENDERING_PIPELINE, ".orpl" },
+
+      { asset::ASSET_DECLARATION, ".toml" },
     }
   };
 

@@ -17,13 +17,21 @@ target_sources(other_renderer
       src/model/model.cpp
       src/model/model_source.cpp
       
+      src/renderer/resource_tag.cpp
+      src/renderer/frame_binding_registry.cpp
+      src/renderer/render_executor_registry.cpp
+      src/renderer/pass_executor_resolver.cpp
       src/renderer/window_manager.cpp
       src/renderer/rendering_api.cpp
       src/renderer/renderer_backend.cpp
       src/renderer/backends/opengl_api.cpp
       src/renderer/camera.cpp
+      src/renderer/pass_context.cpp
+      src/renderer/render_pass.cpp
+      src/renderer/frame_node.cpp
       src/renderer/render_graph.cpp
       src/renderer/pipeline_definition.cpp
+      src/renderer/debug_render_stream.cpp
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
       src/renderer/ui/unicode.cpp

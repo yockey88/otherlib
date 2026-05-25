@@ -4,6 +4,7 @@
 #ifndef OTHERLIB_SCRIPTING_ACTIONS_CALLBACK_HPP
 #define OTHERLIB_SCRIPTING_ACTIONS_CALLBACK_HPP
 
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <vector>
@@ -11,11 +12,12 @@
 #include "core/value.hpp"
 
 #include "dotnet/dotnet_object.hpp"
+#include "dotnet/host.hpp"
 #include "lua/lua_script.hpp"
+#include "script/scripting_environment.hpp"
 
 #include "forward.hpp"
 #include "table.hpp"
-
 
 namespace other {
 
@@ -75,19 +77,30 @@ namespace other {
   struct dotnet_callback : public callback {
     dotnet_callback(dotnet_object* obj, const std::string_view method_name)
         : callback(callback_type::DOTNET), dotnet_obj(obj), method_name(method_name) {}
+    dotnet_callback(const std::string_view type_name, const std::string_view method_name)
+        : callback(callback_type::DOTNET), type_name(type_name), method_name(method_name) {}
     virtual ~dotnet_callback() = default;
 
     template <typename Ret, typename... CallArgs>
     Ret call_direct(CallArgs&&... args) {
-      if (!dotnet_obj) {
+      if (!dotnet_obj && !type_name.has_value()) {
         throw callback_error("Dotnet object is null in dotnet callback.");
       }
 
-      return invoke_with_conversion<Ret, CallArgs...>(std::forward<CallArgs>(args)...);
+      if (dotnet_obj) {
+        return invoke_with_conversion<Ret, CallArgs...>(std::forward<CallArgs>(args)...);
+      } else if (type_name.has_value()) {
+        auto* env = subsystem<scripting_environment>::get();
+        OTHER_ASSERT(env != nullptr, "scripting_environment subsystem is not available.");
+        return env->call_static_dotnet_method<Ret>(type_name.value(), method_name, std::forward<CallArgs>(args)...);
+      } else {
+        throw callback_error("Invalid state in dotnet callback: no object or type name.");
+      }
     }
 
    private:
     dotnet_object* dotnet_obj = nullptr;
+    opt<std::string> type_name;
     std::string method_name = "";
 
     template <typename Arg>

@@ -12,8 +12,10 @@
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/frame_node.hpp"
 #include "renderer/pipeline_definition.hpp"
 #include "renderer/render_graph.hpp"
+#include "renderer/resource_tag.hpp"
 
 namespace other {
 
@@ -39,8 +41,31 @@ namespace other {
     }
   };
 
+  struct per_pass_binding_state {
+    std::vector<resource_handle> per_frame_handles;
+    struct draw_ring {
+      resource_handle ring_buffer;  // GPU-side
+      uint8_t* cpu_staging;         // CPU-side
+      uint32_t capacity;
+      uint32_t element_size;
+      uint32_t stride;  // element_size aligned up to the required alignment for the buffer type
+      uint32_t head;    // bytes consumed this frame
+      uint32_t binding_point;
+      uint32_t set;  // needed for some rendering apis, gl ignores, vk uses, dx12 uses sort of..., etc.
+    };
+    std::vector<draw_ring> per_draw_rings;
+  };
+
+  struct pass_runtime {
+    natural_t pass_id;
+    const pipeline_pass_definition* def;
+    per_pass_binding_state state;
+  };
+
   class render_pipeline {
    public:
+    static constexpr uint32_t kMaxFramesInFlight = 3;
+
     render_pipeline() = default;
     render_pipeline(pipeline_definition&& def)
         : definition(std::move(def)) {}
@@ -51,10 +76,16 @@ namespace other {
     void initialize_pipeline(renderer* renderer_ptr);
     void shutdown_pipeline();
 
+    bool has_pass(natural_t pass_id) const;
+    pass_runtime& get_pass_runtime(natural_t pass_id);
+
     bool reload(pipeline_definition&& new_def);
 
     void prepare_frame(render_data* data);
+    void bind_frame_resources(const render_data& data);
+    void bind_draw_resources(pass_runtime& runtime, const render_data& data, size_t draw_index);
     void render_frame(renderer* renderer_ptr);
+    void reset_draw_buffers();
 
     ImTextureID get_final_output_texture_id();
     resource_handle get_screen_texture() const;
@@ -63,6 +94,17 @@ namespace other {
     const pipeline_definition& get_definition() const { return definition; }
     const std::string& get_name() const { return definition.name; }
     inline bool is_valid() const { return valid; }
+
+    void upload_buffer(resource_handle handle, const void* data, size_t size);
+    void upload_to_handle(resource_handle handle, const void* data, size_t size);
+    opt<resource_handle> find_buffer_by_name(const std::string_view name) const;
+    opt<resource_handle> find_texture_by_name(const std::string_view name) const;
+    opt<resource_handle> find_tagged(resource_tag tag) const;
+    shader* get_pass_shader(const std::string_view pass_name);
+
+    resource_handle get_quad_mesh_handle() const;
+
+    static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
 
    private:
     pipeline_definition definition;
@@ -76,7 +118,7 @@ namespace other {
     struct named_resource {
       std::string name;
       resource_handle handle;
-      resource_tag tag = resource_tag::NONE;
+      resource_tag tag = resource_tag::none();
     };
 
     std::map<natural_t, named_resource> buffer_resources;   /// keyed by FNV(name)
@@ -89,14 +131,15 @@ namespace other {
     opt<resource_handle> screen_texture_handle;
     opt<resource_handle> quad_mesh_handle;
 
+    std::map<natural_t, pass_runtime> pass_runtimes;
+
     using executor_fn = render_graph::pass_executor;
     std::map<std::string, executor_fn> executor_overrides;
 
-    void upload_buffer(resource_handle handle, const void* data, size_t size);
-    opt<resource_handle> find_buffer_by_name(const std::string_view name) const;
-    opt<resource_handle> find_texture_by_name(const std::string_view name) const;
-    opt<resource_handle> find_tagged(resource_tag tag) const;
-    shader* get_pass_shader(const std::string_view pass_name);
+    void build_pass_runtimes();
+    void destroy_pass_runtimes();
+
+    void apply_lighting_uniforms(const render_data& data);
 
     void override_pass_executor(const std::string_view pass_name, executor_fn&& fn);
 
@@ -108,20 +151,14 @@ namespace other {
     void destroy_resources();
 
     void build_pass(const pipeline_pass_definition& pass_def, render_graph::pass_builder& builder);
-    void upload_to_handle(resource_handle handle, const void* data, size_t size);
 
     renderer* get_renderer() const;
     glm::ivec2 resolve_size(bool use_window, const glm::ivec2& fixed) const;
     bool is_buffer_resource(const std::string_view name) const;
 
     executor_fn make_executor(const pipeline_pass_definition& pass);
-    executor_fn make_draw_scene_executor();
-    executor_fn make_fullscreen_quad_executor(const pipeline_executor_definition& exec, const std::string& pass_name);
-    executor_fn make_noop_executor();
 
     opt<resource_handle> get_shader_handle(const std::string_view shader_name) const;
-
-    static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
   };
 
 }  // namespace other

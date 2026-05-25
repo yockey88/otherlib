@@ -125,6 +125,7 @@ namespace other {
     "texture",
     "buffer",
     "tag",
+    "data",
   };
 
   enum token_type {
@@ -243,6 +244,7 @@ namespace other {
     TOKEN_TYPE_KW_TEXTURE,
     TOKEN_TYPE_KW_BUFFER,
     TOKEN_TYPE_KW_TAG,
+    TOKEN_TYPE_KW_DATA,
 
     TOKEN_TYPE_REGISTER,
     TOKEN_TYPE_ADDRESS,
