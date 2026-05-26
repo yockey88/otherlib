@@ -11,6 +11,7 @@
 
 #include "vm/command_files/token.hpp"
 #include "vm/opcode.hpp"
+#include "vm/operand.hpp"
 
 namespace other {
 
@@ -26,7 +27,10 @@ namespace other {
 
       static argument from_token(const token& tok);
     };
-    uint32_t category_and_type = 0;
+
+    constexpr static inline size_t kMaxArguments = 3;
+
+    canonical_opcode opcode = canonical_opcode::INVALID_OP;
     std::vector<argument> arguments = {};
   };
 

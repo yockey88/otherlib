@@ -114,6 +114,8 @@ namespace other {
     // ...
   };
 
+  std::span<const uint8_t> opcode_to_bytes(const instruction& instr);
+
   std::string opcode_to_simple_string(uint32_t opcode);
   std::string opcode_to_detailed_string(uint32_t opcode);
 
@@ -158,73 +160,73 @@ namespace other {
   //   - there is a maximum of 16 types per category, but not all categories use all 16 types, and some types are shared between categories
 
   /// 0 table (device control)
-  /// 0x00000000
+  /// 0x00000000 (stopdev)
   uint32_t opcode_stop_device();
-  /// 0x01000000
+  /// 0x01000000 (dump)
   uint32_t opcode_dump_registers();
-  /// 0x02xx0000
+  /// 0x02xx0000 (dump x)
   uint32_t opcode_dump_register_x(uint8_t x);
-  /// 0x03xxnnnn
+  /// 0x03xxnnnn (dump x, n)
   uint32_t opcode_dump_memory_at(uint8_t x, uint16_t n);
 
   /// 1 table (load/store/logical)
-  /// 10xxnnnn
+  /// 10xxnnnn (write x, n)
   uint32_t opcode_write_x_to_memory(uint8_t x, uint16_t n);
-  /// 11xxnnnn
+  /// 11xxnnnn (set x, n/<label>)
   uint32_t opcode_load_x_from(uint8_t x, uint16_t n);
-  /// 12xxkkkk
+  /// 12xxkkkk (set x, k)
   uint32_t opcode_load_x_direct(uint8_t x, uint16_t k);
-  /// 13xxnnnn
+  /// 13xxnnnn (write x, <label>)
   uint32_t opcode_indirect_write_x_to_memory(uint16_t n, uint8_t x);
-  /// 14xxyyzz
+  /// 14xxyyzz (cmp x, y, z)
   uint32_t opcode_compare_x_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 15xxyyzz
+  /// 15xxyyzz (cmpgt x, y, z)
   uint32_t opcode_x_gt_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 16xxyyzz
+  /// 16xxyyzz (cmplt x, y, z)
   uint32_t opcode_x_lt_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 17xxyyzz
+  /// 17xxyyzz (and x, y, z)
   uint32_t opcode_x_and_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 18xxyyzz
+  /// 18xxyyzz (or x, y, z)
   uint32_t opcode_x_or_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 19xxyyzz
+  /// 19xxyyzz (xor x, y, z)
   uint32_t opcode_x_xor_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 1Axxyy00
+  /// 1Axxyy00 (lshift x, y)
   uint32_t opcode_shift_left_x_by_y(uint8_t x, uint8_t y);
-  /// 1Bxxyy00
+  /// 1Bxxyy00 (rshift x, y)
   uint32_t opcode_shift_right_x_by_y(uint8_t x, uint8_t y);
 
   /// 2 table (program flow)
-  /// 2000nnnn
+  /// 2000nnnn (goto <label>/goto n)
   uint32_t opcode_goto(uint16_t n);
-  /// 2100nnnn
+  /// 2100nnnn (je <label>/je n)
   uint32_t opcode_jump_if_zero(uint16_t n);
-  /// 2200nnnn
+  /// 2200nnnn (jne <label>/jne n)
   uint32_t opcode_jump_if_not_zero(uint16_t n);
-  /// 23xxnnnn
+  /// 23xxnnnn (call <label>/call n)
   uint32_t opcode_call_at(uint16_t n);
-  /// 24000000
+  /// 24000000 (ret)
   uint32_t opcode_return();
-  /// 25xx0000
+  /// 25xx0000 (ret x)
   uint32_t opcode_return_value_in_x(uint32_t x);
 
   /// 3 table (arithmetic)
-  /// 30xy0000
+  /// 30xy0000 (add x, y)
   uint32_t opcode_add_x_y_to_x(uint8_t x, uint8_t y);
-  /// 31xy0000
+  /// 31xy0000 (sub x, y)
   uint32_t opcode_sub_x_y_to_x(uint8_t x, uint8_t y);
-  /// 32xy0000
+  /// 32xy0000 (mul x, y)
   uint32_t opcode_mul_x_y_to_x(uint8_t x, uint8_t y);
-  /// 33xy0000
+  /// 33xy0000 (div x, y)
   uint32_t opcode_div_x_y_to_x(uint8_t x, uint8_t y);
-  /// 34xy0000
+  /// 34xy0000 (mod x, y)
   uint32_t opcode_mod_x_y_to_x(uint8_t x, uint8_t y);
 
   /// 4 table (scene)
-  /// 4000nnnn
+  /// 4000nnnn (??? n/??? <label>)
   uint32_t opcode_load_scene_with_id_at(uint16_t n);
-  /// 41000000
+  /// 41000000 (scene.play) [needs macro/more expansive typing, etc...]
   uint32_t opcode_play_scene();
-  /// 42000000
+  /// 42000000 (scene.stop) [needs macro/more expansive typing, etc...]
   uint32_t opcode_stop_scene();
 
 }  // namespace other

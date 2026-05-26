@@ -90,24 +90,24 @@ namespace other {
 
     /// 01000000 - Dump all registers
     void execute_dump_registers(other_command_device* device) {
-      for (size_t i = 0; i < other_command_device::kNumRegisters; ++i) {
-        CORE_LOG_DEBUG("R[{}] = {:#018x}", i, device->registers[i].to_u64());
+      for (size_t i = 0; i < vm_register::kNumRegisters; ++i) {
+        CORE_LOG_DEBUG("R[{}] = {:#018x}", i, device->registers[i].memory.to_u64());
       }
-      CORE_LOG_DEBUG("R[FLAG] = {:#018x}", device->registers[other_command_device::kFlagRegister].to_u64());
+      CORE_LOG_DEBUG("R[FLAG] = {:#018x}", device->read_register_as_u64(vm_register_idx::VM_RFLAG));
     }
 
     /// 02xx0000 - Dump register x
     void execute_dump_register_x(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      OTHER_ASSERT(x < other_command_device::kNumRegisters, "Register out of bounds!");
-      CORE_LOG_DEBUG("R[{}] = {:#018x}", x, device->registers[x].to_u64());
+      OTHER_ASSERT(x < vm_register::kNumRegisters, "Register out of bounds!");
+      CORE_LOG_DEBUG("R[{}] = {:#018x}", x, device->read_register_as_u64(x));
     }
 
     /// 03xxnnnn - Dump memory at address n
     void execute_dump_memory_at(other_command_device* device) {
       // dump range [n, n + reg(x)] in a hexdump format
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      natural_t val_in_x = device->registers[x].to_u64();
+      natural_t val_in_x = device->read_register_as_u64(x);
 
       uint16_t n = device->current_instruction.lower;
       void* ptr = device->memory->ptr_to(n + device->program_start_address);
@@ -132,7 +132,7 @@ namespace other {
     void execute_write_x_to_memory(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint64_t addr = device->current_instruction.lower;
-      device->write_u64_at(addr, device->registers[x].to_u64());
+      device->write_u64_at(addr, device->read_register_as_u64(x));
     }
 
     /// 11xxnnnn R[x] = MEM[n]
@@ -140,21 +140,21 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint16_t addr = device->current_instruction.lower;
       uint64_t value = device->read_u64_at(addr + device->program_start_address);
-      device->registers[x] = uint64_t{ value };
+      device->write_register_from_u64(x, value);
     }
 
     /// 12xxkkkk - R[x] = value
     void execute_load_x_direct(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint16_t value = device->current_instruction.lower;
-      device->registers[x] = uint64_t{ value };
+      device->write_register_from_u64(x, value);
     }
 
     /// 13xxnnnn - MEM[n] = MEM[R[x]]
     void execute_indirect_write_x_to_memory(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint16_t addr = device->current_instruction.lower;
-      uint64_t value_addr = device->registers[x].to_u64();
+      uint64_t value_addr = device->read_register_as_u64(x);
       uint64_t value = device->read_u64_at(value_addr);
       device->write_u64_at(addr + device->program_start_address, value);
     }
@@ -164,7 +164,10 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() == device->registers[y].to_u64()) };
+
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x == val_y) });
     }
 
     /// 15xxyyzz - R[z] = R[x] > R[y]
@@ -172,7 +175,9 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() > device->registers[y].to_u64()) };
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x > val_y) });
     }
 
     /// 16xxyyzz - R[z] = R[x] < R[y]
@@ -180,7 +185,9 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() < device->registers[y].to_u64()) };
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x < val_y) });
     }
 
     /// 17xxyyzz - R[z] = R[x] & R[y]
@@ -188,7 +195,9 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() & device->registers[y].to_u64()) };
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x & val_y) });
     }
 
     /// 18xxyyzz - R[z] = R[x] | R[y]
@@ -196,7 +205,9 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() | device->registers[y].to_u64()) };
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x | val_y) });
     }
 
     /// 19xxyyzz - R[z] = R[x] ^ R[y]
@@ -204,21 +215,27 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      device->registers[z] = uint64_t{ (device->registers[x].to_u64() ^ device->registers[y].to_u64()) };
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x ^ val_y) });
     }
 
     /// 1Axxyy00 - R[x] = R[x] << R[y]
     void execute_shift_left_x_by_y(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      device->registers[x] = uint64_t{ (device->registers[x].to_u64() << device->registers[y].to_u64()) };
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(x, uint64_t{ (val_x << val_y) });
     }
 
     /// 1Bxxyy00 - R[x] = R[x] >> R[y]
     void execute_shift_right_x_by_y(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      device->registers[x] = uint64_t{ (device->registers[x].to_u64() >> device->registers[y].to_u64()) };
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(x, uint64_t{ (val_x >> val_y) });
     }
 
     /////////////////////// 2XXX /////////////////////
@@ -232,7 +249,8 @@ namespace other {
     void execute_jump_if_zero(other_command_device* device) {
       uint16_t addr = device->current_instruction.lower;
 
-      if (device->registers[other_command_device::kFlagRegister].to_u64() == 0) {
+      natural_t flag = device->read_register_as_u64(vm_register_idx::VM_RFLAG);
+      if (flag == 0) {
         device->pc = addr + device->program_start_address;
       }
     }
@@ -241,7 +259,8 @@ namespace other {
     void execute_jump_if_not_zero(other_command_device* device) {
       uint16_t addr = device->current_instruction.lower;
 
-      if (device->registers[other_command_device::kFlagRegister].to_u64() != 0) {
+      natural_t flag = device->read_register_as_u64(vm_register_idx::VM_RFLAG);
+      if (flag != 0) {
         device->pc = addr + device->program_start_address;
       }
     }
@@ -270,7 +289,7 @@ namespace other {
         assert(false && "Stack underflow on RET");
       } else {
         perform_call_stack_pop_and_address_shift(device);
-        device->registers[other_command_device::kReturnRegister] = device->registers[x];
+        device->write_register_from_u64(vm_register_idx::VM_RRETURN, device->read_register_as_u64(x));
       }
     }
 
@@ -279,21 +298,27 @@ namespace other {
     void execute_add_x_y_to_x(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      device->registers[x] = device->registers[x].to_u64() + device->registers[y].to_u64();
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(x, val_x + val_y);
     }
 
     /// 31xy0000 - R[x] = R[x] - R[y]
     void execute_sub_x_y_to_x(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      device->registers[x] = device->registers[x].to_u64() - device->registers[y].to_u64();
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(x, val_x - val_y);
     }
 
     /// 32xy0000 - R[x] = R[x] * R[y]
     void execute_mul_x_y_to_x(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      device->registers[x] = device->registers[x].to_u64() * device->registers[y].to_u64();
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(x, val_x * val_y);
     }
 
     /// 33xy0000 - R[x] = R[x] / R[y]
@@ -301,12 +326,13 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
 
-      uint64_t divisor = device->registers[y].to_u64();
+      uint64_t divisor = device->read_register_as_u64(y);
       if (divisor == 0) {
         CORE_LOG_ERROR("Division by zero in DIV R[{}] / R[{}]", x, y);
-        device->registers[other_command_device::kFlagRegister] = 1;
+        device->write_register_from_u64(vm_register_idx::VM_RFLAG, 1);
       } else {
-        device->registers[x] = device->registers[x].to_u64() / device->registers[y].to_u64();
+        uint64_t dividend = device->read_register_as_u64(x);
+        device->write_register_from_u64(x, dividend / divisor);
       }
     }
 
@@ -315,12 +341,13 @@ namespace other {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
 
-      uint64_t divisor = device->registers[y].to_u64();
+      uint64_t divisor = device->read_register_as_u64(y);
       if (divisor == 0) {
         CORE_LOG_ERROR("Division by zero in MOD R[{}] %% R[{}]", x, y);
-        device->registers[other_command_device::kFlagRegister] = 1;
+        device->write_register_from_u64(vm_register_idx::VM_RFLAG, 1);
       } else {
-        device->registers[x] = device->registers[x].to_u64() % device->registers[y].to_u64();
+        uint64_t dividend = device->read_register_as_u64(x);
+        device->write_register_from_u64(x, dividend % divisor);
       }
     }
 

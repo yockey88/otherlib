@@ -8,6 +8,7 @@
 
 #include "vm/control_table.hpp"
 #include "vm/opcode.hpp"
+#include "vm/register.hpp"
 #include "vm/vm_memory.hpp"
 
 namespace other {
@@ -17,8 +18,7 @@ namespace other {
 
   struct other_command_device {
     constexpr static size_t kOpCodeSize = sizeof(uint32_t);
-    constexpr static size_t kRegisterBitSize = 64;  /// 64-bit registers
-    constexpr static size_t kNumRegisters = 16;
+
     constexpr static size_t kMemorySize = 0xFFFF;
     constexpr static size_t kStackSize = 128;
 
@@ -36,10 +36,7 @@ namespace other {
       kStateError = std::numeric_limits<uint64_t>::max(),
     };
 
-    constexpr static uint8_t kReturnRegister = 15;
-    constexpr static size_t kFlagRegister = kNumRegisters;
-    /// last register is the flag register
-    register_t<kRegisterBitSize> registers[kNumRegisters + 1];
+    vm_register registers[vm_register::kNumRegisters + 1];
 
     using memory_t = memory_storage_t<kMemorySize>;
     memory_t* memory = {};
@@ -74,6 +71,15 @@ namespace other {
     random_generator<uint64_t> rng = { std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max() };
 
     // void execute_instruction(const instruction& instr);
+
+    inline natural_t read_register_as_u64(uint8_t reg_index) const {
+      OTHER_ASSERT(reg_index < vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
+      return registers[reg_index].memory.to_u64();
+    }
+    inline void write_register_from_u64(uint8_t reg_index, uint64_t value) {
+      OTHER_ASSERT(reg_index < vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
+      registers[reg_index].memory = register_t<vm_register::kRegisterBitSize>{ value };
+    }
 
     uint8_t get_random_byte();
 

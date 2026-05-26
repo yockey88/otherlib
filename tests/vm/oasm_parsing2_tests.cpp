@@ -14,9 +14,9 @@ namespace other {
       .payload : = 0A 0B 0C
     }
     $main:
-      dumpmem data.greeting
-      dumpmem data.count
-      dumpmem data.payload
+      dump data.greeting
+      dump data.count
+      dump data.payload
       ret
     end
     )";
@@ -45,19 +45,19 @@ namespace other {
     };
     const std::array expected_code = {
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x03),
+        .expected_opcode = canonical_opcode::DUMP_OP,
         .arguments = { detail::expected_argument{ .type = TOKEN_TYPE_LABEL, .raw_txt = "data.greeting" } },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x03),
+        .expected_opcode = canonical_opcode::DUMP_OP,
         .arguments = { detail::expected_argument{ .type = TOKEN_TYPE_LABEL, .raw_txt = "data.count" } },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x03),
+        .expected_opcode = canonical_opcode::DUMP_OP,
         .arguments = { detail::expected_argument{ .type = TOKEN_TYPE_LABEL, .raw_txt = "data.payload" } },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+        .expected_opcode = canonical_opcode::RET_OP,
       },
     };
     const std::array expected_definitions = {

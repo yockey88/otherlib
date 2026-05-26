@@ -7,6 +7,7 @@
 #include "core/logger.hpp"
 
 #include "vm/opcode.hpp"
+#include "vm/register.hpp"
 
 #include "token.hpp"
 
@@ -18,23 +19,23 @@ namespace other {
         throw std::runtime_error("Token is not a register: " + tok.text);
       }
 
-      if ("r0" == tok.text) return 0x00;
-      if ("r1" == tok.text) return 0x01;
-      if ("r2" == tok.text) return 0x02;
-      if ("r3" == tok.text) return 0x03;
-      if ("r4" == tok.text) return 0x04;
-      if ("r5" == tok.text) return 0x05;
-      if ("r6" == tok.text) return 0x06;
-      if ("r7" == tok.text) return 0x07;
-      if ("r8" == tok.text) return 0x08;
-      if ("r9" == tok.text) return 0x09;
-      if ("ra" == tok.text) return 0x0A;
-      if ("rb" == tok.text) return 0x0B;
-      if ("rc" == tok.text) return 0x0C;
-      if ("rd" == tok.text) return 0x0D;
-      if ("re" == tok.text) return 0x0E;
-      if ("rf" == tok.text) return 0x0F;
-      if ("rflag" == tok.text) return 0x10;
+      if ("r0" == tok.text) return vm_register_idx::VM_R0;
+      if ("r1" == tok.text) return vm_register_idx::VM_R1;
+      if ("r2" == tok.text) return vm_register_idx::VM_R2;
+      if ("r3" == tok.text) return vm_register_idx::VM_R3;
+      if ("r4" == tok.text) return vm_register_idx::VM_R4;
+      if ("r5" == tok.text) return vm_register_idx::VM_R5;
+      if ("r6" == tok.text) return vm_register_idx::VM_R6;
+      if ("r7" == tok.text) return vm_register_idx::VM_R7;
+      if ("r8" == tok.text) return vm_register_idx::VM_R8;
+      if ("r9" == tok.text) return vm_register_idx::VM_R9;
+      if ("ra" == tok.text) return vm_register_idx::VM_RA;
+      if ("rb" == tok.text) return vm_register_idx::VM_RB;
+      if ("rc" == tok.text) return vm_register_idx::VM_RC;
+      if ("rd" == tok.text) return vm_register_idx::VM_RD;
+      if ("re" == tok.text) return vm_register_idx::VM_RE;
+      if ("rf" == tok.text) return vm_register_idx::VM_RF;
+      if ("rflag" == tok.text) return vm_register_idx::VM_RFLAG;
 
       throw std::runtime_error("Invalid register token: " + tok.text);
     }

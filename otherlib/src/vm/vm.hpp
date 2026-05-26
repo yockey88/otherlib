@@ -5,6 +5,7 @@
 #define OTHERLIB_VM_VM_HPP
 
 #include "vm/other_device.hpp"
+#include "vm/vm_version.hpp"
 
 #include "control_table.hpp"
 

@@ -11,6 +11,7 @@ namespace other {
 
   struct other_command_device;
   using other_command_executor = void (*)(other_command_device*);
+  using other_command_table = std::array<other_command_executor, 16>;
 
   enum control_tables {
     OTHER_CONTROL_TABLE_V000 = 0,

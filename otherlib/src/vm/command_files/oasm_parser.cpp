@@ -9,11 +9,12 @@
 #include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
+#include "vm/command_files/code_block.hpp"
+#include "vm/command_files/compiler_error.hpp"
+#include "vm/command_files/token.hpp"
+#include "vm/instruction.hpp"
 #include "vm/opcode.hpp"
 #include "vm/other_device.hpp"
-
-#include "code_block.hpp"
-#include "token.hpp"
 
 namespace other {
   namespace detail {
@@ -98,8 +99,20 @@ namespace other {
       return std::ranges::find(kKeywordTokens, tok.type, &keyword_token::type) != kKeywordTokens.end();
     }
 
+    inline bool is_next_section_marker(const token& tok) {
+      return tok.type == TOKEN_TYPE_HASH || tok.type == TOKEN_TYPE_DOLLAR || tok.type == TOKEN_TYPE_SLASH;
+    }
+
+    inline bool end_of_code_section(const token& tok) {
+      return tok.type == TOKEN_TYPE_KW_END || tok.type == TOKEN_TYPE_EOF;
+    }
+
     inline bool is_eol_marker(const token& tok) {
-      return is_instruction_keyword(tok) || tok.type == TOKEN_TYPE_KW_END || tok.type == TOKEN_TYPE_AT;
+      return is_instruction_keyword(tok) ||  // next instruction
+        is_next_section_marker(tok) ||       // next section but missing 'end' for code block
+        tok.type == TOKEN_TYPE_KW_END ||     // end of code block
+        tok.type == TOKEN_TYPE_AT ||         // for tags/labels and missing 'end'
+        tok.type == TOKEN_TYPE_EOF;
     }
 
     static inline auto get_data_object_value_filter() {
@@ -292,13 +305,10 @@ namespace other {
     uint32_t instruction_index = 0;
 
     /// now read everything until END keyword
-    while (!finished() && !check(TOKEN_TYPE_KW_END)) {
+    while (!finished() && !detail::end_of_code_section(current())) {
       bool set_instr_index = false;
-      if (check(TOKEN_TYPE_DOLLAR) || check(TOKEN_TYPE_HASH)) {
-        // if we just process a return then we are done with the code block and the user simply forgot 'end'
-        if (section.instructions.size() > 0 && section.instructions.back().category_and_type == opcode_return()) {
-          break;
-        }
+      if (detail::is_next_section_marker(current())) {
+        break;
       }
 
       if (check(TOKEN_TYPE_AT)) {
@@ -320,36 +330,38 @@ namespace other {
 
       if (detail::is_instruction_keyword(current())) {
         token curr_token = current();
-        uint32_t category_and_type = get_opcode_category_and_type_from_token(curr_token);
+        canonical_opcode category_and_type = get_canonical_opcode(curr_token);
         consume();
 
         auto& instr = section.instructions.emplace_back(code_section_ir::instruction_ir{
           .instruction_index = instruction_index++,
-          .category_and_type = category_and_type,
+          .opcode = category_and_type,
         });
         if (set_instr_index) {
           section.jump_labels.back().instruction_index = instr.instruction_index;
         }
 
-        uint32_t instr_parity = get_instruction_parity(category_and_type);
-        if (instr_parity > 0) {
-          auto raw_param_tokens = look_from_now() |
-            std::views::take_while([](const token& tok) { return !detail::is_eol_marker(tok); }) |
-            std::ranges::to<std::vector>();
-          for (const auto& _ : raw_param_tokens) {
-            consume();
-          }
+        auto raw_param_tokens = look_from_now() |
+          std::views::take_while([](const token& tok) { return !detail::is_eol_marker(tok); }) |
+          std::ranges::to<std::vector>();
+        for (const auto& _ : raw_param_tokens) {
+          consume();
+        }
 
-          auto param_tokens = detail::collect_instruction_parameter_tokens(raw_param_tokens);
-          const auto params_size = std::ranges::size(param_tokens);
-          if (params_size != instr_parity) {
-            throw ocmd_parse_error(std::format("Expected {} parameters for instruction '{}', but found {}", instr_parity, curr_token.text, params_size));
-          }
+        auto param_tokens = detail::collect_instruction_parameter_tokens(raw_param_tokens);
+        const auto params_size = std::ranges::size(param_tokens);
+        if (params_size > 3) {
+          throw ocmd_parse_error(std::format("Too many parameters for instruction '{}', expected at most 3 but found {}", curr_token.text, params_size));
+        }
 
-          size_t arg_idx = 0;
-          for (const auto& param_token : param_tokens) {
-            instr.arguments[arg_idx++] = param_token;
-          }
+        uint32_t instr_parity = canonical_instruction::opcode_parity(category_and_type);
+        if (params_size > instr_parity) {
+          throw ocmd_parse_error(std::format("Expecteda at most {} parameters for instruction '{}', but found {}", instr_parity, curr_token.text, params_size));
+        }
+
+        size_t arg_idx = 0;
+        for (const auto& param_token : param_tokens) {
+          instr.arguments[arg_idx++] = param_token;
         }
 
       } else {
@@ -510,7 +522,9 @@ namespace other {
             case TOKEN_TYPE_INTEGER_LITERAL: break;
             case TOKEN_TYPE_FLOATING_POINT_LITERAL: break;
             case TOKEN_TYPE_STRING_LITERAL: break;
-            case TOKEN_TYPE_IDENTIFIER: arg_token.type = TOKEN_TYPE_LABEL; break;
+            case TOKEN_TYPE_IDENTIFIER:
+              arg_token.type = TOKEN_TYPE_LABEL;
+              break;
             case TOKEN_TYPE_HEX_LITERAL:
               arg_token.text = arg_token.text.substr(2);
               arg_token.type = TOKEN_TYPE_ADDRESS;
@@ -518,7 +532,7 @@ namespace other {
             default:
               if (arg_token.type >= TOKEN_TYPE_KW_R0 && arg_token.type <= TOKEN_TYPE_KW_RFLAG) {
               } else {
-                CORE_LOG_ERROR("Unexpected token type [{}] for argument '{}'", static_cast<int>(arg_token.type), arg_token.text);
+                CORE_LOG_ERROR("Unexpected token type [{}] for argument '{}'", arg_token.type, arg_token.text);
               }
               break;
           }
@@ -536,7 +550,7 @@ namespace other {
 
       for (auto& instr_ir : section.instructions) {
         auto& instr = code_blk.instructions.emplace_back();
-        instr.category_and_type = instr_ir.category_and_type;
+        instr.opcode = instr_ir.opcode;
 
         for (const auto& arg_tok : instr_ir.arguments) {
           if (arg_tok.type == TOKEN_TYPE_INVALID) {
@@ -574,13 +588,13 @@ namespace other {
         auto& obj = data_blk.objects.emplace_back();
         obj.name = obj_ir.name;
         obj.value_token = obj_ir.value_token;
-        obj.data = data_object::data_from_token_and_type(obj.value_token, obj_ir.deduced_type);
 
         if (!obj_ir.type_label.empty()) {
           obj.type = data_object::data_type_from_label(obj_ir.type_label);
         } else {
           obj.type = obj_ir.deduced_type;
         }
+        obj.data = data_object::data_from_token_and_type(obj.value_token, obj.type);
       }
     }
   }
@@ -628,83 +642,44 @@ namespace other {
     return peek(1).type == type;
   }
 
-  uint32_t oasm_parser::get_instruction_parity(uint32_t category_and_type) const {
-    /// for now we can just hardcode this based on the opcode definitions, but ideally this should be determined by the instruction metadata
-    uint8_t category = get_category_nibble(category_and_type);
-    uint8_t type = get_type_nibble(category_and_type);
-
-    switch (category) {
-      // all device control instructions take 1 argument
-      case OPCODE_CATEGORY_DEVICE_CONTROL: return 1;
-      case OPCODE_CATEGORY_LOAD_STORE_LOGICAL:
-        if (type <= 0x03) {
-          return 2;  // write, load, set, iwrite take 2 arguments
-        } else if (type <= 0x0B) {
-          return 3;  // cmp, cmpgt, cmplt, and, or, xor, lshift, rshift take 3 arguments
-        }
-        break;
-      case OPCODE_CATEGORY_PROGRAM_FLOW:
-        // ret takes 0 arguments
-        if (type == 0x04) {
-          return 0;
-        } else {
-          return 1;
-        }
-        break;
-      case OPCODE_CATEGORY_ARITHMETIC:
-        if (type <= 0x04) {
-          return 3;  // add, sub, mul, div, mod take 3 arguments
-        }
-        break;
-      // all scene table instructions take 1 argument
-      case OPCODE_CATEGORY_SCENE_TABLE: return 1;
-      default:
-        CORE_LOG_ERROR("Unknown opcode category [{}] for parity calculation", category);
-        break;
-    }
-
-    CORE_LOG_ERROR("Unable to determine instruction parity for category [{}] and type [{}]", category, type);
-    return 0;  // default to parity of 0 if unknown
-  }
-
-  uint32_t oasm_parser::get_opcode_category_and_type_from_token(const token& tok) const {
+  canonical_opcode oasm_parser::get_canonical_opcode(const token& tok) const {
     if (tok.type < TOKEN_TYPE_KW_STOPDEV || tok.type > TOKEN_TYPE_KW_LOADSCN) {
       throw ocmd_parse_error(std::format("Token '{}' is not a valid instruction keyword", tok.text));
     }
 
     switch (tok.type) {
-      case TOKEN_TYPE_KW_STOPDEV: return opcode_with_category_and_type(OPCODE_CATEGORY_DEVICE_CONTROL, 0x00);
-      case TOKEN_TYPE_KW_DUMP: return opcode_with_category_and_type(OPCODE_CATEGORY_DEVICE_CONTROL, 0x01);
-      case TOKEN_TYPE_KW_DUMPX: return opcode_with_category_and_type(OPCODE_CATEGORY_DEVICE_CONTROL, 0x02);
-      case TOKEN_TYPE_KW_DUMPMEM: return opcode_with_category_and_type(OPCODE_CATEGORY_DEVICE_CONTROL, 0x03);
-      case TOKEN_TYPE_KW_WRITE: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x00);
-      case TOKEN_TYPE_KW_LOAD: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x01);
-      case TOKEN_TYPE_KW_SET: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x02);
-      case TOKEN_TYPE_KW_IWRITE: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x03);
-      case TOKEN_TYPE_KW_CMP: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x04);
-      case TOKEN_TYPE_KW_CMPGT: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x05);
-      case TOKEN_TYPE_KW_CMPLT: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x06);
-      case TOKEN_TYPE_KW_AND: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x07);
-      case TOKEN_TYPE_KW_OR: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x08);
-      case TOKEN_TYPE_KW_XOR: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x09);
-      case TOKEN_TYPE_KW_LSHIFT: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x0A);
-      case TOKEN_TYPE_KW_RSHIFT: return opcode_with_category_and_type(OPCODE_CATEGORY_LOAD_STORE_LOGICAL, 0x0B);
-      case TOKEN_TYPE_KW_GOTO: return opcode_with_category_and_type(OPCODE_CATEGORY_PROGRAM_FLOW, 0x00);
-      case TOKEN_TYPE_KW_JE: return opcode_with_category_and_type(OPCODE_CATEGORY_PROGRAM_FLOW, 0x01);
-      case TOKEN_TYPE_KW_JNE: return opcode_with_category_and_type(OPCODE_CATEGORY_PROGRAM_FLOW, 0x02);
-      case TOKEN_TYPE_KW_CALL: return opcode_with_category_and_type(OPCODE_CATEGORY_PROGRAM_FLOW, 0x03);
-      case TOKEN_TYPE_KW_RET: return opcode_with_category_and_type(OPCODE_CATEGORY_PROGRAM_FLOW, 0x04);
-      case TOKEN_TYPE_KW_RETX: return opcode_with_category_and_type(OPCODE_CATEGORY_PROGRAM_FLOW, 0x05);
-      case TOKEN_TYPE_KW_ADD: return opcode_with_category_and_type(OPCODE_CATEGORY_ARITHMETIC, 0x00);
-      case TOKEN_TYPE_KW_SUB: return opcode_with_category_and_type(OPCODE_CATEGORY_ARITHMETIC, 0x01);
-      case TOKEN_TYPE_KW_MUL: return opcode_with_category_and_type(OPCODE_CATEGORY_ARITHMETIC, 0x02);
-      case TOKEN_TYPE_KW_DIV: return opcode_with_category_and_type(OPCODE_CATEGORY_ARITHMETIC, 0x03);
-      case TOKEN_TYPE_KW_MOD: return opcode_with_category_and_type(OPCODE_CATEGORY_ARITHMETIC, 0x04);
-      case TOKEN_TYPE_KW_LOADSCN: return opcode_with_category_and_type(OPCODE_CATEGORY_SCENE_TABLE, 0x00);
-      case TOKEN_TYPE_KW_PLAYSCN: return opcode_with_category_and_type(OPCODE_CATEGORY_SCENE_TABLE, 0x01);
-      case TOKEN_TYPE_KW_STOPSCN: return opcode_with_category_and_type(OPCODE_CATEGORY_SCENE_TABLE, 0x02);
+      /// 0 table
+      case TOKEN_TYPE_KW_STOPDEV: return canonical_opcode::STOPDEV_OP;
+      case TOKEN_TYPE_KW_DUMP: return canonical_opcode::DUMP_OP;
+      /// 1 table
+      case TOKEN_TYPE_KW_WRITE: return canonical_opcode::WRITE_OP;
+      case TOKEN_TYPE_KW_SET: return canonical_opcode::SET_OP;
+      case TOKEN_TYPE_KW_CMP: return canonical_opcode::CMP_OP;
+      case TOKEN_TYPE_KW_CMPGT: return canonical_opcode::CMPGT_OP;
+      case TOKEN_TYPE_KW_CMPLT: return canonical_opcode::CMPLT_OP;
+      case TOKEN_TYPE_KW_AND: return canonical_opcode::AND_OP;
+      case TOKEN_TYPE_KW_OR: return canonical_opcode::OR_OP;
+      case TOKEN_TYPE_KW_XOR: return canonical_opcode::XOR_OP;
+      case TOKEN_TYPE_KW_LSHIFT: return canonical_opcode::LSHIFT_OP;
+      case TOKEN_TYPE_KW_RSHIFT: return canonical_opcode::RSHIFT_OP;
+      /// 2 table
+      case TOKEN_TYPE_KW_GOTO: return canonical_opcode::GOTO_OP;
+      case TOKEN_TYPE_KW_JE: return canonical_opcode::JE_OP;
+      case TOKEN_TYPE_KW_JNE: return canonical_opcode::JNE_OP;
+      case TOKEN_TYPE_KW_CALL: return canonical_opcode::CALL_OP;
+      case TOKEN_TYPE_KW_RET: return canonical_opcode::RET_OP;
+      /// 3 table
+      case TOKEN_TYPE_KW_ADD: return canonical_opcode::ADD_OP;
+      case TOKEN_TYPE_KW_SUB: return canonical_opcode::SUB_OP;
+      case TOKEN_TYPE_KW_MUL: return canonical_opcode::MUL_OP;
+      case TOKEN_TYPE_KW_DIV: return canonical_opcode::DIV_OP;
+      case TOKEN_TYPE_KW_MOD: return canonical_opcode::MOD_OP;
+      /// 4 table
+      case TOKEN_TYPE_KW_LOADSCN: return canonical_opcode::LOADSCN_OP;
+      case TOKEN_TYPE_KW_PLAYSCN: return canonical_opcode::PLAYSCN_OP;
+      case TOKEN_TYPE_KW_STOPSCN: return canonical_opcode::STOPSCN_OP;
       default:
-        throw ocmd_parse_error(std::format("Unhandled instruction keyword token type [{}]", static_cast<int>(tok.type)));
+        throw ocmd_parse_error(std::format("Unhandled instruction keyword type [{}] ({})", tok.type, tok.text));
     }
   }
 

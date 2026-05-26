@@ -87,20 +87,25 @@ target_sources(otherlib
     src/scripting/execution_graph.cpp
     src/scripting/environment_interface.cpp
 
+    src/vm/command_files/token.cpp
+    src/vm/command_files/lexer.cpp
+    src/vm/command_files/code_block.cpp
+    src/vm/command_files/data_block.cpp
+    src/vm/command_files/oasm_parser.cpp
+    src/vm/command_files/ast_lowering.cpp
+    src/vm/command_files/opcode_builder.cpp
+    src/vm/command_files/code_generator.cpp
+    src/vm/command_files/ocmd_compiler.cpp
+    src/vm/command_files/ocmd_linker.cpp
+    src/vm/code_generator_000.cpp
+    src/vm/default_symbol_resolver.cpp
+    src/vm/instruction.cpp
     src/vm/opcode.cpp
     src/vm/driver_interface.cpp
     src/vm/control_table.cpp
     src/vm/other_device.cpp
     src/vm/decompiler.cpp
     src/vm/vm.cpp
-    src/vm/command_files/token.cpp
-    src/vm/command_files/code_block.cpp
-    src/vm/command_files/data_block.cpp
-    src/vm/command_files/lexer.cpp
-    src/vm/command_files/oasm_parser.cpp
-    src/vm/command_files/assembler.cpp
-    src/vm/command_files/linker.cpp
-    src/vm/command_files/ocmd_compiler.cpp
 
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp

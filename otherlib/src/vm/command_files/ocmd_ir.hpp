@@ -7,10 +7,12 @@
 #include "vm/command_files/code_block.hpp"
 #include "vm/command_files/compiler_definition.hpp"
 #include "vm/command_files/data_block.hpp"
+#include "vm/vm_version.hpp"
 
 namespace other {
 
   struct ocmd_ir {
+    vm_version target_vm_version;
     std::vector<compiler_definition> definitions = {};
     std::vector<code_block> code_blocks = {};
     std::vector<data_block> data_blocks = {};

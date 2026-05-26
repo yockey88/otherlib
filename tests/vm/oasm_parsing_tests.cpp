@@ -15,6 +15,7 @@
 #include <string_view>
 #include <vector>
 
+#include "vm/code_generator_000.hpp"
 #include "vm/command_files/lexer.hpp"
 #include "vm/command_files/oasm_parser.hpp"
 
@@ -35,7 +36,7 @@ namespace other {
       .banner : string = "hello"
     }
     $boot:
-      load r1, first_addr
+      set r1, first_addr
       ret
     #data {
       .bytes : blob = DE AD BE EF
@@ -43,7 +44,7 @@ namespace other {
     }
     $copy:
       dump r2
-      load r3, 0x4567
+      set r3, 0x4567
       ret
     end
     )";
@@ -88,24 +89,24 @@ namespace other {
     const auto& r3 = detail::get_register_case(3);
     const std::array expected_boot = {
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x01, 0x01),
+        .expected_opcode = canonical_opcode::SET_OP,
         .arguments = { detail::make_register_argument(r1), detail::make_label_argument("first_addr") },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+        .expected_opcode = canonical_opcode::RET_OP,
       },
     };
     const std::array expected_copy = {
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x01),
+        .expected_opcode = canonical_opcode::DUMP_OP,
         .arguments = { detail::make_register_argument(r2) },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x01, 0x01),
+        .expected_opcode = canonical_opcode::SET_OP,
         .arguments = { detail::make_register_argument(r3), detail::make_address_argument(0x4567) },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+        .expected_opcode = canonical_opcode::RET_OP,
       },
     };
 
@@ -153,7 +154,7 @@ namespace other {
 
     const std::array expected_code = {
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+        .expected_opcode = canonical_opcode::RET_OP,
       },
     };
     expect_code_block_matches(ir.code_blocks[0], "main", expected_code);
@@ -173,10 +174,10 @@ namespace other {
     EXPECT_TRUE(ir.code_blocks.empty());
   }
 
-  TEST_F(vm_tests, oasm_parsing_rejects_instruction_with_wrong_arity) {
+  TEST_F(vm_tests, oasm_parsing_rejects_instruction_with_too_many_arguments) {
     const std::string_view source = R"(
     $main:
-      load r1
+      set r1, 0x1234, r2
       ret
     )";
 
@@ -189,7 +190,7 @@ namespace other {
   TEST_F(vm_tests, oasm_parsing_conjoins_three_segment_data_access_parameter) {
     const std::string_view source = R"(
     $main:
-      load r1, data.player.health
+      set r1, data.player.health
       ret
     end
     )";
@@ -202,11 +203,11 @@ namespace other {
     const auto& r1 = detail::get_register_case(1);
     const std::array expected_code = {
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x01, 0x01),
+        .expected_opcode = canonical_opcode::SET_OP,
         .arguments = { detail::make_register_argument(r1), detail::make_label_argument("data.player.health") },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+        .expected_opcode = canonical_opcode::RET_OP,
       },
     };
 
@@ -258,7 +259,7 @@ namespace other {
       //   }
       // }
       // ::testing::internal::CaptureStdout();
-      const auto ir = oasm_parser{ tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
       // std::string parser_output = ::testing::internal::GetCapturedStdout();
       // parser_output += detail::read_file_suffix(log_path, log_size_before);
 
@@ -326,7 +327,16 @@ namespace other {
       const auto tokens = ocmd_lexer{ source }.tokenize();
       EXPECT_FALSE(tokens.empty())
         << std::format("Tokenization failed for source:\n{}", source);
-      return oasm_parser{ tokens }.parse();
+      return oasm_parser{ vm_version{}, tokens }.parse();
+    }
+
+    ocmd_program compile_source(const std::string_view source) {
+      auto ir = parse_source(source);
+      if (!ir.valid) {
+        return {};
+      }
+
+      return ocmd_compiler{ ir }.compile(make_scope<code_generator_000>());
     }
 
     void expect_argument_matches(const raw_instruction::argument& actual, const expected_argument& expected) {
@@ -335,19 +345,33 @@ namespace other {
       EXPECT_EQ(actual.raw_txt, expected.raw_txt);
       if (expected.value.has_value()) {
         ASSERT_TRUE(actual.value.has_value());
-        EXPECT_EQ(actual.value.value(), expected.value.value());
+        EXPECT_EQ(actual.value.value(), expected.value.value())
+          << std::format("Argument value mismatch. Expected: {}, Actual: {}", expected.value.value(), actual.value.value());
       }
       if (!expected.raw_data.empty()) {
-        EXPECT_EQ(actual.raw_data, expected.raw_data);
+        EXPECT_EQ(actual.raw_data, expected.raw_data)
+          << std::format("Argument raw data mismatch. Expected size: {}, Actual size: {}", expected.raw_data.size(), actual.raw_data.size());
       }
     }
 
     void expect_instruction_matches(const raw_instruction& actual, const expected_instruction& expected) {
-      EXPECT_EQ(actual.category_and_type, expected.category_and_type)
-        << std::format("Instruction category/type mismatch. Expected: {:#010X}, Actual: {:#010X}", expected.category_and_type, actual.category_and_type);
+      EXPECT_EQ(actual.opcode, expected.expected_opcode)
+        << std::format("Instruction opcode mismatch. Expected: {}, Actual: {}", expected.expected_opcode, actual.opcode);
       ASSERT_EQ(actual.arguments.size(), expected.arguments.size());
 
       for (size_t index = 0; index < expected.arguments.size(); ++index) {
+        std::string actual_instruction_str = std::format("Opcode: {}, Arguments: [", actual.opcode);
+        std::string expected_instruction_str = std::format("Opcode: {}, Arguments: [", expected.expected_opcode);
+        for (const auto& arg : actual.arguments) {
+          actual_instruction_str += std::format("{{type: {}, raw_txt: '{}', value: {}}}", arg.type, arg.raw_txt, arg.value.has_value() ? std::to_string(arg.value.value()) : "nullopt");
+        }
+        for (const auto& arg : expected.arguments) {
+          expected_instruction_str += std::format("{{type: {}, raw_txt: '{}', value: {}}}", arg.type, arg.raw_txt, arg.value.has_value() ? std::to_string(arg.value.value()) : "nullopt");
+        }
+        actual_instruction_str += "]";
+        expected_instruction_str += "]";
+        SCOPED_TRACE(std::format("actual instruction argument [{}]:\n{}", index, actual_instruction_str));
+        SCOPED_TRACE(std::format("expected instruction argument [{}]:\n{}", index, expected_instruction_str));
         expect_argument_matches(actual.arguments[index], expected.arguments[index]);
       }
     }
@@ -365,7 +389,8 @@ namespace other {
       ASSERT_EQ(actual.objects.size(), expected_objects.size());
 
       for (size_t index = 0; index < expected_objects.size(); ++index) {
-        EXPECT_EQ(actual.objects[index].name, expected_objects[index].name);
+        EXPECT_EQ(actual.objects[index].name, expected_objects[index].name)
+          << std::format("Data object name mismatch at index {}. Expected: '{}', Actual: '{}'", index, expected_objects[index].name, actual.objects[index].name);
         EXPECT_EQ(actual.objects[index].type, expected_objects[index].type)
           // clang-format off
           << std::format("Data object type mismatch for object '{}'. Expected: {}, Actual: {} (name: {}/{})", 
@@ -383,6 +408,36 @@ namespace other {
     void expect_definition_matches(const compiler_definition& actual, const std::string_view expected_name, const std::string_view expected_value) {
       EXPECT_EQ(actual.name, expected_name);
       EXPECT_EQ(actual.value.text, expected_value);
+    }
+
+    void expect_machine_instruction_matches(const instruction& actual, const expected_machine_instruction& expected) {
+      EXPECT_EQ(actual.opcode, expected.expected_opcode)
+        << std::format("Machine instruction opcode mismatch. Expected: {:#010x}, Actual: {:#010x}", expected.expected_opcode, actual.opcode);
+    }
+
+    void expect_compiled_code_block_matches(
+      const compiled_code_block& actual, const std::string_view expected_name,
+      const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions
+    ) {
+      EXPECT_EQ(actual.name, expected_name);
+      EXPECT_EQ(actual.is_entry_point, expected_is_entry_point);
+
+      const auto& actual_instructions = actual.artifact.machine_instructions;
+      std::string actual_instructions_str = "Instructions:\n";
+      std::string expected_instructions_str = "Expected Instructions:\n";
+      for (const auto& instr : actual_instructions) {
+        actual_instructions_str += std::format("  Opcode: {:#010x}\n", instr.opcode);
+      }
+      for (const auto& instr : expected_instructions) {
+        expected_instructions_str += std::format("  Opcode: {:#010x}\n", instr.expected_opcode);
+      }
+      SCOPED_TRACE(std::format("Actual compiled code block '{}':\n{}", actual.name, actual_instructions_str));
+      SCOPED_TRACE(std::format("Expected compiled code block '{}':\n{}", expected_name, expected_instructions_str));
+      ASSERT_EQ(actual_instructions.size(), expected_instructions.size());
+      for (size_t index = 0; index < expected_instructions.size(); ++index) {
+        SCOPED_TRACE(std::format("Comparing instruction at index {}: actual opcode {:#010x}, expected opcode {:#010x}", index, actual_instructions[index].opcode, expected_instructions[index].expected_opcode));
+        expect_machine_instruction_matches(actual_instructions[index], expected_instructions[index]);
+      }
     }
 
     const register_case& get_register_case(const size_t index) {
@@ -419,15 +474,15 @@ namespace other {
 
       return {
         expected_instruction{
-          .category_and_type = opcode_with_category_and_type(0x00, 0x01),
+          .expected_opcode = canonical_opcode::DUMP_OP,
           .arguments = { make_register_argument(r1) },
         },
         expected_instruction{
-          .category_and_type = opcode_with_category_and_type(0x00, 0x01),
+          .expected_opcode = canonical_opcode::DUMP_OP,
           .arguments = { make_register_argument(r2) },
         },
         expected_instruction{
-          .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+          .expected_opcode = canonical_opcode::RET_OP,
         },
       };
     }
@@ -445,7 +500,6 @@ namespace other {
       const size_t data_block_count = gen.data_block_count_dist(gen.gen);
       for (size_t data_block_index = 0; data_block_index < data_block_count; ++data_block_index) {
         generated_data_block data_block_case;
-        data_block_case.source += std::format("#data_{}_{} {{\n", iteration, data_block_index);
 
         const bool should_gen_definitions = gen.should_define_dist(gen.gen) == 1;
         if (should_gen_definitions) {
@@ -461,6 +515,7 @@ namespace other {
           }
         }
 
+        data_block_case.source += std::format("#data_{}_{} {{\n", iteration, data_block_index);
         const size_t object_count = gen.object_count_dist(gen.gen);
         for (size_t object_index = 0; object_index < object_count; ++object_index) {
           const std::string object_name = "data_" + std::to_string(iteration) + "_" + std::to_string(data_block_index) + "_" + std::to_string(object_index);
@@ -468,12 +523,13 @@ namespace other {
 
           switch (gen.data_kind_dist(gen.gen)) {
             case int_type_choice: {
-              const uint16_t integer_value = gen.integer_dist(gen.gen);
+              const int32_t integer_value = gen.integer_dist(gen.gen);
               data_block_case.source += "  ." + object_name + " : int32 = " + std::to_string(integer_value) + "\n";
               data_block_case.objects.push_back(expected_data_object{
                 .name = object_name,
                 .value_text = std::to_string(integer_value),
                 .type = OCMD_DATA_TYPE_I32,
+                .data = raw_bytes_from_value<int32_t>(static_cast<int32_t>(integer_value)),
               });
             } break;
 
@@ -565,42 +621,47 @@ namespace other {
             case 0: {
               code_block_case.source += "  dump " + std::string{ reg.text } + "\n";
               code_block_case.instructions.push_back(expected_instruction{
-                .category_and_type = opcode_with_category_and_type(0x00, 0x01),
+                .expected_opcode = canonical_opcode::DUMP_OP,
                 .arguments = { make_register_argument(reg) },
               });
             } break;
 
             case 1: {
-              code_block_case.source += "  dumpx " + std::string{ reg.text } + "\n";
+              const std::string& label = available_labels[gen.label_dist(gen.gen) % available_labels.size()];
+              code_block_case.source += "  write " + std::string{ reg.text } + ", " + label + "\n";
               code_block_case.instructions.push_back(expected_instruction{
-                .category_and_type = opcode_with_category_and_type(0x00, 0x02),
-                .arguments = { make_register_argument(reg) },
+                .expected_opcode = canonical_opcode::WRITE_OP,
+                .arguments = { make_register_argument(reg), make_label_argument(label) },
               });
             } break;
 
             case 2: {
               const uint16_t address = gen.address_dist(gen.gen);
-              code_block_case.source += "  load " + std::string{ reg.text } + ", 0x" + hex_word_string(address) + "\n";
+              code_block_case.source += "  set " + std::string{ reg.text } + ", 0x" + hex_word_string(address) + "\n";
               code_block_case.instructions.push_back(expected_instruction{
-                .category_and_type = opcode_with_category_and_type(0x01, 0x01),
+                .expected_opcode = canonical_opcode::SET_OP,
                 .arguments = { make_register_argument(reg), make_address_argument(address) },
               });
             } break;
 
-            default: {
+            case 3: {
               const std::string& label = available_labels[gen.label_dist(gen.gen) % available_labels.size()];
-              code_block_case.source += "  load " + std::string{ reg.text } + ", " + label + "\n";
+              code_block_case.source += "  set " + std::string{ reg.text } + ", " + label + "\n";
               code_block_case.instructions.push_back(expected_instruction{
-                .category_and_type = opcode_with_category_and_type(0x01, 0x01),
+                .expected_opcode = canonical_opcode::SET_OP,
                 .arguments = { make_register_argument(reg), make_label_argument(label) },
               });
+            } break;
+
+            default: {
+              throw std::logic_error("Invalid instruction kind choice");
             } break;
           }
         }
 
         code_block_case.source += "  ret\n";
         code_block_case.instructions.push_back(expected_instruction{
-          .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+          .expected_opcode = canonical_opcode::RET_OP,
         });
 
         if (gen.include_end_dist(gen.gen) == 1) {
@@ -676,11 +737,11 @@ namespace other {
             "}}\n"
             "${}:\n"
             "  dump {}\n"
-            "  load {}\n"
+            "  load {}, 0x{}, {}\n"
             "  ret\n",
-            object_name, hex_word_string(first_address), code_name, reg_a.text, reg_b.text
+            object_name, hex_word_string(first_address), code_name, reg_a.text, reg_b.text, hex_word_string(second_address), reg_a.text
           );
-          program.expected_error_substring = "Expected 2 parameters for instruction 'load', but found 1";
+          program.expected_error_substring = "Expected 2 parameters for instruction 'load', but found 3";
         } break;
 
         case invalid_address_literal: {

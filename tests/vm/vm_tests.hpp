@@ -5,7 +5,10 @@
 #define OTHER_TESTS_VM_TESTS_HPP
 
 #include "vm/command_files/data_block.hpp"
-#include "vm/command_files/oasm_parser.hpp"
+#include "vm/command_files/ocmd_compiler.hpp"
+#include "vm/command_files/ocmd_ir.hpp"
+#include "vm/command_files/ocmd_linker.hpp"
+#include "vm/default_symbol_resolver.hpp"
 
 #include "other_test.hpp"
 
@@ -20,7 +23,7 @@ namespace other {
     };
 
     struct expected_instruction {
-      uint32_t category_and_type = 0;
+      canonical_opcode expected_opcode = canonical_opcode::INVALID_OP;
       std::vector<expected_argument> arguments = {};
     };
 
@@ -66,23 +69,27 @@ namespace other {
       std::vector<generated_definition> definitions = {};
     };
 
+    struct expected_machine_instruction {
+      uint32_t expected_opcode = 0;
+    };
+
     constexpr std::array k_register_cases = {
-      register_case{ "r0", TOKEN_TYPE_KW_R0, 0x00 },
-      register_case{ "r1", TOKEN_TYPE_KW_R1, 0x01 },
-      register_case{ "r2", TOKEN_TYPE_KW_R2, 0x02 },
-      register_case{ "r3", TOKEN_TYPE_KW_R3, 0x03 },
-      register_case{ "r4", TOKEN_TYPE_KW_R4, 0x04 },
-      register_case{ "r5", TOKEN_TYPE_KW_R5, 0x05 },
-      register_case{ "r6", TOKEN_TYPE_KW_R6, 0x06 },
-      register_case{ "r7", TOKEN_TYPE_KW_R7, 0x07 },
-      register_case{ "r8", TOKEN_TYPE_KW_R8, 0x08 },
-      register_case{ "r9", TOKEN_TYPE_KW_R9, 0x09 },
-      register_case{ "ra", TOKEN_TYPE_KW_RA, 0x0A },
-      register_case{ "rb", TOKEN_TYPE_KW_RB, 0x0B },
-      register_case{ "rc", TOKEN_TYPE_KW_RC, 0x0C },
-      register_case{ "rd", TOKEN_TYPE_KW_RD, 0x0D },
-      register_case{ "re", TOKEN_TYPE_KW_RE, 0x0E },
-      register_case{ "rf", TOKEN_TYPE_KW_RF, 0x0F },
+      register_case{ "r0", TOKEN_TYPE_KW_R0, vm_register_idx::VM_R0 },
+      register_case{ "r1", TOKEN_TYPE_KW_R1, vm_register_idx::VM_R1 },
+      register_case{ "r2", TOKEN_TYPE_KW_R2, vm_register_idx::VM_R2 },
+      register_case{ "r3", TOKEN_TYPE_KW_R3, vm_register_idx::VM_R3 },
+      register_case{ "r4", TOKEN_TYPE_KW_R4, vm_register_idx::VM_R4 },
+      register_case{ "r5", TOKEN_TYPE_KW_R5, vm_register_idx::VM_R5 },
+      register_case{ "r6", TOKEN_TYPE_KW_R6, vm_register_idx::VM_R6 },
+      register_case{ "r7", TOKEN_TYPE_KW_R7, vm_register_idx::VM_R7 },
+      register_case{ "r8", TOKEN_TYPE_KW_R8, vm_register_idx::VM_R8 },
+      register_case{ "r9", TOKEN_TYPE_KW_R9, vm_register_idx::VM_R9 },
+      register_case{ "ra", TOKEN_TYPE_KW_RA, vm_register_idx::VM_RA },
+      register_case{ "rb", TOKEN_TYPE_KW_RB, vm_register_idx::VM_RB },
+      register_case{ "rc", TOKEN_TYPE_KW_RC, vm_register_idx::VM_RC },
+      register_case{ "rd", TOKEN_TYPE_KW_RD, vm_register_idx::VM_RD },
+      register_case{ "re", TOKEN_TYPE_KW_RE, vm_register_idx::VM_RE },
+      register_case{ "rf", TOKEN_TYPE_KW_RF, vm_register_idx::VM_RF },
     };
 
     template <typename T>
@@ -96,16 +103,38 @@ namespace other {
     std::string hex_byte_string(const uint8_t value);
     std::string hex_word_string(const uint16_t value);
     ocmd_ir parse_source(const std::string_view source);
+    ocmd_program compile_source(const std::string_view source);
     void expect_argument_matches(const raw_instruction::argument& actual, const expected_argument& expected);
     void expect_instruction_matches(const raw_instruction& actual, const expected_instruction& expected);
     void expect_code_block_matches(const code_block& actual, const std::string_view expected_name, const std::span<const expected_instruction> expected_instructions);
     void expect_data_block_matches(const data_block& actual, const std::string_view expected_name, const std::span<const expected_data_object> expected_objects);
     void expect_definition_matches(const compiler_definition& actual, const std::string_view expected_name, const std::string_view expected_value);
+    void expect_machine_instruction_matches(const instruction& actual, const expected_machine_instruction& expected);
+    void expect_compiled_code_block_matches(
+      const compiled_code_block& actual, const std::string_view expected_name,
+      const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions
+    );
     const register_case& get_register_case(const size_t index);
     expected_argument make_register_argument(const register_case& reg);
     expected_argument make_address_argument(const uint16_t value);
     expected_argument make_label_argument(const std::string_view label);
     std::vector<expected_instruction> expected_foo_code_block();
+
+    inline bool is_register_argument(const detail::expected_argument& argument) {
+      return argument.type >= TOKEN_TYPE_KW_R0 && argument.type <= TOKEN_TYPE_KW_RFLAG && argument.value.has_value();
+    }
+
+    inline bool is_label_argument(const detail::expected_argument& argument) {
+      return argument.type == TOKEN_TYPE_LABEL || argument.type == TOKEN_TYPE_IDENTIFIER;
+    }
+
+    inline uint8_t register_value(const detail::expected_argument& argument) {
+      return static_cast<uint8_t>(argument.value.value());
+    }
+
+    inline uint16_t scalar_value(const detail::expected_argument& argument) {
+      return argument.value.value();
+    }
 
     struct generator {
       std::mt19937 gen;

@@ -13,17 +13,15 @@
 
 namespace other {
 
-  class ocmd_parse_error : public std::runtime_error {
-   public:
-    ocmd_parse_error(const std::string& msg)
-        : std::runtime_error(msg) {}
-  };
-
   class oasm_parser {
    public:
-    oasm_parser(const std::vector<token>& tokens)
-        : tokens(tokens) {}
+    oasm_parser(const vm_version& vmversion, const std::vector<token>& tokens)
+        : ir_result{ .target_vm_version = vmversion }, tokens(tokens) {}
     ~oasm_parser() = default;
+
+    inline void set_vm_version(const vm_version& version) {
+      ir_result.target_vm_version = version;
+    }
 
     ocmd_ir parse();
 
@@ -32,7 +30,7 @@ namespace other {
       struct instruction_ir {
         constexpr static size_t kMaxArguments = 3;
         uint32_t instruction_index = 0;
-        uint32_t category_and_type = 0;
+        canonical_opcode opcode = canonical_opcode::INVALID_OP;
         token arguments[kMaxArguments] = {
           token{ TOKEN_TYPE_INVALID, "", 0, 0 },
           token{ TOKEN_TYPE_INVALID, "", 0, 0 },
@@ -96,8 +94,7 @@ namespace other {
     bool check(token_type type) const;
     bool check_next(token_type type) const;
 
-    uint32_t get_instruction_parity(uint32_t category_and_type) const;
-    uint32_t get_opcode_category_and_type_from_token(const token& tok) const;
+    canonical_opcode get_canonical_opcode(const token& tok) const;
   };
 
 }  // namespace other

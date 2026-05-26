@@ -8,17 +8,10 @@
 
 #include "core/logger.hpp"
 
+#include "vm/command_files/compiler_error.hpp"
 #include "vm/command_files/token.hpp"
 
 namespace other {
-  namespace {
-
-    struct lex_error : public std::runtime_error {
-      lex_error(const std::string& msg)
-          : std::runtime_error(msg) {}
-    };
-
-  }  // namespace
 
   static inline bool is_whitespace(char c) {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';

@@ -58,6 +58,10 @@ namespace other {
 
   }  // namespace detail
 
+  std::span<const uint8_t> opcode_to_bytes(const instruction& instr) {
+    return std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(&instr), sizeof(instr));
+  }
+
   std::string opcode_to_simple_string(uint32_t opcode) {
     return decompiler::opcode_to_string(opcode);
   }

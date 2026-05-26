@@ -1,12 +1,9 @@
 /**
  * \file tests/vm/parsing_tests.cpp
  **/
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
-#include <optional>
-#include <random>
 #include <span>
 #include <string>
 #include <string_view>
@@ -25,65 +22,30 @@ namespace other {
 
   TEST_F(vm_tests, oasm_simple_loose_code_block) {
     std::string source = R"(
-  dumpx r1
-  dumpx r2
-  dumpx r3
-  load r4, my_data.first_addr
+  dump r1
+  dump r2
+  dump r3
+  set r4, my_data.first_addr
   ret
     )";
-    /*
-    const auto ir = parse_source(source);
-    ASSERT_TRUE(ir.valid);
-    ASSERT_EQ(ir.code_blocks.size(), 1);
-
-    const auto& r1 = get_register_case(1);
-    const auto& r2 = get_register_case(2);
-    const auto& r3 = get_register_case(3);
-    const auto& r4 = get_register_case(4);
-    const std::array expected_instructions = {
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x02),
-        .arguments = { make_register_argument(r1) },
-      },
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x02),
-        .arguments = { make_register_argument(r2) },
-      },
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x02),
-        .arguments = { make_register_argument(r3) },
-      },
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x01, 0x01),
-        .arguments = { make_register_argument(r4), make_label_argument("my_data.first_addr") },
-      },
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
-      },
-    };
-
-    expect_code_block_matches(ir.code_blocks[0], "code_block_0", expected_instructions);
-    */
-
-    ;
     const auto tokens = ocmd_lexer{ source }.tokenize();
     EXPECT_FALSE(tokens.empty());
 
     ASSERT_EQ(tokens.size(), 13);
-    EXPECT_EQ(tokens[0].type, TOKEN_TYPE_KW_DUMPX);
-    EXPECT_EQ(tokens[0].text, "dumpx");
+    EXPECT_EQ(tokens[0].type, TOKEN_TYPE_KW_DUMP);
+    EXPECT_EQ(tokens[0].text, "dump");
     EXPECT_EQ(tokens[1].type, TOKEN_TYPE_KW_R1);
     EXPECT_EQ(tokens[1].text, "r1");
-    EXPECT_EQ(tokens[2].type, TOKEN_TYPE_KW_DUMPX);
-    EXPECT_EQ(tokens[2].text, "dumpx");
+    EXPECT_EQ(tokens[2].type, TOKEN_TYPE_KW_DUMP);
+    EXPECT_EQ(tokens[2].text, "dump");
     EXPECT_EQ(tokens[3].type, TOKEN_TYPE_KW_R2);
     EXPECT_EQ(tokens[3].text, "r2");
-    EXPECT_EQ(tokens[4].type, TOKEN_TYPE_KW_DUMPX);
-    EXPECT_EQ(tokens[4].text, "dumpx");
+    EXPECT_EQ(tokens[4].type, TOKEN_TYPE_KW_DUMP);
+    EXPECT_EQ(tokens[4].text, "dump");
     EXPECT_EQ(tokens[5].type, TOKEN_TYPE_KW_R3);
     EXPECT_EQ(tokens[5].text, "r3");
-    EXPECT_EQ(tokens[6].type, TOKEN_TYPE_KW_LOAD);
-    EXPECT_EQ(tokens[6].text, "load");
+    EXPECT_EQ(tokens[6].type, TOKEN_TYPE_KW_SET);
+    EXPECT_EQ(tokens[6].text, "set");
     EXPECT_EQ(tokens[7].type, TOKEN_TYPE_KW_R4);
     EXPECT_EQ(tokens[7].text, "r4");
     EXPECT_EQ(tokens[8].type, TOKEN_TYPE_COMMA);
@@ -106,35 +68,35 @@ namespace other {
     EXPECT_TRUE(ir.data_blocks.empty());
 
     // single unnamed code block with 5 instructions
-    EXPECT_EQ(ir.code_blocks.size(), 1);
+    ASSERT_EQ(ir.code_blocks.size(), 1);
 
     const auto& code_blk = ir.code_blocks[0];
     EXPECT_EQ(code_blk.name, "code_block_0");
-    EXPECT_EQ(code_blk.instructions.size(), 5);
+    ASSERT_EQ(code_blk.instructions.size(), 5);
 
-    EXPECT_EQ(code_blk.instructions[0].category_and_type, opcode_with_category_and_type(0x00, 0x02));
+    EXPECT_EQ(code_blk.instructions[0].opcode, canonical_opcode::DUMP_OP);
     ASSERT_EQ(code_blk.instructions[0].arguments.size(), 1);
     EXPECT_EQ(code_blk.instructions[0].arguments[0].type, TOKEN_TYPE_KW_R1);
     EXPECT_EQ(code_blk.instructions[0].arguments[0].raw_txt, "r1");
 
-    EXPECT_EQ(code_blk.instructions[1].category_and_type, opcode_with_category_and_type(0x00, 0x02));
+    EXPECT_EQ(code_blk.instructions[1].opcode, canonical_opcode::DUMP_OP);
     ASSERT_EQ(code_blk.instructions[1].arguments.size(), 1);
     EXPECT_EQ(code_blk.instructions[1].arguments[0].type, TOKEN_TYPE_KW_R2);
     EXPECT_EQ(code_blk.instructions[1].arguments[0].raw_txt, "r2");
 
-    EXPECT_EQ(code_blk.instructions[2].category_and_type, opcode_with_category_and_type(0x00, 0x02));
+    EXPECT_EQ(code_blk.instructions[2].opcode, canonical_opcode::DUMP_OP);
     ASSERT_EQ(code_blk.instructions[2].arguments.size(), 1);
     EXPECT_EQ(code_blk.instructions[2].arguments[0].type, TOKEN_TYPE_KW_R3);
     EXPECT_EQ(code_blk.instructions[2].arguments[0].raw_txt, "r3");
 
-    EXPECT_EQ(code_blk.instructions[3].category_and_type, opcode_with_category_and_type(0x01, 0x01));
+    EXPECT_EQ(code_blk.instructions[3].opcode, canonical_opcode::SET_OP);
     ASSERT_EQ(code_blk.instructions[3].arguments.size(), 2);
     EXPECT_EQ(code_blk.instructions[3].arguments[0].type, TOKEN_TYPE_KW_R4);
     EXPECT_EQ(code_blk.instructions[3].arguments[0].raw_txt, "r4");
     EXPECT_EQ(code_blk.instructions[3].arguments[1].type, TOKEN_TYPE_LABEL);
     EXPECT_EQ(code_blk.instructions[3].arguments[1].raw_txt, "my_data.first_addr");
 
-    EXPECT_EQ(code_blk.instructions[4].category_and_type, opcode_with_category_and_type(0x02, 0x04));
+    EXPECT_EQ(code_blk.instructions[4].opcode, canonical_opcode::RET_OP);
     ASSERT_EQ(code_blk.instructions[4].arguments.size(), 0);
   }
 
@@ -146,7 +108,7 @@ namespace other {
       dump r2
       ret
     $bar:
-      load r1, 0x1234
+      set r1, 0x1234
       ret
     )";
 
@@ -164,7 +126,7 @@ namespace other {
       ret
     end
     $bar:
-      load r1, 0x1234
+      set r1, 0x1234
       ret
     end
     )";
@@ -182,7 +144,7 @@ namespace other {
       dump r2
       ret
     $bar:
-      load r1, 0x1234
+      set r1, 0x1234
       ret
     end
     )";
@@ -239,7 +201,7 @@ namespace other {
       .banner : string = "hello"
     }
     $boot:
-      load r1, first_addr
+      set r1, first_addr
       ret
     #data {
       .bytes : blob = DE AD BE EF
@@ -247,7 +209,7 @@ namespace other {
     }
     $copy:
       dump r2
-      load r3, 0x4567
+      set r3, 0x4567
       ret
     end
     )";
@@ -294,24 +256,24 @@ namespace other {
     const auto& r3 = detail::get_register_case(3);
     const std::array expected_boot = {
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x01, 0x01),
+        .expected_opcode = canonical_opcode::SET_OP,
         .arguments = { detail::make_register_argument(r1), detail::make_label_argument("first_addr") },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+        .expected_opcode = canonical_opcode::RET_OP,
       },
     };
     const std::array expected_copy = {
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x01),
+        .expected_opcode = canonical_opcode::DUMP_OP,
         .arguments = { detail::make_register_argument(r2) },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x01, 0x01),
+        .expected_opcode = canonical_opcode::SET_OP,
         .arguments = { detail::make_register_argument(r3), detail::make_address_argument(0x4567) },
       },
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+        .expected_opcode = canonical_opcode::RET_OP,
       },
     };
 
@@ -359,7 +321,7 @@ namespace other {
 
     const std::array expected_code = {
       detail::expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
+        .expected_opcode = canonical_opcode::RET_OP,
       },
     };
     expect_code_block_matches(ir.code_blocks[0], "main", expected_code);
@@ -379,10 +341,10 @@ namespace other {
     EXPECT_TRUE(ir.code_blocks.empty());
   }
 
-  TEST_F(vm_tests, oasm_parser_rejects_instruction_with_wrong_arity) {
+  TEST_F(vm_tests, oasm_parser_rejects_instruction_with_too_many_arguments) {
     const std::string_view source = R"(
     $main:
-      load r1
+      load r1, 0x1234, r2
       ret
     )";
 
@@ -431,25 +393,25 @@ namespace other {
       EXPECT_EQ(ir.code_blocks[1].instructions.size(), 2);
 
       const auto& foo_block = ir.code_blocks[0];
-      EXPECT_EQ(foo_block.instructions[0].category_and_type, opcode_with_category_and_type(0x00, 0x01));
+      EXPECT_EQ(foo_block.instructions[0].opcode, canonical_opcode::DUMP_OP);
       if (foo_block.instructions[0].arguments.size() != 1) {
         return ::testing::AssertionFailure() << "Expected 1 argument for first instruction in 'foo' block, but found " << foo_block.instructions[0].arguments.size();
       }
       EXPECT_EQ(foo_block.instructions[0].arguments[0].type, TOKEN_TYPE_KW_R1);
       EXPECT_EQ(foo_block.instructions[0].arguments[0].raw_txt, "r1");
-      EXPECT_EQ(foo_block.instructions[1].category_and_type, opcode_with_category_and_type(0x00, 0x01));
+      EXPECT_EQ(foo_block.instructions[1].opcode, canonical_opcode::DUMP_OP);
       if (foo_block.instructions[1].arguments.size() != 1) {
         return ::testing::AssertionFailure() << "Expected 1 argument for second instruction in 'foo' block, but found " << foo_block.instructions[1].arguments.size();
       }
       EXPECT_EQ(foo_block.instructions[1].arguments[0].type, TOKEN_TYPE_KW_R2);
       EXPECT_EQ(foo_block.instructions[1].arguments[0].raw_txt, "r2");
-      EXPECT_EQ(foo_block.instructions[2].category_and_type, opcode_with_category_and_type(0x02, 0x04));
+      EXPECT_EQ(foo_block.instructions[2].opcode, canonical_opcode::RET_OP);
       if (foo_block.instructions[2].arguments.size() != 0) {
         return ::testing::AssertionFailure() << "Expected 0 arguments for third instruction in 'foo' block, but found " << foo_block.instructions[2].arguments.size();
       }
 
       const auto& bar_block = ir.code_blocks[1];
-      EXPECT_EQ(bar_block.instructions[0].category_and_type, opcode_with_category_and_type(0x01, 0x01));
+      EXPECT_EQ(bar_block.instructions[0].opcode, canonical_opcode::SET_OP);
       if (bar_block.instructions[0].arguments.size() != 2) {
         return ::testing::AssertionFailure() << "Expected 2 arguments for first instruction in 'bar' block, but found " << bar_block.instructions[0].arguments.size();
       }
@@ -457,7 +419,7 @@ namespace other {
       EXPECT_EQ(bar_block.instructions[0].arguments[0].raw_txt, "r1");
       EXPECT_EQ(bar_block.instructions[0].arguments[1].type, TOKEN_TYPE_ADDRESS);
       EXPECT_EQ(bar_block.instructions[0].arguments[1].raw_txt, "1234");
-      EXPECT_EQ(bar_block.instructions[1].category_and_type, opcode_with_category_and_type(0x02, 0x04));
+      EXPECT_EQ(bar_block.instructions[1].opcode, canonical_opcode::RET_OP);
       if (bar_block.instructions[1].arguments.size() != 0) {
         return ::testing::AssertionFailure() << "Expected 0 arguments for second instruction in 'bar' block, but found " << bar_block.instructions[1].arguments.size();
       }

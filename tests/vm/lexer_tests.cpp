@@ -29,7 +29,7 @@ namespace other {
 
     constexpr std::array k_fuzz_lexemes = {
       lexeme_case{ "write", "write", TOKEN_TYPE_KW_WRITE },
-      lexeme_case{ "load", "load", TOKEN_TYPE_KW_LOAD },
+      lexeme_case{ "set", "set", TOKEN_TYPE_KW_SET },
       lexeme_case{ "tag", "tag", TOKEN_TYPE_KW_TAG },
       lexeme_case{ "r1", "r1", TOKEN_TYPE_KW_R1 },
       lexeme_case{ "alpha_01", "alpha_01", TOKEN_TYPE_IDENTIFIER },
@@ -122,7 +122,7 @@ namespace other {
       expected_token_spec{ TOKEN_TYPE_KW_R1, "r1" },
       expected_token_spec{ TOKEN_TYPE_COMMA, "," },
       expected_token_spec{ TOKEN_TYPE_INTEGER_LITERAL, "1" },
-      expected_token_spec{ TOKEN_TYPE_KW_LOAD, "load" },
+      expected_token_spec{ TOKEN_TYPE_KW_SET, "set" },
       expected_token_spec{ TOKEN_TYPE_KW_R2, "r2" },
       expected_token_spec{ TOKEN_TYPE_COMMA, "," },
       expected_token_spec{ TOKEN_TYPE_INTEGER_LITERAL, "2" },
@@ -133,7 +133,7 @@ namespace other {
     write r1, 1 ; line comment
     /; block comment
     still in the comment ;/
-    load r2, 2
+    set r2, 2
     )";
     expect_tokens(source, expected);
   }

@@ -7,30 +7,28 @@
 #include <string_view>
 #include <vector>
 
+#include "core/scope.hpp"
+
 #include "vm/command_files/ocmd_ir.hpp"
+#include "vm/command_files/ocmd_program.hpp"
 
 namespace other {
 
   class ocmd_compiler {
+    OTHER_ENVIRONMENT_INTERFACE("VM", "OcmdCompiler");
+
    public:
     ocmd_compiler(const ocmd_ir& ir)
-        : ir(ir) {}
-    ~ocmd_compiler() = default;
+        : ir(ir) {
+    }
+    virtual ~ocmd_compiler() = default;
 
-    std::vector<uint8_t> compile();
+    virtual ocmd_program compile(scope<ocmd_code_generator> generator);
 
    private:
-    const ocmd_ir& ir;
+    const ocmd_ir ir;
 
-    std::vector<uint32_t> emitted_opcodes;
-    std::vector<uint8_t> emitted_data;
-
-    inline void emit_opcode(uint32_t opcode) {
-      emitted_opcodes.push_back(opcode);
-    }
-
-    void compile_to_byte_code();
-    void compile_to_binary();
+    canonical_instruction lower_to_canonical_instruction(const raw_instruction& instr);
   };
 
 }  // namespace other
