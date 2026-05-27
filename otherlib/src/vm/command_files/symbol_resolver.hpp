@@ -10,7 +10,7 @@ namespace other {
 
   struct invocation_thunk {
     uint16_t final_address;
-    std::vector<uint8_t> resolution_code;
+    std::vector<uint8_t> invocation_thunk;
   };
 
   class OTHER_API symbol_resolver {

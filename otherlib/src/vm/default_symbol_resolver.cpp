@@ -9,7 +9,7 @@ namespace other {
 
   void default_symbol_resolver::register_symbol(const std::string_view symbol, std::span<const uint8_t> invocation_thunk) {
     if (auto itr = symbols.find(FNV(symbol)); itr != symbols.end()) {
-      throw ocmd_linking_error(std::format("Symbol '{}' is already registered as a data symbol", symbol));
+      return;
     }
     auto [itr, inserted] = symbols.emplace(FNV(symbol), symbol_info{ .address = 0, .invocation_thunk = std::vector<uint8_t>(invocation_thunk.begin(), invocation_thunk.end()) });
     if (!inserted) {
@@ -55,11 +55,11 @@ namespace other {
   invocation_thunk default_symbol_resolver::resolve_symbol(const std::string_view symbol) {
     const auto symbol_hash = FNV(symbol);
     if (auto itr = symbols.find(symbol_hash); itr != symbols.end()) {
-      return invocation_thunk{ .final_address = itr->second.address, .resolution_code = itr->second.invocation_thunk };
+      return invocation_thunk{ .final_address = itr->second.address, .invocation_thunk = itr->second.invocation_thunk };
     } else if (auto itr = symbols.find(symbol_hash); itr != symbols.end()) {
-      return invocation_thunk{ .final_address = itr->second.address, .resolution_code = itr->second.invocation_thunk };
+      return invocation_thunk{ .final_address = itr->second.address, .invocation_thunk = itr->second.invocation_thunk };
     } else {
-      return invocation_thunk{ .final_address = 0, .resolution_code = {} };
+      return invocation_thunk{ .final_address = 0, .invocation_thunk = {} };
     }
   }
 

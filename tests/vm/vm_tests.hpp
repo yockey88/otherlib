@@ -4,11 +4,18 @@
 #ifndef OTHER_TESTS_VM_TESTS_HPP
 #define OTHER_TESTS_VM_TESTS_HPP
 
+#include <array>
+#include <cstdint>
+#include <cstring>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include "vm/command_files/data_block.hpp"
-#include "vm/command_files/ocmd_compiler.hpp"
 #include "vm/command_files/ocmd_ir.hpp"
-#include "vm/command_files/ocmd_linker.hpp"
-#include "vm/default_symbol_resolver.hpp"
+#include "vm/command_files/ocmd_program.hpp"
 
 #include "other_test.hpp"
 
@@ -43,30 +50,6 @@ namespace other {
       std::string_view text;
       token_type type;
       uint16_t value;
-    };
-
-    struct generated_data_block {
-      std::string source = "";
-      std::vector<expected_data_object> objects = {};
-    };
-
-    struct generated_code_block {
-      std::string name = "";
-      std::string source = "";
-      std::vector<expected_instruction> instructions = {};
-    };
-    struct generated_definition {
-      std::string name = "";
-      std::string value = "";
-      std::vector<expected_definition> instructions = {};
-    };
-
-    struct generated_program {
-      std::string source = "";
-      std::string expected_error_substring = "";
-      std::vector<generated_data_block> data_blocks = {};
-      std::vector<generated_code_block> code_blocks = {};
-      std::vector<generated_definition> definitions = {};
     };
 
     struct expected_machine_instruction {
@@ -135,44 +118,6 @@ namespace other {
     inline uint16_t scalar_value(const detail::expected_argument& argument) {
       return argument.value.value();
     }
-
-    struct generator {
-      std::mt19937 gen;
-      std::uniform_int_distribution<size_t> data_block_count_dist;
-      std::uniform_int_distribution<size_t> code_block_count_dist;
-      std::uniform_int_distribution<size_t> object_count_dist;
-      std::uniform_int_distribution<size_t> instruction_count_dist;
-      std::uniform_int_distribution<size_t> data_kind_dist;
-      std::uniform_int_distribution<size_t> instruction_kind_dist;
-      std::uniform_int_distribution<size_t> register_dist;
-      std::uniform_int_distribution<uint16_t> address_dist;
-      std::uniform_int_distribution<uint16_t> integer_dist;
-      std::uniform_int_distribution<int> should_define_dist;
-      std::uniform_int_distribution<size_t> definition_dist;
-      std::uniform_int_distribution<int> include_end_dist;
-      std::uniform_int_distribution<size_t> blob_size_dist;
-      std::uniform_int_distribution<int> byte_dist;
-      std::uniform_int_distribution<size_t> label_dist;
-
-      generator() : gen(0x0A51F00Du),
-                    data_block_count_dist(1, 3),
-                    code_block_count_dist(1, 3),
-                    object_count_dist(1, 3),
-                    instruction_count_dist(1, 3),
-                    data_kind_dist(0, 4),
-                    instruction_kind_dist(0, 3),
-                    register_dist(0, k_register_cases.size() - 1),
-                    address_dist(0x0100, 0xFFFE),
-                    integer_dist(1, 400),
-                    should_define_dist(0, 1),
-                    definition_dist(0, 3),
-                    include_end_dist(0, 1),
-                    blob_size_dist(1, 4),
-                    byte_dist(0, 255) {}
-    };
-
-    generated_program generate_simple_oasm_program(generator& gen, const size_t iteration);
-    generated_program generated_simple_bad_oasm_program(generator& gen, const size_t iteration);
 
   }  // namespace detail
 

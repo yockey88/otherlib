@@ -13,6 +13,8 @@
 #include "vm/command_files/oasm_parser.hpp"
 #include "vm/vm_tests.hpp"
 
+#include "fuzzing.hpp"
+
 namespace other {
   namespace detail {
 
@@ -63,7 +65,7 @@ namespace other {
       CORE_LOG_DEBUG("Token [{}]: value = {} ({}:{})", token.type, token.text, token.line_number, token.column_number);
     }
 
-    const auto ir = oasm_parser{ tokens }.parse();
+    const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
     EXPECT_FALSE(ir.code_blocks.empty());
     EXPECT_TRUE(ir.data_blocks.empty());
 
@@ -114,7 +116,7 @@ namespace other {
 
       const auto tokens = ocmd_lexer{ source }.tokenize();
       EXPECT_FALSE(tokens.empty());
-      const auto ir = oasm_parser{ tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
       EXPECT_TRUE(detail::check_small_named_code_blocks_test(ir));
     }
 
@@ -133,7 +135,7 @@ namespace other {
 
       const auto tokens = ocmd_lexer{ source }.tokenize();
       EXPECT_FALSE(tokens.empty());
-      const auto ir = oasm_parser{ tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
       EXPECT_TRUE(detail::check_small_named_code_blocks_test(ir));
     }
 
@@ -151,7 +153,7 @@ namespace other {
 
       const auto tokens = ocmd_lexer{ source }.tokenize();
       EXPECT_FALSE(tokens.empty());
-      const auto ir = oasm_parser{ tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
       EXPECT_TRUE(detail::check_small_named_code_blocks_test(ir));
     }
 
@@ -169,7 +171,7 @@ namespace other {
 
       const auto tokens = ocmd_lexer{ source }.tokenize();
       EXPECT_FALSE(tokens.empty());
-      const auto ir = oasm_parser{ tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
       EXPECT_TRUE(detail::check_small_named_code_blocks_test(ir));
     }
   }
@@ -183,7 +185,7 @@ namespace other {
 
     const auto tokens = ocmd_lexer{ source }.tokenize();
     EXPECT_FALSE(tokens.empty());
-    const auto ir = oasm_parser{ tokens }.parse();
+    const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
     ASSERT_TRUE(ir.valid);
     ASSERT_EQ(ir.data_blocks.size(), 1);
     ASSERT_EQ(ir.data_blocks[0].objects.size(), 2);

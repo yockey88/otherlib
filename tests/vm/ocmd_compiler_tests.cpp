@@ -13,7 +13,9 @@
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/command_files/ocmd_compiler.hpp"
 
+#include "fuzzing.hpp"
 #include "vm_tests.hpp"
+
 
 namespace other {
   namespace detail {

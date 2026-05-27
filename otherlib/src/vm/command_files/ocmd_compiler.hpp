@@ -27,8 +27,6 @@ namespace other {
 
    private:
     const ocmd_ir ir;
-
-    canonical_instruction lower_to_canonical_instruction(const raw_instruction& instr);
   };
 
 }  // namespace other

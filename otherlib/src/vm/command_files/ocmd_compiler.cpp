@@ -74,8 +74,4 @@ namespace other {
     return program;
   }
 
-  canonical_instruction ocmd_compiler::lower_to_canonical_instruction(const raw_instruction& instr) {
-    return {};
-  }
-
 }  // namespace other

@@ -25,7 +25,6 @@ namespace other {
     void write_id_at_address(uint16_t address, natural_t id);
     void emit_instruction(const instruction& op);
     void execute_driver_command(const std::string& command);
-    void driver_step_device();
 
    private:
     other_command_device core_device;

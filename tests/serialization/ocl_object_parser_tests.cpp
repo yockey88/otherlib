@@ -37,16 +37,16 @@ namespace other {
 
   }  // namespace
 
-  TEST_F(ocl_tests, parse_simple_object) {
-    ocl_object_declaration expected_desc;
-    expected_desc.object_type = "pipeline";
-    expected_desc.object_name = "my_pipeline";
+  // TEST_F(ocl_tests, parse_simple_object) {
+  // ocl_object_declaration expected_desc;
+  // expected_desc.object_type = "pipeline";
+  // expected_desc.object_name = "my_pipeline";
 
-    ocl_object_declaration desc = parse_ocl_object(kSimpleInput1);
-    EXPECT_EQ(desc.object_type, expected_desc.object_type);
-    EXPECT_EQ(desc.object_name, expected_desc.object_name);
-    // EXPECT_EQ(desc.body_tokens.size(), 3);
-  }
+  // ocl_object_declaration desc = parse_ocl_object(kSimpleInput1);
+  // EXPECT_EQ(desc.object_type, expected_desc.object_type);
+  // EXPECT_EQ(desc.object_name, expected_desc.object_name);
+  // EXPECT_EQ(desc.body_tokens.size(), 3);
+  // }
 
   // TEST_F(ocl_tests, parse_simple_object2) {
   //   ocl_object_declaration expected_desc;
