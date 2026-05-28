@@ -23,15 +23,17 @@
 namespace other {
   namespace detail {
 
-    const uint16_t increment_num_opcodes(uint32_t num_opcodes);
     const ocmd_file_header& read_linked_header(const std::vector<uint8_t>& bytes);
     instruction read_instruction_at(const std::vector<uint8_t>& bytes, const uint16_t address);
+
     uint16_t linked_code_start();
-    uint16_t linked_code_size(const ocmd_program& program);
-    uint16_t linked_data_start(const ocmd_program& program);
+    uint16_t linked_code_size(const ocmd_program& program, const std::vector<uint8_t>& bytes);
+    uint16_t linked_data_start(const ocmd_program& program, const std::vector<uint8_t>& bytes);
     uint16_t code_block_address(const ocmd_program& program, const size_t block_index);
-    std::unordered_map<std::string, uint16_t> collect_symbol_addresses(const ocmd_program& program);
+
+    std::unordered_map<std::string, uint16_t> collect_symbol_addresses(const ocmd_program& program, const std::vector<uint8_t>& bytes);
     std::vector<uint8_t> collect_expected_data_bytes(const ocmd_program& program);
+
     void expect_linked_layout_matches_program(const ocmd_program& program, const std::vector<uint8_t>& bytes);
     void expect_linked_fixups_match_program(const ocmd_program& program, const std::vector<uint8_t>& bytes);
 
@@ -91,7 +93,7 @@ namespace other {
       EXPECT_EQ(header.file_version_minor, OCMD_FILE_FORMAT_VERSION_MINOR);
       EXPECT_EQ(header.file_version_patch, OCMD_FILE_FORMAT_VERSION_PATCH);
       EXPECT_EQ(header.prog_header.code_section_offset, detail::linked_code_start());
-      EXPECT_EQ(header.prog_header.data_section_offset, detail::linked_data_start(program));
+      EXPECT_EQ(header.prog_header.data_section_offset, detail::linked_data_start(program, bytes));
     }
 
     const uint16_t main_address = detail::code_block_address(program, 0);
@@ -110,27 +112,35 @@ namespace other {
     instruction expected_helper_second = opcode_return();
 
     std::stringstream ss;
-    {
-      ss << "Linked binary hexdump:\n";
-      for (size_t i = 0; i < bytes.size(); i += sizeof(instruction)) {
-        ss << std::format("{:#08x}: {:#010x}", i, detail::read_instruction_at(bytes, i).opcode);
-        ss << "\n";
-      }
+    for (size_t i = 0; i < bytes.size(); i += sizeof(instruction)) {
+      ss << std::format("{:#08x}: {:#010x}", i, detail::read_instruction_at(bytes, i).opcode);
+      ss << "\n";
     }
-    SCOPED_TRACE(ss.str());
-    CORE_LOG_DEBUG("Linked binary hexdump:\n{}", ss.str());
-    EXPECT_EQ(main_first_instr.opcode, expected_first.opcode)
-      << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_address, main_first_instr.opcode)
-      << std::format(" Found instruction {:#010x} instead.", main_first_instr.opcode);
-    EXPECT_EQ(main_second_instr.opcode, expected_second.opcode)
-      << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_address + sizeof(instruction), main_second_instr.opcode)
-      << std::format(" Found instruction {:#010x} instead.", main_second_instr.opcode);
-    EXPECT_EQ(helper_first_instr.opcode, expected_helper_first.opcode)
-      << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_address, helper_first_instr.opcode)
-      << std::format(" Found instruction {:#010x} instead.", helper_first_instr.opcode);
-    EXPECT_EQ(helper_second_instr.opcode, expected_helper_second.opcode)
-      << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_address + sizeof(instruction), helper_second_instr.opcode)
-      << std::format(" Found instruction {:#010x} instead.", helper_second_instr.opcode);
+
+    {
+      SCOPED_TRACE(std::format("main1 set:\n{}", ss.str()));
+      EXPECT_EQ(main_first_instr.opcode, expected_first.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_address, main_first_instr.opcode)
+        << std::format(" Found instruction {:#010x} instead.", main_first_instr.opcode);
+    }
+    {
+      SCOPED_TRACE(std::format("main2 ret:\n{}", ss.str()));
+      EXPECT_EQ(main_second_instr.opcode, expected_second.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_address + sizeof(instruction), main_second_instr.opcode)
+        << std::format(" Found instruction {:#010x} instead.", main_second_instr.opcode);
+    }
+    {
+      SCOPED_TRACE(std::format("helper1 load:\n{}", ss.str()));
+      EXPECT_EQ(helper_first_instr.opcode, expected_helper_first.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_address, helper_first_instr.opcode)
+        << std::format(" Found instruction {:#010x} instead.", helper_first_instr.opcode);
+    }
+    {
+      SCOPED_TRACE(std::format("helper2 ret:\n{}", ss.str()));
+      EXPECT_EQ(helper_second_instr.opcode, expected_helper_second.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_address + sizeof(instruction), helper_second_instr.opcode)
+        << std::format(" Found instruction {:#010x} instead.", helper_second_instr.opcode);
+    }
   }
 
   TEST_F(vm_tests, ocmd_linker_multiple_code_blocks_w_data) {
@@ -165,7 +175,7 @@ namespace other {
       EXPECT_EQ(header.file_version_minor, OCMD_FILE_FORMAT_VERSION_MINOR);
       EXPECT_EQ(header.file_version_patch, OCMD_FILE_FORMAT_VERSION_PATCH);
       EXPECT_EQ(header.prog_header.code_section_offset, detail::linked_code_start());
-      EXPECT_EQ(header.prog_header.data_section_offset, detail::linked_data_start(program));
+      EXPECT_EQ(header.prog_header.data_section_offset, detail::linked_data_start(program, bytes));
     }
 
     const uint16_t main_address = detail::code_block_address(program, 0);
@@ -207,13 +217,13 @@ namespace other {
     }
 
     // check data section
-    const uint16_t data_start = detail::linked_data_start(program);
+    const uint16_t data_start = detail::linked_data_start(program, bytes);
 
     int32_t linked_number = *reinterpret_cast<const int32_t*>(bytes.data() + data_start);
     EXPECT_EQ(linked_number, 7) << std::format("Expected linked data number to be 7, but found {}", linked_number);
   }
 
-  TEST_F(vm_tests, ocmd_linker_multiple_data_sections) {
+  TEST_F(vm_tests, ocmd_linker_linking_multiple_sections) {
     const std::string_view source =
       R"(
     #alpha {
@@ -232,6 +242,7 @@ namespace other {
     end
     )";
 
+    CORE_LOG_DEBUG("SOURCE:{}", source);
     const auto program = detail::compile_source(source);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 2);
@@ -240,9 +251,36 @@ namespace other {
     auto resolver = make_scope<default_symbol_resolver>();
     const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
 
+    constexpr size_t expected_code_size = 4 * sizeof(instruction) + sizeof(instruction);  // 4 instructions in total across both code blocks, then stopdev
+    constexpr size_t expected_data_size = 2 * sizeof(natural_t);                          // 2 64 bit data objects (address and blob)
+    ocmd_file_header expected_header{
+      .file_signature = { 'O', 'C', 'M', 'D' },
+      .file_version_major = OCMD_FILE_FORMAT_VERSION_MAJOR,
+      .file_version_minor = OCMD_FILE_FORMAT_VERSION_MINOR,
+      .file_version_patch = OCMD_FILE_FORMAT_VERSION_PATCH,
+      .prog_header = {
+        .has_code_flag = 1,
+        .code_section_offset = sizeof(ocmd_file_header),
+        .data_section_offset = sizeof(ocmd_file_header) + expected_code_size,                     // 4 instructions in code section
+        .data_table_offset = sizeof(ocmd_file_header) + expected_code_size + expected_data_size,  // data section has 8 bytes (4 for address, 4 for blob, 1 for stopdev)
+        .entry_point_address = sizeof(ocmd_file_header),
+        .num_instructions = 4,
+      },
+    };
+
+    {
+      const auto& header = detail::read_linked_header(bytes);
+      ASSERT_EQ(std::string_view(header.file_signature, sizeof(header.file_signature)), "OCMD");
+      ASSERT_EQ(header.file_version_major, OCMD_FILE_FORMAT_VERSION_MAJOR);
+      ASSERT_EQ(header.file_version_minor, OCMD_FILE_FORMAT_VERSION_MINOR);
+      ASSERT_EQ(header.file_version_patch, OCMD_FILE_FORMAT_VERSION_PATCH);
+      ASSERT_EQ(header.prog_header.code_section_offset, expected_header.prog_header.code_section_offset);
+      ASSERT_EQ(header.prog_header.data_section_offset, expected_header.prog_header.data_section_offset);
+    }
+
     detail::expect_linked_layout_matches_program(program, bytes);
 
-    const auto symbol_addresses = detail::collect_symbol_addresses(program);
+    const auto symbol_addresses = detail::collect_symbol_addresses(program, bytes);
     const uint16_t main_address = detail::code_block_address(program, 0);
     const uint16_t main_ret_address = main_address + sizeof(instruction);
 
@@ -261,23 +299,33 @@ namespace other {
     instruction helper_second_instr = detail::read_instruction_at(bytes, helper_ret_address);
     instruction expected_helper_second = opcode_return();
 
+    std::stringstream ss;
+    for (size_t i = 0; i < bytes.size(); i += sizeof(instruction)) {
+      uint32_t val = *reinterpret_cast<const uint32_t*>(bytes.data() + i);
+      ss << std::format("{:#08x}: {:#010x}", i, val);
+      ss << "\n";
+    }
+
     {
-      std::stringstream ss;
-      ss << "Linked binary hexdump:\n";
-      for (size_t i = 0; i < bytes.size(); i += sizeof(instruction)) {
-        ss << std::format("{:#08x}: {:#010x}", i, detail::read_instruction_at(bytes, i).opcode);
-        ss << "\n";
-      }
-      SCOPED_TRACE(ss.str());
+      SCOPED_TRACE(std::format("main set:\n{}", ss.str()));
       EXPECT_EQ(main_first_instr.opcode, expected_first.opcode)
         << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_address, main_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_first_instr.opcode);
+    }
+    {
+      SCOPED_TRACE(std::format("main ret:\n{}", ss.str()));
       EXPECT_EQ(main_second_instr.opcode, expected_second.opcode)
         << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_ret_address, main_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_second_instr.opcode);
+    }
+    {
+      SCOPED_TRACE(std::format("helper set:\n{}", ss.str()));
       EXPECT_EQ(helper_first_instr.opcode, expected_helper_first.opcode)
         << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_address, helper_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", helper_first_instr.opcode);
+    }
+    {
+      SCOPED_TRACE(std::format("helper ret:\n{}", ss.str()));
       EXPECT_EQ(helper_second_instr.opcode, expected_helper_second.opcode)
         << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_ret_address, helper_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", helper_second_instr.opcode);
@@ -420,9 +468,6 @@ namespace other {
   }
 
   namespace detail {
-    const uint16_t increment_num_opcodes(uint32_t num_opcodes) {
-      return num_opcodes * other_command_device::kOpCodeSize;
-    }
 
     const ocmd_file_header& read_linked_header(const std::vector<uint8_t>& bytes) {
       EXPECT_GE(bytes.size(), sizeof(ocmd_file_header));
@@ -431,7 +476,10 @@ namespace other {
 
     instruction read_instruction_at(const std::vector<uint8_t>& bytes, const uint16_t address) {
       uint32_t opcode = 0;
-      EXPECT_GE(bytes.size(), static_cast<size_t>(address) + sizeof(opcode));
+      if (bytes.size() < address + sizeof(instruction)) {
+        ADD_FAILURE() << std::format("Attempted to read instruction at address {:#04x}, but linked binary only has {} bytes", address, bytes.size());
+        return instruction{ 0 };
+      }
       std::memcpy(&opcode, bytes.data() + address, sizeof(opcode));
       return instruction{ opcode };
     }
@@ -440,40 +488,40 @@ namespace other {
       return static_cast<uint16_t>(sizeof(ocmd_file_header));
     }
 
-    uint16_t linked_code_size(const ocmd_program& program) {
-      size_t total_size = 0;
-      for (const auto& block : program.compiled_blocks) {
-        total_size += block.artifact.machine_instructions.size() * sizeof(instruction);
-      }
-      return static_cast<uint16_t>(total_size);
+    uint16_t linked_code_size(const ocmd_program& program, const std::vector<uint8_t>& bytes) {
+      size_t total_size = bytes.size();
+      size_t sections_only = total_size - sizeof(ocmd_file_header);
+      size_t data_size = collect_expected_data_bytes(program).size();
+      return static_cast<uint16_t>(sections_only - data_size);
     }
 
-    uint16_t linked_data_start(const ocmd_program& program) {
-      return static_cast<uint16_t>(linked_code_start() + linked_code_size(program) + sizeof(instruction));
+    uint16_t linked_data_start(const ocmd_program& program, const std::vector<uint8_t>& bytes) {
+      size_t data_size = collect_expected_data_bytes(program).size();
+      return static_cast<uint16_t>(bytes.size() - data_size);
     }
 
     uint16_t code_block_address(const ocmd_program& program, const size_t block_index) {
-      size_t address = linked_code_start();
-      for (size_t index = 0; index < block_index; ++index) {
-        address += program.compiled_blocks[index].artifact.machine_instructions.size() * sizeof(instruction);
+      uint16_t offset = linked_code_start();
+      for (size_t i = 0; i < block_index; ++i) {
+        offset += program.compiled_blocks[i].artifact.machine_instructions.size() * sizeof(instruction);
       }
-      return static_cast<uint16_t>(address);
+      return offset;
     }
 
-    std::unordered_map<std::string, uint16_t> collect_symbol_addresses(const ocmd_program& program) {
+    std::unordered_map<std::string, uint16_t> collect_symbol_addresses(const ocmd_program& program, const std::vector<uint8_t>& bytes) {
       std::unordered_map<std::string, uint16_t> addresses;
 
       for (size_t block_index = 0; block_index < program.compiled_blocks.size(); ++block_index) {
         addresses.emplace(program.compiled_blocks[block_index].name, code_block_address(program, block_index));
       }
 
-      uint16_t section_address = linked_data_start(program);
+      uint16_t section_address = linked_data_start(program, bytes);
       for (const auto& data_section : program.compiled_data_sections) {
         addresses.emplace(data_section.name, section_address);
         for (const auto& field : data_section.fields) {
           addresses.emplace(std::format("{}.{}", data_section.name, field.name), static_cast<uint16_t>(section_address + field.offset));
         }
-        section_address = static_cast<uint16_t>(section_address + data_section.data.size());
+        section_address += static_cast<uint16_t>(data_section.data.size());
       }
 
       return addresses;
@@ -487,31 +535,16 @@ namespace other {
       return data_bytes;
     }
 
-    void expect_final_instruction_is_stopdev(const std::vector<uint8_t>& bytes, const ocmd_program& program) {
-      const instruction stopdev = read_instruction_at(bytes, static_cast<uint16_t>(linked_data_start(program) - sizeof(instruction)));
-      EXPECT_EQ(stopdev.opcode, opcode_stop_device());
-    }
-
     void expect_linked_layout_matches_program(const ocmd_program& program, const std::vector<uint8_t>& bytes) {
       const auto& header = read_linked_header(bytes);
-      EXPECT_EQ(std::string_view(header.file_signature, sizeof(header.file_signature)), "OCMD");
-      EXPECT_EQ(header.file_version_major, OCMD_FILE_FORMAT_VERSION_MAJOR);
-      EXPECT_EQ(header.file_version_minor, OCMD_FILE_FORMAT_VERSION_MINOR);
-      EXPECT_EQ(header.prog_header.code_section_offset, linked_code_start());
-      EXPECT_EQ(header.prog_header.data_section_offset, linked_data_start(program));
-      EXPECT_EQ(header.prog_header.data_table_offset, 0);
-      EXPECT_EQ(header.prog_header.num_instructions, 0);
-      EXPECT_EQ(header.prog_header.entry_point_address, 0);
-
-      expect_final_instruction_is_stopdev(bytes, program);
-
-      auto expected_data = collect_expected_data_bytes(program);
-      ASSERT_GE(bytes.size(), static_cast<size_t>(header.prog_header.data_section_offset));
-      while (expected_data.size() % sizeof(instruction) != 0) {
-        expected_data.push_back(0);
+      {
+        uint16_t address = linked_code_start() + (header.prog_header.num_instructions * sizeof(instruction)) - sizeof(instruction);
+        const instruction stopdev = read_instruction_at(bytes, address);
+        EXPECT_EQ(stopdev.opcode, opcode_stop_device());
       }
 
-      const std::span<const uint8_t> actual_data(bytes.data() + header.prog_header.data_section_offset, bytes.size() - header.prog_header.data_section_offset);
+      auto expected_data = collect_expected_data_bytes(program);
+      std::vector<uint8_t> actual_data(bytes.begin() + header.prog_header.data_section_offset, bytes.end());
       ASSERT_EQ(actual_data.size(), expected_data.size()) << std::format("Expected data section size {} bytes, but found {} bytes", expected_data.size(), actual_data.size());
 
       std::stringstream ss1;
@@ -519,16 +552,18 @@ namespace other {
 
       {
         {
-          ss1 << "Expected data section:\n";
-          for (size_t i = 0; i < expected_data.size(); i += sizeof(instruction)) {
-            ss1 << std::format("{:#08x}: {:#010x}", i, detail::read_instruction_at(expected_data, i).opcode);
+          ss1 << "Actual data section:\n";
+          for (size_t i = 0; i < actual_data.size(); i += sizeof(instruction)) {
+            uint32_t val = *reinterpret_cast<const uint32_t*>(actual_data.data() + i);
+            ss1 << std::format("{:#08x}: {:#010x}", i, val);
             ss1 << "\n";
           }
         }
         {
           ss2 << "Expected data bytes:\n";
           for (size_t i = 0; i < expected_data.size(); i += sizeof(instruction)) {
-            ss2 << std::format("{:#08x}: {:#010x}", i, detail::read_instruction_at(expected_data, i).opcode);
+            uint32_t val = *reinterpret_cast<const uint32_t*>(expected_data.data() + i);
+            ss2 << std::format("{:#08x}: {:#010x}", i, val);
             ss2 << "\n";
           }
         }
@@ -537,16 +572,10 @@ namespace other {
         SCOPED_TRACE(ss2.str());
         EXPECT_TRUE(std::ranges::equal(actual_data, std::span(expected_data)));
       }
-
-      size_t expected_size = sizeof(ocmd_file_header) + linked_code_size(program) + sizeof(instruction) + expected_data.size();
-      while (expected_size % sizeof(instruction) != 0) {
-        expected_size += 1;
-      }
-      EXPECT_EQ(bytes.size(), expected_size);
     }
 
     void expect_linked_fixups_match_program(const ocmd_program& program, const std::vector<uint8_t>& bytes) {
-      const auto symbol_addresses = collect_symbol_addresses(program);
+      const auto symbol_addresses = collect_symbol_addresses(program, bytes);
 
       for (size_t block_index = 0; block_index < program.compiled_blocks.size(); ++block_index) {
         const auto& block = program.compiled_blocks[block_index];

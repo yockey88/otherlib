@@ -91,11 +91,15 @@ namespace other {
 
     void* start() { return data; }
     void* end() { return data + N; }
-    void* unsafe_at(const size_t index) { return data + index; }
+    void unsafe_write(const uint8_t* bytes, size_t length, size_t offset = 0) {
+      assert(offset + length <= N && "Write out of bounds");
+      std::memcpy(data + offset, bytes, length);
+    }
+    const void* unsafe_at(const size_t index) const { return data + index; }
 
     void* ptr_to(const size_t index) {
       assert(index < N && "Index out of bounds");
-      return unsafe_at(index);
+      return const_cast<void*>(unsafe_at(index));
     }
   };
   /// just to make sure

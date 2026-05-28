@@ -59,8 +59,6 @@ namespace other {
     driver* host_driver = nullptr;
     scene* scene_context = nullptr;
 
-    uint16_t program_start_address = kProgramStartAddress;
-
     bool stopped = true;
 
     instruction current_instruction = 0x0;
@@ -70,7 +68,32 @@ namespace other {
 
     random_generator<uint64_t> rng = { std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max() };
 
-    // void execute_instruction(const instruction& instr);
+    enum program_state : uint64_t {
+      kProgramStateStopped = 0,
+      kProgramStateIdle = 1 << 0,
+      kProgramStateRunning = 1 << 1,
+
+      kProgramStateError = std::numeric_limits<uint64_t>::max(),
+    };
+    struct program_metadata {
+      uint16_t load_address = 0;  // beginning of code section
+      uint16_t code_size = 0;
+
+      uint16_t data_offset = 0;  // local program offset of data section
+      uint16_t data_size = 0;
+
+      uint16_t entry_point_offset = 0;  // local program offset of entry point (if 0, then load_address)
+      uint16_t num_instructions = 0;
+
+      program_state state = kProgramStateStopped;
+
+      uint16_t full_program_size() const;
+      uint16_t get_global_data_address() const;
+      uint16_t get_global_entry_point_address() const;
+      uint16_t get_instruction_address_by_index(uint16_t instruction_index) const;
+      uint16_t get_data_address_by_offset(uint16_t data_offset) const;
+    };
+    program_metadata current_program_metadata;
 
     inline natural_t read_register_as_u64(uint8_t reg_index) const {
       OTHER_ASSERT(reg_index < vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
@@ -81,10 +104,20 @@ namespace other {
       registers[reg_index].memory = register_t<vm_register::kRegisterBitSize>{ value };
     }
 
+    uint16_t globalize_address(uint16_t local_address) const;
+    uint16_t globalize_address(const program_metadata* md, uint16_t local_address) const;
+    const void* access_current_program_memory(uint16_t program_offset);
+    const void* access_current_program_data_section(uint16_t program_offset);
+    natural_t current_program_data_as_u64(uint16_t data_offset) const;
+
+    void write_current_program_memory(uint16_t address, const uint8_t* bytes, size_t length);
+    void write_current_program_data(uint16_t address, const uint8_t* bytes, size_t length);
+    void write_current_program_data_from_u64(uint16_t data_offset, uint64_t value);
+
     uint8_t get_random_byte();
 
     void write_u64_at(const size_t address, const uint64_t value);
-    uint64_t read_u64_at(const size_t address);
+    uint64_t read_u64_at(const size_t address) const;
   };
 
 }  // namespace other

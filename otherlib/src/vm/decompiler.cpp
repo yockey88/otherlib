@@ -74,7 +74,7 @@ namespace other {
 
     other_command_device device = {};
     vm::initialize_device(&device);
-    vm::activate_builtin_control_table(&device, OTHER_CONTROL_TABLE_DECOMPILER_V000);
+    vm::load_control_table(&device, OTHER_CONTROL_TABLE_DECOMPILER_V000);
 
     OTHER_ASSERT(instructions.size() >= sizeof(ocmd_file_header), "Instructions size is smaller than OCMD file header size!");
     const ocmd_file_header& file_header = *(reinterpret_cast<const ocmd_file_header*>(instructions.data()));

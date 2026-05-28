@@ -67,152 +67,33 @@ namespace other {
     return arg;
   }
 
-  // uint32_t raw_instruction::get_opcode(uint32_t opcode, const std::vector<argument>& arguments) {
-  //   auto mark_load_opcode_label_arguments = [](uint32_t opcode, const std::vector<argument>& args) -> uint32_t {
-  //     if (args[1].type == TOKEN_TYPE_INTEGER_LITERAL || args[1].type == TOKEN_TYPE_ADDRESS) {
-  //       return opcode_set_x_reg_n_address(opcode, args[0].value.value(), args[1].value.value());
-  //     } else if (args[1].type == TOKEN_TYPE_FLOATING_POINT_LITERAL) {
-  //       OTHER_ASSERT(false, "Floating point literals not yet supported in LOAD_X_DIRECT");
-  //     } else if (args[1].type == TOKEN_TYPE_STRING_LITERAL) {
-  //       OTHER_ASSERT(false, "String literals not yet supported in LOAD_X_DIRECT");
-  //     } else if (args[1].type == TOKEN_TYPE_LABEL) {
-  //       return opcode_set_x_reg_n_address(opcode, args[0].value.value(), 0xFFFF);
-  //     } else {
-  //       OTHER_ASSERT(false, "Unsupported argument type for LOAD_X_DIRECT: {}", args[1].type);
-  //     }
-  //   };
-
-  //   switch (opcode) {
-  //     case OPCODE_STOPDEV:
-  //       OTHER_ASSERT(arguments.size() == 0, "STOPDEV takes no arguments : arguments.size() = {}", arguments.size());
-  //       return opcode;
-  //     case OPCODE_DUMP:
-  //       OTHER_ASSERT(arguments.size() == 0, "DUMP_REGISTERS takes no arguments : arguments.size() = {}", arguments.size());
-  //       return opcode;
-  //     case OPCODE_DUMPX:
-  //       OTHER_ASSERT(arguments.size() == 1, "DUMP_MEMORY takes 1 argument : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_register(opcode, arguments[0].value.value());
-
-  //     case OPCODE_WRITE_X_TO_MEM:
-  //       OTHER_ASSERT(arguments.size() == 2, "WRITE takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-  //     case OPCODE_LOAD_X_DIRECT:
-  //       OTHER_ASSERT(arguments.size() == 2, "LOAD takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return mark_load_opcode_label_arguments(opcode, arguments);
-  //       break;
-  //     case OPCODE_LOAD_X_FROM_MEM:
-  //       OTHER_ASSERT(arguments.size() == 2, "LOAD takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return mark_load_opcode_label_arguments(opcode, arguments);
-  //     case OPCODE_INDIRECT_WRITE_X_TO_MEM:
-  //       OTHER_ASSERT(arguments.size() == 2, "INDIRECT_WRITE takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-  //     case OPCODE_COMPARE_X_Y_SET_Z:
-  //       OTHER_ASSERT(arguments.size() == 3, "COMPARE takes 3 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_z_registers(opcode, arguments[0].value.value(), arguments[1].value.value(), arguments[2].value.value());
-  //     case OPCODE_COMPARE_GT_X_Y_SET_Z:
-  //       OTHER_ASSERT(arguments.size() == 3, "GT takes 3 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_z_registers(opcode, arguments[0].value.value(), arguments[1].value.value(), arguments[2].value.value());
-  //     case OPCODE_COMPARE_LT_X_Y_SET_Z:
-  //       OTHER_ASSERT(arguments.size() == 3, "LT takes 3 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_z_registers(opcode, arguments[0].value.value(), arguments[1].value.value(), arguments[2].value.value());
-  //     case OPCODE_X_AND_Y_SET_Z:
-  //       OTHER_ASSERT(arguments.size() == 3, "AND takes 3 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_z_registers(opcode, arguments[0].value.value(), arguments[1].value.value(), arguments[2].value.value());
-  //     case OPCODE_X_OR_Y_SET_Z:
-  //       OTHER_ASSERT(arguments.size() == 3, "OR takes 3 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_z_registers(opcode, arguments[0].value.value(), arguments[1].value.value(), arguments[2].value.value());
-  //     case OPCODE_X_XOR_Y_SET_Z:
-  //       OTHER_ASSERT(arguments.size() == 3, "XOR takes 3 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_z_registers(opcode, arguments[0].value.value(), arguments[1].value.value(), arguments[2].value.value());
-  //     case OPCODE_SHIFT_LEFT_X_BY_Y:
-  //       OTHER_ASSERT(arguments.size() == 2, "SHIFT_LEFT takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-  //     case OPCODE_SHIFT_RIGHT_X_BY_Y:
-  //       OTHER_ASSERT(arguments.size() == 2, "SHIFT_RIGHT takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-
-  //     case OPCODE_GOTO:
-  //       OTHER_ASSERT(arguments.size() == 1, "GOTO takes 1 argument : arguments.size() = {}", arguments.size());
-  //       return opcode_set_n_address(opcode, arguments[0].value.value());
-  //     case OPCODE_JUMP_IF_ZERO:
-  //       OTHER_ASSERT(arguments.size() == 1, "GOTO_IF_ZERO takes 1 argument : arguments.size() = {}", arguments.size());
-  //       return opcode_set_n_address(opcode, arguments[0].value.value());
-  //     case OPCODE_JUMP_IF_NOT_ZERO:
-  //       OTHER_ASSERT(arguments.size() == 1, "GOTO_IF_NOT_ZERO takes 1 argument : arguments.size() = {}", arguments.size());
-  //       return opcode_set_n_address(opcode, arguments[0].value.value());
-  //     case OPCODE_CALL_AT:
-  //       OTHER_ASSERT(arguments.size() == 1, "CALL takes 1 argument : arguments.size() = {}", arguments.size());
-  //       return opcode_set_n_address(opcode, arguments[0].value.value());
-  //     case OPCODE_RETURN:
-  //       OTHER_ASSERT(arguments.size() == 0, "RETURN takes no arguments : arguments.size() = {}", arguments.size());
-  //       return opcode;
-  //     case OPCODE_RETURN_VALUE_IN_X:
-  //       OTHER_ASSERT(arguments.size() == 1, "RETURN_VALUE_IN_X takes 1 argument : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_register(opcode, arguments[0].value.value());
-
-  //     case OPCODE_ADD_X_Y_TO_X:
-  //       OTHER_ASSERT(arguments.size() == 2, "ADD takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-  //     case OPCODE_SUB_X_Y_TO_X:
-  //       OTHER_ASSERT(arguments.size() == 2, "SUB takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-  //     case OPCODE_MUL_X_Y_TO_X:
-  //       OTHER_ASSERT(arguments.size() == 2, "MUL takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-  //     case OPCODE_DIV_X_Y_TO_X:
-  //       OTHER_ASSERT(arguments.size() == 2, "DIV takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-  //     case OPCODE_MOD_X_Y_TO_X:
-  //       OTHER_ASSERT(arguments.size() == 2, "MOD takes 2 arguments : arguments.size() = {}", arguments.size());
-  //       return opcode_set_x_y_registers(opcode, arguments[0].value.value(), arguments[1].value.value());
-
-  //     case OPCODE_LOAD_SCENE_WITH_ID_AT:
-  //       OTHER_ASSERT(arguments.size() == 1, "LOAD_SCENE_WITH_ID takes 1 argument : arguments.size() = {}", arguments.size());
-  //       return opcode_set_n_address(opcode, arguments[0].value.value());
-
-  //     default:
-  //       OTHER_ASSERT(false, "Unhandled opcode in raw_instruction::get_opcode");
-  //       return 0;
-  //   }
-  // }
-
-  // std::vector<token> raw_instruction::get_argument_tokens_for_instruction(const uint32_t category_and_type, const std::vector<token>& arg_tokens) {
-  //   /// a few simple cases
-  //   if (arg_tokens.size() < 3) {
-  //     return arg_tokens;
-  //   } else if (arg_tokens.size() == 3) {
-  //     if (arg_tokens[1].type == TOKEN_TYPE_DOT) {
-  //       token joined_tok;
-  //       joined_tok.type = TOKEN_TYPE_IDENTIFIER;
-  //       joined_tok.text = arg_tokens[0].text + "." + arg_tokens[2].text;
-  //       joined_tok.line_number = arg_tokens[0].line_number;
-  //       joined_tok.column_number = arg_tokens[0].column_number;
-  //       return { joined_tok };
-  //     } else {
-  //       return arg_tokens;
-  //     }
-  //   }
-
-  //   std::vector<token> conjoined_tokens;
-
-  //   ///  join any two tokens seperated by a dot into one token (for e.g., struct.field)
-  //   for (size_t i = 1; i < arg_tokens.size(); ++i) {
-  //     if (i + 1 < arg_tokens.size() && arg_tokens[i].type == TOKEN_TYPE_DOT && i + 1 < arg_tokens.size()) {
-  //       token joined_tok;
-  //       joined_tok.type = TOKEN_TYPE_IDENTIFIER;
-  //       joined_tok.text = arg_tokens[i - 1].text + "." + arg_tokens[i + 1].text;
-  //       joined_tok.line_number = arg_tokens[i - 1].line_number;
-  //       joined_tok.column_number = arg_tokens[i - 1].column_number;
-  //       conjoined_tokens.push_back(joined_tok);
-  //       ++i;
-  //     } else if (arg_tokens[i].type == TOKEN_TYPE_DOT && i + 1 >= arg_tokens.size()) {
-  //       throw std::runtime_error("Unexpected '.' token at end of argument list");
-  //     } else {
-  //       conjoined_tokens.push_back(arg_tokens[i - 1]);
-  //     }
-  //   }
-
-  //   return conjoined_tokens;
-  // }
+  normalized_operand normalize_argument(const canonical_opcode cat_and_type, size_t idx, const raw_instruction::argument& arg) {
+    switch (arg.type) {
+      case TOKEN_TYPE_ADDRESS:
+        return { .kind = operand_kind::ADDRESS_U16, .address = arg.value.value() };
+      case TOKEN_TYPE_INTEGER_LITERAL:
+        return { .kind = operand_kind::INTEGER_LITERAL, .constant = arg.value.value() };
+      case TOKEN_TYPE_FLOATING_POINT_LITERAL:
+        return { .kind = operand_kind::FLOAT_LITERAL, .bytes = arg.raw_data };
+      case TOKEN_TYPE_STRING_LITERAL:
+        return { .kind = operand_kind::STRING_LITERAL, .bytes = arg.raw_data };
+      case TOKEN_TYPE_LABEL:
+        return { .kind = operand_kind::CODE_LABEL, .symbol = arg.raw_txt };
+      case TOKEN_TYPE_IDENTIFIER:
+        if (arg.raw_txt.contains('.')) {
+          return { .kind = operand_kind::DATA_SYMBOL, .symbol = arg.raw_txt };
+        } else {
+          return { .kind = operand_kind::CODE_LABEL, .symbol = arg.raw_txt };
+        }
+      default:
+        if (arg.type >= TOKEN_TYPE_KW_R0 && arg.type <= TOKEN_TYPE_KW_RFLAG) {
+          return {
+            .kind = operand_kind::REGISTER_REF,
+            .reg = static_cast<uint8_t>(arg.value.value()),
+          };
+        }
+        return {};
+    }
+  }
 
 }  // namespace other

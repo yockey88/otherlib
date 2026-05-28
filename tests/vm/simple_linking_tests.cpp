@@ -23,8 +23,8 @@ namespace other {
           .code_section_offset = sizeof(ocmd_file_header),
           .data_section_offset = 0,
           .data_table_offset = 0,
-          .num_instructions = 0,
           .entry_point_address = 0,
+          .num_instructions = 0,
         }
       };
     }

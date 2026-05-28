@@ -5,7 +5,7 @@
 
 #include "core/enum_formatter.hpp"
 
-#include "vm/command_files/ast_lowering.hpp"
+#include "vm/command_files/code_block.hpp"
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/command_files/opcode_builder.hpp"
 

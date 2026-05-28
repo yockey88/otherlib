@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "vm/opcode.hpp"
+
 namespace other {
 
   enum class operand_kind : uint8_t {
@@ -60,6 +62,8 @@ namespace other {
 
     INVALID_OP = 0xFF,
   };
+
+  class opcode_builder;
 
   struct canonical_operand {
     operand_kind kind = operand_kind::INVALID;

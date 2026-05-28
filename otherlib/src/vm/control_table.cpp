@@ -76,6 +76,7 @@ namespace other {
       case OTHER_CONTROL_TABLE_DEBUGGER_V000: device->control_table = (other_command_executor*)v000::kDebuggerTable; break;
       case OTHER_CONTROL_TABLE_DECOMPILER_V000: device->control_table = (other_command_executor*)v000::kDecompilerTable; break;
       default:
+        /// \todo: look up table in plugin registry or script system
         OTHER_ASSERT(false, "Invalid control table: {}!", table);
     }
   }
@@ -110,8 +111,9 @@ namespace other {
       natural_t val_in_x = device->read_register_as_u64(x);
 
       uint16_t n = device->current_instruction.lower;
-      void* ptr = device->memory->ptr_to(n + device->program_start_address);
-      size_t bytes_to_dump = std::min<size_t>(val_in_x, 256);  // limit to 256 bytes
+      const void* ptr = device->access_current_program_memory(n);
+      // limit to 256 bytes
+      size_t bytes_to_dump = std::min<size_t>(val_in_x, 256);
       const uint8_t* byte_ptr = static_cast<const uint8_t*>(ptr);
       std::stringstream ss;
       ss << std::format("Memory dump at address {:#06x} ({} bytes):\n", n, bytes_to_dump);
@@ -139,7 +141,7 @@ namespace other {
     void execute_load_x_from_memory(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint16_t addr = device->current_instruction.lower;
-      uint64_t value = device->read_u64_at(addr + device->program_start_address);
+      uint64_t value = device->current_program_data_as_u64(addr);
       device->write_register_from_u64(x, value);
     }
 
@@ -156,7 +158,8 @@ namespace other {
       uint16_t addr = device->current_instruction.lower;
       uint64_t value_addr = device->read_register_as_u64(x);
       uint64_t value = device->read_u64_at(value_addr);
-      device->write_u64_at(addr + device->program_start_address, value);
+      device->write_current_program_data_from_u64(addr, value);
+      // write_u64_at(addr + device->program_start_address, value);
     }
 
     /// 14xxyyzz - R[z] = R[x] == R[y]
@@ -242,7 +245,7 @@ namespace other {
     /// 2000nnnn - goto address nnn
     void execute_goto(other_command_device* device) {
       uint16_t addr = device->current_instruction.lower;
-      device->pc = addr + device->program_start_address;
+      device->pc = device->globalize_address(addr);
     }
 
     /// 2100nnnn - goto address nnn if R[x] == 0
@@ -251,7 +254,7 @@ namespace other {
 
       natural_t flag = device->read_register_as_u64(vm_register_idx::VM_RFLAG);
       if (flag == 0) {
-        device->pc = addr + device->program_start_address;
+        device->pc = device->globalize_address(addr);
       }
     }
 
@@ -261,7 +264,7 @@ namespace other {
 
       natural_t flag = device->read_register_as_u64(vm_register_idx::VM_RFLAG);
       if (flag != 0) {
-        device->pc = addr + device->program_start_address;
+        device->pc = device->globalize_address(addr);
       }
     }
 
@@ -270,7 +273,7 @@ namespace other {
       uint16_t addr = device->current_instruction.lower;
 
       // push current pc to stack
-      perform_call_stack_push_and_address_shift(device, addr + device->program_start_address);
+      perform_call_stack_push_and_address_shift(device, device->globalize_address(addr));
     }
 
     /// 24000000 - return from function

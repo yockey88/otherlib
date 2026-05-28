@@ -9,7 +9,7 @@ namespace other {
 
   void vm_system::initialize(driver_kernel* kernel) {
     vm::initialize_device(&core_device);
-    vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
+    vm::load_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
     core_device.host_driver = &get_driver();
   }
 
@@ -33,7 +33,7 @@ namespace other {
     }
 
     auto data = std::span(reinterpret_cast<const uint8_t*>(&op.opcode), sizeof(op.opcode));
-    vm::load_bytes_to_address(&core_device, core_device.program_load_cursor, data.data(), data.size());
+    vm::load_program_from_bytes(&core_device, data);
     core_device.program_load_cursor += data.size();
   }
 

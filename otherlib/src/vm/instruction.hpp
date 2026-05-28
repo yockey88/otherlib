@@ -4,7 +4,7 @@
 #ifndef OTHERLIB_VM_INSTRUCTION_HPP
 #define OTHERLIB_VM_INSTRUCTION_HPP
 
-#include "vm/command_files/ast_lowering.hpp"
+#include "vm/command_files/code_block.hpp"
 #include "vm/operand.hpp"
 #include "vm/vm_version.hpp"
 

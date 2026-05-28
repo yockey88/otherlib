@@ -26,7 +26,6 @@ namespace other {
     std::vector<uint8_t> linked_binary;
     // Header
     write_header(resolver, linked_binary);
-    CORE_LOG_DEBUG("[SIZE]: {} bytes", linked_binary.size());
     // Compiler Generated Code
     // Code
     {
@@ -55,22 +54,31 @@ namespace other {
       // add a stopdev at the end of code section to prevent accidental execution of data if entry point is not set correctly
       linked_binary.append_range(opcode_to_bytes(opcode_stop_device()));
 
+      // modify header
+      ocmd_file_header& header = *reinterpret_cast<ocmd_file_header*>(linked_binary.data());
+      header.prog_header.code_size = static_cast<uint16_t>(linked_binary.size() - sizeof(ocmd_file_header));
+      header.prog_header.data_section_offset = linked_binary.size();
       CORE_LOG_DEBUG("[SIZE]: {} bytes", linked_binary.size());
     }
 
     // Data Section
+    write_data_sections(resolver, linked_binary);
+
+    // modify header
     {
       ocmd_file_header& header = *reinterpret_cast<ocmd_file_header*>(linked_binary.data());
-      header.prog_header.data_section_offset = linked_binary.size();
+      header.prog_header.data_size = static_cast<uint16_t>(linked_binary.size() - header.prog_header.data_section_offset);
+
+      /// \todo: header.prog_header.entry_point_address = resolver->resolve_symbol("main").final_address;
+      header.prog_header.entry_point_address = header.prog_header.code_section_offset;
+
+      std::span code_view{ linked_binary.data() + sizeof(ocmd_file_header), header.prog_header.code_size };
+      uint16_t instruction_count = static_cast<uint16_t>(code_view.size() / sizeof(instruction));
+      header.prog_header.num_instructions = instruction_count;
     }
-    write_data_sections(resolver, linked_binary);
 
     CORE_LOG_DEBUG("[SIZE]: {} bytes", linked_binary.size());
     do_final_linking(resolver, linked_binary);
-
-    while (linked_binary.size() % sizeof(instruction) != 0) {
-      linked_binary.push_back(0);
-    }
     return linked_binary;
   }
 
@@ -107,12 +115,12 @@ namespace other {
         .code_section_offset = sizeof(ocmd_file_header),
         .data_section_offset = 0,
         .data_table_offset = 0,
-        .num_instructions = 0,
         .entry_point_address = 0,
+        .num_instructions = 0,
       }
     };
     std::span bytes{ reinterpret_cast<const uint8_t*>(&header), sizeof(header) };
-    CORE_LOG_DEBUG(" [HEADER] Writing Range: [0x0000, 0x{:04X})", bytes.size());
+    CORE_LOG_DEBUG("[HEADER] Writing Range: [0x0000, {:#04x})", bytes.size());
     binary.append_range(bytes);
   }
 
@@ -124,8 +132,8 @@ namespace other {
         std::views::join |
         std::ranges::to<std::vector>();
       resolver->attach_code_label(code_block.name, binary.size());
-      CORE_LOG_DEBUG("  [LINK] Attaching code label '{}' @ 0x{:04X}", code_block.name, binary.size());
-      CORE_LOG_DEBUG(" [CODE] Writing Range: [0x{:04X}, 0x{:04X})", binary.size(), binary.size() + bytes_view.size());
+      CORE_LOG_DEBUG("[LINK] Attaching code label '{}' @ {:#04x}", code_block.name, binary.size());
+      CORE_LOG_DEBUG("[CODE] Writing Range: [{:#04x}, {:#04x})", binary.size(), binary.size() + bytes_view.size());
       binary.append_range(bytes_view);
     }
   }
@@ -139,13 +147,13 @@ namespace other {
       // don't normalize here because using acutal size of output binary here
       uint16_t data_section_start_address = binary.size();
       resolver->attach_data_symbol(data_section.name, data_section_start_address);
-      CORE_LOG_DEBUG("  [LINK] Attaching data symbol '{}' @ 0x{:04X}", data_section.name, data_section_start_address);
+      CORE_LOG_DEBUG("[LINK] Attaching data symbol '{}' @ {:#04x}", data_section.name, data_section_start_address);
       for (const auto& field : data_section.fields) {
         const std::string full_field_name = std::format("{}.{}", data_section.name, field.name);
         resolver->attach_data_symbol(full_field_name, data_section_start_address + field.offset);
-        CORE_LOG_DEBUG("  [LINK]          sub-symbol '{}' @ 0x{:04X}", full_field_name, data_section_start_address + field.offset);
+        CORE_LOG_DEBUG("[LINK]          sub-symbol '{}' @ {:#04x}", full_field_name, data_section_start_address + field.offset);
       }
-      CORE_LOG_DEBUG(" [DATA] Writing Range: [0x{:04X}, 0x{:04X})", binary.size(), binary.size() + data_section.data.size());
+      CORE_LOG_DEBUG("[DATA] Writing Range: [{:#04x}, {:#04x})", binary.size(), binary.size() + data_section.data.size());
       binary.append_range(data_section.data);
     }
   }
@@ -158,15 +166,19 @@ namespace other {
       // remove those we can, global linker later might remove more
       for (auto fixup_itr = code_block.artifact.unresolved_labels.begin();
            fixup_itr != code_block.artifact.unresolved_labels.end();) {
+        CORE_LOG_DEBUG("[LINK] Resolving symbol '{}' for block '{}'", fixup_itr->symbol_name, code_block.name);
         auto fixup = resolver->resolve_symbol(fixup_itr->symbol_name);
 
         if (fixup.final_address != 0) {
           uint16_t code_section_offset = (fixup_itr->opcode_index * other_command_device::kOpCodeSize);
           uint16_t binary_address = code_block_start_address + code_section_offset;
-          CORE_LOG_DEBUG("Patching symbol '{}' at binary address 0x{:04X} with resolved address 0x{:04X}", fixup_itr->symbol_name, binary_address, fixup.final_address);
+          CORE_LOG_DEBUG("[LINK] Patching '{}' @ {:#04x} w/ {:#04x}", fixup_itr->symbol_name, binary_address, fixup.final_address);
           uint8_t* instr_pointer = binary.data() + binary_address;
           instruction& instr = *reinterpret_cast<instruction*>(instr_pointer);
           instr.lower = fixup.final_address;
+          CORE_LOG_DEBUG("[LINK]         patched opcode {:#010x}", instr.opcode);
+        } else {
+          CORE_LOG_DEBUG("[LINK]         symbol could not be resolved yet, leaving fixup for later linking");
         }
 
         fixup_itr = code_block.artifact.unresolved_labels.erase(fixup_itr);
@@ -183,7 +195,7 @@ namespace other {
         auto fixup = resolver->resolve_symbol(instr.symbol_name);
         /// nothing should have been resolved yet we have only written the header
         if (fixup.final_address != 0) {
-          throw ocmd_linking_error(std::format("Symbol '{}' was already resolved to address 0x{:04X} when creating compiler generated symbols, this should not happen", instr.symbol_name, fixup.final_address));
+          throw ocmd_linking_error(std::format("Symbol '{}' was already resolved to address {:#04x} when creating compiler generated symbols, this should not happen", instr.symbol_name, fixup.final_address));
         }
 
         if (!fixup.invocation_thunk.empty()) {

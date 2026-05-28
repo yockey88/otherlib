@@ -92,7 +92,6 @@ target_sources(otherlib
     src/vm/command_files/code_block.cpp
     src/vm/command_files/data_block.cpp
     src/vm/command_files/oasm_parser.cpp
-    src/vm/command_files/ast_lowering.cpp
     src/vm/command_files/opcode_builder.cpp
     src/vm/command_files/code_generator.cpp
     src/vm/command_files/ocmd_compiler.cpp
