@@ -17,7 +17,13 @@ namespace other {
    public:
     virtual ~diagnostic_sink() = default;
 
-    virtual void emit(const diagnostic& diag) = 0;
+    const std::string_view get_name() const { return name; }
+    void set_name(const std::string_view name) { this->name = std::string(name); }
+
+    virtual void handle(const diagnostic& diag) = 0;
+
+   private:
+    std::string name;
   };
 
 }  // namespace other

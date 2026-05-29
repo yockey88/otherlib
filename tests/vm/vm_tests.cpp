@@ -12,6 +12,7 @@
 #include "vm/command_files/ocmd_linker.hpp"
 #include "vm/control_table.hpp"
 #include "vm/default_symbol_resolver.hpp"
+#include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/vm.hpp"
 
 namespace other {
@@ -113,14 +114,15 @@ namespace other {
   namespace detail {
 
     std::vector<uint8_t> compile_and_link_program(const std::string_view source) {
-      auto tokens = ocmd_lexer{ source }.tokenize();
+      diagnostic_engine diag;
+      auto tokens = ocmd_lexer{ source }.tokenize(&diag);
       EXPECT_FALSE(tokens.empty())
         << std::format("Tokenization failed for source:\n{}", source);
       if (tokens.empty()) {
         return {};
       }
 
-      auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+      auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
       EXPECT_TRUE(ir.valid)
         << std::format("Parsing failed for source:\n{}", source);
       if (!ir.valid) {
@@ -199,10 +201,11 @@ namespace other {
     }
 
     ocmd_ir parse_source(const std::string_view source) {
-      const auto tokens = ocmd_lexer{ source }.tokenize();
+      diagnostic_engine diag;
+      const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
       EXPECT_FALSE(tokens.empty())
         << std::format("Tokenization failed for source:\n{}", source);
-      return oasm_parser{ vm_version{}, tokens }.parse();
+      return oasm_parser{ vm_version{}, tokens }.parse(&diag);
     }
 
     ocmd_program compile_source(const std::string_view source) {

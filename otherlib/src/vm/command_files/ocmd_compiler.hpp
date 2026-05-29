@@ -15,15 +15,13 @@
 namespace other {
 
   class ocmd_compiler {
-    OTHER_ENVIRONMENT_INTERFACE("VM", "OcmdCompiler");
-
    public:
     ocmd_compiler(const ocmd_ir& ir)
         : ir(ir) {
     }
-    virtual ~ocmd_compiler() = default;
+    ~ocmd_compiler() = default;
 
-    virtual ocmd_program compile(scope<ocmd_code_generator> generator);
+    ocmd_program compile(scope<ocmd_code_generator> generator);
 
    private:
     const ocmd_ir ir;

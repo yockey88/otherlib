@@ -21,6 +21,54 @@ namespace other {
     bool is_zero() const {
       return std::all_of(std::begin(data), std::end(data), [](uint8_t byte) { return byte == 0; });
     }
+    int8_t to_i8() const {
+      static_assert(N <= 8, "Cannot convert register larger than 8 bits to int8_t");
+      return static_cast<int8_t>(data[0]);
+    }
+    int16_t to_i16() const {
+      static_assert(N <= 16, "Cannot convert register larger than 16 bits to int16_t");
+      int16_t value = 0;
+      for (size_t i = 0; i < N / 8; ++i) {
+        value |= static_cast<int16_t>(data[i]) << (i * 8);
+      }
+      return value;
+    }
+    int32_t to_i32() const {
+      static_assert(N <= 32, "Cannot convert register larger than 32 bits to int32_t");
+      int32_t value = 0;
+      for (size_t i = 0; i < N / 8; ++i) {
+        value |= static_cast<int32_t>(data[i]) << (i * 8);
+      }
+      return value;
+    }
+    int64_t to_i64() const {
+      static_assert(N <= 64, "Cannot convert register larger than 64 bits to int64_t");
+      int64_t value = 0;
+      for (size_t i = 0; i < N / 8; ++i) {
+        value |= static_cast<int64_t>(data[i]) << (i * 8);
+      }
+      return value;
+    }
+    uint8_t to_u8() const {
+      static_assert(N <= 8, "Cannot convert register larger than 8 bits to int8_t");
+      return static_cast<int8_t>(data[0]);
+    }
+    uint16_t to_u16() const {
+      static_assert(N <= 16, "Cannot convert register larger than 16 bits to uint16_t");
+      uint16_t value = 0;
+      for (size_t i = 0; i < N / 8; ++i) {
+        value |= static_cast<uint16_t>(data[i]) << (i * 8);
+      }
+      return value;
+    }
+    uint32_t to_u32() const {
+      static_assert(N <= 32, "Cannot convert register larger than 32 bits to uint32_t");
+      uint32_t value = 0;
+      for (size_t i = 0; i < N / 8; ++i) {
+        value |= static_cast<uint32_t>(data[i]) << (i * 8);
+      }
+      return value;
+    }
     uint64_t to_u64() const {
       static_assert(N <= 64, "Cannot convert register larger than 64 bits to uint64_t");
       uint64_t value = 0;

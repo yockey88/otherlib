@@ -10,6 +10,7 @@
 
 #include "vm/command_files/lexer.hpp"
 #include "vm/command_files/token.hpp"
+#include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/vm_tests.hpp"
 
 namespace other {
@@ -65,7 +66,8 @@ namespace other {
     };
 
     void expect_tokens(const std::string_view source, const std::span<const expected_token_spec> expected) {
-      const auto tokens = ocmd_lexer{ source }.tokenize();
+      diagnostic_engine diag;
+      const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
       ASSERT_EQ(tokens.size(), expected.size())
         << std::format("Expected {} tokens, but found {}", expected.size(), tokens.size());
 
@@ -139,7 +141,8 @@ namespace other {
   }
 
   TEST_F(vm_tests, ocmd_lexer_returns_empty_stream_on_lex_error) {
-    const auto tokens = ocmd_lexer{ "tag \"unterminated" }.tokenize();
+    diagnostic_engine diag;
+    const auto tokens = ocmd_lexer{ "tag \"unterminated" }.tokenize(&diag);
     EXPECT_TRUE(tokens.empty());
   }
 
@@ -192,7 +195,8 @@ namespace other {
       source += random_separator(generator);
       source += k_fuzz_lexemes[lexeme_dist(generator)].source_text;
 
-      const auto tokens = ocmd_lexer{ source }.tokenize();
+      diagnostic_engine diag;
+      const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
       EXPECT_TRUE(tokens.empty())
         << std::format("Expected lexer to fail on invalid input, but it produced {} tokens. Source: '{}'", tokens.size(), source);
     }

@@ -253,8 +253,7 @@ namespace other {
     size_t line_number;
     size_t column_number;
 
-    token()
-        : text(""), type(TOKEN_TYPE_INVALID), line_number(0), column_number(0) {}
+    token() : text(""), type(TOKEN_TYPE_INVALID), line_number(0), column_number(0) {}
     token(token_type type, const std::string_view str, size_t line, size_t col)
         : text(str), type(type), line_number(line), column_number(col) {}
   };

@@ -13,6 +13,8 @@
 
 namespace other {
 
+  class diagnostic_engine;
+
   class oasm_parser {
    public:
     oasm_parser(const vm_version& vmversion, const std::vector<token>& tokens)
@@ -23,7 +25,7 @@ namespace other {
       ir_result.target_vm_version = version;
     }
 
-    ocmd_ir parse();
+    ocmd_ir parse(diagnostic_engine* diag);
 
    private:
     struct code_section_ir {
@@ -65,6 +67,7 @@ namespace other {
       std::vector<data_section_ir> data_sections = {};
     };
     ocmd_ir ir_result;
+    diagnostic_engine* diagnostics = nullptr;
 
     std::vector<token> tokens;
 

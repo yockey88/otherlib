@@ -12,6 +12,7 @@
 #include "vm/command_files/code_block.hpp"
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/command_files/token.hpp"
+#include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/instruction.hpp"
 #include "vm/opcode.hpp"
 #include "vm/other_device.hpp"
@@ -134,7 +135,10 @@ namespace other {
 
   }  // namespace detail
 
-  ocmd_ir oasm_parser::parse() {
+  ocmd_ir oasm_parser::parse(diagnostic_engine* diag) {
+    OTHER_ASSERT(diag != nullptr, "Diagnostic engine must not be null");
+    diagnostics = diag;
+
     if (tokens.empty()) {
       CORE_LOG_ERROR("No tokens to parse");
       return {};

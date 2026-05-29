@@ -1,6 +1,7 @@
 /**
  * \file vm/oasm_parsing2_tests.cpp
  **/
+
 #include "vm_tests.hpp"
 
 namespace other {

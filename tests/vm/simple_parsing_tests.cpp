@@ -4,6 +4,7 @@
 
 #include "vm/command_files/lexer.hpp"
 #include "vm/command_files/oasm_parser.hpp"
+#include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/vm_tests.hpp"
 
 namespace other {
@@ -21,42 +22,9 @@ namespace other {
   set r4, my_data.first_addr
   ret
     )";
-    /*
-    const auto ir = parse_source(source);
-    ASSERT_TRUE(ir.valid);
-    ASSERT_EQ(ir.code_blocks.size(), 1);
 
-    const auto& r1 = get_register_case(1);
-    const auto& r2 = get_register_case(2);
-    const auto& r3 = get_register_case(3);
-    const auto& r4 = get_register_case(4);
-    const std::array expected_instructions = {
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x02),
-        .arguments = { make_register_argument(r1) },
-      },
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x02),
-        .arguments = { make_register_argument(r2) },
-      },
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x00, 0x02),
-        .arguments = { make_register_argument(r3) },
-      },
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x01, 0x01),
-        .arguments = { make_register_argument(r4), make_label_argument("my_data.first_addr") },
-      },
-      expected_instruction{
-        .category_and_type = opcode_with_category_and_type(0x02, 0x04),
-      },
-    };
-
-    expect_code_block_matches(ir.code_blocks[0], "code_block_0", expected_instructions);
-    */
-
-    ;
-    const auto tokens = ocmd_lexer{ source }.tokenize();
+    diagnostic_engine diag;
+    const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
     EXPECT_FALSE(tokens.empty());
 
     ASSERT_EQ(tokens.size(), 15);
@@ -95,7 +63,7 @@ namespace other {
       CORE_LOG_DEBUG("Token [{}]: value = {} ({}:{})", token.type, token.text, token.line_number, token.column_number);
     }
 
-    const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+    const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
     EXPECT_FALSE(ir.code_blocks.empty());
     EXPECT_TRUE(ir.data_blocks.empty());
 
@@ -145,9 +113,10 @@ namespace other {
       ret
     )";
 
-      const auto tokens = ocmd_lexer{ source }.tokenize();
+      diagnostic_engine diag;
+      const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
       EXPECT_FALSE(tokens.empty());
-      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
       EXPECT_TRUE(detail::check_small_named_code_blocks_test(ir));
     }
 
@@ -165,9 +134,10 @@ namespace other {
     end
     )";
 
-      const auto tokens = ocmd_lexer{ source }.tokenize();
+      diagnostic_engine diag;
+      const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
       EXPECT_FALSE(tokens.empty());
-      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
       EXPECT_TRUE(detail::check_small_named_code_blocks_test(ir));
     }
 
@@ -184,9 +154,10 @@ namespace other {
     end
     )";
 
-      const auto tokens = ocmd_lexer{ source }.tokenize();
+      diagnostic_engine diag;
+      const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
       EXPECT_FALSE(tokens.empty());
-      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
       EXPECT_TRUE(detail::check_small_named_code_blocks_test(ir));
     }
 
@@ -203,9 +174,10 @@ namespace other {
       ret
     )";
 
-      const auto tokens = ocmd_lexer{ source }.tokenize();
+      diagnostic_engine diag;
+      const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
       EXPECT_FALSE(tokens.empty());
-      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
       EXPECT_TRUE(detail::check_small_named_code_blocks_test(ir));
     }
   }
@@ -217,9 +189,10 @@ namespace other {
     }
     )";
 
-    const auto tokens = ocmd_lexer{ source }.tokenize();
+    diagnostic_engine diag;
+    const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
     EXPECT_FALSE(tokens.empty());
-    const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+    const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
     ASSERT_TRUE(ir.valid);
     ASSERT_EQ(ir.data_blocks.size(), 1);
     ASSERT_EQ(ir.data_blocks[0].objects.size(), 1);
@@ -248,9 +221,10 @@ $code_0_1:
   ret
   )";
 
-    const auto tokens = ocmd_lexer{ source }.tokenize();
+    diagnostic_engine diag;
+    const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
     EXPECT_FALSE(tokens.empty());
-    const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+    const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
     ASSERT_TRUE(ir.valid);
     ASSERT_EQ(ir.data_blocks.size(), 1);
     ASSERT_EQ(ir.code_blocks.size(), 2);
@@ -364,9 +338,10 @@ $code_10_2:
   ret
   )";
 
-    const auto tokens = ocmd_lexer{ source }.tokenize();
+    diagnostic_engine diag;
+    const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
     EXPECT_FALSE(tokens.empty());
-    const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+    const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
     ASSERT_TRUE(ir.valid);
     ASSERT_EQ(ir.data_blocks.size(), 2);
     ASSERT_EQ(ir.code_blocks.size(), 3);

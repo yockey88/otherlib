@@ -18,6 +18,7 @@
 #include "vm/command_files/lexer.hpp"
 #include "vm/command_files/oasm_parser.hpp"
 #include "vm/command_files/ocmd_compiler.hpp"
+#include "vm/diagnostics/diagnostic_engine.hpp"
 
 #include "fuzzing.hpp"
 #include "vm_tests.hpp"
@@ -246,7 +247,8 @@ namespace other {
       const detail::generated_program program = detail::generated_simple_bad_oasm_program(gen, iteration);
       SCOPED_TRACE(std::format("iteration={}, Expected parser rejection: {}\n{}", iteration, program.expected_error_substring, program.source));
 
-      const auto tokens = ocmd_lexer{ program.source }.tokenize();
+      diagnostic_engine diag;
+      const auto tokens = ocmd_lexer{ program.source }.tokenize(&diag);
       ASSERT_FALSE(tokens.empty())
         << std::format("Negative fuzz input should reach the parser, but lexing failed for source:\n{}", program.source);
 
@@ -260,7 +262,7 @@ namespace other {
       //   }
       // }
       // ::testing::internal::CaptureStdout();
-      const auto ir = oasm_parser{ vm_version{}, tokens }.parse();
+      const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
       // std::string parser_output = ::testing::internal::GetCapturedStdout();
       // parser_output += detail::read_file_suffix(log_path, log_size_before);
 

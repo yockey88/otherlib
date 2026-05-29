@@ -49,7 +49,7 @@ target_sources(otherlib
     src/driver/subsystem_registry.cpp
     src/driver/driver.cpp
 
-    src/ocl/object_parser.cpp
+    # src/object/...
 
     src/project/project.cpp
 
@@ -87,6 +87,10 @@ target_sources(otherlib
     src/scripting/execution_graph.cpp
     src/scripting/environment_interface.cpp
 
+    src/vm/diagnostics/vm_diagnostic.cpp
+    src/vm/diagnostics/trace_sink.cpp
+    src/vm/diagnostics/source_map.cpp
+    src/vm/diagnostics/diagnostic_engine.cpp
     src/vm/command_files/token.cpp
     src/vm/command_files/lexer.cpp
     src/vm/command_files/code_block.cpp

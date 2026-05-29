@@ -8,11 +8,6 @@
 
 namespace other {
 
-  struct lex_error : public std::runtime_error {
-    lex_error(const std::string& msg)
-        : std::runtime_error(msg) {}
-  };
-
   class ocmd_parse_error : public std::runtime_error {
    public:
     ocmd_parse_error(const std::string& msg)

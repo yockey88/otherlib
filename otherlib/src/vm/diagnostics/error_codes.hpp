@@ -6,35 +6,42 @@
 
 #include <array>
 #include <string>
+#include <string_view>
 
 namespace other {
 
-  enum vm_error_code : uint32_t {
+  enum vm_error_code : uint16_t {
     VM_UNKNOWN_ERROR = 0x0000,
 
-    VM_LEXER_ERROR_UNKNOWN,
-    VM_PARSER_ERROR_UNKNOWN,
-    VM_COMPILER_ERROR_UNKNOWN,
-    VM_LINKER_ERROR_UNKNOWN,
+    LEX_INVALID_CHAR,
+    LEX_UNTERMINATED_STRING,
+    LEX_MULTIPLE_DECIMAL,
+    LEX_NUMBER_OUT_OF_RANGE,
+    LEX_UNTERMINATED_COMMENT,
+
+    PARSE_UNEXPECTED_TOKEN,
+    PARSE_EXPECTED_TOKEN,
+    PARSE_UNKNOWN_DIRECTIVE,
+    PARSE_TOO_MANY_OPERANDS,
+    PARSE_DUPLICATE_DATA_OBJ,
+
+    LINK_UNRESOLVED_SYMBOL,
+
+    COMPILER_UNDEFINED_LABEL,
+    COMPILER_UNUSED_LABEL,
+
+    LEX_TRACE,
+    PARSE_TRACE,
+    LINK_TRACE,
+    COMPILER_TRACE,
+
+    LEX_INFO,
+    PARSE_INFO,
+    LINK_INFO,
+    COMPILER_INFO,
 
     NUM_VM_ERROR_CODES,
     INVALID_VM_ERROR_CODE = NUM_VM_ERROR_CODES,
-  };
-
-  struct vm_error_code_description {
-    vm_error_code code;
-    const std::string_view message;
-    constexpr vm_error_code_description(vm_error_code code, const std::string_view message)
-        : code(code), message(message) {}
-  };
-
-  constexpr inline size_t kNumErrorCodes = NUM_VM_ERROR_CODES;
-  constexpr inline std::array<vm_error_code_description, kNumErrorCodes> kErrorCodeDescriptions = {
-    vm_error_code_description{ VM_UNKNOWN_ERROR, "An unknown error occurred" },
-    vm_error_code_description{ VM_LEXER_ERROR_UNKNOWN, "An unknown lexer error occurred" },
-    vm_error_code_description{ VM_PARSER_ERROR_UNKNOWN, "An unknown parser error occurred" },
-    vm_error_code_description{ VM_COMPILER_ERROR_UNKNOWN, "An unknown compiler error occurred" },
-    vm_error_code_description{ VM_LINKER_ERROR_UNKNOWN, "An unknown linker error occurred" },
   };
 
 }  // namespace other
