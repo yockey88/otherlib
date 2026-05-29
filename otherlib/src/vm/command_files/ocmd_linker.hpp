@@ -12,13 +12,15 @@
 
 namespace other {
 
+  class diagnostic_engine;
+
   class ocmd_linker {
    public:
     ocmd_linker(const ocmd_program& code)
         : code(code) {}
     ~ocmd_linker() = default;
 
-    std::vector<uint8_t> link(scope<symbol_resolver> resolver);
+    std::vector<uint8_t> link(scope<symbol_resolver> resolver, diagnostic_engine* diag);
 
     constexpr static inline size_t kHeaderAddressOffset = sizeof(ocmd_file_header);
     inline uint16_t normalize_address(size_t address) const {
@@ -26,6 +28,7 @@ namespace other {
     }
 
    private:
+    diagnostic_engine* diagnostics;
     ocmd_program code;
 
     struct symbol_address {

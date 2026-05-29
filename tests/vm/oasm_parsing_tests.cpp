@@ -52,7 +52,8 @@ namespace other {
     end
     )";
 
-    const auto ir = detail::parse_source(source);
+    diagnostic_engine diag;
+    const auto ir = detail::parse_source(source, &diag);
     ASSERT_TRUE(ir.valid);
     // parser recognizes they have the same name and merges them into a single data block
     ASSERT_EQ(ir.data_blocks.size(), 1);
@@ -128,7 +129,8 @@ namespace other {
       ret
     )";
 
-    const auto ir = detail::parse_source(source);
+    diagnostic_engine diag;
+    const auto ir = detail::parse_source(source, &diag);
     ASSERT_TRUE(ir.valid);
     ASSERT_EQ(ir.data_blocks.size(), 1);
     ASSERT_EQ(ir.code_blocks.size(), 1);
@@ -171,7 +173,8 @@ namespace other {
       ret
     )";
 
-    const auto ir = detail::parse_source(source);
+    diagnostic_engine diag;
+    const auto ir = detail::parse_source(source, &diag);
     EXPECT_FALSE(ir.valid);
     EXPECT_TRUE(ir.data_blocks.empty());
     EXPECT_TRUE(ir.code_blocks.empty());
@@ -184,7 +187,8 @@ namespace other {
       ret
     )";
 
-    const auto ir = detail::parse_source(source);
+    diagnostic_engine diag;
+    const auto ir = detail::parse_source(source, &diag);
     EXPECT_FALSE(ir.valid);
     EXPECT_TRUE(ir.data_blocks.empty());
     EXPECT_TRUE(ir.code_blocks.empty());
@@ -198,7 +202,8 @@ namespace other {
     end
     )";
 
-    const auto ir = detail::parse_source(source);
+    diagnostic_engine diag;
+    const auto ir = detail::parse_source(source, &diag);
     ASSERT_TRUE(ir.valid);
     ASSERT_TRUE(ir.data_blocks.empty());
     ASSERT_EQ(ir.code_blocks.size(), 1);
@@ -224,7 +229,8 @@ namespace other {
       const detail::generated_program program = detail::generate_simple_oasm_program(gen, iteration);
       SCOPED_TRACE(std::format("iteration={}\n{}", iteration, program.source));
 
-      const auto ir = detail::parse_source(program.source);
+      diagnostic_engine diag;
+      const auto ir = detail::parse_source(program.source, &diag);
       ASSERT_TRUE(ir.valid);
       ASSERT_EQ(ir.data_blocks.size(), program.data_blocks.size());
       ASSERT_EQ(ir.code_blocks.size(), program.code_blocks.size());

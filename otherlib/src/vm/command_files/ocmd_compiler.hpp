@@ -14,6 +14,8 @@
 
 namespace other {
 
+  class diagnostic_engine;
+
   class ocmd_compiler {
    public:
     ocmd_compiler(const ocmd_ir& ir)
@@ -21,9 +23,10 @@ namespace other {
     }
     ~ocmd_compiler() = default;
 
-    ocmd_program compile(scope<ocmd_code_generator> generator);
+    ocmd_program compile(scope<ocmd_code_generator> generator, diagnostic_engine* diag);
 
    private:
+    diagnostic_engine* diagnostics;
     const ocmd_ir ir;
   };
 

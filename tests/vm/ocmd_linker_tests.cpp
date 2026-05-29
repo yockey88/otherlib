@@ -53,13 +53,14 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
+
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
 
-    auto resolver = make_scope<default_symbol_resolver>();
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     detail::expect_linked_layout_matches_program(program, bytes);
   }
@@ -77,13 +78,13 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 2);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
-    auto resolver = make_scope<default_symbol_resolver>();
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     detail::expect_linked_layout_matches_program(program, bytes);
 
@@ -159,13 +160,13 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 2);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
 
-    auto resolver = make_scope<default_symbol_resolver>();
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     detail::expect_linked_layout_matches_program(program, bytes);
 
@@ -243,13 +244,14 @@ namespace other {
     )";
 
     CORE_LOG_DEBUG("SOURCE:{}", source);
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
+
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 2);
     ASSERT_EQ(program.compiled_data_sections.size(), 2);
 
-    auto resolver = make_scope<default_symbol_resolver>();
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     constexpr size_t expected_code_size = 4 * sizeof(instruction) + sizeof(instruction);  // 4 instructions in total across both code blocks, then stopdev
     constexpr size_t expected_data_size = 2 * sizeof(natural_t);                          // 2 64 bit data objects (address and blob)
@@ -357,14 +359,15 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
 
     auto resolver = make_scope<default_symbol_resolver>();
     resolver->attach_code_label("host.api", 0x4321);
 
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver), &diag);
 
     detail::expect_linked_layout_matches_program(program, bytes);
 
@@ -408,12 +411,12 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
 
-    auto resolver = make_scope<default_symbol_resolver>();
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     detail::expect_linked_layout_matches_program(program, bytes);
 
@@ -453,14 +456,15 @@ namespace other {
       const detail::generated_program generated = detail::generate_simple_linkable_oasm_program(gen, iteration);
       SCOPED_TRACE(std::format("iteration={}\n{}", iteration, generated.source));
 
-      const auto program = detail::compile_source(generated.source);
+      diagnostic_engine diag;
+      const auto program = detail::compile_source(generated.source, &diag);
       ASSERT_TRUE(program.valid);
       ASSERT_EQ(program.definitions.size(), generated.definitions.size());
       ASSERT_EQ(program.compiled_data_sections.size(), generated.data_blocks.size());
       ASSERT_EQ(program.compiled_blocks.size(), generated.code_blocks.size());
 
       auto resolver = make_scope<default_symbol_resolver>();
-      const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
+      const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver), &diag);
 
       detail::expect_linked_layout_matches_program(program, bytes);
       detail::expect_linked_fixups_match_program(program, bytes);

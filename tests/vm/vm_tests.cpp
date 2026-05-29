@@ -98,13 +98,11 @@ namespace other {
       auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
       ASSERT_TRUE(ir.valid)
         << std::format("Parsing failed for source:\n{}", program1_src);
-      auto program = ocmd_compiler{ ir }.compile(make_scope<code_generator_000>());
+      auto program = ocmd_compiler{ ir }.compile(make_scope<code_generator_000>(), &diag);
       ASSERT_TRUE(program.valid)
         << std::format("Compilation failed for source:\n{}", program1_src);
 
-      auto resolver = make_scope<default_symbol_resolver>();
-      bytes = ocmd_linker{ program }.link(std::move(resolver));
-
+      bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
       diag.remove_sink(ts_id);
     }
 
@@ -195,21 +193,20 @@ namespace other {
       return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>{});
     }
 
-    ocmd_ir parse_source(const std::string_view source) {
-      diagnostic_engine diag;
-      const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
+    ocmd_ir parse_source(const std::string_view source, diagnostic_engine* diag) {
+      const auto tokens = ocmd_lexer{ source }.tokenize(diag);
       EXPECT_FALSE(tokens.empty())
         << std::format("Tokenization failed for source:\n{}", source);
-      return oasm_parser{ vm_version{}, tokens }.parse(&diag);
+      return oasm_parser{ vm_version{}, tokens }.parse(diag);
     }
 
-    ocmd_program compile_source(const std::string_view source) {
-      auto ir = parse_source(source);
+    ocmd_program compile_source(const std::string_view source, diagnostic_engine* diag) {
+      auto ir = parse_source(source, diag);
       if (!ir.valid) {
         return {};
       }
 
-      return ocmd_compiler{ ir }.compile(make_scope<code_generator_000>());
+      return ocmd_compiler{ ir }.compile(make_scope<code_generator_000>(), diag);
     }
 
     void expect_argument_matches(const raw_instruction::argument& actual, const expected_argument& expected) {
@@ -290,8 +287,7 @@ namespace other {
 
     void expect_compiled_code_block_matches(
       const compiled_code_block& actual, const std::string_view expected_name,
-      const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions
-    ) {
+      const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions) {
       EXPECT_EQ(actual.name, expected_name);
       EXPECT_EQ(actual.is_entry_point, expected_is_entry_point);
 

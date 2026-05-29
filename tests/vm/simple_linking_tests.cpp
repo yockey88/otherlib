@@ -69,12 +69,13 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>());
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     const std::vector<uint8_t> code_bytes{
       0x00, 0x00, 0x00, 0x24,  // ret
@@ -98,12 +99,13 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 2);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
-    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>());
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
     const std::vector<uint8_t> code_bytes{
       // $main
@@ -131,7 +133,8 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
 
@@ -144,7 +147,7 @@ namespace other {
     detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "main", false, expected_main);
 
     auto resolver = make_scope<default_symbol_resolver>();
-    std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
+    std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver), &diag);
     std::vector<uint8_t> code_bytes{
       // $main
       0x2C, 0x00, 0x01, 0x11,  // load r1 from [0x0030] (data.number)

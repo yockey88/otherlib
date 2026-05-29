@@ -13,8 +13,23 @@
 
 namespace other {
 
-  std::vector<uint8_t> ocmd_linker::link(scope<symbol_resolver> resolver) {
+#define TRACE_ARGS(...) __VA_OPT__(, ##__VA_ARGS__)
+#define EMIT_TRACE(msg, ...)                                    \
+  {                                                             \
+    diagnostic d = {                                            \
+      .severity = VM_DIAGNOSTIC_TRACE,                          \
+      .error_code = LINK_TRACE,                                 \
+      .phase = VM_PHASE_LINKER,                                 \
+      .span = current().source_view,                            \
+      .final_message = std::format(msg TRACE_ARGS(__VA_ARGS__)) \
+    };                                                          \
+    diagnostics->emit(d);                                       \
+  }
+
+  std::vector<uint8_t> ocmd_linker::link(scope<symbol_resolver> resolver, diagnostic_engine* diag) {
     OTHER_ASSERT(resolver != nullptr, "Symbol resolver scope cannot be null");
+    OTHER_ASSERT(diag != nullptr, "Diagnostic engine cannot be null");
+    diagnostics = diag;
 
     /// resolve compiler gen symbol addresses by estimating start of section based on how man goto instructions we will have to add
     register_symbols(resolver);
@@ -273,5 +288,8 @@ namespace other {
       }
     }
   }
+
+#undef TRACE_ARGS
+#undef EMIT_TRACE
 
 }  // namespace other

@@ -22,7 +22,8 @@ namespace other {
     end
     )";
 
-    const auto ir = detail::parse_source(source);
+    diagnostic_engine diag;
+    const auto ir = detail::parse_source(source, &diag);
     ASSERT_TRUE(ir.valid);
 
     const std::array expected_objects = {

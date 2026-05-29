@@ -16,7 +16,8 @@ namespace other {
     end
     )";
 
-    const auto ir = detail::parse_source(source);
+    diagnostic_engine diag;
+    const auto ir = detail::parse_source(source, &diag);
     ASSERT_TRUE(ir.valid);
     ASSERT_TRUE(ir.data_blocks.empty());
     ASSERT_EQ(ir.code_blocks.size(), 1);
@@ -30,7 +31,7 @@ namespace other {
     expect_code_block_matches(ir.code_blocks[0], "main", expected_code);
 
     ocmd_compiler compiler{ ir };
-    const auto bytecode = compiler.compile(make_scope<code_generator_000>());
+    const auto bytecode = compiler.compile(make_scope<code_generator_000>(), &diag);
     ASSERT_EQ(bytecode.compiled_blocks.size(), 1);
     EXPECT_EQ(bytecode.compiled_blocks[0].name, "main");
     // EXPECT_TRUE(bytecode[0].is_entry_point);
@@ -56,7 +57,8 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.definitions.size(), 1);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
@@ -104,7 +106,8 @@ end
 }
   )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.definitions.size(), 1);
     ASSERT_EQ(program.compiled_blocks.size(), 2);

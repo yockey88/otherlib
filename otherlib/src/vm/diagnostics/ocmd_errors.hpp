@@ -18,6 +18,8 @@ namespace other {
     ~ocmd_toolchain_error() override {}
     ocmd_toolchain_error(vm_error_code error, source_span loc, const std::string_view msg)
         : std::runtime_error(std::string(msg)), error(error), loc(loc), msg(msg) {}
+    ocmd_toolchain_error(vm_error_code error, const std::string_view msg)
+        : std::runtime_error(std::string(msg)), error(error), loc(source_span{}), msg(msg) {}
 
     vm_error_code error;
     source_span loc;

@@ -14,7 +14,15 @@ namespace other {
     vm_version() = default;
     vm_version(uint16_t major, uint16_t minor, uint32_t patch)
         : major(major), minor(minor), patch(patch) {}
-    constexpr auto operator<=>(const vm_version&) const = default;
+    constexpr bool operator>(const vm_version& other) const {
+      return std::tie(major, minor, patch) > std::tie(other.major, other.minor, other.patch);
+    }
+    constexpr bool operator<(const vm_version& other) const {
+      return std::tie(major, minor, patch) < std::tie(other.major, other.minor, other.patch);
+    }
+    constexpr bool operator==(const vm_version& other) const {
+      return std::tie(major, minor, patch) == std::tie(other.major, other.minor, other.patch);
+    }
   };
 
 }  // namespace other

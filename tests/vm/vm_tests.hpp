@@ -14,8 +14,11 @@
 #include <vector>
 
 #include "vm/command_files/data_block.hpp"
+#include "vm/command_files/lexer.hpp"
+#include "vm/command_files/oasm_parser.hpp"
 #include "vm/command_files/ocmd_ir.hpp"
 #include "vm/command_files/ocmd_program.hpp"
+#include "vm/diagnostics/diagnostic_engine.hpp"
 
 #include "other_test.hpp"
 
@@ -85,8 +88,8 @@ namespace other {
     std::vector<uint8_t> raw_bytes_from_string(const std::string_view text);
     std::string hex_byte_string(const uint8_t value);
     std::string hex_word_string(const uint16_t value);
-    ocmd_ir parse_source(const std::string_view source);
-    ocmd_program compile_source(const std::string_view source);
+    ocmd_ir parse_source(const std::string_view source, diagnostic_engine* diag);
+    ocmd_program compile_source(const std::string_view source, diagnostic_engine* diag);
     void expect_argument_matches(const raw_instruction::argument& actual, const expected_argument& expected);
     void expect_instruction_matches(const raw_instruction& actual, const expected_instruction& expected);
     void expect_code_block_matches(const code_block& actual, const std::string_view expected_name, const std::span<const expected_instruction> expected_instructions);
@@ -95,8 +98,7 @@ namespace other {
     void expect_machine_instruction_matches(const instruction& actual, const expected_machine_instruction& expected);
     void expect_compiled_code_block_matches(
       const compiled_code_block& actual, const std::string_view expected_name,
-      const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions
-    );
+      const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions);
     const register_case& get_register_case(const size_t index);
     expected_argument make_register_argument(const register_case& reg);
     expected_argument make_address_argument(const uint16_t value);

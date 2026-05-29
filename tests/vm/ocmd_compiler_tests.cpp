@@ -12,10 +12,11 @@
 #include "vm/code_generator_000.hpp"
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/command_files/ocmd_compiler.hpp"
+#include "vm/diagnostics/diagnostic_engine.hpp"
+#include "vm/diagnostics/ocmd_errors.hpp"
 
 #include "fuzzing.hpp"
 #include "vm_tests.hpp"
-
 
 namespace other {
   namespace detail {
@@ -25,9 +26,7 @@ namespace other {
       size_t opcode_index = 0;
     };
 
-    void expect_compiled_data_section_matches(
-      const compiled_data_section& actual, const std::string_view expected_name, const std::span<const expected_data_object> expected_objects
-    ) {
+    void expect_compiled_data_section_matches(const compiled_data_section& actual, const std::string_view expected_name, const std::span<const expected_data_object> expected_objects) {
       EXPECT_EQ(actual.name, expected_name);
       ASSERT_EQ(actual.fields.size(), expected_objects.size());
 
@@ -56,8 +55,7 @@ namespace other {
     }
 
     std::vector<expected_machine_instruction> expected_machine_instructions_for_current_generator(
-      const std::span<const detail::expected_instruction> expected_instructions
-    ) {
+      const std::span<const detail::expected_instruction> expected_instructions) {
       std::vector<expected_machine_instruction> machine_instructions;
       machine_instructions.reserve(expected_instructions.size());
 
@@ -213,8 +211,7 @@ namespace other {
     }
 
     std::vector<expected_symbol_fixup> expected_symbol_fixups_for_current_generator(
-      const std::span<const detail::expected_instruction> expected_instructions
-    ) {
+      const std::span<const detail::expected_instruction> expected_instructions) {
       std::vector<expected_symbol_fixup> fixups;
       fixups.reserve(expected_instructions.size());
 
@@ -255,7 +252,8 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 2);
 
@@ -284,7 +282,8 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.definitions.size(), 1);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
@@ -318,7 +317,8 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
@@ -351,7 +351,8 @@ namespace other {
     end
     )";
 
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
     ASSERT_EQ(program.compiled_blocks.size(), 2);
@@ -411,17 +412,13 @@ namespace other {
 
     detail::expect_compiled_data_section_matches(program.compiled_data_sections[0], "data", expected_data);
     detail::expect_compiled_code_block_matches(
-      program.compiled_blocks[0], "boot", false, detail::expected_machine_instructions_for_current_generator(expected_boot)
-    );
+      program.compiled_blocks[0], "boot", false, detail::expected_machine_instructions_for_current_generator(expected_boot));
     detail::expect_compiled_code_block_matches(
-      program.compiled_blocks[1], "copy", false, detail::expected_machine_instructions_for_current_generator(expected_copy)
-    );
+      program.compiled_blocks[1], "copy", false, detail::expected_machine_instructions_for_current_generator(expected_copy));
     detail::expect_symbol_fixups_match(
-      program.compiled_blocks[0].artifact, detail::expected_symbol_fixups_for_current_generator(expected_boot)
-    );
+      program.compiled_blocks[0].artifact, detail::expected_symbol_fixups_for_current_generator(expected_boot));
     detail::expect_symbol_fixups_match(
-      program.compiled_blocks[1].artifact, detail::expected_symbol_fixups_for_current_generator(expected_copy)
-    );
+      program.compiled_blocks[1].artifact, detail::expected_symbol_fixups_for_current_generator(expected_copy));
   }
 
   TEST_F(vm_tests, ocmd_compiler_current_generator_encodes_supported_instruction_forms) {
@@ -451,10 +448,9 @@ namespace other {
       ret
     end
     )";
-    /*
 
-          */
-    const auto program = detail::compile_source(source);
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_blocks.size(), 1);
 
@@ -556,7 +552,8 @@ namespace other {
       const detail::generated_program generated = detail::generate_simple_oasm_program(gen, iteration);
       SCOPED_TRACE(std::format("iteration={}\n{}", iteration, generated.source));
 
-      const auto program = detail::compile_source(generated.source);
+      diagnostic_engine diag;
+      const auto program = detail::compile_source(generated.source, &diag);
       ASSERT_TRUE(program.valid);
       ASSERT_EQ(program.definitions.size(), generated.definitions.size());
       ASSERT_EQ(program.compiled_data_sections.size(), generated.data_blocks.size());
@@ -564,43 +561,45 @@ namespace other {
 
       for (size_t definition_index = 0; definition_index < generated.definitions.size(); ++definition_index) {
         detail::expect_definition_matches(
-          program.definitions[definition_index], generated.definitions[definition_index].name, generated.definitions[definition_index].value
-        );
+          program.definitions[definition_index], generated.definitions[definition_index].name, generated.definitions[definition_index].value);
       }
       for (size_t data_block_index = 0; data_block_index < generated.data_blocks.size(); ++data_block_index) {
         detail::expect_compiled_data_section_matches(
           program.compiled_data_sections[data_block_index],
           std::format("data_{}_{}", iteration, data_block_index),
-          generated.data_blocks[data_block_index].objects
-        );
+          generated.data_blocks[data_block_index].objects);
       }
       for (size_t code_block_index = 0; code_block_index < generated.code_blocks.size(); ++code_block_index) {
         detail::expect_compiled_code_block_matches(
           program.compiled_blocks[code_block_index],
           generated.code_blocks[code_block_index].name,
           false,
-          detail::expected_machine_instructions_for_current_generator(generated.code_blocks[code_block_index].instructions)
-        );
+          detail::expected_machine_instructions_for_current_generator(generated.code_blocks[code_block_index].instructions));
         detail::expect_symbol_fixups_match(
           program.compiled_blocks[code_block_index].artifact,
-          detail::expected_symbol_fixups_for_current_generator(generated.code_blocks[code_block_index].instructions)
-        );
+          detail::expected_symbol_fixups_for_current_generator(generated.code_blocks[code_block_index].instructions));
       }
     }
   }
 
   TEST_F(vm_tests, ocmd_compiler_rejects_ir_target_newer_than_generator) {
-    auto ir = detail::parse_source(R"(
+    const std::string source = R"(
     $main:
       ret
     end
-    )");
+    )";
+    diagnostic_engine diag;
+    const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
+    EXPECT_FALSE(tokens.empty()) << std::format("Tokenization failed for source:\n{}", source);
 
+    const vm_version version{ 1, 0, 1 };
+    const auto ir = oasm_parser{ version, tokens }.parse(&diag);
     ASSERT_TRUE(ir.valid);
-    ir.target_vm_version = { 0, 0, 1 };
+    EXPECT_EQ(ir.code_blocks.size(), 1);
+    EXPECT_EQ(ir.data_blocks.size(), 0);
 
-    ocmd_compiler compiler{ ir };
-    EXPECT_THROW(compiler.compile(make_scope<code_generator_000>()), ocmd_lowering_error);
+    // version mismatch
+    EXPECT_THROW(ocmd_compiler{ ir }.compile(make_scope<code_generator_000>(), &diag), ocmd_toolchain_error);
   }
 
 }  // namespace other
