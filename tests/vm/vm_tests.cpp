@@ -13,13 +13,13 @@
 #include "vm/control_table.hpp"
 #include "vm/default_symbol_resolver.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
+#include "vm/diagnostics/ocmd_trace_sink.hpp"
 #include "vm/vm.hpp"
 
 namespace other {
   namespace detail {
 
-    std::vector<uint8_t> compile_and_link_program(const std::string_view source);
-    std::vector<uint8_t> compile_test_program1();
+    std::string get_test_program1_source();
 
   }  // namespace detail
 
@@ -82,7 +82,32 @@ namespace other {
   }
 
   TEST_F(vm_tests, vm_program1) {
-    const std::vector<uint8_t> bytes = detail::compile_test_program1();
+    std::string program1_src = detail::get_test_program1_source();
+    CORE_LOG_DEBUG("Program Source:{}", program1_src);
+    std::vector<uint8_t> bytes = {};
+
+    diagnostic_engine diag;
+    {
+      ocmd_trace_sink ts;
+      natural_t ts_id = diag.register_sink("tracer", &ts);
+
+      auto tokens = ocmd_lexer{ program1_src }.tokenize(&diag);
+      ASSERT_FALSE(tokens.empty())
+        << std::format("Tokenization failed for source:\n{}", program1_src);
+
+      auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
+      ASSERT_TRUE(ir.valid)
+        << std::format("Parsing failed for source:\n{}", program1_src);
+      auto program = ocmd_compiler{ ir }.compile(make_scope<code_generator_000>());
+      ASSERT_TRUE(program.valid)
+        << std::format("Compilation failed for source:\n{}", program1_src);
+
+      auto resolver = make_scope<default_symbol_resolver>();
+      bytes = ocmd_linker{ program }.link(std::move(resolver));
+
+      diag.remove_sink(ts_id);
+    }
+
     ASSERT_FALSE(bytes.empty());
 
     other_command_device device;
@@ -113,36 +138,8 @@ namespace other {
 
   namespace detail {
 
-    std::vector<uint8_t> compile_and_link_program(const std::string_view source) {
-      diagnostic_engine diag;
-      auto tokens = ocmd_lexer{ source }.tokenize(&diag);
-      EXPECT_FALSE(tokens.empty())
-        << std::format("Tokenization failed for source:\n{}", source);
-      if (tokens.empty()) {
-        return {};
-      }
-
-      auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
-      EXPECT_TRUE(ir.valid)
-        << std::format("Parsing failed for source:\n{}", source);
-      if (!ir.valid) {
-        return {};
-      }
-
-      auto program = ocmd_compiler{ ir }.compile(make_scope<code_generator_000>());
-      EXPECT_TRUE(program.valid)
-        << std::format("Compilation failed for source:\n{}", source);
-      if (!program.valid) {
-        return {};
-      }
-
-      auto resolver = make_scope<default_symbol_resolver>();
-      std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver));
-      return bytes;
-    }
-
-    std::vector<uint8_t> compile_test_program1() {
-      const std::string_view source = R"(
+    std::string get_test_program1_source() {
+      return R"(
       #data {
         .number : int32 = 42
       }
@@ -151,8 +148,6 @@ namespace other {
         dump r1
       end
       )";
-
-      return compile_and_link_program(source);
     }
 
     std::vector<uint8_t> raw_bytes_from_string(const std::string_view text) {

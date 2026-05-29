@@ -25,7 +25,7 @@ namespace other {
     };
     struct definition {
       std::string name;
-      token value = { TOKEN_TYPE_INVALID, "", 0, 0 };
+      token value = { TOKEN_TYPE_INVALID, "", {} };
     };
 
     natural_t num_instructions = 0;

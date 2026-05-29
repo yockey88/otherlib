@@ -496,11 +496,11 @@ namespace other {
             "}}\n"
             "${}:\n"
             "  dump {}\n"
-            "  load {}, 0x{}, {}\n"
+            "  set {}, 0x{}, {}\n"
             "  ret\n",
             object_name, hex_word_string(first_address), code_name, reg_a.text, reg_b.text, hex_word_string(second_address), reg_a.text
           );
-          program.expected_error_substring = "Expected 2 parameters for instruction 'load', but found 3";
+          program.expected_error_substring = "Expected 2 parameters for instruction 'set', but found 3";
         } break;
 
         case invalid_address_literal: {

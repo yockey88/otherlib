@@ -22,6 +22,9 @@ namespace other {
 
     virtual void handle(const diagnostic& diag) = 0;
 
+   protected:
+    std::string default_format(const diagnostic& d) const;
+
    private:
     std::string name;
   };

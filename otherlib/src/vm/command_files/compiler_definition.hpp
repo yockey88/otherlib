@@ -10,7 +10,7 @@ namespace other {
 
   struct compiler_definition {
     std::string name;
-    token value = { TOKEN_TYPE_INVALID, "", 0, 0 };
+    token value = { TOKEN_TYPE_INVALID, "", source_span{ { 0, 0 }, { 0, 0 } } };
   };
 
 }  // namespace other

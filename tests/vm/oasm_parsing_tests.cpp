@@ -19,6 +19,7 @@
 #include "vm/command_files/oasm_parser.hpp"
 #include "vm/command_files/ocmd_compiler.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
+#include "vm/diagnostics/ocmd_trace_sink.hpp"
 
 #include "fuzzing.hpp"
 #include "vm_tests.hpp"
@@ -248,6 +249,10 @@ namespace other {
       SCOPED_TRACE(std::format("iteration={}, Expected parser rejection: {}\n{}", iteration, program.expected_error_substring, program.source));
 
       diagnostic_engine diag;
+
+      ocmd_trace_sink ts;
+      natural_t ts_id = diag.register_sink("tracer", &ts);
+
       const auto tokens = ocmd_lexer{ program.source }.tokenize(&diag);
       ASSERT_FALSE(tokens.empty())
         << std::format("Negative fuzz input should reach the parser, but lexing failed for source:\n{}", program.source);

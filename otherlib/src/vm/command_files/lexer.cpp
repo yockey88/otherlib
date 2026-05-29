@@ -13,16 +13,18 @@
 
 namespace other {
 
-#define EMIT_TRACE(msg)                                     \
-  {                                                         \
-    source_location loc = { current_line, current_column }; \
-    diagnostic d = {                                        \
-      .severity = VM_DIAGNOSTIC_TRACE,                      \
-      .error_code = LEX_TRACE,                              \
-      .span = { current_source_span_start, loc },           \
-      .final_message = msg                                  \
-    };                                                      \
-    diagnostics->emit(d);                                   \
+#define TRACE_ARGS(...) __VA_OPT__(, ##__VA_ARGS__)
+#define EMIT_TRACE(msg, ...)                                    \
+  {                                                             \
+    source_location loc = { current_line, current_column };     \
+    diagnostic d = {                                            \
+      .severity = VM_DIAGNOSTIC_TRACE,                          \
+      .error_code = LEX_TRACE,                                  \
+      .phase = VM_PHASE_LEXER,                                  \
+      .span = { current_source_span_start, loc },               \
+      .final_message = std::format(msg TRACE_ARGS(__VA_ARGS__)) \
+    };                                                          \
+    diagnostics->emit(d);                                       \
   }
 
   static inline bool is_whitespace(char c) {
@@ -53,7 +55,9 @@ namespace other {
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine is null in lexer!");
     diagnostics = diag;
 
-    tokens.emplace_back(TOKEN_TYPE_SOURCE_START, "", 1, 1);
+    EMIT_TRACE("Tokenizing source:\n{}", source);
+
+    tokens.emplace_back(TOKEN_TYPE_SOURCE_START, "", source_span{ { 1, 1 }, { 1, 1 } });
     while (!finished()) {
       current_source_span_start = { current_line, current_column };
       try {
@@ -72,9 +76,9 @@ namespace other {
           handle_operator();
         } else {
           source_location loc = { current_line, current_column };
-          throw lexer_error(LEX_INVALID_CHAR, { loc }, "Unexpected character encountered during lexing");
+          throw ocmd_toolchain_error(LEX_INVALID_CHAR, { loc }, "Unexpected character encountered during lexing");
         }
-      } catch (const lexer_error& e) {
+      } catch (const ocmd_toolchain_error& e) {
         diagnostic d = kDiagnostics[e.error];
         d.span = e.loc;
         d.final_message = e.msg;
@@ -99,7 +103,7 @@ namespace other {
       }
     }
 
-    tokens.emplace_back(TOKEN_TYPE_EOF, "", current_line, current_column);
+    tokens.emplace_back(TOKEN_TYPE_EOF, "", source_span{ current_source_span_start, { current_line, current_column } });
     return tokens;
   }
 
@@ -119,29 +123,15 @@ namespace other {
     } while (!finished() && is_numeric(current()));
 
     if (check('.')) {
-      EMIT_TRACE("Handling floating-point literal");
       handle_floating_point();
     } else {
       if (check('x') || check('X')) {
-        EMIT_TRACE("Handling hexadecimal literal");
         advance();  // 'x' or 'X'
-#if 1
         handle_hexadecimal();
       } else if (std::isxdigit(current())) {
         handle_hexadecimal();
-#else
-      }
-
-      std::string digit_src = source.substr(cursor, source.find_first_of(" \t\n", cursor) - cursor);
-      // clang-format off
-      if (std::ranges::all_of(digit_src, [](const char c) { return std::isxdigit(c); }) &&
-          std::ranges::any_of(digit_src, [](const char c) { return std::isalpha(c); })) {
-        // clang-format on
-        EMIT_TRACE("Handling hexadecimal literal");
-        handle_hexadecimal();
-#endif
       } else {
-        EMIT_TRACE("Handling integer literal");
+        EMIT_TRACE("Handling integer literal: {}", current_token);
         add_token(TOKEN_TYPE_INTEGER_LITERAL);
       }
     }
@@ -157,21 +147,21 @@ namespace other {
 
     if (check('.')) {
       source_location loc = { current_line, current_column };
-      throw lexer_error(LEX_MULTIPLE_DECIMAL, { current_source_span_start, loc }, "Multiple decimal points in floating-point literal");
+      throw ocmd_toolchain_error(LEX_MULTIPLE_DECIMAL, { current_source_span_start, loc }, "Multiple decimal points in floating-point literal");
     }
 
     if (check('e') || check('E')) {
-      EMIT_TRACE("Handling scientific notation");
+      EMIT_TRACE("Handling scientific literal: {}", current_token);
       handle_scientific_notation();
       return;
     }
 
     if (check('f')) {
-      EMIT_TRACE("Handling floating-point literal suffix");
+      EMIT_TRACE("Handling floating-point literal: {}", current_token);
       consume();
     }
 
-    EMIT_TRACE("Handling floating-point literal");
+    EMIT_TRACE("Handling floating-point literal: {}", current_token);
     add_token(TOKEN_TYPE_FLOATING_POINT_LITERAL);
   }
 
@@ -185,10 +175,10 @@ namespace other {
       lead_digit = std::stod(current_token);
     } catch (std::out_of_range& e) {
       source_location loc = { current_line, current_column };
-      throw lexer_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Leading digit in scientific notation out of range");
+      throw ocmd_toolchain_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Leading digit in scientific notation out of range");
     } catch (std::invalid_argument& e) {
       source_location loc = { current_line, current_column };
-      throw lexer_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Leading digit in scientific notation is not a number");
+      throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Leading digit in scientific notation is not a number");
     }
 
     EMIT_TRACE("Handling leading digit in scientific notation");
@@ -211,10 +201,10 @@ namespace other {
       val = std::stoi(current_token);
     } catch (std::out_of_range& e) {
       source_location loc = { current_line, current_column };
-      throw lexer_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Scientific notation exponent out of range");
+      throw ocmd_toolchain_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Scientific notation exponent out of range");
     } catch (std::invalid_argument& e) {
       source_location loc = { current_line, current_column };
-      throw lexer_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Scientific notation exponent is not a number");
+      throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Scientific notation exponent is not a number");
     }
 
     std::string small_str = "0.";
@@ -243,7 +233,7 @@ namespace other {
 
     if (std::stod(current_token) > std::numeric_limits<float>::max()) {
       source_location loc = { current_line, current_column };
-      throw lexer_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Floating-point literal out of range");
+      throw ocmd_toolchain_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Floating-point literal out of range");
     }
 
     EMIT_TRACE("Handling floating-point literal");
@@ -253,7 +243,7 @@ namespace other {
   void ocmd_lexer::handle_hexadecimal() {
     if (!std::isxdigit(static_cast<unsigned char>(current()))) {
       source_location loc = { current_line, current_column };
-      throw lexer_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Invalid hexadecimal literal: expected hexadecimal digits after '0x'");
+      throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Invalid hexadecimal literal: expected hexadecimal digits after '0x'");
     }
 
     while (std::isxdigit(static_cast<unsigned char>(current()))) {
@@ -270,16 +260,20 @@ namespace other {
     }
 
     if (is_ocmd_keyword(current_token)) {
+      EMIT_TRACE("Handling keyword: {}", current_token);
       add_token(get_keyword_type(current_token));
     } else if (std::ranges::all_of(current_token, [](char c) { return std::isxdigit(static_cast<unsigned char>(c)); })) {
+      EMIT_TRACE("Handling hexadecimal literal: {}", current_token);
       add_token(TOKEN_TYPE_HEX_LITERAL);
     } else {
+      EMIT_TRACE("Handling identifier: {}", current_token);
       add_token(TOKEN_TYPE_IDENTIFIER);
     }
   }
 
   void ocmd_lexer::handle_operator() {
     char c = current();
+    EMIT_TRACE("Handling operator: {}", c);
 
     advance();
 
@@ -320,22 +314,23 @@ namespace other {
 
       default: {
         source_location loc = { current_line, current_column };
-        throw lexer_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Unknown operator or punctuation character encountered during lexing");
+        throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Unknown operator or punctuation character encountered during lexing");
       }
     }
   }
 
   void ocmd_lexer::handle_string() {
+    EMIT_TRACE("Handling string literal");
     char qtype = current_token.back();
     current_token.pop_back();  // Remove the quote
 
     while (!check(qtype)) {
       if (check('\n')) {
         source_location loc = { current_line, current_column };
-        throw lexer_error(LEX_UNTERMINATED_STRING, { current_source_span_start, loc }, "Unterminated string literal at end of line");
+        throw ocmd_toolchain_error(LEX_UNTERMINATED_STRING, { current_source_span_start, loc }, "Unterminated string literal at end of line");
       } else if (finished()) {
         source_location loc = { current_line, current_column };
-        throw lexer_error(LEX_UNTERMINATED_STRING, { current_source_span_start, loc }, "Unterminated string literal at end of file");
+        throw ocmd_toolchain_error(LEX_UNTERMINATED_STRING, { current_source_span_start, loc }, "Unterminated string literal at end of file");
       }
       advance();
     }
@@ -347,6 +342,7 @@ namespace other {
 
   void ocmd_lexer::handle_comment() {
     if (check(';')) {
+      EMIT_TRACE("Handling block comment");
       consume();
 
       bool found_close = check(';') && check_next('/');
@@ -359,12 +355,13 @@ namespace other {
 
       if (!found_close) {
         source_location loc = { current_line, current_column };
-        throw lexer_error(LEX_UNTERMINATED_COMMENT, { current_source_span_start, loc }, "Unterminated block comment");
+        throw ocmd_toolchain_error(LEX_UNTERMINATED_COMMENT, { current_source_span_start, loc }, "Unterminated block comment");
       }
 
       consume();
       consume();
     } else {
+      EMIT_TRACE("Handling line comment");
       while (!check('\n') && !finished()) {
         consume();
       }
@@ -374,7 +371,8 @@ namespace other {
   }
 
   void ocmd_lexer::add_token(token_type type) {
-    tokens.emplace_back(type, current_token, current_line, current_column);
+    source_location loc = { current_line, current_column };
+    tokens.emplace_back(type, current_token, source_span{ current_source_span_start, loc });
     discard_current_token();
   }
 
@@ -433,8 +431,11 @@ namespace other {
       return it->type;
     } else {
       source_location loc = { current_line, current_column };
-      throw lexer_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Keyword not found for string: " + std::string(source_str));
+      throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Keyword not found for string: " + std::string(source_str));
     }
   }
+
+#undef EMIT_TRACE
+#undef TRACE_ARGS
 
 }  // namespace other

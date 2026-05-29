@@ -7,6 +7,8 @@
 #include <array>
 #include <string>
 
+#include "vm/diagnostics/vm_diagnostic.hpp"
+
 namespace other {
 
   constexpr static inline std::array kOperators = {
@@ -250,12 +252,11 @@ namespace other {
     std::string text;
     token_type type;
 
-    size_t line_number;
-    size_t column_number;
+    source_span source_view;
 
-    token() : text(""), type(TOKEN_TYPE_INVALID), line_number(0), column_number(0) {}
-    token(token_type type, const std::string_view str, size_t line, size_t col)
-        : text(str), type(type), line_number(line), column_number(col) {}
+    token() : text(""), type(TOKEN_TYPE_INVALID), source_view{} {}
+    token(token_type type, const std::string_view str, source_span source_view)
+        : text(str), type(type), source_view(source_view) {}
   };
 
 }  // namespace other

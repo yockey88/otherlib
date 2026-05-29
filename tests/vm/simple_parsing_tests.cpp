@@ -5,6 +5,7 @@
 #include "vm/command_files/lexer.hpp"
 #include "vm/command_files/oasm_parser.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
+#include "vm/diagnostics/vm_diagnostic.hpp"
 #include "vm/vm_tests.hpp"
 
 namespace other {
@@ -60,7 +61,7 @@ namespace other {
     EXPECT_EQ(tokens[14].text, "");
 
     for (const auto& token : tokens) {
-      CORE_LOG_DEBUG("Token [{}]: value = {} ({}:{})", token.type, token.text, token.line_number, token.column_number);
+      CORE_LOG_DEBUG("Token [{}]: value = {} source-range([{}, {}])", token.type, token.text, token.source_view.start, token.source_view.end);
     }
 
     const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);

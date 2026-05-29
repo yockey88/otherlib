@@ -13,11 +13,28 @@
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/command_files/token.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
+#include "vm/diagnostics/error_codes.hpp"
+#include "vm/diagnostics/ocmd_errors.hpp"
+#include "vm/diagnostics/vm_diagnostic.hpp"
 #include "vm/instruction.hpp"
 #include "vm/opcode.hpp"
 #include "vm/other_device.hpp"
 
 namespace other {
+
+#define TRACE_ARGS(...) __VA_OPT__(, ##__VA_ARGS__)
+#define EMIT_TRACE(msg, ...)                                    \
+  {                                                             \
+    diagnostic d = {                                            \
+      .severity = VM_DIAGNOSTIC_TRACE,                          \
+      .error_code = PARSE_TRACE,                                \
+      .phase = VM_PHASE_PARSER,                                 \
+      .span = current().source_view,                            \
+      .final_message = std::format(msg TRACE_ARGS(__VA_ARGS__)) \
+    };                                                          \
+    diagnostics->emit(d);                                       \
+  }
+
   namespace detail {
 
     template <typename R>
@@ -48,7 +65,7 @@ namespace other {
           }
         }
 
-        combined_tokens.push_back(token{ TOKEN_TYPE_IDENTIFIER, combined_text, it->line_number, it->column_number });
+        combined_tokens.push_back(token{ TOKEN_TYPE_IDENTIFIER, combined_text, it->source_view });
         it = next_it;
       }
       return combined_tokens;
@@ -121,7 +138,7 @@ namespace other {
         std::views::transform([](const token& tok) {
                if (tok.type == TOKEN_TYPE_IDENTIFIER) {
                  if (std::ranges::all_of(tok.text, [](char c) { return std::isxdigit(static_cast<unsigned char>(c)); })) {
-                   token hex_tok{ TOKEN_TYPE_HEX_LITERAL, tok.text, tok.line_number, tok.column_number };
+                   token hex_tok{ TOKEN_TYPE_HEX_LITERAL, tok.text, tok.source_view };
                    return hex_tok;
                  }
                }
@@ -139,55 +156,110 @@ namespace other {
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine must not be null");
     diagnostics = diag;
 
+    auto unknown_error = [this](const std::string_view msg) {
+      diagnostic d{
+        .severity = VM_DIAGNOSTIC_ERROR,
+        .error_code = VM_UNKNOWN_ERROR,
+        .final_message = std::string(msg)
+      };
+      diagnostics->emit(d);
+      synchronize();
+    };
+
     if (tokens.empty()) {
-      CORE_LOG_ERROR("No tokens to parse");
+      diagnostic d{
+        .severity = VM_DIAGNOSTIC_ERROR,
+        .error_code = PARSE_EMPTY_TOKEN_STREAM,
+        .final_message = "No tokens to parse"
+      };
+      diagnostics->emit(d);
       return {};
     }
 
-    if (tokens[0].type != TOKEN_TYPE_SOURCE_START) {
-      CORE_LOG_ERROR("First token must be SOURCE_START, but found type {} with text '{}'", static_cast<int>(tokens[0].type), tokens[0].text);
+    if (tokens.size() < 2 || (tokens[0].type != TOKEN_TYPE_SOURCE_START && tokens.back().type != TOKEN_TYPE_EOF)) {
+      diagnostic d{
+        .severity = VM_DIAGNOSTIC_ERROR,
+        .error_code = PARSE_INVALID_TOKEN_STREAM,
+        .final_message = std::format("First token must be SOURCE_START and last token must be EOF, first and last token are {} and {}", tokens[0].text, tokens.back().text)
+      };
+      diagnostics->emit(d);
       return {};
     }
-    if (tokens.empty()) {
-      CORE_LOG_ERROR("No tokens to parse after removing SOURCE_START token");
-      return {};
-    }
-    if (tokens.back().type != TOKEN_TYPE_EOF) {
-      CORE_LOG_ERROR("Last token must be EOF, but found type {} with text '{}'", static_cast<int>(tokens.back().type), tokens.back().text);
-      return {};
-    }
+
+    EMIT_TRACE("Parsing {} tokens", tokens.size());
 
     consume();  // consume SOURCE_START token
-    try {
-      auto sections = parse_sections();
-      process_code_sections(sections.sections);
-      process_data_sections(sections.data_sections);
-    } catch (const data_object_error& e) {
-      CORE_LOG_ERROR("Data object error: {}", e.what());
-      return {};
-    } catch (const ocmd_parse_error& e) {
-      CORE_LOG_ERROR("Parse error: {}", e.what());
-      return {};
-    } catch (const std::runtime_error& e) {
-      CORE_LOG_ERROR("Runtime error during parsing: {}", e.what());
-      return {};
-    } catch (const std::exception& e) {
-      CORE_LOG_ERROR("Unexpected error during parsing at token '{}': {}", current().text, e.what());
-      return {};
-    } catch (...) {
-      CORE_LOG_ERROR("Unknown error during parsing at token '{}'", current().text);
-      return {};
-    }
+    section_ir sections;
+    do {
+      try {
+        sections = parse_sections();
+      } catch (const ocmd_toolchain_error& e) {
+        diagnostic d{
+          .severity = VM_DIAGNOSTIC_ERROR,
+          .error_code = e.error,
+          .phase = VM_PHASE_PARSER,
+          .span = e.loc,
+          .final_message = e.msg
+        };
+        diagnostics->emit(d);
+        synchronize();
+        return {};
+      } catch (const std::runtime_error& e) {
+        unknown_error(std::format("Runtime error during parsing at token '{}': {}", current().text, e.what()));
+      } catch (const std::exception& e) {
+        unknown_error(std::format("Error during parsing at token '{}': {}", current().text, e.what()));
+      } catch (...) {
+        unknown_error(std::format("Unknown error during parsing at token '{}'", current().text));
+      }
+    } while (!finished());
 
     if (!finished()) {
-      CORE_LOG_ERROR("Parsing finished but there are still unprocessed tokens starting with type {} and text '{}'", static_cast<int>(current().type), current().text);
+      diagnostic d{
+        .severity = VM_DIAGNOSTIC_ERROR,
+        .error_code = VM_UNKNOWN_ERROR,
+        .final_message = std::format("Parsing finished but there are still unprocessed tokens starting with type {} and text '{}'", current().type, current().text),
+      };
+      diagnostics->emit(d);
       return {};
     }
     OTHER_ASSERT(cursor == tokens.size() - 1, "Expected to be at the last token after parsing, but cursor is at position {} out of {}", cursor, tokens.size());
     OTHER_ASSERT(tokens[cursor].type == TOKEN_TYPE_EOF, "Expected EOF token at end of parsing, but found type {} with text '{}'", static_cast<int>(tokens[cursor].type), tokens[cursor].text);
 
+    try {
+      process_code_sections(sections.sections);
+      process_data_sections(sections.data_sections);
+    } catch (const ocmd_toolchain_error& e) {
+      diagnostic d{
+        .severity = VM_DIAGNOSTIC_ERROR,
+        .error_code = e.error,
+        .span = e.loc,
+        .final_message = e.msg
+      };
+      diagnostics->emit(d);
+      return {};
+    } catch (const std::exception& e) {
+      unknown_error(std::format("Error during processing at token '{}': {}", current().text, e.what()));
+      return {};
+    } catch (...) {
+      unknown_error(std::format("Unknown error during processing at token '{}'", current().text));
+      return {};
+    }
+
     ir_result.valid = true;
     return ir_result;
+  }
+
+  void oasm_parser::synchronize() {
+    constexpr size_t kNumAnchorTokens = 4;
+    constexpr token_type kSynchronizingTokens[kNumAnchorTokens] = {
+      TOKEN_TYPE_DOLLAR,
+      TOKEN_TYPE_HASH,
+      TOKEN_TYPE_SLASH,
+      TOKEN_TYPE_EOF,
+    };
+    while (!finished() && !std::ranges::any_of(std::span(kSynchronizingTokens, kNumAnchorTokens), [this](token_type type) { return check(type); })) {
+      consume();
+    }
   }
 
   oasm_parser::section_ir oasm_parser::parse_sections() {
@@ -212,17 +284,18 @@ namespace other {
 
   void oasm_parser::parse_directive(section_ir& sections) {
     if (!check(TOKEN_TYPE_IDENTIFIER) && !detail::is_keyword(current())) {
-      throw ocmd_parse_error(std::format("Expected identifier or keyword after '#' for directive name: type = {}, text = {}", static_cast<int>(current().type), current().text));
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected directive name after '#', found '{}'", current().type));
     }
 
     const auto dir = current();
     consume();
+    EMIT_TRACE("Attempting to parse directive '#{}'", dir.text);
 
     if (finished()) {
-      throw ocmd_parse_error("Expected '{' after directive name");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, "Expected '{' after directive name, but found end of file");
     }
     if (!check(TOKEN_TYPE_LEFT_BRACE)) {
-      throw ocmd_parse_error("Expected '{' after directive name");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected '{{' after directive name, but found type {} with text '{}'", current().type, current().text));
     }
     consume();  // consume '{'
 
@@ -233,10 +306,10 @@ namespace other {
     }
 
     if (finished()) {
-      throw ocmd_parse_error("Expected '}' at end of directive block");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, "Expected '}' at end of directive block");
     }
     if (!check(TOKEN_TYPE_RIGHT_BRACE)) {
-      throw ocmd_parse_error("Expected '}' at end of directive block");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, "Expected '}' at end of directive block");
     }
     consume();  // consume '}'
   }
@@ -245,7 +318,9 @@ namespace other {
     switch (directive_token.type) {
       case TOKEN_TYPE_KW_DATA: sections.data_sections.emplace_back(parse_data_block(directive_token)); break;
       default:
-        throw ocmd_parse_error(std::format("Unknown directive '#{}'", directive_token.text));
+        /// \todo: default to data here after checking if the token matches any builtin directives,
+        ///        find out ways to define custom directives
+        throw ocmd_toolchain_error(PARSE_UNKNOWN_DIRECTIVE, directive_token.source_view, std::format("Unknown directive '#{}'", directive_token.text));
     }
   }
 
@@ -255,10 +330,10 @@ namespace other {
 
   void oasm_parser::parse_definition(section_ir& sections) {
     if (finished()) {
-      throw ocmd_parse_error("Expected definition/setting or comment after '/'");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected definition/setting or comment after '/', found '{}'", current().text));
     }
     if (!check(TOKEN_TYPE_IDENTIFIER)) {
-      throw ocmd_parse_error(std::format("Expected identifier for definition name after '/', but found type {} with text '{}'", static_cast<int>(current().type), current().text));
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected identifier for definition name after '/', but found type {} with text '{}'", current().type, current().text));
     }
 
     auto& def = ir_result.definitions.emplace_back(compiler_definition{
@@ -267,20 +342,21 @@ namespace other {
     consume();
 
     if (finished()) {
-      throw ocmd_parse_error("Expected ':' after definition name");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected ':' after definition name, found '{}'", current().text));
     }
     if (!check(TOKEN_TYPE_COLON)) {
-      throw ocmd_parse_error("Expected ':' after definition name");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected ':' after definition name, found '{}'", current().text));
     }
     consume();
 
     if (finished()) {
-      throw ocmd_parse_error("Expected value for definition");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected value for definition, found '{}'", current().text));
     }
     // clang-format off
-    if (check(TOKEN_TYPE_KW_BEGIN) || check(TOKEN_TYPE_KW_END) || check(TOKEN_TYPE_KW_DATA) || check(TOKEN_TYPE_KW_ADDRESS_TYPE) ||
+    if (check(TOKEN_TYPE_KW_BEGIN) || check(TOKEN_TYPE_KW_END) || 
+        check(TOKEN_TYPE_KW_DATA) || check(TOKEN_TYPE_KW_ADDRESS_TYPE) ||
         (current().type >= TOKEN_TYPE_KW_I8_TYPE && current().type <= TOKEN_TYPE_KW_USER_DEFINED_TYPE)) {
-      throw ocmd_parse_error(std::format("Unexpected keyword '{}' in definition value", current().text));
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Unexpected keyword '{}' in definition value", current().text));
     }
     // clang-format on
 
@@ -289,19 +365,22 @@ namespace other {
   }
 
   oasm_parser::code_section_ir oasm_parser::parse_code_block() {
+    EMIT_TRACE("Attempting to parse code block");
+
     code_section_ir section;
     if (check(TOKEN_TYPE_DOLLAR)) {
       // must be $ <name> :
       consume();  // consume the '$'
 
       if (!check(TOKEN_TYPE_IDENTIFIER)) {
-        throw ocmd_parse_error("Expected identifier after '$' for code block name");
+        throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected identifier after '$' for code block name, found '{}'", current().text));
       }
       section.name = current().text;
       consume();
+      EMIT_TRACE(" - code block: {}", section.name);
 
       if (!check(TOKEN_TYPE_COLON)) {
-        throw ocmd_parse_error("Expected ':' after code block name");
+        throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected ':' after code block name, found '{}'", current().text));
       }
       consume();
     }
@@ -317,9 +396,10 @@ namespace other {
 
       if (check(TOKEN_TYPE_AT)) {
         consume();  // consume '@'
+        EMIT_TRACE(" - attempting to parse label: {}", current().text);
 
         if (finished() || !check(TOKEN_TYPE_IDENTIFIER)) {
-          throw ocmd_parse_error("Expected identifier after '@' for label definition");
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected identifier after '@' for label definition, found '{}'", current().text));
         }
 
         section.jump_labels.emplace_back(code_section_ir::jump_label_ir{ .name = current().text });
@@ -327,7 +407,7 @@ namespace other {
         consume();
 
         if (finished() || !check(TOKEN_TYPE_COLON)) {
-          throw ocmd_parse_error("Expected ':' after label name");
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected ':' after label name, found '{}'", current().text));
         }
         consume();  // consume ':'
       }
@@ -335,6 +415,7 @@ namespace other {
       if (detail::is_instruction_keyword(current())) {
         token curr_token = current();
         canonical_opcode category_and_type = get_canonical_opcode(curr_token);
+        EMIT_TRACE(" - attempting to parse instruction: {} (canonical opcode: {})", curr_token.text, category_and_type);
         consume();
 
         auto& instr = section.instructions.emplace_back(code_section_ir::instruction_ir{
@@ -353,14 +434,14 @@ namespace other {
         }
 
         auto param_tokens = detail::collect_instruction_parameter_tokens(raw_param_tokens);
-        const auto params_size = std::ranges::size(param_tokens);
+        const size_t params_size = std::ranges::size(param_tokens);
         if (params_size > 3) {
-          throw ocmd_parse_error(std::format("Too many parameters for instruction '{}', expected at most 3 but found {}", curr_token.text, params_size));
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Too many parameters for instruction '{}', expected at most 3 but found {}", curr_token.text, params_size));
         }
 
         uint32_t instr_parity = canonical_instruction::opcode_parity(category_and_type);
         if (params_size > instr_parity) {
-          throw ocmd_parse_error(std::format("Expecteda at most {} parameters for instruction '{}', but found {}", instr_parity, curr_token.text, params_size));
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected at most {} parameters for instruction '{}', but found {}", instr_parity, curr_token.text, params_size));
         }
 
         size_t arg_idx = 0;
@@ -383,6 +464,7 @@ namespace other {
   oasm_parser::data_section_ir oasm_parser::parse_data_block(const token& directive_token) {
     data_section_ir section;
     section.name = directive_token.text;
+    EMIT_TRACE("Attempting to parse data block: {}", section.name);
 
     while (!finished()) {
       /// dot implies tag name begin
@@ -391,34 +473,36 @@ namespace other {
       }
 
       if (check(TOKEN_TYPE_DOLLAR)) {
-        throw ocmd_parse_error("Forgot to end data block, expected '}' before code block");
+        throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Forgot to end data block, expected '}}' before code block, found '{}'", current().text));
       }
       if (check(TOKEN_TYPE_HASH)) {
-        throw ocmd_parse_error("Forgot to end data block, expected '}' before directive block");
+        throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Forgot to end data block, expected '}}' before directive block, found '{}'", current().text));
       }
 
       if (check(TOKEN_TYPE_DOT)) {
+        EMIT_TRACE(" - attempting to parse field");
+
         consume();  // consume the '.'
         token name;
         token type_label;
-        // token value_token;
 
         if (!check(TOKEN_TYPE_IDENTIFIER)) {
-          throw ocmd_parse_error(std::format("Expected identifier for data object name found [{}] instead", current().text));
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected identifier for data object name found '{}'", current().text));
         }
         name = current();
         consume();
+        EMIT_TRACE(" - data field: {}", name.text);
 
         if (finished()) {
-          throw ocmd_parse_error("Expected ':' after data object name");
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected ':' after data object name, found end of file"));
         }
         if (!check(TOKEN_TYPE_COLON)) {
-          throw ocmd_parse_error("Expected ':' after data object name");
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected ':' after data object name, found '{}'", current().text));
         }
         consume();
 
         if (finished()) {
-          throw ocmd_parse_error("Expected type label or '=' after ':' in data object definition found end of file");
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected type label or '=' after ':' in data object definition found end of file"));
         }
         if (detail::is_type_keyword(current())) {
           type_label = current();
@@ -426,10 +510,10 @@ namespace other {
         }
 
         if (finished()) {
-          throw ocmd_parse_error("Expected '=' after data object definition prefix");
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected '=' after data object definition prefix"));
         }
         if (!check(TOKEN_TYPE_EQUAL)) {
-          throw ocmd_parse_error("Expected '=' after data object type label found '" + current().text + "'");
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected '=' after data object type label found '{}'", current().text));
         }
         consume();
 
@@ -439,10 +523,10 @@ namespace other {
           detail::get_data_object_value_filter() |
           std::ranges::to<std::vector>();
         if (value_tokens.empty()) {
-          throw ocmd_parse_error("Expected value for data object, but found none");
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected value for data object, but found none"));
         }
         if (value_tokens.back().type == TOKEN_TYPE_EOF) {
-          throw ocmd_parse_error(std::format("#{} missing closing '}}'", directive_token.text));
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected '}}' to close data block '#{}'", directive_token.text));
         }
 
         std::string full_value_text;
@@ -450,9 +534,10 @@ namespace other {
           full_value_text += _.text;
           consume();
         }
+        EMIT_TRACE(" - data field value: {}", full_value_text);
 
         if (!check(TOKEN_TYPE_DOT) && !check(TOKEN_TYPE_RIGHT_BRACE)) {
-          throw ocmd_parse_error(std::format("Expected end of data object value with '.' or '}}', but found type {} with text '{}'", current().type, current().text));
+          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected end of data object value with '.' or '}}', but found type {} with text '{}'", current().type, current().text));
         }
 
         data_type final_deduced_type = data_type::OCMD_DATA_TYPE_INVALID;
@@ -465,36 +550,38 @@ namespace other {
         if (type_label.type == TOKEN_TYPE_KW_ADDRESS_TYPE && final_deduced_type == OCMD_DATA_TYPE_BLOB) {
           final_deduced_type = OCMD_DATA_TYPE_ADDRESS;
         }
+        EMIT_TRACE(" - final deduced type: {}", final_deduced_type);
 
         if (final_deduced_type == OCMD_DATA_TYPE_ADDRESS) {
           if (value_tokens.size() != 1) {
-            throw ocmd_parse_error("Expected a single token for address type, but found " + std::to_string(value_tokens.size()));
+            throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected a single token for address type, but found {}", value_tokens.size()));
           }
           if (value_tokens[0].type != TOKEN_TYPE_HEX_LITERAL) {
-            throw ocmd_parse_error("Expected a single hexadecimal literal for address type, but found " + std::to_string(value_tokens.size()) + " tokens");
+            throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected a single hexadecimal literal for address type, but found {} tokens", value_tokens.size()));
           }
         }
 
         if (final_deduced_type == OCMD_DATA_TYPE_BLOB) {
           if (!std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_HEX_LITERAL || tok.type == TOKEN_TYPE_INTEGER_LITERAL; })) {
-            throw ocmd_parse_error("Expected all tokens for blob type to be hexadecimal or integer literals");
+            throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected all tokens for blob type to be hexadecimal or integer literals"));
           }
         }
 
         if (final_deduced_type == OCMD_DATA_TYPE_STRING) {
           if (value_tokens.size() > 1) {
             if (!std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_STRING_LITERAL; })) {
-              throw ocmd_parse_error("Expected all tokens to be string literals for string data type, but found a token of type " + std::to_string(std::ranges::find_if(value_tokens, [](const token& tok) { return tok.type != TOKEN_TYPE_STRING_LITERAL; })->type));
+              throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected all tokens to be string literals for string data type, but found a token of type {}", std::ranges::find_if(value_tokens, [](const token& tok) { return tok.type != TOKEN_TYPE_STRING_LITERAL; })->type));
             }
             value_tokens = value_tokens | detail::filter_empty_strings() | std::ranges::to<std::vector>();
           } else {
             if (value_tokens[0].type != TOKEN_TYPE_STRING_LITERAL) {
-              throw ocmd_parse_error("Expected string literal for string data type, but found token of type " + std::to_string(value_tokens[0].type));
+              throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected string literal for string data type, but found token of type {}", value_tokens[0].type));
             }
           }
         }
 
-        token value_token{ TOKEN_TYPE_DATA_VALUE, full_value_text, 0, 0 };
+        EMIT_TRACE(" - field valid");
+        token value_token{ TOKEN_TYPE_DATA_VALUE, full_value_text, current().source_view };
         section.objects.push_back(data_section_ir::data_object_ir{
           .name = name.text,
           .type_label = type_label.text,
@@ -507,13 +594,15 @@ namespace other {
     }
 
     if (finished()) {
-      throw ocmd_parse_error("Expected '}' at end of data block");
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, "Expected '}' at end of data block, but found end of file");
     }
 
     return section;
   }
 
   void oasm_parser::process_code_sections(std::vector<code_section_ir>& sections) {
+    EMIT_TRACE("Processing code sections");
+
     /// \todo type-checking
     for (auto& section : sections) {
       for (auto& instr : section.instructions) {
@@ -574,6 +663,8 @@ namespace other {
   }
 
   void oasm_parser::process_data_sections(std::vector<data_section_ir>& sections) {
+    EMIT_TRACE("Processing data sections");
+
     for (auto& data_section : sections) {
       auto itr = std::ranges::find(ir_result.data_blocks, data_section.name, &data_block::name);
       if (itr == ir_result.data_blocks.end()) {
@@ -586,7 +677,7 @@ namespace other {
       for (auto& obj_ir : data_section.objects) {
         auto itr = std::ranges::find(data_blk.objects, obj_ir.name, &data_object::name);
         if (itr != data_blk.objects.end()) {
-          throw ocmd_parse_error(std::format("Duplicate data object name '{}' in data block '{}'", obj_ir.name, data_blk.name));
+          throw ocmd_toolchain_error(PARSE_DUPLICATE_DATA_OBJ, current().source_view, std::format("Duplicate data object name '{}' in data block '{}'", obj_ir.name, data_blk.name));
         }
 
         auto& obj = data_blk.objects.emplace_back();
@@ -605,7 +696,7 @@ namespace other {
 
   const token& oasm_parser::peek(size_t offset) const {
     if (finished()) {
-      static token eof_token{ TOKEN_TYPE_EOF, "", static_cast<size_t>(-1), static_cast<size_t>(-1) };
+      static token eof_token{ TOKEN_TYPE_EOF, "", source_span{} };
       return eof_token;
     } else {
       return tokens[cursor + offset];
@@ -642,13 +733,21 @@ namespace other {
     return current().type == type;
   }
 
+  bool oasm_parser::check(std::span<const token_type> types) const {
+    return std::ranges::any_of(types, [this](token_type type) { return check(type); });
+  }
+
   bool oasm_parser::check_next(token_type type) const {
     return peek(1).type == type;
   }
 
+  bool oasm_parser::check_next(std::span<const token_type> types) const {
+    return std::ranges::any_of(types, [this](token_type type) { return check_next(type); });
+  }
+
   canonical_opcode oasm_parser::get_canonical_opcode(const token& tok) const {
     if (tok.type < TOKEN_TYPE_KW_STOPDEV || tok.type > TOKEN_TYPE_KW_LOADSCN) {
-      throw ocmd_parse_error(std::format("Token '{}' is not a valid instruction keyword", tok.text));
+      throw ocmd_toolchain_error(PARSE_UNKNOWN_OPCODE_KEYWORD, tok.source_view, std::format("Token '{}' is not a valid instruction keyword", tok.text));
     }
 
     switch (tok.type) {
@@ -683,8 +782,11 @@ namespace other {
       case TOKEN_TYPE_KW_PLAYSCN: return canonical_opcode::PLAYSCN_OP;
       case TOKEN_TYPE_KW_STOPSCN: return canonical_opcode::STOPSCN_OP;
       default:
-        throw ocmd_parse_error(std::format("Unhandled instruction keyword type [{}] ({})", tok.type, tok.text));
+        throw ocmd_toolchain_error(PARSE_UNKNOWN_OPCODE_KEYWORD, tok.source_view, std::format("Unhandled instruction keyword type [{}] ({})", tok.type, tok.text));
     }
   }
+
+#undef EMIT_TRACE
+#undef TRACE_ARGS
 
 }  // namespace other

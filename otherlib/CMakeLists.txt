@@ -88,7 +88,8 @@ target_sources(otherlib
     src/scripting/environment_interface.cpp
 
     src/vm/diagnostics/vm_diagnostic.cpp
-    src/vm/diagnostics/trace_sink.cpp
+    src/vm/diagnostics/diagnostic_sink.cpp
+    src/vm/diagnostics/ocmd_trace_sink.cpp
     src/vm/diagnostics/source_map.cpp
     src/vm/diagnostics/diagnostic_engine.cpp
     src/vm/command_files/token.cpp

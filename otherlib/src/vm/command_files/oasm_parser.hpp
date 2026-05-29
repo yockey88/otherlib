@@ -10,6 +10,7 @@
 
 #include "vm/command_files/ocmd_ir.hpp"
 #include "vm/command_files/token.hpp"
+#include "vm/diagnostics/vm_diagnostic.hpp"
 
 namespace other {
 
@@ -34,9 +35,9 @@ namespace other {
         uint32_t instruction_index = 0;
         canonical_opcode opcode = canonical_opcode::INVALID_OP;
         token arguments[kMaxArguments] = {
-          token{ TOKEN_TYPE_INVALID, "", 0, 0 },
-          token{ TOKEN_TYPE_INVALID, "", 0, 0 },
-          token{ TOKEN_TYPE_INVALID, "", 0, 0 }
+          token{ TOKEN_TYPE_INVALID, "", source_span{ { 0, 0 }, { 0, 0 } } },
+          token{ TOKEN_TYPE_INVALID, "", source_span{ { 0, 0 }, { 0, 0 } } },
+          token{ TOKEN_TYPE_INVALID, "", source_span{ { 0, 0 }, { 0, 0 } } }
         };
       };
       struct jump_label_ir {
@@ -73,6 +74,8 @@ namespace other {
 
     size_t cursor = 0;
 
+    void synchronize();
+
     section_ir parse_sections();
     void parse_directive(section_ir& sections);
     void parse_keyword_directive(section_ir& sections, const token& directive_token);
@@ -95,7 +98,9 @@ namespace other {
     bool finished() const;
 
     bool check(token_type type) const;
+    bool check(std::span<const token_type> types) const;
     bool check_next(token_type type) const;
+    bool check_next(std::span<const token_type> types) const;
 
     canonical_opcode get_canonical_opcode(const token& tok) const;
   };
