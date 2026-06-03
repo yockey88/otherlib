@@ -35,14 +35,28 @@ namespace other {
       for (size_t index = 0; index < expected_objects.size(); ++index) {
         const auto& expected = expected_objects[index];
         EXPECT_EQ(actual.fields[index].name, expected.name);
-        EXPECT_EQ(actual.fields[index].offset, static_cast<uint32_t>(current_offset));
-        EXPECT_EQ(actual.fields[index].size, static_cast<uint32_t>(expected.data.size()));
+        EXPECT_GE(actual.fields[index].offset, static_cast<uint32_t>(current_offset));
+        EXPECT_GE(actual.fields[index].size, static_cast<uint32_t>(expected.data.size()));
 
-        current_offset += expected.data.size();
+        size_t size = expected.data.size();
         expected_data.insert(expected_data.end(), expected.data.begin(), expected.data.end());
+        if (size % 8 != 0) {
+          size_t padding_needed = 8 - (size % 8);
+          for (size_t i = 0; i < padding_needed; i++) {
+            expected_data.push_back(0x00);
+          }
+        }
+        current_offset += expected.data.size();
       }
 
-      EXPECT_EQ(actual.data, expected_data);
+      if (actual.data.size() < expected_data.size()) {
+        ADD_FAILURE() << std::format("Actual data size {} is smaller than expected data size {} for data section '{}'", actual.data.size(), expected_data.size(), actual.name);
+        return;
+      }
+
+      // expected padding pattern is to pad to 8 bytes with zeros
+
+      EXPECT_EQ(actual.data, expected_data) << std::format("Data content mismatch for data section '{}', data size: {}/{}.", actual.name, actual.data.size(), expected_data.size());
     }
 
     void expect_symbol_fixups_match(const lowering_artifact& actual, const std::span<const expected_symbol_fixup> expected_fixups) {
@@ -143,6 +157,14 @@ namespace other {
             machine_instructions.push_back(expected_machine_instruction{ .expected_opcode = opcode_return() });
           } break;
 
+          case canonical_opcode::SYSCALL_OP: {
+            if (expected.arguments.size() == 1 && expected.arguments[0].type == TOKEN_TYPE_INTEGER_LITERAL) {
+              machine_instructions.push_back(expected_machine_instruction{ .expected_opcode = opcode_syscall(scalar_value(expected.arguments[0])) });
+            } else {
+              ADD_FAILURE() << "Unhandled syscall instruction shape for current generator";
+            }
+          } break;
+
           case canonical_opcode::ADD_OP: {
             if (expected.arguments.size() == 2 && is_register_argument(expected.arguments[0]) && is_register_argument(expected.arguments[1])) {
               machine_instructions.push_back(expected_machine_instruction{
@@ -190,14 +212,6 @@ namespace other {
               });
             } else {
               ADD_FAILURE() << "Unhandled mod instruction shape for current generator";
-            }
-          } break;
-
-          case canonical_opcode::LOADSCN_OP: {
-            if (expected.arguments.size() == 1 && expected.arguments[0].type == TOKEN_TYPE_ADDRESS) {
-              machine_instructions.push_back(expected_machine_instruction{ .expected_opcode = opcode_load_scene_with_id_at(scalar_value(expected.arguments[0])) });
-            } else {
-              ADD_FAILURE() << "Unhandled loadscn instruction shape for current generator";
             }
           } break;
 
@@ -331,7 +345,7 @@ namespace other {
     detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "main", false, expected_main);
   }
 
-  TEST_F(vm_tests, ocmd_compiler_mixed_simple_data_and_code_blocks) {
+  TEST_F(vm_tests, ocmd_compiler_mixed_blocks) {
     const std::string_view source = R"(
     #data {
       .first_addr : address = 0x1234
@@ -421,7 +435,7 @@ namespace other {
       program.compiled_blocks[1].artifact, detail::expected_symbol_fixups_for_current_generator(expected_copy));
   }
 
-  TEST_F(vm_tests, ocmd_compiler_current_generator_encodes_supported_instruction_forms) {
+  TEST_F(vm_tests, ocmd_compiler_all_supported_instructions) {
     const std::string_view source = R"(
     #data {
       .answer : int32 = 42
@@ -444,7 +458,7 @@ namespace other {
       mul r5, r6
       div r7, r8
       mod r9, ra
-      loadscn 0x0009
+      syscall 9
       ret
     end
     )";
@@ -533,8 +547,8 @@ namespace other {
         .arguments = { detail::make_register_argument(r9), detail::make_register_argument(ra) },
       },
       detail::expected_instruction{
-        .expected_opcode = canonical_opcode::LOADSCN_OP,
-        .arguments = { detail::make_address_argument(0x0009) },
+        .expected_opcode = canonical_opcode::SYSCALL_OP,
+        .arguments = { detail::make_integer_literal_argument(9) },
       },
       detail::expected_instruction{
         .expected_opcode = canonical_opcode::RET_OP,

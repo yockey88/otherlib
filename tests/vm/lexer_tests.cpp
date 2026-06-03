@@ -68,6 +68,30 @@ namespace other {
     void expect_tokens(const std::string_view source, const std::span<const expected_token_spec> expected) {
       diagnostic_engine diag;
       const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
+      std::stringstream tracess;
+      for (size_t index = 0; index < std::min(tokens.size(), expected.size()); ++index) {
+        tracess << std::format("Expected Token: type={}, text='{}' | Actual Token: type={}, text='{}'", expected[index].type, expected[index].text, tokens[index].type, tokens[index].text);
+        if (expected[index].type != tokens[index].type) {
+          tracess << " <-- TYPE MISMATCH";
+        } else if (expected[index].text != tokens[index].text) {
+          tracess << " <-- TEXT MISMATCH";
+        }
+        tracess << "\n";
+      }
+      if (tokens.size() != expected.size()) {
+        size_t diff = std::max(tokens.size(), expected.size()) - std::min(tokens.size(), expected.size());
+        tracess << std::format("Token count mismatch: expected {} tokens, but found {} tokens (difference of {})", expected.size(), tokens.size(), diff);
+        for (size_t index = std::min(tokens.size(), expected.size()); index < std::max(tokens.size(), expected.size()); ++index) {
+          if (index < expected.size()) {
+            tracess << std::format("Expected Token: type={}, text='{}' | Actual Token: <no token>", expected[index].type, expected[index].text);
+          } else {
+            tracess << std::format("Actual Token: type={}, text='{}' | Expected Token: <no token>", tokens[index].type, tokens[index].text);
+          }
+          tracess << "\n";
+        }
+      }
+      SCOPED_TRACE(tracess.str());
+
       ASSERT_EQ(tokens.size(), expected.size())
         << std::format("Expected {} tokens, but found {}", expected.size(), tokens.size());
 
@@ -86,7 +110,7 @@ namespace other {
 
   }  // namespace
 
-  TEST_F(vm_tests, basic_ocmd_lexing) {
+  TEST_F(vm_tests, basic_lexing) {
     constexpr std::array expected = {
       expected_token_spec{ TOKEN_TYPE_SOURCE_START, "" },
       expected_token_spec{ TOKEN_TYPE_KW_OBJECT, "object" },
@@ -117,7 +141,7 @@ namespace other {
     expect_tokens(source, expected);
   }
 
-  TEST_F(vm_tests, ocmd_lexer_ignores_line_and_block_comments) {
+  TEST_F(vm_tests, lexer_ignores_line_and_block_comments) {
     constexpr std::array expected = {
       expected_token_spec{ TOKEN_TYPE_SOURCE_START, "" },
       expected_token_spec{ TOKEN_TYPE_KW_WRITE, "write" },
@@ -140,13 +164,107 @@ namespace other {
     expect_tokens(source, expected);
   }
 
-  TEST_F(vm_tests, ocmd_lexer_returns_empty_stream_on_lex_error) {
+  TEST_F(vm_tests, lexer_returns_empty_stream_on_lex_error) {
     diagnostic_engine diag;
     const auto tokens = ocmd_lexer{ "tag \"unterminated" }.tokenize(&diag);
     EXPECT_TRUE(tokens.empty());
   }
 
-  TEST_F(vm_tests, ocmd_lexer_light_fuzzing_generated_valid_streams) {
+  TEST_F(vm_tests, lexer_identifier_with_hyphen) {
+    constexpr std::array expected = {
+      expected_token_spec{ TOKEN_TYPE_SOURCE_START, "" },
+      expected_token_spec{ TOKEN_TYPE_IDENTIFIER, "my-identifier" },
+      expected_token_spec{ TOKEN_TYPE_COLON, ":" },
+      expected_token_spec{ TOKEN_TYPE_KW_STRING_TYPE, "string" },
+      expected_token_spec{ TOKEN_TYPE_EQUAL, "=" },
+      expected_token_spec{ TOKEN_TYPE_STRING_LITERAL, "test" },
+      expected_token_spec{ TOKEN_TYPE_EOF, "" },
+    };
+
+    constexpr std::string_view source = R"(
+    my-identifier : string = "test"
+    )";
+    expect_tokens(source, expected);
+  }
+
+  TEST_F(vm_tests, lexer_access_register) {
+    constexpr std::array expected = {
+      expected_token_spec{ TOKEN_TYPE_SOURCE_START, "" },
+      expected_token_spec{ TOKEN_TYPE_DOLLAR, "$" },
+      expected_token_spec{ TOKEN_TYPE_IDENTIFIER, "main" },
+      expected_token_spec{ TOKEN_TYPE_COLON, ":" },
+      expected_token_spec{ TOKEN_TYPE_KW_SET, "set" },
+      expected_token_spec{ TOKEN_TYPE_HEX_LITERAL, "0x0100" },
+      expected_token_spec{ TOKEN_TYPE_COMMA, "," },
+      expected_token_spec{ TOKEN_TYPE_INTEGER_LITERAL, "42" },
+      expected_token_spec{ TOKEN_TYPE_KW_SET, "set" },
+      expected_token_spec{ TOKEN_TYPE_KW_R1, "r1" },
+      expected_token_spec{ TOKEN_TYPE_COMMA, "," },
+      expected_token_spec{ TOKEN_TYPE_LEFT_BRACKET, "[" },
+      expected_token_spec{ TOKEN_TYPE_HEX_LITERAL, "0x0100" },
+      expected_token_spec{ TOKEN_TYPE_RIGHT_BRACKET, "]" },
+      expected_token_spec{ TOKEN_TYPE_KW_DUMP, "dump" },
+      expected_token_spec{ TOKEN_TYPE_KW_R1, "r1" },
+      expected_token_spec{ TOKEN_TYPE_KW_END, "end" },
+      expected_token_spec{ TOKEN_TYPE_EOF, "" },
+    };
+
+    constexpr std::string_view source = R"(
+    $main:
+      set 0x0100, 42
+      set r1, [0x0100]
+      dump r1
+    end
+    )";
+    expect_tokens(source, expected);
+  }
+
+  TEST_F(vm_tests, lexer_full_program) {
+    const std::string_view source = R"(
+    #data {
+      .count : = 17
+      .payload : = 0A 0B 0C
+      .load-path : string = "C:\Program Files\Example\file.txt"
+    }
+    $main:
+      ret
+    )";
+
+    constexpr std::array expected = {
+      expected_token_spec{ TOKEN_TYPE_SOURCE_START, "" },
+      expected_token_spec{ TOKEN_TYPE_HASH, "#" },
+      expected_token_spec{ TOKEN_TYPE_KW_DATA, "data" },
+      expected_token_spec{ TOKEN_TYPE_LEFT_BRACE, "{" },
+      expected_token_spec{ TOKEN_TYPE_DOT, "." },
+      expected_token_spec{ TOKEN_TYPE_IDENTIFIER, "count" },
+      expected_token_spec{ TOKEN_TYPE_COLON, ":" },
+      expected_token_spec{ TOKEN_TYPE_EQUAL, "=" },
+      expected_token_spec{ TOKEN_TYPE_INTEGER_LITERAL, "17" },
+      expected_token_spec{ TOKEN_TYPE_DOT, "." },
+      expected_token_spec{ TOKEN_TYPE_IDENTIFIER, "payload" },
+      expected_token_spec{ TOKEN_TYPE_COLON, ":" },
+      expected_token_spec{ TOKEN_TYPE_EQUAL, "=" },
+      expected_token_spec{ TOKEN_TYPE_HEX_LITERAL, "0A" },
+      expected_token_spec{ TOKEN_TYPE_HEX_LITERAL, "0B" },
+      expected_token_spec{ TOKEN_TYPE_HEX_LITERAL, "0C" },
+      expected_token_spec{ TOKEN_TYPE_DOT, "." },
+      expected_token_spec{ TOKEN_TYPE_IDENTIFIER, "load-path" },
+      expected_token_spec{ TOKEN_TYPE_COLON, ":" },
+      expected_token_spec{ TOKEN_TYPE_KW_STRING_TYPE, "string" },
+      expected_token_spec{ TOKEN_TYPE_EQUAL, "=" },
+      expected_token_spec{ TOKEN_TYPE_STRING_LITERAL, R"(C:\Program Files\Example\file.txt)" },
+      expected_token_spec{ TOKEN_TYPE_RIGHT_BRACE, "}" },
+      expected_token_spec{ TOKEN_TYPE_DOLLAR, "$" },
+      expected_token_spec{ TOKEN_TYPE_IDENTIFIER, "main" },
+      expected_token_spec{ TOKEN_TYPE_COLON, ":" },
+      expected_token_spec{ TOKEN_TYPE_KW_RET, "ret" },
+      expected_token_spec{ TOKEN_TYPE_EOF, "" },
+    };
+
+    expect_tokens(source, expected);
+  }
+
+  TEST_F(vm_tests, lexer_light_fuzzing_generated_valid_streams) {
     std::mt19937 generator(0x00C0FFEEu);
     std::uniform_int_distribution<size_t> token_count_dist(4, 18);
     std::uniform_int_distribution<size_t> lexeme_dist(0, k_fuzz_lexemes.size() - 1);
@@ -173,7 +291,7 @@ namespace other {
     }
   }
 
-  TEST_F(vm_tests, ocmd_lexer_light_fuzzing_rejects_invalid_symbols) {
+  TEST_F(vm_tests, lexer_light_fuzzing_rejects_invalid_symbols) {
     std::mt19937 generator(0x00123456u);
     std::uniform_int_distribution<size_t> prefix_count_dist(1, 8);
     std::uniform_int_distribution<size_t> lexeme_dist(0, k_fuzz_lexemes.size() - 1);

@@ -47,6 +47,7 @@ namespace other {
     uint32_t group2_opcode_with_register(uint8_t type, uint16_t reg);
     uint32_t group2_opcode_with_address(uint8_t type, uint16_t addr);
     uint32_t group2_opcode_with_register_and_address(uint8_t type, uint16_t reg, uint16_t addr);
+    uint32_t group2_opcode_with_constant(uint8_t type, uint16_t k);
 
     uint32_t get_group3_category();
     uint32_t group3_opcode(uint8_t type);
@@ -228,6 +229,10 @@ namespace other {
   uint32_t opcode_return_value_in_x(uint32_t x) {
     return detail::group2_opcode_with_register(0x5, x);
   }
+
+  uint32_t opcode_syscall(uint16_t k) {
+    return detail::group2_opcode_with_constant(0x6, k);
+  }
   /// group 2 end -----------------
 
   /// group 3 start ---------------
@@ -253,17 +258,6 @@ namespace other {
   /// group 3 end -----------------
 
   /// group 4 start ---------------
-  uint32_t opcode_load_scene_with_id_at(uint16_t n) {
-    return detail::group_4_opcode_with_address(0x0, n);
-  }
-
-  uint32_t opcode_play_scene() {
-    return detail::group4_opcode(0x1, 0);
-  }
-
-  uint32_t opcode_stop_scene() {
-    return detail::group4_opcode(0x2, 0);
-  }
   /// group 4 end -----------------
 
   /// group 5 start ---------------
@@ -344,6 +338,10 @@ namespace other {
 
     uint32_t group2_opcode_with_register(uint8_t type, uint16_t reg) {
       return opcode_set_x_register(opcode_set_type(get_group2_category(), type), reg);
+    }
+
+    uint32_t group2_opcode_with_constant(uint8_t type, uint16_t k) {
+      return opcode_set_k_constant(opcode_set_type(get_group2_category(), type), k);
     }
 
     uint32_t group2_opcode_with_address(uint8_t type, uint16_t addr) {

@@ -124,6 +124,7 @@ namespace other {
       .greeting : = "hello"
       .count : = 17
       .payload : = 0A 0B 0C
+      .load-path : string = "C:\Program Files\Example\file.txt"
     }
     $main:
       ret
@@ -152,6 +153,12 @@ namespace other {
         .value_text = "0A0B0C",
         .type = OCMD_DATA_TYPE_BLOB,
         .data = std::vector<uint8_t>{ 0x0A, 0x0B, 0x0C },
+      },
+      detail::expected_data_object{
+        .name = "load-path",
+        .value_text = R"(C:\Program Files\Example\file.txt)",
+        .type = OCMD_DATA_TYPE_STRING,
+        .data = detail::raw_bytes_from_string(R"(C:\Program Files\Example\file.txt)"),
       },
     };
 
@@ -213,6 +220,88 @@ namespace other {
       detail::expected_instruction{
         .expected_opcode = canonical_opcode::SET_OP,
         .arguments = { detail::make_register_argument(r1), detail::make_label_argument("data.player.health") },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::RET_OP,
+      },
+    };
+
+    expect_code_block_matches(ir.code_blocks[0], "main", expected_code);
+  }
+
+  TEST_F(vm_tests, oasm_parsing_accepts_jump_labels) {
+    const std::string_view source = R"(
+    $main:
+/;
+if 10 > 20 {
+  print(30)
+} else {
+  print(10)
+}
+return;
+;/
+      set r1, 10
+      set r2, 20
+      set r3, 30
+      cmp r1, r2, rflag
+      jne elseblock
+        dump r3
+        goto endif
+    @elseblock:
+        dump r1
+    
+    @endif:
+      ret
+    end
+    )";
+
+    ocmd_trace_sink ts;
+    diagnostic_engine diag;
+    natural_t ts_id = 0;
+    ASSERT_NO_FATAL_FAILURE(ts_id = diag.register_sink("tracer", &ts));
+    EXPECT_NE(ts_id, 0) << "Failed to register trace sink for diagnostics";
+    const auto ir = detail::parse_source(source, &diag);
+    ASSERT_NO_FATAL_FAILURE(diag.remove_sink(ts_id));
+    ASSERT_TRUE(ir.valid);
+    ASSERT_TRUE(ir.data_blocks.empty());
+    ASSERT_EQ(ir.code_blocks.size(), 1);
+
+    const auto& r1 = detail::get_register_case(1);
+    const auto& r2 = detail::get_register_case(2);
+    const auto& r3 = detail::get_register_case(3);
+    const auto& rflag = detail::get_register_case(vm_register_idx::VM_RFLAG);
+    const std::array expected_code = {
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::SET_OP,
+        .arguments = { detail::make_register_argument(r1), detail::make_integer_literal_argument(10) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::SET_OP,
+        .arguments = { detail::make_register_argument(r2), detail::make_integer_literal_argument(20) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::SET_OP,
+        .arguments = { detail::make_register_argument(r3), detail::make_integer_literal_argument(30) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::CMP_OP,
+        .arguments = { detail::make_register_argument(r1), detail::make_register_argument(r2), detail::make_register_argument(rflag) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::JNE_OP,
+        .arguments = { detail::make_label_argument("elseblock") },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::DUMP_OP,
+        .arguments = { detail::make_register_argument(r3) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::GOTO_OP,
+        .arguments = { detail::make_label_argument("endif") },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::DUMP_OP,
+        .arguments = { detail::make_register_argument(r1) },
       },
       detail::expected_instruction{
         .expected_opcode = canonical_opcode::RET_OP,

@@ -302,15 +302,26 @@ namespace other {
       }
       SCOPED_TRACE(std::format("Actual compiled code block '{}':\n{}", actual.name, actual_instructions_str));
       SCOPED_TRACE(std::format("Expected compiled code block '{}':\n{}", expected_name, expected_instructions_str));
-      ASSERT_EQ(actual_instructions.size(), expected_instructions.size());
-      for (size_t index = 0; index < expected_instructions.size(); ++index) {
+      EXPECT_EQ(actual_instructions.size(), expected_instructions.size());
+      auto min_size = std::min(actual_instructions.size(), expected_instructions.size());
+      auto max_size = std::max(actual_instructions.size(), expected_instructions.size());
+      for (size_t index = 0; index < min_size; ++index) {
         SCOPED_TRACE(std::format("Comparing instruction at index {}: actual opcode {:#010x}, expected opcode {:#010x}", index, actual_instructions[index].opcode, expected_instructions[index].expected_opcode));
         expect_machine_instruction_matches(actual_instructions[index], expected_instructions[index]);
       }
+      std::stringstream ss;
+      for (size_t index = min_size; index < max_size; ++index) {
+        if (index < actual_instructions.size()) {
+          ss << std::format("Extra actual instruction at index {}: opcode {:#010x}\n", index, actual_instructions[index].opcode);
+        } else {
+          ss << std::format("Missing expected instruction at index {}: expected opcode {:#010x}\n", index, expected_instructions[index].expected_opcode);
+        }
+      }
+      SCOPED_TRACE(ss.str());
     }
 
     const register_case& get_register_case(const size_t index) {
-      return k_register_cases[index % k_register_cases.size()];
+      return kRegisterKeywords[index % kRegisterKeywords.size()];
     }
 
     expected_argument make_register_argument(const register_case& reg) {
@@ -318,6 +329,14 @@ namespace other {
         .type = reg.type,
         .raw_txt = std::string{ reg.text },
         .value = reg.value,
+      };
+    }
+
+    expected_argument make_integer_literal_argument(const int value) {
+      return expected_argument{
+        .type = TOKEN_TYPE_INTEGER_LITERAL,
+        .raw_txt = std::to_string(value),
+        .value = value,
       };
     }
 

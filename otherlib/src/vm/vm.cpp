@@ -7,11 +7,46 @@
 #include "core/logger.hpp"
 #include "thread/thread_safety.hpp"
 
+#include "vm/code_generator_000.hpp"
+#include "vm/command_files/lexer.hpp"
+#include "vm/command_files/oasm_parser.hpp"
+#include "vm/command_files/ocmd_compiler.hpp"
 #include "vm/command_files/ocmd_headers.hpp"
+#include "vm/command_files/ocmd_linker.hpp"
 #include "vm/control_table.hpp"
+#include "vm/default_symbol_resolver.hpp"
 #include "vm/opcode.hpp"
 
 namespace other {
+  namespace {
+
+    inline other_command_device* initialized_device = nullptr;
+
+  }  // namespace
+
+  diagnostic_engine vm::diagnostics;
+  vm::state vm::current_mode = vm::state::STOPPED;
+
+  other_command_device* vm::get_initialized_device() {
+    return initialized_device;
+  }
+
+  void vm::set_debug_mode(bool enable) {
+    if (initialized_device == nullptr) {
+      return;
+    }
+
+    if (enable) {
+      CORE_LOG_INFO("[VM] Debug mode enabled.");
+      add_flag(DEBUG);
+    } else {
+      remove_flag(DEBUG);
+    }
+  }
+
+  bool vm::has_flag(state flag) {
+    return (current_mode & flag) != 0;
+  }
 
   void vm::initialize_device(other_command_device* device) {
     ASSERT_MAIN_THREAD();
@@ -33,12 +68,66 @@ namespace other {
 
     /// can be overridden later if needed
     load_builtin_control_table(device, OTHER_CONTROL_TABLE_V000);
+
+    initialized_device = device;
   }
 
   void vm::load_control_table(other_command_device* device, control_tables table) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null VM device!");
     load_builtin_control_table(device, table);
+  }
+
+  void vm::load_program_from_file(other_command_device* device, const filepath& file_path) {
+    ASSERT_MAIN_THREAD();
+    OTHER_ASSERT(device != nullptr, "Null VM device!");
+    if (!std::filesystem::exists(file_path)) {
+      CORE_LOG_ERROR("[VM] : {} does not exist. can not load file", file_path.string());
+      return;
+    }
+
+    std::ifstream file;
+    if (file_path.extension() == ".oasm") {
+      file = std::ifstream(file_path);
+    } else if (file_path.extension() == ".oexe") {
+      file = std::ifstream(file_path, std::ios::binary);
+    } else if (file_path.extension() == ".ocmd") {
+      CORE_LOG_ERROR("[VM] : OCMD file loading not yet implemented: {}", file_path.string());
+      return;
+    } else {
+      CORE_LOG_ERROR("[VM] : Unsupported file type for VM program: {}", file_path.extension().string());
+      return;
+    }
+
+    if (!file.is_open()) {
+      CORE_LOG_ERROR("[VM] : Failed to open file {} for reading", file_path.string());
+      return;
+    }
+
+    std::vector<uint8_t> bytes;
+    if (file_path.extension() == ".oasm") {
+      std::string contents;
+      {
+        std::ostringstream ss;
+        ss << file.rdbuf();
+        contents = ss.str();
+      }
+      file.close();
+
+      ocmd_compiler compiler;
+      auto program = compiler.compile(contents, make_scope<code_generator_000>(), &diagnostics);
+      bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diagnostics);
+    } else if (file_path.extension() == ".oexe") {
+      CORE_LOG_ERROR("[VM] : OEXE file loading not yet implemented: {}", file_path.string());
+      return;
+    }
+
+    if (bytes.empty()) {
+      CORE_LOG_ERROR("[VM] : Failed to read any data from file {}", file_path.string());
+      return;
+    }
+
+    load_program_from_bytes(device, bytes);
   }
 
   void vm::load_program_from_bytes(other_command_device* device, const std::span<const uint8_t> bytes) {
@@ -71,13 +160,14 @@ namespace other {
     device->pc = device->program_load_cursor;
     device->program_load_cursor += program_size;
     device->stopped = false;
+    device->current_instruction = { opcode_read_program_counter(device) };
   }
 
   void vm::step(other_command_device* device) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null VM device!");
     OTHER_ASSERT(device->memory != nullptr, "Null VM device memory!");
-    if (device->stopped) {
+    if (device->stopped && !has_flag(DEBUG)) {
       return;
     }
 
@@ -87,6 +177,7 @@ namespace other {
     device->control_table[instr_nib](device);
 
     update_device_timers(device);
+    device->current_instruction = { opcode_read_program_counter(device) };
   }
 
   void vm::shutdown_device(other_command_device* device) {
@@ -99,6 +190,7 @@ namespace other {
 
     arena_allocator<other_command_device::memory_t>{}.free(device->memory);
     device->memory = nullptr;
+    initialized_device = nullptr;
   }
 
   natural_t vm::get_register_as_u64(other_command_device* device, uint8_t reg_idx) {
@@ -177,6 +269,14 @@ namespace other {
       return nullptr;
     }
     return device->memory->data + address;
+  }
+
+  void vm::add_flag(state flag) {
+    current_mode = static_cast<state>(current_mode | flag);
+  }
+
+  void vm::remove_flag(state flag) {
+    current_mode = static_cast<state>(current_mode & ~flag);
   }
 
   void vm::update_device_timers(other_command_device* device) {

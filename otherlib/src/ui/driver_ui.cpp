@@ -76,6 +76,22 @@ namespace other {
     return open_windows;
   }
 
+  std::vector<std::string> driver_ui::get_available_window_names() const {
+    std::vector<std::string> available_windows;
+    for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
+      if (i == 0 || i == static_cast<size_t>(INVALID_WINDOW_TYPE)) {
+        continue;
+      }
+
+      const auto& window = builtin_windows[i];
+      available_windows.push_back(std::string(window.get_name()));
+    }
+    for (const auto& [hash, window] : custom_windows) {
+      available_windows.push_back(window.name);
+    }
+    return available_windows;
+  }
+
   void driver_ui::open_window(const std::string_view window_name) {
     CORE_LOG_DEBUG("Request to open UI window: {}", window_name);
     natural_t hash = FNV(window_name);
@@ -199,6 +215,8 @@ namespace other {
     } else {
       CORE_LOG_DEBUG("Registered custom window: {} [{}]", name, hash);
     }
+    OTHER_ASSERT(itr->second.window_ptr != nullptr, "Registered custom window with name '{}' has null window pointer.", name);
+    itr->second.window_ptr->set_driver_ptr(driver_ptr);
     return hash;
   }
 
@@ -298,7 +316,7 @@ namespace other {
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       auto& window = builtin_windows[i];
       if (window.open && window.window_ptr != nullptr) {
-        window.window_ptr->render();
+        window.open = window.window_ptr->render();
       }
     }
   }
@@ -306,7 +324,7 @@ namespace other {
   void driver_ui::render_custom_windows() {
     for (auto& [hash, window] : custom_windows) {
       if (window.open && window.window_ptr != nullptr) {
-        window.window_ptr->render();
+        window.open = window.window_ptr->render();
       }
     }
 

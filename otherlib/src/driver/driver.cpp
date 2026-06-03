@@ -446,7 +446,7 @@ namespace other {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
-      if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path"); !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+      if (std::string envrc_path = get_config_value<std::string>("scripting.init-lua"); !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
         /// this one has to be loaded into the host without the sandboxing of the environment
         ///  as this is supposed to be the user's customization of the environment
         auto& lua_host = env->get_lua_host();

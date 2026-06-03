@@ -49,16 +49,15 @@ namespace other {
     JNE_OP,
     CALL_OP,
     RET_OP,
+    SYSCALL_OP,
+    INVOKE_OP,
+
     /// 3
     ADD_OP,
     SUB_OP,
     MUL_OP,
     DIV_OP,
     MOD_OP,
-    /// 4
-    LOADSCN_OP,
-    PLAYSCN_OP,
-    STOPSCN_OP,
 
     INVALID_OP = 0xFF,
   };

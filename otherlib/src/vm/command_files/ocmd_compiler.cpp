@@ -7,6 +7,8 @@
 
 #include "vm/command_files/code_block.hpp"
 #include "vm/command_files/compiler_error.hpp"
+#include "vm/command_files/lexer.hpp"
+#include "vm/command_files/oasm_parser.hpp"
 #include "vm/command_files/opcode_builder.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/diagnostics/ocmd_errors.hpp"
@@ -27,11 +29,29 @@ namespace other {
     diagnostics->emit(d);                                       \
   }
 
+  ocmd_program ocmd_compiler::compile(const std::string_view source, scope<ocmd_code_generator> generator, diagnostic_engine* diag) {
+    OTHER_ASSERT(generator != nullptr, "Code generator scope is null in ocmd_compiler::compile!");
+    OTHER_ASSERT(diag != nullptr, "Diagnostic engine cannot be null");
+    diagnostics = diag;
+    {
+      const auto tokens = ocmd_lexer{ source }.tokenize(diag);
+      const auto ir = oasm_parser{ version, tokens }.parse(diag);
+      if (!ir.valid) {
+        throw ocmd_toolchain_error(COMPILER_ERROR_INVALID_IR, "IR is not valid for compilation!");
+      }
+      this->ir = ir;
+    }
+    return compile(std::move(generator), diag);
+  }
+
   ocmd_program ocmd_compiler::compile(scope<ocmd_code_generator> generator, diagnostic_engine* diag) {
     OTHER_ASSERT(generator != nullptr, "Code generator scope is null in ocmd_compiler::compile!");
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine cannot be null");
     diagnostics = diag;
 
+    if (!ir.valid) {
+      throw ocmd_toolchain_error(COMPILER_ERROR_INVALID_IR, "IR is not valid for compilation!");
+    }
     if (ir.target_vm_version > generator->target_version()) {
       throw ocmd_toolchain_error(COMPILER_ERROR_INVALID_VERSION, std::format("Parsed IR has newer target version than code generator target version! IR target: {}, generator target: {}", ir.target_vm_version, generator->target_version()));
     }
@@ -82,9 +102,20 @@ namespace other {
             .offset = static_cast<uint32_t>(current_offset),
             .size = static_cast<uint32_t>(obj_ir.data.size()),
           };
-          current_offset += obj_ir.data.size();
+
+          size_t data_size = obj_ir.data.size();
+          size_t padding_needed = 0;
+          if (data_size % 8 != 0) {
+            padding_needed = 8 - (data_size % 8);
+          }
+
           out.data.insert(out.data.end(), obj_ir.data.begin(), obj_ir.data.end());
+          for (size_t i = 0; i < padding_needed; i++) {
+            out.data.push_back(0x00);
+          }
           out.fields.push_back(std::move(field));
+
+          current_offset += out.data.size();
         }
       }
 

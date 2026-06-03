@@ -14,6 +14,7 @@
 #include "vm/command_files/token.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/diagnostics/error_codes.hpp"
+#include "vm/diagnostics/oasm_error_sink.hpp"
 #include "vm/diagnostics/ocmd_errors.hpp"
 #include "vm/diagnostics/vm_diagnostic.hpp"
 #include "vm/instruction.hpp"
@@ -106,7 +107,7 @@ namespace other {
     }
 
     inline bool is_instruction_keyword(const token& tok) {
-      return tok.type >= TOKEN_TYPE_KW_STOPDEV && tok.type <= TOKEN_TYPE_KW_STOPSCN;
+      return tok.type >= TOKEN_TYPE_KW_STOPDEV && tok.type <= TOKEN_TYPE_KW_MOD;
     }
 
     inline bool is_other_keyword(const token& tok) {
@@ -156,7 +157,11 @@ namespace other {
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine must not be null");
     diagnostics = diag;
 
-    auto unknown_error = [this](const std::string_view msg) {
+    oasm_error_sink error_sink{};
+    natural_t id = diagnostics->register_sink("oasm-error-sink", &error_sink);
+
+    bool success = true;
+    auto unknown_error = [this, &success](const std::string_view msg) {
       diagnostic d{
         .severity = VM_DIAGNOSTIC_ERROR,
         .error_code = VM_UNKNOWN_ERROR,
@@ -164,6 +169,7 @@ namespace other {
       };
       diagnostics->emit(d);
       synchronize();
+      success = false;
     };
 
     if (tokens.empty()) {
@@ -203,7 +209,7 @@ namespace other {
         };
         diagnostics->emit(d);
         synchronize();
-        return {};
+        success = false;
       } catch (const std::runtime_error& e) {
         unknown_error(std::format("Runtime error during parsing at token '{}': {}", current().text, e.what()));
       } catch (const std::exception& e) {
@@ -213,15 +219,10 @@ namespace other {
       }
     } while (!finished());
 
-    if (!finished()) {
-      diagnostic d{
-        .severity = VM_DIAGNOSTIC_ERROR,
-        .error_code = VM_UNKNOWN_ERROR,
-        .final_message = std::format("Parsing finished but there are still unprocessed tokens starting with type {} and text '{}'", current().type, current().text),
-      };
-      diagnostics->emit(d);
+    if (!success) {
       return {};
     }
+
     OTHER_ASSERT(cursor == tokens.size() - 1, "Expected to be at the last token after parsing, but cursor is at position {} out of {}", cursor, tokens.size());
     OTHER_ASSERT(tokens[cursor].type == TOKEN_TYPE_EOF, "Expected EOF token at end of parsing, but found type {} with text '{}'", static_cast<int>(tokens[cursor].type), tokens[cursor].text);
 
@@ -244,6 +245,8 @@ namespace other {
       unknown_error(std::format("Unknown error during processing at token '{}'", current().text));
       return {};
     }
+
+    diagnostics->remove_sink(id);
 
     ir_result.valid = true;
     return ir_result;
@@ -746,7 +749,7 @@ namespace other {
   }
 
   canonical_opcode oasm_parser::get_canonical_opcode(const token& tok) const {
-    if (tok.type < TOKEN_TYPE_KW_STOPDEV || tok.type > TOKEN_TYPE_KW_LOADSCN) {
+    if (tok.type < TOKEN_TYPE_KW_STOPDEV || tok.type > TOKEN_TYPE_KW_MOD) {
       throw ocmd_toolchain_error(PARSE_UNKNOWN_OPCODE_KEYWORD, tok.source_view, std::format("Token '{}' is not a valid instruction keyword", tok.text));
     }
 
@@ -771,16 +774,13 @@ namespace other {
       case TOKEN_TYPE_KW_JNE: return canonical_opcode::JNE_OP;
       case TOKEN_TYPE_KW_CALL: return canonical_opcode::CALL_OP;
       case TOKEN_TYPE_KW_RET: return canonical_opcode::RET_OP;
+      case TOKEN_TYPE_KW_SYSCALL: return canonical_opcode::SYSCALL_OP;
       /// 3 table
       case TOKEN_TYPE_KW_ADD: return canonical_opcode::ADD_OP;
       case TOKEN_TYPE_KW_SUB: return canonical_opcode::SUB_OP;
       case TOKEN_TYPE_KW_MUL: return canonical_opcode::MUL_OP;
       case TOKEN_TYPE_KW_DIV: return canonical_opcode::DIV_OP;
       case TOKEN_TYPE_KW_MOD: return canonical_opcode::MOD_OP;
-      /// 4 table
-      case TOKEN_TYPE_KW_LOADSCN: return canonical_opcode::LOADSCN_OP;
-      case TOKEN_TYPE_KW_PLAYSCN: return canonical_opcode::PLAYSCN_OP;
-      case TOKEN_TYPE_KW_STOPSCN: return canonical_opcode::STOPSCN_OP;
       default:
         throw ocmd_toolchain_error(PARSE_UNKNOWN_OPCODE_KEYWORD, tok.source_view, std::format("Unhandled instruction keyword type [{}] ({})", tok.type, tok.text));
     }

@@ -84,7 +84,7 @@ namespace other {
     };
 
     instruction() = default;
-    instruction(int32_t op) : opcode(op) {}
+    instruction(int32_t op) : opcode(static_cast<uint32_t>(op)) {}
     instruction(uint32_t op) : opcode(op) {}
     instruction(uint16_t up, uint16_t low) : lower(low), upper(up) {}
     instruction(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) : bytes{ b1, b2, b3, b4 } {}
@@ -95,6 +95,22 @@ namespace other {
   };
   static_assert(sizeof(instruction) == sizeof(uint32_t), "Instruction size must be the same as uint32_t");
 
+  struct syscall {
+    syscall() = default;
+    syscall(int32_t i) : id(static_cast<uint16_t>(i)) {}
+    syscall(uint16_t i) : id(i) {}
+    syscall(uint8_t l, uint8_t h) : low(l), high(h) {}
+    union {
+      uint16_t id;
+      union {
+        struct {
+          uint8_t low;
+          uint8_t high;
+        };
+      };
+    };
+  };
+  static_assert(sizeof(syscall) == sizeof(uint16_t), "Syscall size must be the same as uint16_t");
 #pragma pack(pop)
 
   static uint8_t get_category_nibble(uint32_t opcode) {
@@ -143,9 +159,9 @@ namespace other {
   //  1 - load/store/logical operations
   //  2 - program flow operations
   //  3 - arithmetic operations
-  //  4 - scene table
-  //  5 - scene object table
-  //  6 - component table
+  //  4 -
+  //  5 -
+  //  6 -
   //  7 -
   //  8 -
   //  9 -
@@ -208,6 +224,8 @@ namespace other {
   uint32_t opcode_return();
   /// 25xx0000 (ret x)
   uint32_t opcode_return_value_in_x(uint32_t x);
+  /// 2600kkkk (syscall x)
+  uint32_t opcode_syscall(uint16_t k);
 
   /// 3 table (arithmetic)
   /// 30xy0000 (add x, y)
@@ -220,14 +238,6 @@ namespace other {
   uint32_t opcode_div_x_y_to_x(uint8_t x, uint8_t y);
   /// 34xy0000 (mod x, y)
   uint32_t opcode_mod_x_y_to_x(uint8_t x, uint8_t y);
-
-  /// 4 table (scene)
-  /// 4000nnnn (??? n/??? <label>)
-  uint32_t opcode_load_scene_with_id_at(uint16_t n);
-  /// 41000000 (scene.play) [needs macro/more expansive typing, etc...]
-  uint32_t opcode_play_scene();
-  /// 42000000 (scene.stop) [needs macro/more expansive typing, etc...]
-  uint32_t opcode_stop_scene();
 
 }  // namespace other
 

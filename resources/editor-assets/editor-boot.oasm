@@ -1,0 +1,14 @@
+/entry: main
+
+$main:
+  set r1, data.addr
+  dump r1
+end
+
+#data {
+  ; address to write load text to in memory
+  .string-len: int32 = 3
+  .addr: address = 0x0F00
+  ; .load-text: string = "abc"
+  ; .load-text: string = "resources/editor-assets/editor-boot.oasm"
+}

@@ -229,6 +229,30 @@ namespace other {
     emit_instruction(opcode_return(), artifact);
   }
 
+  void code_generator_000::encode_syscall(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::SYSCALL_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_syscall");
+    }
+    if (instr.param[0].kind != operand_kind::IMMEDIATE_U16) {
+      throw ocmd_lowering_error("syscall operand must be a constant");
+    }
+    emit_instruction(opcode_syscall(instr.param[0].val), artifact);
+  }
+
+  void code_generator_000::encode_invoke(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::INVOKE_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_invoke");
+    }
+    // if (instr.param[0].kind == operand_kind::ADDRESS_U16) {
+    //   emit_instruction(opcode_invoke_at(instr.param[0].val), artifact);
+    // } else if (instr.param[0].kind == operand_kind::CODE_LABEL || instr.param[0].kind == operand_kind::DATA_SYMBOL) {
+    //   add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+    //   emit_instruction(opcode_invoke_at(0xFFFF), artifact);
+    // } else {
+    //   throw ocmd_lowering_error("invoke operand must be an address or symbol reference");
+    // }
+  }
+
   void code_generator_000::encode_add(const canonical_instruction& instr, lowering_artifact& artifact) {
     if (instr.opcode != canonical_opcode::ADD_OP) {
       throw ocmd_lowering_error("Invalid opcode passed to encode_add");
@@ -277,33 +301,6 @@ namespace other {
       throw ocmd_lowering_error("mod operands must be register references");
     }
     emit_instruction(opcode_mod_x_y_to_x(instr.param[0].reg, instr.param[1].reg), artifact);
-  }
-
-  void code_generator_000::encode_loadscn(const canonical_instruction& instr, lowering_artifact& artifact) {
-    if (instr.opcode != canonical_opcode::LOADSCN_OP) {
-      throw ocmd_lowering_error("Invalid opcode passed to encode_loadscn");
-    }
-    if (instr.param[0].kind == operand_kind::ADDRESS_U16) {
-      emit_instruction(opcode_load_scene_with_id_at(instr.param[0].val), artifact);
-    } else if (instr.param[0].kind != operand_kind::DATA_SYMBOL && instr.param[0].kind != operand_kind::CODE_LABEL && instr.param[0].kind != operand_kind::ADDRESS_U16) {
-      emit_instruction(opcode_load_scene_with_id_at(instr.param[0].val), artifact);
-    } else {
-      throw ocmd_lowering_error("loadscn operand must be an address or symbol reference");
-    }
-  }
-
-  void code_generator_000::encode_playscn(const canonical_instruction& instr, lowering_artifact& artifact) {
-    if (instr.opcode != canonical_opcode::PLAYSCN_OP) {
-      throw ocmd_lowering_error("Invalid opcode passed to encode_playscn");
-    }
-    emit_instruction(opcode_play_scene(), artifact);
-  }
-
-  void code_generator_000::encode_stopscn(const canonical_instruction& instr, lowering_artifact& artifact) {
-    if (instr.opcode != canonical_opcode::STOPSCN_OP) {
-      throw ocmd_lowering_error("Invalid opcode passed to encode_stopscn");
-    }
-    emit_instruction(opcode_stop_scene(), artifact);
   }
 
 }  // namespace other

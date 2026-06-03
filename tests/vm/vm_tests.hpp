@@ -59,7 +59,7 @@ namespace other {
       uint32_t expected_opcode = 0;
     };
 
-    constexpr std::array k_register_cases = {
+    constexpr std::array kRegisterKeywords = {
       register_case{ "r0", TOKEN_TYPE_KW_R0, vm_register_idx::VM_R0 },
       register_case{ "r1", TOKEN_TYPE_KW_R1, vm_register_idx::VM_R1 },
       register_case{ "r2", TOKEN_TYPE_KW_R2, vm_register_idx::VM_R2 },
@@ -76,6 +76,7 @@ namespace other {
       register_case{ "rd", TOKEN_TYPE_KW_RD, vm_register_idx::VM_RD },
       register_case{ "re", TOKEN_TYPE_KW_RE, vm_register_idx::VM_RE },
       register_case{ "rf", TOKEN_TYPE_KW_RF, vm_register_idx::VM_RF },
+      register_case{ "rflag", TOKEN_TYPE_KW_RFLAG, vm_register_idx::VM_RFLAG },
     };
 
     template <typename T>
@@ -100,6 +101,7 @@ namespace other {
       const compiled_code_block& actual, const std::string_view expected_name,
       const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions);
     const register_case& get_register_case(const size_t index);
+    expected_argument make_integer_literal_argument(const int value);
     expected_argument make_register_argument(const register_case& reg);
     expected_argument make_address_argument(const uint16_t value);
     expected_argument make_label_argument(const std::string_view label);

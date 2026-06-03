@@ -68,16 +68,14 @@ namespace other {
       case canonical_opcode::JNE_OP: return 1;
       case canonical_opcode::CALL_OP: return 1;
       case canonical_opcode::RET_OP: return 1;
+      // syscall can take the syscall id and an address pointing to a defined argument-structure
+      case canonical_opcode::SYSCALL_OP: return 2;
       // 3
       case canonical_opcode::ADD_OP: return 2;
       case canonical_opcode::SUB_OP: return 2;
       case canonical_opcode::MUL_OP: return 2;
       case canonical_opcode::DIV_OP: return 2;
       case canonical_opcode::MOD_OP: return 2;
-      // 4
-      case canonical_opcode::LOADSCN_OP: return 1;
-      case canonical_opcode::PLAYSCN_OP: return 1;
-      case canonical_opcode::STOPSCN_OP: return 1;
       default:
         throw ocmd_lowering_error(std::format("Invalid canonical opcode for parity calculation: {}", canon_opcode));
     }

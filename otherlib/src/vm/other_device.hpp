@@ -66,7 +66,10 @@ namespace other {
     uint8_t delay_timer = 0;
     uint8_t sound_timer = 0;
 
-    random_generator<uint64_t> rng = { std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max() };
+    random_generator<uint64_t> rng = {
+      std::numeric_limits<uint8_t>::min(),
+      std::numeric_limits<uint8_t>::max(),
+    };
 
     enum program_state : uint64_t {
       kProgramStateStopped = 0,

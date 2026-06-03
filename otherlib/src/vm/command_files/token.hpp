@@ -83,8 +83,10 @@ namespace other {
     TOKEN_TYPE_KW_BLOB_TYPE,
     TOKEN_TYPE_KW_USER_DEFINED_TYPE,
 
+    // 0 table
     TOKEN_TYPE_KW_STOPDEV,
     TOKEN_TYPE_KW_DUMP,
+    // 1 table
     TOKEN_TYPE_KW_WRITE,
     TOKEN_TYPE_KW_SET,
     TOKEN_TYPE_KW_CMP,
@@ -95,19 +97,20 @@ namespace other {
     TOKEN_TYPE_KW_XOR,
     TOKEN_TYPE_KW_LSHIFT,
     TOKEN_TYPE_KW_RSHIFT,
+    // 2 table
     TOKEN_TYPE_KW_GOTO,
     TOKEN_TYPE_KW_JE,
     TOKEN_TYPE_KW_JNE,
     TOKEN_TYPE_KW_CALL,
     TOKEN_TYPE_KW_RET,
+    TOKEN_TYPE_KW_SYSCALL,
+    TOKEN_TYPE_KW_INVOKE,
+    // 3 table
     TOKEN_TYPE_KW_ADD,
     TOKEN_TYPE_KW_SUB,
     TOKEN_TYPE_KW_MUL,
     TOKEN_TYPE_KW_DIV,
     TOKEN_TYPE_KW_MOD,
-    TOKEN_TYPE_KW_LOADSCN,
-    TOKEN_TYPE_KW_PLAYSCN,
-    TOKEN_TYPE_KW_STOPSCN,
 
     TOKEN_TYPE_KW_R0,
     TOKEN_TYPE_KW_R1,
@@ -201,20 +204,20 @@ namespace other {
     keyword_token("xor", TOKEN_TYPE_KW_XOR),
     keyword_token("lshift", TOKEN_TYPE_KW_LSHIFT),
     keyword_token("rshift", TOKEN_TYPE_KW_RSHIFT),
+
     keyword_token("goto", TOKEN_TYPE_KW_GOTO),
     keyword_token("je", TOKEN_TYPE_KW_JE),
     keyword_token("jne", TOKEN_TYPE_KW_JNE),
     keyword_token("call", TOKEN_TYPE_KW_CALL),
     keyword_token("ret", TOKEN_TYPE_KW_RET),
+    keyword_token("syscall", TOKEN_TYPE_KW_SYSCALL),
+    keyword_token("invoke", TOKEN_TYPE_KW_INVOKE),
+
     keyword_token("add", TOKEN_TYPE_KW_ADD),
     keyword_token("sub", TOKEN_TYPE_KW_SUB),
     keyword_token("mul", TOKEN_TYPE_KW_MUL),
     keyword_token("div", TOKEN_TYPE_KW_DIV),
     keyword_token("mod", TOKEN_TYPE_KW_MOD),
-    /// \todo change these?
-    keyword_token("loadscn", TOKEN_TYPE_KW_LOADSCN),
-    keyword_token("playscn", TOKEN_TYPE_KW_PLAYSCN),
-    keyword_token("stopscn", TOKEN_TYPE_KW_STOPSCN),
 
     keyword_token("r0", TOKEN_TYPE_KW_R0),
     keyword_token("r1", TOKEN_TYPE_KW_R1),

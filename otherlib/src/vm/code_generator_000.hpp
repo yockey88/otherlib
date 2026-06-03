@@ -35,16 +35,14 @@ namespace other {
     void encode_jne(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_call(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_return(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_syscall(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_invoke(const canonical_instruction& instr, lowering_artifact& artifact) override;
 
     void encode_add(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_sub(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_mul(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_div(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_mod(const canonical_instruction& instr, lowering_artifact& artifact) override;
-
-    void encode_loadscn(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_playscn(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_stopscn(const canonical_instruction& instr, lowering_artifact& artifact) override;
   };
 
 }  // namespace other

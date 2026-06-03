@@ -17,6 +17,7 @@ namespace other {
         : core_system<vm_system>(driver_instance, static_cast<uint32_t>(driver_system_type::VM_DRIVER_SYSTEM)) {}
 
     std::string name() const override { return "VM System"; }
+    other_command_device& get_device() { return core_device; }
 
     void initialize(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;

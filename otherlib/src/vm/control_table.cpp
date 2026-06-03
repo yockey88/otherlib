@@ -29,26 +29,22 @@ namespace other {
     void execute_register_control(other_command_device* device);
     void execute_program_flow(other_command_device* device);
     void execute_arithmetic_logic(other_command_device* device);
-    void execute_core_scene_control(other_command_device* device);
 
     void execute_debugger_control_instruction(other_command_device* device);
     void execute_debugger_register_control(other_command_device* device);
     void execute_debugger_program_flow(other_command_device* device);
     void execute_debugger_arithmetic_logic(other_command_device* device);
-    void execute_debugger_core_scene_control(other_command_device* device);
 
     void execute_decompiler_control_instruction(other_command_device* device);
     void execute_decompiler_register_control(other_command_device* device);
     void execute_decompiler_program_flow(other_command_device* device);
     void execute_decompiler_arithmetic_logic(other_command_device* device);
-    void execute_decompiler_core_scene_control(other_command_device* device);
 
     other_command_executor kControlTable[] = {
       execute_device_control_instruction,
       execute_register_control,
       execute_program_flow,
       execute_arithmetic_logic,
-      execute_core_scene_control,
     };
 
     other_command_executor kDebuggerTable[] = {
@@ -56,7 +52,6 @@ namespace other {
       execute_debugger_register_control,
       execute_debugger_program_flow,
       execute_debugger_arithmetic_logic,
-      execute_debugger_core_scene_control,
     };
 
     other_command_executor kDecompilerTable[] = {
@@ -64,7 +59,6 @@ namespace other {
       execute_decompiler_register_control,
       execute_decompiler_program_flow,
       execute_decompiler_arithmetic_logic,
-      execute_decompiler_core_scene_control,
     };
 
   }  // namespace v000
@@ -101,7 +95,7 @@ namespace other {
     void execute_dump_register_x(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       OTHER_ASSERT(x < vm_register::kNumRegisters, "Register out of bounds!");
-      CORE_LOG_DEBUG("R[{}] = {:#018x}", x, device->read_register_as_u64(x));
+      CORE_LOG_INFO("R[{}] = {:#018x}", x, device->read_register_as_u64(x));
     }
 
     /// 03xxnnnn - Dump memory at address n
@@ -126,7 +120,7 @@ namespace other {
           ss << "\n";
         }
       }
-      CORE_LOG_DEBUG("MEM[{:#06x}] length = {}:\n{}", n, bytes_to_dump, ss.str());
+      CORE_LOG_INFO("MEM[{:#06x}] length = {}:\n{}", n, bytes_to_dump, ss.str());
     }
 
     /////////////////////// 1XXX /////////////////////
@@ -296,6 +290,13 @@ namespace other {
       }
     }
 
+    /// 2600kkkk - syscall with id kkkk
+    void execute_syscall(other_command_device* device) {
+      uint16_t id = device->current_instruction.lower;
+      // implement syscall handling here
+      CORE_LOG_WARN("Syscall with id {}", id);
+    }
+
     /////////////////////// 3XXX /////////////////////
     /// 30xy0000 - R[x] = R[x] + R[y]
     void execute_add_x_y_to_x(other_command_device* device) {
@@ -389,6 +390,7 @@ namespace other {
       execute_call_at,
       execute_return,
       execute_return_value_in_x,
+      execute_syscall,
     };
     constexpr other_command_executor kArithmeticLogicTable[] = {
       execute_add_x_y_to_x,
@@ -396,9 +398,6 @@ namespace other {
       execute_mul_x_y_to_x,
       execute_div_x_y_to_x,
       execute_mod_x_y_to_x,
-    };
-    constexpr other_command_executor kCoreSceneControlTable[] = {
-      execute_load_scene_with_id_at,
     };
 
     void execute_device_control_instruction(other_command_device* device) {
@@ -421,11 +420,6 @@ namespace other {
       return kArithmeticLogicTable[func_nib](device);
     }
 
-    void execute_core_scene_control(other_command_device* device) {
-      uint8_t func_nib = device->current_instruction.type_nibble();
-      return kCoreSceneControlTable[func_nib](device);
-    }
-
     /// \todo:
     /// debugger control tables
     void execute_debugger_control_instruction(other_command_device* device) {
@@ -438,9 +432,6 @@ namespace other {
     }
 
     void execute_debugger_arithmetic_logic(other_command_device* device) {
-    }
-
-    void execute_debugger_core_scene_control(other_command_device* device) {
     }
     /// end debugger control tables
 
@@ -568,6 +559,14 @@ namespace other {
       emit_instruction_log(device, std::format("[SHR R[{}] >> R[{}] -> R[{}]]", x, y, x));
     }
 
+    /// 2000nnnn (goto <label>/goto n)
+    /// 2100nnnn (je <label>/je n)
+    /// 2200nnnn (jne <label>/jne n)
+    /// 23xxnnnn (call <label>/call n)
+    /// 24000000 (ret)
+    /// 25xx0000 (ret x)
+    /// 2600kkkk (syscall x)
+
     /////////////////////// 2XXX /////////////////////
     /// 2000nnnn - goto address nnn
     void execute_decompiler_goto(other_command_device* device) {
@@ -598,6 +597,8 @@ namespace other {
     void execute_decompiler_return(other_command_device* device) {
       emit_instruction_log(device, "[RETURN]");
     }
+
+    /// 2500kkkk -
 
     ///////////////////////// 3XXX /////////////////////
     /// 30xy0000 - R[x] = R[x] + R[y]
@@ -635,13 +636,6 @@ namespace other {
       emit_instruction_log(device, std::format("[MOD-X-Y-TO-X] x={} y={}", x, y));
     }
 
-    /////////////////////// 4XXX /////////////////////
-    /// 4000nnnn - load scene with id nnn
-    void execute_decompiler_load_scene_with_id_at(other_command_device* device) {
-      uint16_t n = device->current_instruction.lower;
-      emit_instruction_log(device, std::format("[LOAD-SCENE-WITH-ID-AT] n={}", n));
-    }
-
     constexpr other_command_executor kDecompilerDeviceControlTable[] = {
       execute_decompiler_stop_device,
       execute_decompiler_dump_registers,
@@ -676,9 +670,6 @@ namespace other {
       execute_decompiler_div_x_y_to_x,
       execute_decompiler_mod_x_y_to_x,
     };
-    constexpr other_command_executor kDecompilerCoreSceneControlTable[] = {
-      execute_decompiler_load_scene_with_id_at,
-    };
 
     void execute_decompiler_control_instruction(other_command_device* device) {
       uint8_t type = device->current_instruction.type_nibble();
@@ -698,11 +689,6 @@ namespace other {
     void execute_decompiler_arithmetic_logic(other_command_device* device) {
       uint8_t type = device->current_instruction.type_nibble();
       kDecompilerArithmeticLogicTable[type](device);
-    }
-
-    void execute_decompiler_core_scene_control(other_command_device* device) {
-      uint8_t type = device->current_instruction.type_nibble();
-      kDecompilerCoreSceneControlTable[type](device);
     }
 
   }  // namespace v000

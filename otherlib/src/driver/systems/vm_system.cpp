@@ -3,6 +3,7 @@
  **/
 #include "driver/systems/vm_system.hpp"
 
+#include "driver/driver.hpp"
 #include "vm/vm.hpp"
 
 namespace other {
@@ -11,9 +12,24 @@ namespace other {
     vm::initialize_device(&core_device);
     vm::load_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
     core_device.host_driver = &get_driver();
+
+    const bool vm_debug = get_driver().get_config_value<bool>("driver.debug-vm", false);
+    vm::set_debug_mode(vm_debug);
+
+    if (std::string boot_oasm_path = get_driver().get_config_value<std::string>("driver.boot-file"); !boot_oasm_path.empty()) {
+      CORE_LOG_INFO("Loading VM boot file: {}", boot_oasm_path);
+      vm::load_program_from_file(&core_device, boot_oasm_path);
+    } else {
+      CORE_LOG_INFO("No VM boot file specified in configuration. VM will start with empty memory.");
+    }
   }
 
   void vm_system::tick(driver_kernel* kernel, double dt) {
+    // allow user to step through VM execution in debug mode
+    if (vm::has_flag(vm::state::DEBUG)) {
+      return;
+    }
+
     vm::step(&core_device);
   }
 

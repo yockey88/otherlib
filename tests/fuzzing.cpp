@@ -18,7 +18,7 @@ namespace other {
                              instruction_count_dist(1, 3),
                              data_kind_dist(0, 4),
                              instruction_kind_dist(0, 3),
-                             register_dist(0, k_register_cases.size() - 1),
+                             register_dist(0, kRegisterKeywords.size() - 1),
                              address_dist(0x0100, 0xFFFE),
                              integer_dist(1, 400),
                              should_define_dist(0, 1),
@@ -470,8 +470,7 @@ namespace other {
             "${}:\n"
             "  dump {}\n"
             "  ret\n",
-            object_name, first_value, code_name, reg_a.text
-          );
+            object_name, first_value, code_name, reg_a.text);
           program.expected_error_substring = "Forgot to end data block, expected '}' before code block";
         } break;
 
@@ -484,8 +483,7 @@ namespace other {
             "}}\n"
             "${}:\n"
             "  ret\n",
-            object_name, iteration, object_name, first_value, code_name
-          );
+            object_name, iteration, object_name, first_value, code_name);
           program.expected_error_substring = "Forgot to end data block, expected '}' before directive block";
         } break;
 
@@ -498,8 +496,7 @@ namespace other {
             "  dump {}\n"
             "  set {}, 0x{}, {}\n"
             "  ret\n",
-            object_name, hex_word_string(first_address), code_name, reg_a.text, reg_b.text, hex_word_string(second_address), reg_a.text
-          );
+            object_name, hex_word_string(first_address), code_name, reg_a.text, reg_b.text, hex_word_string(second_address), reg_a.text);
           program.expected_error_substring = "Expected 2 parameters for instruction 'set', but found 3";
         } break;
 
@@ -510,8 +507,7 @@ namespace other {
             "}}\n"
             "${}:\n"
             "  ret\n",
-            object_name, hex_word_string(first_address), hex_word_string(second_address), code_name
-          );
+            object_name, hex_word_string(first_address), hex_word_string(second_address), code_name);
           program.expected_error_substring = "Expected a single hexadecimal literal for address type, but found 2 tokens";
         } break;
 
@@ -526,8 +522,7 @@ namespace other {
             "#data {{\n"
             "  .{} : int32 = {}\n"
             "}}\n",
-            duplicate_name, first_value, code_name, reg_a.text, duplicate_name, second_value
-          );
+            duplicate_name, first_value, code_name, reg_a.text, duplicate_name, second_value);
           program.expected_error_substring = std::format("Duplicate data object name '{}' in data block 'data'", duplicate_name);
         } break;
 

@@ -18,16 +18,20 @@ namespace other {
 
   class ocmd_compiler {
    public:
+    ocmd_compiler() = default;
     ocmd_compiler(const ocmd_ir& ir)
         : ir(ir) {
     }
     ~ocmd_compiler() = default;
 
+    ocmd_program compile(const std::string_view source, scope<ocmd_code_generator> generator, diagnostic_engine* diag);
     ocmd_program compile(scope<ocmd_code_generator> generator, diagnostic_engine* diag);
 
    private:
+    vm_version version = {};
+
     diagnostic_engine* diagnostics;
-    const ocmd_ir ir;
+    ocmd_ir ir;
   };
 
 }  // namespace other

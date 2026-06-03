@@ -26,15 +26,13 @@ namespace other {
       case canonical_opcode::JE_OP: return encode_je(instr, artifact);
       case canonical_opcode::JNE_OP: return encode_jne(instr, artifact);
       case canonical_opcode::CALL_OP: return encode_call(instr, artifact);
+      case canonical_opcode::SYSCALL_OP: return encode_syscall(instr, artifact);
       case canonical_opcode::RET_OP: return encode_return(instr, artifact);
       case canonical_opcode::ADD_OP: return encode_add(instr, artifact);
       case canonical_opcode::SUB_OP: return encode_sub(instr, artifact);
       case canonical_opcode::MUL_OP: return encode_mul(instr, artifact);
       case canonical_opcode::DIV_OP: return encode_div(instr, artifact);
       case canonical_opcode::MOD_OP: return encode_mod(instr, artifact);
-      case canonical_opcode::LOADSCN_OP: return encode_loadscn(instr, artifact);
-      case canonical_opcode::PLAYSCN_OP: return encode_playscn(instr, artifact);
-      case canonical_opcode::STOPSCN_OP: return encode_stopscn(instr, artifact);
       default:
         throw ocmd_lowering_error("selector v1 does not support this canonical opcode");
     }

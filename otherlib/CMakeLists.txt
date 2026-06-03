@@ -90,6 +90,8 @@ target_sources(otherlib
     src/vm/diagnostics/vm_diagnostic.cpp
     src/vm/diagnostics/diagnostic_sink.cpp
     src/vm/diagnostics/ocmd_trace_sink.cpp
+    src/vm/diagnostics/lexer_error_sink.cpp
+    src/vm/diagnostics/oasm_error_sink.cpp
     src/vm/diagnostics/source_map.cpp
     src/vm/diagnostics/diagnostic_engine.cpp
     src/vm/command_files/token.cpp
@@ -107,6 +109,7 @@ target_sources(otherlib
     src/vm/opcode.cpp
     src/vm/driver_interface.cpp
     src/vm/control_table.cpp
+    src/vm/vm_type.cpp
     src/vm/other_device.cpp
     src/vm/decompiler.cpp
     src/vm/vm.cpp

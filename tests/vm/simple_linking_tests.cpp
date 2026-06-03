@@ -156,7 +156,8 @@ namespace other {
       0x00, 0x00, 0x00, 0x00,  // stopdev guard
       // #data
       // .number
-      0x30, 0x00, 0x00, 0x00  // int32 value of 42 @ [0x0030]
+      0x30, 0x00, 0x00, 0x00,  // int32 value of 42 @ [0x0030]
+      0x00, 0x00, 0x00, 0x00   // padding to align to 8 bytes (data sections are always aligned to 8 bytes in the linked output)
     };
     const std::vector<uint8_t> expected_bytes = detail::get_expected_bytes(code_bytes);
 

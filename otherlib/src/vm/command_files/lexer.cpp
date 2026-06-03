@@ -9,6 +9,7 @@
 
 #include "vm/command_files/token.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
+#include "vm/diagnostics/lexer_error_sink.hpp"
 #include "vm/diagnostics/ocmd_errors.hpp"
 
 namespace other {
@@ -40,7 +41,7 @@ namespace other {
   }
 
   static inline bool is_alpha(char c) {
-    return std::isalpha(static_cast<unsigned char>(c)) || c == '_';
+    return std::isalpha(static_cast<unsigned char>(c)) || c == '_' || c == '-';
   }
 
   static inline bool is_alphanumeric(char c) {
@@ -54,6 +55,9 @@ namespace other {
   std::vector<token> ocmd_lexer::tokenize(diagnostic_engine* diag) {
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine is null in lexer!");
     diagnostics = diag;
+
+    lexer_error_sink error_sink{};
+    natural_t id = diagnostics->register_sink("lexer-error-sink", &error_sink);
 
     EMIT_TRACE("Tokenizing source:\n{}", source);
 
@@ -104,6 +108,8 @@ namespace other {
     }
 
     tokens.emplace_back(TOKEN_TYPE_EOF, "", source_span{ current_source_span_start, { current_line, current_column } });
+
+    diagnostics->remove_sink(id);
     return tokens;
   }
 
@@ -255,7 +261,7 @@ namespace other {
   }
 
   void ocmd_lexer::handle_alpha() {
-    while (is_alphanumeric(current()) || current() == '_') {
+    while (is_alphanumeric(current())) {
       advance();
     }
 
@@ -314,7 +320,7 @@ namespace other {
 
       default: {
         source_location loc = { current_line, current_column };
-        throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Unknown operator or punctuation character encountered during lexing");
+        throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, std::format("Unknown operator or punctuation character encountered during lexing : {}", current()));
       }
     }
   }
