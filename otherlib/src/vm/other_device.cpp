@@ -42,8 +42,7 @@ namespace other {
 
   const void* other_command_device::access_current_program_memory(uint16_t program_offset) {
     // clang-format off
-    if ((current_program_metadata.state & program_state::kProgramStateIdle) || 
-        (current_program_metadata.state & program_state::kProgramStateStopped)) {
+    if ((current_program_metadata.state & program_state::PROGRAM_STOPPED)) {
       return nullptr;
     }
     // clang-format on
@@ -54,8 +53,7 @@ namespace other {
 
   const void* other_command_device::access_current_program_data_section(uint16_t program_offset) {
     // clang-format off
-    if ((current_program_metadata.state & program_state::kProgramStateIdle) || 
-        (current_program_metadata.state & program_state::kProgramStateStopped)) {
+    if ((current_program_metadata.state & program_state::PROGRAM_STOPPED)) {
       return nullptr;
     }
     // clang-format on
@@ -66,8 +64,7 @@ namespace other {
 
   natural_t other_command_device::current_program_data_as_u64(uint16_t data_offset) const {
     // clang-format off
-    if ((current_program_metadata.state & program_state::kProgramStateIdle) || 
-        (current_program_metadata.state & program_state::kProgramStateStopped)) {
+    if ((current_program_metadata.state & program_state::PROGRAM_STOPPED)) {
       return 0;
     }
     // clang-format on
@@ -78,8 +75,7 @@ namespace other {
 
   void other_command_device::write_current_program_memory(uint16_t address, const uint8_t* bytes, size_t length) {
     // clang-format off
-    if ((current_program_metadata.state & program_state::kProgramStateIdle) || 
-        (current_program_metadata.state & program_state::kProgramStateStopped)) {
+    if ((current_program_metadata.state & program_state::PROGRAM_STOPPED)) {
       return;
     }
     // clang-format on
@@ -90,8 +86,7 @@ namespace other {
 
   void other_command_device::write_current_program_data(uint16_t address, const uint8_t* bytes, size_t length) {
     // clang-format off
-    if ((current_program_metadata.state & program_state::kProgramStateIdle) || 
-        (current_program_metadata.state & program_state::kProgramStateStopped)) {
+    if ((current_program_metadata.state & program_state::PROGRAM_STOPPED)) {
       return;
     }
     // clang-format on
@@ -102,8 +97,7 @@ namespace other {
 
   void other_command_device::write_current_program_data_from_u64(uint16_t data_offset, uint64_t value) {
     // clang-format off
-    if ((current_program_metadata.state & program_state::kProgramStateIdle) || 
-          (current_program_metadata.state & program_state::kProgramStateStopped)) {
+    if ((current_program_metadata.state & program_state::PROGRAM_STOPPED)) {
       return;
     }
     // clang-format on

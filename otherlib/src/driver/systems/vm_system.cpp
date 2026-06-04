@@ -25,11 +25,9 @@ namespace other {
   }
 
   void vm_system::tick(driver_kernel* kernel, double dt) {
-    // allow user to step through VM execution in debug mode
-    if (vm::has_flag(vm::state::DEBUG)) {
+    if (vm::has_flag(&core_device, other_command_device::DEBUG)) {
       return;
     }
-
     vm::step(&core_device);
   }
 

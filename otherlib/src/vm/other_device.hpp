@@ -29,12 +29,19 @@ namespace other {
       kFlagOverflow = 1 << 3,
     };
 
-    enum device_state : uint64_t {
-      kStateStopped = 0,
-      kStateRunning = 1 << 0,
+    enum state : uint8_t {
+      STOPPED = 1 << 0,
+      INITIALIZED = 1 << 1,
 
-      kStateError = std::numeric_limits<uint64_t>::max(),
+      IDLE = 1 << 2,
+      RUNNING = 1 << 3,
+
+      DEBUG = 1 << 4,
+      REPL = 1 << 5,
+
+      VM_ERROR = std::numeric_limits<uint8_t>::max(),
     };
+    state current_state = STOPPED;
 
     vm_register registers[vm_register::kNumRegisters + 1];
 
@@ -72,11 +79,12 @@ namespace other {
     };
 
     enum program_state : uint64_t {
-      kProgramStateStopped = 0,
-      kProgramStateIdle = 1 << 0,
-      kProgramStateRunning = 1 << 1,
+      PROGRAM_STOPPED = 1 << 0,
 
-      kProgramStateError = std::numeric_limits<uint64_t>::max(),
+      PROGRAM_IDLE = 1 << 1,
+      PROGRAM_RUNNING = 1 << 2,
+
+      PROGRAM_ERROR = std::numeric_limits<uint64_t>::max(),
     };
     struct program_metadata {
       uint16_t load_address = 0;  // beginning of code section
@@ -88,7 +96,7 @@ namespace other {
       uint16_t entry_point_offset = 0;  // local program offset of entry point (if 0, then load_address)
       uint16_t num_instructions = 0;
 
-      program_state state = kProgramStateStopped;
+      program_state state = PROGRAM_STOPPED;
 
       uint16_t full_program_size() const;
       uint16_t get_global_data_address() const;

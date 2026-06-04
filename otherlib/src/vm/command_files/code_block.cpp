@@ -78,7 +78,6 @@ namespace other {
       case TOKEN_TYPE_STRING_LITERAL:
         return { .kind = operand_kind::STRING_LITERAL, .bytes = arg.raw_data };
       case TOKEN_TYPE_LABEL:
-        return { .kind = operand_kind::CODE_LABEL, .symbol = arg.raw_txt };
       case TOKEN_TYPE_IDENTIFIER:
         if (arg.raw_txt.contains('.')) {
           return { .kind = operand_kind::DATA_SYMBOL, .symbol = arg.raw_txt };

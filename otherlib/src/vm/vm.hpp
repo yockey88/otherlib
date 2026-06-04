@@ -7,30 +7,18 @@
 #include "vm/control_table.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/other_device.hpp"
-#include "vm/vm_version.hpp"
 
 namespace other {
 
   struct other_command_device;
 
   struct vm {
-    enum state : uint8_t {
-      STOPPED = 0,
-      INITIALIZED = 1 << 0,
-
-      IDLE = 1 << 1,
-      RUNNING = 1 << 2,
-
-      DEBUG = 1 << 3,
-      REPL = 1 << 4,
-
-      VM_ERROR = std::numeric_limits<uint8_t>::max(),
-    };
-
     static other_command_device* get_initialized_device();
     static void set_debug_mode(bool enable);
 
-    static bool has_flag(state flag);
+    static void add_flag(other_command_device* device, other_command_device::state flag);
+    static void remove_flag(other_command_device* device, other_command_device::state flag);
+    static bool has_flag(other_command_device* device, other_command_device::state flag);
 
     static void initialize_device(other_command_device* device);
     static void load_control_table(other_command_device* device, control_tables table);
@@ -38,6 +26,7 @@ namespace other {
     static void load_program_from_file(other_command_device* device, const filepath& file);
     static void load_program_from_bytes(other_command_device* device, const std::span<const uint8_t> bytes);
     static void step(other_command_device* device);
+    static void execute_current_instruction(other_command_device* device);
 
     static void shutdown_device(other_command_device* device);
 
@@ -55,10 +44,6 @@ namespace other {
 
    private:
     static diagnostic_engine diagnostics;
-    static state current_mode;
-
-    static void add_flag(state flag);
-    static void remove_flag(state flag);
 
     static void update_device_timers(other_command_device* device);
 

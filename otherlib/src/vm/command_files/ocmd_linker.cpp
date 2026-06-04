@@ -3,6 +3,7 @@
  **/
 #include "vm/command_files/ocmd_linker.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <ranges>
 
@@ -199,6 +200,16 @@ namespace other {
         fixup_itr = code_block.artifact.unresolved_labels.erase(fixup_itr);
       }
     }
+
+    std::stringstream ss;
+    size_t total_num_instructions = std::ranges::fold_left(code.compiled_blocks, 0, [](size_t acc, const compiled_code_block& block) {
+      return acc + block.artifact.machine_instructions.size();
+    });
+    for (uint16_t i = 0; i < total_num_instructions * sizeof(instruction); i += sizeof(instruction)) {
+      instruction instr = *reinterpret_cast<const instruction*>(binary.data() + i + sizeof(ocmd_file_header));
+      ss << std::format("{:#06x}: {:#010x}\n", i, instr.opcode);
+    }
+    CORE_LOG_DEBUG("[FINAL LINKED CODE]\n{}", ss.str());
   }
 
   std::vector<uint8_t> ocmd_linker::create_compiler_generated_symbols(scope<symbol_resolver>& resolver) {

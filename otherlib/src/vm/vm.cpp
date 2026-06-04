@@ -25,7 +25,6 @@ namespace other {
   }  // namespace
 
   diagnostic_engine vm::diagnostics;
-  vm::state vm::current_mode = vm::state::STOPPED;
 
   other_command_device* vm::get_initialized_device() {
     return initialized_device;
@@ -38,14 +37,22 @@ namespace other {
 
     if (enable) {
       CORE_LOG_INFO("[VM] Debug mode enabled.");
-      add_flag(DEBUG);
+      add_flag(initialized_device, other_command_device::DEBUG);
     } else {
-      remove_flag(DEBUG);
+      remove_flag(initialized_device, other_command_device::DEBUG);
     }
   }
 
-  bool vm::has_flag(state flag) {
-    return (current_mode & flag) != 0;
+  void vm::add_flag(other_command_device* device, other_command_device::state flag) {
+    device->current_state = static_cast<other_command_device::state>(device->current_state | flag);
+  }
+
+  void vm::remove_flag(other_command_device* device, other_command_device::state flag) {
+    device->current_state = static_cast<other_command_device::state>(device->current_state & ~flag);
+  }
+
+  bool vm::has_flag(other_command_device* device, other_command_device::state flag) {
+    return (device->current_state & flag) != 0;
   }
 
   void vm::initialize_device(other_command_device* device) {
@@ -70,6 +77,10 @@ namespace other {
     load_builtin_control_table(device, OTHER_CONTROL_TABLE_V000);
 
     initialized_device = device;
+
+    // we leave STOPPED because no program loaded yet
+    add_flag(initialized_device, other_command_device::INITIALIZED);
+    add_flag(initialized_device, other_command_device::IDLE);
   }
 
   void vm::load_control_table(other_command_device* device, control_tables table) {
@@ -149,7 +160,7 @@ namespace other {
       .data_size = header.prog_header.data_size,
       .entry_point_offset = header.prog_header.entry_point_address,
       .num_instructions = header.prog_header.num_instructions,
-      .state = other_command_device::program_state::kProgramStateRunning,
+      .state = other_command_device::program_state::PROGRAM_RUNNING,
     };
 
     auto program_bytes = bytes.subspan(sizeof(ocmd_file_header));
@@ -161,16 +172,33 @@ namespace other {
     device->program_load_cursor += program_size;
     device->stopped = false;
     device->current_instruction = { opcode_read_program_counter(device) };
+
+    remove_flag(device, other_command_device::STOPPED);
+    if (!has_flag(device, other_command_device::DEBUG)) {
+      remove_flag(device, other_command_device::IDLE);
+      add_flag(device, other_command_device::RUNNING);
+    }
   }
 
   void vm::step(other_command_device* device) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null VM device!");
     OTHER_ASSERT(device->memory != nullptr, "Null VM device memory!");
-    if (device->stopped && !has_flag(DEBUG)) {
+
+    // flag STOPPED means there is no program to execute
+    if (has_flag(device, other_command_device::STOPPED)) {
       return;
     }
 
+    // device->stopped means 'execution paused'
+    if (device->stopped) {
+      return;
+    }
+
+    execute_current_instruction(device);
+  }
+
+  void vm::execute_current_instruction(other_command_device* device) {
     device->current_instruction = { opcode_read_program_counter_and_shift(device) };
     uint8_t instr_nib = device->current_instruction.category_nibble();
 
@@ -191,6 +219,8 @@ namespace other {
     arena_allocator<other_command_device::memory_t>{}.free(device->memory);
     device->memory = nullptr;
     initialized_device = nullptr;
+
+    device->current_state = other_command_device::STOPPED;
   }
 
   natural_t vm::get_register_as_u64(other_command_device* device, uint8_t reg_idx) {
@@ -269,14 +299,6 @@ namespace other {
       return nullptr;
     }
     return device->memory->data + address;
-  }
-
-  void vm::add_flag(state flag) {
-    current_mode = static_cast<state>(current_mode | flag);
-  }
-
-  void vm::remove_flag(state flag) {
-    current_mode = static_cast<state>(current_mode & ~flag);
   }
 
   void vm::update_device_timers(other_command_device* device) {

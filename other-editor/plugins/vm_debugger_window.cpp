@@ -41,8 +41,10 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
     ImGui::Text("Scene Context: None");
   }
 
-  if (ImGui::Button("Step")) {
-    vm::step(&device);
+  if (!vm::has_flag(&device, other_command_device::STOPPED)) {
+    if (ImGui::Button("Step")) {
+      vm::execute_current_instruction(&device);
+    }
   }
 
   ImGui::Separator();

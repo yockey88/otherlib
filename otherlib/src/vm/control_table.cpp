@@ -8,6 +8,7 @@
 
 #include "vm/driver_interface.hpp"
 #include "vm/other_device.hpp"
+#include "vm/vm.hpp"
 
 namespace other {
 
@@ -81,6 +82,10 @@ namespace other {
     /// 00000000 - Stop the device
     void execute_stop_device(other_command_device* device) {
       device->stopped = true;
+      vm::add_flag(device, other_command_device::STOPPED);
+
+      vm::remove_flag(device, other_command_device::RUNNING);
+      vm::remove_flag(device, other_command_device::IDLE);
     }
 
     /// 01000000 - Dump all registers
