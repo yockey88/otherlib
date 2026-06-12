@@ -58,5 +58,7 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
   static MemoryEditor mem_editor;
   // 32 bit bytecode
   mem_editor.Cols = 16;
-  mem_editor.DrawContents(device.memory->data, other_command_device::kMemorySize, 0x0000);
+
+  void* memory_data_in_device = device.memory->data + other_command_device::kProgramStartAddress;
+  mem_editor.DrawContents(memory_data_in_device, other_command_device::kMemorySize - other_command_device::kProgramStartAddress, 0x0000);
 }

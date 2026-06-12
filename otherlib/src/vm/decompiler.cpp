@@ -24,8 +24,7 @@ namespace other {
 
   std::string decompiler::opcode_to_string(uint32_t opcode) {
     instruction instr(opcode);
-    return "Opcode(Category: " + std::to_string(instr.category_nibble()) +
-      ", Type: " + std::to_string(instr.type_nibble()) + ")";
+    return "Opcode(Category: " + std::to_string(instr.category_nibble()) + ", Type: " + std::to_string(instr.type_nibble()) + ")";
   }
 
   std::string decompiler::opcode_to_detailed_string(uint32_t opcode) {
@@ -38,7 +37,7 @@ namespace other {
     result += "Type: " + std::to_string(instr.type_nibble()) + ", ";
     result += "Bytes: [ ";
     for (size_t i = 0; i < other_command_device::kOpCodeSize; ++i) {
-      result += "0x" + std::to_string(instr.bytes[i]);
+      result += std::format("{:#02x}", instr.bytes[i]);
       if (i < other_command_device::kOpCodeSize - 1) {
         result += ", ";
       }
@@ -93,7 +92,7 @@ namespace other {
       offset += other_command_device::kOpCodeSize;
 
       uint8_t instr_nib = device.current_instruction.category_nibble();
-      device.control_table[instr_nib](&device);
+      (*device.control_table)[instr_nib](&device);
     }
 
     vm::shutdown_device(&device);

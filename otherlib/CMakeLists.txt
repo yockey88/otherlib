@@ -103,11 +103,18 @@ target_sources(otherlib
     src/vm/command_files/code_generator.cpp
     src/vm/command_files/ocmd_compiler.cpp
     src/vm/command_files/ocmd_linker.cpp
+    src/vm/devices/core_command_device.cpp
+    # src/vm/devices/event_device.cpp
+    # src/vm/devices/asset_device.cpp
+    # src/vm/devices/scene_device.cpp
+    # src/vm/devices/project_device.cpp
+    src/vm/device_utils.cpp
     src/vm/code_generator_000.cpp
     src/vm/default_symbol_resolver.cpp
     src/vm/instruction.cpp
     src/vm/opcode.cpp
     src/vm/driver_interface.cpp
+    src/vm/command_bus.cpp
     src/vm/control_table.cpp
     src/vm/vm_type.cpp
     src/vm/other_device.cpp

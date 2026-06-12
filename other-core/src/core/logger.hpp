@@ -35,11 +35,20 @@ namespace other {
       static uint16_t next_id = 3;
       return next_id++;
     }
+    enum level {
+      TRACE = spdlog::level::trace,
+      DEBUG = spdlog::level::debug,
+      INFO = spdlog::level::info,
+      WARN = spdlog::level::warn,
+      ERR = spdlog::level::err,
+      CRITICAL = spdlog::level::critical,
+    };
 
     natural_t create_logger(const std::string& name, spdlog::level::level_enum level);
     void register_sink(const std::span<const std::string> logs, log_sink* sink);
 
     void send_log(spdlog::level::level_enum level, natural_t log_idx, const std::string_view msg);
+    void send_log(level lvl, natural_t log_idx, const std::string_view msg) { send_log(static_cast<spdlog::level::level_enum>(lvl), log_idx, msg); }
 
     void set_config(const config_table* config);
 
@@ -64,10 +73,16 @@ namespace other {
     void log_failure_error(const std::string& message);
   };
 
-  /// figure out why I can't compile when using __VA_OPT__(,) instead of this hack
+}  // namespace other
+
+OTHER_SUBSYSTEM(other::logger);
+
+/// figure out why I can't compile when using __VA_OPT__(,) instead of this hack
 #define VAR_ARGS(...) , ##__VA_ARGS__
 
-#define LOG(level, log_id, frmt, ...) other::subsystem<other::logger>::get()->send_log(level, log_id, std::format(frmt VAR_ARGS(__VA_ARGS__)))
+#define LOG(level, log_id, frmt, ...) ::other::subsystem<other::logger>::get()->send_log(level, log_id, std::format(frmt VAR_ARGS(__VA_ARGS__)))
+#define CORE_LOG(level, log_id, fmt, ...) ::other::subsystem<other::logger>::get()->send_log(level, log_id, std::format(fmt VAR_ARGS(__VA_ARGS__)))
+#define OENV_LOG(level, log_id, fmt, ...) CORE_LOG(::other::logger::level::level, log_id, fmt VAR_ARGS(__VA_ARGS__))
 
 #define OENV_LOG_TRACE(log_id, fmt, ...) LOG(spdlog::level::trace, log_id, fmt VAR_ARGS(__VA_ARGS__))
 #define OENV_LOG_DEBUG(log_id, fmt, ...) LOG(spdlog::level::debug, log_id, fmt VAR_ARGS(__VA_ARGS__))
@@ -76,6 +91,7 @@ namespace other {
 #define OENV_LOG_ERROR(log_id, fmt, ...) LOG(spdlog::level::err, log_id, fmt VAR_ARGS(__VA_ARGS__))
 #define OENV_LOG_CRITICAL(log_id, fmt, ...) LOG(spdlog::level::critical, log_id, fmt VAR_ARGS(__VA_ARGS__))
 
+#define CORE_LOG_MESSAGE(level, fmt, ...) CORE_LOG(level, 0, fmt VAR_ARGS(__VA_ARGS__))
 #define CORE_LOG_TRACE(format, ...) OENV_LOG_TRACE(0, format VAR_ARGS(__VA_ARGS__))
 #define CORE_LOG_DEBUG(format, ...) OENV_LOG_DEBUG(0, format VAR_ARGS(__VA_ARGS__))
 #define CORE_LOG_INFO(format, ...) OENV_LOG_INFO(0, format VAR_ARGS(__VA_ARGS__))
@@ -83,7 +99,7 @@ namespace other {
 #define CORE_LOG_ERROR(format, ...) OENV_LOG_ERROR(0, format VAR_ARGS(__VA_ARGS__))
 #define CORE_LOG_CRITICAL(format, ...) OENV_LOG_CRITICAL(0, format VAR_ARGS(__VA_ARGS__))
 
-  /// \todo add automatic enter/exit function logger structs (raii tracing)
+/// \todo add automatic enter/exit function logger structs (raii tracing)
 
 #ifdef OTHER_STACKTRACE_AVAILABLE
   #include <sstream>
@@ -113,9 +129,5 @@ namespace other {
 #define OTHER_UNIMPLEMENTED_FUNCTION_RETURN(expr)                                                                                                           \
   OTHER_ASSERT(false, "Calling unimplemented function: {} at {}", std::source_location::current().function_name(), std::source_location::current().line()); \
   return expr;
-
-}  // namespace other
-
-OTHER_SUBSYSTEM(other::logger);
 
 #endif  // OTHER_CORE_LOGGER_HPP

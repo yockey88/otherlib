@@ -35,6 +35,7 @@ namespace other {
   // type to make parsing easier
   struct normalized_operand {
     operand_kind kind = operand_kind::INVALID;
+    vm_type type = VM_TYPE_VOID;
 
     opt<uint8_t> reg = std::nullopt;
     opt<std::string> symbol = std::nullopt;
@@ -69,8 +70,6 @@ namespace other {
   };
 
   struct code_block {
-    bool is_entry_point = false;
-
     std::string name = "";
     natural_t name_hash = 0;
     std::vector<raw_instruction> instructions = {};

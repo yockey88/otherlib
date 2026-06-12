@@ -7,6 +7,7 @@
 #include <queue>
 
 #include "driver/systems/core_system.hpp"
+#include "vm/command_bus.hpp"
 #include "vm/other_device.hpp"
 
 namespace other {
@@ -29,6 +30,10 @@ namespace other {
 
    private:
     other_command_device core_device;
+    command_bus bus;
+
+    bool boot_loaded = false;
+
     std::queue<instruction> emitted_instructions;
   };
 

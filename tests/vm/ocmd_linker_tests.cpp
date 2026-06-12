@@ -57,7 +57,7 @@ namespace other {
     const auto program = detail::compile_source(source, &diag);
 
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
 
     const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
@@ -81,7 +81,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_EQ(program.compiled_blocks.size(), 3);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
     const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
@@ -163,7 +163,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_EQ(program.compiled_blocks.size(), 3);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
 
     const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
@@ -248,7 +248,7 @@ namespace other {
     const auto program = detail::compile_source(source, &diag);
 
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_EQ(program.compiled_blocks.size(), 3);
     ASSERT_EQ(program.compiled_data_sections.size(), 2);
 
     const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
@@ -362,7 +362,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     auto resolver = make_scope<default_symbol_resolver>();
     resolver->attach_code_label("host.api", 0x4321);
@@ -414,7 +414,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
 
@@ -461,7 +461,8 @@ namespace other {
       ASSERT_TRUE(program.valid);
       ASSERT_EQ(program.definitions.size(), generated.definitions.size());
       ASSERT_EQ(program.compiled_data_sections.size(), generated.data_blocks.size());
-      ASSERT_EQ(program.compiled_blocks.size(), generated.code_blocks.size());
+      // adds __natural_entry
+      ASSERT_EQ(program.compiled_blocks.size(), generated.code_blocks.size() + 1);
 
       auto resolver = make_scope<default_symbol_resolver>();
       const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(std::move(resolver), &diag);

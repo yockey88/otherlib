@@ -43,7 +43,48 @@ namespace other {
     std::vector<token> recombine_parameter_tokens(R token_view) {
       std::vector<token> combined_tokens;
       for (auto it = std::ranges::begin(token_view); it != std::ranges::end(token_view);) {
-        if ((it->type != TOKEN_TYPE_IDENTIFIER && it->type != TOKEN_TYPE_KW_DATA)) {
+        if (it->type == TOKEN_TYPE_LEFT_BRACKET) {
+          token accessed_token = *it;
+          it = std::ranges::next(it);
+          // combine everything until ']'
+          token_type first_tok_type = it != std::ranges::end(token_view) ? it->type : TOKEN_TYPE_EOF;
+          if (first_tok_type == TOKEN_TYPE_EOF) {
+            CORE_LOG_ERROR("Unexpected end of tokens while recombining parameter tokens for instruction parameter starting with '{}'", accessed_token.text);
+            break;
+          }
+
+          std::string combined_text = accessed_token.text;
+          for (; it != std::ranges::end(token_view); ++it) {
+            combined_text += it->text;
+            if (it->type == TOKEN_TYPE_RIGHT_BRACKET) {
+              break;
+            }
+          }
+          if (it == std::ranges::end(token_view)) {
+            CORE_LOG_ERROR("Unexpected end of tokens while recombining parameter tokens for instruction parameter starting with '{}'", accessed_token.text);
+            break;
+          }
+
+          switch (first_tok_type) {
+            case TOKEN_TYPE_IDENTIFIER:
+            case TOKEN_TYPE_KW_DATA:
+              break;
+            default:
+              CORE_LOG_ERROR("Unexpected token type '{}' while recombining parameter tokens for instruction parameter starting with '{}'", first_tok_type, accessed_token.text);
+              break;
+          }
+
+          combined_tokens.push_back(token{ TOKEN_TYPE_IDENTIFIER, combined_text, accessed_token.source_view });
+          if (it != std::ranges::end(token_view)) {
+            ++it;
+          }
+          continue;
+        } else if (it->type == TOKEN_TYPE_STRING_LITERAL) {
+          CORE_LOG_ERROR("STRINGS UNIMPLEMENTED IN RECOMBINE, THIS SHOULD NOT HAPPEN");
+          combined_tokens.push_back(*it);
+          ++it;
+          continue;
+        } else if ((it->type != TOKEN_TYPE_IDENTIFIER && it->type != TOKEN_TYPE_KW_DATA)) {
           combined_tokens.push_back(*it);
           ++it;
           continue;
@@ -51,6 +92,11 @@ namespace other {
 
         std::string combined_text = it->text;
         auto next_it = std::next(it);
+        if (next_it == std::ranges::end(token_view)) {
+          combined_tokens.push_back(*it);
+          break;
+        }
+
         for (; next_it != std::ranges::end(token_view);) {
           if (next_it->type == TOKEN_TYPE_DOT) {
             combined_text += '.';
@@ -386,6 +432,9 @@ namespace other {
         throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected ':' after code block name, found '{}'", current().text));
       }
       consume();
+    } else {
+      section.name = "__natural_entry";
+      EMIT_TRACE(" - code block: {}", section.name);
     }
 
     uint32_t instruction_index = 0;
@@ -413,45 +462,8 @@ namespace other {
           throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected ':' after label name, found '{}'", current().text));
         }
         consume();  // consume ':'
-      }
-
-      if (detail::is_instruction_keyword(current())) {
-        token curr_token = current();
-        canonical_opcode category_and_type = get_canonical_opcode(curr_token);
-        EMIT_TRACE(" - attempting to parse instruction: {} (canonical opcode: {})", curr_token.text, category_and_type);
-        consume();
-
-        auto& instr = section.instructions.emplace_back(code_section_ir::instruction_ir{
-          .instruction_index = instruction_index++,
-          .opcode = category_and_type,
-        });
-        if (set_instr_index) {
-          section.jump_labels.back().instruction_index = instr.instruction_index;
-        }
-
-        auto raw_param_tokens = look_from_now() |
-          std::views::take_while([](const token& tok) { return !detail::is_eol_marker(tok); }) |
-          std::ranges::to<std::vector>();
-        for (const auto& _ : raw_param_tokens) {
-          consume();
-        }
-
-        auto param_tokens = detail::collect_instruction_parameter_tokens(raw_param_tokens);
-        const size_t params_size = std::ranges::size(param_tokens);
-        if (params_size > 3) {
-          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Too many parameters for instruction '{}', expected at most 3 but found {}", curr_token.text, params_size));
-        }
-
-        uint32_t instr_parity = canonical_instruction::opcode_parity(category_and_type);
-        if (params_size > instr_parity) {
-          throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected at most {} parameters for instruction '{}', but found {}", instr_parity, curr_token.text, params_size));
-        }
-
-        size_t arg_idx = 0;
-        for (const auto& param_token : param_tokens) {
-          instr.arguments[arg_idx++] = param_token;
-        }
-
+      } else if (detail::is_instruction_keyword(current())) {
+        instruction_index = parse_instruction(section, instruction_index, set_instr_index);
       } else {
         consume();
       }
@@ -462,6 +474,50 @@ namespace other {
     }
 
     return section;
+  }
+
+  uint32_t oasm_parser::parse_instruction(code_section_ir& section, uint32_t curr_instruction_idx, bool set_instr_index) {
+    OTHER_ASSERT(detail::is_instruction_keyword(current()), "Expected instruction keyword at the beginning of instruction parsing, but found type {} with text '{}'", current().type, current().text);
+
+    uint32_t instruction_index = curr_instruction_idx;
+
+    token curr_token = current();
+    canonical_opcode category_and_type = get_canonical_opcode(curr_token);
+    EMIT_TRACE(" - attempting to parse instruction: {} (canonical opcode: {})", curr_token.text, category_and_type);
+    consume();
+
+    auto& instr = section.instructions.emplace_back(code_section_ir::instruction_ir{
+      .instruction_index = instruction_index++,
+      .opcode = category_and_type,
+    });
+    if (set_instr_index) {
+      section.jump_labels.back().instruction_index = instr.instruction_index;
+    }
+
+    auto raw_param_tokens = look_from_now() |
+      std::views::take_while([](const token& tok) { return !detail::is_eol_marker(tok); }) |
+      std::ranges::to<std::vector>();
+    for (const auto& _ : raw_param_tokens) {
+      consume();
+    }
+
+    auto param_tokens = detail::collect_instruction_parameter_tokens(raw_param_tokens);
+    const size_t params_size = std::ranges::size(param_tokens);
+    if (params_size > 3) {
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Too many parameters for instruction '{}', expected at most 3 but found {}", curr_token.text, params_size));
+    }
+
+    uint32_t instr_parity = canonical_instruction::opcode_parity(category_and_type);
+    if (params_size > instr_parity) {
+      throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected at most {} parameters for instruction '{}', but found {}", instr_parity, curr_token.text, params_size));
+    }
+
+    size_t arg_idx = 0;
+    for (const auto& param_token : param_tokens) {
+      instr.arguments[arg_idx++] = param_token;
+    }
+
+    return instruction_index;
   }
 
   oasm_parser::data_section_ir oasm_parser::parse_data_block(const token& directive_token) {
@@ -768,6 +824,7 @@ namespace other {
       case TOKEN_TYPE_KW_XOR: return canonical_opcode::XOR_OP;
       case TOKEN_TYPE_KW_LSHIFT: return canonical_opcode::LSHIFT_OP;
       case TOKEN_TYPE_KW_RSHIFT: return canonical_opcode::RSHIFT_OP;
+      case TOKEN_TYPE_KW_MOV: return canonical_opcode::MOV_OP;
       /// 2 table
       case TOKEN_TYPE_KW_GOTO: return canonical_opcode::GOTO_OP;
       case TOKEN_TYPE_KW_JE: return canonical_opcode::JE_OP;

@@ -11,7 +11,6 @@ namespace other {
 
   struct compiled_code_block {
     std::string name;
-    bool is_entry_point = false;
     lowering_artifact artifact;
   };
 

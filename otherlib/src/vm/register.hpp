@@ -39,8 +39,8 @@ namespace other {
   struct vm_register {
     constexpr static size_t kRegisterBitSize = 64;  /// 64-bit registers
     constexpr static size_t kNumRegisters = 16;
-    constexpr static uint8_t kReturnRegister = 0x0F;  // VM_RF
-    constexpr static uint8_t kFlagRegister = 0x10;    // VM_RFLAG
+    constexpr static uint8_t kReturnRegister = VM_RRETURN;
+    constexpr static uint8_t kFlagRegister = VM_RFLAG;
 
     register_kind kind;
     vm_register_idx index;

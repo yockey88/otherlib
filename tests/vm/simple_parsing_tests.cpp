@@ -2,6 +2,8 @@
  * \file tests/vm/parsing_tests.cpp
  **/
 
+#include <string>
+
 #include "vm/command_files/lexer.hpp"
 #include "vm/command_files/oasm_parser.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
@@ -15,7 +17,7 @@ namespace other {
 
   }  // namespace detail
 
-  TEST_F(vm_tests, oasm_simple_loose_code_block) {
+  TEST_F(vm_tests, simple_oasm_parsing_loose_code_block) {
     std::string source = R"(
   dump r1
   dump r2
@@ -72,7 +74,7 @@ namespace other {
     EXPECT_EQ(ir.code_blocks.size(), 1);
 
     const auto& code_blk = ir.code_blocks[0];
-    EXPECT_EQ(code_blk.name, "code_block_0");
+    EXPECT_EQ(code_blk.name, "__natural_entry");
     EXPECT_EQ(code_blk.instructions.size(), 5);
 
     EXPECT_EQ(code_blk.instructions[0].opcode, canonical_opcode::DUMP_OP);
@@ -101,7 +103,7 @@ namespace other {
     ASSERT_EQ(code_blk.instructions[4].arguments.size(), 0);
   }
 
-  TEST_F(vm_tests, simple_oasm_named_code_blocks) {
+  TEST_F(vm_tests, simple_oasm_parsing_named_code_blocks) {
     {
       SCOPED_TRACE("Test with missing 'end' for both code blocks");
       std::string source = R"(
@@ -183,7 +185,7 @@ namespace other {
     }
   }
 
-  TEST_F(vm_tests, simple_oasm_data_block_single_object) {
+  TEST_F(vm_tests, simple_oasm_parsingdata_block_single_object) {
     std::string source = R"(
     #data {
       .first_addr : address = 0x1234
@@ -206,7 +208,7 @@ namespace other {
     EXPECT_EQ(ir.data_blocks[0].objects[0].value_token.text, "0x1234");
   }
 
-  TEST_F(vm_tests, simple_oasm_write_and_set) {
+  TEST_F(vm_tests, simple_oasm_parsing_write_and_set) {
     std::string source = R"(
 #data_1 {
   .data_1_1 : string = "my string"
@@ -313,7 +315,63 @@ $code_0_1:
     expect_code_block_matches(ir.code_blocks[1], "code_0_1", expected_code_0_1);
   }
 
-  TEST_F(vm_tests, simple_oasm_fuzz_failure) {
+  TEST_F(vm_tests, simple_mov_instruction_parsing) {
+    std::string source = R"(
+    $main:
+      set r1, 10
+      set r2, 20
+      mov r2, r3
+      dump r1
+      dump r2
+      dump r3
+      ret
+    )";
+
+    diagnostic_engine diag;
+    const auto tokens = ocmd_lexer{ source }.tokenize(&diag);
+    EXPECT_FALSE(tokens.empty());
+    const auto ir = oasm_parser{ vm_version{}, tokens }.parse(&diag);
+    ASSERT_TRUE(ir.valid);
+    ASSERT_TRUE(ir.data_blocks.empty());
+    ASSERT_EQ(ir.code_blocks.size(), 1);
+
+    const auto& r1 = detail::get_register_case(1);
+    const auto& r2 = detail::get_register_case(2);
+    const auto& r3 = detail::get_register_case(3);
+    const std::array expected_code = {
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::SET_OP,
+        .arguments = { detail::make_register_argument(r1), detail::make_integer_literal_argument(10) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::SET_OP,
+        .arguments = { detail::make_register_argument(r2), detail::make_integer_literal_argument(20) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::MOV_OP,
+        .arguments = { detail::make_register_argument(r2), detail::make_register_argument(r3) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::DUMP_OP,
+        .arguments = { detail::make_register_argument(r1) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::DUMP_OP,
+        .arguments = { detail::make_register_argument(r2) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::DUMP_OP,
+        .arguments = { detail::make_register_argument(r3) },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::RET_OP,
+      },
+    };
+
+    expect_code_block_matches(ir.code_blocks[0], "main", expected_code);
+  }
+
+  TEST_F(vm_tests, simple_oasm_parsing_fuzz_failure_1) {
     std::string source = R"(
 #data_10_0 {
   .data_10_0_0 : address = 0x49CD

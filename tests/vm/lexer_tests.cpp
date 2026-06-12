@@ -264,6 +264,30 @@ namespace other {
     expect_tokens(source, expected);
   }
 
+  TEST_F(vm_tests, lexer_full_program_2) {
+    const std::string_view source = R"(
+    $main:
+      set r1, 42
+      mov r1, r2
+    )";
+    constexpr std::array expected = {
+      expected_token_spec{ TOKEN_TYPE_SOURCE_START, "" },
+      expected_token_spec{ TOKEN_TYPE_DOLLAR, "$" },
+      expected_token_spec{ TOKEN_TYPE_IDENTIFIER, "main" },
+      expected_token_spec{ TOKEN_TYPE_COLON, ":" },
+      expected_token_spec{ TOKEN_TYPE_KW_SET, "set" },
+      expected_token_spec{ TOKEN_TYPE_KW_R1, "r1" },
+      expected_token_spec{ TOKEN_TYPE_COMMA, "," },
+      expected_token_spec{ TOKEN_TYPE_INTEGER_LITERAL, "42" },
+      expected_token_spec{ TOKEN_TYPE_KW_MOV, "mov" },
+      expected_token_spec{ TOKEN_TYPE_KW_R1, "r1" },
+      expected_token_spec{ TOKEN_TYPE_COMMA, "," },
+      expected_token_spec{ TOKEN_TYPE_KW_R2, "r2" },
+      expected_token_spec{ TOKEN_TYPE_EOF, "" },
+    };
+    expect_tokens(source, expected);
+  }
+
   TEST_F(vm_tests, lexer_light_fuzzing_generated_valid_streams) {
     std::mt19937 generator(0x00C0FFEEu);
     std::uniform_int_distribution<size_t> token_count_dist(4, 18);

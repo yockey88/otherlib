@@ -15,6 +15,7 @@
 #include "vm/command_files/ocmd_linker.hpp"
 #include "vm/control_table.hpp"
 #include "vm/default_symbol_resolver.hpp"
+#include "vm/diagnostics/ocmd_trace_sink.hpp"
 #include "vm/opcode.hpp"
 
 namespace other {
@@ -126,8 +127,13 @@ namespace other {
       file.close();
 
       ocmd_compiler compiler;
+      ocmd_trace_sink trace_sink;
+      natural_t trace_id = diagnostics.register_sink("trace-sink", &trace_sink);
+
       auto program = compiler.compile(contents, make_scope<code_generator_000>(), &diagnostics);
       bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diagnostics);
+
+      diagnostics.remove_sink(trace_id);
     } else if (file_path.extension() == ".oexe") {
       CORE_LOG_ERROR("[VM] : OEXE file loading not yet implemented: {}", file_path.string());
       return;
@@ -162,13 +168,17 @@ namespace other {
       .num_instructions = header.prog_header.num_instructions,
       .state = other_command_device::program_state::PROGRAM_RUNNING,
     };
+    OTHER_ASSERT(header.prog_header.entry_point_address >= sizeof(ocmd_file_header), "Invalid entry point address in OCMD file header");
+
+    // adjust entry point since we trim out the header
+    device->current_program_metadata.entry_point_offset -= sizeof(ocmd_file_header);
 
     auto program_bytes = bytes.subspan(sizeof(ocmd_file_header));
     size_t program_size = std::ranges::size(program_bytes);
     const uint8_t* program = program_bytes.data();
     load_bytes_to_address(device, device->program_load_cursor, program, program_size);
 
-    device->pc = device->program_load_cursor;
+    device->pc = device->current_program_metadata.get_global_entry_point_address();
     device->program_load_cursor += program_size;
     device->stopped = false;
     device->current_instruction = { opcode_read_program_counter(device) };
@@ -199,10 +209,15 @@ namespace other {
   }
 
   void vm::execute_current_instruction(other_command_device* device) {
+    if (device == nullptr) {
+      return;
+    }
+
     device->current_instruction = { opcode_read_program_counter_and_shift(device) };
     uint8_t instr_nib = device->current_instruction.category_nibble();
 
-    device->control_table[instr_nib](device);
+    OTHER_ASSERT(device->control_table != nullptr, "Null control table!");
+    (*device->control_table)[instr_nib](device);
 
     update_device_timers(device);
     device->current_instruction = { opcode_read_program_counter(device) };

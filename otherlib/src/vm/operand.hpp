@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "vm/opcode.hpp"
+#include "vm/vm_type.hpp"
 
 namespace other {
 
@@ -43,6 +44,7 @@ namespace other {
     XOR_OP,
     LSHIFT_OP,
     RSHIFT_OP,
+    MOV_OP,
     /// 2
     GOTO_OP,
     JE_OP,
@@ -66,6 +68,7 @@ namespace other {
 
   struct canonical_operand {
     operand_kind kind = operand_kind::INVALID;
+    vm_type type = VM_TYPE_VOID;
 
     std::string symbol = "";
 

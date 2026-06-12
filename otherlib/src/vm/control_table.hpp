@@ -7,11 +7,14 @@
 #include <array>
 #include <string_view>
 
+#include "vm/opcode.hpp"
+
 namespace other {
 
   struct other_command_device;
   using other_command_executor = void (*)(other_command_device*);
-  using other_command_table = std::array<other_command_executor, 16>;
+
+  using other_command_table = std::array<other_command_executor, kMaxNumOpcodeCategories>;
 
   enum control_tables {
     OTHER_CONTROL_TABLE_V000 = 0,

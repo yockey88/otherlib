@@ -83,6 +83,9 @@ namespace other {
     void parse_definition(section_ir& sections);
 
     code_section_ir parse_code_block();
+    // returns the index of the instruction just parsed
+    uint32_t parse_instruction(code_section_ir& section, uint32_t curr_instruction_idx, bool set_instr_index = false);
+
     data_section_ir parse_data_block(const token& directive_token);
 
     void process_code_sections(std::vector<code_section_ir>& sections);

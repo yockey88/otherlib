@@ -3,6 +3,8 @@
  **/
 #include "vm/code_generator_000.hpp"
 
+#include "core/enum_formatter.hpp"
+
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/opcode.hpp"
 
@@ -176,6 +178,19 @@ namespace other {
       throw ocmd_lowering_error("rshift second operand must be a register reference, immediate, or float literal");
     }
     emit_instruction(opcode_shift_right_x_by_y(instr.param[0].reg, instr.param[1].reg), artifact);
+  }
+
+  void code_generator_000::encode_mov(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::MOV_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_mov");
+    }
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("mov first operand must be a register reference");
+    }
+    if (instr.param[1].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("mov second operand must be a register reference");
+    }
+    emit_instruction(opcode_move_x_to_y(instr.param[0].reg, instr.param[1].reg), artifact);
   }
 
   void code_generator_000::encode_goto(const canonical_instruction& instr, lowering_artifact& artifact) {

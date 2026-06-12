@@ -22,6 +22,7 @@ namespace other {
       case canonical_opcode::XOR_OP: return encode_xor(instr, artifact);
       case canonical_opcode::LSHIFT_OP: return encode_lshift(instr, artifact);
       case canonical_opcode::RSHIFT_OP: return encode_rshift(instr, artifact);
+      case canonical_opcode::MOV_OP: return encode_mov(instr, artifact);
       case canonical_opcode::GOTO_OP: return encode_goto(instr, artifact);
       case canonical_opcode::JE_OP: return encode_je(instr, artifact);
       case canonical_opcode::JNE_OP: return encode_jne(instr, artifact);

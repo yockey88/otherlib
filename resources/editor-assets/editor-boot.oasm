@@ -1,17 +1,18 @@
 /entry: main
 
 $main:
+  set r0, data.load-text
   set r1, data.string-len
-  set r2, data.addr
-  set r3, data.load-text
-  dump r1
-  dump r2
-  dump r3
+  set r2, 3 ; warning level
+  syscall 0
+  ; mov r1, r2
+  ; dump r1
+  ; dump r2
+  ; dump r3
 end
 
 #data {
   ; address to write load text to in memory
   .string-len: int32 = 3
-  .addr: address = 0x0F00
   .load-text: string = "abc"
 }

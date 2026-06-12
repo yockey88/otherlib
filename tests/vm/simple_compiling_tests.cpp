@@ -32,9 +32,9 @@ namespace other {
 
     ocmd_compiler compiler{ ir };
     const auto bytecode = compiler.compile(make_scope<code_generator_000>(), &diag);
-    ASSERT_EQ(bytecode.compiled_blocks.size(), 1);
+    ASSERT_EQ(bytecode.compiled_blocks.size(), 2);
     EXPECT_EQ(bytecode.compiled_blocks[0].name, "main");
-    // EXPECT_TRUE(bytecode[0].is_entry_point);
+    EXPECT_EQ(bytecode.compiled_blocks[1].name, "__natural_entry");
 
     const auto& bc = bytecode.compiled_blocks[0].artifact.machine_instructions;
     ASSERT_EQ(bc.size(), 1);
@@ -61,7 +61,7 @@ namespace other {
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.definitions.size(), 1);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     detail::expect_definition_matches(program.definitions[0], "entry", "main");
 
@@ -110,7 +110,7 @@ end
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.definitions.size(), 1);
-    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_EQ(program.compiled_blocks.size(), 3);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
 
     const std::array expected_entry = {

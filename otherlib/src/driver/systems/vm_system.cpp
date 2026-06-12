@@ -4,6 +4,7 @@
 #include "driver/systems/vm_system.hpp"
 
 #include "driver/driver.hpp"
+#include "vm/devices/core_command_device.hpp"
 #include "vm/vm.hpp"
 
 namespace other {
@@ -12,22 +13,33 @@ namespace other {
     vm::initialize_device(&core_device);
     vm::load_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
     core_device.host_driver = &get_driver();
+    core_device.bus = &bus;
+
+    bus.register_device(make_scope<core_command_device>());
 
     const bool vm_debug = get_driver().get_config_value<bool>("driver.debug-vm", false);
     vm::set_debug_mode(vm_debug);
-
-    if (std::string boot_oasm_path = get_driver().get_config_value<std::string>("driver.boot-file"); !boot_oasm_path.empty()) {
-      CORE_LOG_INFO("Loading VM boot file: {}", boot_oasm_path);
-      vm::load_program_from_file(&core_device, boot_oasm_path);
-    } else {
-      CORE_LOG_INFO("No VM boot file specified in configuration. VM will start with empty memory.");
-    }
   }
 
   void vm_system::tick(driver_kernel* kernel, double dt) {
+    if (!boot_loaded && get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING) {
+      if (std::string boot_oasm_path = get_driver().get_config_value<std::string>("driver.boot-file"); !boot_oasm_path.empty()) {
+        CORE_LOG_INFO("Loading VM boot file: {}", boot_oasm_path);
+        vm::load_program_from_file(&core_device, boot_oasm_path);
+      }
+      boot_loaded = true;
+    }
+
     if (vm::has_flag(&core_device, other_command_device::DEBUG)) {
       return;
     }
+
+    // uint32_t executed = 0;
+    // while (executed < instruction_budget && !core_device.stopped &&
+    //        !vm::has_flag(&core_device, other_command_device::STOPPED)) {
+    //   vm::step(&core_device);
+    //   ++executed;
+    // }
     vm::step(&core_device);
   }
 

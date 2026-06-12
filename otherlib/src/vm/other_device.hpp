@@ -15,12 +15,14 @@ namespace other {
 
   class scene;
   class driver;
+  class command_bus;
 
   struct other_command_device {
     constexpr static size_t kOpCodeSize = sizeof(uint32_t);
 
     constexpr static size_t kMemorySize = 0xFFFF;
     constexpr static size_t kStackSize = 128;
+    constexpr static size_t kMaxStringLen = 512;
 
     enum : uint8_t {
       kFlagZero = 1 << 0,
@@ -50,7 +52,7 @@ namespace other {
 
     /// an array index by instruction category nibble loaded
     ///   that must be loaded before the device can be used
-    other_command_executor* control_table = nullptr;
+    const other_command_table* control_table = nullptr;
 
     /// for device-only use
     constexpr static uint16_t kMaxDeviceAddress = kMemorySize;
@@ -65,6 +67,7 @@ namespace other {
 
     driver* host_driver = nullptr;
     scene* scene_context = nullptr;
+    command_bus* bus = nullptr;
 
     bool stopped = true;
 
@@ -107,12 +110,18 @@ namespace other {
     program_metadata current_program_metadata;
 
     inline natural_t read_register_as_u64(uint8_t reg_index) const {
-      OTHER_ASSERT(reg_index < vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
+      OTHER_ASSERT(reg_index <= vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
       return registers[reg_index].memory.to_u64();
     }
     inline void write_register_from_u64(uint8_t reg_index, uint64_t value) {
-      OTHER_ASSERT(reg_index < vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
+      OTHER_ASSERT(reg_index <= vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
       registers[reg_index].memory = register_t<vm_register::kRegisterBitSize>{ value };
+    }
+    inline uint64_t read_flag_register() const {
+      return read_register_as_u64(vm_register::kFlagRegister);
+    }
+    inline void write_flag_register(uint64_t value) {
+      write_register_from_u64(vm_register::kFlagRegister, value);
     }
 
     uint16_t globalize_address(uint16_t local_address) const;

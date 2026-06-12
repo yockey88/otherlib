@@ -18,6 +18,7 @@ namespace other {
     uint16_t data_section_offset = 0;
     uint16_t data_size = 0;
     uint16_t data_table_offset = 0;
+    // this is program local and does not include the header offset
     uint16_t entry_point_address = 0;
     uint16_t num_instructions = 0;
   };

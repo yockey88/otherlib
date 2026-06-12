@@ -72,7 +72,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
     const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
@@ -102,7 +102,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_EQ(program.compiled_blocks.size(), 3);
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
     const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
@@ -136,7 +136,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     const std::array expected_main = {
       detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_from(vm_register_idx::VM_R1, 0xFFFF) },
@@ -158,6 +158,36 @@ namespace other {
       // .number
       0x30, 0x00, 0x00, 0x00,  // int32 value of 42 @ [0x0030]
       0x00, 0x00, 0x00, 0x00   // padding to align to 8 bytes (data sections are always aligned to 8 bytes in the linked output)
+    };
+    const std::vector<uint8_t> expected_bytes = detail::get_expected_bytes(code_bytes);
+
+    detail::verify_bytes(bytes, expected_bytes);
+  }
+
+  TEST_F(vm_tests, ocmd_simple_linking_mov_instruction) {
+    const std::string_view source = R"(
+    $main:
+      set r1, 10
+      mov r2, r1
+      dump r2
+      ret
+    end
+    )";
+
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
+    ASSERT_TRUE(program.valid);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_TRUE(program.compiled_data_sections.empty());
+
+    const std::vector<uint8_t> bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diag);
+
+    const std::vector<uint8_t> code_bytes{
+      0x0A, 0x00, 0x01, 0x12,  // set r1, 10
+      0x00, 0x00, 0x12, 0x00,  // mov r2, r1
+      0x00, 0x00, 0x02, 0x02,  // dump r2
+      0x00, 0x00, 0x00, 0x24,  // ret
+      0x00, 0x00, 0x00, 0x00   // stopdev guard
     };
     const std::vector<uint8_t> expected_bytes = detail::get_expected_bytes(code_bytes);
 

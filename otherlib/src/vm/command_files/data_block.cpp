@@ -146,7 +146,10 @@ namespace other {
       }
       case OCMD_DATA_TYPE_F32: return raw_data_from_value<float>(std::stof(value_token.text));
       case OCMD_DATA_TYPE_F64: return raw_data_from_value<double>(std::stod(value_token.text));
-      case OCMD_DATA_TYPE_STRING: return std::vector<uint8_t>(value_token.text.begin(), value_token.text.end());
+      case OCMD_DATA_TYPE_STRING:
+        return value_token.text |
+          std::views::transform([](char c) { return static_cast<uint8_t>(c); }) |
+          std::ranges::to<std::vector>();
       case OCMD_DATA_TYPE_ADDRESS: {
         const int base = value_token.text.starts_with("0x") ? 16 : 10;
         const uint16_t value = static_cast<uint16_t>(std::stoul(value_token.text, nullptr, base));

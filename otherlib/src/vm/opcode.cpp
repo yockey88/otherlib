@@ -203,6 +203,10 @@ namespace other {
   uint32_t opcode_shift_right_x_by_y(uint8_t x, uint8_t y) {
     return detail::group1_opcode_with_2_registers(0xB, x, y);
   }
+
+  uint32_t opcode_move_x_to_y(uint8_t x, uint8_t y) {
+    return detail::group1_opcode_with_2_registers(0xC, x, y);
+  }
   /// group 1 end -----------------
 
   /// group 2 start ---------------

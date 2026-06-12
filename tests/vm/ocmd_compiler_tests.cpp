@@ -269,7 +269,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_EQ(program.compiled_blocks.size(), 3);
 
     const std::array expected_foo = {
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
@@ -300,7 +300,7 @@ namespace other {
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.definitions.size(), 1);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     detail::expect_definition_matches(program.definitions[0], "entry", "main");
 
@@ -335,7 +335,7 @@ namespace other {
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     const std::array expected_main = {
       detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_from(vm_register_idx::VM_R1, 0xFFFF) },
@@ -369,7 +369,7 @@ namespace other {
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
     ASSERT_EQ(program.compiled_data_sections.size(), 1);
-    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_EQ(program.compiled_blocks.size(), 3);
 
     const std::array expected_data = {
       detail::expected_data_object{
@@ -466,7 +466,7 @@ namespace other {
     diagnostic_engine diag;
     const auto program = detail::compile_source(source, &diag);
     ASSERT_TRUE(program.valid);
-    ASSERT_EQ(program.compiled_blocks.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     const auto& r1 = detail::get_register_case(1);
     const auto& r2 = detail::get_register_case(2);
@@ -559,6 +559,30 @@ namespace other {
     detail::expect_symbol_fixups_match(program.compiled_blocks[0].artifact, detail::expected_symbol_fixups_for_current_generator(expected_main));
   }
 
+  TEST_F(vm_tests, ocmd_compiler_accepts_mov_instruction) {
+    const std::string_view source = R"(
+    $main:
+      set r1, 10
+      mov r2, r1
+      ret
+    end
+    )";
+
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
+    ASSERT_TRUE(program.valid);
+    ASSERT_EQ(program.definitions.size(), 0);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
+    ASSERT_TRUE(program.compiled_data_sections.empty());
+
+    const std::array expected_main = {
+      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_direct(vm_register_idx::VM_R1, 10) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_move_x_to_y(vm_register_idx::VM_R2, vm_register_idx::VM_R1) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
+    };
+    detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "main", false, expected_main);
+  }
+
   TEST_F(vm_tests, ocmd_compiler_light_fuzzing) {
     detail::generator gen{};
 
@@ -571,7 +595,8 @@ namespace other {
       ASSERT_TRUE(program.valid);
       ASSERT_EQ(program.definitions.size(), generated.definitions.size());
       ASSERT_EQ(program.compiled_data_sections.size(), generated.data_blocks.size());
-      ASSERT_EQ(program.compiled_blocks.size(), generated.code_blocks.size());
+      // adds __natural_entry if not present
+      ASSERT_EQ(program.compiled_blocks.size(), generated.code_blocks.size() + 1);
 
       for (size_t definition_index = 0; definition_index < generated.definitions.size(); ++definition_index) {
         detail::expect_definition_matches(

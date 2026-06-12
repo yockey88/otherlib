@@ -97,6 +97,7 @@ namespace other {
     TOKEN_TYPE_KW_XOR,
     TOKEN_TYPE_KW_LSHIFT,
     TOKEN_TYPE_KW_RSHIFT,
+    TOKEN_TYPE_KW_MOV,
     // 2 table
     TOKEN_TYPE_KW_GOTO,
     TOKEN_TYPE_KW_JE,
@@ -204,6 +205,7 @@ namespace other {
     keyword_token("xor", TOKEN_TYPE_KW_XOR),
     keyword_token("lshift", TOKEN_TYPE_KW_LSHIFT),
     keyword_token("rshift", TOKEN_TYPE_KW_RSHIFT),
+    keyword_token("mov", TOKEN_TYPE_KW_MOV),
 
     keyword_token("goto", TOKEN_TYPE_KW_GOTO),
     keyword_token("je", TOKEN_TYPE_KW_JE),

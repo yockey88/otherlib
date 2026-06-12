@@ -48,6 +48,7 @@ namespace other {
     virtual void encode_xor(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
     virtual void encode_lshift(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
     virtual void encode_rshift(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
+    virtual void encode_mov(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
 
     virtual void encode_goto(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
     virtual void encode_je(const canonical_instruction& instr, lowering_artifact& artifact) = 0;

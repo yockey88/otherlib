@@ -289,7 +289,6 @@ namespace other {
       const compiled_code_block& actual, const std::string_view expected_name,
       const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions) {
       EXPECT_EQ(actual.name, expected_name);
-      EXPECT_EQ(actual.is_entry_point, expected_is_entry_point);
 
       const auto& actual_instructions = actual.artifact.machine_instructions;
       std::string actual_instructions_str = "Instructions:\n";

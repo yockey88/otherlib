@@ -127,8 +127,15 @@ namespace other {
     OPCODE_CATEGORY_PROGRAM_FLOW = 0x2,
     OPCODE_CATEGORY_ARITHMETIC = 0x3,
     OPCODE_CATEGORY_SCENE_TABLE = 0x4,
+
     // ...
+
+    OPCODE_MAX_CATEGORY = 0xF,  // placeholder as we expand to 0xF, this is to make the MAX_NUM_CATEGORIES more readable
   };
+  // these are the same because we use a single nibble for both
+  /// \todo rename the enum here if we ever expand into the 0xF category
+  constexpr inline size_t kMaxNumOpcodeCategories = opcode_categories::OPCODE_MAX_CATEGORY + 1;
+  constexpr inline size_t kMaxNumOpcodeTypesPerCategory = kMaxNumOpcodeCategories;
 
   std::span<const uint8_t> opcode_to_bytes(const instruction& instr);
 
@@ -159,18 +166,7 @@ namespace other {
   //  1 - load/store/logical operations
   //  2 - program flow operations
   //  3 - arithmetic operations
-  //  4 -
-  //  5 -
-  //  6 -
-  //  7 -
-  //  8 -
-  //  9 -
-  //  A -
-  //  B -
-  //  C -
-  //  D -
-  //  E -
-  //  F -
+  //  4-F...
 
   /// Opcode Types:
   //   - there is a maximum of 16 types per category, but not all categories use all 16 types, and some types are shared between categories
@@ -210,6 +206,8 @@ namespace other {
   uint32_t opcode_shift_left_x_by_y(uint8_t x, uint8_t y);
   /// 1Bxxyy00 (rshift x, y)
   uint32_t opcode_shift_right_x_by_y(uint8_t x, uint8_t y);
+  /// 1Cxxyy00 (mov x, y)
+  uint32_t opcode_move_x_to_y(uint8_t x, uint8_t y);
 
   /// 2 table (program flow)
   /// 2000nnnn (goto <label>/goto n)

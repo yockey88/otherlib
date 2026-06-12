@@ -3,6 +3,8 @@
  **/
 #include "vm/command_files/ocmd_compiler.hpp"
 
+#include <ranges>
+
 #include "core/enum_formatter.hpp"
 
 #include "vm/command_files/code_block.hpp"
@@ -57,6 +59,34 @@ namespace other {
     }
 
     EMIT_TRACE("Compiling program w/ {} code blocks and {} data blocks", ir.code_blocks.size(), ir.data_blocks.size());
+    EMIT_TRACE(" - target VM version: {}", ir.target_vm_version);
+    // collect all __native_entry blocks into a single one first these are any instructions not in a named code block,
+    // these are collected into a single main '__natural_entry' code block that acts as the main if no /entry directive is found,
+    // programs that export functions can not define an entry point and __natural_entry will always be ran when these files are loaded
+    // notice that this gets created even if there are no loose instructions in the compiled program and will still be invoked if no /entry directive is found
+    {
+      code_block native_entry = {
+        .name = "__natural_entry",
+      };
+      native_entry.name_hash = FNV(native_entry.name);
+      for (const auto& code_blk_ir : ir.code_blocks | std::views::filter([](const auto& blk) { return blk.name == "__natural_entry"; })) {
+        EMIT_TRACE(" - found __natural_entry block with {} instructions, moving to main natural entry", code_blk_ir.instructions.size());
+        native_entry.instructions.insert(native_entry.instructions.end(), code_blk_ir.instructions.begin(), code_blk_ir.instructions.end());
+        native_entry.jump_labels.insert(native_entry.jump_labels.end(), code_blk_ir.jump_labels.begin(), code_blk_ir.jump_labels.end());
+      }
+      while (true) {
+        auto it = std::ranges::find_if(ir.code_blocks, [](const auto& blk) { return blk.name == "__natural_entry"; });
+        if (it == ir.code_blocks.end()) {
+          break;
+        }
+        ir.code_blocks.erase(it);
+      }
+      ir.code_blocks.push_back(std::move(native_entry));
+    }
+    EMIT_TRACE(" - __natural_entry blocks merged, total code blocks: {}", ir.code_blocks.size());
+
+    /// resolve any definitions if possible
+
     ocmd_program program{
       .compiler_version = generator->target_version(),
       .definitions = ir.definitions,
@@ -72,7 +102,6 @@ namespace other {
       }
       compiled_code_block out = {
         .name = code_blk_ir.name,
-        .is_entry_point = code_blk_ir.is_entry_point,
         .artifact = builder.finalize(*generator),
       };
       program.compiled_blocks.push_back(std::move(out));
@@ -87,14 +116,6 @@ namespace other {
       };
 
       {
-        size_t sz = 0;
-        for (const auto& obj_ir : data_blk_ir.objects) {
-          sz += obj_ir.data.size();
-        }
-        out.data.reserve(sz);
-      }
-
-      {
         size_t current_offset = 0;
         for (const auto& obj_ir : data_blk_ir.objects) {
           compiled_data_section::field field{
@@ -105,9 +126,10 @@ namespace other {
 
           size_t data_size = obj_ir.data.size();
           size_t padding_needed = 0;
-          if (data_size % 8 != 0) {
-            padding_needed = 8 - (data_size % 8);
+          if (data_size % kDefaultAlignment != 0) {
+            padding_needed = kDefaultAlignment - (data_size % kDefaultAlignment);
           }
+          data_size += padding_needed;
 
           out.data.insert(out.data.end(), obj_ir.data.begin(), obj_ir.data.end());
           for (size_t i = 0; i < padding_needed; i++) {
@@ -115,12 +137,14 @@ namespace other {
           }
           out.fields.push_back(std::move(field));
 
-          current_offset += out.data.size();
+          current_offset += data_size;
         }
       }
 
       program.compiled_data_sections.push_back(std::move(out));
     }
+
+    /// resolve any definitions if possible
 
     program.valid = true;
     return program;

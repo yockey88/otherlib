@@ -6,6 +6,7 @@
 #include "core/logger.hpp"
 
 #include "driver/driver.hpp"
+#include "vm/command_bus.hpp"
 #include "vm/command_files/ocmd_headers.hpp"
 #include "vm/decompiler.hpp"
 

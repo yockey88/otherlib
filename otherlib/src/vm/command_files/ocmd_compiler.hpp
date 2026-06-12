@@ -27,6 +27,8 @@ namespace other {
     ocmd_program compile(const std::string_view source, scope<ocmd_code_generator> generator, diagnostic_engine* diag);
     ocmd_program compile(scope<ocmd_code_generator> generator, diagnostic_engine* diag);
 
+    constexpr static inline size_t kDefaultAlignment = 8;
+
    private:
     vm_version version = {};
 

@@ -6,9 +6,11 @@
 #include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
+#include "vm/command_bus.hpp"
 #include "vm/driver_interface.hpp"
 #include "vm/other_device.hpp"
 #include "vm/vm.hpp"
+#include "vm/vm_error.hpp"
 
 namespace other {
 
@@ -24,42 +26,70 @@ namespace other {
     device->stack[device->sp] = 0;
   }
 
+  void execute_illegal_instruction_category(other_command_device* device) {
+    OTHER_ASSERT(device != nullptr, "Null device!");
+    device->write_flag_register(VM_ILLEGAL_INSTRUCTION_CATEGORY);
+    vm::add_flag(device, other_command_device::VM_ERROR);
+    device->stopped = true;
+    CORE_LOG_ERROR("[VM] illegal category {:#x} at pc {:#06x} (opcode {:#010x})",
+                   device->current_instruction.category_nibble(), device->pc,
+                   device->current_instruction.opcode);
+  }
+
+  void execute_illegal_instruction(other_command_device* device) {
+    OTHER_ASSERT(device != nullptr, "Null device!");
+    device->write_flag_register(VM_ILLEGAL_INSTRUCTION_TYPE);
+    vm::add_flag(device, other_command_device::VM_ERROR);
+    device->stopped = true;
+    CORE_LOG_ERROR("[VM] illegal instruction with opcode {:#010x} at pc {:#06x}",
+                   device->current_instruction.opcode, device->pc);
+  }
+
   namespace v000 {
 
     void execute_device_control_instruction(other_command_device* device);
     void execute_register_control(other_command_device* device);
     void execute_program_flow(other_command_device* device);
     void execute_arithmetic_logic(other_command_device* device);
+    constexpr other_command_table kControlTable = {
+      execute_device_control_instruction,
+      execute_register_control,
+      execute_program_flow,
+      execute_arithmetic_logic,
+      // clang-format off
+      execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,   execute_illegal_instruction_category, execute_illegal_instruction_category, execute_illegal_instruction_category,  // 4 - 9
+      execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category, execute_illegal_instruction_category,  // A - F
+      // clang-format on
+    };
 
     void execute_debugger_control_instruction(other_command_device* device);
     void execute_debugger_register_control(other_command_device* device);
     void execute_debugger_program_flow(other_command_device* device);
     void execute_debugger_arithmetic_logic(other_command_device* device);
+    constexpr other_command_table kDebuggerTable = {
+      execute_debugger_control_instruction,
+      execute_debugger_register_control,
+      execute_debugger_program_flow,
+      execute_debugger_arithmetic_logic,
+      // clang-format off
+      execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,   execute_illegal_instruction_category, execute_illegal_instruction_category, execute_illegal_instruction_category,  // 4 - 9
+      execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category, execute_illegal_instruction_category,  // A - F
+      // clang-format on
+    };
 
     void execute_decompiler_control_instruction(other_command_device* device);
     void execute_decompiler_register_control(other_command_device* device);
     void execute_decompiler_program_flow(other_command_device* device);
     void execute_decompiler_arithmetic_logic(other_command_device* device);
-
-    other_command_executor kControlTable[] = {
-      execute_device_control_instruction,
-      execute_register_control,
-      execute_program_flow,
-      execute_arithmetic_logic,
-    };
-
-    other_command_executor kDebuggerTable[] = {
-      execute_debugger_control_instruction,
-      execute_debugger_register_control,
-      execute_debugger_program_flow,
-      execute_debugger_arithmetic_logic,
-    };
-
-    other_command_executor kDecompilerTable[] = {
+    constexpr other_command_table kDecompilerTable = {
       execute_decompiler_control_instruction,
       execute_decompiler_register_control,
       execute_decompiler_program_flow,
       execute_decompiler_arithmetic_logic,
+      // clang-format off
+      execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,   execute_illegal_instruction_category, execute_illegal_instruction_category, execute_illegal_instruction_category,  // 4 - 9
+      execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category, execute_illegal_instruction_category,  // A - F
+      // clang-format on
     };
 
   }  // namespace v000
@@ -67,9 +97,9 @@ namespace other {
   void load_builtin_control_table(other_command_device* device, control_tables table) {
     OTHER_ASSERT(device != nullptr, "Null device!");
     switch (table) {
-      case OTHER_CONTROL_TABLE_V000: device->control_table = (other_command_executor*)v000::kControlTable; break;
-      case OTHER_CONTROL_TABLE_DEBUGGER_V000: device->control_table = (other_command_executor*)v000::kDebuggerTable; break;
-      case OTHER_CONTROL_TABLE_DECOMPILER_V000: device->control_table = (other_command_executor*)v000::kDecompilerTable; break;
+      case OTHER_CONTROL_TABLE_V000: device->control_table = &v000::kControlTable; break;
+      case OTHER_CONTROL_TABLE_DEBUGGER_V000: device->control_table = &v000::kDebuggerTable; break;
+      case OTHER_CONTROL_TABLE_DECOMPILER_V000: device->control_table = &v000::kDecompilerTable; break;
       default:
         /// \todo: look up table in plugin registry or script system
         OTHER_ASSERT(false, "Invalid control table: {}!", table);
@@ -240,6 +270,14 @@ namespace other {
       device->write_register_from_u64(x, uint64_t{ (val_x >> val_y) });
     }
 
+    /// 1Cxxyy00 - R[y] = R[x]
+    void execute_move_x_to_y(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      device->write_register_from_u64(y, val_x);
+    }
+
     /////////////////////// 2XXX /////////////////////
     /// 2000nnnn - goto address nnn
     void execute_goto(other_command_device* device) {
@@ -297,9 +335,14 @@ namespace other {
 
     /// 2600kkkk - syscall with id kkkk
     void execute_syscall(other_command_device* device) {
+      OTHER_ASSERT(device != nullptr, "Null device!");
+      OTHER_ASSERT(device->bus != nullptr, "Device's command bus cannot be null for syscall execution");
       uint16_t id = device->current_instruction.lower;
-      // implement syscall handling here
-      CORE_LOG_WARN("Syscall with id {}", id);
+      if (!device->bus->dispatch(id, device)) {
+        device->write_flag_register(vm_error::VM_BAD_SYSCALL);
+        device->write_register_from_u64(vm_register::kReturnRegister, 0);
+        CORE_LOG_ERROR("[VM] Invalid syscall ID {:#06x} at PC {:#06x}", id, device->pc);
+      }
     }
 
     /////////////////////// 3XXX /////////////////////
@@ -360,21 +403,17 @@ namespace other {
       }
     }
 
-    /////////////////////// 4XXX /////////////////////
-    /// 4000nnnn - load scene with id nnn
-    void execute_load_scene_with_id_at(other_command_device* device) {
-      uint16_t n = device->current_instruction.lower;
-      uint64_t scene_id = device->read_u64_at(n);
-      driver_interface::set_scene_by_id(device->host_driver, scene_id);
-    }
-
-    constexpr other_command_executor kDeviceControlTable[] = {
+    constexpr other_command_table kDeviceControlTable = {
       execute_stop_device,
       execute_dump_registers,
       execute_dump_register_x,
       execute_dump_memory_at,
+      // clang-format off
+      execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // 4 - 9
+      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
+      // clang-format on
     };
-    constexpr other_command_executor kLoadTable[] = {
+    constexpr other_command_table kLoadTable = {
       execute_write_x_to_memory,
       execute_load_x_from_memory,
       execute_load_x_direct,
@@ -387,8 +426,12 @@ namespace other {
       execute_x_xor_y_set_z,
       execute_shift_left_x_by_y,
       execute_shift_right_x_by_y,
+      execute_move_x_to_y,
+      // clang-format off
+      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction, // D - F
+      // clang-format on
     };
-    constexpr other_command_executor kProgramFlowTable[] = {
+    constexpr other_command_table kProgramFlowTable = {
       execute_goto,
       execute_jump_if_zero,
       execute_jump_if_not_zero,
@@ -396,13 +439,21 @@ namespace other {
       execute_return,
       execute_return_value_in_x,
       execute_syscall,
+      // clang-format off
+      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction, // 7 - 9
+      execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
+      // clang-format on
     };
-    constexpr other_command_executor kArithmeticLogicTable[] = {
+    constexpr other_command_table kArithmeticLogicTable = {
       execute_add_x_y_to_x,
       execute_sub_x_y_to_x,
       execute_mul_x_y_to_x,
       execute_div_x_y_to_x,
       execute_mod_x_y_to_x,
+      // clang-format off
+      execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction, // 5 - 9
+      execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
+      // clang-format on
     };
 
     void execute_device_control_instruction(other_command_device* device) {
