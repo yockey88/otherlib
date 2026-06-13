@@ -99,13 +99,13 @@ namespace other {
     syscall() = default;
     syscall(int32_t i) : id(static_cast<uint16_t>(i)) {}
     syscall(uint16_t i) : id(i) {}
-    syscall(uint8_t l, uint8_t h) : low(l), high(h) {}
+    syscall(uint8_t device_id, uint8_t function_id) : function(function_id), device(device_id) {}
     union {
       uint16_t id;
       union {
         struct {
-          uint8_t low;
-          uint8_t high;
+          uint8_t function;
+          uint8_t device;
         };
       };
     };
@@ -180,6 +180,8 @@ namespace other {
   uint32_t opcode_dump_register_x(uint8_t x);
   /// 0x03xxnnnn (dump x, n)
   uint32_t opcode_dump_memory_at(uint8_t x, uint16_t n);
+  /// 0x04000000 (view_state)
+  uint32_t opcode_view_state();
 
   /// 1 table (load/store/logical)
   /// 10xxnnnn (write x, n)
@@ -236,6 +238,10 @@ namespace other {
   uint32_t opcode_div_x_y_to_x(uint8_t x, uint8_t y);
   /// 34xy0000 (mod x, y)
   uint32_t opcode_mod_x_y_to_x(uint8_t x, uint8_t y);
+
+  /// 4 table (nop)
+  /// 40xxxxxx (nop)
+  uint32_t opcode_nop();
 
 }  // namespace other
 

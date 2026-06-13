@@ -366,6 +366,7 @@ namespace other {
   void oasm_parser::parse_keyword_directive(section_ir& sections, const token& directive_token) {
     switch (directive_token.type) {
       case TOKEN_TYPE_KW_DATA: sections.data_sections.emplace_back(parse_data_block(directive_token)); break;
+      // case TOKEN_TYPE_KW_BIND: break;
       default:
         /// \todo: default to data here after checking if the token matches any builtin directives,
         ///        find out ways to define custom directives
@@ -440,8 +441,8 @@ namespace other {
     uint32_t instruction_index = 0;
 
     /// now read everything until END keyword
+    bool set_instr_index = false;
     while (!finished() && !detail::end_of_code_section(current())) {
-      bool set_instr_index = false;
       if (detail::is_next_section_marker(current())) {
         break;
       }
@@ -464,6 +465,7 @@ namespace other {
         consume();  // consume ':'
       } else if (detail::is_instruction_keyword(current())) {
         instruction_index = parse_instruction(section, instruction_index, set_instr_index);
+        set_instr_index = false;
       } else {
         consume();
       }
@@ -492,6 +494,7 @@ namespace other {
     });
     if (set_instr_index) {
       section.jump_labels.back().instruction_index = instr.instruction_index;
+      EMIT_TRACE(" - jump label '{}' instruction index {}", section.jump_labels.back().name, instr.instruction_index);
     }
 
     auto raw_param_tokens = look_from_now() |
@@ -717,6 +720,7 @@ namespace other {
         auto& lbl = code_blk.jump_labels.emplace_back();
         lbl.name = lbl_ir.name;
         lbl.section_address = static_cast<uint16_t>(lbl_ir.instruction_index * other_command_device::kOpCodeSize);
+        EMIT_TRACE("   - jump label {} @ {:#06x}", lbl.name, lbl.section_address);
       }
     }
   }
@@ -813,6 +817,7 @@ namespace other {
       /// 0 table
       case TOKEN_TYPE_KW_STOPDEV: return canonical_opcode::STOPDEV_OP;
       case TOKEN_TYPE_KW_DUMP: return canonical_opcode::DUMP_OP;
+      case TOKEN_TYPE_KW_VIEW_STATE: return canonical_opcode::VIEW_STATE_OP;
       /// 1 table
       case TOKEN_TYPE_KW_WRITE: return canonical_opcode::WRITE_OP;
       case TOKEN_TYPE_KW_SET: return canonical_opcode::SET_OP;

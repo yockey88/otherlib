@@ -1,5 +1,6 @@
 [driver]
-debug-vm = true
+vm-debug-mode-on = true
+vm-instruction-per-step-budget = 1
 boot-file = "resources/editor-assets/editor-boot.oasm"
 plugins = [
   # { name = "Other Management", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" },

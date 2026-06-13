@@ -12,16 +12,18 @@ namespace other {
   class core_command_device final : public command_device {
    public:
     enum function : uint8_t {
-      LOG = 0x00,          // r0 = msg ptr, r1 = msg len, r2 = level
-      LOG_U64 = 0x01,      // r0 = value, r1 = level
-      TIME_MICROS = 0x02,  //                          -> rF = us since vm init
-      RANDOM = 0x03,       //                          -> rF = uniform u64
-      ERROR_NAME = 0x04,   // r0 = code, r1 = dst ptr, r2 = cap -> rF = len
+      LOG = 0x00,               // r0 = msg ptr, r1 = msg len ptr, r2 = level
+      LOG_U64 = 0x01,           // r0 = value, r1 = level
+      TIME_MICROS = 0x02,       //                                   -> rF = us since vm init
+      TIME_SINCE_INIT = 0x03,   //                                   -> rF = us since vm init
+      TIME_SINCE_EPOCH = 0x04,  //                                   -> rF = us since epoch
+      RANDOM = 0x05,            //                                   -> rF = uniform u64
+      ERROR_NAME = 0x06,        // r0 = code, r1 = dst ptr, r2 = cap -> rF = len
       NUM_FUNCTIONS,
     };
     ~core_command_device() override = default;
 
-    std::string_view device_name() const override { return "CORE"; }
+    std::string_view device_name() const override { return "core"; }
     uint8_t device_id() const override { return builtin_command_device_id::OTHER_DEVICE_CORE; }
 
     std::span<const function_descriptor> functions() const override;

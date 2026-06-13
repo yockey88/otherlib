@@ -54,7 +54,7 @@ namespace other {
     uint32_t group3_opcode_with_registers(uint8_t type, uint8_t reg_x, uint8_t reg_y);
 
     uint32_t get_group4_category();
-    uint32_t group4_opcode(uint8_t type, uint8_t reg);
+    uint32_t group4_opcode(uint8_t type, uint8_t reg = 0);
     uint32_t group_4_opcode_with_address(uint8_t type, uint16_t addr);
 
   }  // namespace detail
@@ -152,6 +152,10 @@ namespace other {
 
   uint32_t opcode_dump_memory_at(uint8_t x, uint16_t n) {
     return detail::group0_opcode_with_register_and_address(0x03, x, n);
+  }
+
+  uint32_t opcode_view_state() {
+    return detail::group0_opcode(0x04);
   }
   /// group 0 end -----------------
 
@@ -262,6 +266,9 @@ namespace other {
   /// group 3 end -----------------
 
   /// group 4 start ---------------
+  uint32_t opcode_nop() {
+    return detail::group4_opcode(0x0);
+  }
   /// group 4 end -----------------
 
   /// group 5 start ---------------

@@ -43,7 +43,7 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
 
   if (!vm::has_flag(&device, other_command_device::STOPPED)) {
     if (ImGui::Button("Step")) {
-      vm::execute_current_instruction(&device);
+      vm::step(&device);
     }
   }
 
@@ -53,6 +53,7 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
     const auto& reg = device.registers[i];
     ImGui::Text("R%02zu: 0x%016llX", i, reg.memory.to_u64());
   }
+  ImGui::Text("R[FLAG] 0x%016llX", device.read_flag_register());
   ImGui::Separator();
 
   static MemoryEditor mem_editor;

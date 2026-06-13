@@ -47,21 +47,6 @@ namespace other {
       }
 
       const void* ptr = device->access_current_program_memory(static_cast<uint16_t>(msg_ptr));
-      {
-        std::stringstream ss;
-        ss << std::format("[VM] memory dump @ {:#06x} length {}:\n", msg_ptr, msg_len);
-        const uint8_t* byte_ptr = static_cast<const uint8_t*>(ptr);
-        ss << "[0x0000] ";
-        for (size_t i = 0; i < msg_len; ++i) {
-          if (i > 0 && i % 16 == 0) {
-            ss << "\n";
-            ss << std::format("[{:#04x}] ", i);
-          }
-          ss << std::format("{:#02x} ", byte_ptr[i]);
-        }
-        ss << "\n";
-        CORE_LOG_WARN("\n{}", ss.str());
-      }
       std::string result(static_cast<const char*>(ptr), static_cast<size_t>(msg_len));
       return result;
     }

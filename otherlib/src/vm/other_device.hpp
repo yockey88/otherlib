@@ -24,24 +24,17 @@ namespace other {
     constexpr static size_t kStackSize = 128;
     constexpr static size_t kMaxStringLen = 512;
 
-    enum : uint8_t {
-      kFlagZero = 1 << 0,
-      kFlagCarry = 1 << 1,
-      kFlagNegative = 1 << 2,
-      kFlagOverflow = 1 << 3,
-    };
-
     enum state : uint8_t {
-      STOPPED = 1 << 0,
-      INITIALIZED = 1 << 1,
+      STOPPED = 0,
+      INITIALIZED = 1 << 0,
 
-      IDLE = 1 << 2,
-      RUNNING = 1 << 3,
+      IDLE = 1 << 1,
+      RUNNING = 1 << 2,
 
-      DEBUG = 1 << 4,
-      REPL = 1 << 5,
+      DEBUG = 1 << 3,
+      REPL = 1 << 4,
 
-      VM_ERROR = std::numeric_limits<uint8_t>::max(),
+      VM_ERROR = 1 << 7,
     };
     state current_state = STOPPED;
 
@@ -72,6 +65,10 @@ namespace other {
     bool stopped = true;
 
     instruction current_instruction = 0x0;
+
+    uint64_t epoch_time = 0;
+    uint64_t device_init_time = 0;
+    uint64_t time_since_init = 0;
 
     uint8_t delay_timer = 0;
     uint8_t sound_timer = 0;

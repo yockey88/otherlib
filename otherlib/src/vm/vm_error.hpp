@@ -36,6 +36,8 @@ namespace other {
     VM_CONTEXT_DIRTY = 0x0022,
   };
 
+  std::string get_vm_error_name(vm_error error);
+
 }  // namespace other
 
 #endif  // OTHERLIB_VM_VM_ERROR_HPP

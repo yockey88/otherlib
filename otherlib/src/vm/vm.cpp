@@ -3,11 +3,14 @@
  **/
 #include "vm/vm.hpp"
 
+#include <chrono>
+
 #include "core/arena_allocator.hpp"
 #include "core/logger.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "vm/code_generator_000.hpp"
+#include "vm/command_bus.hpp"
 #include "vm/command_files/lexer.hpp"
 #include "vm/command_files/oasm_parser.hpp"
 #include "vm/command_files/ocmd_compiler.hpp"
@@ -74,14 +77,19 @@ namespace other {
 
     device->sp = 0;
 
+    // reset device timers
+    device->device_init_time = std::chrono::steady_clock::now().time_since_epoch().count();
+    device->main_time = 0;
+    device->delay_timer = 0;
+    device->sound_timer = 0;
+
     /// can be overridden later if needed
     load_builtin_control_table(device, OTHER_CONTROL_TABLE_V000);
+    add_flag(device, other_command_device::INITIALIZED);
+    add_flag(device, other_command_device::IDLE);
 
+    CORE_LOG_INFO("[VM] : Device initialized successfully");
     initialized_device = device;
-
-    // we leave STOPPED because no program loaded yet
-    add_flag(initialized_device, other_command_device::INITIALIZED);
-    add_flag(initialized_device, other_command_device::IDLE);
   }
 
   void vm::load_control_table(other_command_device* device, control_tables table) {
@@ -131,12 +139,7 @@ namespace other {
       natural_t trace_id = diagnostics.register_sink("trace-sink", &trace_sink);
 
       auto program = compiler.compile(contents, make_scope<code_generator_000>(), &diagnostics);
-
-      auto resolver = make_scope<default_symbol_resolver>();
-      resolver->register_symbol("core.log");
-      resolver->attach_code_label("core.log", 0x0000);
-
-      bytes = ocmd_linker{ program }.link(std::move(resolver), &diagnostics);
+      bytes = ocmd_linker{ program }.link(device->bus->create_default_symbol_resolver(), &diagnostics);
 
       diagnostics.remove_sink(trace_id);
     } else if (file_path.extension() == ".oexe") {
@@ -188,7 +191,6 @@ namespace other {
     device->stopped = false;
     device->current_instruction = { opcode_read_program_counter(device) };
 
-    remove_flag(device, other_command_device::STOPPED);
     if (!has_flag(device, other_command_device::DEBUG)) {
       remove_flag(device, other_command_device::IDLE);
       add_flag(device, other_command_device::RUNNING);
@@ -214,17 +216,15 @@ namespace other {
   }
 
   void vm::execute_current_instruction(other_command_device* device) {
-    if (device == nullptr) {
-      return;
-    }
+    OTHER_ASSERT(device != nullptr, "Null VM device!");
 
     device->current_instruction = { opcode_read_program_counter_and_shift(device) };
     uint8_t instr_nib = device->current_instruction.category_nibble();
 
     OTHER_ASSERT(device->control_table != nullptr, "Null control table!");
+    update_device_timers(device);
     (*device->control_table)[instr_nib](device);
 
-    update_device_timers(device);
     device->current_instruction = { opcode_read_program_counter(device) };
   }
 
@@ -233,14 +233,11 @@ namespace other {
     if (device == nullptr) {
       return;
     }
-
-    std::ranges::fill(std::span(device->memory->data, other_command_device::kMemorySize), 0);
-
-    arena_allocator<other_command_device::memory_t>{}.free(device->memory);
-    device->memory = nullptr;
     initialized_device = nullptr;
 
-    device->current_state = other_command_device::STOPPED;
+    std::ranges::fill(std::span(device->memory->data, other_command_device::kMemorySize), 0);
+    arena_allocator<other_command_device::memory_t>{}.free(device->memory);
+    *device = {};
   }
 
   natural_t vm::get_register_as_u64(other_command_device* device, uint8_t reg_idx) {
@@ -330,6 +327,10 @@ namespace other {
     if (device->sound_timer > 0) {
       --device->sound_timer;
     }
+
+    device->main_time =
+      std::chrono::steady_clock::now().time_since_epoch().count() -
+      device->device_init_time;
   }
 
   void vm::load_bytes_to_address(other_command_device* device, uint64_t address, const uint8_t* data, size_t size) {

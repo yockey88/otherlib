@@ -28,11 +28,14 @@ namespace other {
     void emit_instruction(const instruction& op);
     void execute_driver_command(const std::string& command);
 
+    constexpr static inline uint32_t kDefaultInstructionBudget = 2048;
+
    private:
     other_command_device core_device;
     command_bus bus;
 
     bool boot_loaded = false;
+    uint32_t instruction_budget = kDefaultInstructionBudget;
 
     std::queue<instruction> emitted_instructions;
   };

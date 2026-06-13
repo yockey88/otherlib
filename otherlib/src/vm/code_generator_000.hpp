@@ -18,6 +18,7 @@ namespace other {
    private:
     void encode_stopdev(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_dump(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_view_state(const canonical_instruction& instr, lowering_artifact& artifact) override;
 
     void encode_write(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_set(const canonical_instruction& instr, lowering_artifact& artifact) override;

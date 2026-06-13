@@ -31,6 +31,10 @@ namespace other {
     emit(canon_instr);
   }
 
+  void opcode_builder::add_jump_label(const std::string& name, uint16_t section_address) {
+    jump_labels.push_back(fixup_handle{ .symbol_name = name, .opcode_index = section_address });
+  }
+
   uint8_t opcode_builder::acquire_scratch_register(scratch_policy policy) {
     if (policy == scratch_policy::PREFER_RF) {
       return vm_register_idx::VM_RF;
@@ -51,6 +55,7 @@ namespace other {
     for (const auto& instr : emitted_instructions) {
       generator.encode(instr, artifact);
     }
+    artifact.jump_labels = jump_labels;
     return artifact;
   }
 

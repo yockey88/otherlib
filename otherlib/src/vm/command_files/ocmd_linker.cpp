@@ -171,6 +171,12 @@ namespace other {
       resolver->attach_code_label(code_block.name, code_block_offset);
       EMIT_TRACE("[LINK] Attaching code label '{}' @ {:#04x}", code_block.name, code_block_offset);
       EMIT_TRACE("[CODE] Writing Range: [{:#04x}, {:#04x})", code_block_offset, code_block_offset + bytes_view.size());
+
+      for (const auto& jump_lbl : code_block.artifact.jump_labels) {
+        resolver->attach_code_label(jump_lbl.symbol_name, code_block_offset + jump_lbl.opcode_index);
+        EMIT_TRACE("[LINK] Attaching jump label '{}' @ {:#04x}", jump_lbl.symbol_name, code_block_offset + jump_lbl.opcode_index);
+      }
+
       binary.append_range(bytes_view);
     }
   }
@@ -205,17 +211,6 @@ namespace other {
   }
 
   void ocmd_linker::do_final_linking(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary) {
-    std::string entry_point_symbol;
-    if (auto itr = std::ranges::find_if(code.definitions, [](const auto& def) { return def.name == "entry"; });
-        itr != code.definitions.end()) {
-      entry_point_symbol = itr->value.text;
-      code.definitions.erase(itr);
-      EMIT_TRACE("[LINK] User defined entry point found: '{}'", entry_point_symbol);
-    } else {
-      entry_point_symbol = "__natural_entry";
-      EMIT_TRACE("[LINK] No user defined entry point found, using default entry point");
-    }
-
     for (uint32_t code_block_index = 0; code_block_index < code.compiled_blocks.size(); ++code_block_index) {
       auto& code_block = code.compiled_blocks[code_block_index];
       uint16_t code_block_start_address = calculate_code_section_offset(code_block_index);
@@ -226,38 +221,42 @@ namespace other {
         EMIT_TRACE("[LINK] Resolving symbol '{}' for block '{}'", fixup_itr->symbol_name, code_block.name);
         auto fixup = resolver->resolve_symbol(fixup_itr->symbol_name);
 
-        if (fixup.final_address != 0) {
-          uint16_t code_section_offset = (fixup_itr->opcode_index * other_command_device::kOpCodeSize);
-          uint16_t binary_address = code_block_start_address + code_section_offset;
-          EMIT_TRACE("[LINK] Patching '{}' @ {:#04x} w/ {:#04x}", fixup_itr->symbol_name, binary_address, fixup.final_address);
-          uint8_t* instr_pointer = binary.data() + binary_address;
-          instruction& instr = *reinterpret_cast<instruction*>(instr_pointer);
-          instr.lower = fixup.final_address;
+        uint16_t code_section_offset = (fixup_itr->opcode_index * other_command_device::kOpCodeSize);
+        uint16_t binary_address = code_block_start_address + code_section_offset;
+        EMIT_TRACE("[LINK] Patching '{}' @ {:#04x} w/ {:#04x}", fixup_itr->symbol_name, binary_address, fixup.final_address);
+        uint8_t* instr_pointer = binary.data() + binary_address;
+        instruction& instr = *reinterpret_cast<instruction*>(instr_pointer);
+        instr.lower = fixup.final_address;
 
-          EMIT_TRACE("[LINK]         patched opcode {:#010x}", instr.opcode);
-        } else {
-          EMIT_TRACE("[LINK]         symbol could not be resolved yet, leaving fixup for later linking");
-        }
-
+        EMIT_TRACE("[LINK]         patched opcode {:#010x}", instr.opcode);
         fixup_itr = code_block.artifact.unresolved_labels.erase(fixup_itr);
       }
     }
 
-    for (uint32_t code_block_idx = 0; code_block_idx < code.compiled_blocks.size(); ++code_block_idx) {
-      auto& code_block = code.compiled_blocks[code_block_idx];
-      auto fixup = resolver->resolve_symbol(code_block.name);
-      ocmd_file_header& header = *reinterpret_cast<ocmd_file_header*>(binary.data());
+    // resolve entry point
+    {
+      std::string entry_point_symbol;
+      if (auto itr = std::ranges::find_if(code.definitions, [](const auto& def) { return def.name == "entry"; });
+          itr != code.definitions.end()) {
+        entry_point_symbol = itr->value.text;
+        code.definitions.erase(itr);
+        EMIT_TRACE("[LINK] User defined entry point found: '{}'", entry_point_symbol);
+      } else {
+        entry_point_symbol = "__natural_entry";
+        EMIT_TRACE("[LINK] No user defined entry point found, using default entry point");
+      }
 
-      if (code_block.name == entry_point_symbol) {
-        if (fixup.final_address != 0) {
+      for (uint32_t code_block_idx = 0; code_block_idx < code.compiled_blocks.size(); ++code_block_idx) {
+        auto& code_block = code.compiled_blocks[code_block_idx];
+        auto fixup = resolver->resolve_symbol(code_block.name);
+        ocmd_file_header& header = *reinterpret_cast<ocmd_file_header*>(binary.data());
+
+        if (code_block.name == entry_point_symbol) {
           EMIT_TRACE("[LINK] entry point '{}' @ {:#04x}", code_block.name, fixup.final_address);
           header.prog_header.entry_point_address = fixup.final_address;
-        } else {
-          EMIT_WARNING("[LINK] Entry point symbol '{}' could not be resolved, leaving entry point as default", code_block.name);
         }
       }
     }
-
     std::stringstream ss;
     size_t total_num_instructions = std::ranges::fold_left(code.compiled_blocks, 0, [](size_t acc, const compiled_code_block& block) {
       return acc + block.artifact.machine_instructions.size();

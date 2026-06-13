@@ -28,6 +28,9 @@ namespace other {
 
   void execute_illegal_instruction_category(other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "Null device!");
+    CORE_LOG_ERROR("[VM] illegal category {:#x} at pc {:#06x} (opcode {:#010x})",
+                   device->current_instruction.category_nibble(), device->pc,
+                   device->current_instruction.opcode);
     device->write_flag_register(VM_ILLEGAL_INSTRUCTION_CATEGORY);
     vm::add_flag(device, other_command_device::VM_ERROR);
     device->stopped = true;
@@ -38,6 +41,8 @@ namespace other {
 
   void execute_illegal_instruction(other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "Null device!");
+    CORE_LOG_ERROR("[VM] illegal instruction with opcode {:#010x} at pc {:#06x}",
+                   device->current_instruction.opcode, device->pc);
     device->write_flag_register(VM_ILLEGAL_INSTRUCTION_TYPE);
     vm::add_flag(device, other_command_device::VM_ERROR);
     device->stopped = true;
@@ -112,10 +117,9 @@ namespace other {
     /// 00000000 - Stop the device
     void execute_stop_device(other_command_device* device) {
       device->stopped = true;
-      vm::add_flag(device, other_command_device::STOPPED);
-
       vm::remove_flag(device, other_command_device::RUNNING);
       vm::remove_flag(device, other_command_device::IDLE);
+      vm::add_flag(device, other_command_device::STOPPED);
     }
 
     /// 01000000 - Dump all registers
@@ -156,6 +160,21 @@ namespace other {
         }
       }
       CORE_LOG_INFO("MEM[{:#06x}] length = {}:\n{}", n, bytes_to_dump, ss.str());
+    }
+
+    /// 04000000 - dumps the current execution context of the vm
+    void execute_view_state(other_command_device* device) {
+      std::stringstream ss;
+      ss << "Execution context:\n";
+      ss << std::format(" - Program counter: {:#06x}\n", device->pc);
+      ss << std::format(" - Stack pointer: {:#06x}\n", device->sp);
+      // ss << std::format(" - Frame pointer: {:#06x}\n", device->fp);
+      ss << std::format(" - Registers:\n");
+      for (size_t i = 0; i < vm_register::kNumRegisters; ++i) {
+        ss << std::format("  - R[{}] = {:#018x}\n", i, device->read_register_as_u64(i));
+      }
+      ss << std::format(" - R[FLAG] = {:#018x}\n", device->read_flag_register());
+      CORE_LOG_INFO("{}", ss.str());
     }
 
     /////////////////////// 1XXX /////////////////////
@@ -344,6 +363,12 @@ namespace other {
       }
     }
 
+    /// 2700kkkk
+    void execute_invoke(other_command_device* device) {
+      OTHER_ASSERT(device != nullptr, "Null device!");
+      OTHER_ASSERT(device->bus != nullptr, "Device's command bus cannot be null for invoke execution");
+    }
+
     /////////////////////// 3XXX /////////////////////
     /// 30xy0000 - R[x] = R[x] + R[y]
     void execute_add_x_y_to_x(other_command_device* device) {
@@ -407,8 +432,9 @@ namespace other {
       execute_dump_registers,
       execute_dump_register_x,
       execute_dump_memory_at,
+      execute_view_state,
       // clang-format off
-      execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // 4 - 9
+      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // 5 - 9
       execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
       // clang-format on
     };
@@ -438,8 +464,9 @@ namespace other {
       execute_return,
       execute_return_value_in_x,
       execute_syscall,
+      execute_invoke,
       // clang-format off
-      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction, // 7 - 9
+      execute_illegal_instruction,  execute_illegal_instruction, // 7 - 9
       execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
       // clang-format on
     };

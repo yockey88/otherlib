@@ -108,6 +108,7 @@ target_sources(otherlib
     # src/vm/devices/asset_device.cpp
     # src/vm/devices/scene_device.cpp
     # src/vm/devices/project_device.cpp
+    src/vm/vm_error.cpp
     src/vm/device_utils.cpp
     src/vm/code_generator_000.cpp
     src/vm/default_symbol_resolver.cpp

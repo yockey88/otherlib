@@ -17,8 +17,8 @@ namespace other {
 
     bus.register_device(make_scope<core_command_device>());
 
-    const bool vm_debug = get_driver().get_config_value<bool>("driver.debug-vm", false);
-    vm::set_debug_mode(vm_debug);
+    vm::set_debug_mode(get_driver().get_config_value<bool>("driver.vm-debug-mode-on", false));
+    instruction_budget = get_driver().get_config_value<uint32_t>("driver.vm-instruction-per-step-budget", kDefaultInstructionBudget);
   }
 
   void vm_system::tick(driver_kernel* kernel, double dt) {
@@ -34,13 +34,17 @@ namespace other {
       return;
     }
 
-    // uint32_t executed = 0;
-    // while (executed < instruction_budget && !core_device.stopped &&
-    //        !vm::has_flag(&core_device, other_command_device::STOPPED)) {
-    //   vm::step(&core_device);
-    //   ++executed;
-    // }
-    vm::step(&core_device);
+    uint32_t executed = 0;
+    while (executed < instruction_budget && !core_device.stopped &&
+           !vm::has_flag(&core_device, other_command_device::STOPPED)) {
+      vm::step(&core_device);
+      ++executed;
+
+      if (vm::has_flag(&core_device, other_command_device::VM_ERROR)) {
+        CORE_LOG_ERROR("VM encountered an error");
+        break;
+      }
+    }
   }
 
   void vm_system::shutdown(driver_kernel* kernel) {

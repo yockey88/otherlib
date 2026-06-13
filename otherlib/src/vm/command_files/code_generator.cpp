@@ -12,6 +12,7 @@ namespace other {
     switch (instr.opcode) {
       case canonical_opcode::STOPDEV_OP: return encode_stopdev(instr, artifact);
       case canonical_opcode::DUMP_OP: return encode_dump(instr, artifact);
+      case canonical_opcode::VIEW_STATE_OP: return encode_view_state(instr, artifact);
       case canonical_opcode::WRITE_OP: return encode_write(instr, artifact);
       case canonical_opcode::SET_OP: return encode_set(instr, artifact);
       case canonical_opcode::CMP_OP: return encode_cmp(instr, artifact);
@@ -28,6 +29,7 @@ namespace other {
       case canonical_opcode::JNE_OP: return encode_jne(instr, artifact);
       case canonical_opcode::CALL_OP: return encode_call(instr, artifact);
       case canonical_opcode::SYSCALL_OP: return encode_syscall(instr, artifact);
+      case canonical_opcode::INVOKE_OP: return encode_invoke(instr, artifact);
       case canonical_opcode::RET_OP: return encode_return(instr, artifact);
       case canonical_opcode::ADD_OP: return encode_add(instr, artifact);
       case canonical_opcode::SUB_OP: return encode_sub(instr, artifact);

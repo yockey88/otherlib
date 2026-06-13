@@ -7,6 +7,7 @@
 #include "core/scope.hpp"
 
 #include "vm/command_device.hpp"
+#include "vm/command_files/symbol_resolver.hpp"
 
 namespace other {
 
@@ -20,7 +21,13 @@ namespace other {
 
     bool dispatch(uint16_t syscall_id, other_command_device* device);
 
+    scope<symbol_resolver> create_default_symbol_resolver() const;
+
     constexpr static uint16_t kMaxDevices = 0xFF + 1;
+
+    static uint16_t create_syscall_id(uint8_t device_id, uint8_t function_id) {
+      return (static_cast<uint16_t>(device_id) << 8) | function_id;
+    }
 
    private:
     command_device* devices[kMaxDevices] = {};  // indexed by device id

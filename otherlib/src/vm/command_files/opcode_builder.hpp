@@ -23,6 +23,7 @@ namespace other {
     ~opcode_builder() = default;
 
     void lower_raw_instruction(const raw_instruction& instr);
+    void add_jump_label(const std::string& name, uint16_t section_address);
 
     uint8_t acquire_scratch_register(scratch_policy policy);
     void reset_scratch_registers();
@@ -41,6 +42,7 @@ namespace other {
 
     vm_version target_vm_version;
 
+    std::vector<fixup_handle> jump_labels;
     std::vector<canonical_instruction> emitted_instructions;
 
     void emit(const canonical_instruction& instr);

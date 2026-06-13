@@ -20,10 +20,7 @@ namespace other {
 
   void default_symbol_resolver::attach_code_label(const std::string_view label, uint16_t address) {
     if (auto itr = symbols.find(FNV(label)); itr != symbols.end()) {
-      if (itr->second.address != 0 && itr->second.address != address) {
-        throw ocmd_linking_error(std::format("Code label '{}' is already attached to address 0x{:04X}, cannot attach to different address 0x{:04X}", label, itr->second.address, address));
-      }
-
+      CORE_LOG_DEBUG("[SYMBOL RESOLVER] Attaching code label '{}' to address {:#06x}", label, address);
       itr->second.address = address;
       itr->second.kind = operand_kind::CODE_LABEL;
     } else {
@@ -37,10 +34,7 @@ namespace other {
 
   void default_symbol_resolver::attach_data_symbol(const std::string_view symbol, uint16_t address) {
     if (auto itr = symbols.find(FNV(symbol)); itr != symbols.end()) {
-      if (itr->second.address != 0 && itr->second.address != address) {
-        throw ocmd_linking_error(std::format("Data symbol '{}' is already attached to address 0x{:04X}, cannot attach to different address 0x{:04X}", symbol, itr->second.address, address));
-      }
-
+      CORE_LOG_DEBUG("[SYMBOL RESOLVER] Attaching data symbol '{}' to address {:#06x}", symbol, address);
       itr->second.address = address;
       itr->second.kind = operand_kind::DATA_SYMBOL;
     } else {

@@ -30,6 +30,11 @@ namespace other {
     }
   }
 
+  void code_generator_000::encode_view_state(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::VIEW_STATE_OP, "Invalid opcode passed to encode_view_state");
+    emit_instruction(opcode_view_state(), artifact);
+  }
+
   void code_generator_000::encode_write(const canonical_instruction& instr, lowering_artifact& artifact) {
     OTHER_ASSERT(instr.opcode == canonical_opcode::WRITE_OP, "Invalid opcode passed to encode_write");
     if (instr.param[0].kind != operand_kind::REGISTER_REF) {
@@ -217,10 +222,14 @@ namespace other {
     if (instr.opcode != canonical_opcode::JNE_OP) {
       throw ocmd_lowering_error("Invalid opcode passed to encode_jne");
     }
-    if (instr.param[0].kind != operand_kind::ADDRESS_U16) {
-      throw ocmd_lowering_error("jne operand must be an address");
+    if (instr.param[0].kind == operand_kind::ADDRESS_U16) {
+      emit_instruction(opcode_jump_if_not_zero(instr.param[0].val), artifact);
+    } else if (instr.param[0].kind == operand_kind::CODE_LABEL) {
+      add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+      emit_instruction(opcode_jump_if_not_zero(0xFFFF), artifact);
+    } else {
+      throw ocmd_lowering_error("jne operand must be an address or code label");
     }
-    emit_instruction(opcode_jump_if_not_zero(instr.param[0].val), artifact);
   }
 
   void code_generator_000::encode_call(const canonical_instruction& instr, lowering_artifact& artifact) {
@@ -248,10 +257,14 @@ namespace other {
     if (instr.opcode != canonical_opcode::SYSCALL_OP) {
       throw ocmd_lowering_error("Invalid opcode passed to encode_syscall");
     }
-    if (instr.param[0].kind != operand_kind::IMMEDIATE_U16) {
-      throw ocmd_lowering_error("syscall operand must be a constant");
+    if (instr.param[0].kind == operand_kind::IMMEDIATE_U16) {
+      emit_instruction(opcode_syscall(instr.param[0].val), artifact);
+    } else if (instr.param[0].kind == operand_kind::CODE_LABEL || instr.param[0].kind == operand_kind::DATA_SYMBOL) {
+      add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+      emit_instruction(opcode_syscall(0xFFFF), artifact);
+    } else {
+      throw ocmd_lowering_error("invalid syscall operand");
     }
-    emit_instruction(opcode_syscall(instr.param[0].val), artifact);
   }
 
   void code_generator_000::encode_invoke(const canonical_instruction& instr, lowering_artifact& artifact) {

@@ -100,6 +100,10 @@ namespace other {
       for (const auto& instr_ir : code_blk_ir.instructions) {
         builder.lower_raw_instruction(instr_ir);
       }
+      for (const auto& jump_label_ir : code_blk_ir.jump_labels) {
+        EMIT_TRACE("   - jump label {}", jump_label_ir.name);
+        builder.add_jump_label(jump_label_ir.name, jump_label_ir.section_address);
+      }
       compiled_code_block out = {
         .name = code_blk_ir.name,
         .artifact = builder.finalize(*generator),

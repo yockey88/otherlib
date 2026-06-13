@@ -14,11 +14,13 @@ namespace other {
 
   struct fixup_handle {
     std::string symbol_name = "";
+    // if jump label then it holds the local section offset of the label
     natural_t opcode_index = 0;
   };
 
   struct lowering_artifact {
     std::vector<instruction> machine_instructions = {};
+    std::vector<fixup_handle> jump_labels = {};
     std::vector<fixup_handle> unresolved_labels = {};
   };
 
@@ -37,6 +39,7 @@ namespace other {
 
     virtual void encode_stopdev(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
     virtual void encode_dump(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
+    virtual void encode_view_state(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
 
     virtual void encode_write(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
     virtual void encode_set(const canonical_instruction& instr, lowering_artifact& artifact) = 0;

@@ -33,6 +33,7 @@ namespace other {
     /// 0
     STOPDEV_OP = 0,
     DUMP_OP,
+    VIEW_STATE_OP,
     /// 1
     WRITE_OP,
     SET_OP,

@@ -51,6 +51,7 @@ namespace other {
       // 0
       case canonical_opcode::STOPDEV_OP: return 0;
       case canonical_opcode::DUMP_OP: return 2;
+      case canonical_opcode::VIEW_STATE_OP: return 0;
       // 1
       case canonical_opcode::WRITE_OP: return 2;
       case canonical_opcode::SET_OP: return 2;

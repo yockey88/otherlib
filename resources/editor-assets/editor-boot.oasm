@@ -1,18 +1,40 @@
 /entry: main
 
 $main:
-  set r0, data.load-text
-  set r1, data.string-len
-  set r2, 3 ; warning level
+  syscall core.time_micros
+  ; call print_res
+  mov rf, r0
+  set r1, 3
+  set rflag, 1
+  syscall core.log_u64
+
+  syscall core.random
+  ; call print_res
+  mov rf, r0
+  set r1, 3
+  set rflag, 1
+  syscall core.log_u64
+
+  set r0, 16
+  set r1, 0x0040 ; output address
+  set r2, 100    ; capacity
+  syscall core.error_name
+
+  set r0, 0x0040
+  mov rflag, r1 ; bytes written
+  set r2, 3
   syscall core.log
-  ; mov r1, r2
-  ; dump r1
-  ; dump r2
-  ; dump r3
 end
 
-#data {
+; $print_res:
+;   mov rf, r0
+;   set r1, 3
+;   set rflag, 1
+;   syscall core.log_u64
+; end
+
+; #data {
   ; address to write load text to in memory
-  .string-len: int32 = 3
-  .load-text: string = "abc"
-}
+  ; .string-len: int32 = 35
+  ; .load-text: string = "resources/models/spinning-donut.fbx"
+; }
