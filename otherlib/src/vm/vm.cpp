@@ -131,7 +131,12 @@ namespace other {
       natural_t trace_id = diagnostics.register_sink("trace-sink", &trace_sink);
 
       auto program = compiler.compile(contents, make_scope<code_generator_000>(), &diagnostics);
-      bytes = ocmd_linker{ program }.link(make_scope<default_symbol_resolver>(), &diagnostics);
+
+      auto resolver = make_scope<default_symbol_resolver>();
+      resolver->register_symbol("core.log");
+      resolver->attach_code_label("core.log", 0x0000);
+
+      bytes = ocmd_linker{ program }.link(std::move(resolver), &diagnostics);
 
       diagnostics.remove_sink(trace_id);
     } else if (file_path.extension() == ".oexe") {

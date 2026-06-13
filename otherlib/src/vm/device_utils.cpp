@@ -3,6 +3,7 @@
  **/
 #include "vm/device_utils.hpp"
 
+#include "core/arena.hpp"
 #include "core/logger.hpp"
 
 #include "vm/other_device.hpp"
@@ -12,13 +13,23 @@
 namespace other {
   namespace detail {
 
-    std::string_view read_device_string(other_command_device* device, uint8_t ptr_reg, uint8_t len_reg) {
+    std::string read_device_string(other_command_device* device, uint8_t ptr_reg, uint8_t len_reg) {
       OTHER_ASSERT(device != nullptr, "Device cannot be null for reading string");
       OTHER_ASSERT(device->memory != nullptr, "Device memory cannot be null for reading string");
 
       uint64_t msg_ptr = device->read_register_as_u64(ptr_reg);
-      uint64_t msg_len = device->read_register_as_u64(len_reg);
-      CORE_LOG_DEBUG("[VM] Reading string from device memory at ptr {:#06x} with length {}", msg_ptr, msg_len);
+      uint64_t msg_len_ptr = device->read_register_as_u64(len_reg);
+      CORE_LOG_DEBUG("[VM] Reading string from device memory at ptr {:#06x} with length @ {:#06x}", msg_ptr, msg_len_ptr);
+
+      if (msg_len_ptr >= other_command_device::kMemorySize) {
+        CORE_LOG_ERROR("[VM] Invalid string length pointer: {:#06x}", msg_len_ptr);
+        device->write_flag_register(VM_INVALID_MEMORY_ACCESS);
+        device->write_register_from_u64(vm_register::kReturnRegister, 0);
+        return {};
+      }
+
+      uint64_t msg_len = device->current_program_data_as_u64(static_cast<uint16_t>(msg_len_ptr));
+      CORE_LOG_DEBUG("[VM] String length read from device memory: {}", msg_len);
 
       if (msg_ptr >= other_command_device::kMemorySize ||
           msg_len > other_command_device::kMemorySize - msg_ptr) {
@@ -35,10 +46,24 @@ namespace other {
         msg_len = other_command_device::kMaxStringLen;
       }
 
-      return {
-        reinterpret_cast<const char*>(device->memory + msg_ptr),
-        static_cast<size_t>(msg_len),
-      };
+      const void* ptr = device->access_current_program_memory(static_cast<uint16_t>(msg_ptr));
+      {
+        std::stringstream ss;
+        ss << std::format("[VM] memory dump @ {:#06x} length {}:\n", msg_ptr, msg_len);
+        const uint8_t* byte_ptr = static_cast<const uint8_t*>(ptr);
+        ss << "[0x0000] ";
+        for (size_t i = 0; i < msg_len; ++i) {
+          if (i > 0 && i % 16 == 0) {
+            ss << "\n";
+            ss << std::format("[{:#04x}] ", i);
+          }
+          ss << std::format("{:#02x} ", byte_ptr[i]);
+        }
+        ss << "\n";
+        CORE_LOG_WARN("\n{}", ss.str());
+      }
+      std::string result(static_cast<const char*>(ptr), static_cast<size_t>(msg_len));
+      return result;
     }
 
     uint64_t write_device_bytes(other_command_device* device, uint64_t offset, std::span<const uint8_t> bytes, uint64_t capacity) {

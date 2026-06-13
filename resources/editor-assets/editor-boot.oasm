@@ -4,7 +4,7 @@ $main:
   set r0, data.load-text
   set r1, data.string-len
   set r2, 3 ; warning level
-  syscall 0
+  syscall core.log
   ; mov r1, r2
   ; dump r1
   ; dump r2

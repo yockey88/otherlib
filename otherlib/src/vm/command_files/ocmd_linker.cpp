@@ -167,9 +167,10 @@ namespace other {
         std::views::transform([&](const instruction& instr) { return opcode_to_bytes(instr); }) |
         std::views::join |
         std::ranges::to<std::vector>();
-      resolver->attach_code_label(code_block.name, binary.size());
-      EMIT_TRACE("[LINK] Attaching code label '{}' @ {:#04x}", code_block.name, binary.size());
-      EMIT_TRACE("[CODE] Writing Range: [{:#04x}, {:#04x})", binary.size(), binary.size() + bytes_view.size());
+      uint16_t code_block_offset = get_current_linking_address(binary);
+      resolver->attach_code_label(code_block.name, code_block_offset);
+      EMIT_TRACE("[LINK] Attaching code label '{}' @ {:#04x}", code_block.name, code_block_offset);
+      EMIT_TRACE("[CODE] Writing Range: [{:#04x}, {:#04x})", code_block_offset, code_block_offset + bytes_view.size());
       binary.append_range(bytes_view);
     }
   }
@@ -181,9 +182,10 @@ namespace other {
   void ocmd_linker::write_data_sections(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary) {
     for (const auto& data_section : code.compiled_data_sections) {
       // don't normalize here because using acutal size of output binary here
-      uint16_t data_section_start_address = binary.size();
+      uint16_t data_section_start_address = get_current_linking_address(binary);
       resolver->attach_data_symbol(data_section.name, data_section_start_address);
       EMIT_TRACE("[LINK] Attaching data symbol '{}' @ {:#04x}", data_section.name, data_section_start_address);
+
       for (const auto& field : data_section.fields) {
         const std::string full_field_name = std::format("{}.{}", data_section.name, field.name);
         resolver->attach_data_symbol(full_field_name, data_section_start_address + field.offset);

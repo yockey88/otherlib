@@ -40,6 +40,9 @@ namespace other {
     inline uint16_t get_code_section_offset() const {
       return sizeof(ocmd_file_header);
     }
+    inline uint16_t get_current_linking_address(const std::vector<uint8_t>& binary) const {
+      return static_cast<uint16_t>(binary.size() - sizeof(ocmd_file_header));
+    }
     uint16_t calculate_code_section_offset(size_t index) const;
 
     void register_symbols(scope<symbol_resolver>& resolver);

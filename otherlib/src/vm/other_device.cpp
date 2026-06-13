@@ -29,7 +29,7 @@ namespace other {
   }
 
   uint16_t other_command_device::program_metadata::get_data_address_by_offset(uint16_t data_offset) const {
-    return load_address + (data_offset - sizeof(ocmd_file_header));
+    return load_address + data_offset;
   }
 
   uint16_t other_command_device::globalize_address(uint16_t local_address) const {

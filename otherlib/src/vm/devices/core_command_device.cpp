@@ -55,13 +55,13 @@ namespace other {
 
     switch (function_id) {
       case LOG: {
-        std::string_view msg = detail::read_device_string(device, vm_register_idx::VM_R0, vm_register_idx::VM_R1);
+        std::string msg = detail::read_device_string(device, vm_register_idx::VM_R0, vm_register_idx::VM_R1);
         if (device->read_flag_register() != VM_OK) {
           CORE_LOG_WARN("[VM] Log message is empty");
           return;
         }
 
-        uint64_t level = device->read_register_as_u64(vm_register_idx::VM_R3);
+        uint64_t level = device->read_register_as_u64(vm_register_idx::VM_R2);
         CORE_LOG_MESSAGE(to_log_level(level), "[VM: CORE.LOG] {}", msg);
       } break;
       case LOG_U64: {

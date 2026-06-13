@@ -166,12 +166,11 @@ namespace other {
       device->write_u64_at(addr, device->read_register_as_u64(x));
     }
 
-    /// 11xxnnnn R[x] = MEM[n]
+    /// 11xxnnnn R[x] = n
     void execute_load_x_from_memory(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint16_t addr = device->current_instruction.lower;
-      uint64_t value = device->current_program_data_as_u64(addr);
-      device->write_register_from_u64(x, value);
+      device->write_register_from_u64(x, addr);
     }
 
     /// 12xxkkkk - R[x] = value
