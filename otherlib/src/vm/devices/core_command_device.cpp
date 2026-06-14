@@ -35,9 +35,9 @@ namespace other {
     constexpr function_descriptor kFunctions[] = {
       { core_command_device::LOG, "log", kLogParams, kVoidRet, VM_SE_WRITES_HOST },
       { core_command_device::LOG_U64, "log_u64", kLogU64Params, kVoidRet, VM_SE_WRITES_HOST },
-      // { core_command_device::INIT_TIME, "init_time", {}, kU64Ret, VM_SE_READS_HOST },
-      // { core_command_device::TIME_SINCE_INIT, "time_since_init", {}, kU64Ret, VM_SE_READS_HOST },
-      // { core_command_device::TIME_SINCE_EPOCH, "time_micros", {}, kU64Ret, VM_SE_READS_HOST },
+      { core_command_device::INIT_TIME, "init_time", {}, kU64Ret, VM_SE_READS_HOST },
+      { core_command_device::TIME_SINCE_INIT, "time_since_init", {}, kU64Ret, VM_SE_READS_HOST },
+      { core_command_device::TIME_SINCE_EPOCH, "epoch_time", {}, kU64Ret, VM_SE_READS_HOST },
       { core_command_device::RANDOM, "random", {}, kU64Ret, VM_SE_PURE },
       { core_command_device::ERROR_NAME, "error_name", kErrorNameParams, kU64Ret, VM_SE_PURE },
     };
@@ -79,13 +79,22 @@ namespace other {
         }
         device->write_flag_register(0);
       } break;
-      case TIME_MICROS: {
+
+      case INIT_TIME: {
+        device->write_register_from_u64(vm_register_idx::VM_RRETURN, device->device_init_time);
+      } break;
+      case TIME_SINCE_INIT: {
         device->write_register_from_u64(vm_register_idx::VM_RRETURN, device->time_since_init);
       } break;
+      case TIME_SINCE_EPOCH: {
+        device->write_register_from_u64(vm_register_idx::VM_RRETURN, device->epoch_time);
+      } break;
+
       case RANDOM: {
         uint64_t random_value = device->get_random_byte();
         device->write_register_from_u64(vm_register_idx::VM_RRETURN, random_value);
       } break;
+
       case ERROR_NAME: {
         uint64_t error_code = device->read_register_as_u64(vm_register_idx::VM_R0);
         uint64_t dst_ptr = device->read_register_as_u64(vm_register_idx::VM_R1);
@@ -100,10 +109,11 @@ namespace other {
 
         std::string error_name = get_vm_error_name(static_cast<other::vm_error>(error_code));
         size_t bytes_to_write = std::min(error_name.size(), static_cast<size_t>(dst_cap));
+        CORE_LOG_WARN("Writing '{}' ({} bytes) to memory at address {:#010x} with capacity {}", error_name, bytes_to_write, dst_ptr, dst_cap);
         if (bytes_to_write > 0) {
           device->write_current_program_memory(dst_ptr, reinterpret_cast<const uint8_t*>(error_name.data()), bytes_to_write);
         }
-        device->write_register_from_u64(vm_register_idx::VM_RFLAG, bytes_to_write);
+        device->write_register_from_u64(vm_register_idx::VM_RF, bytes_to_write);
       } break;
       default:
         OTHER_ASSERT(false, "Invalid function ID for core_device: {:#04x}", function_id);

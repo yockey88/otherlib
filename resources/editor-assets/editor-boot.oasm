@@ -1,8 +1,14 @@
 /entry: main
 
 $main:
-  syscall core.time_micros
+  syscall core.time_since_init
   ; call print_res
+  mov rf, r0
+  set r1, 3
+  set rflag, 1
+  syscall core.log_u64
+
+  syscall core.epoch_time
   mov rf, r0
   set r1, 3
   set rflag, 1
@@ -16,22 +22,25 @@ $main:
   syscall core.log_u64
 
   set r0, 16
-  set r1, 0x0040 ; output address
+  set r1, 0x0F00 ; output address
   set r2, 100    ; capacity
   syscall core.error_name
 
-  set r0, 0x0040
-  mov rflag, r1 ; bytes written
+  write rf, 0x0FF0
+  set r0, 0x0F00
+  set r1, 0x0FF0
   set r2, 3
   syscall core.log
+
+  stopdev
 end
 
-; $print_res:
-;   mov rf, r0
-;   set r1, 3
-;   set rflag, 1
-;   syscall core.log_u64
-; end
+$print_res:
+  mov rf, r0
+  set r1, 3
+  set rflag, 1
+  syscall core.log_u64
+end
 
 ; #data {
   ; address to write load text to in memory

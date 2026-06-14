@@ -14,7 +14,7 @@ namespace other {
     enum function : uint8_t {
       LOG = 0x00,               // r0 = msg ptr, r1 = msg len ptr, r2 = level
       LOG_U64 = 0x01,           // r0 = value, r1 = level
-      TIME_MICROS = 0x02,       //                                   -> rF = us since vm init
+      INIT_TIME = 0x02,         //                                   -> rF = us since epoch when the vm was initialized
       TIME_SINCE_INIT = 0x03,   //                                   -> rF = us since vm init
       TIME_SINCE_EPOCH = 0x04,  //                                   -> rF = us since epoch
       RANDOM = 0x05,            //                                   -> rF = uniform u64

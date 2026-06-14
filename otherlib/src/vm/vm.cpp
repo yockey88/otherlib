@@ -78,8 +78,9 @@ namespace other {
     device->sp = 0;
 
     // reset device timers
-    device->device_init_time = std::chrono::steady_clock::now().time_since_epoch().count();
-    device->main_time = 0;
+    device->epoch_time = std::chrono::steady_clock::now().time_since_epoch().count();
+    device->device_init_time = device->epoch_time;
+    device->time_since_init = 0;
     device->delay_timer = 0;
     device->sound_timer = 0;
 
@@ -328,9 +329,8 @@ namespace other {
       --device->sound_timer;
     }
 
-    device->main_time =
-      std::chrono::steady_clock::now().time_since_epoch().count() -
-      device->device_init_time;
+    device->epoch_time = std::chrono::steady_clock::now().time_since_epoch().count();
+    device->time_since_init = device->epoch_time - device->device_init_time;
   }
 
   void vm::load_bytes_to_address(other_command_device* device, uint64_t address, const uint8_t* data, size_t size) {

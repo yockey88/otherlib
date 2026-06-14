@@ -219,6 +219,8 @@ namespace other {
       for (auto fixup_itr = code_block.artifact.unresolved_labels.begin();
            fixup_itr != code_block.artifact.unresolved_labels.end();) {
         EMIT_TRACE("[LINK] Resolving symbol '{}' for block '{}'", fixup_itr->symbol_name, code_block.name);
+
+        // if the fixup isnt present address will be 0xFFFF still and could be resolved in a separate linking pass
         auto fixup = resolver->resolve_symbol(fixup_itr->symbol_name);
 
         uint16_t code_section_offset = (fixup_itr->opcode_index * other_command_device::kOpCodeSize);

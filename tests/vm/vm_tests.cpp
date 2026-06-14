@@ -129,7 +129,7 @@ namespace other {
     }
 
     natural_t r1_value = device.registers[vm_register_idx::VM_R1].memory.to_u64();
-    EXPECT_EQ(r1_value, 42) << std::format("Expected R1 to be 42, but got {}", r1_value);
+    EXPECT_EQ(r1_value, 0x0C) << std::format("Expected R1 to be the address 0x00C (data.number), but got {:#06x}", r1_value);
 
     ASSERT_NO_FATAL_FAILURE(vm::shutdown_device(&device));
   }
@@ -138,6 +138,7 @@ namespace other {
 
     std::string get_test_program1_source() {
       return R"(
+      /entry:main
       #data {
         .number : int32 = 42
       }

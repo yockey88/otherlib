@@ -94,22 +94,28 @@ namespace other {
       EXPECT_EQ(header.file_version_minor, OCMD_FILE_FORMAT_VERSION_MINOR);
       EXPECT_EQ(header.file_version_patch, OCMD_FILE_FORMAT_VERSION_PATCH);
       EXPECT_EQ(header.prog_header.code_section_offset, detail::linked_code_start());
-      EXPECT_EQ(header.prog_header.data_section_offset, detail::linked_data_start(program, bytes));
+      EXPECT_EQ(header.prog_header.data_section_offset, detail::linked_data_start(program, bytes) + sizeof(ocmd_file_header));
     }
 
+    /// program space address
     const uint16_t main_address = detail::code_block_address(program, 0);
     const uint16_t helper_address = detail::code_block_address(program, 1);
+    CORE_LOG_INFO("Main address: {:#06x}, Helper address: {:#06x}", main_address, helper_address);
 
-    instruction main_first_instr = detail::read_instruction_at(bytes, main_address);
+    // vm space address
+    const uint16_t main_vm_address = main_address + sizeof(ocmd_file_header);
+    const uint16_t helper_vm_address = helper_address + sizeof(ocmd_file_header);
+
+    instruction main_first_instr = detail::read_instruction_at(bytes, main_vm_address);
     instruction expected_first = opcode_call_at(helper_address);
 
-    instruction main_second_instr = detail::read_instruction_at(bytes, main_address + sizeof(instruction));
+    instruction main_second_instr = detail::read_instruction_at(bytes, main_vm_address + sizeof(instruction));
     instruction expected_second = opcode_return();
 
-    instruction helper_first_instr = detail::read_instruction_at(bytes, helper_address);
+    instruction helper_first_instr = detail::read_instruction_at(bytes, helper_vm_address);
     instruction expected_helper_first = opcode_load_x_direct(vm_register_idx::VM_R1, 7);
 
-    instruction helper_second_instr = detail::read_instruction_at(bytes, helper_address + sizeof(instruction));
+    instruction helper_second_instr = detail::read_instruction_at(bytes, helper_vm_address + sizeof(instruction));
     instruction expected_helper_second = opcode_return();
 
     std::stringstream ss;
@@ -121,25 +127,25 @@ namespace other {
     {
       SCOPED_TRACE(std::format("main1 set:\n{}", ss.str()));
       EXPECT_EQ(main_first_instr.opcode, expected_first.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_address, main_first_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_vm_address, main_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_first_instr.opcode);
     }
     {
       SCOPED_TRACE(std::format("main2 ret:\n{}", ss.str()));
       EXPECT_EQ(main_second_instr.opcode, expected_second.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_address + sizeof(instruction), main_second_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_vm_address + sizeof(instruction), main_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_second_instr.opcode);
     }
     {
       SCOPED_TRACE(std::format("helper1 load:\n{}", ss.str()));
       EXPECT_EQ(helper_first_instr.opcode, expected_helper_first.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_address, helper_first_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_vm_address, helper_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", helper_first_instr.opcode);
     }
     {
       SCOPED_TRACE(std::format("helper2 ret:\n{}", ss.str()));
       EXPECT_EQ(helper_second_instr.opcode, expected_helper_second.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_address + sizeof(instruction), helper_second_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_vm_address + sizeof(instruction), helper_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", helper_second_instr.opcode);
     }
   }
@@ -176,22 +182,25 @@ namespace other {
       EXPECT_EQ(header.file_version_minor, OCMD_FILE_FORMAT_VERSION_MINOR);
       EXPECT_EQ(header.file_version_patch, OCMD_FILE_FORMAT_VERSION_PATCH);
       EXPECT_EQ(header.prog_header.code_section_offset, detail::linked_code_start());
-      EXPECT_EQ(header.prog_header.data_section_offset, detail::linked_data_start(program, bytes));
+      EXPECT_EQ(header.prog_header.data_section_offset, detail::linked_data_start(program, bytes) + sizeof(ocmd_file_header));
     }
 
     const uint16_t main_address = detail::code_block_address(program, 0);
     const uint16_t helper_address = detail::code_block_address(program, 1);
 
-    instruction main_first_instr = detail::read_instruction_at(bytes, main_address);
+    const uint16_t main_vm_address = main_address + sizeof(ocmd_file_header);
+    const uint16_t helper_vm_address = helper_address + sizeof(ocmd_file_header);
+
+    instruction main_first_instr = detail::read_instruction_at(bytes, main_vm_address);
     instruction expected_first = opcode_call_at(helper_address);
 
-    instruction main_second_instr = detail::read_instruction_at(bytes, main_address + sizeof(instruction));
+    instruction main_second_instr = detail::read_instruction_at(bytes, main_vm_address + sizeof(instruction));
     instruction expected_second = opcode_return();
 
-    instruction helper_first_instr = detail::read_instruction_at(bytes, helper_address);
-    instruction expected_helper_first = opcode_load_x_from(vm_register_idx::VM_R1, 0x0034);
+    instruction helper_first_instr = detail::read_instruction_at(bytes, helper_vm_address);
+    instruction expected_helper_first = opcode_load_x_from(vm_register_idx::VM_R1, 0x0014);
 
-    instruction helper_second_instr = detail::read_instruction_at(bytes, helper_address + sizeof(instruction));
+    instruction helper_second_instr = detail::read_instruction_at(bytes, helper_vm_address + sizeof(instruction));
     instruction expected_helper_second = opcode_return();
     {
       std::stringstream ss;
@@ -204,23 +213,24 @@ namespace other {
       }
       SCOPED_TRACE(ss.str());
       EXPECT_EQ(main_first_instr.opcode, expected_first.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_address, main_first_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_vm_address, main_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_first_instr.opcode);
       EXPECT_EQ(main_second_instr.opcode, expected_second.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_address + sizeof(instruction), main_second_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_vm_address + sizeof(instruction), main_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_second_instr.opcode);
       EXPECT_EQ(helper_first_instr.opcode, expected_helper_first.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_address, helper_first_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_vm_address, helper_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", helper_first_instr.opcode);
       EXPECT_EQ(helper_second_instr.opcode, expected_helper_second.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_address + sizeof(instruction), helper_second_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_vm_address + sizeof(instruction), helper_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", helper_second_instr.opcode);
     }
 
     // check data section
     const uint16_t data_start = detail::linked_data_start(program, bytes);
+    const uint16_t data_vm_start = data_start + sizeof(ocmd_file_header);
 
-    int32_t linked_number = *reinterpret_cast<const int32_t*>(bytes.data() + data_start);
+    int32_t linked_number = *reinterpret_cast<const int32_t*>(bytes.data() + data_vm_start);
     EXPECT_EQ(linked_number, 7) << std::format("Expected linked data number to be 7, but found {}", linked_number);
   }
 
@@ -284,21 +294,21 @@ namespace other {
 
     const auto symbol_addresses = detail::collect_symbol_addresses(program, bytes);
     const uint16_t main_address = detail::code_block_address(program, 0);
-    const uint16_t main_ret_address = main_address + sizeof(instruction);
-
     const uint16_t helper_address = detail::code_block_address(program, 1);
-    const uint16_t helper_ret_address = helper_address + sizeof(instruction);
 
-    instruction main_first_instr = detail::read_instruction_at(bytes, main_address);
+    const uint16_t main_vm_address = main_address + sizeof(ocmd_file_header);
+    const uint16_t helper_vm_address = helper_address + sizeof(ocmd_file_header);
+
+    instruction main_first_instr = detail::read_instruction_at(bytes, main_vm_address);
     instruction expected_first = opcode_load_x_from(vm_register_idx::VM_R1, symbol_addresses.at("beta.payload"));
 
-    instruction main_second_instr = detail::read_instruction_at(bytes, main_ret_address);
+    instruction main_second_instr = detail::read_instruction_at(bytes, main_vm_address + sizeof(instruction));
     instruction expected_second = opcode_return();
 
-    instruction helper_first_instr = detail::read_instruction_at(bytes, helper_address);
+    instruction helper_first_instr = detail::read_instruction_at(bytes, helper_vm_address);
     instruction expected_helper_first = opcode_load_x_from(vm_register_idx::VM_R3, symbol_addresses.at("alpha.flag"));
 
-    instruction helper_second_instr = detail::read_instruction_at(bytes, helper_ret_address);
+    instruction helper_second_instr = detail::read_instruction_at(bytes, helper_vm_address + sizeof(instruction));
     instruction expected_helper_second = opcode_return();
 
     std::stringstream ss;
@@ -311,25 +321,25 @@ namespace other {
     {
       SCOPED_TRACE(std::format("main set:\n{}", ss.str()));
       EXPECT_EQ(main_first_instr.opcode, expected_first.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_address, main_first_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_vm_address, main_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_first_instr.opcode);
     }
     {
       SCOPED_TRACE(std::format("main ret:\n{}", ss.str()));
       EXPECT_EQ(main_second_instr.opcode, expected_second.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_ret_address, main_second_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_vm_address + sizeof(instruction), main_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_second_instr.opcode);
     }
     {
       SCOPED_TRACE(std::format("helper set:\n{}", ss.str()));
       EXPECT_EQ(helper_first_instr.opcode, expected_helper_first.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_address, helper_first_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_first.opcode, helper_vm_address, helper_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", helper_first_instr.opcode);
     }
     {
       SCOPED_TRACE(std::format("helper ret:\n{}", ss.str()));
       EXPECT_EQ(helper_second_instr.opcode, expected_helper_second.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_ret_address, helper_second_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_helper_second.opcode, helper_vm_address + sizeof(instruction), helper_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", helper_second_instr.opcode);
     }
 
@@ -337,13 +347,16 @@ namespace other {
     const uint16_t alpha_flag_address = symbol_addresses.at("alpha.flag");
     const uint16_t beta_payload_address = symbol_addresses.at("beta.payload");
 
+    const uint16_t alpha_flag_vm_address = alpha_flag_address + sizeof(ocmd_file_header);
+    const uint16_t beta_payload_vm_address = beta_payload_address + sizeof(ocmd_file_header);
+
     // address type
-    uint16_t linked_alpha_flag = *reinterpret_cast<const uint16_t*>(bytes.data() + alpha_flag_address);
+    uint16_t linked_alpha_flag = *reinterpret_cast<const uint16_t*>(bytes.data() + alpha_flag_vm_address);
     EXPECT_EQ(linked_alpha_flag, 0x1234)
       << std::format("Expected linked alpha.flag to be 0x1234, but found {:#06x}", linked_alpha_flag);
 
     uint8_t linked_beta_payload[4];
-    std::memcpy(linked_beta_payload, bytes.data() + beta_payload_address, 4);
+    std::memcpy(linked_beta_payload, bytes.data() + beta_payload_vm_address, 4);
     EXPECT_EQ(std::memcmp(linked_beta_payload, "\xDE\xAD\xBE\xEF", 4), 0)
       << "Expected linked beta.payload to be DE AD BE EF, but found something else.";
   }
@@ -372,9 +385,11 @@ namespace other {
     detail::expect_linked_layout_matches_program(program, bytes);
 
     const uint16_t main_address = detail::code_block_address(program, 0);
-    instruction main_first_instr = detail::read_instruction_at(bytes, main_address);
-    instruction main_second_instr = detail::read_instruction_at(bytes, main_address + sizeof(instruction));
-    instruction main_third_instr = detail::read_instruction_at(bytes, main_address + 2 * sizeof(instruction));
+    const uint16_t main_vm_address = main_address + sizeof(ocmd_file_header);
+
+    instruction main_first_instr = detail::read_instruction_at(bytes, main_vm_address);
+    instruction main_second_instr = detail::read_instruction_at(bytes, main_vm_address + sizeof(instruction));
+    instruction main_third_instr = detail::read_instruction_at(bytes, main_vm_address + 2 * sizeof(instruction));
 
     instruction expected_first = opcode_call_at(0x4321);
     instruction expected_second = opcode_load_x_from(vm_register_idx::VM_R1, 0x4321);
@@ -389,13 +404,13 @@ namespace other {
       }
       SCOPED_TRACE(ss.str());
       EXPECT_EQ(main_first_instr.opcode, expected_first.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_address, main_first_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_vm_address, main_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_first_instr.opcode);
       EXPECT_EQ(main_second_instr.opcode, expected_second.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_address + sizeof(instruction), main_second_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_vm_address + sizeof(instruction), main_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_second_instr.opcode);
       EXPECT_EQ(main_third_instr.opcode, expected_third.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_third.opcode, main_address + 2 * sizeof(instruction), main_third_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_third.opcode, main_vm_address + 2 * sizeof(instruction), main_third_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_third_instr.opcode);
     }
   }
@@ -421,9 +436,12 @@ namespace other {
     detail::expect_linked_layout_matches_program(program, bytes);
 
     const uint16_t main_address = detail::code_block_address(program, 0);
-    instruction main_first_instr = detail::read_instruction_at(bytes, main_address);
-    instruction main_second_instr = detail::read_instruction_at(bytes, main_address + sizeof(instruction));
-    instruction main_third_instr = detail::read_instruction_at(bytes, main_address + 2 * sizeof(instruction));
+
+    const uint16_t main_vm_address = main_address + sizeof(ocmd_file_header);
+
+    instruction main_first_instr = detail::read_instruction_at(bytes, main_vm_address);
+    instruction main_second_instr = detail::read_instruction_at(bytes, main_vm_address + sizeof(instruction));
+    instruction main_third_instr = detail::read_instruction_at(bytes, main_vm_address + 2 * sizeof(instruction));
 
     instruction expected_first = opcode_call_at(0xFFFF);
     instruction expected_second = opcode_load_x_from(vm_register_idx::VM_R1, 0xFFFF);
@@ -438,13 +456,13 @@ namespace other {
       }
       SCOPED_TRACE(ss.str());
       EXPECT_EQ(main_first_instr.opcode, expected_first.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_address, main_first_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_first.opcode, main_vm_address, main_first_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_first_instr.opcode);
       EXPECT_EQ(main_second_instr.opcode, expected_second.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_address + sizeof(instruction), main_second_instr.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_second.opcode, main_vm_address + sizeof(instruction), main_second_instr.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_second_instr.opcode);
       EXPECT_EQ(main_third_instr.opcode, expected_third.opcode)
-        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_third.opcode, main_address + 2 * sizeof(instruction), expected_third.opcode)
+        << std::format("Expected instruction {:#010x} at address 0x{:04X},", expected_third.opcode, main_vm_address + 2 * sizeof(instruction), expected_third.opcode)
         << std::format(" Found instruction {:#010x} instead.", main_third_instr.opcode);
     }
   }
@@ -502,11 +520,11 @@ namespace other {
 
     uint16_t linked_data_start(const ocmd_program& program, const std::vector<uint8_t>& bytes) {
       size_t data_size = collect_expected_data_bytes(program).size();
-      return static_cast<uint16_t>(bytes.size() - data_size);
+      return static_cast<uint16_t>(bytes.size() - data_size - sizeof(ocmd_file_header));
     }
 
     uint16_t code_block_address(const ocmd_program& program, const size_t block_index) {
-      uint16_t offset = linked_code_start();
+      uint16_t offset = 0;
       for (size_t i = 0; i < block_index; ++i) {
         offset += program.compiled_blocks[i].artifact.machine_instructions.size() * sizeof(instruction);
       }
@@ -591,6 +609,7 @@ namespace other {
         }
 
         const uint16_t block_address = code_block_address(program, block_index);
+        const uint16_t block_vm_address = block_address + sizeof(ocmd_file_header);
         for (size_t instruction_index = 0; instruction_index < block.artifact.machine_instructions.size(); ++instruction_index) {
           instruction expected = block.artifact.machine_instructions[instruction_index];
           if (const auto fixup_itr = fixups_by_instruction.find(instruction_index); fixup_itr != fixups_by_instruction.end()) {
@@ -599,9 +618,9 @@ namespace other {
             expected.lower = symbol_itr->second;
           }
 
-          const instruction actual = read_instruction_at(bytes, static_cast<uint16_t>(block_address + instruction_index * sizeof(instruction)));
+          const instruction actual = read_instruction_at(bytes, static_cast<uint16_t>(block_vm_address + instruction_index * sizeof(instruction)));
           EXPECT_EQ(actual.opcode, expected.opcode)
-            << std::format("block='{}' instruction_index={} linked_address=0x{:04X}", block.name, instruction_index, block_address + instruction_index * sizeof(instruction));
+            << std::format("block='{}' instruction_index={} linked_address=0x{:04X}", block.name, instruction_index, block_vm_address + instruction_index * sizeof(instruction));
         }
       }
     }

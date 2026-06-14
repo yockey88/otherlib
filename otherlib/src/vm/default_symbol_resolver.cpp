@@ -11,7 +11,7 @@ namespace other {
     if (auto itr = symbols.find(FNV(symbol)); itr != symbols.end()) {
       return;
     }
-    auto [itr, inserted] = symbols.emplace(FNV(symbol), symbol_info{ .address = 0, .invocation_thunk = std::vector<uint8_t>(invocation_thunk.begin(), invocation_thunk.end()) });
+    auto [itr, inserted] = symbols.emplace(FNV(symbol), symbol_info{ .address = 0xFFFF, .invocation_thunk = std::vector<uint8_t>(invocation_thunk.begin(), invocation_thunk.end()) });
     if (!inserted) {
       throw ocmd_linking_error(std::format("Symbol '{}' is already registered as a code label", symbol));
     }
@@ -53,7 +53,7 @@ namespace other {
     } else if (auto itr = symbols.find(symbol_hash); itr != symbols.end()) {
       return invocation_thunk{ .final_address = itr->second.address, .invocation_thunk = itr->second.invocation_thunk };
     } else {
-      return invocation_thunk{ .final_address = 0, .invocation_thunk = {} };
+      return invocation_thunk{ .final_address = 0xFFFF, .invocation_thunk = {} };
     }
   }
 
