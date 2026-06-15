@@ -14,6 +14,7 @@
 #include "vm/default_symbol_resolver.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/diagnostics/ocmd_trace_sink.hpp"
+#include "vm/other_device.hpp"
 #include "vm/vm.hpp"
 
 namespace other {
@@ -39,10 +40,7 @@ namespace other {
       .prog_header = {
         .has_code_flag = 1,
         .code_section_offset = sizeof(ocmd_file_header),
-        .code_size = 16,
         .data_section_offset = 0,
-        .data_size = 0,
-        .data_table_offset = 0,
         .entry_point_address = sizeof(ocmd_file_header),
         .num_instructions = 4,
       },
@@ -125,11 +123,11 @@ namespace other {
       CORE_LOG_DEBUG("{}", ss.str());
       do {
         vm::step(&device);
-      } while (!device.stopped);
+      } while (!vm::has_flag(&device, other_command_device::STOPPED));
     }
 
     natural_t r1_value = device.registers[vm_register_idx::VM_R1].memory.to_u64();
-    EXPECT_EQ(r1_value, 0x0C) << std::format("Expected R1 to be the address 0x00C (data.number), but got {:#06x}", r1_value);
+    EXPECT_EQ(r1_value, 42) << std::format("Expected R1 to be the address 0x00C (data.number), but got {:#06x}", r1_value);
 
     ASSERT_NO_FATAL_FAILURE(vm::shutdown_device(&device));
   }
@@ -143,7 +141,7 @@ namespace other {
         .number : int32 = 42
       }
       $main:
-        set r1, data.number
+        set r1, [data.number]
         dump r1
       end
       )";
@@ -340,18 +338,20 @@ namespace other {
       };
     }
 
-    expected_argument make_address_argument(const uint16_t value) {
+    expected_argument make_address_argument(const uint16_t value, bool indirect) {
       return expected_argument{
         .type = TOKEN_TYPE_ADDRESS,
         .raw_txt = hex_word_string(value),
+        .indirect = indirect,
         .value = value,
       };
     }
 
-    expected_argument make_label_argument(const std::string_view label) {
+    expected_argument make_label_argument(const std::string_view label, bool indirect) {
       return expected_argument{
         .type = TOKEN_TYPE_LABEL,
         .raw_txt = std::string{ label },
+        .indirect = indirect,
         .value = static_cast<uint16_t>(0xFFFF),
       };
     }

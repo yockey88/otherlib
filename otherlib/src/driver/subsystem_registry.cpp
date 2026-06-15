@@ -231,6 +231,10 @@ namespace other {
     return registry;
   }
 
+  std::string get_default_profile() {
+    return std::string{ subsystem_profile::kMinimalProfileName };
+  }
+
   std::string get_subsystem_profile(const config_table* config) {
     std::vector<std::string> profile;
     if (config == nullptr) {

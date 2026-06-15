@@ -8,7 +8,7 @@
 
 namespace other {
 
-  void ocmd_trace_sink::handle(const diagnostic& diag) {
+  void ocmd_trace_sink::handle(diagnostic& diag) {
     CORE_LOG_TRACE("{}", default_format(diag));
   }
 

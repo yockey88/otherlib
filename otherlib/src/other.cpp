@@ -31,20 +31,8 @@ extern other::exit_code other_main(const other::command_line& cmd, const other::
 
 namespace other {
 
-  int entry(int argc, char* argv[]) {
-    PROFILE_SECTION("other::entry");
-
-    auto [config_loaded, config, cmd] = read_command_line_and_config(argc, argv);
-    if (!config_loaded) {
-      if (cmd.diagnostics.help || cmd.diagnostics.usage) {
-        return SUCCESS;
-      } else {
-        return FAILURE;
-      }
-    }
-
+  exit_code invoke_other_main(const command_line& cmd, const config_table& config, const std::string_view profile) {
     subsystem_registry registry = register_all_subsystems();
-    std::string profile = get_subsystem_profile(&config);
     registry.initialize_profile(profile, &config);
 
     if (config.diagnostics.verbose) {
@@ -62,12 +50,13 @@ namespace other {
     }
 
     exit_code res = FAILURE;
-
     try {
       PROFILE_SECTION("other::main");
       if (config.diagnostics.verbose) {
         CORE_LOG_DEBUG("Calling Other Main");
       }
+
+      register_main_thread();
       res = other_main(cmd, config, registry);
     } catch (const std::exception& e) {
       CORE_LOG_ERROR("Unhandled exception in other_main: {}", e.what());
@@ -77,9 +66,36 @@ namespace other {
 
     /// simply want the exit code to be the last thing in the logs
     registry.shutdown_all(/* skip logger */ true);
-    CORE_LOG_INFO("Other Environment exit with code: {}", res);
-    shutdown_subsystems();
     return res;
+  }
+
+  exit_code other_environment_program_entry_point(const command_line& cmd, const config_table& cfg, const std::string_view prof) {
+    exit_code res = invoke_other_main(cmd, cfg, prof);
+    CORE_LOG_INFO("Other Environment exit with code: {}", res);
+    return res;
+  }
+
+  int entry() {
+    command_line empty_cmd;
+    config_table default_config;
+    std::string default_profile = get_default_profile();
+    return other_environment_program_entry_point(empty_cmd, default_config, default_profile);
+  }
+
+  int entry(int argc, char* argv[]) {
+    PROFILE_SECTION("other::entry");
+
+    auto [config_loaded, config, cmd] = read_command_line_and_config(argc, argv);
+    if (!config_loaded) {
+      if (cmd.diagnostics.help || cmd.diagnostics.usage) {
+        return SUCCESS;
+      } else {
+        return FAILURE;
+      }
+    }
+
+    std::string profile = get_subsystem_profile(&config);
+    return other_environment_program_entry_point(cmd, config, profile);
   }
 
   namespace detail {

@@ -5,7 +5,7 @@
 
 namespace other {
 
-  void oasm_error_sink::handle(const diagnostic& diag) {
+  void oasm_error_sink::handle(diagnostic& diag) {
     if (diag.severity >= VM_DIAGNOSTIC_WARNING) {
       const std::string formatted = default_format(diag);
       if (diag.severity == VM_DIAGNOSTIC_WARNING) {

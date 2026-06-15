@@ -56,13 +56,15 @@ namespace other {
     void execute_register_control(other_command_device* device);
     void execute_program_flow(other_command_device* device);
     void execute_arithmetic_logic(other_command_device* device);
+    void execute_logical_or_bit_operations(other_command_device* device);
     constexpr other_command_table kControlTable = {
       execute_device_control_instruction,
       execute_register_control,
       execute_program_flow,
       execute_arithmetic_logic,
+      execute_logical_or_bit_operations,
       // clang-format off
-      execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,   execute_illegal_instruction_category, execute_illegal_instruction_category, execute_illegal_instruction_category,  // 4 - 9
+       execute_illegal_instruction_category,  execute_illegal_instruction_category,   execute_illegal_instruction_category, execute_illegal_instruction_category, execute_illegal_instruction_category,  // 5 - 9
       execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category,  execute_illegal_instruction_category, execute_illegal_instruction_category,  // A - F
       // clang-format on
     };
@@ -116,7 +118,6 @@ namespace other {
     /////////////////////// 0XXX /////////////////////
     /// 00000000 - Stop the device
     void execute_stop_device(other_command_device* device) {
-      device->stopped = true;
       vm::remove_flag(device, other_command_device::RUNNING);
       vm::remove_flag(device, other_command_device::IDLE);
       vm::add_flag(device, other_command_device::STOPPED);
@@ -125,9 +126,9 @@ namespace other {
     /// 01000000 - Dump all registers
     void execute_dump_registers(other_command_device* device) {
       for (size_t i = 0; i < vm_register::kNumRegisters; ++i) {
-        CORE_LOG_DEBUG("R[{}] = {:#018x}", i, device->registers[i].memory.to_u64());
+        CORE_LOG_INFO("R[{}] = {:#018x}", i, device->registers[i].memory.to_u64());
       }
-      CORE_LOG_DEBUG("R[FLAG] = {:#018x}", device->read_register_as_u64(vm_register_idx::VM_RFLAG));
+      CORE_LOG_INFO("R[FLAG] = {:#018x}", device->read_register_as_u64(vm_register_idx::VM_RFLAG));
     }
 
     /// 02xx0000 - Dump register x
@@ -177,124 +178,65 @@ namespace other {
       CORE_LOG_INFO("{}", ss.str());
     }
 
+    /// 05000000 - no operation (nop)
+    void execute_nop(other_command_device* device) {
+      // Do nothing
+    }
+
     /////////////////////// 1XXX /////////////////////
-    /// 10xxnnnn MEM[n] = R[x]
-    void execute_write_x_to_memory(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint64_t addr = device->current_instruction.lower;
-      device->write_u64_at(addr, device->read_register_as_u64(x));
-    }
-
-    /// 11xxnnnn R[x] = n
-    void execute_load_x_from_memory(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint16_t addr = device->current_instruction.lower;
-      device->write_register_from_u64(x, addr);
-    }
-
-    /// 12xxkkkk - R[x] = value
-    void execute_load_x_direct(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint16_t value = device->current_instruction.lower;
-      device->write_register_from_u64(x, value);
-    }
-
-    /// 13xxnnnn - MEM[n] = MEM[R[x]]
-    void execute_indirect_write_x_to_memory(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint16_t addr = device->current_instruction.lower;
-      uint64_t value_addr = device->read_register_as_u64(x);
-      uint64_t value = device->read_u64_at(value_addr);
-      device->write_current_program_data_from_u64(addr, value);
-      // write_u64_at(addr + device->program_start_address, value);
-    }
-
-    /// 14xxyyzz - R[z] = R[x] == R[y]
-    void execute_compare_x_y_set_z(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-
-      natural_t val_x = device->read_register_as_u64(x);
-      natural_t val_y = device->read_register_as_u64(y);
-      device->write_register_from_u64(z, uint64_t{ (val_x == val_y) });
-    }
-
-    /// 15xxyyzz - R[z] = R[x] > R[y]
-    void execute_x_gt_y_set_z(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      natural_t val_x = device->read_register_as_u64(x);
-      natural_t val_y = device->read_register_as_u64(y);
-      device->write_register_from_u64(z, uint64_t{ (val_x > val_y) });
-    }
-
-    /// 16xxyyzz - R[z] = R[x] < R[y]
-    void execute_x_lt_y_set_z(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      natural_t val_x = device->read_register_as_u64(x);
-      natural_t val_y = device->read_register_as_u64(y);
-      device->write_register_from_u64(z, uint64_t{ (val_x < val_y) });
-    }
-
-    /// 17xxyyzz - R[z] = R[x] & R[y]
-    void execute_x_and_y_set_z(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      natural_t val_x = device->read_register_as_u64(x);
-      natural_t val_y = device->read_register_as_u64(y);
-      device->write_register_from_u64(z, uint64_t{ (val_x & val_y) });
-    }
-
-    /// 18xxyyzz - R[z] = R[x] | R[y]
-    void execute_x_or_y_set_z(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      natural_t val_x = device->read_register_as_u64(x);
-      natural_t val_y = device->read_register_as_u64(y);
-      device->write_register_from_u64(z, uint64_t{ (val_x | val_y) });
-    }
-
-    /// 19xxyyzz - R[z] = R[x] ^ R[y]
-    void execute_x_xor_y_set_z(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
-      natural_t val_x = device->read_register_as_u64(x);
-      natural_t val_y = device->read_register_as_u64(y);
-      device->write_register_from_u64(z, uint64_t{ (val_x ^ val_y) });
-    }
-
-    /// 1Axxyy00 - R[x] = R[x] << R[y]
-    void execute_shift_left_x_by_y(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      natural_t val_x = device->read_register_as_u64(x);
-      natural_t val_y = device->read_register_as_u64(y);
-      device->write_register_from_u64(x, uint64_t{ (val_x << val_y) });
-    }
-
-    /// 1Bxxyy00 - R[x] = R[x] >> R[y]
-    void execute_shift_right_x_by_y(other_command_device* device) {
-      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
-      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
-      natural_t val_x = device->read_register_as_u64(x);
-      natural_t val_y = device->read_register_as_u64(y);
-      device->write_register_from_u64(x, uint64_t{ (val_x >> val_y) });
-    }
-
-    /// 1Cxxyy00 - R[y] = R[x]
+    /// 10xxyy00 - R[y] = R[x]
     void execute_move_x_to_y(other_command_device* device) {
       uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
       uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
       natural_t val_x = device->read_register_as_u64(x);
       device->write_register_from_u64(y, val_x);
     }
+
+    /// 11xxnnnn - MEM[n] = R[x]
+    void execute_write_x_to_memory(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint64_t addr = device->current_instruction.lower;
+      device->write_u64_at(addr, device->read_register_as_u64(x));
+    }
+
+    /// 12xxyy00 - MEM[R[y]] = R[x]
+    void execute_write_x_to_address_in_y(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      uint64_t addr = device->read_register_as_u64(y);
+      device->write_u64_at(addr, val_x);
+    }
+
+    /// 13xxnnnn - R[x] = n
+    void execute_set_x_to_address(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint16_t addr = device->current_instruction.lower;
+      device->write_register_from_u64(x, static_cast<uint64_t>(addr));
+    }
+
+    /// 14xxnnnn - R[x] = MEM[n]
+    void execute_set_x_to_dword_at(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint16_t addr = device->current_instruction.lower;
+      device->write_register_from_u64(x, device->read_u64_at(addr));
+    }
+
+    /// 15xxkkkk - R[x] = k
+    void execute_set_x_immediate(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t value = static_cast<uint8_t>(device->current_instruction.lower);
+      device->write_register_from_u64(x, static_cast<uint64_t>(value));
+    }
+
+    // /// 1?xxnnnn - MEM[n] = MEM[R[x]]
+    // void execute_write_x_to_memory_indirect(other_command_device* device) {
+    //   uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+    //   uint16_t addr = device->current_instruction.lower;
+    //   uint64_t value_addr = device->read_register_as_u64(x);
+    //   uint64_t value = device->read_u64_at(value_addr);
+    //   device->write_u64_at(addr, value);
+    // }
 
     /////////////////////// 2XXX /////////////////////
     /// 2000nnnn - goto address nnn
@@ -427,34 +369,170 @@ namespace other {
       }
     }
 
+    /// 35xxyyzz - R[x] = R[x] + k
+    void execute_add_x_imm_to_x(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint16_t k = device->current_instruction.lower;
+      natural_t val_x = device->read_register_as_u64(x);
+      device->write_register_from_u64(x, val_x + k);
+    }
+
+    /// 36xxkkkk - R[x] = R[x] - k
+    void execute_sub_x_imm_to_x(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint16_t k = device->current_instruction.lower;
+      natural_t val_x = device->read_register_as_u64(x);
+      device->write_register_from_u64(x, val_x - k);
+    }
+
+    /// 37xxkkkk - R[x] = R[x] * k
+    void execute_mul_x_imm_to_x(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint16_t k = device->current_instruction.lower;
+      natural_t val_x = device->read_register_as_u64(x);
+      device->write_register_from_u64(x, val_x * k);
+    }
+
+    /// 38xxkkkk - R[x] = R[x] / k
+    void execute_div_x_imm_to_x(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint16_t k = device->current_instruction.lower;
+      natural_t val_x = device->read_register_as_u64(x);
+      if (k == 0) {
+        CORE_LOG_ERROR("Division by zero in DIV R[{}] / {}", x, k);
+        device->write_register_from_u64(vm_register_idx::VM_RFLAG, 1);
+      } else {
+        device->write_register_from_u64(x, val_x / k);
+      }
+    }
+
+    /// 39xxkkkk - R[x] = R[x] % k
+    void execute_mod_x_imm_to_x(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint16_t k = device->current_instruction.lower;
+      natural_t val_x = device->read_register_as_u64(x);
+      if (k == 0) {
+        CORE_LOG_ERROR("Modulo by zero in MOD R[{}] % {}", x, k);
+        device->write_register_from_u64(vm_register_idx::VM_RFLAG, 1);
+      } else {
+        device->write_register_from_u64(x, val_x % k);
+      }
+    }
+
+    /////////////////////// 4XXX /////////////////////
+    /// 40xxyyzz - R[z] = R[x] == R[y]
+    void execute_compare_x_y_set_z(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
+
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x == val_y) });
+    }
+
+    /// 41xxyyzz - R[z] = R[x] > R[y]
+    void execute_x_gt_y_set_z(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x > val_y) });
+    }
+
+    /// 42xxyyzz - R[z] = R[x] < R[y]
+    void execute_x_lt_y_set_z(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x < val_y) });
+    }
+
+    /// 43xxyy00 - R[y] = not R[x]
+    void execute_x_not_set_y(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+
+      natural_t val_x = device->read_register_as_u64(x);
+      device->write_register_from_u64(y, uint64_t{ ~val_x });
+    }
+
+    /// 44xxyyzz - R[z] = R[x] & R[y]
+    void execute_x_and_y_set_z(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x & val_y) });
+    }
+
+    /// 45xxyyzz - R[z] = R[x] | R[y]
+    void execute_x_or_y_set_z(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x | val_y) });
+    }
+
+    /// 46xxyyzz - R[z] = R[x] ^ R[y]
+    void execute_x_xor_y_set_z(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      uint8_t z = device->current_instruction.bytes[instruction::Z_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(z, uint64_t{ (val_x ^ val_y) });
+    }
+
+    /// 47xxyy00 - R[x] = R[x] << R[y]
+    void execute_shift_left_x_by_y(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(x, uint64_t{ (val_x << val_y) });
+    }
+
+    /// 48xxyy00 - R[x] = R[x] >> R[y]
+    void execute_shift_right_x_by_y(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      natural_t val_x = device->read_register_as_u64(x);
+      natural_t val_y = device->read_register_as_u64(y);
+      device->write_register_from_u64(x, uint64_t{ (val_x >> val_y) });
+    }
+
     constexpr other_command_table kDeviceControlTable = {
       execute_stop_device,
       execute_dump_registers,
       execute_dump_register_x,
       execute_dump_memory_at,
       execute_view_state,
+      execute_nop,
       // clang-format off
-      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // 5 - 9
+      execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // 7 - 9
       execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
       // clang-format on
+      execute_illegal_instruction,
     };
     constexpr other_command_table kLoadTable = {
-      execute_write_x_to_memory,
-      execute_load_x_from_memory,
-      execute_load_x_direct,
-      execute_indirect_write_x_to_memory,
-      execute_compare_x_y_set_z,
-      execute_x_gt_y_set_z,
-      execute_x_lt_y_set_z,
-      execute_x_and_y_set_z,
-      execute_x_or_y_set_z,
-      execute_x_xor_y_set_z,
-      execute_shift_left_x_by_y,
-      execute_shift_right_x_by_y,
       execute_move_x_to_y,
+      execute_write_x_to_memory,
+      execute_write_x_to_address_in_y,
+      execute_set_x_to_address,
+      execute_set_x_to_dword_at,
+      execute_set_x_immediate,
       // clang-format off
-      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction, // D - F
+      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction, // 6 - 9
+      execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction, // A - F
       // clang-format on
+      execute_illegal_instruction,
     };
     constexpr other_command_table kProgramFlowTable = {
       execute_goto,
@@ -466,9 +544,10 @@ namespace other {
       execute_syscall,
       execute_invoke,
       // clang-format off
-      execute_illegal_instruction,  execute_illegal_instruction, // 7 - 9
-      execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
+      execute_illegal_instruction, // 7 - 9
+      execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, execute_illegal_instruction, // A - F
       // clang-format on
+      execute_illegal_instruction,
     };
     constexpr other_command_table kArithmeticLogicTable = {
       execute_add_x_y_to_x,
@@ -476,10 +555,31 @@ namespace other {
       execute_mul_x_y_to_x,
       execute_div_x_y_to_x,
       execute_mod_x_y_to_x,
+      execute_add_x_imm_to_x,
+      execute_sub_x_imm_to_x,
+      execute_mul_x_imm_to_x,
+      execute_div_x_imm_to_x,
+      execute_mod_x_imm_to_x,
       // clang-format off
-      execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction, execute_illegal_instruction, // 5 - 9
+      execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction, // A - F
+      // clang-format on
+      execute_illegal_instruction,
+    };
+    constexpr other_command_table kLogicalOrBitOperationsTable = {
+      execute_compare_x_y_set_z,
+      execute_x_gt_y_set_z,
+      execute_x_lt_y_set_z,
+      execute_x_not_set_y,
+      execute_x_and_y_set_z,
+      execute_x_or_y_set_z,
+      execute_x_xor_y_set_z,
+      execute_shift_left_x_by_y,
+      execute_shift_right_x_by_y,
+      // clang-format off
+      execute_illegal_instruction, // 9
       execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
       // clang-format on
+      execute_illegal_instruction,
     };
 
     void execute_device_control_instruction(other_command_device* device) {
@@ -500,6 +600,11 @@ namespace other {
     void execute_arithmetic_logic(other_command_device* device) {
       uint8_t func_nib = device->current_instruction.type_nibble();
       return kArithmeticLogicTable[func_nib](device);
+    }
+
+    void execute_logical_or_bit_operations(other_command_device* device) {
+      uint8_t func_nib = device->current_instruction.type_nibble();
+      return kLogicalOrBitOperationsTable[func_nib](device);
     }
 
     /// \todo:

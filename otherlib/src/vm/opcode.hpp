@@ -64,7 +64,9 @@ namespace other {
     constexpr static uint32_t kZRegisterMask = 0x000000FF;
     constexpr static uint8_t kZRegisterShift = 0;
 
-    enum : uint8_t {
+    /// \todo fix this to be endian-independent
+    enum reg : uint8_t {
+      INVALID_BYTE_IDX = 3,  // this byte is category and type
       X_REGISTER_BYTE_IDX = 2,
       Y_REGISTER_BYTE_IDX = 1,
       Z_REGISTER_BYTE_IDX = 0,
@@ -182,34 +184,22 @@ namespace other {
   uint32_t opcode_dump_memory_at(uint8_t x, uint16_t n);
   /// 0x04000000 (view_state)
   uint32_t opcode_view_state();
+  /// 0x05000000 (nop)
+  uint32_t opcode_nop();
 
   /// 1 table (load/store/logical)
-  /// 10xxnnnn (write x, n)
-  uint32_t opcode_write_x_to_memory(uint8_t x, uint16_t n);
-  /// 11xxnnnn (set x, n/<label>)
-  uint32_t opcode_load_x_from(uint8_t x, uint16_t n);
-  /// 12xxkkkk (set x, k)
-  uint32_t opcode_load_x_direct(uint8_t x, uint16_t k);
-  /// 13xxnnnn (write x, <label>)
-  uint32_t opcode_indirect_write_x_to_memory(uint16_t n, uint8_t x);
-  /// 14xxyyzz (cmp x, y, z)
-  uint32_t opcode_compare_x_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 15xxyyzz (cmpgt x, y, z)
-  uint32_t opcode_x_gt_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 16xxyyzz (cmplt x, y, z)
-  uint32_t opcode_x_lt_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 17xxyyzz (and x, y, z)
-  uint32_t opcode_x_and_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 18xxyyzz (or x, y, z)
-  uint32_t opcode_x_or_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 19xxyyzz (xor x, y, z)
-  uint32_t opcode_x_xor_y_set_z(uint8_t x, uint8_t y, uint8_t z);
-  /// 1Axxyy00 (lshift x, y)
-  uint32_t opcode_shift_left_x_by_y(uint8_t x, uint8_t y);
-  /// 1Bxxyy00 (rshift x, y)
-  uint32_t opcode_shift_right_x_by_y(uint8_t x, uint8_t y);
-  /// 1Cxxyy00 (mov x, y)
+  /// 10xxyy00 (mov x, y)
   uint32_t opcode_move_x_to_y(uint8_t x, uint8_t y);
+  /// 11xxnnnn (write x,   n/[n]/<label>/[<label>])
+  uint32_t opcode_write_x_to_memory(uint8_t x, uint16_t n);
+  /// 12xxyy00 (write x, [y])
+  uint32_t opcode_write_x_to_address_in_y(uint8_t x, uint8_t y);
+  /// 13xxnnnn (set x,   n/<label>)
+  uint32_t opcode_set_x_to_address(uint8_t x, uint16_t n);
+  /// 14xxnnnn (set x,   [n]/[<label>])
+  uint32_t opcode_set_x_to_dword_at(uint8_t x, uint16_t n);
+  /// 15xxkkkk (set x,   k)
+  uint32_t opcode_set_x_immediate(uint8_t x, uint8_t k);
 
   /// 2 table (program flow)
   /// 2000nnnn (goto <label>/goto n)
@@ -228,20 +218,46 @@ namespace other {
   uint32_t opcode_syscall(uint16_t k);
 
   /// 3 table (arithmetic)
-  /// 30xy0000 (add x, y)
+  /// 30xxyy00 (add x, y)
   uint32_t opcode_add_x_y_to_x(uint8_t x, uint8_t y);
-  /// 31xy0000 (sub x, y)
+  /// 31xxyy00 (sub x, y)
   uint32_t opcode_sub_x_y_to_x(uint8_t x, uint8_t y);
-  /// 32xy0000 (mul x, y)
+  /// 32xxyy00 (mul x, y)
   uint32_t opcode_mul_x_y_to_x(uint8_t x, uint8_t y);
-  /// 33xy0000 (div x, y)
+  /// 33xxyy00 (div x, y)
   uint32_t opcode_div_x_y_to_x(uint8_t x, uint8_t y);
-  /// 34xy0000 (mod x, y)
+  /// 34xxyy00 (mod x, y)
   uint32_t opcode_mod_x_y_to_x(uint8_t x, uint8_t y);
+  /// 35xxkkkk (add x, k)
+  uint32_t opcode_add_x_imm_to_x(uint8_t x, uint16_t k);
+  /// 36xxkkkk (sub x, k)
+  uint32_t opcode_sub_x_imm_to_x(uint8_t x, uint16_t k);
+  /// 37xxkkkk (mul x, k)
+  uint32_t opcode_mul_x_imm_to_x(uint8_t x, uint16_t k);
+  /// 38xxkkkk (div x, k)
+  uint32_t opcode_div_x_imm_to_x(uint8_t x, uint16_t k);
+  /// 39xxkkkk (mod x, k)
+  uint32_t opcode_mod_x_imm_to_x(uint8_t x, uint16_t k);
 
-  /// 4 table (nop)
-  /// 40xxxxxx (nop)
-  uint32_t opcode_nop();
+  /// 4 table (logic and bit operations)
+  /// 40xxyyzz (cmp x, y, z?)
+  uint32_t opcode_compare_x_y_set_z(uint8_t x, uint8_t y, uint8_t z);
+  /// 41xxyyzz (cmpgt x, y, z?)
+  uint32_t opcode_x_gt_y_set_z(uint8_t x, uint8_t y, uint8_t z);
+  /// 42xxyyzz (cmplt x, y, z?)
+  uint32_t opcode_x_lt_y_set_z(uint8_t x, uint8_t y, uint8_t z);
+  /// 43xx0000 (not x, y?)
+  uint32_t opcode_x_not_set_y(uint8_t x, uint8_t y);
+  /// 44xxyyzz (and x, y, z?)
+  uint32_t opcode_x_and_y_set_z(uint8_t x, uint8_t y, uint8_t z);
+  /// 45xxyyzz (or x, y, z?)
+  uint32_t opcode_x_or_y_set_z(uint8_t x, uint8_t y, uint8_t z);
+  /// 46xxyyzz (xor x, y, z?)
+  uint32_t opcode_x_xor_y_set_z(uint8_t x, uint8_t y, uint8_t z);
+  /// 47xxyy00 (lshift x, y, z?)
+  uint32_t opcode_shift_left_x_by_y_set_z(uint8_t x, uint8_t y, uint8_t z);
+  /// 48xxyy00 (rshift x, y, z?)
+  uint32_t opcode_shift_right_x_by_y_set_z(uint8_t x, uint8_t y, uint8_t z);
 
 }  // namespace other
 

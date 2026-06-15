@@ -1,49 +1,57 @@
 /entry: main
 
-$main:
-  syscall core.time_since_init
-  ; call print_res
-  mov rf, r0
-  set r1, 3
-  set rflag, 1
+$print_res:
+  mov rf, r0   ; move the result to the first arg
+  set r1, 3    ; info level
+  set rflag, 1 ; dont print hex
   syscall core.log_u64
+  ret
+end
+
+$main:
+  set r6, 1       ; iteration in scratch reg
+  set r7, 0x01234 ; initial address
+  set r1, 5       ; initial value
+
+  set r8, 6 ; for i = 1; i < 6; ++i { ... }
+@startloop:
+  cmplt r6, r8, rflag ; R[flag] = r6 < r8
+  je loopend
+    mul r1, r6
+    write r1, [r7]
+    
+    add r6, 1  ; increment iteration
+    add r7, 1  ; increment address
+  goto startloop
+    
+@loopend:
+  set r1, 5
+  dump r1, 0x1234
+
+  set rflag, 0
+
+  syscall core.time_since_init
+  call print_res
 
   syscall core.epoch_time
-  mov rf, r0
-  set r1, 3
-  set rflag, 1
-  syscall core.log_u64
+  call print_res
 
   syscall core.random
-  ; call print_res
-  mov rf, r0
-  set r1, 3
-  set rflag, 1
-  syscall core.log_u64
+  call print_res
 
-  set r0, 16
+  set r0, 16     ; 0x0010 = VM_BAD_SYSCALL
   set r1, 0x0F00 ; output address
   set r2, 100    ; capacity
   syscall core.error_name
 
-  write rf, 0x0FF0
   set r0, 0x0F00
-  set r1, 0x0FF0
+  mov rf, r1     ; string length
   set r2, 3
   syscall core.log
-
-  stopdev
 end
 
-$print_res:
-  mov rf, r0
-  set r1, 3
-  set rflag, 1
-  syscall core.log_u64
-end
-
-; #data {
+#data {
   ; address to write load text to in memory
-  ; .string-len: int32 = 35
+  .string-len: int32 = 35
   ; .load-text: string = "resources/models/spinning-donut.fbx"
-; }
+}

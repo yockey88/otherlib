@@ -24,6 +24,7 @@ namespace other {
       if (instr.arguments.size() > a) {
         canon_instr.param[a] = canonical_instruction::lower_argument(normalized_operands[a]);
       } else {
+        canon_instr.num_params = a;
         break;
       }
     }

@@ -12,8 +12,10 @@
 #include "vm/code_generator_000.hpp"
 #include "vm/command_files/compiler_error.hpp"
 #include "vm/command_files/ocmd_compiler.hpp"
+#include "vm/command_files/token.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
 #include "vm/diagnostics/ocmd_errors.hpp"
+#include "vm/opcode.hpp"
 
 #include "fuzzing.hpp"
 #include "vm_tests.hpp"
@@ -68,8 +70,7 @@ namespace other {
       }
     }
 
-    std::vector<expected_machine_instruction> expected_machine_instructions_for_current_generator(
-      const std::span<const detail::expected_instruction> expected_instructions) {
+    std::vector<expected_machine_instruction> expected_machine_instructions_for_current_generator(const std::span<const detail::expected_instruction> expected_instructions) {
       std::vector<expected_machine_instruction> machine_instructions;
       machine_instructions.reserve(expected_instructions.size());
 
@@ -105,16 +106,28 @@ namespace other {
 
           case canonical_opcode::SET_OP: {
             if (expected.arguments.size() == 2 && is_register_argument(expected.arguments[0]) && expected.arguments[1].type == TOKEN_TYPE_ADDRESS) {
-              machine_instructions.push_back(expected_machine_instruction{
-                .expected_opcode = opcode_load_x_from(register_value(expected.arguments[0]), scalar_value(expected.arguments[1])),
-              });
+              if (expected.arguments[1].indirect) {
+                machine_instructions.push_back(expected_machine_instruction{
+                  .expected_opcode = opcode_set_x_to_address(register_value(expected.arguments[0]), scalar_value(expected.arguments[1])),
+                });
+              } else {
+                machine_instructions.push_back(expected_machine_instruction{
+                  .expected_opcode = opcode_set_x_to_dword_at(register_value(expected.arguments[0]), scalar_value(expected.arguments[1])),
+                });
+              }
+            } else if (expected.arguments.size() == 2 && is_register_argument(expected.arguments[0]) && is_label_argument(expected.arguments[1])) {
+              if (expected.arguments[1].indirect) {
+                machine_instructions.push_back(expected_machine_instruction{
+                  .expected_opcode = opcode_set_x_to_address(register_value(expected.arguments[0]), scalar_value(expected.arguments[1])),
+                });
+              } else {
+                machine_instructions.push_back(expected_machine_instruction{
+                  .expected_opcode = opcode_set_x_to_dword_at(register_value(expected.arguments[0]), 0xFFFF),
+                });
+              }
             } else if (expected.arguments.size() == 2 && is_register_argument(expected.arguments[0]) && expected.arguments[1].type == TOKEN_TYPE_INTEGER_LITERAL) {
               machine_instructions.push_back(expected_machine_instruction{
-                .expected_opcode = opcode_load_x_direct(register_value(expected.arguments[0]), scalar_value(expected.arguments[1])),
-              });
-            } else if (expected.arguments.size() == 2 && is_register_argument(expected.arguments[0]) && is_label_argument(expected.arguments[1])) {
-              machine_instructions.push_back(expected_machine_instruction{
-                .expected_opcode = opcode_load_x_from(register_value(expected.arguments[0]), 0xFFFF),
+                .expected_opcode = opcode_set_x_immediate(register_value(expected.arguments[0]), scalar_value(expected.arguments[1])),
               });
             } else {
               ADD_FAILURE() << "Unhandled set instruction shape for current generator";
@@ -305,11 +318,12 @@ namespace other {
     detail::expect_definition_matches(program.definitions[0], "entry", "main");
 
     const std::array expected_main = {
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_direct(vm_register_idx::VM_R1, 42) },
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_direct(vm_register_idx::VM_R2, 99) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R1, 42) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R2, 99) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R2) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
     };
 
     detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "main", false, expected_main);
@@ -338,7 +352,7 @@ namespace other {
     ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     const std::array expected_main = {
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_from(vm_register_idx::VM_R1, 0xFFFF) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_to_address(vm_register_idx::VM_R1, 0xFFFF) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
     };
 
@@ -425,14 +439,10 @@ namespace other {
     };
 
     detail::expect_compiled_data_section_matches(program.compiled_data_sections[0], "data", expected_data);
-    detail::expect_compiled_code_block_matches(
-      program.compiled_blocks[0], "boot", false, detail::expected_machine_instructions_for_current_generator(expected_boot));
-    detail::expect_compiled_code_block_matches(
-      program.compiled_blocks[1], "copy", false, detail::expected_machine_instructions_for_current_generator(expected_copy));
-    detail::expect_symbol_fixups_match(
-      program.compiled_blocks[0].artifact, detail::expected_symbol_fixups_for_current_generator(expected_boot));
-    detail::expect_symbol_fixups_match(
-      program.compiled_blocks[1].artifact, detail::expected_symbol_fixups_for_current_generator(expected_copy));
+    detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "boot", false, detail::expected_machine_instructions_for_current_generator(expected_boot));
+    detail::expect_compiled_code_block_matches(program.compiled_blocks[1], "copy", false, detail::expected_machine_instructions_for_current_generator(expected_copy));
+    detail::expect_symbol_fixups_match(program.compiled_blocks[0].artifact, detail::expected_symbol_fixups_for_current_generator(expected_boot));
+    detail::expect_symbol_fixups_match(program.compiled_blocks[1].artifact, detail::expected_symbol_fixups_for_current_generator(expected_copy));
   }
 
   TEST_F(vm_tests, ocmd_compiler_all_supported_instructions) {
@@ -576,7 +586,7 @@ namespace other {
     ASSERT_TRUE(program.compiled_data_sections.empty());
 
     const std::array expected_main = {
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_direct(vm_register_idx::VM_R1, 10) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R1, 10) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_move_x_to_y(vm_register_idx::VM_R2, vm_register_idx::VM_R1) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
     };

@@ -229,6 +229,33 @@ namespace other {
     expect_code_block_matches(ir.code_blocks[0], "main", expected_code);
   }
 
+  TEST_F(vm_tests, oasm_parsing_parse_instruction_parameters_with_brackets) {
+    const std::string_view source = R"(
+    $main:
+      set r1, [data.player.health]
+      ret
+    end
+    )";
+
+    diagnostic_engine diag;
+    const auto ir = detail::parse_source(source, &diag);
+    ASSERT_TRUE(ir.valid);
+    ASSERT_TRUE(ir.data_blocks.empty());
+    ASSERT_EQ(ir.code_blocks.size(), 1);
+
+    const auto& r1 = detail::get_register_case(1);
+    const std::array expected_code = {
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::SET_OP,
+        .arguments = { detail::make_register_argument(r1), detail::make_label_argument("data.player.health") },
+      },
+      detail::expected_instruction{
+        .expected_opcode = canonical_opcode::RET_OP,
+      },
+    };
+    expect_code_block_matches(ir.code_blocks[0], "main", expected_code);
+  }
+
   TEST_F(vm_tests, oasm_parsing_accepts_jump_labels) {
     const std::string_view source = R"(
     $main:

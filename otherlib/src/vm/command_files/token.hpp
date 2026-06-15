@@ -261,6 +261,7 @@ namespace other {
     token_type type;
 
     source_span source_view;
+    bool indirect = false;
 
     token() : text(""), type(TOKEN_TYPE_INVALID), source_view{} {}
     token(token_type type, const std::string_view str, source_span source_view)

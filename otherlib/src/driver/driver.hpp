@@ -375,6 +375,13 @@ namespace other {
     ::other::arena_allocator<::other::driver>{}.free(instance);                                                                         \
   }
 
+#define OTHER_NO_DRIVER()                                                                                                               \
+  extern "C" OTHER_API ::other::driver* otherlib_create_driver(const ::other::command_line* cmd, const ::other::config_table* config) { \
+    return nullptr;                                                                                                                     \
+  }                                                                                                                                     \
+  extern "C" OTHER_API void otherlib_destroy_driver(::other::driver* instance) {                                                        \
+  }
+
 extern "C" {
 extern ::other::driver* otherlib_create_driver(const ::other::command_line* cmd, const ::other::config_table* config);
 extern void otherlib_destroy_driver(::other::driver* instance);

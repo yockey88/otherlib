@@ -26,6 +26,10 @@ class vm_debugger_window : public ui_window {
   void on_render_body() override;
 
   void render_main_device_controls(other_command_device& device);
+
+ private:
+  void render_debugger_home(other_command_device& device);
+  void render_program_debugger(other_command_device& device);
 };
 
 OTHER_PROVIDES(vm_debugger_window, ui_window, "vm_debugger", OTHER_PARAMS(OTHER_PARAM("name", "vm-debugger")))

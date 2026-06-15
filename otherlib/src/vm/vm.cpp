@@ -9,21 +9,16 @@
 #include "core/logger.hpp"
 #include "thread/thread_safety.hpp"
 
-#include "vm/code_generator_000.hpp"
 #include "vm/command_bus.hpp"
-#include "vm/command_files/lexer.hpp"
-#include "vm/command_files/oasm_parser.hpp"
-#include "vm/command_files/ocmd_compiler.hpp"
 #include "vm/command_files/ocmd_headers.hpp"
-#include "vm/command_files/ocmd_linker.hpp"
+#include "vm/command_files/ocmd_toolchain.hpp"
 #include "vm/control_table.hpp"
-#include "vm/default_symbol_resolver.hpp"
-#include "vm/diagnostics/ocmd_trace_sink.hpp"
 #include "vm/opcode.hpp"
 
 namespace other {
   namespace {
 
+    /// \todo get rid of this
     inline other_command_device* initialized_device = nullptr;
 
   }  // namespace
@@ -65,6 +60,9 @@ namespace other {
 
     device->memory = arena_allocator<other_command_device::memory_t>{}.allocate();
     OTHER_ASSERT(device->memory != nullptr, "Failed to allocate device memory!");
+
+    device->bus = arena_allocator<command_bus>{}.allocate();
+    OTHER_ASSERT(device->bus != nullptr, "Failed to allocate device bus!");
 
     auto data = std::span(device->memory->data, other_command_device::kMemorySize);
     std::ranges::fill(data, 0);
@@ -127,29 +125,14 @@ namespace other {
 
     std::vector<uint8_t> bytes;
     if (file_path.extension() == ".oasm") {
-      std::string contents;
-      {
-        std::ostringstream ss;
-        ss << file.rdbuf();
-        contents = ss.str();
-      }
-      file.close();
-
-      ocmd_compiler compiler;
-      ocmd_trace_sink trace_sink;
-      natural_t trace_id = diagnostics.register_sink("trace-sink", &trace_sink);
-
-      auto program = compiler.compile(contents, make_scope<code_generator_000>(), &diagnostics);
-      bytes = ocmd_linker{ program }.link(device->bus->create_default_symbol_resolver(), &diagnostics);
-
-      diagnostics.remove_sink(trace_id);
+      bytes = ocmd_toolchain{}.assemble_oasm_source(device, file_path);
     } else if (file_path.extension() == ".oexe") {
       CORE_LOG_ERROR("[VM] : OEXE file loading not yet implemented: {}", file_path.string());
       return;
     }
 
     if (bytes.empty()) {
-      CORE_LOG_ERROR("[VM] : Failed to read any data from file {}", file_path.string());
+      CORE_LOG_ERROR("[VM] : Failed to compile and load program from file {}", file_path.string());
       return;
     }
 
@@ -168,30 +151,34 @@ namespace other {
       return;
     }
 
+    std::span bytes_no_header = bytes.subspan(sizeof(ocmd_file_header));
+
+    uint16_t code_size = header.prog_header.data_section_offset - header.prog_header.code_section_offset;
+    uint16_t data_size = bytes_no_header.size() - header.prog_header.data_section_offset;
     device->current_program_metadata = {
       .load_address = device->program_load_cursor,
-      .code_size = header.prog_header.code_size,
-      .data_offset = static_cast<uint16_t>(header.prog_header.data_section_offset - sizeof(ocmd_file_header)),
-      .data_size = header.prog_header.data_size,
-      .entry_point_offset = header.prog_header.entry_point_address,
-      .num_instructions = header.prog_header.num_instructions,
+      .code_size = code_size,
+      .data_size = data_size,
+      .header = header,
       .state = other_command_device::program_state::PROGRAM_RUNNING,
     };
-    OTHER_ASSERT(header.prog_header.entry_point_address >= sizeof(ocmd_file_header), "Invalid entry point address in OCMD file header");
-
-    // adjust entry point since we trim out the header
-    device->current_program_metadata.entry_point_offset -= sizeof(ocmd_file_header);
+    CORE_LOG_INFO("[VM] Loading program at address: {:#06x}", device->program_load_cursor);
+    CORE_LOG_INFO("     - entry point address: {:#06x}", header.prog_header.entry_point_address + device->program_load_cursor);
+    CORE_LOG_INFO("     - data section address: {:#06x}", header.prog_header.data_section_offset + device->program_load_cursor);
+    CORE_LOG_INFO("     - number of instructions: {}", header.prog_header.num_instructions);
+    CORE_LOG_INFO("     - data section size: {}", device->current_program_metadata.data_size);
 
     auto program_bytes = bytes.subspan(sizeof(ocmd_file_header));
     size_t program_size = std::ranges::size(program_bytes);
     const uint8_t* program = program_bytes.data();
     load_bytes_to_address(device, device->program_load_cursor, program, program_size);
 
-    device->pc = device->current_program_metadata.get_global_entry_point_address();
+    device->pc = device->globalize_address(&device->current_program_metadata, device->current_program_metadata.entry_point());
     device->program_load_cursor += program_size;
     device->stopped = false;
     device->current_instruction = { opcode_read_program_counter(device) };
 
+    remove_flag(device, other_command_device::STOPPED);
     if (!has_flag(device, other_command_device::DEBUG)) {
       remove_flag(device, other_command_device::IDLE);
       add_flag(device, other_command_device::RUNNING);
@@ -237,6 +224,7 @@ namespace other {
     initialized_device = nullptr;
 
     std::ranges::fill(std::span(device->memory->data, other_command_device::kMemorySize), 0);
+    arena_allocator<command_bus>{}.free(device->bus);
     arena_allocator<other_command_device::memory_t>{}.free(device->memory);
     *device = {};
   }

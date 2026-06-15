@@ -23,6 +23,21 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
     return;
   }
 
+  if (vm::has_flag(&device, other_command_device::STOPPED)) {
+    render_debugger_home(device);
+  } else {
+    render_program_debugger(device);
+  }
+}
+
+void vm_debugger_window::render_debugger_home(other_command_device& device) {
+  scoped_color info_color(ImGuiCol_Text, ImVec4(0.0f, 0.5f, 1.0f, 1.0f));
+  ImGui::Text("No Program Executing");
+
+  // file dialog to load program
+}
+
+void vm_debugger_window::render_program_debugger(other_command_device& device) {
   natural_t pc = static_cast<natural_t>(device.pc);
   natural_t sp = static_cast<natural_t>(device.sp);
   natural_t load_cursor = static_cast<natural_t>(device.program_load_cursor);
@@ -34,17 +49,24 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
   ImGui::Text("Delay Timer: %u", device.delay_timer);
   ImGui::Text("Sound Timer: %u", device.sound_timer);
   ImGui::Text("Program Load Cursor: 0x%016llX", load_cursor);
-  ImGui::Text("Current Instruction: 0x%08X", device.current_instruction.opcode);
   if (device.scene_context != nullptr) {
     ImGui::Text("Scene Context: %p", static_cast<void*>(device.scene_context));
   } else {
     ImGui::Text("Scene Context: None");
   }
 
-  if (!vm::has_flag(&device, other_command_device::STOPPED)) {
-    if (ImGui::Button("Step")) {
-      vm::step(&device);
-    }
+  ImGui::Text("Current Instruction: 0x%08X", device.current_instruction.opcode);
+  if (ImGui::TreeNode("Instruction Details")) {
+    std::string opcode_to_string = opcode_to_detailed_string(device.current_instruction.opcode);
+    ImGui::TextWrapped("%s", opcode_to_string.c_str());
+
+    /// render instruction specific break down showing current memory/registers and result after execution
+
+    ImGui::TreePop();
+  }
+
+  if (ImGui::Button("Step")) {
+    vm::step(&device);
   }
 
   ImGui::Separator();

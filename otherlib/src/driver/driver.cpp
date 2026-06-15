@@ -26,7 +26,6 @@ namespace other {
 
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
-    register_main_thread();
 
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();

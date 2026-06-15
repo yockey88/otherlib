@@ -70,6 +70,8 @@ namespace other {
     ocmd_ir ir_result;
     diagnostic_engine* diagnostics = nullptr;
 
+    bool failure_processing = false;
+
     std::vector<token> tokens;
 
     size_t cursor = 0;

@@ -167,11 +167,11 @@ namespace other {
             } break;
 
             case 1: {
-              const std::string& label = available_labels[gen.label_dist(gen.gen) % available_labels.size()];
-              code_block_case.source += "  write " + std::string{ reg.text } + ", " + label + "\n";
+              uint16_t address = gen.address_dist(gen.gen);
+              code_block_case.source += "  write " + std::string{ reg.text } + ", 0x" + hex_word_string(address) + "\n";
               code_block_case.instructions.push_back(expected_instruction{
                 .expected_opcode = canonical_opcode::WRITE_OP,
-                .arguments = { make_register_argument(reg), make_label_argument(label) },
+                .arguments = { make_register_argument(reg), make_address_argument(address) },
               });
             } break;
 

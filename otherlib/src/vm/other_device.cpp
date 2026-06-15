@@ -12,26 +12,6 @@
 
 namespace other {
 
-  uint16_t other_command_device::program_metadata::full_program_size() const {
-    return data_offset + data_size;
-  }
-
-  uint16_t other_command_device::program_metadata::get_global_data_address() const {
-    return load_address + data_offset;
-  }
-
-  uint16_t other_command_device::program_metadata::get_global_entry_point_address() const {
-    return load_address + entry_point_offset;
-  }
-
-  uint16_t other_command_device::program_metadata::get_instruction_address_by_index(uint16_t instruction_index) const {
-    return load_address + (instruction_index * other_command_device::kOpCodeSize);
-  }
-
-  uint16_t other_command_device::program_metadata::get_data_address_by_offset(uint16_t data_offset) const {
-    return load_address + data_offset;
-  }
-
   uint16_t other_command_device::globalize_address(uint16_t local_address) const {
     return globalize_address(&current_program_metadata, local_address);
   }
@@ -59,7 +39,7 @@ namespace other {
     }
     // clang-format on
 
-    uint16_t absolute_address = current_program_metadata.get_data_address_by_offset(program_offset);
+    uint16_t absolute_address = globalize_address(&current_program_metadata, program_offset);
     return memory->unsafe_at(absolute_address);
   }
 
@@ -70,7 +50,7 @@ namespace other {
     }
     // clang-format on
 
-    uint16_t absolute_address = current_program_metadata.get_data_address_by_offset(data_offset);
+    uint16_t absolute_address = globalize_address(&current_program_metadata, data_offset);
     return read_u64_at(absolute_address);
   }
 
@@ -92,7 +72,7 @@ namespace other {
     }
     // clang-format on
 
-    uint16_t absolute_address = current_program_metadata.get_data_address_by_offset(address);
+    uint16_t absolute_address = globalize_address(&current_program_metadata, address);
     memory->unsafe_write(bytes, length, absolute_address);
   }
 
@@ -103,7 +83,7 @@ namespace other {
     }
     // clang-format on
 
-    uint16_t absolute_address = current_program_metadata.get_data_address_by_offset(data_offset);
+    uint16_t absolute_address = globalize_address(&current_program_metadata, data_offset);
     write_u64_at(absolute_address, value);
   }
 
@@ -113,13 +93,17 @@ namespace other {
 
   void other_command_device::write_u64_at(const size_t address, const uint64_t value) {
     assert(address + sizeof(uint64_t) <= kMemorySize && "Address out of bounds");
+
+    uint16_t absolute_address = globalize_address(&current_program_metadata, static_cast<uint16_t>(address));
     const void* value_ptr = &value;
-    memory->unsafe_write(static_cast<const uint8_t*>(value_ptr), sizeof(uint64_t), address);
+
+    memory->unsafe_write(static_cast<const uint8_t*>(value_ptr), sizeof(uint64_t), absolute_address);
   }
 
   uint64_t other_command_device::read_u64_at(const size_t address) const {
     assert(address + sizeof(uint64_t) <= kMemorySize && "Address out of bounds");
-    const void* value_ptr = memory->unsafe_at(address);
+    uint16_t absolute_address = globalize_address(&current_program_metadata, static_cast<uint16_t>(address));
+    const void* value_ptr = memory->unsafe_at(absolute_address);
     return *static_cast<const uint64_t*>(value_ptr);
   }
 

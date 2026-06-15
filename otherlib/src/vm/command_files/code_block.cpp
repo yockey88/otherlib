@@ -47,6 +47,7 @@ namespace other {
     auto arg = raw_instruction::argument{
       .raw_txt = tok.text,
       .type = tok.type,
+      .indirect = tok.indirect,
     };
 
     if (tok.type >= TOKEN_TYPE_KW_R0 && tok.type <= TOKEN_TYPE_KW_RFLAG) {
@@ -54,7 +55,7 @@ namespace other {
     } else if (tok.type == TOKEN_TYPE_ADDRESS) {
       arg.value = static_cast<uint16_t>(std::stoul(tok.text, nullptr, 16));
     } else if (tok.type == TOKEN_TYPE_INTEGER_LITERAL) {
-      arg.value = static_cast<uint16_t>(std::stoul(tok.text, nullptr, 10));
+      arg.value = static_cast<uint16_t>(std::stoul(tok.text, nullptr));
     } else if (tok.type == TOKEN_TYPE_FLOATING_POINT_LITERAL) {
       float fvalue = std::stof(tok.text);
       arg.raw_data.resize(sizeof(float));
@@ -71,28 +72,29 @@ namespace other {
   normalized_operand normalize_argument(const canonical_opcode cat_and_type, size_t idx, const raw_instruction::argument& arg) {
     switch (arg.type) {
       case TOKEN_TYPE_ADDRESS:
-        return { .kind = operand_kind::ADDRESS_U16, .type = VM_TYPE_PTR, .address = arg.value.value() };
+        return { .kind = operand_kind::ADDRESS_U16, .type = VM_TYPE_PTR, .indirect = arg.indirect, .address = arg.value.value() };
       case TOKEN_TYPE_INTEGER_LITERAL: {
-        normalized_operand op{ .kind = operand_kind::INTEGER_LITERAL, .constant = arg.value.value() };
-        op.type = arg.type == TOKEN_TYPE_INTEGER_LITERAL ? VM_TYPE_U16 : VM_TYPE_I16;  // default to unsigned, but this can be overridden by opcode-specific rules
+        normalized_operand op{ .kind = operand_kind::INTEGER_LITERAL, .indirect = arg.indirect, .constant = arg.value.value() };
+        op.type = VM_TYPE_U16;  // temporary
         return op;
       }
       case TOKEN_TYPE_FLOATING_POINT_LITERAL:
-        return { .kind = operand_kind::FLOAT_LITERAL, .type = VM_TYPE_F64, .bytes = arg.raw_data };
+        return { .kind = operand_kind::FLOAT_LITERAL, .type = VM_TYPE_F64, .indirect = arg.indirect, .bytes = arg.raw_data };
       case TOKEN_TYPE_STRING_LITERAL:
-        return { .kind = operand_kind::STRING_LITERAL, .type = VM_TYPE_STRING, .bytes = arg.raw_data };
+        return { .kind = operand_kind::STRING_LITERAL, .type = VM_TYPE_STRING, .indirect = arg.indirect, .bytes = arg.raw_data };
       case TOKEN_TYPE_LABEL:
       case TOKEN_TYPE_IDENTIFIER:
         if (arg.raw_txt.contains('.')) {
-          return { .kind = operand_kind::DATA_SYMBOL, .type = VM_TYPE_PTR, .symbol = arg.raw_txt };
+          return { .kind = operand_kind::DATA_SYMBOL, .type = VM_TYPE_PTR, .indirect = arg.indirect, .symbol = arg.raw_txt };
         } else {
-          return { .kind = operand_kind::CODE_LABEL, .type = VM_TYPE_PTR, .symbol = arg.raw_txt };
+          return { .kind = operand_kind::CODE_LABEL, .type = VM_TYPE_PTR, .indirect = arg.indirect, .symbol = arg.raw_txt };
         }
       default:
         if (arg.type >= TOKEN_TYPE_KW_R0 && arg.type <= TOKEN_TYPE_KW_RFLAG) {
           return {
             .kind = operand_kind::REGISTER_REF,
             .type = VM_TYPE_PTR,
+            .indirect = arg.indirect,
             .reg = static_cast<uint8_t>(arg.value.value()),
           };
         }

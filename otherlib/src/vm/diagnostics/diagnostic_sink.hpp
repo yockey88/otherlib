@@ -20,10 +20,10 @@ namespace other {
     const std::string_view get_name() const { return name; }
     void set_name(const std::string_view name) { this->name = std::string(name); }
 
-    virtual void handle(const diagnostic& diag) = 0;
+    virtual void handle(diagnostic& diag) = 0;
 
    protected:
-    std::string default_format(const diagnostic& d) const;
+    std::string default_format(diagnostic& d) const;
 
    private:
     std::string name;

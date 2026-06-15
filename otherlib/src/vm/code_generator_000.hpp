@@ -20,17 +20,9 @@ namespace other {
     void encode_dump(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_view_state(const canonical_instruction& instr, lowering_artifact& artifact) override;
 
+    void encode_mov(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_write(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_set(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_cmp(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_cmpgt(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_cmplt(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_and(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_or(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_xor(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_lshift(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_rshift(const canonical_instruction& instr, lowering_artifact& artifact) override;
-    void encode_mov(const canonical_instruction& instr, lowering_artifact& artifact) override;
 
     void encode_goto(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_je(const canonical_instruction& instr, lowering_artifact& artifact) override;
@@ -45,6 +37,15 @@ namespace other {
     void encode_mul(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_div(const canonical_instruction& instr, lowering_artifact& artifact) override;
     void encode_mod(const canonical_instruction& instr, lowering_artifact& artifact) override;
+
+    void encode_cmp(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_cmpgt(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_cmplt(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_and(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_or(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_xor(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_lshift(const canonical_instruction& instr, lowering_artifact& artifact) override;
+    void encode_rshift(const canonical_instruction& instr, lowering_artifact& artifact) override;
   };
 
 }  // namespace other

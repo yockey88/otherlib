@@ -13,14 +13,11 @@ namespace other {
 #pragma pack(push, 1)
   struct program_header {
     uint8_t has_code_flag = 0;
-    uint16_t code_section_offset = 0;
-    uint16_t code_size = 0;
-    uint16_t data_section_offset = 0;
-    uint16_t data_size = 0;
-    uint16_t data_table_offset = 0;
-    // this is program local and does not include the header offset
-    uint16_t entry_point_address = 0;
+    uint16_t code_section_offset = 0;  // == size of data table
+    uint16_t data_section_offset = 0;  // == size of data table + size of code section
+    uint16_t entry_point_address = 0;  // must be inside code section
     uint16_t num_instructions = 0;
+    uint8_t reserved[6] = {};
   };
   static_assert(sizeof(program_header) == 15, "Program header size must be 15 bytes");
 

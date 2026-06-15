@@ -103,6 +103,7 @@ target_sources(otherlib
     src/vm/command_files/code_generator.cpp
     src/vm/command_files/ocmd_compiler.cpp
     src/vm/command_files/ocmd_linker.cpp
+    src/vm/command_files/ocmd_toolchain.cpp
     src/vm/devices/core_command_device.cpp
     # src/vm/devices/event_device.cpp
     # src/vm/devices/asset_device.cpp

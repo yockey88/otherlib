@@ -109,7 +109,7 @@ namespace other {
 
         std::string error_name = get_vm_error_name(static_cast<other::vm_error>(error_code));
         size_t bytes_to_write = std::min(error_name.size(), static_cast<size_t>(dst_cap));
-        CORE_LOG_WARN("Writing '{}' ({} bytes) to memory at address {:#010x} with capacity {}", error_name, bytes_to_write, dst_ptr, dst_cap);
+        CORE_LOG_TRACE("Writing '{}' ({} bytes) to memory at address {:#010x} with capacity {}", error_name, bytes_to_write, dst_ptr, dst_cap);
         if (bytes_to_write > 0) {
           device->write_current_program_memory(dst_ptr, reinterpret_cast<const uint8_t*>(error_name.data()), bytes_to_write);
         }

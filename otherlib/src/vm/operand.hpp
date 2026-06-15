@@ -70,6 +70,7 @@ namespace other {
   struct canonical_operand {
     operand_kind kind = operand_kind::INVALID;
     vm_type type = VM_TYPE_VOID;
+    bool indirect = false;
 
     std::string symbol = "";
 

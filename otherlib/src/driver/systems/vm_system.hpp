@@ -32,7 +32,6 @@ namespace other {
 
    private:
     other_command_device core_device;
-    command_bus bus;
 
     bool boot_loaded = false;
     uint32_t instruction_budget = kDefaultInstructionBudget;

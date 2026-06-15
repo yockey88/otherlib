@@ -28,6 +28,7 @@ namespace other {
     struct expected_argument {
       token_type type = TOKEN_TYPE_INVALID;
       std::string raw_txt = "";
+      bool indirect = false;
       std::optional<uint16_t> value = std::nullopt;
       std::vector<uint8_t> raw_data = {};
     };
@@ -101,10 +102,10 @@ namespace other {
       const compiled_code_block& actual, const std::string_view expected_name,
       const bool expected_is_entry_point, const std::span<const expected_machine_instruction> expected_instructions);
     const register_case& get_register_case(const size_t index);
-    expected_argument make_integer_literal_argument(const int value);
     expected_argument make_register_argument(const register_case& reg);
-    expected_argument make_address_argument(const uint16_t value);
-    expected_argument make_label_argument(const std::string_view label);
+    expected_argument make_integer_literal_argument(const int value);
+    expected_argument make_address_argument(const uint16_t value, bool indirect = true);
+    expected_argument make_label_argument(const std::string_view label, bool indirect = true);
     std::vector<expected_instruction> expected_foo_code_block();
 
     inline bool is_register_argument(const detail::expected_argument& argument) {

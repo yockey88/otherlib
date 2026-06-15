@@ -22,7 +22,6 @@ namespace other {
           // code section always starts right after the header
           .code_section_offset = sizeof(ocmd_file_header),
           .data_section_offset = 0,
-          .data_table_offset = 0,
           .entry_point_address = 0,
           .num_instructions = 0,
         }
@@ -139,7 +138,7 @@ namespace other {
     ASSERT_EQ(program.compiled_blocks.size(), 2);
 
     const std::array expected_main = {
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_from(vm_register_idx::VM_R1, 0xFFFF) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_to_address(vm_register_idx::VM_R1, 0xFFFF) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
     };

@@ -32,14 +32,18 @@ namespace other {
   void diagnostic_engine::emit(const diagnostic& diag) {
     for (auto& [sink_id, sink] : sinks) {
       OTHER_ASSERT(sink != nullptr, "diagnostic sink {} is null", sink_id);
-      sink->handle(diag);
+
+      diagnostic copy = diag;
+      sink->handle(copy);
     }
   }
 
   void diagnostic_engine::emit(const natural_t sink_id, const diagnostic& diag) {
     if (auto itr = sinks.find(sink_id); itr != sinks.end()) {
       OTHER_ASSERT(itr->second != nullptr, "diagnostic sink {} is null", sink_id);
-      itr->second->handle(diag);
+
+      diagnostic copy = diag;
+      itr->second->handle(copy);
     } else {
       CORE_LOG_ERROR("diagnostic sink {} is not registered", sink_id);
     }

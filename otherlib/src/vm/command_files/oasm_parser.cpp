@@ -65,16 +65,11 @@ namespace other {
             break;
           }
 
-          switch (first_tok_type) {
-            case TOKEN_TYPE_IDENTIFIER:
-            case TOKEN_TYPE_KW_DATA:
-              break;
-            default:
-              CORE_LOG_ERROR("Unexpected token type '{}' while recombining parameter tokens for instruction parameter starting with '{}'", first_tok_type, accessed_token.text);
-              break;
+          token_type final_type = first_tok_type;
+          if (first_tok_type == TOKEN_TYPE_KW_DATA) {
+            final_type = TOKEN_TYPE_IDENTIFIER;
           }
-
-          combined_tokens.push_back(token{ TOKEN_TYPE_IDENTIFIER, combined_text, accessed_token.source_view });
+          combined_tokens.push_back(token{ final_type, combined_text, accessed_token.source_view });
           if (it != std::ranges::end(token_view)) {
             ++it;
           }
@@ -232,7 +227,12 @@ namespace other {
       diagnostic d{
         .severity = VM_DIAGNOSTIC_ERROR,
         .error_code = PARSE_INVALID_TOKEN_STREAM,
-        .final_message = std::format("First token must be SOURCE_START and last token must be EOF, first and last token are {} and {}", tokens[0].text, tokens.back().text)
+        .notes = {
+          {
+            .span = tokens[0].source_view,
+            .message = std::format("First token must be SOURCE_START and last token must be EOF, first and last token are {} and {}", tokens[0].text, tokens.back().text),
+          },
+        }
       };
       diagnostics->emit(d);
       return {};
@@ -294,7 +294,9 @@ namespace other {
 
     diagnostics->remove_sink(id);
 
-    ir_result.valid = true;
+    if (!failure_processing) {
+      ir_result.valid = true;
+    }
     return ir_result;
   }
 
@@ -673,21 +675,63 @@ namespace other {
             break;
           }
 
+          bool accessing = false;
+          if (arg_token.text.starts_with("[")) {
+            if (!arg_token.text.ends_with("]")) {
+              diagnostic err = {
+                .severity = diagnostic_severity::VM_DIAGNOSTIC_ERROR,
+                .error_code = vm_error_code::PARSE_EXPECTED_TOKEN,
+                .phase = vm_phase::VM_PHASE_PARSER,
+                .span = arg_token.source_view,
+                .notes = {
+                  {
+                    .span = arg_token.source_view,
+                    .message = "Expected ']' at end of indirect memory reference",
+                  },
+                }
+              };
+              diagnostics->emit(err);
+              failure_processing = true;
+            } else {
+              accessing = true;
+              arg_token.text = arg_token.text.substr(1, arg_token.text.size() - 2);
+            }
+          }
+
           switch (arg_token.type) {
-            case TOKEN_TYPE_INTEGER_LITERAL: break;
-            case TOKEN_TYPE_FLOATING_POINT_LITERAL: break;
-            case TOKEN_TYPE_STRING_LITERAL: break;
-            case TOKEN_TYPE_IDENTIFIER:
-              arg_token.type = TOKEN_TYPE_LABEL;
-              break;
             case TOKEN_TYPE_HEX_LITERAL:
               arg_token.text = arg_token.text.substr(2);
+              arg_token.indirect = !accessing;
               arg_token.type = TOKEN_TYPE_ADDRESS;
+              [[fallthrough]];
+            case TOKEN_TYPE_INTEGER_LITERAL:
+            case TOKEN_TYPE_FLOATING_POINT_LITERAL:
+            case TOKEN_TYPE_STRING_LITERAL:
               break;
+
+            case TOKEN_TYPE_IDENTIFIER:
+              arg_token.indirect = !accessing;
+              arg_token.type = TOKEN_TYPE_LABEL;
+              break;
+
             default:
               if (arg_token.type >= TOKEN_TYPE_KW_R0 && arg_token.type <= TOKEN_TYPE_KW_RFLAG) {
+                // valid
               } else {
-                CORE_LOG_ERROR("Unexpected token type [{}] for argument '{}'", arg_token.type, arg_token.text);
+                diagnostic err = {
+                  .severity = diagnostic_severity::VM_DIAGNOSTIC_ERROR,
+                  .error_code = vm_error_code::PARSE_INVALID_TOKEN_STREAM,
+                  .phase = vm_phase::VM_PHASE_PARSER,
+                  .span = arg_token.source_view,
+                  .notes = {
+                    {
+                      .span = arg_token.source_view,
+                      .message = std::format("Unexpected token type [{}] for argument '{}'", arg_token.type, arg_token.text),
+                    },
+                  }
+                };
+                diagnostics->emit(err);
+                failure_processing = true;
               }
               break;
           }
@@ -719,8 +763,8 @@ namespace other {
       for (const auto& lbl_ir : section.jump_labels) {
         auto& lbl = code_blk.jump_labels.emplace_back();
         lbl.name = lbl_ir.name;
-        lbl.section_address = static_cast<uint16_t>(lbl_ir.instruction_index * other_command_device::kOpCodeSize);
-        EMIT_TRACE("   - jump label {} @ {:#06x}", lbl.name, lbl.section_address);
+        lbl.instruction_index = static_cast<uint16_t>(lbl_ir.instruction_index);
+        EMIT_TRACE("   - jump label {} @ instruction {}", lbl.name, lbl.instruction_index);
       }
     }
   }

@@ -16,6 +16,7 @@ namespace other {
 
     /// instr x, y, z
     // x and y are inputs, z is output
+    uint8_t num_params = 0;
     canonical_operand param[kMaxOperands] = {};
 
     uint32_t deduced_empty_opcode = 0x00000000;

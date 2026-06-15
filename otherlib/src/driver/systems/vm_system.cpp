@@ -10,12 +10,12 @@
 namespace other {
 
   void vm_system::initialize(driver_kernel* kernel) {
+    core_device.host_driver = &get_driver();
     vm::initialize_device(&core_device);
     vm::load_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
-    core_device.host_driver = &get_driver();
-    core_device.bus = &bus;
 
-    bus.register_device(make_scope<core_command_device>());
+    OTHER_ASSERT(core_device.bus != nullptr, "Core device bus is null!");
+    core_device.bus->register_device(make_scope<core_command_device>());
 
     vm::set_debug_mode(get_driver().get_config_value<bool>("driver.vm-debug-mode-on", false));
     instruction_budget = get_driver().get_config_value<uint32_t>("driver.vm-instruction-per-step-budget", kDefaultInstructionBudget);

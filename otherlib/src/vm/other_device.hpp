@@ -6,6 +6,7 @@
 
 #include "math/random.hpp"
 
+#include "vm/command_files/ocmd_headers.hpp"
 #include "vm/control_table.hpp"
 #include "vm/opcode.hpp"
 #include "vm/register.hpp"
@@ -25,14 +26,14 @@ namespace other {
     constexpr static size_t kMaxStringLen = 512;
 
     enum state : uint8_t {
-      STOPPED = 0,
-      INITIALIZED = 1 << 0,
+      STOPPED = 1 << 0,
+      INITIALIZED = 1 << 1,
 
-      IDLE = 1 << 1,
-      RUNNING = 1 << 2,
+      IDLE = 1 << 2,
+      RUNNING = 1 << 3,
 
-      DEBUG = 1 << 3,
-      REPL = 1 << 4,
+      DEBUG = 1 << 4,
+      REPL = 1 << 5,
 
       VM_ERROR = 1 << 7,
     };
@@ -89,20 +90,15 @@ namespace other {
     struct program_metadata {
       uint16_t load_address = 0;  // beginning of code section
       uint16_t code_size = 0;
-
-      uint16_t data_offset = 0;  // local program offset of data section
       uint16_t data_size = 0;
 
-      uint16_t entry_point_offset = 0;  // local program offset of entry point (if 0, then load_address)
-      uint16_t num_instructions = 0;
+      ocmd_file_header header;
 
       program_state state = PROGRAM_STOPPED;
 
-      uint16_t full_program_size() const;
-      uint16_t get_global_data_address() const;
-      uint16_t get_global_entry_point_address() const;
-      uint16_t get_instruction_address_by_index(uint16_t instruction_index) const;
-      uint16_t get_data_address_by_offset(uint16_t data_offset) const;
+      uint16_t entry_point() const {
+        return header.prog_header.entry_point_address;
+      }
     };
     program_metadata current_program_metadata;
 

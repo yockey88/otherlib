@@ -41,13 +41,13 @@ namespace other {
       return sizeof(ocmd_file_header);
     }
     inline uint16_t get_current_linking_address(const std::vector<uint8_t>& binary) const {
-      return static_cast<uint16_t>(binary.size() - sizeof(ocmd_file_header));
+      return static_cast<uint16_t>(binary.size());
     }
     uint16_t calculate_code_section_offset(size_t index) const;
+    uint16_t globablize_offset(uint16_t offset) const;
 
     void register_symbols(scope<symbol_resolver>& resolver);
 
-    void write_header(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary);
     void write_code(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary);
     // void write_generated_code(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary, std::span<const uint8_t> generated_code);
     void write_data_sections(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary);

@@ -12,7 +12,7 @@ namespace other {
    public:
     ~oasm_error_sink() override = default;
 
-    void handle(const diagnostic& diag) override;
+    void handle(diagnostic& diag) override;
   };
 
 }  // namespace other

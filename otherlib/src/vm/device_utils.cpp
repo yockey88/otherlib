@@ -18,18 +18,15 @@ namespace other {
       OTHER_ASSERT(device->memory != nullptr, "Device memory cannot be null for reading string");
 
       uint64_t msg_ptr = device->read_register_as_u64(ptr_reg);
-      uint64_t msg_len_ptr = device->read_register_as_u64(len_reg);
-      CORE_LOG_DEBUG("[VM] Reading string from device memory at ptr {:#06x} with length @ {:#06x}", msg_ptr, msg_len_ptr);
+      uint64_t msg_len = device->read_register_as_u64(len_reg);
+      CORE_LOG_DEBUG("[VM] Reading string from device memory at ptr {:#06x} with length @ {:#06x}", msg_ptr, msg_len);
 
-      if (msg_len_ptr >= other_command_device::kMemorySize) {
-        CORE_LOG_ERROR("[VM] Invalid string length pointer: {:#06x}", msg_len_ptr);
+      if (msg_len >= other_command_device::kMemorySize) {
+        CORE_LOG_ERROR("[VM] Invalid string length pointer: {:#06x}", msg_len);
         device->write_flag_register(VM_INVALID_MEMORY_ACCESS);
         device->write_register_from_u64(vm_register::kReturnRegister, 0);
         return {};
       }
-
-      uint64_t msg_len = device->current_program_data_as_u64(static_cast<uint16_t>(msg_len_ptr));
-      CORE_LOG_DEBUG("[VM] String length read from device memory: {}", msg_len);
 
       if (msg_ptr >= other_command_device::kMemorySize ||
           msg_len > other_command_device::kMemorySize - msg_ptr) {

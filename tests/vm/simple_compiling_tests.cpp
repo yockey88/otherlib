@@ -66,13 +66,40 @@ namespace other {
     detail::expect_definition_matches(program.definitions[0], "entry", "main");
 
     const std::array expected_main = {
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_direct(vm_register_idx::VM_R1, 42) },
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_direct(vm_register_idx::VM_R2, 99) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R1, 42) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R2, 99) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R2) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
     };
 
+    detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "main", false, expected_main);
+  }
+
+  TEST_F(vm_tests, ocmd_simple_compile_w_indirection_operator) {
+    const std::string_view source = R"(
+    /entry: main
+    $main:
+      set r1, [0x0042]
+      dump r1
+      ret
+    end
+    )";
+
+    diagnostic_engine diag;
+    const auto program = detail::compile_source(source, &diag);
+    ASSERT_TRUE(program.valid);
+    ASSERT_EQ(program.definitions.size(), 1);
+    ASSERT_EQ(program.compiled_blocks.size(), 2);
+
+    detail::expect_definition_matches(program.definitions[0], "entry", "main");
+    const std::array expected_main = {
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_to_dword_at(vm_register_idx::VM_R1, 0x0042) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
+    };
     detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "main", false, expected_main);
   }
 
@@ -117,13 +144,13 @@ end
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R2) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R3) },
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_from(vm_register_idx::VM_R4, 0xFFFF) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_to_address(vm_register_idx::VM_R4, 0xFFFF) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
     };
     const std::array expected_foo = {
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_direct(vm_register_idx::VM_R1, 10) },
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_direct(vm_register_idx::VM_R2, 11) },
-      detail::expected_machine_instruction{ .expected_opcode = opcode_load_x_from(vm_register_idx::VM_R3, 0xFFFF) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R1, 10) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R2, 11) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_to_address(vm_register_idx::VM_R3, 0xFFFF) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_call_at(0xFFFF) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R4) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },

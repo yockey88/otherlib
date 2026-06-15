@@ -36,6 +36,7 @@ namespace other {
   struct normalized_operand {
     operand_kind kind = operand_kind::INVALID;
     vm_type type = VM_TYPE_VOID;
+    bool indirect = false;
 
     opt<uint8_t> reg = std::nullopt;
     opt<std::string> symbol = std::nullopt;
@@ -49,6 +50,7 @@ namespace other {
     struct argument {
       std::string raw_txt;
       token_type type = TOKEN_TYPE_INVALID;
+      bool indirect = false;
 
       /// either address, constant, or register index (all 16 bits or 8 bits)
       opt<uint16_t> value = 0;
@@ -66,7 +68,7 @@ namespace other {
 
   struct jump_label {
     std::string name = "";
-    uint16_t section_address = 0;
+    uint16_t instruction_index = 0;
   };
 
   struct code_block {

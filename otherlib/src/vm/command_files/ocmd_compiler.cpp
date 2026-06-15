@@ -13,6 +13,7 @@
 #include "vm/command_files/oasm_parser.hpp"
 #include "vm/command_files/opcode_builder.hpp"
 #include "vm/diagnostics/diagnostic_engine.hpp"
+#include "vm/diagnostics/lexer_error_sink.hpp"
 #include "vm/diagnostics/ocmd_errors.hpp"
 #include "vm/diagnostics/vm_diagnostic.hpp"
 
@@ -37,6 +38,10 @@ namespace other {
     diagnostics = diag;
     {
       const auto tokens = ocmd_lexer{ source }.tokenize(diag);
+      if (tokens.empty()) {
+        throw ocmd_toolchain_error(COMPILER_ERROR_INVALID_TOKENS, "No tokens generated from source!");
+      }
+
       const auto ir = oasm_parser{ version, tokens }.parse(diag);
       if (!ir.valid) {
         throw ocmd_toolchain_error(COMPILER_ERROR_INVALID_IR, "IR is not valid for compilation!");
@@ -94,6 +99,20 @@ namespace other {
     program.compiled_blocks.reserve(ir.code_blocks.size());
     program.compiled_data_sections.reserve(ir.data_blocks.size());
 
+    if (auto entry_def_itr = std::ranges::find_if(program.definitions, [](const auto& def) { return def.name == "entry"; });
+        entry_def_itr != program.definitions.end()) {
+      auto code_block_itr = std::ranges::find_if(ir.code_blocks, [&](const auto& blk) { return blk.name == entry_def_itr->value.text; });
+      if (code_block_itr == ir.code_blocks.end()) {
+        EMIT_TRACE(" - entry symbol {} not found", entry_def_itr->value.text);
+        program.definitions.erase(entry_def_itr);
+      }
+      // insert a stopdev at the end of the entry function
+      else if (code_block_itr->instructions.back().opcode != canonical_opcode::STOPDEV_OP) {
+        EMIT_TRACE(" - entry symbol {} resolved to code block {}", entry_def_itr->value.text, code_block_itr->name);
+        code_block_itr->instructions.push_back({ .opcode = canonical_opcode::STOPDEV_OP });
+      }
+    }
+
     for (const auto& code_blk_ir : ir.code_blocks) {
       EMIT_TRACE(" - code block {}", code_blk_ir.name);
       opcode_builder builder(generator->target_version());
@@ -101,8 +120,8 @@ namespace other {
         builder.lower_raw_instruction(instr_ir);
       }
       for (const auto& jump_label_ir : code_blk_ir.jump_labels) {
-        EMIT_TRACE("   - jump label {}", jump_label_ir.name);
-        builder.add_jump_label(jump_label_ir.name, jump_label_ir.section_address);
+        EMIT_TRACE("   - jump label {} w/ index = {}", jump_label_ir.name, jump_label_ir.instruction_index);
+        builder.add_jump_label(jump_label_ir.name, jump_label_ir.instruction_index);
       }
       compiled_code_block out = {
         .name = code_blk_ir.name,

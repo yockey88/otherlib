@@ -45,13 +45,15 @@ namespace other {
     /// resolve compiler gen symbol addresses by estimating start of section based on how man goto instructions we will have to add
     register_symbols(resolver);
 
+    uint16_t end_of_code_section = 0x0000;
+    uint16_t end_of_data_section = 0x0000;
+
     /**
      * Layout:
      * | Header | Compiler Generated Code | Code | Data Sections |
      **/
     std::vector<uint8_t> linked_binary;
-    // Header
-    write_header(resolver, linked_binary);
+
     // Compiler Generated Code
     // Code
     {
@@ -79,51 +81,86 @@ namespace other {
       write_code(resolver, linked_binary);
       // add a stopdev at the end of code section to prevent accidental execution of data if entry point is not set correctly
       linked_binary.append_range(opcode_to_bytes(opcode_stop_device()));
-
-      // modify header
-      ocmd_file_header& header = *reinterpret_cast<ocmd_file_header*>(linked_binary.data());
-      header.prog_header.code_size = static_cast<uint16_t>(linked_binary.size() - sizeof(ocmd_file_header));
-      header.prog_header.data_section_offset = linked_binary.size();
-      EMIT_TRACE("[SIZE]: {} bytes", linked_binary.size());
+      end_of_code_section = get_current_linking_address(linked_binary);
     }
 
     // Data Section
     write_data_sections(resolver, linked_binary);
+    end_of_data_section = get_current_linking_address(linked_binary);
+    OTHER_ASSERT(end_of_data_section >= end_of_code_section, "Data section end must be after code section end");
 
-    // modify header
-    {
-      ocmd_file_header& header = *reinterpret_cast<ocmd_file_header*>(linked_binary.data());
-      header.prog_header.data_size = static_cast<uint16_t>(linked_binary.size() - header.prog_header.data_section_offset);
-
-      std::span code_view{ linked_binary.data() + sizeof(ocmd_file_header), header.prog_header.code_size };
-      uint16_t instruction_count = static_cast<uint16_t>(code_view.size() / sizeof(instruction));
-      header.prog_header.num_instructions = instruction_count;
-    }
-
-    EMIT_TRACE("[SIZE]: {} bytes", linked_binary.size());
     do_final_linking(resolver, linked_binary);
+    EMIT_TRACE("linked binary is {} bytes", linked_binary.size());
+
+    ocmd_file_header header{
+      .file_signature = { 'O', 'C', 'M', 'D' },
+      .file_version_major = OCMD_FILE_FORMAT_VERSION_MAJOR,
+      .file_version_minor = OCMD_FILE_FORMAT_VERSION_MINOR,
+      .file_version_patch = OCMD_FILE_FORMAT_VERSION_PATCH,
+      .prog_header = {}
+    };
 
     {
-      ocmd_file_header& header = *reinterpret_cast<ocmd_file_header*>(linked_binary.data());
+      std::span code_view{ linked_binary.data(), end_of_code_section };
+      uint16_t instruction_count = static_cast<uint16_t>(code_view.size() / sizeof(instruction));
+
+      header.prog_header.has_code_flag = static_cast<uint8_t>(!code.compiled_blocks.empty()),
+      header.prog_header.code_section_offset = 0x0000;  // no data table written yet
+      header.prog_header.data_section_offset = end_of_code_section;
+      header.prog_header.num_instructions = instruction_count;
+
+      // resolve entry point
+      std::string entry_point_symbol;
+      if (auto itr = std::ranges::find_if(code.definitions, [](const auto& def) { return def.name == "entry"; });
+          itr != code.definitions.end()) {
+        entry_point_symbol = itr->value.text;
+        code.definitions.erase(itr);
+        EMIT_TRACE("[LINK] User defined entry point found: '{}'", entry_point_symbol);
+      } else {
+        entry_point_symbol = "__natural_entry";
+        EMIT_TRACE("[LINK] No user defined entry point found, using default entry point");
+      }
+
+      for (uint32_t code_block_idx = 0; code_block_idx < code.compiled_blocks.size(); ++code_block_idx) {
+        auto& code_block = code.compiled_blocks[code_block_idx];
+        auto fixup = resolver->resolve_symbol(code_block.name);
+
+        if (code_block.name == entry_point_symbol) {
+          EMIT_TRACE("[LINK] entry point '{}' @ {:#04x}", code_block.name, fixup.final_address);
+          header.prog_header.entry_point_address = fixup.final_address;
+        }
+      }
+
       if (header.prog_header.entry_point_address == 0) {
         header.prog_header.entry_point_address = header.prog_header.code_section_offset;
       }
-
-      EMIT_TRACE("[FINAL LINKED BINARY]");
-      EMIT_TRACE(" - Entry Point: {:#04x}", header.prog_header.entry_point_address);
-      EMIT_TRACE(" - Code Section: offset={:#04x}, size={} bytes, instructions={}", header.prog_header.code_section_offset, header.prog_header.code_size, header.prog_header.num_instructions);
-      EMIT_TRACE(" - Data Section: offset={:#04x}, size={} bytes", header.prog_header.data_section_offset, header.prog_header.data_size);
     }
 
-    return linked_binary;
+    uint16_t data_size = end_of_data_section - end_of_code_section;
+    EMIT_TRACE("[FINAL LINKED BINARY]");
+    EMIT_TRACE(" - Entry Point: {:#04x}", header.prog_header.entry_point_address);
+    EMIT_TRACE(" - Code Section: offset={:#04x}, size={} bytes, instructions={}", header.prog_header.code_section_offset, end_of_code_section, header.prog_header.num_instructions);
+    EMIT_TRACE(" - Data Section: offset={:#04x}, size={} bytes", header.prog_header.data_section_offset, data_size);
+
+    std::vector<uint8_t> final_binary;
+    final_binary.reserve(sizeof(ocmd_file_header) + linked_binary.size());
+
+    const uint8_t* header_bytes = reinterpret_cast<const uint8_t*>(&header);
+    final_binary.insert(final_binary.end(), header_bytes, header_bytes + sizeof(ocmd_file_header));
+    final_binary.insert(final_binary.end(), linked_binary.begin(), linked_binary.end());
+    return final_binary;
   }
 
   uint16_t ocmd_linker::calculate_code_section_offset(size_t index) const {
-    size_t offset = sizeof(ocmd_file_header);
+    size_t offset = 0;
     for (size_t i = 0; i < index; ++i) {
       offset += code.compiled_blocks[i].artifact.machine_instructions.size() * sizeof(instruction);
     }
     return static_cast<uint16_t>(offset);
+  }
+
+  uint16_t ocmd_linker::globablize_offset(uint16_t offset) const {
+    return sizeof(ocmd_file_header) + offset;
   }
 
   void ocmd_linker::register_symbols(scope<symbol_resolver>& resolver) {
@@ -139,27 +176,6 @@ namespace other {
     }
   }
 
-  void ocmd_linker::write_header(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary) {
-    ocmd_file_header header{
-      // .file_signature = { 'O', 'C', 'M', 'D' },
-      // .file_version_major = OCMD_FILE_FORMAT_VERSION_MAJOR,
-      // .file_version_minor = OCMD_FILE_FORMAT_VERSION_MINOR,
-      // .file_version_patch = OCMD_FILE_FORMAT_VERSION_PATCH,
-      .prog_header = {
-        // code section always starts right after the header
-        .has_code_flag = static_cast<uint8_t>(!code.compiled_blocks.empty()),
-        .code_section_offset = sizeof(ocmd_file_header),
-        .data_section_offset = 0,
-        .data_table_offset = 0,
-        .entry_point_address = 0,
-        .num_instructions = 0,
-      }
-    };
-    std::span bytes{ reinterpret_cast<const uint8_t*>(&header), sizeof(header) };
-    EMIT_TRACE("[HEADER] Writing Range: [0x0000, {:#04x})", bytes.size());
-    binary.append_range(bytes);
-  }
-
   void ocmd_linker::write_code(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary) {
     for (const auto& code_block : code.compiled_blocks) {
       auto bytes_view =
@@ -173,8 +189,11 @@ namespace other {
       EMIT_TRACE("[CODE] Writing Range: [{:#04x}, {:#04x})", code_block_offset, code_block_offset + bytes_view.size());
 
       for (const auto& jump_lbl : code_block.artifact.jump_labels) {
-        resolver->attach_code_label(jump_lbl.symbol_name, code_block_offset + jump_lbl.opcode_index);
-        EMIT_TRACE("[LINK] Attaching jump label '{}' @ {:#04x}", jump_lbl.symbol_name, code_block_offset + jump_lbl.opcode_index);
+        uint16_t jump_local_offset = jump_lbl.opcode_index * sizeof(instruction);
+        uint16_t program_address = code_block_offset + jump_local_offset;
+
+        resolver->attach_code_label(jump_lbl.symbol_name, program_address);
+        EMIT_TRACE("[LINK] Attaching jump label '{}' @ {:#04x}", jump_lbl.symbol_name, program_address);
       }
 
       binary.append_range(bytes_view);
@@ -223,8 +242,9 @@ namespace other {
         // if the fixup isnt present address will be 0xFFFF still and could be resolved in a separate linking pass
         auto fixup = resolver->resolve_symbol(fixup_itr->symbol_name);
 
-        uint16_t code_section_offset = (fixup_itr->opcode_index * other_command_device::kOpCodeSize);
+        uint16_t code_section_offset = (fixup_itr->opcode_index * sizeof(instruction));
         uint16_t binary_address = code_block_start_address + code_section_offset;
+
         EMIT_TRACE("[LINK] Patching '{}' @ {:#04x} w/ {:#04x}", fixup_itr->symbol_name, binary_address, fixup.final_address);
         uint8_t* instr_pointer = binary.data() + binary_address;
         instruction& instr = *reinterpret_cast<instruction*>(instr_pointer);
@@ -235,30 +255,6 @@ namespace other {
       }
     }
 
-    // resolve entry point
-    {
-      std::string entry_point_symbol;
-      if (auto itr = std::ranges::find_if(code.definitions, [](const auto& def) { return def.name == "entry"; });
-          itr != code.definitions.end()) {
-        entry_point_symbol = itr->value.text;
-        code.definitions.erase(itr);
-        EMIT_TRACE("[LINK] User defined entry point found: '{}'", entry_point_symbol);
-      } else {
-        entry_point_symbol = "__natural_entry";
-        EMIT_TRACE("[LINK] No user defined entry point found, using default entry point");
-      }
-
-      for (uint32_t code_block_idx = 0; code_block_idx < code.compiled_blocks.size(); ++code_block_idx) {
-        auto& code_block = code.compiled_blocks[code_block_idx];
-        auto fixup = resolver->resolve_symbol(code_block.name);
-        ocmd_file_header& header = *reinterpret_cast<ocmd_file_header*>(binary.data());
-
-        if (code_block.name == entry_point_symbol) {
-          EMIT_TRACE("[LINK] entry point '{}' @ {:#04x}", code_block.name, fixup.final_address);
-          header.prog_header.entry_point_address = fixup.final_address;
-        }
-      }
-    }
     std::stringstream ss;
     size_t total_num_instructions = std::ranges::fold_left(code.compiled_blocks, 0, [](size_t acc, const compiled_code_block& block) {
       return acc + block.artifact.machine_instructions.size();

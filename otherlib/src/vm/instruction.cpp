@@ -15,31 +15,31 @@ namespace other {
         if (!operand.address.has_value()) {
           throw ocmd_lowering_error("ADDRESS_U16 operand is missing address value");
         }
-        return { .kind = operand_kind::ADDRESS_U16, .type = operand.type, .val = operand.address.value() };
+        return { .kind = operand_kind::ADDRESS_U16, .type = operand.type, .indirect = operand.indirect, .val = operand.address.value() };
       case operand_kind::INTEGER_LITERAL:
         if (!operand.constant.has_value()) {
           throw ocmd_lowering_error("INTEGER_LITERAL operand is missing constant value");
         }
-        return { .kind = operand_kind::IMMEDIATE_U16, .type = operand.type, .val = operand.constant.value() };
+        return { .kind = operand_kind::IMMEDIATE_U16, .type = operand.type, .indirect = operand.indirect, .val = operand.constant.value() };
       case operand_kind::FLOAT_LITERAL:
-        return { .kind = operand_kind::FLOAT_LITERAL, .type = operand.type, .bytes = operand.bytes };
+        return { .kind = operand_kind::FLOAT_LITERAL, .type = operand.type, .indirect = operand.indirect, .bytes = operand.bytes };
       case operand_kind::STRING_LITERAL:
-        return { .kind = operand_kind::STRING_LITERAL, .type = operand.type, .bytes = operand.bytes };
+        return { .kind = operand_kind::STRING_LITERAL, .type = operand.type, .indirect = operand.indirect, .bytes = operand.bytes };
       case operand_kind::CODE_LABEL:
         if (!operand.symbol.has_value()) {
           throw ocmd_lowering_error("CODE_LABEL operand is missing symbol");
         }
-        return { .kind = operand_kind::CODE_LABEL, .type = operand.type, .symbol = operand.symbol.value() };
+        return { .kind = operand_kind::CODE_LABEL, .type = operand.type, .indirect = operand.indirect, .symbol = operand.symbol.value() };
       case operand_kind::DATA_SYMBOL:
         if (!operand.symbol.has_value()) {
           throw ocmd_lowering_error("DATA_SYMBOL operand is missing symbol");
         }
-        return { .kind = operand_kind::DATA_SYMBOL, .type = operand.type, .symbol = operand.symbol.value() };
+        return { .kind = operand_kind::DATA_SYMBOL, .type = operand.type, .indirect = operand.indirect, .symbol = operand.symbol.value() };
       case operand_kind::REGISTER_REF:
         if (!operand.reg.has_value()) {
           throw ocmd_lowering_error("REGISTER_REF operand is missing register index");
         }
-        return { .kind = operand_kind::REGISTER_REF, .type = operand.type, .reg = operand.reg.value() };
+        return { .kind = operand_kind::REGISTER_REF, .type = operand.type, .indirect = operand.indirect, .reg = operand.reg.value() };
       default:
         throw ocmd_lowering_error(std::format("Invalid operand kind during lowering: {}", operand.kind));
     }
@@ -61,8 +61,8 @@ namespace other {
       case canonical_opcode::AND_OP: return 3;
       case canonical_opcode::OR_OP: return 3;
       case canonical_opcode::XOR_OP: return 3;
-      case canonical_opcode::LSHIFT_OP: return 2;
-      case canonical_opcode::RSHIFT_OP: return 2;
+      case canonical_opcode::LSHIFT_OP: return 3;
+      case canonical_opcode::RSHIFT_OP: return 3;
       case canonical_opcode::MOV_OP: return 2;
       // 2
       case canonical_opcode::GOTO_OP: return 1;
