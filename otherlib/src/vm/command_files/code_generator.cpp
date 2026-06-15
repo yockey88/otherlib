@@ -3,6 +3,8 @@
  **/
 #include "vm/command_files/code_generator.hpp"
 
+#include "core/enum_formatter.hpp"
+
 #include "vm/command_files/code_block.hpp"
 #include "vm/command_files/compiler_error.hpp"
 
@@ -13,6 +15,7 @@ namespace other {
       case canonical_opcode::STOPDEV_OP: return encode_stopdev(instr, artifact);
       case canonical_opcode::DUMP_OP: return encode_dump(instr, artifact);
       case canonical_opcode::VIEW_STATE_OP: return encode_view_state(instr, artifact);
+      case canonical_opcode::CLEAR_OP: return encode_clear(instr, artifact);
       case canonical_opcode::WRITE_OP: return encode_write(instr, artifact);
       case canonical_opcode::SET_OP: return encode_set(instr, artifact);
       case canonical_opcode::CMP_OP: return encode_cmp(instr, artifact);
@@ -37,7 +40,7 @@ namespace other {
       case canonical_opcode::DIV_OP: return encode_div(instr, artifact);
       case canonical_opcode::MOD_OP: return encode_mod(instr, artifact);
       default:
-        throw ocmd_lowering_error("selector v1 does not support this canonical opcode");
+        throw ocmd_lowering_error(std::format("selector v1 does not support this opcode : {}", instr.opcode));
     }
   }
 

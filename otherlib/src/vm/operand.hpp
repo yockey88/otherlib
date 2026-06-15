@@ -34,6 +34,7 @@ namespace other {
     STOPDEV_OP = 0,
     DUMP_OP,
     VIEW_STATE_OP,
+    CLEAR_OP,
     /// 1
     WRITE_OP,
     SET_OP,

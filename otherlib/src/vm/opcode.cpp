@@ -34,6 +34,7 @@ namespace other {
     uint32_t get_group0_category();
     uint32_t group0_opcode(uint8_t type);
     uint32_t group0_opcode_with_register(uint8_t type, uint8_t reg);
+    uint32_t group0_opcode_with_2_registers(uint8_t type, uint8_t reg_x, uint8_t reg_y);
     uint32_t group0_opcode_with_register_and_address(uint8_t type, uint8_t reg, uint16_t addr);
 
     uint32_t get_group1_category();
@@ -163,6 +164,18 @@ namespace other {
 
   uint32_t opcode_nop() {
     return detail::group0_opcode(0x05);
+  }
+
+  uint32_t opcode_clear_x_through_y(uint8_t x, uint8_t y) {
+    return detail::group0_opcode_with_2_registers(0x06, x, y);
+  }
+
+  uint32_t opcode_clear_x(uint8_t x) {
+    return opcode_clear_x_through_y(x, x);
+  }
+
+  uint32_t opcode_clear() {
+    return opcode_clear_x_through_y(0x00, 0x10);
   }
   /// group 0 end -----------------
 
@@ -337,6 +350,10 @@ namespace other {
 
     uint32_t group0_opcode_with_register(uint8_t type, uint8_t reg) {
       return opcode_set_x_register(opcode_set_type(get_group0_category(), type), reg);
+    }
+
+    uint32_t group0_opcode_with_2_registers(uint8_t type, uint8_t reg_x, uint8_t reg_y) {
+      return opcode_set_y_register(opcode_set_x_register(opcode_set_type(get_group0_category(), type), reg_x), reg_y);
     }
 
     uint32_t group0_opcode_with_register_and_address(uint8_t type, uint8_t reg, uint16_t addr) {

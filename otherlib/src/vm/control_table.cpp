@@ -183,6 +183,15 @@ namespace other {
       // Do nothing
     }
 
+    /// 06xxyy00 - set R[x] through R[y] == 0
+    void execute_clear_x_through_y(other_command_device* device) {
+      uint8_t x = device->current_instruction.bytes[instruction::X_REGISTER_BYTE_IDX];
+      uint8_t y = device->current_instruction.bytes[instruction::Y_REGISTER_BYTE_IDX];
+      for (uint8_t i = x; i <= y; ++i) {
+        device->write_register_from_u64(i, 0);
+      }
+    }
+
     /////////////////////// 1XXX /////////////////////
     /// 10xxyy00 - R[y] = R[x]
     void execute_move_x_to_y(other_command_device* device) {
@@ -515,8 +524,9 @@ namespace other {
       execute_dump_memory_at,
       execute_view_state,
       execute_nop,
+      execute_clear_x_through_y,
       // clang-format off
-      execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // 7 - 9
+      execute_illegal_instruction,  execute_illegal_instruction, // 8 - 9
       execute_illegal_instruction, execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction,  execute_illegal_instruction, // A - F
       // clang-format on
       execute_illegal_instruction,

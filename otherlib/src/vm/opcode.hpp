@@ -186,6 +186,12 @@ namespace other {
   uint32_t opcode_view_state();
   /// 0x05000000 (nop)
   uint32_t opcode_nop();
+  /// 0x06xxyy00 (clear x, y)
+  ///            (clear x)
+  ///            (clear)
+  uint32_t opcode_clear_x_through_y(uint8_t x, uint8_t y);
+  uint32_t opcode_clear_x(uint8_t x);
+  uint32_t opcode_clear();
 
   /// 1 table (load/store/logical)
   /// 10xxyy00 (mov x, y)

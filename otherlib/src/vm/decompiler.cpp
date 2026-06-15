@@ -56,6 +56,7 @@ namespace other {
           case 0x03: res += "Dump reg(X) bytes at N"; break;
           case 0x04: res += "View VM Device State"; break;
           case 0x05: res += "No Op"; break;
+          case 0x06: res += "Clear X through Y"; break;
           default:
             OTHER_ASSERT(false, "Invalid type nibble : category = {}, type = {}", instr.category_nibble(), instr.type_nibble());
             break;

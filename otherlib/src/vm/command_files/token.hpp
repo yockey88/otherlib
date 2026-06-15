@@ -87,6 +87,7 @@ namespace other {
     TOKEN_TYPE_KW_STOPDEV,
     TOKEN_TYPE_KW_DUMP,
     TOKEN_TYPE_KW_VIEW_STATE,
+    TOKEN_TYPE_KW_CLEAR,
     // 1 table
     TOKEN_TYPE_KW_WRITE,
     TOKEN_TYPE_KW_SET,
@@ -197,6 +198,7 @@ namespace other {
     keyword_token("stopdev", TOKEN_TYPE_KW_STOPDEV),
     keyword_token("dump", TOKEN_TYPE_KW_DUMP),
     keyword_token("viewstate", TOKEN_TYPE_KW_VIEW_STATE),
+    keyword_token("clear", TOKEN_TYPE_KW_CLEAR),
 
     keyword_token("write", TOKEN_TYPE_KW_WRITE),
     keyword_token("set", TOKEN_TYPE_KW_SET),

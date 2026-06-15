@@ -862,6 +862,7 @@ namespace other {
       case TOKEN_TYPE_KW_STOPDEV: return canonical_opcode::STOPDEV_OP;
       case TOKEN_TYPE_KW_DUMP: return canonical_opcode::DUMP_OP;
       case TOKEN_TYPE_KW_VIEW_STATE: return canonical_opcode::VIEW_STATE_OP;
+      case TOKEN_TYPE_KW_CLEAR: return canonical_opcode::CLEAR_OP;
       /// 1 table
       case TOKEN_TYPE_KW_WRITE: return canonical_opcode::WRITE_OP;
       case TOKEN_TYPE_KW_SET: return canonical_opcode::SET_OP;

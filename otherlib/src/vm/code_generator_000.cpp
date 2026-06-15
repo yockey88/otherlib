@@ -35,6 +35,19 @@ namespace other {
     emit_instruction(opcode_view_state(), artifact);
   }
 
+  void code_generator_000::encode_clear(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::CLEAR_OP, "Invalid opcode passed to encode_clear");
+    if (instr.param[0].kind == operand_kind::INVALID) {
+      emit_instruction(opcode_clear(), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::INVALID) {
+      emit_instruction(opcode_clear_x(instr.param[0].reg), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_clear_x_through_y(instr.param[0].reg, instr.param[1].reg), artifact);
+    } else {
+      throw ocmd_lowering_error("Invalid operands for clear instruction");
+    }
+  }
+
   void code_generator_000::encode_mov(const canonical_instruction& instr, lowering_artifact& artifact) {
     if (instr.opcode != canonical_opcode::MOV_OP) {
       throw ocmd_lowering_error("Invalid opcode passed to encode_mov");

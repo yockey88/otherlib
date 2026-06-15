@@ -40,6 +40,7 @@ namespace other {
     virtual void encode_stopdev(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
     virtual void encode_dump(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
     virtual void encode_view_state(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
+    virtual void encode_clear(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
 
     virtual void encode_write(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
     virtual void encode_set(const canonical_instruction& instr, lowering_artifact& artifact) = 0;
