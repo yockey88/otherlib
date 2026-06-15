@@ -4,7 +4,10 @@
 #include "driver/systems/vm_system.hpp"
 
 #include "driver/driver.hpp"
+#include "vm/devices/asset_device.hpp"
 #include "vm/devices/core_command_device.hpp"
+#include "vm/devices/event_device.hpp"
+#include "vm/devices/scene_device.hpp"
 #include "vm/vm.hpp"
 
 namespace other {
@@ -16,6 +19,9 @@ namespace other {
 
     OTHER_ASSERT(core_device.bus != nullptr, "Core device bus is null!");
     core_device.bus->register_device(make_scope<core_command_device>());
+    core_device.bus->register_device(make_scope<event_device>());
+    core_device.bus->register_device(make_scope<asset_device>());
+    core_device.bus->register_device(make_scope<scene_device>());
 
     const bool vm_debug_mode_on = get_driver().get_config_value<bool>("driver.vm-debug-mode-on", false);
     vm::set_debug_mode(vm_debug_mode_on);
@@ -56,6 +62,7 @@ namespace other {
 
   void vm_system::shutdown(driver_kernel* kernel) {
     core_device.stopped = true;
+
     vm::shutdown_device(&core_device);
   }
 

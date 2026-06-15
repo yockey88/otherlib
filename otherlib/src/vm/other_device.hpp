@@ -110,6 +110,13 @@ namespace other {
       OTHER_ASSERT(reg_index <= vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
       registers[reg_index].memory = register_t<vm_register::kRegisterBitSize>{ value };
     }
+
+    inline uint64_t read_return_register() const {
+      return read_register_as_u64(vm_register::kReturnRegister);
+    }
+    inline void write_return_register(uint64_t value) {
+      write_register_from_u64(vm_register::kReturnRegister, value);
+    }
     inline uint64_t read_flag_register() const {
       return read_register_as_u64(vm_register::kFlagRegister);
     }

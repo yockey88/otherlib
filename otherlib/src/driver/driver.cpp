@@ -169,6 +169,11 @@ namespace other {
     return driver_kernel_ptr->get_core_system<asset_system>().begin_asset_load(asset_path);
   }
 
+  void driver::begin_asset_unload(natural_t asset_id) {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    driver_kernel_ptr->get_core_system<asset_system>().begin_asset_unload(asset_id);
+  }
+
   natural_t driver::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<asset_system>().add_model_source_asset(name, vertices, indices);
@@ -187,6 +192,16 @@ namespace other {
   natural_t driver::get_asset_hash(natural_t asset_id) const {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<asset_system>().get_asset_hash(asset_id);
+  }
+
+  natural_t driver::get_asset_state(natural_t asset_id) const {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().get_asset_state(asset_id);
+  }
+
+  natural_t driver::get_asset_id_from_path(const filepath& path) const {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().get_asset_id_from_path(path);
   }
 
   void driver::process_driver_event(driver_event event) {

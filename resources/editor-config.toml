@@ -1,5 +1,5 @@
 [driver]
-vm-debug-mode-on = true
+# vm-debug-mode-on = true
 vm-instruction-per-step-budget = 1024
 boot-file = "resources/editor-assets/editor-boot.oasm"
 plugins = [

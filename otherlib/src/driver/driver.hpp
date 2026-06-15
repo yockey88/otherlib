@@ -94,10 +94,14 @@ namespace other {
     static void destroy(const std::string& name, driver* instance);
 
     natural_t begin_asset_load(const filepath& asset_path);
+    void begin_asset_unload(natural_t asset_id);
+
     natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     natural_t get_asset_hash(natural_t asset_id) const;
+    natural_t get_asset_state(natural_t asset_id) const;
+    natural_t get_asset_id_from_path(const filepath& path) const;
 
     void process_driver_event(driver_event event);
     void request_shutdown();

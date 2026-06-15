@@ -55,7 +55,6 @@ namespace other {
 
   void core_command_device::dispatch(uint8_t function_id, other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "Device cannot be null for dispatch");
-    CORE_LOG_DEBUG("[VM] Core device dispatch called with function ID {:#04x}", function_id);
     switch (function_id) {
       case LOG: {
         std::string msg = detail::read_device_string(device, vm_register_idx::VM_R0, vm_register_idx::VM_R1);
@@ -82,18 +81,18 @@ namespace other {
       } break;
 
       case INIT_TIME: {
-        device->write_register_from_u64(vm_register_idx::VM_RRETURN, device->device_init_time);
+        device->write_return_register(device->device_init_time);
       } break;
       case TIME_SINCE_INIT: {
-        device->write_register_from_u64(vm_register_idx::VM_RRETURN, device->time_since_init);
+        device->write_return_register(device->time_since_init);
       } break;
       case TIME_SINCE_EPOCH: {
-        device->write_register_from_u64(vm_register_idx::VM_RRETURN, device->epoch_time);
+        device->write_return_register(device->epoch_time);
       } break;
 
       case RANDOM: {
         uint64_t random_value = device->get_random_byte();
-        device->write_register_from_u64(vm_register_idx::VM_RRETURN, random_value);
+        device->write_return_register(random_value);
       } break;
 
       case ERROR_NAME: {
@@ -114,7 +113,7 @@ namespace other {
         if (bytes_to_write > 0) {
           device->write_current_program_memory(dst_ptr, reinterpret_cast<const uint8_t*>(error_name.data()), bytes_to_write);
         }
-        device->write_register_from_u64(vm_register_idx::VM_RF, bytes_to_write);
+        device->write_return_register(bytes_to_write);
       } break;
       default:
         OTHER_ASSERT(false, "Invalid function ID for core_device: {:#04x}", function_id);

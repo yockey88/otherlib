@@ -148,6 +148,7 @@ namespace other {
     asset_state get_asset_state(natural_t asset_id) const;
     asset_state get_asset_state_by_path_hash(natural_t path_hash) const;
     natural_t get_asset_hash(natural_t asset_id) const;
+    natural_t get_asset_id_from_path(const filepath& path) const;
     natural_t get_asset_id_by_path_hash(natural_t path_hash) const;
     opt<filepath> get_local_asset_path(natural_t asset_id) const;
     opt<filepath> get_virtual_asset_path(natural_t asset_id) const;

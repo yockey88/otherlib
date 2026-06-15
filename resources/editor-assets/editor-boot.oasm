@@ -1,13 +1,8 @@
 /entry: main
 
 $main:
-  ; set r0, data.load-text
-  ; set r1, [data.string-len]
-  ; set r2, 3
-  ; syscall core.log
-
-  ; call loop_demo
   call syscall_demo
+  call loop_demo
 end
 
 $loop_demo:
@@ -34,24 +29,18 @@ $loop_demo:
 end
 
 $syscall_demo:
-  ; syscall core.time_since_init
-  ; call print_return_register
+  syscall core.time_since_init
+  call print_return_register
 
-  ; syscall core.epoch_time
-  ; call print_return_register
+  syscall core.epoch_time
+  call print_return_register
 
-  ; syscall core.random
-  ; call print_return_register
-
-  set r0, 16     ; 0x0010 = VM_BAD_SYSCALL
-  set r1, 0x0F00 ; output address
-  set r2, 100    ; capacity
-  syscall core.error_name
-
-  set r0, 0x0F00
-  mov rf, r1     ; string length
-  set r2, 3
-  syscall core.log
+  syscall core.random
+  call print_return_register
+  
+  ; set r0, data.load-text
+  ; set r1, [data.string-len]
+  ; syscall asset.load_asset
 end
 
 $print_return_register:
@@ -67,5 +56,5 @@ end
 #data {
   ; address to write load text to in memory
   .string-len: int32 = 35
-  .load-text: string = "resources/models/spinning-donut.fbx"
+  .load-text: string = "resources/models/spinning-torus.fbx"
 }

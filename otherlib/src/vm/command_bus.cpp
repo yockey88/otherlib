@@ -16,7 +16,7 @@ namespace other {
     OTHER_ASSERT(static_cast<uint16_t>(id) < kMaxDevices, "Device ID out of range");
     OTHER_ASSERT(devices[id] == nullptr, "Device id {:#04x} already registered ('{}')",
                  id, devices[id] != nullptr ? devices[id]->device_name() : "");
-
+    CORE_LOG_DEBUG("[VM] Registering device '{}' with ID {:#04x}", dev->device_name(), id);
     devices[id] = dev.get();
     owned[id] = std::move(dev);
 
@@ -41,20 +41,20 @@ namespace other {
 
   bool command_bus::dispatch(uint16_t syscall_id, other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "Device cannot be null for dispatch");
-    if (syscall_id >= kMaxDevices) {
+
+    const syscall sc{ syscall_id };
+    if (uint16_t{ sc.device } >= kMaxDevices) {
+      CORE_LOG_ERROR("[VM] Syscall ID {:#04x} out of range", sc.device);
       return false;
     }
 
     CORE_LOG_DEBUG("[VM] Attempting to execute syscall with ID {:#06x} at PC {:#06x}", syscall_id, device->pc);
-    const syscall sc{ syscall_id };
+
     command_device* target_device = find_device(sc.device);
     if (target_device == nullptr) {
       CORE_LOG_ERROR("[VM] No device found for syscall ID {:#06x}", sc.device);
       return false;
     }
-
-    CORE_LOG_DEBUG("[VM] - executing syscall ID {:#06x}", syscall_id);
-    CORE_LOG_DEBUG("[VM] - device '{}' (ID {:#04x})", target_device->device_name(), sc.device);
     target_device->dispatch(sc.function, device);
     return true;
   }
@@ -66,6 +66,8 @@ namespace other {
       if (devices[i]) {
         std::string device_name{ devices[i]->device_name() };
         auto funcs = devices[i]->functions();
+
+        CORE_LOG_DEBUG("Registering device [{}] with symbol resolver", device_name);
         for (const auto& func : funcs) {
           std::string symbol = std::format("{}.{}", device_name, func.name);
           CORE_LOG_DEBUG("[COMMAND BUS] Registering symbol '{}'", symbol);

@@ -15,7 +15,8 @@ namespace other {
     VM_SE_READS_HOST = 1 << 0,
     VM_SE_WRITES_HOST = 1 << 1,
     VM_SE_MAY_TRAP = 1 << 2,
-    VM_SE_MAY_BLOCK = 1 << 3,  // more than ~1us
+    VM_SE_MAY_BLOCK = 1 << 3,          // more than ~1us
+    VM_SE_ANYTHING_POSSIBLE = 1 << 4,  // impossible to tell what could happen
   };
 
   struct function_descriptor {
