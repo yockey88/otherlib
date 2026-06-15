@@ -30,11 +30,30 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
   }
 }
 
+void vm_debugger_window::render_device(other_command_device& device) {
+  for (size_t i = 0; i < other::vm_register::kNumRegisters; ++i) {
+    const auto& reg = device.registers[i];
+    ImGui::Text("R%02zu: 0x%016llX", i, reg.memory.to_u64());
+  }
+  ImGui::Text("R[FLAG] 0x%016llX", device.read_flag_register());
+  ImGui::Separator();
+
+  static MemoryEditor mem_editor;
+  mem_editor.Cols = 8;
+
+  void* memory_data_in_device = device.memory->data;
+  mem_editor.DrawContents(memory_data_in_device, other_command_device::kMemorySize, 0x0000);
+}
+
 void vm_debugger_window::render_debugger_home(other_command_device& device) {
-  scoped_color info_color(ImGuiCol_Text, ImVec4(0.0f, 0.5f, 1.0f, 1.0f));
-  ImGui::Text("No Program Executing");
+  {
+    scoped_color info_color(ImGuiCol_Text, ImVec4(0.0f, 0.5f, 1.0f, 1.0f));
+    ImGui::Text("No Program Executing");
+  }
 
   // file dialog to load program
+
+  render_device(device);
 }
 
 void vm_debugger_window::render_program_debugger(other_command_device& device) {
@@ -71,17 +90,5 @@ void vm_debugger_window::render_program_debugger(other_command_device& device) {
 
   ImGui::Separator();
 
-  for (size_t i = 0; i < other::vm_register::kNumRegisters; ++i) {
-    const auto& reg = device.registers[i];
-    ImGui::Text("R%02zu: 0x%016llX", i, reg.memory.to_u64());
-  }
-  ImGui::Text("R[FLAG] 0x%016llX", device.read_flag_register());
-  ImGui::Separator();
-
-  static MemoryEditor mem_editor;
-  // 32 bit bytecode
-  mem_editor.Cols = 16;
-
-  void* memory_data_in_device = device.memory->data + other_command_device::kProgramStartAddress;
-  mem_editor.DrawContents(memory_data_in_device, other_command_device::kMemorySize - other_command_device::kProgramStartAddress, 0x0000);
+  render_device(device);
 }

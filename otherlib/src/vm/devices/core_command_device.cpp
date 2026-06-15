@@ -68,6 +68,7 @@ namespace other {
         uint64_t level = device->read_register_as_u64(vm_register_idx::VM_R2);
         CORE_LOG_MESSAGE(to_log_level(level), "[VM: CORE.LOG] {}", msg);
       } break;
+
       case LOG_U64: {
         uint64_t value = device->read_register_as_u64(vm_register_idx::VM_R0);
         uint64_t level = device->read_register_as_u64(vm_register_idx::VM_R1);

@@ -17,16 +17,23 @@ namespace other {
     OTHER_ASSERT(core_device.bus != nullptr, "Core device bus is null!");
     core_device.bus->register_device(make_scope<core_command_device>());
 
-    vm::set_debug_mode(get_driver().get_config_value<bool>("driver.vm-debug-mode-on", false));
+    const bool vm_debug_mode_on = get_driver().get_config_value<bool>("driver.vm-debug-mode-on", false);
+    vm::set_debug_mode(vm_debug_mode_on);
     instruction_budget = get_driver().get_config_value<uint32_t>("driver.vm-instruction-per-step-budget", kDefaultInstructionBudget);
   }
 
   void vm_system::tick(driver_kernel* kernel, double dt) {
     if (!boot_loaded && get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING) {
+      if (vm::has_flag(&core_device, other_command_device::DEBUG)) {
+        CORE_LOG_INFO("VM debug mode is ON");
+        get_driver().trigger_event("open-driver-ui-window", std::string("vm-debugger"));
+      }
+
       if (std::string boot_oasm_path = get_driver().get_config_value<std::string>("driver.boot-file"); !boot_oasm_path.empty()) {
         CORE_LOG_INFO("Loading VM boot file: {}", boot_oasm_path);
         vm::load_program_from_file(&core_device, boot_oasm_path);
       }
+
       boot_loaded = true;
     }
 

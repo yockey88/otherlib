@@ -107,8 +107,17 @@ namespace other {
         program.definitions.erase(entry_def_itr);
       }
       // insert a stopdev at the end of the entry function
-      else if (code_block_itr->instructions.back().opcode != canonical_opcode::STOPDEV_OP) {
+      else if (code_block_itr->instructions.empty() || code_block_itr->instructions.back().opcode != canonical_opcode::STOPDEV_OP) {
         EMIT_TRACE(" - entry symbol {} resolved to code block {}", entry_def_itr->value.text, code_block_itr->name);
+
+        /// if user put ret at end of entry point function, remove it
+        ///  and stop the device instead
+        /// \todo: we will have to fix how we handle this once we begin linking multiple source files
+        if (code_block_itr->instructions.back().opcode == canonical_opcode::RET_OP) {
+          code_block_itr->instructions.erase(code_block_itr->instructions.end() - 1);
+          code_block_itr->instructions.push_back({ .opcode = canonical_opcode::STOPDEV_OP });
+        }
+
         code_block_itr->instructions.push_back({ .opcode = canonical_opcode::STOPDEV_OP });
       }
     }

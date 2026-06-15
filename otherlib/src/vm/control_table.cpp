@@ -118,6 +118,10 @@ namespace other {
     /////////////////////// 0XXX /////////////////////
     /// 00000000 - Stop the device
     void execute_stop_device(other_command_device* device) {
+      for (uint8_t i = vm_register_idx::VM_R0; i <= vm_register_idx::VM_RFLAG; ++i) {
+        device->write_register_from_u64(i, 0);
+      }
+
       vm::remove_flag(device, other_command_device::RUNNING);
       vm::remove_flag(device, other_command_device::IDLE);
       vm::add_flag(device, other_command_device::STOPPED);

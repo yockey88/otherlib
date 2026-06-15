@@ -747,6 +747,12 @@ namespace other {
         code_blk.name = std::format("code_block_{}", ir_result.code_blocks.size() - 1);
       }
 
+      if (section.instructions.empty() || section.instructions.back().opcode != canonical_opcode::RET_OP) {
+        auto& ret_instr = section.instructions.emplace_back();
+        ret_instr.instruction_index = static_cast<uint16_t>(section.instructions.size() - 1);
+        ret_instr.opcode = canonical_opcode::RET_OP;
+      }
+
       for (auto& instr_ir : section.instructions) {
         auto& instr = code_blk.instructions.emplace_back();
         instr.opcode = instr_ir.opcode;

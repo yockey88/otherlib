@@ -340,6 +340,7 @@ namespace other {
   }
 
   void driver_ui::open_custom_window(const std::string_view name) {
+    CORE_LOG_DEBUG("Attempting to open custom UI window '{}'.", name);
     auto itr = custom_windows.find(FNV(name));
     if (itr == custom_windows.end()) {
       auto* env = subsystem<scripting_environment>::get();
@@ -364,6 +365,7 @@ namespace other {
   }
 
   void driver_ui::close_custom_window(const std::string_view name) {
+    CORE_LOG_DEBUG("Attempting to close custom UI window '{}'.", name);
     auto itr = custom_windows.find(FNV(name));
     if (itr == custom_windows.end()) {
       auto* env = subsystem<scripting_environment>::get();

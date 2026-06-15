@@ -28,6 +28,7 @@ class vm_debugger_window : public ui_window {
   void render_main_device_controls(other_command_device& device);
 
  private:
+  void render_device(other_command_device& device);
   void render_debugger_home(other_command_device& device);
   void render_program_debugger(other_command_device& device);
 };
