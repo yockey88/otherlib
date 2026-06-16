@@ -102,6 +102,19 @@ namespace other {
     };
     program_metadata current_program_metadata;
 
+    template <typename T>
+      requires std::is_arithmetic_v<T>
+    inline T read_register_as(uint8_t reg_index) const {
+      OTHER_ASSERT(reg_index <= vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
+      return static_cast<T>(registers[reg_index].memory.to_u64());
+    }
+    template <typename T>
+      requires std::is_arithmetic_v<T>
+    inline void write_register_from(uint8_t reg_index, T value) {
+      OTHER_ASSERT(reg_index <= vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
+      registers[reg_index].memory = register_t<vm_register::kRegisterBitSize>{ static_cast<uint64_t>(value) };
+    }
+
     inline natural_t read_register_as_u64(uint8_t reg_index) const {
       OTHER_ASSERT(reg_index <= vm_register_idx::VM_RFLAG, "Invalid register index: {}", reg_index);
       return registers[reg_index].memory.to_u64();

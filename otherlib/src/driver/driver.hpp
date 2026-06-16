@@ -359,7 +359,6 @@ namespace other {
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
-    bool is_table_event(const std::string_view event_name) const;
     void handle_driver_event_with_lua_table(const std::string_view event_name, const sol::table& event_data);
 
     template <typename T>

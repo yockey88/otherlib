@@ -594,17 +594,6 @@ namespace other {
     launch_process(working_dir, exe_name, args);
   }
 
-  bool driver::is_table_event(const std::string_view event_name) const {
-    /// for now we hardcode this but eventually we want to be able to register these from lua or from plugins
-    static std::unordered_set<std::string_view> table_events = {
-      "project.load",
-      "project.save",
-      "project.close",
-    };
-
-    return table_events.contains(event_name);
-  }
-
   void driver::handle_driver_event_with_lua_table(const std::string_view event_name, const sol::table& event_data) {
     if (event_name.starts_with("project.")) {
       std::string project_name = event_data["project_name"].get_or(std::string("unknown"));
