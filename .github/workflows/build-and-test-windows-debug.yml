@@ -17,6 +17,11 @@ jobs:
       with:
         python-version: '3.x'
 
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.24.x'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
