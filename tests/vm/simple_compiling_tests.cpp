@@ -70,7 +70,8 @@ namespace other {
       detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R2, 99) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R2) },
-      detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
+      // since entry is pointed to main, ret is erased and replaced with stopdev
+      detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
       detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
     };
 
@@ -97,7 +98,8 @@ namespace other {
     const std::array expected_main = {
       detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_to_dword_at(vm_register_idx::VM_R1, 0x0042) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
-      detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
+      // since entry is pointed to main, ret is erased and replaced with stopdev
+      detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
       detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
     };
     detail::expect_compiled_code_block_matches(program.compiled_blocks[0], "main", false, expected_main);
@@ -153,6 +155,8 @@ end
       detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_to_address(vm_register_idx::VM_R3, 0xFFFF) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_call_at(0xFFFF) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R4) },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
       detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
     };
 

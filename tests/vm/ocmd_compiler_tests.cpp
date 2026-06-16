@@ -322,7 +322,7 @@ namespace other {
       detail::expected_machine_instruction{ .expected_opcode = opcode_set_x_immediate(vm_register_idx::VM_R2, 99) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R1) },
       detail::expected_machine_instruction{ .expected_opcode = opcode_dump_register_x(vm_register_idx::VM_R2) },
-      detail::expected_machine_instruction{ .expected_opcode = opcode_return() },
+      detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
       detail::expected_machine_instruction{ .expected_opcode = opcode_stop_device() },
     };
 
