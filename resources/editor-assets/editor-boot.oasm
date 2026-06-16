@@ -38,9 +38,9 @@ $syscall_demo:
   syscall core.random
   call print_return_register
   
-  ; set r0, data.load-text
-  ; set r1, [data.string-len]
-  ; syscall asset.load_asset
+  set r0, torus_path.path      ; address of path
+  set r1, [torus_path.length]  ; value at torus_path.length
+  syscall asset.load_asset
 end
 
 $print_return_register:
@@ -53,8 +53,8 @@ end
 
 ; call main
 
-#data {
+#torus_path {
   ; address to write load text to in memory
-  .string-len: int32 = 35
-  .load-text: string = "resources/models/spinning-torus.fbx"
+  .length: int32 = 35
+  .path: string = "resources/models/spinning-torus.fbx"
 }
