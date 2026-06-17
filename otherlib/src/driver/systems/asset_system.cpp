@@ -46,7 +46,6 @@ namespace other {
     register_asset_events(asset::SCRIPT);
     register_asset_events(asset::SCENE);
     register_asset_events(asset::RENDERING_PIPELINE);
-    register_asset_events(asset::ASSET_DECLARATION);
 
     events.add_listener("filesystem.watch-event", [this](const value& data) {
       if (data.type() != value_type::USER_TYPE) {
@@ -92,10 +91,20 @@ namespace other {
       loading_asset_ids.erase(it);
       get_driver().get_event_system()->trigger_event("assets.new-asset-loaded", asset_ptr->id);
     });
+    if (asset_id == 0) {
+      CORE_LOG_ERROR("Failed to begin asset load for path: {}", asset_path.string());
+      return 0;
+    }
 
     loading_asset_ids.push_back(asset_id);
 
     return asset_id;
+  }
+
+  void asset_system::begin_asset_unload(natural_t asset_id) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    CORE_LOG_DEBUG("Beginning asset unload for asset ID: {}", asset_id);
+    asset_mgr->unload_asset(asset_id);
   }
 
   natural_t asset_system::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
@@ -131,6 +140,17 @@ namespace other {
   natural_t asset_system::get_asset_hash(natural_t asset_id) const {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->get_asset_hash(asset_id);
+  }
+
+  // this is to be nice for the VM who wants to treat things as 64 bit values
+  natural_t asset_system::get_asset_state(natural_t asset_id) const {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return static_cast<natural_t>(asset_mgr->get_asset_state(asset_id));
+  }
+
+  natural_t asset_system::get_asset_id_from_path(const filepath& path) const {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_asset_id_from_path(path);
   }
 
   opt<filepath> asset_system::get_local_asset_path(natural_t asset_id) const {

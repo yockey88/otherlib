@@ -4,7 +4,9 @@
 #include "vm/decompiler.hpp"
 
 #include <sstream>
+#include <string>
 
+#include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
 
 #include "vm/command_files/ocmd_headers.hpp"
@@ -22,31 +24,132 @@ namespace other {
 
   }  // namespace detail
 
+  std::string decompiler::register_byte_name(uint8_t reg) {
+    switch (reg) {
+      case instruction::X_REGISTER_BYTE_IDX: return "X";
+      case instruction::Y_REGISTER_BYTE_IDX: return "Y";
+      case instruction::Z_REGISTER_BYTE_IDX: return "Z";
+      default: return "Unknown";
+    }
+  }
+
+  std::string decompiler::get_instruction_name(uint32_t opcode) {
+    instruction instr(opcode);
+
+    std::string res;
+    switch (instr.category_nibble()) {
+      case 0: res += "Control"; break;
+      case 1: res += "Memory/Logic"; break;
+      case 2: res += "Program Flow"; break;
+      case 3: res += "Arithmetic"; break;
+      case 4: res += "Logic and Bitwise"; break;
+      default: return res;
+    }
+
+    res += ": ";
+    switch (instr.category_nibble()) {
+      case 0: {
+        switch (instr.type_nibble()) {
+          case 0x00: res += "Stop Device"; break;
+          case 0x01: res += "Dump Registers"; break;
+          case 0x02: res += "Dump Register X"; break;
+          case 0x03: res += "Dump reg(X) bytes at N"; break;
+          case 0x04: res += "View VM Device State"; break;
+          case 0x05: res += "No Op"; break;
+          case 0x06: res += "Clear X through Y"; break;
+          default:
+            OTHER_ASSERT(false, "Invalid type nibble : category = {}, type = {}", instr.category_nibble(), instr.type_nibble());
+            break;
+        }
+      } break;
+      case 1: {
+        switch (instr.type_nibble()) {
+          case 0x00: res += "Move X to Y"; break;
+          case 0x01: res += "Write X to memory at N"; break;
+          case 0x02: res += "Write X to address in Y"; break;
+          case 0x03: res += "Set X to address N"; break;
+          case 0x04: res += "Set X to dword at N"; break;
+          case 0x05: res += "Set X to K"; break;
+          default:
+            OTHER_ASSERT(false, "Invalid type nibble : category = {}, type = {}", instr.category_nibble(), instr.type_nibble());
+            break;
+        }
+      } break;
+      case 2: {
+        switch (instr.type_nibble()) {
+          case 0x00: res += "Goto address N"; break;
+          case 0x01: res += "Jump to N if FLAG == 0"; break;
+          case 0x02: res += "Jump to N if FLAG != 0"; break;
+          case 0x03: res += "Call address N"; break;
+          case 0x04: res += "Return"; break;
+          case 0x05: res += "Return storing result in X"; break;
+          case 0x06: res += "System call with id K"; break;
+          default:
+            OTHER_ASSERT(false, "Invalid type nibble : category = {}, type = {}", instr.category_nibble(), instr.type_nibble());
+            break;
+        }
+      } break;
+      case 3: {
+        switch (instr.type_nibble()) {
+          case 0x00: res += "Set X = X + Y"; break;
+          case 0x01: res += "Set X = X - Y"; break;
+          case 0x02: res += "Set X = X * Y"; break;
+          case 0x03: res += "Set X = X / Y"; break;
+          case 0x04: res += "Set X = X % Y"; break;
+          case 0x05: res += "Set X = X + K"; break;
+          case 0x06: res += "Set X = X - K"; break;
+          case 0x07: res += "Set X = X * K"; break;
+          case 0x08: res += "Set X = X / K"; break;
+          case 0x09: res += "Set X = X % K"; break;
+          default:
+            OTHER_ASSERT(false, "Invalid type nibble : category = {}, type = {}", instr.category_nibble(), instr.type_nibble());
+            break;
+        }
+      } break;
+      case 4: {
+        switch (instr.type_nibble()) {
+          case 0x00: res += "Set Z = X == Y"; break;
+          case 0x01: res += "Set Z = X > Y"; break;
+          case 0x02: res += "Set Z = X < Y"; break;
+          case 0x03: res += "Set Z = X & Y"; break;
+          case 0x04: res += "Set Z = X | Y"; break;
+          case 0x05: res += "Set Z = X ^ Y"; break;
+          case 0x06: res += "Set X = X << Y"; break;
+          case 0x07: res += "Set X = X >> Y"; break;
+          default:
+            OTHER_ASSERT(false, "Invalid type nibble : category = {}, type = {}", instr.category_nibble(), instr.type_nibble());
+            break;
+        }
+      } break;
+      default:
+        OTHER_ASSERT(false, "Invalid category nibble : category = {}", instr.category_nibble());
+    }
+
+    return res;
+  }
+
   std::string decompiler::opcode_to_string(uint32_t opcode) {
     instruction instr(opcode);
-    return "Opcode(Category: " + std::to_string(instr.category_nibble()) +
-      ", Type: " + std::to_string(instr.type_nibble()) + ")";
+    return "Opcode(Category: " + std::to_string(instr.category_nibble()) + ", Type: " + std::to_string(instr.type_nibble()) + ")";
   }
 
   std::string decompiler::opcode_to_detailed_string(uint32_t opcode) {
     instruction instr(opcode);
-    std::string result = "Opcode: ";
-
+    std::string result = std::format("Opcode [{}]: ", get_instruction_name(opcode));
     result += std::format("{:#010x}", instr.opcode);
-    result += " { ";
-    result += "Category: " + std::to_string(instr.category_nibble()) + ", ";
-    result += "Type: " + std::to_string(instr.type_nibble()) + ", ";
-    result += "Bytes: [ ";
-    for (size_t i = 0; i < other_command_device::kOpCodeSize; ++i) {
-      result += "0x" + std::to_string(instr.bytes[i]);
-      if (i < other_command_device::kOpCodeSize - 1) {
+    result += " {\n";
+    result += "  Category: " + std::to_string(instr.category_nibble()) + ",\n";
+    result += "  Type: " + std::to_string(instr.type_nibble()) + ",\n";
+    result += std::format("  N/K: {:#06x},\n", instr.lower);
+    result += "  Registers: [\n    ";
+    for (size_t i = 0; i < instruction::INVALID_BYTE_IDX; ++i) {
+      result += std::format("{} = {:#02x} ", register_byte_name(i), instr.bytes[i]);
+      if (i < instruction::Z_REGISTER_BYTE_IDX) {
         result += ", ";
       }
     }
-    result += " ], ";
-    result += "Upper: 0x" + std::to_string(instr.upper) + ", ";
-    result += "Lower: 0x" + std::to_string(instr.lower);
-    result += " }";
+    result += "\n  ],\n";
+    result += "}";
 
     return result;
   }
@@ -74,7 +177,7 @@ namespace other {
 
     other_command_device device = {};
     vm::initialize_device(&device);
-    vm::activate_builtin_control_table(&device, OTHER_CONTROL_TABLE_DECOMPILER_V000);
+    vm::load_control_table(&device, OTHER_CONTROL_TABLE_DECOMPILER_V000);
 
     OTHER_ASSERT(instructions.size() >= sizeof(ocmd_file_header), "Instructions size is smaller than OCMD file header size!");
     const ocmd_file_header& file_header = *(reinterpret_cast<const ocmd_file_header*>(instructions.data()));
@@ -93,7 +196,7 @@ namespace other {
       offset += other_command_device::kOpCodeSize;
 
       uint8_t instr_nib = device.current_instruction.category_nibble();
-      device.control_table[instr_nib](&device);
+      (*device.control_table)[instr_nib](&device);
     }
 
     vm::shutdown_device(&device);

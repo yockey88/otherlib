@@ -110,6 +110,40 @@ namespace other {
           { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
         },
         .executor = { .name = "draw_scene" },
+        .bindings = {
+          {
+            .name = "per_draw.material",
+            .tag = resource_tag(resource_tag::kMaterialTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::STORAGE_BUFFER,
+            .binding = 0,
+            .element_size = sizeof(gpu::graphics_material_buffer),
+          },
+          {
+            .name = "per_draw.model",
+            .tag = resource_tag(resource_tag::kModelTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 1,
+            .element_size = sizeof(gpu::model_matrix_buffer),
+          },
+          {
+            .name = "per_frame.camera",
+            .tag = resource_tag(resource_tag::kCameraTag),
+            .scope = binding_scope::PER_FRAME,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 2,
+            .element_size = sizeof(gpu::camera_data),
+          },
+          {
+            .name = "per_draw.bones",
+            .tag = resource_tag(resource_tag::kBoneTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 3,
+            .element_size = sizeof(gpu::bone_matrix_buffer),
+          },
+        },
       },
       // fix this to read color_texture and output to screen_texture
       {
@@ -259,6 +293,16 @@ namespace other {
           { .resource_name = "ambient_shadow_map", .attachment = framebuffer::DEPTH },
         },
         .executor = { .name = "draw_scene" },
+        .bindings = {
+          {
+            .name = "per_draw.model",
+            .tag = resource_tag(resource_tag::kModelTag),
+            .scope = binding_scope::PER_DRAW_CALL,
+            .type = binding_type::UNIFORM_BUFFER,
+            .binding = 1,
+            .element_size = sizeof(gpu::model_matrix_buffer),
+          },
+        },
       },
       // shading pass
       {

@@ -76,6 +76,7 @@ namespace other {
     constexpr asset_name(const std::string_view tag, const std::string_view display)
         : tag_name(tag), display_name(display) {}
   };
+
   struct asset_extension {
     asset::type asset_type;
     std::string_view extension;

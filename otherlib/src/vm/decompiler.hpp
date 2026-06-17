@@ -13,6 +13,8 @@ namespace other {
   struct other_command_device;
 
   struct decompiler {
+    static std::string register_byte_name(uint8_t reg);
+    static std::string get_instruction_name(uint32_t opcode);
     static std::string opcode_to_string(uint32_t opcode);
     static std::string opcode_to_detailed_string(uint32_t opcode);
     static void hexdump_memory(other_command_device* device);

@@ -20,7 +20,8 @@ namespace other {
 
   struct other_plugin_argv;
 
-  int entry(int argc, char* argv[]);
+  int entry();                        // default
+  int entry(int argc, char* argv[]);  // if application expects config file/command line arguments
   void shutdown_subsystems();
 
   using load_config_result = std::tuple<bool, config_table, command_line>;

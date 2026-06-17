@@ -196,58 +196,53 @@ namespace other {
       return;
     }
 
-    {
-      PROFILE_SECTION("render_pipeline::render_frame--execute_passes");
-      for (const natural_t id : sort) {
-        PROFILE_SECTION("render_pipeline::render_frame--execute_passes--pass");
-        auto node_itr = g.nodes.find(id);
-        OTHER_ASSERT(node_itr != g.nodes.end(), "Node with id {} not found in graph.", id);
+    for (const natural_t id : sort) {
+      PROFILE_SECTION("render_pipeline::render_frame--render_pass");
+      auto node_itr = g.nodes.find(id);
+      OTHER_ASSERT(node_itr != g.nodes.end(), "Node with id {} not found in graph.", id);
 
-        frame_node& n = node_itr->second;
-        const render_pass* pass = n.pass;
-        OTHER_ASSERT(pass != nullptr, "Node {} has null pass", id);
+      frame_node& n = node_itr->second;
+      const render_pass* pass = n.pass;
+      OTHER_ASSERT(pass != nullptr, "Node {} has null pass", id);
 
-        auto runtime_itr = pass_runtimes.find(pass->id);
-        OTHER_ASSERT(runtime_itr != pass_runtimes.end(), "Pass runtime for pass id {} not built — was build_pass_runtimes() called?", pass->id);
-        pass_runtime& runtime = runtime_itr->second;
+      auto runtime_itr = pass_runtimes.find(pass->id);
+      OTHER_ASSERT(runtime_itr != pass_runtimes.end(), "Pass runtime for pass id {} not built — was build_pass_runtimes() called?", pass->id);
+      pass_runtime& runtime = runtime_itr->second;
 
-        auto exec_itr = execs.find(pass->id);
-        OTHER_ASSERT(exec_itr != execs.end(), "Executor for pass {} (id {}) not found.", pass->name, pass->id);
-        const render_graph::pass_executor& exec = exec_itr->second;
+      auto exec_itr = execs.find(pass->id);
+      OTHER_ASSERT(exec_itr != execs.end(), "Executor for pass {} (id {}) not found.", pass->name, pass->id);
+      const render_graph::pass_executor& exec = exec_itr->second;
 
-        frame_binding_view bv{
-          .defs = std::span{ runtime.def->bindings },
-          .per_frame_handles = std::span{ runtime.state.per_frame_handles },
-          .per_draw_offsets = {},
-        };
-        pass_diagnostics diag{};
+      frame_binding_view bv{
+        .defs = std::span{ runtime.def->bindings },
+        .per_frame_handles = std::span{ runtime.state.per_frame_handles },
+        .per_draw_offsets = {},
+      };
+      pass_diagnostics diag{};
 
-        const uint32_t iters = std::max<uint32_t>(runtime.def->iterations_per_frame, 1u);
+      const uint32_t iters = std::max<uint32_t>(runtime.def->iterations_per_frame, 1u);
 
+      for (uint32_t iter = 0; iter < iters; ++iter) {
+        PROFILE_SECTION("render_pipeline::render_frame--render_pass--iteration");
+        diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
+
+        n.start_pass(renderer_ptr);
         {
-          PROFILE_SECTION("render_pipeline::render_frame--execute_passes--pass--iterations");
-          for (uint32_t iter = 0; iter < iters; ++iter) {
-            diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
-
-            n.start_pass(renderer_ptr);
-            {
-              pass_context ctx{
-                renderer_ptr,
-                this,
-                &n,
-                frame_render_data,
-                bv,
-                &diag,
-              };
-              exec(ctx);
-            }
-            n.end_pass(renderer_ptr);
-          }
+          pass_context ctx{
+            renderer_ptr,
+            this,
+            &n,
+            frame_render_data,
+            bv,
+            &diag,
+          };
+          exec(ctx);
         }
+        n.end_pass(renderer_ptr);
+      }
 
-        for (auto& ring : runtime.state.per_draw_rings) {
-          ring.head = 0;
-        }
+      for (auto& ring : runtime.state.per_draw_rings) {
+        ring.head = 0;
       }
     }
   }

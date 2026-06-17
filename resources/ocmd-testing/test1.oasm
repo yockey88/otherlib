@@ -1,19 +1,19 @@
 /entry: foo
 
 $entry:
-  dumpx r1
-  dumpx r2
-  dumpx r3
-  load r4, data.first_addr
+  dump r1
+  dump r2
+  dump r3
+  set r4, data.first_addr
   ret
 end
 
 $foo:
   set r1, 10
   set r2, 11
-  load r3, data.first_addr
+  set r3, data.first_addr
   call entry
-  dumpx r4
+  dump r4
   stopdev
 end
 

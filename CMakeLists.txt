@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.27.0..4.0.2)
+cmake_minimum_required(VERSION 4.0.2)
 
 include(cmake/add_other_driver.cmake)
 include(cmake/configure_version_header.cmake)
@@ -235,7 +235,7 @@ if (BUILD_OTHER_TESTS)
   add_subdirectory(tests)
 endif()
 
-if (BUILD_SCRATCH_PROGRAMS AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
   add_subdirectory(scratch)
 endif()
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test-project)

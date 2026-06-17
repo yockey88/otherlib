@@ -32,7 +32,7 @@ SpaceBeforeInheritanceColon: true
 SpaceBeforeParens: ControlStatements
 AlignOperands: DontAlign
 
-AlignAfterOpenBracket: BlockIndent
+AlignAfterOpenBracket: true
 
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 

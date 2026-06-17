@@ -29,6 +29,8 @@ namespace other {
     ui_window(event_system* events, const std::string_view title, bool open = true, int32_t flags = 0);
     virtual ~ui_window() = default;
 
+    void set_driver_ptr(driver* drv) { driver_ptr = drv; }
+
     void initialize();
     void shutdown();
 
@@ -69,6 +71,10 @@ namespace other {
       OTHER_ASSERT(events != nullptr, "Event system pointer is null in UI window {}", title);
       return *events;
     }
+    driver& get_driver() {
+      OTHER_ASSERT(driver_ptr != nullptr, "Driver pointer is null in UI window {}", title);
+      return *driver_ptr;
+    }
 
     natural_t id = 0;
     std::string title;
@@ -107,6 +113,7 @@ namespace other {
 
     std::unordered_map<natural_t, ref<ui_node>> node_map;
 
+    driver* driver_ptr = nullptr;
     event_system* events;
 
     void refresh(bool current_state);

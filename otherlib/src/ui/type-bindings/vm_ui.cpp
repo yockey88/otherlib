@@ -45,8 +45,8 @@ namespace other {
         std::stringstream ss;
         ss << std::format("Current Instruction @ {:#08x} :\n{}\n", device_ref.pc, curr_op_str);
 
-        for (natural_t i = 0; i < other_command_device::kNumRegisters; ++i) {
-          ss << std::format("R{:<2} : [{}]\n", i, device_ref.registers[i]);
+        for (natural_t i = 0; i < vm_register::kNumRegisters; ++i) {
+          ss << std::format("R{:<2} : [{}]\n", i, device_ref.read_register_as_u64(i));
         }
         std::string curr_regs_str = ss.str();
         ImGui::Text("%s", curr_regs_str.c_str());

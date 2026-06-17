@@ -9,8 +9,11 @@
 #include <vector>
 
 #include "vm/command_files/token.hpp"
+#include "vm/diagnostics/vm_diagnostic.hpp"
 
 namespace other {
+
+  class diagnostic_engine;
 
   class ocmd_lexer {
    public:
@@ -18,16 +21,19 @@ namespace other {
         : source(source_code) {}
     ~ocmd_lexer() = default;
 
-    std::vector<token> tokenize();
+    std::vector<token> tokenize(diagnostic_engine* diag);
 
    private:
+    diagnostic_engine* diagnostics;
     std::vector<token> tokens;
 
-    std::string_view source;
+    std::string source;
 
     std::string current_token;
     size_t current_line = 1;
     size_t current_column = 1;
+
+    source_location current_source_span_start;
 
     size_t cursor = 0;
 

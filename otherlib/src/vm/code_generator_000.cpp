@@ -1,0 +1,451 @@
+/**
+ * \file vm/code_generator_000.cpp
+ **/
+#include "vm/code_generator_000.hpp"
+
+#include "core/enum_formatter.hpp"
+
+#include "vm/command_files/compiler_error.hpp"
+#include "vm/opcode.hpp"
+
+namespace other {
+
+  void code_generator_000::encode_stopdev(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::STOPDEV_OP, "Invalid opcode passed to encode_stopdev");
+
+    emit_instruction(opcode_stop_device(), artifact);
+  }
+
+  void code_generator_000::encode_dump(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::DUMP_OP, "Invalid opcode passed to encode_dump");
+
+    if (instr.param[0].kind == operand_kind::INVALID) {
+      emit_instruction(opcode_dump_registers(), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::INVALID) {
+      emit_instruction(opcode_dump_register_x(instr.param[0].reg), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::ADDRESS_U16) {
+      emit_instruction(opcode_dump_memory_at(instr.param[0].reg, instr.param[1].val), artifact);
+    } else {
+      throw ocmd_lowering_error("Invalid operands for dump instruction");
+    }
+  }
+
+  void code_generator_000::encode_view_state(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::VIEW_STATE_OP, "Invalid opcode passed to encode_view_state");
+    emit_instruction(opcode_view_state(), artifact);
+  }
+
+  void code_generator_000::encode_clear(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::CLEAR_OP, "Invalid opcode passed to encode_clear");
+    if (instr.param[0].kind == operand_kind::INVALID) {
+      emit_instruction(opcode_clear(), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::INVALID) {
+      emit_instruction(opcode_clear_x(instr.param[0].reg), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_clear_x_through_y(instr.param[0].reg, instr.param[1].reg), artifact);
+    } else {
+      throw ocmd_lowering_error("Invalid operands for clear instruction");
+    }
+  }
+
+  void code_generator_000::encode_mov(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::MOV_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_mov");
+    }
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("mov first operand must be a register reference");
+    }
+    if (instr.param[1].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("mov second operand must be a register reference");
+    }
+    emit_instruction(opcode_move_x_to_y(instr.param[0].reg, instr.param[1].reg), artifact);
+  }
+
+  void code_generator_000::encode_write(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::WRITE_OP, "Invalid opcode passed to encode_write");
+
+    const bool from_register = instr.param[0].kind == operand_kind::REGISTER_REF;
+    if (!from_register) {
+      throw ocmd_lowering_error("write first operand must be a register reference");
+    }
+
+    if (instr.param[1].kind == operand_kind::CODE_LABEL) {
+      throw ocmd_lowering_error("write second operand must not be a code label");
+    }
+
+    const bool to_indirect_register = instr.param[1].kind == operand_kind::REGISTER_REF && !instr.param[1].indirect;
+    const bool to_address = instr.param[1].kind == operand_kind::ADDRESS_U16;
+    const bool to_label = instr.param[1].kind == operand_kind::DATA_SYMBOL;
+
+    if (to_indirect_register) {
+      emit_instruction(opcode_write_x_to_address_in_y(instr.param[0].reg, instr.param[1].reg), artifact);
+    } else if (to_address) {
+      emit_instruction(opcode_write_x_to_memory(instr.param[0].reg, instr.param[1].val), artifact);
+    } else if (to_label) {
+      add_symbol_fixup(artifact.machine_instructions.size(), instr.param[1].symbol, artifact);
+      emit_instruction(opcode_write_x_to_memory(instr.param[0].reg, 0xFFFF), artifact);
+    }
+  }
+
+  void code_generator_000::encode_set(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::SET_OP, "Invalid opcode passed to encode_set");
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("set first operand must be a register reference");
+    }
+
+    const bool is_immediate = instr.param[1].kind == operand_kind::IMMEDIATE_U16;
+    const bool is_indirect = instr.param[1].indirect;
+    const bool is_address = instr.param[1].kind == operand_kind::ADDRESS_U16;
+    const bool is_label = instr.param[1].kind == operand_kind::DATA_SYMBOL || instr.param[1].kind == operand_kind::CODE_LABEL;
+    const bool is_address_or_label = (is_address || is_label);
+
+    /// set rx, n/label
+    if (is_address_or_label && is_indirect) {
+      if (is_label) {
+        add_symbol_fixup(artifact.machine_instructions.size(), instr.param[1].symbol, artifact);
+        emit_instruction(opcode_set_x_to_address(instr.param[0].reg, 0xFFFF), artifact);
+      } else {
+        emit_instruction(opcode_set_x_to_address(instr.param[0].reg, static_cast<uint16_t>(instr.param[1].val)), artifact);
+      }
+    }
+    /// set rx, k
+    /// set rx, [n]/[label]
+    else if (is_immediate || (is_address_or_label && !is_indirect)) {
+      if (is_immediate) {
+        emit_instruction(opcode_set_x_immediate(instr.param[0].reg, static_cast<uint8_t>(instr.param[1].val)), artifact);
+      } else if (is_label && !is_indirect) {
+        add_symbol_fixup(artifact.machine_instructions.size(), instr.param[1].symbol, artifact);
+        emit_instruction(opcode_set_x_to_dword_at(instr.param[0].reg, 0xFFFF), artifact);
+      } else if (is_address && !is_indirect) {
+        emit_instruction(opcode_set_x_to_dword_at(instr.param[0].reg, static_cast<uint16_t>(instr.param[1].val)), artifact);
+      }
+    } else {
+      throw ocmd_lowering_error(std::format("invalid second operand for set instruction: {} (indirect? {})", instr.param[1].kind, instr.param[1].indirect));
+    }
+  }
+
+  void code_generator_000::encode_goto(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::GOTO_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_goto");
+    }
+    if (instr.param[0].kind == operand_kind::ADDRESS_U16) {
+      emit_instruction(opcode_goto(instr.param[0].val), artifact);
+    } else if (instr.param[0].kind == operand_kind::CODE_LABEL) {
+      add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+      emit_instruction(opcode_goto(0xFFFF), artifact);
+    } else {
+      if (instr.param[0].kind == operand_kind::DATA_SYMBOL) {
+        throw ocmd_lowering_error("program can not goto a data symbol");
+      } else {
+        throw ocmd_lowering_error("goto operand must be an address or a code label");
+      }
+    }
+  }
+
+  void code_generator_000::encode_je(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::JE_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_je");
+    }
+    if (instr.param[0].kind == operand_kind::ADDRESS_U16) {
+      emit_instruction(opcode_jump_if_zero(instr.param[0].val), artifact);
+    } else if (instr.param[0].kind == operand_kind::CODE_LABEL) {
+      add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+      emit_instruction(opcode_jump_if_zero(0xFFFF), artifact);
+    } else {
+      if (instr.param[0].kind == operand_kind::DATA_SYMBOL) {
+        throw ocmd_lowering_error("program can not jump to a data symbol");
+      } else {
+        throw ocmd_lowering_error("je operand must be an address or a code label");
+      }
+    }
+  }
+
+  void code_generator_000::encode_jne(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::JNE_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_jne");
+    }
+    if (instr.param[0].kind == operand_kind::ADDRESS_U16) {
+      emit_instruction(opcode_jump_if_not_zero(instr.param[0].val), artifact);
+    } else if (instr.param[0].kind == operand_kind::CODE_LABEL) {
+      add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+      emit_instruction(opcode_jump_if_not_zero(0xFFFF), artifact);
+    } else {
+      if (instr.param[0].kind == operand_kind::DATA_SYMBOL) {
+        throw ocmd_lowering_error("program can not jump to a data symbol");
+      } else {
+        throw ocmd_lowering_error("jne operand must be an address or a code label");
+      }
+    }
+  }
+
+  void code_generator_000::encode_call(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::CALL_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_call");
+    }
+    if (instr.param[0].kind == operand_kind::ADDRESS_U16) {
+      emit_instruction(opcode_call_at(instr.param[0].val), artifact);
+    } else if (instr.param[0].kind == operand_kind::CODE_LABEL || instr.param[0].kind == operand_kind::DATA_SYMBOL) {
+      add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+      emit_instruction(opcode_call_at(0xFFFF), artifact);
+    } else {
+      throw ocmd_lowering_error("call operand must be an address or symbol reference");
+    }
+  }
+
+  void code_generator_000::encode_return(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::RET_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_return");
+    }
+    emit_instruction(opcode_return(), artifact);
+  }
+
+  void code_generator_000::encode_syscall(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::SYSCALL_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_syscall");
+    }
+    if (instr.param[0].kind == operand_kind::IMMEDIATE_U16) {
+      emit_instruction(opcode_syscall(instr.param[0].val), artifact);
+    } else if (instr.param[0].kind == operand_kind::CODE_LABEL || instr.param[0].kind == operand_kind::DATA_SYMBOL) {
+      add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+      emit_instruction(opcode_syscall(0xFFFF), artifact);
+    } else {
+      throw ocmd_lowering_error("invalid syscall operand");
+    }
+  }
+
+  void code_generator_000::encode_invoke(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::INVOKE_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_invoke");
+    }
+    // if (instr.param[0].kind == operand_kind::ADDRESS_U16) {
+    //   emit_instruction(opcode_invoke_at(instr.param[0].val), artifact);
+    // } else if (instr.param[0].kind == operand_kind::CODE_LABEL || instr.param[0].kind == operand_kind::DATA_SYMBOL) {
+    //   add_symbol_fixup(artifact.machine_instructions.size(), instr.param[0].symbol, artifact);
+    //   emit_instruction(opcode_invoke_at(0xFFFF), artifact);
+    // } else {
+    //   throw ocmd_lowering_error("invoke operand must be an address or symbol reference");
+    // }
+  }
+
+  void code_generator_000::encode_add(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::ADD_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_add");
+    }
+    if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_add_x_y_to_x(instr.param[0].reg, instr.param[1].reg), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::IMMEDIATE_U16) {
+      emit_instruction(opcode_add_x_imm_to_x(instr.param[0].reg, instr.param[1].val), artifact);
+    } else {
+      throw ocmd_lowering_error("add operands must be register reference and immediate or two register references");
+    }
+  }
+
+  void code_generator_000::encode_sub(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::SUB_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_sub");
+    }
+    if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_sub_x_y_to_x(instr.param[0].reg, instr.param[1].reg), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::IMMEDIATE_U16) {
+      emit_instruction(opcode_sub_x_imm_to_x(instr.param[0].reg, instr.param[1].val), artifact);
+    } else {
+      throw ocmd_lowering_error("sub operands must be register reference and immediate or two register references");
+    }
+  }
+
+  void code_generator_000::encode_mul(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::MUL_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_mul");
+    }
+    if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_mul_x_y_to_x(instr.param[0].reg, instr.param[1].reg), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::IMMEDIATE_U16) {
+      emit_instruction(opcode_mul_x_imm_to_x(instr.param[0].reg, instr.param[1].val), artifact);
+    } else {
+      throw ocmd_lowering_error("mul operands must be register reference and immediate or two register references");
+    }
+  }
+
+  void code_generator_000::encode_div(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::DIV_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_div");
+    }
+    if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_div_x_y_to_x(instr.param[0].reg, instr.param[1].reg), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::IMMEDIATE_U16) {
+      emit_instruction(opcode_div_x_imm_to_x(instr.param[0].reg, instr.param[1].val), artifact);
+    } else {
+      throw ocmd_lowering_error("div operands must be register reference and immediate or two register references");
+    }
+  }
+
+  void code_generator_000::encode_mod(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::MOD_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_mod");
+    }
+    if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_mod_x_y_to_x(instr.param[0].reg, instr.param[1].reg), artifact);
+    } else if (instr.param[0].kind == operand_kind::REGISTER_REF && instr.param[1].kind == operand_kind::IMMEDIATE_U16) {
+      emit_instruction(opcode_mod_x_imm_to_x(instr.param[0].reg, instr.param[1].val), artifact);
+    } else {
+      throw ocmd_lowering_error("mod operands must be register reference and immediate or two register references");
+    }
+  }
+
+  void code_generator_000::encode_cmp(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::CMP_OP, "Invalid opcode passed to encode_cmp");
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("cmp first operand must be a register reference");
+    }
+    if (instr.param[1].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("cmp second operand must be a register reference, immediate, or float literal");
+    }
+
+    /// there is a 3rd argument specifying output register
+    if (instr.param[2].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_compare_x_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[2].reg), artifact);
+    }
+    // use x as the output register
+    else {
+      emit_instruction(opcode_compare_x_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[0].reg), artifact);
+    }
+  }
+
+  void code_generator_000::encode_cmpgt(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::CMPGT_OP, "Invalid opcode passed to encode_cmpgt");
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("cmp_gt first operand must be a register reference");
+    }
+    if (instr.param[1].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("cmpgt second operand must be a register reference, immediate, or float literal");
+    }
+
+    /// there is a 3rd argument specifying output register
+    if (instr.param[2].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_x_gt_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[2].reg), artifact);
+    }
+    /// if the 3rd argument is not a register reference, use x as the output register
+    else {
+      emit_instruction(opcode_x_gt_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[0].reg), artifact);
+    }
+  }
+
+  void code_generator_000::encode_cmplt(const canonical_instruction& instr, lowering_artifact& artifact) {
+    OTHER_ASSERT(instr.opcode == canonical_opcode::CMPLT_OP, "Invalid opcode passed to encode_cmplt");
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("cmp_lt first operand must be a register reference");
+    }
+    if (instr.param[1].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("cmp_lt second operand must be a register reference, immediate, or float literal");
+    }
+
+    /// there is a 3rd argument specifying output register
+    if (instr.param[2].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_x_lt_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[2].reg), artifact);
+    }
+    /// if the 3rd argument is not a register reference, use x as the output register
+    else {
+      emit_instruction(opcode_x_lt_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[0].reg), artifact);
+    }
+  }
+
+  void code_generator_000::encode_and(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::AND_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_and");
+    }
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("and first operand must be a register reference");
+    }
+    if (instr.param[1].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("and second operand must be a register reference, immediate, or float literal");
+    }
+
+    /// there is a 3rd argument specifying output register
+    if (instr.param[2].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_x_and_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[2].reg), artifact);
+    }
+    /// if the 3rd argument is not a register reference, use x as the output register
+    else {
+      emit_instruction(opcode_x_and_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[0].reg), artifact);
+    }
+  }
+
+  void code_generator_000::encode_or(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::OR_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_or");
+    }
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("or first operand must be a register reference");
+    }
+    if (instr.param[1].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("or second operand must be a register reference, immediate, or float literal");
+    }
+
+    /// there is a 3rd argument specifying output register
+    if (instr.param[2].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_x_or_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[2].reg), artifact);
+    }
+    /// if the 3rd argument is not a register reference, use x as the output register
+    else {
+      emit_instruction(opcode_x_or_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[0].reg), artifact);
+    }
+  }
+
+  void code_generator_000::encode_xor(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::XOR_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_xor");
+    }
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("xor first operand must be a register reference");
+    }
+    if (instr.param[1].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("xor second operand must be a register reference, immediate, or float literal");
+    }
+
+    /// there is a 3rd argument specifying output register
+    if (instr.param[2].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_x_xor_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[2].reg), artifact);
+    }
+    /// if the 3rd argument is not a register reference, use x as the output register
+    else {
+      emit_instruction(opcode_x_xor_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[0].reg), artifact);
+    }
+  }
+
+  void code_generator_000::encode_lshift(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::LSHIFT_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_lshift");
+    }
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("lshift first operand must be a register reference");
+    }
+
+    /// there is a 3rd argument specifying the output register
+    if (instr.param[2].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_shift_left_x_by_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[2].reg), artifact);
+    }
+    /// if the 3rd argument is not a register reference, use x as the output register
+    else {
+      emit_instruction(opcode_shift_left_x_by_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[0].reg), artifact);
+    }
+  }
+
+  void code_generator_000::encode_rshift(const canonical_instruction& instr, lowering_artifact& artifact) {
+    if (instr.opcode != canonical_opcode::RSHIFT_OP) {
+      throw ocmd_lowering_error("Invalid opcode passed to encode_rshift");
+    }
+    if (instr.param[0].kind != operand_kind::REGISTER_REF) {
+      throw ocmd_lowering_error("rshift first operand must be a register reference");
+    }
+
+    /// there is a 3rd argument specifying the output register
+    if (instr.param[2].kind == operand_kind::REGISTER_REF) {
+      emit_instruction(opcode_shift_right_x_by_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[2].reg), artifact);
+    }
+    /// if the 3rd argument is not a register reference, use x as the output register
+    else {
+      emit_instruction(opcode_shift_right_x_by_y_set_z(instr.param[0].reg, instr.param[1].reg, instr.param[0].reg), artifact);
+    }
+  }
+
+}  // namespace other

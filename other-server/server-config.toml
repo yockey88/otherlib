@@ -17,7 +17,7 @@ core-log-level = "info"
 core-log-file = "logs/server.log"
 
 [scripting]
-envrc-path = "lua/server.lua"
+init-lua = "lua/server.lua"
 dotnet-bindings = "../build/other-csharp/${build-config}/OtherCsBindings.dll"
 dotnet-runtime-config = "../other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 other-csharp = "../build/other-csharp/${build-config}/OtherCs.dll"

@@ -7,15 +7,33 @@
 #include <string_view>
 #include <vector>
 
+#include "core/scope.hpp"
+
+#include "vm/command_files/ocmd_ir.hpp"
+#include "vm/command_files/ocmd_program.hpp"
+
 namespace other {
+
+  class diagnostic_engine;
 
   class ocmd_compiler {
    public:
     ocmd_compiler() = default;
+    ocmd_compiler(const ocmd_ir& ir)
+        : ir(ir) {
+    }
     ~ocmd_compiler() = default;
 
-    // static std::vector<uint8_t> parse_and_assemble_assembly_file(const filepath& path);
-    static std::vector<uint8_t> compile_single_translation_unit(const std::string_view source_code);
+    ocmd_program compile(const std::string_view source, scope<ocmd_code_generator> generator, diagnostic_engine* diag);
+    ocmd_program compile(scope<ocmd_code_generator> generator, diagnostic_engine* diag);
+
+    constexpr static inline size_t kDefaultAlignment = 8;
+
+   private:
+    vm_version version = {};
+
+    diagnostic_engine* diagnostics;
+    ocmd_ir ir;
   };
 
 }  // namespace other

@@ -70,8 +70,7 @@ namespace other {
           renderer_ptr->initialize_pass_resolver(nullptr);
         },
         no_args(),
-        interface_cardinality::SINGLE
-      );
+        interface_cardinality::SINGLE);
     };
     register_interfaces_in_registry(kernel->driver_registry());
     register_interfaces_in_registry(kernel->project_registry());
@@ -344,8 +343,7 @@ namespace other {
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
 
     std::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
-    std::vector<std::string> windows = std::span<const std::string_view>(driver_ui::kBuiltinWindowNames.data(), driver_ui::NUM_BUILTIN_WINDOW_TYPES).subspan(1) |
-      std::views::transform([](const std::string_view& name) { return std::string(name); }) |
+    std::vector<std::string> windows = driver_ui_ptr->get_available_window_names() |
       std::views::filter([&open_windows](const std::string& name) { return std::ranges::find(open_windows, name) == open_windows.end(); }) |
       std::ranges::to<std::vector>();
 
