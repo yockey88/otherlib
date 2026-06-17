@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-test-release:
-    runs-on: windows-2025
+    runs-on: windows-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
