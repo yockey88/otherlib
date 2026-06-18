@@ -3,6 +3,7 @@
  **/
 #include "input/input_system.hpp"
 
+#include <SDL3/SDL.h>
 #include <imgui/imgui.h>
 
 #include "core/enum_formatter.hpp"
@@ -428,19 +429,21 @@ namespace other {
     return ImGui::GetIO().WantCaptureMouse;
   }
 
-  key_code input_system::translate_sdl_keycode(SDL_Keycode sdl_key) const {
+  key_code input_system::translate_sdl_keycode(uint32_t sdl_key) const {
+    SDL_Keycode key = static_cast<SDL_Keycode>(sdl_key);
+
     /// SDL3 keycodes for letter keys are their ASCII values
-    if (sdl_key >= SDLK_A && sdl_key <= SDLK_Z) {
-      return static_cast<key_code>(static_cast<int>(key_code::A) + (sdl_key - SDLK_A));
+    if (key >= SDLK_A && key <= SDLK_Z) {
+      return static_cast<key_code>(static_cast<int>(key_code::A) + (key - SDLK_A));
     }
-    if (sdl_key >= SDLK_0 && sdl_key <= SDLK_9) {
-      return static_cast<key_code>(static_cast<int>(key_code::NUM_0) + (sdl_key - SDLK_0));
+    if (key >= SDLK_0 && key <= SDLK_9) {
+      return static_cast<key_code>(static_cast<int>(key_code::NUM_0) + (key - SDLK_0));
     }
-    if (sdl_key >= SDLK_F1 && sdl_key <= SDLK_F12) {
-      return static_cast<key_code>(static_cast<int>(key_code::F1) + (sdl_key - SDLK_F1));
+    if (key >= SDLK_F1 && key <= SDLK_F12) {
+      return static_cast<key_code>(static_cast<int>(key_code::F1) + (key - SDLK_F1));
     }
 
-    switch (sdl_key) {
+    switch (key) {
       case SDLK_ESCAPE: return key_code::ESCAPE;
       case SDLK_TAB: return key_code::TAB;
       case SDLK_CAPSLOCK: return key_code::CAPS_LOCK;
@@ -485,18 +488,20 @@ namespace other {
     }
   }
 
-  modifier_flags input_system::translate_sdl_modifiers(SDL_Keymod sdl_mod) const {
+  modifier_flags input_system::translate_sdl_modifiers(uint16_t sdl_mod) const {
     modifier_flags flags = modifier_flags::NONE;
-    if (sdl_mod & SDL_KMOD_SHIFT) {
+
+    SDL_Keymod mod = static_cast<SDL_Keymod>(sdl_mod);
+    if (mod & SDL_KMOD_SHIFT) {
       flags = flags | modifier_flags::SHIFT;
     }
-    if (sdl_mod & SDL_KMOD_CTRL) {
+    if (mod & SDL_KMOD_CTRL) {
       flags = flags | modifier_flags::CTRL;
     }
-    if (sdl_mod & SDL_KMOD_ALT) {
+    if (mod & SDL_KMOD_ALT) {
       flags = flags | modifier_flags::ALT;
     }
-    if (sdl_mod & SDL_KMOD_GUI) {
+    if (mod & SDL_KMOD_GUI) {
       flags = flags | modifier_flags::SUPER;
     }
     return flags;
@@ -547,7 +552,9 @@ namespace other {
     }
   }
 
-  void input_system::handle_gamepad_added(SDL_JoystickID id) {
+  void input_system::handle_gamepad_added(uint32_t id) {
+    SDL_JoystickID sdl_id = static_cast<SDL_JoystickID>(id);
+
     int32_t slot = -1;
     for (size_t i = 0; i < kMaxGamepads; ++i) {
       if (!staging.gamepads.pads[i].connected) {
@@ -560,7 +567,7 @@ namespace other {
       return;
     }
 
-    SDL_Gamepad* pad = SDL_OpenGamepad(id);
+    SDL_Gamepad* pad = SDL_OpenGamepad(sdl_id);
     if (!pad) {
       CORE_LOG_ERROR("Failed to open gamepad (instance {}): {}", id, SDL_GetError());
       return;
@@ -588,6 +595,7 @@ namespace other {
     gamepad_connection_event ev;
     ev.pad_index = slot;
     ev.connected = true;
+    ev.instance_id = id;
     ev.type = state.type;
     ev.name = state.name;
     for (const auto& cb : gamepad_connection_callbacks) {
@@ -595,7 +603,7 @@ namespace other {
     }
   }
 
-  void input_system::handle_gamepad_removed(SDL_JoystickID id) {
+  void input_system::handle_gamepad_removed(uint32_t id) {
     for (auto it = sdl_gamepads.begin(); it != sdl_gamepads.end(); ++it) {
       if (it->instance_id == id) {
         int32_t slot = it->our_index;
@@ -624,6 +632,9 @@ namespace other {
         gamepad_connection_event ev;
         ev.pad_index = slot;
         ev.connected = false;
+        ev.instance_id = id;
+        // ev.type = it->type;
+        // ev.name = it->name;
         for (const auto& cb : gamepad_connection_callbacks) {
           cb(ev);
         }

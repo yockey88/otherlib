@@ -125,7 +125,8 @@ if __name__ == "__main__":
       regen_project()
 
     if args.build:
-      if not os.path.exists("build/other.sln"):
+      ## why on God's green earth would microsoft change the fucking file extension
+      if not os.path.exists("build/other.sln") and not os.path.exists("build/other.slnx"):
         run_subprocess(["cmake", "-S", ".", "-B", "build", f"-DCMAKE_BUILD_TYPE={cfg}"])
       run_subprocess(["cmake", "--build", "build", "--config", cfg, "--parallel"])
 
