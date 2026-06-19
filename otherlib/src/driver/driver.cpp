@@ -238,19 +238,11 @@ namespace other {
   std::string driver::get_driver_info_string(const std::string_view str) const {
     CORE_LOG_DEBUG("object-driver-info argument: {}", str);
     std::stringstream ss;
-
-    if (str == "<stack>") {
-      // ss << "  " << context_stack_top << " objects in context stack.\n";
-      // if (context_stack_top > 0) {
-      //   scene_object* obj = context_stack[context_stack_top - 1];
-      //   ss << "Top of Context Stack Object Info:\n";
-      //   ss << "  - Name: " << obj->name << "\n";
-      //   ss << "  - ID: " << obj->id << "\n";
-      // }
-    } else {
-      ss << "Unknown driver info argument: '" << str << "'";
+    switch (FNV(str)) {
+      default:
+        ss << "Unknown driver info argument: '" << str << "'";
+        break;
     }
-
     return ss.str();
   }
 

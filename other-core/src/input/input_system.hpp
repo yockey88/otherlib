@@ -5,14 +5,16 @@
 #define OTHER_CORE_INPUT_INPUT_SYSTEM_HPP
 
 #include <cstdint>
-#include <deque>
 
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_gamepad.h>
 
 #include "core/subsystem.hpp"
 #include "input/input_action.hpp"
 #include "input/input_state.hpp"
 #include "input/input_types.hpp"
+
+struct SDL_Gamepad;
 
 namespace other {
 
@@ -20,6 +22,7 @@ namespace other {
   struct gamepad_connection_event {
     int32_t pad_index = -1;
     bool connected = false;
+    uint32_t instance_id = 0;
     gamepad_type type = gamepad_type::UNKNOWN;
     std::string name{};
   };
@@ -114,7 +117,7 @@ namespace other {
 
     struct sdl_gamepad_entry {
       SDL_Gamepad* handle = nullptr;
-      SDL_JoystickID instance_id = 0;
+      uint32_t instance_id = 0;
       int32_t our_index = -1;
     };
     std::vector<sdl_gamepad_entry> sdl_gamepads;
@@ -122,14 +125,14 @@ namespace other {
     std::vector<gamepad_connection_callback> gamepad_connection_callbacks;
     std::vector<input_state_change_callback> action_edge_callbacks;
 
-    key_code translate_sdl_keycode(SDL_Keycode sdl_key) const;
-    modifier_flags translate_sdl_modifiers(SDL_Keymod sdl_mod) const;
+    key_code translate_sdl_keycode(uint32_t sdl_key) const;
+    modifier_flags translate_sdl_modifiers(uint16_t sdl_mod) const;
     mouse_button translate_sdl_mouse_button(uint8_t sdl_button) const;
     gamepad_button translate_sdl_gamepad_button(SDL_GamepadButton sdl_btn) const;
     gamepad_axis translate_sdl_gamepad_axis(SDL_GamepadAxis sdl_axis) const;
 
-    void handle_gamepad_added(SDL_JoystickID id);
-    void handle_gamepad_removed(SDL_JoystickID id);
+    void handle_gamepad_added(uint32_t id);
+    void handle_gamepad_removed(uint32_t id);
     gamepad_type detect_gamepad_type(SDL_Gamepad* pad) const;
 
     float apply_dead_zone(float raw, float dead_zone) const;
@@ -142,7 +145,6 @@ namespace other {
 OTHER_DEPENDENT_SUBSYSTEM(
   other::input_system,
   subsystem_profile::kArena,
-  subsystem_profile::kLogger
-);
+  subsystem_profile::kLogger);
 
 #endif  // OTHER_CORE_INPUT_INPUT_SYSTEM_HPP
