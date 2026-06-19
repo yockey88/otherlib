@@ -18,6 +18,7 @@ namespace other {
     struct job_node {
       ref<job> handle = nullptr;
       job::descriptor descriptor;
+      /// invalid after dispatch
       work_fn work;
 
       uint32_t waiting_on = 0;
