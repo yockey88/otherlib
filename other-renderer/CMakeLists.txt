@@ -52,8 +52,5 @@ target_link_directories(other_renderer PUBLIC
 )
 target_link_libraries(other_renderer PRIVATE imgui SDL3 glad ${ASSIMP_NAME} other_core)
 
-if (CMAKE_BUILD_TYPE STREQUAL Profile OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
-	target_include_directories(other_renderer PRIVATE ${OTHER_EXTERN_DIR}/tracy)
-endif()
 
 other_install_module(other_renderer "renderer")

@@ -49,7 +49,7 @@ target_sources(otherlib
     src/driver/subsystem_registry.cpp
     src/driver/driver.cpp
 
-    src/ocl/object_parser.cpp
+    # src/object/...
 
     src/project/project.cpp
 
@@ -87,20 +87,41 @@ target_sources(otherlib
     src/scripting/execution_graph.cpp
     src/scripting/environment_interface.cpp
 
+    src/vm/diagnostics/vm_diagnostic.cpp
+    src/vm/diagnostics/diagnostic_sink.cpp
+    src/vm/diagnostics/ocmd_trace_sink.cpp
+    src/vm/diagnostics/lexer_error_sink.cpp
+    src/vm/diagnostics/oasm_error_sink.cpp
+    src/vm/diagnostics/source_map.cpp
+    src/vm/diagnostics/diagnostic_engine.cpp
+    src/vm/command_files/token.cpp
+    src/vm/command_files/lexer.cpp
+    src/vm/command_files/code_block.cpp
+    src/vm/command_files/data_block.cpp
+    src/vm/command_files/oasm_parser.cpp
+    src/vm/command_files/opcode_builder.cpp
+    src/vm/command_files/code_generator.cpp
+    src/vm/command_files/ocmd_compiler.cpp
+    src/vm/command_files/ocmd_linker.cpp
+    src/vm/command_files/ocmd_toolchain.cpp
+    src/vm/devices/core_command_device.cpp
+    src/vm/devices/event_device.cpp
+    src/vm/devices/asset_device.cpp
+    src/vm/devices/scene_device.cpp
+    src/vm/devices/project_device.cpp
+    src/vm/vm_error.cpp
+    src/vm/device_utils.cpp
+    src/vm/code_generator_000.cpp
+    src/vm/default_symbol_resolver.cpp
+    src/vm/instruction.cpp
     src/vm/opcode.cpp
     src/vm/driver_interface.cpp
+    src/vm/command_bus.cpp
     src/vm/control_table.cpp
+    src/vm/vm_type.cpp
     src/vm/other_device.cpp
     src/vm/decompiler.cpp
     src/vm/vm.cpp
-    src/vm/command_files/token.cpp
-    src/vm/command_files/code_block.cpp
-    src/vm/command_files/data_block.cpp
-    src/vm/command_files/lexer.cpp
-    src/vm/command_files/parser.cpp
-    src/vm/command_files/assembler.cpp
-    src/vm/command_files/linker.cpp
-    src/vm/command_files/ocmd_compiler.cpp
 
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp

@@ -79,7 +79,14 @@ namespace other {
   natural_t scene_system::add_scene_to_scene_graph(const filepath& scene_path) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
 
+    if (!std::filesystem::exists(scene_path)) {
+      CORE_LOG_ERROR("Scene file does not exist: {}", scene_path.string());
+      CORE_LOG_ERROR("Can not add scene '{}' to scene graph", scene_path.filename().stem().string());
+      return 0;
+    }
+
     if (project_scene_graph->has_scene(scene_path.filename().stem().string())) {
+      CORE_LOG_DEBUG("Scene '{}' already exists in scene graph.", scene_path.filename().stem().string());
       return project_scene_graph->get_scene(scene_path.filename().stem().string())->id;
     }
 

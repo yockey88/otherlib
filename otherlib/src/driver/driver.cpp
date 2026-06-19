@@ -26,7 +26,6 @@ namespace other {
 
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
-    register_main_thread();
 
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
@@ -170,6 +169,11 @@ namespace other {
     return driver_kernel_ptr->get_core_system<asset_system>().begin_asset_load(asset_path);
   }
 
+  void driver::begin_asset_unload(natural_t asset_id) {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    driver_kernel_ptr->get_core_system<asset_system>().begin_asset_unload(asset_id);
+  }
+
   natural_t driver::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<asset_system>().add_model_source_asset(name, vertices, indices);
@@ -188,6 +192,16 @@ namespace other {
   natural_t driver::get_asset_hash(natural_t asset_id) const {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<asset_system>().get_asset_hash(asset_id);
+  }
+
+  natural_t driver::get_asset_state(natural_t asset_id) const {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().get_asset_state(asset_id);
+  }
+
+  natural_t driver::get_asset_id_from_path(const filepath& path) const {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    return driver_kernel_ptr->get_core_system<asset_system>().get_asset_id_from_path(path);
   }
 
   void driver::process_driver_event(driver_event event) {
@@ -446,7 +460,7 @@ namespace other {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "scripting_environment null in load_client!");
 
-      if (std::string envrc_path = get_config_value<std::string>("scripting.envrc-path"); !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
+      if (std::string envrc_path = get_config_value<std::string>("scripting.init-lua"); !envrc_path.empty() && std::filesystem::exists(envrc_path)) {
         /// this one has to be loaded into the host without the sandboxing of the environment
         ///  as this is supposed to be the user's customization of the environment
         auto& lua_host = env->get_lua_host();
@@ -578,17 +592,6 @@ namespace other {
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
     launch_process(working_dir, exe_name, args);
-  }
-
-  bool driver::is_table_event(const std::string_view event_name) const {
-    /// for now we hardcode this but eventually we want to be able to register these from lua or from plugins
-    static std::unordered_set<std::string_view> table_events = {
-      "project.load",
-      "project.save",
-      "project.close",
-    };
-
-    return table_events.contains(event_name);
   }
 
   void driver::handle_driver_event_with_lua_table(const std::string_view event_name, const sol::table& event_data) {

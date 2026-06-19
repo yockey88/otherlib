@@ -1,0 +1,36 @@
+/**
+ * \file vm/devices/core_command_device.hpp
+ **/
+#ifndef OTHERLIB_VM_DEVICES_CORE_COMMAND_DEVICE_HPP
+#define OTHERLIB_VM_DEVICES_CORE_COMMAND_DEVICE_HPP
+
+#include "vm/builtin_command_devices.hpp"
+#include "vm/command_device.hpp"
+
+namespace other {
+
+  class core_command_device final : public command_device {
+   public:
+    enum function : uint8_t {
+      LOG = 0x00,               // r0 = msg ptr, r1 = msg len ptr, r2 = level
+      LOG_U64 = 0x01,           // r0 = value, r1 = level
+      INIT_TIME = 0x02,         //                                   -> rF = us since epoch when the vm was initialized
+      TIME_SINCE_INIT = 0x03,   //                                   -> rF = us since vm init
+      TIME_SINCE_EPOCH = 0x04,  //                                   -> rF = us since epoch
+      RANDOM = 0x05,            //                                   -> rF = uniform u64
+      ERROR_NAME = 0x06,        // r0 = code, r1 = dst ptr, r2 = cap -> rF = len
+      NUM_FUNCTIONS,
+    };
+    ~core_command_device() override = default;
+
+    std::string_view device_name() const override { return "core"; }
+    uint8_t device_id() const override { return builtin_command_device_id::OTHER_DEVICE_CORE; }
+
+    std::span<const function_descriptor> functions() const override;
+    void dispatch(uint8_t function_id, other_command_device* device) override;
+  };
+  static_assert(is_command_device<core_command_device>, "core_command_device must satisfy is_command_device concept");
+
+}  // namespace other
+
+#endif  // OTHERLIB_VM_DEVICES_CORE_COMMAND_DEVICE_HPP

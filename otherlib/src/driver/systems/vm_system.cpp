@@ -3,22 +3,66 @@
  **/
 #include "driver/systems/vm_system.hpp"
 
+#include "driver/driver.hpp"
+#include "vm/devices/asset_device.hpp"
+#include "vm/devices/core_command_device.hpp"
+#include "vm/devices/event_device.hpp"
+#include "vm/devices/scene_device.hpp"
 #include "vm/vm.hpp"
 
 namespace other {
 
   void vm_system::initialize(driver_kernel* kernel) {
-    vm::initialize_device(&core_device);
-    vm::activate_builtin_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
     core_device.host_driver = &get_driver();
+    vm::initialize_device(&core_device);
+    vm::load_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
+
+    OTHER_ASSERT(core_device.bus != nullptr, "Core device bus is null!");
+    core_device.bus->register_device(make_scope<core_command_device>());
+    core_device.bus->register_device(make_scope<event_device>());
+    core_device.bus->register_device(make_scope<asset_device>());
+    core_device.bus->register_device(make_scope<scene_device>());
+
+    const bool vm_debug_mode_on = get_driver().get_config_value<bool>("driver.vm-debug-mode-on", false);
+    vm::set_debug_mode(vm_debug_mode_on);
+    instruction_budget = get_driver().get_config_value<uint32_t>("driver.vm-instruction-per-step-budget", kDefaultInstructionBudget);
   }
 
   void vm_system::tick(driver_kernel* kernel, double dt) {
-    driver_step_device();
+    if (!boot_loaded && get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING) {
+      if (vm::has_flag(&core_device, other_command_device::DEBUG)) {
+        CORE_LOG_INFO("VM debug mode is ON");
+        get_driver().trigger_event("open-driver-ui-window", std::string("vm-debugger"));
+      }
+
+      if (std::string boot_oasm_path = get_driver().get_config_value<std::string>("driver.boot-file"); !boot_oasm_path.empty()) {
+        CORE_LOG_INFO("Loading VM boot file: {}", boot_oasm_path);
+        vm::load_program_from_file(&core_device, boot_oasm_path);
+      }
+
+      boot_loaded = true;
+    }
+
+    if (vm::has_flag(&core_device, other_command_device::DEBUG)) {
+      return;
+    }
+
+    uint32_t executed = 0;
+    while (executed < instruction_budget && !core_device.stopped &&
+           !vm::has_flag(&core_device, other_command_device::STOPPED)) {
+      vm::step(&core_device);
+      ++executed;
+
+      if (vm::has_flag(&core_device, other_command_device::VM_ERROR)) {
+        CORE_LOG_ERROR("VM encountered an error");
+        break;
+      }
+    }
   }
 
   void vm_system::shutdown(driver_kernel* kernel) {
     core_device.stopped = true;
+
     vm::shutdown_device(&core_device);
   }
 
@@ -33,25 +77,11 @@ namespace other {
     }
 
     auto data = std::span(reinterpret_cast<const uint8_t*>(&op.opcode), sizeof(op.opcode));
-    vm::load_bytes_to_address(&core_device, core_device.program_load_cursor, data.data(), data.size());
+    vm::load_program_from_bytes(&core_device, data);
     core_device.program_load_cursor += data.size();
   }
 
   void vm_system::execute_driver_command(const std::string& command) {
-  }
-
-  void vm_system::driver_step_device() {
-    PROFILE_SECTION("vm_system::driver_step_device");
-    if (core_device.stopped) {
-      return;
-    }
-
-    core_device.current_instruction = *(uint32_t*)&core_device.memory->at(core_device.pc);
-    core_device.pc += other_command_device::kOpCodeSize;
-
-    uint8_t instr_nib = core_device.current_instruction.category_nibble();
-    core_device.control_table[instr_nib](&core_device);
-    vm::update_device_timers(&core_device);
   }
 
 }  // namespace other

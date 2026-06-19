@@ -7,6 +7,7 @@
 #include <queue>
 
 #include "driver/systems/core_system.hpp"
+#include "vm/command_bus.hpp"
 #include "vm/other_device.hpp"
 
 namespace other {
@@ -17,6 +18,7 @@ namespace other {
         : core_system<vm_system>(driver_instance, static_cast<uint32_t>(driver_system_type::VM_DRIVER_SYSTEM)) {}
 
     std::string name() const override { return "VM System"; }
+    other_command_device& get_device() { return core_device; }
 
     void initialize(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
@@ -25,10 +27,15 @@ namespace other {
     void write_id_at_address(uint16_t address, natural_t id);
     void emit_instruction(const instruction& op);
     void execute_driver_command(const std::string& command);
-    void driver_step_device();
+
+    constexpr static inline uint32_t kDefaultInstructionBudget = 2048;
 
    private:
     other_command_device core_device;
+
+    bool boot_loaded = false;
+    uint32_t instruction_budget = kDefaultInstructionBudget;
+
     std::queue<instruction> emitted_instructions;
   };
 

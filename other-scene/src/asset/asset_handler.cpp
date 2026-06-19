@@ -3,6 +3,7 @@
  **/
 #include "asset/asset_handler.hpp"
 
+#include <filesystem>
 #include <ranges>
 
 #include <asio/asio.hpp>
@@ -288,8 +289,7 @@ namespace other {
     pl_itr->pipeline->start_unload(
       executor, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this)
-    );
+      std::bind_front(&asset_handler::notify_asset_load_failed, this));
   }
 
   void asset_handler::handle_file_event(const file_event& event) {
@@ -330,8 +330,7 @@ namespace other {
     pl_itr->pipeline->start_unload(
       executor, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_unload_complete, this),
-      std::bind_front(&asset_handler::notify_asset_unload_failed, this)
-    );
+      std::bind_front(&asset_handler::notify_asset_unload_failed, this));
   }
 
   asset* asset_handler::get_asset(natural_t asset_id) {
@@ -370,6 +369,10 @@ namespace other {
     }
 
     return 0;
+  }
+
+  natural_t asset_handler::get_asset_id_from_path(const filepath& path) const {
+    return get_asset_id_by_path_hash(FNV(std::filesystem::absolute(path).string()));
   }
 
   natural_t asset_handler::get_asset_id_by_path_hash(natural_t path_hash) const {
@@ -421,8 +424,7 @@ namespace other {
     pipeline_it->pipeline->start_load(
       executor, &pipeline_it->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this)
-    );
+      std::bind_front(&asset_handler::notify_asset_load_failed, this));
 
     if (std::ranges::find(all_assets, loading_asset->id) == all_assets.end()) {
       all_assets.push_back(loading_asset->id);
@@ -459,8 +461,7 @@ namespace other {
     pl_itr->pipeline->start_unload(
       executor, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this)
-    );
+      std::bind_front(&asset_handler::notify_asset_load_failed, this));
     return rit;
   }
 

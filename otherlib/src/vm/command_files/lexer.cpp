@@ -4,21 +4,29 @@
 #include "vm/command_files/lexer.hpp"
 
 #include <algorithm>
-#include <ranges>
 
 #include "core/logger.hpp"
 
 #include "vm/command_files/token.hpp"
+#include "vm/diagnostics/diagnostic_engine.hpp"
+#include "vm/diagnostics/lexer_error_sink.hpp"
+#include "vm/diagnostics/ocmd_errors.hpp"
 
 namespace other {
-  namespace {
 
-    struct lex_error : public std::runtime_error {
-      lex_error(const std::string& msg)
-          : std::runtime_error(msg) {}
-    };
-
-  }  // namespace
+#define TRACE_ARGS(...) __VA_OPT__(, ##__VA_ARGS__)
+#define EMIT_TRACE(msg, ...)                                    \
+  {                                                             \
+    source_location loc = { current_line, current_column };     \
+    diagnostic d = {                                            \
+      .severity = VM_DIAGNOSTIC_TRACE,                          \
+      .error_code = LEX_TRACE,                                  \
+      .phase = VM_PHASE_LEXER,                                  \
+      .span = { current_source_span_start, loc },               \
+      .final_message = std::format(msg TRACE_ARGS(__VA_ARGS__)) \
+    };                                                          \
+    diagnostics->emit(d);                                       \
+  }
 
   static inline bool is_whitespace(char c) {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -33,7 +41,7 @@ namespace other {
   }
 
   static inline bool is_alpha(char c) {
-    return std::isalpha(static_cast<unsigned char>(c)) || c == '_';
+    return std::isalpha(static_cast<unsigned char>(c)) || c == '_' || c == '-';
   }
 
   static inline bool is_alphanumeric(char c) {
@@ -41,11 +49,21 @@ namespace other {
   }
 
   static inline bool is_ocmd_keyword(const std::string_view str) {
-    return std::ranges::find(kOcmdKeywords, str) != kOcmdKeywords.end();
+    return std::ranges::find(kKeywordTokens, str, &keyword_token::text) != kKeywordTokens.end();
   }
 
-  std::vector<token> ocmd_lexer::tokenize() {
+  std::vector<token> ocmd_lexer::tokenize(diagnostic_engine* diag) {
+    OTHER_ASSERT(diag != nullptr, "Diagnostic engine is null in lexer!");
+    diagnostics = diag;
+
+    lexer_error_sink error_sink{};
+    natural_t id = diagnostics->register_sink("lexer-error-sink", &error_sink);
+
+    EMIT_TRACE("Tokenizing source:\n{}", source);
+
+    tokens.emplace_back(TOKEN_TYPE_SOURCE_START, "", source_span{ { 1, 1 }, { 1, 1 } });
     while (!finished()) {
+      current_source_span_start = { current_line, current_column };
       try {
         char c = current();
         if (c == '\0') {
@@ -61,20 +79,37 @@ namespace other {
         } else if (is_operator_or_punctuation(c)) {
           handle_operator();
         } else {
-          throw lex_error("Unexpected character encountered during lexing");
+          source_location loc = { current_line, current_column };
+          throw ocmd_toolchain_error(LEX_INVALID_CHAR, { loc }, "Unexpected character encountered during lexing");
         }
-      } catch (const lex_error& e) {
-        CORE_LOG_ERROR("Lexing error at line {}, column {}: {}", current_line, current_column, e.what());
+      } catch (const ocmd_toolchain_error& e) {
+        diagnostic d = kDiagnostics[e.error];
+        d.span = e.loc;
+        d.final_message = e.msg;
+        diagnostics->emit(d);
         return {};
       } catch (const std::exception& e) {
-        CORE_LOG_ERROR("Unexpected error during lexing at line {}, column {}: {}", current_line, current_column, e.what());
+        diagnostic d = {
+          .severity = VM_DIAGNOSTIC_ERROR,
+          .error_code = VM_UNKNOWN_ERROR,
+          .final_message = e.what()
+        };
+        diagnostics->emit(d);
         return {};
       } catch (...) {
-        CORE_LOG_ERROR("Unknown error during lexing at line {}, column {}", current_line, current_column);
+        diagnostic d = {
+          .severity = VM_DIAGNOSTIC_ERROR,
+          .error_code = VM_UNKNOWN_ERROR,
+          .final_message = "Unknown error during lexing"
+        };
+        diagnostics->emit(d);
         return {};
       }
     }
 
+    tokens.emplace_back(TOKEN_TYPE_EOF, "", source_span{ current_source_span_start, { current_line, current_column } });
+
+    diagnostics->remove_sink(id);
     return tokens;
   }
 
@@ -89,21 +124,20 @@ namespace other {
   }
 
   void ocmd_lexer::handle_numeric() {
-    while (is_numeric(current())) {
+    do {
       advance();
-      if (finished()) {
-        break;
-      }
-    }
+    } while (!finished() && is_numeric(current()));
 
     if (check('.')) {
       handle_floating_point();
-    } else if (check('e') || check('E')) {
-      handle_scientific_notation();
     } else {
       if (check('x') || check('X')) {
+        advance();  // 'x' or 'X'
+        handle_hexadecimal();
+      } else if (std::isxdigit(current())) {
         handle_hexadecimal();
       } else {
+        EMIT_TRACE("Handling integer literal: {}", current_token);
         add_token(TOKEN_TYPE_INTEGER_LITERAL);
       }
     }
@@ -118,18 +152,22 @@ namespace other {
     }
 
     if (check('.')) {
-      throw lex_error("Multiple decimal points in floating-point literal");
+      source_location loc = { current_line, current_column };
+      throw ocmd_toolchain_error(LEX_MULTIPLE_DECIMAL, { current_source_span_start, loc }, "Multiple decimal points in floating-point literal");
     }
 
     if (check('e') || check('E')) {
+      EMIT_TRACE("Handling scientific literal: {}", current_token);
       handle_scientific_notation();
       return;
     }
 
     if (check('f')) {
+      EMIT_TRACE("Handling floating-point literal: {}", current_token);
       consume();
     }
 
+    EMIT_TRACE("Handling floating-point literal: {}", current_token);
     add_token(TOKEN_TYPE_FLOATING_POINT_LITERAL);
   }
 
@@ -142,14 +180,18 @@ namespace other {
     try {
       lead_digit = std::stod(current_token);
     } catch (std::out_of_range& e) {
-      throw lex_error("Leading digit in scientific notation out of range");
+      source_location loc = { current_line, current_column };
+      throw ocmd_toolchain_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Leading digit in scientific notation out of range");
     } catch (std::invalid_argument& e) {
-      throw lex_error("Leading digit in scientific notation is not a number");
+      source_location loc = { current_line, current_column };
+      throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Leading digit in scientific notation is not a number");
     }
 
+    EMIT_TRACE("Handling leading digit in scientific notation");
     discard_current_token();
 
     if (check('-')) {
+      EMIT_TRACE("Handling negative exponent in scientific notation");
       consume();
       small = true;
     }
@@ -164,13 +206,17 @@ namespace other {
     try {
       val = std::stoi(current_token);
     } catch (std::out_of_range& e) {
-      throw lex_error("Scientific notation exponent out of range");
+      source_location loc = { current_line, current_column };
+      throw ocmd_toolchain_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Scientific notation exponent out of range");
     } catch (std::invalid_argument& e) {
-      throw lex_error("Scientific notation exponent is not a number");
+      source_location loc = { current_line, current_column };
+      throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Scientific notation exponent is not a number");
     }
 
     std::string small_str = "0.";
     if (small) {
+      EMIT_TRACE("Handling small scientific notation");
+
       auto pos = std::to_string(lead_digit).find('.');
       std::string lead_digit_str = pos == std::string::npos ?
         std::to_string(lead_digit) :
@@ -192,42 +238,48 @@ namespace other {
     current_token = result;
 
     if (std::stod(current_token) > std::numeric_limits<float>::max()) {
-      throw lex_error("Floating-point literal out of range");
+      source_location loc = { current_line, current_column };
+      throw ocmd_toolchain_error(LEX_NUMBER_OUT_OF_RANGE, { current_source_span_start, loc }, "Floating-point literal out of range");
     }
 
+    EMIT_TRACE("Handling floating-point literal");
     add_token(TOKEN_TYPE_FLOATING_POINT_LITERAL);
   }
 
   void ocmd_lexer::handle_hexadecimal() {
-    advance();  // Consume 'x' or 'X'
-
     if (!std::isxdigit(static_cast<unsigned char>(current()))) {
-      throw lex_error("Invalid hexadecimal literal: expected hexadecimal digits after '0x'");
+      source_location loc = { current_line, current_column };
+      throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Invalid hexadecimal literal: expected hexadecimal digits after '0x'");
     }
 
     while (std::isxdigit(static_cast<unsigned char>(current()))) {
       advance();
     }
 
+    EMIT_TRACE("Handling hexadecimal literal");
     add_token(TOKEN_TYPE_HEX_LITERAL);
   }
 
   void ocmd_lexer::handle_alpha() {
-    while (is_alphanumeric(current()) || current() == '_') {
+    while (is_alphanumeric(current())) {
       advance();
     }
 
     if (is_ocmd_keyword(current_token)) {
+      EMIT_TRACE("Handling keyword: {}", current_token);
       add_token(get_keyword_type(current_token));
     } else if (std::ranges::all_of(current_token, [](char c) { return std::isxdigit(static_cast<unsigned char>(c)); })) {
+      EMIT_TRACE("Handling hexadecimal literal: {}", current_token);
       add_token(TOKEN_TYPE_HEX_LITERAL);
     } else {
+      EMIT_TRACE("Handling identifier: {}", current_token);
       add_token(TOKEN_TYPE_IDENTIFIER);
     }
   }
 
   void ocmd_lexer::handle_operator() {
     char c = current();
+    EMIT_TRACE("Handling operator: {}", c);
 
     advance();
 
@@ -256,85 +308,35 @@ namespace other {
         }
       } break;
 
-      // case '+':
-      //   if (check('=')) {
-      //     advance();
-      //     add_token(PLUS_EQUAL);
-      //   } else {
-      //     add_token(PLUS);
-      //   }
-      //   break;
-      // case '-':
-      //   add_token(MINUS);
-      //   if (is_numeric(peek())) {
-      //     flags.sign = true;
-      //   }
-      //   break;
-      // case '*':
-      //   add_token(STAR);
-      //   break;
-      // case '=':
-      //   if (check('=')) {
-      //     advance();
-      //     add_token(EQUAL_EQUAL);
-      //   } else {
-      //     add_token(EQUAL_OP);
-      //   }
-      //   break;
-      // case '<':
-      //   if (check('=')) {
-      //     advance();
-      //     add_token(LESS_EQUAL_OP);
-      //   } else {
-      //     add_token(LESS_OP);
-      //   }
-      //   break;
-      // case '>':
-      //   if (check('=')) {
-      //     advance();
-      //     add_token(GREATER_EQUAL_OP);
-      //   } else {
-      //     add_token(GREATER_OP);
-      //   }
-      //   break;
-      // case '!':
-      //   if (check('=')) {
-      //     advance();
-      //     add_token(BANG_EQUAL);
-      //   } else {
-      //     add_token(BANG);
-      //   }
-      //   break;
-      // case '&':
-      //   if (Check('&')) {
-      //     Advance();
-      //     AddToken(LOGICAL_AND);
-      //   } else {
-      //     throw Error(ShaderError::SYNTAX_ERROR, "Unknown operator : '&'");
-      //   }
-      //   break;
-      // case '|':
-      //   if (Check('|')) {
-      //     Advance();
-      //     AddToken(LOGICAL_OR);
-      //   } else {
-      //     throw Error(ShaderError::SYNTAX_ERROR, "Unknown operator : '|'");
-      //   }
-      //   break;
-      default:
-        throw lex_error("Unknown operator or punctuation character encountered during lexing");
+        // case '+':
+        // case '-':
+        // case '*':
+        // case '=':
+        // case '<':
+        // case '>':
+        // case '!':
+        // case '&':
+        // case '|':
+
+      default: {
+        source_location loc = { current_line, current_column };
+        throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, std::format("Unknown operator or punctuation character encountered during lexing : {}", current()));
+      }
     }
   }
 
   void ocmd_lexer::handle_string() {
+    EMIT_TRACE("Handling string literal");
     char qtype = current_token.back();
     current_token.pop_back();  // Remove the quote
 
     while (!check(qtype)) {
       if (check('\n')) {
-        throw lex_error("Unterminated string literal at end of line");
+        source_location loc = { current_line, current_column };
+        throw ocmd_toolchain_error(LEX_UNTERMINATED_STRING, { current_source_span_start, loc }, "Unterminated string literal at end of line");
       } else if (finished()) {
-        throw lex_error("Unterminated string literal at end of file");
+        source_location loc = { current_line, current_column };
+        throw ocmd_toolchain_error(LEX_UNTERMINATED_STRING, { current_source_span_start, loc }, "Unterminated string literal at end of file");
       }
       advance();
     }
@@ -346,6 +348,7 @@ namespace other {
 
   void ocmd_lexer::handle_comment() {
     if (check(';')) {
+      EMIT_TRACE("Handling block comment");
       consume();
 
       bool found_close = check(';') && check_next('/');
@@ -357,12 +360,14 @@ namespace other {
       }
 
       if (!found_close) {
-        throw lex_error("Unterminated block comment");
+        source_location loc = { current_line, current_column };
+        throw ocmd_toolchain_error(LEX_UNTERMINATED_COMMENT, { current_source_span_start, loc }, "Unterminated block comment");
       }
 
       consume();
       consume();
     } else {
+      EMIT_TRACE("Handling line comment");
       while (!check('\n') && !finished()) {
         consume();
       }
@@ -372,7 +377,8 @@ namespace other {
   }
 
   void ocmd_lexer::add_token(token_type type) {
-    tokens.emplace_back(type, current_token, current_line, current_column);
+    source_location loc = { current_line, current_column };
+    tokens.emplace_back(type, current_token, source_span{ current_source_span_start, loc });
     discard_current_token();
   }
 
@@ -426,87 +432,16 @@ namespace other {
   }
 
   token_type ocmd_lexer::get_keyword_type(const std::string_view& source_str) const {
-    auto str = source_str | std::views::transform([](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); }) | std::ranges::to<std::string>();
-
-    if (str == "byte") return TOKEN_TYPE_KW_I8_TYPE;
-    if (str == "ubyte") return TOKEN_TYPE_KW_U8_TYPE;
-    if (str == "short" || str == "int16") return TOKEN_TYPE_KW_I16_TYPE;
-    if (str == "ushort" || str == "uint16") return TOKEN_TYPE_KW_U16_TYPE;
-    if (str == "int" || str == "int32") return TOKEN_TYPE_KW_I32_TYPE;
-    if (str == "uint" || str == "uint32") return TOKEN_TYPE_KW_U32_TYPE;
-    if (str == "long" || str == "int64") return TOKEN_TYPE_KW_I64_TYPE;
-    if (str == "ulong" || str == "uint64") return TOKEN_TYPE_KW_U64_TYPE;
-    if (str == "float" || str == "float32") return TOKEN_TYPE_KW_F32_TYPE;
-    if (str == "double" || str == "float64") return TOKEN_TYPE_KW_F64_TYPE;
-    if (str == "string") return TOKEN_TYPE_KW_STRING_TYPE;
-    if (str == "blob") return TOKEN_TYPE_KW_BLOB_TYPE;
-    if (str == "user_type") return TOKEN_TYPE_KW_USER_DEFINED_TYPE;
-
-    if (str == "stopdev") return TOKEN_TYPE_KW_STOPDEV;
-    if (str == "dump") return TOKEN_TYPE_KW_DUMP;
-    if (str == "dumpx") return TOKEN_TYPE_KW_DUMPX;
-    if (str == "write") return TOKEN_TYPE_KW_WRITE;
-    if (str == "load") return TOKEN_TYPE_KW_LOAD;
-    if (str == "set") return TOKEN_TYPE_KW_SET;
-    if (str == "iwrite") return TOKEN_TYPE_KW_IWRITE;
-    if (str == "cmp") return TOKEN_TYPE_KW_CMP;
-    if (str == "cmpgt") return TOKEN_TYPE_KW_CMPGT;
-    if (str == "cmplt") return TOKEN_TYPE_KW_CMPLT;
-    if (str == "and") return TOKEN_TYPE_KW_AND;
-    if (str == "or") return TOKEN_TYPE_KW_OR;
-    if (str == "xor") return TOKEN_TYPE_KW_XOR;
-    if (str == "lshift") return TOKEN_TYPE_KW_LSHIFT;
-    if (str == "rshift") return TOKEN_TYPE_KW_RSHIFT;
-    if (str == "goto") return TOKEN_TYPE_KW_GOTO;
-    if (str == "je") return TOKEN_TYPE_KW_JE;
-    if (str == "jne") return TOKEN_TYPE_KW_JNE;
-    if (str == "call") return TOKEN_TYPE_KW_CALL;
-    if (str == "ret") return TOKEN_TYPE_KW_RET;
-    if (str == "retx") return TOKEN_TYPE_KW_RETX;
-    if (str == "add") return TOKEN_TYPE_KW_ADD;
-    if (str == "sub") return TOKEN_TYPE_KW_SUB;
-    if (str == "mul") return TOKEN_TYPE_KW_MUL;
-    if (str == "div") return TOKEN_TYPE_KW_DIV;
-    if (str == "mod") return TOKEN_TYPE_KW_MOD;
-    if (str == "loadscn") return TOKEN_TYPE_KW_LOADSCN;
-
-    if (str == "begin") return TOKEN_TYPE_KW_BEGIN;
-    if (str == "end") return TOKEN_TYPE_KW_END;
-
-    if (str == "object") return TOKEN_TYPE_KW_OBJECT;
-
-    if (str == "asset") return TOKEN_TYPE_KW_ASSET;
-    if (str == "scene") return TOKEN_TYPE_KW_SCENE;
-
-    if (str == "model_source") return TOKEN_TYPE_KW_MODEL_SOURCE;
-    if (str == "model") return TOKEN_TYPE_KW_MODEL;
-    if (str == "animation") return TOKEN_TYPE_KW_ANIMATION;
-
-    if (str == "script_source") return TOKEN_TYPE_KW_SCRIPT_SOURCE;
-    if (str == "script") return TOKEN_TYPE_KW_SCRIPT;
-
-    if (str == "audio") return TOKEN_TYPE_KW_AUDIO;
-
-    if (str == "scene") return TOKEN_TYPE_KW_SCENE;
-    if (str == "scene_object") return TOKEN_TYPE_KW_SCENE_OBJECT;
-
-    if (str == "input_map") return TOKEN_TYPE_KW_INPUT_MAP;
-    if (str == "pipeline") return TOKEN_TYPE_KW_PIPELINE;
-
-    if (str == "pass") return TOKEN_TYPE_KW_PASS;
-    if (str == "shader") return TOKEN_TYPE_KW_SHADER;
-    if (str == "texture") return TOKEN_TYPE_KW_TEXTURE;
-    if (str == "buffer") return TOKEN_TYPE_KW_BUFFER;
-    if (str == "tag") return TOKEN_TYPE_KW_TAG;
-
-    if (str == "r0" || str == "r1" || str == "r2" || str == "r3" || str == "r4" ||
-        str == "r5" || str == "r6" || str == "r7" || str == "r8" || str == "r9" ||
-        str == "ra" || str == "rb" || str == "rc" || str == "rd" || str == "re" ||
-        str == "rf" || str == "rflag") {
-      return TOKEN_TYPE_REGISTER;
+    auto it = std::ranges::find(kKeywordTokens, source_str, &keyword_token::text);
+    if (it != kKeywordTokens.end()) {
+      return it->type;
+    } else {
+      source_location loc = { current_line, current_column };
+      throw ocmd_toolchain_error(LEX_INVALID_CHAR, { current_source_span_start, loc }, "Keyword not found for string: " + std::string(source_str));
     }
-
-    return TOKEN_TYPE_IDENTIFIER;
   }
+
+#undef EMIT_TRACE
+#undef TRACE_ARGS
 
 }  // namespace other

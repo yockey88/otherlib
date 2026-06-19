@@ -1,0 +1,60 @@
+/entry: main
+
+$main:
+  call syscall_demo
+  call loop_demo
+end
+
+$loop_demo:
+  set r6, 1       ; iteration in scratch reg
+  set r7, 0x01234 ; initial address
+  set r1, 5       ; initial value
+
+  set r8, 6 ; for i = 1; i < 6; ++i { ... }
+@startloop:
+  cmplt r6, r8, rflag ; R[flag] = r6 < r8
+  je loopend
+    mul r1, r6
+    write r1, [r7]
+    
+    add r6, 1  ; increment iteration
+    add r7, 1  ; increment address
+  goto startloop
+    
+@loopend:
+  set r1, 5
+  dump r1, 0x1234
+
+  clear
+end
+
+$syscall_demo:
+  syscall core.time_since_init
+  call print_return_register
+
+  syscall core.epoch_time
+  call print_return_register
+
+  syscall core.random
+  call print_return_register
+  
+  set r0, torus_path.path      ; address of path
+  set r1, [torus_path.length]  ; value at torus_path.length
+  syscall asset.load_asset
+end
+
+$print_return_register:
+  mov rf, r0   ; move return register to the first arg
+  set r1, 3    ; info level
+  set rflag, 1 ; dont print hex
+  syscall core.log_u64
+  ret
+end
+
+; call main
+
+#torus_path {
+  ; address to write load text to in memory
+  .length: int32 = 35
+  .path: string = "resources/models/spinning-torus.fbx"
+}

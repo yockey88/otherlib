@@ -5,6 +5,7 @@
 #define OTHERLIB_UI_DRIVER_UI_HPP
 
 #include <cstdint>
+#include <string>
 
 #include "renderer/ui/ui_window.hpp"
 
@@ -57,6 +58,7 @@ namespace other {
     void shutdown();
 
     std::vector<std::string> get_open_window_names() const;
+    std::vector<std::string> get_available_window_names() const;
 
     void open_window(const std::string_view window_name);
     void close_window(const std::string_view window_name);
