@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "vm/command_files/ocmd_ir.hpp"
+#include "vm/command_files/parsing_utils.hpp"
 #include "vm/command_files/token.hpp"
 #include "vm/diagnostics/vm_diagnostic.hpp"
 
@@ -29,44 +30,6 @@ namespace other {
     ocmd_ir parse(diagnostic_engine* diag);
 
    private:
-    struct code_section_ir {
-      struct instruction_ir {
-        constexpr static size_t kMaxArguments = 3;
-        uint32_t instruction_index = 0;
-        canonical_opcode opcode = canonical_opcode::INVALID_OP;
-        token arguments[kMaxArguments] = {
-          token{ TOKEN_TYPE_INVALID, "", source_span{ { 0, 0 }, { 0, 0 } } },
-          token{ TOKEN_TYPE_INVALID, "", source_span{ { 0, 0 }, { 0, 0 } } },
-          token{ TOKEN_TYPE_INVALID, "", source_span{ { 0, 0 }, { 0, 0 } } }
-        };
-      };
-      struct jump_label_ir {
-        std::string name;
-        uint32_t instruction_index = 0;
-        uint16_t section_address = 0;
-      };
-
-      std::string name;
-      std::vector<instruction_ir> instructions = {};
-      std::vector<jump_label_ir> jump_labels = {};
-    };
-
-    struct data_section_ir {
-      struct data_object_ir {
-        std::string name;
-        std::string type_label;
-        token value_token;
-        data_type deduced_type = OCMD_DATA_TYPE_INVALID;
-      };
-
-      std::string name;
-      std::vector<data_object_ir> objects = {};
-    };
-
-    struct section_ir {
-      std::vector<code_section_ir> sections = {};
-      std::vector<data_section_ir> data_sections = {};
-    };
     ocmd_ir ir_result;
     diagnostic_engine* diagnostics = nullptr;
 
