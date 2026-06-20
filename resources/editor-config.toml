@@ -24,6 +24,7 @@ assets = [
 [rendering]
 ui-layout-ini = "resources/ui/editor-layout.ini"
 imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
+pipeline = "resources/editor-assets/default-pipeline.toml"
 
 [ui]
 # only read when subsystem module is loaded

@@ -10,6 +10,7 @@
 #include "renderer/ui/ui_node.hpp"
 
 #include "driver/driver.hpp"
+#include "ui/asset-browser/asset_browser_widgets.hpp"  // For kDragDropPayloadType
 
 namespace other {
   namespace ui {
@@ -30,6 +31,17 @@ namespace other {
           events().trigger_event("viewport.resize", glm::vec2(size.x, size.y));
         }
         previous_size = size;
+
+        const bool begin_scene_asset_drop = ImGui::BeginDragDropTarget();
+        if (begin_scene_asset_drop) {
+          if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(asset_browser_w::kDragDropPayloadType)) {
+            // Handle the dropped scene asset here
+            using data_t = asset_browser_w::asset_drag_drop_payload;
+            data_t payload_data = *reinterpret_cast<const data_t*>(payload->Data);
+            CORE_LOG_WARN("Dropped asset with ID: {} and type: {}", payload_data.handler_asset_id, payload_data.asset_type);
+          }
+          ImGui::EndDragDropTarget();
+        }
 
         auto pipeline_outputs = renderer_ptr->get_pipeline_list();
         if (pipeline_outputs.empty()) {

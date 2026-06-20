@@ -88,7 +88,10 @@ namespace other {
     inline bool is_unloading() const { return current_state == UNLOADING; }
 
     inline bool script_project_mounted() const { return !project_scripts.csproject_path.empty() && !project_scripts.cs_script_source.empty(); }
-    inline bool script_project_unmounted() const { return project_scripts.csproject_path.empty() || project_scripts.cs_script_source.empty(); }
+    inline bool script_project_unmounted() const {
+      return project_scripts.csproject_path.empty() && project_scripts.cs_script_source.empty() &&
+        project_scripts.cs_scripts.empty() && project_scripts.lua_scripts.empty();
+    }
     inline bool scene_graph_loaded() const { return all_scenes_loaded; }
     inline bool scene_graph_unloaded() const { return !all_scenes_loaded; }
 

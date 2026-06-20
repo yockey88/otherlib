@@ -6,6 +6,8 @@
 #include "driver/driver.hpp"
 #include "scripting/scene_interface.hpp"
 
+#include "types.hpp"
+
 namespace other {
 
   void scene_system::initialize(driver_kernel* kernel) {
@@ -250,8 +252,26 @@ namespace other {
 
     get_driver().get_event_system()->cancel_event("scene-update");
 
-    /// \todo decide whether to actually unload or to leaved cached, for now just stop it and
-    ///        and leave in the graph, but not active
+    lua_sandbox& sandbox = active_scene->get_sandbox();
+    opt<sol::table> native_table = sandbox["__other_native"];
+    if (native_table.has_value() && native_table->valid()) {
+      sol::table scene_table = sandbox["__other_native"]["__native_scene"];
+      sol::table scene_interface_table = sandbox["__other_native"]["__scene_interface"];
+
+      scene_table["__native_pointer"] = sol::nil;
+      scene_table.set_function(
+        "create_scene_object",
+        sol::overload(
+          [](const std::string& name) -> natural_t {
+            OTHER_ASSERT(false, "Active scene is null. Should not be accessing scene through lua script with no scene active.");
+          },
+          [](const std::string& name, const glm::vec3& world_position) -> natural_t {
+            OTHER_ASSERT(false, "Active scene is null. Should not be accessing scene through lua script with no scene active.");
+          }));
+    } else {
+      CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
+    }
+
     active_scene = nullptr;
   }
 

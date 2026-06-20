@@ -133,14 +133,15 @@ namespace other {
 
     system->unload_plugins();
 
+    // we should do this through the scripting system and not here
     if (project_assembly != nullptr) {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
       env->unload_dotnet_module(project_assembly);
     }
-    project_assembly = nullptr;
 
-    set_state(EMPTY);
+    project_assembly = nullptr;
+    set_state(UNLOADING);
   }
 
   void project::set_state(state new_state) {
@@ -165,6 +166,7 @@ namespace other {
     OTHER_ASSERT(std::filesystem::exists(script_path), "Script asset file '{}' does not exist.", script_path.string());
     OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add built script.");
 
+    CORE_LOG_TRACE("[PROJECT] built script extension: {}", script_path.extension().string());
     if (script_path.extension() == ".dll") {
       attach_project_dll(script_path);
     } else {
@@ -176,6 +178,7 @@ namespace other {
     OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
     OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach C# script file.");
 
+    CORE_LOG_TRACE("[PROJECT] C# script file extension: {}", cs_file.extension().string());
     if (cs_file.extension() == ".cs") {
       project_scripts.cs_scripts.push_back(cs_file);
     } else {
@@ -185,6 +188,7 @@ namespace other {
 
   void project::add_script_file(const filepath& script_file_path) {
     OTHER_ASSERT(std::filesystem::exists(script_file_path), "Script file '{}' does not exist.", script_file_path.string());
+    CORE_LOG_TRACE("[PROJECT] Script file extension: {}", script_file_path.extension().string());
     if (script_file_path.extension() == ".cs") {
       project_scripts.cs_scripts.push_back(script_file_path);
     } else if (script_file_path.extension() == ".lua") {
@@ -196,6 +200,7 @@ namespace other {
 
   void project::remove_built_script(const filepath& script_asset_path) {
     OTHER_ASSERT(std::filesystem::exists(script_asset_path), "Script asset '{}' does not exist.", script_asset_path.string());
+    CORE_LOG_TRACE("[PROJECT] Built script extension: {}", script_asset_path.extension().string());
     if (script_asset_path.extension() == ".cs") {
       auto it = std::ranges::find(project_scripts.cs_scripts, script_asset_path);
       if (it != project_scripts.cs_scripts.end()) {

@@ -74,30 +74,4 @@ namespace other {
     env->shutdown_script_environment();
   }
 
-  TEST_F(lua_script_tests, lua_sandbox_test) {
-    sol::state lua;
-    lua.open_libraries(sol::lib::base);
-
-    int32_t my_value = 42;
-    auto native = lua.create_named_table("native_table");
-    native["my_value"] = my_value;
-
-    sol::environment sandbox_1(lua);
-    {
-      auto sandbox_table_1 = sandbox_1["native_table"];
-      CORE_LOG_DEBUG("sandbox_table_1 my_value: {}", sandbox_table_1["my_value"].get<int32_t>());
-      sandbox_table_1["my_value"] = 100;
-    }
-
-    sol::environment sandbox_2(lua);
-    {
-      auto sandbox_table_2 = sandbox_2["native_table"];
-      CORE_LOG_DEBUG("sandbox_table_2 my_value: {}", sandbox_table_2["my_value"].get<int32_t>());
-      sandbox_table_2["my_value"] = 200;
-    }
-
-    CORE_LOG_DEBUG("sandbox_table_1 my_value after modification: {}", sandbox_1["native_table"]["my_value"].get<int32_t>());
-    CORE_LOG_DEBUG("sandbox_table_2 my_value after modification: {}", sandbox_2["native_table"]["my_value"].get<int32_t>());
-  }
-
 }  // namespace other

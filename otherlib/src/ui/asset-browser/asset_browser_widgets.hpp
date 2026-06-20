@@ -16,7 +16,7 @@ namespace other {
   namespace ui {
     namespace asset_browser_w {
 
-      constexpr const char* kDragDropPayloadType = "OTHER_ASSET_DND";
+      constexpr const char* kDragDropPayloadType = "OTHER_ASSET_BROWSER_ASSET_DRAG_PAYLOAD";
 
       struct asset_drag_drop_payload {
         natural_t handler_asset_id = 0;

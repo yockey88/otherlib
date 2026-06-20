@@ -216,7 +216,8 @@ namespace other {
   }
 
   void driver::request_shutdown() {
-    if (current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN || current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
+    if (current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN ||
+        current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
       return;
     }
     CORE_LOG_INFO("Beginning shutdown sequence");
@@ -224,7 +225,6 @@ namespace other {
     if (driver_kernel_ptr->has_core_system<scene_system>()) {
       auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
       scenes.unload_active_scene();
-      scenes.unload_project_scene_graph();
     }
 
     if (driver_kernel_ptr->has_core_system<project_system>()) {

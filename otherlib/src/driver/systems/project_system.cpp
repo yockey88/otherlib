@@ -84,11 +84,15 @@ namespace other {
         get_driver().trigger_event("project.loaded");
       }
     }
+
+    // if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN &&
+    //     loaded_project != nullptr && loaded_project->is_unloading()) {
+    //   loaded_project->set_state(project::state::UNLOADING);
+    // }
   }
 
   void project_system::shutdown(driver_kernel* kernel) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system shutdown.");
-    loaded_project->unload();
     loaded_project = nullptr;
   }
 
@@ -148,6 +152,20 @@ namespace other {
     }
 
     loaded_project->unload();
+    // have to do this here because need access to scene system
+    if (kernel->has_core_system<scene_system>()) {
+      OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not available in the kernel.");
+      auto& assets = kernel->get_core_system<asset_system>();
+      auto& scenes = kernel->get_core_system<scene_system>();
+      auto& project_scene_graph = scenes.get_scene_graph();
+      for (auto& data : loaded_project->get_scenes()) {
+        natural_t id = data.scene_id;
+        scene* s = project_scene_graph.find_scene(id);
+        OTHER_ASSERT(s != nullptr, "Scene with ID '{}' not found in project scene graph.", id);
+
+        assets.begin_asset_unload(s->asset_id);
+      }
+    }
   }
 
   bool project_system::is_project_loaded() const {
