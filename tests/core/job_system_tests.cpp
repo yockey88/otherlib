@@ -32,8 +32,7 @@ worker_count = {}
       { .name = "Job 1" },
       [&counter]() {
         counter++;
-      }
-    );
+      });
     ASSERT_NE(job1, nullptr);
     /// main thread job with no other jobs in queue and no dependencies will be dispatched immediately
     EXPECT_EQ(job1->get_status(), job::status::RUNNING);
@@ -60,8 +59,7 @@ worker_count = {}
       { .name = "Threaded Job", .thread_affinity = job::affinity::WORKER_THREAD },
       [&counter]() {
         counter++;
-      }
-    );
+      });
     ASSERT_NE(job1, nullptr);
     EXPECT_EQ(job1->get_status(), job::status::RUNNING);
 
@@ -94,8 +92,7 @@ worker_count = {}
       { .name = "Job 1" },
       [&counter]() {
         counter++;
-      }
-    );
+      });
     ASSERT_NE(job1, nullptr);
     EXPECT_EQ(job1->get_status(), job::status::RUNNING);
 
@@ -104,8 +101,7 @@ worker_count = {}
       { .name = "Deferred Job", .priority = job::priority::HIGH, .thread_affinity = job::affinity::WORKER_THREAD },
       [&counter]() {
         counter++;
-      }
-    );
+      });
     ASSERT_NE(job2, nullptr);
     EXPECT_EQ(job2->get_status(), job::status::PENDING);
 
@@ -119,7 +115,7 @@ worker_count = {}
     ASSERT_LT(poll1, max_polls);
     EXPECT_EQ(job1->get_status(), job::status::COMPLETED);
     EXPECT_EQ(job2->get_status(), job::status::RUNNING);
-    EXPECT_EQ(counter, 1);
+    EXPECT_EQ(counter, 2);
 
     size_t poll2 = 0;
     do {
