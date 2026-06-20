@@ -48,7 +48,10 @@ namespace other {
   }
 
   void scene_graph::remove_scene(natural_t id) {
-    g.remove_node(id);
+    auto itr = std::ranges::find(id_pairs, id, &scene_graph::id_pair::scene_hash);
+    OTHER_ASSERT(itr != id_pairs.end(), "Scene with ID {} not found in ID pairs.", id);
+    g.remove_node(itr->node_id);
+    id_pairs.erase(itr);
   }
 
   natural_t scene_graph::get_id_of_scene(const std::string_view name) const {

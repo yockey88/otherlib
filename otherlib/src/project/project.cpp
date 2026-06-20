@@ -165,8 +165,7 @@ namespace other {
   void project::add_built_script(const filepath& script_path) {
     OTHER_ASSERT(std::filesystem::exists(script_path), "Script asset file '{}' does not exist.", script_path.string());
     OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add built script.");
-
-    CORE_LOG_TRACE("[PROJECT] built script extension: {}", script_path.extension().string());
+    CORE_LOG_TRACE("[PROJECT] Adding built script: {}", script_path.string());
     if (script_path.extension() == ".dll") {
       attach_project_dll(script_path);
     } else {
@@ -174,25 +173,13 @@ namespace other {
     }
   }
 
-  void project::attach_project_cs_file(const filepath& cs_file) {
-    OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach C# script file.");
-
-    CORE_LOG_TRACE("[PROJECT] C# script file extension: {}", cs_file.extension().string());
-    if (cs_file.extension() == ".cs") {
-      project_scripts.cs_scripts.push_back(cs_file);
-    } else {
-      CORE_LOG_WARN("[PROJECT] Unimplemented script type for C# script file '{}'.", cs_file.string());
-    }
-  }
-
   void project::add_script_file(const filepath& script_file_path) {
     OTHER_ASSERT(std::filesystem::exists(script_file_path), "Script file '{}' does not exist.", script_file_path.string());
-    CORE_LOG_TRACE("[PROJECT] Script file extension: {}", script_file_path.extension().string());
+    CORE_LOG_TRACE("[PROJECT] Script file: {}", script_file_path.string());
     if (script_file_path.extension() == ".cs") {
-      project_scripts.cs_scripts.push_back(script_file_path);
+      attach_project_cs_file(script_file_path);
     } else if (script_file_path.extension() == ".lua") {
-      project_scripts.lua_scripts.push_back(script_file_path);
+      attach_project_lua_file(script_file_path);
     } else {
       CORE_LOG_WARN("[PROJECT] Unimplemented script type for script file '{}'.", script_file_path.string());
     }
@@ -200,17 +187,9 @@ namespace other {
 
   void project::remove_built_script(const filepath& script_asset_path) {
     OTHER_ASSERT(std::filesystem::exists(script_asset_path), "Script asset '{}' does not exist.", script_asset_path.string());
-    CORE_LOG_TRACE("[PROJECT] Built script extension: {}", script_asset_path.extension().string());
-    if (script_asset_path.extension() == ".cs") {
-      auto it = std::ranges::find(project_scripts.cs_scripts, script_asset_path);
-      if (it != project_scripts.cs_scripts.end()) {
-        project_scripts.cs_scripts.erase(it);
-      }
-    } else if (script_asset_path.extension() == ".lua") {
-      auto it = std::ranges::find(project_scripts.lua_scripts, script_asset_path);
-      if (it != project_scripts.lua_scripts.end()) {
-        project_scripts.lua_scripts.erase(it);
-      }
+    CORE_LOG_TRACE("[PROJECT] Detaching built script '{}'.", script_asset_path.string());
+    if (script_asset_path.extension() == ".dll") {
+      detach_project_dll(script_asset_path);
     } else {
       CORE_LOG_WARN("[PROJECT] Unimplemented script type for built script '{}'.", script_asset_path.string());
     }
@@ -218,16 +197,11 @@ namespace other {
 
   void project::remove_script_file(const filepath& script_file_path) {
     OTHER_ASSERT(std::filesystem::exists(script_file_path), "Script file '{}' does not exist.", script_file_path.string());
+    CORE_LOG_DEBUG("[PROJECT] Removing script file '{}'.", script_file_path.string());
     if (script_file_path.extension() == ".cs") {
-      auto it = std::ranges::find(project_scripts.cs_scripts, script_file_path);
-      if (it != project_scripts.cs_scripts.end()) {
-        project_scripts.cs_scripts.erase(it);
-      }
+      detach_project_cs_file(script_file_path);
     } else if (script_file_path.extension() == ".lua") {
-      auto it = std::ranges::find(project_scripts.lua_scripts, script_file_path);
-      if (it != project_scripts.lua_scripts.end()) {
-        project_scripts.lua_scripts.erase(it);
-      }
+      detach_project_lua_file(script_file_path);
     } else {
       CORE_LOG_WARN("[PROJECT] Unimplemented script type for script file '{}'.", script_file_path.string());
     }
@@ -237,17 +211,34 @@ namespace other {
     OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add loaded scene.");
     auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
     OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
+    CORE_LOG_DEBUG("[PROJECT] Adding loaded scene with ID '{}'.", scene_id);
 
     it->scene_id = scene_id;
+    it->scene_loaded = true;
     it->incoming_scenes.clear();
     it->outgoing_scenes.clear();
     all_scenes_loaded = std::ranges::all_of(scenes_in_project, [](const scene& s) { return s.incoming_scenes.empty() && s.outgoing_scenes.empty(); });
+    all_scenes_unloaded = false;
+    CORE_LOG_DEBUG(" - scene loaded. all_scenes_loaded: {}", all_scenes_loaded);
+  }
+
+  void project::remove_loaded_scene(natural_t scene_id) {
+    OTHER_ASSERT(is_unloading(), "Project is not in loading state. Cannot remove loaded scene.");
+    auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
+    OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
+    CORE_LOG_DEBUG("[PROJECT] Removing loaded scene with ID '{}'.", scene_id);
+
+    it->scene_loaded = false;
+    it->incoming_scenes.clear();
+    it->outgoing_scenes.clear();
+    all_scenes_unloaded = std::ranges::all_of(scenes_in_project, [](const scene& s) { return !s.scene_loaded; });
+    all_scenes_loaded = false;
+    CORE_LOG_DEBUG(" - scene removed. all_scenes_unloaded: {}", all_scenes_unloaded);
   }
 
   void project::attach_project_dll(const filepath& dll_path) {
     OTHER_ASSERT(std::filesystem::exists(dll_path), "Project assembly file '{}' does not exist.", dll_path.string());
     OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach project assembly.");
-
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
 
@@ -256,7 +247,38 @@ namespace other {
 
     project_assembly = asm_ref;
     project_scripts.cs_script_source = dll_path;
-    CORE_LOG_DEBUG("Successfully loaded project assembly from '{}'", dll_path.string());
+  }
+
+  void project::attach_project_cs_file(const filepath& cs_file) {
+    OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach C# script file.");
+    project_scripts.cs_scripts.push_back(cs_file);
+  }
+
+  void project::attach_project_lua_file(const filepath& cs_file) {
+    OTHER_ASSERT(std::filesystem::exists(cs_file), "Lua script file '{}' does not exist.", cs_file.string());
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach Lua script file.");
+    project_scripts.lua_scripts.push_back(cs_file);
+  }
+
+  void project::detach_project_dll(const filepath& dll_path) {
+    OTHER_ASSERT(std::filesystem::exists(dll_path), "DLL file '{}' does not exist.", dll_path.string());
+    OTHER_ASSERT(dll_path == project_scripts.cs_script_source, "DLL file '{}' does not match the project's C# script source '{}'.", dll_path.string(), project_scripts.cs_script_source.string());
+    project_scripts.cs_script_source.clear();
+  }
+
+  void project::detach_project_cs_file(const filepath& cs_file) {
+    OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
+    auto it = std::find(project_scripts.cs_scripts.begin(), project_scripts.cs_scripts.end(), cs_file);
+    OTHER_ASSERT(it != project_scripts.cs_scripts.end(), "C# script file '{}' is not attached to the project.", cs_file.string());
+    project_scripts.cs_scripts.erase(it);
+  }
+
+  void project::detach_project_lua_file(const filepath& lua_file) {
+    OTHER_ASSERT(std::filesystem::exists(lua_file), "Lua script file '{}' does not exist.", lua_file.string());
+    auto it = std::find(project_scripts.lua_scripts.begin(), project_scripts.lua_scripts.end(), lua_file);
+    OTHER_ASSERT(it != project_scripts.lua_scripts.end(), "Lua script file '{}' is not attached to the project.", lua_file.string());
+    project_scripts.lua_scripts.erase(it);
   }
 
   void project::process_project_plugins(const toml::table& table) {

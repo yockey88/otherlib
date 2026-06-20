@@ -163,7 +163,7 @@ namespace other {
                  job_id, static_cast<int>(node->handle->get_status()));
     // clang-format on
 
-    // work_graph.remove_node(node_id);
+    work_graph.remove_node(node_id);
   }
 
   natural_t job_graph::node_id_from_job_id(natural_t job_id) const {

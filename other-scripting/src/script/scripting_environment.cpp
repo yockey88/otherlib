@@ -175,6 +175,7 @@ namespace other {
   void scripting_environment::unload_dotnet_module(ref<assembly> module) {
     OTHER_ASSERT(dotnet_load_context != nullptr, "DotNet load context is not initialized.");
     dotnet_load_context->unload_assembly(module->get_handle());
+    dotnet_load_context->remove_assembly(module->get_handle());
 
     if (dotnet_load_context->num_assemblies() == 0) {
       CORE_LOG_DEBUG("All assemblies unloaded from .NET context [{}:{}]", dotnet_load_context->get_handle(), dotnet_load_context->get_name());

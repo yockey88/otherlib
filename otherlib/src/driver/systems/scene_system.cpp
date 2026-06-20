@@ -21,6 +21,8 @@ namespace other {
     events->add_listener("scene.load-scene", std::bind_front(&scene_system::handle_scene_load_event, this));
     events->register_event("scene.asset-loaded");
     events->add_listener("scene.asset-loaded", std::bind_front(&scene_system::handle_scene_asset_loaded_event, this));
+    events->register_event("scene.asset-unloaded");
+    events->add_listener("scene.asset-unloaded", std::bind_front(&scene_system::handle_scene_asset_unloaded_event, this));
 
     events->register_event("scene.unload-scene");
     events->add_listener("scene.unload-scene", std::bind_front(&scene_system::handle_scene_unload_event, this));
@@ -45,9 +47,9 @@ namespace other {
   }
 
   void scene_system::shutdown(driver_kernel* kernel) {
-    if (active_scene != nullptr) {
-      unload_active_scene();
-    }
+    OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
+    OTHER_ASSERT(active_scene == nullptr, "There is an active scene. Cannot shutdown scene system while a scene is active.");
+    project_scene_graph->clear();
     project_scene_graph = nullptr;
   }
 
@@ -61,15 +63,6 @@ namespace other {
       natural_t id = add_scene_to_scene_graph(scene_data.path);
       OTHER_ASSERT(scene_data.scene_id == id, "Scene ID mismatch for scene '{}'. Expected {}, got {}.", scene_data.name, scene_data.scene_id, id);
       CORE_LOG_DEBUG("Loaded scene '{}' with ID {} from project.", scene_data.name, id);
-    }
-  }
-
-  void scene_system::unload_project_scene_graph() {
-    for (auto& scene : *project_scene_graph) {
-      if (scene.value == nullptr) {
-        continue;
-      }
-      get_driver().get_kernel().get_core_system<asset_system>().begin_asset_unload(scene.value->asset_id);
     }
   }
 
@@ -401,6 +394,29 @@ namespace other {
       set_scene_to_active(s->id);
       synchronize_active_scene(s->id);
     }
+  }
+
+  void scene_system::handle_scene_asset_unloaded_event(const value& data) {
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for scene.asset-loaded event. Expected uint64 (scene ID).");
+
+    natural_t scene_asset_id = data;
+    CORE_LOG_DEBUG("Handling scene asset unloaded event for scene asset ID: {}", scene_asset_id);
+
+    CORE_LOG_TRACE("Looking for scene with asset ID {} in scene graph.", scene_asset_id);
+    auto* s = project_scene_graph->find_scene([scene_asset_id](const scene& sc) {
+      return sc.asset_id == scene_asset_id;
+    });
+    OTHER_ASSERT(s != nullptr, "Scene with asset ID '{}' not found in scene graph.", scene_asset_id);
+
+    if (get_driver().get_kernel().has_core_system<project_system>()) {
+      auto& project_sys = get_driver().get_kernel().get_core_system<project_system>();
+      if (project_sys.is_project_loaded() || project_sys.is_project_unloading()) {
+        project_sys.get_project().remove_loaded_scene(s->id);
+      }
+    }
+
+    project_scene_graph->remove_scene(s->id);
+    CORE_LOG_TRACE("Scene with asset ID {} removed from scene graph.", scene_asset_id);
   }
 
   void scene_system::handle_scene_unload_event(const value& data) {

@@ -47,6 +47,12 @@ namespace other {
     }
 
     void clear() {
+      for (auto& n : *this) {
+        if (n.value != nullptr) {
+          arena_allocator<T>{}.free(n.value);
+          n.value = nullptr;
+        }
+      }
       nodes.clear();
       adjacency_matrix = make_ref<matrix_nxm<real_t>>(0, 0);
     }
@@ -117,6 +123,7 @@ namespace other {
 
       size_t idx = itr->index;
       arena_allocator<T>{}.free(itr->value);
+      itr->value = nullptr;
       nodes.erase(itr);
 
       const ref<matrix_nxm<real_t>> old_adjacency = adjacency_matrix;

@@ -33,6 +33,9 @@ namespace other {
     void generate_project_at(driver_kernel* kernel, const filepath& directory);
     void load_project(driver_kernel* kernel, const filepath& project_file);
     void unload_project(driver_kernel* kernel);
+    bool is_project_empty() const;
+    bool is_project_loading() const;
+    bool is_project_unloading() const;
     bool is_project_loaded() const;
 
     void handle_project_event(driver_kernel* kernel, const project_event_data& data);

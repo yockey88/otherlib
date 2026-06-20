@@ -39,7 +39,6 @@ dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 # a dll satisfying the Other Environment API requirements
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
 other-lua-directory = "other-lua-interop"
-
 dotnet-modules = [
   "build/other-editor/dotnet/${build-config}/OtherEditorCs.dll"
 ]

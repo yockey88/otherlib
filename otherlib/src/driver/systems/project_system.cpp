@@ -39,6 +39,7 @@ namespace other {
 
     auto& events = *get_driver().get_event_system();
     events.register_event("project.loaded");
+    events.register_event("project.unloaded");
 
     events.register_event("project.new-project");
     events.add_listener("project.new-project", [this, kernel](const value& data) { handle_new_project(kernel, data); });
@@ -85,10 +86,17 @@ namespace other {
       }
     }
 
-    // if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN &&
-    //     loaded_project != nullptr && loaded_project->is_unloading()) {
-    //   loaded_project->set_state(project::state::UNLOADING);
-    // }
+    if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN &&
+        loaded_project->is_unloading()) {
+      const bool script_unload_complete = loaded_project->script_project_unmounted();
+      const bool scene_unload_complete = loaded_project->scene_graph_unloaded();
+      CORE_LOG_TRACE("[PROJECT] Script unload complete: {}", script_unload_complete);
+      CORE_LOG_TRACE("[PROJECT] Scene unload complete: {}", scene_unload_complete);
+      if (script_unload_complete && scene_unload_complete) {
+        loaded_project->set_state(project::state::EMPTY);
+        get_driver().trigger_event("project.unloaded");
+      }
+    }
   }
 
   void project_system::shutdown(driver_kernel* kernel) {
@@ -147,7 +155,7 @@ namespace other {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
 
     if (!loaded_project->is_loaded()) {
-      CORE_LOG_WARN("No project is currently loaded.");
+      CORE_LOG_ERROR("Project not loaded. Cannot unload");
       return;
     }
 
@@ -166,6 +174,21 @@ namespace other {
         assets.begin_asset_unload(s->asset_id);
       }
     }
+  }
+
+  bool project_system::is_project_empty() const {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    return loaded_project->is_empty();
+  }
+
+  bool project_system::is_project_loading() const {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    return loaded_project->is_loading();
+  }
+
+  bool project_system::is_project_unloading() const {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    return loaded_project->is_unloading();
   }
 
   bool project_system::is_project_loaded() const {
@@ -277,16 +300,6 @@ namespace other {
     CORE_LOG_DEBUG("Script source unloaded. Project State: {}", loaded_project->get_state());
     if (loaded_project->is_unloading()) {
       loaded_project->remove_built_script(script_source_path.value());
-
-      /// remove the csproj asset now that the DLL is unloaded
-      auto csproj_path = loaded_project->get_csproj_path();
-      if (std::filesystem::exists(csproj_path)) {
-        CORE_LOG_INFO("Removing C# project file '{}'", csproj_path.string());
-
-        natural_t asset_id = sibling<asset_system>(*kernel).get_asset_id_from_path(csproj_path);
-        sibling<asset_system>(*kernel).begin_asset_unload(asset_id);
-      }
-
     } else {
       CORE_LOG_WARN("Unimplemented handling of script source asset unloaded event in project for project state {}", loaded_project->get_state());
     }

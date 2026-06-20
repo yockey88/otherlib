@@ -46,6 +46,7 @@ namespace other {
       std::string name;
       filepath path;
 
+      bool scene_loaded;
       natural_t scene_id;
 
       std::vector<std::string> incoming_scenes;
@@ -74,6 +75,7 @@ namespace other {
     void remove_script_file(const filepath& script_file_path);
 
     void add_loaded_scene(natural_t scene_id);
+    void remove_loaded_scene(natural_t scene_id);
 
     const std::string& get_project_name() const { return project_metadata.name; }
 
@@ -87,13 +89,15 @@ namespace other {
     inline bool is_loading() const { return current_state == LOADING; }
     inline bool is_unloading() const { return current_state == UNLOADING; }
 
-    inline bool script_project_mounted() const { return !project_scripts.csproject_path.empty() && !project_scripts.cs_script_source.empty(); }
+    inline bool script_project_mounted() const {
+      return project_assembly != nullptr;
+    }
     inline bool script_project_unmounted() const {
-      return project_scripts.csproject_path.empty() && project_scripts.cs_script_source.empty() &&
+      return project_scripts.cs_script_source.empty() &&
         project_scripts.cs_scripts.empty() && project_scripts.lua_scripts.empty();
     }
     inline bool scene_graph_loaded() const { return all_scenes_loaded; }
-    inline bool scene_graph_unloaded() const { return !all_scenes_loaded; }
+    inline bool scene_graph_unloaded() const { return all_scenes_unloaded; }
 
     inline natural_t get_starting_scene_id() const { return starting_scene_id; }
     inline std::vector<project::scene>& get_scenes() { return scenes_in_project; }
@@ -119,12 +123,15 @@ namespace other {
     natural_t starting_scene_id = 0;
     std::vector<scene> scenes_in_project;
     bool all_scenes_loaded = false;
+    bool all_scenes_unloaded = true;
 
     void attach_project_dll(const filepath& dll_path);
     void attach_project_cs_file(const filepath& cs_file);
+    void attach_project_lua_file(const filepath& cs_file);
 
     void detach_project_dll(const filepath& dll_path);
     void detach_project_cs_file(const filepath& cs_file);
+    void detach_project_lua_file(const filepath& lua_file);
 
     void process_project_plugins(const toml::table& table);
     bool process_scripting_sections(const toml::table& table, driver_kernel* kernel);

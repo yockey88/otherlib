@@ -434,6 +434,7 @@ namespace other {
     }
 
     if (state_itr->second.get_current_state() == asset_state::UNLOADING) {
+      CORE_LOG_WARN("Asset ID: {} is already in the process of unloading.", asset_id);
       return loaded_assets.end();
     }
 

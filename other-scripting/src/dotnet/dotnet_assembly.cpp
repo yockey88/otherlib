@@ -164,15 +164,34 @@ namespace other {
     }
 
     host->interop().unload_managed_assembly(itr->second->dotnet_id);
+  }
+
+  void assembly_context::remove_assembly(natural_t assembly_id) {
+    auto itr = assemblies.find(assembly_id);
+    if (itr == assemblies.end()) {
+      CORE_LOG_ERROR("Failed to remove assembly: ID {} not found", assembly_id);
+      return;
+    }
     assemblies.erase(itr);
   }
 
   void assembly_context::unload_all() {
     CORE_LOG_DEBUG("Unloading all assemblies from context [{}:{}]", handle, name);
-    for (auto& [id, asm_ref] : assemblies) {
-      unload_assembly(id);
+    for (auto itr = assemblies.begin(); itr != assemblies.end();) {
+      itr = unload_assembly_and_erase(itr->first);
     }
-    assemblies.clear();
+  }
+
+  assembly_context::iterator_t assembly_context::unload_assembly_and_erase(natural_t assembly_id) {
+    unload_assembly(assembly_id);
+
+    auto itr = assemblies.find(assembly_id);
+    if (itr != assemblies.end()) {
+      return assemblies.erase(itr);
+    } else {
+      OTHER_ASSERT(false, "Failed to erase assembly: ID {} not found", assembly_id);
+    }
+    return assemblies.end();
   }
 
 }  // namespace other

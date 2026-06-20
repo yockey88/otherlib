@@ -273,14 +273,17 @@ namespace other {
     struct running_state {
       std::mutex mutex;
       opt<filepath> queued_project_file;
+
+      bool shutdown_requested = false;
     };
     struct shutdown_state {
       bool network_thread_shutdown = false;
       bool asset_manager_shutdown = false;
+      bool project_unloaded = false;
 
       inline bool ready_to_shutdown(driver* drv) const {
         return drv->current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN &&
-          network_thread_shutdown && asset_manager_shutdown;
+          network_thread_shutdown && asset_manager_shutdown && project_unloaded;
       }
     };
     running_state runtime_state;
@@ -356,10 +359,13 @@ namespace other {
     void render();
 
     void on_project_loaded();
+    void on_project_unloaded();
 
     void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
     void handle_driver_event_with_lua_table(const std::string_view event_name, const sol::table& event_data);
+
+    void begin_shutdown_sequence();
 
     template <typename T>
     T get_value_from_node(const toml::node& node, const T& default_value) const {
