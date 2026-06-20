@@ -127,8 +127,7 @@ namespace other {
         [this](scope<driver_plugin> p) { return 0; },
         [this](natural_t id) {},
         driver_plugin_args(driver_instance),  // empty
-        interface_cardinality::MULTIPLE
-      );
+        interface_cardinality::MULTIPLE);
     }
 
     for (const auto type : system_order) {
@@ -303,7 +302,7 @@ namespace other {
     auto& manifest = *manifest_ptr;
     auto id = registry.registry.install_from_manifest(name, manifest);
     registry.provided_plugins.push_back({ name, id });
-    CORE_LOG_DEBUG("Registered driver plugin '{}' with id {} from library '{}'", name, id, path.string());
+    CORE_LOG_INFO("Registered driver plugin '{}' from library '{}'", name, path.string());
   }
 
   void driver_kernel::register_driver_plugin(const filepath& path, library_handle* lib) {

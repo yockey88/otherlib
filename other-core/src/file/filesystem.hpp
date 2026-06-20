@@ -119,13 +119,17 @@ namespace std {
   template <>
   struct formatter<other::resolved_path> : public formatter<std::string_view> {
     auto format(const other::resolved_path& path, format_context& ctx) const {
-      std::string formatted = std::format("Mount: '{}', File Name: '{}'\n", path.mount_name, path.file_name);
+      std::string formatted = std::format("Mount: '{}', File Name: '{}'", path.mount_name, path.file_name);
+      formatted += " [";
+
       if (!path.relative_path_components.empty()) {
         formatted += path.relative_path_components[0];
         for (size_t i = 1; i < path.relative_path_components.size(); ++i) {
           formatted += "/" + path.relative_path_components[i];
         }
       }
+
+      formatted += "]";
       return formatter<std::string_view>::format(formatted, ctx);
     }
   };
@@ -135,7 +139,6 @@ namespace std {
 OTHER_DEPENDENT_SUBSYSTEM(
   other::file_system,
   subsystem_profile::kArena,
-  subsystem_profile::kLogger
-);
+  subsystem_profile::kLogger);
 
 #endif  // OTHER_CORE_FILE_FILE_SYSTEM_HPP

@@ -143,6 +143,10 @@ namespace other {
       return asset_states.find(asset_id) != asset_states.end();
     }
 
+    inline bool all_assets_unloaded() const {
+      return loaded_assets.empty() && asset_pipelines.empty();
+    }
+
     void set_default_mount(const std::string_view mount_name) { default_mount = mount_name; }
 
     asset_state get_asset_state(natural_t asset_id) const;

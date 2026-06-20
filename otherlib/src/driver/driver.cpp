@@ -18,7 +18,6 @@ namespace other {
 
   driver::driver(const command_line& cmd, const config_table& config)
       : config(config), cmd_line(cmd) {
-    this->config.project_file = cmd.project_file;
   }
 
   driver::~driver() {
@@ -26,6 +25,14 @@ namespace other {
 
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
+
+    if (cmd_line.project_file.has_value()) {
+      if (config.project_file.has_value()) {
+        CORE_LOG_WARN("Overwriting project specified in config '{}' with command line project '{}'", config.project_file.value().string(), cmd_line.project_file.value().string());
+      }
+
+      config.project_file = cmd_line.project_file;
+    }
 
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
@@ -538,22 +545,25 @@ namespace other {
   void driver::on_project_loaded() {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
-
     auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
     if (p.is_empty()) {
       CORE_LOG_WARN("Project loaded event triggered but project is empty. This may indicate a problem with the project loading process.");
       return;
     }
+    CORE_LOG_INFO("Project loaded: {}", p.get_project_name());
 
-    /// do this before running rc file in case rc file loads a scene
-    if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
-      /// add scene to project if not in scene list
-      // starting_scene_id = curr_scene->id;
-      driver_kernel_ptr->get_core_system<scene_system>().unload_active_scene();
+    if (driver_kernel_ptr->has_core_system<scene_system>()) {
+      auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
+
+      /// do this before running rc file in case rc file loads a scene
+      if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
+        OTHER_ASSERT(false, "TODO: implement the case where a scene was opened before a project or independently of it's parent project");
+      }
+
+      natural_t starting_scene_id = p.get_starting_scene_id();
+      CORE_LOG_DEBUG("Project starting scene ID: {}", starting_scene_id);
+      scenes.set_scene_to_active(starting_scene_id);
     }
-
-    /// load scenes from project
-    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
 
     filepath rc_path = p.get_project_rc_path();
     if (!rc_path.empty() && std::filesystem::exists(rc_path)) {

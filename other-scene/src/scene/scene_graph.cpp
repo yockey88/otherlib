@@ -28,8 +28,8 @@ namespace other {
   }
 
   std::pair<natural_t, scene*> scene_graph::create_new_scene(const std::string_view name) {
-    natural_t id = g.add_node(scene(name));
-    return { id, g.ptr_to_node_value(id) };
+    auto ids = id_pairs.emplace_back() = { .node_id = g.add_node(scene(name)), .scene_hash = FNV(name) };
+    return { ids.scene_hash, g.ptr_to_node_value(ids.node_id) };
   }
 
   std::pair<uint64_t, scene*> scene_graph::load_scene(const filepath& scene_path) {
@@ -52,13 +52,7 @@ namespace other {
   }
 
   natural_t scene_graph::get_id_of_scene(const std::string_view name) const {
-    const scene* found_scene = g.find_item([&name](const scene& s) { return s.name == name; });
-    if (found_scene != nullptr) {
-      CORE_LOG_INFO("Found scene [{}] with ID {} cached in scene graph.", name, found_scene->id);
-      return found_scene->id;
-    }
-    CORE_LOG_WARN("Scene [{}] not found in scene graph.", name);
-    return 0;
+    return FNV(name);
   }
 
   scene* scene_graph::find_scene(const filepath& scene_path) {
@@ -74,6 +68,16 @@ namespace other {
     return get_scene(id);
   }
 
+  scene* scene_graph::find_scene(natural_t id) {
+    auto id_itr = std::ranges::find(id_pairs, id, &scene_graph::id_pair::scene_hash);
+    OTHER_ASSERT(id_itr != id_pairs.end(), "Scene with ID {} not found in ID pairs.", id);
+    return get_scene(id_itr->node_id);
+  }
+
+  void scene_graph::clear() {
+    g.clear();
+  }
+
   scene* scene_graph::get_scene(const std::string_view id) {
     natural_t scene_id = get_id_of_scene(id);
     if (scene_id == 0) {
@@ -84,10 +88,6 @@ namespace other {
 
   scene* scene_graph::get_scene(natural_t id) {
     return g.ptr_to_node_value(id);
-  }
-
-  void scene_graph::clear() {
-    g.clear();
   }
 
 }  // namespace other

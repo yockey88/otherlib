@@ -26,14 +26,14 @@ namespace other {
   }
 
   TEST_F(scene_tests, scene_move_constructor) {
-    scene scene1("Original Scene");
-    scene_object& obj1 = scene1.create_object("Object in Original Scene");
+    scene scene1("Original Scene");                                         //< creates a "Original Scene:Root" object as the root of the scene
+    scene_object& obj1 = scene1.create_object("Object in Original Scene");  //< creates a second object
     natural_t obj1_id = obj1.id;
 
     scene scene2{ std::move(scene1) };
 
     EXPECT_EQ(scene2.name, "Original Scene");
-    EXPECT_EQ(scene2.get_object_count(), 1u);
+    EXPECT_EQ(scene2.get_object_count(), 2u);
 
     scene_object& moved_obj = scene2.get_object(obj1_id);
     EXPECT_EQ(moved_obj.name, "Object in Original Scene");
@@ -45,29 +45,29 @@ namespace other {
 
     // this time ensure destructor is called on previous storage
     {
-      scene scene1("Original Scene");
-      scene_object& obj1 = scene1.create_object("Object in Original Scene");
+      scene scene1("Original Scene");                                         //< creates a "Original Scene:Root" object as the root of the scene
+      scene_object& obj1 = scene1.create_object("Object in Original Scene");  //< creates a second object
       obj1_id = obj1.id;
 
       scene2 = std::move(scene1);
     }
 
     EXPECT_EQ(scene2.name, "Original Scene");
-    EXPECT_EQ(scene2.get_object_count(), 1u);
+    EXPECT_EQ(scene2.get_object_count(), 2u);  // Root object + the object created in the original scene
 
     scene_object& moved_obj = scene2.get_object(obj1_id);
     EXPECT_EQ(moved_obj.name, "Object in Original Scene");
   }
 
   TEST_F(scene_tests, scene_move_and_still_works) {
-    scene scene1("Original Scene");
-    scene_object& obj1 = scene1.create_object("Object in Original Scene");
+    scene scene1("Original Scene");                                         //< creates a "Original Scene:Root" object as the root of the scene
+    scene_object& obj1 = scene1.create_object("Object in Original Scene");  //< creates a second object
     natural_t obj1_id = obj1.id;
 
     scene scene2 = std::move(scene1);
 
     EXPECT_EQ(scene2.name, "Original Scene");
-    EXPECT_EQ(scene2.get_object_count(), 1u);
+    EXPECT_EQ(scene2.get_object_count(), 2u);  // Root object + the object created in the original scene
 
     scene_object& moved_obj = scene2.get_object(obj1_id);
     EXPECT_EQ(moved_obj.name, "Object in Original Scene");
@@ -79,11 +79,9 @@ namespace other {
   TEST_F(scene_tests, use_scene_from_std_map) {
     std::map<natural_t, scene> scene_map;
     {
-      scene scene1("Mapped Scene");
-      scene_object& obj1 = scene1.create_object("Object in Mapped Scene");
+      scene scene1("Mapped Scene");  //< creates a "Mapped Scene:Root" object as the root of the scene
       natural_t scene_id = scene1.id;
-      natural_t obj1_id = obj1.id;
-
+      scene_object& _ = scene1.create_object("Object in Mapped Scene");  //< creates a second object
       scene_map.emplace(scene_id, std::move(scene1));
     }
 
@@ -92,7 +90,7 @@ namespace other {
 
     scene& mapped_scene = it->second;
     EXPECT_EQ(mapped_scene.name, "Mapped Scene");
-    EXPECT_EQ(mapped_scene.get_object_count(), 1u);
+    EXPECT_EQ(mapped_scene.get_object_count(), 2u);  // Root object + the second object
 
     scene_object& mapped_obj = mapped_scene.get_object(it->second.get_all_object_ids().front());
     EXPECT_EQ(mapped_obj.name, "Object in Mapped Scene");
@@ -109,8 +107,7 @@ namespace other {
     scene& mapped_scene = itr->second;
     EXPECT_EQ(mapped_scene.name, "Mapped Scene");
 
-    scene_object& obj1 = itr->second.create_object("Object in Mapped Scene");
-    natural_t obj1_id = obj1.id;
+    scene_object& _ = itr->second.create_object("Object in Mapped Scene");
   }
 
   TEST_F(scene_tests, use_scene_from_std_map3) {
@@ -124,8 +121,7 @@ namespace other {
     scene& mapped_scene = itr->second;
     EXPECT_EQ(mapped_scene.name, "Mapped Scene");
 
-    scene_object& obj1 = itr->second.create_object("Object in Mapped Scene");
-    natural_t obj1_id = obj1.id;
+    scene_object& _ = itr->second.create_object("Object in Mapped Scene");
   }
 
   TEST_F(scene_tests, use_scene_from_std_vector) {
@@ -133,8 +129,7 @@ namespace other {
     scene& scene = scene_vector.emplace_back("Vector Scene");
     EXPECT_EQ(scene.name, "Vector Scene");
 
-    scene_object& obj1 = scene.create_object("Object in Vector Scene");
-    natural_t obj1_id = obj1.id;
+    scene_object& _ = scene.create_object("Object in Vector Scene");
   }
 
 }  // namespace other

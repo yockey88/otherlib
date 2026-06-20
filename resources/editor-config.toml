@@ -1,6 +1,4 @@
 [driver]
-# vm-debug-mode-on = true
-vm-instruction-per-step-budget = 1024
 boot-file = "resources/editor-assets/editor-boot.oasm"
 plugins = [
   # { name = "Other Management", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" },
@@ -20,15 +18,12 @@ core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
 assets = [
-  { name = "pipeline-declaration", path = "resources/editor-assets/default-pipeline.toml" }
+  { name = "default-pipeline", path = "resources/editor-assets/default-pipeline.toml" }
 ]
 
 [rendering]
 ui-layout-ini = "resources/ui/editor-layout.ini"
 imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
-# pipelines = [
-#   { name = "Editor Pipeline", path = "resources/rendering/editor_pipeline.orpl" }
-# ]
 
 [ui]
 # only read when subsystem module is loaded

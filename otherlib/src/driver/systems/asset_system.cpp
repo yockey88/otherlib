@@ -61,6 +61,9 @@ namespace other {
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
     asset_mgr->update_pipelines();
+    if (asset_mgr->all_assets_unloaded()) {
+      get_driver().get_event_system()->trigger_event("assets.all-assets-unloaded");
+    }
 
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in asset system tick.");

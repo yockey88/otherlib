@@ -126,6 +126,11 @@ namespace other {
     void add_object_tag(natural_t id, const std::string_view tag);
     void remove_object_tag(natural_t id, const std::string_view tag);
 
+    inline lua_sandbox& get_sandbox() {
+      OTHER_ASSERT(storage != nullptr, "Scene storage is null.");
+      return storage->sandbox;
+    }
+
     template <typename T>
       requires std::is_base_of_v<component, T>
     void register_component(scene_object* object, T& comp) {

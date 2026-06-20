@@ -53,7 +53,7 @@ namespace other {
       natural_t id = successful_pipelines.front();
       successful_pipelines.pop();
 
-      switch (get_asset_state(id)) {
+      switch (auto state = get_asset_state(id)) {
         case asset_state::LOADING:
         case asset_state::REFRESHING_LOAD:
           on_asset_loaded(id);
@@ -71,7 +71,7 @@ namespace other {
       natural_t id = failed_pipelines.front();
       failed_pipelines.pop();
 
-      switch (get_asset_state(id)) {
+      switch (auto state = get_asset_state(id)) {
         case asset_state::LOADING:
         case asset_state::REFRESHING_LOAD:
           on_asset_load_failed(id);
@@ -82,18 +82,6 @@ namespace other {
           break;
         default:
           OTHER_ASSERT(false, "Asset ID {} in unexpected state after failed pipeline completion", id);
-      }
-    }
-
-    if (remove_after_unload) {
-      for (auto it = unloaded_assets.begin(); it != unloaded_assets.end();) {
-        all_assets.erase(std::ranges::find(all_assets, it->first));
-        it = unloaded_assets.erase(it);
-      }
-
-      if (all_assets.empty()) {
-        remove_after_unload = false;
-        events.trigger_event("assets.all-assets-unloaded");
       }
     }
   }
@@ -196,6 +184,7 @@ namespace other {
   }
 
   natural_t asset_handler::add_scene_asset(scene* scene_ptr, opt<filepath> scene_path) {
+    OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null");
     CORE_LOG_DEBUG("Adding scene asset with name: {} (scene pointer: {})", scene_path.has_value() ? scene_path->string() : "<no path>", static_cast<void*>(scene_ptr));
     natural_t scene_id = get_next_asset_id();
 
@@ -206,18 +195,24 @@ namespace other {
       name = std::format("scene_{}", scene_id);
     }
 
-    auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_scene_pipeline(&events, this, scene_ptr),
-                                                              .loading_asset = {
-                                                                .asset_type = asset::type::SCENE,
-                                                                .id = scene_id,
-                                                                .path_hash = 0,
-                                                                .load_path = scene_path.value_or(filepath{}),
-                                                                .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::SCENE), name + ".scene"),
-                                                                .absolute_path = absolute_path,
-                                                              },
-                                                            });
-    OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+    asset_pipelines.emplace_back(pipeline_context{
+      .pipeline = asset_pipeline::get_scene_pipeline(&events, this, scene_ptr),
+      .loading_asset = {
+        .asset_type = asset::type::SCENE,
+        .id = scene_id,
+        // since we are loading an already existing scene into system
+        // we use 0 here to tell the pipeline to set scene's asset id
+        // so scene can be found when load is finished
+        .path_hash = 0,
+        .load_path = p,
+        .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::SCENE), name + ".scene"),
+        .absolute_path = absolute_path,
+      },
+    });
+    auto it = std::ranges::find_if(asset_pipelines, [scene_id](const pipeline_context& pc) {
+      return pc.loading_asset.id == scene_id;
+    });
+    OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert scene asset into loading assets list");
 
     auto [state_it, state_inserted] = asset_states.emplace(scene_id, asset_state_machine{});
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for scene asset ID: {}", scene_id);
@@ -522,13 +517,13 @@ namespace other {
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
-    if (state_itr->second.get_current_state() == asset_state::LOADING || state_itr->second.get_current_state() == asset_state::REFRESHING_LOAD) {
+    auto prev_state = state_itr->second.get_current_state();
+    if (prev_state == asset_state::LOADING || prev_state == asset_state::REFRESHING_LOAD) {
       auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
       OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Loaded asset not found in loading assets");
 
       auto [itr, success] = loaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
       OTHER_ASSERT(success, "Failed to insert loaded asset into loaded assets map");
-
       if (pending_itr->on_complete) {
         pending_itr->on_complete(&itr->second);
       }
@@ -536,7 +531,7 @@ namespace other {
       pending_itr->pipeline = nullptr;
       asset_pipelines.erase(pending_itr);
 
-      if (state_itr->second.get_current_state() == asset_state::REFRESHING_LOAD) {
+      if (prev_state == asset_state::REFRESHING_LOAD) {
         state_itr->second.handle_event(asset_event::REFRESH_COMPLETED);
       } else {
         register_asset_in_filesystem(&itr->second);
@@ -548,6 +543,8 @@ namespace other {
   }
 
   void asset_handler::on_asset_load_failed(natural_t id) {
+    CORE_LOG_DEBUG("Asset load failed (ID: {})", id);
+
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
@@ -559,6 +556,14 @@ namespace other {
     asset_pipelines.erase(pending_itr);
 
     state_itr->second.handle_event(asset_event::LOAD_FAILED);
+    asset_states.erase(state_itr);
+
+    // fully remove it since error occurred
+    auto it = unloaded_assets.find(id);
+    if (it != unloaded_assets.end()) {
+      unregister_asset_in_filesystem(&it->second);
+      unloaded_assets.erase(it);
+    }
   }
 
   void asset_handler::on_asset_unloaded(natural_t id) {
@@ -570,16 +575,21 @@ namespace other {
     auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
     OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Unloaded asset not found in loading assets");
 
-    auto it = unloaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
-    OTHER_ASSERT(it.second, "Failed to insert unloaded asset into unloaded assets map");
+    auto prev_state = state_itr->second.get_current_state();
+    state_itr->second.handle_event(asset_event::UNLOAD_COMPLETED);
 
-    if (state_itr->second.get_current_state() == asset_state::UNLOADING) {
-      unregister_asset_in_filesystem(&it.first->second);
-      state_itr->second.handle_event(asset_event::UNLOAD_COMPLETED);
+    if (prev_state == asset_state::UNLOADING) {
+      if (remove_after_unload) {
+        auto it = unloaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
+        OTHER_ASSERT(it.second, "Failed to insert unloaded asset into unloaded assets map");
+        unregister_asset_in_filesystem(&it.first->second);
+
+        asset_states.erase(state_itr);
+      }
 
       pending_itr->pipeline = nullptr;
       asset_pipelines.erase(pending_itr);
-    } else if (state_itr->second.get_current_state() == asset_state::REFRESHING_UNLOAD) {
+    } else if (prev_state == asset_state::REFRESHING_UNLOAD) {
       // begin load again with the same asset data to refresh it
       begin_load(pending_itr, state_itr);
     } else {
@@ -599,6 +609,14 @@ namespace other {
     asset_pipelines.erase(pending_itr);
 
     state_itr->second.handle_event(asset_event::UNLOAD_FAILED);
+    asset_states.erase(state_itr);
+
+    // fully remove it since error occurred
+    unregister_asset_in_filesystem(&pending_itr->loading_asset);
+    auto it = unloaded_assets.find(id);
+    if (it != unloaded_assets.end()) {
+      unloaded_assets.erase(it);
+    }
   }
 
   void asset_handler::register_asset_in_filesystem(const asset* asset_ptr) {

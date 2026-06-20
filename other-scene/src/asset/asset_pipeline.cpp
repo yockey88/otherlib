@@ -139,8 +139,7 @@ namespace other {
     pipeline_state.loading = true;
     start_load_operation(
       execution_pool, asset_ptr, on_success, on_failure,
-      loading_table::loaders[asset_ptr->asset_type]
-    );
+      loading_table::loaders[asset_ptr->asset_type]);
   }
 
   void asset_pipeline::start_unload(executor_t& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
@@ -161,8 +160,7 @@ namespace other {
     pipeline_state.unloading = true;
     start_load_operation(
       execution_pool, asset_ptr, on_success, on_failure,
-      loading_table::unloaders[asset_ptr->asset_type]
-    );
+      loading_table::unloaders[asset_ptr->asset_type]);
   }
 
   void asset_pipeline::poll() {
@@ -196,7 +194,7 @@ namespace other {
   }
 
   void asset_pipeline::pipeline_finished() {
-    CORE_LOG_DEBUG("Pipeline finished successfully");
+    CORE_LOG_DEBUG("Pipeline finished successfully for asset: {}", asset_ptr->id);
     pipeline_state.success = true;
   }
 
@@ -333,8 +331,7 @@ namespace other {
             /// this is fine to leave unprotected by a mutex because the job system garuantees this won't be touched
             ///  until first job finishes and since it is local to the coroutine loading it there won't be any concurrent access to it
             builder = model_importer::load_model_data(source_path);
-          }
-        );
+          });
 
         dependencies.push_back(source_job->id);
       } else {
@@ -374,8 +371,7 @@ namespace other {
           subsystem<renderer_backend>::get()->add_model_source(asset_ptr->path_hash, src);
           CORE_LOG_INFO("Model source loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
         },
-        dependencies
-      );
+        dependencies);
 
       /// waiting on this will also wait on the first job
       do {
@@ -448,8 +444,7 @@ namespace other {
             } else {
               throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path.string(), result));
             }
-          }
-        );
+          });
         OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
         build_id = build_project_job->id;
       }
@@ -464,14 +459,13 @@ namespace other {
         [h = handler, t = build_tool, project_path]() {
           filepath csproj = t->get_dotnet_project_path();
           /// \todo fixed hardcoded build configuration and output path assumptions
-          filepath build = csproj.parent_path() / "bin" / "Debug" / (csproj.stem().string() + ".dll");
+          filepath build = csproj.parent_path() / "bin" / get_environment_build_config_string() / (csproj.stem().string() + ".dll");
           if (!std::filesystem::exists(build)) {
             throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
           }
 
           h->load_asset(build);
-        }
-      );
+        });
       OTHER_ASSERT(load_build_asset_job != nullptr, "Failed to create job for loading built assembly of .NET project.");
 
       do {
@@ -543,20 +537,20 @@ namespace other {
       if (asset_ptr->path_hash == 0) {
         asset_ptr->path_hash = FNV(asset_ptr->virtual_path);
         scene_ptr = reinterpret_cast<scene_pipeline*>(pipeline)->scene_ptr;
-        scene_ptr->asset_id = asset_ptr->id;
       } else {
         OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Scene file does not exist: {}", asset_ptr->absolute_path.string());
+        OTHER_ASSERT(false, "unimplemented");
         CORE_LOG_DEBUG("Loading scene from file: {}", asset_ptr->load_path.string());
-
         /**
          * \todo load scene from file if binary file attached
          **/
-
-        co_await task::yield();
       }
 
-      CORE_LOG_DEBUG("Scene [{}] loaded successfully, running scene scripts if any.", scene_ptr->id);
+      OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null after loading.");
       scene_ptr->asset_id = asset_ptr->id;
+      co_await task::yield();
+
+      CORE_LOG_DEBUG("Scene [{}: {}] loaded successfully with asset ID: {}.", scene_ptr->name, scene_ptr->id, scene_ptr->asset_id);
       call_pipeline_fn<scene_pipeline>(pipeline, on_success);
       co_return;
     }

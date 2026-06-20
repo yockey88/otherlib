@@ -22,9 +22,15 @@ namespace other {
     OTHER_ASSERT(!csproj_path.empty(), "Dotnet project path is empty in start_project_build.");
     OTHER_ASSERT(std::filesystem::exists(csproj_path), "Dotnet project file '{}' does not exist.", csproj_path.string());
 
+    std::string build_config = get_environment_build_config_string();
     native_string path = native_string::new_str(csproj_path.string());
+    native_string config = native_string::new_str(build_config);
+
+    invoke_tool_method("SetConfig", config);
     invoke_tool_method("SetCsprojFilePath", path);
     invoke_tool_method("StartCsprojBuild");
+
+    native_string::free_str(config);
     native_string::free_str(path);
 
     dotnet_project_path = csproj_path;

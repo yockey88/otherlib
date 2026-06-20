@@ -1,5 +1,4 @@
 add_library(other_physics STATIC)
-
 target_sources(other_physics
   PRIVATE
     src/physics_world/physics_world.cpp
@@ -12,11 +11,11 @@ target_sources(other_physics
     src/physics/physics_environment.cpp
 )
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-  set(PHYSX_BUILD_TYPE "checked" CACHE STRING "PhysX build type")
-else()
-  set(PHYSX_BUILD_TYPE "release" CACHE STRING "PhysX build type")
-endif()
+# if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
+#   set(PHYSX_BUILD_TYPE "checked" CACHE STRING "PhysX build type")
+# else()
+#   set(PHYSX_BUILD_TYPE "release" CACHE STRING "PhysX build type")
+# endif()
 
 
 target_include_directories(other_physics 
@@ -31,15 +30,15 @@ target_link_directories(other_physics
     $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 
-set(PHYSX_LIBS
-  PhysX_64
-  PhysXCommon_64
-  PhysXCooking_64
-  PhysXExtensions_static_64
-  PhysXFoundation_64
-  PhysXGpu_64
-  PhysXPvdSdk_static_64
-)
+# set(PHYSX_LIBS
+#   PhysX_64
+#   PhysXCommon_64
+#   PhysXCooking_64
+#   PhysXExtensions_static_64
+#   PhysXFoundation_64
+#   PhysXGpu_64
+#   PhysXPvdSdk_static_64
+# )
 # if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
 #   set(PHYSX_LIBS ${PHYSX_LIBS} PVDRuntime_64)
 # endif()

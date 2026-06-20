@@ -56,24 +56,19 @@ namespace other {
         continue;
       }
 
-      // will not run script file on load
-      scene_data.scene_id = add_scene_to_scene_graph(scene_data.path);
-      CORE_LOG_DEBUG("Loaded scene '{}' with ID {} from project.", scene_data.name, scene_data.project_id);
-    }
-
-    natural_t starting_scene_id = p.get_starting_scene_id();
-    CORE_LOG_INFO("Project starting scene ID: {}", starting_scene_id);
-
-    for (const auto& scene_data : p.get_scenes()) {
-      if (scene_data.scene_id == starting_scene_id) {
-        set_scene_to_active(scene_data.scene_id);
-        break;
-      }
+      natural_t id = add_scene_to_scene_graph(scene_data.path);
+      OTHER_ASSERT(scene_data.scene_id == id, "Scene ID mismatch for scene '{}'. Expected {}, got {}.", scene_data.name, scene_data.scene_id, id);
+      CORE_LOG_DEBUG("Loaded scene '{}' with ID {} from project.", scene_data.name, id);
     }
   }
 
   void scene_system::unload_project_scene_graph() {
-    project_scene_graph->clear();
+    for (auto& scene : *project_scene_graph) {
+      if (scene.value == nullptr) {
+        continue;
+      }
+      get_driver().get_kernel().get_core_system<asset_system>().begin_asset_unload(scene.value->asset_id);
+    }
   }
 
   natural_t scene_system::add_scene_to_scene_graph(const filepath& scene_path) {
@@ -87,7 +82,7 @@ namespace other {
 
     if (project_scene_graph->has_scene(scene_path.filename().stem().string())) {
       CORE_LOG_DEBUG("Scene '{}' already exists in scene graph.", scene_path.filename().stem().string());
-      return project_scene_graph->get_scene(scene_path.filename().stem().string())->id;
+      return FNV(scene_path.filename().stem().string());
     }
 
     auto id = create_empty_scene(scene_path.filename().stem().string(), false);
@@ -116,7 +111,7 @@ namespace other {
 
   scene* scene_system::get_scene(natural_t id) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
-    return project_scene_graph->get_scene(id);
+    return project_scene_graph->find_scene(id);
   }
 
   void scene_system::set_scene_to_active(natural_t scene_id) {
@@ -132,9 +127,33 @@ namespace other {
     }
     CORE_LOG_DEBUG("Setting scene [{}] to active.", scene_id);
 
-    active_scene = project_scene_graph->get_scene(scene_id);
+    active_scene = project_scene_graph->find_scene(scene_id);
     OTHER_ASSERT(active_scene != nullptr, "Scene with ID {} not found in scene graph.", scene_id);
     CORE_LOG_DEBUG("Scene [{}:{}] Activation.", active_scene->id, active_scene->name);
+
+    lua_sandbox& sandbox = active_scene->get_sandbox();
+    opt<sol::table> native_table = sandbox["__other_native"];
+    if (native_table.has_value() && native_table->valid()) {
+      sol::table scene_table = sandbox["__other_native"]["__native_scene"];
+      sol::table scene_interface_table = sandbox["__other_native"]["__scene_interface"];
+
+      scene_table["__native_pointer"] = active_scene;
+      scene_table.set_function(
+        "create_scene_object",
+        sol::overload(
+          [s = active_scene](const std::string& name) -> natural_t {
+            OTHER_ASSERT(s != nullptr, "Active scene is null.");
+            CORE_LOG_DEBUG("Lua scene boundary: creating scene object with name '{}'", name);
+            return s->create_object(name).id;
+          },
+          [s = active_scene](const std::string& name, const glm::vec3& world_position) -> natural_t {
+            OTHER_ASSERT(s != nullptr, "Active scene is null.");
+            CORE_LOG_DEBUG("Lua scene boundary: creating scene object with name '{}' at position ({}, {}, {})", name, world_position.x, world_position.y, world_position.z);
+            return s->create_object(name, world_position).id;
+          }));
+    } else {
+      CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
+    }
 
     // do this every activation, will only happen first time
     active_scene->run_script_file();
@@ -233,7 +252,6 @@ namespace other {
 
     /// \todo decide whether to actually unload or to leaved cached, for now just stop it and
     ///        and leave in the graph, but not active
-    // project_scene_graph->remove_scene(active_scene->id);
     active_scene = nullptr;
   }
 
@@ -297,35 +315,57 @@ namespace other {
 
       CORE_LOG_DEBUG("Loading scene '{}' and adding to scene graph.", scene_path.string());
       scene_id = add_scene_to_scene_graph(scene_path);
-      if (scene_id == 0) {
-        CORE_LOG_ERROR("Failed to load scene from file '{}' via console command.", scene_path.string());
-        return;
-      }
     } else if (data.type() == value_type::UINT64) {
       scene_id = data;
-      if (project_scene_graph->get_scene(scene_id) == nullptr) {
-        CORE_LOG_ERROR("Scene with ID {} not found in scene graph. Cannot load scene.", scene_id);
-        return;
-      }
     } else {
       CORE_LOG_ERROR("Invalid data type for scene.load-scene event. Expected string (scene path) or uint64 (scene ID).");
       return;
     }
 
-    CORE_LOG_DEBUG("Scene loaded with ID {}.", scene_id);
+    if (scene_id == 0) {
+      CORE_LOG_ERROR("Failed to load scene from file via console command");
+      return;
+    }
 
     auto* s = get_scene(scene_id);
-    OTHER_ASSERT(s != nullptr, "Scene with ID {} not found in scene graph after loading scene.", scene_id);
+    if (s == nullptr) {
+      CORE_LOG_ERROR("Scene with ID {} not found in scene graph. Cannot load scene.", scene_id);
+      return;
+    }
+
+    // this was loaded by command which means user wants the scene now
     s->activate_on_load = true;
+    CORE_LOG_DEBUG("Scene loaded with ID {}.", scene_id);
   }
 
   void scene_system::handle_scene_asset_loaded_event(const value& data) {
     OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for scene.asset-loaded event. Expected uint64 (scene ID).");
+
     natural_t scene_asset_id = data;
     CORE_LOG_DEBUG("Handling scene asset loaded event for scene asset ID {}.", scene_asset_id);
 
-    auto* s = project_scene_graph->find_scene([scene_asset_id](const scene& s) { return s.asset_id == scene_asset_id; });
+    /// scene.asset_id should have been set in scene pipeline
+    CORE_LOG_TRACE("Looking for scene with asset ID {} in scene graph.", scene_asset_id);
+    auto* s = project_scene_graph->find_scene([scene_asset_id](const scene& s) {
+      CORE_LOG_TRACE(" - scene name: {}, id: {}, asset-id: {}", s.name, s.id, s.asset_id);
+      return s.asset_id == scene_asset_id;
+    });
     OTHER_ASSERT(s != nullptr, "Scene with asset ID {} not found in scene graph after scene asset loaded event.", scene_asset_id);
+
+    /// this happens here so it only happens once when the asset is fully loaded and registered
+    // if project is loading don't check this
+    bool try_activate = get_driver().get_kernel().has_core_system<project_system>();
+    if (try_activate) {
+      auto& project_sys = get_driver().get_kernel().get_core_system<project_system>();
+      try_activate = !project_sys.project_loading();
+    }
+
+    if (get_driver().get_kernel().has_core_system<project_system>()) {
+      auto& project_sys = get_driver().get_kernel().get_core_system<project_system>();
+      if (project_sys.project_loading()) {
+        project_sys.get_project().add_loaded_scene(s->id);
+      }
+    }
 
     /**
      * \note:
@@ -334,8 +374,9 @@ namespace other {
      *      so we set the pointer, run the script, and reset it back to the old one before doing the 'real' activation below if needed
      **/
 
-    /// this happens here so it only happens once when the asset is fully loaded and registered
-    if (s->activate_on_load) {
+    CORE_LOG_INFO("Scene asset loaded: {}", s->name);
+    CORE_LOG_DEBUG("try_activate: {}, activate_on_load: {}", try_activate, s->activate_on_load);
+    if (try_activate && s->activate_on_load) {
       /// 'real activation'
       set_scene_to_active(s->id);
       synchronize_active_scene(s->id);
@@ -402,7 +443,10 @@ namespace other {
     std::stringstream ss;
     ss << "Scenes in Scene Graph:\n";
     for (const auto& node : graph) {
-      ss << "  - ID: " << node.value.id << ", Name: " << node.value.name << "\n";
+      if (node.value == nullptr) {
+        continue;
+      }
+      ss << "  - ID: " << node.value->id << ", Name: " << node.value->name << "\n";
     }
 
     events->trigger_event("console.output", ss.str());

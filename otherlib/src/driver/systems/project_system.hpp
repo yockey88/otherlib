@@ -33,6 +33,9 @@ namespace other {
     void generate_project_at(driver_kernel* kernel, const filepath& directory);
     void load_project(driver_kernel* kernel, const filepath& project_file);
     void unload_project(driver_kernel* kernel);
+    bool is_project_loaded() const;
+
+    void handle_project_event(driver_kernel* kernel, const project_event_data& data);
 
     inline project& get_project() {
       OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
@@ -49,11 +52,12 @@ namespace other {
     void handle_new_project(driver_kernel* kernel, const value& data);
     void handle_open_project(driver_kernel* kernel, const value& data);
     void handle_save_project(driver_kernel* kernel, const value& data);
-    void handle_project_event(driver_kernel* kernel, const project_event_data& data);
 
     void handle_script_project_loaded(driver_kernel* kernel, const value& data);
     void handle_script_source_loaded(driver_kernel* kernel, const value& data);
+    void handle_script_source_unloaded(driver_kernel* kernel, const value& data);
     void handle_script_file_loaded(driver_kernel* kernel, const value& data);
+    void handle_script_file_unloaded(driver_kernel* kernel, const value& data);
 
     void load_plugin(const std::string& plugin_name, const filepath& plugin_path);
     void unload_plugins();

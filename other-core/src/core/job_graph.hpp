@@ -26,6 +26,23 @@ namespace other {
     };
     job_graph() = default;
     ~job_graph() = default;
+    job_graph(job_graph&& other) {
+      std::lock_guard<std::mutex> lock(other.graph_mutex);
+      work_graph = std::move(other.work_graph);
+      id_pairs = std::move(other.id_pairs);
+      next_job_id = other.next_job_id;
+    }
+    job_graph& operator=(job_graph&& other) {
+      if (this != &other) {
+        std::lock_guard<std::mutex> lock(other.graph_mutex);
+        work_graph = std::move(other.work_graph);
+        id_pairs = std::move(other.id_pairs);
+        next_job_id = other.next_job_id;
+      }
+      return *this;
+    }
+    job_graph(const job_graph& other) = delete;
+    job_graph& operator=(const job_graph& other) = delete;
 
     job_node* get_node(natural_t id);
 
@@ -50,19 +67,13 @@ namespace other {
       natural_t job_id;
       natural_t node_id;
     };
-    // struct deferred_edge {
-    //   natural_t from_job_id;
-    //   deferred_factory_fn factory;
-    //   ref<job> placeholder;
-    // };
     mutable std::mutex graph_mutex;
 
     graph<job_node> work_graph;
     std::vector<id_pair> id_pairs;
-    // std::vector<deferred_edge> deferred_edges;
 
-    natural_t next_job_id_ = 1;
-    natural_t allocate_id() { return next_job_id_++; }
+    natural_t next_job_id = 1;
+    natural_t allocate_id() { return next_job_id++; }
 
     job_node* find_node(natural_t id);
   };

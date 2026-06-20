@@ -11,9 +11,11 @@
 namespace other {
 
   void pass_diagnostics::mark(std::string_view label) {
+    /// \todo this
   }
 
   void pass_diagnostics::log_warning(std::string_view warning) {
+    /// \todo this
   }
 
   pass_context::pass_context(renderer* r, render_pipeline* p, frame_node* n, const render_data* d, frame_binding_view bv, pass_diagnostics* diag)

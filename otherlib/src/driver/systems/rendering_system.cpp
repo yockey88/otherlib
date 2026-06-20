@@ -24,12 +24,22 @@ namespace other {
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
 
+    void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_model_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
+    void upload_material_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
+    void upload_bone_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
+
+    inline void no_op_upload_per_frame(render_pipeline&, const render_data&, resource_handle) {}
+
   }  // namespace detail
 
   void rendering_system::initialize(driver_kernel* kernel) {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
     register_builtin_resource_tags();
     register_builtin_render_executors();
+    register_builtin_renderer_debug_streams();
 
     configure_pipelines(kernel);
 
@@ -70,7 +80,8 @@ namespace other {
           renderer_ptr->initialize_pass_resolver(nullptr);
         },
         no_args(),
-        interface_cardinality::SINGLE);
+        interface_cardinality::SINGLE  //
+      );
     };
     register_interfaces_in_registry(kernel->driver_registry());
     register_interfaces_in_registry(kernel->project_registry());
@@ -96,6 +107,7 @@ namespace other {
       viewport_size = window_size;
     }
 
+    OTHER_ASSERT(kernel->has_core_system<scene_system>(), "Scene system is not available in driver kernel.");
     auto& scenes = sibling<scene_system>(*kernel);
     auto* active_scene = scenes.get_active_scene();
     OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not available in driver kernel.");
@@ -109,7 +121,7 @@ namespace other {
     }
 
     if (data_ptr != nullptr) {
-      auto& registry = renderer_ptr->get_debug_stream_registry();  // see F3
+      auto& registry = renderer_ptr->get_debug_stream_registry();
       for (const auto& [name, def] : registry.entries()) {
         data_ptr->debug_data.configure_stream(def.name, def.element_size, def.max_per_frame);
       }
@@ -198,60 +210,13 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in register_builtin_resource_tags.");
 
     auto& reg = renderer_ptr->get_binding_registry();
-    reg.register_per_frame(resource_tag(resource_tag::kCameraTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      if (!d.primary_camera) {
-        return;
-      }
-
-      auto gpu = d.primary_camera->to_gpu_data();
-      r.upload_buffer(h, &gpu, sizeof(gpu));
-    });
-
-    reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::point_light_buffer buf{};
-      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-        buf.lights[i] = d.point_lights[i];
-      }
-      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
-    });
-
-    reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::directional_light_buffer dir_light_buffer_data;
-      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
-        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
-      }
-      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
-    });
-
-    // screen is simply a marker tag, render_pipeline tracks screen_texture_handle separately for to-screen blit
-    reg.register_per_frame(resource_tag(resource_tag::kScreenTag), [](render_pipeline&, const render_data&, resource_handle) {});
-
-    reg.register_per_draw(resource_tag(resource_tag::kModelTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
-      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
-      OTHER_ASSERT(data.size() == sizeof(gpu::model_matrix_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::model_matrix_buffer));
-
-      const auto& models = d.model_buffers[draw_idx];
-      std::span bytes{ reinterpret_cast<const uint8_t*>(&models), sizeof(gpu::model_matrix_buffer) };
-      std::ranges::copy(bytes, data.begin());
-    });
-
-    reg.register_per_draw(resource_tag(resource_tag::kMaterialTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> out) {
-      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
-      OTHER_ASSERT(out.size() == sizeof(gpu::graphics_material_buffer), "Data span size {} does not match expected size {}", out.size(), sizeof(gpu::graphics_material_buffer));
-
-      const auto& materials = d.material_buffers[draw_idx];
-      std::span bytes{ reinterpret_cast<const uint8_t*>(&materials), sizeof(gpu::graphics_material_buffer) };
-      std::ranges::copy(bytes, out.begin());
-    });
-
-    reg.register_per_draw(resource_tag(resource_tag::kBoneTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> out) {
-      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
-      OTHER_ASSERT(out.size() == sizeof(gpu::bone_matrix_buffer), "Data span size {} does not match expected size {}", out.size(), sizeof(gpu::bone_matrix_buffer));
-
-      const auto& bones = d.bone_buffers[draw_idx];
-      std::span bytes{ reinterpret_cast<const uint8_t*>(&bones), sizeof(gpu::bone_matrix_buffer) };
-      std::ranges::copy(bytes, out.begin());
-    });
+    reg.register_per_frame(resource_tag(resource_tag::kCameraTag), &detail::upload_camera_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), &detail::upload_point_light_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), &detail::upload_directional_light_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kScreenTag), &detail::no_op_upload_per_frame);
+    reg.register_per_draw(resource_tag(resource_tag::kModelTag), &detail::upload_model_buffer_per_draw);
+    reg.register_per_draw(resource_tag(resource_tag::kMaterialTag), &detail::upload_material_buffer_per_draw);
+    reg.register_per_draw(resource_tag(resource_tag::kBoneTag), &detail::upload_bone_buffer_per_draw);
   }
 
   void rendering_system::register_builtin_render_executors() {
@@ -265,9 +230,8 @@ namespace other {
     reg.register_executor("debug_stream", &detail::make_debug_stream);
   }
 
-  void rendering_system::register_buildin_renderer_debug_streams() {
-    // auto& reg = renderer_ptr->get_debug_stream_registry();
-
+  void rendering_system::register_builtin_renderer_debug_streams() {
+    auto& reg = renderer_ptr->get_debug_stream_registry();
     // reg.register_stream("debug.lines", debug_stream_definition{
     //                                      .element_size = sizeof(debug_line),
     //                                      .max_per_frame = 4096,
@@ -275,12 +239,11 @@ namespace other {
     //                                        .shader = "debug_line_shader",
     //                                        .topology = mesh::primitive_type::LINES,
     //                                        .vertex_layout = {
-    //                                          vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
-    //                                          vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
+    //                                          vertex_attribute{ value_type::VEC3, "position", 0, 0 },
+    //                                          vertex_attribute{ value_type::VEC3, "color", 1, 3 },
     //                                        },
     //                                      },
     //                                    });
-
     // reg.register_stream("debug.triangles", debug_stream_definition{
     //                                          .element_size = sizeof(debug_triangle),
     //                                          .max_per_frame = 2048,
@@ -288,14 +251,14 @@ namespace other {
     //                                            .shader = "debug_tri_shader",
     //                                            .topology = mesh::primitive_type::TRIANGLES,
     //                                            .vertex_layout = {
-    //                                              vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
-    //                                              vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
+    //                                              vertex_attribute{ value_type::VEC3, "position", 0, 0 },
+    //                                              vertex_attribute{ value_type::VEC3, "color", 1, 3 },
     //                                            },
     //                                          },
     //                                        });
 
-    // // Load the recipe shaders once at registration time so the first frame
-    // // doesn't hit them lazily on draw_debug_stream.
+    // Load the recipe shaders once at registration time so the first frame
+    // doesn't hit them lazily on draw_debug_stream.
     // for (auto* shader_name : { "debug_line_shader", "debug_tri_shader" }) {
     //   resource_handle h = shader::create(
     //     shader_name,
@@ -416,6 +379,58 @@ namespace other {
         }
         ctx.draw_debug_stream(stream_name, *stream, streams.view(stream_name), streams.count(stream_name));
       };
+    }
+
+    void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      if (!d.primary_camera) {
+        return;
+      }
+
+      auto gpu = d.primary_camera->to_gpu_data();
+      r.upload_buffer(h, &gpu, sizeof(gpu));
+    }
+
+    void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::point_light_buffer buf{};
+      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+        buf.lights[i] = d.point_lights[i];
+      }
+      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
+    }
+
+    void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::directional_light_buffer dir_light_buffer_data;
+      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
+        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
+      }
+      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+    }
+
+    void upload_model_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(data.size() == sizeof(gpu::model_matrix_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::model_matrix_buffer));
+
+      const auto& models = d.model_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&models), sizeof(gpu::model_matrix_buffer) };
+      std::ranges::copy(bytes, data.begin());
+    }
+
+    void upload_material_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(data.size() == sizeof(gpu::graphics_material_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::graphics_material_buffer));
+
+      const auto& materials = d.material_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&materials), sizeof(gpu::graphics_material_buffer) };
+      std::ranges::copy(bytes, data.begin());
+    }
+
+    void upload_bone_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(data.size() == sizeof(gpu::bone_matrix_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::bone_matrix_buffer));
+
+      const auto& bones = d.bone_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&bones), sizeof(gpu::bone_matrix_buffer) };
+      std::ranges::copy(bytes, data.begin());
     }
 
   }  // namespace detail

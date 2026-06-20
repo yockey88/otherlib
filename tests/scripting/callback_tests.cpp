@@ -79,10 +79,10 @@ namespace other {
     subsystem<arena>::get();
 
     subsystem<scripting_environment>::get()->initialize_script_environment(environment->config);
-#ifdef OTHER_ENVIRONMENT_DEBUG
+#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
     dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_debug.string());
     testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_debug.string());
-#elif defined(OTHER_ENVIRONMENT_RELEASE)
+#elif defined(OTHER_ENVIRONMENT_RELEASE) || defined(OTHER_ENVIRONMENT_PROFILE)
     dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_release.string());
     testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_release.string());
 #else

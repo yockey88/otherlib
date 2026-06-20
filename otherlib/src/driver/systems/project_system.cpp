@@ -61,16 +61,29 @@ namespace other {
     /// registered in asset_system::initialize
     events.add_listener("script-project.asset-loaded", [this, kernel](const value& data) { handle_script_project_loaded(kernel, data); });
     events.add_listener("script-source.asset-loaded", [this, kernel](const value& data) { handle_script_source_loaded(kernel, data); });
+    events.add_listener("script-source.asset-unloaded", [this, kernel](const value& data) { handle_script_source_unloaded(kernel, data); });
     events.add_listener("script-file.asset-loaded", [this, kernel](const value& data) { handle_script_file_loaded(kernel, data); });
-
-    const auto& config = get_driver().configuration();
-    if (config.project_file.has_value()) {
-      filepath project_file = *config.project_file;
-      load_project(kernel, project_file);
-    }
+    events.add_listener("script-file.asset-unloaded", [this, kernel](const value& data) { handle_script_file_unloaded(kernel, data); });
   }
 
   void project_system::tick(driver_kernel* kernel, double dt) {
+    const auto& config = get_driver().configuration();
+    if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING &&
+        loaded_project->is_empty() && config.project_file.has_value()) {
+      filepath project_file = *config.project_file;
+      load_project(kernel, project_file);
+    }
+
+    if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING &&
+        loaded_project->is_loading()) {
+      // if all scenes loaded and all scripts loaded trigger project.loaded
+      const bool csproj_built_and_attached = loaded_project->script_project_mounted();
+      const bool scene_graph_loaded = loaded_project->scene_graph_loaded();
+      if (csproj_built_and_attached && scene_graph_loaded) {
+        loaded_project->set_state(project::state::LOADED);
+        get_driver().trigger_event("project.loaded");
+      }
+    }
   }
 
   void project_system::shutdown(driver_kernel* kernel) {
@@ -109,25 +122,37 @@ namespace other {
 
     OTHER_ASSERT(std::filesystem::exists(project_file), "Project file '{}' does not exist.", project_file.string());
     OTHER_ASSERT(std::filesystem::is_regular_file(project_file), "Project file '{}' is not a regular file.", project_file.string());
+
+    if (loaded_project->is_loaded()) {
+      CORE_LOG_ERROR("Can not load project file '{}' while other project is open.", project_file.string());
+      return;
+    }
+
+    CORE_LOG_INFO("Begin project load: {}", project_file.string());
     loaded_project->load_from_file(kernel, project_file);
     last_loaded_project_file = project_file;
+
+    if (kernel->has_core_system<scene_system>()) {
+      auto& scenes = kernel->get_core_system<scene_system>();
+      scenes.load_project_scene_graph(*loaded_project);
+    }
   }
 
   void project_system::unload_project(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in project system unload_project.");
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+
+    if (!loaded_project->is_loaded()) {
+      CORE_LOG_WARN("No project is currently loaded.");
+      return;
+    }
+
     loaded_project->unload();
   }
 
-  void project_system::handle_new_project(driver_kernel* kernel, const value& data) {
-    // get_driver().trigger_event("open-driver-ui-window", "project-creator");
-  }
-
-  void project_system::handle_open_project(driver_kernel* kernel, const value& data) {
-    sibling<rendering_system>(*kernel).show_open_file_dialog(&detail::open_project_callback, &get_driver(), 0);
-  }
-
-  void project_system::handle_save_project(driver_kernel* kernel, const value& data) {
+  bool project_system::is_project_loaded() const {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    return loaded_project->is_loaded();
   }
 
   void project_system::handle_project_event(driver_kernel* kernel, const project_event_data& data) {
@@ -156,6 +181,8 @@ namespace other {
           CORE_LOG_ERROR("Project path '{}' is a directory but no same-named .toml or .oproj file found in the directory for project load event.", project_path.string());
           return;
         }
+      } else if (std::filesystem::is_regular_file(project_path)) {
+        // project_path is already a regular file, no further action needed
       }
 
       load_project(kernel, project_path);
@@ -164,10 +191,22 @@ namespace other {
     }
   }
 
+  void project_system::handle_new_project(driver_kernel* kernel, const value& data) {
+    // get_driver().trigger_event("open-driver-ui-window", "project-creator");
+  }
+
+  void project_system::handle_open_project(driver_kernel* kernel, const value& data) {
+    sibling<rendering_system>(*kernel).show_open_file_dialog(&detail::open_project_callback, &get_driver(), 0);
+  }
+
+  void project_system::handle_save_project(driver_kernel* kernel, const value& data) {
+  }
+
   void project_system::handle_script_project_loaded(driver_kernel* kernel, const value& data) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script project loaded event data.");
 
+    CORE_LOG_DEBUG("Script project loaded. Project state: {}", loaded_project->get_state());
     if (loaded_project->is_loading()) {
       natural_t asset_id = data;
       opt<filepath> script = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
@@ -176,7 +215,6 @@ namespace other {
         return;
       }
       OTHER_ASSERT(std::filesystem::exists(script.value()), "Local asset path '{}' for loaded script project asset with ID {} does not exist.", script.value().string(), asset_id);
-
     } else {
       CORE_LOG_WARN("Unimplemented handling of script project asset loaded event in project", loaded_project->get_state());
     }
@@ -196,10 +234,43 @@ namespace other {
     OTHER_ASSERT(std::filesystem::exists(script_source_path.value()), "Local asset path '{}' for loaded script source asset with ID {} does not exist.", script_source_path.value().string(), asset_id);
     CORE_LOG_INFO("Script source loaded with path '{}' for asset ID {}", script_source_path.value().string(), asset_id);
 
+    CORE_LOG_DEBUG("Script source loaded. Project State: {}", loaded_project->get_state());
     if (loaded_project->is_loading()) {
       loaded_project->add_built_script(script_source_path.value());
     } else {
       CORE_LOG_WARN("Unimplemented handling of script source asset loaded event in project for project state {}", loaded_project->get_state());
+    }
+  }
+
+  void project_system::handle_script_source_unloaded(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script source unloaded event data.");
+
+    natural_t asset_id = data;
+    opt<filepath> script_source_path = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
+
+    if (!script_source_path.has_value()) {
+      CORE_LOG_ERROR("Failed to get local asset path for unloaded script source asset with ID: {}", asset_id);
+      return;
+    }
+    OTHER_ASSERT(std::filesystem::exists(script_source_path.value()), "Local asset path '{}' for unloaded script source asset with ID {} does not exist.", script_source_path.value().string(), asset_id);
+    CORE_LOG_INFO("Script source unloaded with path '{}' for asset ID {}", script_source_path.value().string(), asset_id);
+
+    CORE_LOG_DEBUG("Script source unloaded. Project State: {}", loaded_project->get_state());
+    if (loaded_project->is_unloading()) {
+      loaded_project->remove_built_script(script_source_path.value());
+
+      /// remove the csproj asset now that the DLL is unloaded
+      auto csproj_path = loaded_project->get_csproj_path();
+      if (std::filesystem::exists(csproj_path)) {
+        CORE_LOG_INFO("Removing C# project file '{}'", csproj_path.string());
+
+        natural_t asset_id = sibling<asset_system>(*kernel).get_asset_id_from_path(csproj_path);
+        sibling<asset_system>(*kernel).begin_asset_unload(asset_id);
+      }
+
+    } else {
+      CORE_LOG_WARN("Unimplemented handling of script source asset unloaded event in project for project state {}", loaded_project->get_state());
     }
   }
 
@@ -217,11 +288,23 @@ namespace other {
     OTHER_ASSERT(std::filesystem::exists(script_file_path.value()), "Local asset path '{}' for loaded script file asset with ID {} does not exist.", script_file_path.value().string(), asset_id);
     CORE_LOG_INFO("Script file loaded with path '{}' for asset ID {}", script_file_path.value().string(), asset_id);
 
-    if (loaded_project->is_loading()) {
-      loaded_project->add_script_file(script_file_path.value());
-    } else {
-      CORE_LOG_WARN("Unimplemented handling of script file asset loaded event in project for project state {}", loaded_project->get_state());
+    loaded_project->add_script_file(script_file_path.value());
+  }
+
+  void project_system::handle_script_file_unloaded(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Script file unloaded event data must be of type UINT64.");
+
+    natural_t asset_id = data;
+    auto script_file_path = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
+    if (!script_file_path.has_value()) {
+      CORE_LOG_ERROR("Failed to get local asset path for unloaded script file asset with ID: {}", asset_id);
+      return;
     }
+    OTHER_ASSERT(std::filesystem::exists(script_file_path.value()), "Local asset path '{}' for unloaded script file asset with ID {} does not exist.", script_file_path.value().string(), asset_id);
+    CORE_LOG_INFO("Script file unloaded with path '{}' for asset ID {}", script_file_path.value().string(), asset_id);
+
+    loaded_project->remove_script_file(script_file_path.value());
   }
 
   void project_system::load_plugin(const std::string& plugin_name, const filepath& plugin_path) {

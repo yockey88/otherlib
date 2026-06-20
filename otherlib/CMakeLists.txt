@@ -115,7 +115,6 @@ target_sources(otherlib
     src/vm/default_symbol_resolver.cpp
     src/vm/instruction.cpp
     src/vm/opcode.cpp
-    src/vm/driver_interface.cpp
     src/vm/command_bus.cpp
     src/vm/control_table.cpp
     src/vm/vm_type.cpp

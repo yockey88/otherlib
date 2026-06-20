@@ -299,6 +299,7 @@ namespace other {
 
   std::string get_tag_replacement(const std::string_view tag);
   std::string perform_tag_replacement(const std::string_view tag);
+  std::string get_environment_build_config_string();
 
   std::string get_current_exe_name();
   std::string get_current_exe_full_path();

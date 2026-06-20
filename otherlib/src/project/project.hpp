@@ -30,6 +30,7 @@ namespace other {
       EMPTY = 0,
       LOADING,
       LOADED,
+      LOAD_FAILED,
       UNLOADING,
 
       NUM_STATES,
@@ -44,16 +45,17 @@ namespace other {
     struct scene {
       std::string name;
       filepath path;
-      natural_t project_id;
+
       natural_t scene_id;
 
-      std::vector<natural_t> incoming;
-      std::vector<natural_t> outgoing;
+      std::vector<std::string> incoming_scenes;
+      std::vector<std::string> outgoing_scenes;
     };
     struct script_data {
       filepath csproject_path;
       filepath cs_script_source;
       std::vector<filepath> cs_scripts;
+      std::vector<filepath> lua_scripts;
     };
 
     project(project_system* proj_system);
@@ -68,7 +70,15 @@ namespace other {
     void add_built_script(const filepath& script_asset_path);
     void add_script_file(const filepath& script_file_path);
 
+    void remove_built_script(const filepath& script_asset_path);
+    void remove_script_file(const filepath& script_file_path);
+
+    void add_loaded_scene(natural_t scene_id);
+
+    const std::string& get_project_name() const { return project_metadata.name; }
+
     inline const filepath& get_project_rc_path() const { return rc_path; }
+    inline const filepath get_csproj_path() const { return project_scripts.csproject_path; }
 
     inline void set_dotnet_assembly(ref<assembly> a) { project_assembly = a; }
     inline state get_state() const { return current_state; }
@@ -77,9 +87,14 @@ namespace other {
     inline bool is_loading() const { return current_state == LOADING; }
     inline bool is_unloading() const { return current_state == UNLOADING; }
 
+    inline bool script_project_mounted() const { return !project_scripts.csproject_path.empty() && !project_scripts.cs_script_source.empty(); }
+    inline bool script_project_unmounted() const { return project_scripts.csproject_path.empty() || project_scripts.cs_script_source.empty(); }
+    inline bool scene_graph_loaded() const { return all_scenes_loaded; }
+    inline bool scene_graph_unloaded() const { return !all_scenes_loaded; }
+
     inline natural_t get_starting_scene_id() const { return starting_scene_id; }
-    inline std::vector<scene>& get_scenes() { return scenes_in_project; }
-    inline const std::vector<scene>& get_scenes() const { return scenes_in_project; }
+    inline std::vector<project::scene>& get_scenes() { return scenes_in_project; }
+    inline const std::vector<project::scene>& get_scenes() const { return scenes_in_project; }
 
    private:
     struct project_args {
@@ -96,18 +111,22 @@ namespace other {
     filepath rc_path;
     ref<file_handle> project_file_handle;
     ref<assembly> project_assembly;
+    script_data project_scripts;
 
     natural_t starting_scene_id = 0;
     std::vector<scene> scenes_in_project;
-    script_data project_scripts;
+    bool all_scenes_loaded = false;
 
     void attach_project_dll(const filepath& dll_path);
     void attach_project_cs_file(const filepath& cs_file);
 
-    bool process_scripting_sections(const toml::table& table, driver_kernel* kernel);
-    void process_scene_sections(const toml::table& table);
+    void detach_project_dll(const filepath& dll_path);
+    void detach_project_cs_file(const filepath& cs_file);
+
     void process_project_plugins(const toml::table& table);
-    void process_scenes_table(toml::node_view<const toml::node> scenes_node);
+    bool process_scripting_sections(const toml::table& table, driver_kernel* kernel);
+    bool process_scene_sections(const toml::table& table);
+    bool process_scenes_table(toml::node_view<const toml::node> scenes_node);
     void process_scene_graph(toml::node_view<const toml::node> graph_node);
   };
 
