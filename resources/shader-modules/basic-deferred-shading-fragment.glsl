@@ -52,6 +52,10 @@ vec3 calc_point_light(const point_light light, const vec3 world_normal, const ve
 uniform mat4 OE_light_space_matrix;
 uniform vec3 OE_light_position;
 uniform sampler2D OE_shadow_map;
+uniform sampler2D OE_gbuff_albedo;
+uniform sampler2D OE_gbuff_normal;
+uniform sampler2D OE_gbuff_position;
+uniform sampler3D OE_env_cubemap;
 
 float calculate_direction_light_shadow(vec3 world_position, vec3 world_normal) {
   vec4 light_space_position = OE_light_space_matrix * vec4(world_position, 1.0);
@@ -83,6 +87,10 @@ float calculate_direction_light_shadow(vec3 world_position, vec3 world_normal) {
   return shadow;
 }
 
+vec4 calculate_ambient_lighting() {
+  return vec4(1.0, 0.95, 0.9, 1.0);
+}
+
 vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, float specular_reflect) {
   vec3 view_dir = normalize(camera_position.xyz - world_position);
 
@@ -109,7 +117,3 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
   vec3 lighting = (ambient + (1.0 - shadow_calc) * diffuse_specular) * diffuse;
   return vec4(lighting, 1.0);
 }
-
-uniform sampler2D OE_gbuff_albedo;
-uniform sampler2D OE_gbuff_normal;
-uniform sampler2D OE_gbuff_position;

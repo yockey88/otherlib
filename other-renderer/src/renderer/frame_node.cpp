@@ -33,8 +33,19 @@ namespace other {
           .bind();
       }
 
-      for (const auto& [id, tex] : input_textures) {
-        renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
+      if (pass->pass_type == render_pass::RENDER_PASS) {
+        for (const auto& [id, tex] : input_textures) {
+          renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
+        }
+      } else if (pass->pass_type == render_pass::COMPUTE_PASS) {
+        for (const auto& [id, tex] : input_textures) {
+          auto& t = renderer_ptr->get_resource<texture>(tex.handle);
+          t.bind_image(tex.slot, 0, true, 0, t.get_format(), READ);
+        }
+        for (const auto& [id, tex] : output_textures) {
+          auto& t = renderer_ptr->get_resource<texture>(tex.handle);
+          t.bind_image(tex.slot, 0, true, 0, t.get_format(), WRITE);
+        }
       }
     }
     /// set other pipeline state options here
@@ -46,6 +57,11 @@ namespace other {
     if (pass->shader_handle.has_value()) {
       for (const auto& [id, tex] : input_textures) {
         renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
+      }
+      if (pass->pass_type == render_pass::COMPUTE_PASS) {
+        for (const auto& [id, tex] : output_textures) {
+          renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
+        }
       }
 
       for (const auto& [binding_point, buffer] : output_buffers) {

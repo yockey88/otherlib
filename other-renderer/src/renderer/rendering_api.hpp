@@ -102,7 +102,7 @@ namespace other {
     virtual void unbind_texture_resource(const resource_handle& handle, uint32_t index) = 0;
     virtual void set_texture_filter(const resource_handle& handle, texture::filter min_filter, texture::filter mag_filter) = 0;
     virtual void set_texture_wrap_mode(const resource_handle& handle, texture::wrap wrap_s, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_r = texture::wrap::CLAMP_TO_EDGE) = 0;
-    virtual void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) = 0;
+    virtual void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) = 0;
     virtual void bind_image(const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer = 0, texture::format frmt = texture::format::RGBA32F, access_flags flags = access_flags::READ_WRITE) = 0;
     virtual void* get_texture_gpu_resource(const resource_handle& handle) = 0;
 

@@ -21,11 +21,13 @@ textures = [
   { name = "normal_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "position_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "ambient_shadow_map", use_window_size = true, type = "TEXTURE_2D", format = "DEPTHF" },
+  { name = "environment_map", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 512, y = 512 }, depth = 512 },
   { name = "screen_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F", tag = "screen" },
 ]
 shaders = [
   { name = "geometry_pass_shader", vertex_path = "resources/basic-instancing-gbuffer.vert", fragment_path = "resources/basic-instancing-gbuffer.frag" },
   { name = "shadow_map_shader", vertex_path = "resources/basic-instancing-shadow-map.vert", fragment_path = "resources/basic-instancing-shadow-map.frag" },
+  { name = "environment_map_pass", compute_path = "resources/basic-environment-map.comp" },
   { name = "shading_pass_shader", vertex_path = "resources/basic-shading.vert", fragment_path = "resources/basic-shading.frag" },
   { name = "screen_shader", vertex_path = "resources/basic-textured-quad.vert", fragment_path = "resources/basic-textured-quad.frag" },
 ]
@@ -48,6 +50,7 @@ pass-bindings = [
 passes = [
   { name = "geometry-pass", pass_type = "RENDER_PASS", shader_name = "geometry_pass_shader", clear_color = [0.0, 0.0, 0.0, 1.0] },
   { name = "shadow-map-pass", pass_type = "RENDER_PASS", shader_name = "shadow_map_shader" },
+  { name = "environment-map-pass", pass_type = "COMPUTE_PASS", shader_name = "environment_map_pass", create_framebuffer = false },
   { name = "shading-pass", pass_type = "RENDER_PASS", shader_name = "shading_pass_shader", clear_color = [0.2, 0.2, 0.2, 1.0] },
   { name = "to-screen", pass_type = "RENDER_PASS", shader_name = "screen_shader", create_framebuffer = false },
 ]
@@ -64,6 +67,7 @@ inputs = [
   { pass_name = "shading-pass", resource_name = "direction_light_buffer", binding = 0 },
   { pass_name = "shading-pass", resource_name = "point_light_buffer", binding = 1 },
   { pass_name = "shading-pass", resource_name = "camera_buffer", binding = 2 },
+  { pass_name = "shading-pass", resource_name = "environment_map" },
   { pass_name = "to-screen", resource_name = "screen_texture", attachment = "COLOR" },
 ]
 outputs = [
@@ -71,12 +75,14 @@ outputs = [
   { pass_name = "geometry-pass", resource_name = "normal_texture", attachment = "COLOR" },
   { pass_name = "geometry-pass", resource_name = "position_texture", attachment = "COLOR" },
   { pass_name = "shadow-map-pass", resource_name = "ambient_shadow_map", attachment = "DEPTH" },
+  { pass_name = "environment-map-pass", resource_name = "environment_map" },
   { pass_name = "shading-pass", resource_name = "screen_texture", attachment = "COLOR" },
 ]
 executors = [
   { pass_name = "geometry-pass", name = "draw_scene" },
   { pass_name = "shadow-map-pass", name = "draw_scene" },
-  { pass_name = "shading-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_gbuff_albedo", value = 0 }, { name = "OE_gbuff_normal", value = 1 }, { name = "OE_gbuff_position", value = 2 }, { name = "OE_shadow_map", value = 3 } ] },
+  { pass_name = "environment-map-pass", name = "compute_dispatch", params = [ { name = "barrier", value = "shader_image_access" }, { name = "groups", value=[32,32,512] } ], uniforms = [ { name = "OE_env_cubemap", value = 0 } ] },
+  { pass_name = "shading-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_gbuff_albedo", value = 0 }, { name = "OE_gbuff_normal", value = 1 }, { name = "OE_gbuff_position", value = 2 }, { name = "OE_shadow_map", value = 3 }, { name = "OE_env_cubemap", value = 4 } ] },
   { pass_name = "to-screen", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 } ] },
 ]
 resource_tags = [

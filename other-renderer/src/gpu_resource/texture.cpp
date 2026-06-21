@@ -57,7 +57,7 @@ namespace other {
     auto& text = (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(handle))
                    .set_type(texture::tex_type::TEXTURE_3D)
                    .set_format(frmt)
-                   .set_size(static_cast<uint32_t>(dimensions.x), static_cast<uint32_t>(dimensions.y))
+                   .set_dimensions(dimensions)
                    .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
                    .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE);
 
@@ -90,6 +90,26 @@ namespace other {
       CORE_LOG_ERROR("Invalid texture size: width and height must be greater than zero.");
     } else {
       size = { width, height };
+    }
+    return *this;
+  }
+
+  texture& texture::set_dimensions(const glm::vec3& dimensions) {
+    if (dimensions.x <= 0 || dimensions.y <= 0 || dimensions.z <= 0) {
+      CORE_LOG_ERROR("Invalid texture dimensions: all dimensions must be greater than zero.");
+    } else {
+      size = { static_cast<uint32_t>(dimensions.x), static_cast<uint32_t>(dimensions.y) };
+      depth = static_cast<uint32_t>(dimensions.z);
+    }
+    set_depth(static_cast<uint32_t>(dimensions.z));
+    return *this;
+  }
+
+  texture& texture::set_depth(uint32_t depth) {
+    if (depth == 0) {
+      CORE_LOG_ERROR("Invalid texture depth: must be greater than zero.");
+    } else {
+      this->depth = depth;
     }
     return *this;
   }
@@ -150,7 +170,7 @@ namespace other {
       return;
     }
 
-    subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_type(), get_format(), size, data, data_size);
+    subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_type(), get_format(), size, depth, data, data_size);
   }
 
   ImTextureID texture::get_imgui_texture_id() {

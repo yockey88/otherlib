@@ -226,14 +226,12 @@ namespace other {
   struct frame_executor_table {
     std::string pass_name;
     std::string name;
-    struct uniform {
+    struct uniform_or_param {
       std::string name;
-      /// \todo: do we need to do this better somehow?
-      opt<int64_t> int_value;
-      opt<float> float_value;
-      opt<bool> bool_value;
+      value val;
     };
-    std::vector<uniform> uniforms;
+    std::vector<uniform_or_param> uniforms;
+    std::vector<uniform_or_param> params;
   };
   struct frame_resource_tag {
     std::string name;
@@ -696,6 +694,8 @@ namespace other {
         auto type = texture.at_path("type");
         auto format = texture.at_path("format");
         auto tag = texture.at_path("tag");
+        auto size = texture.at_path("size");
+        auto depth = texture.at_path("depth");
         if (!name || !use_window_size || !type || !format) {
           CORE_LOG_ERROR("Texture must have name, use_window_size, type, format, missing one or more required fields");
           CORE_LOG_ERROR("name exists: {}, use_window_size exists: {}, type exists: {}, format exists: {}",
@@ -718,6 +718,24 @@ namespace other {
 
         if (tag && tag.is_string()) {
           tex.tag = resource_tag_from_string(tag.as_string()->get());
+        }
+
+        if (size && size.is_table()) {
+          auto x = size.at_path("x");
+          auto y = size.at_path("y");
+          if (x && x.is_integer()) {
+            tex.fixed_size.x = static_cast<uint32_t>(x.as_integer()->get());
+          } else {
+            CORE_LOG_ERROR("Texture size must have integer fields x and y");
+          }
+          if (y && y.is_integer()) {
+            tex.fixed_size.y = static_cast<uint32_t>(y.as_integer()->get());
+          } else {
+            CORE_LOG_ERROR("Texture size must have integer fields x and y");
+          }
+        }
+        if (depth && depth.is_integer()) {
+          tex.depth = static_cast<uint32_t>(depth.as_integer()->get());
         }
 
         std::stringstream ss;
@@ -910,6 +928,7 @@ namespace other {
         auto pass_name = executor.at_path("pass_name");
         auto name = executor.at_path("name");
         auto uniforms = executor.at_path("uniforms");
+        auto params = executor.at_path("params");
         if (!pass_name || !name) {
           CORE_LOG_ERROR("Executor missing pass_name or name");
           CORE_LOG_ERROR("pass name: {}, name: {}", (bool)pass_name, (bool)name);
@@ -941,24 +960,103 @@ namespace other {
             }
 
             std::string uname_str = uname.as_string()->get();
-            auto& u = exec.uniforms.emplace_back() = frame_executor_table::uniform{
+            auto& u = exec.uniforms.emplace_back() = frame_executor_table::uniform_or_param{
               .name = uname_str,
             };
 
             if (value.is_floating_point()) {
-              u.float_value = static_cast<float>(value.as_floating_point()->get());
+              u.val = static_cast<float>(value.as_floating_point()->get());
             } else if (value.is_number()) {
-              u.int_value = value.as_integer()->get();
+              u.val = static_cast<int32_t>(value.as_integer()->get());
             } else if (value.is_boolean()) {
-              u.bool_value = value.as_boolean()->get() ? 1.f : 0.f;
+              u.val = value.as_boolean()->get() ? 1.f : 0.f;
             }
             std::stringstream ss_uniform;
             ss_uniform << "Uniform: " << uname_str << "\n"
-                       << " - int_value: " << (u.int_value.has_value() ? std::to_string(u.int_value.value()) : "n/a") << ",\n"
-                       << " - float_value: " << (u.float_value.has_value() ? std::to_string(u.float_value.value()) : "n/a") << ",\n"
-                       << " - bool_value: " << (u.bool_value.has_value() ? (u.bool_value.value() ? "true" : "false") : "n/a");
+                       << " - value: " << u.val.to_string();
             CORE_LOG_DEBUG("{}", ss_uniform.str());
           }
+        }
+
+        if (params && params.is_array_of_tables()) {
+          for (const auto& param : *params.as_array()) {
+            auto name = param.at_path("name");
+            if (!name) {
+              CORE_LOG_ERROR("Invalid parameter: missing name");
+              return false;
+            }
+            if (!name.is_string()) {
+              CORE_LOG_ERROR("Invalid parameter: name must be a string");
+              CORE_LOG_ERROR("name type: {}", name.type());
+              return false;
+            }
+            std::string name_str = name.as_string()->get();
+
+            auto value = param.at_path("value");
+            if (!value) {
+              CORE_LOG_ERROR("Invalid parameter: missing value for '{}'", name_str);
+              return false;
+            }
+
+            switch (FNV(name_str)) {
+              case FNV("barrier"): {
+                if (!value.is_string()) {
+                  CORE_LOG_ERROR("Invalid parameter: 'barrier' value must be a string for '{}'", name_str);
+                  return false;
+                }
+                std::string barrier_value = value.as_string()->get();
+                exec.params.emplace_back() = frame_executor_table::uniform_or_param{
+                  .name = name_str,
+                  .val = barrier_value
+                };
+              } break;
+              case FNV("groups"): {
+                if (!value.is_array()) {
+                  CORE_LOG_ERROR("Invalid parameter: 'groups' value must be a table for '{}'", name_str);
+                  return false;
+                }
+                glm::vec3 groups = glm::vec3(1, 1, 1);
+                auto val = value.as_array();
+                for (size_t i = 0; i < val->size(); ++i) {
+                  auto& item = val->at(i);
+                  if (!item.is_number()) {
+                    CORE_LOG_ERROR("Invalid parameter: 'groups' array elements must be integers for '{}'", name_str);
+                    return false;
+                  }
+                  float final_val = 1.f;
+                  if (item.is_floating_point()) {
+                    final_val = static_cast<float>(item.as_floating_point()->get());
+                    final_val = std::floor(final_val);
+                  } else {
+                    final_val = static_cast<float>(item.as_integer()->get());
+                  }
+                  switch (i) {
+                    case 0: groups.x = final_val; break;
+                    case 1: groups.y = final_val; break;
+                    case 2: groups.z = final_val; break;
+                    default:
+                      CORE_LOG_ERROR("Invalid parameter: 'groups' array contains more than 3 elements for '{}'", name_str);
+                      return false;
+                  }
+                }
+
+                exec.params.emplace_back() = frame_executor_table::uniform_or_param{
+                  .name = name_str,
+                  .val = groups
+                };
+
+              } break;
+              default:
+                CORE_LOG_ERROR("Invalid parameter name: '{}'", name_str);
+                return false;
+            }
+          }
+
+          auto& param = exec.params.back();
+          std::stringstream ss_param;
+          ss_param << "Parameter: " << param.name << "\n"
+                   << " - value: " << param.val.to_string() << "\n";
+          CORE_LOG_DEBUG("{}", ss_param.str());
         }
       }
 
@@ -1166,15 +1264,10 @@ namespace other {
         };
 
         for (const auto& u : e.uniforms) {
-          if (u.int_value.has_value()) {
-            pass_itr->executor.uniforms.insert({ u.name, value{ static_cast<int32_t>(*u.int_value) } });
-          } else if (u.float_value.has_value()) {
-            pass_itr->executor.uniforms.insert({ u.name, value{ static_cast<float>(*u.float_value) } });
-          } else if (u.bool_value.has_value()) {
-            pass_itr->executor.uniforms.insert({ u.name, value{ static_cast<bool>(*u.bool_value) } });
-          } else {
-            OTHER_ASSERT(false, "Uniform '{}' has no valid value", u.name);
-          }
+          pass_itr->executor.uniforms.insert({ u.name, std::move(u.val) });
+        }
+        for (const auto& p : e.params) {
+          pass_itr->executor.params.insert({ p.name, std::move(p.val) });
         }
       }
     }

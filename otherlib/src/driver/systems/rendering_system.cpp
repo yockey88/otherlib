@@ -398,6 +398,7 @@ namespace other {
         auto* sh = pl->get_pass_shader(pass_name);
         OTHER_ASSERT(sh, "fullscreen_quad: no shader bound for pass '{}'", pass_name);
         render_pipeline::apply_uniforms(*sh, uniforms);
+        sh->bind();
         ctx.draw_quad();
       };
     }
@@ -408,13 +409,14 @@ namespace other {
       OTHER_ASSERT(groups_it != params.end(), "compute_dispatch: pass '{}' missing 'groups' param", def.name);
       glm::vec3 groups = groups_it->second;
 
-      shader::compute_barrier_type barrier = shader::compute_barrier_type::NONE;
-      if (auto b_it = params.find("barrier"); b_it != params.end()) {
-        barrier = compute_barrier_type_from_string(b_it->second);
-      }
-      return [g = groups, b = barrier, pass_name = def.name](pass_context& ctx) {
+      shader::compute_barrier_type barrier = shader::compute_barrier_type::SHADER_IMAGE_ACCESS;
+      // if (auto b_it = params.find("barrier"); b_it != params.end()) {
+      //   barrier = compute_barrier_type_from_string(b_it->second);
+      // }
+      return [g = groups, uniforms = def.executor.uniforms, b = barrier, pass_name = def.name](pass_context& ctx) {
         auto* sh = ctx.shader_for_pass();
         OTHER_ASSERT(sh != nullptr, "compute_dispatch: no shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
         sh->bind();
         ctx.dispatch(glm::uvec3(g), b);
       };

@@ -553,6 +553,9 @@ namespace other {
       resource_handle handle;
       if (tex_def.type == texture::tex_type::TEXTURE_CUBE) {
         handle = cube_map::create(tex_def.name, tex_def.format, size.x, size.y);
+      } else if (tex_def.type == texture::tex_type::TEXTURE_3D) {
+        glm::vec3 dimensions(size.x, size.y, tex_def.depth > 0 ? tex_def.depth : 1);
+        handle = texture::create3d(tex_def.name, tex_def.format, dimensions);
       } else if (tex_def.filters.has_value() && tex_def.wraps.has_value()) {
         handle = texture::create(tex_def.name, tex_def.type, tex_def.format, *tex_def.filters, *tex_def.wraps, size.x, size.y);
       } else {

@@ -43,7 +43,7 @@ namespace other {
   }
 
   render_graph& render_graph::pass_builder::end_pass() {
-    if (pass.framebuffer_handle.has_value()) {
+    if (pass.framebuffer_handle.has_value() && pass.pass_type == render_pass::RENDER_PASS) {
       auto& fb = graph.renderer_ptr->get_resource<framebuffer>(*pass.framebuffer_handle);
 
       fb.set_size(pass.size.x, pass.size.y)

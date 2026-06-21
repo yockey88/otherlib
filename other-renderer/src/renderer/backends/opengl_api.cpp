@@ -180,25 +180,29 @@ namespace other {
 
   void opengl_api::begin_pass(const pass_begin_info& info) {
     PROFILE_SECTION("opengl_api::begin_pass");
-    if (info.framebuffer.has_value()) {
-      glBindFramebuffer(GL_FRAMEBUFFER, get_resource_handle(info.framebuffer->id));
-    } else {
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-    glViewport(0, 0, info.render_area_size.x, info.render_area_size.y);
 
-    GLbitfield clear_mask = 0;
-    if (info.clear_color.has_value()) {
-      const auto& c = *info.clear_color;
-      glClearColor(c.r, c.g, c.b, c.a);
-      clear_mask |= GL_COLOR_BUFFER_BIT;
-    }
-    if (info.clear_depth.has_value()) {
-      glClearDepth(*info.clear_depth);
-      clear_mask |= GL_DEPTH_BUFFER_BIT;
-    }
-    if (clear_mask != 0) {
-      glClear(clear_mask);
+    if (info.pass_type == render_pass::RENDER_PASS) {
+      if (info.framebuffer.has_value()) {
+        glBindFramebuffer(GL_FRAMEBUFFER, get_resource_handle(info.framebuffer->id));
+      } else {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      }
+      glViewport(0, 0, info.render_area_size.x, info.render_area_size.y);
+
+      GLbitfield clear_mask = 0;
+      if (info.clear_color.has_value()) {
+        const auto& c = *info.clear_color;
+        glClearColor(c.r, c.g, c.b, c.a);
+        clear_mask |= GL_COLOR_BUFFER_BIT;
+      }
+      if (info.clear_depth.has_value()) {
+        glClearDepth(*info.clear_depth);
+        clear_mask |= GL_DEPTH_BUFFER_BIT;
+      }
+      if (clear_mask != 0) {
+        glClear(clear_mask);
+      }
+    } else if (info.pass_type == render_pass::COMPUTE_PASS) {
     }
 
     CHECKGL();
@@ -455,7 +459,7 @@ namespace other {
     CHECKGL();
 
     /// \todo make gl-specific barrier mask from barrier_type
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    glMemoryBarrier(get_gl_barrier_mask(barrier_type));
     CHECKGL();
 
     glUseProgram(0);
@@ -569,7 +573,7 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) {
+  void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) {
     PROFILE_SECTION("opengl_api::upload_texture");
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr == gpu_resources.end()) {
@@ -623,7 +627,7 @@ namespace other {
           break;
 
         case GL_TEXTURE_3D:
-          glTexImage3D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 1, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexImage3D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, depth, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
           break;
 
         default:
@@ -1667,19 +1671,17 @@ namespace other {
   }
 
   int32_t opengl_api::get_gl_access_flags(access_flags flags) const {
-    int32_t gl_flags = 0;
-
+    if (flags & access_flags::READ_WRITE) {
+      return GL_READ_WRITE;
+    }
     if (flags & access_flags::READ) {
-      gl_flags |= GL_READ_ONLY;
+      return GL_READ_ONLY;
     }
     if (flags & access_flags::WRITE) {
-      gl_flags |= GL_WRITE_ONLY;
+      return GL_WRITE_ONLY;
     }
-    if (flags & access_flags::READ_WRITE) {
-      gl_flags |= GL_READ_WRITE;
-    }
-
-    return gl_flags;
+    OTHER_ASSERT(false, "Unsupported access flags: {}", static_cast<int>(flags));
+    return -1;
   }
 
   int32_t opengl_api::get_gl_render_polygon_mode(render_polygon_mode mode) const {
@@ -1877,6 +1879,20 @@ namespace other {
       default:
         CORE_LOG_ERROR("Unsupported buffer usage: {}", usage);
         return -1;  // Invalid usage
+    }
+  }
+
+  int32_t opengl_api::get_gl_barrier_mask(shader::compute_barrier_type barrier_type) const {
+    switch (barrier_type) {
+      case shader::compute_barrier_type::SHADER_IMAGE_ACCESS:
+        return GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+      case shader::compute_barrier_type::SHADER_STORAGE:
+        return GL_SHADER_STORAGE_BARRIER_BIT;
+      case shader::compute_barrier_type::UNIFORM_BARRIER:
+        return GL_UNIFORM_BARRIER_BIT;
+      default:
+        CORE_LOG_ERROR("Unsupported compute barrier type: {}", barrier_type);
+        return -1;  // Invalid barrier type
     }
   }
 

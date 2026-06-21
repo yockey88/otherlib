@@ -36,6 +36,7 @@ namespace other {
     std::string name;
     bool use_window_size = true;
     glm::ivec2 fixed_size = { 1080, 720 };
+    uint32_t depth = 0;  // For 3D textures, store the depth separately
     texture::tex_type type = texture::tex_type::TEXTURE_2D;
     texture::format format = texture::format::RGBA16F;
     resource_tag tag = resource_tag::none();
