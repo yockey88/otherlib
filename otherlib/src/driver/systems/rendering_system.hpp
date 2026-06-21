@@ -44,14 +44,18 @@ namespace other {
     void show_save_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);
 
    private:
+    struct pipeline_asset {
+      natural_t asset_id;
+      pipeline_definition definition;
+    };
+
     scope<renderer> renderer_ptr = nullptr;
     scope<pass_executor_resolver> pass_resolver_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
     glm::vec2 viewport_size = { 0.0f, 0.0f };
 
-    std::vector<natural_t> pending_rendering_pipeline_assets;
-    std::vector<natural_t> unloading_rendering_pipeline_assets;
-    std::vector<natural_t> rendering_pipeline_assets;
+    std::vector<pipeline_asset> pending_rendering_pipeline_assets;
+    std::vector<pipeline_asset> rendering_pipeline_assets;
 
     void register_builtin_resource_tags();
     void register_builtin_render_executors();
@@ -61,6 +65,8 @@ namespace other {
 
     void handle_viewport_resize_event(const value& data);
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);
+    void handle_rendering_pipeline_asset_loaded_event(driver_kernel* kernel, const value& data);
+    void handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data);
   };
 
 }  // namespace other

@@ -3,9 +3,12 @@
  **/
 #include "asset/asset_pipeline.hpp"
 
+#include <filesystem>
+
 #include "core/job_system.hpp"
 
 #include "model/model_source.hpp"
+#include "renderer/pipeline_definition.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "scene/scene.hpp"
@@ -95,7 +98,7 @@ namespace other {
       case asset::SCRIPT_FILE: return make_scope<script_file_pipeline>(events, handler);
       case asset::SCRIPT: return make_scope<script_pipeline>(events, handler);
       case asset::SCENE: return make_scope<scene_pipeline>(events, handler, nullptr);
-      case asset::RENDERING_PIPELINE: return make_scope<rendering_pipeline_pipeline>(events, handler, pipeline_definition{});
+      case asset::RENDERING_PIPELINE: return make_scope<rendering_pipeline_pipeline>(events, handler);
       case asset::ASSET_DECLARATION: return make_scope<asset_declaration_pipeline>(events, handler);
       default:
         OTHER_ASSERT(false, "No asset pipeline for asset type {}", type);
@@ -557,8 +560,25 @@ namespace other {
 
     task load_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      co_await task::yield();
+
+      if (asset_ptr->path_hash == 0) {
+        /// builtin rendering pipeline nothing to do
+        call_pipeline_fn<rendering_pipeline_pipeline>(pipeline, on_success);
+        co_return;
+      }
+
+      rendering_pipeline_pipeline* pipeline_ptr = reinterpret_cast<rendering_pipeline_pipeline*>(pipeline);
+
+      auto definition = read_pipeline_definition_from_file(asset_ptr->load_path);
+      if (definition.name.empty()) {
+        call_pipeline_fn<rendering_pipeline_pipeline>(pipeline, on_failure, "Rendering pipeline definition is invalid: name is empty");
+        co_return;
+      }
+
+      pipeline_ptr->definition = definition;
       call_pipeline_fn<rendering_pipeline_pipeline>(pipeline, on_success);
-      co_return;
     }
 
     task load_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {

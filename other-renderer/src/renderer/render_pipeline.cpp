@@ -515,8 +515,7 @@ namespace other {
       shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
       if (shading_shader != nullptr) {
         int32_t num_point = static_cast<int32_t>(
-          data.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data.point_lights.size()
-        );
+          data.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data.point_lights.size());
         int32_t num_dir = static_cast<int32_t>(data.scene_ambient_light != nullptr ? 1 : 0);
 
         shading_shader->bind()
@@ -622,6 +621,7 @@ namespace other {
 
   void render_pipeline::build_passes_from_def() {
     for (const auto& pass_def : definition.passes) {
+      CORE_LOG_DEBUG("Building render-pass: {}", pass_def.name);
       /// find the shader for this pass
       opt<resource_handle> shader_handle = get_shader_handle(pass_def.shader_name);
       if (!shader_handle.has_value()) {
@@ -630,9 +630,9 @@ namespace other {
       }
 
       glm::ivec2 size = resolve_size(pass_def.use_window_size, pass_def.fixed_size);
-
       auto builder = graph->start_pass(pass_def.name, shader_handle, pass_def.pass_type, size, pass_def.create_framebuffer);
       build_pass(pass_def, builder);
+      builder.end_pass();
     }
   }
 
@@ -651,6 +651,7 @@ namespace other {
     const bool pipeline_valid = graph_valid && has_screen;
     if (!pipeline_valid) {
       CORE_LOG_ERROR("Pipeline [{}] has valid resources but render graph is invalid.", definition.name);
+      CORE_LOG_ERROR("graph_valid: {}, has_screen: {}", graph_valid, has_screen);
     } else {
       valid = true;
     }
@@ -681,12 +682,15 @@ namespace other {
 
   void render_pipeline::build_pass(const pipeline_pass_definition& pass_def, render_graph::pass_builder& builder) {
     if (pass_def.clear_color.has_value()) {
+      CORE_LOG_DEBUG(" - setting clear color: {}", *pass_def.clear_color);
       builder.set_clear_color(*pass_def.clear_color);
     }
 
     uint32_t curr_texture_slot = 0;
     for (const auto& ref : pass_def.inputs) {
-      if (is_buffer_resource(ref.resource_name)) {
+      const bool is_buffer = is_buffer_resource(ref.resource_name);
+      CORE_LOG_DEBUG(" - input resource: {}, type: {}", ref.resource_name, is_buffer ? "buffer" : "texture");
+      if (is_buffer) {
         auto handle = find_buffer_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Input resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
         builder.buffer_resource(*handle, ref.binding, READ);
@@ -698,6 +702,7 @@ namespace other {
     }
 
     for (const auto& ref : pass_def.outputs) {
+      CORE_LOG_DEBUG(" - output resource: {}, attachment: {}", ref.resource_name, ref.attachment);
       auto handle = find_texture_by_name(ref.resource_name);
       OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
       builder.texture_resource(*handle, 0, ref.attachment, WRITE);
@@ -709,6 +714,7 @@ namespace other {
       CORE_LOG_ERROR("Failed to create render pass executor for pass {}! invalid executor: {}", pass_def.name, pass_def.executor.name);
       return;
     }
+    CORE_LOG_DEBUG(" - setting up executor: {}", pass_def.executor.name);
 
     auto override_itr = executor_overrides.find(pass_def.name);
     if (override_itr != executor_overrides.end()) {
@@ -716,7 +722,6 @@ namespace other {
     }
 
     builder.execution_callback(std::move(executor));
-    builder.end_pass();
   }
 
   renderer* render_pipeline::get_renderer() const {

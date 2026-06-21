@@ -11,8 +11,9 @@ namespace other {
   enum class binding_scope : uint8_t {
     PER_PIPELINE = 0,   // persistent state, uploaded once on initialization/reload
     PER_FRAME = 1,      // upload once per frame
-    PER_DRAW_CALL = 2,  // upload once per draw call in a frame, indexed by draw call index
-    PER_INSTANCE = 3,   // upload once per instance in a draw call, indexed by draw call index and instance index
+    PER_PASS = 2,       // upload once per pass, indexed by pass index
+    PER_DRAW_CALL = 3,  // upload once per draw call in a frame, indexed by draw call index
+    PER_INSTANCE = 4,   // upload once per instance in a draw call, indexed by draw call index and instance index
   };
 
   enum class binding_type : uint8_t {

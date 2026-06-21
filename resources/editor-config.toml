@@ -17,17 +17,15 @@ metadata = [
 core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
-assets = [
-  { name = "default-pipeline", path = "resources/editor-assets/default-pipeline.toml" }
-]
 
 [rendering]
 ui-layout-ini = "resources/ui/editor-layout.ini"
 imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
-pipeline = "resources/editor-assets/default-pipeline.toml"
+pipelines = [
+  "resources/editor-assets/default-pipeline.toml"
+]
 
 [ui]
-# only read when subsystem module is loaded
 enable-environment-menu-bar = true
 
 [scripting]

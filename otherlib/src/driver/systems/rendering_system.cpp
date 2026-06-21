@@ -11,6 +11,8 @@
 #include "driver/systems/scene_system.hpp"
 #include "render/default_pass_executor_resolver.hpp"
 
+#include "asset/pipelines/rendering_pipeline_pipeline.hpp"
+
 namespace other {
   namespace detail {
 
@@ -58,6 +60,9 @@ namespace other {
 
     events.register_event("ls.windows");
     events.add_listener("ls.windows", [this](const value& data) { handle_ls_windows_event(&get_driver().get_kernel(), data); });
+
+    events.add_listener("rendering-pipeline.asset-loaded", [this](const value& data) { handle_rendering_pipeline_asset_loaded_event(&get_driver().get_kernel(), data); });
+    events.add_listener("rendering-pipeline.asset-unloaded", [this](const value& data) { handle_rendering_pipeline_asset_unloaded_event(&get_driver().get_kernel(), data); });
   }
 
   void rendering_system::late_initialize(driver_kernel* kernel) {
@@ -95,7 +100,6 @@ namespace other {
     driver_ui_ptr->shutdown();
     driver_ui_ptr = nullptr;
 
-    renderer_ptr->remove_pipeline("Rendering Pipeline");
     pass_resolver_ptr = nullptr;
     renderer_ptr = nullptr;
   }
@@ -282,13 +286,26 @@ namespace other {
     OTHER_ASSERT(pass_resolver_ptr != nullptr, "Pass resolver is null!");
     renderer_ptr->initialize_pass_resolver(pass_resolver_ptr.get());
 
-    std::vector<std::string> pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
-    if (pipeline_names.empty()) {
-      pipeline_definition default_pipeline_def = get_default_instancing_pipeline();
-      renderer_ptr->add_pipeline("Rendering Pipeline", default_pipeline_def);
-      get_driver().add_rendering_pipeline_asset("default-rendering-pipeline", default_pipeline_def);
-    } else {
+    // {
+    //   auto& ass = pending_rendering_pipeline_assets.emplace_back(pipeline_asset{
+    //     .asset_id = 0,
+    //     .definition = get_default_instancing_pipeline(),
+    //   });
+    //   natural_t default_pl = get_driver().add_rendering_pipeline_asset("default-rendering-pipeline", ass.definition);
+    //   ass.asset_id = default_pl;
+    // }
+
+    std::vector<std::string> pipeline_paths = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
+    if (pipeline_paths.size() > 0) {
       CORE_LOG_WARN("No rendering pipelines specified in configuration.");
+      for (const auto& pipeline_path : pipeline_paths) {
+        CORE_LOG_INFO("Adding rendering pipeline: {}", pipeline_path);
+        auto& ass = pending_rendering_pipeline_assets.emplace_back(pipeline_asset{
+          .asset_id = 0,
+        });
+        natural_t id = get_driver().begin_asset_load(filepath(pipeline_path));
+        ass.asset_id = id;
+      }
     }
   }
 
@@ -321,6 +338,45 @@ namespace other {
     auto& events = get_driver().get_event_system();
     OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
     events->trigger_event("console.output", ss.str());
+  }
+
+  void rendering_system::handle_rendering_pipeline_asset_loaded_event(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(kernel != nullptr, "Kernel is null.");
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for rendering pipeline asset loaded event. Expected UINT64.");
+
+    OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not initialized in the kernel.");
+    auto& assets = kernel->get_core_system<asset_system>();
+
+    natural_t asset_id = data;
+    auto* asset_pipeline_ctx = assets.get_asset_pipeline_context(asset_id);
+    OTHER_ASSERT(asset_pipeline_ctx != nullptr, "Asset pipeline context is not available for the given asset ID");
+
+    auto itr = std::ranges::find(pending_rendering_pipeline_assets, asset_id, &pipeline_asset::asset_id);
+    OTHER_ASSERT(itr != pending_rendering_pipeline_assets.end(), "Rendering pipeline asset loaded event for unknown asset ID: {}", asset_id);
+
+    rendering_pipeline_pipeline* pl = dynamic_cast<rendering_pipeline_pipeline*>(asset_pipeline_ctx->pipeline.get());
+    OTHER_ASSERT(pl != nullptr, "Rendering pipeline pipeline is not available for the given asset ID");
+
+    itr->definition = pl->definition;
+
+    CORE_LOG_INFO("Adding Rendering Pipeline: {}", itr->definition.name);
+    renderer_ptr->add_pipeline(itr->definition.name, itr->definition);
+    rendering_pipeline_assets.push_back(*itr);
+    pending_rendering_pipeline_assets.erase(itr);
+  }
+
+  void rendering_system::handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(kernel != nullptr, "Kernel is null.");
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for rendering pipeline asset unloaded event. Expected UINT64.");
+
+    natural_t asset_id = data;
+    auto itr = std::ranges::find(rendering_pipeline_assets, asset_id, &pipeline_asset::asset_id);
+    OTHER_ASSERT(itr != rendering_pipeline_assets.end(), "Rendering pipeline asset unloaded event for unknown asset ID: {}", asset_id);
+
+    renderer_ptr->remove_pipeline(itr->definition.name);
+    rendering_pipeline_assets.erase(itr);
   }
 
   namespace detail {

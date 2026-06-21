@@ -121,7 +121,7 @@ namespace other {
       } else if ((flags & STENCIL_ATTACHMENT)) {
         final_type = attachment_type::STENCIL;
       } else {
-        CORE_LOG_ERROR("Framebuffer has no valid attachments: {}", error_msg.has_value() ? *error_msg : "No attachments added.");
+        CORE_LOG_ERROR("Framebuffer has no valid attachments (color_attachments > 0): {}", error_msg.has_value() ? *error_msg : "No attachments added.");
         final_type = attachment_type::NO_ATTACHMENTS;
       }
 
@@ -135,7 +135,7 @@ namespace other {
       } else if ((flags & STENCIL_ATTACHMENT)) {
         final_type = attachment_type::STENCIL;
       } else {
-        CORE_LOG_ERROR("Framebuffer has no valid attachments: {}", error_msg.has_value() ? *error_msg : "No attachments added.");
+        CORE_LOG_ERROR("Framebuffer has no valid attachments (no color attachments): {}", error_msg.has_value() ? *error_msg : "No attachments added.");
         final_type = attachment_type::NO_ATTACHMENTS;
       }
     }

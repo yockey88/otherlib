@@ -7,7 +7,6 @@ shadow_map_pass_name = "shadow-map-pass"
 shading_pass_name = "shading-pass"
 light_space_matrix_uniform_name = "OE_light_space_matrix"
 
-
 [resources]
 buffers = [
   { name = "camera_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "camera" },
@@ -33,17 +32,23 @@ shaders = [
 
 [frame]
 bindings = [
-  { name = "per_draw.material_buffer", tag = "material", scope = "PER_DRAW", type = "STORAGE_BUFFER", binding = 0 },
-  { name = "per_draw.model_buffer", tag = "model", scope = "PER_DRAW" },
-  { name = "per_draw.camera_buffer", tag = "camera", scope = "PER_FRAME" },
-  { name = "per_draw.bone_buffer", tag = "bone", scope = "PER_DRAW" },
-  { name = "per_frame.point_light_buffer", tag = "point_light", scope = "PER_FRAME" },
-  { name = "per_frame.direction_light_buffer", tag = "direction_light", scope = "PER_FRAME" },
+  { name = "per_draw.material_buffer", tag = "material", scope = "PER_DRAW", type = "STORAGE_BUFFER", element_size = 6400 },
+  { name = "per_draw.model_buffer", tag = "model", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6400 },
+  { name = "per_draw.camera_buffer", tag = "camera", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 208 },
+  { name = "per_draw.bone_buffer", tag = "bone", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6416 },
+  { name = "per_frame.point_light_buffer", tag = "point_light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 64 },
+  { name = "per_frame.direction_light_buffer", tag = "direction_light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 64 },
+]
+pass-bindings = [
+  { pass_name = "geometry-pass", name = "per_draw.material_buffer", binding = 0 }, 
+  { pass_name = "geometry-pass", name = "per_draw.model_buffer", binding = 1 }, 
+  { pass_name = "geometry-pass", name = "per_draw.camera_buffer", binding = 2 }, 
+  { pass_name = "geometry-pass", name = "per_draw.bone_buffer", binding = 3 }
 ]
 passes = [
-  { name = "geometry-pass", pass_type = "RENDER_PASS", shader_name = "geometry_pass_shader", bindings = [ { name = "material_buffer", binding = 0 }, { name = "model_buffer", binding = 1 }, { name = "camera_buffer", binding = 2 }, { name = "bone_buffer", binding = 3 } ], clear_color = [0.0, 0.0, 0.0, 1.0] },
-  # { name = "shadow-map-pass", pass_type = "RENDER_PASS", shader_name = "shadow_map_shader" },
-  # { name = "shading-pass", pass_type = "RENDER_PASS", shader_name = "shading_pass_shader", clear_color = [0.2, 0.2, 0.2, 1.0] },
+  { name = "geometry-pass", pass_type = "RENDER_PASS", shader_name = "geometry_pass_shader", clear_color = [0.0, 0.0, 0.0, 1.0] },
+  { name = "shadow-map-pass", pass_type = "RENDER_PASS", shader_name = "shadow_map_shader" },
+  { name = "shading-pass", pass_type = "RENDER_PASS", shader_name = "shading_pass_shader", clear_color = [0.2, 0.2, 0.2, 1.0] },
   { name = "to-screen", pass_type = "RENDER_PASS", shader_name = "screen_shader", create_framebuffer = false },
 ]
 inputs = [

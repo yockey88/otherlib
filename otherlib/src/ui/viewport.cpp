@@ -66,9 +66,27 @@ namespace other {
     };
 
     viewport::viewport(event_system& events, scope<renderer>& renderer_ptr, driver* driver_ptr)
-        : ui_window(&events, "Viewport"), driver_ptr(driver_ptr) {
+        : ui_window(&events, "Viewport", true, ImGuiWindowFlags_MenuBar), driver_ptr(driver_ptr) {
       events.register_event("viewport.resize");
       add_node(make_ref<viewport_node>(renderer_ptr, driver_ptr, this, "ViewportNode"));
+    }
+
+    void viewport::on_render_header() {
+      if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Options")) {
+          if (ImGui::MenuItem("Reset Viewport")) {
+          }
+          ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+      }
+    }
+
+    void viewport::on_render_body() {
+    }
+
+    void viewport::on_pre_render_nodes() {
     }
 
   }  // namespace ui

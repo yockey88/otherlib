@@ -111,6 +111,19 @@ namespace other {
   std::string_view executor_type_to_string(executor_type type);
   gpu_buffer::buf_type buffer_type_from_binding(binding_type type);
 
+  gpu_buffer::buf_type buffer_type_from_string(const std::string_view str);
+  gpu_buffer::usage buffer_usage_from_string(const std::string_view str);
+  texture::tex_type texture_type_from_string(const std::string_view str);
+  texture::format texture_format_from_string(const std::string_view str);
+  render_pass::type render_pass_type_from_string(const std::string_view str);
+  binding_scope pass_binding_scope_from_string(const std::string_view str);
+  binding_type pass_binding_type_from_string(const std::string_view str);
+  framebuffer::attachment_type framebuffer_attachment_type_from_string(const std::string_view str);
+
+  resource_tag resource_tag_from_string(const std::string_view str);
+
+  pipeline_definition read_pipeline_definition_from_file(const filepath& path);
+
   pipeline_definition get_basic_geometry_only_pipeline();
   pipeline_definition get_default_instancing_pipeline();
   pipeline_definition get_empty_pipeline();

@@ -173,6 +173,16 @@ namespace other {
       return asset_pipeline::is_extension_supported(extension);
     }
 
+    struct pipeline_context {
+      scope<asset_pipeline> pipeline = nullptr;
+      asset loading_asset;
+      load_completion_callback on_complete = nullptr;
+      load_error_callback on_error = nullptr;
+    };
+
+    /// to be called only inside 'assets.new-asset-(un)loaded' or various 'xxx.asset-(un)loaded' events.
+    asset_handler::pipeline_context* get_asset_pipeline_context(natural_t asset_id);
+
    private:
     friend class asset_pipeline;
 
@@ -183,12 +193,6 @@ namespace other {
     asio::thread_pool thread_pool;
     asset_pipeline::executor_t executor;
 
-    struct pipeline_context {
-      scope<asset_pipeline> pipeline = nullptr;
-      asset loading_asset;
-      load_completion_callback on_complete = nullptr;
-      load_error_callback on_error = nullptr;
-    };
     std::deque<pipeline_context> asset_pipelines;
     std::queue<natural_t> successful_pipelines;
     std::queue<natural_t> failed_pipelines;

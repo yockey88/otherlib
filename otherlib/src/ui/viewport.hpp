@@ -23,6 +23,10 @@ namespace other {
         display_texture_id = resource;
       }
 
+      void on_render_header() override;
+      void on_render_body() override;
+      void on_pre_render_nodes() override;
+
      private:
       driver* driver_ptr = nullptr;
       resource_handle display_texture_id = {};

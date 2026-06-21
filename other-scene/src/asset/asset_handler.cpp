@@ -96,6 +96,11 @@ namespace other {
       return 0;
     }
 
+    if (asset_type == asset::ASSET_DECLARATION) {
+      // have to read file and see what it is (.toml)
+      asset_type = asset::get_type_from_declaration(file_path);
+    }
+
     bool exists = std::filesystem::exists(file_path);
     if (!exists) {
       CORE_LOG_ERROR("Asset file does not exist: {}", file_path.string());
@@ -745,6 +750,15 @@ namespace other {
     }
 
     return ids;
+  }
+
+  asset_handler::pipeline_context* asset_handler::get_asset_pipeline_context(natural_t asset_id) {
+    for (auto& ctx : asset_pipelines) {
+      if (ctx.loading_asset.id == asset_id) {
+        return &ctx;
+      }
+    }
+    return nullptr;
   }
 
 }  // namespace other

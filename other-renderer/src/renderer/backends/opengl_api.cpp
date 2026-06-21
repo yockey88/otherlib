@@ -2009,9 +2009,11 @@ namespace other {
 
   uint32_t opengl_api::get_shader_uniform_location(const resource_handle& shader, const std::string_view name) {
     auto key = uniform_key{ shader.id, FNV(name) };
-    auto itr = shader_uniforms.find(key);
-    if (itr != shader_uniforms.end()) {
-      return itr->second;
+    {
+      auto itr = shader_uniforms.find(key);
+      if (itr != shader_uniforms.end()) {
+        return itr->second;
+      }
     }
 
     auto shader_itr = gpu_resources.find(shader.id);
@@ -2028,8 +2030,9 @@ namespace other {
       return -1;
     }
 
+    auto [itr, inserted] = shader_uniforms.emplace(key, location);
+    OTHER_ASSERT(inserted, "Failed to insert uniform '{}' for shader with ID {} into cache.", name, shader.id);
     CORE_LOG_DEBUG("Found uniform '{}' in shader with ID {} at location {}", name, shader.id, location);
-    shader_uniforms[key] = location;
     return location;
   }
 
