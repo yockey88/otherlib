@@ -89,9 +89,9 @@ namespace other {
     node* root = nullptr;
 
     size_t num_objects = 0;
-    scope<memory_pool<scene_object, kMaxNodes>> objects = nullptr;
 
     std::array<uint32_t, kMaxNodes> generation_counters;
+    scope<memory_pool<scene_object, kMaxNodes>> objects = nullptr;
     scope<std::array<node, kMaxNodes>> nodes = nullptr;
 
     node* node_at(size_t idx);

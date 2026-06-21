@@ -3,6 +3,19 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 // Declare the cubemap image layout for writing
 layout(rgba16f, binding = 0) uniform writeonly image3D OE_env_cubemap;
 
+layout(std140) uniform simulation_environment_buffer {
+  /// unit vector TO sun, w = angular radius
+  vec4 sun_direction;
+  // rgb = radiance, w = intensity scale
+  vec4 sun_color;
+  // rgb, w = turbidity
+  vec4 zenith_color;
+  vec4 horizon_color;
+  vec4 ground_color;
+  vec4 world_min;  //< xyz = AABB min
+  vec4 world_max;  //< xyz = AABB max, w = exposure
+};
+
 void main() {
   // coord within the target face
   ivec3 texel_coord = ivec3(gl_GlobalInvocationID);
@@ -13,6 +26,6 @@ void main() {
 
   // Generate your color data here
   // image3D: ivec3(x, y, depth)
-  vec4 final_color = vec4(vec3(float(texel_coord.z) / 512.0), 1.0);
+  vec4 final_color = vec4(vec3(float(texel_coord.z) / 6.0), 1.0);
   imageStore(OE_env_cubemap, texel_coord, final_color);
 }

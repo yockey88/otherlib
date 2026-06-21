@@ -35,6 +35,7 @@ namespace other {
       natural_t slot;
       access_flags flags;
       resource_handle handle;
+      uint32_t mip_level = 0;
     };
     struct buffer_resource {
       natural_t binding_point;

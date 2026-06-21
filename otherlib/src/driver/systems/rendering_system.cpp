@@ -24,11 +24,14 @@ namespace other {
     render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*);
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
 
     void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_model_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
     void upload_material_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
     void upload_bone_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
@@ -151,6 +154,11 @@ namespace other {
     driver_ui_ptr->close_window(name);
   }
 
+  void rendering_system::close_all_windows() {
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI subsystem is not initialized. Cannot close all UI windows");
+    driver_ui_ptr->close_all_windows();
+  }
+
   ui::menu rendering_system::build_menu(const std::string_view name, const sol::table& menu_table) {
     ui::menu menu = {
       .name = std::string{ name },
@@ -231,6 +239,8 @@ namespace other {
     reg.register_executor("draw_scene", &detail::make_draw_scene);
     reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
     reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
+    reg.register_executor("generate_mipmaps", &detail::make_generate_mipmaps);
+    reg.register_executor("downsample_chain", &detail::make_downsample_chain);
     reg.register_executor("debug_stream", &detail::make_debug_stream);
   }
 
@@ -422,6 +432,54 @@ namespace other {
       };
     };
 
+    render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl) {
+      OTHER_ASSERT(!def.outputs.empty(), "generate_mips: pass '{}' needs an output texture", def.name);
+      opt<resource_handle> target = pl->find_texture_by_name(def.outputs.front().resource_name);
+      OTHER_ASSERT(target.has_value(), "generate_mips: target not found for pass '{}'", def.name);
+      return [target = *target](pass_context& ctx) {
+        // ctx.get_renderer().rendering()->api()->generate_texture_mipmaps(target);  // thin backend wrapper, 01 §1
+      };
+    }
+
+    render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl) {
+      OTHER_ASSERT(!def.outputs.empty(), "downsample_chain: pass '{}' must declare the pyramid as an output", def.name);
+      const std::string target_name = def.outputs.front().resource_name;
+      opt<resource_handle> target = pl->find_texture_by_name(target_name);
+      OTHER_ASSERT(target.has_value(), "downsample_chain: target texture '{}' not found for pass '{}'", target_name, def.name);
+
+      glm::ivec2 group_size = { 8, 8 };
+      if (auto it = def.executor.params.find("groups"); it != def.executor.params.end()) {
+        glm::vec3 g = it->second;
+        group_size = { (int32_t)g.x, (int32_t)g.y };
+      }
+
+      return [target = *target, uniforms = def.executor.uniforms, gs = group_size, pass_name = def.name](pass_context& ctx) {
+        auto& r = ctx.get_renderer();
+        auto& tex = r.get_resource<texture>(target);
+        const uint32_t levels = tex.mip_levels;  // public field; getter optional
+        OTHER_ASSERT(levels > 1, "downsample_chain: target of pass '{}' has <= 1 mip level", pass_name);
+
+        auto* sh = ctx.shader_for_pass();
+        OTHER_ASSERT(sh != nullptr, "downsample_chain: no compute shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
+        sh->bind();
+
+        glm::ivec2 sz = tex.get_size();  // base-level size
+        const texture::format fmt = tex.get_format();
+        for (uint32_t i = 0; i + 1 < levels; ++i) {
+          const glm::ivec2 dst = { std::max(1, sz.x >> 1), std::max(1, sz.y >> 1) };
+          tex.bind_image(0, i, true, 0, fmt, READ);       // src = i
+          tex.bind_image(1, i + 1, true, 0, fmt, WRITE);  // dst = i+1
+          // imageStore ignores viewport, shader self-bounds via imageSize(dst).
+          ctx.dispatch({ (dst.x + gs.x - 1) / gs.x, (dst.y + gs.y - 1) / gs.y, 1u },
+                       shader::compute_barrier_type::SHADER_IMAGE_ACCESS);
+          sz = dst;
+        }
+        // If a later pass SAMPLES the pyramid, consumer pass needs to request a TEXTURE_FETCH barrier
+        // image-access alone doesn't order texture fetches.
+      };
+    }
+
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl) {
       const auto& params = def.executor.params;
       auto stream_it = params.find("stream");
@@ -462,6 +520,12 @@ namespace other {
         dir_light_buffer_data.lights[i] = d.ambient_lights[i];
       }
       r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+    }
+
+    void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::simulation_environment_buffer env_buffer{};
+      // env_buffer.environment = d.simulation_environment;
+      r.upload_to_handle(h, &env_buffer, sizeof(gpu::simulation_environment_buffer));
     }
 
     void upload_model_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {

@@ -94,6 +94,28 @@ function _SceneInterface.CreateSceneObject(name, position)
   end
 end
 
+function _SceneInterface.CreateParentedSceneObject(name, position, parent_id)
+  if name == nil
+  then
+    error("Scene object name cannot be nil")
+    return nil
+  end
+
+  local scene = _get_active_scene()
+  if scene == nil
+  then
+    error("No active scene available to create scene object in")
+    return nil
+  end
+
+  if parent_id == nil
+  then
+    return _SceneInterface.CreateSceneObject(name, position)
+  else
+    return scene.create_scene_object(name, position, parent_id)
+  end
+end
+
 function _SceneInterface:new()
   local obj = {}
   setmetatable(obj, self)

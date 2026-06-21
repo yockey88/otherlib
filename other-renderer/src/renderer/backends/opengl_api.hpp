@@ -56,7 +56,7 @@ namespace other {
     void unbind_texture_resource(const resource_handle& handle, uint32_t index) override;
     void set_texture_filter(const resource_handle& handle, texture::filter min_filter, texture::filter mag_filter) override;
     void set_texture_wrap_mode(const resource_handle& handle, texture::wrap wrap_s, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_r = texture::wrap::CLAMP_TO_EDGE) override;
-    void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) override;
+    void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, uint32_t mip_levels, bool generate_mipmaps, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) override;
     void bind_image(const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer, texture::format frmt, access_flags flags) override;
     void* get_texture_gpu_resource(const resource_handle& handle) override;
 
@@ -155,6 +155,7 @@ namespace other {
     int32_t get_gl_texture_format_type(texture::format format) const;
     int32_t get_gl_texture_filter(texture::filter filter) const;
     int32_t get_gl_texture_wrap_mode(texture::wrap wrap) const;
+    bool format_supports_auto_mipgen(texture::format f) const;
 
     int32_t get_gl_buffer_type(gpu_buffer::buf_type type) const;
     int32_t get_gl_buffer_usage(gpu_buffer::usage usage) const;

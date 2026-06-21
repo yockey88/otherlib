@@ -120,6 +120,14 @@ namespace other {
     const transform& get_transform(natural_t id) const;
     void set_transform(natural_t id, const transform& t);
 
+    bounding_box get_bounding_box(scene_object* object) const;
+    bounding_box get_bounding_box(natural_t id) const;
+
+    bounding_box get_bounding_box(std::span<scene_object*> objects) const;
+    bounding_box get_bounding_box(std::span<const natural_t> ids) const;
+
+    bounding_box get_bounding_box() const;
+
     render_data prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const;
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;

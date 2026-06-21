@@ -40,11 +40,11 @@ namespace other {
       } else if (pass->pass_type == render_pass::COMPUTE_PASS) {
         for (const auto& [id, tex] : input_textures) {
           auto& t = renderer_ptr->get_resource<texture>(tex.handle);
-          t.bind_image(tex.slot, 0, true, 0, t.get_format(), READ);
+          t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), READ);
         }
         for (const auto& [id, tex] : output_textures) {
           auto& t = renderer_ptr->get_resource<texture>(tex.handle);
-          t.bind_image(tex.slot, 0, true, 0, t.get_format(), WRITE);
+          t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), WRITE);
         }
       }
     }

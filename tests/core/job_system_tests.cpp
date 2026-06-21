@@ -115,7 +115,7 @@ worker_count = {}
     ASSERT_LT(poll1, max_polls);
     EXPECT_EQ(job1->get_status(), job::status::COMPLETED);
     EXPECT_EQ(job2->get_status(), job::status::RUNNING);
-    EXPECT_EQ(counter, 2);
+    EXPECT_GE(counter, 2);  // < this may not be 2 here because the second job is on a worker so it might have already been incrmented it is technically a race condition in the test yes, but get off my ass you sonofabitch you, leave me alone, im one man, a singular man, alone in this cruel world
 
     size_t poll2 = 0;
     do {

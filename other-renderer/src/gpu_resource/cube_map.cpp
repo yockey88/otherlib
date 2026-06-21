@@ -156,7 +156,7 @@ namespace other {
 
       uint8_t* data = faces[f].empty() ? nullptr : faces[f].data();
       size_t data_size = data == nullptr ? 0 : faces[f].size();
-      subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_face_texture_type(f), texture_format, face_size, 1, data, data_size);
+      subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_face_texture_type(f), texture_format, 1, false, face_size, 1, data, data_size);
     }
   }
 

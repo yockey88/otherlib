@@ -27,22 +27,19 @@ namespace other {
       "specular_reflectivity", &gpu::graphics_material::specular_reflectivity,
       "emissivity", &gpu::graphics_material::emissivity,
       "shininess", &gpu::graphics_material::shininess,
-      "transparency", &gpu::graphics_material::transparency
-    );
+      "transparency", &gpu::graphics_material::transparency);
 
     lua_state.new_usertype<gpu::point_light>(
       "__native_gpu_point_light",
       sol::constructors<gpu::point_light()>(),
-      "light_position", &gpu::point_light::light_position,
-      "color", &gpu::point_light::color
-    );
+      "position", &gpu::point_light::light_position,
+      "color", &gpu::point_light::color);
 
     lua_state.new_usertype<gpu::directional_light>(
       "__native_gpu_directional_light",
       sol::constructors<gpu::directional_light()>(),
       "direction", &gpu::directional_light::direction,
-      "color", &gpu::directional_light::color
-    );
+      "color", &gpu::directional_light::color);
 
     lua_state.new_usertype<render_component_lua_proxy>(
       "__native_render_component",
@@ -52,8 +49,7 @@ namespace other {
         if (self.native_pointer) {
           self.native_pointer->material = mat;
         }
-      }
-    );
+      });
 
     lua_state.new_usertype<camera_component_lua_proxy>(
       "__native_camera_component",
@@ -68,8 +64,7 @@ namespace other {
         [](camera_component_lua_proxy& self, real_t value) {
         if (self.native_pointer) {
           self.native_pointer->camera.sensitivity = value;
-        } }
-      ),
+        } }),
       "Look",
       [](camera_component_lua_proxy& self, const glm::vec3& position, const glm::vec3& target) {
         if (self.native_pointer) {
@@ -87,8 +82,7 @@ namespace other {
         if (self.native_pointer) {
           self.native_pointer->camera.look_at(target);
         }
-      }
-    );
+      });
   }
 
 }  // namespace other

@@ -50,4 +50,11 @@ namespace other {
     return true;
   }
 
+  bounding_box bounding_box::expand_to_include(const bounding_box& box, const bounding_box& other) {
+    bounding_box result = box;
+    result.min = glm::min(result.min, other.min);
+    result.max = glm::max(result.max, other.max);
+    return result;
+  }
+
 }  // namespace other

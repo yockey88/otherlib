@@ -16,8 +16,8 @@ namespace other {
     return *this;
   }
 
-  render_graph::pass_builder& render_graph::pass_builder::texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags) {
-    auto [itr, success] = pass.texture_resources.insert({ get_next_texture_id(), { .type = type, .slot = slot, .flags = flags, .handle = handle } });
+  render_graph::pass_builder& render_graph::pass_builder::texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags, uint32_t mip_level) {
+    auto [itr, success] = pass.texture_resources.insert({ get_next_texture_id(), { .type = type, .slot = slot, .flags = flags, .handle = handle, .mip_level = mip_level } });
     if (!success) {
       CORE_LOG_ERROR("Could not add texture resource [{}]. texture resources already bound at {}", handle, slot);
     }
@@ -50,7 +50,7 @@ namespace other {
         .set_clear_color({ 0.1f, 0.1f, 0.1f, 1.f });
       for (const auto& [_, texture] : pass.texture_resources) {
         if ((texture.flags & WRITE) == WRITE) {
-          fb.add_attachment(texture.handle, texture.type);
+          fb.add_attachment(texture.handle, texture.type, texture.mip_level);
         }
       }
       fb.finalize_framebuffer();

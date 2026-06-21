@@ -659,6 +659,72 @@ namespace other {
     set_transform(node->object, t);
   }
 
+  bounding_box scene::get_bounding_box(scene_object* object) const {
+    OTHER_ASSERT(object != nullptr, "Scene object is null.");
+    const entt::entity entity = entt::entity(object->registry_id);
+
+    const render_component* rc = storage->registry.try_get<render_component>(entity);
+    if (rc != nullptr) {
+      // const bounding_box local = rc->obj_model.source->
+      // return bounding_box::transform(local, world_matrix);
+    }
+
+    const physics_component* pc = storage->registry.try_get<physics_component>(entity);
+    if (pc != nullptr) {
+      // return bounding_box::transform(pc->local_bounds(), world_matrix);
+    }
+    return bounding_box::empty;
+  }
+
+  bounding_box scene::get_bounding_box(natural_t id) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_by_id");
+
+    scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+    return get_bounding_box(node->object);
+  }
+
+  bounding_box scene::get_bounding_box(std::span<scene_object*> objects) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_by_objects");
+
+    bounding_box box;
+    for (scene_object* obj : objects) {
+      if (obj != nullptr) {
+        box = bounding_box::expand_to_include(box, get_bounding_box(obj));
+      }
+    }
+    return box;
+  }
+
+  bounding_box scene::get_bounding_box(std::span<const natural_t> ids) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_by_ids");
+
+    bounding_box box;
+    for (natural_t id : ids) {
+      scene_tree::node* node = storage->tree.node_at(id);
+      if (node != nullptr) {
+        box = bounding_box::expand_to_include(box, get_bounding_box(node->object));
+      }
+    }
+    return box;
+  }
+
+  bounding_box scene::get_bounding_box() const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_all");
+
+    bounding_box box;
+    for (const scene_tree::node& n : *storage->tree.nodes) {
+      if (n.object != nullptr) {
+        box = bounding_box::expand_to_include(box, get_bounding_box(n.object));
+      }
+    }
+    return box;
+  }
+
   render_data scene::prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::prepare_render_data");
@@ -683,7 +749,7 @@ namespace other {
       std::ranges::copy(light.directional_lights, std::back_inserter(data.ambient_lights));
       std::ranges::copy(light.point_lights, std::back_inserter(data.point_lights));
 
-      if (object_has_tag(handle.id, "scene-ambient-light")) {
+      if (object_has_tag(handle.id, "sun")) {
         data.scene_ambient_light = &light.directional_lights[0];
       }
     });
@@ -807,6 +873,37 @@ namespace other {
 
       render.last_model_asset_id = render.model_asset_id;
     });
+
+    /*
+      glm::vec4 sun_direction;
+      // rgb = radiance, w = intensity scale
+      glm::vec4 sun_color;
+      glm::vec4 ambient_color;  // rgb = average of all nearby light sources, w = intensity scale
+      // rgb, w = turbidity
+      glm::vec4 zenith_color;
+      glm::vec3 horizon_color
+      glm::vec3 ground_color;
+      glm::vec3 world_min;  //< AABB min
+      glm::vec4 world_max;  //< AABB max, w = exposure
+    */
+    if (data.scene_ambient_light != nullptr) {
+      data.simulation_environment.sun_direction = glm::vec4(glm::normalize(data.scene_ambient_light->direction), 0.0f);
+      data.simulation_environment.sun_color = glm::vec4(data.scene_ambient_light->color, 1.0f);
+    }
+
+    glm::vec4 ambient_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
+    for (const auto& dirlight : data.ambient_lights) {
+      ambient_color += glm::vec4(dirlight.color, 1.0f);
+    }
+    ambient_color /= static_cast<float>(data.ambient_lights.size() + 1);
+    data.simulation_environment.ambient_color = glm::clamp(ambient_color, 0.0f, 1.0f);
+
+    glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    glm::vec3 horizon_color = glm::vec3(0.5f, 0.5f, 0.5f);
+    glm::vec3 ground_color = glm::vec3(0.2f, 0.22f, 0.233f);
+    data.simulation_environment.zenith_color = glm::clamp(zenith_color, 0.0f, 1.0f);
+    data.simulation_environment.horizon_color = glm::clamp(horizon_color, 0.0f, 1.0f);
+    data.simulation_environment.ground_color = glm::clamp(ground_color, 0.0f, 1.0f);
 
     // if (debug_physics_rendering_enabled && storage->physics != nullptr) {
     //   physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();

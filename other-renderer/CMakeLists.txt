@@ -17,6 +17,9 @@ target_sources(other_renderer
       src/model/model.cpp
       src/model/model_source.cpp
       
+      ## remove these later
+      src/renderer/util/pipeline_asset_validation.cpp
+      
       src/renderer/resource_tag.cpp
       src/renderer/frame_binding_registry.cpp
       src/renderer/render_executor_registry.cpp

@@ -550,14 +550,23 @@ namespace other {
     for (const auto& tex_def : definition.textures) {
       glm::ivec2 size = tex_def.use_window_size ? window_size : tex_def.fixed_size;
 
+      uint32_t mips = tex_def.mip_levels;
+      if (mips == 0) {
+        mips = get_renderer()->rendering()->api()->full_mip_chain_count(size, tex_def.type, tex_def.depth);
+      }
+
       resource_handle handle;
       if (tex_def.type == texture::tex_type::TEXTURE_CUBE) {
         handle = cube_map::create(tex_def.name, tex_def.format, size.x, size.y);
       } else if (tex_def.type == texture::tex_type::TEXTURE_3D) {
         glm::vec3 dimensions(size.x, size.y, tex_def.depth > 0 ? tex_def.depth : 1);
-        handle = texture::create3d(tex_def.name, tex_def.format, dimensions);
+        handle = texture::create3d(tex_def.name, tex_def.format,
+                                   tex_def.filters.value_or(std::pair{ texture::LINEAR, texture::LINEAR }),
+                                   tex_def.wraps.value_or(std::tuple{ texture::CLAMP_TO_EDGE, texture::CLAMP_TO_EDGE, texture::CLAMP_TO_EDGE }),
+                                   mips, tex_def.generate_mips, dimensions);
       } else if (tex_def.filters.has_value() && tex_def.wraps.has_value()) {
-        handle = texture::create(tex_def.name, tex_def.type, tex_def.format, *tex_def.filters, *tex_def.wraps, size.x, size.y);
+        handle = texture::create(tex_def.name, tex_def.type, tex_def.format, *tex_def.filters, *tex_def.wraps,
+                                 mips, tex_def.generate_mips, size.x, size.y);
       } else {
         handle = texture::create(tex_def.name, tex_def.type, tex_def.format, size.x, size.y);
       }
@@ -700,7 +709,7 @@ namespace other {
       } else {
         auto handle = find_texture_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Input resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-        builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, READ);
+        builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, READ, ref.mip_level);
       }
     }
 
@@ -708,7 +717,7 @@ namespace other {
       CORE_LOG_DEBUG(" - output resource: {}, attachment: {}", ref.resource_name, ref.attachment);
       auto handle = find_texture_by_name(ref.resource_name);
       OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-      builder.texture_resource(*handle, 0, ref.attachment, WRITE);
+      builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, WRITE, ref.mip_level);
     }
 
     /// set up executor and check for runtime override

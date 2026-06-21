@@ -45,7 +45,7 @@ namespace other {
     return add_attachment(attachment, type);
   }
 
-  framebuffer& framebuffer::add_attachment(const resource_handle& attachment_handle, attachment_type type) {
+  framebuffer& framebuffer::add_attachment(const resource_handle& attachment_handle, attachment_type type, uint32_t mip_level) {
     if (attachment_handle.id == 0 || !(attachment_handle.type == resource_type::TEXTURE || attachment_handle.type == resource_type::CUBEMAP)) {
       CORE_LOG_ERROR("Invalid attachment handle: must be a valid texture resource, i.e, a texture or cubemap.");
       return *this;
@@ -55,7 +55,7 @@ namespace other {
       uint32_t color_idx = color_attachments.size();
       resource_handle& attachment = color_attachments.emplace_back();
       attachment = attachment_handle;
-      subsystem<renderer_backend>::get()->api()->framebuffer_texture_2d(handle(), attachment, type, 0, color_idx);
+      subsystem<renderer_backend>::get()->api()->framebuffer_texture_2d(handle(), attachment, type, mip_level, color_idx);
     } else {
       opt<resource_handle>& attachment = attachment_textures[static_cast<size_t>(type)];
       if (attachment.has_value()) {
@@ -64,7 +64,7 @@ namespace other {
       }
 
       attachment = attachment_handle;
-      subsystem<renderer_backend>::get()->api()->framebuffer_texture_2d(handle(), *attachment, type, 0);
+      subsystem<renderer_backend>::get()->api()->framebuffer_texture_2d(handle(), *attachment, type, mip_level);
     }
 
     return *this;

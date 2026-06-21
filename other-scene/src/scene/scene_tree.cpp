@@ -98,12 +98,18 @@ namespace other {
       parent_node = root;
     }
 
-    // this implies root is null which means we are constructing the root object for the scene.
+    // parent_node == nullptr here implies root is null which means we are constructing the root object for the scene.
+    const bool is_root_construction = (parent_node == nullptr);
     node* new_node = create_object(parent_node);
     OTHER_ASSERT(new_node != nullptr, "Failed to create new node in scene tree.");
 
     scene_ptr->register_object(new_node->object, name, world_position);
     ++num_objects;
+
+    if (is_root_construction) {
+      CORE_LOG_DEBUG(" - root construction");
+      root = new_node;
+    }
 
     CORE_LOG_DEBUG("Created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
     return *new_node->object;

@@ -28,6 +28,7 @@ namespace other {
       /// application windows
       BUILTIN_WINDOW_VIEWPORT,
       BUILTIN_WINDOW_SCENE_HIERARCHY,
+      BUILTIN_WINDOW_OBJECT_EDITOR,
       BUILTIN_WINDOW_ASSET_BROWSER,
       BUILTIN_WINDOW_PROPERTY_INSPECTOR,
 
@@ -45,6 +46,7 @@ namespace other {
       /// application windows
       "viewport",
       "scene-hierarchy",
+      "object-editor",
       "asset-browser",
       "property-inspector",
     };
@@ -62,6 +64,7 @@ namespace other {
 
     void open_window(const std::string_view window_name);
     void close_window(const std::string_view window_name);
+    void close_all_windows();
     bool is_window_open(const std::string_view window_name) const;
 
     void register_main_menu_bar_menu(const std::string_view menu_name);

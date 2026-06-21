@@ -621,6 +621,11 @@ namespace other {
   void driver::begin_shutdown_sequence() {
     CORE_LOG_INFO("Beginning shutdown sequence");
 
+    if (driver_kernel_ptr->has_core_system<rendering_system>()) {
+      auto& rendering = driver_kernel_ptr->get_core_system<rendering_system>();
+      rendering.close_all_windows();
+    }
+
     if (driver_kernel_ptr->has_core_system<scene_system>()) {
       auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
       scenes.unload_active_scene();

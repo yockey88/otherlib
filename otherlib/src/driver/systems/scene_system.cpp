@@ -145,6 +145,11 @@ namespace other {
             OTHER_ASSERT(s != nullptr, "Active scene is null.");
             CORE_LOG_DEBUG("Lua scene boundary: creating scene object with name '{}' at position ({}, {}, {})", name, world_position.x, world_position.y, world_position.z);
             return s->create_object(name, world_position).id;
+          },
+          [s = active_scene](const std::string& name, const glm::vec3& world_position, natural_t parent_id) -> natural_t {
+            OTHER_ASSERT(s != nullptr, "Active scene is null.");
+            CORE_LOG_DEBUG("Lua scene boundary: creating parented scene object with name '{}' at position ({}, {}, {}) with parent ID {}", name, world_position.x, world_position.y, world_position.z, parent_id);
+            return s->create_object(name, world_position, &s->get_object(parent_id)).id;
           }));
     } else {
       CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");

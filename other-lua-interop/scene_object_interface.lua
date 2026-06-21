@@ -19,6 +19,25 @@ function _SceneObjectInterface:new(name, position)
   return obj
 end
 
+function _SceneObjectInterface:new_parented(name, position, parent_id)
+  local obj = {}
+  obj.native_id = Other:Scene().CreateParentedSceneObject(name, position, parent_id)
+  obj.Transform = _NativeTransformComponent:new()
+  obj.Scripts = _NativeScriptComponent:new()
+  function obj:AttachBehavior(behavior_type_name)
+    Other:Scene():AttachDotNetBehaviorToObject(obj.native_id, behavior_type_name)
+  end
+
+  setmetatable(obj, self)
+  self.__index = self
+
+  if name ~= nil
+  then
+    Other:Scene():SetObjectName(obj.native_id, name)
+  end
+  return obj
+end
+
 function _SceneObjectInterface:AddComponent(component_name)
   return Other:Scene():AddComponentToObject(self.native_id, component_name)
 end

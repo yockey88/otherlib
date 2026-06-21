@@ -23,7 +23,6 @@ namespace other {
 
       driver* driver_ptr = nullptr;
       natural_t hierarchy_node_id = 0;
-      natural_t property_inspector_node_id = 0;
 
       void on_post_render_nodes() override;
 

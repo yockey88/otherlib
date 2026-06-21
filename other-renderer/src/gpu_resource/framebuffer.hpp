@@ -55,7 +55,7 @@ namespace other {
                                 texture::filter min_filter = texture::filter::LINEAR, texture::filter max_filter = texture::filter::LINEAR, 
                                 texture::wrap wrap_s = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap_t = texture::wrap::CLAMP_TO_EDGE, texture::wrap wrap = texture::wrap::CLAMP_TO_EDGE);
     // clang-format on
-    framebuffer& add_attachment(const resource_handle& attachment_handle, attachment_type type);
+    framebuffer& add_attachment(const resource_handle& attachment_handle, attachment_type type, uint32_t mip_level = 0);
 
     void unbind();
     void finalize_framebuffer();
@@ -79,7 +79,6 @@ namespace other {
 }  // namespace other
 
 OTHER_REFLECT(
-  other::framebuffer
-)
+  other::framebuffer)
 
 #endif  // OTHER_RENDERER_GPU_RESOURCE_FRAMEBUFFER_HPP

@@ -28,7 +28,7 @@ namespace other {
     return handle;
   }
 
-  resource_handle texture::create(const std::string& name, tex_type type, format frmt, const std::pair<filter, filter>& filters, const std::tuple<wrap, wrap, wrap>& wraps, uint32_t width, uint32_t height) {
+  resource_handle texture::create(const std::string& name, tex_type type, format frmt, const std::pair<filter, filter>& filters, const std::tuple<wrap, wrap, wrap>& wraps, uint32_t mip_levels, bool generate_mips, uint32_t width, uint32_t height) {
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create texture resource with name: {}", name);
@@ -40,7 +40,9 @@ namespace other {
                    .set_format(frmt)
                    .set_size(width, height)
                    .set_filter(filters.first, filters.second)
-                   .set_wrap_mode(std::get<0>(wraps), std::get<1>(wraps), std::get<2>(wraps));
+                   .set_wrap_mode(std::get<0>(wraps), std::get<1>(wraps), std::get<2>(wraps))
+                   .set_mip_levels(mip_levels)
+                   .set_generate_mips(generate_mips);
 
     text.finalize_texture();
 
@@ -66,6 +68,27 @@ namespace other {
     return handle;
   }
 
+  resource_handle texture::create3d(const std::string& name, format frmt, const std::pair<filter, filter>& filters, const std::tuple<wrap, wrap, wrap>& wraps, uint32_t mip_levels, bool generate_mips, const glm::vec3& dimensions) {
+    resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::TEXTURE);
+    if (handle.id == 0) {
+      CORE_LOG_ERROR("Failed to create 3D texture resource with name: {}", name);
+      return { 0, resource_type::EMPTY };
+    }
+
+    auto& text = (*subsystem<renderer_backend>::get()->api()->get_resource_as<texture>(handle))
+                   .set_type(texture::tex_type::TEXTURE_3D)
+                   .set_format(frmt)
+                   .set_dimensions(dimensions)
+                   .set_filter(filters.first, filters.second)
+                   .set_wrap_mode(std::get<0>(wraps), std::get<1>(wraps), std::get<2>(wraps))
+                   .set_mip_levels(mip_levels)
+                   .set_generate_mips(generate_mips);
+
+    text.finalize_texture();
+
+    return handle;
+  }
+
   texture& texture::bind(uint32_t slot) {
     subsystem<renderer_backend>::get()->api()->bind_texture_resource(handle(), slot);
     return *this;
@@ -82,6 +105,20 @@ namespace other {
 
   texture& texture::set_type(tex_type type) {
     texture_type = type;
+    return *this;
+  }
+
+  texture& texture::set_mip_levels(uint32_t mip_levels) {
+    if (mip_levels == 0) {
+      CORE_LOG_ERROR("Invalid mip levels: must be greater than zero.");
+    } else {
+      this->mip_levels = mip_levels;
+    }
+    return *this;
+  }
+
+  texture& texture::set_generate_mips(bool generate_mips) {
+    this->generate_mips = generate_mips;
     return *this;
   }
 
@@ -170,7 +207,7 @@ namespace other {
       return;
     }
 
-    subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_type(), get_format(), size, depth, data, data_size);
+    subsystem<renderer_backend>::get()->api()->upload_texture(handle(), get_type(), get_format(), mip_levels, generate_mips, size, depth, data, data_size);
   }
 
   ImTextureID texture::get_imgui_texture_id() {

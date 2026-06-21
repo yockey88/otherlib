@@ -19,7 +19,6 @@ namespace other {
         ImGui::PushStyleColor(ImGuiCol_Border, colors::rgba_to_imvec4(colors::hierarchy::kSearchBorder));
         ImGui::PushStyleColor(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kText));
 
-        /// focused border color override
         ImGuiContext& g = *GImGui;
         bool was_active = (g.ActiveId == ImGui::GetID("##hier_filter"));
         if (was_active) {
@@ -32,8 +31,7 @@ namespace other {
         ImGui::PushItemWidth(search_w);
 
         bool changed = ImGui::InputTextWithHint(
-          "##hier_filter", "filter objects...", filter_buf, buf_size
-        );
+          "##hier_filter", "filter objects...", filter_buf, buf_size);
 
         ImGui::PopItemWidth();
 
@@ -107,16 +105,14 @@ namespace other {
               { cx - arrow_size, cy - arrow_size * 0.4f },
               { cx + arrow_size, cy - arrow_size * 0.4f },
               { cx, cy + arrow_size * 0.6f },
-              arrow_col
-            );
+              arrow_col);
           } else {
             /// ▸ pointing right
             dl->AddTriangleFilled(
               { cx - arrow_size * 0.4f, cy - arrow_size },
               { cx + arrow_size * 0.6f, cy },
               { cx - arrow_size * 0.4f, cy + arrow_size },
-              arrow_col
-            );
+              arrow_col);
           }
         }
 
@@ -133,8 +129,7 @@ namespace other {
           dl->AddCircleFilled(
             { content_x + icon_size * 0.5f, icon_y + icon_size * 0.5f },
             icon_size * 0.45f,
-            colors::to_im_col(colors::scene_object::kSignature)
-          );
+            colors::to_im_col(colors::scene_object::kSignature));
           content_x += icon_size + kItemGap;
         }
 
@@ -155,8 +150,7 @@ namespace other {
         ImGui::PushClipRect(
           { content_x, row_min.y },
           { label_max_x, row_max.y },
-          true
-        );
+          true);
         dl->AddText({ content_x, text_y }, text_col, label.data(), label.data() + label.size());
         ImGui::PopClipRect();
 
@@ -199,8 +193,7 @@ namespace other {
             dl->AddLine(
               { ecx - 4.f, ecy },
               { ecx + 4.f, ecy },
-              eye_col, 1.2f
-            );
+              eye_col, 1.2f);
           }
         }
 
@@ -213,19 +206,16 @@ namespace other {
       }
 
       void draw_indent_guide(uint32_t indent_level, float row_top_y, float row_height) {
-        if (indent_level == 0) return;
+        if (indent_level == 0) {
+          return;
+        }
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const float base_x = ImGui::GetWindowPos().x + kItemPaddingX;
 
         for (uint32_t i = 1; i <= indent_level; ++i) {
           float x = base_x + static_cast<float>(i) * kIndentWidth + kArrowWidth * 0.5f;
-          dl->AddLine(
-            { x, row_top_y },
-            { x, row_top_y + row_height },
-            colors::to_im_col(colors::hierarchy::kIndentGuide),
-            1.f
-          );
+          dl->AddLine({ x, row_top_y }, { x, row_top_y + row_height }, colors::to_im_col(colors::hierarchy::kIndentGuide), 1.f);
         }
       }
 
@@ -234,14 +224,7 @@ namespace other {
         float x_start = ImGui::GetWindowPos().x + kItemPaddingX + indent_offset;
         float x_end = ImGui::GetWindowPos().x + ImGui::GetWindowSize().x - kItemPaddingX;
 
-        dl->AddLine(
-          { x_start, y_position },
-          { x_end, y_position },
-          colors::to_im_col(colors::hierarchy::kDropTargetLine),
-          2.f
-        );
-
-        /// small diamond at the start
+        dl->AddLine({ x_start, y_position }, { x_end, y_position }, colors::to_im_col(colors::hierarchy::kDropTargetLine), 2.f);
         dl->AddCircleFilled({ x_start, y_position }, 3.f, colors::to_im_col(colors::hierarchy::kDropTargetLine));
       }
 
@@ -255,11 +238,7 @@ namespace other {
         float x = ImGui::GetCursorScreenPos().x + (avail_w - text_size.x) * 0.5f;
         float y = ImGui::GetCursorScreenPos().y + avail_h * 0.35f;
 
-        ImGui::GetWindowDrawList()->AddText(
-          { x, y },
-          colors::to_im_col(colors::kTextMuted),
-          msg
-        );
+        ImGui::GetWindowDrawList()->AddText({ x, y }, colors::to_im_col(colors::kTextMuted), msg);
       }
 
     }  // namespace hierarchy

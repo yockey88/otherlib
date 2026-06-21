@@ -31,6 +31,7 @@ namespace other {
 
     void open_ui_window(const std::string_view name);
     void close_ui_window(const std::string_view name);
+    void close_all_windows();
 
     ui::menu build_menu(const std::string_view name, const sol::table& menu_table);
     ui::menu_item build_menu_item(const std::string_view name, sol::function action);

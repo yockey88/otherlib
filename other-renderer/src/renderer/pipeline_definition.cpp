@@ -6,6 +6,7 @@
 #include <toml++/toml.hpp>
 
 #include "renderer/gpu_structs.hpp"
+#include "renderer/util/pipeline_asset_validation.hpp"
 
 namespace other {
 
@@ -222,6 +223,7 @@ namespace other {
     std::string resource_name;
     std::string attachment;
     opt<uint32_t> binding = std::nullopt;
+    uint32_t mip_level = 0;
   };
   struct frame_executor_table {
     std::string pass_name;
@@ -286,24 +288,31 @@ namespace other {
     OTHER_ASSERT(asset_type == "rendering-pipeline", "Rendering pipeline TOML must have an asset-type of 'rendering-pipeline'");
 
     CORE_LOG_DEBUG("Parsing rendering pipeline: {}", pl_def_path.string());
+    auto validated = detail::validate_pipeline_toml(pipeline_table);
+    if (!validated.valid) {
+      CORE_LOG_ERROR("Rendering pipeline TOML validation failed");
+      for (const auto& error : validated.errors) {
+        CORE_LOG_ERROR(" - {}", error);
+      }
+      return {};
+    }
+
+    // since we validated it we should be free to assert almost everywhere
 
     pipeline_definition definition;
     auto name = pipeline_table.at_path("name");
     auto version = pipeline_table.at_path("version");
     if (!name || !version) {
-      CORE_LOG_ERROR("Rendering pipeline must contain name and version fields, name exists: {}? version exists: {}?", (bool)name, (bool)version);
-      return {};
+      OTHER_ASSERT(false, "Rendering pipeline must contain name and version fields, name exists: {}? version exists: {}?", (bool)name, (bool)version);
     }
     if (!name.is_string() || !version.is_number()) {
-      CORE_LOG_ERROR("Rendering pipeline must contain a name field and a version field with correct types, name type: {}? version type: {}?", name.type(), version.type());
-      return {};
+      OTHER_ASSERT(false, "Rendering pipeline must contain a name field and a version field with correct types, name type: {}? version type: {}?", name.type(), version.type());
     }
 
     std::string name_str = name.as_string()->get();
     definition.version = version.as_integer()->get();
     if (name_str.empty()) {
-      CORE_LOG_ERROR("Rendering pipeline name cannot be empty");
-      return {};
+      OTHER_ASSERT(false, "Rendering pipeline name cannot be empty");
     }
     CORE_LOG_DEBUG(" - pipeline: {}, version: {}", name_str, definition.version);
 
@@ -325,8 +334,7 @@ namespace other {
     frame_section frame;
     bool valid = detail::collect_frame_details(definition, frame, pipeline_table);
     if (!valid) {
-      CORE_LOG_ERROR("Invalid frame section details");
-      return {};
+      OTHER_ASSERT(false, "Invalid frame section details");
     }
 
     CORE_LOG_DEBUG(" - construting passes");
@@ -658,8 +666,7 @@ namespace other {
       auto textures = pipeline_table.at_path("resources.textures");
       auto shaders = pipeline_table.at_path("resources.shaders");
       if (!buffers.is_array_of_tables() || !textures.is_array_of_tables() || !shaders.is_array_of_tables()) {
-        CORE_LOG_ERROR("Resources must be arrays of tables, buffers: {}, textures: {}, shaders: {}", buffers.type(), textures.type(), shaders.type());
-        return;
+        OTHER_ASSERT(false, "Resources must be arrays of tables, buffers: {}, textures: {}, shaders: {}", buffers.type(), textures.type(), shaders.type());
       }
 
       //  buffers
@@ -669,8 +676,7 @@ namespace other {
         auto usage = buffer.at_path("usage");
         auto tag = buffer.at_path("tag");
         if (!name.is_string() || !type.is_string() || !usage.is_string() || !tag.is_string()) {
-          CORE_LOG_ERROR("Buffer must have name, type, usage, and tag of type string, found types - name: {}, type: {}, usage: {}, tag: {}", name.type(), type.type(), usage.type(), tag.type());
-          return;
+          OTHER_ASSERT(false, "Buffer must have name, type, usage, and tag of type string, found types - name: {}, type: {}, usage: {}, tag: {}", name.type(), type.type(), usage.type(), tag.type());
         }
 
         auto& buf = into_def.buffers.emplace_back() = pipeline_buffer_definition{
@@ -696,17 +702,17 @@ namespace other {
         auto tag = texture.at_path("tag");
         auto size = texture.at_path("size");
         auto depth = texture.at_path("depth");
+        auto mip_levels = texture.at_path("mip_levels");
+        auto generate_mips = texture.at_path("generate_mips");
         if (!name || !use_window_size || !type || !format) {
-          CORE_LOG_ERROR("Texture must have name, use_window_size, type, format, missing one or more required fields");
           CORE_LOG_ERROR("name exists: {}, use_window_size exists: {}, type exists: {}, format exists: {}",
                          (bool)name, (bool)use_window_size, (bool)type, (bool)format);
-          return;
+          OTHER_ASSERT(false, "Texture must have name, use_window_size, type, format, missing one or more required fields");
         }
         if (!name.is_string() || !use_window_size.is_boolean() || !type.is_string() || !format.is_string()) {
-          CORE_LOG_ERROR("Texture fields must be of correct types: name (string), use_window_size (boolean), type (string), format (string)");
           CORE_LOG_ERROR("name type: {}, use_window_size type: {}, type type: {}, format type: {}",
                          name.type(), use_window_size.type(), type.type(), format.type());
-          return;
+          OTHER_ASSERT(false, "Texture fields must be of correct types: name (string), use_window_size (boolean), type (string), format (string)");
         }
 
         auto& tex = into_def.textures.emplace_back() = pipeline_texture_definition{
@@ -737,12 +743,20 @@ namespace other {
         if (depth && depth.is_integer()) {
           tex.depth = static_cast<uint32_t>(depth.as_integer()->get());
         }
+        if (mip_levels && mip_levels.is_integer()) {
+          tex.mip_levels = static_cast<uint32_t>(mip_levels.as_integer()->get());
+        }
+        if (generate_mips && generate_mips.is_boolean()) {
+          tex.generate_mips = generate_mips.as_boolean()->get();
+        }
 
         std::stringstream ss;
         ss << "Pipeline Texture: " << tex.name << "\n"
            << " - use_window_size: " << (tex.use_window_size ? "true" : "false") << ",\n"
            << " - type: " << std::format("{}", tex.type) << ",\n"
-           << " - format: " << std::format("{}", tex.format);
+           << " - format: " << std::format("{}", tex.format) << ",\n"
+           << " - mip_levels: " << tex.mip_levels << ",\n"
+           << " - generate_mips: " << (tex.generate_mips ? "true" : "false");
         CORE_LOG_DEBUG("{}", ss.str());
       }
 
@@ -752,8 +766,7 @@ namespace other {
         auto compute_path = shader.at_path("compute_path");
         if (compute_path) {
           if (!name.is_string() || !compute_path.is_string()) {
-            CORE_LOG_ERROR("Shader must have name and compute_path of correct types, found types - name: {}, compute_path: {}", name.type(), compute_path.type());
-            return;
+            OTHER_ASSERT(false, "Shader must have name and compute_path of correct types, found types - name: {}, compute_path: {}", name.type(), compute_path.type());
           }
           into_def.shaders.emplace_back() = pipeline_shader_definition{
             .name = name.as_string()->get(),
@@ -767,8 +780,7 @@ namespace other {
           auto vertex_path = shader.at_path("vertex_path");
           auto fragment_path = shader.at_path("fragment_path");
           if (!name.is_string() || !vertex_path.is_string() || !fragment_path.is_string()) {
-            CORE_LOG_ERROR("Shader must have name, vertex_path, and fragment_path of correct types, found types - name: {}, vertex_path: {}, fragment_path: {}", name.type(), vertex_path.type(), fragment_path.type());
-            return;
+            OTHER_ASSERT(false, "Shader must have name, vertex_path, and fragment_path of correct types, found types - name: {}, vertex_path: {}, fragment_path: {}", name.type(), vertex_path.type(), fragment_path.type());
           }
 
           auto geometry_path = shader.at_path("geometry_path");
@@ -802,17 +814,15 @@ namespace other {
       auto frame_executors = pipeline_table.at_path("frame.executors");
       auto frame_resource_tags = pipeline_table.at_path("frame.resource_tags");
       if (!frame_bindings || !frame_inputs || !frame_outputs || !frame_executors || !frame_resource_tags) {
-        CORE_LOG_ERROR("Frame section of the pipeline definition is invalid: all frame subsections must be present");
         CORE_LOG_ERROR("frame_bindings: {}, frame_inputs: {}, frame_outputs: {}, frame_executors: {}, frame_resource_tags: {}",
                        (bool)frame_bindings, (bool)frame_inputs, (bool)frame_outputs, (bool)frame_executors, (bool)frame_resource_tags);
-        return false;
+        OTHER_ASSERT(false, "Frame section of the pipeline definition is invalid: all frame subsections must be present");
       }
       if (!frame_bindings.is_array_of_tables() || !frame_inputs.is_array_of_tables() || !frame_outputs.is_array_of_tables() ||
           !frame_executors.is_array_of_tables() || !frame_resource_tags.is_array_of_tables()) {
-        CORE_LOG_ERROR("Frame section of the pipeline definition is invalid: all frame subsections must be arrays of tables");
         CORE_LOG_ERROR("frame_bindings type: {}, frame_inputs type: {}, frame_outputs type: {}, frame_executors type: {}, frame_resource_tags type: {}",
                        frame_bindings.type(), frame_inputs.type(), frame_outputs.type(), frame_executors.type(), frame_resource_tags.type());
-        return false;
+        OTHER_ASSERT(false, "Frame section of the pipeline definition is invalid: all frame subsections must be arrays of tables");
       }
 
       for (const auto& binding : *frame_bindings.as_array()) {
@@ -823,16 +833,14 @@ namespace other {
         auto binding_value = binding.at_path("binding");
         auto element_size = binding.at_path("element_size");
         if (!name || !tag || !scope || !type || !element_size) {
-          CORE_LOG_ERROR("Frame binding is invalid: all fields (name, tag, scope, type, element_size) must be present");
           CORE_LOG_ERROR("name: {}, tag: {}, scope: {}, type: {}, element_size: {}",
                          (bool)name, (bool)tag, (bool)scope, (bool)type, (bool)element_size);
-          continue;
+          OTHER_ASSERT(false, "Frame binding is invalid: all fields (name, tag, scope, type, element_size) must be present");
         }
         if (!name.is_string() || !tag.is_string() || !scope.is_string() || !type.is_string() || !element_size.is_number()) {
-          CORE_LOG_ERROR("Frame binding is invalid: all fields (name, tag, scope, type, element_size) must be of correct types");
           CORE_LOG_ERROR("name type: {}, tag type: {}, scope type: {}, type type: {}, element_size type: {}",
                          name.type(), tag.type(), scope.type(), type.type(), element_size.type());
-          continue;
+          OTHER_ASSERT(false, "Frame binding is invalid: all fields (name, tag, scope, type, element_size) must be of correct types");
         }
 
         auto& b = into_section.bindings.emplace_back() = frame_binding_table{
@@ -857,16 +865,15 @@ namespace other {
 
       auto parse_input_output = [](const std::string_view io_type,
                                    toml::node_view<const toml::node> pass_name, toml::node_view<const toml::node> resource_name,
-                                   toml::node_view<const toml::node> attachment, toml::node_view<const toml::node> binding) -> frame_input_output_table {
+                                   toml::node_view<const toml::node> attachment, toml::node_view<const toml::node> binding,
+                                   toml::node_view<const toml::node> mip_level) -> frame_input_output_table {
         if (!pass_name || !resource_name) {
-          CORE_LOG_ERROR("Invalid frame {}: pass_name or resource_name is missing", io_type);
           CORE_LOG_ERROR("pass-name: {}, resource-name: {}", (bool)pass_name, (bool)resource_name);
-          return {};
+          OTHER_ASSERT(false, "Invalid frame {}: pass_name or resource_name is missing", io_type);
         }
         if (!pass_name || !resource_name) {
-          CORE_LOG_ERROR("Invalid frame {}: pass_name or resource_name is missing", io_type);
           CORE_LOG_ERROR("pass-name: {}, resource-name: {}", (bool)pass_name, (bool)resource_name);
-          return {};
+          OTHER_ASSERT(false, "Invalid frame {}: pass_name or resource_name is missing", io_type);
         }
         auto io = frame_input_output_table{
           .resource_name = resource_name.as_string()->get(),
@@ -874,20 +881,28 @@ namespace other {
 
         if (attachment) {
           if (!attachment.is_string()) {
-            CORE_LOG_ERROR("Invalid frame {}: attachment is not a string", io_type);
             CORE_LOG_ERROR("attachment: {}", attachment.type());
-            return {};
+            OTHER_ASSERT(false, "Invalid frame {}: attachment is not a string", io_type);
           }
           io.attachment = attachment.as_string()->get();
         }
         if (binding) {
           if (!binding.is_number()) {
-            CORE_LOG_ERROR("Invalid frame {}: binding is not a number", io_type);
             CORE_LOG_ERROR("binding: {}", binding.type());
-            return {};
+            OTHER_ASSERT(false, "Invalid frame {}: binding is not a number", io_type);
           }
           io.binding = binding.as_integer()->get();
         }
+        if (mip_level) {
+          if (!mip_level.is_integer()) {
+            CORE_LOG_ERROR("mip_level: {}", mip_level.type());
+            OTHER_ASSERT(false, "Invalid frame {}: mip_level is not an integer", io_type);
+          }
+          io.mip_level = mip_level.as_integer()->get();
+        } else {
+          io.mip_level = 0;
+        }
+
         io.pass_name = pass_name.as_string()->get();
         return io;
       };
@@ -897,32 +912,40 @@ namespace other {
         auto resource_name = inputs.at_path("resource_name");
         auto attachment = inputs.at_path("attachment");
         auto binding = inputs.at_path("binding");
-        auto io = parse_input_output("input", pass_name, resource_name, attachment, binding);
+        auto mip_level = inputs.at_path("mip_level");
+        auto io = parse_input_output("input", pass_name, resource_name, attachment, binding, mip_level);
         if (!io.pass_name.empty()) {
           into_section.inputs.push_back(std::move(io));
+          std::stringstream ss_input;
+          ss_input << "Frame Input: " << io.pass_name << "\n"
+                   << " - resource_name: " << io.resource_name << ",\n"
+                   << " - attachment: " << io.attachment << ",\n"
+                   << " - binding: " << (io.binding.has_value() ? std::to_string(io.binding.value()) : "none") << ",\n"
+                   << " - mip_level: " << io.mip_level;
+          CORE_LOG_DEBUG("{}", ss_input.str());
+        } else {
+          CORE_LOG_ERROR("Invalid frame input: pass_name is empty");
         }
-        std::stringstream ss_input;
-        ss_input << "Frame Input: " << io.pass_name << "\n"
-                 << " - resource_name: " << io.resource_name << ",\n"
-                 << " - attachment: " << io.attachment << ",\n"
-                 << " - binding: " << (io.binding.has_value() ? std::to_string(io.binding.value()) : "none");
-        CORE_LOG_DEBUG("{}", ss_input.str());
       }
       for (const auto& output : *frame_outputs.as_array()) {
         auto pass_name = output.at_path("pass_name");
         auto resource_name = output.at_path("resource_name");
         auto attachment = output.at_path("attachment");
         auto binding = output.at_path("binding");
-        auto io = parse_input_output("output", pass_name, resource_name, attachment, binding);
+        auto mip_level = output.at_path("mip_level");
+        auto io = parse_input_output("output", pass_name, resource_name, attachment, binding, mip_level);
         if (!io.pass_name.empty()) {
           into_section.outputs.push_back(std::move(io));
+          std::stringstream ss_output;
+          ss_output << "Frame Output: " << io.pass_name << "\n"
+                    << " - resource_name: " << io.resource_name << ",\n"
+                    << " - attachment: " << io.attachment << ",\n"
+                    << " - binding: " << (io.binding.has_value() ? std::to_string(io.binding.value()) : "none") << ",\n"
+                    << " - mip_level: " << io.mip_level;
+          CORE_LOG_DEBUG("{}", ss_output.str());
+        } else {
+          CORE_LOG_ERROR("Invalid frame output: pass_name is empty");
         }
-        std::stringstream ss_output;
-        ss_output << "Frame Output: " << io.pass_name << "\n"
-                  << " - resource_name: " << io.resource_name << ",\n"
-                  << " - attachment: " << io.attachment << ",\n"
-                  << " - binding: " << (io.binding.has_value() ? std::to_string(io.binding.value()) : "none");
-        CORE_LOG_DEBUG("{}", ss_output.str());
       }
       for (const auto& executor : *frame_executors.as_array()) {
         auto pass_name = executor.at_path("pass_name");
@@ -930,14 +953,12 @@ namespace other {
         auto uniforms = executor.at_path("uniforms");
         auto params = executor.at_path("params");
         if (!pass_name || !name) {
-          CORE_LOG_ERROR("Executor missing pass_name or name");
           CORE_LOG_ERROR("pass name: {}, name: {}", (bool)pass_name, (bool)name);
-          return {};
+          OTHER_ASSERT(false, "Executor missing pass_name or name");
         }
         if (!pass_name.is_string() || !name.is_string()) {
           CORE_LOG_ERROR("Executor pass_name or name is not a string");
-          CORE_LOG_ERROR("pass name type: {}, name type: {}", pass_name.type(), name.type());
-          return {};
+          OTHER_ASSERT(false, "Executor pass_name or name is not a string");
         }
         auto& exec = into_section.executors.emplace_back() = frame_executor_table{
           .pass_name = pass_name.as_string()->get(),
@@ -1001,8 +1022,7 @@ namespace other {
             switch (FNV(name_str)) {
               case FNV("barrier"): {
                 if (!value.is_string()) {
-                  CORE_LOG_ERROR("Invalid parameter: 'barrier' value must be a string for '{}'", name_str);
-                  return false;
+                  OTHER_ASSERT(false, "Invalid parameter: 'barrier' value must be a string for '{}'", name_str);
                 }
                 std::string barrier_value = value.as_string()->get();
                 exec.params.emplace_back() = frame_executor_table::uniform_or_param{
@@ -1012,16 +1032,14 @@ namespace other {
               } break;
               case FNV("groups"): {
                 if (!value.is_array()) {
-                  CORE_LOG_ERROR("Invalid parameter: 'groups' value must be a table for '{}'", name_str);
-                  return false;
+                  OTHER_ASSERT(false, "Invalid parameter: 'groups' value must be a table for '{}'", name_str);
                 }
                 glm::vec3 groups = glm::vec3(1, 1, 1);
                 auto val = value.as_array();
                 for (size_t i = 0; i < val->size(); ++i) {
                   auto& item = val->at(i);
                   if (!item.is_number()) {
-                    CORE_LOG_ERROR("Invalid parameter: 'groups' array elements must be integers for '{}'", name_str);
-                    return false;
+                    OTHER_ASSERT(false, "Invalid parameter: 'groups' array elements must be integers for '{}'", name_str);
                   }
                   float final_val = 1.f;
                   if (item.is_floating_point()) {
@@ -1035,8 +1053,7 @@ namespace other {
                     case 1: groups.y = final_val; break;
                     case 2: groups.z = final_val; break;
                     default:
-                      CORE_LOG_ERROR("Invalid parameter: 'groups' array contains more than 3 elements for '{}'", name_str);
-                      return false;
+                      OTHER_ASSERT(false, "Invalid parameter: 'groups' array contains more than 3 elements for '{}'", name_str);
                   }
                 }
 
@@ -1047,8 +1064,7 @@ namespace other {
 
               } break;
               default:
-                CORE_LOG_ERROR("Invalid parameter name: '{}'", name_str);
-                return false;
+                OTHER_ASSERT(false, "Invalid parameter name: '{}'", name_str);
             }
           }
 
@@ -1066,12 +1082,12 @@ namespace other {
         if (!name || !type) {
           CORE_LOG_ERROR("Invalid resource tag: missing name or type");
           CORE_LOG_ERROR("name exists: {}, type exists: {}", (bool)name, (bool)type);
-          return false;
+          OTHER_ASSERT(false, "Invalid resource tag: missing name or type");
         }
         if (!name.is_string() || !type.is_string()) {
           CORE_LOG_ERROR("Invalid resource tag: name and type must be strings");
           CORE_LOG_ERROR("name type: {}, type type: {}", name.type(), type.type());
-          return false;
+          OTHER_ASSERT(false, "Invalid resource tag: name and type must be strings");
         }
 
         std::string name_str = name.as_string()->get();
@@ -1093,14 +1109,12 @@ namespace other {
     void build_pass_definitions(pipeline_definition& into_def, const frame_section& frame, const toml::table& pipeline_table) {
       auto frame_passes = pipeline_table.at_path("frame.passes");
       if (!frame_passes) {
-        CORE_LOG_ERROR("Invalid pipeline table: missing frame.passes");
         CORE_LOG_ERROR("frame passes: {}", (bool)frame_passes);
-        return;
+        OTHER_ASSERT(false, "Invalid pipeline table: missing frame.passes");
       }
       if (!frame_passes.is_array_of_tables()) {
-        CORE_LOG_ERROR("Invalid pipeline table: frame.passes must be an array");
         CORE_LOG_ERROR("frame passes type: {}", frame_passes.type());
-        return;
+        OTHER_ASSERT(false, "Invalid pipeline table: frame.passes must be an array");
       }
 
       for (const auto& pass : *frame_passes.as_array()) {
@@ -1108,14 +1122,12 @@ namespace other {
         auto pass_type = pass.at_path("pass_type");
         auto shader_name = pass.at_path("shader_name");
         if (!name || !pass_type || !shader_name) {
-          CORE_LOG_ERROR("Invalid frame pass: missing name, type or shader_name");
           CORE_LOG_ERROR("name exists: {}, type exists: {}, shader_name exists: {}", (bool)name, (bool)pass_type, (bool)shader_name);
-          continue;
+          OTHER_ASSERT(false, "Invalid frame pass: missing name, type or shader_name");
         }
         if (!name.is_string() || !pass_type.is_string() || !shader_name.is_string()) {
-          CORE_LOG_ERROR("Invalid frame pass: name, type and shader_name must be strings");
           CORE_LOG_ERROR("name type: {}, type type: {}, shader_name type: {}", name.type(), pass_type.type(), shader_name.type());
-          continue;
+          OTHER_ASSERT(false, "Invalid frame pass: name, type and shader_name must be strings");
         }
 
         auto& p = into_def.passes.emplace_back();
@@ -1175,14 +1187,12 @@ namespace other {
           auto name = b.at_path("name");
           auto binding = b.at_path("binding");
           if (!pass_name || !name || !binding) {
-            CORE_LOG_ERROR("Invalid binding: missing pass_name, name or binding");
             CORE_LOG_ERROR("pass_name exists: {}, name exists: {}, binding exists: {}", (bool)pass_name, (bool)name, (bool)binding);
-            continue;
+            OTHER_ASSERT(false, "Invalid binding: missing pass_name, name or binding");
           }
           if (!pass_name.is_string() || !name.is_string() || !binding.is_integer()) {
-            CORE_LOG_ERROR("Invalid binding: pass_name and name must be strings and binding must be an integer");
             CORE_LOG_ERROR("pass_name type: {}, name type: {}, binding type: {}", pass_name.type(), name.type(), binding.type());
-            continue;
+            OTHER_ASSERT(false, "Invalid binding: pass_name and name must be strings and binding must be an integer");
           }
 
           std::string binding_name = name.as_string()->get();
@@ -1196,8 +1206,7 @@ namespace other {
           std::string pass_name_str = pass_name.as_string()->get();
           auto pass_itr = std::ranges::find(into_def.passes, pass_name_str, &pipeline_pass_definition::name);
           if (pass_itr == into_def.passes.end()) {
-            CORE_LOG_ERROR("Binding '{}' references non-existent pass '{}'", binding_name, pass_name_str);
-            continue;
+            OTHER_ASSERT(false, "Binding '{}' references non-existent pass '{}'", binding_name, pass_name_str);
           }
 
           pass_itr->bindings.emplace_back() = frame_binding_definition{
@@ -1216,14 +1225,14 @@ namespace other {
       for (const auto& i : frame.inputs) {
         auto pass_itr = std::ranges::find(into_def.passes, i.pass_name, &pipeline_pass_definition::name);
         if (pass_itr == into_def.passes.end()) {
-          CORE_LOG_ERROR("Input '{}' references non-existent pass '{}'", i.resource_name, i.pass_name);
-          continue;
+          OTHER_ASSERT(false, "Input '{}' references non-existent pass '{}'", i.resource_name, i.pass_name);
         }
         CORE_LOG_DEBUG("Processing input '{}' for pass '{}'", i.resource_name, i.pass_name);
 
         auto& pass = *pass_itr;
         auto& in = pass.inputs.emplace_back(pipeline_resource_reference{
           .resource_name = i.resource_name,
+          .mip_level = i.mip_level,
         });
         if (i.binding.has_value()) {
           in.binding = i.binding.value();
@@ -1236,26 +1245,27 @@ namespace other {
       for (const auto& o : frame.outputs) {
         auto pass_itr = std::ranges::find(into_def.passes, o.pass_name, &pipeline_pass_definition::name);
         if (pass_itr == into_def.passes.end()) {
-          CORE_LOG_ERROR("Output '{}' references non-existent pass '{}'", o.resource_name, o.pass_name);
-          continue;
+          OTHER_ASSERT(false, "Output '{}' references non-existent pass '{}'", o.resource_name, o.pass_name);
         }
         CORE_LOG_DEBUG("Processing output '{}' for pass '{}'", o.resource_name, o.pass_name);
 
         auto& pass = *pass_itr;
         auto& out = pass.outputs.emplace_back(pipeline_resource_reference{
           .resource_name = o.resource_name,
-          .attachment = framebuffer_attachment_type_from_string(o.attachment),
+          .mip_level = o.mip_level,
         });
         if (o.binding.has_value()) {
           out.binding = o.binding.value();
+        }
+        if (!o.attachment.empty()) {
+          out.attachment = framebuffer_attachment_type_from_string(o.attachment);
         }
       }
 
       for (const auto& e : frame.executors) {
         auto pass_itr = std::ranges::find(into_def.passes, e.pass_name, &pipeline_pass_definition::name);
         if (pass_itr == into_def.passes.end()) {
-          CORE_LOG_ERROR("Executor '{}' references non-existent pass '{}'", e.name, e.pass_name);
-          continue;
+          OTHER_ASSERT(false, "Executor '{}' references non-existent pass '{}'", e.name, e.pass_name);
         }
         CORE_LOG_DEBUG("Processing executor '{}' for pass '{}'", e.name, e.pass_name);
 

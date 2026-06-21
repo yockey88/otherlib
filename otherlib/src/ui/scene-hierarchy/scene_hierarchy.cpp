@@ -6,7 +6,6 @@
 #include "renderer/ui/ui_node.hpp"
 
 #include "driver/driver.hpp"
-#include "ui/property_inspector_node.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy_node.hpp"
 
 namespace other {
@@ -26,7 +25,6 @@ namespace other {
       });
 
       hierarchy_node_id = add_node(make_ref<scene_hierarchy_node>(this, drvr));
-      property_inspector_node_id = add_node(make_ref<property_inspector_node>(this, drvr));
     }
 
     void scene_hierarchy::on_post_render_nodes() {

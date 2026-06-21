@@ -1,7 +1,7 @@
 /**
- * \file ui/property_inspector_node.cpp
+ * \file ui/object-editor/property_inspector_node.cpp
  **/
-#include "ui/property_inspector_node.hpp"
+#include "ui/object-editor/property_inspector_node.hpp"
 
 #include <string>
 
@@ -68,12 +68,6 @@ namespace other {
 
     void property_inspector_node::handle_object_selection(natural_t object_id) {
       CORE_LOG_DEBUG("Handling object selection for ID {}", object_id);
-      if (object_id == 0) {
-        /// unselect anything selected
-        selected_object_ids.clear();
-        return;
-      }
-
       if (multi_selection_enabled) {
         auto it = std::ranges::find(selected_object_ids, object_id);
         if (it != selected_object_ids.end()) {
@@ -84,7 +78,6 @@ namespace other {
       else if (selected_object_ids.size() > 0) {
         selected_object_ids.clear();
       }
-      CORE_LOG_DEBUG("Selecting object ID {}", object_id);
       selected_object_ids.push_back(object_id);
     }
 
@@ -130,24 +123,20 @@ namespace other {
     }
 
     void property_inspector_node::on_render_node_body() {
-      if (!ImGui::BeginChild("##property-inspector")) {
-        ImGui::EndChild();
-        return;
-      }
-
-      if (selected_object_ids.empty()) {
+      auto& scenes = driver_ptr->get_kernel().get_core_system<scene_system>();
+      auto* active_scene = scenes.get_active_scene();
+      if (active_scene == nullptr) {
+        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextFriendlyAlert));
+        ImGui::Text("No active scene.");
+      } else if (selected_object_ids.empty()) {
         scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextFriendlyAlert));
         ImGui::Text("No object selected.");
       } else if (selected_object_ids.size() > 1) {
         scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
         ImGui::Text("Multiple objects selected (%zu).", selected_object_ids.size());
       } else {
+        OTHER_ASSERT(active_scene != nullptr, "Active scene must not be nullptr");
         natural_t obj_id = selected_object_ids.front();
-
-        auto& scenes = driver_ptr->get_kernel().get_core_system<scene_system>();
-        auto* active_scene = scenes.get_active_scene();
-        OTHER_ASSERT(active_scene != nullptr, "Active scene is null, cannot render properties.");
-
         scene_object& obj = active_scene->get_object(obj_id);
 
         char name_buf[256];
@@ -157,7 +146,25 @@ namespace other {
         if (inspector::draw_object_header_editable(name_buf, sizeof(name_buf), obj.id, colors::scene_object::kSignature)) {
           obj.name = std::string(name_buf);
         }
-        // ImGui::Separator();
+        ImGui::Separator();
+
+        // render list of children names
+        auto children_ids = active_scene->get_children_ids(obj.id);
+        if (!children_ids.empty()) {
+          std::stringstream ss;
+          for (natural_t child_id : children_ids) {
+            scene_object* child = active_scene->find_object(child_id);
+            if (child != nullptr) {
+              ss << child->name;
+              if (child_id != children_ids.back()) {
+                ss << ", ";
+              }
+            }
+          }
+
+          std::string children_names = ss.str();
+          ImGui::Text("Children: [%s]", children_names.c_str());
+        }
 
         /// components
         draw_component_section<transform>("Transform", active_scene, &obj);
@@ -185,8 +192,7 @@ namespace other {
             } else {
               CORE_LOG_ERROR("Error: Asset ID {} is not a valid model or model source asset in render_component on_modified callback", new_asset_id);
             }
-          }
-        );
+          });
         draw_component_section<camera_component>("Camera", active_scene, &obj);
         draw_component_section<physics_component>("Physics Body", active_scene, &obj);
         draw_component_section<light_component>("Lights", active_scene, &obj);
@@ -199,15 +205,15 @@ namespace other {
 
         /// \todo component picker popup
         if (ImGui::BeginPopup("##add_component_popup")) {
-          scoped_color text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kText));
-          ImGui::Text("Add Component...");
-          ImGui::Separator();
+          {
+            scoped_color text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kText));
+            ImGui::Text("Add Component...");
+            ImGui::Separator();
+          }
           /// list available component types here
           ImGui::EndPopup();
         }
       }
-
-      ImGui::EndChild();
     }
 
   }  // namespace ui

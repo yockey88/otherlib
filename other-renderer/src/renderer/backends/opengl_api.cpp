@@ -573,13 +573,20 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) {
+  void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, uint32_t mip_levels, bool generate_mipmaps, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) {
     PROFILE_SECTION("opengl_api::upload_texture");
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("GPU resource for texture ID {} not found. Can't upload texture", handle.id);
       return;
     }
+
+    const uint32_t levels = generate_mipmaps ? std::max(mip_levels, full_mip_chain_count(img_size, type, depth)) : mip_levels;
+    const int32_t gl_type = get_gl_texture_type(type);
+    const int32_t gl_iformat = get_gl_texture_format(format);
+    const int32_t gl_cformat = get_gl_texture_channel_format(format);
+    const int32_t gl_ctype = get_gl_texture_format_type(format);
+    const uint32_t tex_id = gpu_itr->second;
 
     auto itr = texture_resources.find(handle.id);
     if (itr == texture_resources.end()) {
@@ -591,8 +598,6 @@ namespace other {
 
       uint32_t texture_id = gpu_itr->second;
       glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
-
-      int32_t gl_type = get_gl_texture_type(type);
       switch (gl_type) {
         case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
         case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
@@ -600,8 +605,12 @@ namespace other {
         case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
         case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
         case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-          glTexImage2D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexImage2D(gl_type, 0, gl_iformat, img_size.x, img_size.y, 0, gl_cformat, gl_ctype, data);
           break;
+        default:
+          CORE_LOG_ERROR("Unsupported cube map face for OpenGL cubemape face texture: {}", gl_type);
+          glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+          return;
       }
 
       glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -613,35 +622,34 @@ namespace other {
       int32_t gl_type = get_gl_texture_type(type);
       switch (gl_type) {
         case GL_TEXTURE_1D:
-          glTexImage1D(gl_type, 0, get_gl_texture_format(format), img_size.x, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexStorage1D(gl_type, 1, gl_iformat, img_size.x);
+          if (data != nullptr) {
+            glTexSubImage1D(gl_type, 0, 0, img_size.x, gl_cformat, gl_ctype, data);
+          }
           break;
-
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
         case GL_TEXTURE_2D:
-          glTexImage2D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexStorage2D(gl_type, 1, gl_iformat, img_size.x, img_size.y);
+          if (data != nullptr) {
+            glTexSubImage2D(gl_type, 0, 0, 0, img_size.x, img_size.y, gl_cformat, gl_ctype, data);
+          }
           break;
-
         case GL_TEXTURE_3D:
-          glTexImage3D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, depth, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexStorage3D(gl_type, 1, gl_iformat, img_size.x, img_size.y, depth);
+          if (data != nullptr) {
+            glTexSubImage3D(gl_type, 0, 0, 0, 0, img_size.x, img_size.y, depth, gl_cformat, gl_ctype, data);
+          }
           break;
-
         default:
-          CORE_LOG_ERROR("Unsupported texture type for OpenGL: {}", gl_type);
+          CORE_LOG_ERROR("Unsupported texture type for OpenGL texture: {}", gl_type);
+          glBindTexture(gl_type, 0);
           return;
       }
 
-      /**
-        if (generate-mip-maps) {
-          do so
-        }
-      */
+      // if (generate_mipmaps && data != nullptr) {
+      //   glGenerateMipmap(gl_type);
+      // }
 
-      glBindTexture(get_gl_texture_type(type), 0);
+      glBindTexture(gl_type, 0);
       CHECKGL();
     }
   }
@@ -1755,7 +1763,7 @@ namespace other {
         return GL_RGB8;
 
       case texture::format::DEPTHF:
-        return GL_DEPTH_COMPONENT;
+        return GL_DEPTH_COMPONENT32F;
 
       default:
         CORE_LOG_ERROR("Unsupported texture format: {}", format);
@@ -1807,18 +1815,12 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_filter(texture::filter filter) const {
     switch (filter) {
-      case texture::filter::NEAREST:
-        return GL_NEAREST;
-
-      case texture::filter::LINEAR:
-        return GL_LINEAR;
-
-      case texture::filter::NEAREST_MIPMAP_NEAREST:
-        return GL_NEAREST_MIPMAP_NEAREST;
-
-      case texture::filter::LINEAR_MIPMAP_LINEAR:
-        return GL_LINEAR_MIPMAP_LINEAR;
-
+      case texture::filter::NEAREST: return GL_NEAREST;
+      case texture::filter::LINEAR: return GL_LINEAR;
+      case texture::filter::LINEAR_MIPMAP_NEAREST: return GL_LINEAR_MIPMAP_NEAREST;
+      case texture::filter::NEAREST_MIPMAP_LINEAR: return GL_NEAREST_MIPMAP_LINEAR;
+      case texture::filter::NEAREST_MIPMAP_NEAREST: return GL_NEAREST_MIPMAP_NEAREST;
+      case texture::filter::LINEAR_MIPMAP_LINEAR: return GL_LINEAR_MIPMAP_LINEAR;
       default:
         CORE_LOG_ERROR("Unsupported texture filter: {}", filter);
         return -1;  // Invalid filter
@@ -1842,6 +1844,27 @@ namespace other {
       default:
         CORE_LOG_ERROR("Unsupported texture wrap mode: {}", wrap);
         return -1;  // Invalid wrap mode
+    }
+  }
+
+  bool opengl_api::format_supports_auto_mipgen(texture::format f) const {
+    switch (f) {
+      case texture::format::R8:
+      case texture::format::RG8:
+      case texture::format::RGB8:
+      case texture::format::RGBA8:
+      case texture::format::BGRA8:
+      case texture::format::R16F:
+      case texture::format::RG16F:
+      case texture::format::RGBA16F:
+      case texture::format::RG11B10F:
+      case texture::format::RGB9E5F:
+      case texture::format::R32F:
+      case texture::format::RG32F:
+      case texture::format::RGBA32F:
+        return true;
+      default:  // int/uint and depth
+        return false;
     }
   }
 
@@ -1884,12 +1907,11 @@ namespace other {
 
   int32_t opengl_api::get_gl_barrier_mask(shader::compute_barrier_type barrier_type) const {
     switch (barrier_type) {
-      case shader::compute_barrier_type::SHADER_IMAGE_ACCESS:
-        return GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
-      case shader::compute_barrier_type::SHADER_STORAGE:
-        return GL_SHADER_STORAGE_BARRIER_BIT;
-      case shader::compute_barrier_type::UNIFORM_BARRIER:
-        return GL_UNIFORM_BARRIER_BIT;
+      case shader::compute_barrier_type::SHADER_IMAGE_ACCESS: return GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+      case shader::compute_barrier_type::SHADER_STORAGE: return GL_SHADER_STORAGE_BARRIER_BIT;
+      case shader::compute_barrier_type::UNIFORM_BARRIER: return GL_UNIFORM_BARRIER_BIT;
+      case shader::compute_barrier_type::TEXTURE_FETCH: return GL_TEXTURE_FETCH_BARRIER_BIT;
+      case shader::compute_barrier_type::ALL_BARRIER: return GL_ALL_BARRIER_BITS;
       default:
         CORE_LOG_ERROR("Unsupported compute barrier type: {}", barrier_type);
         return -1;  // Invalid barrier type
@@ -1898,22 +1920,14 @@ namespace other {
 
   int32_t opengl_api::get_gl_attr_type(mesh::attribute_type type) const {
     switch (type) {
-      case mesh::attribute_type::BYTE:
-        return GL_BYTE;
-      case mesh::attribute_type::UNSIGNED_BYTE:
-        return GL_UNSIGNED_BYTE;
-      case mesh::attribute_type::SHORT:
-        return GL_SHORT;
-      case mesh::attribute_type::UNSIGNED_SHORT:
-        return GL_UNSIGNED_SHORT;
-      case mesh::attribute_type::INT:
-        return GL_INT;
-      case mesh::attribute_type::UNSIGNED_INT:
-        return GL_UNSIGNED_INT;
-      case mesh::attribute_type::FLOAT:
-        return GL_FLOAT;
-      case mesh::attribute_type::DOUBLE:
-        return GL_DOUBLE;
+      case mesh::attribute_type::BYTE: return GL_BYTE;
+      case mesh::attribute_type::UNSIGNED_BYTE: return GL_UNSIGNED_BYTE;
+      case mesh::attribute_type::SHORT: return GL_SHORT;
+      case mesh::attribute_type::UNSIGNED_SHORT: return GL_UNSIGNED_SHORT;
+      case mesh::attribute_type::INT: return GL_INT;
+      case mesh::attribute_type::UNSIGNED_INT: return GL_UNSIGNED_INT;
+      case mesh::attribute_type::FLOAT: return GL_FLOAT;
+      case mesh::attribute_type::DOUBLE: return GL_DOUBLE;
       default:
         CORE_LOG_ERROR("Unsupported attribute type: {}", type);
         return -1;  // Invalid type

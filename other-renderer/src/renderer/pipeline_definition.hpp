@@ -41,6 +41,10 @@ namespace other {
     texture::format format = texture::format::RGBA16F;
     resource_tag tag = resource_tag::none();
 
+    // 0 = full chain, 1 = no mips
+    uint32_t mip_levels = 1;
+    bool generate_mips = false;
+
     opt<std::pair<texture::filter, texture::filter>> filters;
     opt<std::tuple<texture::wrap, texture::wrap, texture::wrap>> wraps;
   };
@@ -58,6 +62,7 @@ namespace other {
     std::string resource_name;
     uint32_t binding = 0;
     framebuffer::attachment_type attachment = framebuffer::COLOR;
+    uint32_t mip_level = 0;
   };
 
   struct pipeline_executor_definition {
