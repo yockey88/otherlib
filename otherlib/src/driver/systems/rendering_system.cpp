@@ -225,6 +225,7 @@ namespace other {
     reg.register_per_frame(resource_tag(resource_tag::kCameraTag), &detail::upload_camera_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), &detail::upload_point_light_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), &detail::upload_directional_light_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kSimulationEnvironmentTag), &detail::upload_simulation_environment_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kScreenTag), &detail::no_op_upload_per_frame);
     reg.register_per_draw(resource_tag(resource_tag::kModelTag), &detail::upload_model_buffer_per_draw);
     reg.register_per_draw(resource_tag(resource_tag::kMaterialTag), &detail::upload_material_buffer_per_draw);
@@ -523,9 +524,7 @@ namespace other {
     }
 
     void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::simulation_environment_buffer env_buffer{};
-      // env_buffer.environment = d.simulation_environment;
-      r.upload_to_handle(h, &env_buffer, sizeof(gpu::simulation_environment_buffer));
+      r.upload_to_handle(h, &d.simulation_environment, sizeof(gpu::simulation_environment_buffer));
     }
 
     void upload_model_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {

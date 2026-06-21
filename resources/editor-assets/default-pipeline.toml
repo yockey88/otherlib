@@ -41,13 +41,14 @@ bindings = [
   { name = "per_draw.bone_buffer", tag = "bone", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6416 },
   { name = "per_frame.point_light_buffer", tag = "point_light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 64 },
   { name = "per_frame.direction_light_buffer", tag = "direction_light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 64 },
-  { name = "per_frame.simulation_environment_buffer", tag = "simulation_environment", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 112 }
+  { name = "per_frame.simulation_environment_buffer", tag = "simulation_environment", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 128 }
 ]
 pass-bindings = [
   { pass_name = "geometry-pass", name = "per_draw.material_buffer", binding = 0 }, 
   { pass_name = "geometry-pass", name = "per_draw.model_buffer", binding = 1 }, 
   { pass_name = "geometry-pass", name = "per_draw.camera_buffer", binding = 2 }, 
-  { pass_name = "geometry-pass", name = "per_draw.bone_buffer", binding = 3 }
+  { pass_name = "geometry-pass", name = "per_draw.bone_buffer", binding = 3 },
+  { pass_name = "environment-map-pass", name = "per_frame.simulation_environment_buffer", binding = 0 }
 ]
 passes = [
   { name = "geometry-pass", pass_type = "RENDER_PASS", shader_name = "geometry_pass_shader", clear_color = [0.0, 0.0, 0.0, 1.0] },
@@ -62,6 +63,7 @@ inputs = [
   { pass_name = "geometry-pass", resource_name = "camera_buffer", binding = 2 },
   { pass_name = "geometry-pass", resource_name = "bone_buffer", binding = 3 },
   { pass_name = "shadow-map-pass", resource_name = "model_buffer", binding = 1 },
+  { pass_name = "environment-map-pass", resource_name = "simulation_environment_buffer", binding = 0 },
   { pass_name = "shading-pass", resource_name = "color_texture", attachment = "COLOR" },
   { pass_name = "shading-pass", resource_name = "normal_texture", attachment = "COLOR" },
   { pass_name = "shading-pass", resource_name = "position_texture", attachment = "COLOR" },

@@ -157,21 +157,14 @@ namespace other {
     };
 
     GPU_ALIGN struct simulation_environment_buffer {
-      /// unit vector TO sun, w = angular radius
-      glm::vec4 sun_direction;
-      // rgb = radiance, w = intensity scale
-      glm::vec4 sun_color;
-      // rgb = average of all nearby light sources, w = intensity scale
-      glm::vec4 ambient_color;
-      // rgb, w = turbidity
-      glm::vec4 zenith_color;
-      glm::vec3 horizon_color;
-      float padding0;
-      glm::vec3 ground_color;
-      float padding1;
-      glm::vec3 world_min;  //< AABB min
-      float padding2;
-      glm::vec4 world_max;  //< AABB max, w = exposure
+      glm::vec4 sun_direction;  //< xyz = unit vector TO sun, w = angular radius
+      glm::vec4 sun_color;      //< rgb = radiance, w = intensity scale
+      glm::vec4 ambient_color;  //< rgb = average of all nearby light sources, w = intensity scale
+      glm::vec4 zenith_color;   //< rgb = color, w = turbidity
+      glm::vec4 horizon_color;  //< rgb = color, w = padding
+      glm::vec4 ground_color;   //< rgb = color, w = padding
+      glm::vec4 world_min;      //< AABB min, w = padding
+      glm::vec4 world_max;      //< AABB max, w = exposure
     };
 
     GPU_ALIGN struct camera_data {

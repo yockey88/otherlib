@@ -714,10 +714,17 @@ namespace other {
     }
 
     for (const auto& ref : pass_def.outputs) {
-      CORE_LOG_DEBUG(" - output resource: {}, attachment: {}", ref.resource_name, ref.attachment);
-      auto handle = find_texture_by_name(ref.resource_name);
-      OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-      builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, WRITE, ref.mip_level);
+      const bool is_buffer = is_buffer_resource(ref.resource_name);
+      CORE_LOG_DEBUG(" - output resource: {}, attachment: {}, type: {}", ref.resource_name, ref.attachment, is_buffer ? "buffer" : "texture");
+      if (is_buffer) {
+        auto handle = find_buffer_by_name(ref.resource_name);
+        OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
+        builder.buffer_resource(*handle, ref.binding, WRITE);
+      } else {
+        auto handle = find_texture_by_name(ref.resource_name);
+        OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
+        builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, WRITE, ref.mip_level);
+      }
     }
 
     /// set up executor and check for runtime override

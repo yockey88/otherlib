@@ -874,18 +874,6 @@ namespace other {
       render.last_model_asset_id = render.model_asset_id;
     });
 
-    /*
-      glm::vec4 sun_direction;
-      // rgb = radiance, w = intensity scale
-      glm::vec4 sun_color;
-      glm::vec4 ambient_color;  // rgb = average of all nearby light sources, w = intensity scale
-      // rgb, w = turbidity
-      glm::vec4 zenith_color;
-      glm::vec3 horizon_color
-      glm::vec3 ground_color;
-      glm::vec3 world_min;  //< AABB min
-      glm::vec4 world_max;  //< AABB max, w = exposure
-    */
     if (data.scene_ambient_light != nullptr) {
       data.simulation_environment.sun_direction = glm::vec4(glm::normalize(data.scene_ambient_light->direction), 0.0f);
       data.simulation_environment.sun_color = glm::vec4(data.scene_ambient_light->color, 1.0f);
@@ -899,11 +887,15 @@ namespace other {
     data.simulation_environment.ambient_color = glm::clamp(ambient_color, 0.0f, 1.0f);
 
     glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
-    glm::vec3 horizon_color = glm::vec3(0.5f, 0.5f, 0.5f);
-    glm::vec3 ground_color = glm::vec3(0.2f, 0.22f, 0.233f);
+    glm::vec4 horizon_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    glm::vec4 ground_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
     data.simulation_environment.zenith_color = glm::clamp(zenith_color, 0.0f, 1.0f);
     data.simulation_environment.horizon_color = glm::clamp(horizon_color, 0.0f, 1.0f);
     data.simulation_environment.ground_color = glm::clamp(ground_color, 0.0f, 1.0f);
+
+    bounding_box scene_bounding_box = get_bounding_box();
+    data.simulation_environment.world_min = glm::vec4(scene_bounding_box.min, 1.0f);
+    data.simulation_environment.world_max = glm::vec4(scene_bounding_box.max, 1.0f);
 
     // if (debug_physics_rendering_enabled && storage->physics != nullptr) {
     //   physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();
