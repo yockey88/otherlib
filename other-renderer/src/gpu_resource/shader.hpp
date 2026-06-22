@@ -31,13 +31,13 @@ namespace other {
 
     enum compute_barrier_type : uint8_t {
       NONE = 0,
-      SHADER_IMAGE_ACCESS,
-      SHADER_STORAGE,
-      UNIFORM_BARRIER,
-      TEXTURE_FETCH,
+      SHADER_IMAGE_ACCESS = 1 << 0,
+      SHADER_STORAGE = 1 << 1,
+      UNIFORM_BARRIER = 1 << 2,
+      TEXTURE_FETCH = 1 << 3,
       // add more as needed...
 
-      ALL_BARRIER,
+      ALL_BARRIER = SHADER_IMAGE_ACCESS | SHADER_STORAGE | UNIFORM_BARRIER | TEXTURE_FETCH,
       NUM_BARRIER_TYPES
     };
 

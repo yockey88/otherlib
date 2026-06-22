@@ -756,6 +756,11 @@ namespace other {
       }
     }
 
+    /// add depends_on tags
+    for (const auto& depends_on_str : pass_def.depends_on) {
+      builder.depends_on(depends_on_str);
+    }
+
     /// set up executor and check for runtime override
     auto executor = make_executor(pass_def);
     if (executor == nullptr) {

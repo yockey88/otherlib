@@ -53,6 +53,14 @@ namespace other {
       constexpr version_tag(uint64_t version) : version(version) {}
     };
 
+    struct range : refl::attr::usage::field {
+      int64_t min = std::numeric_limits<int64_t>::min();
+      int64_t max = std::numeric_limits<int64_t>::max();
+
+      constexpr range() = default;
+      constexpr range(int64_t min, int64_t max) : min(min), max(max) {}
+    };
+
   }  // namespace attr
 
   struct reflection_data {

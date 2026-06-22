@@ -39,6 +39,7 @@ namespace other {
       pass_builder& texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags = READ_WRITE, uint32_t mip_level = 0);
       pass_builder& buffer_resource(resource_handle handle, uint32_t binding, access_flags flags = READ_WRITE);
       pass_builder& execution_callback(pass_executor&& executor, void* user_data = nullptr);
+      pass_builder& depends_on(const std::string_view pass_name);
       render_graph& end_pass();
 
      private:

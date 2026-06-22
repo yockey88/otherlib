@@ -27,6 +27,7 @@ namespace other {
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_window_sized_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_voxelize(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
@@ -71,6 +72,7 @@ namespace other {
     events.add_listener("rendering-pipeline.asset-unloaded", [this](const value& data) { handle_rendering_pipeline_asset_unloaded_event(&get_driver().get_kernel(), data); });
 
     auto& field_editors = get_driver().get_field_editors();
+    field_editors.register_editor<bool>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_bool(l, *static_cast<bool*>(d)); });
     field_editors.register_editor<int8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int8(l, *static_cast<int8_t*>(d)); });
     field_editors.register_editor<int16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int16(l, *static_cast<int16_t*>(d)); });
     field_editors.register_editor<int32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int32(l, *static_cast<int32_t*>(d)); });
@@ -170,6 +172,40 @@ namespace other {
     field_editors.register_value_editor(value_type::INT32, scalar(ImGuiDataType_S32), true);
     field_editors.register_value_editor(value_type::INT64, scalar(ImGuiDataType_S64), true);
     field_editors.register_value_editor(value_type::UINT8, scalar(ImGuiDataType_U8), true);
+    field_editors.register_value_editor(value_type::UINT16, scalar(ImGuiDataType_U16), true);
+    field_editors.register_value_editor(value_type::UINT32, scalar(ImGuiDataType_U32), true);
+    field_editors.register_value_editor(value_type::UINT64, scalar(ImGuiDataType_U64), true);
+
+    field_editors.register_editor<gpu::point_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
+      gpu::point_light& pl = *reinterpret_cast<gpu::point_light*>(d);
+      bool modified = false;
+
+      ImGui::Text("%s", label.data());
+
+      const std::string id = std::format("{}##point_light", label);
+      ImGui::PushID(id.c_str());
+
+      modified |= ui::inspector::property_vec3("Position", pl.light_position, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec3("Color", pl.color, ctx.flags.speed.value_or(0.01));
+
+      ImGui::PopID();
+      return modified;
+    });
+    field_editors.register_editor<gpu::directional_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
+      gpu::directional_light& dl = *reinterpret_cast<gpu::directional_light*>(d);
+      bool modified = false;
+
+      ImGui::Text("%s", label.data());
+
+      const std::string id = std::format("{}##directional_light", label);
+      ImGui::PushID(id.c_str());
+
+      modified |= ui::inspector::property_vec3("Direction", dl.direction, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec3("Color", dl.color, ctx.flags.speed.value_or(0.01));
+
+      ImGui::PopID();
+      return modified;
+    });
   }
 
   void rendering_system::late_initialize(driver_kernel* kernel) {
@@ -345,6 +381,7 @@ namespace other {
     reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
     reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
     reg.register_executor("window_sized_compute_dispatch", &detail::make_window_sized_compute_dispatch);
+    reg.register_executor("voxelize", &detail::make_voxelize);
     reg.register_executor("generate_mipmaps", &detail::make_generate_mipmaps);
     reg.register_executor("downsample_chain", &detail::make_downsample_chain);
     reg.register_executor("debug_stream", &detail::make_debug_stream);
@@ -563,6 +600,38 @@ namespace other {
         ctx.dispatch(groups, b);
       };
     };
+
+    render_graph::pass_executor make_voxelize(const pipeline_pass_definition& def, render_pipeline* pl) {
+      return [params = def.executor.params, pl, pass_name = def.name](pass_context& ctx) {
+        auto& api = ctx.get_renderer().rendering()->api();
+        auto vol = pl->find_texture_by_name("voxel_texture");
+        OTHER_ASSERT(vol.has_value(), "voxelize: 'voxel_texture' texture not found");
+
+        auto voxel_dim = params.find("voxel_dim");
+        OTHER_ASSERT(voxel_dim != params.end(), "voxelize: 'voxel_dim' parameter not found");
+        OTHER_ASSERT(voxel_dim->second.type() == value_type::INT32, "voxelize: 'voxel_dim' parameter must be of type INT32");
+
+        const int32_t res = static_cast<int32_t>(voxel_dim->second);
+        api->set_viewport(0, 0, res, res);
+        api->set_color_mask(false);
+        api->set_depth_mask(false);
+        api->set_depth_test(false);
+
+        ctx.get_renderer().get_resource<texture>(*vol).bind_image(0, 0, true, 0, texture::format::RGBA16F, WRITE);
+
+        auto* sh = ctx.shader_for_pass();
+        OTHER_ASSERT(sh != nullptr, "voxelize: no shader for pass '{}'", pass_name);
+        sh->bind();
+        ctx.draw_stream();
+
+        api->set_color_mask(true);
+        api->set_depth_mask(true);
+        api->set_depth_test(true);
+
+        shader::compute_barrier_type barrier_bits = (shader::compute_barrier_type)((uint8_t)shader::SHADER_IMAGE_ACCESS | (uint8_t)shader::TEXTURE_FETCH);
+        api->memory_barrier(barrier_bits);
+      };
+    }
 
     render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl) {
       OTHER_ASSERT(!def.outputs.empty(), "generate_mips: pass '{}' needs an output texture", def.name);

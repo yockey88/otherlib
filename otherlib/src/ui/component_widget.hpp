@@ -24,7 +24,6 @@
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
 
-
 namespace other {
 
   template <typename T>
@@ -166,33 +165,63 @@ namespace other {
         return changed;
       }
 
+      template <typename T>
+      field_flags read_field_flags(T field) {
+        field_flags f;
+        if constexpr (refl::descriptor::has_attribute<attr::serializable>(field)) {
+          constexpr auto& s = refl::descriptor::get_attribute<attr::serializable>(field);
+          f.display_name = s.display_name;  // std::string_view; empty ⇒ use field name
+          f.read_only = !s.editable;        // serializable(false) ⇒ read-only (transform.local_basis)
+        }
+        if constexpr (refl::descriptor::has_attribute<attr::asset_identifier_field>(field)) {
+          f.asset_type = refl::descriptor::get_attribute<attr::asset_identifier_field>(field).asset_type;
+        }
+        return f;
+      }
+
+      template <typename FT>
+      bool draw_field(std::string_view label, FT& value, const field_context& ctx) {
+        const type_key key = type_key_of<FT>();
+
+        auto& field_editors = ctx.driver_ptr->get_field_editors();
+        if (field_editors.has(key)) {
+          return field_editors.edit(key, label, &value, ctx);
+        }
+
+        if constexpr (reflected_type<FT>) {
+          bool changed = false;
+          for_each(refl::reflect(value).members, [&](auto sub) {
+            field_context child = ctx;
+            child.flags = read_field_flags(sub);
+            changed |= draw_field(child.flags.display_name.empty() ? std::string{ sub.name } : child.flags.display_name,
+                                  sub(value), child);
+          });
+          return changed;
+        }
+
+        if constexpr (is_container<FT>) {
+          bool changed = false;
+          for (auto& item : value) {
+            field_context child = ctx;
+            changed |= draw_field("", item, child);
+          }
+          return changed;
+        }
+
+        return field_editors.edit(key, label, &value, ctx);  // draws "<unsupported type>"
+      }
+
     }  // namespace detail
 
     template <typename T>
     struct component_widget {
       bool operator()(const std::string_view name, T& component, scene* active_scene, scene_object* object, asset_handler* handler = nullptr, driver* drvr = nullptr) {
+        OTHER_ASSERT(drvr != nullptr, "component_widget needs a driver for '{}'", name);
         bool changed = false;
         for_each(refl::reflect(component).members, [&](auto field) {
-          std::string field_name = std::string{ field.name };
-          std::string display_name = "";
-
-          if constexpr (refl::descriptor::has_attribute<attr::serializable>(field)) {
-            constexpr auto& serializable_attr = refl::descriptor::get_attribute<attr::serializable>(field);
-            if (!serializable_attr.display_name.empty()) {
-              display_name = std::string(serializable_attr.display_name);
-            }
-          }
-
-          asset::type asset_type = asset::type::EMPTY;
-          if constexpr (refl::descriptor::has_attribute<attr::asset_identifier_field>(field)) {
-            auto& asset_id_attr = refl::descriptor::get_attribute<attr::asset_identifier_field>(field);
-            asset_type = asset_id_attr.asset_type;
-          }
-
-          // clang-format off
-          changed |= detail::draw_inspector_field(field_name, field(component), asset_type, 
-                                                  active_scene, object, handler, drvr, display_name);
-          // clang-format on
+          field_context ctx{ active_scene, object, handler, drvr, detail::read_field_flags(field) };
+          std::string label = ctx.flags.display_name.empty() ? std::string{ field.name } : ctx.flags.display_name;
+          changed |= detail::draw_field(label, field(component), ctx);
         });
         return changed;
       }

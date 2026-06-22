@@ -145,7 +145,6 @@ namespace other {
 
     constexpr static inline size_t kMaxDrawCalls = 1024;
 
-   protected:
     renderer_backend* rendering();
 
    private:

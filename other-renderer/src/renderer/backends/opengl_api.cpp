@@ -287,6 +287,43 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::set_viewport(int32_t x, int32_t y, int32_t width, int32_t height) {
+    glViewport(x, y, width, height);
+    CHECKGL();
+  }
+
+  void opengl_api::set_color_mask(bool enabled_or_disabled) {
+    glColorMask(enabled_or_disabled, enabled_or_disabled, enabled_or_disabled, enabled_or_disabled);
+    CHECKGL();
+  }
+
+  void opengl_api::set_depth_mask(bool enabled_or_disabled) {
+    glDepthMask(enabled_or_disabled);
+    CHECKGL();
+  }
+
+  void opengl_api::set_depth_test(bool enabled_or_disabled) {
+    if (enabled_or_disabled) {
+      glEnable(GL_DEPTH_TEST);
+    } else {
+      glDisable(GL_DEPTH_TEST);
+    }
+    CHECKGL();
+  }
+
+  void opengl_api::memory_barrier(shader::compute_barrier_type bits) {
+    PROFILE_SECTION("opengl_api::memory_barrier");
+    GLbitfield gl_bits = 0;
+    if (bits & shader::SHADER_IMAGE_ACCESS) {
+      gl_bits |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+    }
+    if (bits & shader::TEXTURE_FETCH) {
+      gl_bits |= GL_TEXTURE_FETCH_BARRIER_BIT;
+    }
+    glMemoryBarrier(gl_bits);
+    CHECKGL();
+  }
+
   void opengl_api::begin_ui_frame_backend_newframe() {
     PROFILE_SECTION("opengl_api::begin_ui_frame_backend_newframe");
     ImGui_ImplOpenGL3_NewFrame();

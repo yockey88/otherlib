@@ -43,6 +43,13 @@ namespace other {
 
     void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) override;
 
+    void set_viewport(int32_t x, int32_t y, int32_t width, int32_t height) override;
+    void set_color_mask(bool enabled_or_disabled) override;
+    void set_depth_mask(bool enabled_or_disabled) override;
+    void set_depth_test(bool enabled_or_disabled) override;
+
+    void memory_barrier(shader::compute_barrier_type bits) override;
+
     void begin_ui_frame_backend_newframe() override;
     void end_ui_frame_backend_draw_data() override;
 

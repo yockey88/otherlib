@@ -22,6 +22,7 @@ namespace other {
     FULLSCREEN_QUAD,
     COMPUTE_DISPATCH,
     WINDOW_SIZED_COMPUTE_DISPATCH,
+    VOXELIZE,
     NOOP,  /// used for resource transitions that don't issue draw calls or dispatches
     SCRIPT,
   };

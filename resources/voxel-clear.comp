@@ -1,12 +1,16 @@
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 4) in;
 
-layout(rgba16f, binding = 0) uniform writeonly image3D OE_voxel_tex;
+layout(rgba16f, binding = 0) uniform writeonly image3D OE_voxel_tex_out;
+layout(rgba16f, binding = 1) uniform readonly image3D OE_voxel_tex_in;
+
+// 0 = hard clear, ~0.85 = ~6-frame memory
+uniform float OE_voxel_decay;
 
 void main() {
   ivec3 c = ivec3(gl_GlobalInvocationID);
-  if (any(greaterThanEqual(c, imageSize(OE_voxel_tex)))) { 
+  if (any(greaterThanEqual(c, imageSize(OE_voxel_tex_out)))) { 
     return; 
   }
 
-  imageStore(OE_voxel_tex, c, vec4(0.0));
+  imageStore(OE_voxel_tex_out, c, imageLoad(OE_voxel_tex_in, c) * OE_voxel_decay);
 }

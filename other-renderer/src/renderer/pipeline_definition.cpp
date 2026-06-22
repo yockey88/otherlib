@@ -17,6 +17,7 @@ namespace other {
       case FNV("fullscreen_quad"): return executor_type::FULLSCREEN_QUAD;
       case FNV("compute_dispatch"): return executor_type::COMPUTE_DISPATCH;
       case FNV("window_sized_compute_dispatch"): return executor_type::WINDOW_SIZED_COMPUTE_DISPATCH;
+      case FNV("voxelize"): return executor_type::VOXELIZE;
       case FNV("noop"): return executor_type::NOOP;
       case FNV("script"): return executor_type::SCRIPT;
       default: return executor_type::NOOP;
@@ -42,6 +43,7 @@ namespace other {
       case executor_type::FULLSCREEN_QUAD: return "fullscreen_quad";
       case executor_type::COMPUTE_DISPATCH: return "compute_dispatch";
       case executor_type::WINDOW_SIZED_COMPUTE_DISPATCH: return "window_sized_compute_dispatch";
+      case executor_type::VOXELIZE: return "voxelize";
       case executor_type::NOOP: return "noop";
       case executor_type::SCRIPT: return "script";
       default: return "noop";
@@ -1077,6 +1079,16 @@ namespace other {
                 };
 
               } break;
+              case FNV("voxel_dim"): {
+                if (!value.is_integer()) {
+                  OTHER_ASSERT(false, "Invalid parameter: 'voxel_dim' must be an integer");
+                }
+                int voxel_dim = static_cast<int>(value.as_integer()->get());
+                exec.params.emplace_back() = frame_executor_table::uniform_or_param{
+                  .name = name_str,
+                  .val = voxel_dim
+                };
+              } break;
               default:
                 OTHER_ASSERT(false, "Invalid parameter name: '{}'", name_str);
             }
@@ -1191,6 +1203,14 @@ namespace other {
 
         if (p.create_framebuffer && p.pass_type == render_pass::COMPUTE_PASS) {
           p.create_framebuffer = false;
+        }
+
+        auto depends_on = pass.at_path("depends_on");
+        if (depends_on && depends_on.is_array()) {
+          for (size_t i = 0; i < depends_on.as_array()->size(); ++i) {
+            std::string depends_on_str = depends_on.as_array()->at(i).as_string()->get();
+            p.depends_on.push_back(depends_on_str);
+          }
         }
 
         std::stringstream ss_pass;
