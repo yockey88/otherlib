@@ -10,6 +10,7 @@
 #include "renderer/ui/ui_node.hpp"
 
 #include "driver/driver.hpp"
+#include "ui/asset-browser/asset_browser_widgets.hpp"  // For kDragDropPayloadType
 
 namespace other {
   namespace ui {
@@ -31,11 +32,23 @@ namespace other {
         }
         previous_size = size;
 
+        const bool begin_scene_asset_drop = ImGui::BeginDragDropTarget();
+        if (begin_scene_asset_drop) {
+          if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(asset_browser_w::kDragDropPayloadType)) {
+            // Handle the dropped scene asset here
+            using data_t = asset_browser_w::asset_drag_drop_payload;
+            data_t payload_data = *reinterpret_cast<const data_t*>(payload->Data);
+            CORE_LOG_WARN("Dropped asset with ID: {} and type: {}", payload_data.handler_asset_id, payload_data.asset_type);
+          }
+          ImGui::EndDragDropTarget();
+        }
+
         auto pipeline_outputs = renderer_ptr->get_pipeline_list();
         if (pipeline_outputs.empty()) {
           ImGui::Text("No rendering pipelines available.");
         } else {
           auto& pipeline = pipeline_outputs[0];
+          // ImTextureID tex_id = pipeline->get_texture_id("shaded_texture");
           ImTextureID tex_id = pipeline->get_final_output_texture_id();
           if (tex_id == 0) {
             scoped_color error_color{ ImGuiCol_Text, colors::rgba_to_imvec4(colors::kFriendlyErrorRed) };
@@ -54,9 +67,27 @@ namespace other {
     };
 
     viewport::viewport(event_system& events, scope<renderer>& renderer_ptr, driver* driver_ptr)
-        : ui_window(&events, "Viewport"), driver_ptr(driver_ptr) {
+        : ui_window(&events, "Viewport", true, ImGuiWindowFlags_MenuBar), driver_ptr(driver_ptr) {
       events.register_event("viewport.resize");
       add_node(make_ref<viewport_node>(renderer_ptr, driver_ptr, this, "ViewportNode"));
+    }
+
+    void viewport::on_render_header() {
+      if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Options")) {
+          if (ImGui::MenuItem("Reset Viewport")) {
+          }
+          ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+      }
+    }
+
+    void viewport::on_render_body() {
+    }
+
+    void viewport::on_pre_render_nodes() {
     }
 
   }  // namespace ui

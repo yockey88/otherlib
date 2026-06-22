@@ -165,6 +165,9 @@ namespace other {
     src.append("#version 460 core\n");
 
     const auto builtin_settings = std::array{
+      shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) },
+      shader::setting{ "MAX_VERTEX_BONE_INFLUENCE", "4" },
+      shader::setting{ "MAX_BONES", std::to_string(gpu::kMaxObjects) },
       shader::setting{ "MAX_MATERIALS", std::to_string(gpu::kMaxMaterials) },
       shader::setting{ "MAX_POINT_LIGHTS", std::to_string(gpu::kMaxPointLights) },
       shader::setting{ "MAX_DIRECTION_LIGHTS", std::to_string(gpu::kMaxDirectionalLights) },

@@ -5,3 +5,4 @@ vec3 get_color(vec2 coords) {
 }
 
 uniform float OE_exposure;
+uniform float OE_gamma;

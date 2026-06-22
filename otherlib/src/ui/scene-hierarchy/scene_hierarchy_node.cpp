@@ -48,7 +48,6 @@ namespace other {
       /// check this object's name (case-insensitive)
       std::string name_lower = object.name;
       std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(), [](unsigned char c) { return std::tolower(c); });
-
       if (name_lower.find(filter_lower) != std::string::npos) {
         return true;
       }
@@ -73,13 +72,7 @@ namespace other {
       auto& scenes = driver_ptr->get_kernel().get_core_system<scene_system>();
       auto* active_scene = scenes.get_active_scene();
       if (active_scene == nullptr) {
-        if (!ImGui::BeginChild("##scene-hierarchy", size)) {
-          ImGui::EndChild();
-          return;
-        }
-
         hierarchy::draw_empty_scene_message();
-        ImGui::EndChild();
         ImGui::PopStyleColor();
         return;
       }
@@ -218,8 +211,7 @@ namespace other {
         flags.expanded ? "true" : "false",
         flags.visible ? "true" : "false",
         flags.is_scene_root ? "true" : "false",
-        flags.disabled ? "true" : "false"
-      );
+        flags.disabled ? "true" : "false");
       /// draw interaction
       ImGui::Text(
         "Interaction:\nclicked = %s\ndouble_clicked = %s\nright_clicked = %s\nexpand_toggled = %s\nvisibility_toggled = %s",
@@ -227,8 +219,7 @@ namespace other {
         interaction.double_clicked ? "true" : "false",
         interaction.right_clicked ? "true" : "false",
         interaction.expand_toggled ? "true" : "false",
-        interaction.visibility_toggled ? "true" : "false"
-      );
+        interaction.visibility_toggled ? "true" : "false");
 #endif
 
       if (interaction.clicked) {

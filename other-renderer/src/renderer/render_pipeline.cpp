@@ -33,6 +33,13 @@ namespace other {
     };
     // clang-format on
 
+    std::vector<uint8_t> read_seed_texture_file(const filepath& path) {
+      OTHER_ASSERT(std::filesystem::exists(path), "Seed texture file does not exist: {}", path.string());
+      std::ifstream file(path, std::ios::binary);
+      OTHER_ASSERT(file.is_open(), "Failed to open seed texture file: {}", path.string());
+      return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    }
+
   }  // namespace
 
   void render_pipeline::initialize_pipeline(renderer* renderer) {
@@ -255,11 +262,24 @@ namespace other {
     }
   }
 
+  glm::ivec2 render_pipeline::get_window_size() const {
+    OTHER_ASSERT(renderer_ptr != nullptr, "render_pipeline::get_window_size: no renderer available.");
+    return renderer_ptr->get_window_size();
+  }
+
   ImTextureID render_pipeline::get_final_output_texture_id() {
     if (!screen_texture_handle.has_value() || !get_renderer()->resource_exists(*screen_texture_handle)) {
       return 0;
     }
     return get_renderer()->get_resource<texture>(*screen_texture_handle).get_imgui_texture_id();
+  }
+
+  ImTextureID render_pipeline::get_texture_id(const std::string_view name) {
+    auto handle_opt = find_texture_by_name(name);
+    if (!handle_opt.has_value() || !get_renderer()->resource_exists(*handle_opt)) {
+      return 0;
+    }
+    return get_renderer()->get_resource<texture>(*handle_opt).get_imgui_texture_id();
   }
 
   resource_handle render_pipeline::get_screen_texture() const {
@@ -515,8 +535,7 @@ namespace other {
       shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
       if (shading_shader != nullptr) {
         int32_t num_point = static_cast<int32_t>(
-          data.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data.point_lights.size()
-        );
+          data.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data.point_lights.size());
         int32_t num_dir = static_cast<int32_t>(data.scene_ambient_light != nullptr ? 1 : 0);
 
         shading_shader->bind()
@@ -551,13 +570,34 @@ namespace other {
     for (const auto& tex_def : definition.textures) {
       glm::ivec2 size = tex_def.use_window_size ? window_size : tex_def.fixed_size;
 
+      uint32_t mips = tex_def.mip_levels;
+      if (mips == 0) {
+        mips = get_renderer()->rendering()->api()->full_mip_chain_count(size, tex_def.type, tex_def.depth);
+      }
+
       resource_handle handle;
       if (tex_def.type == texture::tex_type::TEXTURE_CUBE) {
         handle = cube_map::create(tex_def.name, tex_def.format, size.x, size.y);
+      } else if (tex_def.type == texture::tex_type::TEXTURE_3D) {
+        glm::vec3 dimensions(size.x, size.y, tex_def.depth > 0 ? tex_def.depth : 1);
+        handle = texture::create3d(tex_def.name, tex_def.format,
+                                   tex_def.filters.value_or(std::pair{ texture::LINEAR, texture::LINEAR }),
+                                   tex_def.wraps.value_or(std::tuple{ texture::CLAMP_TO_EDGE, texture::CLAMP_TO_EDGE, texture::CLAMP_TO_EDGE }),
+                                   mips, tex_def.generate_mips, dimensions);
       } else if (tex_def.filters.has_value() && tex_def.wraps.has_value()) {
-        handle = texture::create(tex_def.name, tex_def.type, tex_def.format, *tex_def.filters, *tex_def.wraps, size.x, size.y);
+        handle = texture::create(tex_def.name, tex_def.type, tex_def.format, *tex_def.filters, *tex_def.wraps,
+                                 mips, tex_def.generate_mips, size.x, size.y);
       } else {
         handle = texture::create(tex_def.name, tex_def.type, tex_def.format, size.x, size.y);
+      }
+
+      if (tex_def.seed_texture_path.has_value()) {
+        std::vector<uint8_t> bytes = read_seed_texture_file(tex_def.seed_texture_path.value());
+        if (!bytes.empty()) {
+          (*get_renderer()->rendering()->api()->get_resource_as<texture>(handle))
+            .set_data(bytes.data(), bytes.size())
+            .finalize_texture();
+        }
       }
 
       natural_t name_hash = FNV(tex_def.name);
@@ -622,6 +662,7 @@ namespace other {
 
   void render_pipeline::build_passes_from_def() {
     for (const auto& pass_def : definition.passes) {
+      CORE_LOG_DEBUG("Building render-pass: {}", pass_def.name);
       /// find the shader for this pass
       opt<resource_handle> shader_handle = get_shader_handle(pass_def.shader_name);
       if (!shader_handle.has_value()) {
@@ -630,9 +671,9 @@ namespace other {
       }
 
       glm::ivec2 size = resolve_size(pass_def.use_window_size, pass_def.fixed_size);
-
       auto builder = graph->start_pass(pass_def.name, shader_handle, pass_def.pass_type, size, pass_def.create_framebuffer);
       build_pass(pass_def, builder);
+      builder.end_pass();
     }
   }
 
@@ -651,6 +692,7 @@ namespace other {
     const bool pipeline_valid = graph_valid && has_screen;
     if (!pipeline_valid) {
       CORE_LOG_ERROR("Pipeline [{}] has valid resources but render graph is invalid.", definition.name);
+      CORE_LOG_ERROR("graph_valid: {}, has_screen: {}", graph_valid, has_screen);
     } else {
       valid = true;
     }
@@ -681,26 +723,37 @@ namespace other {
 
   void render_pipeline::build_pass(const pipeline_pass_definition& pass_def, render_graph::pass_builder& builder) {
     if (pass_def.clear_color.has_value()) {
+      CORE_LOG_DEBUG(" - setting clear color: {}", *pass_def.clear_color);
       builder.set_clear_color(*pass_def.clear_color);
     }
 
     uint32_t curr_texture_slot = 0;
     for (const auto& ref : pass_def.inputs) {
-      if (is_buffer_resource(ref.resource_name)) {
+      const bool is_buffer = is_buffer_resource(ref.resource_name);
+      CORE_LOG_DEBUG(" - input resource: {}, type: {}", ref.resource_name, is_buffer ? "buffer" : "texture");
+      if (is_buffer) {
         auto handle = find_buffer_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Input resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
         builder.buffer_resource(*handle, ref.binding, READ);
       } else {
         auto handle = find_texture_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Input resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-        builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, READ);
+        builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, READ, ref.mip_level);
       }
     }
 
     for (const auto& ref : pass_def.outputs) {
-      auto handle = find_texture_by_name(ref.resource_name);
-      OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-      builder.texture_resource(*handle, 0, ref.attachment, WRITE);
+      const bool is_buffer = is_buffer_resource(ref.resource_name);
+      CORE_LOG_DEBUG(" - output resource: {}, attachment: {}, type: {}", ref.resource_name, ref.attachment, is_buffer ? "buffer" : "texture");
+      if (is_buffer) {
+        auto handle = find_buffer_by_name(ref.resource_name);
+        OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
+        builder.buffer_resource(*handle, ref.binding, WRITE);
+      } else {
+        auto handle = find_texture_by_name(ref.resource_name);
+        OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
+        builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, WRITE, ref.mip_level);
+      }
     }
 
     /// set up executor and check for runtime override
@@ -709,6 +762,7 @@ namespace other {
       CORE_LOG_ERROR("Failed to create render pass executor for pass {}! invalid executor: {}", pass_def.name, pass_def.executor.name);
       return;
     }
+    CORE_LOG_DEBUG(" - setting up executor: {}", pass_def.executor.name);
 
     auto override_itr = executor_overrides.find(pass_def.name);
     if (override_itr != executor_overrides.end()) {
@@ -716,7 +770,6 @@ namespace other {
     }
 
     builder.execution_callback(std::move(executor));
-    builder.end_pass();
   }
 
   renderer* render_pipeline::get_renderer() const {

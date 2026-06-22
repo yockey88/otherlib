@@ -49,6 +49,7 @@ namespace other {
    private:
     std::array<std::vector<uint8_t>, kCubeFaces> faces;
 
+    uint32_t mip_level = 0;
     glm::ivec2 face_size = { 0, 0 };
     texture::format texture_format = texture::format::RGBA8;
 

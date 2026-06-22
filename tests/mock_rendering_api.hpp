@@ -49,7 +49,7 @@ namespace other {
     MOCK_METHOD(void, unbind_texture_resource, (const resource_handle& handle, uint32_t index), (override));
     MOCK_METHOD(void, set_texture_filter, (const resource_handle& handle, texture::filter min_filter, texture::filter mag_filter), (override));
     MOCK_METHOD(void, set_texture_wrap_mode, (const resource_handle& handle, texture::wrap wrap_s, texture::wrap wrap_t, texture::wrap wrap_r), (override));
-    MOCK_METHOD(void, upload_texture, (const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size), (override));
+    MOCK_METHOD(void, upload_texture, (const resource_handle& handle, texture::tex_type type, texture::format format, uint32_t mip_levels, bool generate_mipmaps, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size), (override));
     MOCK_METHOD(void, bind_image, (const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer, texture::format frmt, access_flags flags), (override));
     MOCK_METHOD(void*, get_texture_gpu_resource, (const resource_handle& handle), (override));
 

@@ -1,0 +1,26 @@
+#include "shader-modules/simulation-environment.glsl"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+// Declare the cubemap image layout for writing
+layout(rgba16f, binding = 0) uniform writeonly image3D OE_env_cubemap;
+
+void main() {
+  // coord within the target face
+  ivec3 texel_coord = ivec3(gl_GlobalInvocationID);
+  ivec3 dim = imageSize(OE_env_cubemap);
+  
+  if (any(greaterThanEqual(texel_coord, dim))) {
+    return;
+  }
+  
+  // froxel center
+  vec3 uvw = (vec3(texel_coord) + 0.5) / vec3(dim);
+
+  vec3 world_pos = world_min.xyz + uvw * world_extent();
+  vec3 irradiance = oe_sky_irradiance_up(world_pos); // * world_max.w;
+  // vec3 ambient_glow = ambient_color.xyz;
+  // vec3 final_color = mix(irradiance, ambient_glow, ambient_color.w);
+
+  imageStore(OE_env_cubemap, texel_coord, vec4(irradiance, 1.0));
+}

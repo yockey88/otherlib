@@ -3,9 +3,12 @@
  **/
 #include "asset/asset_pipeline.hpp"
 
+#include <filesystem>
+
 #include "core/job_system.hpp"
 
 #include "model/model_source.hpp"
+#include "renderer/pipeline_definition.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "scene/scene.hpp"
@@ -95,7 +98,7 @@ namespace other {
       case asset::SCRIPT_FILE: return make_scope<script_file_pipeline>(events, handler);
       case asset::SCRIPT: return make_scope<script_pipeline>(events, handler);
       case asset::SCENE: return make_scope<scene_pipeline>(events, handler, nullptr);
-      case asset::RENDERING_PIPELINE: return make_scope<rendering_pipeline_pipeline>(events, handler, pipeline_definition{});
+      case asset::RENDERING_PIPELINE: return make_scope<rendering_pipeline_pipeline>(events, handler);
       case asset::ASSET_DECLARATION: return make_scope<asset_declaration_pipeline>(events, handler);
       default:
         OTHER_ASSERT(false, "No asset pipeline for asset type {}", type);
@@ -139,8 +142,7 @@ namespace other {
     pipeline_state.loading = true;
     start_load_operation(
       execution_pool, asset_ptr, on_success, on_failure,
-      loading_table::loaders[asset_ptr->asset_type]
-    );
+      loading_table::loaders[asset_ptr->asset_type]);
   }
 
   void asset_pipeline::start_unload(executor_t& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
@@ -161,8 +163,7 @@ namespace other {
     pipeline_state.unloading = true;
     start_load_operation(
       execution_pool, asset_ptr, on_success, on_failure,
-      loading_table::unloaders[asset_ptr->asset_type]
-    );
+      loading_table::unloaders[asset_ptr->asset_type]);
   }
 
   void asset_pipeline::poll() {
@@ -196,7 +197,7 @@ namespace other {
   }
 
   void asset_pipeline::pipeline_finished() {
-    CORE_LOG_DEBUG("Pipeline finished successfully");
+    CORE_LOG_DEBUG("Pipeline finished successfully for asset: {}", asset_ptr->id);
     pipeline_state.success = true;
   }
 
@@ -333,8 +334,7 @@ namespace other {
             /// this is fine to leave unprotected by a mutex because the job system garuantees this won't be touched
             ///  until first job finishes and since it is local to the coroutine loading it there won't be any concurrent access to it
             builder = model_importer::load_model_data(source_path);
-          }
-        );
+          });
 
         dependencies.push_back(source_job->id);
       } else {
@@ -374,8 +374,7 @@ namespace other {
           subsystem<renderer_backend>::get()->add_model_source(asset_ptr->path_hash, src);
           CORE_LOG_INFO("Model source loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
         },
-        dependencies
-      );
+        dependencies);
 
       /// waiting on this will also wait on the first job
       do {
@@ -448,8 +447,7 @@ namespace other {
             } else {
               throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path.string(), result));
             }
-          }
-        );
+          });
         OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
         build_id = build_project_job->id;
       }
@@ -464,14 +462,13 @@ namespace other {
         [h = handler, t = build_tool, project_path]() {
           filepath csproj = t->get_dotnet_project_path();
           /// \todo fixed hardcoded build configuration and output path assumptions
-          filepath build = csproj.parent_path() / "bin" / "Debug" / (csproj.stem().string() + ".dll");
+          filepath build = csproj.parent_path() / "bin" / get_environment_build_config_string() / (csproj.stem().string() + ".dll");
           if (!std::filesystem::exists(build)) {
             throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
           }
 
           h->load_asset(build);
-        }
-      );
+        });
       OTHER_ASSERT(load_build_asset_job != nullptr, "Failed to create job for loading built assembly of .NET project.");
 
       do {
@@ -543,28 +540,45 @@ namespace other {
       if (asset_ptr->path_hash == 0) {
         asset_ptr->path_hash = FNV(asset_ptr->virtual_path);
         scene_ptr = reinterpret_cast<scene_pipeline*>(pipeline)->scene_ptr;
-        scene_ptr->asset_id = asset_ptr->id;
       } else {
         OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Scene file does not exist: {}", asset_ptr->absolute_path.string());
+        OTHER_ASSERT(false, "unimplemented");
         CORE_LOG_DEBUG("Loading scene from file: {}", asset_ptr->load_path.string());
-
         /**
          * \todo load scene from file if binary file attached
          **/
-
-        co_await task::yield();
       }
 
-      CORE_LOG_DEBUG("Scene [{}] loaded successfully, running scene scripts if any.", scene_ptr->id);
+      OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null after loading.");
       scene_ptr->asset_id = asset_ptr->id;
+      co_await task::yield();
+
+      CORE_LOG_DEBUG("Scene [{}: {}] loaded successfully with asset ID: {}.", scene_ptr->name, scene_ptr->id, scene_ptr->asset_id);
       call_pipeline_fn<scene_pipeline>(pipeline, on_success);
       co_return;
     }
 
     task load_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      co_await task::yield();
+
+      if (asset_ptr->path_hash == 0) {
+        /// builtin rendering pipeline nothing to do
+        call_pipeline_fn<rendering_pipeline_pipeline>(pipeline, on_success);
+        co_return;
+      }
+
+      rendering_pipeline_pipeline* pipeline_ptr = reinterpret_cast<rendering_pipeline_pipeline*>(pipeline);
+
+      auto definition = read_pipeline_definition_from_file(asset_ptr->load_path);
+      if (definition.name.empty()) {
+        call_pipeline_fn<rendering_pipeline_pipeline>(pipeline, on_failure, "Rendering pipeline definition is invalid: name is empty");
+        co_return;
+      }
+
+      pipeline_ptr->definition = definition;
       call_pipeline_fn<rendering_pipeline_pipeline>(pipeline, on_success);
-      co_return;
     }
 
     task load_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {

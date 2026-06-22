@@ -115,7 +115,6 @@ target_sources(otherlib
     src/vm/default_symbol_resolver.cpp
     src/vm/instruction.cpp
     src/vm/opcode.cpp
-    src/vm/driver_interface.cpp
     src/vm/command_bus.cpp
     src/vm/control_table.cpp
     src/vm/vm_type.cpp
@@ -126,6 +125,7 @@ target_sources(otherlib
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp
 
+    src/ui/script/script_field_ui.cpp
     src/ui/script/script_property_widget.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
@@ -146,10 +146,12 @@ target_sources(otherlib
     src/ui/scene-hierarchy/hierarchy_widgets.cpp
     src/ui/scene-hierarchy/scene_hierarchy_node.cpp
     src/ui/scene-hierarchy/scene_hierarchy.cpp
+    src/ui/object-editor/object_editor.cpp
+    src/ui/object-editor/property_inspector_node.cpp
     src/ui/menu-bar/menu_item.cpp
     src/ui/menu-bar/menu.cpp
     src/ui/menu-bar/menu_bar.cpp
-    src/ui/property_inspector_node.cpp
+    src/ui/field_editor_registry.cpp
     src/ui/inspector_widgets.cpp
     src/ui/ui_widgets.cpp
     src/ui/viewport.cpp

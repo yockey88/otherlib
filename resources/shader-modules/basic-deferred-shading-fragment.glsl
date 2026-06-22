@@ -1,3 +1,6 @@
+#include "shader-modules/camera.glsl"
+#include "shader-modules/simulation-environment.glsl"
+
 struct point_light {
   vec4 position;
   vec4 color;
@@ -6,20 +9,6 @@ struct point_light {
 struct direction_light {
   vec4 direction;
   vec4 color;
-};
-
-layout (std140) uniform camera_buffer {
-  vec4 camera_position;
-  vec4 camera_forward;
-
-  /// near & far clip, defocus_angle padding x2
-  vec4 camera_features;
-
-  vec4 defocus_disk_u;
-  vec4 defocus_disk_v;
-
-  mat4 view_matrix;
-  mat4 projection_matrix;
 };
 
 layout (std430) readonly buffer direction_light_buffer {
@@ -52,6 +41,10 @@ vec3 calc_point_light(const point_light light, const vec3 world_normal, const ve
 uniform mat4 OE_light_space_matrix;
 uniform vec3 OE_light_position;
 uniform sampler2D OE_shadow_map;
+uniform sampler2D OE_gbuff_albedo;
+uniform sampler2D OE_gbuff_normal;
+uniform sampler2D OE_gbuff_position;
+uniform sampler3D OE_env_cubemap;
 
 float calculate_direction_light_shadow(vec3 world_position, vec3 world_normal) {
   vec4 light_space_position = OE_light_space_matrix * vec4(world_position, 1.0);
@@ -83,6 +76,17 @@ float calculate_direction_light_shadow(vec3 world_position, vec3 world_normal) {
   return shadow;
 }
 
+vec3 oe_world_to_volume(vec3 p) {
+  return clamp((p - world_min.xyz) / world_extent(), vec3(0.0), vec3(1.0));
+}
+
+// directional ambient: hemisphere blend of (sky-from-volume) and (ground bounce)
+vec3 oe_environment_ambient(vec3 world_pos, vec3 N) {
+  vec3  amb_up = texture(OE_env_cubemap, oe_world_to_volume(world_pos)).rgb; 
+  float up = clamp(N.y * 0.5 + 0.5, 0.0, 1.0);
+  return mix(ground_color.rgb, amb_up, up);
+}
+
 vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, float specular_reflect) {
   vec3 view_dir = normalize(camera_position.xyz - world_position);
 
@@ -99,17 +103,16 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
     diffuse_specular += (diffuse * attentuation) + (specular * attentuation);
   }
 
-  vec3 ambient = vec3(1.0);
-  if (OE_num_direction_lights > 0) {
-    vec3 light_dir = normalize(direction_lights[0].direction.xyz);
-    ambient = direction_lights[0].color.rgb * max(dot(world_normal, light_dir), 0.0) * diffuse;
-  }
+  // vec3 ambient = vec3(1.0);
+  // if (OE_num_direction_lights > 0) {
+  //   vec3 light_dir = normalize(direction_lights[0].direction.xyz);
+  //   ambient = direction_lights[0].color.rgb * max(dot(world_normal, light_dir), 0.0) * diffuse;
+  // }
+  float sky_vis = texture(OE_env_cubemap, oe_world_to_volume(world_position)).a;
+  vec3  ambient = oe_environment_ambient(world_position, world_normal) * sky_vis;
 
   float shadow_calc = calculate_direction_light_shadow(world_position, world_normal);
-  vec3 lighting = (ambient + (1.0 - shadow_calc) * diffuse_specular) * diffuse;
+  // vec3 lighting = (ambient + (1.0 - shadow_calc) * diffuse_specular) * diffuse;
+  vec3 lighting = ambient * diffuse + (1.0 - shadow_calc) * diffuse_specular;
   return vec4(lighting, 1.0);
 }
-
-uniform sampler2D OE_gbuff_albedo;
-uniform sampler2D OE_gbuff_normal;
-uniform sampler2D OE_gbuff_position;

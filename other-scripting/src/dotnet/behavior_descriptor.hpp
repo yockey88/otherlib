@@ -14,14 +14,14 @@ namespace other {
 
   /// \note must stay in sync with Other.Core.BehaviorFieldFlags on the C# side.
   enum class behavior_display_flags : uint32_t {
-    none = 0,
-    read_only = 1 << 0,
-    has_range = 1 << 1,
-    has_tooltip = 1 << 2,
-    color_field = 1 << 3,
-    is_group_start = 1 << 4,
-    has_separator = 1 << 5,
-    serializable = 1 << 6,
+    NONE = 0,
+    READ_ONLY = 1 << 0,
+    HAS_RANGE = 1 << 1,
+    HAS_TOOLTIP = 1 << 2,
+    COLOR_FIELD = 1 << 3,
+    IS_GROUP_START = 1 << 4,
+    HAS_SEPARATOR = 1 << 5,
+    SERIALIZABLE = 1 << 6,
   };
 
   constexpr behavior_display_flags operator|(behavior_display_flags a, behavior_display_flags b) {
@@ -50,10 +50,11 @@ namespace other {
     std::string group_name;    ///< [InspectorGroup("...")]
 
     value_type type = value_type::EMPTY_TYPE;
-    behavior_display_flags flags = behavior_display_flags::none;
+    behavior_display_flags flags = behavior_display_flags::NONE;
 
     float range_min = 0.f;
     float range_max = 0.f;
+    opt<float> speed;
 
     /// index in parent behavior
     int32_t field_index = -1;

@@ -7,7 +7,6 @@
 #include "core/logger.hpp"
 
 #include "vm/command_bus.hpp"
-#include "vm/driver_interface.hpp"
 #include "vm/other_device.hpp"
 #include "vm/vm.hpp"
 #include "vm/vm_error.hpp"

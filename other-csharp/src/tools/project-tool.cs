@@ -46,6 +46,11 @@ namespace Other.Toolset
       working_directory = args.WorkingDirectory.ToString()!;
     }
 
+    public void SetConfig(NativeString config)
+    {
+      settings.config = config.ToString()!;
+    }
+
     public void CreateDefaultCsproj(NativeString path)
     {
       // check if file exists

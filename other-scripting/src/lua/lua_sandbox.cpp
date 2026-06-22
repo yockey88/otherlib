@@ -26,25 +26,23 @@ namespace other {
     }
   }
 
-  sol::table lua_sandbox::try_load_table(lua_host* lua_host, const filepath& path) {
+  opt<sol::table> lua_sandbox::try_load_table(lua_host* lua_host, const filepath& path) {
     OTHER_ASSERT(lua_host != nullptr, "Lua host is null in lua_sandbox::try_load_table");
 
     CORE_LOG_TRACE("Loading Lua table from file '{}'", path.string());
     sol::state& lua_state = lua_host->get_lua_state();
     sol::protected_function_result result_table = lua_state.script_file(path.string(), environment());
+    // script did not return anything
     if (!result_table.valid()) {
-      CORE_LOG_ERROR("Failed to load Lua table from file '{}'", path.string());
-      return sol::table{};
+      return std::nullopt;
     }
 
     sol::object result = result_table;
     if (result.get_type() != sol::type::table) {
-      CORE_LOG_ERROR("Lua file '{}' did not return a table as expected.", path.string());
-      CORE_LOG_WARN("Make sure your Lua file returns a table object!");
-      return sol::table{};
+      return std::nullopt;
+    } else {
+      return result.as<sol::table>();
     }
-
-    return result.as<sol::table>();
   }
 
 }  // namespace other

@@ -48,6 +48,7 @@ namespace other {
     current_state = LOADING;
 
     bool waiting_for_script_load = false;
+    bool waiting_for_scene_load = false;
 
 #ifdef OTHER_PROJECT_FILE_BINARY_FORMAT
     CORE_LOG_DEBUG("Loading TOML project file '{}'", project_file_handle->virtual_path());
@@ -79,6 +80,7 @@ namespace other {
 
     if (!finish_load) {
       CORE_LOG_ERROR("Failed to load project from file '{}'", project_file_handle->virtual_path());
+      current_state = LOAD_FAILED;
       return;
     }
 
@@ -102,13 +104,14 @@ namespace other {
       system->sibling<asset_system>(*kernel).begin_asset_load(project_scripts.csproject_path);
     }
 
-    process_scene_sections(table);
+    waiting_for_scene_load = process_scene_sections(table);
     process_project_plugins(table);
 #else
     static_assert(false, "No project file format defined. define OTHER_PROJECT_FILE_XXX_FORMAT macro.");
 #endif
 
-    if (!waiting_for_script_load) {
+    all_scenes_loaded = !waiting_for_scene_load;
+    if (!(waiting_for_script_load || waiting_for_scene_load)) {
       set_state(LOADED);
     }
   }
@@ -130,28 +133,31 @@ namespace other {
 
     system->unload_plugins();
 
+    // we should do this through the scripting system and not here
     if (project_assembly != nullptr) {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
       env->unload_dotnet_module(project_assembly);
     }
-    project_assembly = nullptr;
 
-    set_state(EMPTY);
+    project_assembly = nullptr;
+    set_state(UNLOADING);
   }
 
   void project::set_state(state new_state) {
     if (new_state == current_state) {
       return;
     }
-
-    if (new_state == EMPTY) {
-    } else if (new_state == LOADING) {
-    } else if (new_state == LOADED) {
-      system->get_driver().trigger_event("project.loaded");
-    } else if (new_state == UNLOADING) {
-    } else {
-      CORE_LOG_WARN("Project state changed to unknown state {}", new_state);
+    switch (new_state) {
+      case EMPTY:
+      case LOADING:
+      case LOADED:
+      case LOAD_FAILED:
+      case UNLOADING:
+        break;
+      default:
+        CORE_LOG_WARN("Project state changed to unknown state {}", new_state);
+        break;
     }
     current_state = new_state;
   }
@@ -159,7 +165,7 @@ namespace other {
   void project::add_built_script(const filepath& script_path) {
     OTHER_ASSERT(std::filesystem::exists(script_path), "Script asset file '{}' does not exist.", script_path.string());
     OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add built script.");
-
+    CORE_LOG_TRACE("[PROJECT] Adding built script: {}", script_path.string());
     if (script_path.extension() == ".dll") {
       attach_project_dll(script_path);
     } else {
@@ -167,32 +173,72 @@ namespace other {
     }
   }
 
-  void project::attach_project_cs_file(const filepath& cs_file) {
-    OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach C# script file.");
-
-    if (cs_file.extension() == ".cs") {
-      project_scripts.cs_scripts.push_back(cs_file);
-    } else {
-      CORE_LOG_WARN("[PROJECT] Unimplemented script type for C# script file '{}'.", cs_file.string());
-    }
-  }
-
   void project::add_script_file(const filepath& script_file_path) {
     OTHER_ASSERT(std::filesystem::exists(script_file_path), "Script file '{}' does not exist.", script_file_path.string());
-    CORE_LOG_DEBUG("[PROJECT] Adding script file '{}' to project. Script files are not yet fully supported in the project system, so this may not work as expected.", script_file_path.string());
-
+    CORE_LOG_TRACE("[PROJECT] Script file: {}", script_file_path.string());
     if (script_file_path.extension() == ".cs") {
-      project_scripts.cs_scripts.push_back(script_file_path);
+      attach_project_cs_file(script_file_path);
+    } else if (script_file_path.extension() == ".lua") {
+      attach_project_lua_file(script_file_path);
     } else {
       CORE_LOG_WARN("[PROJECT] Unimplemented script type for script file '{}'.", script_file_path.string());
     }
   }
 
+  void project::remove_built_script(const filepath& script_asset_path) {
+    OTHER_ASSERT(std::filesystem::exists(script_asset_path), "Script asset '{}' does not exist.", script_asset_path.string());
+    CORE_LOG_TRACE("[PROJECT] Detaching built script '{}'.", script_asset_path.string());
+    if (script_asset_path.extension() == ".dll") {
+      detach_project_dll(script_asset_path);
+    } else {
+      CORE_LOG_WARN("[PROJECT] Unimplemented script type for built script '{}'.", script_asset_path.string());
+    }
+  }
+
+  void project::remove_script_file(const filepath& script_file_path) {
+    OTHER_ASSERT(std::filesystem::exists(script_file_path), "Script file '{}' does not exist.", script_file_path.string());
+    CORE_LOG_DEBUG("[PROJECT] Removing script file '{}'.", script_file_path.string());
+    if (script_file_path.extension() == ".cs") {
+      detach_project_cs_file(script_file_path);
+    } else if (script_file_path.extension() == ".lua") {
+      detach_project_lua_file(script_file_path);
+    } else {
+      CORE_LOG_WARN("[PROJECT] Unimplemented script type for script file '{}'.", script_file_path.string());
+    }
+  }
+
+  void project::add_loaded_scene(natural_t scene_id) {
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add loaded scene.");
+    auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
+    OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
+    CORE_LOG_DEBUG("[PROJECT] Adding loaded scene with ID '{}'.", scene_id);
+
+    it->scene_id = scene_id;
+    it->scene_loaded = true;
+    it->incoming_scenes.clear();
+    it->outgoing_scenes.clear();
+    all_scenes_loaded = std::ranges::all_of(scenes_in_project, [](const scene& s) { return s.incoming_scenes.empty() && s.outgoing_scenes.empty(); });
+    all_scenes_unloaded = false;
+    CORE_LOG_DEBUG(" - scene loaded. all_scenes_loaded: {}", all_scenes_loaded);
+  }
+
+  void project::remove_loaded_scene(natural_t scene_id) {
+    OTHER_ASSERT(is_unloading(), "Project is not in loading state. Cannot remove loaded scene.");
+    auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
+    OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
+    CORE_LOG_DEBUG("[PROJECT] Removing loaded scene with ID '{}'.", scene_id);
+
+    it->scene_loaded = false;
+    it->incoming_scenes.clear();
+    it->outgoing_scenes.clear();
+    all_scenes_unloaded = std::ranges::all_of(scenes_in_project, [](const scene& s) { return !s.scene_loaded; });
+    all_scenes_loaded = false;
+    CORE_LOG_DEBUG(" - scene removed. all_scenes_unloaded: {}", all_scenes_unloaded);
+  }
+
   void project::attach_project_dll(const filepath& dll_path) {
     OTHER_ASSERT(std::filesystem::exists(dll_path), "Project assembly file '{}' does not exist.", dll_path.string());
     OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach project assembly.");
-
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
 
@@ -201,86 +247,38 @@ namespace other {
 
     project_assembly = asm_ref;
     project_scripts.cs_script_source = dll_path;
-
-    set_state(LOADED);
-    CORE_LOG_DEBUG("Successfully loaded project assembly from '{}'", dll_path.string());
   }
 
-  bool project::process_scripting_sections(const toml::table& table, driver_kernel* kernel) {
-    toml::node_view scripting_node = table.at_path("scripting");
-    if (!scripting_node) {
-      CORE_LOG_DEBUG("No 'scripting' section found in project file, skipping scripting data processing.");
-      return false;
-    }
-    if (!scripting_node.is_table()) {
-      CORE_LOG_ERROR("Expected 'scripting' section to be a table.");
-      return false;
-    }
-
-    const auto& scripting_table = scripting_node.as_table();
-    if (scripting_table == nullptr) {
-      CORE_LOG_ERROR("'scripting' section is not a valid table.");
-      return false;
-    }
-
-    CORE_LOG_DEBUG("Processing project scripting data");
-
-    // fix this, this is kind of messy
-    bool waiting_for_script_load = false;
-    scripting_table->for_each([this, &waiting_for_script_load](const toml::key& key, const toml::node& value) {
-      std::string k{ key.str() };
-
-      CORE_LOG_DEBUG("Processing scripting entry with key '{}'", k);
-      if (k == "cs_project" && value.is_string()) {
-        project_scripts.csproject_path = value.as_string()->get();
-        waiting_for_script_load = true;
-      }
-    });
-
-    auto rc_path = scripting_table->get("projectrc-path");
-    if (rc_path && rc_path->is_string()) {
-      this->rc_path = rc_path->as_string()->get();
-      CORE_LOG_DEBUG("Project runtime configuration script path set to '{}'", this->rc_path.string());
-    } else {
-      CORE_LOG_DEBUG("No 'projectrc-path' specified in project file. Driver environment runtime script will not be loaded.");
-    }
-
-    return waiting_for_script_load;
+  void project::attach_project_cs_file(const filepath& cs_file) {
+    OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach C# script file.");
+    project_scripts.cs_scripts.push_back(cs_file);
   }
 
-  void project::process_scene_sections(const toml::table& table) {
-    PROFILE_SECTION("project::process_scene_sections");
+  void project::attach_project_lua_file(const filepath& cs_file) {
+    OTHER_ASSERT(std::filesystem::exists(cs_file), "Lua script file '{}' does not exist.", cs_file.string());
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach Lua script file.");
+    project_scripts.lua_scripts.push_back(cs_file);
+  }
 
-    process_scenes_table(table.at_path("scene-graph.scenes"));
-    process_scene_graph(table.at_path("scene-graph.graph"));
+  void project::detach_project_dll(const filepath& dll_path) {
+    OTHER_ASSERT(std::filesystem::exists(dll_path), "DLL file '{}' does not exist.", dll_path.string());
+    OTHER_ASSERT(dll_path == project_scripts.cs_script_source, "DLL file '{}' does not match the project's C# script source '{}'.", dll_path.string(), project_scripts.cs_script_source.string());
+    project_scripts.cs_script_source.clear();
+  }
 
-    {
-      auto starting_scene_node = table.at_path("scene-graph.starting-scene");
-      if (starting_scene_node) {
-        if (starting_scene_node.is_string()) {
-          std::string starting_scene_name = starting_scene_node.as_string()->get();
-          auto it = std::ranges::find_if(scenes_in_project, [&starting_scene_name](const scene& s) { return s.name == starting_scene_name; });
-          if (it != scenes_in_project.end()) {
-            starting_scene_id = it->project_id;
-            CORE_LOG_DEBUG("Starting scene set to '{}' with project ID {} based on project file configuration.", it->name, it->project_id);
-          } else {
-            CORE_LOG_ERROR("Starting scene name '{}' specified in project file does not match any scenes in the project.", starting_scene_name);
-          }
-        } else if (starting_scene_node.is_number()) {
-          starting_scene_id = static_cast<natural_t>(starting_scene_node.as_integer()->get());
-          if (std::ranges::none_of(scenes_in_project, [this](const scene& s) { return s.project_id == starting_scene_id; })) {
-            natural_t invalid_id = starting_scene_id;
-            starting_scene_id = 0;
-            CORE_LOG_ERROR("Starting scene ID '{}' specified in project file does not match any scenes in the project.", invalid_id);
-          } else {
-            CORE_LOG_DEBUG("Starting scene set to project ID {} based on project file configuration.", starting_scene_id);
-          }
-        } else {
-          CORE_LOG_ERROR("Invalid type for 'scene-graph.starting-scene' field. Expected string (scene name) or number (scene ID).");
-        }
-      }
-    }
-    CORE_LOG_DEBUG("Finished processing scene sections of project file. Total scenes in project: {}", scenes_in_project.size());
+  void project::detach_project_cs_file(const filepath& cs_file) {
+    OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
+    auto it = std::find(project_scripts.cs_scripts.begin(), project_scripts.cs_scripts.end(), cs_file);
+    OTHER_ASSERT(it != project_scripts.cs_scripts.end(), "C# script file '{}' is not attached to the project.", cs_file.string());
+    project_scripts.cs_scripts.erase(it);
+  }
+
+  void project::detach_project_lua_file(const filepath& lua_file) {
+    OTHER_ASSERT(std::filesystem::exists(lua_file), "Lua script file '{}' does not exist.", lua_file.string());
+    auto it = std::find(project_scripts.lua_scripts.begin(), project_scripts.lua_scripts.end(), lua_file);
+    OTHER_ASSERT(it != project_scripts.lua_scripts.end(), "Lua script file '{}' is not attached to the project.", lua_file.string());
+    project_scripts.lua_scripts.erase(it);
   }
 
   void project::process_project_plugins(const toml::table& table) {
@@ -342,21 +340,92 @@ namespace other {
     }
   }
 
-  void project::process_scenes_table(toml::node_view<const toml::node> scenes_node) {
+  bool project::process_scripting_sections(const toml::table& table, driver_kernel* kernel) {
+    toml::node_view scripting_node = table.at_path("scripting");
+    if (!scripting_node) {
+      CORE_LOG_DEBUG("No 'scripting' section found in project file, skipping scripting data processing.");
+      return false;
+    }
+    if (!scripting_node.is_table()) {
+      CORE_LOG_ERROR("Expected 'scripting' section to be a table.");
+      return false;
+    }
+
+    const auto& scripting_table = scripting_node.as_table();
+    if (scripting_table == nullptr) {
+      CORE_LOG_ERROR("'scripting' section is not a valid table.");
+      return false;
+    }
+
+    CORE_LOG_DEBUG("Processing project scripting data");
+
+    // fix this, this is kind of messy
+    bool waiting_for_script_load = false;
+    scripting_table->for_each([this, &waiting_for_script_load](const toml::key& key, const toml::node& value) {
+      std::string k{ key.str() };
+
+      CORE_LOG_DEBUG("Processing scripting entry with key '{}'", k);
+      if (k == "cs_project" && value.is_string()) {
+        project_scripts.csproject_path = value.as_string()->get();
+        waiting_for_script_load = true;
+      }
+    });
+
+    auto rc_path = scripting_table->get("projectrc-path");
+    if (rc_path && rc_path->is_string()) {
+      this->rc_path = rc_path->as_string()->get();
+      CORE_LOG_DEBUG("Project runtime configuration script path set to '{}'", this->rc_path.string());
+    } else {
+      CORE_LOG_DEBUG("No 'projectrc-path' specified in project file. Driver environment runtime script will not be loaded.");
+    }
+
+    return waiting_for_script_load;
+  }
+
+  bool project::process_scene_sections(const toml::table& table) {
+    PROFILE_SECTION("project::process_scene_sections");
+
+    bool has_scenes = process_scenes_table(table.at_path("scene-graph.scenes"));
+    if (!has_scenes) {
+      return false;
+    }
+
+    process_scene_graph(table.at_path("scene-graph.graph"));
+
+    auto starting_scene_node = table.at_path("scene-graph.starting-scene");
+    if (starting_scene_node) {
+      if (starting_scene_node.is_string()) {
+        std::string starting_scene_name = starting_scene_node.as_string()->get();
+        auto it = std::ranges::find_if(scenes_in_project, [&starting_scene_name](const scene& s) { return s.name == starting_scene_name; });
+        if (it != scenes_in_project.end()) {
+          starting_scene_id = it->scene_id;
+          CORE_LOG_DEBUG("Starting scene set to '{}' with project ID {} based on project file configuration.", it->name, it->scene_id);
+        } else {
+          CORE_LOG_ERROR("Starting scene name '{}' specified in project file does not match any scenes in the project.", starting_scene_name);
+        }
+      } else {
+        CORE_LOG_ERROR("Invalid type for 'scene-graph.starting-scene' field. Expected string (scene name)");
+      }
+    }
+    CORE_LOG_DEBUG("Finished processing scene sections of project file. Total scenes in project: {}", scenes_in_project.size());
+    return true;
+  }
+
+  bool project::process_scenes_table(toml::node_view<const toml::node> scenes_node) {
     if (!scenes_node) {
       CORE_LOG_DEBUG("No 'scenes' section found in project file, skipping scene data processing.");
-      return;
+      return false;
     }
 
     if (!scenes_node.is_array_of_tables()) {
       CORE_LOG_ERROR("Expected 'scenes' section to be an array of tables.");
-      return;
+      return false;
     }
 
     const auto* scenes_array = scenes_node.as_array();
     if (scenes_array == nullptr) {
       CORE_LOG_ERROR("'scenes' section is not a valid array of tables.");
-      return;
+      return false;
     }
 
     for (const auto& item : *scenes_array) {
@@ -371,28 +440,29 @@ namespace other {
 
       toml::node_view name_node = scene_table->at_path("name");
       toml::node_view path_node = scene_table->at_path("path");
-      toml::node_view id_node = scene_table->at_path("id");
 
-      if (!name_node || !path_node || !id_node) {
+      if (!name_node || !path_node) {
         CORE_LOG_ERROR("Scene entry is missing required 'name', 'path', or 'id' field.");
-        CORE_LOG_ERROR("!name_node: {}, !path_node: {}, !id_node: {}", !name_node, !path_node, !id_node);
+        CORE_LOG_ERROR("!name_node: {}, !path_node: {}", !name_node, !path_node);
         continue;
       }
-      if (!path_node.is_string() || !name_node.is_string() || !id_node.is_integer()) {
-        CORE_LOG_ERROR("Scene entry 'name' and 'path' fields must be strings and 'id' field must be an integer.");
-        CORE_LOG_ERROR("name_node type: {}, path_node type: {}, id_node type: {}", name_node.type(), path_node.type(), id_node.type());
+      if (!path_node.is_string() || !name_node.is_string()) {
+        CORE_LOG_ERROR("Scene entry 'name' and 'path' fields must be strings.");
+        CORE_LOG_ERROR("name_node type: {}, path_node type: {}", name_node.type(), path_node.type());
         continue;
       }
 
-      CORE_LOG_DEBUG(" - Added scene '{}' with path '{}' to project scene list.", data.name, data.path.string());
+      CORE_LOG_DEBUG(" - Added scene '{}' [{}] with path '{}' to project scene list.", data.name, data.scene_id, data.path.string());
       scenes_in_project.push_back({
         .name = name_node.as_string()->get(),
         .path = filepath(path_node.as_string()->get()),
-        .project_id = static_cast<natural_t>(id_node.as_integer()->get()),
+        // might get overwritten if binary scene file with baked id
+        .scene_id = FNV(filepath(path_node.as_string()->get()).filename().stem().string()),
       });
     }
 
     CORE_LOG_DEBUG("Finished processing 'scenes' section. Total scenes loaded: {}", scenes_in_project.size());
+    return true;
   }
 
   void project::process_scene_graph(toml::node_view<const toml::node> graph_node) {
@@ -420,7 +490,7 @@ namespace other {
       const auto* graph_table = item.as_table();
       OTHER_ASSERT(graph_table != nullptr, "Graph item is not a table.");
 
-      toml::node_view name_node = graph_table->at_path("id");
+      toml::node_view name_node = graph_table->at_path("name");
       toml::node_view incoming_node = graph_table->at_path("incoming");
       toml::node_view outgoing_node = graph_table->at_path("outgoing");
 
@@ -429,44 +499,44 @@ namespace other {
         CORE_LOG_ERROR("!name_node: {}, !incoming_node: {}, !outgoing_node: {}", !name_node, !incoming_node, !outgoing_node);
         continue;
       }
-      if (!name_node.is_number() || !incoming_node.is_array() || !outgoing_node.is_array()) {
-        CORE_LOG_ERROR("Graph entry 'id' must be a number and 'incoming'/'outgoing' must be arrays.");
-        CORE_LOG_ERROR("id_node type: {}, incoming_node type: {}, outgoing_node type: {}", name_node.type(), incoming_node.type(), outgoing_node.type());
+      if (!name_node.is_string() || !incoming_node.is_array() || !outgoing_node.is_array()) {
+        CORE_LOG_ERROR("Graph entry 'name' must be a string and 'incoming'/'outgoing' must be arrays of strings.");
+        CORE_LOG_ERROR("name_node type: {}, incoming_node type: {}, outgoing_node type: {}", name_node.type(), incoming_node.type(), outgoing_node.type());
         continue;
       }
 
-      natural_t scene_id = static_cast<natural_t>(name_node.as_integer()->get());
-      auto it = std::ranges::find_if(scenes_in_project, [&scene_id](const project::scene& data) { return data.project_id == scene_id; });
+      std::string scene_name = name_node.as_string()->get();
+      auto it = std::ranges::find_if(scenes_in_project, [&scene_name](const project::scene& data) { return data.name == scene_name; });
       if (it == scenes_in_project.end()) {
-        CORE_LOG_ERROR("Scene with ID '{}' referenced in graph section does not exist in scenes list.", scene_id);
+        CORE_LOG_ERROR("Scene with name '{}' referenced in graph section does not exist in scenes list.", scene_name);
         continue;
       }
 
       for (const auto& incoming : *incoming_node.as_array()) {
-        if (!incoming.is_number()) {
-          CORE_LOG_ERROR("Expected 'incoming' array items to be numbers.");
+        if (!incoming.is_string()) {
+          CORE_LOG_ERROR("Expected 'incoming' array items to be strings.");
           CORE_LOG_ERROR("incoming item type: {}", incoming.type());
           continue;
         }
-        it->incoming.push_back(static_cast<natural_t>(incoming.as_integer()->get()));
+        it->incoming_scenes.push_back(incoming.as_string()->get());
       }
 
       for (const auto& outgoing : *outgoing_node.as_array()) {
-        if (!outgoing.is_number()) {
-          CORE_LOG_ERROR("Expected 'outgoing' array items to be numbers.");
+        if (!outgoing.is_string()) {
+          CORE_LOG_ERROR("Expected 'outgoing' array items to be strings.");
           CORE_LOG_ERROR("outgoing item type: {}", outgoing.type());
           continue;
         }
-        it->outgoing.push_back(static_cast<natural_t>(outgoing.as_integer()->get()));
+        it->outgoing_scenes.push_back(outgoing.as_string()->get());
       }
 
-      CORE_LOG_DEBUG(" - Processed graph entry for scene '{}'. Incoming: {}, Outgoing: {}", scene_id, it->incoming.size(), it->outgoing.size());
+      CORE_LOG_DEBUG(" - Processed graph entry for scene '{}'. Incoming: {}, Outgoing: {}", scene_name, it->incoming_scenes.size(), it->outgoing_scenes.size());
     }
 
     CORE_LOG_DEBUG("Finished processing 'graph' section.");
     CORE_LOG_DEBUG("Scene graph details:");
     for (const auto& scene : scenes_in_project) {
-      CORE_LOG_DEBUG(" - Scene '{}': Incoming [{}], Outgoing [{}]", scene.name, scene.incoming, scene.outgoing);
+      CORE_LOG_DEBUG(" - Scene '{}': Incoming [{}], Outgoing [{}]", scene.name, scene.incoming_scenes, scene.outgoing_scenes);
     }
   }
 

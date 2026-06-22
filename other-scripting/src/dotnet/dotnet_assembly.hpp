@@ -87,6 +87,7 @@ namespace other {
     ref<assembly> get_assembly_by_name(const std::string_view name);
     ref<assembly> get_assembly_by_id(natural_t id);
     void unload_assembly(natural_t assembly_id);
+    void remove_assembly(natural_t assembly_id);
     void unload_all();
 
     natural_t get_handle() const {
@@ -108,6 +109,9 @@ namespace other {
     dotnet_host* host = nullptr;
 
     std::map<natural_t, ref<assembly>> assemblies{};
+
+    using iterator_t = std::map<natural_t, ref<assembly>>::iterator;
+    iterator_t unload_assembly_and_erase(natural_t assembly_id);
   };
 
 }  // namespace other

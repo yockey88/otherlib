@@ -213,7 +213,8 @@ worker_count = {}
 
     handler->update_pipelines();
 
-    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED)
+      << std::format("expected asset {} to be in state UNLOADED, is actually in state: {}", asset_id, handler->get_asset_state(asset_id));
     /// the loaded asset now exists and a pipeline unloading the asset also exists
     ASSERT_EQ(handler->get_num_assets_in_flight(), 0);
     EXPECT_EQ(handler->get_num_loading_assets(), 0);

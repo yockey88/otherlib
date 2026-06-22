@@ -1,6 +1,4 @@
 [driver]
-# vm-debug-mode-on = true
-vm-instruction-per-step-budget = 1024
 boot-file = "resources/editor-assets/editor-boot.oasm"
 plugins = [
   # { name = "Other Management", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" },
@@ -19,19 +17,15 @@ metadata = [
 core-log-level = "info"
 core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
-assets = [
-  { name = "pipeline-declaration", path = "resources/editor-assets/default-pipeline.toml" }
-]
 
 [rendering]
 ui-layout-ini = "resources/ui/editor-layout.ini"
 imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
-# pipelines = [
-#   { name = "Editor Pipeline", path = "resources/rendering/editor_pipeline.orpl" }
-# ]
+pipelines = [
+  "resources/editor-assets/default-pipeline.toml"
+]
 
 [ui]
-# only read when subsystem module is loaded
 enable-environment-menu-bar = true
 
 [scripting]
@@ -43,7 +37,6 @@ dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
 # a dll satisfying the Other Environment API requirements
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
 other-lua-directory = "other-lua-interop"
-
 dotnet-modules = [
   "build/other-editor/dotnet/${build-config}/OtherEditorCs.dll"
 ]

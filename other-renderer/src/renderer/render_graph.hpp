@@ -36,7 +36,7 @@ namespace other {
           : graph(graph), pass(pass) {}
 
       pass_builder& set_clear_color(const glm::vec4& clear_color);
-      pass_builder& texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags = READ_WRITE);
+      pass_builder& texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags = READ_WRITE, uint32_t mip_level = 0);
       pass_builder& buffer_resource(resource_handle handle, uint32_t binding, access_flags flags = READ_WRITE);
       pass_builder& execution_callback(pass_executor&& executor, void* user_data = nullptr);
       render_graph& end_pass();
@@ -67,7 +67,7 @@ namespace other {
     render_graph& start_pipeline();
     void end_pipeline();
 
-    pass_builder start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true);
+    pass_builder start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true, uint32_t samples = 1);
 
     bool is_valid() const { return graph_valid; }
 
@@ -110,8 +110,7 @@ namespace other {
 
 OTHER_REFLECT(
   other::render_pass,
-  field(id, other::attr::serializable())
-)
+  field(id, other::attr::serializable()))
 
 // OTHER_REFLECT(
 //   other::render_graph

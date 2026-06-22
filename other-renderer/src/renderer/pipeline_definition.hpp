@@ -21,6 +21,7 @@ namespace other {
     DRAW_SCENE,  /// renderer.execute_draw_calls(node)
     FULLSCREEN_QUAD,
     COMPUTE_DISPATCH,
+    WINDOW_SIZED_COMPUTE_DISPATCH,
     NOOP,  /// used for resource transitions that don't issue draw calls or dispatches
     SCRIPT,
   };
@@ -36,9 +37,16 @@ namespace other {
     std::string name;
     bool use_window_size = true;
     glm::ivec2 fixed_size = { 1080, 720 };
+    uint32_t depth = 0;  // For 3D textures, store the depth separately
     texture::tex_type type = texture::tex_type::TEXTURE_2D;
     texture::format format = texture::format::RGBA16F;
     resource_tag tag = resource_tag::none();
+
+    // 0 = full chain, 1 = no mips
+    uint32_t mip_levels = 1;
+    bool generate_mips = false;
+
+    opt<filepath> seed_texture_path;
 
     opt<std::pair<texture::filter, texture::filter>> filters;
     opt<std::tuple<texture::wrap, texture::wrap, texture::wrap>> wraps;
@@ -57,6 +65,7 @@ namespace other {
     std::string resource_name;
     uint32_t binding = 0;
     framebuffer::attachment_type attachment = framebuffer::COLOR;
+    uint32_t mip_level = 0;
   };
 
   struct pipeline_executor_definition {
@@ -74,6 +83,7 @@ namespace other {
     bool use_window_size = true;
     glm::ivec2 fixed_size = { 0, 0 };
     bool create_framebuffer = true;
+    uint32_t samples = 1;
     opt<glm::vec4> clear_color;
 
     std::vector<pipeline_resource_reference> inputs;
@@ -110,6 +120,19 @@ namespace other {
   shader::compute_barrier_type compute_barrier_type_from_string(const std::string_view str);
   std::string_view executor_type_to_string(executor_type type);
   gpu_buffer::buf_type buffer_type_from_binding(binding_type type);
+
+  gpu_buffer::buf_type buffer_type_from_string(const std::string_view str);
+  gpu_buffer::usage buffer_usage_from_string(const std::string_view str);
+  texture::tex_type texture_type_from_string(const std::string_view str);
+  texture::format texture_format_from_string(const std::string_view str);
+  render_pass::type render_pass_type_from_string(const std::string_view str);
+  binding_scope pass_binding_scope_from_string(const std::string_view str);
+  binding_type pass_binding_type_from_string(const std::string_view str);
+  framebuffer::attachment_type framebuffer_attachment_type_from_string(const std::string_view str);
+
+  resource_tag resource_tag_from_string(const std::string_view str);
+
+  pipeline_definition read_pipeline_definition_from_file(const filepath& path);
 
   pipeline_definition get_basic_geometry_only_pipeline();
   pipeline_definition get_default_instancing_pipeline();

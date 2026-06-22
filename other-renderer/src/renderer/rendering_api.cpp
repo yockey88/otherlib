@@ -34,6 +34,20 @@ namespace other {
     window_mgr = nullptr;
   }
 
+  uint32_t rendering_api::full_mip_chain_count(const glm::ivec2& size, texture::tex_type type, uint32_t depth) const {
+    uint32_t m = (uint32_t)std::max(size.x, size.y);
+    if (type == texture::tex_type::TEXTURE_3D) {
+      m = std::max(m, depth);
+    }
+
+    uint32_t levels = 1;
+    while (m > 1) {
+      m >>= 1;
+      ++levels;
+    }
+    return levels;  // 1 + floor(log2(max_dim))
+  }
+
   void rendering_api::destroy_windows() {
     if (native_window() != nullptr) {
       SDL_DestroyWindow(native_window());

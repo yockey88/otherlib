@@ -68,7 +68,7 @@ namespace other {
 
       OTHER_ASSERT(obj->dotnet_object == nullptr, "Script object with ID {} already has a .NET object attached.", id);
 
-      CORE_LOG_DEBUG("[script {}] creating .NET object [{} {}]'", id, type_name, obj->name);
+      CORE_LOG_DEBUG("[script {}] creating .NET object [{} {}]", id, type_name, obj->name);
       obj->dotnet_object = dotnet.instantiate_managed_object(type_name, obj->name, std::forward<Args>(ctor_args)...);
       if (obj->dotnet_object != nullptr) {
         dotnet_register_native_object(id, type_name);
@@ -233,7 +233,6 @@ OTHER_DEPENDENT_SUBSYSTEM(
   subsystem_profile::kLogger,
   subsystem_profile::kFileSystem,
   subsystem_profile::kInputSystem,
-  subsystem_profile::kTypeDatabase,
-);
+  subsystem_profile::kTypeDatabase, );
 
 #endif  // OTHER_SCRIPTING_SCRIPT_SCRIPTING_ENVIRONMENT_HPP

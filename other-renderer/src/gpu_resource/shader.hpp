@@ -34,6 +34,7 @@ namespace other {
       SHADER_IMAGE_ACCESS,
       SHADER_STORAGE,
       UNIFORM_BARRIER,
+      TEXTURE_FETCH,
       // add more as needed...
 
       ALL_BARRIER,
@@ -101,11 +102,9 @@ namespace other {
 
 OTHER_REFLECT(
   other::shader::setting,
-  field(setting_name, other::attr::serializable())
-)
+  field(setting_name, other::attr::serializable()))
 
 OTHER_REFLECT(
-  other::shader
-);
+  other::shader);
 
 #endif  // OTHER_RENDERER_GPU_RESOURCE_SHADER_HPP

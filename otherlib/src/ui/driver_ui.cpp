@@ -14,6 +14,7 @@
 #include "driver/driver.hpp"
 #include "ui/asset-browser/asset_browser.hpp"
 #include "ui/console/console.hpp"
+#include "ui/object-editor/object_editor.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/type_database.hpp"
 #include "ui/viewport.hpp"
@@ -129,6 +130,20 @@ namespace other {
       }
 
       close_builtin_window(it->type);
+    }
+  }
+
+  void driver_ui::close_all_windows() {
+    CORE_LOG_DEBUG("Request to close all UI windows");
+    for (auto& win : builtin_windows) {
+      if (win.open) {
+        close_builtin_window(win.type);
+      }
+    }
+    for (auto& [id, win] : custom_windows) {
+      if (win.open) {
+        close_custom_window(win.name);
+      }
     }
   }
 
@@ -269,6 +284,7 @@ namespace other {
         case BUILTIN_WINDOW_CONSOLE: window.window_ptr = make_scope<ui::console_window>(*driver_ptr->get_event_system(), driver_ptr); break;
         case BUILTIN_WINDOW_VIEWPORT: window.window_ptr = make_scope<ui::viewport>(*driver_ptr->get_event_system(), renderer, driver_ptr); break;
         case BUILTIN_WINDOW_SCENE_HIERARCHY: window.window_ptr = make_scope<ui::scene_hierarchy>(*driver_ptr->get_event_system(), driver_ptr); break;
+        case BUILTIN_WINDOW_OBJECT_EDITOR: window.window_ptr = make_scope<ui::object_editor>(*driver_ptr->get_event_system(), driver_ptr); break;
         case BUILTIN_WINDOW_ASSET_BROWSER: window.window_ptr = make_scope<ui::asset_browser>(*driver_ptr->get_event_system(), driver_ptr); break;
         default:
           break;

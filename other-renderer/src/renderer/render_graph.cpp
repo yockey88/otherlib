@@ -16,8 +16,8 @@ namespace other {
     return *this;
   }
 
-  render_graph::pass_builder& render_graph::pass_builder::texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags) {
-    auto [itr, success] = pass.texture_resources.insert({ get_next_texture_id(), { .type = type, .slot = slot, .flags = flags, .handle = handle } });
+  render_graph::pass_builder& render_graph::pass_builder::texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags, uint32_t mip_level) {
+    auto [itr, success] = pass.texture_resources.insert({ get_next_texture_id(), { .type = type, .slot = slot, .flags = flags, .handle = handle, .mip_level = mip_level } });
     if (!success) {
       CORE_LOG_ERROR("Could not add texture resource [{}]. texture resources already bound at {}", handle, slot);
     }
@@ -43,14 +43,15 @@ namespace other {
   }
 
   render_graph& render_graph::pass_builder::end_pass() {
-    if (pass.framebuffer_handle.has_value()) {
+    if (pass.framebuffer_handle.has_value() && pass.pass_type == render_pass::RENDER_PASS) {
       auto& fb = graph.renderer_ptr->get_resource<framebuffer>(*pass.framebuffer_handle);
 
       fb.set_size(pass.size.x, pass.size.y)
+        .set_samples(pass.samples)
         .set_clear_color({ 0.1f, 0.1f, 0.1f, 1.f });
       for (const auto& [_, texture] : pass.texture_resources) {
         if ((texture.flags & WRITE) == WRITE) {
-          fb.add_attachment(texture.handle, texture.type);
+          fb.add_attachment(texture.handle, texture.type, texture.mip_level);
         }
       }
       fb.finalize_framebuffer();
@@ -78,7 +79,7 @@ namespace other {
     build_graph();
   }
 
-  render_graph::pass_builder render_graph::start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer) {
+  render_graph::pass_builder render_graph::start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer, uint32_t samples) {
     CORE_LOG_DEBUG("Starting pass [{}] with shader [{}] and size [{}, {}]", name, shader_handle.has_value() ? *shader_handle : resource_handle{}, size.x, size.y);
     pass& pass_data = create_pass(rptype);
     render_pass& rp = pass_data.pass;
@@ -98,6 +99,7 @@ namespace other {
     rp.shader_handle = shader_handle;
     rp.name = name;
     rp.size = size;
+    rp.samples = samples;
     return pass_builder(*this, rp);
   }
 

@@ -27,7 +27,6 @@ namespace other {
     void shutdown(driver_kernel* kernel) override;
 
     void load_project_scene_graph(project& p);
-    void unload_project_scene_graph();
 
     natural_t add_scene_to_scene_graph(const filepath& scene_path);
     natural_t create_empty_scene(const std::string_view name, bool add_asset = true);
@@ -53,6 +52,7 @@ namespace other {
 
     void handle_scene_load_event(const value& data);
     void handle_scene_asset_loaded_event(const value& data);
+    void handle_scene_asset_unloaded_event(const value& data);
     void handle_scene_unload_event(const value& data);
     void handle_scene_info_event(const value& data);
     void handle_scene_playback_command_event(const value& data);

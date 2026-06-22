@@ -58,29 +58,6 @@ namespace other {
     storage->registry.on_construct<physics_component>().connect<&scene::on_create_physics_component>(this);
     // storage->registry.on_update<physics_component>().connect<&scene::on_update_physics_component>(this);
     storage->registry.on_destroy<physics_component>().connect<&scene::on_destroy_physics_component>(this);
-
-    opt<sol::table> native_table = storage->sandbox["__other_native"];
-    if (native_table.has_value() && native_table->valid()) {
-      sol::table scene_table = storage->sandbox["__other_native"]["__native_scene"];
-      sol::table scene_interface_table = storage->sandbox["__other_native"]["__scene_interface"];
-
-      scene_table["__native_pointer"] = this;
-      scene_table.set_function(
-        "create_scene_object",
-        sol::overload(
-          [this](const std::string& name) -> natural_t { return this->create_object(name).id; },
-          [this](const std::string& name, const glm::vec3& world_position) -> natural_t { return this->create_object(name, world_position).id; }
-        )
-      );
-
-      scene_table["name"] = name;
-      scene_table["id"] = id;
-      scene_table["set_clear_color"] = [this](glm::vec4 color) {
-        this->storage->clear_color = color;
-      };
-    } else {
-      CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
-    }
   }
 
   void scene::do_scene_unbinding() {
@@ -98,12 +75,12 @@ namespace other {
 
   scene::scene() {
     ASSERT_MAIN_THREAD();
+    CORE_LOG_DEBUG("Constructing scene: {}", name);
     scene_first_construction_initialization();
     do_scene_binding();
 
     // Create the root object
-    scene_object& root = storage->tree.root_object();
-    register_object(&root, "Root", glm::vec3(0.0f));
+    scene_object& root = create_object(name + ":Root", glm::vec3(0.0f));
     object_handle* tag = get_component<object_handle>(&root);
     OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
 
@@ -112,16 +89,15 @@ namespace other {
 
   scene::scene(const std::string_view name) {
     ASSERT_MAIN_THREAD();
-    static natural_t next_id = 1;
+    CORE_LOG_DEBUG("Constructing scene: {}", name);
     this->name = name;
-    this->id = next_id++;
+    this->id = FNV(name);
 
     scene_first_construction_initialization();
     do_scene_binding();
 
     // Create the root object
-    scene_object& root = storage->tree.root_object();
-    register_object(&root, "Root", glm::vec3(0.0f));
+    scene_object& root = create_object(this->name + ":Root", glm::vec3(0.0f));
     object_handle* tag = get_component<object_handle>(&root);
     OTHER_ASSERT(tag != nullptr, "Failed to retrieve object handle component for root scene object.");
 
@@ -192,15 +168,13 @@ namespace other {
 
     lua_sandbox& sandbox = storage->sandbox;
     lua_host& lua = scripting_env->get_lua_host();
-    sol::table scene_table = sandbox.try_load_table(&lua, *script_path);
+    opt<sol::table> scene_table = sandbox.try_load_table(&lua, *script_path);
 
-    bool scene_valid = scene_table.valid();
     sol::table objects_table;
-    if (scene_valid) {
-      objects_table = scene_table["Objects"];
-      scene_valid = objects_table.valid();
+    if (scene_table.has_value()) {
+      objects_table = scene_table.value()["Objects"];
+      const bool scene_valid = objects_table.valid();
       if (!scene_valid) {
-        CORE_LOG_WARN("Scene Lua file '{}' does not contain a valid 'Objects' table.", script_path->string());
       } else {
       }
     }
@@ -216,22 +190,23 @@ namespace other {
       }
     }
 
-    if (scene_valid) {
+    if (scene_table.has_value() && objects_table.valid()) {
       CORE_LOG_DEBUG("Loading scene objects from Lua file: {}", script_path->string());
       for (auto& obj : objects_table) {
         sol::table obj_table = obj.second.as<sol::table>();
+
+        // running script should have created the objects, this should be a valid ID
         natural_t id = obj_table["GetId"](obj_table);
-        OTHER_ASSERT(has_object(id), "Scene object with ID {} already exists!", id);
+        const bool valid_object = has_object(id);
+        OTHER_ASSERT(valid_object, "Scene object with ID {} is not valid!", id);
 
         scene_object& scene_obj = get_object(id);
         construct_object_from_lua_table(scene_obj, obj_table);
       }
-
-      CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", name, script_path->string());
-      script_loaded = true;
-    } else {
-      CORE_LOG_ERROR("Failed to load scene '{}' from Lua file '{}'.", name, script_path->string());
     }
+
+    CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", name, script_path->string());
+    script_loaded = true;
   }
 
   scene scene::create_scene(const std::string& name) {
@@ -544,7 +519,8 @@ namespace other {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::has_object_by_id");
     scene_tree::node* node = storage->tree.node_at(id);
-    return node != nullptr && node->object != nullptr;
+    OTHER_ASSERT(node != nullptr, "Scene nodes should never be null. Node with ID {} is null '{}'.", id, this->name);
+    return node->object != nullptr;
   }
 
   scene_object& scene::get_object(const std::string_view name) {
@@ -683,6 +659,71 @@ namespace other {
     set_transform(node->object, t);
   }
 
+  bounding_box scene::get_bounding_box(scene_object* object) const {
+    OTHER_ASSERT(object != nullptr, "Scene object is null.");
+    const entt::entity entity = entt::entity(object->registry_id);
+
+    const render_component* rc = storage->registry.try_get<render_component>(entity);
+    if (rc != nullptr && rc->obj_model.source != nullptr) {
+      return rc->obj_model.source->get_bounding_box();
+    }
+
+    const physics_component* pc = storage->registry.try_get<physics_component>(entity);
+    if (pc != nullptr && pc->shape != nullptr) {
+      return pc->shape->get_bounding_box();
+    }
+    return bounding_box::empty;
+  }
+
+  bounding_box scene::get_bounding_box(natural_t id) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_by_id");
+
+    scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+    return get_bounding_box(node->object);
+  }
+
+  bounding_box scene::get_bounding_box(std::span<scene_object*> objects) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_by_objects");
+
+    bounding_box box;
+    for (scene_object* obj : objects) {
+      if (obj != nullptr) {
+        box = bounding_box::expand_to_include(box, get_bounding_box(obj));
+      }
+    }
+    return box;
+  }
+
+  bounding_box scene::get_bounding_box(std::span<const natural_t> ids) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_by_ids");
+
+    bounding_box box;
+    for (natural_t id : ids) {
+      scene_tree::node* node = storage->tree.node_at(id);
+      if (node != nullptr) {
+        box = bounding_box::expand_to_include(box, get_bounding_box(node->object));
+      }
+    }
+    return box;
+  }
+
+  bounding_box scene::get_bounding_box() const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_all");
+
+    bounding_box box;
+    for (const scene_tree::node& n : *storage->tree.nodes) {
+      if (n.object != nullptr) {
+        box = bounding_box::expand_to_include(box, get_bounding_box(n.object));
+      }
+    }
+    return box;
+  }
+
   render_data scene::prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::prepare_render_data");
@@ -707,7 +748,7 @@ namespace other {
       std::ranges::copy(light.directional_lights, std::back_inserter(data.ambient_lights));
       std::ranges::copy(light.point_lights, std::back_inserter(data.point_lights));
 
-      if (object_has_tag(handle.id, "scene-ambient-light")) {
+      if (object_has_tag(handle.id, "sun")) {
         data.scene_ambient_light = &light.directional_lights[0];
       }
     });
@@ -832,6 +873,29 @@ namespace other {
       render.last_model_asset_id = render.model_asset_id;
     });
 
+    if (data.scene_ambient_light != nullptr) {
+      data.simulation_environment.sun_direction = glm::vec4(glm::normalize(data.scene_ambient_light->direction), 0.0f);
+      data.simulation_environment.sun_color = glm::vec4(data.scene_ambient_light->color, 1.0f);
+    }
+
+    glm::vec4 ambient_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
+    for (const auto& dirlight : data.ambient_lights) {
+      ambient_color += glm::vec4(dirlight.color, 1.0f);
+    }
+    ambient_color /= static_cast<float>(data.ambient_lights.size() + 1);
+    data.simulation_environment.ambient_color = glm::clamp(ambient_color, 0.0f, 1.0f);
+
+    glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    glm::vec4 horizon_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    glm::vec4 ground_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
+    data.simulation_environment.zenith_color = glm::clamp(zenith_color, 0.0f, 1.0f);
+    data.simulation_environment.horizon_color = glm::clamp(horizon_color, 0.0f, 1.0f);
+    data.simulation_environment.ground_color = glm::clamp(ground_color, 0.0f, 1.0f);
+
+    bounding_box scene_bounding_box = get_bounding_box();
+    data.simulation_environment.world_min = glm::vec4(scene_bounding_box.min, 1.0f);
+    data.simulation_environment.world_max = glm::vec4(scene_bounding_box.max, 1.0f);
+
     // if (debug_physics_rendering_enabled && storage->physics != nullptr) {
     //   physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();
 
@@ -942,6 +1006,7 @@ namespace other {
     object->name = name;
     object->registry_id = (uint32_t)entity;
 
+    // object handle and component registery are 'invisible' components (user should not know about them)
     storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
     storage->registry.emplace<component_registry>(entity, component_registry{});
     storage->registry.emplace<transform>(entity, transform{
@@ -954,6 +1019,7 @@ namespace other {
 
     transform& transf = storage->registry.get<transform>(entity);
     script_component& script = storage->registry.get<script_component>(entity);
+
     auto& comp_reg = storage->registry.get<component_registry>(entity);
     comp_reg.register_component(transf);
     comp_reg.register_component(script);

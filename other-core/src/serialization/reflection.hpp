@@ -25,6 +25,13 @@ namespace other {
 
   class type_database;
 
+  using type_key = uint64_t;
+
+  template <typename T>
+  inline type_key type_key_of() {
+    return typeid(T).hash_code();
+  }
+
   namespace attr {
 
     struct serializable : refl::attr::usage::field {
@@ -92,6 +99,11 @@ namespace other {
 
     std::vector<uint64_t> base_types;
   };
+
+  static inline type_key type_key_of(const reflection_data& rd) {
+    OTHER_ASSERT(rd.type_hash != 0, "reflection_data has no type_hash");
+    return rd.type_hash;
+  }
 
   template <typename T>
   struct type_data_handler;
@@ -181,6 +193,12 @@ namespace other {
   auto get_type_name() {
     auto data = refl::reflect<T>();
     return std::string{ data.name };
+  }
+
+  template <typename T>
+    requires(!reflected_type<T>)
+  std::string get_type_name() {
+    return std::string{ typeid(T).name() };
   }
 
   auto reflected_field_name(auto field_details) {
@@ -388,10 +406,11 @@ namespace other {
   template <typename T>
     requires reflected_type<T>
   reflection_data* type_database::get_reflection_data() {
-    auto itr = data_map.find(typeid(T).hash_code());
-    if (itr != data_map.end()) {
-      CORE_LOG_TRACE("Reflection data for type '{}' already exists.", itr->second.type_name);
-      return &itr->second;
+    static const uint64_t type_hash = typeid(T).hash_code();
+    auto [it, inserted] = data_map.emplace(type_hash, reflection_data{});
+    if (it != data_map.end()) {
+      CORE_LOG_TRACE("Reflection data for type '{}' already exists.", it->second.type_name);
+      return &it->second;
     }
     CORE_LOG_TRACE("No reflection data for type '{}', generating...", std::string{ refl::reflect<T>().name });
     return get_reflection_data(T{});
@@ -479,13 +498,21 @@ namespace other {
     return &it->second;
   }
 
+  template <typename T>
+  std::string get_type_name_safe() {
+    if constexpr (reflected_type<T>) {
+      return get_type_name<T>();
+    } else {
+      return get_type_name<T>();
+    }
+  }
+
 }  // namespace other
 
 OTHER_DEPENDENT_SUBSYSTEM(
   other::type_database,
   subsystem_profile::kArena,
-  subsystem_profile::kLogger
-);
+  subsystem_profile::kLogger);
 
 namespace std {
 
@@ -527,7 +554,6 @@ namespace std {
   OTHER_TYPE_HANDLER(T)
 
 OTHER_REFLECT(
-  other::value_type
-)
+  other::value_type)
 
 #endif  // OTHER_CORE_REFLECTION_HPP

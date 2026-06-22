@@ -15,8 +15,6 @@ namespace other {
     OTHER_ASSERT(objects != nullptr, "Failed to allocate memory pool for scene objects.");
 
     std::ranges::fill(generation_counters, 0);
-    root = create_object();
-    OTHER_ASSERT(root != nullptr, "Failed to create root node in scene tree.");
   }
 
   scene_tree::scene_tree(scene* s)
@@ -24,8 +22,6 @@ namespace other {
     OTHER_ASSERT(objects != nullptr, "Failed to allocate memory pool for scene objects.");
 
     std::ranges::fill(generation_counters, 0);
-    root = create_object();
-    OTHER_ASSERT(root != nullptr, "Failed to create root node in scene tree.");
   }
 
   scene_tree::scene_tree(scene_tree&& other) {
@@ -89,11 +85,11 @@ namespace other {
 
   scene_object& scene_tree::create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object) {
     PROFILE_SECTION("scene_tree::create_object");
-
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null, cannot create object.");
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
 
+    CORE_LOG_DEBUG("Creating scene object with name: {} at position: {}", name, world_position);
     node* parent_node = nullptr;
     if (parent_object != nullptr) {
       parent_node = node_from_scene_object(parent_object);
@@ -102,13 +98,20 @@ namespace other {
       parent_node = root;
     }
 
+    // parent_node == nullptr here implies root is null which means we are constructing the root object for the scene.
+    const bool is_root_construction = (parent_node == nullptr);
     node* new_node = create_object(parent_node);
     OTHER_ASSERT(new_node != nullptr, "Failed to create new node in scene tree.");
 
     scene_ptr->register_object(new_node->object, name, world_position);
     ++num_objects;
 
-    CORE_LOG_DEBUG(" - created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
+    if (is_root_construction) {
+      CORE_LOG_DEBUG(" - root construction");
+      root = new_node;
+    }
+
+    CORE_LOG_DEBUG("Created scene object : \n{}", type_data_handler<scene_object>::as_string("object", *new_node->object));
     return *new_node->object;
   }
 
@@ -282,14 +285,19 @@ namespace other {
     OTHER_ASSERT(idx < kMaxNodes, "Exceeded maximum number of nodes in scene tree.");
     OTHER_ASSERT(idx < nodes->size(), "Exceeded maximum number of nodes in scene tree.");
 
+    CORE_LOG_DEBUG("object idx: {}", idx);
     node* node_ptr = node_at(idx);
     node_ptr->parent = parent_node;
     node_ptr->id = idx;
     node_ptr->object = &obj;
     obj.generation = generation_counters[idx]++;
 
-    /// these have to stay in sync with each other because they reference the index in the memory pool
+    /// these have to stay in sync with each other because
+    /// they reference the index in the memory pool
     node_ptr->object->id = node_ptr->id;
+    CORE_LOG_DEBUG(" - node id: {}, object id: {}", node_ptr->id, node_ptr->object->id);
+    CORE_LOG_DEBUG(" - object generation: {}", obj.generation);
+    CORE_LOG_DEBUG(" - object parent: {}", node_ptr->parent != nullptr ? node_ptr->parent->id : -1);
 
     if (parent_node != nullptr) {
       parent_node->children.push_back(node_at(idx));

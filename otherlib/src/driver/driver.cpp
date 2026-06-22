@@ -18,7 +18,6 @@ namespace other {
 
   driver::driver(const command_line& cmd, const config_table& config)
       : config(config), cmd_line(cmd) {
-    this->config.project_file = cmd.project_file;
   }
 
   driver::~driver() {
@@ -26,6 +25,14 @@ namespace other {
 
   void driver::initialize(const command_line& cmd, const subsystem_registry& registry) {
     PROFILE_SECTION("driver::initialize");
+
+    if (cmd_line.project_file.has_value()) {
+      if (config.project_file.has_value()) {
+        CORE_LOG_WARN("Overwriting project specified in config '{}' with command line project '{}'", config.project_file.value().string(), cmd_line.project_file.value().string());
+      }
+
+      config.project_file = cmd_line.project_file;
+    }
 
     state_machine.handle_event(driver_event::DRIVER_EVENT_START, this);
     driver_metadata = build_metadata();
@@ -47,6 +54,9 @@ namespace other {
     if (driver_kernel_ptr->has_core_system<project_system>()) {
       get_event_system()->add_listener("project.loaded", [this](const value& data) {
         on_project_loaded();
+      });
+      get_event_system()->add_listener("project.unloaded", [this](const value& data) {
+        on_project_unloaded();
       });
     }
 
@@ -209,30 +219,24 @@ namespace other {
   }
 
   void driver::request_shutdown() {
-    if (current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN || current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
+    if (current_driver_state() == driver_state::DRIVER_STATE_SHUTTING_DOWN ||
+        current_driver_state() == driver_state::DRIVER_STATE_STOPPED) {
       return;
     }
-    CORE_LOG_INFO("Beginning shutdown sequence");
 
-    if (driver_kernel_ptr->has_core_system<scene_system>()) {
-      auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
-      scenes.unload_active_scene();
-      scenes.unload_project_scene_graph();
-    }
-
+    /// check if project is loading or unloading, of so, we put the shutdown request off
+    //  until project is finished loading or unloading.
     if (driver_kernel_ptr->has_core_system<project_system>()) {
-      driver_kernel_ptr->get_core_system<project_system>().unload_project(driver_kernel_ptr.get());
+      auto& projects = driver_kernel_ptr->get_core_system<project_system>();
+      CORE_LOG_DEBUG("Project state on shutdown request: {}", projects.get_project().get_state());
+      if (projects.is_project_loading() || projects.is_project_unloading()) {
+        CORE_LOG_INFO("Project is currently loading or unloading, deferring shutdown request.");
+        runtime_state.shutdown_requested = true;
+        return;
+      }
     }
 
-    driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
-    driver_kernel_ptr->get_core_system<asset_system>().begin_full_unload();
-
-    on_shutdown_request();
-    process_driver_event(driver_event::DRIVER_EVENT_STOP);
-
-    if (!driver_kernel_ptr->get_core_system<network_system>().network_active()) {
-      shutdown_state.network_thread_shutdown = true;
-    }
+    begin_shutdown_sequence();
   }
 
   std::string driver::get_driver_info_string(const std::string_view str) const {
@@ -538,22 +542,25 @@ namespace other {
   void driver::on_project_loaded() {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
-
     auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
     if (p.is_empty()) {
       CORE_LOG_WARN("Project loaded event triggered but project is empty. This may indicate a problem with the project loading process.");
       return;
     }
+    CORE_LOG_INFO("Project loaded: {}", p.get_project_name());
 
-    /// do this before running rc file in case rc file loads a scene
-    if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
-      /// add scene to project if not in scene list
-      // starting_scene_id = curr_scene->id;
-      driver_kernel_ptr->get_core_system<scene_system>().unload_active_scene();
+    if (driver_kernel_ptr->has_core_system<scene_system>()) {
+      auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
+
+      /// do this before running rc file in case rc file loads a scene
+      if (auto* curr_scene = get_active_scene(); curr_scene != nullptr) {
+        OTHER_ASSERT(false, "TODO: implement the case where a scene was opened before a project or independently of it's parent project");
+      }
+
+      natural_t starting_scene_id = p.get_starting_scene_id();
+      CORE_LOG_DEBUG("Project starting scene ID: {}", starting_scene_id);
+      scenes.set_scene_to_active(starting_scene_id);
     }
-
-    /// load scenes from project
-    driver_kernel_ptr->get_core_system<scene_system>().load_project_scene_graph(p);
 
     filepath rc_path = p.get_project_rc_path();
     if (!rc_path.empty() && std::filesystem::exists(rc_path)) {
@@ -576,10 +583,19 @@ namespace other {
       }
     }
 
-    /// restore scene?
-    // if (starting_scene_id.has_value()) {
-    //   driver_kernel_ptr->get_core_system<scene_system>().set_active_scene(starting_scene_id.value());
-    // }
+    if (runtime_state.shutdown_requested) {
+      begin_shutdown_sequence();
+    }
+  }
+
+  void driver::on_project_unloaded() {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    CORE_LOG_INFO("Project unloaded.");
+    shutdown_state.project_unloaded = true;
+
+    if (runtime_state.shutdown_requested) {
+      begin_shutdown_sequence();
+    }
   }
 
   void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
@@ -599,6 +615,40 @@ namespace other {
       trigger_event("native-" + std::string(event_name), data);
     } else {
       CORE_LOG_WARN("Received Lua table event '{}' but no handler is registered for it", event_name);
+    }
+  }
+
+  void driver::begin_shutdown_sequence() {
+    CORE_LOG_INFO("Beginning shutdown sequence");
+
+    if (driver_kernel_ptr->has_core_system<rendering_system>()) {
+      auto& rendering = driver_kernel_ptr->get_core_system<rendering_system>();
+      rendering.close_all_windows();
+    }
+
+    if (driver_kernel_ptr->has_core_system<scene_system>()) {
+      auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
+      scenes.unload_active_scene();
+    }
+
+    if (driver_kernel_ptr->has_core_system<project_system>()) {
+      auto& projects = driver_kernel_ptr->get_core_system<project_system>();
+      CORE_LOG_DEBUG("Project state on shutdown request: {}", projects.get_project().get_state());
+      if (projects.is_project_loaded()) {
+        projects.unload_project(driver_kernel_ptr.get());
+      } else if (projects.is_project_empty()) {
+        shutdown_state.project_unloaded = true;
+      }
+    }
+
+    driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
+    driver_kernel_ptr->get_core_system<asset_system>().begin_full_unload();
+
+    on_shutdown_request();
+    process_driver_event(driver_event::DRIVER_EVENT_STOP);
+
+    if (!driver_kernel_ptr->get_core_system<network_system>().network_active()) {
+      shutdown_state.network_thread_shutdown = true;
     }
   }
 

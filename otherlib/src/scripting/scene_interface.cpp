@@ -3,6 +3,8 @@
  **/
 #include "scripting/scene_interface.hpp"
 
+#include <filesystem>
+
 #include "serialization/reflection.hpp"
 
 #include "script/scripting_environment.hpp"
@@ -82,6 +84,7 @@ namespace other {
     scene_object* object = &scene_ptr->get_object(id);
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_model_to_object");
 
+    /// this call is coming from user script, so we should add the component if it's not here assuming they want it
     render_component* render_comp = nullptr;
     if (!scene_ptr->has_component<render_component>(object)) {
       render_comp = &scene_ptr->add_component<render_component>(object);
@@ -89,8 +92,15 @@ namespace other {
       render_comp = scene_ptr->get_component<render_component>(object);
     }
 
-    /// this must be validated by script-side of interface
-    OTHER_ASSERT(std::filesystem::exists(model_path), "Model path '{}' does not exist in scene_object_interface::attach_model_to_object", model_path);
+    filepath path = model_path;
+    if (!std::filesystem::exists(path)) {
+      path = std::filesystem::absolute(path);
+      if (!std::filesystem::exists(path)) {
+        CORE_LOG_ERROR("Model file '{}' does not exist", path.string());
+        return {};
+      }
+    }
+
     OTHER_ASSERT(render_comp != nullptr, "Render component pointer is null in scene_object_interface::attach_model_to_object");
 
     CORE_LOG_DEBUG(" [LUA] Beginning asset load for model '{}' to attach to object '{}'.", model_path, object->name);

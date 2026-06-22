@@ -71,8 +71,18 @@ target_include_directories(other_core
 )
 
 target_precompile_headers(other_core PUBLIC
-  <algorithm> <cstdint> <filesystem> <format> <memory>
-  <optional> <span> <string> <string_view> <type_traits> <vector>
+	<memory> 
+	<optional> 
+	<cstdint> 
+	<filesystem> 
+  <algorithm> 
+	<format> 
+	<span> 
+	<string> 
+	<string_view> 
+	<type_traits> 
+	<vector>
+	<functional>
   src/core/build_config.hpp
   src/core/defines.hpp
   src/core/logger.hpp

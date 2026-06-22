@@ -39,12 +39,17 @@ namespace other {
       events.register_event(other::get_asset_event_name(asset_type, "asset-load-failed"));
       events.register_event(other::get_asset_event_name(asset_type, "asset-unload-failed"));
     };
+    register_asset_events(asset::TEXTURE);
     register_asset_events(asset::MODEL_SOURCE);
+    register_asset_events(asset::MODEL);
+    register_asset_events(asset::ANIMATION);
     register_asset_events(asset::SCRIPT_PROJECT);
     register_asset_events(asset::SCRIPT_SOURCE);
     register_asset_events(asset::SCRIPT_FILE);
     register_asset_events(asset::SCRIPT);
+    register_asset_events(asset::AUDIO);
     register_asset_events(asset::SCENE);
+    register_asset_events(asset::INPUT_MAP);
     register_asset_events(asset::RENDERING_PIPELINE);
 
     events.add_listener("filesystem.watch-event", [this](const value& data) {
@@ -61,6 +66,9 @@ namespace other {
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
     asset_mgr->update_pipelines();
+    if (asset_mgr->all_assets_unloaded()) {
+      get_driver().get_event_system()->trigger_event("assets.all-assets-unloaded");
+    }
 
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in asset system tick.");
@@ -97,7 +105,6 @@ namespace other {
     }
 
     loading_asset_ids.push_back(asset_id);
-
     return asset_id;
   }
 
@@ -130,6 +137,11 @@ namespace other {
   asset* asset_system::get_asset(natural_t asset_id) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->get_asset(asset_id);
+  }
+
+  asset_handler::pipeline_context* asset_system::get_asset_pipeline_context(natural_t asset_id) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_asset_pipeline_context(asset_id);
   }
 
   scope<asset_handler>& asset_system::get_asset_manager() {

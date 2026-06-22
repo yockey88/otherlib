@@ -139,20 +139,36 @@ namespace other {
 
     resource_type type() const override { return resource_type::TEXTURE; }
 
+    // simple, default, no mip maps by default
     static resource_handle create(const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8, uint32_t width = 0, uint32_t height = 0);
+    // advanced, wrap modes, mip levels, and mip map generation options
     static resource_handle create(
-      const std::string& name, tex_type type = TEXTURE_2D, format frmt = format::RGBA8,
+      const std::string& name,
+      tex_type type = TEXTURE_2D, format frmt = format::RGBA8,
       const std::pair<filter, filter>& filters = { LINEAR, LINEAR },
       const std::tuple<wrap, wrap, wrap>& wraps = { CLAMP_TO_EDGE, CLAMP_TO_EDGE, CLAMP_TO_EDGE },
-      uint32_t width = 0, uint32_t height = 0
-    );
+      uint32_t mip_levels = 1, bool generate_mips = false,
+      uint32_t width = 0, uint32_t height = 0);
+    // advanced, cube map texture creation, mip levels, and mip map generation options
     static resource_handle create3d(const std::string& name, format frmt = format::RGBA8, const glm::vec3& dimensions = glm::vec3(0));
+    // advanced 3D texture creation, mip levels, and mip map generation options
+    static resource_handle create3d(
+      const std::string& name,
+      format frmt = format::RGBA8,
+      const std::pair<filter, filter>& filters = { LINEAR, LINEAR },
+      const std::tuple<wrap, wrap, wrap>& wraps = { CLAMP_TO_EDGE, CLAMP_TO_EDGE, CLAMP_TO_EDGE },
+      uint32_t mip_levels = 1, bool generate_mips = false,
+      const glm::vec3& dimensions = glm::vec3(0));
 
     texture& bind(uint32_t slot = 0);
     texture& bind_image(uint32_t index, uint32_t level, bool layered, int32_t layer = 0, format frmt = format::RGBA32F, access_flags flags = access_flags::READ_WRITE);
 
     texture& set_type(tex_type type);
+    texture& set_mip_levels(uint32_t mip_levels);
+    texture& set_generate_mips(bool generate_mips);
     texture& set_size(uint32_t width, uint32_t height);
+    texture& set_dimensions(const glm::vec3& dimensions);
+    texture& set_depth(uint32_t depth);
     texture& set_format(format frmt);
     texture& set_filter(filter min_filter, filter mag_filter = NEAREST);
     texture& set_wrap_mode(wrap wrap_s, wrap wrap_t = CLAMP_TO_EDGE, wrap wrap_r = CLAMP_TO_EDGE);
@@ -175,7 +191,10 @@ namespace other {
 
     tex_type texture_type = tex_type::TEXTURE_2D;
 
+    uint32_t mip_levels = 1;
+    bool generate_mips = false;
     glm::ivec2 size = { 0, 0 };
+    uint32_t depth = 1;  // For 3D textures, store the depth separately
     void* data = nullptr;
     size_t data_size = 0;
 

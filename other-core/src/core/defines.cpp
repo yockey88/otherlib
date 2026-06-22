@@ -211,6 +211,16 @@ namespace other {
     return result;
   }
 
+  std::string get_environment_build_config_string() {
+#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
+    return "Debug";
+#elif defined(OTHER_ENVIRONMENT_RELEASE) || defined(OTHER_ENVIRONMENT_PROFILE)
+    return "Release";
+#else
+    return "Unknown";
+#endif
+  }
+
   std::string get_current_exe_name() {
 #ifdef OTHER_ENVIRONMENT_WINDOWS
     char buffer[MAX_PATH];
@@ -270,8 +280,7 @@ namespace other {
       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
       (LPSTR)&msg_buffer,
       0,
-      NULL
-    );
+      NULL);
 
     std::string message(msg_buffer, size);
     LocalFree(msg_buffer);  // Free the buffer allocated by FormatMessage
@@ -325,8 +334,7 @@ namespace other {
           /// Set working directory
           wworking_dir.data(),
           // Pointer to STARTUPINFOW structure and PROCESS_INFORMATION structure
-          &si, &pi
-        )) {
+          &si, &pi)) {
       CORE_LOG_ERROR("CreateProcess failed (error {}): \n   [command: {}]\n[error: {}]", GetLastError(), str_full_command, get_system_error_message());
       return;
     }

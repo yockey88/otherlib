@@ -180,31 +180,45 @@ namespace other {
 
   void opengl_api::begin_pass(const pass_begin_info& info) {
     PROFILE_SECTION("opengl_api::begin_pass");
-    if (info.framebuffer.has_value()) {
-      glBindFramebuffer(GL_FRAMEBUFFER, get_resource_handle(info.framebuffer->id));
-    } else {
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-    glViewport(0, 0, info.render_area_size.x, info.render_area_size.y);
 
-    GLbitfield clear_mask = 0;
-    if (info.clear_color.has_value()) {
-      const auto& c = *info.clear_color;
-      glClearColor(c.r, c.g, c.b, c.a);
-      clear_mask |= GL_COLOR_BUFFER_BIT;
-    }
-    if (info.clear_depth.has_value()) {
-      glClearDepth(*info.clear_depth);
-      clear_mask |= GL_DEPTH_BUFFER_BIT;
-    }
-    if (clear_mask != 0) {
-      glClear(clear_mask);
+    if (info.pass_type == render_pass::RENDER_PASS) {
+      if (info.framebuffer.has_value()) {
+        current_pass_framebuffer_id = info.framebuffer->id;
+        auto m = framebuffer_msaa_fbos.find(info.framebuffer->id);
+        const uint32_t fbo = (m != framebuffer_msaa_fbos.end()) ?
+          m->second :
+          (uint32_t)get_resource_handle(info.framebuffer->id);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+      } else {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      }
+      glViewport(0, 0, info.render_area_size.x, info.render_area_size.y);
+
+      GLbitfield clear_mask = 0;
+      if (info.clear_color.has_value()) {
+        const auto& c = *info.clear_color;
+        glClearColor(c.r, c.g, c.b, c.a);
+        clear_mask |= GL_COLOR_BUFFER_BIT;
+      }
+      if (info.clear_depth.has_value()) {
+        glClearDepth(*info.clear_depth);
+        clear_mask |= GL_DEPTH_BUFFER_BIT;
+      }
+      if (clear_mask != 0) {
+        glClear(clear_mask);
+      }
+    } else if (info.pass_type == render_pass::COMPUTE_PASS) {
     }
 
     CHECKGL();
   }
 
   void opengl_api::end_pass() {
+    if (current_pass_framebuffer_id != 0 &&
+        framebuffer_msaa_fbos.contains(current_pass_framebuffer_id)) {
+      resolve_msaa_framebuffer(current_pass_framebuffer_id);
+    }
+    current_pass_framebuffer_id = 0;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     CHECKGL();
   }
@@ -455,7 +469,7 @@ namespace other {
     CHECKGL();
 
     /// \todo make gl-specific barrier mask from barrier_type
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    glMemoryBarrier(get_gl_barrier_mask(barrier_type));
     CHECKGL();
 
     glUseProgram(0);
@@ -569,13 +583,20 @@ namespace other {
     CHECKGL();
   }
 
-  void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, const glm::ivec2& img_size, void* data, size_t data_size) {
+  void opengl_api::upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, uint32_t mip_levels, bool generate_mipmaps, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) {
     PROFILE_SECTION("opengl_api::upload_texture");
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("GPU resource for texture ID {} not found. Can't upload texture", handle.id);
       return;
     }
+
+    const uint32_t levels = generate_mipmaps ? std::max(mip_levels, full_mip_chain_count(img_size, type, depth)) : mip_levels;
+    const int32_t gl_type = get_gl_texture_type(type);
+    const int32_t gl_iformat = get_gl_texture_format(format);
+    const int32_t gl_cformat = get_gl_texture_channel_format(format);
+    const int32_t gl_ctype = get_gl_texture_format_type(format);
+    const uint32_t tex_id = gpu_itr->second;
 
     auto itr = texture_resources.find(handle.id);
     if (itr == texture_resources.end()) {
@@ -587,8 +608,6 @@ namespace other {
 
       uint32_t texture_id = gpu_itr->second;
       glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
-
-      int32_t gl_type = get_gl_texture_type(type);
       switch (gl_type) {
         case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
         case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
@@ -596,8 +615,12 @@ namespace other {
         case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
         case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
         case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-          glTexImage2D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexImage2D(gl_type, 0, gl_iformat, img_size.x, img_size.y, 0, gl_cformat, gl_ctype, data);
           break;
+        default:
+          CORE_LOG_ERROR("Unsupported cube map face for OpenGL cubemape face texture: {}", gl_type);
+          glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+          return;
       }
 
       glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -609,35 +632,34 @@ namespace other {
       int32_t gl_type = get_gl_texture_type(type);
       switch (gl_type) {
         case GL_TEXTURE_1D:
-          glTexImage1D(gl_type, 0, get_gl_texture_format(format), img_size.x, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexStorage1D(gl_type, 1, gl_iformat, img_size.x);
+          if (data != nullptr) {
+            glTexSubImage1D(gl_type, 0, 0, img_size.x, gl_cformat, gl_ctype, data);
+          }
           break;
-
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
         case GL_TEXTURE_2D:
-          glTexImage2D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexStorage2D(gl_type, 1, gl_iformat, img_size.x, img_size.y);
+          if (data != nullptr) {
+            glTexSubImage2D(gl_type, 0, 0, 0, img_size.x, img_size.y, gl_cformat, gl_ctype, data);
+          }
           break;
-
         case GL_TEXTURE_3D:
-          glTexImage3D(gl_type, 0, get_gl_texture_format(format), img_size.x, img_size.y, 1, 0, get_gl_texture_channel_format(format), get_gl_texture_format_type(format), data);
+          glTexStorage3D(gl_type, 1, gl_iformat, img_size.x, img_size.y, depth);
+          if (data != nullptr) {
+            glTexSubImage3D(gl_type, 0, 0, 0, 0, img_size.x, img_size.y, depth, gl_cformat, gl_ctype, data);
+          }
           break;
-
         default:
-          CORE_LOG_ERROR("Unsupported texture type for OpenGL: {}", gl_type);
+          CORE_LOG_ERROR("Unsupported texture type for OpenGL texture: {}", gl_type);
+          glBindTexture(gl_type, 0);
           return;
       }
 
-      /**
-        if (generate-mip-maps) {
-          do so
-        }
-      */
+      // if (generate_mipmaps && data != nullptr) {
+      //   glGenerateMipmap(gl_type);
+      // }
 
-      glBindTexture(get_gl_texture_type(type), 0);
+      glBindTexture(gl_type, 0);
       CHECKGL();
     }
   }
@@ -1079,6 +1101,9 @@ namespace other {
       CORE_LOG_ERROR("Failed to finalize framebuffer with ID {}: ({}) {}", handle.id, status, error_msg);
     } else {
       itr->second.complete = true;
+      if (itr->second.complete && itr->second.samples > 1) {
+        build_msaa_framebuffer(handle, itr->second);
+      }
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1371,6 +1396,19 @@ namespace other {
     }
 
     framebuffer_resources.erase(itr);
+
+    if (auto it = framebuffer_msaa_color_rbs.find(handle.id); it != framebuffer_msaa_color_rbs.end()) {
+      if (!it->second.empty()) glDeleteRenderbuffers((GLsizei)it->second.size(), it->second.data());
+      framebuffer_msaa_color_rbs.erase(it);
+    }
+    if (auto it = framebuffer_msaa_depth_rbs.find(handle.id); it != framebuffer_msaa_depth_rbs.end()) {
+      glDeleteRenderbuffers(1, &it->second);
+      framebuffer_msaa_depth_rbs.erase(it);
+    }
+    if (auto it = framebuffer_msaa_fbos.find(handle.id); it != framebuffer_msaa_fbos.end()) {
+      glDeleteFramebuffers(1, &it->second);
+      framebuffer_msaa_fbos.erase(it);
+    }
 
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr != gpu_resources.end()) {
@@ -1667,19 +1705,17 @@ namespace other {
   }
 
   int32_t opengl_api::get_gl_access_flags(access_flags flags) const {
-    int32_t gl_flags = 0;
-
+    if (flags & access_flags::READ_WRITE) {
+      return GL_READ_WRITE;
+    }
     if (flags & access_flags::READ) {
-      gl_flags |= GL_READ_ONLY;
+      return GL_READ_ONLY;
     }
     if (flags & access_flags::WRITE) {
-      gl_flags |= GL_WRITE_ONLY;
+      return GL_WRITE_ONLY;
     }
-    if (flags & access_flags::READ_WRITE) {
-      gl_flags |= GL_READ_WRITE;
-    }
-
-    return gl_flags;
+    OTHER_ASSERT(false, "Unsupported access flags: {}", static_cast<int>(flags));
+    return -1;
   }
 
   int32_t opengl_api::get_gl_render_polygon_mode(render_polygon_mode mode) const {
@@ -1736,25 +1772,17 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_format(texture::format format) const {
     switch (format) {
-      case texture::format::RGBA16F:
-        return GL_RGBA16F;
+      case texture::format::R8: return GL_R8;
+      case texture::format::RG8: return GL_RG8;
 
+      case texture::format::RGBA16F: return GL_RGBA16F;
       case texture::format::RGBA32U:
       case texture::format::RGBA32F:
         return GL_RGBA32F;
 
-      case texture::format::RGBA8:
-        return GL_RGBA8;
-
-      case texture::format::RGBA8U:
-        return GL_RGBA8UI;
-
-      case texture::format::RGB8:
-        return GL_RGB8;
-
-      case texture::format::DEPTHF:
-        return GL_DEPTH_COMPONENT;
-
+      case texture::format::RGBA8: return GL_RGBA8;
+      case texture::format::RGB8: return GL_RGB8;
+      case texture::format::DEPTHF: return GL_DEPTH_COMPONENT32F;
       default:
         CORE_LOG_ERROR("Unsupported texture format: {}", format);
         return -1;  // Invalid format
@@ -1763,19 +1791,16 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_channel_format(texture::format format) const {
     switch (format) {
+      case texture::format::R8: return GL_RED;
+      case texture::format::RG8: return GL_RG;
+      case texture::format::RGB8: return GL_RGB;
+      case texture::format::DEPTHF: return GL_DEPTH_COMPONENT;
       case texture::format::RGBA16F:
       case texture::format::RGBA32F:
       case texture::format::RGBA8:
       case texture::format::RGBA8U:
       case texture::format::RGBA32U:
         return GL_RGBA;
-
-      case texture::format::RGB8:
-        return GL_RGB;
-
-      case texture::format::DEPTHF:
-        return GL_DEPTH_COMPONENT;
-
       default:
         CORE_LOG_ERROR("Unsupported texture channel format: {}", format);
         return -1;  // Invalid channel format
@@ -1788,13 +1813,13 @@ namespace other {
       case texture::format::RGBA32F:
       case texture::format::DEPTHF:
         return GL_FLOAT;
-
       case texture::format::RGBA32U:
         return GL_UNSIGNED_INT;
-
       case texture::format::RGBA8U:
       case texture::format::RGBA8:
       case texture::format::RGB8:
+      case texture::format::RG8:
+      case texture::format::R8:
         return GL_UNSIGNED_BYTE;
 
       default:
@@ -1805,18 +1830,12 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_filter(texture::filter filter) const {
     switch (filter) {
-      case texture::filter::NEAREST:
-        return GL_NEAREST;
-
-      case texture::filter::LINEAR:
-        return GL_LINEAR;
-
-      case texture::filter::NEAREST_MIPMAP_NEAREST:
-        return GL_NEAREST_MIPMAP_NEAREST;
-
-      case texture::filter::LINEAR_MIPMAP_LINEAR:
-        return GL_LINEAR_MIPMAP_LINEAR;
-
+      case texture::filter::NEAREST: return GL_NEAREST;
+      case texture::filter::LINEAR: return GL_LINEAR;
+      case texture::filter::LINEAR_MIPMAP_NEAREST: return GL_LINEAR_MIPMAP_NEAREST;
+      case texture::filter::NEAREST_MIPMAP_LINEAR: return GL_NEAREST_MIPMAP_LINEAR;
+      case texture::filter::NEAREST_MIPMAP_NEAREST: return GL_NEAREST_MIPMAP_NEAREST;
+      case texture::filter::LINEAR_MIPMAP_LINEAR: return GL_LINEAR_MIPMAP_LINEAR;
       default:
         CORE_LOG_ERROR("Unsupported texture filter: {}", filter);
         return -1;  // Invalid filter
@@ -1840,6 +1859,27 @@ namespace other {
       default:
         CORE_LOG_ERROR("Unsupported texture wrap mode: {}", wrap);
         return -1;  // Invalid wrap mode
+    }
+  }
+
+  bool opengl_api::format_supports_auto_mipgen(texture::format f) const {
+    switch (f) {
+      case texture::format::R8:
+      case texture::format::RG8:
+      case texture::format::RGB8:
+      case texture::format::RGBA8:
+      case texture::format::BGRA8:
+      case texture::format::R16F:
+      case texture::format::RG16F:
+      case texture::format::RGBA16F:
+      case texture::format::RG11B10F:
+      case texture::format::RGB9E5F:
+      case texture::format::R32F:
+      case texture::format::RG32F:
+      case texture::format::RGBA32F:
+        return true;
+      default:  // int/uint and depth
+        return false;
     }
   }
 
@@ -1880,24 +1920,29 @@ namespace other {
     }
   }
 
+  int32_t opengl_api::get_gl_barrier_mask(shader::compute_barrier_type barrier_type) const {
+    switch (barrier_type) {
+      case shader::compute_barrier_type::SHADER_IMAGE_ACCESS: return GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+      case shader::compute_barrier_type::SHADER_STORAGE: return GL_SHADER_STORAGE_BARRIER_BIT;
+      case shader::compute_barrier_type::UNIFORM_BARRIER: return GL_UNIFORM_BARRIER_BIT;
+      case shader::compute_barrier_type::TEXTURE_FETCH: return GL_TEXTURE_FETCH_BARRIER_BIT;
+      case shader::compute_barrier_type::ALL_BARRIER: return GL_ALL_BARRIER_BITS;
+      default:
+        CORE_LOG_ERROR("Unsupported compute barrier type: {}", barrier_type);
+        return -1;  // Invalid barrier type
+    }
+  }
+
   int32_t opengl_api::get_gl_attr_type(mesh::attribute_type type) const {
     switch (type) {
-      case mesh::attribute_type::BYTE:
-        return GL_BYTE;
-      case mesh::attribute_type::UNSIGNED_BYTE:
-        return GL_UNSIGNED_BYTE;
-      case mesh::attribute_type::SHORT:
-        return GL_SHORT;
-      case mesh::attribute_type::UNSIGNED_SHORT:
-        return GL_UNSIGNED_SHORT;
-      case mesh::attribute_type::INT:
-        return GL_INT;
-      case mesh::attribute_type::UNSIGNED_INT:
-        return GL_UNSIGNED_INT;
-      case mesh::attribute_type::FLOAT:
-        return GL_FLOAT;
-      case mesh::attribute_type::DOUBLE:
-        return GL_DOUBLE;
+      case mesh::attribute_type::BYTE: return GL_BYTE;
+      case mesh::attribute_type::UNSIGNED_BYTE: return GL_UNSIGNED_BYTE;
+      case mesh::attribute_type::SHORT: return GL_SHORT;
+      case mesh::attribute_type::UNSIGNED_SHORT: return GL_UNSIGNED_SHORT;
+      case mesh::attribute_type::INT: return GL_INT;
+      case mesh::attribute_type::UNSIGNED_INT: return GL_UNSIGNED_INT;
+      case mesh::attribute_type::FLOAT: return GL_FLOAT;
+      case mesh::attribute_type::DOUBLE: return GL_DOUBLE;
       default:
         CORE_LOG_ERROR("Unsupported attribute type: {}", type);
         return -1;  // Invalid type
@@ -1997,6 +2042,92 @@ namespace other {
     return gl_bits;
   }
 
+  void opengl_api::build_msaa_framebuffer(const resource_handle& handle, const framebuffer& fb) {
+    const uint32_t samples = clamp_sample_count(fb.samples);
+    if (samples <= 1) {
+      return;
+    }
+
+    uint32_t msaa_fbo = 0;
+    glGenFramebuffers(1, &msaa_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, msaa_fbo);
+
+    std::vector<uint32_t> color_rbs;
+    std::vector<uint32_t> draw_bufs;
+    color_rbs.reserve(fb.color_attachments.size());
+
+    for (size_t i = 0; i < fb.color_attachments.size(); ++i) {
+      const texture& t = texture_resources.at(fb.color_attachments[i].id);
+      const int32_t internal_format = get_gl_texture_format(t.get_format());
+      OTHER_ASSERT(internal_format != -1, "MSAA: unsupported color format for attachment {}", i);
+
+      uint32_t rb = 0;
+      glGenRenderbuffers(1, &rb);
+      glBindRenderbuffer(GL_RENDERBUFFER, rb);
+      glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, internal_format, fb.size.x, fb.size.y);
+      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_RENDERBUFFER, rb);
+      color_rbs.push_back(rb);
+      draw_bufs.push_back(GL_COLOR_ATTACHMENT0 + i);
+    }
+
+    uint32_t depth_rb = 0;
+    glGenRenderbuffers(1, &depth_rb);
+    glBindRenderbuffer(GL_RENDERBUFFER, depth_rb);
+    glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, fb.size.x, fb.size.y);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    if (!draw_bufs.empty()) glDrawBuffers((GLsizei)draw_bufs.size(), draw_bufs.data());
+
+    const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    OTHER_ASSERT(status == GL_FRAMEBUFFER_COMPLETE, "MSAA framebuffer for resource {} incomplete: 0x{:x}", handle.id, status);
+
+    framebuffer_msaa_fbos[handle.id] = msaa_fbo;
+    framebuffer_msaa_color_rbs[handle.id] = std::move(color_rbs);
+    framebuffer_msaa_depth_rbs[handle.id] = depth_rb;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    CHECKGL();
+  }
+
+  void opengl_api::resolve_msaa_framebuffer(natural_t fb_id) {
+    const framebuffer& fb = framebuffer_resources.at(fb_id);
+    const uint32_t msaa = framebuffer_msaa_fbos.at(fb_id);
+    const uint32_t resolve = (uint32_t)get_resource_handle(fb_id);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, msaa);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, resolve);
+
+    for (size_t i = 0; i < fb.color_attachments.size(); ++i) {
+      glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
+      glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
+      glBlitFramebuffer(0, 0, fb.size.x, fb.size.y,
+                        0, 0, fb.size.x, fb.size.y,
+                        GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    CHECKGL();
+  }
+
+  uint32_t opengl_api::clamp_sample_count(uint32_t requested) const {
+    if (requested <= 1) {
+      return 1;
+    }
+
+    GLint max_samples = 1;
+    glGetIntegerv(GL_MAX_SAMPLES, &max_samples);
+    uint32_t s = requested;
+    if (s != 2 && s != 4 && s != 8) {
+      s = 4;
+    }
+    while (s > 1 && (GLint)s > max_samples) {
+      s >>= 1;
+    }
+    return s;
+  }
+
   int32_t opengl_api::get_resource_handle(natural_t id) const {
     auto itr = gpu_resources.find(id);
     if (itr != gpu_resources.end()) {
@@ -2009,9 +2140,11 @@ namespace other {
 
   uint32_t opengl_api::get_shader_uniform_location(const resource_handle& shader, const std::string_view name) {
     auto key = uniform_key{ shader.id, FNV(name) };
-    auto itr = shader_uniforms.find(key);
-    if (itr != shader_uniforms.end()) {
-      return itr->second;
+    {
+      auto itr = shader_uniforms.find(key);
+      if (itr != shader_uniforms.end()) {
+        return itr->second;
+      }
     }
 
     auto shader_itr = gpu_resources.find(shader.id);
@@ -2028,8 +2161,9 @@ namespace other {
       return -1;
     }
 
+    auto [itr, inserted] = shader_uniforms.emplace(key, location);
+    OTHER_ASSERT(inserted, "Failed to insert uniform '{}' for shader with ID {} into cache.", name, shader.id);
     CORE_LOG_DEBUG("Found uniform '{}' in shader with ID {} at location {}", name, shader.id, location);
-    shader_uniforms[key] = location;
     return location;
   }
 

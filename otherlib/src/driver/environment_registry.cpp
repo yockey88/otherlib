@@ -30,11 +30,12 @@ namespace other {
       CORE_LOG_ERROR("Failed to install plugin '{}' for interface [{}].", plugin_name, reg_interface.interface_full_name);
       return 0;
     }
+
+    CORE_LOG_INFO("Plugin '{}' installed succesfully for interface [{}] with provider ID {}", plugin_name, reg_interface.interface_full_name, provider_id);
     reg_interface.providers.push_back({
       std::string{ plugin_name },
       provider_id,
     });
-
     return provider_id;
   }
 

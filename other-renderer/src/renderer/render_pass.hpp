@@ -28,6 +28,7 @@ namespace other {
 
     std::string name;
     glm::ivec2 size = { 0, 0 };
+    uint32_t samples = 1;
     glm::vec4 clear_color = { 0.2, 0.2, 0.2, 1.0 };
 
     struct texture_resource {
@@ -35,6 +36,7 @@ namespace other {
       natural_t slot;
       access_flags flags;
       resource_handle handle;
+      uint32_t mip_level = 0;
     };
     struct buffer_resource {
       natural_t binding_point;

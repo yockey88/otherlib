@@ -335,13 +335,11 @@ namespace other {
       "__native_scene", lua_state.create_table_with(),
       "__scene_interface", lua_state.create_table_with(),
       "__component_names", lua_state.create_table_with(),
-      "__dotnet_types", lua_state.create_table_with()
-    );
+      "__dotnet_types", lua_state.create_table_with());
 
     lua_state.create_named_table(
       "__lua_bridge_metadata",
-      "__paths", lua_state.create_table_with()
-    );
+      "__paths", lua_state.create_table_with());
 
     sol::table paths_table = lua_state["__lua_bridge_metadata"]["__paths"];
     paths_table["script_directory"] = lua_host.get_environment_script_directory().string();
@@ -378,26 +376,22 @@ namespace other {
       "DELETE", http::verb::HTTP_DELETE,
       "PATCH", http::verb::HTTP_PATCH,
       "HEAD", http::verb::HTTP_HEAD,
-      "OPTIONS", http::verb::HTTP_OPTIONS
-    );
+      "OPTIONS", http::verb::HTTP_OPTIONS);
     lua_state.new_usertype<http::method_info>(
       "HttpMethodInfo",
       "verb", &http::method_info::method,
-      "name", &http::method_info::name
-    );
+      "name", &http::method_info::name);
     lua_state.new_usertype<http::header>(
       "HttpHeader",
       "name", &http::header::name,
-      "value", &http::header::value
-    );
+      "value", &http::header::value);
     lua_state.new_usertype<http::request>(
       "HttpRequest",
       "method", &http::request::method,
       "path", &http::request::path,
       "query", &http::request::query_string,
       "headers", &http::request::headers,
-      "body", &http::request::body
-    );
+      "body", &http::request::body);
     lua_state.new_usertype<http::response>(
       "HttpResponse",
       sol::constructors<http::response(), http::response(int)>(),
@@ -413,8 +407,7 @@ namespace other {
       [](http::response& res, const std::string& name, const std::string& value) {
         res.add_header({ .name = name, .value = value });
       },
-      "set_body_content", &http::response::set_body_content
-    );
+      "set_body_content", &http::response::set_body_content);
   }
 
   void do_script_interface_unbinding() {
@@ -437,7 +430,7 @@ namespace other {
     template <typename T>
       requires reflected_type<T>
     void bind_lua_component(sol::state& lua_state, const std::string_view lua_name) {
-      // CORE_LOG_DEBUG(" - binding to Lua: '{}'", get_native_type_name<T>());
+      CORE_LOG_DEBUG(" - binding to Lua: '{}'", get_native_type_name<T>());
       sol::usertype<T> lua_usertype = lua_state.new_usertype<T>(lua_name);
       refl::util::for_each(refl::reflect<T>().members, [&](auto member) {
         if constexpr (!refl::descriptor::is_function(member) && refl::descriptor::has_attribute<attr::serializable>(member)) {
@@ -445,7 +438,7 @@ namespace other {
           field_t T::* field_ptr = member.pointer;
           std::string name = std::string{ member.name };
           lua_usertype.set(name, field_ptr);
-          // CORE_LOG_TRACE(" - Bound field '{}' of type [{}]", name, typeid(field_t).name());
+          CORE_LOG_TRACE("   - Bound field '{}' of type [{}]", name, typeid(field_t).name());
         }
       });
 
@@ -471,8 +464,7 @@ namespace other {
         "INFO", spdlog::level::info,
         "WARN", spdlog::level::warn,
         "ERROR", spdlog::level::err,
-        "CRITICAL", spdlog::level::critical
-      );
+        "CRITICAL", spdlog::level::critical);
       lua_state.new_enum(
         "console_message",
         "CONSOLE_NONE", CONSOLE_MESSAGE_NONE,
@@ -482,8 +474,7 @@ namespace other {
         "CONSOLE_INFO", CONSOLE_MESSAGE_INFO,
         "CONSOLE_WARN", CONSOLE_MESSAGE_WARN,
         "CONSOLE_ERROR", CONSOLE_MESSAGE_ERROR,
-        "CONSOLE_COMMAND", CONSOLE_MESSAGE_COMMAND
-      );
+        "CONSOLE_COMMAND", CONSOLE_MESSAGE_COMMAND);
       lua_state.new_enum(
         "driver_state",
         "STOPPED", driver_state::DRIVER_STATE_STOPPED,
@@ -491,8 +482,7 @@ namespace other {
         "RUNNING", driver_state::DRIVER_STATE_RUNNING,
         "PAUSED", driver_state::DRIVER_STATE_PAUSED,
         "SHUTTING_DOWN", driver_state::DRIVER_STATE_SHUTTING_DOWN,
-        "NUM_DRIVER_STATES", driver_state::NUM_STATES
-      );
+        "NUM_DRIVER_STATES", driver_state::NUM_STATES);
       lua_state.new_enum(
         "driver_event",
         "START", driver_event::DRIVER_EVENT_START,
@@ -500,8 +490,7 @@ namespace other {
         "PAUSE", driver_event::DRIVER_EVENT_PAUSE,
         "RESUME", driver_event::DRIVER_EVENT_RESUME,
         "STOP", driver_event::DRIVER_EVENT_STOP,
-        "NUM_DRIVER_EVENTS", driver_event::NUM_EVENTS
-      );
+        "NUM_DRIVER_EVENTS", driver_event::NUM_EVENTS);
 
       bind_linear_algebra_types(lua_state);
       bind_rendering_types(lua_state);

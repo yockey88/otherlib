@@ -10,6 +10,10 @@
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "render/default_pass_executor_resolver.hpp"
+#include "ui/inspector_widgets.hpp"
+#include "ui/script/script_field_ui.hpp"
+
+#include "asset/pipelines/rendering_pipeline_pipeline.hpp"
 
 namespace other {
   namespace detail {
@@ -22,7 +26,20 @@ namespace other {
     render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*);
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_window_sized_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
+
+    void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_model_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
+    void upload_material_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
+    void upload_bone_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
+
+    inline void no_op_upload_per_frame(render_pipeline&, const render_data&, resource_handle) {}
 
   }  // namespace detail
 
@@ -30,6 +47,7 @@ namespace other {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
     register_builtin_resource_tags();
     register_builtin_render_executors();
+    register_builtin_renderer_debug_streams();
 
     configure_pipelines(kernel);
 
@@ -48,6 +66,110 @@ namespace other {
 
     events.register_event("ls.windows");
     events.add_listener("ls.windows", [this](const value& data) { handle_ls_windows_event(&get_driver().get_kernel(), data); });
+
+    events.add_listener("rendering-pipeline.asset-loaded", [this](const value& data) { handle_rendering_pipeline_asset_loaded_event(&get_driver().get_kernel(), data); });
+    events.add_listener("rendering-pipeline.asset-unloaded", [this](const value& data) { handle_rendering_pipeline_asset_unloaded_event(&get_driver().get_kernel(), data); });
+
+    auto& field_editors = get_driver().get_field_editors();
+    field_editors.register_editor<int8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int8(l, *static_cast<int8_t*>(d)); });
+    field_editors.register_editor<int16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int16(l, *static_cast<int16_t*>(d)); });
+    field_editors.register_editor<int32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int32(l, *static_cast<int32_t*>(d)); });
+    field_editors.register_editor<int64_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int64(l, *static_cast<int64_t*>(d)); });
+    field_editors.register_editor<uint8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint8(l, *static_cast<uint8_t*>(d)); });
+    field_editors.register_editor<uint16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint16(l, *static_cast<uint16_t*>(d)); });
+    field_editors.register_editor<uint32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint32(l, *static_cast<uint32_t*>(d)); });
+    field_editors.register_editor<uint64_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint64(l, *static_cast<uint64_t*>(d)); });
+    field_editors.register_editor<float>([](const std::string_view l, void* d, const ui::field_context& c) {
+      float& v = *static_cast<float*>(d);
+      if (c.flags.is_color) {
+        ui::inspector::begin_property_row(c.flags.display_name.empty() ? l : c.flags.display_name);
+        std::string id = std::format("##{}", l);
+        bool ch = ImGui::ColorEdit3(id.c_str(), &v, ImGuiColorEditFlags_Float);
+        ui::inspector::end_property_row();
+        return ch;
+      }
+
+      if (c.flags.has_range) {
+        ui::inspector::begin_property_row(l);
+        std::string id = std::format("##{}", l);
+        bool ch = ImGui::SliderFloat(id.c_str(), &v, c.flags.range.x, c.flags.range.y);
+        ui::inspector::end_property_row();
+        return ch;
+      }
+
+      float speed = c.flags.speed.value_or(0.01f);
+      return ui::inspector::property_float(l, v, speed);
+    });
+
+    field_editors.register_editor<double>([](const std::string_view label, void* d, const ui::field_context& c) {
+      double& v = *static_cast<double*>(d);
+      float f = static_cast<float>(v);
+      if (c.flags.has_range) {
+        ui::inspector::begin_property_row(label);
+
+        std::string id = std::format("##{}", label);
+        bool ch = ImGui::SliderFloat(id.c_str(), &f, c.flags.range.x, c.flags.range.y);
+
+        ui::inspector::end_property_row();
+        if (ch) {
+          v = f;
+        }
+
+        return ch;
+      }
+
+      float speed = c.flags.speed.value_or(0.01f);
+      if (ui::inspector::property_float(label, f, speed)) {
+        v = static_cast<double>(f);
+        return true;
+      }
+
+      return false;
+    });
+
+    field_editors.register_editor<glm::vec2>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec2(l, *static_cast<glm::vec2*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::vec3>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec3(l, *static_cast<glm::vec3*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::vec4>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec4(l, *static_cast<glm::vec4*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::mat3>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_mat3(l, *static_cast<glm::mat3*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::mat4>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_mat4(l, *static_cast<glm::mat4*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::quat>([](const std::string_view label, void* d, const ui::field_context& c) {
+      auto& q = *static_cast<glm::quat*>(d);
+
+      glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
+      if (ui::inspector::property_vec3(label, euler, c.flags.speed.value_or(0.01f))) {
+        q = glm::quat(glm::radians(euler));
+        return true;
+      }
+      return false;
+    });
+    field_editors.register_editor<std::string>([](const std::string_view label, void* d, const ui::field_context& c) {
+      auto& s = *static_cast<std::string*>(d);
+
+      char buf[256];
+      std::strncpy(buf, s.c_str(), sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+
+      if (ui::inspector::property_text(label, buf, sizeof(buf))) {
+        s = std::string(buf);
+        return true;
+      }
+      return false;
+    });
+    field_editors.register_editor<orthonormal_basis>([](const std::string_view, void*, const ui::field_context&) {
+      return false;  // intentional no-op, preserves transform.local_basis behaviour
+    });
+
+    auto scalar = [](ImGuiDataType ig) {
+      return [ig](const std::string_view label, void* d, const ui::field_context&) {
+        std::string id = std::format("{}##scalar", label);
+        return ImGui::DragScalar(id.c_str(), ig, d, 0.1f, nullptr, nullptr, nullptr, 0);
+      };
+    };
+    field_editors.register_value_editor(value_type::INT8, scalar(ImGuiDataType_S8), true);
+    field_editors.register_value_editor(value_type::INT16, scalar(ImGuiDataType_S16), true);
+    field_editors.register_value_editor(value_type::INT32, scalar(ImGuiDataType_S32), true);
+    field_editors.register_value_editor(value_type::INT64, scalar(ImGuiDataType_S64), true);
+    field_editors.register_value_editor(value_type::UINT8, scalar(ImGuiDataType_U8), true);
   }
 
   void rendering_system::late_initialize(driver_kernel* kernel) {
@@ -70,7 +192,8 @@ namespace other {
           renderer_ptr->initialize_pass_resolver(nullptr);
         },
         no_args(),
-        interface_cardinality::SINGLE);
+        interface_cardinality::SINGLE  //
+      );
     };
     register_interfaces_in_registry(kernel->driver_registry());
     register_interfaces_in_registry(kernel->project_registry());
@@ -84,7 +207,6 @@ namespace other {
     driver_ui_ptr->shutdown();
     driver_ui_ptr = nullptr;
 
-    renderer_ptr->remove_pipeline("Rendering Pipeline");
     pass_resolver_ptr = nullptr;
     renderer_ptr = nullptr;
   }
@@ -96,6 +218,7 @@ namespace other {
       viewport_size = window_size;
     }
 
+    OTHER_ASSERT(kernel->has_core_system<scene_system>(), "Scene system is not available in driver kernel.");
     auto& scenes = sibling<scene_system>(*kernel);
     auto* active_scene = scenes.get_active_scene();
     OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not available in driver kernel.");
@@ -109,7 +232,7 @@ namespace other {
     }
 
     if (data_ptr != nullptr) {
-      auto& registry = renderer_ptr->get_debug_stream_registry();  // see F3
+      auto& registry = renderer_ptr->get_debug_stream_registry();
       for (const auto& [name, def] : registry.entries()) {
         data_ptr->debug_data.configure_stream(def.name, def.element_size, def.max_per_frame);
       }
@@ -133,6 +256,11 @@ namespace other {
   void rendering_system::close_ui_window(const std::string_view name) {
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI subsystem is not initialized. Cannot close UI window '{}'", name);
     driver_ui_ptr->close_window(name);
+  }
+
+  void rendering_system::close_all_windows() {
+    OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI subsystem is not initialized. Cannot close all UI windows");
+    driver_ui_ptr->close_all_windows();
   }
 
   ui::menu rendering_system::build_menu(const std::string_view name, const sol::table& menu_table) {
@@ -198,60 +326,14 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in register_builtin_resource_tags.");
 
     auto& reg = renderer_ptr->get_binding_registry();
-    reg.register_per_frame(resource_tag(resource_tag::kCameraTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      if (!d.primary_camera) {
-        return;
-      }
-
-      auto gpu = d.primary_camera->to_gpu_data();
-      r.upload_buffer(h, &gpu, sizeof(gpu));
-    });
-
-    reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::point_light_buffer buf{};
-      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-        buf.lights[i] = d.point_lights[i];
-      }
-      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
-    });
-
-    reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), [](render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::directional_light_buffer dir_light_buffer_data;
-      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
-        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
-      }
-      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
-    });
-
-    // screen is simply a marker tag, render_pipeline tracks screen_texture_handle separately for to-screen blit
-    reg.register_per_frame(resource_tag(resource_tag::kScreenTag), [](render_pipeline&, const render_data&, resource_handle) {});
-
-    reg.register_per_draw(resource_tag(resource_tag::kModelTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
-      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
-      OTHER_ASSERT(data.size() == sizeof(gpu::model_matrix_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::model_matrix_buffer));
-
-      const auto& models = d.model_buffers[draw_idx];
-      std::span bytes{ reinterpret_cast<const uint8_t*>(&models), sizeof(gpu::model_matrix_buffer) };
-      std::ranges::copy(bytes, data.begin());
-    });
-
-    reg.register_per_draw(resource_tag(resource_tag::kMaterialTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> out) {
-      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
-      OTHER_ASSERT(out.size() == sizeof(gpu::graphics_material_buffer), "Data span size {} does not match expected size {}", out.size(), sizeof(gpu::graphics_material_buffer));
-
-      const auto& materials = d.material_buffers[draw_idx];
-      std::span bytes{ reinterpret_cast<const uint8_t*>(&materials), sizeof(gpu::graphics_material_buffer) };
-      std::ranges::copy(bytes, out.begin());
-    });
-
-    reg.register_per_draw(resource_tag(resource_tag::kBoneTag), [](const render_data& d, size_t draw_idx, std::span<uint8_t> out) {
-      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
-      OTHER_ASSERT(out.size() == sizeof(gpu::bone_matrix_buffer), "Data span size {} does not match expected size {}", out.size(), sizeof(gpu::bone_matrix_buffer));
-
-      const auto& bones = d.bone_buffers[draw_idx];
-      std::span bytes{ reinterpret_cast<const uint8_t*>(&bones), sizeof(gpu::bone_matrix_buffer) };
-      std::ranges::copy(bytes, out.begin());
-    });
+    reg.register_per_frame(resource_tag(resource_tag::kCameraTag), &detail::upload_camera_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), &detail::upload_point_light_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), &detail::upload_directional_light_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kSimulationEnvironmentTag), &detail::upload_simulation_environment_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kScreenTag), &detail::no_op_upload_per_frame);
+    reg.register_per_draw(resource_tag(resource_tag::kModelTag), &detail::upload_model_buffer_per_draw);
+    reg.register_per_draw(resource_tag(resource_tag::kMaterialTag), &detail::upload_material_buffer_per_draw);
+    reg.register_per_draw(resource_tag(resource_tag::kBoneTag), &detail::upload_bone_buffer_per_draw);
   }
 
   void rendering_system::register_builtin_render_executors() {
@@ -262,12 +344,14 @@ namespace other {
     reg.register_executor("draw_scene", &detail::make_draw_scene);
     reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
     reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
+    reg.register_executor("window_sized_compute_dispatch", &detail::make_window_sized_compute_dispatch);
+    reg.register_executor("generate_mipmaps", &detail::make_generate_mipmaps);
+    reg.register_executor("downsample_chain", &detail::make_downsample_chain);
     reg.register_executor("debug_stream", &detail::make_debug_stream);
   }
 
-  void rendering_system::register_buildin_renderer_debug_streams() {
-    // auto& reg = renderer_ptr->get_debug_stream_registry();
-
+  void rendering_system::register_builtin_renderer_debug_streams() {
+    auto& reg = renderer_ptr->get_debug_stream_registry();
     // reg.register_stream("debug.lines", debug_stream_definition{
     //                                      .element_size = sizeof(debug_line),
     //                                      .max_per_frame = 4096,
@@ -275,12 +359,11 @@ namespace other {
     //                                        .shader = "debug_line_shader",
     //                                        .topology = mesh::primitive_type::LINES,
     //                                        .vertex_layout = {
-    //                                          vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
-    //                                          vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
+    //                                          vertex_attribute{ value_type::VEC3, "position", 0, 0 },
+    //                                          vertex_attribute{ value_type::VEC3, "color", 1, 3 },
     //                                        },
     //                                      },
     //                                    });
-
     // reg.register_stream("debug.triangles", debug_stream_definition{
     //                                          .element_size = sizeof(debug_triangle),
     //                                          .max_per_frame = 2048,
@@ -288,14 +371,14 @@ namespace other {
     //                                            .shader = "debug_tri_shader",
     //                                            .topology = mesh::primitive_type::TRIANGLES,
     //                                            .vertex_layout = {
-    //                                              vertex_attribute{ value_type::FLOAT, "position", 0, 0 },
-    //                                              vertex_attribute{ value_type::FLOAT, "color", 1, 3 },
+    //                                              vertex_attribute{ value_type::VEC3, "position", 0, 0 },
+    //                                              vertex_attribute{ value_type::VEC3, "color", 1, 3 },
     //                                            },
     //                                          },
     //                                        });
 
-    // // Load the recipe shaders once at registration time so the first frame
-    // // doesn't hit them lazily on draw_debug_stream.
+    // Load the recipe shaders once at registration time so the first frame
+    // doesn't hit them lazily on draw_debug_stream.
     // for (auto* shader_name : { "debug_line_shader", "debug_tri_shader" }) {
     //   resource_handle h = shader::create(
     //     shader_name,
@@ -319,13 +402,26 @@ namespace other {
     OTHER_ASSERT(pass_resolver_ptr != nullptr, "Pass resolver is null!");
     renderer_ptr->initialize_pass_resolver(pass_resolver_ptr.get());
 
-    std::vector<std::string> pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
-    if (pipeline_names.empty()) {
-      pipeline_definition default_pipeline_def = get_default_instancing_pipeline();
-      renderer_ptr->add_pipeline("Rendering Pipeline", default_pipeline_def);
-      get_driver().add_rendering_pipeline_asset("default-rendering-pipeline", default_pipeline_def);
-    } else {
+    // {
+    //   auto& ass = pending_rendering_pipeline_assets.emplace_back(pipeline_asset{
+    //     .asset_id = 0,
+    //     .definition = get_default_instancing_pipeline(),
+    //   });
+    //   natural_t default_pl = get_driver().add_rendering_pipeline_asset("default-rendering-pipeline", ass.definition);
+    //   ass.asset_id = default_pl;
+    // }
+
+    std::vector<std::string> pipeline_paths = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
+    if (pipeline_paths.size() > 0) {
       CORE_LOG_WARN("No rendering pipelines specified in configuration.");
+      for (const auto& pipeline_path : pipeline_paths) {
+        CORE_LOG_INFO("Adding rendering pipeline: {}", pipeline_path);
+        auto& ass = pending_rendering_pipeline_assets.emplace_back(pipeline_asset{
+          .asset_id = 0,
+        });
+        natural_t id = get_driver().begin_asset_load(filepath(pipeline_path));
+        ass.asset_id = id;
+      }
     }
   }
 
@@ -360,6 +456,45 @@ namespace other {
     events->trigger_event("console.output", ss.str());
   }
 
+  void rendering_system::handle_rendering_pipeline_asset_loaded_event(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(kernel != nullptr, "Kernel is null.");
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for rendering pipeline asset loaded event. Expected UINT64.");
+
+    OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not initialized in the kernel.");
+    auto& assets = kernel->get_core_system<asset_system>();
+
+    natural_t asset_id = data;
+    auto* asset_pipeline_ctx = assets.get_asset_pipeline_context(asset_id);
+    OTHER_ASSERT(asset_pipeline_ctx != nullptr, "Asset pipeline context is not available for the given asset ID");
+
+    auto itr = std::ranges::find(pending_rendering_pipeline_assets, asset_id, &pipeline_asset::asset_id);
+    OTHER_ASSERT(itr != pending_rendering_pipeline_assets.end(), "Rendering pipeline asset loaded event for unknown asset ID: {}", asset_id);
+
+    rendering_pipeline_pipeline* pl = dynamic_cast<rendering_pipeline_pipeline*>(asset_pipeline_ctx->pipeline.get());
+    OTHER_ASSERT(pl != nullptr, "Rendering pipeline pipeline is not available for the given asset ID");
+
+    itr->definition = pl->definition;
+
+    CORE_LOG_INFO("Adding Rendering Pipeline: {}", itr->definition.name);
+    renderer_ptr->add_pipeline(itr->definition.name, itr->definition);
+    rendering_pipeline_assets.push_back(*itr);
+    pending_rendering_pipeline_assets.erase(itr);
+  }
+
+  void rendering_system::handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(kernel != nullptr, "Kernel is null.");
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for rendering pipeline asset unloaded event. Expected UINT64.");
+
+    natural_t asset_id = data;
+    auto itr = std::ranges::find(rendering_pipeline_assets, asset_id, &pipeline_asset::asset_id);
+    OTHER_ASSERT(itr != rendering_pipeline_assets.end(), "Rendering pipeline asset unloaded event for unknown asset ID: {}", asset_id);
+
+    renderer_ptr->remove_pipeline(itr->definition.name);
+    rendering_pipeline_assets.erase(itr);
+  }
+
   namespace detail {
 
     render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*) {
@@ -379,6 +514,7 @@ namespace other {
         auto* sh = pl->get_pass_shader(pass_name);
         OTHER_ASSERT(sh, "fullscreen_quad: no shader bound for pass '{}'", pass_name);
         render_pipeline::apply_uniforms(*sh, uniforms);
+        sh->bind();
         ctx.draw_quad();
       };
     }
@@ -389,17 +525,92 @@ namespace other {
       OTHER_ASSERT(groups_it != params.end(), "compute_dispatch: pass '{}' missing 'groups' param", def.name);
       glm::vec3 groups = groups_it->second;
 
-      shader::compute_barrier_type barrier = shader::compute_barrier_type::NONE;
+      shader::compute_barrier_type barrier = shader::compute_barrier_type::SHADER_IMAGE_ACCESS;
       if (auto b_it = params.find("barrier"); b_it != params.end()) {
-        barrier = compute_barrier_type_from_string(b_it->second);
+        std::string bar_str = b_it->second;
+        barrier = compute_barrier_type_from_string(bar_str);
       }
-      return [g = groups, b = barrier, pass_name = def.name](pass_context& ctx) {
+      return [g = groups, uniforms = def.executor.uniforms, b = barrier, pass_name = def.name](pass_context& ctx) {
         auto* sh = ctx.shader_for_pass();
         OTHER_ASSERT(sh != nullptr, "compute_dispatch: no shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
         sh->bind();
         ctx.dispatch(glm::uvec3(g), b);
       };
     };
+
+    render_graph::pass_executor make_window_sized_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl) {
+      const auto& params = def.executor.params;
+      auto groups_it = params.find("groups");
+      OTHER_ASSERT(groups_it != params.end(), "window_sized_compute_dispatch: pass '{}' missing 'groups' param", def.name);
+      glm::vec3 groups = groups_it->second;
+
+      shader::compute_barrier_type barrier = shader::compute_barrier_type::SHADER_IMAGE_ACCESS;
+      if (auto b_it = params.find("barrier"); b_it != params.end()) {
+        std::string bar_str = b_it->second;
+        barrier = compute_barrier_type_from_string(bar_str);
+      }
+      return [g = groups, uniforms = def.executor.uniforms, b = barrier, pass_name = def.name, pl](pass_context& ctx) {
+        auto* sh = ctx.shader_for_pass();
+        OTHER_ASSERT(sh != nullptr, "window_sized_compute_dispatch: no shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
+        sh->bind();
+
+        OTHER_ASSERT(pl != nullptr, "window_sized_compute_dispatch: no render pipeline provided for pass '{}'", pass_name);
+        const glm::ivec2 win = pl->get_window_size();
+        const glm::uvec3 local = glm::uvec3(g.x, g.y, g.z);
+        const glm::uvec3 groups((win.x + local.x - 1) / local.x, (win.y + local.y - 1) / local.y, 1u);
+        ctx.dispatch(groups, b);
+      };
+    };
+
+    render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl) {
+      OTHER_ASSERT(!def.outputs.empty(), "generate_mips: pass '{}' needs an output texture", def.name);
+      opt<resource_handle> target = pl->find_texture_by_name(def.outputs.front().resource_name);
+      OTHER_ASSERT(target.has_value(), "generate_mips: target not found for pass '{}'", def.name);
+      return [target = *target](pass_context& ctx) {
+        // ctx.get_renderer().rendering()->api()->generate_texture_mipmaps(target);  // thin backend wrapper, 01 §1
+      };
+    }
+
+    render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl) {
+      OTHER_ASSERT(!def.outputs.empty(), "downsample_chain: pass '{}' must declare the pyramid as an output", def.name);
+      const std::string target_name = def.outputs.front().resource_name;
+      opt<resource_handle> target = pl->find_texture_by_name(target_name);
+      OTHER_ASSERT(target.has_value(), "downsample_chain: target texture '{}' not found for pass '{}'", target_name, def.name);
+
+      glm::ivec2 group_size = { 8, 8 };
+      if (auto it = def.executor.params.find("groups"); it != def.executor.params.end()) {
+        glm::vec3 g = it->second;
+        group_size = { (int32_t)g.x, (int32_t)g.y };
+      }
+
+      return [target = *target, uniforms = def.executor.uniforms, gs = group_size, pass_name = def.name](pass_context& ctx) {
+        auto& r = ctx.get_renderer();
+        auto& tex = r.get_resource<texture>(target);
+        const uint32_t levels = tex.mip_levels;  // public field; getter optional
+        OTHER_ASSERT(levels > 1, "downsample_chain: target of pass '{}' has <= 1 mip level", pass_name);
+
+        auto* sh = ctx.shader_for_pass();
+        OTHER_ASSERT(sh != nullptr, "downsample_chain: no compute shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
+        sh->bind();
+
+        glm::ivec2 sz = tex.get_size();  // base-level size
+        const texture::format fmt = tex.get_format();
+        for (uint32_t i = 0; i + 1 < levels; ++i) {
+          const glm::ivec2 dst = { std::max(1, sz.x >> 1), std::max(1, sz.y >> 1) };
+          tex.bind_image(0, i, true, 0, fmt, READ);       // src = i
+          tex.bind_image(1, i + 1, true, 0, fmt, WRITE);  // dst = i+1
+          // imageStore ignores viewport, shader self-bounds via imageSize(dst).
+          ctx.dispatch({ (dst.x + gs.x - 1) / gs.x, (dst.y + gs.y - 1) / gs.y, 1u },
+                       shader::compute_barrier_type::SHADER_IMAGE_ACCESS);
+          sz = dst;
+        }
+        // If a later pass SAMPLES the pyramid, consumer pass needs to request a TEXTURE_FETCH barrier
+        // image-access alone doesn't order texture fetches.
+      };
+    }
 
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl) {
       const auto& params = def.executor.params;
@@ -416,6 +627,62 @@ namespace other {
         }
         ctx.draw_debug_stream(stream_name, *stream, streams.view(stream_name), streams.count(stream_name));
       };
+    }
+
+    void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      if (!d.primary_camera) {
+        return;
+      }
+
+      auto gpu = d.primary_camera->to_gpu_data();
+      r.upload_buffer(h, &gpu, sizeof(gpu));
+    }
+
+    void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::point_light_buffer buf{};
+      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
+        buf.lights[i] = d.point_lights[i];
+      }
+      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
+    }
+
+    void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::directional_light_buffer dir_light_buffer_data;
+      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
+        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
+      }
+      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+    }
+
+    void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      r.upload_to_handle(h, &d.simulation_environment, sizeof(gpu::simulation_environment_buffer));
+    }
+
+    void upload_model_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(data.size() == sizeof(gpu::model_matrix_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::model_matrix_buffer));
+
+      const auto& models = d.model_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&models), sizeof(gpu::model_matrix_buffer) };
+      std::ranges::copy(bytes, data.begin());
+    }
+
+    void upload_material_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(data.size() == sizeof(gpu::graphics_material_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::graphics_material_buffer));
+
+      const auto& materials = d.material_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&materials), sizeof(gpu::graphics_material_buffer) };
+      std::ranges::copy(bytes, data.begin());
+    }
+
+    void upload_bone_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
+      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
+      OTHER_ASSERT(data.size() == sizeof(gpu::bone_matrix_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::bone_matrix_buffer));
+
+      const auto& bones = d.bone_buffers[draw_idx];
+      std::span bytes{ reinterpret_cast<const uint8_t*>(&bones), sizeof(gpu::bone_matrix_buffer) };
+      std::ranges::copy(bytes, data.begin());
     }
 
   }  // namespace detail

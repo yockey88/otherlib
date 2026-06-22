@@ -29,16 +29,11 @@ namespace other {
       return sandbox_environment.template operator[](std::forward<T>(key));
     }
 
-    template <typename T>
-    auto operator[](T&& key) && {
-      return std::move(sandbox_environment).template operator[](std::forward<T>(key));
-    }
-
     sol::environment& environment() { return sandbox_environment; }
     const sol::environment& environment() const { return sandbox_environment; }
 
     void script(const std::string_view code);
-    sol::table try_load_table(lua_host* lua_host, const filepath& path);
+    opt<sol::table> try_load_table(lua_host* lua_host, const filepath& path);
 
    private:
     sol::environment sandbox_environment;

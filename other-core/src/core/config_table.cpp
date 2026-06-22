@@ -125,6 +125,19 @@ namespace other {
       }
     }
 
+    toml::node_view project_file = config.table.at_path("application.project-file");
+    if (project_file.is_string()) {
+      filepath path = filepath(project_file.as_string()->get());
+      if (path.empty()) {
+        std::println(std::cerr, "Invalid value for 'application.project-file', empty path provided.");
+      } else if (!std::filesystem::exists(path)) {
+        std::println(std::cerr, "Invalid value for 'application.project-file', file does not exist: {}", path.string());
+      } else {
+        config.project_file = path;
+        CORE_LOG_INFO("Using project file: {}", path.string());
+      }
+    }
+
     if (!driver.empty()) {
       config.dynamic_driver_rel_path = driver;
     }

@@ -156,6 +156,17 @@ namespace other {
       directional_light lights[kMaxDirectionalLights];
     };
 
+    GPU_ALIGN struct simulation_environment_buffer {
+      glm::vec4 sun_direction;  //< xyz = unit vector TO sun, w = angular radius
+      glm::vec4 sun_color;      //< rgb = radiance, w = intensity scale
+      glm::vec4 ambient_color;  //< rgb = average of all nearby light sources, w = intensity scale
+      glm::vec4 zenith_color;   //< rgb = color, w = turbidity
+      glm::vec4 horizon_color;  //< rgb = color, w = padding
+      glm::vec4 ground_color;   //< rgb = color, w = padding
+      glm::vec4 world_min;      //< AABB min, w = padding
+      glm::vec4 world_max;      //< AABB max, w = exposure
+    };
+
     GPU_ALIGN struct camera_data {
       glm::vec4 position;
       glm::vec4 forward;

@@ -7,7 +7,6 @@ shadow_map_pass_name = "shadow-map-pass"
 shading_pass_name = "shading-pass"
 light_space_matrix_uniform_name = "OE_light_space_matrix"
 
-
 [resources]
 buffers = [
   { name = "camera_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "camera" },
@@ -15,6 +14,7 @@ buffers = [
   { name = "bone_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "bone" },
   { name = "point_light_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "point_light" },
   { name = "direction_light_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "direction_light" },
+  { name = "simulation_environment_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "simulation_environment" },
   { name = "material_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "material" },
 ]
 textures = [
@@ -22,28 +22,58 @@ textures = [
   { name = "normal_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "position_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "ambient_shadow_map", use_window_size = true, type = "TEXTURE_2D", format = "DEPTHF" },
-  { name = "screen_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F", tag = "screen" },
+  # { name = "voxel_texture", use_window_size = true, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 128, y = 128 }, depth = 128 },
+  { name = "environment_map", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 512, y = 512 }, depth = 6 }, # basically cubemap
+  { name = "shaded_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
+  { name = "tonemapped_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
+  { name = "smaa_edge_texture", use_window_size = true,  type = "TEXTURE_2D", format = "RG8"   },
+  { name = "smaa_weight_texture", use_window_size = true,  type = "TEXTURE_2D", format = "RGBA8" },
+  { name = "smaa_area_texture", use_window_size = false, type = "TEXTURE_2D", format = "RG8", size = { x = 160, y = 560 }, seed_texture_path = "resources/smaa-area-tex.bin" },
+  { name = "smaa_search_texture", use_window_size = false, type = "TEXTURE_2D", format = "R8", size = { x = 64,  y = 16  }, seed_texture_path = "resources/smaa-search-tex.bin" },
+  { name = "smaa_texture", use_window_size = true,  type = "TEXTURE_2D", format = "RGBA8", tag = "screen" },
 ]
 shaders = [
+  # { name = "voxel_clear_shader", compute_path = "resources/voxel-clear.comp" },
   { name = "geometry_pass_shader", vertex_path = "resources/basic-instancing-gbuffer.vert", fragment_path = "resources/basic-instancing-gbuffer.frag" },
+  # { name = "voxel_inject_shader", compute_path = "resources/voxel-inject.comp" },
   { name = "shadow_map_shader", vertex_path = "resources/basic-instancing-shadow-map.vert", fragment_path = "resources/basic-instancing-shadow-map.frag" },
+  { name = "environment_map_pass", compute_path = "resources/basic-environment-map.comp" },
   { name = "shading_pass_shader", vertex_path = "resources/basic-shading.vert", fragment_path = "resources/basic-shading.frag" },
+  { name = "tonemap_pass_shader", vertex_path = "resources/basic-textured-quad.vert", fragment_path = "resources/basic-tonemap.frag" },
+  { name = "smaa_edges_shader", vertex_path = "resources/smaa-edges.vert", fragment_path = "resources/smaa-edges.frag" },
+  { name = "smaa_weights_shader", vertex_path = "resources/smaa-weights.vert", fragment_path = "resources/smaa-weights.frag" },
+  { name = "smaa_blend_shader", vertex_path = "resources/smaa-blend.vert", fragment_path = "resources/smaa-blend.frag" },
   { name = "screen_shader", vertex_path = "resources/basic-textured-quad.vert", fragment_path = "resources/basic-textured-quad.frag" },
 ]
 
 [frame]
 bindings = [
-  { name = "per_draw.material_buffer", tag = "material", scope = "PER_DRAW", type = "STORAGE_BUFFER", binding = 0 },
-  { name = "per_draw.model_buffer", tag = "model", scope = "PER_DRAW" },
-  { name = "per_draw.camera_buffer", tag = "camera", scope = "PER_FRAME" },
-  { name = "per_draw.bone_buffer", tag = "bone", scope = "PER_DRAW" },
-  { name = "per_frame.point_light_buffer", tag = "point_light", scope = "PER_FRAME" },
-  { name = "per_frame.direction_light_buffer", tag = "direction_light", scope = "PER_FRAME" },
+  { name = "per_draw.material_buffer", tag = "material", scope = "PER_DRAW", type = "STORAGE_BUFFER", element_size = 6400 },
+  { name = "per_draw.model_buffer", tag = "model", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6400 },
+  { name = "per_draw.camera_buffer", tag = "camera", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 208 },
+  { name = "per_draw.bone_buffer", tag = "bone", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6416 },
+  { name = "per_frame.point_light_buffer", tag = "point_light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 64 },
+  { name = "per_frame.direction_light_buffer", tag = "direction_light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 64 },
+  { name = "per_frame.simulation_environment_buffer", tag = "simulation_environment", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 128 }
+]
+pass-bindings = [
+  { pass_name = "geometry-pass", name = "per_draw.material_buffer", binding = 0 }, 
+  { pass_name = "geometry-pass", name = "per_draw.model_buffer", binding = 1 }, 
+  { pass_name = "geometry-pass", name = "per_draw.camera_buffer", binding = 2 }, 
+  { pass_name = "geometry-pass", name = "per_draw.bone_buffer", binding = 3 },
+  { pass_name = "environment-map-pass", name = "per_frame.simulation_environment_buffer", binding = 0 }
 ]
 passes = [
-  { name = "geometry-pass", pass_type = "RENDER_PASS", shader_name = "geometry_pass_shader", bindings = [ { name = "material_buffer", binding = 0 }, { name = "model_buffer", binding = 1 }, { name = "camera_buffer", binding = 2 }, { name = "bone_buffer", binding = 3 } ], clear_color = [0.0, 0.0, 0.0, 1.0] },
+  # { name = "voxel-clear-pass", pass_type = "COMPUTE_PASS", shader_name = "voxel_clear_shader" },
+  { name = "geometry-pass", pass_type = "RENDER_PASS", shader_name = "geometry_pass_shader", clear_color = [0.0, 0.0, 0.0, 1.0] },
+  # { name = "voxel-inject", pass_type = "COMPUTE_PASS", shader_name = "voxel_inject_shader" },
   { name = "shadow-map-pass", pass_type = "RENDER_PASS", shader_name = "shadow_map_shader" },
+  { name = "environment-map-pass", pass_type = "COMPUTE_PASS", shader_name = "environment_map_pass" },
   { name = "shading-pass", pass_type = "RENDER_PASS", shader_name = "shading_pass_shader", clear_color = [0.2, 0.2, 0.2, 1.0] },
+  { name = "tonemap-pass", pass_type = "RENDER_PASS", shader_name = "tonemap_pass_shader", clear_color = [0.2, 0.2, 0.2, 1.0] },
+  { name = "smaa-edges", pass_type = "RENDER_PASS", shader_name = "smaa_edges_shader", clear_color = [0.0, 0.0, 0.0, 0.0] },
+  { name = "smaa-weights", pass_type = "RENDER_PASS", shader_name = "smaa_weights_shader", clear_color = [0.0, 0.0, 0.0, 0.0] },
+  { name = "smaa-blend", pass_type = "RENDER_PASS", shader_name = "smaa_blend_shader" },
   { name = "to-screen", pass_type = "RENDER_PASS", shader_name = "screen_shader", create_framebuffer = false },
 ]
 inputs = [
@@ -51,7 +81,12 @@ inputs = [
   { pass_name = "geometry-pass", resource_name = "model_buffer", binding = 1 },
   { pass_name = "geometry-pass", resource_name = "camera_buffer", binding = 2 },
   { pass_name = "geometry-pass", resource_name = "bone_buffer", binding = 3 },
+  # { pass_name = "voxel-inject", resource_name = "simulation_environment_buffer", binding = 0 },  # buffer, no texture slot
+  # { pass_name = "voxel-inject", resource_name = "voxel_texture" },     
+  # { pass_name = "voxel-inject", resource_name = "position_texture", attachment = "COLOR" },
+  # { pass_name = "voxel-inject", resource_name = "normal_texture", attachment = "COLOR" },
   { pass_name = "shadow-map-pass", resource_name = "model_buffer", binding = 1 },
+  { pass_name = "environment-map-pass", resource_name = "simulation_environment_buffer", binding = 0 },
   { pass_name = "shading-pass", resource_name = "color_texture", attachment = "COLOR" },
   { pass_name = "shading-pass", resource_name = "normal_texture", attachment = "COLOR" },
   { pass_name = "shading-pass", resource_name = "position_texture", attachment = "COLOR" },
@@ -59,19 +94,41 @@ inputs = [
   { pass_name = "shading-pass", resource_name = "direction_light_buffer", binding = 0 },
   { pass_name = "shading-pass", resource_name = "point_light_buffer", binding = 1 },
   { pass_name = "shading-pass", resource_name = "camera_buffer", binding = 2 },
-  { pass_name = "to-screen", resource_name = "screen_texture", attachment = "COLOR" },
+  { pass_name = "shading-pass", resource_name = "environment_map" },
+  { pass_name = "tonemap-pass", resource_name = "shaded_texture", attachment = "COLOR" },
+  { pass_name = "smaa-edges", resource_name = "tonemapped_texture", attachment = "COLOR" },
+  { pass_name = "smaa-weights", resource_name = "smaa_edge_texture", attachment = "COLOR" },
+  { pass_name = "smaa-weights", resource_name = "smaa_area_texture", attachment = "COLOR" },
+  { pass_name = "smaa-weights", resource_name = "smaa_search_texture", attachment = "COLOR" },
+  { pass_name = "smaa-blend", resource_name = "tonemapped_texture", attachment = "COLOR" },
+  { pass_name = "smaa-blend", resource_name = "smaa_weight_texture", attachment = "COLOR" },
+  { pass_name = "to-screen", resource_name = "smaa_texture", attachment = "COLOR" },
 ]
 outputs = [
+  # { pass_name = "voxel-clear-pass", resource_name = "voxel_texture" },
   { pass_name = "geometry-pass", resource_name = "color_texture", attachment = "COLOR" },
   { pass_name = "geometry-pass", resource_name = "normal_texture", attachment = "COLOR" },
   { pass_name = "geometry-pass", resource_name = "position_texture", attachment = "COLOR" },
+  # { pass_name = "voxel-inject", resource_name = "voxel_texture", attachment = "COLOR" },
   { pass_name = "shadow-map-pass", resource_name = "ambient_shadow_map", attachment = "DEPTH" },
-  { pass_name = "shading-pass", resource_name = "screen_texture", attachment = "COLOR" },
+  { pass_name = "environment-map-pass", resource_name = "environment_map" },
+  { pass_name = "shading-pass", resource_name = "shaded_texture", attachment = "COLOR" },
+  { pass_name = "tonemap-pass", resource_name = "tonemapped_texture", attachment = "COLOR" },
+  { pass_name = "smaa-edges", resource_name = "smaa_edge_texture", attachment = "COLOR" },
+  { pass_name = "smaa-weights", resource_name = "smaa_weight_texture", attachment = "COLOR" },
+  { pass_name = "smaa-blend", resource_name = "smaa_texture", attachment = "COLOR" },
 ]
 executors = [
+  # { pass_name = "voxel-clear-pass", name = "compute_dispatch", params = [ { name = "barrier", value = "shader_image_access" }, { name = "groups", value=[8,8,32] } ], uniforms = [ { name = "OE_voxel_tex", value = 0 } ] },
   { pass_name = "geometry-pass", name = "draw_scene" },
+  # { pass_name = "voxel-inject", name = "window_sized_compute_dispatch", params = [ { name = "barrier", value = "shader_image_access" }, { name = "groups", value=[8,8,1] } ], uniforms = [ { name = "OE_voxel_tex_in", value = 0 }, { name = "OE_gbuff_position", value = 1 }, { name = "OE_gbuff_normal", value = 2 }, { name = "OE_voxel_tex_out", value = 3 } ] },
   { pass_name = "shadow-map-pass", name = "draw_scene" },
-  { pass_name = "shading-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_gbuff_albedo", value = 0 }, { name = "OE_gbuff_normal", value = 1 }, { name = "OE_gbuff_position", value = 2 }, { name = "OE_shadow_map", value = 3 } ] },
+  { pass_name = "environment-map-pass", name = "compute_dispatch", params = [ { name = "barrier", value = "shader_image_access" }, { name = "groups", value=[32,32,6] } ], uniforms = [ { name = "OE_env_cubemap", value = 0 } ] },
+  { pass_name = "shading-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_gbuff_albedo", value = 0 }, { name = "OE_gbuff_normal", value = 1 }, { name = "OE_gbuff_position", value = 2 }, { name = "OE_shadow_map", value = 3 }, { name = "OE_env_cubemap", value = 4 } ] },
+  { pass_name = "tonemap-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 }, { name = "OE_gamma", value = 2.2 } ] },
+  { pass_name = "smaa-edges", name = "fullscreen_quad", uniforms = [ { name = "OE_color",  value = 0 } ] },
+  { pass_name = "smaa-weights", name = "fullscreen_quad", uniforms = [ { name = "OE_edges",  value = 0 }, { name = "OE_area",   value = 1 }, { name = "OE_search", value = 2 } ] },
+  { pass_name = "smaa-blend", name = "fullscreen_quad", uniforms = [ { name = "OE_color",  value = 0 }, { name = "OE_weights", value = 1 } ] },
   { pass_name = "to-screen", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 } ] },
 ]
 resource_tags = [
@@ -80,6 +137,7 @@ resource_tags = [
   { name = "bone", type = "BUFFER" },
   { name = "point_light", type = "BUFFER" },
   { name = "direction_light", type = "BUFFER" },
+  { name = "simulation_environment", type = "BUFFER" },
   { name = "material", type = "BUFFER" },
   { name = "screen", type = "TEXTURE" },
 ]

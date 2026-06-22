@@ -92,7 +92,7 @@ namespace other {
   }
 
   void other_command_device::write_u64_at(const size_t address, const uint64_t value) {
-    assert(address + sizeof(uint64_t) <= kMemorySize && "Address out of bounds");
+    assert(address + sizeof(uint64_t) <= kMemorySize && "Address out of bounds, cannot write");
 
     uint16_t absolute_address = globalize_address(&current_program_metadata, static_cast<uint16_t>(address));
     const void* value_ptr = &value;
@@ -101,7 +101,7 @@ namespace other {
   }
 
   uint64_t other_command_device::read_u64_at(const size_t address) const {
-    assert(address + sizeof(uint64_t) <= kMemorySize && "Address out of bounds");
+    assert(address + sizeof(uint64_t) <= kMemorySize && "Address out of bounds, cannot read");
     uint16_t absolute_address = globalize_address(&current_program_metadata, static_cast<uint16_t>(address));
     const void* value_ptr = memory->unsafe_at(absolute_address);
     return *static_cast<const uint64_t*>(value_ptr);

@@ -53,7 +53,7 @@ namespace other {
         object_flags = std::move(other.object_flags);
 
         other.num_objects = 0;
-        other.full = false;
+        other.is_full = false;
         other.object_flags = {};
         other.pool = {};
       }
@@ -94,7 +94,7 @@ namespace other {
     std::pair<T&, size_t> emplace() {
       PROFILE_SECTION("memory_pool::emplace");
 
-      OTHER_ASSERT(!full, "Memory pool is full, cannot allocate more objects.");
+      OTHER_ASSERT(!is_full, "Memory pool is full, cannot allocate more objects.");
       /// save the index before incrementing num_objects
       size_t idx = num_objects++;
       if (idx >= max_objects()) {
@@ -111,11 +111,45 @@ namespace other {
           OTHER_ASSERT(false, "Memory pool is full, cannot allocate more objects.");
         }
       }
+      if (num_objects >= max_objects()) {
+        is_full = true;
+      }
       return { create_object(idx), idx };
     }
 
+    std::pair<T&, size_t> emplace(T&& value) {
+      PROFILE_SECTION("memory_pool::emplace");
+
+      OTHER_ASSERT(!is_full, "Memory pool is full, cannot allocate more objects.");
+      /// save the index before incrementing num_objects
+      size_t idx = num_objects++;
+      if (idx >= max_objects()) {
+        /// \todo: defragment memory to see if there are any free slots and move all objects to the front,
+        /// for now we will just find the first free slot
+        for (size_t i = 0; i < max_objects(); ++i) {
+          if (object_flags[i].is_free) {
+            idx = i;
+            break;
+          }
+        }
+
+        if (idx >= max_objects()) {
+          OTHER_ASSERT(false, "Memory pool is full, cannot allocate more objects.");
+        }
+      }
+      if (num_objects >= max_objects()) {
+        is_full = true;
+      }
+      return { create_object(idx, std::move(value)), idx };
+    }
+
+    const size_t size() const { return num_objects; }
+    const size_t free_objects() const { return max_objects() - num_objects; }
     const size_t max_objects() const { return Max; }
     const size_t object_count() const { return num_objects; }
+
+    const bool full() const { return is_full; }
+    const bool empty() const { return num_objects == 0; }
 
     std::span<T> objects() { return std::span<T>(get_array(), Max); }
     const std::span<const T> objects() const { return std::span<const T>(get_array(), Max); }
@@ -129,7 +163,7 @@ namespace other {
    private:
     /// consider adding later if scene splits onto it's own simulation thread
     std::mutex pool_mutex;
-    bool full = false;
+    bool is_full = false;
 
     storage_type pool;
 
@@ -153,6 +187,19 @@ namespace other {
       return *obj;
     }
 
+    T& create_object(size_t idx, T&& value) {
+      PROFILE_SECTION("memory_pool::create_object");
+
+      OTHER_ASSERT(idx < max_objects(), "Index out of bounds");
+      OTHER_ASSERT(object_flags[idx].is_free, "Object at index {} is already allocated", idx);
+
+      object_flags[idx].is_free = false;
+
+      T* obj = new (get_memory_raw_at(idx)) T(std::move(value));
+      OTHER_ASSERT(obj != nullptr, "Failed to allocate memory for object at index {}", idx);
+      return *obj;
+    }
+
     void destroy_object(size_t idx) {
       PROFILE_SECTION("memory_pool::destroy_object");
 
@@ -169,8 +216,8 @@ namespace other {
         /// clear the memory at the index
         std::memset(get_memory_raw_at(idx), 0, sizeof(T));
       }
-      if (num_objects == 0) {
-        full = false;
+      if (num_objects < max_objects()) {
+        is_full = false;
       }
 
       object_flags[idx].is_free = true;
@@ -228,7 +275,7 @@ namespace other {
         std::memset(pool.data, 0, storage_type::storage_size);
         std::ranges::fill(object_flags, obj_flags{ true });
         num_objects = 0;
-        full = false;
+        is_full = false;
       }
     }
   };

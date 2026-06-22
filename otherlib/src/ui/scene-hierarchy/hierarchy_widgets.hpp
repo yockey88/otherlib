@@ -16,29 +16,8 @@ namespace other {
       constexpr float kIndentWidth = 16.f;
       constexpr float kArrowWidth = 12.f;
       constexpr float kVisibilityIconWidth = 18.f;
-      constexpr float kItemPaddingX = 12.f;
+      constexpr float kItemPaddingX = 10.f;
       constexpr float kItemGap = 6.f;
-
-      // ═══════════════════════════════════════════════════════════════════════
-      //  Search / Filter Bar
-      //
-      //  ┌──────────────────────────────────────────┐
-      //  │  🔍 filter objects...                    │
-      //  └──────────────────────────────────────────┘
-      //
-      //  Returns true if the filter text changed.
-      // ═══════════════════════════════════════════════════════════════════════
-      bool draw_search_bar(char* filter_buf, uint32_t buf_size);
-
-      // ═══════════════════════════════════════════════════════════════════════
-      //  Hierarchy Item
-      //
-      //  ┌──────────────────────────────────────────┐
-      //  │  ▾  ObjectName                        👁 │
-      //  └──────────────────────────────────────────┘
-      //
-      //  Draws a single row in the hierarchy tree.
-      // ═══════════════════════════════════════════════════════════════════════
 
       struct item_flags {
         bool selected = false;
@@ -58,6 +37,24 @@ namespace other {
         bool right_clicked = false;
       };
 
+      // =======================================================================
+      //
+      //  |-----------------------------------------|
+      //  |  x filter objects...                    |
+      //  |-----------------------------------------|
+      //
+      //  true if the filter text changed.
+      // =======================================================================
+      bool draw_search_bar(char* filter_buf, uint32_t buf_size);
+
+      // =======================================================================
+      //
+      //  |------------------------------------------|
+      //  |  -  ObjectName                        x  |
+      //  |------------------------------------------|
+      //
+      //  single row in the hierarchy tree.
+      // =======================================================================
       item_interaction draw_item(const std::string_view label, natural_t object_id, item_flags flags);
 
       void draw_indent_guide(uint32_t indent_level, float row_top_y, float row_height);

@@ -26,6 +26,8 @@ namespace other {
 
     bool intersects(const bounding_box& other) const;
     bool intersects(const ray& r) const;
+
+    static bounding_box expand_to_include(const bounding_box& box, const bounding_box& other);
   };
 
 }  // namespace other
@@ -33,7 +35,6 @@ namespace other {
 OTHER_REFLECT(
   other::bounding_box,
   field(min, other::attr::serializable()),
-  field(max, other::attr::serializable())
-)
+  field(max, other::attr::serializable()))
 
 #endif  // OTHER_CORE_MATH_BOUNDING_BOX_HPP

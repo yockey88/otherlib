@@ -25,6 +25,18 @@ namespace other {
     graph()
         : adjacency_matrix(make_ref<matrix_nxm<real_t>>(0, 0)) {}
     ~graph() { clear(); }
+    graph(graph&& other)
+        : nodes(std::move(other.nodes)),
+          adjacency_matrix(std::move(other.adjacency_matrix)) {}
+    graph& operator=(graph&& other) {
+      if (this != &other) {
+        nodes = std::move(other.nodes);
+        adjacency_matrix = std::move(other.adjacency_matrix);
+      }
+      return *this;
+    }
+    graph(const graph& g) = delete;
+    graph& operator=(const graph& g) = delete;
 
     natural_t id_to_idx(natural_t id) const {
       if (auto itr = std::ranges::find(nodes, id, &node::id); itr != nodes.end()) {
@@ -35,6 +47,12 @@ namespace other {
     }
 
     void clear() {
+      for (auto& n : *this) {
+        if (n.value != nullptr) {
+          arena_allocator<T>{}.free(n.value);
+          n.value = nullptr;
+        }
+      }
       nodes.clear();
       adjacency_matrix = make_ref<matrix_nxm<real_t>>(0, 0);
     }
@@ -79,7 +97,7 @@ namespace other {
       node n = {
         .id = id,
         .index = nodes.size(),
-        .value = std::move(value),
+        .value = arena_allocator<T>{}.allocate(std::move(value)),
       };
       nodes.push_back(std::move(n));
 
@@ -104,6 +122,8 @@ namespace other {
       }
 
       size_t idx = itr->index;
+      arena_allocator<T>{}.free(itr->value);
+      itr->value = nullptr;
       nodes.erase(itr);
 
       const ref<matrix_nxm<real_t>> old_adjacency = adjacency_matrix;
@@ -131,7 +151,7 @@ namespace other {
 
     T* ptr_to_node_value(natural_t id) {
       if (auto itr = std::ranges::find(nodes, id, &node::id); itr != nodes.end()) {
-        return &itr->value;
+        return itr->value;
       }
       return nullptr;
     }
@@ -146,8 +166,9 @@ namespace other {
       requires requires(Pred p, T t) { { p(t) } -> std::same_as<bool>; }
     T* find_item(Pred&& predicate) {
       for (auto& node : nodes) {
-        if (predicate(node.value)) {
-          return &node.value;
+        OTHER_ASSERT(node.value != nullptr, "Node value is nullptr");
+        if (predicate(*node.value)) {
+          return node.value;
         }
       }
       return nullptr;
@@ -157,8 +178,9 @@ namespace other {
       requires requires(Pred p, T t) { { p(t) } -> std::same_as<bool>; }
     const T* find_item(Pred&& predicate) const {
       for (const auto& node : nodes) {
-        if (predicate(node.value)) {
-          return &node.value;
+        OTHER_ASSERT(node.value != nullptr, "Node value is nullptr");
+        if (predicate(*node.value)) {
+          return node.value;
         }
       }
       return nullptr;
@@ -168,7 +190,8 @@ namespace other {
       requires requires(Func f, T t) { f(t); }
     void for_each_node(Func&& func) {
       for (auto& node : nodes) {
-        func(node.value);
+        OTHER_ASSERT(node.value != nullptr, "Node value is nullptr");
+        func(*node.value);
       }
     }
 
@@ -247,8 +270,13 @@ namespace other {
     std::string to_string() const {
       std::stringstream ss;
       for (const auto& node : nodes) {
+        if (node.value == nullptr) {
+          ss << std::format("[{}] = <nullptr>\n", node.id);
+          continue;
+        }
+
         if constexpr (requires { std::formatter<T>{}; }) {
-          ss << std::format("[{}] = {}\n", node.id, node.value);
+          ss << std::format("[{}] = {}\n", node.id, *node.value);
         } else {
           ss << std::format("[{}] = <non-streamable value>\n", node.id);
         }
@@ -268,7 +296,7 @@ namespace other {
     struct node {
       natural_t id = 0;
       natural_t index = 0;
-      T value;
+      T* value;
 
       constexpr auto operator<=>(const node& other) const = default;
     };

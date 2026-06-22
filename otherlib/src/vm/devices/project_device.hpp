@@ -7,12 +7,14 @@
 #include "vm/builtin_command_devices.hpp"
 #include "vm/command_device.hpp"
 
-
 namespace other {
 
   class project_device : public command_device {
    public:
     enum function : uint8_t {
+      LOADED = 0x00,
+      LOAD = 0x01,
+      UNLOAD = 0x02,
       NUM_FUNCTIONS
     };
     ~project_device() override = default;
