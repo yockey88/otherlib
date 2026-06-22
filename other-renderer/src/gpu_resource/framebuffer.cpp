@@ -12,13 +12,18 @@ namespace other {
     return *this;
   }
 
-  framebuffer& framebuffer::set_clear_color(const glm::vec4& color) {
-    clear_color = color;
+  framebuffer& framebuffer::set_samples(uint32_t samples) {
+    this->samples = samples;
     return *this;
   }
 
   framebuffer& framebuffer::set_size(uint32_t width, uint32_t height) {
     size = { width, height };
+    return *this;
+  }
+
+  framebuffer& framebuffer::set_clear_color(const glm::vec4& color) {
+    clear_color = color;
     return *this;
   }
 

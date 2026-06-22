@@ -182,6 +182,7 @@ namespace other {
         "draw_scene",
         "fullscreen_quad",
         "compute_dispatch",
+        "window_sized_compute_dispatch",
         "noop",
         "script",
       };
@@ -269,6 +270,7 @@ namespace other {
             const auto format = tex.at_path("format");
             const auto mip_levels = tex.at_path("mip_levels");
             const auto generate_mips = tex.at_path("generate_mips");
+            const auto seed_texture_path = tex.at_path("seed_texture_path");
 
             if (!name.is_string()) {
               result.fail("resources.textures[]: 'name' must be a string");
@@ -303,6 +305,11 @@ namespace other {
             if (generate_mips) {
               if (!generate_mips.is_boolean()) {
                 result.fail(std::format("resources.textures['{}']: 'generate_mips' must be a boolean", name_str));
+              }
+            }
+            if (seed_texture_path) {
+              if (!seed_texture_path.is_string()) {
+                result.fail(std::format("resources.textures['{}']: 'seed_texture_path' must be a string", name_str));
               }
             }
 
@@ -628,6 +635,18 @@ namespace other {
 
           if (!shader_name.is_string()) {
             result.fail(std::format("frame.passes['{}']: 'shader_name' must be a string", name_str));
+          }
+
+          const auto samples = pass.at_path("samples");
+          const auto multisample = pass.at_path("multisample");
+          if (samples && !samples.is_integer()) {
+            result.fail(std::format("frame.passes['{}']: 'samples' must be an integer", name_str));
+          }
+          if (samples && multisample && (!multisample.is_boolean() || !samples.is_integer())) {
+            result.fail(std::format("frame.passes['{}']: 'multisample' and 'samples' must be a boolean and an integer respectively", name_str));
+          }
+          if (!samples && multisample && !multisample.is_integer()) {
+            result.fail(std::format("frame.passes['{}']: 'multisample' does not specify number of samples", name_str));
           }
 
           const auto clear_color = pass.at_path("clear_color");

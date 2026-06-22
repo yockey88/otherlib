@@ -3,6 +3,7 @@ target_sources(other_physics
   PRIVATE
     src/physics_world/physics_world.cpp
     src/physics_world/physics_body.cpp
+    src/physics_world/physics_shape.cpp
 
     # src/physics/backends/physx_api.cpp
     src/physics/backends/jolt_api.cpp

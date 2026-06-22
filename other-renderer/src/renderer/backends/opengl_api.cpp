@@ -183,7 +183,12 @@ namespace other {
 
     if (info.pass_type == render_pass::RENDER_PASS) {
       if (info.framebuffer.has_value()) {
-        glBindFramebuffer(GL_FRAMEBUFFER, get_resource_handle(info.framebuffer->id));
+        current_pass_framebuffer_id = info.framebuffer->id;
+        auto m = framebuffer_msaa_fbos.find(info.framebuffer->id);
+        const uint32_t fbo = (m != framebuffer_msaa_fbos.end()) ?
+          m->second :
+          (uint32_t)get_resource_handle(info.framebuffer->id);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
       } else {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
       }
@@ -209,6 +214,11 @@ namespace other {
   }
 
   void opengl_api::end_pass() {
+    if (current_pass_framebuffer_id != 0 &&
+        framebuffer_msaa_fbos.contains(current_pass_framebuffer_id)) {
+      resolve_msaa_framebuffer(current_pass_framebuffer_id);
+    }
+    current_pass_framebuffer_id = 0;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     CHECKGL();
   }
@@ -1091,6 +1101,9 @@ namespace other {
       CORE_LOG_ERROR("Failed to finalize framebuffer with ID {}: ({}) {}", handle.id, status, error_msg);
     } else {
       itr->second.complete = true;
+      if (itr->second.complete && itr->second.samples > 1) {
+        build_msaa_framebuffer(handle, itr->second);
+      }
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1383,6 +1396,19 @@ namespace other {
     }
 
     framebuffer_resources.erase(itr);
+
+    if (auto it = framebuffer_msaa_color_rbs.find(handle.id); it != framebuffer_msaa_color_rbs.end()) {
+      if (!it->second.empty()) glDeleteRenderbuffers((GLsizei)it->second.size(), it->second.data());
+      framebuffer_msaa_color_rbs.erase(it);
+    }
+    if (auto it = framebuffer_msaa_depth_rbs.find(handle.id); it != framebuffer_msaa_depth_rbs.end()) {
+      glDeleteRenderbuffers(1, &it->second);
+      framebuffer_msaa_depth_rbs.erase(it);
+    }
+    if (auto it = framebuffer_msaa_fbos.find(handle.id); it != framebuffer_msaa_fbos.end()) {
+      glDeleteFramebuffers(1, &it->second);
+      framebuffer_msaa_fbos.erase(it);
+    }
 
     auto gpu_itr = gpu_resources.find(handle.id);
     if (gpu_itr != gpu_resources.end()) {
@@ -1746,25 +1772,17 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_format(texture::format format) const {
     switch (format) {
-      case texture::format::RGBA16F:
-        return GL_RGBA16F;
+      case texture::format::R8: return GL_R8;
+      case texture::format::RG8: return GL_RG8;
 
+      case texture::format::RGBA16F: return GL_RGBA16F;
       case texture::format::RGBA32U:
       case texture::format::RGBA32F:
         return GL_RGBA32F;
 
-      case texture::format::RGBA8:
-        return GL_RGBA8;
-
-      case texture::format::RGBA8U:
-        return GL_RGBA8UI;
-
-      case texture::format::RGB8:
-        return GL_RGB8;
-
-      case texture::format::DEPTHF:
-        return GL_DEPTH_COMPONENT32F;
-
+      case texture::format::RGBA8: return GL_RGBA8;
+      case texture::format::RGB8: return GL_RGB8;
+      case texture::format::DEPTHF: return GL_DEPTH_COMPONENT32F;
       default:
         CORE_LOG_ERROR("Unsupported texture format: {}", format);
         return -1;  // Invalid format
@@ -1773,19 +1791,16 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_channel_format(texture::format format) const {
     switch (format) {
+      case texture::format::R8: return GL_RED;
+      case texture::format::RG8: return GL_RG;
+      case texture::format::RGB8: return GL_RGB;
+      case texture::format::DEPTHF: return GL_DEPTH_COMPONENT;
       case texture::format::RGBA16F:
       case texture::format::RGBA32F:
       case texture::format::RGBA8:
       case texture::format::RGBA8U:
       case texture::format::RGBA32U:
         return GL_RGBA;
-
-      case texture::format::RGB8:
-        return GL_RGB;
-
-      case texture::format::DEPTHF:
-        return GL_DEPTH_COMPONENT;
-
       default:
         CORE_LOG_ERROR("Unsupported texture channel format: {}", format);
         return -1;  // Invalid channel format
@@ -1798,13 +1813,13 @@ namespace other {
       case texture::format::RGBA32F:
       case texture::format::DEPTHF:
         return GL_FLOAT;
-
       case texture::format::RGBA32U:
         return GL_UNSIGNED_INT;
-
       case texture::format::RGBA8U:
       case texture::format::RGBA8:
       case texture::format::RGB8:
+      case texture::format::RG8:
+      case texture::format::R8:
         return GL_UNSIGNED_BYTE;
 
       default:
@@ -2025,6 +2040,92 @@ namespace other {
     }
 
     return gl_bits;
+  }
+
+  void opengl_api::build_msaa_framebuffer(const resource_handle& handle, const framebuffer& fb) {
+    const uint32_t samples = clamp_sample_count(fb.samples);
+    if (samples <= 1) {
+      return;
+    }
+
+    uint32_t msaa_fbo = 0;
+    glGenFramebuffers(1, &msaa_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, msaa_fbo);
+
+    std::vector<uint32_t> color_rbs;
+    std::vector<uint32_t> draw_bufs;
+    color_rbs.reserve(fb.color_attachments.size());
+
+    for (size_t i = 0; i < fb.color_attachments.size(); ++i) {
+      const texture& t = texture_resources.at(fb.color_attachments[i].id);
+      const int32_t internal_format = get_gl_texture_format(t.get_format());
+      OTHER_ASSERT(internal_format != -1, "MSAA: unsupported color format for attachment {}", i);
+
+      uint32_t rb = 0;
+      glGenRenderbuffers(1, &rb);
+      glBindRenderbuffer(GL_RENDERBUFFER, rb);
+      glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, internal_format, fb.size.x, fb.size.y);
+      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_RENDERBUFFER, rb);
+      color_rbs.push_back(rb);
+      draw_bufs.push_back(GL_COLOR_ATTACHMENT0 + i);
+    }
+
+    uint32_t depth_rb = 0;
+    glGenRenderbuffers(1, &depth_rb);
+    glBindRenderbuffer(GL_RENDERBUFFER, depth_rb);
+    glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, fb.size.x, fb.size.y);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    if (!draw_bufs.empty()) glDrawBuffers((GLsizei)draw_bufs.size(), draw_bufs.data());
+
+    const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    OTHER_ASSERT(status == GL_FRAMEBUFFER_COMPLETE, "MSAA framebuffer for resource {} incomplete: 0x{:x}", handle.id, status);
+
+    framebuffer_msaa_fbos[handle.id] = msaa_fbo;
+    framebuffer_msaa_color_rbs[handle.id] = std::move(color_rbs);
+    framebuffer_msaa_depth_rbs[handle.id] = depth_rb;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    CHECKGL();
+  }
+
+  void opengl_api::resolve_msaa_framebuffer(natural_t fb_id) {
+    const framebuffer& fb = framebuffer_resources.at(fb_id);
+    const uint32_t msaa = framebuffer_msaa_fbos.at(fb_id);
+    const uint32_t resolve = (uint32_t)get_resource_handle(fb_id);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, msaa);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, resolve);
+
+    for (size_t i = 0; i < fb.color_attachments.size(); ++i) {
+      glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
+      glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
+      glBlitFramebuffer(0, 0, fb.size.x, fb.size.y,
+                        0, 0, fb.size.x, fb.size.y,
+                        GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    CHECKGL();
+  }
+
+  uint32_t opengl_api::clamp_sample_count(uint32_t requested) const {
+    if (requested <= 1) {
+      return 1;
+    }
+
+    GLint max_samples = 1;
+    glGetIntegerv(GL_MAX_SAMPLES, &max_samples);
+    uint32_t s = requested;
+    if (s != 2 && s != 4 && s != 8) {
+      s = 4;
+    }
+    while (s > 1 && (GLint)s > max_samples) {
+      s >>= 1;
+    }
+    return s;
   }
 
   int32_t opengl_api::get_resource_handle(natural_t id) const {

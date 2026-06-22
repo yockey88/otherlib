@@ -664,14 +664,13 @@ namespace other {
     const entt::entity entity = entt::entity(object->registry_id);
 
     const render_component* rc = storage->registry.try_get<render_component>(entity);
-    if (rc != nullptr) {
-      // const bounding_box local = rc->obj_model.source->
-      // return bounding_box::transform(local, world_matrix);
+    if (rc != nullptr && rc->obj_model.source != nullptr) {
+      return rc->obj_model.source->get_bounding_box();
     }
 
     const physics_component* pc = storage->registry.try_get<physics_component>(entity);
-    if (pc != nullptr) {
-      // return bounding_box::transform(pc->local_bounds(), world_matrix);
+    if (pc != nullptr && pc->shape != nullptr) {
+      return pc->shape->get_bounding_box();
     }
     return bounding_box::empty;
   }

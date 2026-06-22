@@ -33,6 +33,7 @@ namespace other {
     inline std::vector<triangle>& get_triangles() { return triangles; }
     inline std::vector<submesh>& get_submeshes() { return submeshes; }
     inline std::vector<mesh_node>& get_nodes() { return nodes; }
+    inline bounding_box& get_bounding_box() { return bounds; }
     /// const overloads
     inline const glm::mat4& get_global_transform() const { return global_transform; }
     inline const glm::mat4& get_inverse_global_transform() const { return inverse_global_transform; }
@@ -43,6 +44,7 @@ namespace other {
     inline const std::vector<mesh_node>& get_nodes() const { return nodes; }
     inline const std::vector<material>& get_materials() const { return materials; }
     inline const std::vector<animation>& get_animations() const { return animations; }
+    inline const bounding_box& get_bounding_box() const { return bounds; }
 
     animation* get_animation_by_name(const std::string& name);
     animation* get_animation(size_t index);

@@ -38,6 +38,7 @@ namespace other {
 
     glm::vec4 clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
     glm::ivec2 size = { 0, 0 };
+    uint32_t samples = 1;
 
     framebuffer() = default;
     framebuffer(resource_handle handle)
@@ -47,6 +48,7 @@ namespace other {
     resource_type type() const override { return resource_type::FRAMEBUFFER; }
 
     framebuffer& bind();
+    framebuffer& set_samples(uint32_t samples);
     framebuffer& set_size(uint32_t width, uint32_t height);
     framebuffer& set_clear_color(const glm::vec4& color);
 

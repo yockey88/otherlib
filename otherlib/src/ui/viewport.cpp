@@ -48,6 +48,7 @@ namespace other {
           ImGui::Text("No rendering pipelines available.");
         } else {
           auto& pipeline = pipeline_outputs[0];
+          // ImTextureID tex_id = pipeline->get_texture_id("shaded_texture");
           ImTextureID tex_id = pipeline->get_final_output_texture_id();
           if (tex_id == 0) {
             scoped_color error_color{ ImGuiCol_Text, colors::rgba_to_imvec4(colors::kFriendlyErrorRed) };

@@ -1,0 +1,38 @@
+#include "shader-modules/simulation-environment.glsl"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(rgba16f, binding = 0) uniform readonly image3D OE_voxel_tex_in;   // input  slot 0
+layout(rgba16f, binding = 1) uniform readonly image2D OE_gbuff_position; // input  slot 1
+layout(rgba16f, binding = 2) uniform readonly image2D OE_gbuff_normal;   // input  slot 2
+layout(rgba16f, binding = 3) uniform writeonly image3D OE_voxel_tex_out;  // output slot 3
+
+void main() {
+  ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 gdim = imageSize(OE_gbuff_position);
+  if (any(greaterThanEqual(px, gdim))) { 
+    return; 
+  }
+
+  vec3 n = imageLoad(OE_gbuff_normal, px).xyz;
+  if (dot(n, n) < 0.25) { 
+    return; 
+  }
+
+  vec3  world_pos = imageLoad(OE_gbuff_position, px).xyz;
+  ivec3 dim = imageSize(OE_voxel_tex_out);
+  ivec3 c = oe_world_to_voxel(world_pos, dim);
+  if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, dim))) { 
+    return; 
+  }
+
+  float current = imageLoad(OE_voxel_tex_in, c).r;
+  imageStore(OE_voxel_tex_out, c, vec4(1.0, 0.0, 0.0, 1.0)); // vec4(max(current, 1.0)));
+
+  // also stamp the voxel just behind the surface (along -normal),
+  // so a single-voxel-thin wall occludes from both sides:
+  // ivec3 cb = oe_world_to_voxel(world_pos - normalize(n) * length(oe_voxel_size(dim)), dim);
+  // if (all(greaterThanEqual(cb, ivec3(0))) && all(lessThan(cb, dim))) {
+  //   imageStore(OE_voxel_tex_out, cb, vec4(max(imageLoad(OE_voxel_tex_in, cb).r, 1.0)));
+  // }
+}

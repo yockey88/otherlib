@@ -86,8 +86,10 @@ namespace other {
     void bind_draw_resources(pass_runtime& runtime, const render_data& data, size_t draw_index);
     void render_frame(renderer* renderer_ptr);
     void reset_draw_buffers();
+    glm::ivec2 get_window_size() const;
 
     ImTextureID get_final_output_texture_id();
+    ImTextureID get_texture_id(const std::string_view name);
     resource_handle get_screen_texture() const;
     frame_resources get_frame_resources() const;
 

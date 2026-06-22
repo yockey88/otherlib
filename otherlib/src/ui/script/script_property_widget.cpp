@@ -47,8 +47,7 @@ namespace other {
       dl->AddCircleFilled(
         { dot_cx, dot_cy },
         kBehaviorDotRadius,
-        colors::to_im_col(colors::scene_object::kComponentScript)
-      );
+        colors::to_im_col(colors::scene_object::kComponentScript));
 
       /// behavior display name
       float text_x = dot_cx + kBehaviorDotRadius + 8.f;
@@ -88,8 +87,7 @@ namespace other {
       dl->AddLine(
         { cursor.x, header_max.y },
         { cursor.x + avail_w, header_max.y },
-        colors::to_im_col(glm::vec4(0.22f, 0.22f, 0.24f, 1.0f))
-      );
+        colors::to_im_col(glm::vec4(0.22f, 0.22f, 0.24f, 1.0f)));
 
       ImGui::SetCursorScreenPos({ cursor.x, header_max.y + 1.f });
 
@@ -145,9 +143,9 @@ namespace other {
 
       /// determine which label to show
       const std::string& label = field.display_name.empty() ? field.field_name : field.display_name;
-      bool is_read_only = has_flag(field.flags, behavior_display_flags::read_only);
-      bool is_color = has_flag(field.flags, behavior_display_flags::color_field);
-      bool has_range = has_flag(field.flags, behavior_display_flags::has_range);
+      bool is_read_only = has_flag(field.flags, behavior_display_flags::READ_ONLY);
+      bool is_color = has_flag(field.flags, behavior_display_flags::COLOR_FIELD);
+      bool has_range = has_flag(field.flags, behavior_display_flags::HAS_RANGE);
 
       /// read the current value from the managed side
       uint8_t buffer[detail::kFieldValueBufferSize] = {};
@@ -163,7 +161,7 @@ namespace other {
       if (is_read_only) {
         std::string val_str = detail::format_field_value(field.type, buffer, bytes_read);
         inspector::property_display(label, val_str, colors::kTextMuted);
-        if (has_flag(field.flags, behavior_display_flags::has_tooltip)) {
+        if (has_flag(field.flags, behavior_display_flags::HAS_TOOLTIP)) {
           draw_field_tooltip(field.tooltip);
         }
         return false;
@@ -333,7 +331,7 @@ namespace other {
       }
 
       /// tooltip on hover
-      if (has_flag(field.flags, behavior_display_flags::has_tooltip)) {
+      if (has_flag(field.flags, behavior_display_flags::HAS_TOOLTIP)) {
         draw_field_tooltip(field.tooltip);
       }
 

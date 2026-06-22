@@ -16,6 +16,7 @@ namespace other {
       case FNV("draw_scene"): return executor_type::DRAW_SCENE;
       case FNV("fullscreen_quad"): return executor_type::FULLSCREEN_QUAD;
       case FNV("compute_dispatch"): return executor_type::COMPUTE_DISPATCH;
+      case FNV("window_sized_compute_dispatch"): return executor_type::WINDOW_SIZED_COMPUTE_DISPATCH;
       case FNV("noop"): return executor_type::NOOP;
       case FNV("script"): return executor_type::SCRIPT;
       default: return executor_type::NOOP;
@@ -28,6 +29,7 @@ namespace other {
       case FNV("shader_image_access"): return shader::compute_barrier_type::SHADER_IMAGE_ACCESS;
       case FNV("shader_storage"): return shader::compute_barrier_type::SHADER_STORAGE;
       case FNV("uniform"): return shader::compute_barrier_type::UNIFORM_BARRIER;
+      case FNV("texture_fetch"): return shader::compute_barrier_type::TEXTURE_FETCH;
       case FNV("all"): return shader::compute_barrier_type::ALL_BARRIER;
       case FNV("none"): [[fallthrough]];
       default: return shader::compute_barrier_type::NONE;
@@ -39,6 +41,7 @@ namespace other {
       case executor_type::DRAW_SCENE: return "draw_scene";
       case executor_type::FULLSCREEN_QUAD: return "fullscreen_quad";
       case executor_type::COMPUTE_DISPATCH: return "compute_dispatch";
+      case executor_type::WINDOW_SIZED_COMPUTE_DISPATCH: return "window_sized_compute_dispatch";
       case executor_type::NOOP: return "noop";
       case executor_type::SCRIPT: return "script";
       default: return "noop";
@@ -704,6 +707,7 @@ namespace other {
         auto depth = texture.at_path("depth");
         auto mip_levels = texture.at_path("mip_levels");
         auto generate_mips = texture.at_path("generate_mips");
+        auto seed_texture_path = texture.at_path("seed_texture_path");
         if (!name || !use_window_size || !type || !format) {
           CORE_LOG_ERROR("name exists: {}, use_window_size exists: {}, type exists: {}, format exists: {}",
                          (bool)name, (bool)use_window_size, (bool)type, (bool)format);
@@ -748,6 +752,16 @@ namespace other {
         }
         if (generate_mips && generate_mips.is_boolean()) {
           tex.generate_mips = generate_mips.as_boolean()->get();
+        }
+        if (seed_texture_path && seed_texture_path.is_string()) {
+          tex.seed_texture_path = seed_texture_path.as_string()->get();
+          if (!std::filesystem::exists(tex.seed_texture_path.value())) {
+            tex.seed_texture_path = std::filesystem::absolute(tex.seed_texture_path.value());
+            if (!std::filesystem::exists(tex.seed_texture_path.value())) {
+              CORE_LOG_ERROR("Texture 'seed_texture_path' file does not exist: {}", tex.seed_texture_path.value().string());
+              tex.seed_texture_path = std::nullopt;
+            }
+          }
         }
 
         std::stringstream ss;
@@ -1135,6 +1149,18 @@ namespace other {
         p.pass_type = render_pass_type_from_string(pass_type.as_string()->get());
         p.shader_name = shader_name.as_string()->get();
 
+        auto samples = pass.at_path("samples");
+        auto multisample = pass.at_path("multisample");
+        if (samples && samples.is_integer()) {
+          p.samples = static_cast<uint32_t>(samples.as_integer()->get());
+        } else if (multisample && multisample.is_number()) {
+          p.samples = static_cast<uint32_t>(multisample.as_integer()->get());
+        } else if (multisample && samples && multisample.is_boolean() && samples.is_integer()) {
+          if (multisample.as_boolean()->get()) {
+            p.samples = static_cast<uint32_t>(samples.as_integer()->get());
+          }
+        }
+
         auto clear_color = pass.at_path("clear_color");
         auto create_framebuffer = pass.at_path("create_framebuffer");
 
@@ -1163,6 +1189,10 @@ namespace other {
           p.create_framebuffer = create_framebuffer.as_boolean()->get();
         }
 
+        if (p.create_framebuffer && p.pass_type == render_pass::COMPUTE_PASS) {
+          p.create_framebuffer = false;
+        }
+
         std::stringstream ss_pass;
         ss_pass << "Pass: " << p.name << "\n";
         ss_pass << " - bindings: [";
@@ -1173,6 +1203,7 @@ namespace other {
         for (const auto& b : p.bindings) {
           ss_pass << b.name << ": " << std::format("{}", b.type) << "\n";
         }
+        ss_pass << " - samples: " << p.samples << "\n";
         if (p.clear_color.has_value()) {
           ss_pass << " - clear_color: (" << p.clear_color->r << ", " << p.clear_color->g << ", " << p.clear_color->b << ", " << p.clear_color->a << "),\n";
         }

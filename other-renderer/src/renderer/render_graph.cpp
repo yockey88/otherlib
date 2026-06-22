@@ -47,6 +47,7 @@ namespace other {
       auto& fb = graph.renderer_ptr->get_resource<framebuffer>(*pass.framebuffer_handle);
 
       fb.set_size(pass.size.x, pass.size.y)
+        .set_samples(pass.samples)
         .set_clear_color({ 0.1f, 0.1f, 0.1f, 1.f });
       for (const auto& [_, texture] : pass.texture_resources) {
         if ((texture.flags & WRITE) == WRITE) {
@@ -78,7 +79,7 @@ namespace other {
     build_graph();
   }
 
-  render_graph::pass_builder render_graph::start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer) {
+  render_graph::pass_builder render_graph::start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer, uint32_t samples) {
     CORE_LOG_DEBUG("Starting pass [{}] with shader [{}] and size [{}, {}]", name, shader_handle.has_value() ? *shader_handle : resource_handle{}, size.x, size.y);
     pass& pass_data = create_pass(rptype);
     render_pass& rp = pass_data.pass;
@@ -98,6 +99,7 @@ namespace other {
     rp.shader_handle = shader_handle;
     rp.name = name;
     rp.size = size;
+    rp.samples = samples;
     return pass_builder(*this, rp);
   }
 

@@ -33,6 +33,13 @@ namespace other {
     };
     // clang-format on
 
+    std::vector<uint8_t> read_seed_texture_file(const filepath& path) {
+      OTHER_ASSERT(std::filesystem::exists(path), "Seed texture file does not exist: {}", path.string());
+      std::ifstream file(path, std::ios::binary);
+      OTHER_ASSERT(file.is_open(), "Failed to open seed texture file: {}", path.string());
+      return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    }
+
   }  // namespace
 
   void render_pipeline::initialize_pipeline(renderer* renderer) {
@@ -255,11 +262,24 @@ namespace other {
     }
   }
 
+  glm::ivec2 render_pipeline::get_window_size() const {
+    OTHER_ASSERT(renderer_ptr != nullptr, "render_pipeline::get_window_size: no renderer available.");
+    return renderer_ptr->get_window_size();
+  }
+
   ImTextureID render_pipeline::get_final_output_texture_id() {
     if (!screen_texture_handle.has_value() || !get_renderer()->resource_exists(*screen_texture_handle)) {
       return 0;
     }
     return get_renderer()->get_resource<texture>(*screen_texture_handle).get_imgui_texture_id();
+  }
+
+  ImTextureID render_pipeline::get_texture_id(const std::string_view name) {
+    auto handle_opt = find_texture_by_name(name);
+    if (!handle_opt.has_value() || !get_renderer()->resource_exists(*handle_opt)) {
+      return 0;
+    }
+    return get_renderer()->get_resource<texture>(*handle_opt).get_imgui_texture_id();
   }
 
   resource_handle render_pipeline::get_screen_texture() const {
@@ -569,6 +589,15 @@ namespace other {
                                  mips, tex_def.generate_mips, size.x, size.y);
       } else {
         handle = texture::create(tex_def.name, tex_def.type, tex_def.format, size.x, size.y);
+      }
+
+      if (tex_def.seed_texture_path.has_value()) {
+        std::vector<uint8_t> bytes = read_seed_texture_file(tex_def.seed_texture_path.value());
+        if (!bytes.empty()) {
+          (*get_renderer()->rendering()->api()->get_resource_as<texture>(handle))
+            .set_data(bytes.data(), bytes.size())
+            .finalize_texture();
+        }
       }
 
       natural_t name_hash = FNV(tex_def.name);

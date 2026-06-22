@@ -67,7 +67,7 @@ namespace other {
     render_graph& start_pipeline();
     void end_pipeline();
 
-    pass_builder start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true);
+    pass_builder start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer = true, uint32_t samples = 1);
 
     bool is_valid() const { return graph_valid; }
 

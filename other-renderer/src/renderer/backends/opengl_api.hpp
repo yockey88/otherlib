@@ -124,6 +124,10 @@ namespace other {
 
     std::map<natural_t, framebuffer> framebuffer_resources;
     std::map<natural_t, uint32_t> framebuffer_renderbuffers;
+    std::map<natural_t, uint32_t> framebuffer_msaa_fbos;
+    std::map<natural_t, std::vector<uint32_t>> framebuffer_msaa_color_rbs;
+    std::map<natural_t, uint32_t> framebuffer_msaa_depth_rbs;
+    natural_t current_pass_framebuffer_id = 0;
 
     int32_t get_gpu_api_window_flags() const override;
 
@@ -169,6 +173,10 @@ namespace other {
 
     int32_t get_gl_fb_attachment_type(framebuffer::attachment_type type) const;
     int32_t get_gl_clear_bits(int32_t mask) const;
+
+    void build_msaa_framebuffer(const resource_handle& handle, const framebuffer& fb);
+    void resolve_msaa_framebuffer(natural_t fb_id);
+    uint32_t clamp_sample_count(uint32_t requested) const;
 
     int32_t get_resource_handle(natural_t id) const;
     uint32_t get_shader_uniform_location(const resource_handle& shader, const std::string_view name);

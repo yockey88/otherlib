@@ -21,6 +21,7 @@ namespace other {
     DRAW_SCENE,  /// renderer.execute_draw_calls(node)
     FULLSCREEN_QUAD,
     COMPUTE_DISPATCH,
+    WINDOW_SIZED_COMPUTE_DISPATCH,
     NOOP,  /// used for resource transitions that don't issue draw calls or dispatches
     SCRIPT,
   };
@@ -44,6 +45,8 @@ namespace other {
     // 0 = full chain, 1 = no mips
     uint32_t mip_levels = 1;
     bool generate_mips = false;
+
+    opt<filepath> seed_texture_path;
 
     opt<std::pair<texture::filter, texture::filter>> filters;
     opt<std::tuple<texture::wrap, texture::wrap, texture::wrap>> wraps;
@@ -80,6 +83,7 @@ namespace other {
     bool use_window_size = true;
     glm::ivec2 fixed_size = { 0, 0 };
     bool create_framebuffer = true;
+    uint32_t samples = 1;
     opt<glm::vec4> clear_color;
 
     std::vector<pipeline_resource_reference> inputs;

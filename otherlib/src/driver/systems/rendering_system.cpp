@@ -10,6 +10,8 @@
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "render/default_pass_executor_resolver.hpp"
+#include "ui/inspector_widgets.hpp"
+#include "ui/script/script_field_ui.hpp"
 
 #include "asset/pipelines/rendering_pipeline_pipeline.hpp"
 
@@ -24,6 +26,7 @@ namespace other {
     render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*);
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_window_sized_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
@@ -66,6 +69,107 @@ namespace other {
 
     events.add_listener("rendering-pipeline.asset-loaded", [this](const value& data) { handle_rendering_pipeline_asset_loaded_event(&get_driver().get_kernel(), data); });
     events.add_listener("rendering-pipeline.asset-unloaded", [this](const value& data) { handle_rendering_pipeline_asset_unloaded_event(&get_driver().get_kernel(), data); });
+
+    auto& field_editors = get_driver().get_field_editors();
+    field_editors.register_editor<int8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int8(l, *static_cast<int8_t*>(d)); });
+    field_editors.register_editor<int16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int16(l, *static_cast<int16_t*>(d)); });
+    field_editors.register_editor<int32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int32(l, *static_cast<int32_t*>(d)); });
+    field_editors.register_editor<int64_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int64(l, *static_cast<int64_t*>(d)); });
+    field_editors.register_editor<uint8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint8(l, *static_cast<uint8_t*>(d)); });
+    field_editors.register_editor<uint16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint16(l, *static_cast<uint16_t*>(d)); });
+    field_editors.register_editor<uint32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint32(l, *static_cast<uint32_t*>(d)); });
+    field_editors.register_editor<uint64_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint64(l, *static_cast<uint64_t*>(d)); });
+    field_editors.register_editor<float>([](const std::string_view l, void* d, const ui::field_context& c) {
+      float& v = *static_cast<float*>(d);
+      if (c.flags.is_color) {
+        ui::inspector::begin_property_row(c.flags.display_name.empty() ? l : c.flags.display_name);
+        std::string id = std::format("##{}", l);
+        bool ch = ImGui::ColorEdit3(id.c_str(), &v, ImGuiColorEditFlags_Float);
+        ui::inspector::end_property_row();
+        return ch;
+      }
+
+      if (c.flags.has_range) {
+        ui::inspector::begin_property_row(l);
+        std::string id = std::format("##{}", l);
+        bool ch = ImGui::SliderFloat(id.c_str(), &v, c.flags.range.x, c.flags.range.y);
+        ui::inspector::end_property_row();
+        return ch;
+      }
+
+      float speed = c.flags.speed.value_or(0.01f);
+      return ui::inspector::property_float(l, v, speed);
+    });
+
+    field_editors.register_editor<double>([](const std::string_view label, void* d, const ui::field_context& c) {
+      double& v = *static_cast<double*>(d);
+      float f = static_cast<float>(v);
+      if (c.flags.has_range) {
+        ui::inspector::begin_property_row(label);
+
+        std::string id = std::format("##{}", label);
+        bool ch = ImGui::SliderFloat(id.c_str(), &f, c.flags.range.x, c.flags.range.y);
+
+        ui::inspector::end_property_row();
+        if (ch) {
+          v = f;
+        }
+
+        return ch;
+      }
+
+      float speed = c.flags.speed.value_or(0.01f);
+      if (ui::inspector::property_float(label, f, speed)) {
+        v = static_cast<double>(f);
+        return true;
+      }
+
+      return false;
+    });
+
+    field_editors.register_editor<glm::vec2>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec2(l, *static_cast<glm::vec2*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::vec3>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec3(l, *static_cast<glm::vec3*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::vec4>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec4(l, *static_cast<glm::vec4*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::mat3>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_mat3(l, *static_cast<glm::mat3*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::mat4>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_mat4(l, *static_cast<glm::mat4*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::quat>([](const std::string_view label, void* d, const ui::field_context& c) {
+      auto& q = *static_cast<glm::quat*>(d);
+
+      glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
+      if (ui::inspector::property_vec3(label, euler, c.flags.speed.value_or(0.01f))) {
+        q = glm::quat(glm::radians(euler));
+        return true;
+      }
+      return false;
+    });
+    field_editors.register_editor<std::string>([](const std::string_view label, void* d, const ui::field_context& c) {
+      auto& s = *static_cast<std::string*>(d);
+
+      char buf[256];
+      std::strncpy(buf, s.c_str(), sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+
+      if (ui::inspector::property_text(label, buf, sizeof(buf))) {
+        s = std::string(buf);
+        return true;
+      }
+      return false;
+    });
+    field_editors.register_editor<orthonormal_basis>([](const std::string_view, void*, const ui::field_context&) {
+      return false;  // intentional no-op, preserves transform.local_basis behaviour
+    });
+
+    auto scalar = [](ImGuiDataType ig) {
+      return [ig](const std::string_view label, void* d, const ui::field_context&) {
+        std::string id = std::format("{}##scalar", label);
+        return ImGui::DragScalar(id.c_str(), ig, d, 0.1f, nullptr, nullptr, nullptr, 0);
+      };
+    };
+    field_editors.register_value_editor(value_type::INT8, scalar(ImGuiDataType_S8), true);
+    field_editors.register_value_editor(value_type::INT16, scalar(ImGuiDataType_S16), true);
+    field_editors.register_value_editor(value_type::INT32, scalar(ImGuiDataType_S32), true);
+    field_editors.register_value_editor(value_type::INT64, scalar(ImGuiDataType_S64), true);
+    field_editors.register_value_editor(value_type::UINT8, scalar(ImGuiDataType_U8), true);
   }
 
   void rendering_system::late_initialize(driver_kernel* kernel) {
@@ -240,6 +344,7 @@ namespace other {
     reg.register_executor("draw_scene", &detail::make_draw_scene);
     reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
     reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
+    reg.register_executor("window_sized_compute_dispatch", &detail::make_window_sized_compute_dispatch);
     reg.register_executor("generate_mipmaps", &detail::make_generate_mipmaps);
     reg.register_executor("downsample_chain", &detail::make_downsample_chain);
     reg.register_executor("debug_stream", &detail::make_debug_stream);
@@ -421,15 +526,41 @@ namespace other {
       glm::vec3 groups = groups_it->second;
 
       shader::compute_barrier_type barrier = shader::compute_barrier_type::SHADER_IMAGE_ACCESS;
-      // if (auto b_it = params.find("barrier"); b_it != params.end()) {
-      //   barrier = compute_barrier_type_from_string(b_it->second);
-      // }
+      if (auto b_it = params.find("barrier"); b_it != params.end()) {
+        std::string bar_str = b_it->second;
+        barrier = compute_barrier_type_from_string(bar_str);
+      }
       return [g = groups, uniforms = def.executor.uniforms, b = barrier, pass_name = def.name](pass_context& ctx) {
         auto* sh = ctx.shader_for_pass();
         OTHER_ASSERT(sh != nullptr, "compute_dispatch: no shader bound for pass '{}'", pass_name);
         render_pipeline::apply_uniforms(*sh, uniforms);
         sh->bind();
         ctx.dispatch(glm::uvec3(g), b);
+      };
+    };
+
+    render_graph::pass_executor make_window_sized_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl) {
+      const auto& params = def.executor.params;
+      auto groups_it = params.find("groups");
+      OTHER_ASSERT(groups_it != params.end(), "window_sized_compute_dispatch: pass '{}' missing 'groups' param", def.name);
+      glm::vec3 groups = groups_it->second;
+
+      shader::compute_barrier_type barrier = shader::compute_barrier_type::SHADER_IMAGE_ACCESS;
+      if (auto b_it = params.find("barrier"); b_it != params.end()) {
+        std::string bar_str = b_it->second;
+        barrier = compute_barrier_type_from_string(bar_str);
+      }
+      return [g = groups, uniforms = def.executor.uniforms, b = barrier, pass_name = def.name, pl](pass_context& ctx) {
+        auto* sh = ctx.shader_for_pass();
+        OTHER_ASSERT(sh != nullptr, "window_sized_compute_dispatch: no shader bound for pass '{}'", pass_name);
+        render_pipeline::apply_uniforms(*sh, uniforms);
+        sh->bind();
+
+        OTHER_ASSERT(pl != nullptr, "window_sized_compute_dispatch: no render pipeline provided for pass '{}'", pass_name);
+        const glm::ivec2 win = pl->get_window_size();
+        const glm::uvec3 local = glm::uvec3(g.x, g.y, g.z);
+        const glm::uvec3 groups((win.x + local.x - 1) / local.x, (win.y + local.y - 1) / local.y, 1u);
+        ctx.dispatch(groups, b);
       };
     };
 

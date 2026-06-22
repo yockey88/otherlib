@@ -1,3 +1,5 @@
+#include "shader-modules/math.glsl"
+
 layout (std140) uniform camera_buffer {
   vec4 camera_position;
   vec4 camera_forward;
@@ -43,4 +45,9 @@ vec3 view_to_world(vec4 view_coords) {
 vec3 sample_defocus_disk(inout uint seed) {
   vec3 ruv = random_unit_vector(seed);
   return camera_position.xyz + (ruv.x * defocus_disk_u.xyz) + (ruv.y * defocus_disk_v.xyz);
+}
+
+vec3 oe_view_ray(vec2 tex_coords) {
+  vec4 view_c = ndc_to_view(tex_coords);
+  return view_to_world(view_c);
 }

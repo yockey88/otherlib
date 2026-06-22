@@ -28,6 +28,7 @@ namespace other {
 
     std::string name;
     glm::ivec2 size = { 0, 0 };
+    uint32_t samples = 1;
     glm::vec4 clear_color = { 0.2, 0.2, 0.2, 1.0 };
 
     struct texture_resource {

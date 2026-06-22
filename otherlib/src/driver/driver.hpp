@@ -48,6 +48,7 @@
 #include "scripting/interfaces/networking_interfaces.hpp"
 #include "scripting/scene_interface.hpp"
 #include "ui/driver_ui.hpp"
+#include "ui/field_editor_registry.hpp"
 #include "vm/other_device.hpp"
 
 #include "message/message.hpp"
@@ -164,6 +165,10 @@ namespace other {
 
     inline interface_registry& get_interface_registry() {
       return interfaces;
+    }
+
+    inline ui::field_editor_registry& get_field_editors() {
+      return field_editors;
     }
 
     inline driver_state current_driver_state() const {
@@ -301,6 +306,7 @@ namespace other {
     mode current_mode = CORE;
 
     interface_registry interfaces;
+    ui::field_editor_registry field_editors;
 
     template <typename R>
     R default_return() {
