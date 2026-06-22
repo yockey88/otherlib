@@ -32,6 +32,7 @@ def copy_dlls(cfg, dll_cfg):
     f"extern/sdl/lib/{dll_cfg.lower()}/SDL3.dll",
     "extern/assimp/lib/assimp-vc143-mt.dll",
     f"extern/python312/python312.dll",
+    "extern/steamworks/bin/steam_api64.dll",
     "extern/sol2/lib/lua-5.4.4.dll",
     f"extern/jolt/bin/{dll_cfg}/Jolt.dll",
   ]

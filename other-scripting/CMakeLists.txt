@@ -46,7 +46,6 @@ target_include_directories(other_scripting
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scripting>
 )
-
 target_link_directories(other_scripting 
   PUBLIC
     $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}> 
