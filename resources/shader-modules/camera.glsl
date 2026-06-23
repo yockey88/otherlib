@@ -1,6 +1,6 @@
 #include "shader-modules/math.glsl"
 
-layout (std140) uniform camera_buffer {
+layout (std140, binding = 2) uniform camera_buffer {
   vec4 camera_position;
   vec4 camera_forward;
 
@@ -13,6 +13,10 @@ layout (std140) uniform camera_buffer {
   mat4 view_matrix;
   mat4 projection_matrix;
 };
+
+mat4 get_camera_matrix() {
+  return projection_matrix * view_matrix;
+}
 
 float camera_near_clip() { return camera_features.x; }
 float camera_far_clip() { return camera_features.y; }

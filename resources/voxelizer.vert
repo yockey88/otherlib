@@ -1,4 +1,4 @@
-#include "shader-modules/basic-instancing-vertex.glsl"
+#include "shader-modules/basic-geometry.glsl"
 
 out vec3 g_world_pos;
 
