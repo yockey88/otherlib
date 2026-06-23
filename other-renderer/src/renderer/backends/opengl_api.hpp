@@ -124,7 +124,6 @@ namespace other {
 
       constexpr auto operator<=>(const shader_binding&) const = default;
     };
-    std::map<shader_binding, natural_t> shader_block_bindings;
     std::map<natural_t, gpu_buffer> buffer_resources;
 
     std::map<natural_t, mesh> mesh_resources;

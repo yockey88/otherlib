@@ -26,11 +26,13 @@ namespace other {
       for (const auto& [id, buffer] : input_buffers) {
         renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
           .set_shader_resource(buffer.binding_point, *pass->shader_handle)
+          .bind_to_shader()
           .bind();
       }
       for (const auto& [id, buffer] : output_buffers) {
         renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
           .set_shader_resource(buffer.binding_point, *pass->shader_handle)
+          .bind_to_shader()
           .bind();
       }
 

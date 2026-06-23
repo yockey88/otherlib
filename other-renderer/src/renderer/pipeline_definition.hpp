@@ -135,8 +135,6 @@ namespace other {
 
   pipeline_definition read_pipeline_definition_from_file(const filepath& path);
 
-  pipeline_definition get_basic_geometry_only_pipeline();
-  pipeline_definition get_default_instancing_pipeline();
   pipeline_definition get_empty_pipeline();
 
 }  // namespace other

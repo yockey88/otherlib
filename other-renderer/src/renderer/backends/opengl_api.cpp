@@ -795,21 +795,15 @@ namespace other {
 
     /// check if shdader binding is hooked up and if not bind it
     ///     this is expensive so we should cache the binding points
-    shader_binding binding_key = { buffer_id, shader_id };
-    auto binding_itr = shader_block_bindings.find(binding_key);
-    if (binding_itr == shader_block_bindings.end()) {
-      PROFILE_SECTION("opengl_api::bind_shader_buffer_resource--bind-gpu-buffer-to-shader");
-
-      if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
-        GLuint block_index = glGetUniformBlockIndex(shader_id, name.data());
-        if (block_index != 0xffffffff) {
-          glUniformBlockBinding(shader_id, block_index, binding_point);
-          auto [bind_itr, inserted] = shader_block_bindings.emplace(binding_key, handle.id);
-          if (!inserted || bind_itr == shader_block_bindings.end()) {
-            CORE_LOG_ERROR("Failed to create shader block binding for buffer ID {} and shader ID {}.", handle.id, shader_handle.id);
-            return;
-          }
-        }
+    if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
+      GLuint block_index = glGetUniformBlockIndex(shader_id, name.data());
+      if (block_index != 0xffffffff) {
+        glUniformBlockBinding(shader_id, block_index, binding_point);
+      }
+    } else if (buffer_type == gpu_buffer::buf_type::STORAGE_BUFFER) {
+      GLuint block_index = glGetProgramResourceIndex(shader_id, GL_SHADER_STORAGE_BLOCK, name.data());
+      if (block_index != 0xffffffff) {
+        glShaderStorageBlockBinding(shader_id, block_index, binding_point);
       }
     }
 

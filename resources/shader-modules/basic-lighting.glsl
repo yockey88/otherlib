@@ -4,8 +4,8 @@ struct light {
   float type; // 0 - directional, 1 - point light
 };
 
-layout (std140) buffer light_buffer {
-  light lights[MAX_LIGHTS];
+layout (std430) readonly buffer light_buffer {
+  light lights[];
 };
 
 uniform mat4 OE_light_space_matrix;
