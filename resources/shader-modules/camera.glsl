@@ -1,6 +1,6 @@
 #include "shader-modules/math.glsl"
 
-layout (std140, binding = 2) uniform camera_buffer {
+layout (std140) uniform camera_buffer {
   vec4 camera_position;
   vec4 camera_forward;
 

@@ -4,15 +4,14 @@ struct light {
   float type; // 0 - directional, 1 - point light
 };
 
-layout (std430) buffer light_buffer {
-  light lights[];
+layout (std140) buffer light_buffer {
+  light lights[MAX_LIGHTS];
 };
 
 uniform mat4 OE_light_space_matrix;
 uniform vec3 OE_light_position;
 uniform sampler2D OE_shadow_map;
 uniform int OE_num_lights;
-
 
 float attenuate(float dist){ 
   dist *= DIST_FACTOR; 
