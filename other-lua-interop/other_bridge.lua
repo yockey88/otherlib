@@ -49,8 +49,8 @@ _NativeRenderComponent = __native_render_component
 _NativeCameraComponent = __native_camera_component
 
 GraphicsMaterial = __native_gpu_graphics_material
-PointLight = __native_gpu_point_light
-DirectionLight = __native_gpu_directional_light
+PointLight = __native_point_light
+DirectionLight = __native_directional_light
 
 Vec2 = __native_vector2
 Vec3 = __native_vector3

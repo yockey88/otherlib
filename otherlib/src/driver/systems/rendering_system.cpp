@@ -33,8 +33,7 @@ namespace other {
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
 
     void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
-    void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
-    void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_model_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
     void upload_material_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
@@ -176,8 +175,8 @@ namespace other {
     field_editors.register_value_editor(value_type::UINT32, scalar(ImGuiDataType_U32), true);
     field_editors.register_value_editor(value_type::UINT64, scalar(ImGuiDataType_U64), true);
 
-    field_editors.register_editor<gpu::point_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
-      gpu::point_light& pl = *reinterpret_cast<gpu::point_light*>(d);
+    field_editors.register_editor<point_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
+      point_light& pl = *reinterpret_cast<point_light*>(d);
       bool modified = false;
 
       ImGui::Text("%s", label.data());
@@ -185,14 +184,14 @@ namespace other {
       const std::string id = std::format("{}##point_light", label);
       ImGui::PushID(id.c_str());
 
-      modified |= ui::inspector::property_vec3("Position", pl.light_position, ctx.flags.speed.value_or(0.01));
-      modified |= ui::inspector::property_vec3("Color", pl.color, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec3("Position", pl.position, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec4("Color", pl.color, ctx.flags.speed.value_or(0.01));
 
       ImGui::PopID();
       return modified;
     });
-    field_editors.register_editor<gpu::directional_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
-      gpu::directional_light& dl = *reinterpret_cast<gpu::directional_light*>(d);
+    field_editors.register_editor<direction_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
+      direction_light& dl = *reinterpret_cast<direction_light*>(d);
       bool modified = false;
 
       ImGui::Text("%s", label.data());
@@ -201,7 +200,7 @@ namespace other {
       ImGui::PushID(id.c_str());
 
       modified |= ui::inspector::property_vec3("Direction", dl.direction, ctx.flags.speed.value_or(0.01));
-      modified |= ui::inspector::property_vec3("Color", dl.color, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec4("Color", dl.color, ctx.flags.speed.value_or(0.01));
 
       ImGui::PopID();
       return modified;
@@ -363,8 +362,7 @@ namespace other {
 
     auto& reg = renderer_ptr->get_binding_registry();
     reg.register_per_frame(resource_tag(resource_tag::kCameraTag), &detail::upload_camera_buffer_per_frame);
-    reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), &detail::upload_point_light_buffer_per_frame);
-    reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), &detail::upload_directional_light_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kLightTag), &detail::upload_light_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kSimulationEnvironmentTag), &detail::upload_simulation_environment_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kScreenTag), &detail::no_op_upload_per_frame);
     reg.register_per_draw(resource_tag(resource_tag::kModelTag), &detail::upload_model_buffer_per_draw);
@@ -707,20 +705,12 @@ namespace other {
       r.upload_buffer(h, &gpu, sizeof(gpu));
     }
 
-    void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::point_light_buffer buf{};
-      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-        buf.lights[i] = d.point_lights[i];
+    void upload_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::light_buffer buf{};
+      for (size_t i = 0; i < d.lights.size() && i < gpu::kMaxLights; ++i) {
+        buf.lights[i] = d.lights[i];
       }
-      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
-    }
-
-    void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::directional_light_buffer dir_light_buffer_data;
-      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
-        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
-      }
-      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+      r.upload_to_handle(h, &buf, sizeof(gpu::light_buffer));
     }
 
     void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {

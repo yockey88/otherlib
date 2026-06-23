@@ -668,7 +668,7 @@ namespace other {
     scene_table.set_function("attach_model_to_object", &scene_interface::attach_model_to_object);
     scene_table.set_function("attach_camera_to_object", &scene_interface::attach_camera_to_object);
     scene_table.set_function("attach_point_light_to_object", &scene_interface::attach_point_light_to_object);
-    scene_table.set_function("attach_directional_light_to_object", &scene_interface::attach_directional_light_to_object);
+    scene_table.set_function("attach_direction_light_to_object", &scene_interface::attach_direction_light_to_object);
 
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
     driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {

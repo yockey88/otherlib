@@ -29,7 +29,8 @@ namespace other {
           case component::id::PHYSICS: return colors::scene_object::kComponentPhysics;
           case component::id::SCRIPT: return colors::scene_object::kComponentScript;
           case component::id::AUDIO: return colors::scene_object::kComponentAudio;
-          case component::id::LIGHT: return colors::scene_object::kComponentLight;
+          case component::id::POINT_LIGHT: return colors::scene_object::kComponentLight;
+          case component::id::DIRECTION_LIGHT: return colors::scene_object::kComponentLight;
           case component::id::CAMERA: return colors::scene_object::kComponentCamera;
           default: return colors::scene_object::kComponentCustom;
         }
@@ -53,8 +54,7 @@ namespace other {
           { icon_x, icon_y },
           { icon_x + kIconSize, icon_y + kIconSize },
           colors::to_im_col(icon_color),
-          4.f
-        );
+          4.f);
 
         /// object name
         float text_x = icon_x + kIconSize + 8.f;
@@ -71,8 +71,7 @@ namespace other {
         dl->AddLine(
           { cursor.x, header_max.y },
           { cursor.x + avail_w, header_max.y },
-          colors::to_im_col(colors::inspector::kBorder)
-        );
+          colors::to_im_col(colors::inspector::kBorder));
 
         ImGui::Dummy({ avail_w, kObjectHeaderHeight + 1.f });
       }
@@ -94,8 +93,7 @@ namespace other {
           { icon_x, icon_y },
           { icon_x + kIconSize, icon_y + kIconSize },
           colors::to_im_col(icon_color),
-          4.f
-        );
+          4.f);
 
         /// object id label (right side, drawn first so we know remaining width)
         std::string id_str = std::format("#0x{:04X}", object_id);
@@ -124,8 +122,7 @@ namespace other {
           dl->AddLine(
             { cursor.x, header_max.y },
             { cursor.x + avail_w, header_max.y },
-            colors::to_im_col(colors::inspector::kBorder)
-          );
+            colors::to_im_col(colors::inspector::kBorder));
 
           /// advance cursor past the header
           ImGui::SetCursorScreenPos({ cursor.x, header_max.y + 1.f });
@@ -209,8 +206,7 @@ namespace other {
         dl->AddLine(
           { cursor.x, header_max.y },
           { cursor.x + avail_w, header_max.y },
-          colors::to_im_col(colors::inspector::kComponentSeparator)
-        );
+          colors::to_im_col(colors::inspector::kComponentSeparator));
 
         /// advance cursor past header
         ImGui::SetCursorScreenPos({ cursor.x, header_max.y + 1.f });
@@ -267,8 +263,7 @@ namespace other {
           ImGui::PushClipRect(
             cursor,
             ImVec2(clip_right, cursor.y + ImGui::GetFrameHeight()),
-            true
-          );
+            true);
           ImGui::Text("%s", label.data());
           ImGui::PopClipRect();
         }
@@ -309,8 +304,7 @@ namespace other {
           { item_min.x + 2.f, item_max.y },
           colors::to_im_col(axis_color),
           3.f,
-          ImDrawFlags_RoundCornersLeft
-        );
+          ImDrawFlags_RoundCornersLeft);
       }
 
       /// draw focused border accent on the last drawn item if active

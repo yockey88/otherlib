@@ -5,9 +5,9 @@
 #define OTHERLIB_SCRIPTING_SCENE_INTERFACE_HPP
 
 #include "lua/lua_host.hpp"
-#include "renderer/gpu_structs.hpp"
 
 #include "object/camera_component.hpp"
+#include "object/light_component.hpp"
 #include "object/render_component.hpp"
 
 namespace other {
@@ -37,8 +37,8 @@ namespace other {
     static render_component_lua_proxy attach_model_to_object(scene* scene, natural_t id, const std::string_view model_path);
     static camera_component_lua_proxy attach_camera_to_object(scene* scene_ptr, natural_t id);
 
-    static gpu::point_light attach_point_light_to_object(scene* scene_ptr, natural_t id, const gpu::point_light& light);
-    static gpu::directional_light attach_directional_light_to_object(scene* scene_ptr, natural_t id, const gpu::directional_light& light);
+    static point_light attach_point_light_to_object(scene* scene_ptr, natural_t id, const point_light& light);
+    static direction_light attach_direction_light_to_object(scene* scene_ptr, natural_t id, const direction_light& light);
 
    private:
     static driver* driver_ptr;

@@ -744,13 +744,21 @@ namespace other {
       data.primary_camera = primary_camera;
     }
 
-    storage->registry.view<object_handle, light_component>().each([&](const object_handle& handle, const light_component& light) {
-      std::ranges::copy(light.directional_lights, std::back_inserter(data.ambient_lights));
-      std::ranges::copy(light.point_lights, std::back_inserter(data.point_lights));
-
-      if (object_has_tag(handle.id, "sun")) {
-        data.scene_ambient_light = &light.directional_lights[0];
-      }
+    storage->registry.view<object_handle, point_light_component>().each([&](const object_handle& handle, const point_light_component& light) {
+      gpu::light l{
+        .vector = { light.light.position.x, light.light.position.y, light.light.position.z, 0.f },
+        .color = light.light.color,
+        .type = gpu::light::kPoint,
+      };
+      data.lights.push_back(l);
+    });
+    storage->registry.view<object_handle, direction_light_component>().each([&](const object_handle& handle, const direction_light_component& light) {
+      gpu::light l{
+        .vector = { light.light.direction.x, light.light.direction.y, light.light.direction.z, 0.0f },
+        .color = light.light.color,
+        .type = gpu::light::kDirection,
+      };
+      data.lights.push_back(l);
     });
 
     storage->registry.view<object_handle, render_component>().each([&](const object_handle& handle, render_component& render) {
@@ -873,17 +881,9 @@ namespace other {
       render.last_model_asset_id = render.model_asset_id;
     });
 
-    if (data.scene_ambient_light != nullptr) {
-      data.simulation_environment.sun_direction = glm::vec4(glm::normalize(data.scene_ambient_light->direction), 0.0f);
-      data.simulation_environment.sun_color = glm::vec4(data.scene_ambient_light->color, 1.0f);
-    }
-
-    glm::vec4 ambient_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
-    for (const auto& dirlight : data.ambient_lights) {
-      ambient_color += glm::vec4(dirlight.color, 1.0f);
-    }
-    ambient_color /= static_cast<float>(data.ambient_lights.size() + 1);
-    data.simulation_environment.ambient_color = glm::clamp(ambient_color, 0.0f, 1.0f);
+    data.simulation_environment.sun_direction = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+    data.simulation_environment.sun_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    data.simulation_environment.ambient_color = glm::vec4(0.f);
 
     glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
     glm::vec4 horizon_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);

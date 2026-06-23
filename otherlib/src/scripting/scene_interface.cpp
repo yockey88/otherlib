@@ -127,38 +127,40 @@ namespace other {
     return camera_component_lua_proxy{ camera_comp };
   }
 
-  template <typename T>
-  T add_light(scene* scene_ptr, natural_t id, const T& light) {
+  point_light scene_interface::attach_point_light_to_object(scene* scene_ptr, natural_t id, const point_light& light) {
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_light_to_object");
 
     scene_object* object = &scene_ptr->get_object(id);
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_light_to_object");
 
-    light_component* light_comp = nullptr;
-    if (!scene_ptr->has_component<light_component>(object)) {
-      light_comp = &scene_ptr->add_component<light_component>(object);
+    point_light_component* light_comp = nullptr;
+    if (!scene_ptr->has_component<point_light_component>(object)) {
+      light_comp = &scene_ptr->add_component<point_light_component>(object);
     } else {
-      light_comp = scene_ptr->get_component<light_component>(object);
+      light_comp = scene_ptr->get_component<point_light_component>(object);
     }
 
-    OTHER_ASSERT(light_comp != nullptr, "Light component pointer is null in scene_object_interface::attach_light_to_object");
-    if constexpr (std::is_same_v<T, gpu::point_light>) {
-      light_comp->point_lights.push_back(light);
-      return light_comp->point_lights.back();
-    } else if constexpr (std::is_same_v<T, gpu::directional_light>) {
-      light_comp->directional_lights.push_back(light);
-      return light_comp->directional_lights.back();
+    OTHER_ASSERT(light_comp != nullptr, "Point light component pointer is null in scene_object_interface::attach_point_light_to_object");
+    light_comp->light = light;
+    return light_comp->light;
+  }
+
+  direction_light scene_interface::attach_direction_light_to_object(scene* scene_ptr, natural_t id, const direction_light& light) {
+    OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene_object_interface::attach_direction_light_to_object");
+
+    scene_object* object = &scene_ptr->get_object(id);
+    OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_direction_light_to_object");
+
+    direction_light_component* light_comp = nullptr;
+    if (!scene_ptr->has_component<direction_light_component>(object)) {
+      light_comp = &scene_ptr->add_component<direction_light_component>(object);
     } else {
-      static_assert(false, "Unsupported light type in scene_interface::attach_light_to_object");
+      light_comp = scene_ptr->get_component<direction_light_component>(object);
     }
-  }
 
-  gpu::point_light scene_interface::attach_point_light_to_object(scene* scene_ptr, natural_t id, const gpu::point_light& light) {
-    return add_light<gpu::point_light>(scene_ptr, id, light);
-  }
-
-  gpu::directional_light scene_interface::attach_directional_light_to_object(scene* scene_ptr, natural_t id, const gpu::directional_light& light) {
-    return add_light<gpu::directional_light>(scene_ptr, id, light);
+    OTHER_ASSERT(light_comp != nullptr, "Directional light component pointer is null in scene_object_interface::attach_direction_light_to_object");
+    light_comp->light = light;
+    return light_comp->light;
   }
 
 }  // namespace other

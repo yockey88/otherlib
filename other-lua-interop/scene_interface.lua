@@ -64,7 +64,7 @@ local function _attach_point_light_to_object(scene_handle, native_id, light)
   return __other_native.__scene_interface.attach_point_light_to_object(scene_handle, native_id, light)
 end
 local function _attach_directional_light_to_object(scene_handle, native_id, light)
-  return __other_native.__scene_interface.attach_directional_light_to_object(scene_handle, native_id, light)
+  return __other_native.__scene_interface.attach_direction_light_to_object(scene_handle, native_id, light)
 end
 
 local _SceneInterface = {}

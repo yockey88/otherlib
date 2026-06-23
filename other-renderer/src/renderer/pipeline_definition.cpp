@@ -474,8 +474,7 @@ namespace other {
       { .name = "camera_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) },
       { .name = "model_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kModelTag) },
       { .name = "bone_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kBoneTag) },
-      { .name = "point_light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kPointLightTag) },
-      { .name = "direction_light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kDirectionLightTag) },
+      { .name = "light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kLightTag) },
       { .name = "material_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kMaterialTag) },
     };
 
@@ -647,8 +646,7 @@ namespace other {
       resource_tag(resource_tag::kModelTag),
       resource_tag(resource_tag::kMaterialTag),
       resource_tag(resource_tag::kBoneTag),
-      resource_tag(resource_tag::kPointLightTag),
-      resource_tag(resource_tag::kDirectionLightTag),
+      resource_tag(resource_tag::kLightTag),
     };
 
     return def;

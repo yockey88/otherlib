@@ -153,12 +153,12 @@ namespace other {
         }
       }
 
-      for (const auto& [binding_point, buffer] : pass.pass.buffer_resources) {
+      for (const auto& [id, buffer] : pass.pass.buffer_resources) {
         if (buffer.flags == READ) {
-          n.input_buffers.insert({ binding_point, buffer });
+          n.input_buffers.insert({ id, buffer });
         }
         if (buffer.flags == WRITE) {
-          n.output_buffers.insert({ binding_point, buffer });
+          n.output_buffers.insert({ id, buffer });
         }
       }
     }

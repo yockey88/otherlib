@@ -6,6 +6,7 @@
 
 #include "core/defines.hpp"
 
+#include "renderer/pass_runtime.hpp"
 #include "renderer/render_pass.hpp"
 
 namespace other {
@@ -21,7 +22,7 @@ namespace other {
     std::map<natural_t, render_pass::texture_resource> input_textures;
     std::map<natural_t, render_pass::texture_resource> output_textures;
 
-    void start_pass(renderer* renderer_ptr) const;
+    void start_pass(renderer* renderer_ptr, pass_runtime* runtime) const;
     void end_pass(renderer* renderer_ptr) const;
 
     bool operator==(const frame_node& other) const { return id == other.id && pass == other.pass; }

@@ -12,20 +12,38 @@
 
 namespace other {
 
-  struct light_component : public component {
-    std::vector<gpu::point_light> point_lights;
-    std::vector<gpu::directional_light> directional_lights;
+  struct point_light {
+    glm::vec3 position;
+    glm::vec4 color;
+  };
 
-    light_component()
-        : component(component::LIGHT) {}
+  struct direction_light {
+    glm::vec3 direction;
+    glm::vec4 color;
+  };
+
+  struct point_light_component : public component {
+    point_light light;
+
+    point_light_component()
+        : component(component::POINT_LIGHT) {}
+  };
+
+  struct direction_light_component : public component {
+    direction_light light;
+
+    direction_light_component()
+        : component(component::DIRECTION_LIGHT) {}
   };
 
 }  // namespace other
 
 OTHER_REFLECT(
-  other::light_component,
-  field(point_lights, other::attr::serializable("Point Lights")),
-  field(directional_lights, other::attr::serializable("Directional Lights"))
-)
+  other::point_light_component,
+  field(light, other::attr::serializable("Light")))
+
+OTHER_REFLECT(
+  other::direction_light_component,
+  field(light, other::attr::serializable("Light")))
 
 #endif  // OTHER_SCENE_OBJECT_LIGHT_COMPONENT_HPP

@@ -14,7 +14,8 @@ namespace other {
       PHYSICS,
       SCRIPT,
       AUDIO,
-      LIGHT,
+      POINT_LIGHT,
+      DIRECTION_LIGHT,
       CAMERA,
       ANIMATION,
 
