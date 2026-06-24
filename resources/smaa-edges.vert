@@ -1,6 +1,6 @@
 #include "shader-modules/basic-textured-quad-vertex.glsl"
 
-uniform sampler2D OE_color;   // tonemapped LDR image
+uniform sampler2D OE_color;
 
 #define SMAA_RT_METRICS vec4(1.0 / vec2(textureSize(OE_color, 0)), vec2(textureSize(OE_color, 0)))
 #define SMAA_GLSL_4

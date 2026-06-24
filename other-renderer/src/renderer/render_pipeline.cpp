@@ -520,7 +520,11 @@ namespace other {
       float near_plane = 1.0f, far_plane = 10.f;
       glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
 
-      /// tiny shift to avoid nans
+      // const glm::vec3 light_direction = glm::normalize(data.simulation_environment.sun_direction);
+      // const glm::vec3 distant_position = -100.f * light_direction;
+      // glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
+      // glm::mat4 light_view = glm::lookAt(distant_position, light_target, glm::vec3(0.f, 1.f, 0.f));
+
       glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
       glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
 

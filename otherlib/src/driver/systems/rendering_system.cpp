@@ -276,9 +276,12 @@ namespace other {
     renderer_ptr->begin_frame(data_ptr);
     renderer_ptr->render();
 
-    renderer_ptr->begin_ui_frame();
-    driver_ui_ptr->render();
-    renderer_ptr->end_ui_frame();
+    const bool ui_enabled = get_driver().get_config_value<bool>("ui.enable", true);
+    if (ui_enabled) {
+      renderer_ptr->begin_ui_frame();
+      driver_ui_ptr->render();
+      renderer_ptr->end_ui_frame();
+    }
 
     renderer_ptr->end_frame();
   }
@@ -515,6 +518,11 @@ namespace other {
     renderer_ptr->add_pipeline(itr->definition.name, itr->definition);
     rendering_pipeline_assets.push_back(*itr);
     pending_rendering_pipeline_assets.erase(itr);
+
+    /// load all of it's resources that are on disk as assets (shaders/textures/etc..)
+    // for (auto& resource : pl->definition.textures) {
+    //   kernel->get_core_system<asset_system>().add_texture_asset(resource.seed_texture_path.value_or(""));
+    // }
   }
 
   void rendering_system::handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data) {

@@ -45,7 +45,6 @@ namespace other {
     glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
 
     camera* primary_camera = nullptr;  //< tag = 'main-camera'
-    // const gpu::directional_light* scene_ambient_light = nullptr;  //< tag = 'sun'
     std::vector<gpu::light> lights;
     gpu::simulation_environment_buffer simulation_environment;
 

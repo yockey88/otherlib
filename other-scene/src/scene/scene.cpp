@@ -752,13 +752,15 @@ namespace other {
       };
       data.lights.push_back(l);
     });
+
+    const direction_light* scene_ambient_light = nullptr;
     storage->registry.view<object_handle, direction_light_component>().each([&](const object_handle& handle, const direction_light_component& light) {
-      gpu::light l{
-        .vector = { light.light.direction.x, light.light.direction.y, light.light.direction.z, 0.0f },
-        .color = light.light.color,
-        .type = gpu::light::kDirection,
-      };
-      data.lights.push_back(l);
+      const bool sun_tag = object_has_tag(handle.id, "sun");
+      if (scene_ambient_light == nullptr && sun_tag) {
+        scene_ambient_light = &light.light;
+      } else if (sun_tag) {
+        CORE_LOG_WARN("Multiple directional lights with the 'sun' tag detected. Using the first one as the scene ambient light.");
+      }
     });
 
     storage->registry.view<object_handle, render_component>().each([&](const object_handle& handle, render_component& render) {
@@ -881,8 +883,14 @@ namespace other {
       render.last_model_asset_id = render.model_asset_id;
     });
 
-    data.simulation_environment.sun_direction = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-    data.simulation_environment.sun_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    if (scene_ambient_light != nullptr) {
+      data.simulation_environment.sun_direction = glm::vec4(scene_ambient_light->direction, 0.0f);
+      data.simulation_environment.sun_color = scene_ambient_light->color;
+    } else {
+      data.simulation_environment.sun_direction = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+      data.simulation_environment.sun_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+
     data.simulation_environment.ambient_color = glm::vec4(0.f);
 
     glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);

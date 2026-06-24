@@ -1,11 +1,4 @@
-struct point_light {
-  vec4 position;
-  vec4 color;
-};
-
-layout (std430, binding = 0) readonly buffer point_light_buffer {
-  point_light point_lights[];
-};
+#include "shader-modules/basic-lighting.glsl"
 
 uniform vec3 light_pos;
 uniform float far_plane;

@@ -25,7 +25,10 @@ namespace other {
       bool is_color = false;
       bool has_range = false;
 
-      glm::vec2 range = glm::vec2(0.0f, 1.0f);
+      glm::vec2 range = glm::vec2{
+        std::numeric_limits<float>::min(),
+        std::numeric_limits<float>::max(),
+      };
       opt<float> speed;
       asset::type asset_type = asset::EMPTY;
 

@@ -143,13 +143,12 @@ namespace other {
        * \todo  handle flags correctly, currently only READ and WRITE are supported
        **/
 
-      size_t tex_count = 0;
-      for (const auto& [slot, texture] : pass.pass.texture_resources) {
+      for (const auto& [id, texture] : pass.pass.texture_resources) {
         if (texture.flags == READ) {
-          n.input_textures.insert({ tex_count++, texture });
+          n.input_textures.insert({ id, texture });
         }
         if (texture.flags == WRITE) {
-          n.output_textures.insert({ tex_count++, texture });
+          n.output_textures.insert({ id, texture });
         }
       }
 
@@ -173,13 +172,15 @@ namespace other {
         }
 
         for (const auto& [slot, texture] : n1.output_textures) {
-          if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; }); itr != n2.input_textures.end() && !e1.contains(n2.id)) {
+          if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
+              itr != n2.input_textures.end()) {
             e1.insert(n2.id);
             CORE_LOG_DEBUG("Adding edge from pass {} to pass {} for texture resource {}", n1.pass->id, n2.pass->id, texture.handle);
           }
         }
         for (const auto& [slot, texture] : n1.output_buffers) {
-          if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; }); itr != n2.input_buffers.end() && !e1.contains(n2.id)) {
+          if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
+              itr != n2.input_buffers.end()) {
             e1.insert(n2.id);
             CORE_LOG_DEBUG("Adding edge from pass {} to pass {} for buffer resource {}", n1.pass->id, n2.pass->id, texture.handle);
           }
@@ -239,7 +240,7 @@ namespace other {
         }
       }
     }
-    CORE_LOG_DEBUG("{}", ss.str());
+    CORE_LOG_INFO("{}", ss.str());
 
     graph_valid = true;
   }

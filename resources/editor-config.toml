@@ -26,6 +26,7 @@ pipelines = [
 ]
 
 [ui]
+# enable = false
 enable-environment-menu-bar = true
 
 [scripting]

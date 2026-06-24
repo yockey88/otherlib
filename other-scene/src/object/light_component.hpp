@@ -39,6 +39,16 @@ namespace other {
 }  // namespace other
 
 OTHER_REFLECT(
+  other::point_light,
+  field(position, other::attr::serializable("Position")),
+  field(color, other::attr::serializable("Color"), other::attr::clamp<float>(0.0f, 1.0f)))
+
+OTHER_REFLECT(
+  other::direction_light,
+  field(direction, other::attr::serializable("Direction")),
+  field(color, other::attr::serializable("Color"), other::attr::clamp<float>(0.0f, 1.0f)))
+
+OTHER_REFLECT(
   other::point_light_component,
   field(light, other::attr::serializable("Light")))
 

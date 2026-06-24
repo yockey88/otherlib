@@ -8,6 +8,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 
+#include "core/frame_rate_enforcer.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "network/tcp/tcp_transport_provider.hpp"
@@ -79,10 +80,13 @@ namespace other {
     PROFILE_SECTION("driver::main_loop");
 
     CORE_LOG_DEBUG("Entering main driver loop");
+
+    frame_rate_enforcer<60> frame_rate_guard;
     do {
       MARK_NAMED_FRAME("driver_main_loop");
       update();
       render();
+      frame_rate_guard.wait();
     } while (current_driver_state() != driver_state::DRIVER_STATE_STOPPED);
   }
 

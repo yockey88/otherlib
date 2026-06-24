@@ -736,11 +736,9 @@ namespace other {
 
           if (!pass_name.is_string()) {
             result.fail("frame.pass-bindings[]: 'pass_name' must be a string");
-            continue;
           }
           if (!name.is_string()) {
             result.fail(std::format("frame.pass-bindings (pass '{}'): 'name' must be a string", pass_name.as_string()->get()));
-            continue;
           }
           if (!binding.is_integer()) {
             result.fail(std::format("frame.pass-bindings (pass '{}', name '{}'): 'binding' must be an integer",

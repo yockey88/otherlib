@@ -64,14 +64,14 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
   vec3 diffuse_specular = vec3(0);
   for (int i = 0; i < OE_num_lights; ++i) {
     if (lights[i].type == 1.f) {
-      vec3  lp = lights[i].vector.xyz;
-      vec3  light_dir = normalize(lp - world_position);
-      vec3  diff = max(dot(world_normal, light_dir), 0.0) * diffuse * lights[i].color.rgb;
+      vec3 lp = lights[i].vector.xyz;
+      vec3 light_dir = normalize(lp - world_position);
+      vec3 diff = max(dot(world_normal, light_dir), 0.0) * diffuse * lights[i].color.rgb;
       
-      vec3  halfway = normalize(light_dir + view_dir);
+      vec3 halfway = normalize(light_dir + view_dir);
       float spec = pow(max(dot(world_normal, halfway), 0.0), 16.0);
 
-      vec3  specular = lights[i].color.rgb * spec * specular_reflect;
+      vec3 specular = lights[i].color.rgb * spec * specular_reflect;
       float atten = attenuate(length(lp - world_position));
 
       float vis = oe_point_shadow(world_position, world_normal, lp); 

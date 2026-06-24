@@ -176,6 +176,14 @@ namespace other {
         if constexpr (refl::descriptor::has_attribute<attr::asset_identifier_field>(field)) {
           f.asset_type = refl::descriptor::get_attribute<attr::asset_identifier_field>(field).asset_type;
         }
+        if constexpr (refl::descriptor::has_attribute<attr::clamp>(field)) {
+          const auto& c = refl::descriptor::get_attribute<attr::clamp>(field);
+          f.has_range = true;
+          f.range = glm::vec2{
+            static_cast<float>(c.min),
+            static_cast<float>(c.max)
+          };
+        }
         return f;
       }
 
@@ -208,7 +216,44 @@ namespace other {
           return changed;
         }
 
-        return field_editors.edit(key, label, &value, ctx);  // draws "<unsupported type>"
+        bool modified = field_editors.edit(key, label, &value, ctx);  // draws "<unsupported type>"
+        // clamp value if necessary
+
+        if (ctx.flags.has_range) {
+          if constexpr (is_linear_algebra_type<FT> &&
+                        !(std::is_same_v<FT, glm::mat4> || std::is_same_v<FT, glm::mat3> || std::is_same_v<FT, glm::mat2>)) {
+            for (int i = 0; i < value.length(); ++i) {
+              if (value[i] < (float)ctx.flags.range.x) {
+                value[i] = (float)ctx.flags.range.x;
+                modified = true;
+              }
+              if (value[i] > (float)ctx.flags.range.y) {
+                value[i] = (float)ctx.flags.range.y;
+                modified = true;
+              }
+            }
+          } else if constexpr (std::is_arithmetic_v<FT>) {
+            if (value < static_cast<FT>(ctx.flags.range.x)) {
+              value = static_cast<FT>(ctx.flags.range.x);
+              modified = true;
+            }
+            if (value > static_cast<FT>(ctx.flags.range.y)) {
+              value = static_cast<FT>(ctx.flags.range.y);
+              modified = true;
+            }
+          } else if constexpr (std::is_floating_point_v<FT>) {
+            if (value < static_cast<FT>(ctx.flags.range.x)) {
+              value = static_cast<FT>(ctx.flags.range.x);
+              modified = true;
+            }
+            if (value > static_cast<FT>(ctx.flags.range.y)) {
+              value = static_cast<FT>(ctx.flags.range.y);
+              modified = true;
+            }
+          }
+        }
+
+        return modified;
       }
 
     }  // namespace detail
