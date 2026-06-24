@@ -1,0 +1,91 @@
+asset-type = "rendering-pipeline"
+name = "default-instancing"
+version = 1
+
+[lighting]
+shadow_map_pass_name = "shadow-map-pass"
+shading_pass_name = "shading-pass"
+light_space_matrix_uniform_name = "OE_light_space_matrix"
+
+[resources]
+buffers = [
+  { name = "camera_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "camera" },
+  { name = "model_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "model" },
+  { name = "bone_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "bone" },
+  { name = "light_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "light" },
+  { name = "simulation_environment_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "simulation_environment" },
+  { name = "material_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "material" },
+]
+textures = [
+  { name = "color_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA32U" },
+  { name = "normal_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
+  { name = "position_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
+  { name = "ambient_shadow_map", use_window_size = true, type = "TEXTURE_2D", format = "DEPTHF" },
+  { name = "shaded_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F", tag = "screen" },
+]
+shaders = [
+  { name = "geometry_pass_shader", vertex_path = "resources/basic-instancing-gbuffer.vert", fragment_path = "resources/basic-instancing-gbuffer.frag" },
+  { name = "shadow_map_shader", vertex_path = "resources/basic-instancing-shadow-map.vert", fragment_path = "resources/basic-instancing-shadow-map.frag" },
+  { name = "environment_map_pass", compute_path = "resources/basic-environment-map.comp" },
+  { name = "shading_pass_shader", vertex_path = "resources/basic-shading.vert", fragment_path = "resources/basic-shading.frag" },
+  { name = "screen_shader", vertex_path = "resources/basic-textured-quad.vert", fragment_path = "resources/basic-textured-quad.frag" },
+]
+
+[frame]
+bindings = [
+  { name = "per_draw.material_buffer", tag = "material", scope = "PER_DRAW", type = "STORAGE_BUFFER", element_size = 6400 },
+  { name = "per_draw.model_buffer", tag = "model", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6400 },
+  { name = "per_draw.bone_buffer", tag = "bone", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6416 },
+  { name = "per_frame.camera_buffer", tag = "camera", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 208 },
+  { name = "per_frame.light_buffer", tag = "light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 9600 },
+  { name = "per_frame.simulation_environment_buffer", tag = "simulation_environment", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 128 }
+]
+pass-bindings = [
+  { pass_name = "geometry-pass", name = "per_draw.model_buffer", binding = 0 }, 
+  { pass_name = "geometry-pass", name = "per_draw.bone_buffer", binding = 1 },
+  { pass_name = "geometry-pass", name = "per_draw.material_buffer", binding = 2 }, 
+  { pass_name = "geometry-pass", name = "per_frame.camera_buffer", binding = 3 }, 
+  { pass_name = "shadow-map-pass", name = "per_draw.model_buffer", binding = 0 }, 
+]
+passes = [
+  { name = "geometry-pass", pass_type = "RENDER_PASS", shader_name = "geometry_pass_shader", clear_color = [0.0, 0.0, 0.0, 1.0] },
+  { name = "shadow-map-pass", pass_type = "RENDER_PASS", shader_name = "shadow_map_shader" },
+  { name = "shading-pass", pass_type = "RENDER_PASS", shader_name = "shading_pass_shader", clear_color = [0.2, 0.2, 0.2, 1.0] },
+  { name = "to-screen", pass_type = "RENDER_PASS", shader_name = "screen_shader", create_framebuffer = false },
+]
+inputs = [
+  { pass_name = "geometry-pass", resource_name = "model_buffer", binding = 0 },
+  { pass_name = "geometry-pass", resource_name = "bone_buffer", binding = 1 },
+  { pass_name = "geometry-pass", resource_name = "material_buffer", binding = 2 },
+  { pass_name = "geometry-pass", resource_name = "camera_buffer", binding = 3 },
+  { pass_name = "shadow-map-pass", resource_name = "model_buffer", binding = 0 },
+  { pass_name = "shading-pass", resource_name = "color_texture", attachment = "COLOR" },
+  { pass_name = "shading-pass", resource_name = "normal_texture", attachment = "COLOR" },
+  { pass_name = "shading-pass", resource_name = "position_texture", attachment = "COLOR" },
+  { pass_name = "shading-pass", resource_name = "ambient_shadow_map", attachment = "DEPTH" },
+  { pass_name = "shading-pass", resource_name = "camera_buffer", binding = 0 },
+  { pass_name = "shading-pass", resource_name = "light_buffer", binding = 1 },
+  { pass_name = "to-screen", resource_name = "shaded_texture", attachment = "COLOR" },
+]
+outputs = [
+  { pass_name = "geometry-pass", resource_name = "color_texture", attachment = "COLOR" },
+  { pass_name = "geometry-pass", resource_name = "normal_texture", attachment = "COLOR" },
+  { pass_name = "geometry-pass", resource_name = "position_texture", attachment = "COLOR" },
+  { pass_name = "shadow-map-pass", resource_name = "ambient_shadow_map", attachment = "DEPTH" },
+  { pass_name = "shading-pass", resource_name = "shaded_texture", attachment = "COLOR" },
+]
+executors = [
+  { pass_name = "geometry-pass", name = "draw_scene" },
+  { pass_name = "shadow-map-pass", name = "draw_scene" },
+  { pass_name = "shading-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_gbuff_albedo", value = 0 }, { name = "OE_gbuff_normal", value = 1 }, { name = "OE_gbuff_position", value = 2 }, { name = "OE_shadow_map", value = 3 }, { name = "OE_env_cubemap", value = 5 }, { name = "OE_voxel_tex", value = 4 } ] },
+  { pass_name = "to-screen", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 } ] },
+]
+resource_tags = [
+  { name = "camera", type = "BUFFER" },
+  { name = "model", type = "BUFFER" },
+  { name = "bone", type = "BUFFER" },
+  { name = "light", type = "BUFFER" },
+  { name = "simulation_environment", type = "BUFFER" },
+  { name = "material", type = "BUFFER" },
+  { name = "screen", type = "TEXTURE" },
+]

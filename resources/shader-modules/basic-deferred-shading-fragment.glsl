@@ -16,24 +16,24 @@ uniform sampler3D OE_voxel_tex;
 #endif
 
 float oe_point_shadow(vec3 surface_pos, vec3 surface_normal, vec3 light_pos) {
-  vec3  to_light = light_pos - surface_pos;
+  vec3 to_light = light_pos - surface_pos;
   float dist = length(to_light);
   if (dist < 1e-4) { 
     return 1.0; 
   }
   vec3  dir = to_light / dist;
 
-  ivec3 dim   = textureSize(OE_voxel_tex, 0);
+  ivec3 dim = textureSize(OE_voxel_tex, 0);
   vec3  vsize = oe_voxel_size(dim);                       // world units per voxel
-  float vlen  = max(max(vsize.x, vsize.y), vsize.z);
+  float vlen = max(max(vsize.x, vsize.y), vsize.z);
 
-  vec3  p = surface_pos + surface_normal * (vlen * OE_SHADOW_NORMAL_BIAS) + dir * (vlen * 0.5);
+  vec3 p = surface_pos + surface_normal * (vlen * OE_SHADOW_NORMAL_BIAS) + dir * (vlen * 0.5);
   float remaining = dist - vlen * (OE_SHADOW_NORMAL_BIAS + 1.0);
   if (remaining <= 0.0) { 
     return 1.0; 
   }
 
-  int   steps = int(clamp(remaining / vlen, 1.0, float(OE_SHADOW_MAX_STEPS)));
+  int steps = int(clamp(remaining / vlen, 1.0, float(OE_SHADOW_MAX_STEPS)));
   float step_len = remaining / float(steps);
 
   float trans = 1.0;

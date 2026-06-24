@@ -5,6 +5,7 @@
 
 #include <toml++/toml.hpp>
 
+#include "gpu_resource/renderer_resource.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/util/pipeline_asset_validation.hpp"
 
@@ -211,6 +212,17 @@ namespace other {
     }
   }
 
+  access_flags access_flags_from_string(const std::string_view str) {
+    switch (FNV(str)) {
+      case FNV("read"): return access_flags::READ;
+      case FNV("write"): return access_flags::WRITE;
+      case FNV("read_write"): return access_flags::READ_WRITE;
+      default:
+        OTHER_ASSERT(false, "Unsupported access flag string {}", str);
+        return access_flags::READ;
+    }
+  }
+
   resource_tag resource_tag_from_string(const std::string_view str) {
     return resource_tag(FNV(str));
   }
@@ -229,6 +241,7 @@ namespace other {
     std::string attachment;
     opt<uint32_t> binding = std::nullopt;
     uint32_t mip_level = 0;
+    std::string access;
   };
   struct frame_executor_table {
     std::string pass_name;
@@ -577,7 +590,7 @@ namespace other {
       auto parse_input_output = [](const std::string_view io_type,
                                    toml::node_view<const toml::node> pass_name, toml::node_view<const toml::node> resource_name,
                                    toml::node_view<const toml::node> attachment, toml::node_view<const toml::node> binding,
-                                   toml::node_view<const toml::node> mip_level) -> frame_input_output_table {
+                                   toml::node_view<const toml::node> mip_level, toml::node_view<const toml::node> access) -> frame_input_output_table {
         if (!pass_name || !resource_name) {
           CORE_LOG_ERROR("pass-name: {}, resource-name: {}", (bool)pass_name, (bool)resource_name);
           OTHER_ASSERT(false, "Invalid frame {}: pass_name or resource_name is missing", io_type);
@@ -613,6 +626,15 @@ namespace other {
         } else {
           io.mip_level = 0;
         }
+        if (access) {
+          if (!access.is_string()) {
+            CORE_LOG_ERROR("access: {}", access.type());
+            OTHER_ASSERT(false, "Invalid frame {}: access is not a string", io_type);
+          }
+          io.access = access.as_string()->get();
+        } else {
+          io.access = "read";
+        }
 
         io.pass_name = pass_name.as_string()->get();
         return io;
@@ -624,7 +646,8 @@ namespace other {
         auto attachment = inputs.at_path("attachment");
         auto binding = inputs.at_path("binding");
         auto mip_level = inputs.at_path("mip_level");
-        auto io = parse_input_output("input", pass_name, resource_name, attachment, binding, mip_level);
+        auto access = inputs.at_path("access");
+        auto io = parse_input_output("input", pass_name, resource_name, attachment, binding, mip_level, access);
         if (!io.pass_name.empty()) {
           into_section.inputs.push_back(std::move(io));
           std::stringstream ss_input;
@@ -644,7 +667,8 @@ namespace other {
         auto attachment = output.at_path("attachment");
         auto binding = output.at_path("binding");
         auto mip_level = output.at_path("mip_level");
-        auto io = parse_input_output("output", pass_name, resource_name, attachment, binding, mip_level);
+        auto access = output.at_path("access");
+        auto io = parse_input_output("output", pass_name, resource_name, attachment, binding, mip_level, access);
         if (!io.pass_name.empty()) {
           into_section.outputs.push_back(std::move(io));
           std::stringstream ss_output;
@@ -986,6 +1010,11 @@ namespace other {
         if (!i.attachment.empty()) {
           in.attachment = framebuffer_attachment_type_from_string(i.attachment);
         }
+        if (!i.access.empty()) {
+          in.access = access_flags_from_string(i.access);
+        } else {
+          in.access = access_flags::READ;
+        }
       }
 
       for (const auto& o : frame.outputs) {
@@ -1005,6 +1034,8 @@ namespace other {
         }
         if (!o.attachment.empty()) {
           out.attachment = framebuffer_attachment_type_from_string(o.attachment);
+        } else {
+          out.access = access_flags::WRITE;
         }
       }
 

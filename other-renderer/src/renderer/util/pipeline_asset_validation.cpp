@@ -202,6 +202,12 @@ namespace other {
         "none",
       };
 
+      constexpr std::string_view kValidAccessFlags[] = {
+        "read",
+        "write",
+        "read_write",
+      };
+
       template <size_t N>
       constexpr bool is_valid_enum(const std::string_view value, const std::string_view (&valid)[N]) {
         for (const auto& v : valid) {
@@ -476,6 +482,14 @@ namespace other {
           const auto mip_level = entry.at_path("mip_level");
           if (mip_level && !mip_level.is_integer()) {
             result.fail(std::format("{} (pass '{}', resource '{}'): 'mip_level' must be an integer", section, pass_str, res_str));
+          }
+
+          const auto access = entry.at_path("access");
+          if (access && !access.is_string()) {
+            result.fail(std::format("{} (pass '{}', resource '{}'): 'access' must be a string", section, pass_str, res_str));
+          } else if (access && !is_valid_enum(access.as_string()->get(), kValidAccessFlags)) {
+            result.fail(std::format("{} (pass '{}', resource '{}'): '{}' is not a valid access flag",
+                                    section, pass_str, res_str, access.as_string()->get()));
           }
         };
 

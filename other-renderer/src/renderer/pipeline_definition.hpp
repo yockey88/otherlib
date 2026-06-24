@@ -67,6 +67,7 @@ namespace other {
     uint32_t binding = 0;
     framebuffer::attachment_type attachment = framebuffer::COLOR;
     uint32_t mip_level = 0;
+    access_flags access = access_flags::READ;
   };
 
   struct pipeline_executor_definition {

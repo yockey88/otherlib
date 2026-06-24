@@ -1429,7 +1429,9 @@ namespace other {
     framebuffer_resources.erase(itr);
 
     if (auto it = framebuffer_msaa_color_rbs.find(handle.id); it != framebuffer_msaa_color_rbs.end()) {
-      if (!it->second.empty()) glDeleteRenderbuffers((GLsizei)it->second.size(), it->second.data());
+      if (!it->second.empty()) {
+        glDeleteRenderbuffers((GLsizei)it->second.size(), it->second.data());
+      }
       framebuffer_msaa_color_rbs.erase(it);
     }
     if (auto it = framebuffer_msaa_depth_rbs.find(handle.id); it != framebuffer_msaa_depth_rbs.end()) {
