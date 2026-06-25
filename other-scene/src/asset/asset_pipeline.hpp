@@ -26,7 +26,6 @@ namespace other {
 
    public:
     using executor_t = asio::thread_pool::executor_type;
-    // asio::strand<asio::io_context::executor_type>;
 
     using on_asset_loaded = std::function<void(asset*)>;
     using on_asset_load_failed = std::function<void(asset*, const std::string&)>;
@@ -49,8 +48,8 @@ namespace other {
     static scope<asset_pipeline> get_rendering_pipeline_pipeline(event_system* events, asset_handler* handler, const pipeline_definition& definition);
 
     void set_asset_data(asset* asset_ptr);
-    void start_load(executor_t& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
-    void start_unload(executor_t& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
+    void start_load(job_system& jobs, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
+    void start_unload(job_system& jobs, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure);
 
     std::string get_last_error() const { return error_message; }
 
@@ -65,7 +64,7 @@ namespace other {
     std::mutex mtx;
 
    protected:
-    void start_load_operation(executor_t& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure, loading_table::loader_fn_t function);
+    void start_load_operation(job_system& jobs, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure, loading_table::loader_fn_t function);
 
     void pipeline_finished();
     void pipeline_failed(const std::string& error_message);

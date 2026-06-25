@@ -22,7 +22,7 @@ textures = [
   { name = "position_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "ambient_shadow_map", use_window_size = true, type = "TEXTURE_2D", format = "DEPTHF" },
   { name = "voxel_texture", use_window_size = true, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 128, y = 128 }, depth = 128 },
-  { name = "environment_map", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 512, y = 512 }, depth = 6 }, # basically cubemap
+  { name = "environment_map", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 512, y = 512 }, depth = 6 },
   { name = "shaded_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "tonemapped_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "smaa_edge_texture", use_window_size = true,  type = "TEXTURE_2D", format = "RG8"   },
@@ -86,7 +86,7 @@ inputs = [
   { pass_name = "geometry-pass", resource_name = "bone_buffer", binding = 1 },
   { pass_name = "geometry-pass", resource_name = "material_buffer", binding = 2 },
   { pass_name = "geometry-pass", resource_name = "camera_buffer", binding = 3 },
-  { pass_name = "voxel-occupied-pass", resource_name = "simulation_environment_buffer", binding = 0 },  # buffer, no texture slot
+  { pass_name = "voxel-occupied-pass", resource_name = "simulation_environment_buffer", binding = 0 },
   { pass_name = "voxel-occupied-pass", resource_name = "voxel_texture" },     
   { pass_name = "voxel-occupied-pass", resource_name = "position_texture", attachment = "COLOR" },
   { pass_name = "voxel-occupied-pass", resource_name = "normal_texture", attachment = "COLOR" },
@@ -135,7 +135,7 @@ executors = [
   { pass_name = "smaa-edges", name = "fullscreen_quad", uniforms = [ { name = "OE_color",  value = 0 } ] },
   { pass_name = "smaa-weights", name = "fullscreen_quad", uniforms = [ { name = "OE_edges",  value = 0 }, { name = "OE_area",   value = 1 }, { name = "OE_search", value = 2 } ] },
   { pass_name = "smaa-blend", name = "fullscreen_quad", uniforms = [ { name = "OE_color",  value = 0 }, { name = "OE_weights", value = 1 } ] },
-  { pass_name = "tonemap-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 }, { name = "OE_gamma", value = 1.1 } ] },
+  { pass_name = "tonemap-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 }, { name = "OE_gamma", value = 2.2 } ] },
   { pass_name = "to-screen", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 } ] },
 ]
 resource_tags = [

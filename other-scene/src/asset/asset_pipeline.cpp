@@ -126,7 +126,7 @@ namespace other {
     pipeline_state.success = true;
   }
 
-  void asset_pipeline::start_load(executor_t& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
+  void asset_pipeline::start_load(job_system& jobs, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in start_load");
     OTHER_ASSERT(on_success != nullptr, "on_success callback is null in start_load");
     OTHER_ASSERT(on_failure != nullptr, "on_failure callback is null in start_load");
@@ -141,11 +141,11 @@ namespace other {
 
     pipeline_state.loading = true;
     start_load_operation(
-      execution_pool, asset_ptr, on_success, on_failure,
+      jobs, asset_ptr, on_success, on_failure,
       loading_table::loaders[asset_ptr->asset_type]);
   }
 
-  void asset_pipeline::start_unload(executor_t& execution_pool, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
+  void asset_pipeline::start_unload(job_system& jobs, asset* asset_ptr, asset_pipeline::on_asset_loaded on_success, asset_pipeline::on_asset_load_failed on_failure) {
     CORE_LOG_DEBUG("Starting unload pipeline for asset ID: {}", asset_ptr->id);
 
     if (pipeline_state.unloading) {
@@ -162,7 +162,7 @@ namespace other {
 
     pipeline_state.unloading = true;
     start_load_operation(
-      execution_pool, asset_ptr, on_success, on_failure,
+      jobs, asset_ptr, on_success, on_failure,
       loading_table::unloaders[asset_ptr->asset_type]);
   }
 
@@ -183,7 +183,7 @@ namespace other {
     }
   }
 
-  void asset_pipeline::start_load_operation(executor_t& execution_pool, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure, loading_table::loader_fn_t function) {
+  void asset_pipeline::start_load_operation(job_system& jobs, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure, loading_table::loader_fn_t function) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
     OTHER_ASSERT(function != nullptr, "Loader function pointer is null");
     OTHER_ASSERT(handler != nullptr, "Asset handler pointer is null");
@@ -193,7 +193,7 @@ namespace other {
     this->asset_ptr = asset_ptr;
 
     CORE_LOG_TRACE("Posting asset load operation for asset: [{}]", asset_ptr->id);
-    handler->jobs.post_coroutine(function(handler, asset_ptr, &asset_pipeline::pipeline_finished, &asset_pipeline::pipeline_failed, this));
+    jobs.post_coroutine(function(handler, asset_ptr, &asset_pipeline::pipeline_finished, &asset_pipeline::pipeline_failed, this));
   }
 
   void asset_pipeline::pipeline_finished() {
@@ -229,7 +229,7 @@ namespace other {
 
     get_events().trigger_event(get_asset_event_name(asset_ptr->asset_type, event_name), asset_ptr->id);
 
-    /// \todo wire events and remove this
+    /// \todo remove this
     if (on_success_callback != nullptr) {
       on_success_callback(asset_ptr);
     }
@@ -250,7 +250,7 @@ namespace other {
     }
     get_events().trigger_event(get_asset_event_name(asset_ptr->asset_type, event_name), std::make_tuple(asset_ptr->id, error_message));
 
-    /// \todo wire events and remove this
+    /// \todo remove this
     if (on_failure_callback != nullptr) {
       on_failure_callback(asset_ptr, error_message);
     }

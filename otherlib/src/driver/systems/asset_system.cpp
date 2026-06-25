@@ -186,9 +186,8 @@ namespace other {
     });
 
     event_system& events = *get_driver().get_event_system();
-    auto& network = sibling<network_system>(*kernel);
     auto& jobs = sibling<job_driver_system>(*kernel).get_job_system();
-    asset_mgr = make_scope<asset_handler>(events, network.io_context(), jobs, driver_mounts::kAssetMount);
+    asset_mgr = make_scope<asset_handler>(events, jobs, driver_mounts::kAssetMount);
 
     CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
     const auto md_mnts = get_driver().configuration().get_raw("filesystem.mounts");

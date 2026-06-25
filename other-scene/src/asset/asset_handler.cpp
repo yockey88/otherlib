@@ -287,9 +287,9 @@ namespace other {
 
     loaded_assets.erase(it);
     pl_itr->pipeline->start_unload(
-      executor, &pl_itr->loading_asset,
-      std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this));
+      jobs, &pl_itr->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_unload_complete, this),
+      std::bind_front(&asset_handler::notify_asset_unload_failed, this));
   }
 
   void asset_handler::handle_file_event(const file_event& event) {
@@ -328,7 +328,7 @@ namespace other {
     state_it->second.handle_event(asset_event::REFRESH_REQUESTED, &pl_itr->loading_asset);
 
     pl_itr->pipeline->start_unload(
-      executor, &pl_itr->loading_asset,
+      jobs, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_unload_complete, this),
       std::bind_front(&asset_handler::notify_asset_unload_failed, this));
   }
@@ -422,7 +422,7 @@ namespace other {
     CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
     state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
     pipeline_it->pipeline->start_load(
-      executor, &pipeline_it->loading_asset,
+      jobs, &pipeline_it->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this));
 
@@ -460,7 +460,7 @@ namespace other {
 
     auto rit = loaded_assets.erase(it);
     pl_itr->pipeline->start_unload(
-      executor, &pl_itr->loading_asset,
+      jobs, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this));
     return rit;

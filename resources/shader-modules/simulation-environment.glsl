@@ -18,11 +18,12 @@ vec3 world_extent() {
 
 vec3 oe_sky_radiance(vec3 dir) {
   float up = clamp(dir.y, 0.0, 1.0);
-  // hemisphere: ground below the horizon, graded sky above
+  
+  // ground below the horizon, graded sky above
   vec3 sky = mix(horizon_color.rgb, zenith_color.rgb, pow(up, 0.5));
   sky = mix(ground_color.rgb, sky, step(0.0, dir.y));
   
-  // sun disk (soft edge); sun_direction.w = angular radius in radians
+  // sun_direction.w = angular radius in radians
   float cd = dot(normalize(dir), normalize(sun_direction.xyz));
   float disk = smoothstep(cos(sun_direction.w * 2.0), cos(sun_direction.w), cd);
 

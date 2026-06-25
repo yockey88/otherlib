@@ -96,8 +96,8 @@ namespace other {
 
   class asset_handler {
    public:
-    asset_handler(event_system& events, asio::io_context& io_context, job_system& jobs, const std::string_view asset_mount = "assets")
-        : events(events), jobs(jobs), io_context(io_context), thread_pool(detail::get_concurrency_limit()), executor(thread_pool.get_executor()), default_mount(asset_mount) {
+    asset_handler(event_system& events, job_system& jobs, const std::string_view asset_mount = "assets")
+        : events(events), jobs(jobs), default_mount(asset_mount) {
     }
     ~asset_handler() = default;
 
@@ -160,9 +160,6 @@ namespace other {
     const asset* get_loaded_asset(natural_t asset_id) const;
     std::vector<natural_t> get_all_tracked_ids() const;
 
-    asio::io_context& get_io_context() { return io_context; }
-    asset_pipeline::executor_t& get_executor() { return executor; }
-
     size_t get_num_loading_assets() const { return asset_pipelines.size(); }
     size_t get_num_loaded_assets() const { return loaded_assets.size(); }
     size_t get_num_assets_in_flight() const { return asset_pipelines.size() + loaded_assets.size(); }
@@ -188,10 +185,6 @@ namespace other {
 
     event_system& events;
     job_system& jobs;
-
-    asio::io_context& io_context;
-    asio::thread_pool thread_pool;
-    asset_pipeline::executor_t executor;
 
     std::deque<pipeline_context> asset_pipelines;
     std::queue<natural_t> successful_pipelines;

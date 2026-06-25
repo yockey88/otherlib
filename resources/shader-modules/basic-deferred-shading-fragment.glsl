@@ -1,13 +1,18 @@
+#define VOXEL_LIGHTING
+
 #include "shader-modules/camera.glsl"
+#ifdef VOXEL_LIGHTING
 #include "shader-modules/simulation-environment.glsl"
+#endif
 #include "shader-modules/basic-lighting.glsl"
 
 uniform sampler2D OE_gbuff_albedo;
 uniform sampler2D OE_gbuff_normal;
 uniform sampler2D OE_gbuff_position;
+
+#ifdef VOXEL_LIGHTING
 uniform sampler3D OE_env_cubemap;
 uniform sampler3D OE_voxel_tex;
-
 #ifndef OE_SHADOW_MAX_STEPS
 #define OE_SHADOW_MAX_STEPS 48
 #endif
@@ -74,15 +79,42 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
       vec3 specular = lights[i].color.rgb * spec * specular_reflect;
       float atten = attenuate(length(lp - world_position));
 
-      float vis = oe_point_shadow(world_position, world_normal, lp); 
-      diffuse_specular += vis * ((diff * atten) + (specular * atten));
+      // float vis = oe_point_shadow(world_position, world_normal, lp); 
+      diffuse_specular += ((diff * atten) + (specular * atten));
+      //vis * ((diff * atten) + (specular * atten));
     }
   }
 
   float sky_vis = texture(OE_env_cubemap, oe_world_to_volume(world_position)).a;
-  vec3  ambient = oe_environment_ambient(world_position, world_normal) * sky_vis;
+  vec3 ambient = oe_environment_ambient(world_position, world_normal) * sky_vis;
 
   float shadow_calc = calculate_direction_light_shadow(world_position, world_normal);
   vec3 lighting = ambient * diffuse + (1.0 - shadow_calc) * diffuse_specular;
   return vec4(lighting, 1.0);
 }
+#else
+vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, float specular_reflect) {
+  vec3 view_dir = normalize(camera_position.xyz - world_position);
+
+  vec3 diffuse_specular = vec3(0);
+  for (int i = 0; i < OE_num_lights; ++i) {
+    if (lights[i].type == 1.f) {
+      vec3 lp = lights[i].vector.xyz;
+      vec3 light_dir = normalize(lp - world_position);
+      vec3 diff = max(dot(world_normal, light_dir), 0.0) * diffuse * lights[i].color.rgb;
+      
+      vec3 halfway = normalize(light_dir + view_dir);
+      float spec = pow(max(dot(world_normal, halfway), 0.0), 16.0);
+      vec3 specular = lights[i].color.rgb * spec * specular_reflect;
+
+      float atten = attenuate(length(lp - world_position));
+      diffuse_specular += (diff * atten) + (specular * atten);
+    }
+  }
+
+  vec3 ambient = vec3(1.f);
+  float shadow_calc = calculate_direction_light_shadow(world_position, world_normal);
+  vec3 lighting = ambient * diffuse + (1.0 - shadow_calc) * diffuse_specular;
+  return vec4(lighting, 1.0);
+}
+#endif
