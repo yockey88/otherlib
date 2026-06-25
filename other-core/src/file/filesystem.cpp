@@ -55,11 +55,10 @@ namespace other {
   }
 
   void file_system::poll_files() {
+    PROFILE_SECTION("file_system::poll_files");
     for (auto& [hash, mount] : mounts) {
+      PROFILE_SECTION("file_system::poll_files--poll_mount");
       mount->poll();
-      for (auto& file : mount->files()) {
-        file->poll();
-      }
     }
   }
 
@@ -448,8 +447,7 @@ namespace other {
   ref<remote_file> file_system::register_remote_file(
     const std::string_view mount_name,
     const std::string_view relative_path,
-    const std::string_view url
-  ) {
+    const std::string_view url) {
     PROFILE_SECTION("file_system::register_remote_file");
 
     ref<directory> mount = get_mount(mount_name);

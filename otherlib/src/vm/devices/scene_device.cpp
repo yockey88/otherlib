@@ -6,6 +6,7 @@
 #include <filesystem>
 
 #include "driver/driver.hpp"
+#include "driver/systems/scene_system.hpp"
 #include "vm/device_utils.hpp"
 #include "vm/other_device.hpp"
 #include "vm/vm_error.hpp"

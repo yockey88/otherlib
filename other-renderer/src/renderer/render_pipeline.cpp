@@ -233,7 +233,7 @@ namespace other {
         PROFILE_SECTION("render_pipeline::render_frame--render_pass--iteration");
         diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
 
-        n.start_pass(renderer_ptr);
+        n.start_pass(renderer_ptr, &runtime);
         {
           pass_context ctx{
             renderer_ptr,
@@ -511,7 +511,7 @@ namespace other {
     glm::mat4 light_space_matrix = glm::mat4(1.0f);
     glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
 
-    if (definition.shadow_map_pass_name.has_value() && data.scene_ambient_light != nullptr) {
+    if (definition.shadow_map_pass_name.has_value()) {
       if (!definition.light_space_matrix_uniform_name.has_value()) {
         CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
         definition.shadow_map_pass_name = std::nullopt;  // avoid trying to set it every frame if it's not defined
@@ -520,7 +520,11 @@ namespace other {
       float near_plane = 1.0f, far_plane = 10.f;
       glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
 
-      /// tiny shift to avoid nans
+      // const glm::vec3 light_direction = glm::normalize(data.simulation_environment.sun_direction);
+      // const glm::vec3 distant_position = -100.f * light_direction;
+      // glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
+      // glm::mat4 light_view = glm::lookAt(distant_position, light_target, glm::vec3(0.f, 1.f, 0.f));
+
       glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
       glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
 
@@ -534,15 +538,12 @@ namespace other {
     if (definition.shading_pass_name.has_value()) {
       shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
       if (shading_shader != nullptr) {
-        int32_t num_point = static_cast<int32_t>(
-          data.point_lights.size() > gpu::kMaxPointLights ? gpu::kMaxPointLights : data.point_lights.size());
-        int32_t num_dir = static_cast<int32_t>(data.scene_ambient_light != nullptr ? 1 : 0);
+        int32_t num_lights = static_cast<int32_t>(data.lights.size() > gpu::kMaxLights ? gpu::kMaxLights : data.lights.size());
 
         shading_shader->bind()
           .set_uniform("OE_light_space_matrix", light_space_matrix)
           .set_uniform("OE_light_position", light_pos)
-          .set_uniform("OE_num_point_lights", num_point)
-          .set_uniform("OE_num_direction_lights", num_dir)
+          .set_uniform("OE_num_lights", num_lights)
           .unbind();
       }
     }
@@ -754,6 +755,11 @@ namespace other {
         OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
         builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, WRITE, ref.mip_level);
       }
+    }
+
+    /// add depends_on tags
+    for (const auto& depends_on_str : pass_def.depends_on) {
+      builder.depends_on(depends_on_str);
     }
 
     /// set up executor and check for runtime override

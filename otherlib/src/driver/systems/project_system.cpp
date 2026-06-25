@@ -10,6 +10,8 @@
 #include "core/defines.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/project_system.hpp"
+#include "driver/systems/scene_system.hpp"
 
 namespace other {
   namespace detail {
@@ -34,6 +36,7 @@ namespace other {
   }  // namespace detail
 
   void project_system::initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("project_system::initialize");
     loaded_project = make_scope<project>(this);
     OTHER_ASSERT(loaded_project != nullptr, "Failed to create project instance");
 
@@ -68,6 +71,7 @@ namespace other {
   }
 
   void project_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("project_system::tick");
     const auto& config = get_driver().configuration();
     if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING &&
         loaded_project->is_empty() && config.project_file.has_value()) {
@@ -100,6 +104,7 @@ namespace other {
   }
 
   void project_system::shutdown(driver_kernel* kernel) {
+    PROFILE_SECTION("project_system::shutdown");
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system shutdown.");
     loaded_project = nullptr;
   }
@@ -134,7 +139,7 @@ namespace other {
 
     OTHER_ASSERT(std::filesystem::exists(project_file), "Project file '{}' does not exist.", project_file.string());
     OTHER_ASSERT(std::filesystem::is_regular_file(project_file), "Project file '{}' is not a regular file.", project_file.string());
-
+    PROFILE_SECTION("project_system::load_project");
     if (loaded_project->is_loaded()) {
       CORE_LOG_ERROR("Can not load project file '{}' while other project is open.", project_file.string());
       return;
@@ -153,6 +158,7 @@ namespace other {
   void project_system::unload_project(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in project system unload_project.");
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    PROFILE_SECTION("project_system::unload_project");
 
     if (!loaded_project->is_loaded()) {
       CORE_LOG_ERROR("Project not loaded. Cannot unload");
@@ -197,8 +203,8 @@ namespace other {
   }
 
   void project_system::handle_project_event(driver_kernel* kernel, const project_event_data& data) {
+    PROFILE_SECTION("project_system::handle_project_event");
     CORE_LOG_INFO("Received project event '{}' for project '{}' at path '{}'", data.type, data.project_name, data.project_path);
-
     std::string type = data.type;
     filepath project_path = data.project_path;
     if (type == "load") {
@@ -246,6 +252,7 @@ namespace other {
   void project_system::handle_script_project_loaded(driver_kernel* kernel, const value& data) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script project loaded event data.");
+    PROFILE_SECTION("project_system::handle_script_project_loaded");
 
     CORE_LOG_DEBUG("Script project loaded. Project state: {}", loaded_project->get_state());
     if (loaded_project->is_loading()) {
@@ -264,6 +271,7 @@ namespace other {
   void project_system::handle_script_source_loaded(driver_kernel* kernel, const value& data) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script source loaded event data.");
+    PROFILE_SECTION("project_system::handle_script_source_loaded");
 
     natural_t asset_id = data;
     opt<filepath> script_source_path = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
@@ -286,6 +294,7 @@ namespace other {
   void project_system::handle_script_source_unloaded(driver_kernel* kernel, const value& data) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script source unloaded event data.");
+    PROFILE_SECTION("project_system::handle_script_source_unloaded");
 
     natural_t asset_id = data;
     opt<filepath> script_source_path = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
@@ -308,6 +317,7 @@ namespace other {
   void project_system::handle_script_file_loaded(driver_kernel* kernel, const value& data) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script file loaded event data.");
+    PROFILE_SECTION("project_system::handle_script_file_loaded");
 
     natural_t asset_id = data;
     opt<filepath> script_file_path = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
@@ -325,6 +335,7 @@ namespace other {
   void project_system::handle_script_file_unloaded(driver_kernel* kernel, const value& data) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Script file unloaded event data must be of type UINT64.");
+    PROFILE_SECTION("project_system::handle_script_file_unloaded");
 
     natural_t asset_id = data;
     auto script_file_path = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
@@ -345,6 +356,7 @@ namespace other {
     OTHER_ASSERT(plugin_path.extension() == ".dll" || plugin_path.extension() == ".so" || plugin_path.extension() == ".dylib", 
                  "Plugin file '{}' does not have a valid dynamic library extension.", plugin_path.string());
     // clang-format on
+    PROFILE_SECTION("project_system::load_plugin");
 
     CORE_LOG_INFO("Loading project plugin: '{}' @ {}", plugin_name, plugin_path.string());
     auto* lib = plugin::load_plugin_library(plugin_path.string());

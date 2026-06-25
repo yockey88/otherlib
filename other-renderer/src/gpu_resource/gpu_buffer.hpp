@@ -48,6 +48,7 @@ namespace other {
     gpu_buffer& set_binding_name(const std::string& name);
     gpu_buffer& set_shader_resource(const resource_handle& shader_handle);
     gpu_buffer& set_shader_resource(uint32_t point, const resource_handle& shader_handle);
+    gpu_buffer& bind_to_shader();
     gpu_buffer& set_usage(usage new_usage);
     gpu_buffer& set_buffer_type(buf_type new_type);
     gpu_buffer& set_data(const void* data, size_t size);

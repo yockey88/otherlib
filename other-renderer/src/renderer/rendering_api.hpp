@@ -88,6 +88,13 @@ namespace other {
 
     virtual void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) = 0;
 
+    virtual void set_viewport(int32_t x, int32_t y, int32_t width, int32_t height) = 0;
+    virtual void set_color_mask(bool enabled_or_disabled) = 0;
+    virtual void set_depth_mask(bool enabled_or_disabled) = 0;
+    virtual void set_depth_test(bool enabled_or_disabled) = 0;
+
+    virtual void memory_barrier(shader::compute_barrier_type bits) = 0;
+
     void begin_ui_frame();
     void end_ui_frame();
 

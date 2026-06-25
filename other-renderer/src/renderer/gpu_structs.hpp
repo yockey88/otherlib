@@ -132,28 +132,22 @@ namespace other {
       object objects[kMaxObjects];
     };
 
-    GPU_ALIGN struct point_light {
-      glm::vec3 light_position;
-      float padding;
-      glm::vec3 color;
-      float padding2;
+    GPU_ALIGN struct light {
+      glm::vec4 vector;
+      glm::vec4 color;
+
+      // 1 = point, 2 = direction, etc..
+      // easier to use on gpu
+      float type = -1;
+
+      constexpr static inline float kPoint = 1.f;
+      constexpr static inline float kDirection = 2.f;
+      constexpr static inline float kSpot = 3.f;
     };
 
-    constexpr size_t kMaxPointLights = 100;
-    GPU_ALIGN struct point_light_buffer {
-      point_light lights[kMaxPointLights];
-    };
-
-    GPU_ALIGN struct directional_light {
-      glm::vec3 direction;
-      float padding;
-      glm::vec3 color;
-      float padding2;
-    };
-
-    constexpr size_t kMaxDirectionalLights = 100;
-    GPU_ALIGN struct directional_light_buffer {
-      directional_light lights[kMaxDirectionalLights];
+    constexpr size_t kMaxLights = 200;
+    GPU_ALIGN struct light_buffer {
+      light lights[kMaxLights];
     };
 
     GPU_ALIGN struct simulation_environment_buffer {

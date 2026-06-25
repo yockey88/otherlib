@@ -14,6 +14,10 @@ layout (std140) uniform camera_buffer {
   mat4 projection_matrix;
 };
 
+mat4 get_camera_matrix() {
+  return projection_matrix * view_matrix;
+}
+
 float camera_near_clip() { return camera_features.x; }
 float camera_far_clip() { return camera_features.y; }
 float camera_defocus_angle() { return camera_features.z; }

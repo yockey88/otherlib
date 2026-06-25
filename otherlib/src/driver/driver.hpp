@@ -35,17 +35,12 @@
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
 #include "driver/systems/job_driver_system.hpp"
-#include "driver/systems/network_system.hpp"
-#include "driver/systems/project_system.hpp"
 #include "driver/systems/rendering_system.hpp"
-#include "driver/systems/scene_system.hpp"
-#include "driver/systems/scripting_system.hpp"
 #include "plugin/plugin.hpp"
 #include "plugin/plugin_interface.hpp"
 #include "scripting/bindings.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/interface_registry.hpp"
-#include "scripting/interfaces/networking_interfaces.hpp"
 #include "scripting/scene_interface.hpp"
 #include "ui/driver_ui.hpp"
 #include "ui/field_editor_registry.hpp"
@@ -200,6 +195,10 @@ namespace other {
     virtual void on_build_driver_input_map(input_map& map) {}
     virtual void on_viewport_resize(const glm::vec2& size) {}
 
+    // other
+    virtual void on_render() {}
+    virtual void on_ui_render() {}
+
    protected:
     template <typename R = void, typename... Args>
     R invoke_driver_method(const std::string_view method_name, Args&&... args) {
@@ -256,10 +255,6 @@ namespace other {
     /// response messages
     /// session events
     /// error alerts
-
-    // other
-    virtual void on_render() {}
-    virtual void on_ui_render() {}
 
     template <typename T>
       requires std::derived_from<T, driver_system>

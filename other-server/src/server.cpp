@@ -9,8 +9,10 @@
 #include "core/defines.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/network_system.hpp"
 
 #include "message/message.hpp"
+
 // #include "tcp_listener.hpp"
 
 OTHER_DRIVER(other::server)

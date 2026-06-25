@@ -42,6 +42,11 @@ namespace other {
     return *this;
   }
 
+  render_graph::pass_builder& render_graph::pass_builder::depends_on(const std::string_view pass_name) {
+    pass.depends_on.push_back(std::string(pass_name));
+    return *this;
+  }
+
   render_graph& render_graph::pass_builder::end_pass() {
     if (pass.framebuffer_handle.has_value() && pass.pass_type == render_pass::RENDER_PASS) {
       auto& fb = graph.renderer_ptr->get_resource<framebuffer>(*pass.framebuffer_handle);
@@ -57,6 +62,7 @@ namespace other {
       fb.finalize_framebuffer();
     }
 
+    // Process depends_on to add edges in the graph
     pass.next_texture_id = curr_texture_id;
     pass.next_buffer_id = curr_buffer_id;
 
@@ -137,22 +143,21 @@ namespace other {
        * \todo  handle flags correctly, currently only READ and WRITE are supported
        **/
 
-      size_t tex_count = 0;
-      for (const auto& [slot, texture] : pass.pass.texture_resources) {
+      for (const auto& [id, texture] : pass.pass.texture_resources) {
         if (texture.flags == READ) {
-          n.input_textures.insert({ tex_count++, texture });
+          n.input_textures.insert({ id, texture });
         }
         if (texture.flags == WRITE) {
-          n.output_textures.insert({ tex_count++, texture });
+          n.output_textures.insert({ id, texture });
         }
       }
 
-      for (const auto& [binding_point, buffer] : pass.pass.buffer_resources) {
+      for (const auto& [id, buffer] : pass.pass.buffer_resources) {
         if (buffer.flags == READ) {
-          n.input_buffers.insert({ binding_point, buffer });
+          n.input_buffers.insert({ id, buffer });
         }
         if (buffer.flags == WRITE) {
-          n.output_buffers.insert({ binding_point, buffer });
+          n.output_buffers.insert({ id, buffer });
         }
       }
     }
@@ -167,15 +172,35 @@ namespace other {
         }
 
         for (const auto& [slot, texture] : n1.output_textures) {
-          if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; }); itr != n2.input_textures.end() && !e1.contains(n2.id)) {
+          if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
+              itr != n2.input_textures.end()) {
             e1.insert(n2.id);
             CORE_LOG_DEBUG("Adding edge from pass {} to pass {} for texture resource {}", n1.pass->id, n2.pass->id, texture.handle);
           }
         }
         for (const auto& [slot, texture] : n1.output_buffers) {
-          if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; }); itr != n2.input_buffers.end() && !e1.contains(n2.id)) {
+          if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
+              itr != n2.input_buffers.end()) {
             e1.insert(n2.id);
             CORE_LOG_DEBUG("Adding edge from pass {} to pass {} for buffer resource {}", n1.pass->id, n2.pass->id, texture.handle);
+          }
+        }
+      }
+    }
+
+    for (const auto& n : nodes) {
+      for (const auto& depends_on_str : n.pass->depends_on) {
+        auto itr = std::ranges::find_if(nodes, [&](const frame_node& node) -> bool { return node.pass->name == depends_on_str; });
+        if (itr != nodes.end()) {
+          auto& e = edges[itr->id];
+          if (!e.contains(n.id)) {
+            e.insert(n.id);
+
+            // this forces a direction, so we have to remove the other if it exists
+            auto& reverse_e = edges[n.id];
+            if (reverse_e.contains(itr->id)) {
+              reverse_e.erase(itr->id);
+            }
           }
         }
       }
@@ -202,6 +227,20 @@ namespace other {
       graph_valid = true;
       return;
     }
+
+    std::stringstream ss;
+    ss << "Render Pass Order:\n";
+    for (const auto& pass_id : topological_sort) {
+      if (pass_id == static_cast<natural_t>(-1)) {
+        ss << "  (empty graph)";
+      } else {
+        auto itr = pass_graph.nodes.find(pass_id);
+        if (itr != pass_graph.nodes.end()) {
+          ss << itr->second.pass->name << " ";
+        }
+      }
+    }
+    CORE_LOG_INFO("{}", ss.str());
 
     graph_valid = true;
   }

@@ -4,6 +4,7 @@
 #include "ui/viewport.hpp"
 
 #include <imgui/imgui.h>
+#include <imguizmo/ImGuizmo.h>
 
 #include "renderer/render_pipeline.hpp"
 #include "renderer/ui/colors.hpp"
@@ -48,7 +49,6 @@ namespace other {
           ImGui::Text("No rendering pipelines available.");
         } else {
           auto& pipeline = pipeline_outputs[0];
-          // ImTextureID tex_id = pipeline->get_texture_id("shaded_texture");
           ImTextureID tex_id = pipeline->get_final_output_texture_id();
           if (tex_id == 0) {
             scoped_color error_color{ ImGuiCol_Text, colors::rgba_to_imvec4(colors::kFriendlyErrorRed) };
@@ -73,15 +73,18 @@ namespace other {
     }
 
     void viewport::on_render_header() {
-      if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Options")) {
-          if (ImGui::MenuItem("Reset Viewport")) {
-          }
-          ImGui::EndMenu();
-        }
-
-        ImGui::EndMenuBar();
-      }
+      ui::menu options_menu = {
+        "Options"
+      };
+      ui::menu view_menu = {
+        "View"
+      };
+      ui::menu tools_menu = {
+        "Tools"
+      };
+      ui::menu help_menu = {
+        "Help"
+      };
     }
 
     void viewport::on_render_body() {

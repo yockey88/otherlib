@@ -20,6 +20,7 @@
 #include "input/input_system.hpp"
 #include "serialization/reflection.hpp"
 #include "serialization/serialization.hpp"
+#include "thread/thread_safety.hpp"
 
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"

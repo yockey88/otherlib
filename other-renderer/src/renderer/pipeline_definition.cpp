@@ -5,6 +5,7 @@
 
 #include <toml++/toml.hpp>
 
+#include "gpu_resource/renderer_resource.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/util/pipeline_asset_validation.hpp"
 
@@ -17,6 +18,7 @@ namespace other {
       case FNV("fullscreen_quad"): return executor_type::FULLSCREEN_QUAD;
       case FNV("compute_dispatch"): return executor_type::COMPUTE_DISPATCH;
       case FNV("window_sized_compute_dispatch"): return executor_type::WINDOW_SIZED_COMPUTE_DISPATCH;
+      case FNV("voxelize"): return executor_type::VOXELIZE;
       case FNV("noop"): return executor_type::NOOP;
       case FNV("script"): return executor_type::SCRIPT;
       default: return executor_type::NOOP;
@@ -42,6 +44,7 @@ namespace other {
       case executor_type::FULLSCREEN_QUAD: return "fullscreen_quad";
       case executor_type::COMPUTE_DISPATCH: return "compute_dispatch";
       case executor_type::WINDOW_SIZED_COMPUTE_DISPATCH: return "window_sized_compute_dispatch";
+      case executor_type::VOXELIZE: return "voxelize";
       case executor_type::NOOP: return "noop";
       case executor_type::SCRIPT: return "script";
       default: return "noop";
@@ -209,6 +212,17 @@ namespace other {
     }
   }
 
+  access_flags access_flags_from_string(const std::string_view str) {
+    switch (FNV(str)) {
+      case FNV("read"): return access_flags::READ;
+      case FNV("write"): return access_flags::WRITE;
+      case FNV("read_write"): return access_flags::READ_WRITE;
+      default:
+        OTHER_ASSERT(false, "Unsupported access flag string {}", str);
+        return access_flags::READ;
+    }
+  }
+
   resource_tag resource_tag_from_string(const std::string_view str) {
     return resource_tag(FNV(str));
   }
@@ -227,6 +241,7 @@ namespace other {
     std::string attachment;
     opt<uint32_t> binding = std::nullopt;
     uint32_t mip_level = 0;
+    std::string access;
   };
   struct frame_executor_table {
     std::string pass_name;
@@ -345,311 +360,6 @@ namespace other {
 
     definition.name = name_str;
     return definition;
-  }
-
-  pipeline_definition get_basic_geometry_only_pipeline() {
-    pipeline_definition def;
-    def.name = "basic-geometry-only";
-    def.version = 1;
-
-    def.buffers = {
-      { .name = "material_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kMaterialTag) },
-      { .name = "camera_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) },
-      { .name = "model_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kModelTag) },
-      { .name = "bone_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kBoneTag) },
-    };
-
-    def.textures = {
-      { .name = "color_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA32U },
-      { .name = "normal_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F },
-      { .name = "position_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F },
-      { .name = "screen_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F, .tag = resource_tag(resource_tag::kScreenTag) },
-    };
-
-    def.shaders = {
-      {
-        .name = "geometry_pass_shader",
-        .vertex_path = "resources/basic-instancing-gbuffer.vert",
-        .fragment_path = "resources/basic-instancing-gbuffer.frag",
-      },
-      {
-        .name = "screen_shader",
-        .vertex_path = "resources/basic-textured-quad.vert",
-        .fragment_path = "resources/basic-textured-quad.frag",
-      },
-    };
-
-    def.passes = {
-      // geometry pass, fix this to only write color texture
-      {
-        .name = "geometry-pass",
-        .pass_type = render_pass::RENDER_PASS,
-        .shader_name = "geometry_pass_shader",
-        .inputs = {
-          { .resource_name = "material_buffer", .binding = 0 },
-          { .resource_name = "model_buffer", .binding = 1 },
-          { .resource_name = "camera_buffer", .binding = 2 },
-          { .resource_name = "bone_buffer", .binding = 3 },
-        },
-        .outputs = {
-          { .resource_name = "color_texture", .attachment = framebuffer::COLOR },
-          { .resource_name = "normal_texture", .attachment = framebuffer::COLOR },
-          { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
-        },
-        .executor = { .name = "draw_scene" },
-        .bindings = {
-          {
-            .name = "per_draw.material",
-            .tag = resource_tag(resource_tag::kMaterialTag),
-            .scope = binding_scope::PER_DRAW_CALL,
-            .type = binding_type::STORAGE_BUFFER,
-            .binding = 0,
-            .element_size = sizeof(gpu::graphics_material_buffer),
-          },
-          {
-            .name = "per_draw.model",
-            .tag = resource_tag(resource_tag::kModelTag),
-            .scope = binding_scope::PER_DRAW_CALL,
-            .type = binding_type::UNIFORM_BUFFER,
-            .binding = 1,
-            .element_size = sizeof(gpu::model_matrix_buffer),
-          },
-          {
-            .name = "per_frame.camera",
-            .tag = resource_tag(resource_tag::kCameraTag),
-            .scope = binding_scope::PER_FRAME,
-            .type = binding_type::UNIFORM_BUFFER,
-            .binding = 2,
-            .element_size = sizeof(gpu::camera_data),
-          },
-          {
-            .name = "per_draw.bones",
-            .tag = resource_tag(resource_tag::kBoneTag),
-            .scope = binding_scope::PER_DRAW_CALL,
-            .type = binding_type::UNIFORM_BUFFER,
-            .binding = 3,
-            .element_size = sizeof(gpu::bone_matrix_buffer),
-          },
-        },
-      },
-      // fix this to read color_texture and output to screen_texture
-      {
-        .name = "to-screen",
-        .pass_type = render_pass::RENDER_PASS,
-        .shader_name = "screen_shader",
-        .create_framebuffer = false,
-        .inputs = {
-          { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
-        },
-        .executor = {
-          .name = "fullscreen_quad",
-          .uniforms = {
-            { "OE_texture", value(int32_t{ 0 }) },
-            { "OE_exposure", value(1.0f) },
-          },
-        },
-      }
-    };
-
-    def.required_tags = {
-      resource_tag(resource_tag::kCameraTag),
-      resource_tag(resource_tag::kModelTag),
-    };
-
-    return def;
-  }
-
-  pipeline_definition get_default_instancing_pipeline() {
-    pipeline_definition def;
-    def.name = "default-instancing";
-    def.version = 1;
-
-    def.shadow_map_pass_name = "shadow-map-pass";
-    def.shading_pass_name = "shading-pass";
-    def.light_space_matrix_uniform_name = "OE_light_space_matrix";
-
-    def.buffers = {
-      { .name = "camera_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) },
-      { .name = "model_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kModelTag) },
-      { .name = "bone_buffer", .type = gpu_buffer::buf_type::UNIFORM_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kBoneTag) },
-      { .name = "point_light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kPointLightTag) },
-      { .name = "direction_light_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kDirectionLightTag) },
-      { .name = "material_buffer", .type = gpu_buffer::buf_type::STORAGE_BUFFER, .usage = gpu_buffer::usage::DYNAMIC, .tag = resource_tag(resource_tag::kMaterialTag) },
-    };
-
-    def.textures = {
-      { .name = "color_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA32U },
-      { .name = "normal_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F },
-      { .name = "position_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F },
-      { .name = "ambient_shadow_map", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::DEPTHF },
-      { .name = "screen_texture", .use_window_size = true, .type = texture::tex_type::TEXTURE_2D, .format = texture::format::RGBA16F, .tag = resource_tag(resource_tag::kScreenTag) },
-    };
-
-    def.shaders = {
-      {
-        .name = "geometry_pass_shader",
-        .vertex_path = "resources/basic-instancing-gbuffer.vert",
-        .fragment_path = "resources/basic-instancing-gbuffer.frag",
-      },
-      {
-        .name = "shadow_map_shader",
-        .vertex_path = "resources/basic-instancing-shadow-map.vert",
-        .fragment_path = "resources/basic-instancing-shadow-map.frag",
-      },
-      {
-        .name = "shading_pass_shader",
-        .vertex_path = "resources/basic-shading.vert",
-        .fragment_path = "resources/basic-shading.frag",
-      },
-      {
-        .name = "screen_shader",
-        .vertex_path = "resources/basic-textured-quad.vert",
-        .fragment_path = "resources/basic-textured-quad.frag",
-      },
-    };
-
-    def.passes = {
-      // geometry pass
-      {
-        .name = "geometry-pass",
-        .pass_type = render_pass::RENDER_PASS,
-        .shader_name = "geometry_pass_shader",
-        .inputs = {
-          { .resource_name = "material_buffer", .binding = 0 },
-          { .resource_name = "model_buffer", .binding = 1 },
-          { .resource_name = "camera_buffer", .binding = 2 },
-          { .resource_name = "bone_buffer", .binding = 3 },
-        },
-        .outputs = {
-          { .resource_name = "color_texture", .attachment = framebuffer::COLOR },
-          { .resource_name = "normal_texture", .attachment = framebuffer::COLOR },
-          { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
-        },
-        .executor = { .name = "draw_scene" },
-        .bindings = {
-          {
-            .name = "per_draw.material",
-            .tag = resource_tag(resource_tag::kMaterialTag),
-            .scope = binding_scope::PER_DRAW_CALL,
-            .type = binding_type::STORAGE_BUFFER,
-            .binding = 0,
-            .element_size = sizeof(gpu::graphics_material_buffer),
-          },
-          {
-            .name = "per_draw.model",
-            .tag = resource_tag(resource_tag::kModelTag),
-            .scope = binding_scope::PER_DRAW_CALL,
-            .type = binding_type::UNIFORM_BUFFER,
-            .binding = 1,
-            .element_size = sizeof(gpu::model_matrix_buffer),
-          },
-          {
-            .name = "per_frame.camera",
-            .tag = resource_tag(resource_tag::kCameraTag),
-            .scope = binding_scope::PER_FRAME,
-            .type = binding_type::UNIFORM_BUFFER,
-            .binding = 2,
-            .element_size = sizeof(gpu::camera_data),
-          },
-          {
-            .name = "per_draw.bones",
-            .tag = resource_tag(resource_tag::kBoneTag),
-            .scope = binding_scope::PER_DRAW_CALL,
-            .type = binding_type::UNIFORM_BUFFER,
-            .binding = 3,
-            .element_size = sizeof(gpu::bone_matrix_buffer),
-          },
-        },
-      },
-      // shadow map pass
-      {
-        .name = "shadow-map-pass",
-        .pass_type = render_pass::RENDER_PASS,
-        .shader_name = "shadow_map_shader",
-        .inputs = {
-          { .resource_name = "model_buffer", .binding = 1 },
-        },
-        .outputs = {
-          { .resource_name = "ambient_shadow_map", .attachment = framebuffer::DEPTH },
-        },
-        .executor = { .name = "draw_scene" },
-        .bindings = {
-          {
-            .name = "per_draw.model",
-            .tag = resource_tag(resource_tag::kModelTag),
-            .scope = binding_scope::PER_DRAW_CALL,
-            .type = binding_type::UNIFORM_BUFFER,
-            .binding = 1,
-            .element_size = sizeof(gpu::model_matrix_buffer),
-          },
-        },
-      },
-      // shading pass
-      {
-        .name = "shading-pass",
-        .pass_type = render_pass::RENDER_PASS,
-        .shader_name = "shading_pass_shader",
-        .clear_color = glm::vec4(0.2f, 0.2f, 0.2f, 1.f),
-        .inputs = {
-          { .resource_name = "color_texture", .attachment = framebuffer::COLOR },
-          { .resource_name = "normal_texture", .attachment = framebuffer::COLOR },
-          { .resource_name = "position_texture", .attachment = framebuffer::COLOR },
-          { .resource_name = "ambient_shadow_map", .attachment = framebuffer::DEPTH },
-          { .resource_name = "direction_light_buffer", .binding = 0 },
-          { .resource_name = "point_light_buffer", .binding = 1 },
-          { .resource_name = "camera_buffer", .binding = 2 },
-        },
-        .outputs = {
-          { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
-        },
-        .executor = {
-          .name = "fullscreen_quad",
-          .uniforms = {
-            { "OE_gbuff_albedo", value(int32_t{ 0 }) },
-            { "OE_gbuff_normal", value(int32_t{ 1 }) },
-            { "OE_gbuff_position", value(int32_t{ 2 }) },
-            { "OE_shadow_map", value(int32_t{ 3 }) },
-          },
-        },
-      },
-      {
-        .name = "to-screen",
-        .pass_type = render_pass::RENDER_PASS,
-        .shader_name = "screen_shader",
-        .create_framebuffer = false,
-        .inputs = {
-          { .resource_name = "screen_texture", .attachment = framebuffer::COLOR },
-        },
-        .executor = {
-          .name = "fullscreen_quad",
-          .uniforms = {
-            { "OE_texture", value(int32_t{ 0 }) },
-            { "OE_exposure", value(1.0f) },
-          },
-        },
-      },
-      // {
-      //   .name = "debug-overlay",
-      //   .pass_type = render_pass::RENDER_PASS,
-      //   .shader_name = "",  // each stream uses its recipe shader
-      //   .create_framebuffer = false,
-      //   .depends_on = { "to-screen" },
-      //   .executor = {
-      //     .name = "debug_stream",
-      //     .params = { { "streams", value(std::vector<std::string>{ "debug.lines", "debug.triangles" }) } },
-      //   },
-      // },
-    };
-    def.required_tags = {
-      resource_tag(resource_tag::kCameraTag),
-      resource_tag(resource_tag::kModelTag),
-      resource_tag(resource_tag::kMaterialTag),
-      resource_tag(resource_tag::kBoneTag),
-      resource_tag(resource_tag::kPointLightTag),
-      resource_tag(resource_tag::kDirectionLightTag),
-    };
-
-    return def;
   }
 
   pipeline_definition get_empty_pipeline() {
@@ -880,7 +590,7 @@ namespace other {
       auto parse_input_output = [](const std::string_view io_type,
                                    toml::node_view<const toml::node> pass_name, toml::node_view<const toml::node> resource_name,
                                    toml::node_view<const toml::node> attachment, toml::node_view<const toml::node> binding,
-                                   toml::node_view<const toml::node> mip_level) -> frame_input_output_table {
+                                   toml::node_view<const toml::node> mip_level, toml::node_view<const toml::node> access) -> frame_input_output_table {
         if (!pass_name || !resource_name) {
           CORE_LOG_ERROR("pass-name: {}, resource-name: {}", (bool)pass_name, (bool)resource_name);
           OTHER_ASSERT(false, "Invalid frame {}: pass_name or resource_name is missing", io_type);
@@ -916,6 +626,15 @@ namespace other {
         } else {
           io.mip_level = 0;
         }
+        if (access) {
+          if (!access.is_string()) {
+            CORE_LOG_ERROR("access: {}", access.type());
+            OTHER_ASSERT(false, "Invalid frame {}: access is not a string", io_type);
+          }
+          io.access = access.as_string()->get();
+        } else {
+          io.access = "read";
+        }
 
         io.pass_name = pass_name.as_string()->get();
         return io;
@@ -927,7 +646,8 @@ namespace other {
         auto attachment = inputs.at_path("attachment");
         auto binding = inputs.at_path("binding");
         auto mip_level = inputs.at_path("mip_level");
-        auto io = parse_input_output("input", pass_name, resource_name, attachment, binding, mip_level);
+        auto access = inputs.at_path("access");
+        auto io = parse_input_output("input", pass_name, resource_name, attachment, binding, mip_level, access);
         if (!io.pass_name.empty()) {
           into_section.inputs.push_back(std::move(io));
           std::stringstream ss_input;
@@ -947,7 +667,8 @@ namespace other {
         auto attachment = output.at_path("attachment");
         auto binding = output.at_path("binding");
         auto mip_level = output.at_path("mip_level");
-        auto io = parse_input_output("output", pass_name, resource_name, attachment, binding, mip_level);
+        auto access = output.at_path("access");
+        auto io = parse_input_output("output", pass_name, resource_name, attachment, binding, mip_level, access);
         if (!io.pass_name.empty()) {
           into_section.outputs.push_back(std::move(io));
           std::stringstream ss_output;
@@ -1077,6 +798,16 @@ namespace other {
                 };
 
               } break;
+              case FNV("voxel_dim"): {
+                if (!value.is_integer()) {
+                  OTHER_ASSERT(false, "Invalid parameter: 'voxel_dim' must be an integer");
+                }
+                int voxel_dim = static_cast<int>(value.as_integer()->get());
+                exec.params.emplace_back() = frame_executor_table::uniform_or_param{
+                  .name = name_str,
+                  .val = voxel_dim
+                };
+              } break;
               default:
                 OTHER_ASSERT(false, "Invalid parameter name: '{}'", name_str);
             }
@@ -1193,6 +924,14 @@ namespace other {
           p.create_framebuffer = false;
         }
 
+        auto depends_on = pass.at_path("depends_on");
+        if (depends_on && depends_on.is_array()) {
+          for (size_t i = 0; i < depends_on.as_array()->size(); ++i) {
+            std::string depends_on_str = depends_on.as_array()->at(i).as_string()->get();
+            p.depends_on.push_back(depends_on_str);
+          }
+        }
+
         std::stringstream ss_pass;
         ss_pass << "Pass: " << p.name << "\n";
         ss_pass << " - bindings: [";
@@ -1271,6 +1010,11 @@ namespace other {
         if (!i.attachment.empty()) {
           in.attachment = framebuffer_attachment_type_from_string(i.attachment);
         }
+        if (!i.access.empty()) {
+          in.access = access_flags_from_string(i.access);
+        } else {
+          in.access = access_flags::READ;
+        }
       }
 
       for (const auto& o : frame.outputs) {
@@ -1290,6 +1034,8 @@ namespace other {
         }
         if (!o.attachment.empty()) {
           out.attachment = framebuffer_attachment_type_from_string(o.attachment);
+        } else {
+          out.access = access_flags::WRITE;
         }
       }
 

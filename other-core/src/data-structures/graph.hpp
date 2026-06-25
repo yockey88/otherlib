@@ -235,6 +235,8 @@ namespace other {
             in_degree[node_id]++;
           }
         }
+      }
+      for (const auto& node_id : get_all_node_ids()) {
         if (in_degree[node_id] == 0) {
           no_incoming_edges.insert(node_id);
         }

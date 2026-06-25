@@ -8,8 +8,9 @@
 
 namespace other {
 
-  void frame_node::start_pass(renderer* renderer_ptr) const {
+  void frame_node::start_pass(renderer* renderer_ptr, pass_runtime* runtime) const {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
+    OTHER_ASSERT(runtime != nullptr, "Pass runtime pointer must not be null.");
 
     pass_begin_info info{
       .framebuffer = pass->framebuffer_handle,
@@ -22,14 +23,16 @@ namespace other {
 
     if (pass->shader_handle.has_value()) {
       pass->bind_pass(renderer_ptr);
-      for (const auto& [binding_point, buffer] : input_buffers) {
+      for (const auto& [id, buffer] : input_buffers) {
         renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
-          .set_shader_resource(binding_point, *pass->shader_handle)
+          .set_shader_resource(buffer.binding_point, *pass->shader_handle)
+          .bind_to_shader()
           .bind();
       }
-      for (const auto& [binding_point, buffer] : output_buffers) {
+      for (const auto& [id, buffer] : output_buffers) {
         renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
-          .set_shader_resource(binding_point, *pass->shader_handle)
+          .set_shader_resource(buffer.binding_point, *pass->shader_handle)
+          .bind_to_shader()
           .bind();
       }
 
@@ -64,10 +67,10 @@ namespace other {
         }
       }
 
-      for (const auto& [binding_point, buffer] : output_buffers) {
+      for (const auto& [id, buffer] : output_buffers) {
         renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
       }
-      for (const auto& [binding_point, buffer] : input_buffers) {
+      for (const auto& [id, buffer] : input_buffers) {
         renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
       }
       pass->unbind_pass(renderer_ptr);

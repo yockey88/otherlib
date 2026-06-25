@@ -1,4 +1,4 @@
-#include "shader-modules/basic-instancing-fragment.glsl"
+#include "shader-modules/basic-material.glsl"
 
 layout (location = 0) out vec4 OE_gbuff_albedo;
 layout (location = 1) out vec3 OE_gbuff_normal;

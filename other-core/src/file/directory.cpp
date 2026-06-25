@@ -29,8 +29,7 @@ namespace other {
       abs_path.string(),
       type,
       children.size(),
-      file_handles.size()
-    );
+      file_handles.size());
   }
 
   void directory::recursive_scan() {
@@ -55,6 +54,7 @@ namespace other {
   }
 
   void directory::poll() {
+    PROFILE_SECTION("directory::poll");
     if (watcher) {
       watcher->poll();
     }

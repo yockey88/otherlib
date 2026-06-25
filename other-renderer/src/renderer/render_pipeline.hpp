@@ -4,15 +4,13 @@
 #ifndef OTHER_RENDERER_RENDER_PIPELINE_HPP
 #define OTHER_RENDERER_RENDER_PIPELINE_HPP
 
-#include <algorithm>
 #include <string_view>
 
 #include <imgui/imgui.h>
 
-#include "gpu_resource/framebuffer.hpp"
-#include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/frame_node.hpp"
+#include "renderer/pass_runtime.hpp"
 #include "renderer/pipeline_definition.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/resource_tag.hpp"
@@ -39,27 +37,6 @@ namespace other {
     inline bool has(resource_tag tag) const {
       return tagged_buffers.contains(tag) || tagged_textures.contains(tag);
     }
-  };
-
-  struct per_pass_binding_state {
-    std::vector<resource_handle> per_frame_handles;
-    struct draw_ring {
-      resource_handle ring_buffer;  // GPU-side
-      uint8_t* cpu_staging;         // CPU-side
-      uint32_t capacity;
-      uint32_t element_size;
-      uint32_t stride;  // element_size aligned up to the required alignment for the buffer type
-      uint32_t head;    // bytes consumed this frame
-      uint32_t binding_point;
-      uint32_t set;  // needed for some rendering apis, gl ignores, vk uses, dx12 uses sort of..., etc.
-    };
-    std::vector<draw_ring> per_draw_rings;
-  };
-
-  struct pass_runtime {
-    natural_t pass_id;
-    const pipeline_pass_definition* def;
-    per_pass_binding_state state;
   };
 
   class render_pipeline {

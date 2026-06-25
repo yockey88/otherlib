@@ -46,6 +46,7 @@ namespace other {
   }
 
   bool ui_window::render() {
+    PROFILE_SECTION("ui_window::render");
     on_prepare_render();
     {
       detail::ui_window_end_helper ___ui_window_end_helper_instance{};
@@ -53,6 +54,7 @@ namespace other {
       if (!ImGui::Begin(title.c_str(), &is_open, window_flags)) {
         return false;
       }
+      PROFILE_SECTION("ui_window::render--window");
 
       /// save imgui state
       ImGuiErrorRecoveryState imgui_state{};
@@ -68,9 +70,12 @@ namespace other {
         on_render_body();
         on_pre_render_nodes();
 
-        auto root_itr = node_map.find(0);
-        OTHER_ASSERT(root_itr != node_map.end(), "UI window {} has no root node", title);
-        root_itr->second->render();
+        {
+          PROFILE_SECTION("ui_window::render--nodes");
+          auto root_itr = node_map.find(0);
+          OTHER_ASSERT(root_itr != node_map.end(), "UI window {} has no root node", title);
+          root_itr->second->render();
+        }
 
         on_post_render_nodes();
         on_render_footer();

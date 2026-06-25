@@ -59,7 +59,7 @@ IncludeCategories:
     Priority:        2
   - Regex:           '<([A-Za-z0-9\/-_])+\.h(pp|xx|h)?>'
     Priority:        3
-  - Regex:           '"((core|event|command|math|serialization|thread|input|file)\/)'
+  - Regex:           '"((core|event|command|math|serialization|thread|input|file|data-structures)\/)'
     Priority:        4
   - Regex:           '"((renderer|model|gpu_resource|script|bindings|dotnet|python|lua|network|http|connection|peer|physics|physics_world)\/)'
     Priority:        5

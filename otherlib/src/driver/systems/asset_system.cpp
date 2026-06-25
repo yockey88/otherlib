@@ -15,6 +15,7 @@
 namespace other {
 
   void asset_system::initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("asset_system::initialize");
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in asset system initialization.");
 
@@ -65,6 +66,7 @@ namespace other {
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("asset_system::tick");
     asset_mgr->update_pipelines();
     if (asset_mgr->all_assets_unloaded()) {
       get_driver().get_event_system()->trigger_event("assets.all-assets-unloaded");
@@ -76,6 +78,7 @@ namespace other {
   }
 
   void asset_system::shutdown(driver_kernel* kernel) {
+    PROFILE_SECTION("asset_system::shutdown");
     asset_mgr = nullptr;
 
     auto* fs = subsystem<file_system>::get();
@@ -85,6 +88,8 @@ namespace other {
 
   natural_t asset_system::begin_asset_load(const filepath& asset_path) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    PROFILE_SECTION("asset_system::begin_asset_load");
+
     CORE_LOG_DEBUG("Loading asset at path: {}", asset_path.string());
 
     natural_t asset_id = asset_mgr->load_asset(asset_path, [this, asset_path](asset* asset_ptr) {
@@ -176,6 +181,7 @@ namespace other {
   }
 
   void asset_system::mount_mounts(driver_kernel* kernel) {
+    PROFILE_SECTION("asset_system::mount_mounts");
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "File system is null while mounting asset mounts!");
 
@@ -186,9 +192,8 @@ namespace other {
     });
 
     event_system& events = *get_driver().get_event_system();
-    auto& network = sibling<network_system>(*kernel);
     auto& jobs = sibling<job_driver_system>(*kernel).get_job_system();
-    asset_mgr = make_scope<asset_handler>(events, network.io_context(), jobs, driver_mounts::kAssetMount);
+    asset_mgr = make_scope<asset_handler>(events, jobs, driver_mounts::kAssetMount);
 
     CORE_LOG_DEBUG("Configuring filesystem mounts from configuration");
     const auto md_mnts = get_driver().configuration().get_raw("filesystem.mounts");
@@ -255,6 +260,7 @@ namespace other {
   }
 
   void asset_system::handle_ls_event(driver_kernel* kernel, const value& data) {
+    PROFILE_SECTION("asset_system::handle_ls_event");
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in asset system.");
 
@@ -275,6 +281,7 @@ namespace other {
   }
 
   void asset_system::handle_ls_assets_event(driver_kernel* kernel, const value& data) {
+    PROFILE_SECTION("asset_system::handle_ls_assets_event");
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     auto& events = get_driver().get_event_system();
     OTHER_ASSERT(events != nullptr, "Event system is not initialized.");

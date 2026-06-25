@@ -46,6 +46,15 @@ namespace other {
       .set_shader_resource(shader_handle);
   }
 
+  gpu_buffer& gpu_buffer::bind_to_shader() {
+    if (!shader_resource_handle.has_value() || shader_resource_handle->id == 0) {
+      CORE_LOG_ERROR("Shader resource handle is invalid, cannot bind buffer to shader.");
+      return *this;
+    }
+    subsystem<renderer_backend>::get()->api()->bind_shader_buffer_resource(handle(), *shader_resource_handle, *binding_name, binding_point, buffer_type, get_data(), get_data_size());
+    return *this;
+  }
+
   gpu_buffer& gpu_buffer::set_usage(usage new_usage) {
     if (new_usage >= usage::NUM_USAGE_TYPES) {
       CORE_LOG_ERROR("Invalid buffer usage type: out of range.");

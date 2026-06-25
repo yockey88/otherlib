@@ -3,10 +3,10 @@
  **/
 #include "scripting/lua_bindings/bind_rendering_types_lua.hpp"
 
-#include "renderer/gpu_structs.hpp"
-
 #include "object/camera_component.hpp"
+#include "object/light_component.hpp"
 #include "object/render_component.hpp"
+
 
 namespace other {
 
@@ -29,17 +29,17 @@ namespace other {
       "shininess", &gpu::graphics_material::shininess,
       "transparency", &gpu::graphics_material::transparency);
 
-    lua_state.new_usertype<gpu::point_light>(
-      "__native_gpu_point_light",
-      sol::constructors<gpu::point_light()>(),
-      "position", &gpu::point_light::light_position,
-      "color", &gpu::point_light::color);
+    lua_state.new_usertype<point_light>(
+      "__native_point_light",
+      sol::constructors<point_light()>(),
+      "position", &point_light::position,
+      "color", &point_light::color);
 
-    lua_state.new_usertype<gpu::directional_light>(
-      "__native_gpu_directional_light",
-      sol::constructors<gpu::directional_light()>(),
-      "direction", &gpu::directional_light::direction,
-      "color", &gpu::directional_light::color);
+    lua_state.new_usertype<direction_light>(
+      "__native_directional_light",
+      sol::constructors<direction_light()>(),
+      "direction", &direction_light::direction,
+      "color", &direction_light::color);
 
     lua_state.new_usertype<render_component_lua_proxy>(
       "__native_render_component",

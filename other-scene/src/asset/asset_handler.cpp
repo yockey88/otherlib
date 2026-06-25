@@ -45,43 +45,51 @@ namespace other {
   }
 
   void asset_handler::update_pipelines() {
-    for (auto& pl : asset_pipelines) {
-      pl.pipeline->poll();
-    }
+    PROFILE_SECTION("asset_handler::update_pipelines");
 
-    while (!successful_pipelines.empty()) {
-      natural_t id = successful_pipelines.front();
-      successful_pipelines.pop();
-
-      switch (auto state = get_asset_state(id)) {
-        case asset_state::LOADING:
-        case asset_state::REFRESHING_LOAD:
-          on_asset_loaded(id);
-          break;
-        case asset_state::UNLOADING:
-        case asset_state::REFRESHING_UNLOAD:
-          on_asset_unloaded(id);
-          break;
-        default:
-          OTHER_ASSERT(false, "Asset ID {} in unexpected state after successful pipeline completion", id);
+    {
+      PROFILE_SECTION("asset_handler::update_pipelines--poll");
+      for (auto& pl : asset_pipelines) {
+        pl.pipeline->poll();
       }
     }
 
-    while (!failed_pipelines.empty()) {
-      natural_t id = failed_pipelines.front();
-      failed_pipelines.pop();
+    {
+      PROFILE_SECTION("asset_handler::update_pipelines--completions");
+      while (!successful_pipelines.empty()) {
+        natural_t id = successful_pipelines.front();
+        successful_pipelines.pop();
 
-      switch (auto state = get_asset_state(id)) {
-        case asset_state::LOADING:
-        case asset_state::REFRESHING_LOAD:
-          on_asset_load_failed(id);
-          break;
-        case asset_state::UNLOADING:
-        case asset_state::REFRESHING_UNLOAD:
-          on_asset_unload_failed(id);
-          break;
-        default:
-          OTHER_ASSERT(false, "Asset ID {} in unexpected state after failed pipeline completion", id);
+        switch (auto state = get_asset_state(id)) {
+          case asset_state::LOADING:
+          case asset_state::REFRESHING_LOAD:
+            on_asset_loaded(id);
+            break;
+          case asset_state::UNLOADING:
+          case asset_state::REFRESHING_UNLOAD:
+            on_asset_unloaded(id);
+            break;
+          default:
+            OTHER_ASSERT(false, "Asset ID {} in unexpected state after successful pipeline completion", id);
+        }
+      }
+
+      while (!failed_pipelines.empty()) {
+        natural_t id = failed_pipelines.front();
+        failed_pipelines.pop();
+
+        switch (auto state = get_asset_state(id)) {
+          case asset_state::LOADING:
+          case asset_state::REFRESHING_LOAD:
+            on_asset_load_failed(id);
+            break;
+          case asset_state::UNLOADING:
+          case asset_state::REFRESHING_UNLOAD:
+            on_asset_unload_failed(id);
+            break;
+          default:
+            OTHER_ASSERT(false, "Asset ID {} in unexpected state after failed pipeline completion", id);
+        }
       }
     }
   }
@@ -287,9 +295,9 @@ namespace other {
 
     loaded_assets.erase(it);
     pl_itr->pipeline->start_unload(
-      executor, &pl_itr->loading_asset,
-      std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this));
+      jobs, &pl_itr->loading_asset,
+      std::bind_front(&asset_handler::notify_asset_unload_complete, this),
+      std::bind_front(&asset_handler::notify_asset_unload_failed, this));
   }
 
   void asset_handler::handle_file_event(const file_event& event) {
@@ -328,7 +336,7 @@ namespace other {
     state_it->second.handle_event(asset_event::REFRESH_REQUESTED, &pl_itr->loading_asset);
 
     pl_itr->pipeline->start_unload(
-      executor, &pl_itr->loading_asset,
+      jobs, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_unload_complete, this),
       std::bind_front(&asset_handler::notify_asset_unload_failed, this));
   }
@@ -422,7 +430,7 @@ namespace other {
     CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
     state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
     pipeline_it->pipeline->start_load(
-      executor, &pipeline_it->loading_asset,
+      jobs, &pipeline_it->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this));
 
@@ -460,7 +468,7 @@ namespace other {
 
     auto rit = loaded_assets.erase(it);
     pl_itr->pipeline->start_unload(
-      executor, &pl_itr->loading_asset,
+      jobs, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this));
     return rit;

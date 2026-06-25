@@ -148,7 +148,7 @@ worker_count = {}
     config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
     jobs.initialize(cfg);
 
-    scope<asset_handler> handler = make_scope<asset_handler>(events, io_context, jobs);
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
 
     set_up_mock_rendering_api_and_expect_mesh_creation(events);
 
@@ -236,7 +236,7 @@ worker_count = {}
     GTEST_SKIP() << "Skipping omesh test until we have a way to generate them in CI, files are too large to push to git (may have to use github lfs?)";
 
     job_system jobs{ io_context };
-    scope<asset_handler> handler = make_scope<asset_handler>(events, io_context, jobs);
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
 
     set_up_mock_rendering_api_and_expect_mesh_creation(events);
 

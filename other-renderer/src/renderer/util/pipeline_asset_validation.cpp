@@ -183,6 +183,7 @@ namespace other {
         "fullscreen_quad",
         "compute_dispatch",
         "window_sized_compute_dispatch",
+        "voxelize",
         "noop",
         "script",
       };
@@ -190,6 +191,7 @@ namespace other {
       constexpr std::string_view kValidParamNames[] = {
         "barrier",
         "groups",
+        "voxel_dim",
       };
 
       constexpr std::string_view kValidComputeBarrierValues[] = {
@@ -198,6 +200,12 @@ namespace other {
         "uniform",
         "all",
         "none",
+      };
+
+      constexpr std::string_view kValidAccessFlags[] = {
+        "read",
+        "write",
+        "read_write",
       };
 
       template <size_t N>
@@ -475,6 +483,14 @@ namespace other {
           if (mip_level && !mip_level.is_integer()) {
             result.fail(std::format("{} (pass '{}', resource '{}'): 'mip_level' must be an integer", section, pass_str, res_str));
           }
+
+          const auto access = entry.at_path("access");
+          if (access && !access.is_string()) {
+            result.fail(std::format("{} (pass '{}', resource '{}'): 'access' must be a string", section, pass_str, res_str));
+          } else if (access && !is_valid_enum(access.as_string()->get(), kValidAccessFlags)) {
+            result.fail(std::format("{} (pass '{}', resource '{}'): '{}' is not a valid access flag",
+                                    section, pass_str, res_str, access.as_string()->get()));
+          }
         };
 
         if (inputs && inputs.is_array_of_tables()) {
@@ -672,7 +688,34 @@ namespace other {
             result.fail(std::format("frame.passes['{}']: 'create_framebuffer' must be a boolean", name_str));
           }
 
+          const auto depends_on = pass.at_path("depends_on");
+          if (depends_on && !depends_on.is_array()) {
+            result.fail(std::format("frame.passes['{}']: 'depends_on' must be a string", name_str));
+          } else if (depends_on) {
+            for (size_t i = 0; i < depends_on.as_array()->size(); ++i) {
+              if (!depends_on.as_array()->at(i).is_string()) {
+                result.fail(std::format("frame.passes['{}']: 'depends_on[{}]' must be a string", name_str, i));
+              }
+            }
+          }
+
           out_pass_names.insert(name_str);
+        }
+
+        if (result.valid) {
+          for (const auto& pas : *passes.as_array()) {
+            const auto depends_on = pas.at_path("depends_on");
+            if (depends_on) {
+              std::string name = pas.at_path("name").as_string()->get();
+              // we know is array because result.valid is still true
+              for (size_t i = 0; i < depends_on.as_array()->size(); ++i) {
+                const auto depends_on_str = depends_on.as_array()->at(i).as_string()->get();
+                if (out_pass_names.find(depends_on_str) == out_pass_names.end()) {
+                  result.fail(std::format("frame.passes['{}']: 'depends_on' references unknown pass '{}'", name, depends_on_str));
+                }
+              }
+            }
+          }
         }
       }
 
@@ -693,11 +736,9 @@ namespace other {
 
           if (!pass_name.is_string()) {
             result.fail("frame.pass-bindings[]: 'pass_name' must be a string");
-            continue;
           }
           if (!name.is_string()) {
             result.fail(std::format("frame.pass-bindings (pass '{}'): 'name' must be a string", pass_name.as_string()->get()));
-            continue;
           }
           if (!binding.is_integer()) {
             result.fail(std::format("frame.pass-bindings (pass '{}', name '{}'): 'binding' must be an integer",

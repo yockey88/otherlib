@@ -21,6 +21,7 @@ namespace other {
 
   void network_system::initialize(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("network_system::initialize");
     net_context = make_scope<network_context>();
     OTHER_ASSERT(net_context != nullptr, "Failed to create network context.");
 
@@ -62,21 +63,20 @@ namespace other {
 
   void network_system::late_initialize(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("network_system::late_initialize");
 
     auto register_interfaces_in_registry = [this](environment_registry& reg) {
       reg.register_interface<transport_provider>(
         [this](scope<transport_provider> p) { return register_transport_provider(std::move(p)); },
         [this](natural_t id) { unregister_transport_provider(id); },
         no_args(),  // empty
-        interface_cardinality::MULTIPLE
-      );
+        interface_cardinality::MULTIPLE);
 
       reg.register_interface<packet_sink>(
         [this](scope<packet_sink> s, plugin_param_view params) { return register_transport_listener(params.get_or("transport", "generic"), std::move(s)); },
         [this](natural_t id) { unregister_transport_listener(id); },
         packet_sink_args(&get_driver().get_job_system()),
-        interface_cardinality::MULTIPLE
-      );
+        interface_cardinality::MULTIPLE);
     };
     register_interfaces_in_registry(kernel->driver_registry());
     register_interfaces_in_registry(kernel->project_registry());
@@ -85,14 +85,20 @@ namespace other {
   void network_system::tick(driver_kernel* kernel, double dt) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    PROFILE_SECTION("network_system::tick");
 
-    net_context->io_context.poll();
-    if (net_context->io_context.stopped()) {
-      net_context->io_context.restart();
+    {
+      PROFILE_SECTION("network_system::tick--io_context_poll");
+      net_context->io_context.poll();
+      if (net_context->io_context.stopped()) {
+        net_context->io_context.restart();
+      }
     }
 
     const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
     if (!force_disable_network) {
+      PROFILE_SECTION("network_system::tick--network_thread_messages");
+
       auto msg_opt = net_context->net_thread_message_bus.receive_message();
       if (msg_opt.has_value()) {
         process_network_thread_messages(kernel, std::move(*msg_opt));
@@ -103,6 +109,7 @@ namespace other {
   void network_system::shutdown(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    PROFILE_SECTION("network_system::shutdown");
     message_handlers.clear();
 
     const bool force_disable_network = get_driver().get_config_value<bool>("networking.force-disable", false);
@@ -120,6 +127,7 @@ namespace other {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     OTHER_ASSERT(provider != nullptr, "Cannot register null transport provider.");
+    PROFILE_SECTION("network_system::register_transport_provider");
 
     natural_t id = provider->hash();
     if (net_context->registered_transport_providers.find(id) != net_context->registered_transport_providers.end()) {
@@ -140,6 +148,7 @@ namespace other {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     OTHER_ASSERT(sink != nullptr, "Cannot register null packet sink.");
+    PROFILE_SECTION("network_system::register_transport_listener");
 
     natural_t id = net_context->generate_packet_sink_id();
     OTHER_ASSERT(net_context->registered_packet_sinks.find(id) == net_context->registered_packet_sinks.end(), "Packet sink ID {} is already in use.", id);
@@ -151,8 +160,7 @@ namespace other {
     uint64_t hash = FNV(
       transport_name |
       std::views::transform([](unsigned char c) { return std::tolower(c); }) |
-      std::ranges::to<std::string>()
-    );
+      std::ranges::to<std::string>());
     net_context->net_thread->register_transport_listener(hash, id, itr->second.get());
 
     return id;
@@ -161,6 +169,7 @@ namespace other {
   void network_system::unregister_transport_provider(natural_t provider_id) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    PROFILE_SECTION("network_system::unregister_transport_provider");
 
     auto itr = net_context->registered_transport_providers.find(provider_id);
     if (itr == net_context->registered_transport_providers.end()) {
@@ -176,6 +185,7 @@ namespace other {
   void network_system::unregister_transport_listener(natural_t sink_id) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    PROFILE_SECTION("network_system::unregister_transport_listener");
 
     auto itr = net_context->registered_packet_sinks.find(sink_id);
     if (itr == net_context->registered_packet_sinks.end()) {
@@ -192,6 +202,8 @@ namespace other {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
     OTHER_ASSERT(net_context->net_thread != nullptr, "Network thread is not initialized in network system.");
+    PROFILE_SECTION("network_system::listen_at_endpoint");
+
     natural_t connection_id = net_context->net_thread->generate_connection_id();
     message msg(COMMAND, LISTEN_CONNECTION);
     command_listen_connection request{
@@ -200,8 +212,7 @@ namespace other {
       .transport_hash = FNV(
         transport_name |
         std::views::transform([](unsigned char c) { return std::tolower(c); }) |
-        std::ranges::to<std::string>()
-      ),
+        std::ranges::to<std::string>()),
     };
     msg.data = serialize_direct(request);
 
@@ -250,6 +261,8 @@ namespace other {
 
   void network_system::send_message(driver_kernel* kernel, message&& msg) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("network_system::send_message");
+
     const message_header header = { msg.category, msg.id };
     bool needs_ack = message_requires_acknowledgment(header);
     if (needs_ack) {
@@ -299,6 +312,8 @@ namespace other {
 
   void network_system::initialize_message_handlers() {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("network_system::initialize_message_handlers");
+
     {
       auto [itr, success] = message_handlers.insert({
         message_header{ COMMAND, LISTEN_CONNECTION },
@@ -352,14 +367,17 @@ namespace other {
   void network_system::send_to_network_thread(driver_kernel* kernel, message&& msg) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(net_context != nullptr, "Network context is not initialized in network system.");
+    PROFILE_SECTION("network_system::send_to_network_thread");
+
     CORE_LOG_TRACE("[NETWORK SYSTEM TX: {}]", message_header{ msg.category, msg.id });
     net_context->net_thread_message_bus.send_message(std::move(msg));
   }
 
   natural_t network_system::send_message_and_wait_acknowledgment(driver_kernel* kernel, message&& msg, microseconds timeout, message_handler handler) {
     ASSERT_MAIN_THREAD();
-    natural_t ack_id = ack_list.register_ack(io_context(), message_header{ msg.category, msg.id }, timeout, handler);
+    PROFILE_SECTION("network_system::send_message_and_wait_acknowledgment");
 
+    natural_t ack_id = ack_list.register_ack(io_context(), message_header{ msg.category, msg.id }, timeout, handler);
     message ack_msg(REQUEST, ACK);
     request_acknowledgment request_data{
       .ack_id = ack_id,
@@ -374,11 +392,13 @@ namespace other {
 
   void network_system::cancel_acknowledgment(natural_t ack_id) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("network_system::cancel_acknowledgment");
     ack_list.cancel_ack(ack_id);
   }
 
   void network_system::process_network_thread_messages(driver_kernel* kernel, message&& msg) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("network_system::process_network_thread_messages");
     CORE_LOG_TRACE("[NETWORK SYSTEM RX: {}]", message_header{ msg.category, msg.id });
     switch (msg.category) {
       case NOTIFICATION:

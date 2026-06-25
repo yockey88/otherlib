@@ -73,6 +73,7 @@ target_sources(otherlib
     src/scripting/dotnet_bindings/input_bindings.cpp
     src/scripting/dotnet_bindings/network_bindings.cpp
     src/scripting/interfaces/networking_interfaces.cpp
+    src/scripting/interfaces/rendering_interfaces.cpp
     src/scripting/interface_registry.cpp
     src/scripting/other_abi.cpp
 

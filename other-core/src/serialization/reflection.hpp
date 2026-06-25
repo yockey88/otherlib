@@ -53,6 +53,16 @@ namespace other {
       constexpr version_tag(uint64_t version) : version(version) {}
     };
 
+    template <typename T>
+      requires std::is_integral_v<T> || std::is_floating_point_v<T>
+    struct clamp : refl::attr::usage::field {
+      T min = std::numeric_limits<T>::min();
+      T max = std::numeric_limits<T>::max();
+
+      constexpr clamp() = default;
+      constexpr clamp(int64_t min, int64_t max) : min(min), max(max) {}
+    };
+
   }  // namespace attr
 
   struct reflection_data {

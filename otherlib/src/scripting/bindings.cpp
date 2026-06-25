@@ -502,7 +502,8 @@ namespace other {
       bind_lua_component<script_component>(lua_state, "__native_script_component");
       bind_lua_component<render_component>(lua_state, "__native_render_component");
       bind_lua_component<camera_component>(lua_state, "__native_camera_component");
-      bind_lua_component<light_component>(lua_state, "__native_light_component");
+      bind_lua_component<point_light_component>(lua_state, "__native_point_light_component");
+      bind_lua_component<direction_light_component>(lua_state, "__native_direction_light_component");
       bind_lua_component<animation_controller>(lua_state, "__native_animation_controller_component");
     }
 
@@ -516,7 +517,8 @@ namespace other {
       bind_dotnet_component<script_component>(dn_host, obj);
       bind_dotnet_component<render_component>(dn_host, obj);
       bind_dotnet_component<camera_component>(dn_host, obj);
-      bind_dotnet_component<light_component>(dn_host, obj);
+      bind_dotnet_component<point_light_component>(dn_host, obj);
+      bind_dotnet_component<direction_light_component>(dn_host, obj);
       bind_dotnet_component<animation_controller>(dn_host, obj);
 
       // dn_host.destroy_managed_object(obj);

@@ -9,6 +9,7 @@
 #include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
+#include "driver/systems/scripting_system.hpp"
 #include "render/default_pass_executor_resolver.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/script/script_field_ui.hpp"
@@ -27,13 +28,13 @@ namespace other {
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_window_sized_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_voxelize(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
 
     void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
-    void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
-    void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
+    void upload_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_model_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
     void upload_material_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
@@ -44,6 +45,7 @@ namespace other {
   }  // namespace detail
 
   void rendering_system::initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("rendering_system::initialize");
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
     register_builtin_resource_tags();
     register_builtin_render_executors();
@@ -71,6 +73,7 @@ namespace other {
     events.add_listener("rendering-pipeline.asset-unloaded", [this](const value& data) { handle_rendering_pipeline_asset_unloaded_event(&get_driver().get_kernel(), data); });
 
     auto& field_editors = get_driver().get_field_editors();
+    field_editors.register_editor<bool>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_bool(l, *static_cast<bool*>(d)); });
     field_editors.register_editor<int8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int8(l, *static_cast<int8_t*>(d)); });
     field_editors.register_editor<int16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int16(l, *static_cast<int16_t*>(d)); });
     field_editors.register_editor<int32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int32(l, *static_cast<int32_t*>(d)); });
@@ -170,9 +173,44 @@ namespace other {
     field_editors.register_value_editor(value_type::INT32, scalar(ImGuiDataType_S32), true);
     field_editors.register_value_editor(value_type::INT64, scalar(ImGuiDataType_S64), true);
     field_editors.register_value_editor(value_type::UINT8, scalar(ImGuiDataType_U8), true);
+    field_editors.register_value_editor(value_type::UINT16, scalar(ImGuiDataType_U16), true);
+    field_editors.register_value_editor(value_type::UINT32, scalar(ImGuiDataType_U32), true);
+    field_editors.register_value_editor(value_type::UINT64, scalar(ImGuiDataType_U64), true);
+
+    field_editors.register_editor<point_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
+      point_light& pl = *reinterpret_cast<point_light*>(d);
+      bool modified = false;
+
+      ImGui::Text("%s", label.data());
+
+      const std::string id = std::format("{}##point_light", label);
+      ImGui::PushID(id.c_str());
+
+      modified |= ui::inspector::property_vec3("Position", pl.position, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec4("Color", pl.color, ctx.flags.speed.value_or(0.01));
+
+      ImGui::PopID();
+      return modified;
+    });
+    field_editors.register_editor<direction_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
+      direction_light& dl = *reinterpret_cast<direction_light*>(d);
+      bool modified = false;
+
+      ImGui::Text("%s", label.data());
+
+      const std::string id = std::format("{}##directional_light", label);
+      ImGui::PushID(id.c_str());
+
+      modified |= ui::inspector::property_vec3("Direction", dl.direction, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec4("Color", dl.color, ctx.flags.speed.value_or(0.01));
+
+      ImGui::PopID();
+      return modified;
+    });
   }
 
   void rendering_system::late_initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("rendering_system::late_initialize");
     auto register_interfaces_in_registry = [this](environment_registry& reg) {
       reg.register_interface<ui_window>(
         [this](scope<ui_window> s, plugin_param_view params) {
@@ -200,9 +238,11 @@ namespace other {
   }
 
   void rendering_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("rendering_system::tick");
   }
 
   void rendering_system::shutdown(driver_kernel* kernel) {
+    PROFILE_SECTION("rendering_system::shutdown");
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized in rendering system shutdown.");
     driver_ui_ptr->shutdown();
     driver_ui_ptr = nullptr;
@@ -212,6 +252,7 @@ namespace other {
   }
 
   void rendering_system::render(driver_kernel* kernel) {
+    PROFILE_SECTION("rendering_system::render");
     render_data data = {};
     auto window_size = renderer_ptr->get_window_size();
     if (viewport_size.x == 0 && viewport_size.y == 0) {
@@ -238,14 +279,22 @@ namespace other {
       }
     }
 
-    renderer_ptr->begin_frame(data_ptr);
-    renderer_ptr->render();
+    {
+      PROFILE_SECTION("rendering_system::render--frame");
+      renderer_ptr->begin_frame(data_ptr);
+      renderer_ptr->render();
+      get_driver().on_render();
 
-    renderer_ptr->begin_ui_frame();
-    driver_ui_ptr->render();
-    renderer_ptr->end_ui_frame();
+      const bool ui_enabled = get_driver().get_config_value<bool>("ui.enable", true);
+      if (ui_enabled) {
+        renderer_ptr->begin_ui_frame();
+        driver_ui_ptr->render();
+        get_driver().on_ui_render();
+        renderer_ptr->end_ui_frame();
+      }
 
-    renderer_ptr->end_frame();
+      renderer_ptr->end_frame();
+    }
   }
 
   void rendering_system::open_ui_window(const std::string_view name) {
@@ -327,8 +376,7 @@ namespace other {
 
     auto& reg = renderer_ptr->get_binding_registry();
     reg.register_per_frame(resource_tag(resource_tag::kCameraTag), &detail::upload_camera_buffer_per_frame);
-    reg.register_per_frame(resource_tag(resource_tag::kPointLightTag), &detail::upload_point_light_buffer_per_frame);
-    reg.register_per_frame(resource_tag(resource_tag::kDirectionLightTag), &detail::upload_directional_light_buffer_per_frame);
+    reg.register_per_frame(resource_tag(resource_tag::kLightTag), &detail::upload_light_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kSimulationEnvironmentTag), &detail::upload_simulation_environment_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kScreenTag), &detail::no_op_upload_per_frame);
     reg.register_per_draw(resource_tag(resource_tag::kModelTag), &detail::upload_model_buffer_per_draw);
@@ -345,6 +393,7 @@ namespace other {
     reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
     reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
     reg.register_executor("window_sized_compute_dispatch", &detail::make_window_sized_compute_dispatch);
+    reg.register_executor("voxelize", &detail::make_voxelize);
     reg.register_executor("generate_mipmaps", &detail::make_generate_mipmaps);
     reg.register_executor("downsample_chain", &detail::make_downsample_chain);
     reg.register_executor("debug_stream", &detail::make_debug_stream);
@@ -480,6 +529,11 @@ namespace other {
     renderer_ptr->add_pipeline(itr->definition.name, itr->definition);
     rendering_pipeline_assets.push_back(*itr);
     pending_rendering_pipeline_assets.erase(itr);
+
+    /// load all of it's resources that are on disk as assets (shaders/textures/etc..)
+    // for (auto& resource : pl->definition.textures) {
+    //   kernel->get_core_system<asset_system>().add_texture_asset(resource.seed_texture_path.value_or(""));
+    // }
   }
 
   void rendering_system::handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data) {
@@ -564,6 +618,38 @@ namespace other {
       };
     };
 
+    render_graph::pass_executor make_voxelize(const pipeline_pass_definition& def, render_pipeline* pl) {
+      return [params = def.executor.params, pl, pass_name = def.name](pass_context& ctx) {
+        auto& api = ctx.get_renderer().rendering()->api();
+        auto vol = pl->find_texture_by_name("voxel_texture");
+        OTHER_ASSERT(vol.has_value(), "voxelize: 'voxel_texture' texture not found");
+
+        auto voxel_dim = params.find("voxel_dim");
+        OTHER_ASSERT(voxel_dim != params.end(), "voxelize: 'voxel_dim' parameter not found");
+        OTHER_ASSERT(voxel_dim->second.type() == value_type::INT32, "voxelize: 'voxel_dim' parameter must be of type INT32");
+
+        const int32_t res = static_cast<int32_t>(voxel_dim->second);
+        api->set_viewport(0, 0, res, res);
+        api->set_color_mask(false);
+        api->set_depth_mask(false);
+        api->set_depth_test(false);
+
+        ctx.get_renderer().get_resource<texture>(*vol).bind_image(0, 0, true, 0, texture::format::RGBA16F, WRITE);
+
+        auto* sh = ctx.shader_for_pass();
+        OTHER_ASSERT(sh != nullptr, "voxelize: no shader for pass '{}'", pass_name);
+        sh->bind();
+        ctx.draw_stream();
+
+        api->set_color_mask(true);
+        api->set_depth_mask(true);
+        api->set_depth_test(true);
+
+        shader::compute_barrier_type barrier_bits = (shader::compute_barrier_type)((uint8_t)shader::SHADER_IMAGE_ACCESS | (uint8_t)shader::TEXTURE_FETCH);
+        api->memory_barrier(barrier_bits);
+      };
+    }
+
     render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl) {
       OTHER_ASSERT(!def.outputs.empty(), "generate_mips: pass '{}' needs an output texture", def.name);
       opt<resource_handle> target = pl->find_texture_by_name(def.outputs.front().resource_name);
@@ -638,20 +724,12 @@ namespace other {
       r.upload_buffer(h, &gpu, sizeof(gpu));
     }
 
-    void upload_point_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::point_light_buffer buf{};
-      for (size_t i = 0; i < d.point_lights.size() && i < gpu::kMaxPointLights; ++i) {
-        buf.lights[i] = d.point_lights[i];
+    void upload_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
+      gpu::light_buffer buf{};
+      for (size_t i = 0; i < d.lights.size() && i < gpu::kMaxLights; ++i) {
+        buf.lights[i] = d.lights[i];
       }
-      r.upload_to_handle(h, &buf, sizeof(gpu::point_light_buffer));
-    }
-
-    void upload_directional_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {
-      gpu::directional_light_buffer dir_light_buffer_data;
-      for (size_t i = 0; i < d.ambient_lights.size() && i < gpu::kMaxDirectionalLights; ++i) {
-        dir_light_buffer_data.lights[i] = d.ambient_lights[i];
-      }
-      r.upload_to_handle(h, &dir_light_buffer_data, sizeof(gpu::directional_light_buffer));
+      r.upload_to_handle(h, &buf, sizeof(gpu::light_buffer));
     }
 
     void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h) {

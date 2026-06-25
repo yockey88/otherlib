@@ -486,6 +486,18 @@ namespace other {
     return children;
   }
 
+  scene_object* scene::find_object_with_tag(const std::string_view tag) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::find_object_with_tag");
+    for (const auto& id : get_all_object_ids()) {
+      scene_object* obj = find_object(id);
+      if (obj != nullptr && object_has_tag(id, tag)) {
+        return obj;
+      }
+    }
+    return nullptr;
+  }
+
   std::vector<scene_object*> scene::get_children(const scene_object* object) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children");
@@ -744,12 +756,22 @@ namespace other {
       data.primary_camera = primary_camera;
     }
 
-    storage->registry.view<object_handle, light_component>().each([&](const object_handle& handle, const light_component& light) {
-      std::ranges::copy(light.directional_lights, std::back_inserter(data.ambient_lights));
-      std::ranges::copy(light.point_lights, std::back_inserter(data.point_lights));
+    storage->registry.view<object_handle, point_light_component>().each([&](const object_handle& handle, const point_light_component& light) {
+      gpu::light l{
+        .vector = { light.light.position.x, light.light.position.y, light.light.position.z, 0.f },
+        .color = light.light.color,
+        .type = gpu::light::kPoint,
+      };
+      data.lights.push_back(l);
+    });
 
-      if (object_has_tag(handle.id, "sun")) {
-        data.scene_ambient_light = &light.directional_lights[0];
+    const direction_light* scene_ambient_light = nullptr;
+    storage->registry.view<object_handle, direction_light_component>().each([&](const object_handle& handle, const direction_light_component& light) {
+      const bool sun_tag = object_has_tag(handle.id, "sun");
+      if (scene_ambient_light == nullptr && sun_tag) {
+        scene_ambient_light = &light.light;
+      } else if (sun_tag) {
+        CORE_LOG_WARN("Multiple directional lights with the 'sun' tag detected. Using the first one as the scene ambient light.");
       }
     });
 
@@ -873,17 +895,15 @@ namespace other {
       render.last_model_asset_id = render.model_asset_id;
     });
 
-    if (data.scene_ambient_light != nullptr) {
-      data.simulation_environment.sun_direction = glm::vec4(glm::normalize(data.scene_ambient_light->direction), 0.0f);
-      data.simulation_environment.sun_color = glm::vec4(data.scene_ambient_light->color, 1.0f);
+    if (scene_ambient_light != nullptr) {
+      data.simulation_environment.sun_direction = glm::vec4(scene_ambient_light->direction, 0.0f);
+      data.simulation_environment.sun_color = scene_ambient_light->color;
+    } else {
+      data.simulation_environment.sun_direction = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+      data.simulation_environment.sun_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
-    glm::vec4 ambient_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
-    for (const auto& dirlight : data.ambient_lights) {
-      ambient_color += glm::vec4(dirlight.color, 1.0f);
-    }
-    ambient_color /= static_cast<float>(data.ambient_lights.size() + 1);
-    data.simulation_environment.ambient_color = glm::clamp(ambient_color, 0.0f, 1.0f);
+    data.simulation_environment.ambient_color = glm::vec4(0.f);
 
     glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
     glm::vec4 horizon_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);

@@ -13,6 +13,8 @@
 namespace other {
 
   void event_driver_system::initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("event_driver_system::initialize");
+
     auto& network = sibling<network_system>(*kernel);
     event_system_ptr = make_scope<event_system>(network.io_context());
 
@@ -67,6 +69,8 @@ namespace other {
   }
 
   void event_driver_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("event_driver_system::tick");
+
     /// move the SDL_PollEvent loop here from driver::pump_events
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -89,6 +93,7 @@ namespace other {
   }
 
   void event_driver_system::shutdown(driver_kernel* kernel) {
+    PROFILE_SECTION("event_driver_system::shutdown");
     event_system_ptr = nullptr;
   }
 
@@ -103,11 +108,13 @@ namespace other {
   }
 
   void event_driver_system::trigger_event(driver_kernel* kernel, const std::string_view name, const value& data) {
+    PROFILE_SECTION("event_driver_system::trigger_event");
     OTHER_ASSERT(event_system_ptr != nullptr, "Event system is not initialized in event driver system.");
     event_system_ptr->trigger_event(name, data);
   }
 
   void event_driver_system::handle_open_ui_window_event(driver_kernel* kernel, const value& data) {
+    PROFILE_SECTION("event_driver_system::handle_open_ui_window_event");
     if (kernel->has_core_system<rendering_system>() && data.type() == value_type::STRING) {
       auto& rendering_sys = sibling<rendering_system>(*kernel);
 
@@ -129,6 +136,7 @@ namespace other {
   }
 
   void event_driver_system::handle_close_ui_window_event(driver_kernel* kernel, const value& data) {
+    PROFILE_SECTION("event_driver_system::handle_close_ui_window_event");
     if (kernel->has_core_system<rendering_system>() && data.type() == value_type::STRING) {
       auto& rendering_sys = sibling<rendering_system>(*kernel);
 

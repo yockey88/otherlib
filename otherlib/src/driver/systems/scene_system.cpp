@@ -4,6 +4,7 @@
 #include "driver/systems/scene_system.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/project_system.hpp"
 #include "scripting/scene_interface.hpp"
 
 #include "types.hpp"
@@ -11,6 +12,7 @@
 namespace other {
 
   void scene_system::initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("scene_system::initialize");
     project_scene_graph = make_scope<scene_graph>();
     OTHER_ASSERT(project_scene_graph != nullptr, "Failed to create project scene graph.");
 
@@ -40,6 +42,7 @@ namespace other {
   }
 
   void scene_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("scene_system::tick");
     if (scene* active_scene = get_active_scene(); active_scene != nullptr) {
       active_scene->update(dt);
       active_scene->late_update(dt);
@@ -49,11 +52,13 @@ namespace other {
   void scene_system::shutdown(driver_kernel* kernel) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
     OTHER_ASSERT(active_scene == nullptr, "There is an active scene. Cannot shutdown scene system while a scene is active.");
+    PROFILE_SECTION("scene_system::shutdown");
     project_scene_graph->clear();
     project_scene_graph = nullptr;
   }
 
   void scene_system::load_project_scene_graph(project& p) {
+    PROFILE_SECTION("scene_system::load_project_scene_graph");
     for (auto& scene_data : p.get_scenes()) {
       if (!std::filesystem::exists(scene_data.path)) {
         CORE_LOG_ERROR("Scene file '{}' for scene '{}' in project does not exist. Skipping loading this scene.", scene_data.path.string(), scene_data.name);
@@ -68,7 +73,7 @@ namespace other {
 
   natural_t scene_system::add_scene_to_scene_graph(const filepath& scene_path) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
-
+    PROFILE_SECTION("scene_system::add_scene_to_scene_graph");
     if (!std::filesystem::exists(scene_path)) {
       CORE_LOG_ERROR("Scene file does not exist: {}", scene_path.string());
       CORE_LOG_ERROR("Can not add scene '{}' to scene graph", scene_path.filename().stem().string());
@@ -93,6 +98,7 @@ namespace other {
   }
 
   natural_t scene_system::create_empty_scene(const std::string_view name, bool add_asset) {
+    PROFILE_SECTION("scene_system::create_empty_scene");
     auto [id, ptr] = project_scene_graph->create_new_scene(name);
     if (add_asset) {
       get_driver().add_scene_asset(ptr);
@@ -111,6 +117,7 @@ namespace other {
 
   void scene_system::set_scene_to_active(natural_t scene_id) {
     OTHER_ASSERT(project_scene_graph != nullptr, "Project scene graph is not initialized.");
+    PROFILE_SECTION("scene_system::set_scene_to_active");
     if (active_scene != nullptr && active_scene->id == scene_id) {
       CORE_LOG_DEBUG("Scene [{}:{}] is already active, no need to set active again.", active_scene->id, active_scene->name);
       return;
@@ -193,6 +200,7 @@ namespace other {
   }
 
   void scene_system::synchronize_active_scene(natural_t scene_id) {
+    PROFILE_SECTION("scene_system::synchronize_active_scene");
     bool network_thread_active = get_driver().network_enabled();
     /// \todo should we assert instead of return?
     /// OTHER_ASSERT(get_driver().network_enabled(), "Should not be attempting to synchronize scene because network thread is not active.");
@@ -227,6 +235,7 @@ namespace other {
   }
 
   void scene_system::unload_active_scene() {
+    PROFILE_SECTION("scene_system::unload_active_scene");
     if (active_scene == nullptr) {
       return;
     }
@@ -274,6 +283,7 @@ namespace other {
   }
 
   void scene_system::push_scene_object_to_context_stack(scene_object* object) {
+    PROFILE_SECTION("scene_system::push_scene_object_to_context_stack");
     if (context_stack_top >= kObjectContextStackSize) {
       CORE_LOG_ERROR("Context stack overflow when pushing scene object '{}'", object->name);
       return;
@@ -284,6 +294,7 @@ namespace other {
   }
 
   scene_object* scene_system::pop_scene_object_from_context_stack() {
+    PROFILE_SECTION("scene_system::pop_scene_object_from_context_stack");
     if (context_stack_top == 0) {
       CORE_LOG_ERROR("Context stack underflow when popping scene object");
       return nullptr;
@@ -321,6 +332,7 @@ namespace other {
   // }
 
   void scene_system::handle_scene_load_event(const value& data) {
+    PROFILE_SECTION("scene_system::handle_scene_load_event");
     natural_t scene_id = 0;
 
     if (data.type() == value_type::STRING) {
@@ -357,6 +369,7 @@ namespace other {
   }
 
   void scene_system::handle_scene_asset_loaded_event(const value& data) {
+    PROFILE_SECTION("scene_system::handle_scene_asset_loaded_event");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for scene.asset-loaded event. Expected uint64 (scene ID).");
 
     natural_t scene_asset_id = data;
@@ -402,6 +415,7 @@ namespace other {
   }
 
   void scene_system::handle_scene_asset_unloaded_event(const value& data) {
+    PROFILE_SECTION("scene_system::handle_scene_asset_unloaded_event");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for scene.asset-loaded event. Expected uint64 (scene ID).");
 
     natural_t scene_asset_id = data;
@@ -425,6 +439,7 @@ namespace other {
   }
 
   void scene_system::handle_scene_unload_event(const value& data) {
+    PROFILE_SECTION("scene_system::handle_scene_unload_event");
     scene* active_scene = get_active_scene();
     if (active_scene == nullptr) {
       CORE_LOG_ERROR("No active scene to unload.");
@@ -435,6 +450,7 @@ namespace other {
   }
 
   void scene_system::handle_scene_info_event(const value& data) {
+    PROFILE_SECTION("scene_system::handle_scene_info_event");
     scene* active_scene = get_active_scene();
     if (active_scene == nullptr) {
       CORE_LOG_ERROR("No active scene to get info from.");
@@ -452,6 +468,7 @@ namespace other {
   }
 
   void scene_system::handle_scene_playback_command_event(const value& data) {
+    PROFILE_SECTION("scene_system::handle_scene_playback_command_event");
     scene* active_scene = get_active_scene();
     if (active_scene == nullptr) {
       CORE_LOG_ERROR("No active scene to send playback command to.");
@@ -476,6 +493,7 @@ namespace other {
   }
 
   void scene_system::handle_ls_scenes_event(driver_kernel* kernel, const value& data) {
+    PROFILE_SECTION("scene_system::handle_ls_scenes_event");
     auto& events = get_driver().get_event_system();
     OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
 

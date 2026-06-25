@@ -63,7 +63,7 @@ namespace other {
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
-    SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
+    // SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
     SDL_GL_SetSwapInterval(0);
 
     SDL_GLContext gpu_context = SDL_GL_CreateContext(window);
@@ -284,6 +284,43 @@ namespace other {
     glDrawElementsInstancedBaseVertexBaseInstance(get_gl_prim_type(draw_mode), call.index_count, GL_UNSIGNED_INT, (void*)(call.index_offset * sizeof(uint32_t)), call.instance_count, call.vertex_offset, 0);
     glBindVertexArray(0);
 
+    CHECKGL();
+  }
+
+  void opengl_api::set_viewport(int32_t x, int32_t y, int32_t width, int32_t height) {
+    glViewport(x, y, width, height);
+    CHECKGL();
+  }
+
+  void opengl_api::set_color_mask(bool enabled_or_disabled) {
+    glColorMask(enabled_or_disabled, enabled_or_disabled, enabled_or_disabled, enabled_or_disabled);
+    CHECKGL();
+  }
+
+  void opengl_api::set_depth_mask(bool enabled_or_disabled) {
+    glDepthMask(enabled_or_disabled);
+    CHECKGL();
+  }
+
+  void opengl_api::set_depth_test(bool enabled_or_disabled) {
+    if (enabled_or_disabled) {
+      glEnable(GL_DEPTH_TEST);
+    } else {
+      glDisable(GL_DEPTH_TEST);
+    }
+    CHECKGL();
+  }
+
+  void opengl_api::memory_barrier(shader::compute_barrier_type bits) {
+    PROFILE_SECTION("opengl_api::memory_barrier");
+    GLbitfield gl_bits = 0;
+    if (bits & shader::SHADER_IMAGE_ACCESS) {
+      gl_bits |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+    }
+    if (bits & shader::TEXTURE_FETCH) {
+      gl_bits |= GL_TEXTURE_FETCH_BARRIER_BIT;
+    }
+    glMemoryBarrier(gl_bits);
     CHECKGL();
   }
 
@@ -758,21 +795,15 @@ namespace other {
 
     /// check if shdader binding is hooked up and if not bind it
     ///     this is expensive so we should cache the binding points
-    shader_binding binding_key = { buffer_id, shader_id };
-    auto binding_itr = shader_block_bindings.find(binding_key);
-    if (binding_itr == shader_block_bindings.end()) {
-      PROFILE_SECTION("opengl_api::bind_shader_buffer_resource--bind-gpu-buffer-to-shader");
-
-      if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
-        GLuint block_index = glGetUniformBlockIndex(shader_id, name.data());
-        if (block_index != 0xffffffff) {
-          glUniformBlockBinding(shader_id, block_index, binding_point);
-          auto [bind_itr, inserted] = shader_block_bindings.emplace(binding_key, handle.id);
-          if (!inserted || bind_itr == shader_block_bindings.end()) {
-            CORE_LOG_ERROR("Failed to create shader block binding for buffer ID {} and shader ID {}.", handle.id, shader_handle.id);
-            return;
-          }
-        }
+    if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
+      GLuint block_index = glGetUniformBlockIndex(shader_id, name.data());
+      if (block_index != 0xffffffff) {
+        glUniformBlockBinding(shader_id, block_index, binding_point);
+      }
+    } else if (buffer_type == gpu_buffer::buf_type::STORAGE_BUFFER) {
+      GLuint block_index = glGetProgramResourceIndex(shader_id, GL_SHADER_STORAGE_BLOCK, name.data());
+      if (block_index != 0xffffffff) {
+        glShaderStorageBlockBinding(shader_id, block_index, binding_point);
       }
     }
 
@@ -1398,7 +1429,9 @@ namespace other {
     framebuffer_resources.erase(itr);
 
     if (auto it = framebuffer_msaa_color_rbs.find(handle.id); it != framebuffer_msaa_color_rbs.end()) {
-      if (!it->second.empty()) glDeleteRenderbuffers((GLsizei)it->second.size(), it->second.data());
+      if (!it->second.empty()) {
+        glDeleteRenderbuffers((GLsizei)it->second.size(), it->second.data());
+      }
       framebuffer_msaa_color_rbs.erase(it);
     }
     if (auto it = framebuffer_msaa_depth_rbs.find(handle.id); it != framebuffer_msaa_depth_rbs.end()) {

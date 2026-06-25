@@ -44,10 +44,8 @@ namespace other {
   struct render_data {
     glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
 
-    camera* primary_camera = nullptr;                             //< tag = 'main-camera'
-    const gpu::directional_light* scene_ambient_light = nullptr;  //< tag = 'sun'
-    std::vector<gpu::directional_light> ambient_lights;
-    std::vector<gpu::point_light> point_lights;
+    camera* primary_camera = nullptr;  //< tag = 'main-camera'
+    std::vector<gpu::light> lights;
     gpu::simulation_environment_buffer simulation_environment;
 
     size_t num_draw_calls = 0;
@@ -145,7 +143,6 @@ namespace other {
 
     constexpr static inline size_t kMaxDrawCalls = 1024;
 
-   protected:
     renderer_backend* rendering();
 
    private:

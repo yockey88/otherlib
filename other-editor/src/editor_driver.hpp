@@ -6,6 +6,9 @@
 
 #include "driver/driver.hpp"
 
+#include "edit_stack.hpp"
+#include "editor_context.hpp"
+
 namespace other {
 
   class OTHER_CLASS editor_driver : public driver {
@@ -26,13 +29,6 @@ namespace other {
     };
 
    private:
-    natural_t suzanne_obj_id = 0;
-
-    natural_t suzanne_id = 0;
-    bool suzanne_loaded = false;
-
-    natural_t camera_obj_id = 0;
-
     mouse_state mouse;
     bool pressing_mouse_wheel = false;
     bool move_toggled_on = false;

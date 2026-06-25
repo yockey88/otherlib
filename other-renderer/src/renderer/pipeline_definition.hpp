@@ -22,6 +22,7 @@ namespace other {
     FULLSCREEN_QUAD,
     COMPUTE_DISPATCH,
     WINDOW_SIZED_COMPUTE_DISPATCH,
+    VOXELIZE,
     NOOP,  /// used for resource transitions that don't issue draw calls or dispatches
     SCRIPT,
   };
@@ -66,6 +67,7 @@ namespace other {
     uint32_t binding = 0;
     framebuffer::attachment_type attachment = framebuffer::COLOR;
     uint32_t mip_level = 0;
+    access_flags access = access_flags::READ;
   };
 
   struct pipeline_executor_definition {
@@ -134,8 +136,6 @@ namespace other {
 
   pipeline_definition read_pipeline_definition_from_file(const filepath& path);
 
-  pipeline_definition get_basic_geometry_only_pipeline();
-  pipeline_definition get_default_instancing_pipeline();
   pipeline_definition get_empty_pipeline();
 
 }  // namespace other

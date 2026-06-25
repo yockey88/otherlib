@@ -16,6 +16,7 @@ namespace other {
 
   void scripting_system::initialize(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scripting_system::initialize");
     driver_main_lua_script = subsystem<scripting_environment>::get()->load_lua_file("driver.lua");
     if (driver_main_lua_script) {
       environment_console::initialize(driver_main_lua_script);
@@ -83,13 +84,17 @@ namespace other {
 
   void scripting_system::tick(driver_kernel* kernel, double dt) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scripting_system::tick");
     if (environment_console::is_initialized()) {
+      PROFILE_SECTION("scripting_system::tick--environment_console");
       environment_console::poll();
     }
   }
 
   void scripting_system::shutdown(driver_kernel* kernel) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scripting_system::shutdown");
+
     do_script_interface_unbinding();
     for (auto& module : loaded_dotnet_modules) {
       unload_dotnet_module(module);
@@ -126,6 +131,7 @@ namespace other {
 
   void scripting_system::unload_dotnet_module(ref<assembly> module) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scripting_system::unload_dotnet_module");
     if (module == nullptr) {
       CORE_LOG_ERROR("Cannot unload a null module.");
       return;

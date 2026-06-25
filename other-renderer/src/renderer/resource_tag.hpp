@@ -44,8 +44,7 @@ namespace other {
     constexpr static inline natural_t kModelTag = FNV("model");
     constexpr static inline natural_t kMaterialTag = FNV("material");
     constexpr static inline natural_t kBoneTag = FNV("bone");
-    constexpr static inline natural_t kPointLightTag = FNV("point_light");
-    constexpr static inline natural_t kDirectionLightTag = FNV("direction_light");
+    constexpr static inline natural_t kLightTag = FNV("light");
     constexpr static inline natural_t kSimulationEnvironmentTag = FNV("simulation_environment");
     constexpr static inline natural_t kScreenTag = FNV("screen");
 
