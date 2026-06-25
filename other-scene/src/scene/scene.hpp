@@ -91,6 +91,8 @@ namespace other {
     std::vector<scene_object*> get_children(natural_t id);
     std::vector<scene_object*> get_children(const scene_object* object);
 
+    scene_object* find_object_with_tag(const std::string_view tag) const;
+
     std::vector<uint64_t> get_all_object_ids() const;
 
     void destroy_object(natural_t id);

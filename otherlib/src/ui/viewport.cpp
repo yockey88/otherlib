@@ -4,6 +4,7 @@
 #include "ui/viewport.hpp"
 
 #include <imgui/imgui.h>
+#include <imguizmo/ImGuizmo.h>
 
 #include "renderer/render_pipeline.hpp"
 #include "renderer/ui/colors.hpp"
@@ -72,15 +73,18 @@ namespace other {
     }
 
     void viewport::on_render_header() {
-      if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Options")) {
-          if (ImGui::MenuItem("Reset Viewport")) {
-          }
-          ImGui::EndMenu();
-        }
-
-        ImGui::EndMenuBar();
-      }
+      ui::menu options_menu = {
+        "Options"
+      };
+      ui::menu view_menu = {
+        "View"
+      };
+      ui::menu tools_menu = {
+        "Tools"
+      };
+      ui::menu help_menu = {
+        "Help"
+      };
     }
 
     void viewport::on_render_body() {

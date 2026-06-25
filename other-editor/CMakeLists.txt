@@ -1,4 +1,5 @@
 add_static_driver(other_editor
+  src/edit_stack.cpp
   src/editor_driver.cpp
 )
 

@@ -119,6 +119,7 @@ namespace other {
   }
 
   void driver_kernel::initialize() {
+    PROFILE_SECTION("driver_kernel::initialize");
     CORE_LOG_INFO("Initializing driver kernel.");
 
     {
@@ -130,34 +131,47 @@ namespace other {
         interface_cardinality::MULTIPLE);
     }
 
-    for (const auto type : system_order) {
-      OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
-      CORE_LOG_DEBUG("Initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
-      builtin_systems[static_cast<size_t>(type)]->initialize(this);
+    {
+      PROFILE_SECTION("driver_kernel::initialize--builtin_systems");
+      for (const auto type : system_order) {
+        OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
+        CORE_LOG_DEBUG("Initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
+        builtin_systems[static_cast<size_t>(type)]->initialize(this);
+      }
     }
-
-    for (const auto type : system_order) {
-      OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
-      CORE_LOG_DEBUG("Late initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
-      builtin_systems[static_cast<size_t>(type)]->late_initialize(this);
+    {
+      PROFILE_SECTION("driver_kernel::initialize--late_builtin_systems");
+      for (const auto type : system_order) {
+        OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
+        CORE_LOG_DEBUG("Late initializing builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
+        builtin_systems[static_cast<size_t>(type)]->late_initialize(this);
+      }
     }
   }
 
   void driver_kernel::tick(double dt) {
-    for (const auto type : system_order) {
-      OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
-      builtin_systems[static_cast<size_t>(type)]->tick(this, dt);
+    PROFILE_SECTION("driver_kernel::tick");
+    {
+      PROFILE_SECTION("driver_kernel::tick--builtin_systems");
+      for (const auto type : system_order) {
+        OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
+        builtin_systems[static_cast<size_t>(type)]->tick(this, dt);
+      }
     }
 
-    for (auto& [key, plugin] : plugin_systems) {
-      OTHER_ASSERT(plugin != nullptr, "Plugin with type {} and index {} is null.", key.type, key.index);
-      if (plugin->active()) {
-        plugin->tick(this, dt);
+    {
+      PROFILE_SECTION("driver_kernel::tick--plugin_systems");
+      for (auto& [key, plugin] : plugin_systems) {
+        OTHER_ASSERT(plugin != nullptr, "Plugin with type {} and index {} is null.", key.type, key.index);
+        if (plugin->active()) {
+          plugin->tick(this, dt);
+        }
       }
     }
   }
 
   void driver_kernel::unload_project_plugins() {
+    PROFILE_SECTION("driver_kernel::unload_project_plugins");
     auto& reg = environment_registries[static_cast<size_t>(interface_scope::PROJECT)];
     for (const auto& plugin_info : reg.provided_plugins) {
       reg.registry.uninstall_plugin(plugin_info.library_name);
@@ -166,6 +180,7 @@ namespace other {
   }
 
   void driver_kernel::unload_driver_plugins() {
+    PROFILE_SECTION("driver_kernel::unload_driver_plugins");
     auto& reg = environment_registries[static_cast<size_t>(interface_scope::DRIVER)];
     for (const auto& plugin_info : reg.provided_plugins) {
       reg.registry.uninstall_plugin(plugin_info.library_name);
@@ -174,6 +189,7 @@ namespace other {
   }
 
   void driver_kernel::unload_plugins() {
+    PROFILE_SECTION("driver_kernel::unload_plugins");
     for (auto itr = plugin_systems.begin(); itr != plugin_systems.end();) {
       OTHER_ASSERT(itr->second != nullptr, "Plugin with type {} and index {} is null.", itr->first.type, itr->first.index);
       shutdown_plugin(itr->second);

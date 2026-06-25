@@ -4,6 +4,7 @@
 #ifndef OTHER_NETWORK_NETWORK_THREAD_TESTS_HPP
 #define OTHER_NETWORK_NETWORK_THREAD_TESTS_HPP
 
+#include "message/message_bus.hpp"
 #include "other_test.hpp"
 
 namespace other {

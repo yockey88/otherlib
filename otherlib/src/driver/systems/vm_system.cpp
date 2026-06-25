@@ -11,10 +11,10 @@
 #include "vm/devices/scene_device.hpp"
 #include "vm/vm.hpp"
 
-
 namespace other {
 
   void vm_system::initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("vm_system::initialize");
     core_device.host_driver = &get_driver();
     vm::initialize_device(&core_device);
     vm::load_control_table(&core_device, OTHER_CONTROL_TABLE_V000);
@@ -32,7 +32,9 @@ namespace other {
   }
 
   void vm_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("vm_system::tick");
     if (!boot_loaded && get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING) {
+      PROFILE_SECTION("vm_system::tick--boot_loading");
       if (vm::has_flag(&core_device, other_command_device::DEBUG)) {
         CORE_LOG_INFO("VM debug mode is ON");
         get_driver().trigger_event("open-driver-ui-window", std::string("vm-debugger"));
@@ -50,20 +52,24 @@ namespace other {
       return;
     }
 
-    uint32_t executed = 0;
-    while (executed < instruction_budget && !core_device.stopped &&
-           !vm::has_flag(&core_device, other_command_device::STOPPED)) {
-      vm::step(&core_device);
-      ++executed;
+    {
+      PROFILE_SECTION("vm_system::tick--execute_instructions");
+      uint32_t executed = 0;
+      while (executed < instruction_budget && !core_device.stopped &&
+             !vm::has_flag(&core_device, other_command_device::STOPPED)) {
+        vm::step(&core_device);
+        ++executed;
 
-      if (vm::has_flag(&core_device, other_command_device::VM_ERROR)) {
-        CORE_LOG_ERROR("VM encountered an error");
-        break;
+        if (vm::has_flag(&core_device, other_command_device::VM_ERROR)) {
+          CORE_LOG_ERROR("VM encountered an error");
+          break;
+        }
       }
     }
   }
 
   void vm_system::shutdown(driver_kernel* kernel) {
+    PROFILE_SECTION("vm_system::shutdown");
     core_device.stopped = true;
 
     vm::shutdown_device(&core_device);

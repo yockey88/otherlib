@@ -12,6 +12,7 @@ namespace other {
   }
 
   void file_watcher::poll() {
+    PROFILE_SECTION("file_watcher::poll");
     if (!exists) {
       // if (std::filesystem::exists(watch_path)) {
       //   // file_event event{ .type = file_event::type::RECREATED, .path = watch_path };

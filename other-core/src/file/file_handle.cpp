@@ -6,6 +6,7 @@
 namespace other {
 
   void file_handle::poll() {
+    PROFILE_SECTION("file_handle::poll");
     if (watcher) {
       watcher->poll();
     }

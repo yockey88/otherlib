@@ -45,43 +45,51 @@ namespace other {
   }
 
   void asset_handler::update_pipelines() {
-    for (auto& pl : asset_pipelines) {
-      pl.pipeline->poll();
-    }
+    PROFILE_SECTION("asset_handler::update_pipelines");
 
-    while (!successful_pipelines.empty()) {
-      natural_t id = successful_pipelines.front();
-      successful_pipelines.pop();
-
-      switch (auto state = get_asset_state(id)) {
-        case asset_state::LOADING:
-        case asset_state::REFRESHING_LOAD:
-          on_asset_loaded(id);
-          break;
-        case asset_state::UNLOADING:
-        case asset_state::REFRESHING_UNLOAD:
-          on_asset_unloaded(id);
-          break;
-        default:
-          OTHER_ASSERT(false, "Asset ID {} in unexpected state after successful pipeline completion", id);
+    {
+      PROFILE_SECTION("asset_handler::update_pipelines--poll");
+      for (auto& pl : asset_pipelines) {
+        pl.pipeline->poll();
       }
     }
 
-    while (!failed_pipelines.empty()) {
-      natural_t id = failed_pipelines.front();
-      failed_pipelines.pop();
+    {
+      PROFILE_SECTION("asset_handler::update_pipelines--completions");
+      while (!successful_pipelines.empty()) {
+        natural_t id = successful_pipelines.front();
+        successful_pipelines.pop();
 
-      switch (auto state = get_asset_state(id)) {
-        case asset_state::LOADING:
-        case asset_state::REFRESHING_LOAD:
-          on_asset_load_failed(id);
-          break;
-        case asset_state::UNLOADING:
-        case asset_state::REFRESHING_UNLOAD:
-          on_asset_unload_failed(id);
-          break;
-        default:
-          OTHER_ASSERT(false, "Asset ID {} in unexpected state after failed pipeline completion", id);
+        switch (auto state = get_asset_state(id)) {
+          case asset_state::LOADING:
+          case asset_state::REFRESHING_LOAD:
+            on_asset_loaded(id);
+            break;
+          case asset_state::UNLOADING:
+          case asset_state::REFRESHING_UNLOAD:
+            on_asset_unloaded(id);
+            break;
+          default:
+            OTHER_ASSERT(false, "Asset ID {} in unexpected state after successful pipeline completion", id);
+        }
+      }
+
+      while (!failed_pipelines.empty()) {
+        natural_t id = failed_pipelines.front();
+        failed_pipelines.pop();
+
+        switch (auto state = get_asset_state(id)) {
+          case asset_state::LOADING:
+          case asset_state::REFRESHING_LOAD:
+            on_asset_load_failed(id);
+            break;
+          case asset_state::UNLOADING:
+          case asset_state::REFRESHING_UNLOAD:
+            on_asset_unload_failed(id);
+            break;
+          default:
+            OTHER_ASSERT(false, "Asset ID {} in unexpected state after failed pipeline completion", id);
+        }
       }
     }
   }

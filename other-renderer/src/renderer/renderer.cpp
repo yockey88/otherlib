@@ -24,6 +24,7 @@ namespace other {
 
   void renderer::begin_frame(render_data* data) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("renderer::begin_frame");
     if (data != nullptr) {
       scene_data = data;
       rendering()->api()->set_clear_color(data->clear_color);
@@ -33,6 +34,7 @@ namespace other {
 
   void renderer::bind_frame_bindings(const render_data& data) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("renderer::bind_frame_bindings");
     for (auto& [_, pl] : pipelines) {
       if (!pl->is_valid()) {
         continue;
@@ -56,6 +58,7 @@ namespace other {
 
   void renderer::end_frame() {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("renderer::end_frame");
     rendering()->api()->end_frame();
     scene_data = nullptr;
   }

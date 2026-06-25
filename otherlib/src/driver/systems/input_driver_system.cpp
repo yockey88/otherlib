@@ -10,6 +10,7 @@
 namespace other {
 
   void input_driver_system::initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("input_driver_system::initialize");
     auto* input = subsystem<input_system>::get();
     OTHER_ASSERT(input != nullptr, "Input system subsystem is not initialized.");
     input->load_input_map(get_driver_input_map());
@@ -19,13 +20,16 @@ namespace other {
   }
 
   void input_driver_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("input_driver_system::tick");
     subsystem<input_system>::get()->update();
   }
 
   void input_driver_system::shutdown(driver_kernel* kernel) {
+    PROFILE_SECTION("input_driver_system::shutdown");
   }
 
   void input_driver_system::handle_input_event(driver_kernel* kernel, const input_state_change_event& event) {
+    PROFILE_SECTION("input_driver_system::handle_input_event");
     if (get_driver().rendering_enabled() && event.action_name.starts_with("focus-console-if-open")) {
       auto& events = sibling<event_driver_system>(*kernel);
       auto& driver_ui_ptr = sibling<rendering_system>(*kernel).get_driver_ui();
@@ -41,6 +45,7 @@ namespace other {
   }
 
   input_map input_driver_system::get_driver_input_map() {
+    PROFILE_SECTION("input_driver_system::get_driver_input_map");
     auto* input = subsystem<input_system>::get();
     OTHER_ASSERT(input != nullptr, "Input system subsystem is not initialized in driver.");
 

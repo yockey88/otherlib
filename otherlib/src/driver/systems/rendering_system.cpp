@@ -9,6 +9,7 @@
 #include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
+#include "driver/systems/scripting_system.hpp"
 #include "render/default_pass_executor_resolver.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/script/script_field_ui.hpp"
@@ -44,6 +45,7 @@ namespace other {
   }  // namespace detail
 
   void rendering_system::initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("rendering_system::initialize");
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
     register_builtin_resource_tags();
     register_builtin_render_executors();
@@ -208,6 +210,7 @@ namespace other {
   }
 
   void rendering_system::late_initialize(driver_kernel* kernel) {
+    PROFILE_SECTION("rendering_system::late_initialize");
     auto register_interfaces_in_registry = [this](environment_registry& reg) {
       reg.register_interface<ui_window>(
         [this](scope<ui_window> s, plugin_param_view params) {
@@ -235,9 +238,11 @@ namespace other {
   }
 
   void rendering_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("rendering_system::tick");
   }
 
   void rendering_system::shutdown(driver_kernel* kernel) {
+    PROFILE_SECTION("rendering_system::shutdown");
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized in rendering system shutdown.");
     driver_ui_ptr->shutdown();
     driver_ui_ptr = nullptr;
@@ -247,6 +252,7 @@ namespace other {
   }
 
   void rendering_system::render(driver_kernel* kernel) {
+    PROFILE_SECTION("rendering_system::render");
     render_data data = {};
     auto window_size = renderer_ptr->get_window_size();
     if (viewport_size.x == 0 && viewport_size.y == 0) {
@@ -273,17 +279,22 @@ namespace other {
       }
     }
 
-    renderer_ptr->begin_frame(data_ptr);
-    renderer_ptr->render();
+    {
+      PROFILE_SECTION("rendering_system::render--frame");
+      renderer_ptr->begin_frame(data_ptr);
+      renderer_ptr->render();
+      get_driver().on_render();
 
-    const bool ui_enabled = get_driver().get_config_value<bool>("ui.enable", true);
-    if (ui_enabled) {
-      renderer_ptr->begin_ui_frame();
-      driver_ui_ptr->render();
-      renderer_ptr->end_ui_frame();
+      const bool ui_enabled = get_driver().get_config_value<bool>("ui.enable", true);
+      if (ui_enabled) {
+        renderer_ptr->begin_ui_frame();
+        driver_ui_ptr->render();
+        get_driver().on_ui_render();
+        renderer_ptr->end_ui_frame();
+      }
+
+      renderer_ptr->end_frame();
     }
-
-    renderer_ptr->end_frame();
   }
 
   void rendering_system::open_ui_window(const std::string_view name) {

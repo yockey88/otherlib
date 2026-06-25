@@ -7,6 +7,7 @@
 
 #include <mswsockdef.h>
 
+#include "network/network_thread.hpp"
 
 namespace other {
 

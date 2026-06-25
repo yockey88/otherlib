@@ -486,6 +486,18 @@ namespace other {
     return children;
   }
 
+  scene_object* scene::find_object_with_tag(const std::string_view tag) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::find_object_with_tag");
+    for (const auto& id : get_all_object_ids()) {
+      scene_object* obj = find_object(id);
+      if (obj != nullptr && object_has_tag(id, tag)) {
+        return obj;
+      }
+    }
+    return nullptr;
+  }
+
   std::vector<scene_object*> scene::get_children(const scene_object* object) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children");

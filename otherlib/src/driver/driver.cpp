@@ -9,9 +9,18 @@
 #include <SDL3/SDL_events.h>
 
 #include "core/frame_rate_enforcer.hpp"
+#include "core/logger_sinks.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "network/tcp/tcp_transport_provider.hpp"
+
+#include "driver/systems/network_system.hpp"
+#include "driver/systems/project_system.hpp"
+#include "driver/systems/scene_system.hpp"
+#include "driver/systems/scripting_system.hpp"
+#include "scripting/interfaces/networking_interfaces.hpp"
+#include "scripting/interfaces/rendering_interfaces.hpp"
+#include "tools/environment_console_sink.hpp"
 
 namespace other {
 
@@ -40,12 +49,30 @@ namespace other {
 
     interfaces.register_interface(get_server_interface());
     interfaces.register_interface(get_http_server_interface());
+    interfaces.register_interface(get_ui_window_interface());
 
     driver_kernel_ptr = make_scope<driver_kernel>(this);
     driver_kernel_ptr->load_profile(registry.get_current_profile());
     on_system_initialization();
 
     driver_kernel_ptr->initialize();
+
+    {
+      logger* log = subsystem<logger>::get();
+      log->create_logger("other-editor-log", spdlog::level::trace);
+      log_sink console_log_sink = {
+        .id = logger::get_next_sink_id(),
+        .sink_name = "console-sink",
+        .sink_pattern = "[%l] %v",
+        .level = spdlog::level::info,
+        .sink_factory = [&](const config_table& config) -> spdlog::sink_ptr {
+          return std::make_shared<console_sink_mt>(get_event_system());
+        }
+      };
+
+      std::string loggers[] = { "other-editor-log", "other-core-log" };
+      log->register_sink(loggers, &console_log_sink);
+    }
 
     get_event_system()->register_event("ls.driver-systems");
     get_event_system()->add_listener("ls.driver-systems", [this](const value& data) {
@@ -81,7 +108,7 @@ namespace other {
 
     CORE_LOG_DEBUG("Entering main driver loop");
 
-    frame_rate_enforcer<60> frame_rate_guard;
+    frame_rate_enforcer<120> frame_rate_guard;
     do {
       MARK_NAMED_FRAME("driver_main_loop");
       update();
