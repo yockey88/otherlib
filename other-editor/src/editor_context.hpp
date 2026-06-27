@@ -9,6 +9,8 @@
 
 #include "renderer/camera.hpp"
 
+#include "scene/scene.hpp"
+
 #include "edit_stack.hpp"
 #include "editor_settings.hpp"
 
@@ -24,6 +26,8 @@ namespace other {
 
     editor_driver* driver;
     editor_settings settings;
+
+    scene* active_scene = nullptr;
 
     camera editor_camera;
     ImGuizmo::MODE gizmo_mode = ImGuizmo::MODE::LOCAL;

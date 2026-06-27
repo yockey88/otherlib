@@ -135,7 +135,7 @@ executors = [
   { pass_name = "smaa-edges", name = "fullscreen_quad", uniforms = [ { name = "OE_color",  value = 0 } ] },
   { pass_name = "smaa-weights", name = "fullscreen_quad", uniforms = [ { name = "OE_edges",  value = 0 }, { name = "OE_area",   value = 1 }, { name = "OE_search", value = 2 } ] },
   { pass_name = "smaa-blend", name = "fullscreen_quad", uniforms = [ { name = "OE_color",  value = 0 }, { name = "OE_weights", value = 1 } ] },
-  { pass_name = "tonemap-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 }, { name = "OE_gamma", value = 2.2 } ] },
+  { pass_name = "tonemap-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 }, { name = "OE_gamma", value = 1.9 } ] },
   { pass_name = "to-screen", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 } ] },
 ]
 resource_tags = [

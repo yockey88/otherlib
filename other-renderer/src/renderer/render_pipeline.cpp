@@ -79,6 +79,10 @@ namespace other {
     return itr->second;
   }
 
+  void render_pipeline::rebuild() {
+    graph->end_pipeline();
+  }
+
   bool render_pipeline::reload(pipeline_definition&& new_def) {
     if (renderer_ptr == nullptr) {
       CORE_LOG_ERROR("Cannot reload pipeline — not initialized.");
@@ -255,47 +259,47 @@ namespace other {
 
     for (auto& dpass : debug_passes) {
       frame_binding_view bv{
-        .defs = std::span{ dpass.runtime.def->bindings },
-        .per_frame_handles = std::span{ dpass.runtime.state.per_frame_handles },
+        .defs = std::span{ dpass.runtime->def->bindings },
+        .per_frame_handles = std::span{ dpass.runtime->state.per_frame_handles },
         .per_draw_offsets = {},
       };
       pass_diagnostics diag{};
 
-      const uint32_t iters = std::max<uint32_t>(dpass.runtime.def->iterations_per_frame, 1u);
+      const uint32_t iters = std::max<uint32_t>(dpass.runtime->def->iterations_per_frame, 1u);
 
       for (uint32_t iter = 0; iter < iters; ++iter) {
         PROFILE_SECTION("render_pipeline::render_frame--render_pass--iteration");
         diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
 
         pass_begin_info info{
-          .framebuffer = dpass.pass.framebuffer_handle,
-          .render_area_size = dpass.pass.size,
-          .clear_color = dpass.pass.clear_color,  // see note
+          .framebuffer = dpass.pass->framebuffer_handle,
+          .render_area_size = dpass.pass->size,
+          .clear_color = dpass.pass->clear_color,  // see note
           .clear_depth = std::nullopt,
-          .pass_type = dpass.pass.pass_type,
+          .pass_type = dpass.pass->pass_type,
         };
         renderer_ptr->rendering()->api()->begin_pass(info);
 
-        if (dpass.pass.shader_handle.has_value()) {
-          dpass.pass.bind_pass(renderer_ptr);
+        if (dpass.pass->shader_handle.has_value()) {
+          dpass.pass->bind_pass(renderer_ptr);
           for (const auto& [id, buffer] : dpass.input_buffers) {
             renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
-              .set_shader_resource(buffer.binding_point, *dpass.pass.shader_handle)
+              .set_shader_resource(buffer.binding_point, *dpass.pass->shader_handle)
               .bind_to_shader()
               .bind();
           }
           for (const auto& [id, buffer] : dpass.output_buffers) {
             renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
-              .set_shader_resource(buffer.binding_point, *dpass.pass.shader_handle)
+              .set_shader_resource(buffer.binding_point, *dpass.pass->shader_handle)
               .bind_to_shader()
               .bind();
           }
 
-          if (dpass.pass.pass_type == render_pass::RENDER_PASS) {
+          if (dpass.pass->pass_type == render_pass::RENDER_PASS) {
             for (const auto& [id, tex] : dpass.input_textures) {
               renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
             }
-          } else if (dpass.pass.pass_type == render_pass::COMPUTE_PASS) {
+          } else if (dpass.pass->pass_type == render_pass::COMPUTE_PASS) {
             for (const auto& [id, tex] : dpass.input_textures) {
               auto& t = renderer_ptr->get_resource<texture>(tex.handle);
               t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), READ);
@@ -316,11 +320,11 @@ namespace other {
             };
             dpass.executor(ctx);
           }
-          if (dpass.pass.shader_handle.has_value()) {
+          if (dpass.pass->shader_handle.has_value()) {
             for (const auto& [id, tex] : dpass.input_textures) {
               renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
             }
-            if (dpass.pass.pass_type == render_pass::COMPUTE_PASS) {
+            if (dpass.pass->pass_type == render_pass::COMPUTE_PASS) {
               for (const auto& [id, tex] : dpass.output_textures) {
                 renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
               }
@@ -332,13 +336,13 @@ namespace other {
             for (const auto& [id, buffer] : dpass.input_buffers) {
               renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
             }
-            dpass.pass.unbind_pass(renderer_ptr);
+            dpass.pass->unbind_pass(renderer_ptr);
           }
 
           renderer_ptr->rendering()->api()->end_pass();
         }
 
-        for (auto& ring : dpass.runtime.state.per_draw_rings) {
+        for (auto& ring : dpass.runtime->state.per_draw_rings) {
           ring.head = 0;
         }
       }
@@ -358,50 +362,83 @@ namespace other {
     return renderer_ptr->get_window_size();
   }
 
-  void render_pipeline::register_debug_pass(const std::string_view name, const render_pass& pass, pass_runtime runtime, render_graph::pass_executor executor,
-                                            std::map<natural_t, render_pass::buffer_resource> input_buffers, std::map<natural_t, render_pass::buffer_resource> output_buffers,
-                                            std::map<natural_t, render_pass::texture_resource> input_textures, std::map<natural_t, render_pass::texture_resource> output_textures) {
+  void render_pipeline::register_debug_pass(const std::string_view name, const pipeline_pass_definition& definition) {
+    auto* backend = renderer_ptr->rendering();
+    OTHER_ASSERT(backend != nullptr, "Rendering Backend is null!");
+
+    auto& api = backend->api();
+    OTHER_ASSERT(api != nullptr, "Rendering API is null!");
+
     uint64_t hash = FNV(name);
     if (auto itr = std::ranges::find_if(debug_passes, [&](const auto& dp) { return dp.name == name; });
         itr != debug_passes.end()) {
       CORE_LOG_ERROR("Debug pass with name '{}' already exists. Debug pass names must be unique.", name);
       return;
     }
+    if (auto itr = pass_runtimes.find(hash); itr != pass_runtimes.end()) {
+      CORE_LOG_ERROR("Debug pass with name '{}' conflicts with existing pass runtime. Debug pass names must be unique across all passes.", name);
+      return;
+    }
 
-    debug_passes.emplace_back(debug_pass{
-      .name = std::string(name),
-      .pass = pass,
-      .runtime = runtime,
-      .executor = executor,
-      .input_buffers = std::move(input_buffers),
-      .output_buffers = std::move(output_buffers),
-      .input_textures = std::move(input_textures),
-      .output_textures = std::move(output_textures),
-    });
+    CORE_LOG_DEBUG("Building render-pass: {}", definition.name);
+    /// find the shader for this pass
+    opt<resource_handle> shader_handle = get_shader_handle(definition.shader_name);
+    if (!shader_handle.has_value()) {
+      CORE_LOG_ERROR("Shader [{}] for pass [{}] not found among pipeline shaders.", definition.shader_name, definition.name);
+      return;
+    }
+
+    glm::ivec2 size = resolve_size(definition.use_window_size, definition.fixed_size);
+    auto builder = graph->start_pass(definition.name, shader_handle, definition.pass_type, size, definition.create_framebuffer);
+    build_pass(definition, builder);
+    builder.end_pass();
+
+    natural_t pass_name_hash = FNV(definition.name);
+    auto nodes_view = graph->get_graph().nodes | std::views::values;
+    render_pass* pass = nullptr;
+    {
+      auto itr = std::ranges::find_if(nodes_view, [&](const frame_node& node) { return FNV(node.pass->name) == pass_name_hash; });
+      if (itr == std::ranges::end(nodes_view)) {
+        CORE_LOG_ERROR("No node found in graph for pass '{}'", definition.name);
+        return;
+      }
+      frame_node& n = *itr;
+      pass = n.pass;
+    }
+
+    OTHER_ASSERT(pass != nullptr, "Node for pass '{}' has null pass pointer", definition.name);
+
+    auto [itr, inserted] = pass_runtimes.insert({ pass->id, {} });
+    OTHER_ASSERT(inserted, "Pass runtime for pass '{}' already exists", definition.name);
+    pass_runtime& runtime = itr->second;
+    build_pass_runtime(runtime, pass, definition);
   }
 
-  void render_pipeline::register_debug_pass(const std::string_view name, const render_pass& pass, pass_runtime runtime, render_graph::pass_executor executor, const std::string_view input_texture, const std::string_view output_texture) {
-    std::map<natural_t, render_pass::texture_resource> input_textures;
-    std::map<natural_t, render_pass::texture_resource> output_textures;
-
-    if (!input_texture.empty()) {
-      auto input_handle_opt = find_texture_by_name(input_texture);
-      OTHER_ASSERT(input_handle_opt.has_value(), "Input texture '{}' for debug pass '{}' not found.", input_texture, name);
-      input_textures.insert({ FNV(input_texture), render_pass::texture_resource{
-                                                    .slot = 0,
-                                                    .handle = *input_handle_opt,
-                                                  } });
+  void render_pipeline::register_texture_resource(const std::string_view name, resource_handle handle) {
+    auto hash = FNV(name);
+    if (texture_resources.find(hash) != texture_resources.end()) {
+      CORE_LOG_ERROR("Texture resource with name '{}' already exists in pipeline '{}'. Resource names must be unique.", name, definition.name);
+      return;
     }
-    if (!output_texture.empty()) {
-      auto output_handle_opt = find_texture_by_name(output_texture);
-      OTHER_ASSERT(output_handle_opt.has_value(), "Output texture '{}' for debug pass '{}' not found.", output_texture, name);
-      output_textures.insert({ FNV(output_texture), render_pass::texture_resource{
-                                                      .slot = 0,
-                                                      .handle = *output_handle_opt,
-                                                    } });
-    }
+    texture_resources.insert({ hash, { .handle = handle } });
+  }
 
-    register_debug_pass(name, pass, runtime, executor, {}, {}, std::move(input_textures), std::move(output_textures));
+  void render_pipeline::register_buffer_resource(const std::string_view name, resource_handle handle) {
+    auto hash = FNV(name);
+    if (buffer_resources.find(hash) != buffer_resources.end()) {
+      CORE_LOG_ERROR("Buffer resource with name '{}' already exists in pipeline '{}'. Resource names must be unique.", name, definition.name);
+      return;
+    }
+    buffer_resources.insert({ hash, { .handle = handle } });
+  }
+
+  void render_pipeline::register_shader_resource(const std::string_view name, resource_handle handle) {
+    auto hash = FNV(name);
+    if (shader_handles.find(hash) != shader_handles.end()) {
+      CORE_LOG_ERROR("Shader resource with name '{}' already exists in pipeline '{}'. Resource names must be unique.", name, definition.name);
+      return;
+    }
+    shader_handles.insert({ hash, handle });
   }
 
   ImTextureID render_pipeline::get_final_output_texture_id() {
@@ -534,7 +571,6 @@ namespace other {
 
   void render_pipeline::build_pass_runtimes() {
     pass_runtimes.clear();
-    auto& reg = renderer_ptr->get_binding_registry();
 
     for (const auto& pass_def : definition.passes) {
       natural_t pass_name_hash = FNV(pass_def.name);
@@ -555,80 +591,7 @@ namespace other {
       auto [itr, inserted] = pass_runtimes.insert({ pass->id, {} });
       OTHER_ASSERT(inserted, "Pass runtime for pass '{}' already exists", pass_def.name);
       pass_runtime& runtime = itr->second;
-      runtime.pass_id = pass->id;
-      runtime.def = &pass_def;
-      runtime.state.per_frame_handles.resize(pass_def.bindings.size());
-      runtime.state.per_draw_rings.resize(pass_def.bindings.size());
-
-      for (size_t i = 0; i < pass_def.bindings.size(); ++i) {
-        const auto& bd = pass_def.bindings[i];
-
-        if (bd.scope == binding_scope::PER_DRAW_CALL || bd.scope == binding_scope::PER_INSTANCE) {
-          OTHER_ASSERT(bd.element_size > 0, "pipeline '{}' pass '{}' binding '{}': per-draw bindings must specify element_size > 0", definition.name, pass_def.name, bd.name);
-
-          uint32_t align = 1;
-          switch (bd.type) {
-            case binding_type::UNIFORM_BUFFER: align = renderer_ptr->rendering()->api()->uniform_buffer_offset_alignment(); break;
-            case binding_type::STORAGE_BUFFER: align = renderer_ptr->rendering()->api()->storage_buffer_offset_alignment(); break;
-            /// \todo is this correct?
-            case binding_type::DRAW_INDIRECT_BUFFER: align = 4; break;
-            default:
-              OTHER_ASSERT(false, "binding '{}' has type {} but a per-draw ring was requested", bd.name, int(bd.type));
-          }
-
-          const uint32_t stride = align_up(bd.element_size, align);
-          const uint32_t expected = pass_def.expected_max_draws.value_or(renderer::kMaxDrawCalls);
-          const uint32_t capacity = stride * expected;  // * kMaxFramesInFlight;
-          // clang-format off
-          CORE_LOG_DEBUG("Attempting to allocate per-draw ring buffer for pass '{}' binding '{}': element_size={}, expected_max_draws={}, capacity={}", 
-                         pass_def.name, bd.name, bd.element_size, expected, capacity);
-          // clang-format on
-
-          auto handle = renderer_ptr->create_resource(std::format("{}.{}.ring", pass_def.name, bd.name), resource_type::BUFFER);
-          runtime.state.per_draw_rings[i] = {
-            .ring_buffer = handle,
-            .cpu_staging = (uint8_t*)arena::allocate(capacity),
-            .capacity = capacity,
-            .element_size = bd.element_size,
-            .stride = stride,
-            .head = 0,
-            .binding_point = bd.binding,
-            .set = bd.set,
-          };
-
-          gpu_buffer& buf = renderer_ptr->get_resource<gpu_buffer>(handle);
-          buf.set_buffer_type(buffer_type_from_binding(bd.type))
-            .set_usage(gpu_buffer::usage::DYNAMIC)
-            .set_data(nullptr, capacity)
-            .finalize_buffer();
-        }
-
-        bool ok = true;
-        switch (bd.scope) {
-          case binding_scope::PER_PIPELINE:
-            ok = true;
-            break;
-          case binding_scope::PER_FRAME:
-            ok = !bd.tag.is_none() && (reg.find_per_frame(bd.tag) != nullptr || renderer_ptr->frame_binder_resolves(bd.tag));
-            break;
-          case binding_scope::PER_DRAW_CALL:
-            ok = !bd.tag.is_none() && (reg.find_per_draw(bd.tag) != nullptr || renderer_ptr->draw_binder_resolves(bd.tag));
-            break;
-          case binding_scope::PER_INSTANCE:
-            ok = !bd.tag.is_none() && (reg.find_per_instance(bd.tag) != nullptr || renderer_ptr->instance_binder_resolves(bd.tag));
-            break;
-          default:
-            OTHER_ASSERT(false, "Unsupported binding scope {} for pass '{}', binding '{}'", int(bd.scope), pass_def.name, bd.name);
-        }
-
-        if (!ok) {
-          // clang-format off
-          CORE_LOG_ERROR("pipeline '{}' pass '{}': no producer for binding '{}' (scope={}, tag={})", 
-                         definition.name, pass_def.name, bd.name, int(bd.scope), bd.tag.value());
-          // clang-format on
-          valid = false;
-        }
-      }
+      build_pass_runtime(runtime, pass, pass_def);
     }
   }
 
@@ -756,7 +719,7 @@ namespace other {
       } else {
         handle = shader::create(shader_def.name, shader_def.vertex_path, shader_def.fragment_path, shader_def.defines);
       }
-      shader_handles[shader_def.name] = handle;
+      shader_handles[FNV(shader_def.name)] = handle;
       CORE_LOG_DEBUG("Created shader resource [{}] with handle {}.", shader_def.name, handle);
     }
 
@@ -818,7 +781,6 @@ namespace other {
   void render_pipeline::validate() {
     for (resource_tag tag : definition.required_tags) {
       if (!tagged_buffer_handles.contains(tag) && !tagged_texture_handles.contains(tag)) {
-        // CORE_LOG_ERROR("Pipeline [{}] requires tag [{}] but no resource provides it.", definition.name, resource_tag_to_string(tag));
         valid = false;
         return;
       }
@@ -952,10 +914,90 @@ namespace other {
   }
 
   opt<resource_handle> render_pipeline::get_shader_handle(const std::string_view shader_name) const {
-    if (auto shader_itr = shader_handles.find(shader_name.data()); shader_itr != shader_handles.end()) {
+    if (auto shader_itr = shader_handles.find(FNV(shader_name)); shader_itr != shader_handles.end()) {
       return shader_itr->second;
     }
     return std::nullopt;
+  }
+
+  pass_runtime& render_pipeline::build_pass_runtime(pass_runtime& runtime, render_pass* pass, const pipeline_pass_definition& pass_def) {
+    OTHER_ASSERT(pass != nullptr, "Cannot build pass runtime for null pass pointer.");
+
+    runtime.pass_id = pass->id;
+    runtime.def = &pass_def;
+    runtime.state.per_frame_handles.resize(pass_def.bindings.size());
+    runtime.state.per_draw_rings.resize(pass_def.bindings.size());
+
+    auto& reg = renderer_ptr->get_binding_registry();
+    for (size_t i = 0; i < pass_def.bindings.size(); ++i) {
+      const auto& bd = pass_def.bindings[i];
+
+      if (bd.scope == binding_scope::PER_DRAW_CALL || bd.scope == binding_scope::PER_INSTANCE) {
+        OTHER_ASSERT(bd.element_size > 0, "pipeline '{}' pass '{}' binding '{}': per-draw bindings must specify element_size > 0", definition.name, pass_def.name, bd.name);
+
+        uint32_t align = 1;
+        switch (bd.type) {
+          case binding_type::UNIFORM_BUFFER: align = renderer_ptr->rendering()->api()->uniform_buffer_offset_alignment(); break;
+          case binding_type::STORAGE_BUFFER: align = renderer_ptr->rendering()->api()->storage_buffer_offset_alignment(); break;
+          /// \todo is this correct?
+          case binding_type::DRAW_INDIRECT_BUFFER: align = 4; break;
+          default:
+            OTHER_ASSERT(false, "binding '{}' has type {} but a per-draw ring was requested", bd.name, int(bd.type));
+        }
+
+        const uint32_t stride = align_up(bd.element_size, align);
+        const uint32_t expected = pass_def.expected_max_draws.value_or(renderer::kMaxDrawCalls);
+        const uint32_t capacity = stride * expected;  // * kMaxFramesInFlight;
+        // clang-format off
+          CORE_LOG_DEBUG("Attempting to allocate per-draw ring buffer for pass '{}' binding '{}': element_size={}, expected_max_draws={}, capacity={}", 
+                         pass_def.name, bd.name, bd.element_size, expected, capacity);
+        // clang-format on
+
+        auto handle = renderer_ptr->create_resource(std::format("{}.{}.ring", pass_def.name, bd.name), resource_type::BUFFER);
+        runtime.state.per_draw_rings[i] = {
+          .ring_buffer = handle,
+          .cpu_staging = (uint8_t*)arena::allocate(capacity),
+          .capacity = capacity,
+          .element_size = bd.element_size,
+          .stride = stride,
+          .head = 0,
+          .binding_point = bd.binding,
+          .set = bd.set,
+        };
+
+        gpu_buffer& buf = renderer_ptr->get_resource<gpu_buffer>(handle);
+        buf.set_buffer_type(buffer_type_from_binding(bd.type))
+          .set_usage(gpu_buffer::usage::DYNAMIC)
+          .set_data(nullptr, capacity)
+          .finalize_buffer();
+      }
+
+      bool ok = true;
+      switch (bd.scope) {
+        case binding_scope::PER_PIPELINE:
+          ok = true;
+          break;
+        case binding_scope::PER_FRAME:
+          ok = !bd.tag.is_none() && (reg.find_per_frame(bd.tag) != nullptr || renderer_ptr->frame_binder_resolves(bd.tag));
+          break;
+        case binding_scope::PER_DRAW_CALL:
+          ok = !bd.tag.is_none() && (reg.find_per_draw(bd.tag) != nullptr || renderer_ptr->draw_binder_resolves(bd.tag));
+          break;
+        case binding_scope::PER_INSTANCE:
+          ok = !bd.tag.is_none() && (reg.find_per_instance(bd.tag) != nullptr || renderer_ptr->instance_binder_resolves(bd.tag));
+          break;
+        default:
+          OTHER_ASSERT(false, "Unsupported binding scope {} for pass '{}', binding '{}'", bd.scope, pass_def.name, bd.name);
+      }
+
+      if (!ok) {
+        // clang-format off
+          CORE_LOG_ERROR("pipeline '{}' pass '{}': no producer for binding '{}' (scope={}, tag={})", 
+                         definition.name, pass_def.name, bd.name, bd.scope, bd.tag.value());
+        // clang-format on
+        valid = false;
+      }
+    }
   }
 
 }  // namespace other

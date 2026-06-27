@@ -22,6 +22,107 @@ namespace other {
     pass_exec_resolver = resolver;
   }
 
+  void renderer::register_debug_pass(const std::string_view pipeline_name, const std::string_view name, const pipeline_pass_definition& definition) {
+    uint64_t hash = FNV(pipeline_name);
+    auto itr = pipelines.find(hash);
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register debug pass [{}].", pipeline_name, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register debug pass [{}].", pipeline_name, name);
+      return;
+    }
+    itr->second->register_debug_pass(name, definition);
+  }
+
+  void renderer::register_texture_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register texture resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register texture resource [{}].", pipeline, name);
+      return;
+    }
+    itr->second->register_texture_resource(name, handle);
+  }
+
+  void renderer::register_buffer_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register buffer resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register buffer resource [{}].", pipeline, name);
+      return;
+    }
+    itr->second->register_buffer_resource(name, handle);
+  }
+
+  void renderer::register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& vert_path, const filepath& geom_path, const filepath& frag_path) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+
+    resource_handle handle = {};
+    if (!geom_path.empty()) {
+      handle = shader::create(name, vert_path, geom_path, frag_path, {});
+    } else {
+      handle = shader::create(name, vert_path, frag_path, {});
+    }
+    itr->second->register_shader_resource(name, handle);
+  }
+
+  void renderer::register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& comp_path) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+
+    resource_handle handle = shader::create(name, comp_path, {});
+    itr->second->register_shader_resource(name, handle);
+  }
+
+  void renderer::register_shader_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+    itr->second->register_shader_resource(name, handle);
+  }
+
+  void renderer::rebuild_pipeline(const std::string_view pipeline_name) {
+    auto itr = pipelines.find(FNV(pipeline_name));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot rebuild pipeline.", pipeline_name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot rebuild pipeline.", pipeline_name);
+      return;
+    }
+    itr->second->rebuild();
+  }
+
   void renderer::begin_frame(render_data* data) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("renderer::begin_frame");
@@ -61,6 +162,19 @@ namespace other {
     PROFILE_SECTION("renderer::end_frame");
     rendering()->api()->end_frame();
     scene_data = nullptr;
+  }
+
+  ImTextureID renderer::get_texture_id(const std::string_view pipeline, const std::string_view name) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot get texture ID for resource [{}].", pipeline, name);
+      return 0;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot get texture ID for resource [{}].", pipeline, name);
+      return 0;
+    }
+    return itr->second->get_texture_id(name);
   }
 
   opt<resource_handle> renderer::find_texture_resource(const std::string_view name) const {
@@ -222,6 +336,16 @@ namespace other {
   bool renderer::resource_exists(const resource_handle& handle) {
     ASSERT_MAIN_THREAD();
     return rendering()->api()->resource_exists(handle);
+  }
+
+  void renderer::draw_mesh(const resource_handle& mesh_handle) {
+    ASSERT_MAIN_THREAD();
+    mesh* m = rendering()->api()->get_resource_as<mesh>(mesh_handle);
+    if (m == nullptr) {
+      CORE_LOG_ERROR("Mesh resource with handle {} not found.", mesh_handle.id);
+      return;
+    }
+    m->draw();
   }
 
   void renderer::remove_pipeline(const std::string_view name) {

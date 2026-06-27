@@ -39,8 +39,7 @@ namespace other {
         return;
       }
 
-      auto& pipeline = pipeline_outputs[0];
-      ImTextureID tex_id = pipeline->get_final_output_texture_id();
+      ImTextureID tex_id = renderer_instance.get_texture_id("default-instancing", "tonemapped_texture");
       if (tex_id == 0) {
         scoped_color error_color{ ImGuiCol_Text, colors::rgba_to_imvec4(colors::kFriendlyErrorRed) };
         ImGui::Text("No output texture available from the rendering pipeline.");

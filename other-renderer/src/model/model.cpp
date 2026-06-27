@@ -39,9 +39,4 @@ namespace other {
     return nullptr;
   }
 
-  void model::draw() {
-    OTHER_ASSERT(source != nullptr, "SOURCE is null!");
-    source->draw();
-  }
-
 }  // namespace other

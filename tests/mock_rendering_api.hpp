@@ -41,6 +41,11 @@ namespace other {
     MOCK_METHOD(void, set_depth_mask, (bool enabled_or_disabled), (override));
     MOCK_METHOD(void, set_depth_test, (bool enabled_or_disabled), (override));
 
+    MOCK_METHOD(void, set_polygon_mode, (render_polygon_mode mode), (override));
+    MOCK_METHOD(void, set_stencil_func, (stencil_func func, int32_t ref, uint32_t mask), (override));
+    MOCK_METHOD(void, set_stencil_mask, (uint32_t mask), (override));
+    MOCK_METHOD(void, set_depth_func, (depth_func func), (override));
+
     MOCK_METHOD(void, memory_barrier, (shader::compute_barrier_type bits), (override));
 
     MOCK_METHOD(void, begin_ui_frame_backend_newframe, (), (override));

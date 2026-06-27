@@ -106,16 +106,6 @@ namespace other {
     return &animations[index];
   }
 
-  void model_source::draw() {
-    for (const auto& submesh : submeshes) {
-      // if (index_buffer_handle.has_value() && index_buffer_handle->id != 0) {
-      //   subsystem<renderer_backend>::get()->api()->draw_mesh(handle(), prim_type, vert_count, index_count, mesh::attribute_type::UNSIGNED_BYTE);
-      // } else {
-      //   subsystem<renderer_backend>::get()->api()->draw_mesh(handle(), prim_type, vert_count);
-      // }
-    }
-  }
-
   namespace detail {
 
     std::vector<float> build_vertex_buffer(const std::vector<vertex>& vertices) {

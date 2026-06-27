@@ -95,6 +95,11 @@ namespace other {
 
     virtual void memory_barrier(shader::compute_barrier_type bits) = 0;
 
+    virtual void set_polygon_mode(render_polygon_mode mode) = 0;
+    virtual void set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) = 0;
+    virtual void set_stencil_mask(uint32_t mask) = 0;
+    virtual void set_depth_func(depth_func func) = 0;
+
     void begin_ui_frame();
     void end_ui_frame();
 

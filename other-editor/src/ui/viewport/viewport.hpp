@@ -19,18 +19,17 @@ namespace other {
 
     class viewport : public ui_window {
      public:
-      viewport(editor_context& ctx, event_system& events, renderer& renderer_ptr, driver* driver_ptr);
+      viewport(editor_context& ctx, event_system& events, renderer& renderer_instance, driver* driver_ptr);
       ~viewport() override = default;
 
-      inline void set_display_texture(resource_handle resource) {
-        display_texture_id = resource;
-      }
+      void initialize_debug_passes();
 
       void on_render_header() override;
       void on_render_body() override;
       void on_pre_render_nodes() override;
 
      private:
+      renderer& renderer_instance;
       driver* driver_ptr = nullptr;
       editor_context& editor_ctx;
 

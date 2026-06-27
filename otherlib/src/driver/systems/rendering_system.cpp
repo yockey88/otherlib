@@ -618,7 +618,7 @@ namespace other {
       opt<resource_handle> target = pl->find_texture_by_name(def.outputs.front().resource_name);
       OTHER_ASSERT(target.has_value(), "generate_mips: target not found for pass '{}'", def.name);
       return [target = *target](pass_context& ctx) {
-        // ctx.get_renderer().rendering()->api()->generate_texture_mipmaps(target);  // thin backend wrapper, 01 §1
+        // ctx.get_renderer().rendering()->api()->generate_texture_mipmaps(target);  // thin backend wrapper
       };
     }
 
@@ -652,12 +652,10 @@ namespace other {
           tex.bind_image(0, i, true, 0, fmt, READ);       // src = i
           tex.bind_image(1, i + 1, true, 0, fmt, WRITE);  // dst = i+1
           // imageStore ignores viewport, shader self-bounds via imageSize(dst).
-          ctx.dispatch({ (dst.x + gs.x - 1) / gs.x, (dst.y + gs.y - 1) / gs.y, 1u },
-                       shader::compute_barrier_type::SHADER_IMAGE_ACCESS);
+          ctx.dispatch({ (dst.x + gs.x - 1) / gs.x, (dst.y + gs.y - 1) / gs.y, 1u }, shader::compute_barrier_type::SHADER_IMAGE_ACCESS);
           sz = dst;
         }
-        // If a later pass SAMPLES the pyramid, consumer pass needs to request a TEXTURE_FETCH barrier
-        // image-access alone doesn't order texture fetches.
+        // if later pass samples pyramid, it needs to request TEXTURE_FETCH barrier. image-access alone doesn't order texture fetches.
       };
     }
 

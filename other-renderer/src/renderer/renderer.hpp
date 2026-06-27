@@ -73,6 +73,17 @@ namespace other {
 
     void initialize_pass_resolver(pass_executor_resolver* resolver);
 
+    void register_debug_pass(const std::string_view pipeline_name, const std::string_view name, const pipeline_pass_definition& definition);
+
+    void register_texture_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
+    void register_buffer_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
+
+    void register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& vert_path, const filepath& geom_path, const filepath& frag_path);
+    void register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& comp_path);
+    void register_shader_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
+
+    void rebuild_pipeline(const std::string_view pipeline_name);
+
     void begin_frame(render_data* data);
     void bind_frame_bindings(const render_data& data);
     void render();
@@ -84,6 +95,8 @@ namespace other {
     inline camera* get_override_camera() {
       return should_force_camera ? &forced_camera : nullptr;
     }
+
+    ImTextureID get_texture_id(const std::string_view pipeline, const std::string_view name);
 
     opt<resource_handle> find_texture_resource(const std::string_view name) const;
     opt<resource_handle> find_buffer_resource(const std::string_view name) const;
@@ -150,6 +163,7 @@ namespace other {
 
     void remove_pipeline(const std::string_view name);
 
+    virtual void draw_mesh(const resource_handle& mesh_handle);
     virtual void execute_draw_calls(frame_node* current_node);
 
     constexpr static inline size_t kMaxDrawCalls = 1024;

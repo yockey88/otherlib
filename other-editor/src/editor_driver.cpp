@@ -20,7 +20,7 @@ namespace other {
 
   void editor_driver::on_early_initialize() {
     auto& ui = get_ui();
-    ui->register_window<ui::viewport>("viewport", context, *get_event_system(), get_renderer(), this);
+    viewport_id = ui->register_window<ui::viewport>("viewport", context, *get_event_system(), get_renderer(), this);
     ui->register_window<ui::scene_hierarchy>("scene-hierarchy", context, *get_event_system(), this);
     ui->register_window<ui::object_editor>("object-editor", context, *get_event_system(), this);
   }

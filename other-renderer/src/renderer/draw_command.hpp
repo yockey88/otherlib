@@ -25,6 +25,28 @@ namespace other {
     POLYGON_MODE_POINT
   };
 
+  enum stencil_func {
+    STENCIL_NEVER = 0,
+    STENCIL_LESS = 1,
+    STENCIL_EQUAL = 2,
+    STENCIL_LEQUAL = 3,
+    STENCIL_GREATER = 4,
+    STENCIL_NOTEQUAL = 5,
+    STENCIL_GEQUAL = 6,
+    STENCIL_ALWAYS = 7
+  };
+
+  enum depth_func {
+    DEPTH_NEVER = 0,
+    DEPTH_LESS = 1,
+    DEPTH_EQUAL = 2,
+    DEPTH_LEQUAL = 3,
+    DEPTH_GREATER = 4,
+    DEPTH_NOTEQUAL = 5,
+    DEPTH_GEQUAL = 6,
+    DEPTH_ALWAYS = 7
+  };
+
   struct mesh_key {
     resource_handle model_source_handle = {};
     render_polygon_mode render_state = render_polygon_mode::POLYGON_MODE_FILL;
@@ -74,7 +96,6 @@ OTHER_REFLECT(
   field(vertex_count, other::attr::serializable()),
   field(index_offset, other::attr::serializable()),
   field(index_count, other::attr::serializable()),
-  field(line_thickness, other::attr::serializable())
-)
+  field(line_thickness, other::attr::serializable()))
 
 #endif  // OTHER_RENDERER_RENDERER_RAW_COMMAND_HPP

@@ -34,8 +34,6 @@ namespace other {
 
     mesh_node* get_node_by_name(const std::string& name);
     submesh* get_submesh_by_name(const std::string& name);
-
-    void draw();
   };
 
 }  // namespace other
@@ -43,7 +41,6 @@ namespace other {
 OTHER_REFLECT(
   other::model,
   field(name, other::attr::serializable("Name")),
-  field(submesh_indices, other::attr::serializable("Submesh Indices"))
-)
+  field(submesh_indices, other::attr::serializable("Submesh Indices")))
 
 #endif  // OTHER_RENDERER_MODEL_MODEL_HPP

@@ -324,6 +324,26 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::set_polygon_mode(render_polygon_mode mode) {
+    glPolygonMode(GL_FRONT_AND_BACK, get_gl_render_polygon_mode(mode));
+    CHECKGL();
+  }
+
+  void opengl_api::set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) {
+    glStencilFunc(get_gl_stencil_func(func), ref, mask);
+    CHECKGL();
+  }
+
+  void opengl_api::set_stencil_mask(uint32_t mask) {
+    glStencilMask(mask);
+    CHECKGL();
+  }
+
+  void opengl_api::set_depth_func(depth_func func) {
+    glDepthFunc(get_gl_depth_func(func));
+    CHECKGL();
+  }
+
   void opengl_api::begin_ui_frame_backend_newframe() {
     PROFILE_SECTION("opengl_api::begin_ui_frame_backend_newframe");
     ImGui_ImplOpenGL3_NewFrame();
@@ -1753,18 +1773,44 @@ namespace other {
 
   int32_t opengl_api::get_gl_render_polygon_mode(render_polygon_mode mode) const {
     switch (mode) {
-      case POLYGON_MODE_FILL:
-        return GL_FILL;
-
-      case POLYGON_MODE_LINE:
-        return GL_LINE;
-
-      case POLYGON_MODE_POINT:
-        return GL_POINT;
-
+      case POLYGON_MODE_FILL: return GL_FILL;
+      case POLYGON_MODE_LINE: return GL_LINE;
+      case POLYGON_MODE_POINT: return GL_POINT;
       default:
         CORE_LOG_ERROR("Unsupported polygon mode: {}", mode);
         return -1;
+    }
+  }
+
+  int32_t opengl_api::get_gl_stencil_func(stencil_func func) const {
+    switch (func) {
+      case stencil_func::STENCIL_NEVER: return GL_NEVER;
+      case stencil_func::STENCIL_LESS: return GL_LESS;
+      case stencil_func::STENCIL_EQUAL: return GL_EQUAL;
+      case stencil_func::STENCIL_LEQUAL: return GL_LEQUAL;
+      case stencil_func::STENCIL_GREATER: return GL_GREATER;
+      case stencil_func::STENCIL_NOTEQUAL: return GL_NOTEQUAL;
+      case stencil_func::STENCIL_GEQUAL: return GL_GEQUAL;
+      case stencil_func::STENCIL_ALWAYS: return GL_ALWAYS;
+      default:
+        CORE_LOG_ERROR("Unsupported stencil function: {}", func);
+        return -1;  // Invalid function
+    }
+  }
+
+  int32_t opengl_api::get_gl_depth_func(depth_func func) const {
+    switch (func) {
+      case depth_func::DEPTH_NEVER: return GL_NEVER;
+      case depth_func::DEPTH_LESS: return GL_LESS;
+      case depth_func::DEPTH_EQUAL: return GL_EQUAL;
+      case depth_func::DEPTH_LEQUAL: return GL_LEQUAL;
+      case depth_func::DEPTH_GREATER: return GL_GREATER;
+      case depth_func::DEPTH_NOTEQUAL: return GL_NOTEQUAL;
+      case depth_func::DEPTH_GEQUAL: return GL_GEQUAL;
+      case depth_func::DEPTH_ALWAYS: return GL_ALWAYS;
+      default:
+        CORE_LOG_ERROR("Unsupported depth function: {}", func);
+        return -1;  // Invalid function
     }
   }
 

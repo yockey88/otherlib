@@ -50,6 +50,11 @@ namespace other {
 
     void memory_barrier(shader::compute_barrier_type bits) override;
 
+    void set_polygon_mode(render_polygon_mode mode) override;
+    void set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) override;
+    void set_stencil_mask(uint32_t mask) override;
+    void set_depth_func(depth_func func) override;
+
     void begin_ui_frame_backend_newframe() override;
     void end_ui_frame_backend_draw_data() override;
 
@@ -158,6 +163,8 @@ namespace other {
     int32_t get_gl_access_flags(access_flags flags) const;
 
     int32_t get_gl_render_polygon_mode(render_polygon_mode mode) const;
+    int32_t get_gl_stencil_func(stencil_func func) const;
+    int32_t get_gl_depth_func(depth_func func) const;
 
     int32_t get_gl_texture_type(texture::tex_type type) const;
     int32_t get_gl_texture_format(texture::format format) const;

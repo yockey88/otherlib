@@ -32,6 +32,7 @@ namespace other {
 
    private:
     editor_context context;
+    natural_t viewport_id = 0;
 
     mouse_state mouse;
     bool pressing_mouse_wheel = false;
