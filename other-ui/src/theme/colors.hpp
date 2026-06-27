@@ -577,7 +577,8 @@ namespace other {
         constexpr inline glm::vec4 kComponentPhysics = hex_col_to_rgba(IM_COL32(140, 100, 200, 200));
         constexpr inline glm::vec4 kComponentScript = hex_col_to_rgba(IM_COL32(60, 190, 110, 200));
         constexpr inline glm::vec4 kComponentAudio = hex_col_to_rgba(IM_COL32(210, 80, 170, 200));
-        constexpr inline glm::vec4 kComponentLight = hex_col_to_rgba(IM_COL32(255, 230, 120, 200));
+        constexpr inline glm::vec4 kComponentPointLight = hex_col_to_rgba(IM_COL32(255, 230, 120, 200));
+        constexpr inline glm::vec4 kComponentDirectionLight = hex_col_to_rgba(IM_COL32(255, 200, 100, 200));
         constexpr inline glm::vec4 kComponentCamera = hex_col_to_rgba(IM_COL32(180, 180, 180, 200));
         constexpr inline glm::vec4 kComponentAnimation = hex_col_to_rgba(IM_COL32(40, 200, 185, 200));
         constexpr inline glm::vec4 kComponentRegistry = hex_col_to_rgba(IM_COL32(100, 150, 200, 200));

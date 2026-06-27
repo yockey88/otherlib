@@ -17,6 +17,7 @@ namespace other {
       void validate_frame_executors(validation_result& result, const toml::table& tbl);
       void validate_frame_resource_tags(validation_result& result, const toml::table& tbl);
       void validate_frame_passes(validation_result& result, const toml::table& tbl, std::set<std::string>& out_pass_names);
+      void validate_pass_uniforms(validation_result& result, const toml::table& tbl);
       void validate_frame_pass_bindings(validation_result& result, const toml::table& tbl);
       void validate_cross_references(validation_result& result, const toml::table& tbl, const std::set<std::string>& buffer_names, const std::set<std::string>& texture_names,
                                      const std::set<std::string>& shader_names, const std::set<std::string>& binding_names, const std::set<std::string>& pass_names);
@@ -58,11 +59,10 @@ namespace other {
       validate_frame_resource_tags(result, tbl);
       validate_frame_passes(result, tbl, pass_names);
       validate_frame_pass_bindings(result, tbl);
-
       if (result.valid) {
         validate_cross_references(result, tbl, buffer_names, texture_names, shader_names, binding_names, pass_names);
+        validate_pass_uniforms(result, tbl);
       }
-
       return result;
     }
 
@@ -439,12 +439,16 @@ namespace other {
       void validate_frame_inputs_outputs(validation_result& result, const toml::table& tbl) {
         const auto inputs = tbl.at_path("frame.inputs");
         const auto outputs = tbl.at_path("frame.outputs");
+        const auto uniform_name = tbl.at_path("frame.uniform_name");
 
         if (!inputs || !inputs.is_array_of_tables()) {
           result.fail("frame.inputs: missing or not an array of tables");
         }
         if (!outputs || !outputs.is_array_of_tables()) {
           result.fail("frame.outputs: missing or not an array of tables");
+        }
+        if (uniform_name && !uniform_name.is_string()) {
+          result.fail("frame.uniform_name: if present, must be a string");
         }
 
         const auto validate_io_entry = [&](const std::string_view section, const toml::node& entry) {
@@ -530,26 +534,6 @@ namespace other {
 
           if (!is_valid_enum(name_str, kValidExecutorNames)) {
             result.fail(std::format("frame.executors (pass '{}'): '{}' is not a valid executor name", pass_str, name_str));
-          }
-
-          const auto uniforms = exec.at_path("uniforms");
-          if (uniforms) {
-            if (!uniforms.is_array_of_tables()) {
-              result.fail(std::format("frame.executors (pass '{}'): 'uniforms' must be an array of tables", pass_str));
-            } else {
-              for (const auto& u : *uniforms.as_array()) {
-                const auto uname = u.at_path("name");
-                const auto uvalue = u.at_path("value");
-                if (!uname.is_string()) {
-                  result.fail(std::format("frame.executors (pass '{}', uniforms): each entry must have a string 'name'", pass_str));
-                  continue;
-                }
-                const std::string uname_str = uname.as_string()->get();
-                if (!uvalue || !(uvalue.is_number() || uvalue.is_floating_point() || uvalue.is_boolean())) {
-                  result.fail(std::format("frame.executors (pass '{}', uniform '{}'): 'value' must be a number or boolean", pass_str, uname_str));
-                }
-              }
-            }
           }
 
           const auto params = exec.at_path("params");
@@ -715,6 +699,35 @@ namespace other {
                 }
               }
             }
+          }
+        }
+      }
+
+      void validate_pass_uniforms(validation_result& result, const toml::table& tbl) {
+        const auto pass_uniforms = tbl.at_path("frame.pass-uniforms");
+        if (!pass_uniforms) {
+          return;
+        }
+
+        if (!pass_uniforms.is_array_of_tables()) {
+          result.fail("frame.pass_uniforms: must be an array of tables if present");
+          return;
+        }
+
+        for (const auto& pu : *pass_uniforms.as_array()) {
+          const auto pass_name = pu.at_path("pass_name");
+          const auto name = pu.at_path("name");
+          const auto value = pu.at_path("value");
+
+          if (!pass_name.is_string()) {
+            result.fail("frame.pass-uniforms[]: 'pass_name' must be a string");
+          }
+          if (!name.is_string()) {
+            result.fail(std::format("frame.pass-uniforms (pass '{}'): 'name' must be a string", pass_name.as_string()->get()));
+          }
+          if (!value.is_string() && !value.is_number() && !value.is_boolean()) {
+            result.fail(std::format("frame.pass-uniforms (pass '{}', uniform '{}'): 'value' must be a string, number, or boolean",
+                                    pass_name.as_string()->get(), name.as_string()->get()));
           }
         }
       }

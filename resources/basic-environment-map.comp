@@ -2,8 +2,8 @@
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-// Declare the cubemap image layout for writing
 layout(rgba16f, binding = 0) uniform writeonly image3D OE_env_cubemap;
+layout(rgba16f, binding = 1) uniform readonly image2D OE_shadow_map;
 
 void main() {
   // coord within the target face
@@ -17,8 +17,11 @@ void main() {
   // froxel center
   vec3 uvw = (vec3(texel_coord) + 0.5) / vec3(dim);
 
+
   vec3 world_pos = world_min.xyz + uvw * world_extent();
   vec3 irradiance = oe_sky_irradiance_up(world_pos); // * world_max.w;
+
+  // vec3 shadow = calculate_direction_light_shadow(world_pos, )
   // vec3 ambient_glow = ambient_color.xyz;
   // vec3 final_color = mix(irradiance, ambient_glow, ambient_color.w);
 

@@ -41,8 +41,8 @@ IMGUI_REFLECT(other::render_component, material, visible, animated);
 IMGUI_REFLECT(other::model, name, submesh_indices);
 IMGUI_REFLECT(other::physics_component, body, shape);
 IMGUI_REFLECT(other::physics_body_settings, body_type, mass);
-IMGUI_REFLECT(other::point_light, position, color);
-IMGUI_REFLECT(other::direction_light, direction, color);
+IMGUI_REFLECT(other::point_light_component, light);
+IMGUI_REFLECT(other::direction_light_component, light);
 
 IMGUI_REFLECT(other::orthonormal_basis, i, j, k);
 IMGUI_REFLECT(other::camera, position, direction, euler_angles, world_up, basis);
@@ -194,7 +194,8 @@ namespace other {
           });
         draw_component_section<camera_component>("Camera", active_scene, &obj);
         draw_component_section<physics_component>("Physics Body", active_scene, &obj);
-        draw_component_section<point_light_component>("Lights", active_scene, &obj);
+        draw_component_section<point_light_component>("Point Light", active_scene, &obj);
+        draw_component_section<direction_light_component>("Direction Light", active_scene, &obj);
         draw_component_section<animation_controller>("Animation Controller", active_scene, &obj);
 
         if (inspector::draw_add_component_button()) {

@@ -98,6 +98,7 @@ namespace other {
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, int64_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, uint64_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, real_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec2& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose = false) override;

@@ -64,6 +64,7 @@ namespace other {
 
   struct pipeline_resource_reference {
     std::string resource_name;
+    std::string uniform_name;  //< for samplerXD uniforms, imageXD uniforms, or bindless resource indexing
     uint32_t binding = 0;
     framebuffer::attachment_type attachment = framebuffer::COLOR;
     uint32_t mip_level = 0;
@@ -72,9 +73,13 @@ namespace other {
 
   struct pipeline_executor_definition {
     std::string name = "noop";
-
-    std::map<std::string, value> uniforms;
     std::map<std::string, value> params;
+  };
+
+  struct pass_uniform_definition {
+    std::string pass_name;
+    std::string name;
+    value val;
   };
 
   struct pipeline_pass_definition {
@@ -94,6 +99,8 @@ namespace other {
 
     std::vector<std::string> depends_on;
     std::vector<frame_binding_definition> bindings;
+
+    std::map<natural_t, pass_uniform_definition> uniforms;  //< FNV(pass_name + "." + name) -> value
 
     // for passes that need to run multiple times per frame, i.e cascaded shadow maps
     uint32_t iterations_per_frame = 1;
@@ -135,7 +142,6 @@ namespace other {
   resource_tag resource_tag_from_string(const std::string_view str);
 
   pipeline_definition read_pipeline_definition_from_file(const filepath& path);
-
   pipeline_definition get_empty_pipeline();
 
 }  // namespace other

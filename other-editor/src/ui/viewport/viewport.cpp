@@ -32,9 +32,6 @@ namespace other {
           api->set_stencil_func(STENCIL_ALWAYS, 1, 0xFF);
           api->set_stencil_mask(0xFF);
 
-          render_pipeline::apply_uniforms(*sh, def.executor.uniforms);
-          sh->bind();
-
           for (const auto& obj_id : editor_ctx->current_selection.objects) {
             render_component* rc = editor_ctx->active_scene->get_component<render_component>(obj_id);
             if (rc == nullptr) {
@@ -43,8 +40,6 @@ namespace other {
 
             ctx.get_renderer().get_resource<mesh>(rc->obj_model.source->get_mesh_handle()).draw();
           }
-
-          sh->unbind();
         };
       }
 
@@ -62,9 +57,6 @@ namespace other {
           api->set_stencil_func(STENCIL_NOTEQUAL, 1, 0xFF);
           api->set_stencil_mask(0x00);
 
-          render_pipeline::apply_uniforms(*sh, def.executor.uniforms);
-          sh->bind();
-
           for (const auto& obj_id : editor_ctx->current_selection.objects) {
             render_component* rc = editor_ctx->active_scene->get_component<render_component>(obj_id);
             if (rc == nullptr) {
@@ -73,8 +65,6 @@ namespace other {
 
             ctx.get_renderer().get_resource<mesh>(rc->obj_model.source->get_mesh_handle()).draw();
           }
-
-          sh->unbind();
         };
       }
 
@@ -124,9 +114,6 @@ namespace other {
         },
         .executor = {
           .name = "stencil",
-          .uniforms = {
-            { "OE_texture", 0 },
-          },
         },
         .bindings = {
           {
@@ -165,10 +152,6 @@ namespace other {
         },
         .executor = {
           .name = "stencil_outline",
-          .uniforms = {
-            { "OE_texture", 0 },
-            { "OE_solid_color", glm::vec4(0.04, 0.28, 0.26, 1.0) },
-          },
         },
         .bindings = {
           {

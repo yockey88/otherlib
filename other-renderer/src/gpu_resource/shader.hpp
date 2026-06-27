@@ -75,6 +75,7 @@ namespace other {
     shader& set_uniform(const std::string& name, int64_t value);
     shader& set_uniform(const std::string& name, uint64_t value);
     shader& set_uniform(const std::string& name, real_t value);
+    shader& set_uniform(const std::string& name, const glm::vec2& value);
     shader& set_uniform(const std::string& name, const glm::vec3& value);
     shader& set_uniform(const std::string& name, const glm::vec4& value);
     shader& set_uniform(const std::string& name, const glm::mat4& value, bool transpose = false);

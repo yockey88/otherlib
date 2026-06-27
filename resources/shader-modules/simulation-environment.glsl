@@ -47,6 +47,10 @@ ivec3 oe_world_to_voxel(vec3 world_pos, ivec3 dim) {
   return ivec3(oe_world_to_uvw(world_pos) * vec3(dim));
 }
 
+vec3 oe_world_to_volume(vec3 p) {
+  return clamp((p - world_min.xyz) / world_extent(), vec3(0.0), vec3(1.0));
+}
+
 vec3 oe_voxel_to_world(ivec3 voxel, ivec3 dim) {
   vec3 uvw = (vec3(voxel) + 0.5) / vec3(dim);
   return world_min.xyz + uvw * world_extent();

@@ -760,7 +760,7 @@ namespace other {
       gpu::light l{
         .vector = { light.light.position.x, light.light.position.y, light.light.position.z, 0.f },
         .color = light.light.color,
-        .type = gpu::light::kPoint,
+        .light_type = gpu::light::kPoint,
       };
       data.lights.push_back(l);
     });
@@ -912,9 +912,9 @@ namespace other {
     data.simulation_environment.horizon_color = glm::clamp(horizon_color, 0.0f, 1.0f);
     data.simulation_environment.ground_color = glm::clamp(ground_color, 0.0f, 1.0f);
 
-    bounding_box scene_bounding_box = get_bounding_box();
-    data.simulation_environment.world_min = glm::vec4(scene_bounding_box.min, 1.0f);
-    data.simulation_environment.world_max = glm::vec4(scene_bounding_box.max, 1.0f);
+    // bounding_box scene_bounding_box = get_bounding_box();
+    // data.simulation_environment.world_min = glm::vec4(scene_bounding_box.min, 1.0f);
+    // data.simulation_environment.world_max = glm::vec4(scene_bounding_box.max, 1.0f);
 
     // if (debug_physics_rendering_enabled && storage->physics != nullptr) {
     //   physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();

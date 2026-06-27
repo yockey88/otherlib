@@ -748,12 +748,18 @@ namespace other {
   void render_pipeline::build_tag_maps() {
     for (const auto& [hash, res] : buffer_resources) {
       if (res.tag != resource_tag::none() && !tagged_buffer_handles.contains(res.tag)) {
-        tagged_buffer_handles[res.tag] = res.handle;
+        auto itr = tagged_buffer_handles.insert({ res.tag, res.handle });
+        if (!itr.second) {
+          CORE_LOG_ERROR("Failed to insert tagged buffer handle for tag: {}", res.tag.value());
+        }
       }
     }
     for (const auto& [hash, res] : texture_resources) {
       if (res.tag != resource_tag::none() && !tagged_texture_handles.contains(res.tag)) {
-        tagged_texture_handles[res.tag] = res.handle;
+        auto itr = tagged_texture_handles.insert({ res.tag, res.handle });
+        if (!itr.second) {
+          CORE_LOG_ERROR("Failed to insert tagged texture handle for tag: {}", res.tag.value());
+        }
       }
       if (res.tag == resource_tag(resource_tag::kScreenTag)) {
         screen_texture_handle = res.handle;
@@ -781,6 +787,7 @@ namespace other {
   void render_pipeline::validate() {
     for (resource_tag tag : definition.required_tags) {
       if (!tagged_buffer_handles.contains(tag) && !tagged_texture_handles.contains(tag)) {
+        CORE_LOG_ERROR("Pipeline [{}] requires tag [{}] but no resource provides it.", definition.name, tag.value());
         valid = false;
         return;
       }
@@ -789,7 +796,7 @@ namespace other {
     const bool graph_valid = graph->is_valid();
     // const bool needs_screen = ...
     const bool has_screen = std::ranges::any_of(definition.textures, [&](const auto& t) { return t.tag == resource_tag(resource_tag::kScreenTag); });
-    const bool pipeline_valid = graph_valid && has_screen;
+    const bool pipeline_valid = graph_valid;  // && has_screen;
     if (!pipeline_valid) {
       CORE_LOG_ERROR("Pipeline [{}] has valid resources but render graph is invalid.", definition.name);
       CORE_LOG_ERROR("graph_valid: {}, has_screen: {}", graph_valid, has_screen);
@@ -827,7 +834,6 @@ namespace other {
       builder.set_clear_color(*pass_def.clear_color);
     }
 
-    uint32_t curr_texture_slot = 0;
     for (const auto& ref : pass_def.inputs) {
       const bool is_buffer = is_buffer_resource(ref.resource_name);
       CORE_LOG_DEBUG(" - input resource: {}, type: {}", ref.resource_name, is_buffer ? "buffer" : "texture");
@@ -838,7 +844,7 @@ namespace other {
       } else {
         auto handle = find_texture_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Input resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-        builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, READ, ref.mip_level);
+        builder.texture_resource(*handle, ref.uniform_name, ref.binding, ref.attachment, READ, ref.mip_level);
       }
     }
 
@@ -852,8 +858,12 @@ namespace other {
       } else {
         auto handle = find_texture_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-        builder.texture_resource(*handle, curr_texture_slot++, ref.attachment, WRITE, ref.mip_level);
+        builder.texture_resource(*handle, ref.uniform_name, ref.binding, ref.attachment, WRITE, ref.mip_level);
       }
+    }
+
+    for (const auto& [id, uniform] : pass_def.uniforms) {
+      builder.add_uniform(uniform.name, uniform.val);
     }
 
     /// add depends_on tags

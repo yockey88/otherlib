@@ -1323,6 +1323,24 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec2& value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform2fv(shader_id, 1, glm::value_ptr(value));
+    CHECKGL();
+  }
+
   void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) {
     PROFILE_SECTION("opengl_api::set_shader_uniform");
 

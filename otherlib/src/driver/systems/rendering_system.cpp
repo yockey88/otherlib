@@ -5,6 +5,8 @@
 
 #include <SDL3/SDL_dialog.h>
 
+#include "renderer/gpu_structs.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/environment_registry.hpp"
 #include "driver/systems/asset_system.hpp"
@@ -526,12 +528,7 @@ namespace other {
     }
 
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl) {
-      resource_handle quad = pl->get_quad_mesh_handle();
-      return [quad, uniforms = def.executor.uniforms, pass_name = def.name, pl](pass_context& ctx) {
-        auto* sh = pl->get_pass_shader(pass_name);
-        OTHER_ASSERT(sh, "fullscreen_quad: no shader bound for pass '{}'", pass_name);
-        render_pipeline::apply_uniforms(*sh, uniforms);
-        sh->bind();
+      return [pass_name = def.name](pass_context& ctx) {
         ctx.draw_quad();
       };
     }
@@ -547,11 +544,7 @@ namespace other {
         std::string bar_str = b_it->second;
         barrier = compute_barrier_type_from_string(bar_str);
       }
-      return [g = groups, uniforms = def.executor.uniforms, b = barrier, pass_name = def.name](pass_context& ctx) {
-        auto* sh = ctx.shader_for_pass();
-        OTHER_ASSERT(sh != nullptr, "compute_dispatch: no shader bound for pass '{}'", pass_name);
-        render_pipeline::apply_uniforms(*sh, uniforms);
-        sh->bind();
+      return [g = groups, b = barrier, pass_name = def.name](pass_context& ctx) {
         ctx.dispatch(glm::uvec3(g), b);
       };
     };
@@ -567,12 +560,7 @@ namespace other {
         std::string bar_str = b_it->second;
         barrier = compute_barrier_type_from_string(bar_str);
       }
-      return [g = groups, uniforms = def.executor.uniforms, b = barrier, pass_name = def.name, pl](pass_context& ctx) {
-        auto* sh = ctx.shader_for_pass();
-        OTHER_ASSERT(sh != nullptr, "window_sized_compute_dispatch: no shader bound for pass '{}'", pass_name);
-        render_pipeline::apply_uniforms(*sh, uniforms);
-        sh->bind();
-
+      return [g = groups, b = barrier, pass_name = def.name, pl](pass_context& ctx) {
         OTHER_ASSERT(pl != nullptr, "window_sized_compute_dispatch: no render pipeline provided for pass '{}'", pass_name);
         const glm::ivec2 win = pl->get_window_size();
         const glm::uvec3 local = glm::uvec3(g.x, g.y, g.z);
@@ -598,10 +586,6 @@ namespace other {
         api->set_depth_test(false);
 
         ctx.get_renderer().get_resource<texture>(*vol).bind_image(0, 0, true, 0, texture::format::RGBA16F, WRITE);
-
-        auto* sh = ctx.shader_for_pass();
-        OTHER_ASSERT(sh != nullptr, "voxelize: no shader for pass '{}'", pass_name);
-        sh->bind();
         ctx.draw_stream();
 
         api->set_color_mask(true);
@@ -634,16 +618,11 @@ namespace other {
         group_size = { (int32_t)g.x, (int32_t)g.y };
       }
 
-      return [target = *target, uniforms = def.executor.uniforms, gs = group_size, pass_name = def.name](pass_context& ctx) {
+      return [target = *target, gs = group_size, pass_name = def.name](pass_context& ctx) {
         auto& r = ctx.get_renderer();
         auto& tex = r.get_resource<texture>(target);
         const uint32_t levels = tex.mip_levels;  // public field; getter optional
         OTHER_ASSERT(levels > 1, "downsample_chain: target of pass '{}' has <= 1 mip level", pass_name);
-
-        auto* sh = ctx.shader_for_pass();
-        OTHER_ASSERT(sh != nullptr, "downsample_chain: no compute shader bound for pass '{}'", pass_name);
-        render_pipeline::apply_uniforms(*sh, uniforms);
-        sh->bind();
 
         glm::ivec2 sz = tex.get_size();  // base-level size
         const texture::format fmt = tex.get_format();

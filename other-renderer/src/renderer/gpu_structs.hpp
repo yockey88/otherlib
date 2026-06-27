@@ -132,20 +132,20 @@ namespace other {
       object objects[kMaxObjects];
     };
 
+    /// TODO: fix lighting
     GPU_ALIGN struct light {
-      glm::vec4 vector;
+      glm::vec4 vector;  // depends on light type
       glm::vec4 color;
+      // 1 = point, 2 = directional etc.
+      // float makes this easier to use on gpu
+      float light_type = 0;
 
-      // 1 = point, 2 = direction, etc..
-      // easier to use on gpu
-      float type = -1;
-
-      constexpr static inline float kPoint = 1.f;
-      constexpr static inline float kDirection = 2.f;
-      constexpr static inline float kSpot = 3.f;
+      constexpr static inline float kPoint = 1.0f;
+      constexpr static inline float kDirection = 2.0f;
+      constexpr static inline float kSpot = 3.0f;
     };
 
-    constexpr size_t kMaxLights = 200;
+    constexpr size_t kMaxLights = 100;
     GPU_ALIGN struct light_buffer {
       light lights[kMaxLights];
     };

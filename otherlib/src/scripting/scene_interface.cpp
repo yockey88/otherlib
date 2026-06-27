@@ -158,7 +158,7 @@ namespace other {
       light_comp = scene_ptr->get_component<direction_light_component>(object);
     }
 
-    OTHER_ASSERT(light_comp != nullptr, "Directional light component pointer is null in scene_object_interface::attach_direction_light_to_object");
+    OTHER_ASSERT(light_comp != nullptr, "Direction light component pointer is null in scene_object_interface::attach_direction_light_to_object");
     light_comp->light = light;
     return light_comp->light;
   }
