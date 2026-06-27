@@ -129,6 +129,7 @@ namespace other {
     bounding_box get_bounding_box(std::span<const natural_t> ids) const;
 
     bounding_box get_bounding_box() const;
+    bounding_box get_bounding_box_from_camera_frustum(const camera& cam) const;
 
     render_data prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const;
 

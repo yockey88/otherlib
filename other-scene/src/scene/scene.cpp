@@ -736,6 +736,12 @@ namespace other {
     return box;
   }
 
+  bounding_box scene::get_bounding_box_from_camera_frustum(const camera& cam) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_bounding_box_from_camera_frustum");
+    return cam.get_frustum().get_containing_aabb();
+  }
+
   render_data scene::prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::prepare_render_data");
@@ -903,7 +909,13 @@ namespace other {
       data.simulation_environment.sun_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
+    /// average of all light contributions for now, we can do something more complex later if needed
     data.simulation_environment.ambient_color = glm::vec4(0.f);
+    for (const auto& light : data.lights) {
+      data.simulation_environment.ambient_color += light.color;
+    }
+    data.simulation_environment.ambient_color += data.simulation_environment.sun_color;
+    data.simulation_environment.ambient_color /= static_cast<float>(data.lights.size() + 1);
 
     glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
     glm::vec4 horizon_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -912,9 +924,9 @@ namespace other {
     data.simulation_environment.horizon_color = glm::clamp(horizon_color, 0.0f, 1.0f);
     data.simulation_environment.ground_color = glm::clamp(ground_color, 0.0f, 1.0f);
 
-    // bounding_box scene_bounding_box = get_bounding_box();
-    // data.simulation_environment.world_min = glm::vec4(scene_bounding_box.min, 1.0f);
-    // data.simulation_environment.world_max = glm::vec4(scene_bounding_box.max, 1.0f);
+    bounding_box scene_bounding_box = get_bounding_box_from_camera_frustum(*primary_camera);
+    data.simulation_environment.world_min = glm::vec4(scene_bounding_box.min, 1.0f);
+    data.simulation_environment.world_max = glm::vec4(scene_bounding_box.max, 1.0f);
 
     // if (debug_physics_rendering_enabled && storage->physics != nullptr) {
     //   physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();

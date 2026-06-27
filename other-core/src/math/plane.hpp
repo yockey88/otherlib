@@ -21,6 +21,8 @@ namespace other {
     float distance_to_point(const glm::vec3& point) const;
     bool is_facing_point(const glm::vec3& point) const;
     bool contains_point(const glm::vec3& point) const;
+
+    std::array<glm::vec3, 4> get_corner_points() const;
   };
 
 }  // namespace other
@@ -28,7 +30,6 @@ namespace other {
 OTHER_REFLECT(
   other::plane,
   field(normal, other::attr::serializable()),
-  field(distance, other::attr::serializable())
-)
+  field(distance, other::attr::serializable()))
 
 #endif  // OTHER_CORE_MATH_PLANE_HPP

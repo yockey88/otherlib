@@ -91,6 +91,7 @@ namespace other {
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, int64_t value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, uint64_t value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, real_t value), (override));
+    MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::vec2& value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::vec3& value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::vec4& value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose), (override));

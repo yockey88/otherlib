@@ -78,11 +78,10 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
     }
   }
 
-  // float sky_vis = texture(OE_env_cubemap, oe_world_to_volume(world_position)).a;
-  // vec3 ambient = oe_environment_ambient(world_position, world_normal) * sky_vis;
-
+  float sky_vis = texture(OE_env_cubemap, oe_world_to_volume(world_position)).a;
   float shadow_calc = calculate_direction_light_shadow(world_position, world_normal);
-  vec3 lighting = // ambient * 
-  diffuse + (1.0 - shadow_calc) * diffuse_specular;
+  
+  vec3 ambient = oe_environment_ambient(world_position, world_normal) * sky_vis;
+  vec3 lighting = ambient * diffuse + (1.0 - shadow_calc) * diffuse_specular;
   return vec4(lighting, 1.0);
 }

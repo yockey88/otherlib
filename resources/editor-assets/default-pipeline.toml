@@ -81,7 +81,7 @@ passes = [
 ]
 pass-uniforms = [
   { pass_name = "tonemap-pass", name = "OE_exposure", value = 1.0 },
-  { pass_name = "tonemap-pass", name = "OE_gamma", value = 1.5 }
+  { pass_name = "tonemap-pass", name = "OE_gamma", value = 2.2 }
 ]
 inputs = [
   # { pass_name = "voxel-clear-pass", resource_name = "voxel_texture" },
