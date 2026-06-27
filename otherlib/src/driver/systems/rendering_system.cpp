@@ -49,7 +49,6 @@ namespace other {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
     register_builtin_resource_tags();
     register_builtin_render_executors();
-    register_builtin_renderer_debug_streams();
 
     configure_pipelines(kernel);
 
@@ -63,8 +62,6 @@ namespace other {
     }
 
     auto& events = *get_driver().get_event_system();
-
-    events.add_listener("viewport.resize", [this](const value& val) { handle_viewport_resize_event(val); });
 
     events.register_event("ls.windows");
     events.add_listener("ls.windows", [this](const value& data) { handle_ls_windows_event(&get_driver().get_kernel(), data); });
@@ -272,6 +269,10 @@ namespace other {
       data_ptr = &prepared_data;
     }
 
+    if (auto* c = renderer_ptr->get_override_camera(); c != nullptr) {
+      prepared_data.primary_camera = c;
+    }
+
     if (data_ptr != nullptr) {
       auto& registry = renderer_ptr->get_debug_stream_registry();
       for (const auto& [name, def] : registry.entries()) {
@@ -282,6 +283,7 @@ namespace other {
     {
       PROFILE_SECTION("rendering_system::render--frame");
       renderer_ptr->begin_frame(data_ptr);
+      get_driver().on_begin_frame(data_ptr);
       renderer_ptr->render();
       get_driver().on_render();
 
@@ -371,6 +373,15 @@ namespace other {
     detail::file_dialog(SDL_FILEDIALOG_SAVEFILE, nullptr, callback_fn, user_data, props);
   }
 
+  void rendering_system::handle_viewport_resize_event(const value& data) {
+    if (data.type() != value_type::VEC2) {
+      CORE_LOG_ERROR("Invalid data type for viewport resize event. Expected VEC2.");
+      return;
+    }
+    viewport_size = data;
+    get_driver().on_viewport_resize(viewport_size);
+  }
+
   void rendering_system::register_builtin_resource_tags() {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in register_builtin_resource_tags.");
 
@@ -397,45 +408,6 @@ namespace other {
     reg.register_executor("generate_mipmaps", &detail::make_generate_mipmaps);
     reg.register_executor("downsample_chain", &detail::make_downsample_chain);
     reg.register_executor("debug_stream", &detail::make_debug_stream);
-  }
-
-  void rendering_system::register_builtin_renderer_debug_streams() {
-    auto& reg = renderer_ptr->get_debug_stream_registry();
-    // reg.register_stream("debug.lines", debug_stream_definition{
-    //                                      .element_size = sizeof(debug_line),
-    //                                      .max_per_frame = 4096,
-    //                                      .draw_recipe = {
-    //                                        .shader = "debug_line_shader",
-    //                                        .topology = mesh::primitive_type::LINES,
-    //                                        .vertex_layout = {
-    //                                          vertex_attribute{ value_type::VEC3, "position", 0, 0 },
-    //                                          vertex_attribute{ value_type::VEC3, "color", 1, 3 },
-    //                                        },
-    //                                      },
-    //                                    });
-    // reg.register_stream("debug.triangles", debug_stream_definition{
-    //                                          .element_size = sizeof(debug_triangle),
-    //                                          .max_per_frame = 2048,
-    //                                          .draw_recipe = {
-    //                                            .shader = "debug_tri_shader",
-    //                                            .topology = mesh::primitive_type::TRIANGLES,
-    //                                            .vertex_layout = {
-    //                                              vertex_attribute{ value_type::VEC3, "position", 0, 0 },
-    //                                              vertex_attribute{ value_type::VEC3, "color", 1, 3 },
-    //                                            },
-    //                                          },
-    //                                        });
-
-    // Load the recipe shaders once at registration time so the first frame
-    // doesn't hit them lazily on draw_debug_stream.
-    // for (auto* shader_name : { "debug_line_shader", "debug_tri_shader" }) {
-    //   resource_handle h = shader::create(
-    //     shader_name,
-    //     std::format("resources/{}.vert", shader_name),
-    //     std::format("resources/{}.frag", shader_name)
-    //   );
-    //   renderer_ptr->register_debug_stream_shader(shader_name, h);  // adds to map
-    // }
   }
 
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
@@ -472,15 +444,6 @@ namespace other {
         ass.asset_id = id;
       }
     }
-  }
-
-  void rendering_system::handle_viewport_resize_event(const value& data) {
-    if (data.type() != value_type::VEC2) {
-      CORE_LOG_ERROR("Invalid data type for viewport resize event. Expected VEC2.");
-      return;
-    }
-    viewport_size = data;
-    get_driver().on_viewport_resize(viewport_size);
   }
 
   void rendering_system::handle_ls_windows_event(driver_kernel* kernel, const value& data) {

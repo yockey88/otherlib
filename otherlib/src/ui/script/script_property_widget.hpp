@@ -10,12 +10,12 @@
 #include "core/subsystem.hpp"
 
 #include "dotnet/behavior_descriptor.hpp"
-#include "renderer/ui/colors.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "object/script_component.hpp"
 #include "scene/scene.hpp"
 
+#include "theme/colors.hpp"
 #include "ui/component_widget.hpp"
 #include "ui/inspector_widgets.hpp"
 

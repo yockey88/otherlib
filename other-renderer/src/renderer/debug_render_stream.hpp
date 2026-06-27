@@ -47,7 +47,7 @@ namespace other {
         }
       }
       if (storage.count >= storage.bytes.size() / storage.element_size) {
-        CORE_LOG_WARNING("Debug stream '{}' has reached maximum capacity of {} elements, cannot submit more items", stream_name, storage.count);
+        CORE_LOG_WARN("Debug stream '{}' has reached maximum capacity of {} elements, cannot submit more items", stream_name, storage.count);
         return;
       }
       const uint8_t* item_bytes = reinterpret_cast<const uint8_t*>(&item);

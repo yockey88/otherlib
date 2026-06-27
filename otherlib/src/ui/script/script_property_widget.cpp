@@ -7,8 +7,8 @@
 
 #include "core/logger.hpp"
 
-#include "renderer/ui/colors.hpp"
-#include "renderer/ui/ui_helpers.hpp"
+#include "theme/colors.hpp"
+#include "ui/ui_helpers.hpp"
 
 namespace other {
   namespace ui {

@@ -6,7 +6,7 @@
 
 #include "core/defines.hpp"
 
-#include "renderer/ui/ui_window.hpp"
+#include "ui/ui_window.hpp"
 
 namespace other {
 

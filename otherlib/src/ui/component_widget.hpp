@@ -11,7 +11,6 @@
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
-#include "renderer/ui/colors.hpp"
 #include "script/script_object.hpp"
 
 #include "object/scene_object.hpp"
@@ -19,6 +18,7 @@
 
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
+#include "theme/colors.hpp"
 #include "ui/inspector_widgets.hpp"
 
 #include "asset/asset.hpp"

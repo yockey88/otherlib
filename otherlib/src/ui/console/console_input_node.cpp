@@ -3,8 +3,7 @@
  **/
 #include "ui/console/console_input_node.hpp"
 
-#include "renderer/ui/colors.hpp"
-
+#include "theme/colors.hpp"
 #include "tools/environment_console.hpp"
 
 #include "console_history_node.hpp"

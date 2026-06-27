@@ -252,6 +252,97 @@ namespace other {
         ring.head = 0;
       }
     }
+
+    for (auto& dpass : debug_passes) {
+      frame_binding_view bv{
+        .defs = std::span{ dpass.runtime.def->bindings },
+        .per_frame_handles = std::span{ dpass.runtime.state.per_frame_handles },
+        .per_draw_offsets = {},
+      };
+      pass_diagnostics diag{};
+
+      const uint32_t iters = std::max<uint32_t>(dpass.runtime.def->iterations_per_frame, 1u);
+
+      for (uint32_t iter = 0; iter < iters; ++iter) {
+        PROFILE_SECTION("render_pipeline::render_frame--render_pass--iteration");
+        diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
+
+        pass_begin_info info{
+          .framebuffer = dpass.pass.framebuffer_handle,
+          .render_area_size = dpass.pass.size,
+          .clear_color = dpass.pass.clear_color,  // see note
+          .clear_depth = std::nullopt,
+          .pass_type = dpass.pass.pass_type,
+        };
+        renderer_ptr->rendering()->api()->begin_pass(info);
+
+        if (dpass.pass.shader_handle.has_value()) {
+          dpass.pass.bind_pass(renderer_ptr);
+          for (const auto& [id, buffer] : dpass.input_buffers) {
+            renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
+              .set_shader_resource(buffer.binding_point, *dpass.pass.shader_handle)
+              .bind_to_shader()
+              .bind();
+          }
+          for (const auto& [id, buffer] : dpass.output_buffers) {
+            renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
+              .set_shader_resource(buffer.binding_point, *dpass.pass.shader_handle)
+              .bind_to_shader()
+              .bind();
+          }
+
+          if (dpass.pass.pass_type == render_pass::RENDER_PASS) {
+            for (const auto& [id, tex] : dpass.input_textures) {
+              renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
+            }
+          } else if (dpass.pass.pass_type == render_pass::COMPUTE_PASS) {
+            for (const auto& [id, tex] : dpass.input_textures) {
+              auto& t = renderer_ptr->get_resource<texture>(tex.handle);
+              t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), READ);
+            }
+            for (const auto& [id, tex] : dpass.output_textures) {
+              auto& t = renderer_ptr->get_resource<texture>(tex.handle);
+              t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), WRITE);
+            }
+          }
+          {
+            pass_context ctx{
+              renderer_ptr,
+              this,
+              nullptr,
+              frame_render_data,
+              bv,
+              &diag,
+            };
+            dpass.executor(ctx);
+          }
+          if (dpass.pass.shader_handle.has_value()) {
+            for (const auto& [id, tex] : dpass.input_textures) {
+              renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
+            }
+            if (dpass.pass.pass_type == render_pass::COMPUTE_PASS) {
+              for (const auto& [id, tex] : dpass.output_textures) {
+                renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
+              }
+            }
+
+            for (const auto& [id, buffer] : dpass.output_buffers) {
+              renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
+            }
+            for (const auto& [id, buffer] : dpass.input_buffers) {
+              renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
+            }
+            dpass.pass.unbind_pass(renderer_ptr);
+          }
+
+          renderer_ptr->rendering()->api()->end_pass();
+        }
+
+        for (auto& ring : dpass.runtime.state.per_draw_rings) {
+          ring.head = 0;
+        }
+      }
+    }
   }
 
   void render_pipeline::reset_draw_buffers() {
@@ -265,6 +356,52 @@ namespace other {
   glm::ivec2 render_pipeline::get_window_size() const {
     OTHER_ASSERT(renderer_ptr != nullptr, "render_pipeline::get_window_size: no renderer available.");
     return renderer_ptr->get_window_size();
+  }
+
+  void render_pipeline::register_debug_pass(const std::string_view name, const render_pass& pass, pass_runtime runtime, render_graph::pass_executor executor,
+                                            std::map<natural_t, render_pass::buffer_resource> input_buffers, std::map<natural_t, render_pass::buffer_resource> output_buffers,
+                                            std::map<natural_t, render_pass::texture_resource> input_textures, std::map<natural_t, render_pass::texture_resource> output_textures) {
+    uint64_t hash = FNV(name);
+    if (auto itr = std::ranges::find_if(debug_passes, [&](const auto& dp) { return dp.name == name; });
+        itr != debug_passes.end()) {
+      CORE_LOG_ERROR("Debug pass with name '{}' already exists. Debug pass names must be unique.", name);
+      return;
+    }
+
+    debug_passes.emplace_back(debug_pass{
+      .name = std::string(name),
+      .pass = pass,
+      .runtime = runtime,
+      .executor = executor,
+      .input_buffers = std::move(input_buffers),
+      .output_buffers = std::move(output_buffers),
+      .input_textures = std::move(input_textures),
+      .output_textures = std::move(output_textures),
+    });
+  }
+
+  void render_pipeline::register_debug_pass(const std::string_view name, const render_pass& pass, pass_runtime runtime, render_graph::pass_executor executor, const std::string_view input_texture, const std::string_view output_texture) {
+    std::map<natural_t, render_pass::texture_resource> input_textures;
+    std::map<natural_t, render_pass::texture_resource> output_textures;
+
+    if (!input_texture.empty()) {
+      auto input_handle_opt = find_texture_by_name(input_texture);
+      OTHER_ASSERT(input_handle_opt.has_value(), "Input texture '{}' for debug pass '{}' not found.", input_texture, name);
+      input_textures.insert({ FNV(input_texture), render_pass::texture_resource{
+                                                    .slot = 0,
+                                                    .handle = *input_handle_opt,
+                                                  } });
+    }
+    if (!output_texture.empty()) {
+      auto output_handle_opt = find_texture_by_name(output_texture);
+      OTHER_ASSERT(output_handle_opt.has_value(), "Output texture '{}' for debug pass '{}' not found.", output_texture, name);
+      output_textures.insert({ FNV(output_texture), render_pass::texture_resource{
+                                                      .slot = 0,
+                                                      .handle = *output_handle_opt,
+                                                    } });
+    }
+
+    register_debug_pass(name, pass, runtime, executor, {}, {}, std::move(input_textures), std::move(output_textures));
   }
 
   ImTextureID render_pipeline::get_final_output_texture_id() {

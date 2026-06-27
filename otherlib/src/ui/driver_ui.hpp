@@ -7,9 +7,8 @@
 #include <cstdint>
 #include <string>
 
-#include "renderer/ui/ui_window.hpp"
-
 #include "ui/menu-bar/menu_bar.hpp"
+#include "ui/ui_window.hpp"
 
 namespace other {
 
@@ -20,17 +19,8 @@ namespace other {
    public:
     enum builtin_window_type {
       BUILTIN_WINDOW_NONE = 0,
-
-      /// environment windows
       BUILTIN_WINDOW_TYPE_DATABASE,
       BUILTIN_WINDOW_CONSOLE,
-
-      /// application windows
-      BUILTIN_WINDOW_VIEWPORT,
-      BUILTIN_WINDOW_SCENE_HIERARCHY,
-      BUILTIN_WINDOW_OBJECT_EDITOR,
-      BUILTIN_WINDOW_ASSET_BROWSER,
-      BUILTIN_WINDOW_PROPERTY_INSPECTOR,
 
       NUM_BUILTIN_WINDOW_TYPES,
       INVALID_WINDOW_TYPE = NUM_BUILTIN_WINDOW_TYPES
@@ -38,17 +28,8 @@ namespace other {
 
     constexpr static std::array<const std::string_view, NUM_BUILTIN_WINDOW_TYPES> kBuiltinWindowNames{
       "none",
-
-      /// environment windows
       "type-database",
       "console",
-
-      /// application windows
-      "viewport",
-      "scene-hierarchy",
-      "object-editor",
-      "asset-browser",
-      "property-inspector",
     };
 
     driver_ui(driver* drv)

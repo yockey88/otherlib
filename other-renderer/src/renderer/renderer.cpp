@@ -63,6 +63,26 @@ namespace other {
     scene_data = nullptr;
   }
 
+  opt<resource_handle> renderer::find_texture_resource(const std::string_view name) const {
+    for (auto pl : pipelines | std::views::values) {
+      OTHER_ASSERT(pl != nullptr, "Null pipeline found in renderer pipelines.");
+      if (auto handle = pl->find_texture_by_name(name); handle.has_value()) {
+        return handle;
+      }
+    }
+    return {};
+  }
+
+  opt<resource_handle> renderer::find_buffer_resource(const std::string_view name) const {
+    for (auto pl : pipelines | std::views::values) {
+      OTHER_ASSERT(pl != nullptr, "Null pipeline found in renderer pipelines.");
+      if (auto handle = pl->find_buffer_by_name(name); handle.has_value()) {
+        return handle;
+      }
+    }
+    return {};
+  }
+
   opt<resource_handle> renderer::get_pipeline_output(const std::string_view pipeline_name) const {
     ASSERT_MAIN_THREAD();
     uint64_t hash = FNV(pipeline_name);

@@ -65,6 +65,12 @@ namespace other {
     void reset_draw_buffers();
     glm::ivec2 get_window_size() const;
 
+    void register_debug_pass(const std::string_view name, const render_pass& pass, pass_runtime runtime, render_graph::pass_executor executor,
+                             std::map<natural_t, render_pass::buffer_resource> input_buffers = {}, std::map<natural_t, render_pass::buffer_resource> output_buffers = {},
+                             std::map<natural_t, render_pass::texture_resource> input_textures = {}, std::map<natural_t, render_pass::texture_resource> output_textures = {});
+
+    void register_debug_pass(const std::string_view name, const render_pass& pass, pass_runtime runtime, render_graph::pass_executor executor, const std::string_view input_texture, const std::string_view output_texture);
+
     ImTextureID get_final_output_texture_id();
     ImTextureID get_texture_id(const std::string_view name);
     resource_handle get_screen_texture() const;
@@ -86,6 +92,23 @@ namespace other {
     static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
 
    private:
+    struct named_resource {
+      std::string name;
+      resource_handle handle;
+      resource_tag tag = resource_tag::none();
+    };
+    struct debug_pass {
+      std::string name;
+      render_pass pass;
+      pass_runtime runtime;
+      render_graph::pass_executor executor;
+
+      std::map<natural_t, render_pass::buffer_resource> input_buffers;
+      std::map<natural_t, render_pass::buffer_resource> output_buffers;
+      std::map<natural_t, render_pass::texture_resource> input_textures;
+      std::map<natural_t, render_pass::texture_resource> output_textures;
+    };
+
     pipeline_definition definition;
     bool valid = false;
 
@@ -93,12 +116,6 @@ namespace other {
     render_data* frame_render_data = nullptr;
 
     renderer* renderer_ptr = nullptr;
-
-    struct named_resource {
-      std::string name;
-      resource_handle handle;
-      resource_tag tag = resource_tag::none();
-    };
 
     std::map<natural_t, named_resource> buffer_resources;   /// keyed by FNV(name)
     std::map<natural_t, named_resource> texture_resources;  /// keyed by FNV(name)
@@ -114,6 +131,8 @@ namespace other {
 
     using executor_fn = render_graph::pass_executor;
     std::map<std::string, executor_fn> executor_overrides;
+
+    std::vector<debug_pass> debug_passes;
 
     void build_pass_runtimes();
     void destroy_pass_runtimes();

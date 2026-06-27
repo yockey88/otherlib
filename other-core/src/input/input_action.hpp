@@ -39,6 +39,10 @@ namespace other {
     /// applied to the raw value before accumulation
     //   use -1.0 to invert
     float scale = 1.0f;
+
+    // action and context can be transparent, so this will block a an event even if
+    //  the context is transparent
+    bool transparent = true;
   };
 
   struct input_action {
@@ -57,11 +61,11 @@ namespace other {
     explicit input_action(const std::string& action_name, action_value_type type = action_value_type::DIGITAL)
         : name(action_name), id(FNV(action_name)), value_type(type) {}
 
-    input_action& bind(input_source src, float scale = 1.f, uint8_t component = 0);
-    input_action& bind_key(key_code key, modifier_flags mods = modifier_flags::NONE, float scale = 1.f, uint8_t component = 0);
-    input_action& bind_gamepad_button(gamepad_button btn, float scale = 1.f);
-    input_action& bind_gamepad_axis(gamepad_axis axis, float threshold = 0.5f, float scale = 1.f, uint8_t component = 0);
-    input_action& bind_mouse_button(mouse_button btn, float scale = 1.f);
+    input_action& bind(input_source src, float scale = 1.f, uint8_t component = 0, bool transparent = true);
+    input_action& bind_key(key_code key, modifier_flags mods = modifier_flags::NONE, float scale = 1.f, uint8_t component = 0, bool transparent = true);
+    input_action& bind_gamepad_button(gamepad_button btn, float scale = 1.f, bool transparent = true);
+    input_action& bind_gamepad_axis(gamepad_axis axis, float threshold = 0.5f, float scale = 1.f, uint8_t component = 0, bool transparent = true);
+    input_action& bind_mouse_button(mouse_button btn, float scale = 1.f, bool transparent = true);
     input_action& set_captures_text(bool v = true);
   };
 

@@ -1,6 +1,28 @@
 add_static_driver(other_editor
+  src/ui/asset-browser/asset_browser_widgets.cpp
+  src/ui/asset-browser/asset_browser_tree_node.cpp
+  src/ui/asset-browser/asset_browser_grid_node.cpp
+  src/ui/asset-browser/asset_browser.cpp
+  src/ui/asset-editor/asset_editor_registry.cpp
+  src/ui/asset-editor/asset_editor.cpp
+  src/ui/asset-editor/asset_editor_node.cpp
+  src/ui/node-editor/node_editor_canvas_node.cpp
+  src/ui/node-editor/node_editor.cpp
+  src/ui/scene-hierarchy/hierarchy_widgets.cpp
+  src/ui/scene-hierarchy/scene_hierarchy_node.cpp
+  src/ui/scene-hierarchy/scene_hierarchy.cpp
+  src/ui/object-editor/object_editor.cpp
+  src/ui/object-editor/property_inspector_node.cpp
+  src/ui/viewport/viewport.cpp
+  src/ui/viewport/viewport_node.cpp
+  
   src/edit_stack.cpp
   src/editor_driver.cpp
+)
+target_include_directories(other_editor 
+  PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/editor>
 )
 
 add_subdirectory(plugins)

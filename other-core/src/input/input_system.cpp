@@ -681,7 +681,8 @@ namespace other {
 
   void input_system::evaluate_actions() {
     /// walk the context stack top-down
-    for (auto it = context_stack.rbegin(); it != context_stack.rend(); ++it) {
+    bool continue_evaluating = true;
+    for (auto it = context_stack.rbegin(); it != context_stack.rend() && continue_evaluating; ++it) {
       natural_t ctx_id = *it;
       const input_context* ctx = nullptr;
       for (const auto& c : map.contexts) {
@@ -694,6 +695,7 @@ namespace other {
         continue;
       }
 
+      continue_evaluating = ctx->transparent;
       for (const auto& action : ctx->actions) {
         /// skip if already evaluated by a higher context
         if (action_cache.contains(action.id)) {
@@ -743,6 +745,9 @@ namespace other {
         state.just_released = !state.active && was_active;
 
         action_cache[action.id] = state;
+
+        // if activated and opaque, then don't continue
+        continue_evaluating = continue_evaluating && !state.active;
       }
 
       /// if this context is opaque, stop walking further down

@@ -5,11 +5,9 @@
 
 #include <string>
 
-#include "renderer/ui/colors.hpp"
-#include "renderer/ui/ui_helpers.hpp"
-#include "renderer/ui/unicode.hpp"
-
-#include "ui/asset-browser/asset_browser_widgets.hpp"
+#include "theme/colors.hpp"
+#include "ui/ui_helpers.hpp"
+#include "ui/unicode.hpp"
 
 #include "asset/asset_handler.hpp"
 #include "imgui.h"

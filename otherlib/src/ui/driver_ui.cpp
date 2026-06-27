@@ -12,12 +12,8 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver.hpp"
-#include "ui/asset-browser/asset_browser.hpp"
 #include "ui/console/console.hpp"
-#include "ui/object-editor/object_editor.hpp"
-#include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/type_database.hpp"
-#include "ui/viewport.hpp"
 
 namespace other {
 
@@ -276,16 +272,9 @@ namespace other {
       window.type = type;
       window.open = false;
       window.id = static_cast<uint32_t>(i);
-
-      auto& rendering = driver_ptr->get_kernel().get_core_system<rendering_system>();
-      auto& renderer = rendering.get_renderer();
       switch (type) {
         case BUILTIN_WINDOW_TYPE_DATABASE: window.window_ptr = make_scope<ui::type_database>(*driver_ptr->get_event_system()); break;
         case BUILTIN_WINDOW_CONSOLE: window.window_ptr = make_scope<ui::console_window>(*driver_ptr->get_event_system(), driver_ptr); break;
-        case BUILTIN_WINDOW_VIEWPORT: window.window_ptr = make_scope<ui::viewport>(*driver_ptr->get_event_system(), renderer, driver_ptr); break;
-        case BUILTIN_WINDOW_SCENE_HIERARCHY: window.window_ptr = make_scope<ui::scene_hierarchy>(*driver_ptr->get_event_system(), driver_ptr); break;
-        case BUILTIN_WINDOW_OBJECT_EDITOR: window.window_ptr = make_scope<ui::object_editor>(*driver_ptr->get_event_system(), driver_ptr); break;
-        case BUILTIN_WINDOW_ASSET_BROWSER: window.window_ptr = make_scope<ui::asset_browser>(*driver_ptr->get_event_system(), driver_ptr); break;
         default:
           break;
       }

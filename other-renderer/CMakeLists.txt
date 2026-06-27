@@ -37,10 +37,6 @@ target_sources(other_renderer
       src/renderer/debug_render_stream.cpp
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
-      src/renderer/ui/unicode.cpp
-      src/renderer/ui/ui_helpers.cpp
-      src/renderer/ui/ui_node.cpp
-      src/renderer/ui/ui_window.cpp
 )
 
 target_include_directories(other_renderer 

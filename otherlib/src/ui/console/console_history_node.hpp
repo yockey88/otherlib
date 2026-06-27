@@ -4,10 +4,10 @@
 #ifndef OTHERLIB_UI_CONSOLE_HISTORY_NODE_HPP
 #define OTHERLIB_UI_CONSOLE_HISTORY_NODE_HPP
 
-#include "renderer/ui/ui_node.hpp"
-
 #include "tools/environment_console.hpp"
 #include "ui/console/console_widgets.hpp"
+#include "ui/ui_node.hpp"
+
 
 namespace other {
 

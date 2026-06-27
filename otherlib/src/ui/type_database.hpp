@@ -4,7 +4,7 @@
 #ifndef OTHERLIB_UI_TYPE_DATABASE_HPP
 #define OTHERLIB_UI_TYPE_DATABASE_HPP
 
-#include "renderer/ui/ui_window.hpp"
+#include "ui/ui_window.hpp"
 
 namespace other {
   namespace ui {

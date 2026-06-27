@@ -10,6 +10,7 @@
 #include "core/config_table.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/camera.hpp"
 #include "renderer/debug_render_stream.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/frame_binding_registry.hpp"
@@ -76,6 +77,16 @@ namespace other {
     void bind_frame_bindings(const render_data& data);
     void render();
     void end_frame();
+
+    inline void set_override_camera(const camera& cam) { forced_camera = cam; }
+    inline void set_should_force_camera(bool force) { should_force_camera = force; }
+    inline bool override_camera() const { return should_force_camera; }
+    inline camera* get_override_camera() {
+      return should_force_camera ? &forced_camera : nullptr;
+    }
+
+    opt<resource_handle> find_texture_resource(const std::string_view name) const;
+    opt<resource_handle> find_buffer_resource(const std::string_view name) const;
 
     opt<resource_handle> get_pipeline_output(const std::string_view pipeline_name) const;
     resource_handle get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_recipe& recipe);
@@ -152,6 +163,9 @@ namespace other {
     friend class pass_context;
 
     config_table config;
+
+    bool should_force_camera = false;
+    camera forced_camera;
 
     frame_resources current_frame_resources;
     render_data* scene_data = nullptr;

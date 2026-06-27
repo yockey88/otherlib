@@ -6,8 +6,6 @@
 
 #include <imgui/ImReflect.hpp>
 
-#include "renderer/ui/ui_node.hpp"
-#include "renderer/ui/ui_window.hpp"
 #include "script/script_object.hpp"
 
 #include "object/camera_component.hpp"
@@ -18,6 +16,10 @@
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
 #include "scene/scene.hpp"
+
+#include "ui/ui_node.hpp"
+#include "ui/ui_window.hpp"
+
 
 // IMGUI_REFLECT(other::scene, storage);
 
