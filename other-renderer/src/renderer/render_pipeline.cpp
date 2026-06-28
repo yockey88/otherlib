@@ -238,6 +238,11 @@ namespace other {
         diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
 
         n.start_pass(renderer_ptr, &runtime);
+        if (n.pass->shader_handle.has_value() && frame_render_data != nullptr) {
+          renderer_ptr->get_resource<shader>(*n.pass->shader_handle)
+            .set_uniform("OE_num_lights", static_cast<int32_t>(frame_render_data->lights.size()));
+        }
+
         {
           pass_context ctx{
             renderer_ptr,
@@ -634,19 +639,6 @@ namespace other {
         .set_uniform(*definition.light_space_matrix_uniform_name, light_space_matrix)
         .unbind();
     }
-
-    if (definition.shading_pass_name.has_value()) {
-      shader* shading_shader = get_pass_shader(*definition.shading_pass_name);
-      if (shading_shader != nullptr) {
-        int32_t num_lights = static_cast<int32_t>(data.lights.size() > gpu::kMaxLights ? gpu::kMaxLights : data.lights.size());
-
-        shading_shader->bind()
-          .set_uniform("OE_light_space_matrix", light_space_matrix)
-          .set_uniform("OE_light_position", light_pos)
-          .set_uniform("OE_num_lights", num_lights)
-          .unbind();
-      }
-    }
   }
 
   void render_pipeline::override_pass_executor(const std::string_view pass_name, executor_fn&& fn) {
@@ -840,11 +832,11 @@ namespace other {
       if (is_buffer) {
         auto handle = find_buffer_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Input resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-        builder.buffer_resource(*handle, ref.binding, READ);
+        builder.buffer_resource(*handle, ref.binding, ref.access);
       } else {
         auto handle = find_texture_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Input resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-        builder.texture_resource(*handle, ref.uniform_name, ref.binding, ref.attachment, READ, ref.mip_level);
+        builder.texture_resource(*handle, ref.uniform_name, ref.binding, ref.attachment, ref.access, ref.mip_level);
       }
     }
 
@@ -854,11 +846,11 @@ namespace other {
       if (is_buffer) {
         auto handle = find_buffer_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-        builder.buffer_resource(*handle, ref.binding, WRITE);
+        builder.buffer_resource(*handle, ref.binding, ref.access);
       } else {
         auto handle = find_texture_by_name(ref.resource_name);
         OTHER_ASSERT(handle.has_value(), "Output resource [{}] for pass [{}] not found as either buffer or texture.", ref.resource_name, pass_def.name);
-        builder.texture_resource(*handle, ref.uniform_name, ref.binding, ref.attachment, WRITE, ref.mip_level);
+        builder.texture_resource(*handle, ref.uniform_name, ref.binding, ref.attachment, ref.access, ref.mip_level);
       }
     }
 

@@ -155,7 +155,7 @@ namespace other {
         };
 
         for (const auto& [id, texture] : pass.pass.texture_resources) {
-          if (texture.flags & READ) {
+          if (texture.flags & READ || texture.flags & SAMPLE) {
             n.input_textures.insert({ id, texture });
           }
           if (texture.flags & WRITE) {

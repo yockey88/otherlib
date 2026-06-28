@@ -12,10 +12,11 @@
 namespace other {
 
   enum access_flags : uint32_t {
-    READ = 0x1,
-    WRITE = 0x2,
+    READ = 1 << 0,
+    WRITE = 1 << 1,
+    SAMPLE = 1 << 2,
     READ_WRITE = READ | WRITE,
-    NONE = 0x0
+    NONE = 0
   };
 
   enum resource_type : uint8_t {

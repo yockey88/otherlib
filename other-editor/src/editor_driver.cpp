@@ -42,6 +42,10 @@ namespace other {
     get_event_system()->add_listener("viewport.resize", [this](const value& val) {
       get_kernel().get_core_system<rendering_system>().handle_viewport_resize_event(val);
     });
+
+    context.editor_camera.position = { 0.f, 1.f, 4.5f };
+    context.editor_camera.sensitivity = 10.f;
+    context.editor_camera.look_at({ 0.f, 0.f, 0.f });
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
@@ -80,6 +84,11 @@ namespace other {
       return;
     }
 
+    if (context.active_scene != nullptr &&
+        !context.active_scene->is_playing()) {
+      frame_data->primary_camera = &context.editor_camera;
+    }
+
     // struct debug_line {
     //   glm::vec3 start;
     //   glm::vec3 end;
@@ -101,12 +110,7 @@ namespace other {
     OTHER_ASSERT(input_sys != nullptr, "Input system is null");
 
     auto* scene = get_active_scene();
-    if (scene == nullptr) {
-      return;
-    }
-
-    auto* obj_ptr = scene->find_object_with_tag("main-camera");
-    if (obj_ptr == nullptr) {
+    if (scene != nullptr && scene->is_playing()) {
       return;
     }
 
@@ -121,22 +125,19 @@ namespace other {
     float vertical = input_sys->get_action_value("move_vertical");
 
     if (glm::length(move) > 0.01f || glm::abs(vertical) > 0.01f) {
-      camera_component* cam = scene->get_component<camera_component>(obj_ptr);
       float speed = 0.1f;
 
-      cam->camera.position += cam->camera.forward() * move.y * speed;
-      cam->camera.position += cam->camera.right() * move.x * speed;
-      cam->camera.position += cam->camera.up() * vertical * speed;
+      context.editor_camera.position += context.editor_camera.forward() * move.y * speed;
+      context.editor_camera.position += context.editor_camera.right() * move.x * speed;
+      context.editor_camera.position += context.editor_camera.up() * vertical * speed;
     }
 
     if (glm::length(look) > 0.01f) {
-      camera_component* cam = scene->get_component<camera_component>(obj_ptr);
-      cam->camera.adjust_look_orientation(look.x, look.y);
+      context.editor_camera.adjust_look_orientation(look.x, look.y);
     } else if (is_looking_around) {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), true);
       glm::vec2 mouse_delta = input_sys->get_mouse_delta();
-      camera_component* cam = scene->get_component<camera_component>(obj_ptr);
-      cam->camera.adjust_look_orientation(mouse_delta.x * 0.1f, mouse_delta.y * 0.1f);
+      context.editor_camera.adjust_look_orientation(mouse_delta.x * 0.1f, mouse_delta.y * 0.1f);
     } else {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), false);
     }

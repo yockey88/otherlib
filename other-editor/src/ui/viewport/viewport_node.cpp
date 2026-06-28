@@ -3,6 +3,8 @@
  **/
 #include "ui/viewport/viewport_node.hpp"
 
+#include <glm/gtc/type_ptr.hpp>
+
 #include "driver/driver.hpp"
 #include "theme/colors.hpp"
 #include "ui/asset-browser/asset_browser_widgets.hpp"  // For kDragDropPayloadType
@@ -39,7 +41,19 @@ namespace other {
         return;
       }
 
-      ImTextureID tex_id = renderer_instance.get_texture_id("default-instancing", "tonemapped_texture");
+      scene_object* selected_object = nullptr;
+      opt<glm::mat4> selected_local_to_world_matrix = std::nullopt;
+      opt<glm::mat4> selected_transform = std::nullopt;
+      if (editor_ctx.active_scene != nullptr && !editor_ctx.current_selection.objects.empty()) {
+        selected_object = editor_ctx.active_scene->find_object(editor_ctx.current_selection.objects[0]);
+        if (selected_object != nullptr) {
+          transform& t = editor_ctx.active_scene->get_transform(selected_object);
+          selected_transform = t.get_local_model_matrix();
+          selected_local_to_world_matrix = editor_ctx.active_scene->get_local_to_world_matrix(selected_object);
+        }
+      }
+
+      ImTextureID tex_id = renderer_instance.get_texture_id("default-instancing", "smaa_texture");
       if (tex_id == 0) {
         scoped_color error_color{ ImGuiCol_Text, colors::rgba_to_imvec4(colors::kFriendlyErrorRed) };
         ImGui::Text("No output texture available from the rendering pipeline.");
@@ -61,6 +75,31 @@ namespace other {
         click_pos.y = size.y - click_pos.y - size.y / 2.0f;
 
         events().trigger_event("viewport.clicked", click_pos);
+      }
+
+      if (selected_transform.has_value()) {
+        OTHER_ASSERT(selected_object != nullptr, "If selected_transform has a value, selected_object must not be null.");
+        OTHER_ASSERT(selected_local_to_world_matrix.has_value(), "If selected_transform has a value, selected_local_to_world_matrix must also have a value.");
+        glm::mat4 world_transform = selected_local_to_world_matrix.value() * selected_transform.value();
+
+        glm::ivec2 win_size = { size.x, size.y };
+        glm::mat4 camera_view = editor_ctx.editor_camera.get_view_matrix();
+        glm::mat4 camera_proj = editor_ctx.editor_camera.get_projection_matrix(win_size);
+
+        const bool manip = ImGuizmo::Manipulate(glm::value_ptr(camera_view), glm::value_ptr(camera_proj), editor_ctx.gizmo_operation, editor_ctx.gizmo_mode, glm::value_ptr(world_transform), nullptr, nullptr);
+        if (manip) {
+          glm::mat4 local_manip = glm::inverse(selected_local_to_world_matrix.value()) * world_transform;
+
+          float pos_mat[3], rot_mat[3], scale_mat[3];
+          ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(local_manip), pos_mat, rot_mat, scale_mat);
+
+          transform t;
+          t.local_position = glm::vec3(pos_mat[0], pos_mat[1], pos_mat[2]);
+          t.set_local_rotation(glm::vec3(rot_mat[0], rot_mat[1], rot_mat[2]));
+          t.local_scale = glm::vec3(scale_mat[0], scale_mat[1], scale_mat[2]);
+
+          editor_ctx.active_scene->set_transform(selected_object, t);
+        }
       }
     }
 

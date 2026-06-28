@@ -45,17 +45,15 @@ namespace other {
       } else if (pass->pass_type == render_pass::COMPUTE_PASS) {
         for (const auto& [id, tex] : input_textures) {
           auto& t = renderer_ptr->get_resource<texture>(tex.handle);
-          t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), READ);
-          if (tex.uniform_name.empty()) {
-            continue;
+          if (tex.flags & SAMPLE) {
+            t.bind(tex.slot);
+          } else {
+            t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), READ);
           }
         }
         for (const auto& [id, tex] : output_textures) {
           auto& t = renderer_ptr->get_resource<texture>(tex.handle);
           t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), WRITE);
-          if (tex.uniform_name.empty()) {
-            continue;
-          }
         }
       }
 

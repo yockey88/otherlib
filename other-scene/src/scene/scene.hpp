@@ -118,6 +118,12 @@ namespace other {
     glm::mat4 get_world_transform(scene_object* obj) const;
     glm::mat4 get_world_transform(natural_t id) const;
 
+    glm::mat4 get_local_transform(scene_object* obj) const;
+    glm::mat4 get_local_transform(natural_t id) const;
+
+    glm::mat4 get_local_to_world_matrix(scene_object* obj) const;
+    glm::mat4 get_local_to_world_matrix(natural_t id) const;
+
     transform& get_transform(natural_t id);
     const transform& get_transform(natural_t id) const;
     void set_transform(natural_t id, const transform& t);

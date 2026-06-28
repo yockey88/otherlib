@@ -73,7 +73,7 @@ namespace other {
     viewport::viewport(editor_context& ctx, event_system& events, renderer& renderer_instance, driver* driver_ptr)
         : ui_window(&events, "Viewport", true, ImGuiWindowFlags_MenuBar), renderer_instance(renderer_instance), driver_ptr(driver_ptr), editor_ctx(ctx) {
       events.register_event("viewport.resize");
-      add_node(make_ref<viewport_node>(renderer_instance, driver_ptr, this, "ViewportNode"));
+      add_node(make_ref<viewport_node>(editor_ctx, renderer_instance, driver_ptr, this, "ViewportNode"));
     }
 
     void viewport::initialize_debug_passes() {
@@ -99,13 +99,7 @@ namespace other {
         .create_framebuffer = true,
         .clear_color = glm::vec4(0.f),
 
-        .inputs = {
-          {
-            .resource_name = "smaa-texture",
-            .binding = 0,
-            .access = access_flags::READ,
-          },
-        },
+        .inputs = {},
         .outputs = {
           {
             .resource_name = "viewport-stencil",

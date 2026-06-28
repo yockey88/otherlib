@@ -217,6 +217,7 @@ namespace other {
       case FNV("read"): return access_flags::READ;
       case FNV("write"): return access_flags::WRITE;
       case FNV("read_write"): return access_flags::READ_WRITE;
+      case FNV("sample"): return access_flags::SAMPLE;
       default:
         OTHER_ASSERT(false, "Unsupported access flag string {}", str);
         return access_flags::READ;
@@ -646,7 +647,7 @@ namespace other {
           }
           io.access = access.as_string()->get();
         } else {
-          io.access = "read";
+          io.access = "";
         }
 
         io.pass_name = pass_name.as_string()->get();
@@ -663,6 +664,10 @@ namespace other {
         auto uniform_name = inputs.at_path("uniform_name");
         auto io = parse_input_output("input", pass_name, resource_name, attachment, binding, mip_level, access, uniform_name);
         if (!io.pass_name.empty()) {
+          if (io.access.empty()) {
+            io.access = "read";
+          }
+
           std::stringstream ss_input;
           ss_input << "Frame Input: " << io.pass_name << "\n"
                    << " - resource_name: " << io.resource_name << ",\n"
@@ -687,6 +692,10 @@ namespace other {
         auto uniform_name = output.at_path("uniform_name");
         auto io = parse_input_output("output", pass_name, resource_name, attachment, binding, mip_level, access, uniform_name);
         if (!io.pass_name.empty()) {
+          if (io.access.empty()) {
+            io.access = "write";
+          }
+
           std::stringstream ss_output;
           ss_output << "Frame Output: " << io.pass_name << "\n"
                     << " - resource_name: " << io.resource_name << ",\n"
@@ -1022,6 +1031,7 @@ namespace other {
         auto& in = pass.inputs.emplace_back(pipeline_resource_reference{
           .resource_name = i.resource_name,
           .mip_level = i.mip_level,
+          .access = access_flags_from_string(i.access),
         });
         if (i.binding.has_value()) {
           in.binding = i.binding.value();
@@ -1031,11 +1041,6 @@ namespace other {
         }
         if (!i.attachment.empty()) {
           in.attachment = framebuffer_attachment_type_from_string(i.attachment);
-        }
-        if (!i.access.empty()) {
-          in.access = access_flags_from_string(i.access);
-        } else {
-          in.access = access_flags::READ;
         }
       }
 
@@ -1050,6 +1055,7 @@ namespace other {
         auto& out = pass.outputs.emplace_back(pipeline_resource_reference{
           .resource_name = o.resource_name,
           .mip_level = o.mip_level,
+          .access = access_flags_from_string(o.access),
         });
         if (o.binding.has_value()) {
           out.binding = o.binding.value();
@@ -1059,8 +1065,6 @@ namespace other {
         }
         if (!o.attachment.empty()) {
           out.attachment = framebuffer_attachment_type_from_string(o.attachment);
-        } else {
-          out.access = access_flags::WRITE;
         }
       }
 

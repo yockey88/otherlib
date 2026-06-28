@@ -644,6 +644,40 @@ namespace other {
     }
   }
 
+  glm::mat4 scene::get_local_transform(scene_object* obj) const {
+    OTHER_ASSERT(obj != nullptr, "Cannot get local transform from a null scene object.");
+    return get_local_transform(obj->id);
+  }
+
+  glm::mat4 scene::get_local_transform(natural_t id) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_local_transform");
+
+    scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+
+    return get_transform(node->object).get_local_model_matrix();
+  }
+
+  glm::mat4 scene::get_local_to_world_matrix(scene_object* obj) const {
+    OTHER_ASSERT(obj != nullptr, "Cannot get local to world matrix from a null scene object.");
+    return get_local_to_world_matrix(obj->id);
+  }
+
+  glm::mat4 scene::get_local_to_world_matrix(natural_t id) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_local_to_world_matrix");
+
+    scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+
+    if (scene_tree::node* parent_node = node->parent; parent_node != nullptr) {
+      return get_world_transform(parent_node->id);
+    } else {
+      return glm::mat4(1.0f);
+    }
+  }
+
   transform& scene::get_transform(natural_t id) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform_by_id");

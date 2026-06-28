@@ -206,6 +206,7 @@ namespace other {
         "read",
         "write",
         "read_write",
+        "sample",
       };
 
       template <size_t N>

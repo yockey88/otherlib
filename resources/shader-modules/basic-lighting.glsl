@@ -10,8 +10,9 @@ layout (std430) readonly buffer light_buffer {
 
 uniform mat4 OE_light_space_matrix;
 uniform vec3 OE_light_position;
-uniform sampler2D OE_shadow_map;
 uniform int OE_num_lights;
+
+uniform sampler2D OE_shadow_map;
 
 float attenuate(float dist){ 
   dist *= DIST_FACTOR; 
