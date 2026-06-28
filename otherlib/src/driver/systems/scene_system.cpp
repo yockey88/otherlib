@@ -34,6 +34,9 @@ namespace other {
     events->add_listener("scene.playback-command", std::bind_front(&scene_system::handle_scene_playback_command_event, this));
 
     events->register_event("scene.scene-activated");
+    events->register_event("scene.played");
+    events->register_event("scene.paused");
+    events->register_event("scene.stopped");
 
     events->register_event("ls.scenes");
     events->add_listener("ls.scenes", [this](const value& data) { handle_ls_scenes_event(&get_driver().get_kernel(), data); });
@@ -483,10 +486,13 @@ namespace other {
     std::string command = data.as_string();
     if (command == "play") {
       active_scene->play();
+      get_driver().get_event_system()->trigger_event("scene.played", active_scene->id);
     } else if (command == "pause") {
       active_scene->pause();
+      get_driver().get_event_system()->trigger_event("scene.paused", active_scene->id);
     } else if (command == "stop") {
       active_scene->stop();
+      get_driver().get_event_system()->trigger_event("scene.stopped", active_scene->id);
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
     }

@@ -10,6 +10,8 @@
 
 namespace other {
 
+  class renderer;
+
   struct debug_stream_recipe {
     std::string shader;  // pipeline shader name to use
     mesh::primitive_type topology;
@@ -29,6 +31,7 @@ namespace other {
     const debug_stream_definition* find(std::string_view name) const;
 
     std::map<natural_t, debug_stream_definition>& entries() { return defs; }
+    const std::map<natural_t, debug_stream_definition>& entries() const { return defs; }
 
    private:
     std::map<natural_t, debug_stream_definition> defs;
@@ -38,24 +41,21 @@ namespace other {
    public:
     template <typename T>
     void submit(std::string_view stream_name, const T& item) {
-      auto [itr, inserted] = storages.try_emplace(FNV(stream_name), stream_storage{ sizeof(T), 0, {} });
-      stream_storage& storage = itr->second;
-      if (!inserted) {
-        if (storage.element_size != sizeof(T)) {
-          CORE_LOG_ERROR("Debug stream '{}' already has element size {}, cannot submit item of size {}", stream_name, storage.element_size, sizeof(T));
-          return;
-        }
-      }
-      if (storage.count >= storage.bytes.size() / storage.element_size) {
-        CORE_LOG_WARNING("Debug stream '{}' has reached maximum capacity of {} elements, cannot submit more items", stream_name, storage.count);
+      auto itr = storages.find(FNV(stream_name));
+      if (itr == storages.end()) {
+        CORE_LOG_ERROR("Debug stream with name [{}] not found. Cannot submit item.", stream_name);
         return;
       }
+
       const uint8_t* item_bytes = reinterpret_cast<const uint8_t*>(&item);
-      storage.bytes.append_range(std::span<const uint8_t>(item_bytes, sizeof(T)));
-      storage.count++;
+      itr->second.bytes.append_range(std::span<const uint8_t>(item_bytes, sizeof(T)));
+      itr->second.count++;
     }
 
-    void configure_stream(std::string_view stream_name, size_t elt_size, size_t max_per_frame);
+    void configure_streams(renderer* renderer_ptr, const debug_stream_registry& registry);
+    void configure_stream(renderer* renderer_ptr, const debug_stream_definition& defn);
+
+    resource_handle get_mesh_handle(std::string_view stream_name) const;
 
     std::span<const uint8_t> view(std::string_view stream_name) const;
     size_t count(std::string_view stream_name) const;
@@ -69,10 +69,10 @@ namespace other {
       size_t max_per_frame = 0;
       size_t count;
       std::vector<uint8_t> bytes;
+
+      resource_handle mesh_handle;
     };
     std::map<natural_t, stream_storage> storages;
-
-    stream_storage& ensure_storage(std::string_view name, size_t element_size);
   };
 
 }  // namespace other

@@ -1,24 +1,32 @@
-#define VOXEL_LIGHTING
-
 #include "shader-modules/camera.glsl"
-#ifdef VOXEL_LIGHTING
 #include "shader-modules/simulation-environment.glsl"
-#endif
 #include "shader-modules/basic-lighting.glsl"
 
 uniform sampler2D OE_gbuff_albedo;
 uniform sampler2D OE_gbuff_normal;
 uniform sampler2D OE_gbuff_position;
+uniform sampler2D OE_gbuff_depth;
 
-#ifdef VOXEL_LIGHTING
 uniform sampler3D OE_env_cubemap;
 uniform sampler3D OE_voxel_tex;
+
 #ifndef OE_SHADOW_MAX_STEPS
 #define OE_SHADOW_MAX_STEPS 48
 #endif
+
 #ifndef OE_SHADOW_NORMAL_BIAS
 #define OE_SHADOW_NORMAL_BIAS 1.5   // start offset along the surface normal, in voxels (anti-acne)
 #endif
+
+vec3 oe_environment_ambient_color(vec3 amb_col, vec3 N) {
+  float up = clamp(N.y * 0.5 + 0.5, 0.0, 1.0);
+  return mix(ground_color.rgb, amb_col, up);
+}
+
+vec3 oe_environment_ambient(vec3 world_pos, vec3 N) {
+  vec3  amb_up = texture(OE_env_cubemap, oe_world_to_volume(world_pos)).rgb; 
+  return oe_environment_ambient_color(amb_up, N);
+}
 
 float oe_point_shadow(vec3 surface_pos, vec3 surface_normal, vec3 light_pos) {
   vec3 to_light = light_pos - surface_pos;
@@ -43,7 +51,7 @@ float oe_point_shadow(vec3 surface_pos, vec3 surface_normal, vec3 light_pos) {
 
   float trans = 1.0;
   for (int i = 0; i < steps; ++i) {
-    float occ = texture(OE_voxel_tex, oe_world_to_uvw(p)).r;
+    float occ = texture(OE_voxel_tex, oe_world_to_voxel(p, dim)).r;
     trans *= (1.0 - clamp(occ, 0.0, 1.0));
     if (trans < 0.01) { 
       return 0.0; 
@@ -53,16 +61,6 @@ float oe_point_shadow(vec3 surface_pos, vec3 surface_normal, vec3 light_pos) {
   return trans;
 }
 
-vec3 oe_world_to_volume(vec3 p) {
-  return clamp((p - world_min.xyz) / world_extent(), vec3(0.0), vec3(1.0));
-}
-
-vec3 oe_environment_ambient(vec3 world_pos, vec3 N) {
-  vec3  amb_up = texture(OE_env_cubemap, oe_world_to_volume(world_pos)).rgb; 
-  float up = clamp(N.y * 0.5 + 0.5, 0.0, 1.0);
-  return mix(ground_color.rgb, amb_up, up);
-}
-
 vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, float specular_reflect) {
   vec3 view_dir = normalize(camera_position.xyz - world_position);
 
@@ -79,42 +77,17 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
       vec3 specular = lights[i].color.rgb * spec * specular_reflect;
       float atten = attenuate(length(lp - world_position));
 
-      // float vis = oe_point_shadow(world_position, world_normal, lp); 
+      float vis = oe_point_shadow(world_position, world_normal, lp);
       diffuse_specular += ((diff * atten) + (specular * atten));
-      //vis * ((diff * atten) + (specular * atten));
+      // vis * ((diff * atten) + (specular * atten));
     }
   }
 
-  float sky_vis = texture(OE_env_cubemap, oe_world_to_volume(world_position)).a;
-  vec3 ambient = oe_environment_ambient(world_position, world_normal) * sky_vis;
+  vec4 env = texture(OE_env_cubemap, oe_world_to_volume(world_position));
+  float sun_shadow_sharp = calculate_direction_light_shadow(world_position, world_normal);
 
-  float shadow_calc = calculate_direction_light_shadow(world_position, world_normal);
-  vec3 lighting = ambient * diffuse + (1.0 - shadow_calc) * diffuse_specular;
+  vec3 ambient = oe_environment_ambient_color(env.rgb, world_normal) * env.a;
+  vec3 lighting = ambient * diffuse + (1.0 - sun_shadow_sharp) * diffuse_specular;
+
   return vec4(lighting, 1.0);
 }
-#else
-vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, float specular_reflect) {
-  vec3 view_dir = normalize(camera_position.xyz - world_position);
-
-  vec3 diffuse_specular = vec3(0);
-  for (int i = 0; i < OE_num_lights; ++i) {
-    if (lights[i].type == 1.f) {
-      vec3 lp = lights[i].vector.xyz;
-      vec3 light_dir = normalize(lp - world_position);
-      vec3 diff = max(dot(world_normal, light_dir), 0.0) * diffuse * lights[i].color.rgb;
-      
-      vec3 halfway = normalize(light_dir + view_dir);
-      float spec = pow(max(dot(world_normal, halfway), 0.0), 16.0);
-      vec3 specular = lights[i].color.rgb * spec * specular_reflect;
-
-      float atten = attenuate(length(lp - world_position));
-      diffuse_specular += (diff * atten) + (specular * atten);
-    }
-  }
-
-  vec3 ambient = vec3(1.f);
-  float shadow_calc = calculate_direction_light_shadow(world_position, world_normal);
-  vec3 lighting = ambient * diffuse + (1.0 - shadow_calc) * diffuse_specular;
-  return vec4(lighting, 1.0);
-}
-#endif

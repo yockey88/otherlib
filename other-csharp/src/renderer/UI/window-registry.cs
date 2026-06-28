@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OtherCsBindings;
 
 namespace Other.UI
 {
@@ -14,6 +15,15 @@ namespace Other.UI
     }
     ~WindowRegistry() {
       instance = null;
+    }
+
+    public void OpenWindow(NativeString name)
+    {
+      string n = name.ToString()!;
+      if (windows.TryGetValue(n, out var window))
+      {
+        window.IsOpen = true;
+      }
     }
 
     public static void Register(UIWindow window)

@@ -52,6 +52,9 @@ vec3 sample_defocus_disk(inout uint seed) {
 }
 
 vec3 oe_view_ray(vec2 tex_coords) {
-  vec4 view_c = ndc_to_view(tex_coords);
-  return view_to_world(view_c);
+  vec2 ndc = tex_coords * 2.0 - 1.0;
+  vec4 view_h = inverse(projection_matrix) * vec4(ndc, 1.0, 1.0);
+  vec3 view_dir = normalize(view_h.xyz / view_h.w);
+  vec3 world_dir = mat3(inverse(view_matrix)) * view_dir;
+  return normalize(world_dir);
 }

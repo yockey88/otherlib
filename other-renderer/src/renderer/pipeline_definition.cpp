@@ -173,6 +173,23 @@ namespace other {
     }
   }
 
+  framebuffer::clear_mask_bit render_pass_clear_bits_from_strings(const std::span<const std::string> str) {
+    framebuffer::clear_mask_bit flags = framebuffer::ALL_BITS;
+    for (const auto& s : str) {
+      switch (FNV(s)) {
+        case FNV("COLOR"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::COLOR_BIT); break;
+        case FNV("DEPTH"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::DEPTH_BIT); break;
+        case FNV("STENCIL"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::STENCIL_BIT); break;
+        case FNV("DEPTH_STENCIL"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::DEPTH_BIT | framebuffer::STENCIL_BIT); break;
+        case FNV("ALL"): return framebuffer::ALL_BITS;
+        default:
+          OTHER_ASSERT(false, "Unsupported render pass clear bit string {}", s);
+          break;
+      }
+    }
+    return flags;
+  }
+
   binding_scope pass_binding_scope_from_string(const std::string_view str) {
     switch (FNV(str)) {
       case FNV("PER_PIPELINE"): return binding_scope::PER_PIPELINE;
@@ -217,6 +234,7 @@ namespace other {
       case FNV("read"): return access_flags::READ;
       case FNV("write"): return access_flags::WRITE;
       case FNV("read_write"): return access_flags::READ_WRITE;
+      case FNV("sample"): return access_flags::SAMPLE;
       default:
         OTHER_ASSERT(false, "Unsupported access flag string {}", str);
         return access_flags::READ;
@@ -239,6 +257,7 @@ namespace other {
     std::string pass_name;
     std::string resource_name;
     std::string attachment;
+    std::string uniform_name;
     opt<uint32_t> binding = std::nullopt;
     uint32_t mip_level = 0;
     std::string access;
@@ -270,6 +289,7 @@ namespace other {
     void parse_resources(pipeline_definition& into_def, const toml::table& pipeline_table);
     bool collect_frame_details(pipeline_definition& into_def, frame_section& into_section, const toml::table& pipeline_table);
     void build_pass_definitions(pipeline_definition& into_def, const frame_section& frame, const toml::table& pipeline_table);
+    void get_pass_uniforms(pipeline_definition& into_def, const frame_section& frame, const toml::table& pipeline_table);
 
   }  // namespace detail
 
@@ -355,8 +375,20 @@ namespace other {
       OTHER_ASSERT(false, "Invalid frame section details");
     }
 
+    auto display_tex = pipeline_table.at_path("frame.display-texture");
+    auto no_display = pipeline_table.at_path("frame.no-display");
+    const bool no_display_flag = no_display && no_display.is_boolean() && no_display.as_boolean()->get();
+    if (!display_tex && !no_display_flag) {
+      CORE_LOG_WARN("No display texture specified for pipeline {}, scene may not be displayed depending on driver.", name_str);
+      CORE_LOG_WARN("To fix this or silence this message, specify a display texture in the pipeline TOML or add 'frame.no-display = true' to the pipeline config.");
+    } else if (display_tex) {
+      OTHER_ASSERT(display_tex.is_string(), "Display texture name must be a string if specified");
+      definition.display_texture_name = display_tex.as_string()->get();
+    }
+
     CORE_LOG_DEBUG(" - construting passes");
     detail::build_pass_definitions(definition, frame, pipeline_table);
+    detail::get_pass_uniforms(definition, frame, pipeline_table);
 
     definition.name = name_str;
     return definition;
@@ -590,7 +622,8 @@ namespace other {
       auto parse_input_output = [](const std::string_view io_type,
                                    toml::node_view<const toml::node> pass_name, toml::node_view<const toml::node> resource_name,
                                    toml::node_view<const toml::node> attachment, toml::node_view<const toml::node> binding,
-                                   toml::node_view<const toml::node> mip_level, toml::node_view<const toml::node> access) -> frame_input_output_table {
+                                   toml::node_view<const toml::node> mip_level, toml::node_view<const toml::node> access,
+                                   toml::node_view<const toml::node> uniform_name) -> frame_input_output_table {
         if (!pass_name || !resource_name) {
           CORE_LOG_ERROR("pass-name: {}, resource-name: {}", (bool)pass_name, (bool)resource_name);
           OTHER_ASSERT(false, "Invalid frame {}: pass_name or resource_name is missing", io_type);
@@ -599,9 +632,18 @@ namespace other {
           CORE_LOG_ERROR("pass-name: {}, resource-name: {}", (bool)pass_name, (bool)resource_name);
           OTHER_ASSERT(false, "Invalid frame {}: pass_name or resource_name is missing", io_type);
         }
+        if (uniform_name && !uniform_name.is_string()) {
+          CORE_LOG_ERROR("uniform_name: {}", uniform_name.type());
+          OTHER_ASSERT(false, "Invalid frame {}: uniform_name is not a string", io_type);
+        }
+
         auto io = frame_input_output_table{
           .resource_name = resource_name.as_string()->get(),
         };
+
+        if (uniform_name) {
+          io.uniform_name = uniform_name.as_string()->get();
+        }
 
         if (attachment) {
           if (!attachment.is_string()) {
@@ -633,7 +675,7 @@ namespace other {
           }
           io.access = access.as_string()->get();
         } else {
-          io.access = "read";
+          io.access = "";
         }
 
         io.pass_name = pass_name.as_string()->get();
@@ -647,16 +689,23 @@ namespace other {
         auto binding = inputs.at_path("binding");
         auto mip_level = inputs.at_path("mip_level");
         auto access = inputs.at_path("access");
-        auto io = parse_input_output("input", pass_name, resource_name, attachment, binding, mip_level, access);
+        auto uniform_name = inputs.at_path("uniform_name");
+        auto io = parse_input_output("input", pass_name, resource_name, attachment, binding, mip_level, access, uniform_name);
         if (!io.pass_name.empty()) {
-          into_section.inputs.push_back(std::move(io));
+          if (io.access.empty()) {
+            io.access = "read";
+          }
+
           std::stringstream ss_input;
           ss_input << "Frame Input: " << io.pass_name << "\n"
                    << " - resource_name: " << io.resource_name << ",\n"
                    << " - attachment: " << io.attachment << ",\n"
                    << " - binding: " << (io.binding.has_value() ? std::to_string(io.binding.value()) : "none") << ",\n"
-                   << " - mip_level: " << io.mip_level;
+                   << " - mip_level: " << io.mip_level << ",\n"
+                   << " - access: " << io.access << ",\n"
+                   << " - uniform_name: " << (io.uniform_name.empty() ? "none" : io.uniform_name);
           CORE_LOG_DEBUG("{}", ss_input.str());
+          into_section.inputs.push_back(std::move(io));
         } else {
           CORE_LOG_ERROR("Invalid frame input: pass_name is empty");
         }
@@ -668,16 +717,23 @@ namespace other {
         auto binding = output.at_path("binding");
         auto mip_level = output.at_path("mip_level");
         auto access = output.at_path("access");
-        auto io = parse_input_output("output", pass_name, resource_name, attachment, binding, mip_level, access);
+        auto uniform_name = output.at_path("uniform_name");
+        auto io = parse_input_output("output", pass_name, resource_name, attachment, binding, mip_level, access, uniform_name);
         if (!io.pass_name.empty()) {
-          into_section.outputs.push_back(std::move(io));
+          if (io.access.empty()) {
+            io.access = "write";
+          }
+
           std::stringstream ss_output;
           ss_output << "Frame Output: " << io.pass_name << "\n"
                     << " - resource_name: " << io.resource_name << ",\n"
                     << " - attachment: " << io.attachment << ",\n"
                     << " - binding: " << (io.binding.has_value() ? std::to_string(io.binding.value()) : "none") << ",\n"
-                    << " - mip_level: " << io.mip_level;
+                    << " - mip_level: " << io.mip_level << ",\n"
+                    << " - access: " << io.access << ",\n"
+                    << " - uniform_name: " << (io.uniform_name.empty() ? "none" : io.uniform_name);
           CORE_LOG_DEBUG("{}", ss_output.str());
+          into_section.outputs.push_back(std::move(io));
         } else {
           CORE_LOG_ERROR("Invalid frame output: pass_name is empty");
         }
@@ -932,6 +988,17 @@ namespace other {
           }
         }
 
+        auto clear_bits = pass.at_path("clear_bits");
+        if (clear_bits && clear_bits.is_array()) {
+          std::vector<std::string> clear_bits_strs;
+          for (size_t i = 0; i < clear_bits.as_array()->size(); ++i) {
+            std::string bit_str = clear_bits.as_array()->at(i).as_string()->get();
+            clear_bits_strs.push_back(bit_str);
+          }
+          p.clear_flags = render_pass_clear_bits_from_strings(clear_bits_strs);
+          p.override_fb_clear = true;
+        }
+
         std::stringstream ss_pass;
         ss_pass << "Pass: " << p.name << "\n";
         ss_pass << " - bindings: [";
@@ -1003,17 +1070,16 @@ namespace other {
         auto& in = pass.inputs.emplace_back(pipeline_resource_reference{
           .resource_name = i.resource_name,
           .mip_level = i.mip_level,
+          .access = access_flags_from_string(i.access),
         });
         if (i.binding.has_value()) {
           in.binding = i.binding.value();
         }
+        if (!i.uniform_name.empty()) {
+          in.uniform_name = i.uniform_name;
+        }
         if (!i.attachment.empty()) {
           in.attachment = framebuffer_attachment_type_from_string(i.attachment);
-        }
-        if (!i.access.empty()) {
-          in.access = access_flags_from_string(i.access);
-        } else {
-          in.access = access_flags::READ;
         }
       }
 
@@ -1028,14 +1094,16 @@ namespace other {
         auto& out = pass.outputs.emplace_back(pipeline_resource_reference{
           .resource_name = o.resource_name,
           .mip_level = o.mip_level,
+          .access = access_flags_from_string(o.access),
         });
         if (o.binding.has_value()) {
           out.binding = o.binding.value();
         }
+        if (!o.uniform_name.empty()) {
+          out.uniform_name = o.uniform_name;
+        }
         if (!o.attachment.empty()) {
           out.attachment = framebuffer_attachment_type_from_string(o.attachment);
-        } else {
-          out.access = access_flags::WRITE;
         }
       }
 
@@ -1050,12 +1118,64 @@ namespace other {
           .name = e.name
         };
 
-        for (const auto& u : e.uniforms) {
-          pass_itr->executor.uniforms.insert({ u.name, std::move(u.val) });
-        }
         for (const auto& p : e.params) {
           pass_itr->executor.params.insert({ p.name, std::move(p.val) });
         }
+      }
+    }
+
+    void get_pass_uniforms(pipeline_definition& into_def, const frame_section& frame, const toml::table& pipeline_table) {
+      const auto pass_uniforms = pipeline_table.at_path("frame.pass-uniforms");
+      if (!pass_uniforms) {
+        return;
+      }
+      if (!pass_uniforms.is_array_of_tables()) {
+        CORE_LOG_ERROR("frame pass-uniforms type: {}", pass_uniforms.type());
+        OTHER_ASSERT(false, "Invalid pipeline table: frame.pass-uniforms must be an array of tables");
+      }
+
+      for (const auto& pu : *pass_uniforms.as_array()) {
+        auto pass_name = pu.at_path("pass_name");
+        auto name = pu.at_path("name");
+        auto value = pu.at_path("value");
+        if (!pass_name || !name || !value) {
+          CORE_LOG_ERROR("pass_name exists: {}, name exists: {}, value exists: {}", (bool)pass_name, (bool)name, (bool)value);
+          OTHER_ASSERT(false, "Invalid pass uniform: missing pass_name, name or value");
+        }
+        if (!pass_name.is_string() || !name.is_string() || !(value.is_number() || value.is_floating_point() || value.is_boolean())) {
+          CORE_LOG_ERROR("pass_name type: {}, name type: {}, value type: {}", pass_name.type(), name.type(), value.type());
+          OTHER_ASSERT(false, "Invalid pass uniform: pass_name and name must be strings and value must be a number, boolean or string");
+        }
+
+        auto pass_itr = std::ranges::find(into_def.passes, pass_name.as_string()->get(), &pipeline_pass_definition::name);
+        if (pass_itr == into_def.passes.end()) {
+          OTHER_ASSERT(false, "Pass uniform '{}' references non-existent pass '{}'", name.as_string()->get(), pass_name.as_string()->get());
+        }
+
+        std::string name_str = name.as_string()->get();
+        std::string pass_name_str = pass_name.as_string()->get();
+        std::string key = pass_name_str + "." + name_str;
+        auto& unis = pass_itr->uniforms;
+        {
+          pass_uniform_definition u;
+          u.pass_name = pass_name_str;
+          u.name = name_str;
+
+          if (value.is_floating_point()) {
+            u.val = static_cast<float>(value.as_floating_point()->get());
+          } else if (value.is_number()) {
+            u.val = static_cast<int32_t>(value.as_integer()->get());
+          } else if (value.is_boolean()) {
+            u.val = value.as_boolean()->get();
+          }
+
+          auto [itr, success] = unis.insert({ FNV(key), std::move(u) });
+          OTHER_ASSERT(success, "Duplicate uniform '{}' in pass '{}'", key, pass_name.as_string()->get());
+        }
+        std::stringstream ss_uniform;
+        ss_uniform << "Pass Uniform: " << name_str << "\n"
+                   << " - value: " << unis[FNV(key)].val.to_string() << "\n";
+        CORE_LOG_DEBUG("{}", ss_uniform.str());
       }
     }
 

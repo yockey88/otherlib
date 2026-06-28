@@ -131,31 +131,16 @@ target_sources(otherlib
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
     src/ui/type-bindings/scene_ui.cpp
-    src/ui/asset-browser/asset_browser_widgets.cpp
-    src/ui/asset-browser/asset_browser_tree_node.cpp
-    src/ui/asset-browser/asset_browser_grid_node.cpp
-    src/ui/asset-browser/asset_browser.cpp
-    src/ui/asset-editor/asset_editor_registry.cpp
-    src/ui/asset-editor/asset_editor.cpp
-    src/ui/asset-editor/asset_editor_node.cpp
     src/ui/console/console_widgets.cpp
     src/ui/console/console_input_node.cpp
     src/ui/console/console_history_node.cpp
     src/ui/console/console.cpp
-    src/ui/node-editor/node_editor_canvas_node.cpp
-    src/ui/node-editor/node_editor.cpp
-    src/ui/scene-hierarchy/hierarchy_widgets.cpp
-    src/ui/scene-hierarchy/scene_hierarchy_node.cpp
-    src/ui/scene-hierarchy/scene_hierarchy.cpp
-    src/ui/object-editor/object_editor.cpp
-    src/ui/object-editor/property_inspector_node.cpp
     src/ui/menu-bar/menu_item.cpp
     src/ui/menu-bar/menu.cpp
     src/ui/menu-bar/menu_bar.cpp
     src/ui/field_editor_registry.cpp
     src/ui/inspector_widgets.cpp
     src/ui/ui_widgets.cpp
-    src/ui/viewport.cpp
     src/ui/type_database.cpp
     src/ui/driver_ui.cpp
 
@@ -197,7 +182,7 @@ endforeach()
 target_link_directories(otherlib PUBLIC 
   $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/sol2/lib>
 )
-target_link_libraries(otherlib PUBLIC other_scene other_renderer other_physics other_scripting other_network other_core)
+target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_scripting other_network other_core)
 
 # if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
 #   target_link_libraries(otherlib PRIVATE nfd_d)

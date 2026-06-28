@@ -39,12 +39,12 @@ vec3 oe_sky_irradiance_up(vec3 world_pos) {
   return (dome + sun + haze);
 }
 
-vec3 oe_world_to_uvw(vec3 world_pos) {
-  return clamp((world_pos - world_min.xyz) / max(world_extent(), vec3(1e-4)), vec3(0.0), vec3(1.0));
+vec3 oe_world_to_volume(vec3 p) {
+  return clamp((p - world_min.xyz) / world_extent(), vec3(0.0), vec3(1.0));
 }
 
 ivec3 oe_world_to_voxel(vec3 world_pos, ivec3 dim) {
-  return ivec3(oe_world_to_uvw(world_pos) * vec3(dim));
+  return ivec3(oe_world_to_volume(world_pos) * vec3(dim));
 }
 
 vec3 oe_voxel_to_world(ivec3 voxel, ivec3 dim) {

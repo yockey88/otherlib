@@ -11,10 +11,9 @@
 
 #include "core/logger.hpp"
 
-#include "renderer/ui/colors.hpp"
-#include "renderer/ui/unicode.hpp"
-
 #include "driver/driver.hpp"
+#include "theme/colors.hpp"
+#include "ui/unicode.hpp"
 
 #include "console_widgets.hpp"
 
@@ -147,8 +146,7 @@ namespace other {
         dl->AddLine(
           { bar_min.x, bar_max.y },
           { bar_max.x, bar_max.y },
-          colors::to_im_col(colors::console::kBorder), 1.f
-        );
+          colors::to_im_col(colors::console::kBorder), 1.f);
 
         /// status dot (accent warm orange)
         float dot_x = cursor.x + 14.f;
@@ -181,8 +179,7 @@ namespace other {
         dl->AddLine(
           { bar_min.x, bar_max.y },
           { bar_max.x, bar_max.y },
-          colors::to_im_col(kBorder), 1.f
-        );
+          colors::to_im_col(kBorder), 1.f);
 
         float btn_x = cursor.x + kPaddingX;
         float btn_y = cursor.y + 3.f;
@@ -419,8 +416,7 @@ namespace other {
         dl->AddLine(
           { bar_min.x, bar_min.y },
           { bar_max.x, bar_min.y },
-          colors::to_im_col(kPromptBorder), 1.f
-        );
+          colors::to_im_col(kPromptBorder), 1.f);
 
         // mode name
         float text_y = cursor.y + (kPromptBarHeight - ImGui::GetFontSize()) * 0.5f;

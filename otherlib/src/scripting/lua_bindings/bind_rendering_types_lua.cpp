@@ -7,7 +7,6 @@
 #include "object/light_component.hpp"
 #include "object/render_component.hpp"
 
-
 namespace other {
 
   void bind_rendering_types(sol::state& lua_state) {

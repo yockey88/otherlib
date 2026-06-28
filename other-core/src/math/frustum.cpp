@@ -45,4 +45,16 @@ namespace other {
     return true;
   }
 
+  bounding_box frustum::get_containing_aabb() const {
+    bounding_box box;
+    for (const plane& p : planes) {
+      auto corners = p.get_corner_points();
+      for (const glm::vec3& corner : corners) {
+        box.min = glm::min(box.min, corner);
+        box.max = glm::max(box.max, corner);
+      }
+    }
+    return box;
+  }
+
 }  // namespace other

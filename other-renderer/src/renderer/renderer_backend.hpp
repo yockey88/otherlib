@@ -16,6 +16,12 @@
 struct ImGuiContext;
 namespace other {
 
+  constexpr static ImWchar kUnicodeExtraRanges[] = {
+    0x0020, 0x00FF,
+    0x0100, 0xFFFF,  /// enough range to cover all unicode characters
+    0
+  };
+
   class renderer_backend : public subsystem<renderer_backend> {
    public:
     renderer_backend() = default;
@@ -66,7 +72,6 @@ OTHER_DEPENDENT_SUBSYSTEM(
   other::renderer_backend,
   subsystem_profile::kArena,
   subsystem_profile::kLogger,
-  subsystem_profile::kFileSystem
-);
+  subsystem_profile::kFileSystem);
 
 #endif  // OTHER_RENDERER_RENDERER_RENDERER_BACKEND_HPP

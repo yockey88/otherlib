@@ -2,10 +2,10 @@
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(rgba16f, binding = 0) uniform readonly image3D OE_voxel_tex_in;   // input  slot 0
-layout(rgba16f, binding = 1) uniform readonly image2D OE_gbuff_position; // input  slot 1
-layout(rgba16f, binding = 2) uniform readonly image2D OE_gbuff_normal;   // input  slot 2
-layout(rgba16f, binding = 3) uniform writeonly image3D OE_voxel_tex_out;  // output slot 3
+layout(rgba16f) uniform readonly image3D OE_voxel_tex_in;
+layout(rgba16f) uniform readonly image2D OE_gbuff_position;
+layout(rgba16f) uniform readonly image2D OE_gbuff_normal;
+layout(rgba16f) uniform writeonly image3D OE_voxel_tex_out;
 
 void main() {
   ivec2 px = ivec2(gl_GlobalInvocationID.xy);

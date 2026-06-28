@@ -88,11 +88,6 @@ namespace other {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    // glEnable(GL_STENCIL_TEST);
-    // glStencilFunc(GL_ALWAYS, 1, 0xFF);
-    // glStencilMask(0xFF);
-    // glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-
     SDL_GL_MakeCurrent(window_mgr->get_main_window(), gl_ctx(get_gpu_context()));
     CORE_LOG_INFO("OpenGL API initialized successfully.");
   }
@@ -164,10 +159,19 @@ namespace other {
     override_clear_color(color);
   }
 
+  void opengl_api::set_clear_depth(float depth) {
+    override_clear_depth(depth);
+  }
+
+  void opengl_api::set_clear_stencil(uint32_t stencil) {
+    override_clear_stencil(stencil);
+  }
+
   void opengl_api::on_begin_frame(scope<window_manager>& window_mgr) {
     PROFILE_SECTION("opengl_api::on_begin_frame");
     glm::vec3 clear_color = get_clear_color();
 
+    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, "Frame");
     glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   }
@@ -176,37 +180,14 @@ namespace other {
     PROFILE_SECTION("opengl_api::on_end_frame");
     SDL_GL_MakeCurrent(native_window(), gl_ctx(get_gpu_context()));
     SDL_GL_SwapWindow(native_window());
+    glPopDebugGroup();
   }
 
   void opengl_api::begin_pass(const pass_begin_info& info) {
     PROFILE_SECTION("opengl_api::begin_pass");
 
+    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, info.pass_name.c_str());
     if (info.pass_type == render_pass::RENDER_PASS) {
-      if (info.framebuffer.has_value()) {
-        current_pass_framebuffer_id = info.framebuffer->id;
-        auto m = framebuffer_msaa_fbos.find(info.framebuffer->id);
-        const uint32_t fbo = (m != framebuffer_msaa_fbos.end()) ?
-          m->second :
-          (uint32_t)get_resource_handle(info.framebuffer->id);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-      } else {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-      }
-      glViewport(0, 0, info.render_area_size.x, info.render_area_size.y);
-
-      GLbitfield clear_mask = 0;
-      if (info.clear_color.has_value()) {
-        const auto& c = *info.clear_color;
-        glClearColor(c.r, c.g, c.b, c.a);
-        clear_mask |= GL_COLOR_BUFFER_BIT;
-      }
-      if (info.clear_depth.has_value()) {
-        glClearDepth(*info.clear_depth);
-        clear_mask |= GL_DEPTH_BUFFER_BIT;
-      }
-      if (clear_mask != 0) {
-        glClear(clear_mask);
-      }
     } else if (info.pass_type == render_pass::COMPUTE_PASS) {
     }
 
@@ -220,6 +201,7 @@ namespace other {
     }
     current_pass_framebuffer_id = 0;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glPopDebugGroup();
     CHECKGL();
   }
 
@@ -292,6 +274,12 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::clear_viewport(const glm::vec4& clear_color, uint32_t clear_mask) {
+    glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
+    glClear(get_gl_clear_bits(clear_mask));
+    CHECKGL();
+  }
+
   void opengl_api::set_color_mask(bool enabled_or_disabled) {
     glColorMask(enabled_or_disabled, enabled_or_disabled, enabled_or_disabled, enabled_or_disabled);
     CHECKGL();
@@ -324,14 +312,36 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::set_polygon_mode(render_polygon_mode mode) {
+    glPolygonMode(GL_FRONT_AND_BACK, get_gl_render_polygon_mode(mode));
+    CHECKGL();
+  }
+
+  void opengl_api::set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) {
+    glStencilFunc(get_gl_stencil_func(func), ref, mask);
+    CHECKGL();
+  }
+
+  void opengl_api::set_stencil_mask(uint32_t mask) {
+    glStencilMask(mask);
+    CHECKGL();
+  }
+
+  void opengl_api::set_depth_func(depth_func func) {
+    glDepthFunc(get_gl_depth_func(func));
+    CHECKGL();
+  }
+
   void opengl_api::begin_ui_frame_backend_newframe() {
     PROFILE_SECTION("opengl_api::begin_ui_frame_backend_newframe");
+    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, "UI Frame");
     ImGui_ImplOpenGL3_NewFrame();
   }
 
   void opengl_api::end_ui_frame_backend_draw_data() {
     PROFILE_SECTION("opengl_api::end_ui_frame_backend_draw_data");
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    glPopDebugGroup();
   }
 
   void opengl_api::bind_shader_resource(const resource_handle& handle) {
@@ -954,7 +964,7 @@ namespace other {
     glBindVertexArray(0);
   }
 
-  void opengl_api::bind_framebuffer_resource(const resource_handle& handle) {
+  void opengl_api::bind_framebuffer_resource(const resource_handle& handle, bool clear) {
     PROFILE_SECTION("opengl_api::bind_framebuffer_resource");
     auto itr = framebuffer_resources.find(handle.id);
     if (itr == framebuffer_resources.end()) {
@@ -964,8 +974,7 @@ namespace other {
 
     uint32_t framebuffer_id = gpu_resources[handle.id];
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
+
     CHECKGL();
 
     if (!itr->second.complete) {
@@ -974,25 +983,15 @@ namespace other {
 
     const auto& fb = itr->second;
     glViewport(0, 0, fb.size.x, fb.size.y);
-
-    glClearColor(fb.clear_color.r, fb.clear_color.g, fb.clear_color.b, fb.clear_color.a);
-    glClear(get_gl_clear_bits(fb.clear_mask));
+    if (clear) {
+      clear_viewport(fb.clear_color, fb.clear_mask);
+    }
     CHECKGL();
   }
 
   void opengl_api::unbind_framebuffer_resource(const resource_handle& handle) {
     PROFILE_SECTION("opengl_api::unbind_framebuffer_resource");
-
-    auto itr = framebuffer_resources.find(handle.id);
-    if (itr == framebuffer_resources.end()) {
-      CORE_LOG_ERROR("Framebuffer resource with ID {} not found. cannot unbind", handle.id);
-      return;
-    }
-
-    const auto& fb = itr->second;
-
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
     CHECKGL();
   }
 
@@ -1300,6 +1299,24 @@ namespace other {
     }
 
     glUniform1f(shader_id, value);
+    CHECKGL();
+  }
+
+  void opengl_api::set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec2& value) {
+    PROFILE_SECTION("opengl_api::set_shader_uniform");
+
+    auto itr = gpu_resources.find(shader.id);
+    if (itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader.id);
+      return;
+    }
+
+    uint32_t shader_id = get_shader_uniform_location(shader, name);
+    if (shader_id == -1) {
+      return;
+    }
+
+    glUniform2fv(shader_id, 1, glm::value_ptr(value));
     CHECKGL();
   }
 
@@ -1753,18 +1770,44 @@ namespace other {
 
   int32_t opengl_api::get_gl_render_polygon_mode(render_polygon_mode mode) const {
     switch (mode) {
-      case POLYGON_MODE_FILL:
-        return GL_FILL;
-
-      case POLYGON_MODE_LINE:
-        return GL_LINE;
-
-      case POLYGON_MODE_POINT:
-        return GL_POINT;
-
+      case POLYGON_MODE_FILL: return GL_FILL;
+      case POLYGON_MODE_LINE: return GL_LINE;
+      case POLYGON_MODE_POINT: return GL_POINT;
       default:
         CORE_LOG_ERROR("Unsupported polygon mode: {}", mode);
         return -1;
+    }
+  }
+
+  int32_t opengl_api::get_gl_stencil_func(stencil_func func) const {
+    switch (func) {
+      case stencil_func::STENCIL_NEVER: return GL_NEVER;
+      case stencil_func::STENCIL_LESS: return GL_LESS;
+      case stencil_func::STENCIL_EQUAL: return GL_EQUAL;
+      case stencil_func::STENCIL_LEQUAL: return GL_LEQUAL;
+      case stencil_func::STENCIL_GREATER: return GL_GREATER;
+      case stencil_func::STENCIL_NOTEQUAL: return GL_NOTEQUAL;
+      case stencil_func::STENCIL_GEQUAL: return GL_GEQUAL;
+      case stencil_func::STENCIL_ALWAYS: return GL_ALWAYS;
+      default:
+        CORE_LOG_ERROR("Unsupported stencil function: {}", func);
+        return -1;  // Invalid function
+    }
+  }
+
+  int32_t opengl_api::get_gl_depth_func(depth_func func) const {
+    switch (func) {
+      case depth_func::DEPTH_NEVER: return GL_NEVER;
+      case depth_func::DEPTH_LESS: return GL_LESS;
+      case depth_func::DEPTH_EQUAL: return GL_EQUAL;
+      case depth_func::DEPTH_LEQUAL: return GL_LEQUAL;
+      case depth_func::DEPTH_GREATER: return GL_GREATER;
+      case depth_func::DEPTH_NOTEQUAL: return GL_NOTEQUAL;
+      case depth_func::DEPTH_GEQUAL: return GL_GEQUAL;
+      case depth_func::DEPTH_ALWAYS: return GL_ALWAYS;
+      default:
+        CORE_LOG_ERROR("Unsupported depth function: {}", func);
+        return -1;  // Invalid function
     }
   }
 
@@ -1808,6 +1851,8 @@ namespace other {
       case texture::format::R8: return GL_R8;
       case texture::format::RG8: return GL_RG8;
 
+      case texture::format::R16F: return GL_R16F;
+      case texture::format::RG16F: return GL_RG16F;
       case texture::format::RGBA16F: return GL_RGBA16F;
       case texture::format::RGBA32U:
       case texture::format::RGBA32F:
@@ -1828,6 +1873,8 @@ namespace other {
       case texture::format::RG8: return GL_RG;
       case texture::format::RGB8: return GL_RGB;
       case texture::format::DEPTHF: return GL_DEPTH_COMPONENT;
+      case texture::format::R16F: return GL_RED;
+      case texture::format::RG16F: return GL_RG;
       case texture::format::RGBA16F:
       case texture::format::RGBA32F:
       case texture::format::RGBA8:
@@ -1842,6 +1889,8 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_format_type(texture::format format) const {
     switch (format) {
+      case texture::format::R16F:
+      case texture::format::RG16F:
       case texture::format::RGBA16F:
       case texture::format::RGBA32F:
       case texture::format::DEPTHF:

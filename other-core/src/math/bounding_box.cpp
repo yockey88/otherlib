@@ -50,6 +50,13 @@ namespace other {
     return true;
   }
 
+  bounding_box bounding_box::transform(const glm::mat4& t) {
+    bounding_box box;
+    box.min = glm::vec3(t * glm::vec4(min, 1.0f));
+    box.max = glm::vec3(t * glm::vec4(max, 1.0f));
+    return box;
+  }
+
   bounding_box bounding_box::expand_to_include(const bounding_box& box, const bounding_box& other) {
     bounding_box result = box;
     result.min = glm::min(result.min, other.min);

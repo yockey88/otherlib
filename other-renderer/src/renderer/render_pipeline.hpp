@@ -44,8 +44,6 @@ namespace other {
     static constexpr uint32_t kMaxFramesInFlight = 3;
 
     render_pipeline() = default;
-    render_pipeline(pipeline_definition&& def)
-        : definition(std::move(def)) {}
     render_pipeline(const pipeline_definition& def)
         : definition(def) {}
     virtual ~render_pipeline() = default;
@@ -57,6 +55,7 @@ namespace other {
     pass_runtime& get_pass_runtime(natural_t pass_id);
 
     bool reload(pipeline_definition&& new_def);
+    void rebuild();
 
     void prepare_frame(render_data* data);
     void bind_frame_resources(const render_data& data);
@@ -64,6 +63,10 @@ namespace other {
     void render_frame(renderer* renderer_ptr);
     void reset_draw_buffers();
     glm::ivec2 get_window_size() const;
+
+    void register_texture_resource(const std::string_view name, resource_handle handle);
+    void register_buffer_resource(const std::string_view name, resource_handle handle);
+    void register_shader_resource(const std::string_view name, resource_handle handle);
 
     ImTextureID get_final_output_texture_id();
     ImTextureID get_texture_id(const std::string_view name);
@@ -86,6 +89,12 @@ namespace other {
     static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
 
    private:
+    struct named_resource {
+      std::string name;
+      resource_handle handle;
+      resource_tag tag = resource_tag::none();
+    };
+
     pipeline_definition definition;
     bool valid = false;
 
@@ -94,15 +103,9 @@ namespace other {
 
     renderer* renderer_ptr = nullptr;
 
-    struct named_resource {
-      std::string name;
-      resource_handle handle;
-      resource_tag tag = resource_tag::none();
-    };
-
     std::map<natural_t, named_resource> buffer_resources;   /// keyed by FNV(name)
     std::map<natural_t, named_resource> texture_resources;  /// keyed by FNV(name)
-    std::map<std::string, resource_handle> shader_handles;  /// keyed by shader def name
+    std::map<natural_t, resource_handle> shader_handles;    /// keyed by shader def name
 
     std::map<resource_tag, resource_handle> tagged_buffer_handles;
     std::map<resource_tag, resource_handle> tagged_texture_handles;
@@ -115,14 +118,19 @@ namespace other {
     using executor_fn = render_graph::pass_executor;
     std::map<std::string, executor_fn> executor_overrides;
 
+    // for avoiding resource collisions in rendering backend when user loads multiple pipelines with same resource names
+    std::string get_pipeline_name(const std::string_view n) const;
+
     void build_pass_runtimes();
     void destroy_pass_runtimes();
-
-    void apply_lighting_uniforms(const render_data& data);
 
     void override_pass_executor(const std::string_view pass_name, executor_fn&& fn);
 
     void create_resources_from_def();
+
+    void replace_texture_resource(const std::string_view name, resource_handle new_handle);
+    void replace_buffer_resource(const std::string_view name, resource_handle new_handle);
+    void replace_shader_resource(const std::string_view name, resource_handle new_handle);
 
     void build_tag_maps();
     void build_passes_from_def();
@@ -138,6 +146,7 @@ namespace other {
     executor_fn make_executor(const pipeline_pass_definition& pass);
 
     opt<resource_handle> get_shader_handle(const std::string_view shader_name) const;
+    pass_runtime& build_pass_runtime(pass_runtime& runtime, render_pass* pass, const pipeline_pass_definition& pass_def);
   };
 
 }  // namespace other

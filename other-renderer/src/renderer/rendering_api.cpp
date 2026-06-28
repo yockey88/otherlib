@@ -198,14 +198,6 @@ namespace other {
   }
 
   void rendering_api::set_resource_name(const resource_handle& handle, const std::string_view name) {
-    auto itr = std::ranges::find_if(resource_names, [&](const auto& pair) {
-      return pair.second == name;
-    });
-    if (itr != resource_names.end()) {
-      CORE_LOG_ERROR("Resource with name '{}' already exists.", name);
-      return;
-    }
-
     auto [name_itr, inserted] = resource_names.emplace(handle.id, name);
     if (!inserted || name_itr == resource_names.end()) {
       CORE_LOG_ERROR("Failed to set name '{}' for resource ID: {}", name, handle.id);
@@ -253,8 +245,17 @@ namespace other {
   glm::vec3 rendering_api::get_clear_color() const {
     return clear_color;
   }
+
   void rendering_api::override_clear_color(const glm::vec3& color) {
     clear_color = color;
+  }
+
+  void rendering_api::override_clear_depth(float depth) {
+    clear_depth = depth;
+  }
+
+  void rendering_api::override_clear_stencil(uint32_t stencil) {
+    clear_stencil = stencil;
   }
 
   glm::ivec2 rendering_api::get_window_size() const {

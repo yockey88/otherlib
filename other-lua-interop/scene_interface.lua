@@ -63,7 +63,7 @@ end
 local function _attach_point_light_to_object(scene_handle, native_id, light)
   return __other_native.__scene_interface.attach_point_light_to_object(scene_handle, native_id, light)
 end
-local function _attach_directional_light_to_object(scene_handle, native_id, light)
+local function _attach_direction_light_to_object(scene_handle, native_id, light)
   return __other_native.__scene_interface.attach_direction_light_to_object(scene_handle, native_id, light)
 end
 
@@ -194,8 +194,8 @@ end
 function _SceneInterface:AttachPointLightToObject(native_id, light)
   return self:CallInterfaceFunction(_attach_point_light_to_object, native_id, light)
 end
-function _SceneInterface:AttachDirectionalLightToObject(native_id, light)
-  return self:CallInterfaceFunction(_attach_directional_light_to_object, native_id, light)
+function _SceneInterface:AttachDirectionLightToObject(native_id, light)
+  return self:CallInterfaceFunction(_attach_direction_light_to_object, native_id, light)
 end
 
 function _SceneInterface:AttachDotNetBehaviorToObject(native_id, behavior_type_name)

@@ -14,6 +14,9 @@ namespace other {
   class renderer;
 
   struct frame_node {
+    constexpr static inline natural_t kInputNodeId = -1;
+    constexpr static inline natural_t kOutputNodeId = -2;
+
     natural_t id;
     render_pass* pass = nullptr;
 

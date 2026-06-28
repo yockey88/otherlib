@@ -14,8 +14,8 @@
 
 #include "core/value.hpp"
 
-#include "renderer/ui/colors.hpp"
-#include "renderer/ui/ui_helpers.hpp"
+#include "theme/colors.hpp"
+#include "ui/ui_helpers.hpp"
 
 namespace other {
   namespace ui {
@@ -43,15 +43,13 @@ namespace other {
     inline ImRect rect_expanded(const ImRect& rect, float x, float y) {
       return ImRect(
         ImVec2(rect.Min.x - x, rect.Min.y - y),
-        ImVec2(rect.Max.x + x, rect.Max.y + y)
-      );
+        ImVec2(rect.Max.x + x, rect.Max.y + y));
     }
 
     inline ImRect rect_offset(const ImRect& rect, float x, float y) {
       return ImRect(
         ImVec2(rect.Min.x + x, rect.Min.y + y),
-        ImVec2(rect.Max.x + x, rect.Max.y + y)
-      );
+        ImVec2(rect.Max.x + x, rect.Max.y + y));
     }
 
     void draw_item_activity_outline(OutlineFlags flags = OutlineFlags_All, ImColor color_highlight = colors::rgba_to_imvec4(colors::kAccent), float rounding = 0.f);
@@ -102,8 +100,7 @@ namespace other {
         scoped_color_stack button_colors(
           ImGuiCol_Button, colorn,
           ImGuiCol_ButtonHovered, colorh,
-          ImGuiCol_ButtonActive, colorp
-        );
+          ImGuiCol_ButtonActive, colorp);
 
         const ImGuiIO& io = ImGui::GetIO();
         auto bold_font = io.Fonts->Fonts[0];

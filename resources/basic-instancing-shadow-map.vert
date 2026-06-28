@@ -1,4 +1,5 @@
 #include "shader-modules/basic-geometry.glsl"
+#include "shader-modules/simulation-environment.glsl"
 #include "shader-modules/basic-lighting.glsl"
 
 void main() {

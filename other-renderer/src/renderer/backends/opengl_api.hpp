@@ -31,6 +31,8 @@ namespace other {
     void handle_event(SDL_Event* event) override;
 
     void set_clear_color(const glm::vec4& color) override;
+    void set_clear_depth(float depth) override;
+    void set_clear_stencil(uint32_t stencil) override;
 
     void on_begin_frame(scope<window_manager>& window_mgr) override;
     void on_end_frame(scope<window_manager>& window_mgr) override;
@@ -44,11 +46,17 @@ namespace other {
     void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) override;
 
     void set_viewport(int32_t x, int32_t y, int32_t width, int32_t height) override;
+    void clear_viewport(const glm::vec4& clear_color, uint32_t clear_mask) override;
     void set_color_mask(bool enabled_or_disabled) override;
     void set_depth_mask(bool enabled_or_disabled) override;
     void set_depth_test(bool enabled_or_disabled) override;
 
     void memory_barrier(shader::compute_barrier_type bits) override;
+
+    void set_polygon_mode(render_polygon_mode mode) override;
+    void set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) override;
+    void set_stencil_mask(uint32_t mask) override;
+    void set_depth_func(depth_func func) override;
 
     void begin_ui_frame_backend_newframe() override;
     void end_ui_frame_backend_draw_data() override;
@@ -79,7 +87,7 @@ namespace other {
     void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) override;
     void draw_mesh_instanced(const resource_handle& handle, const draw_call& call) override;
 
-    void bind_framebuffer_resource(const resource_handle& handle) override;
+    void bind_framebuffer_resource(const resource_handle& handle, bool clear = true) override;
     void unbind_framebuffer_resource(const resource_handle& handle) override;
     void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level, uint32_t color_attachment_index = 0) override;
     void finalize_framebuffer(const resource_handle& handle) override;
@@ -93,6 +101,7 @@ namespace other {
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, int64_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, uint64_t value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, real_t value) override;
+    void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec2& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) override;
     void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose = false) override;
@@ -158,6 +167,8 @@ namespace other {
     int32_t get_gl_access_flags(access_flags flags) const;
 
     int32_t get_gl_render_polygon_mode(render_polygon_mode mode) const;
+    int32_t get_gl_stencil_func(stencil_func func) const;
+    int32_t get_gl_depth_func(depth_func func) const;
 
     int32_t get_gl_texture_type(texture::tex_type type) const;
     int32_t get_gl_texture_format(texture::format format) const;

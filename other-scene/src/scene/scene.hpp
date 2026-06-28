@@ -118,6 +118,12 @@ namespace other {
     glm::mat4 get_world_transform(scene_object* obj) const;
     glm::mat4 get_world_transform(natural_t id) const;
 
+    glm::mat4 get_local_transform(scene_object* obj) const;
+    glm::mat4 get_local_transform(natural_t id) const;
+
+    glm::mat4 get_local_to_world_matrix(scene_object* obj) const;
+    glm::mat4 get_local_to_world_matrix(natural_t id) const;
+
     transform& get_transform(natural_t id);
     const transform& get_transform(natural_t id) const;
     void set_transform(natural_t id, const transform& t);
@@ -129,6 +135,7 @@ namespace other {
     bounding_box get_bounding_box(std::span<const natural_t> ids) const;
 
     bounding_box get_bounding_box() const;
+    bounding_box get_bounding_box_from_camera_frustum(const camera& cam) const;
 
     render_data prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const;
 

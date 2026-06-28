@@ -47,7 +47,7 @@ namespace other {
 
     resource_type type() const override { return resource_type::FRAMEBUFFER; }
 
-    framebuffer& bind();
+    framebuffer& bind(bool clear = true);
     framebuffer& set_samples(uint32_t samples);
     framebuffer& set_size(uint32_t width, uint32_t height);
     framebuffer& set_clear_color(const glm::vec4& color);

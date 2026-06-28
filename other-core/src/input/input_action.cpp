@@ -15,7 +15,7 @@ namespace other {
   }
 
   input_action& input_action::bind_gamepad_button(gamepad_button btn, float scale) {
-    return bind(gamepad_btn_source(btn), scale);
+    return bind(gamepad_btn_source(btn), scale, 0);
   }
 
   input_action& input_action::bind_gamepad_axis(gamepad_axis axis, float threshold, float scale, uint8_t component) {
@@ -23,7 +23,7 @@ namespace other {
   }
 
   input_action& input_action::bind_mouse_button(mouse_button btn, float scale) {
-    return bind(mouse_btn_source(btn), scale);
+    return bind(mouse_btn_source(btn), scale, 0);
   }
 
   input_action& input_action::set_captures_text(bool v) {
@@ -31,8 +31,8 @@ namespace other {
     return *this;
   }
 
-  input_action& input_context::add_action(const std::string& action_name, action_value_type type) {
-    actions.emplace_back(action_name, type);
+  input_action& input_context::add_action(const std::string& action_name, action_value_type type, bool transparent) {
+    actions.emplace_back(action_name, type, transparent);
     return actions.back();
   }
 

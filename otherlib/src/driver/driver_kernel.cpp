@@ -149,6 +149,17 @@ namespace other {
     }
   }
 
+  void driver_kernel::driver_initialized() {
+    PROFILE_SECTION("driver_kernel::driver_initialized");
+    CORE_LOG_INFO("Driver kernel initialization complete. Driver is now ready.");
+
+    for (const auto type : system_order) {
+      OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
+      CORE_LOG_DEBUG("Driver kernel calling on_driver_ready for builtin system of type {} with id {}.", builtin_systems[static_cast<size_t>(type)]->name(), type);
+      builtin_systems[static_cast<size_t>(type)]->on_driver_ready(this);
+    }
+  }
+
   void driver_kernel::tick(double dt) {
     PROFILE_SECTION("driver_kernel::tick");
     {

@@ -8,9 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "renderer/ui/ui_node.hpp"
-
 #include "ui/console/console_widgets.hpp"
+#include "ui/ui_node.hpp"
 
 namespace other {
 
@@ -32,12 +31,14 @@ namespace other {
 
       void set_suggestion_provider(command_suggestion_provider* provider);
       void request_focus();
+      void drop_focus();
 
      private:
       driver* driver_ptr = nullptr;
 
       char input_buf[1024] = {};
       bool focus_requested = false;
+      bool force_drop_focus = false;
 
       static constexpr size_t kMaxHistory = 256;
       std::vector<std::string> history;

@@ -8,7 +8,7 @@
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "gpu_resource/shader.hpp"
-#include "renderer/debug_render_stream.hpp"
+#include "renderer/debug_draw.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/frame_binding_definition.hpp"
 #include "renderer/frame_binding_registry.hpp"
@@ -46,11 +46,8 @@ namespace other {
     void draw_stream();
     void submit_draw_call(const draw_call& call, const mesh_key& key);
     void dispatch(const glm::uvec3& groups, shader::compute_barrier_type barrier);
-    void draw_debug_stream(std::string_view stream_name, const debug_stream_definition& def, std::span<const uint8_t> data, size_t count);
-
-    template <typename T>
-    void emit_debug(std::string_view stream_name, const T& entry) {
-    }
+    void draw_debug_vertices(std::string_view stream_name, mesh::primitive_type topology);
+    void draw_debug_mesh(const debug_mesh_instance& instance);
 
     template <typename T>
     void set_uniform(std::string_view name, const T& value) {

@@ -26,6 +26,7 @@ namespace other {
     void load_profile(const std::string_view profile_name);
     void load_driver_plugins_from_config(driver* driver_instance);
     void initialize();
+    void driver_initialized();
     void tick(double dt);
     void unload_project_plugins();
     void unload_driver_plugins();

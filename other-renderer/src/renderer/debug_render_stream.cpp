@@ -5,6 +5,8 @@
 
 #include "core/fnv.hpp"
 
+#include "renderer/renderer.hpp"
+
 namespace other {
 
   void debug_stream_registry::register_stream(std::string_view name, debug_stream_definition defn) {
@@ -27,12 +29,29 @@ namespace other {
     return &itr->second;
   }
 
-  void debug_streams::configure_stream(std::string_view stream_name, size_t elt_size, size_t max_per_frame) {
-    natural_t hash = FNV(stream_name);
+  void debug_streams::configure_streams(renderer* renderer_ptr, const debug_stream_registry& registry) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "debug_streams::configure_streams: renderer_ptr is null.");
+    for (const auto& [_, def] : registry.entries()) {
+      configure_stream(renderer_ptr, def);
+    }
+  }
+
+  void debug_streams::configure_stream(renderer* renderer_ptr, const debug_stream_definition& defn) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "debug_streams::configure_stream: renderer_ptr is null.");
+    natural_t hash = FNV(defn.name);
     auto [itr, _] = storages.try_emplace(hash, stream_storage{});
-    itr->second.element_size = elt_size;
-    itr->second.max_per_frame = max_per_frame;
-    itr->second.bytes.reserve(elt_size * max_per_frame);
+    OTHER_ASSERT(itr != storages.end(), "Failed to insert debug stream storage for stream '{}'", defn.name);
+
+    itr->second.element_size = defn.element_size;
+    itr->second.max_per_frame = defn.max_per_frame;
+    itr->second.bytes.reserve(defn.element_size * defn.max_per_frame);
+    itr->second.mesh_handle = renderer_ptr->get_or_create_debug_stream_mesh(defn.name, defn);
+  }
+
+  resource_handle debug_streams::get_mesh_handle(std::string_view stream_name) const {
+    auto itr = storages.find(FNV(stream_name));
+    OTHER_ASSERT(itr != storages.end(), "Debug stream with name [{}] not found. Cannot get mesh handle.", stream_name);
+    return itr->second.mesh_handle;
   }
 
   std::span<const uint8_t> debug_streams::view(std::string_view stream_name) const {
@@ -64,20 +83,7 @@ namespace other {
       storage.bytes.clear();
       storage.count = 0;
     }
-  }
-
-  debug_streams::stream_storage& debug_streams::ensure_storage(std::string_view name, size_t element_size) {
-    natural_t hash = FNV(name);
-    auto [itr, inserted] = storages.try_emplace(hash, stream_storage{
-                                                        .element_size = element_size,
-                                                        .max_per_frame = 0,  // populated by configure_stream
-                                                        .count = 0,
-                                                        .bytes = {},
-                                                      });
-    if (inserted) {
-      itr->second.bytes.reserve(element_size * 64);
-    }
-    return itr->second;
+    storages.clear();
   }
 
 }  // namespace other

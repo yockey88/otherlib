@@ -398,12 +398,12 @@ namespace other {
     }
 
     void process_assimp_file(const filepath& file_path, model_builder& builder) {
-      Assimp::Logger::LogSeverity severity = Assimp::Logger::VERBOSE;
-      Assimp::DefaultLogger::create("", severity, aiDefaultLogStream_STDOUT);
+      // Assimp::Logger::LogSeverity severity = Assimp::Logger::VERBOSE;
+      // Assimp::DefaultLogger::create("", severity, aiDefaultLogStream_STDOUT);
 
-      std::string log_file = std::format("logs/{}-import-info.log", file_path.filename().stem().string());
-      Assimp::DefaultLogger::create(log_file.c_str(), severity, aiDefaultLogStream_FILE);
-      Assimp::DefaultLogger::get()->info("begin import of model: ", file_path.string());
+      // std::string log_file = std::format("logs/{}-import-info.log", file_path.filename().stem().string());
+      // Assimp::DefaultLogger::create(log_file.c_str(), severity, aiDefaultLogStream_FILE);
+      // Assimp::DefaultLogger::get()->info("begin import of model: ", file_path.string());
 
       OTHER_ASSERT(std::filesystem::exists(file_path), "{} does not exist", file_path.string());
 
@@ -483,8 +483,7 @@ namespace other {
       }
 
       CORE_LOG_DEBUG("Model loaded successfully: {}", file_path.string());
-      Assimp::DefaultLogger::get()->info("Model loaded successfully: ", file_path.string());
-
+      // Assimp::DefaultLogger::get()->info("Model loaded successfully: ", file_path.string());
       CORE_LOG_DEBUG("Model has {} meshes, {} materials, {} textures, {} animations, and {} lights", scene->mNumMeshes, scene->mNumMaterials, scene->mNumTextures, scene->mNumAnimations, scene->mNumLights);
 
       builder.global_transform = mat4_from_ai_mat4(scene->mRootNode->mTransformation);

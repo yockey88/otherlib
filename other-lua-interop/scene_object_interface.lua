@@ -75,7 +75,7 @@ function _SceneObjectInterface:AttachPointLight(pl)
   return Other:Scene():AttachPointLightToObject(self.native_id, pl)
 end
 function _SceneObjectInterface:AttachDirectionLight(dl)
-  return Other:Scene():AttachDirectionalLightToObject(self.native_id, dl)
+  return Other:Scene():AttachDirectionLightToObject(self.native_id, dl)
 end
 
 return _SceneObjectInterface

@@ -29,6 +29,7 @@ namespace other {
 
   struct pass_begin_info {
     opt<resource_handle> framebuffer;  // none = swapchain
+    std::string pass_name;
     glm::ivec2 render_area_size;
     opt<glm::vec4> clear_color;
     opt<float> clear_depth;
@@ -73,6 +74,8 @@ namespace other {
     virtual void handle_event(SDL_Event* event) = 0;
 
     virtual void set_clear_color(const glm::vec4& color) = 0;
+    virtual void set_clear_depth(float depth) = 0;
+    virtual void set_clear_stencil(uint32_t stencil) = 0;
 
     void begin_frame();
     void end_frame();
@@ -89,11 +92,17 @@ namespace other {
     virtual void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) = 0;
 
     virtual void set_viewport(int32_t x, int32_t y, int32_t width, int32_t height) = 0;
+    virtual void clear_viewport(const glm::vec4& clear_color, uint32_t clear_mask) = 0;
     virtual void set_color_mask(bool enabled_or_disabled) = 0;
     virtual void set_depth_mask(bool enabled_or_disabled) = 0;
     virtual void set_depth_test(bool enabled_or_disabled) = 0;
 
     virtual void memory_barrier(shader::compute_barrier_type bits) = 0;
+
+    virtual void set_polygon_mode(render_polygon_mode mode) = 0;
+    virtual void set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) = 0;
+    virtual void set_stencil_mask(uint32_t mask) = 0;
+    virtual void set_depth_func(depth_func func) = 0;
 
     void begin_ui_frame();
     void end_ui_frame();
@@ -127,7 +136,7 @@ namespace other {
     virtual void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) = 0;
     virtual void draw_mesh_instanced(const resource_handle& handle, const draw_call& call) = 0;
 
-    virtual void bind_framebuffer_resource(const resource_handle& handle) = 0;
+    virtual void bind_framebuffer_resource(const resource_handle& handle, bool clear = true) = 0;
     virtual void unbind_framebuffer_resource(const resource_handle& handle) = 0;
     virtual void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level, uint32_t color_attachment_index = 0) = 0;
     virtual void finalize_framebuffer(const resource_handle& handle) = 0;
@@ -141,6 +150,7 @@ namespace other {
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, int64_t value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, uint64_t value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, real_t value) = 0;
+    virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec2& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec3& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::vec4& value) = 0;
     virtual void set_shader_uniform(const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose = false) = 0;
@@ -175,6 +185,8 @@ namespace other {
 
     glm::vec3 get_clear_color() const;
     void override_clear_color(const glm::vec3& color);
+    void override_clear_depth(float depth);
+    void override_clear_stencil(uint32_t stencil);
 
     glm::ivec2 get_window_size() const;
     void set_window_size(const glm::ivec2& size);
@@ -212,6 +224,8 @@ namespace other {
     scope<window_manager> window_mgr;
 
     glm::vec3 clear_color;
+    float clear_depth = 1.0f;
+    uint32_t clear_stencil = 0;
     glm::ivec2 window_size;
 
     std::map<natural_t, resource*> resources;

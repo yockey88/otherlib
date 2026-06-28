@@ -197,6 +197,8 @@ namespace other {
 
     // other
     virtual void on_render() {}
+    virtual void on_debug_render(render_data* data) {}
+    virtual void on_begin_frame(render_data* frame_data) {}
     virtual void on_ui_render() {}
 
    protected:

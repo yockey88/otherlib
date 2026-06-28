@@ -17,6 +17,7 @@ namespace other {
       void validate_frame_executors(validation_result& result, const toml::table& tbl);
       void validate_frame_resource_tags(validation_result& result, const toml::table& tbl);
       void validate_frame_passes(validation_result& result, const toml::table& tbl, std::set<std::string>& out_pass_names);
+      void validate_pass_uniforms(validation_result& result, const toml::table& tbl);
       void validate_frame_pass_bindings(validation_result& result, const toml::table& tbl);
       void validate_cross_references(validation_result& result, const toml::table& tbl, const std::set<std::string>& buffer_names, const std::set<std::string>& texture_names,
                                      const std::set<std::string>& shader_names, const std::set<std::string>& binding_names, const std::set<std::string>& pass_names);
@@ -52,17 +53,26 @@ namespace other {
       std::set<std::string> pass_names;
 
       validate_resources(result, tbl, buffer_names, texture_names, shader_names);
+
+      auto display_tex = tbl.at_path("frame.display-texture");
+      if (display_tex) {
+        if (!display_tex.is_string()) {
+          result.fail("'frame.display-texture': must be a string");
+        } else if (display_tex.as_string()->get().empty()) {
+          result.fail("'frame.display-texture': must not be empty");
+        }
+      }
+
       validate_frame_bindings(result, tbl, binding_names);
       validate_frame_inputs_outputs(result, tbl);
       validate_frame_executors(result, tbl);
       validate_frame_resource_tags(result, tbl);
       validate_frame_passes(result, tbl, pass_names);
       validate_frame_pass_bindings(result, tbl);
-
       if (result.valid) {
         validate_cross_references(result, tbl, buffer_names, texture_names, shader_names, binding_names, pass_names);
+        validate_pass_uniforms(result, tbl);
       }
-
       return result;
     }
 
@@ -206,6 +216,7 @@ namespace other {
         "read",
         "write",
         "read_write",
+        "sample",
       };
 
       template <size_t N>
@@ -439,12 +450,16 @@ namespace other {
       void validate_frame_inputs_outputs(validation_result& result, const toml::table& tbl) {
         const auto inputs = tbl.at_path("frame.inputs");
         const auto outputs = tbl.at_path("frame.outputs");
+        const auto uniform_name = tbl.at_path("frame.uniform_name");
 
         if (!inputs || !inputs.is_array_of_tables()) {
           result.fail("frame.inputs: missing or not an array of tables");
         }
         if (!outputs || !outputs.is_array_of_tables()) {
           result.fail("frame.outputs: missing or not an array of tables");
+        }
+        if (uniform_name && !uniform_name.is_string()) {
+          result.fail("frame.uniform_name: if present, must be a string");
         }
 
         const auto validate_io_entry = [&](const std::string_view section, const toml::node& entry) {
@@ -530,26 +545,6 @@ namespace other {
 
           if (!is_valid_enum(name_str, kValidExecutorNames)) {
             result.fail(std::format("frame.executors (pass '{}'): '{}' is not a valid executor name", pass_str, name_str));
-          }
-
-          const auto uniforms = exec.at_path("uniforms");
-          if (uniforms) {
-            if (!uniforms.is_array_of_tables()) {
-              result.fail(std::format("frame.executors (pass '{}'): 'uniforms' must be an array of tables", pass_str));
-            } else {
-              for (const auto& u : *uniforms.as_array()) {
-                const auto uname = u.at_path("name");
-                const auto uvalue = u.at_path("value");
-                if (!uname.is_string()) {
-                  result.fail(std::format("frame.executors (pass '{}', uniforms): each entry must have a string 'name'", pass_str));
-                  continue;
-                }
-                const std::string uname_str = uname.as_string()->get();
-                if (!uvalue || !(uvalue.is_number() || uvalue.is_floating_point() || uvalue.is_boolean())) {
-                  result.fail(std::format("frame.executors (pass '{}', uniform '{}'): 'value' must be a number or boolean", pass_str, uname_str));
-                }
-              }
-            }
           }
 
           const auto params = exec.at_path("params");
@@ -719,6 +714,35 @@ namespace other {
         }
       }
 
+      void validate_pass_uniforms(validation_result& result, const toml::table& tbl) {
+        const auto pass_uniforms = tbl.at_path("frame.pass-uniforms");
+        if (!pass_uniforms) {
+          return;
+        }
+
+        if (!pass_uniforms.is_array_of_tables()) {
+          result.fail("frame.pass_uniforms: must be an array of tables if present");
+          return;
+        }
+
+        for (const auto& pu : *pass_uniforms.as_array()) {
+          const auto pass_name = pu.at_path("pass_name");
+          const auto name = pu.at_path("name");
+          const auto value = pu.at_path("value");
+
+          if (!pass_name.is_string()) {
+            result.fail("frame.pass-uniforms[]: 'pass_name' must be a string");
+          }
+          if (!name.is_string()) {
+            result.fail(std::format("frame.pass-uniforms (pass '{}'): 'name' must be a string", pass_name.as_string()->get()));
+          }
+          if (!value.is_string() && !value.is_number() && !value.is_boolean()) {
+            result.fail(std::format("frame.pass-uniforms (pass '{}', uniform '{}'): 'value' must be a string, number, or boolean",
+                                    pass_name.as_string()->get(), name.as_string()->get()));
+          }
+        }
+      }
+
       void validate_frame_pass_bindings(validation_result& result, const toml::table& tbl) {
         const auto pass_bindings = tbl.at_path("frame.pass-bindings");
         if (!pass_bindings) {
@@ -753,6 +777,22 @@ namespace other {
           return buffer_names.contains(n) || texture_names.contains(n);
         };
 
+        const auto display_texture = tbl.at_path("frame.display_texture");
+        if (display_texture && display_texture.is_string()) {
+          const std::string display_tex_str = display_texture.as_string()->get();
+          if (!texture_names.contains(display_tex_str)) {
+            result.fail(std::format("frame.display_texture: '{}' is not declared in resources.textures", display_tex_str));
+          }
+        }
+
+        const auto no_display = tbl.at_path("frame.no_display");
+        if (no_display && no_display.is_boolean()) {
+          const bool no_display_flag = no_display.as_boolean()->get();
+          if (no_display_flag && display_texture) {
+            result.fail("frame.no_display is true, but frame.display_texture is also specified");
+          }
+        }
+
         // passes -> shaders
         const auto passes = tbl.at_path("frame.passes");
         if (passes && passes.is_array_of_tables()) {
@@ -762,8 +802,21 @@ namespace other {
             if (name.is_string() && shader_name.is_string()) {
               const std::string shader_str = shader_name.as_string()->get();
               if (!shader_names.contains(shader_str)) {
-                result.fail(std::format("frame.passes['{}']: shader '{}' is not declared in resources.shaders",
-                                        name.as_string()->get(), shader_str));
+                result.fail(std::format("frame.passes['{}']: shader '{}' is not declared in resources.shaders", name.as_string()->get(), shader_str));
+              }
+            }
+
+            const auto clear_bits = pass.at_path("clear_bits");
+            if (clear_bits && clear_bits.is_array()) {
+              for (size_t i = 0; i < clear_bits.as_array()->size(); ++i) {
+                if (!clear_bits.as_array()->at(i).is_string()) {
+                  result.fail(std::format("frame.passes['{}']: clear_bits[{}] must be a string", name.as_string()->get(), i));
+                } else {
+                  const std::string clear_bit_str = clear_bits.as_array()->at(i).as_string()->get();
+                  if (!is_valid_enum(clear_bit_str, kValidAttachmentTypes)) {
+                    result.fail(std::format("frame.passes['{}']: '{}' is not a valid clear bit", name.as_string()->get(), clear_bit_str));
+                  }
+                }
               }
             }
           }

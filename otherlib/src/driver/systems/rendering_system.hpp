@@ -24,6 +24,7 @@ namespace other {
 
     void initialize(driver_kernel* kernel) override;
     void late_initialize(driver_kernel* kernel) override;
+    void on_driver_ready(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
@@ -44,11 +45,16 @@ namespace other {
     void show_open_folder_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);
     void show_save_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);
 
+    void handle_viewport_resize_event(const value& data);
+
    private:
     struct pipeline_asset {
       natural_t asset_id;
       pipeline_definition definition;
     };
+
+    bool add_debug_overlay = false;
+    std::vector<std::string> debug_pipeline_names = {};
 
     scope<renderer> renderer_ptr = nullptr;
     scope<pass_executor_resolver> pass_resolver_ptr = nullptr;
@@ -60,14 +66,15 @@ namespace other {
 
     void register_builtin_resource_tags();
     void register_builtin_render_executors();
-    void register_builtin_renderer_debug_streams();
 
     void configure_pipelines(driver_kernel* kernel);
 
-    void handle_viewport_resize_event(const value& data);
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);
     void handle_rendering_pipeline_asset_loaded_event(driver_kernel* kernel, const value& data);
     void handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data);
+
+    void add_debug_overlay_to_pipeline(const std::string_view pl_name);
+    pipeline_definition get_debug_overlay_pipeline_definition() const;
   };
 
 }  // namespace other

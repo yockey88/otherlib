@@ -12,8 +12,8 @@
 namespace other {
 
   struct bounding_box {
-    glm::vec3 min = { 0, 0, 0 };
-    glm::vec3 max = { 0, 0, 0 };
+    glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+    glm::vec3 max = glm::vec3(-std::numeric_limits<float>::max());
 
     bounding_box() = default;
     bounding_box(const glm::vec3& min, const glm::vec3& max)
@@ -26,6 +26,8 @@ namespace other {
 
     bool intersects(const bounding_box& other) const;
     bool intersects(const ray& r) const;
+
+    bounding_box transform(const glm::mat4& t);
 
     static bounding_box expand_to_include(const bounding_box& box, const bounding_box& other);
   };

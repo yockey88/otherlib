@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 
 #include "core/defines.hpp"
+#include "data-structures/graph.hpp"
 
 #include "gpu_resource/framebuffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
@@ -26,25 +27,27 @@ namespace other {
     ///        rendering passes and their resources but maybe we can still do it?
     struct graph {
       std::map<natural_t, frame_node> nodes;
-      std::map<natural_t, std::vector<natural_t>> edges;
+      std::map<natural_t, std::set<natural_t>> edges;
     };
 
     using pass_executor = std::function<void(pass_context&)>;
 
     struct pass_builder {
       pass_builder(render_graph& graph, render_pass& pass)
-          : graph(graph), pass(pass) {}
+          : pass(pass), graph(graph) {}
 
       pass_builder& set_clear_color(const glm::vec4& clear_color);
-      pass_builder& texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags = READ_WRITE, uint32_t mip_level = 0);
+      pass_builder& texture_resource(resource_handle handle, const std::string_view uname, natural_t slot, framebuffer::attachment_type type, access_flags flags = READ_WRITE, uint32_t mip_level = 0);
       pass_builder& buffer_resource(resource_handle handle, uint32_t binding, access_flags flags = READ_WRITE);
       pass_builder& execution_callback(pass_executor&& executor, void* user_data = nullptr);
       pass_builder& depends_on(const std::string_view pass_name);
+      pass_builder& add_uniform(const std::string_view name, const value& val);
       render_graph& end_pass();
+
+      render_pass& pass;
 
      private:
       render_graph& graph;
-      render_pass& pass;
 
       natural_t curr_texture_id = 0;
       natural_t get_next_texture_id() {
@@ -82,6 +85,10 @@ namespace other {
 
     renderer* get_renderer() { return renderer_ptr; }
 
+    void replace_texture_resource(resource_handle old_handle, resource_handle new_handle);
+    void replace_buffer_resource(resource_handle old_handle, resource_handle new_handle);
+    void replace_pass_shader(resource_handle old_handle, resource_handle new_handle);
+
    private:
     friend struct pass_builder;
 
@@ -92,19 +99,20 @@ namespace other {
     std::map<natural_t, pass_executor> executors;
     opt<resource_handle> output_texture_handle = std::nullopt;
 
+    // graph<render_pass> pass_graph;
     graph pass_graph;
     std::vector<natural_t> topological_sort;
 
     pass& create_pass(render_pass::type rptype);
 
     void build_graph();
+
     std::vector<natural_t> get_topological_sort(const graph& g);
+    void dump_pass_graph(const graph& g);
+    void log_topo_sort_error(const graph& g, const std::map<natural_t, uint32_t>& remaining_in_degrees);
 
     natural_t next_pass_id = 0;
     inline natural_t get_next_pass_id() { return ++next_pass_id; }
-
-    natural_t next_node_id = 0;
-    inline natural_t get_next_node_id() { return next_node_id++; }
   };
 
 }  // namespace other

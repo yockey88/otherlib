@@ -24,6 +24,8 @@ namespace other {
     MOCK_METHOD(void, handle_event, (SDL_Event * event), (override));
 
     MOCK_METHOD(void, set_clear_color, (const glm::vec4& color), (override));
+    MOCK_METHOD(void, set_clear_depth, (float depth), (override));
+    MOCK_METHOD(void, set_clear_stencil, (uint32_t stencil), (override));
 
     MOCK_METHOD(void, on_begin_frame, (scope<window_manager> & window_mgr), (override));
     MOCK_METHOD(void, on_end_frame, (scope<window_manager> & window_mgr), (override));
@@ -37,9 +39,15 @@ namespace other {
     MOCK_METHOD(void, execute_draw_call, (render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call), (override));
 
     MOCK_METHOD(void, set_viewport, (int32_t x, int32_t y, int32_t width, int32_t height), (override));
+    MOCK_METHOD(void, clear_viewport, (const glm::vec4& clear_color, uint32_t clear_mask), (override));
     MOCK_METHOD(void, set_color_mask, (bool enabled_or_disabled), (override));
     MOCK_METHOD(void, set_depth_mask, (bool enabled_or_disabled), (override));
     MOCK_METHOD(void, set_depth_test, (bool enabled_or_disabled), (override));
+
+    MOCK_METHOD(void, set_polygon_mode, (render_polygon_mode mode), (override));
+    MOCK_METHOD(void, set_stencil_func, (stencil_func func, int32_t ref, uint32_t mask), (override));
+    MOCK_METHOD(void, set_stencil_mask, (uint32_t mask), (override));
+    MOCK_METHOD(void, set_depth_func, (depth_func func), (override));
 
     MOCK_METHOD(void, memory_barrier, (shader::compute_barrier_type bits), (override));
 
@@ -72,7 +80,7 @@ namespace other {
     MOCK_METHOD(void, draw_mesh, (const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count, mesh::attribute_type index_type), (override));
     MOCK_METHOD(void, draw_mesh_instanced, (const resource_handle& handle, const draw_call& call), (override));
 
-    MOCK_METHOD(void, bind_framebuffer_resource, (const resource_handle& handle), (override));
+    MOCK_METHOD(void, bind_framebuffer_resource, (const resource_handle& handle, bool clear), (override));
     MOCK_METHOD(void, unbind_framebuffer_resource, (const resource_handle& handle), (override));
     MOCK_METHOD(void, framebuffer_texture_2d, (const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level, uint32_t color_attachment_index), (override));
     MOCK_METHOD(void, finalize_framebuffer, (const resource_handle& handle), (override));
@@ -86,6 +94,7 @@ namespace other {
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, int64_t value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, uint64_t value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, real_t value), (override));
+    MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::vec2& value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::vec3& value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::vec4& value), (override));
     MOCK_METHOD(void, set_shader_uniform, (const resource_handle& shader, const std::string_view name, const glm::mat4& value, bool transpose), (override));

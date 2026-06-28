@@ -34,6 +34,8 @@ namespace other {
 
     bool contains(const bounding_box& box) const;
     bool contains(const glm::vec3& point) const;
+
+    bounding_box get_containing_aabb() const;
   };
 
 }  // namespace other

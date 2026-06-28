@@ -19,10 +19,12 @@ core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
 
 [rendering]
+# enable-debug = false
 ui-layout-ini = "resources/ui/editor-layout.ini"
 imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
 pipelines = [
-  "resources/editor-assets/default-pipeline.toml"
+  "resources/editor-assets/default-pipeline.toml",
+  # "resources/editor-assets/test-pipeline.toml"
 ]
 
 [ui]

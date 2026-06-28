@@ -8,12 +8,12 @@
 #include <imgui/imgui_internal.h>
 #include <imgui/imgui_memory_editor.h>
 
-#include "renderer/ui/ui_window.hpp"
-
 #include "driver/driver.hpp"
 #include "driver/systems/vm_system.hpp"
 #include "plugin/plugin.hpp"
+#include "ui/ui_window.hpp"
 #include "vm/vm.hpp"
+
 
 using namespace other;
 

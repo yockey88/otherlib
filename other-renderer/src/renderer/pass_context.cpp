@@ -80,24 +80,67 @@ namespace other {
     renderer_ptr->rendering()->api()->dispatch_shader(*node->pass->shader_handle, glm::ivec3(groups), barrier);
   }
 
-  void pass_context::draw_debug_stream(std::string_view stream_name, const debug_stream_definition& def, std::span<const uint8_t> data, size_t count) {
+  void pass_context::draw_debug_vertices(std::string_view stream_name, mesh::primitive_type topology) {
     ASSERT_MAIN_THREAD();
-    if (count == 0) return;
-    OTHER_ASSERT(data.size() == def.element_size * count, "draw_debug_stream('{}'): data.size()={} but element_size*count={}", stream_name, data.size(), def.element_size * count);
+    const debug_streams& s = frame_data->debug_data;
+    const size_t verts = s.count(stream_name);
 
-    resource_handle stream_mesh = renderer_ptr->get_or_create_debug_stream_mesh(stream_name, def.draw_recipe);
-    auto& mesh_res = renderer_ptr->get_resource<mesh>(stream_mesh);
-    mesh_res.upload_vertex_buffer(std::format("{}.vertices", stream_name), count, data.data(), data.size())
+    if (verts == 0) {
+      return;
+    }
+
+    resource_handle m = s.get_mesh_handle(stream_name);
+    renderer_ptr->get_resource<mesh>(m)
+      .upload_vertex_buffer(stream_name, gpu_buffer::DYNAMIC, (uint32_t)verts, s.view(stream_name).data(), s.view(stream_name).size())
       .finalize_mesh();
-
-    auto shader_handle = renderer_ptr->get_debug_stream_shader_handle(def.draw_recipe.shader);
-    OTHER_ASSERT(shader_handle.has_value(), "draw_debug_stream('{}'): shader '{}' not loaded", stream_name, def.draw_recipe.shader);
-
-    auto& sh = renderer_ptr->get_resource<shader>(*shader_handle);
-    sh.bind();
-    // camera stuff??
-    renderer_ptr->rendering()->api()->draw_mesh(stream_mesh, def.draw_recipe.topology, count);
-    sh.unbind();
+    renderer_ptr->rendering()->api()->draw_mesh(m, topology, verts);
   }
+
+  void pass_context::draw_debug_mesh(const debug_mesh_instance& instance) {
+    ASSERT_MAIN_THREAD();
+    if (!renderer_ptr->resource_exists(instance.mesh_handle)) {
+      return;
+    }
+
+    shader* sh = shader_for_pass();
+    OTHER_ASSERT(sh != nullptr, "draw_debug_mesh: pass '{}' has no shader bound", node->pass->name);
+    sh->set_uniform("OE_model", instance.model);
+    sh->set_uniform("OE_tint", instance.color);
+
+    auto& api = renderer_ptr->rendering()->api();
+    const bool wire = (instance.flags & debug_mesh_instance::DEBUG_MESH_WIREFRAME) != 0;
+    api->set_polygon_mode(wire ? POLYGON_MODE_LINE : POLYGON_MODE_FILL);
+    if (instance.flags & debug_mesh_instance::DEBUG_MESH_NO_DEPTH) {
+      api->set_depth_test(false);
+    }
+
+    renderer_ptr->get_resource<mesh>(instance.mesh_handle).draw();
+
+    if (instance.flags & debug_mesh_instance::DEBUG_MESH_NO_DEPTH) {
+      api->set_depth_test(true);
+    }
+
+    api->set_polygon_mode(POLYGON_MODE_FILL);
+  }
+
+  // void pass_context::draw_debug_stream(std::string_view stream_name, const debug_stream_definition& def, std::span<const uint8_t> data, size_t count) {
+  //   ASSERT_MAIN_THREAD();
+  //   if (count == 0) return;
+  //   OTHER_ASSERT(data.size() == def.element_size * count, "draw_debug_stream('{}'): data.size()={} but element_size*count={}", stream_name, data.size(), def.element_size * count);
+
+  //   resource_handle stream_mesh = renderer_ptr->get_or_create_debug_stream_mesh(stream_name, def.draw_recipe);
+  //   auto& mesh_res = renderer_ptr->get_resource<mesh>(stream_mesh);
+  //   mesh_res.upload_vertex_buffer(std::format("{}.vertices", stream_name), count, data.data(), data.size())
+  //     .finalize_mesh();
+
+  //   auto shader_handle = renderer_ptr->get_debug_stream_shader_handle(def.draw_recipe.shader);
+  //   OTHER_ASSERT(shader_handle.has_value(), "draw_debug_stream('{}'): shader '{}' not loaded", stream_name, def.draw_recipe.shader);
+
+  //   auto& sh = renderer_ptr->get_resource<shader>(*shader_handle);
+  //   sh.bind();
+  //   // camera stuff??
+  //   renderer_ptr->rendering()->api()->draw_mesh(stream_mesh, def.draw_recipe.topology, count);
+  //   sh.unbind();
+  // }
 
 }  // namespace other

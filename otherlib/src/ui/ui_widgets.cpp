@@ -6,7 +6,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-#include "renderer/ui/ui_helpers.hpp"
+#include "ui/ui_helpers.hpp"
 
 namespace other {
   namespace ui {

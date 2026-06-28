@@ -16,8 +16,8 @@ namespace other {
     return *this;
   }
 
-  render_graph::pass_builder& render_graph::pass_builder::texture_resource(resource_handle handle, natural_t slot, framebuffer::attachment_type type, access_flags flags, uint32_t mip_level) {
-    auto [itr, success] = pass.texture_resources.insert({ get_next_texture_id(), { .type = type, .slot = slot, .flags = flags, .handle = handle, .mip_level = mip_level } });
+  render_graph::pass_builder& render_graph::pass_builder::texture_resource(resource_handle handle, const std::string_view uname, natural_t slot, framebuffer::attachment_type type, access_flags flags, uint32_t mip_level) {
+    auto [itr, success] = pass.texture_resources.insert({ get_next_texture_id(), { .uniform_name = std::string(uname), .type = type, .slot = slot, .flags = flags, .handle = handle, .mip_level = mip_level } });
     if (!success) {
       CORE_LOG_ERROR("Could not add texture resource [{}]. texture resources already bound at {}", handle, slot);
     }
@@ -47,6 +47,19 @@ namespace other {
     return *this;
   }
 
+  render_graph::pass_builder& render_graph::pass_builder::add_uniform(const std::string_view name, const value& val) {
+    natural_t name_hash = FNV(name);
+    if (pass.uniforms.contains(name_hash)) {
+      CORE_LOG_ERROR("Uniform with name '{}' already exists for pass '{}'. Cannot add uniform.", name, pass.name);
+    } else {
+      pass.uniforms[name_hash] = {
+        .name = std::string(name),
+        .val = val
+      };
+    };
+    return *this;
+  }
+
   render_graph& render_graph::pass_builder::end_pass() {
     if (pass.framebuffer_handle.has_value() && pass.pass_type == render_pass::RENDER_PASS) {
       auto& fb = graph.renderer_ptr->get_resource<framebuffer>(*pass.framebuffer_handle);
@@ -55,7 +68,7 @@ namespace other {
         .set_samples(pass.samples)
         .set_clear_color({ 0.1f, 0.1f, 0.1f, 1.f });
       for (const auto& [_, texture] : pass.texture_resources) {
-        if ((texture.flags & WRITE) == WRITE) {
+        if (texture.flags & WRITE) {
           fb.add_attachment(texture.handle, texture.type, texture.mip_level);
         }
       }
@@ -109,6 +122,60 @@ namespace other {
     return pass_builder(*this, rp);
   }
 
+  void render_graph::replace_texture_resource(resource_handle old_handle, resource_handle new_handle) {
+    for (auto& [_, pass] : passes) {
+      for (auto& [_, texture] : pass.pass.texture_resources) {
+        if (texture.handle == old_handle) {
+          texture.handle = new_handle;
+        }
+      }
+    }
+
+    for (auto& n : pass_graph.nodes) {
+      for (auto& [_, texture] : n.second.input_textures) {
+        if (texture.handle == old_handle) {
+          texture.handle = new_handle;
+        }
+      }
+      for (auto& [_, texture] : n.second.output_textures) {
+        if (texture.handle == old_handle) {
+          texture.handle = new_handle;
+        }
+      }
+    }
+  }
+
+  void render_graph::replace_buffer_resource(resource_handle old_handle, resource_handle new_handle) {
+    for (auto& [_, pass] : passes) {
+      for (auto& [_, buffer] : pass.pass.buffer_resources) {
+        if (buffer.handle == old_handle) {
+          buffer.handle = new_handle;
+        }
+      }
+    }
+
+    for (auto& n : pass_graph.nodes) {
+      for (auto& [_, buffer] : n.second.input_buffers) {
+        if (buffer.handle == old_handle) {
+          buffer.handle = new_handle;
+        }
+      }
+      for (auto& [_, buffer] : n.second.output_buffers) {
+        if (buffer.handle == old_handle) {
+          buffer.handle = new_handle;
+        }
+      }
+    }
+  }
+
+  void render_graph::replace_pass_shader(resource_handle old_handle, resource_handle new_handle) {
+    for (auto& [_, pass] : passes) {
+      if (pass.pass.shader_handle.has_value() && *pass.pass.shader_handle == old_handle) {
+        pass.pass.shader_handle = new_handle;
+      }
+    }
+  }
+
   render_graph::pass& render_graph::create_pass(render_pass::type rptype) {
     natural_t id = get_next_pass_id();
     auto [itr, inserted] = passes.insert({ id, { .type = rptype, .pass = render_pass{ .pass_type = rptype, .id = id } } });
@@ -131,102 +198,98 @@ namespace other {
       return;
     }
 
-    std::vector<frame_node> nodes;
-    nodes.reserve(passes.size());
+    {
+      std::vector<frame_node> nodes;
+      nodes.reserve(passes.size());
 
-    for (auto& [id, pass] : passes) {
-      auto& n = nodes.emplace_back() = frame_node{
-        .id = get_next_node_id(),
-        .pass = &pass.pass,
-      };
-      /**
-       * \todo  handle flags correctly, currently only READ and WRITE are supported
-       **/
+      for (auto& [id, pass] : passes) {
+        auto& n = nodes.emplace_back() = frame_node{
+          .id = pass.pass.id,
+          .pass = &pass.pass,
+        };
 
-      for (const auto& [id, texture] : pass.pass.texture_resources) {
-        if (texture.flags == READ) {
-          n.input_textures.insert({ id, texture });
-        }
-        if (texture.flags == WRITE) {
-          n.output_textures.insert({ id, texture });
-        }
-      }
-
-      for (const auto& [id, buffer] : pass.pass.buffer_resources) {
-        if (buffer.flags == READ) {
-          n.input_buffers.insert({ id, buffer });
-        }
-        if (buffer.flags == WRITE) {
-          n.output_buffers.insert({ id, buffer });
-        }
-      }
-    }
-
-    std::vector<std::set<natural_t>> edges;
-    edges.resize(nodes.size());
-    for (const auto& n1 : nodes) {
-      auto& e1 = edges[n1.id];
-      for (const auto& n2 : nodes) {
-        if (n1 == n2) {
-          continue;
-        }
-
-        for (const auto& [slot, texture] : n1.output_textures) {
-          if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
-              itr != n2.input_textures.end()) {
-            e1.insert(n2.id);
-            CORE_LOG_DEBUG("Adding edge from pass {} to pass {} for texture resource {}", n1.pass->id, n2.pass->id, texture.handle);
+        for (const auto& [id, texture] : pass.pass.texture_resources) {
+          if (texture.flags & READ || texture.flags & SAMPLE) {
+            n.input_textures.insert({ id, texture });
+          }
+          if (texture.flags & WRITE) {
+            n.output_textures.insert({ id, texture });
           }
         }
-        for (const auto& [slot, texture] : n1.output_buffers) {
-          if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
-              itr != n2.input_buffers.end()) {
-            e1.insert(n2.id);
-            CORE_LOG_DEBUG("Adding edge from pass {} to pass {} for buffer resource {}", n1.pass->id, n2.pass->id, texture.handle);
+
+        for (const auto& [id, buffer] : pass.pass.buffer_resources) {
+          if (buffer.flags & READ) {
+            n.input_buffers.insert({ id, buffer });
+          }
+          if (buffer.flags & WRITE) {
+            n.output_buffers.insert({ id, buffer });
           }
         }
       }
-    }
 
-    for (const auto& n : nodes) {
-      for (const auto& depends_on_str : n.pass->depends_on) {
-        auto itr = std::ranges::find_if(nodes, [&](const frame_node& node) -> bool { return node.pass->name == depends_on_str; });
-        if (itr != nodes.end()) {
-          auto& e = edges[itr->id];
-          if (!e.contains(n.id)) {
-            e.insert(n.id);
+      /// list of outgoing edges
+      std::map<natural_t, std::set<natural_t>> edges;
+      for (const auto& n1 : nodes) {
+        auto& e1 = edges[n1.id];
 
-            // this forces a direction, so we have to remove the other if it exists
-            auto& reverse_e = edges[n.id];
-            if (reverse_e.contains(itr->id)) {
-              reverse_e.erase(itr->id);
+        for (const auto& n2 : nodes) {
+          if (n1 == n2) {
+            continue;
+          }
+          auto& e2 = edges[n2.id];
+
+          for (const auto& [slot, texture] : n1.output_textures) {
+            if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
+                itr != n2.input_textures.end() &&  // if n2 reads from a texture that n1 writes to
+                !e2.contains(n1.id)) {             // and there is not already a backwards edge from n2 to n1
+              e1.insert(n2.id);
+            }
+          }
+          for (const auto& [slot, texture] : n1.output_buffers) {
+            if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
+                itr != n2.input_buffers.end() &&  // if n2 reads from a buffer that n1 writes to
+                !e2.contains(n1.id)) {            // and there is not already a backwards edge from n2 to n1
+              e1.insert(n2.id);
             }
           }
         }
       }
-    }
 
-    pass_graph = graph{};
-    for (natural_t i = 0; i < nodes.size(); ++i) {
-      const auto& n = nodes[i];
-      const auto& e = edges[i];
-      pass_graph.nodes.insert({ n.id, n });
-      pass_graph.edges.insert({ n.id, std::vector<natural_t>{ e.begin(), e.end() } });
+      for (const auto& n : nodes) {
+        for (const auto& depends_on_str : n.pass->depends_on) {
+          auto itr = std::ranges::find_if(nodes, [&](const frame_node& node) -> bool { return node.pass->name == depends_on_str; });
+          if (itr == nodes.end()) {
+            continue;
+          }
+
+          auto& e = edges[itr->id];
+          if (!e.contains(n.id)) {
+            e.insert(n.id);
+          }
+        }
+      }
+
+      for (natural_t i = 0; i < nodes.size(); ++i) {
+        const auto& n = nodes[i];
+        pass_graph.nodes.insert({ n.id, n });
+      }
+      pass_graph.edges = std::move(edges);
     }
 
     topological_sort = get_topological_sort(pass_graph);
-    if (topological_sort.empty()) {
-      CORE_LOG_ERROR("Render graph is not a valid DAG, cannot execute.");
-      output_texture_handle = std::nullopt;
-      graph_valid = false;
-      return;
-    }
-    if (topological_sort.size() == 1 && topological_sort[0] == static_cast<natural_t>(-1)) {
-      CORE_LOG_WARN("Render graph is empty. An empty graph is valid, but if this is unexpected, please check your render passes.");
+    if (topological_sort.empty() || (topological_sort.size() == 1 && topological_sort[0] == static_cast<natural_t>(-1))) {
+      if (topological_sort.empty()) {
+        CORE_LOG_ERROR("Render graph is not valid, cannot execute.");
+      } else {
+        CORE_LOG_WARN("Render graph is empty. An empty graph is valid, but if this is unexpected, please check your render passes.");
+      }
       output_texture_handle = std::nullopt;
       graph_valid = true;
+      dump_pass_graph(pass_graph);
       return;
     }
+
+    graph_valid = true;
 
     std::stringstream ss;
     ss << "Render Pass Order:\n";
@@ -241,13 +304,11 @@ namespace other {
       }
     }
     CORE_LOG_INFO("{}", ss.str());
-
-    graph_valid = true;
   }
 
   /*
-L ← Empty list that will contain the sorted elements
-S ← Set of all nodes with no incoming edge
+L <- Empty list that will contain the sorted elements
+S <- Set of all nodes with no incoming edge
 
 while S is not empty do
     remove a node n from S
@@ -270,51 +331,70 @@ else
       return { static_cast<natural_t>(-1) };
     }
 
-    std::vector<natural_t> sorted;
-    sorted.reserve(g.nodes.size());
-
-    std::vector<natural_t> in_degree;
-    in_degree.resize(g.nodes.size(), 0);
-
-    std::set<natural_t> no_incoming_edges;
+    std::map<natural_t, uint32_t> in_degree;
+    for (const auto& [id, node] : g.nodes) {
+      in_degree[id] = 0;
+    }
     for (const auto& [id, node1] : g.nodes) {
       for (const auto& neighbor_id : g.edges.at(id)) {
+        OTHER_ASSERT(in_degree.contains(neighbor_id), "In-degree map does not contain neighbor id {}", neighbor_id);
         in_degree[neighbor_id]++;
       }
-      if (in_degree[id] == 0) {
-        no_incoming_edges.insert(id);
+    }
+
+    std::set<natural_t> ready_nodes;  //< S
+    for (const auto& [id, deg] : in_degree) {
+      if (deg == 0) {
+        ready_nodes.insert(id);
       }
     }
 
-    std::map<natural_t, std::set<natural_t>> edges;
-    for (const auto& [id, node] : g.nodes) {
-      auto [itr, sucess] = edges.insert({ id, std::set<natural_t>(g.edges.at(id).begin(), g.edges.at(id).end()) });
-      OTHER_ASSERT(sucess, "Failed to insert edges for node {}", id);
-    }
+    std::vector<natural_t> sorted;  //< L
+    sorted.reserve(g.nodes.size());
+    while (!ready_nodes.empty()) {
+      natural_t n = *ready_nodes.begin();  //< remove n from S
+      ready_nodes.erase(ready_nodes.begin());
+      sorted.push_back(n);  //< add n to L
 
-    while (!no_incoming_edges.empty()) {
-      natural_t current = *no_incoming_edges.begin();
-      no_incoming_edges.erase(no_incoming_edges.begin());
-      sorted.push_back(current);
-
-      auto& current_edges = edges[current];
-      while (!current_edges.empty()) {
-        natural_t neighbor = *current_edges.begin();
-        current_edges.erase(current_edges.begin());
-
-        in_degree[neighbor]--;
-        if (in_degree[neighbor] == 0) {
-          no_incoming_edges.insert(neighbor);
+      for (const auto& nbr : g.edges.at(n)) {
+        --in_degree[nbr];  //< remove edge e from the graph
+        if (in_degree[nbr] == 0) {
+          ready_nodes.insert(nbr);  //< insert into S
         }
       }
     }
 
-    bool any_cycles = std::ranges::any_of(in_degree, [](natural_t degree) { return degree > 0; });
-    if (any_cycles) {
-      CORE_LOG_ERROR("Render graph has cycles, cannot execute.");
+    if (sorted.size() != g.nodes.size()) {
+      log_topo_sort_error(g, in_degree);
       return {};
-    } else {
-      return sorted;
+    }
+    return sorted;
+  }
+
+  void render_graph::dump_pass_graph(const graph& g) {
+    std::stringstream ss;
+    ss << std::format("Pass Graph:\n");
+    for (const auto& [id, node] : g.nodes) {
+      ss << std::format("Node {} {{ ", id, node.pass->name);
+      if (g.edges.contains(id)) {
+        for (const auto& neighbor_id : g.edges.at(id)) {
+          ss << std::format(" -> {}", neighbor_id);
+        }
+      }
+      ss << " } ";
+      ss << std::format("('{}')\n", node.pass->name);
+    }
+    CORE_LOG_INFO("{}", ss.str());
+  }
+
+  void render_graph::log_topo_sort_error(const graph& g, const std::map<natural_t, uint32_t>& remaining_in_degrees) {
+    CORE_LOG_ERROR("Topological sort error: graph has cycles.");
+    for (const auto& [id, deg] : remaining_in_degrees) {
+      if (deg > 0) {
+        auto pass_itr = passes.find(id);
+        OTHER_ASSERT(pass_itr != passes.end(), "Node {} does not correspond to a valid pass.", id);
+        CORE_LOG_ERROR(" - '{}' (ID {}) has {} remaining incoming edges.", pass_itr->second.pass.name, id, deg);
+      }
     }
   }
 

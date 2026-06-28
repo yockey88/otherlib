@@ -11,7 +11,7 @@
 
 #include "core/value.hpp"
 
-#include "renderer/ui/ui_node.hpp"
+#include "ui/ui_node.hpp"
 
 namespace other {
   namespace ui {

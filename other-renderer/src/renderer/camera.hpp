@@ -49,6 +49,10 @@ namespace other {
     glm::mat4& get_view_matrix();
     glm::mat4& get_projection_matrix(const glm::ivec2& window_size);
 
+    const frustum& get_frustum() const {
+      return cam_frustum;
+    }
+
     gpu::camera_data to_gpu_data();
     gpu::ray_gen_data to_ray_gen_data();
 
@@ -114,7 +118,6 @@ OTHER_REFLECT(
   field(fov, other::attr::serializable()),
 
   field(sensitivity, other::attr::serializable()),
-  field(constrain_pitch, other::attr::serializable())
-)
+  field(constrain_pitch, other::attr::serializable()))
 
 #endif  // OTHER_RENDERER_RENDERER_CAMERA_HPP

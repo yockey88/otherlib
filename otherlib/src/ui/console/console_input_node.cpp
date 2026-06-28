@@ -3,8 +3,7 @@
  **/
 #include "ui/console/console_input_node.hpp"
 
-#include "renderer/ui/colors.hpp"
-
+#include "theme/colors.hpp"
 #include "tools/environment_console.hpp"
 
 #include "console_history_node.hpp"
@@ -16,14 +15,8 @@ namespace other {
         : ui_node(window, "Console Input"), driver_ptr(drvr) {
       /// listen for external focus requests (/ or :)
       events().add_listener("console.focus", [this](const value&) { request_focus(); });
-      events().add_listener("console.focus-for-command", [this](const value&) {
-        request_focus();
-        /// prepend ':' to the input buffer
-        if (std::strlen(input_buf) < sizeof(input_buf) - 1) {
-          std::memmove(input_buf + 1, input_buf, std::strlen(input_buf) + 1);
-          input_buf[0] = ':';
-        }
-      });
+      events().add_listener("console.focus-for-command", [this](const value&) { request_focus(); });
+      // events().add_listener("scene.played", [this](const value&) { drop_focus(); });
     }
 
     void console_input_node::set_suggestion_provider(command_suggestion_provider* provider) {
@@ -32,6 +25,10 @@ namespace other {
 
     void console_input_node::request_focus() {
       focus_requested = true;
+    }
+
+    void console_input_node::drop_focus() {
+      force_drop_focus = true;
     }
 
     void console_input_node::navigate_history(int direction) {
@@ -155,7 +152,19 @@ namespace other {
       /// draw the prompt bar
       ImVec2 prompt_pos = ImGui::GetCursorScreenPos();
       bool was_focus_requested = focus_requested;
+      bool was_force_drop_focus = force_drop_focus;
       focus_requested = false;
+      force_drop_focus = false;
+      if (was_force_drop_focus) {
+        ImGui::SetKeyboardFocusHere(-1);  // unfocus
+      } else if (was_focus_requested) {
+        ImGui::SetKeyboardFocusHere(0);
+        /// if the input buffer is empty, prepend ':' for command input
+        if (input_buf[0] == '\0') {
+          std::strncpy(input_buf, ":", sizeof(input_buf) - 1);
+          input_buf[sizeof(input_buf) - 1] = '\0';
+        }
+      }
 
       cw::prompt_result pr = cw::draw_prompt_bar(driver_ptr, input_buf, sizeof(input_buf), was_focus_requested);
       if (pr.submitted) {

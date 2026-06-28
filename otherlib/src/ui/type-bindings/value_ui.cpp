@@ -5,9 +5,8 @@
 
 #include <imgui/imgui_memory_editor.h>
 
-#include "renderer/ui/colors.hpp"
-#include "renderer/ui/ui_helpers.hpp"
-
+#include "theme/colors.hpp"
+#include "ui/ui_helpers.hpp"
 #include "ui/ui_widgets.hpp"
 
 namespace other {
@@ -185,13 +184,11 @@ namespace other {
       ImRect window_bg_rect = ImRect(base_position, window_max);
       ImRect inner_rect = ImRect(
         ImVec2(window_bg_rect.Min.x + padding.x, window_bg_rect.Min.y + padding.y),
-        ImVec2(window_bg_rect.Max.x - padding.x, window_bg_rect.Max.y - padding.y)
-      );
+        ImVec2(window_bg_rect.Max.x - padding.x, window_bg_rect.Max.y - padding.y));
 
       ImRect titlebar_rect = ImRect(
         ImVec2(window_bg_rect.Min.x, window_bg_rect.Min.y),
-        ImVec2(window_bg_rect.Max.x, window_bg_rect.Min.y + ImGui::GetFrameHeight())
-      );
+        ImVec2(window_bg_rect.Max.x, window_bg_rect.Min.y + ImGui::GetFrameHeight()));
 
       std::string type_name = get_value_type_string_from_type(stored_value.type());
       std::string fmt_str = std::format("[{} : {} bytes]", type_name, stored_value.size());
@@ -225,13 +222,11 @@ namespace other {
       /// left half
       ImRect value_rect = ImRect(
         ImVec2(body_rect.Min.x + padding.x, body_rect.Min.y + padding.y),
-        ImVec2(halfway_x - padding.x, body_rect.Max.y - padding.y)
-      );
+        ImVec2(halfway_x - padding.x, body_rect.Max.y - padding.y));
       /// right half
       ImRect raw_memory_rect = ImRect(
         ImVec2(halfway_x + padding.x, body_rect.Min.y + padding.y),
-        ImVec2(body_rect.Max.x - padding.x, body_rect.Max.y - padding.y)
-      );
+        ImVec2(body_rect.Max.x - padding.x, body_rect.Max.y - padding.y));
 
       std::string child_label = std::format("##ValueEditorValue:{}", node_title);
       if (ImGui::BeginChild(child_label.c_str(), ImVec2(value_rect.GetWidth(), value_rect.GetHeight()))) {

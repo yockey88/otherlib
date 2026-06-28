@@ -3,6 +3,8 @@
  **/
 #include "renderer/renderer.hpp"
 
+#include <queue>
+
 #include <SDL3/SDL_mouse.h>
 
 #include "core/defines.hpp"
@@ -20,6 +22,19 @@ namespace other {
   void renderer::initialize_pass_resolver(pass_executor_resolver* resolver) {
     // can be null
     pass_exec_resolver = resolver;
+  }
+
+  void renderer::rebuild_pipeline(const std::string_view pipeline_name) {
+    auto itr = pipelines.find(FNV(pipeline_name));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot rebuild pipeline.", pipeline_name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot rebuild pipeline.", pipeline_name);
+      return;
+    }
+    itr->second->rebuild();
   }
 
   void renderer::begin_frame(render_data* data) {
@@ -43,6 +58,21 @@ namespace other {
     }
   }
 
+  void renderer::clear(framebuffer::clear_mask_bit clear_flags, const glm::vec4& clear_color, float clear_depth, uint32_t clear_stencil) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("renderer::clear");
+    if (clear_flags & framebuffer::COLOR_BIT) {
+      rendering()->api()->set_clear_color(clear_color);
+    }
+    if (clear_flags & framebuffer::DEPTH_BIT) {
+      rendering()->api()->set_clear_depth(clear_depth);
+    }
+    if (clear_flags & framebuffer::STENCIL_BIT) {
+      rendering()->api()->set_clear_stencil(clear_stencil);
+    }
+    rendering()->api()->clear_viewport(clear_color, clear_flags);
+  }
+
   void renderer::render() {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("renderer::render");
@@ -63,6 +93,140 @@ namespace other {
     scene_data = nullptr;
   }
 
+  std::vector<std::string> renderer::get_pipeline_names() const {
+    std::vector<std::string> names;
+    for (const auto& [_, pl] : pipelines) {
+      if (pl != nullptr && pl->is_valid()) {
+        names.push_back(pl->get_name());
+      }
+    }
+    return names;
+  }
+
+  void renderer::register_texture_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register texture resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register texture resource [{}].", pipeline, name);
+      return;
+    }
+    itr->second->register_texture_resource(name, handle);
+  }
+
+  void renderer::register_buffer_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register buffer resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register buffer resource [{}].", pipeline, name);
+      return;
+    }
+    itr->second->register_buffer_resource(name, handle);
+  }
+
+  void renderer::register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& vert_path, const filepath& geom_path, const filepath& frag_path) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+
+    resource_handle handle = {};
+    if (!geom_path.empty()) {
+      handle = shader::create(name, vert_path, geom_path, frag_path, {});
+    } else {
+      handle = shader::create(name, vert_path, frag_path, {});
+    }
+    itr->second->register_shader_resource(name, handle);
+  }
+
+  void renderer::register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& comp_path) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+
+    resource_handle handle = shader::create(name, comp_path, {});
+    itr->second->register_shader_resource(name, handle);
+  }
+
+  void renderer::register_shader_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot register shader resource [{}].", pipeline, name);
+      return;
+    }
+    itr->second->register_shader_resource(name, handle);
+  }
+
+  ImTextureID renderer::get_debug_overlay_id(const std::string_view pipeline_name) {
+    {
+      auto itr = pipelines.find(FNV(pipeline_name));
+      if (itr == pipelines.end()) {
+        CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot get debug overlay texture ID.", pipeline_name);
+        return 0;
+      }
+    }
+    auto debug_pipeline_name = std::format("{}:debug-overlay", pipeline_name);
+    auto itr = pipelines.find(FNV(debug_pipeline_name));
+    if (itr == pipelines.end()) {
+      return 0;
+    }
+
+    return itr->second->get_final_output_texture_id();
+  }
+
+  ImTextureID renderer::get_texture_id(const std::string_view pipeline, const std::string_view name) {
+    auto itr = pipelines.find(FNV(pipeline));
+    if (itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot get texture ID for resource [{}].", pipeline, name);
+      return 0;
+    }
+    if (itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot get texture ID for resource [{}].", pipeline, name);
+      return 0;
+    }
+    return itr->second->get_texture_id(name);
+  }
+
+  opt<resource_handle> renderer::find_texture_resource(const std::string_view name) const {
+    for (auto pl : pipelines | std::views::values) {
+      OTHER_ASSERT(pl != nullptr, "Null pipeline found in renderer pipelines.");
+      if (auto handle = pl->find_texture_by_name(name); handle.has_value()) {
+        return handle;
+      }
+    }
+    return {};
+  }
+
+  opt<resource_handle> renderer::find_buffer_resource(const std::string_view name) const {
+    for (auto pl : pipelines | std::views::values) {
+      OTHER_ASSERT(pl != nullptr, "Null pipeline found in renderer pipelines.");
+      if (auto handle = pl->find_buffer_by_name(name); handle.has_value()) {
+        return handle;
+      }
+    }
+    return {};
+  }
+
   opt<resource_handle> renderer::get_pipeline_output(const std::string_view pipeline_name) const {
     ASSERT_MAIN_THREAD();
     uint64_t hash = FNV(pipeline_name);
@@ -81,17 +245,19 @@ namespace other {
     return pipeline->get_screen_texture();
   }
 
-  resource_handle renderer::get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_recipe& recipe) {
+  resource_handle renderer::get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_definition& definition) {
     natural_t key = FNV(stream_name);
     if (auto itr = debug_stream_meshes.find(key); itr != debug_stream_meshes.end()) {
       return itr->second;
     }
     auto handle = create_resource(std::format("__debug.mesh.{}", stream_name), resource_type::MESH);
-    auto& m = get_resource<mesh>(handle);
-    m.set_primitive_type(recipe.topology);
-    for (const auto& attr : recipe.vertex_layout) {
+    auto& m = get_resource<mesh>(handle)
+                .set_primitive_type(definition.draw_recipe.topology);
+    for (const auto& attr : definition.draw_recipe.vertex_layout) {
       m.add_attribute(attr.name, attr.type, attr.size, attr.offset);
     }
+    m.upload_vertex_buffer(std::format("{}_vertices", stream_name), gpu_buffer::usage::DYNAMIC, definition.max_per_frame, nullptr, definition.element_size * definition.max_per_frame)
+      .finalize_mesh();
     debug_stream_meshes.insert({ key, handle });
     return handle;
   }
@@ -204,6 +370,45 @@ namespace other {
     return rendering()->api()->resource_exists(handle);
   }
 
+  void renderer::draw_mesh(const resource_handle& mesh_handle) {
+    ASSERT_MAIN_THREAD();
+    mesh* m = rendering()->api()->get_resource_as<mesh>(mesh_handle);
+    if (m == nullptr) {
+      CORE_LOG_ERROR("Mesh resource with handle {} not found.", mesh_handle.id);
+      return;
+    }
+    m->draw();
+  }
+
+  void renderer::add_pipeline_dependency(const std::string_view pipeline, const std::string_view depends_on) {
+    uint64_t pipeline_hash = FNV(pipeline);
+    uint64_t depends_on_hash = FNV(depends_on);
+
+    auto pipeline_itr = pipelines.find(pipeline_hash);
+    auto depends_on_itr = pipelines.find(depends_on_hash);
+    if (pipeline_itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot add dependency on [{}].", pipeline, depends_on);
+      return;
+    }
+    if (depends_on_itr == pipelines.end()) {
+      CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot add dependency on [{}].", depends_on, pipeline);
+      return;
+    }
+
+    if (pipeline_itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot add dependency on [{}].", pipeline, depends_on);
+      return;
+    }
+    if (depends_on_itr->second == nullptr) {
+      CORE_LOG_ERROR("Pipeline with name [{}] is null. Cannot add dependency on [{}].", depends_on, pipeline);
+      return;
+    }
+
+    auto pl_dep_itr = pipeline_dependencies.find(pipeline_hash);
+    OTHER_ASSERT(pl_dep_itr != pipeline_dependencies.end(), "Pipeline dependencies entry not found for pipeline '{}'", pipeline);
+    pl_dep_itr->second.push_back(depends_on_hash);
+  }
+
   void renderer::remove_pipeline(const std::string_view name) {
     ASSERT_MAIN_THREAD();
     uint64_t hash = FNV(name);
@@ -250,6 +455,49 @@ namespace other {
   renderer_backend* renderer::rendering() {
     ASSERT_MAIN_THREAD();
     return subsystem<renderer_backend>::get();
+  }
+
+  std::vector<natural_t> renderer::get_pipeline_order() const {
+    std::map<natural_t, uint32_t> in_degree;
+    for (const auto& [id, _] : pipelines) {
+      in_degree[id] = 0;
+    }
+    for (const auto& [_, deps] : pipeline_dependencies) {
+      for (natural_t dep : deps) {
+        in_degree[dep]++;
+      }
+    }
+
+    std::queue<natural_t> ready;
+    for (const auto& [id, degree] : in_degree) {
+      if (degree == 0) {
+        ready.push(id);
+      }
+    }
+
+    std::vector<natural_t> order;
+    while (!ready.empty()) {
+      natural_t id = ready.front();
+      ready.pop();
+      order.push_back(id);
+
+      auto dep_itr = pipeline_dependencies.find(id);
+      if (dep_itr != pipeline_dependencies.end()) {
+        for (natural_t dep : dep_itr->second) {
+          in_degree[dep]--;
+          if (in_degree[dep] == 0) {
+            ready.push(dep);
+          }
+        }
+      }
+    }
+
+    if (order.size() != pipelines.size()) {
+      CORE_LOG_ERROR("Cycle detected in pipeline dependencies! Cannot determine execution order.");
+      return {};
+    }
+
+    return order;
   }
 
   render_pipeline* renderer::get_pass_pipeline(natural_t pass_id) const {

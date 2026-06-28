@@ -5,8 +5,7 @@
 
 #include "core/fnv.hpp"
 
-#include "renderer/ui/colors.hpp"
-
+#include "theme/colors.hpp"
 #include "ui/inspector_widgets.hpp"
 
 namespace other {

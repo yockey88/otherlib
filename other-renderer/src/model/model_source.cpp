@@ -106,16 +106,6 @@ namespace other {
     return &animations[index];
   }
 
-  void model_source::draw() {
-    for (const auto& submesh : submeshes) {
-      // if (index_buffer_handle.has_value() && index_buffer_handle->id != 0) {
-      //   subsystem<renderer_backend>::get()->api()->draw_mesh(handle(), prim_type, vert_count, index_count, mesh::attribute_type::UNSIGNED_BYTE);
-      // } else {
-      //   subsystem<renderer_backend>::get()->api()->draw_mesh(handle(), prim_type, vert_count);
-      // }
-    }
-  }
-
   namespace detail {
 
     std::vector<float> build_vertex_buffer(const std::vector<vertex>& vertices) {
@@ -180,8 +170,8 @@ namespace other {
       }
 
       mesh* m = subsystem<renderer_backend>::get()->api()->get_resource_as<mesh>(mesh_handle);
-      m->upload_vertex_buffer(name + "_model_vertices", vertices.size(), vertex_data.data(), vertex_data.size() * sizeof(float))
-        .upload_index_buffer(name + "_model_indices", indices_data.size(), indices_data.data(), indices_data.size() * sizeof(uint32_t))
+      m->upload_vertex_buffer(name + "_model_vertices", gpu_buffer::usage::STATIC, vertices.size(), vertex_data.data(), vertex_data.size() * sizeof(float))
+        .upload_index_buffer(name + "_model_indices", gpu_buffer::usage::STATIC, indices_data.size(), indices_data.data(), indices_data.size() * sizeof(uint32_t))
         .finalize_mesh();
 
       resource_handle vbuff = m->vertex_handle();

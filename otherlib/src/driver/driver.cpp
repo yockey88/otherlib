@@ -307,6 +307,8 @@ namespace other {
       on_initialize();
     }
 
+    driver_kernel_ptr->driver_initialized();
+
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 

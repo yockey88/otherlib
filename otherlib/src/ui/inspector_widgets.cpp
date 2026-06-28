@@ -5,11 +5,9 @@
 
 #include <string>
 
-#include "renderer/ui/colors.hpp"
-#include "renderer/ui/ui_helpers.hpp"
-#include "renderer/ui/unicode.hpp"
-
-#include "ui/asset-browser/asset_browser_widgets.hpp"
+#include "theme/colors.hpp"
+#include "ui/ui_helpers.hpp"
+#include "ui/unicode.hpp"
 
 #include "asset/asset_handler.hpp"
 #include "imgui.h"
@@ -29,8 +27,8 @@ namespace other {
           case component::id::PHYSICS: return colors::scene_object::kComponentPhysics;
           case component::id::SCRIPT: return colors::scene_object::kComponentScript;
           case component::id::AUDIO: return colors::scene_object::kComponentAudio;
-          case component::id::POINT_LIGHT: return colors::scene_object::kComponentLight;
-          case component::id::DIRECTION_LIGHT: return colors::scene_object::kComponentLight;
+          case component::id::POINT_LIGHT: return colors::scene_object::kComponentPointLight;
+          case component::id::DIRECTION_LIGHT: return colors::scene_object::kComponentDirectionLight;
           case component::id::CAMERA: return colors::scene_object::kComponentCamera;
           default: return colors::scene_object::kComponentCustom;
         }

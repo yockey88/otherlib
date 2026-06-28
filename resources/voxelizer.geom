@@ -14,9 +14,10 @@ void main() {
 
   for (int i = 0; i < 3; ++i) {
     f_world_pos = g_world_pos[i];
-    vec3 uvw = oe_world_to_uvw(g_world_pos[i]);
-    vec2 p = (axis == 0) ? uvw.yz : (axis == 1) ? 
-        uvw.xz : uvw.xy;
+    vec3 uvw = oe_world_to_volume(g_world_pos[i]);
+    vec2 p = (axis == 0) ? 
+      uvw.yz : (axis == 1) ? 
+      uvw.xz : uvw.xy;
     
     gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
     EmitVertex();

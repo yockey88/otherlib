@@ -49,8 +49,6 @@ namespace other {
     animation* get_animation_by_name(const std::string& name);
     animation* get_animation(size_t index);
 
-    void draw();
-
    private:
     friend struct model;
 

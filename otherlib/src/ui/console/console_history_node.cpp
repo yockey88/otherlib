@@ -11,8 +11,8 @@
 
 #include "core/defines.hpp"
 
-#include "renderer/ui/colors.hpp"
-#include "renderer/ui/unicode.hpp"
+#include "theme/colors.hpp"
+#include "ui/unicode.hpp"
 
 #include "console_widgets.hpp"
 

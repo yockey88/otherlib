@@ -64,6 +64,7 @@ namespace other {
 
   struct pipeline_resource_reference {
     std::string resource_name;
+    std::string uniform_name;  //< for samplerXD uniforms, imageXD uniforms, or bindless resource indexing
     uint32_t binding = 0;
     framebuffer::attachment_type attachment = framebuffer::COLOR;
     uint32_t mip_level = 0;
@@ -72,9 +73,13 @@ namespace other {
 
   struct pipeline_executor_definition {
     std::string name = "noop";
-
-    std::map<std::string, value> uniforms;
     std::map<std::string, value> params;
+  };
+
+  struct pass_uniform_definition {
+    std::string pass_name;
+    std::string name;
+    value val;
   };
 
   struct pipeline_pass_definition {
@@ -95,15 +100,22 @@ namespace other {
     std::vector<std::string> depends_on;
     std::vector<frame_binding_definition> bindings;
 
+    std::map<natural_t, pass_uniform_definition> uniforms;  //< FNV(pass_name + "." + name) -> value
+
     // for passes that need to run multiple times per frame, i.e cascaded shadow maps
     uint32_t iterations_per_frame = 1;
     // for passes that use the "draw_scene" executor, used to provision per-draw-call resources
     opt<uint32_t> expected_max_draws;
+
+    framebuffer::clear_mask_bit clear_flags = framebuffer::ALL_BITS;
+    bool override_fb_clear = false;
   };
 
   struct pipeline_definition {
     std::string name = "unnamed";
     uint32_t version = 1;
+
+    std::string display_texture_name;
 
     std::vector<pipeline_buffer_definition> buffers;
     std::vector<pipeline_texture_definition> textures;
@@ -128,6 +140,7 @@ namespace other {
   texture::tex_type texture_type_from_string(const std::string_view str);
   texture::format texture_format_from_string(const std::string_view str);
   render_pass::type render_pass_type_from_string(const std::string_view str);
+  framebuffer::clear_mask_bit render_pass_clear_bits_from_strings(const std::span<const std::string> str);
   binding_scope pass_binding_scope_from_string(const std::string_view str);
   binding_type pass_binding_type_from_string(const std::string_view str);
   framebuffer::attachment_type framebuffer_attachment_type_from_string(const std::string_view str);
@@ -135,7 +148,6 @@ namespace other {
   resource_tag resource_tag_from_string(const std::string_view str);
 
   pipeline_definition read_pipeline_definition_from_file(const filepath& path);
-
   pipeline_definition get_empty_pipeline();
 
 }  // namespace other
