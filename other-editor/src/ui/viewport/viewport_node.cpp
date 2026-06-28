@@ -53,7 +53,7 @@ namespace other {
         }
       }
 
-      ImTextureID tex_id = renderer_instance.get_debug_overlay_id("default-instancing");
+      ImTextureID tex_id = renderer_instance.get_debug_overlay_id(editor_ctx.current_viewport);
       if (tex_id == 0) {
         scoped_color error_color{ ImGuiCol_Text, colors::rgba_to_imvec4(colors::kFriendlyErrorRed) };
         ImGui::Text("Requested viewport texture %s does not exist.", std::format("{}", "default-instancing").c_str());

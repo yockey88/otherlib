@@ -35,6 +35,8 @@ namespace other {
 
     edit_stack editing_history;
     selection current_selection;
+
+    std::string current_viewport = "default-instancing";
   };
 
 }  // namespace other

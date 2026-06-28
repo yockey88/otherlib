@@ -16,7 +16,7 @@ namespace other {
       renderer_ptr->get_resource<framebuffer>(*framebuffer_handle).bind(!override_fb_clear);
     }
 
-    if (!framebuffer_handle.has_value() || override_fb_clear) {
+    if (pass_type != render_pass::COMPUTE_PASS && (!framebuffer_handle.has_value() || override_fb_clear)) {
       renderer_ptr->rendering()->api()->set_viewport(0, 0, renderer_ptr->get_window_size().x, renderer_ptr->get_window_size().y);
       renderer_ptr->rendering()->api()->clear_viewport(clear_color, clear_flags);
     }
