@@ -53,6 +53,16 @@ namespace other {
       std::set<std::string> pass_names;
 
       validate_resources(result, tbl, buffer_names, texture_names, shader_names);
+
+      auto display_tex = tbl.at_path("frame.display-texture");
+      if (display_tex) {
+        if (!display_tex.is_string()) {
+          result.fail("'frame.display-texture': must be a string");
+        } else if (display_tex.as_string()->get().empty()) {
+          result.fail("'frame.display-texture': must not be empty");
+        }
+      }
+
       validate_frame_bindings(result, tbl, binding_names);
       validate_frame_inputs_outputs(result, tbl);
       validate_frame_executors(result, tbl);
@@ -766,6 +776,22 @@ namespace other {
         const auto resource_exists = [&](const std::string& n) {
           return buffer_names.contains(n) || texture_names.contains(n);
         };
+
+        const auto display_texture = tbl.at_path("frame.display_texture");
+        if (display_texture && display_texture.is_string()) {
+          const std::string display_tex_str = display_texture.as_string()->get();
+          if (!texture_names.contains(display_tex_str)) {
+            result.fail(std::format("frame.display_texture: '{}' is not declared in resources.textures", display_tex_str));
+          }
+        }
+
+        const auto no_display = tbl.at_path("frame.no_display");
+        if (no_display && no_display.is_boolean()) {
+          const bool no_display_flag = no_display.as_boolean()->get();
+          if (no_display_flag && display_texture) {
+            result.fail("frame.no_display is true, but frame.display_texture is also specified");
+          }
+        }
 
         // passes -> shaders
         const auto passes = tbl.at_path("frame.passes");

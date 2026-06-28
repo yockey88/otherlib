@@ -112,6 +112,8 @@ namespace other {
     std::string name = "unnamed";
     uint32_t version = 1;
 
+    std::string display_texture_name;
+
     std::vector<pipeline_buffer_definition> buffers;
     std::vector<pipeline_texture_definition> textures;
     std::vector<pipeline_shader_definition> shaders;

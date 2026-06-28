@@ -299,6 +299,10 @@ namespace other {
 
       renderer_ptr->end_frame();
     }
+
+    if (data_ptr != nullptr) {
+      data_ptr->debug_data.clear();
+    }
   }
 
   void rendering_system::open_ui_window(const std::string_view name) {

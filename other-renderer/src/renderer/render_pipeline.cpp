@@ -56,6 +56,15 @@ namespace other {
     build_pass_runtimes();
 
     validate();
+
+    if (valid && !definition.display_texture_name.empty()) {
+      auto handle_opt = find_texture_by_name(definition.display_texture_name);
+      if (!handle_opt.has_value()) {
+        CORE_LOG_ERROR("Pipeline '{}' specifies display texture '{}', but no such resource was found.", definition.name, definition.display_texture_name);
+      } else {
+        screen_texture_handle = *handle_opt;
+      }
+    }
   }
 
   void render_pipeline::shutdown_pipeline() {
@@ -245,20 +254,22 @@ namespace other {
           const auto& env = frame_render_data->simulation_environment;
           glm::vec3 to_sun = glm::normalize(-1.f * glm::vec3(env.sun_direction));
           glm::vec3 cam_up = glm::vec3(0, 1, 0);
-          if (frame_render_data->primary_camera) {
+          glm::vec3 min = glm::vec3(env.world_min);
+          glm::vec3 max = glm::vec3(env.world_max);
+          glm::vec3 center = {};
+          if (frame_render_data->primary_camera != nullptr) {
             cam_up = frame_render_data->primary_camera->up();
+            center = frame_render_data->primary_camera->center();
           }
           if (glm::length(glm::cross(to_sun, cam_up)) < 0.001f) {
             cam_up = glm::vec3(0, 0, 1);
+            center = (min + max) * 0.5f;
           }
 
-          glm::vec3 min = glm::vec3(env.world_min);
-          glm::vec3 max = glm::vec3(env.world_max);
-          glm::vec3 center = 0.5f * (min + max);
           float radius = 0.5f * glm::length(max - min);
-
           glm::vec3 eye = center + to_sun * radius;
           glm::mat4 light_view = glm::lookAt(eye, center, cam_up);
+
           glm::mat4 light_proj = glm::ortho(-radius, radius, -radius, radius, 0.0f, 2.0f * radius);
           glm::mat4 light_space_matrix = light_proj * light_view;
 
@@ -392,85 +403,6 @@ namespace other {
     return renderer_ptr->get_window_size();
   }
 
-  void render_pipeline::register_debug_pass(const std::string_view name, const pipeline_pass_definition& definition) {
-    auto* backend = renderer_ptr->rendering();
-    OTHER_ASSERT(backend != nullptr, "Rendering Backend is null!");
-
-    auto& api = backend->api();
-    OTHER_ASSERT(api != nullptr, "Rendering API is null!");
-
-    uint64_t hash = FNV(name);
-    if (auto itr = std::ranges::find_if(debug_passes, [&](const auto& dp) { return dp.name == name; });
-        itr != debug_passes.end()) {
-      CORE_LOG_ERROR("Debug pass with name '{}' already exists. Debug pass names must be unique.", name);
-      return;
-    }
-    if (auto itr = pass_runtimes.find(hash); itr != pass_runtimes.end()) {
-      CORE_LOG_ERROR("Debug pass with name '{}' conflicts with existing pass runtime. Debug pass names must be unique across all passes.", name);
-      return;
-    }
-
-    CORE_LOG_DEBUG("Building render-pass: {}", definition.name);
-    /// find the shader for this pass
-    opt<resource_handle> shader_handle = get_shader_handle(definition.shader_name);
-    if (!shader_handle.has_value()) {
-      CORE_LOG_ERROR("Shader [{}] for pass [{}] not found among pipeline shaders.", definition.shader_name, definition.name);
-      return;
-    }
-
-    glm::ivec2 size = resolve_size(definition.use_window_size, definition.fixed_size);
-    auto builder = graph->start_pass(definition.name, shader_handle, definition.pass_type, size, definition.create_framebuffer);
-    build_pass(definition, builder);
-    builder.end_pass();
-
-    natural_t pass_name_hash = FNV(definition.name);
-    auto nodes_view = graph->get_graph().nodes | std::views::values;
-    render_pass* pass = nullptr;
-    {
-      auto itr = std::ranges::find_if(nodes_view, [&](const frame_node& node) { return FNV(node.pass->name) == pass_name_hash; });
-      if (itr == std::ranges::end(nodes_view)) {
-        CORE_LOG_ERROR("No node found in graph for pass '{}'", definition.name);
-        return;
-      }
-      frame_node& n = *itr;
-      pass = n.pass;
-    }
-
-    OTHER_ASSERT(pass != nullptr, "Node for pass '{}' has null pass pointer", definition.name);
-
-    auto [itr, inserted] = pass_runtimes.insert({ pass->id, {} });
-    OTHER_ASSERT(inserted, "Pass runtime for pass '{}' already exists", definition.name);
-    pass_runtime& runtime = itr->second;
-    build_pass_runtime(runtime, pass, definition);
-  }
-
-  void render_pipeline::register_texture_resource(const std::string_view name, resource_handle handle) {
-    auto hash = FNV(name);
-    if (texture_resources.find(hash) != texture_resources.end()) {
-      CORE_LOG_ERROR("Texture resource with name '{}' already exists in pipeline '{}'. Resource names must be unique.", name, definition.name);
-      return;
-    }
-    texture_resources.insert({ hash, { .handle = handle } });
-  }
-
-  void render_pipeline::register_buffer_resource(const std::string_view name, resource_handle handle) {
-    auto hash = FNV(name);
-    if (buffer_resources.find(hash) != buffer_resources.end()) {
-      CORE_LOG_ERROR("Buffer resource with name '{}' already exists in pipeline '{}'. Resource names must be unique.", name, definition.name);
-      return;
-    }
-    buffer_resources.insert({ hash, { .handle = handle } });
-  }
-
-  void render_pipeline::register_shader_resource(const std::string_view name, resource_handle handle) {
-    auto hash = FNV(name);
-    if (shader_handles.find(hash) != shader_handles.end()) {
-      CORE_LOG_ERROR("Shader resource with name '{}' already exists in pipeline '{}'. Resource names must be unique.", name, definition.name);
-      return;
-    }
-    shader_handles.insert({ hash, handle });
-  }
-
   ImTextureID render_pipeline::get_final_output_texture_id() {
     if (!screen_texture_handle.has_value() || !get_renderer()->resource_exists(*screen_texture_handle)) {
       return 0;
@@ -599,6 +531,15 @@ namespace other {
 
   }  // namespace
 
+  std::string render_pipeline::get_pipeline_name(const std::string_view n) const {
+    return
+      /// \todo: buffers break with this because the *resource* name and
+      ///        the name the buffer resource uses in the shader are coupled
+      ///        fix this
+      // definition.name + ":" +
+      std::string{ n };
+  }
+
   void render_pipeline::build_pass_runtimes() {
     pass_runtimes.clear();
 
@@ -643,7 +584,7 @@ namespace other {
 
   void render_pipeline::create_resources_from_def() {
     for (const auto& buf_def : definition.buffers) {
-      resource_handle handle = gpu_buffer::create(buf_def.name, buf_def.type, buf_def.usage);
+      resource_handle handle = gpu_buffer::create(get_pipeline_name(buf_def.name), buf_def.type, buf_def.usage);
       natural_t name_hash = FNV(buf_def.name);
 
       auto [itr, inserted] = buffer_resources.insert({
@@ -666,18 +607,18 @@ namespace other {
 
       resource_handle handle;
       if (tex_def.type == texture::tex_type::TEXTURE_CUBE) {
-        handle = cube_map::create(tex_def.name, tex_def.format, size.x, size.y);
+        handle = cube_map::create(get_pipeline_name(tex_def.name), tex_def.format, size.x, size.y);
       } else if (tex_def.type == texture::tex_type::TEXTURE_3D) {
         glm::vec3 dimensions(size.x, size.y, tex_def.depth > 0 ? tex_def.depth : 1);
-        handle = texture::create3d(tex_def.name, tex_def.format,
+        handle = texture::create3d(get_pipeline_name(tex_def.name), tex_def.format,
                                    tex_def.filters.value_or(std::pair{ texture::LINEAR, texture::LINEAR }),
                                    tex_def.wraps.value_or(std::tuple{ texture::CLAMP_TO_EDGE, texture::CLAMP_TO_EDGE, texture::CLAMP_TO_EDGE }),
                                    mips, tex_def.generate_mips, dimensions);
       } else if (tex_def.filters.has_value() && tex_def.wraps.has_value()) {
-        handle = texture::create(tex_def.name, tex_def.type, tex_def.format, *tex_def.filters, *tex_def.wraps,
+        handle = texture::create(get_pipeline_name(tex_def.name), tex_def.type, tex_def.format, *tex_def.filters, *tex_def.wraps,
                                  mips, tex_def.generate_mips, size.x, size.y);
       } else {
-        handle = texture::create(tex_def.name, tex_def.type, tex_def.format, size.x, size.y);
+        handle = texture::create(get_pipeline_name(tex_def.name), tex_def.type, tex_def.format, size.x, size.y);
       }
 
       if (tex_def.seed_texture_path.has_value()) {
@@ -701,11 +642,11 @@ namespace other {
     for (const auto& shader_def : definition.shaders) {
       resource_handle handle;
       if (shader_def.geometry_path.has_value()) {
-        handle = shader::create(shader_def.name, shader_def.vertex_path, *shader_def.geometry_path, shader_def.fragment_path, shader_def.defines);
+        handle = shader::create(get_pipeline_name(shader_def.name), shader_def.vertex_path, *shader_def.geometry_path, shader_def.fragment_path, shader_def.defines);
       } else if (shader_def.compute_path.has_value()) {
-        handle = shader::create(shader_def.name, *shader_def.compute_path, shader_def.defines);
+        handle = shader::create(get_pipeline_name(shader_def.name), *shader_def.compute_path, shader_def.defines);
       } else {
-        handle = shader::create(shader_def.name, shader_def.vertex_path, shader_def.fragment_path, shader_def.defines);
+        handle = shader::create(get_pipeline_name(shader_def.name), shader_def.vertex_path, shader_def.fragment_path, shader_def.defines);
       }
       shader_handles[FNV(shader_def.name)] = handle;
       CORE_LOG_DEBUG("Created shader resource [{}] with handle {}.", shader_def.name, handle);
@@ -723,7 +664,7 @@ namespace other {
       return;
     }
 
-    quad_mesh_handle = get_renderer()->create_resource("__pipeline_quad_mesh", resource_type::MESH);
+    quad_mesh_handle = get_renderer()->create_resource(get_pipeline_name("__pipeline_quad_mesh"), resource_type::MESH);
     get_renderer()
       ->get_resource<mesh>(*quad_mesh_handle)
       .set_primitive_type(mesh::primitive_type::TRIANGLES)
@@ -748,9 +689,6 @@ namespace other {
         if (!itr.second) {
           CORE_LOG_ERROR("Failed to insert tagged texture handle for tag: {}", res.tag.value());
         }
-      }
-      if (res.tag == resource_tag(resource_tag::kScreenTag)) {
-        screen_texture_handle = res.handle;
       }
     }
   }
@@ -781,15 +719,9 @@ namespace other {
       }
     }
 
-    const bool graph_valid = graph->is_valid();
-    // const bool needs_screen = ...
-    const bool has_screen = std::ranges::any_of(definition.textures, [&](const auto& t) { return t.tag == resource_tag(resource_tag::kScreenTag); });
-    const bool pipeline_valid = graph_valid;  // && has_screen;
-    if (!pipeline_valid) {
+    valid = graph->is_valid();
+    if (!valid) {
       CORE_LOG_ERROR("Pipeline [{}] has valid resources but render graph is invalid.", definition.name);
-      CORE_LOG_ERROR("graph_valid: {}, has_screen: {}", graph_valid, has_screen);
-    } else {
-      valid = true;
     }
   }
 
@@ -951,7 +883,7 @@ namespace other {
                          pass_def.name, bd.name, bd.element_size, expected, capacity);
         // clang-format on
 
-        auto handle = renderer_ptr->create_resource(std::format("{}.{}.ring", pass_def.name, bd.name), resource_type::BUFFER);
+        auto handle = renderer_ptr->create_resource(get_pipeline_name(std::format("{}.{}.ring", pass_def.name, bd.name)), resource_type::BUFFER);
         runtime.state.per_draw_rings[i] = {
           .ring_buffer = handle,
           .cpu_staging = (uint8_t*)arena::allocate(capacity),

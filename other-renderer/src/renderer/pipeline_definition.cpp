@@ -358,6 +358,17 @@ namespace other {
       OTHER_ASSERT(false, "Invalid frame section details");
     }
 
+    auto display_tex = pipeline_table.at_path("frame.display-texture");
+    auto no_display = pipeline_table.at_path("frame.no-display");
+    const bool no_display_flag = no_display && no_display.is_boolean() && no_display.as_boolean()->get();
+    if (!display_tex && !no_display_flag) {
+      CORE_LOG_WARN("No display texture specified for pipeline {}, scene may not be displayed depending on driver.", name_str);
+      CORE_LOG_WARN("To fix this or silence this message, specify a display texture in the pipeline TOML or add 'frame.no-display = true' to the pipeline config.");
+    } else if (display_tex) {
+      OTHER_ASSERT(display_tex.is_string(), "Display texture name must be a string if specified");
+      definition.display_texture_name = display_tex.as_string()->get();
+    }
+
     CORE_LOG_DEBUG(" - construting passes");
     detail::build_pass_definitions(definition, frame, pipeline_table);
     detail::get_pass_uniforms(definition, frame, pipeline_table);

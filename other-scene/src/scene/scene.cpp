@@ -974,8 +974,18 @@ namespace other {
     data.simulation_environment.ambient_color /= static_cast<float>(data.lights.size() + 1);
 
     bounding_box scene_bounding_box = get_bounding_box_from_camera_frustum(*primary_camera);
-    data.simulation_environment.world_min = glm::vec4(scene_bounding_box.min, 1.0f);
-    data.simulation_environment.world_max = glm::vec4(scene_bounding_box.max, 1.0f);
+    constexpr float kEnvHalfExtent = 16.0f;
+    const float half = kEnvHalfExtent;
+    const glm::vec3 voxel = glm::vec3(2.0f * half / 64.0f);
+    glm::vec3 c = {};
+    if (primary_camera != nullptr) {
+      c = primary_camera->center();
+    } else {
+      c = (scene_bounding_box.min + scene_bounding_box.max) / 2.0f;
+    }
+    c = glm::round(c / voxel) * voxel;
+    data.simulation_environment.world_min = glm::vec4(c - half, 1.0f);
+    data.simulation_environment.world_max = glm::vec4(c + half, 1.0f);  // exposure);
 
     return data;
   }

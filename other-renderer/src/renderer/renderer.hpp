@@ -74,15 +74,6 @@ namespace other {
 
     void initialize_pass_resolver(pass_executor_resolver* resolver);
 
-    void register_debug_pass(const std::string_view pipeline_name, const std::string_view name, const pipeline_pass_definition& definition);
-
-    void register_texture_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
-    void register_buffer_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
-
-    void register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& vert_path, const filepath& geom_path, const filepath& frag_path);
-    void register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& comp_path);
-    void register_shader_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
-
     void rebuild_pipeline(const std::string_view pipeline_name);
 
     void begin_frame(render_data* data);

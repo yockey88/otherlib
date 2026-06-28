@@ -66,12 +66,6 @@ namespace other {
     void reset_draw_buffers();
     glm::ivec2 get_window_size() const;
 
-    void register_debug_pass(const std::string_view name, const pipeline_pass_definition& definition);
-
-    void register_texture_resource(const std::string_view name, resource_handle handle);
-    void register_buffer_resource(const std::string_view name, resource_handle handle);
-    void register_shader_resource(const std::string_view name, resource_handle handle);
-
     ImTextureID get_final_output_texture_id();
     ImTextureID get_texture_id(const std::string_view name);
     resource_handle get_screen_texture() const;
@@ -134,6 +128,9 @@ namespace other {
     std::map<std::string, executor_fn> executor_overrides;
 
     std::vector<debug_pass> debug_passes;
+
+    // for avoiding resource collisions in rendering backend when user loads multiple pipelines with same resource names
+    std::string get_pipeline_name(const std::string_view n) const;
 
     void build_pass_runtimes();
     void destroy_pass_runtimes();

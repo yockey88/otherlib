@@ -1,3 +1,4 @@
+#include "shader-modules/simulation-environment.glsl"
 #include "shader-modules/basic-lighting.glsl"
 
 uniform vec3 light_pos;

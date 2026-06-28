@@ -12,8 +12,8 @@
 namespace other {
 
   struct bounding_box {
-    glm::vec3 min = { 0, 0, 0 };
-    glm::vec3 max = { 0, 0, 0 };
+    glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+    glm::vec3 max = glm::vec3(-std::numeric_limits<float>::max());
 
     bounding_box() = default;
     bounding_box(const glm::vec3& min, const glm::vec3& max)

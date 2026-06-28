@@ -6,6 +6,8 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 
+#include "model/vertex.hpp"
+
 #include "object/camera_component.hpp"
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
@@ -63,6 +65,28 @@ namespace other {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.stopped event data to be of type UINT64 representing the active scene ID.");
       get_renderer().set_should_force_camera(true);
     });
+
+    auto& renderer = get_renderer();
+    auto& debug_stream_reg = renderer.get_debug_stream_registry();
+    debug_stream_reg.register_stream("editor", debug_stream_definition{
+                                                 .name = "editor",
+                                                 .element_size = sizeof(glm::vec3) * 2 + sizeof(glm::vec4),  // start, end, color
+                                                 .max_per_frame = 1000,
+                                                 .draw_recipe = debug_stream_recipe{
+                                                   .shader = "",
+                                                   .topology = mesh::primitive_type::LINES,
+                                                   .vertex_layout = {},
+                                                 },
+                                               });
+
+    // auto win_size = renderer_instance.get_window_size();
+    // resource_handle stencil_tex = texture::create("viewport-stencil", texture::TEXTURE_2D, texture::format::RGBA8, win_size.x, win_size.y);
+    // display_texture_id = texture::create("viewport-display", texture::TEXTURE_2D, texture::format::RGBA32F, win_size.x, win_size.y);
+
+    // renderer_instance.register_texture_resource("default-instancing", "viewport-stencil", stencil_tex);
+    // renderer_instance.register_texture_resource("default-instancing", "viewport-display", display_texture_id);
+    // renderer_instance.register_shader_resource("stencil-shader", "resources/basic-textured-quad.vert", "resources/stencil-shader.frag");
+    // renderer_instance.register_shader_resource("select-outline-shader", "resources/basic-textured-quad.vert", "resources/basic-solid-color.frag");
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
@@ -97,6 +121,7 @@ namespace other {
   }
 
   void editor_driver::on_viewport_resize(const glm::vec2& size) {
+    context.editor_camera.set_viewport_size(size);
   }
 
   void editor_driver::update_running() {

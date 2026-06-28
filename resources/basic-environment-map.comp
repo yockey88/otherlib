@@ -4,49 +4,60 @@
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(rgba16f) uniform writeonly image3D OE_env_cubemap;
+uniform sampler3D OE_voxel_tex;
 
-uniform float OE_sun_softness;       // froxel-footprint jitter radius, in shadow-map texels
-uniform float OE_ao_strength;        // 0 = no sky AO, 1 = full
+uniform float OE_sun_softness;
+uniform float OE_ao_strength;
 
 float oe_sun_visibility(vec3 world_pos) {
   vec4 ls = OE_light_space_matrix * vec4(world_pos, 1.0);
   vec3 p  = ls.xyz / ls.w * 0.5 + 0.5;
-  if (p.z > 1.0 || any(lessThan(p.xy, vec2(0.0))) || any(greaterThan(p.xy, vec2(1.0))))
-    return 1.0;                                   // outside the sun frustum → lit
+  if (p.z > 1.0 || any(lessThan(p.xy, vec2(0.0))) || any(greaterThan(p.xy, vec2(1.0)))) {
+    return 1.0;
+  }
 
   float bias = 0.0015;
-  vec2  texel = 1.0 / vec2(textureSize(OE_shadow_map, 0));
-  // wide PCF: froxels are big, so a soft, many-tap kernel is the whole point
+  vec2 texel = 1.0 / vec2(textureSize(OE_shadow_map, 0));
+  
   float vis = 0.0;
-  const int R = 2;                                // 5x5 kernel
-  for (int x = -R; x <= R; ++x)
+  const int R = 2;
+  
+  for (int x = -R; x <= R; ++x) {
     for (int y = -R; y <= R; ++y) {
       vec2 o = vec2(x, y) * texel * OE_sun_softness;
       float closest = texture(OE_shadow_map, p.xy + o).r;
       vis += (p.z - bias <= closest) ? 1.0 : 0.0;
     }
-  return vis / float((2*R+1)*(2*R+1));
+  }
+  return vis / float(pow(2*R+1, 2));
+}
+
+float oe_sky_ao(vec3 world_pos) {
+  ivec3 dim = textureSize(OE_voxel_tex, 0);
+  vec3 vs = oe_voxel_size(dim);
+  float occ = 0.0;
+  vec3  p = world_pos + vec3(0, vs.y, 0);
+  for (int i = 0; i < 6; ++i) { 
+    occ = max(occ, texture(OE_voxel_tex, oe_world_to_volume(p)).r); 
+    p.y += vs.y; 
+  }
+  return mix(1.0, 1.0 - clamp(occ, 0.0, 1.0), OE_ao_strength);
 }
 
 void main() {
   // coord within the target face
   ivec3 texel_coord = ivec3(gl_GlobalInvocationID);
   ivec3 dim = imageSize(OE_env_cubemap);
-  
   if (any(greaterThanEqual(texel_coord, dim))) {
     return;
   }
   
-  // froxel center
   vec3 uvw = (vec3(texel_coord) + 0.5) / vec3(dim);
-
-
   vec3 world_pos = world_min.xyz + uvw * world_extent();
-  vec3 irradiance = oe_sky_irradiance_up(world_pos); // * world_max.w;
 
-  // vec3 shadow = calculate_direction_light_shadow(world_pos, )
-  // vec3 ambient_glow = ambient_color.xyz;
-  // vec3 final_color = mix(irradiance, ambient_glow, ambient_color.w);
+  vec3 irradiance = oe_sky_irradiance_up(world_pos);
+  // float sun_vis = oe_sun_visibility(world_pos);
+  // float ao = oe_sky_ao(world_pos);
 
   imageStore(OE_env_cubemap, texel_coord, vec4(irradiance, 1.0));
 }

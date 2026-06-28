@@ -17,10 +17,12 @@ buffers = [
   { name = "material_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "material" },
 ]
 textures = [
-  { name = "color_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA32U" },
+  { name = "color_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "normal_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "position_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
+  { name = "depth_texture", use_window_size = true, type = "TEXTURE_2D", format = "R16F" },
   { name = "ambient_shadow_map", use_window_size = true, type = "TEXTURE_2D", format = "DEPTHF" },
+  { name = "sun_depth_color", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "voxel_texture", use_window_size = true, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 128, y = 128 }, depth = 128 },
   { name = "environment_map", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 64, y = 64 }, depth = 64 },
   { name = "environment_map_prev", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 64, y = 64 }, depth = 64 },
@@ -48,6 +50,7 @@ shaders = [
 ]
 
 [frame]
+display-texture = "smaa_texture"
 bindings = [
   { name = "per_draw.material_buffer", tag = "material", scope = "PER_DRAW", type = "STORAGE_BUFFER", element_size = 6400 },
   { name = "per_draw.model_buffer", tag = "model", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6400 },
@@ -86,6 +89,8 @@ pass-uniforms = [
   { pass_name = "voxel-clear-pass", name = "OE_voxel_decay", value = 2 },
   { pass_name = "voxel-occupied-pass", name = "OE_gbuff_position", value = 1 }, 
   { pass_name = "voxel-occupied-pass", name = "OE_gbuff_normal", value = 2 },
+  { pass_name = "environment-map-pass", name = "OE_sun_softness", value = 1.5 },
+  { pass_name = "environment-map-pass", name = "OE_ao_strength",  value = 1.0 },
   { pass_name = "tonemap-pass", name = "OE_exposure", value = 1.0 },
   { pass_name = "tonemap-pass", name = "OE_gamma", value = 2.2 }
 ]
@@ -103,13 +108,15 @@ inputs = [
   { pass_name = "shadow-map-pass", resource_name = "model_buffer", binding = 0 },
   { pass_name = "environment-map-pass", resource_name = "simulation_environment_buffer", binding = 0 },
   { pass_name = "environment-map-pass", resource_name = "light_buffer", binding = 1 },
-  { pass_name = "environment-map-pass", resource_name = "ambient_shadow_map", binding = 1, uniform_name = "OE_shadow_map" },
+  { pass_name = "environment-map-pass", resource_name = "ambient_shadow_map", binding = 1, uniform_name = "OE_shadow_map", access = "sample" },
+  { pass_name = "environment-map-pass", resource_name = "voxel_texture", binding = 2, uniform_name = "OE_voxel_tex", access = "sample" },
   { pass_name = "shading-pass", resource_name = "color_texture", binding = 0, uniform_name = "OE_gbuff_albedo" },
   { pass_name = "shading-pass", resource_name = "normal_texture", binding = 1, uniform_name = "OE_gbuff_normal" },
   { pass_name = "shading-pass", resource_name = "position_texture", binding = 2, uniform_name = "OE_gbuff_position" },
-  { pass_name = "shading-pass", resource_name = "ambient_shadow_map", binding = 3, uniform_name = "OE_shadow_map" },
-  { pass_name = "shading-pass", resource_name = "voxel_texture", binding = 4, uniform_name = "OE_voxel_tex" },
-  { pass_name = "shading-pass", resource_name = "environment_map", binding = 5, uniform_name = "OE_env_cubemap" },
+  { pass_name = "shading-pass", resource_name = "depth_texture", binding = 3, uniform_name = "OE_gbuff_depth" },
+  { pass_name = "shading-pass", resource_name = "ambient_shadow_map", binding = 4, uniform_name = "OE_shadow_map" },
+  { pass_name = "shading-pass", resource_name = "voxel_texture", binding = 5, uniform_name = "OE_voxel_tex" },
+  { pass_name = "shading-pass", resource_name = "environment_map", binding = 6, uniform_name = "OE_env_cubemap" },
   { pass_name = "shading-pass", resource_name = "camera_buffer", binding = 0 },
   { pass_name = "shading-pass", resource_name = "light_buffer", binding = 1 },
   { pass_name = "tonemap-pass", resource_name = "shaded_texture", binding = 0, uniform_name = "OE_texture" },
@@ -125,6 +132,7 @@ outputs = [
   { pass_name = "geometry-pass", resource_name = "color_texture", attachment = "COLOR" },
   { pass_name = "geometry-pass", resource_name = "normal_texture", attachment = "COLOR" },
   { pass_name = "geometry-pass", resource_name = "position_texture", attachment = "COLOR" },
+  { pass_name = "geometry-pass", resource_name = "depth_texture", attachment = "COLOR" },
   { pass_name = "voxel-occupied-pass", resource_name = "voxel_texture", attachment = "COLOR", binding = 3, uniform_name = "OE_voxel_tex_out" },
   { pass_name = "voxelize-pass", resource_name = "voxel_texture", attachment = "COLOR", binding = 0, uniform_name = "OE_voxel_tex" },
   { pass_name = "shadow-map-pass", resource_name = "ambient_shadow_map", attachment = "DEPTH" },
