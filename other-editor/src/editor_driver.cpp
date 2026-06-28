@@ -10,6 +10,7 @@
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
 
+#include "tools/environment_console.hpp"
 #include "ui/object-editor/object_editor.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/viewport/viewport.hpp"
@@ -71,15 +72,15 @@ namespace other {
     }
 
     auto& ctx = map.add_context("editor-controls", true);
-    ctx.add_action("move", action_value_type::AXIS_2D)
+    ctx.add_action("move", action_value_type::AXIS_2D, false)
       // keyboard – each key contributes ±1 to one component
-      .bind_key(key_code::W, modifier_flags::NONE, 1.f, 1, false)
-      .bind_key(key_code::A, modifier_flags::NONE, 1.f, 0, false)
-      .bind_key(key_code::S, modifier_flags::NONE, -1.f, 1, false)
-      .bind_key(key_code::D, modifier_flags::NONE, -1.f, 0, false)
+      .bind_key(key_code::W, modifier_flags::NONE, 1.f, 1)
+      .bind_key(key_code::A, modifier_flags::NONE, 1.f, 0)
+      .bind_key(key_code::S, modifier_flags::NONE, -1.f, 1)
+      .bind_key(key_code::D, modifier_flags::NONE, -1.f, 0)
       // gamepad left stick
-      .bind_gamepad_axis(gamepad_axis::LEFT_STICK_X, 0.5f, -1.f, 0, false)
-      .bind_gamepad_axis(gamepad_axis::LEFT_STICK_Y, 0.5f, -1.f, 1, false);
+      .bind_gamepad_axis(gamepad_axis::LEFT_STICK_X, 0.5f, -1.f, 0)
+      .bind_gamepad_axis(gamepad_axis::LEFT_STICK_Y, 0.5f, -1.f, 1);
 
     ctx.add_action("move_vertical", action_value_type::AXIS_1D)
       .bind_key(key_code::LEFT_SHIFT, modifier_flags::NONE, 1.f)

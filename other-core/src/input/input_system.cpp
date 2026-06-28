@@ -747,7 +747,9 @@ namespace other {
         action_cache[action.id] = state;
 
         // if activated and opaque, then don't continue
-        continue_evaluating = continue_evaluating && !state.active;
+        if (!action.transparent) {
+          continue_evaluating = continue_evaluating && !state.active;
+        }
       }
 
       /// if this context is opaque, stop walking further down

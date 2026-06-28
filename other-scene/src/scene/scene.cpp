@@ -778,24 +778,26 @@ namespace other {
     bounding_box bbox = cam.get_frustum().get_containing_aabb();
 
     constexpr float max_distance = 10.f;
-    if (bbox.max.x > max_distance) {
-      bbox.max.x = max_distance;
+    if (bbox.min.z < 0.f) {
+      bbox.min.z = 0.f;
     }
-    if (bbox.min.x < -max_distance) {
-      bbox.min.x = -max_distance;
-    }
-    if (bbox.max.y > max_distance) {
-      bbox.max.y = max_distance;
-    }
-    if (bbox.min.y < -max_distance) {
-      bbox.min.y = -max_distance;
+    if (bbox.max.z < bbox.min.z) {
+      bbox.max.z = 10.f;
     }
     if (bbox.max.z > max_distance) {
       bbox.max.z = max_distance;
     }
-    if (bbox.min.z < -max_distance) {
-      bbox.min.z = -max_distance;
-    }
+
+    /// make x and y sorta proportional w/ z so we get a more 'natural' box that isn't super long and flat
+    const float z_range = bbox.max.z - bbox.min.z;
+    const float y_center = (bbox.max.y + bbox.min.y) / 2.f;
+    bbox.min.y = y_center - z_range / 2.f;
+    bbox.max.y = y_center + z_range / 2.f;
+
+    const float x_center = (bbox.max.x + bbox.min.x) / 2.f;
+    bbox.min.x = x_center - z_range / 2.f;
+    bbox.max.x = x_center + z_range / 2.f;
+
     return bbox;
   }
 

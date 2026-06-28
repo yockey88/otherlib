@@ -5,25 +5,25 @@
 
 namespace other {
 
-  input_action& input_action::bind(input_source src, float scale, uint8_t component, bool transparent) {
-    bindings.push_back({ .source = src, .component = component, .scale = scale, .transparent = transparent });
+  input_action& input_action::bind(input_source src, float scale, uint8_t component) {
+    bindings.push_back({ .source = src, .component = component, .scale = scale });
     return *this;
   }
 
-  input_action& input_action::bind_key(key_code key, modifier_flags mods, float scale, uint8_t component, bool transparent) {
-    return bind(key_source(key, mods), scale, component, transparent);
+  input_action& input_action::bind_key(key_code key, modifier_flags mods, float scale, uint8_t component) {
+    return bind(key_source(key, mods), scale, component);
   }
 
-  input_action& input_action::bind_gamepad_button(gamepad_button btn, float scale, bool transparent) {
-    return bind(gamepad_btn_source(btn), scale, 0, transparent);
+  input_action& input_action::bind_gamepad_button(gamepad_button btn, float scale) {
+    return bind(gamepad_btn_source(btn), scale, 0);
   }
 
-  input_action& input_action::bind_gamepad_axis(gamepad_axis axis, float threshold, float scale, uint8_t component, bool transparent) {
-    return bind(gamepad_axis_source(axis, threshold), scale, component, transparent);
+  input_action& input_action::bind_gamepad_axis(gamepad_axis axis, float threshold, float scale, uint8_t component) {
+    return bind(gamepad_axis_source(axis, threshold), scale, component);
   }
 
-  input_action& input_action::bind_mouse_button(mouse_button btn, float scale, bool transparent) {
-    return bind(mouse_btn_source(btn), scale, 0, transparent);
+  input_action& input_action::bind_mouse_button(mouse_button btn, float scale) {
+    return bind(mouse_btn_source(btn), scale, 0);
   }
 
   input_action& input_action::set_captures_text(bool v) {
@@ -31,8 +31,8 @@ namespace other {
     return *this;
   }
 
-  input_action& input_context::add_action(const std::string& action_name, action_value_type type) {
-    actions.emplace_back(action_name, type);
+  input_action& input_context::add_action(const std::string& action_name, action_value_type type, bool transparent) {
+    actions.emplace_back(action_name, type, transparent);
     return actions.back();
   }
 
