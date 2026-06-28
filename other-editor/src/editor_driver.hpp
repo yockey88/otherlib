@@ -20,7 +20,6 @@ namespace other {
     void on_early_initialize() override;
     void on_initialize() override;
     void on_build_driver_input_map(input_map& map) override;
-    void on_begin_frame(render_data* frame_data) override;
     void on_viewport_resize(const glm::vec2& size) override;
     void on_shutdown() override {}
 

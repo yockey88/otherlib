@@ -1872,6 +1872,8 @@ namespace other {
       case texture::format::R8: return GL_R8;
       case texture::format::RG8: return GL_RG8;
 
+      case texture::format::R16F: return GL_R16F;
+      case texture::format::RG16F: return GL_RG16F;
       case texture::format::RGBA16F: return GL_RGBA16F;
       case texture::format::RGBA32U:
       case texture::format::RGBA32F:
@@ -1892,6 +1894,8 @@ namespace other {
       case texture::format::RG8: return GL_RG;
       case texture::format::RGB8: return GL_RGB;
       case texture::format::DEPTHF: return GL_DEPTH_COMPONENT;
+      case texture::format::R16F: return GL_RED;
+      case texture::format::RG16F: return GL_RG;
       case texture::format::RGBA16F:
       case texture::format::RGBA32F:
       case texture::format::RGBA8:
@@ -1906,6 +1910,8 @@ namespace other {
 
   int32_t opengl_api::get_gl_texture_format_type(texture::format format) const {
     switch (format) {
+      case texture::format::R16F:
+      case texture::format::RG16F:
       case texture::format::RGBA16F:
       case texture::format::RGBA32F:
       case texture::format::DEPTHF:

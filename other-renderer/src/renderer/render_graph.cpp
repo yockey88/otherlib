@@ -211,14 +211,6 @@ namespace other {
           auto& e = edges[itr->id];
           if (!e.contains(n.id)) {
             e.insert(n.id);
-
-            // this forces a direction, so we have to remove the other if it exists
-            // to maintain DAG, this could invalidate the graph by creating a loop through another node,
-            // but that might have already been the case, and we will catch it in the topo sort
-            auto& reverse_e = edges[n.id];
-            if (reverse_e.contains(itr->id)) {
-              reverse_e.erase(itr->id);
-            }
           }
         }
       }

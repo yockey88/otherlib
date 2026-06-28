@@ -46,6 +46,22 @@ namespace other {
     context.editor_camera.position = { 0.f, 1.f, 4.5f };
     context.editor_camera.sensitivity = 10.f;
     context.editor_camera.look_at({ 0.f, 0.f, 0.f });
+
+    get_renderer().set_override_camera(context.editor_camera);
+    get_renderer().set_should_force_camera(true);
+
+    get_event_system()->add_listener("scene.played", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.played event data to be of type UINT64 representing the active scene ID.");
+      get_renderer().set_should_force_camera(false);
+    });
+    get_event_system()->add_listener("scene.paused", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.paused event data to be of type UINT64 representing the active scene ID.");
+      get_renderer().set_should_force_camera(true);
+    });
+    get_event_system()->add_listener("scene.stopped", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.stopped event data to be of type UINT64 representing the active scene ID.");
+      get_renderer().set_should_force_camera(true);
+    });
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
@@ -79,25 +95,6 @@ namespace other {
       .bind_mouse_button(mouse_button::MIDDLE);
   }
 
-  void editor_driver::on_begin_frame(render_data* frame_data) {
-    if (frame_data == nullptr) {
-      return;
-    }
-
-    if (context.active_scene != nullptr &&
-        !context.active_scene->is_playing()) {
-      frame_data->primary_camera = &context.editor_camera;
-    }
-
-    // struct debug_line {
-    //   glm::vec3 start;
-    //   glm::vec3 end;
-    //   glm::vec3 color;
-    // };
-
-    // frame_data->debug_data.submit("editor-grid", debug_line{ .start = { -10.f, 0.f, 0.f }, .end = { 10.f, 0.f, 0.f }, .color = { 1.f, 0.f, 0.f, 1.f } });
-  }
-
   void editor_driver::on_viewport_resize(const glm::vec2& size) {
   }
 
@@ -113,6 +110,9 @@ namespace other {
     if (scene != nullptr && scene->is_playing()) {
       return;
     }
+
+    // update camera
+    get_renderer().set_override_camera(context.editor_camera);
 
     const bool is_looking_around = input_sys->is_action_pressed("orbit_hold");
     if (!is_looking_around) {

@@ -151,14 +151,14 @@ namespace other {
     };
 
     GPU_ALIGN struct simulation_environment_buffer {
-      glm::vec4 sun_direction;  //< xyz = unit vector TO sun, w = angular radius
-      glm::vec4 sun_color;      //< rgb = radiance, w = intensity scale
-      glm::vec4 ambient_color;  //< rgb = average of all nearby light sources, w = intensity scale
-      glm::vec4 zenith_color;   //< rgb = color, w = turbidity
-      glm::vec4 horizon_color;  //< rgb = color, w = padding
-      glm::vec4 ground_color;   //< rgb = color, w = padding
-      glm::vec4 world_min;      //< AABB min, w = padding
-      glm::vec4 world_max;      //< AABB max, w = exposure
+      glm::vec4 sun_direction = glm::vec4(0.f, -1.f, 0.f, 1.f);       //< xyz = unit vector TO sun, w = angular radius
+      glm::vec4 sun_color = glm::vec4(1.f);                           //< rgb = radiance, w = intensity scale
+      glm::vec4 ambient_color = glm::vec4(0.f);                       //< rgb = average of all nearby light sources, w = intensity scale
+      glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);     //< rgb = color, w = turbidity
+      glm::vec4 horizon_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);    //< rgb = color, w = padding
+      glm::vec4 ground_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);  //< rgb = color, w = padding
+      glm::vec4 world_min = glm::vec4(0.f);                           //< AABB min, w = padding
+      glm::vec4 world_max = glm::vec4(0.f);                           //< AABB max, w = exposure
     };
 
     GPU_ALIGN struct camera_data {

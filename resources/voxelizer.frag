@@ -1,6 +1,7 @@
 #include "shader-modules/simulation-environment.glsl"
+#include "shader-modules/basic-lighting.glsl"
 
-layout(rgba16f, binding = 0) uniform writeonly image3D OE_voxel_tex; 
+layout(rgba16f) uniform writeonly image3D OE_voxel_tex; 
 in vec3 f_world_pos;
 
 void main() {

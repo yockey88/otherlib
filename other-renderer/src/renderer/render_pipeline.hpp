@@ -138,8 +138,6 @@ namespace other {
     void build_pass_runtimes();
     void destroy_pass_runtimes();
 
-    void apply_lighting_uniforms(const render_data& data);
-
     void override_pass_executor(const std::string_view pass_name, executor_fn&& fn);
 
     void create_resources_from_def();

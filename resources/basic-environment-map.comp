@@ -5,6 +5,29 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(rgba16f) uniform writeonly image3D OE_env_cubemap;
 
+uniform float OE_sun_softness;       // froxel-footprint jitter radius, in shadow-map texels
+uniform float OE_ao_strength;        // 0 = no sky AO, 1 = full
+
+float oe_sun_visibility(vec3 world_pos) {
+  vec4 ls = OE_light_space_matrix * vec4(world_pos, 1.0);
+  vec3 p  = ls.xyz / ls.w * 0.5 + 0.5;
+  if (p.z > 1.0 || any(lessThan(p.xy, vec2(0.0))) || any(greaterThan(p.xy, vec2(1.0))))
+    return 1.0;                                   // outside the sun frustum → lit
+
+  float bias = 0.0015;
+  vec2  texel = 1.0 / vec2(textureSize(OE_shadow_map, 0));
+  // wide PCF: froxels are big, so a soft, many-tap kernel is the whole point
+  float vis = 0.0;
+  const int R = 2;                                // 5x5 kernel
+  for (int x = -R; x <= R; ++x)
+    for (int y = -R; y <= R; ++y) {
+      vec2 o = vec2(x, y) * texel * OE_sun_softness;
+      float closest = texture(OE_shadow_map, p.xy + o).r;
+      vis += (p.z - bias <= closest) ? 1.0 : 0.0;
+    }
+  return vis / float((2*R+1)*(2*R+1));
+}
+
 void main() {
   // coord within the target face
   ivec3 texel_coord = ivec3(gl_GlobalInvocationID);

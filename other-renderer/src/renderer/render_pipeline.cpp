@@ -105,7 +105,6 @@ namespace other {
     }
 
     bind_frame_resources(*data);
-    apply_lighting_uniforms(*data);
   }
 
   void render_pipeline::bind_frame_resources(const render_data& data) {
@@ -239,7 +238,37 @@ namespace other {
 
         n.start_pass(renderer_ptr, &runtime);
         if (n.pass->shader_handle.has_value() && frame_render_data != nullptr) {
+#if SUN_LIGHTING
+          const auto& env = frame_render_data->simulation_environment;
+          glm::vec3 to_sun = glm::normalize(-1.f * glm::vec3(env.sun_direction));
+          glm::vec3 min = glm::vec3(env.world_min);
+          glm::vec3 max = glm::vec3(env.world_max);
+          glm::vec3 center = 0.5f * (min + max);
+          float radius = 0.5f * glm::length(max - min) + 0.001f;
+
+          glm::vec3 eye = center + to_sun * radius;  // place light outside AABB
+          glm::mat4 light_view = glm::lookAt(eye, center, glm::vec3(0, 1, 0));
+          glm::mat4 light_proj = glm::ortho(-radius, radius, -radius, radius, 0.0f, 2.0f * radius);
+          glm::mat4 light_space_matrix = light_proj * light_view;
+#else
+
+          // const glm::vec3 light_direction = glm::normalize(data.simulation_environment.sun_direction);
+          // const glm::vec3 distant_position = -100.f * light_direction;
+          // glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
+          // glm::mat4 light_view = glm::lookAt(distant_position, light_target, glm::vec3(0.f, 1.f, 0.f));
+
+          float near_plane = 1.0f, far_plane = 10.f;
+          glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
+          glm::vec3 sun_dir = glm::normalize(glm::vec3(-1.f, -1.f, -1.f));
+          glm::vec3 sun_pos = -sun_dir * far_plane;
+
+          glm::mat4 light_view = glm::lookAt(sun_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
+          glm::mat4 light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+          glm::mat4 light_space_matrix = light_proj * light_view;
+#endif
           renderer_ptr->get_resource<shader>(*n.pass->shader_handle)
+            .set_uniform("OE_light_space_matrix", light_space_matrix)
+            .set_uniform("OE_sun_dir", sun_dir)
             .set_uniform("OE_num_lights", static_cast<int32_t>(frame_render_data->lights.size()));
         }
 
@@ -610,35 +639,6 @@ namespace other {
       }
     }
     pass_runtimes.clear();
-  }
-
-  void render_pipeline::apply_lighting_uniforms(const render_data& data) {
-    glm::mat4 light_space_matrix = glm::mat4(1.0f);
-    glm::vec3 light_pos = glm::vec3(1.f, 4.f, 1.f);
-
-    if (definition.shadow_map_pass_name.has_value()) {
-      if (!definition.light_space_matrix_uniform_name.has_value()) {
-        CORE_LOG_ERROR("Light space matrix uniform name not defined in pipeline definition. Cannot set light space matrix for shadow mapping.");
-        definition.shadow_map_pass_name = std::nullopt;  // avoid trying to set it every frame if it's not defined
-      }
-
-      float near_plane = 1.0f, far_plane = 10.f;
-      glm::mat4 light_projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-
-      // const glm::vec3 light_direction = glm::normalize(data.simulation_environment.sun_direction);
-      // const glm::vec3 distant_position = -100.f * light_direction;
-      // glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
-      // glm::mat4 light_view = glm::lookAt(distant_position, light_target, glm::vec3(0.f, 1.f, 0.f));
-
-      glm::vec3 light_target = glm::vec3(0.0f, 0.0f, 0.0f);
-      glm::mat4 light_view = glm::lookAt(light_pos, light_target, glm::vec3(0.f, 1.f, 0.f));
-
-      light_space_matrix = light_projection * light_view;
-      get_pass_shader(*definition.shadow_map_pass_name)
-        ->bind()
-        .set_uniform(*definition.light_space_matrix_uniform_name, light_space_matrix)
-        .unbind();
-    }
   }
 
   void render_pipeline::override_pass_executor(const std::string_view pass_name, executor_fn&& fn) {

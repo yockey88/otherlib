@@ -773,7 +773,30 @@ namespace other {
   bounding_box scene::get_bounding_box_from_camera_frustum(const camera& cam) const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_bounding_box_from_camera_frustum");
-    return cam.get_frustum().get_containing_aabb();
+    // this will contain the entire frustum even which gives weird results if far plane is very far away
+    // we cut it off to give a 'local' camera frustum
+    bounding_box bbox = cam.get_frustum().get_containing_aabb();
+
+    constexpr float max_distance = 10.f;
+    if (bbox.max.x > max_distance) {
+      bbox.max.x = max_distance;
+    }
+    if (bbox.min.x < -max_distance) {
+      bbox.min.x = -max_distance;
+    }
+    if (bbox.max.y > max_distance) {
+      bbox.max.y = max_distance;
+    }
+    if (bbox.min.y < -max_distance) {
+      bbox.min.y = -max_distance;
+    }
+    if (bbox.max.z > max_distance) {
+      bbox.max.z = max_distance;
+    }
+    if (bbox.min.z < -max_distance) {
+      bbox.min.z = -max_distance;
+    }
+    return bbox;
   }
 
   render_data scene::prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const {
@@ -938,9 +961,6 @@ namespace other {
     if (scene_ambient_light != nullptr) {
       data.simulation_environment.sun_direction = glm::vec4(scene_ambient_light->direction, 0.0f);
       data.simulation_environment.sun_color = scene_ambient_light->color;
-    } else {
-      data.simulation_environment.sun_direction = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-      data.simulation_environment.sun_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
     /// average of all light contributions for now, we can do something more complex later if needed
@@ -951,39 +971,9 @@ namespace other {
     data.simulation_environment.ambient_color += data.simulation_environment.sun_color;
     data.simulation_environment.ambient_color /= static_cast<float>(data.lights.size() + 1);
 
-    glm::vec4 zenith_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
-    glm::vec4 horizon_color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
-    glm::vec4 ground_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
-    data.simulation_environment.zenith_color = glm::clamp(zenith_color, 0.0f, 1.0f);
-    data.simulation_environment.horizon_color = glm::clamp(horizon_color, 0.0f, 1.0f);
-    data.simulation_environment.ground_color = glm::clamp(ground_color, 0.0f, 1.0f);
-
     bounding_box scene_bounding_box = get_bounding_box_from_camera_frustum(*primary_camera);
     data.simulation_environment.world_min = glm::vec4(scene_bounding_box.min, 1.0f);
     data.simulation_environment.world_max = glm::vec4(scene_bounding_box.max, 1.0f);
-
-    // if (debug_physics_rendering_enabled && storage->physics != nullptr) {
-    //   physics_api::physics_render_debug_data debug_data = storage->physics->get_debug_render_data();
-
-    //   auto lines_w_colors = std::views::zip(debug_data.debug_lines, debug_data.debug_line_colors);
-    //   data.debug_data.debug_lines.append_range(lines_w_colors | std::views::transform([](const std::pair<physics_api::line, glm::vec4>& pair) {
-    //                                              return debug_line{
-    //                                                .start = pair.first.start,
-    //                                                .end = pair.first.end,
-    //                                                .color = pair.second,
-    //                                              };
-    //                                            }));
-
-    //   auto triangles_w_colors = std::views::zip(debug_data.debug_triangles, debug_data.debug_triangle_colors);
-    //   data.debug_data.debug_triangles.append_range(triangles_w_colors | std::views::transform([](const std::pair<physics_api::triangle, glm::vec4>& pair) {
-    //                                                  return debug_triangle{
-    //                                                    .v0 = pair.first.v0,
-    //                                                    .v1 = pair.first.v1,
-    //                                                    .v2 = pair.first.v2,
-    //                                                    .color = pair.second,
-    //                                                  };
-    //                                                }));
-    // }
 
     return data;
   }

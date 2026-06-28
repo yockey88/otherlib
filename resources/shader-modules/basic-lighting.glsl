@@ -9,6 +9,7 @@ layout (std430) readonly buffer light_buffer {
 };
 
 uniform mat4 OE_light_space_matrix;
+uniform vec3 OE_sun_dir;
 uniform vec3 OE_light_position;
 uniform int OE_num_lights;
 
