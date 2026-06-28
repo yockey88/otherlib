@@ -53,11 +53,15 @@ namespace other {
         }
       }
 
-      ImTextureID tex_id = renderer_instance.get_texture_id("default-instancing", "smaa_texture");
+      ImTextureID tex_id = renderer_instance.get_debug_overlay_id("default-instancing");
       if (tex_id == 0) {
         scoped_color error_color{ ImGuiCol_Text, colors::rgba_to_imvec4(colors::kFriendlyErrorRed) };
-        ImGui::Text("No output texture available from the rendering pipeline.");
-        return;
+        ImGui::Text("Requested viewport texture %s does not exist.", std::format("{}", "default-instancing").c_str());
+        tex_id = renderer_instance.get_texture_id("default-instancing", "smaa_texture");
+        if (tex_id == 0) {
+          ImGui::Text("No fallback texture available.");
+          return;
+        }
       }
 
       ImGui::Image(tex_id, size, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });

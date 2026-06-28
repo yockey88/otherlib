@@ -27,6 +27,8 @@ namespace other {
     bool intersects(const bounding_box& other) const;
     bool intersects(const ray& r) const;
 
+    bounding_box transform(const glm::mat4& t);
+
     static bounding_box expand_to_include(const bounding_box& box, const bounding_box& other);
   };
 

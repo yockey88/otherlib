@@ -19,6 +19,9 @@ namespace other {
       RENDER_PASS = 0,
       COMPUTE_PASS,
     } pass_type = RENDER_PASS;
+    framebuffer::clear_mask_bit clear_flags = framebuffer::ALL_BITS;
+    bool override_fb_clear = false;
+
     natural_t id = 0;
     opt<resource_handle> framebuffer_handle = std::nullopt;
     opt<resource_handle> shader_handle = {};

@@ -14,6 +14,7 @@ namespace other {
 
     pass_begin_info info{
       .framebuffer = pass->framebuffer_handle,
+      .pass_name = pass->name,
       .render_area_size = pass->size,
       .clear_color = pass->clear_color,  // see note
       .clear_depth = std::nullopt,

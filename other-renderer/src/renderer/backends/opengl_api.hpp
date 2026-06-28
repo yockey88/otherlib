@@ -31,6 +31,8 @@ namespace other {
     void handle_event(SDL_Event* event) override;
 
     void set_clear_color(const glm::vec4& color) override;
+    void set_clear_depth(float depth) override;
+    void set_clear_stencil(uint32_t stencil) override;
 
     void on_begin_frame(scope<window_manager>& window_mgr) override;
     void on_end_frame(scope<window_manager>& window_mgr) override;
@@ -44,6 +46,7 @@ namespace other {
     void execute_draw_call(render_polygon_mode render_state, mesh::primitive_type draw_mode, const draw_call& call) override;
 
     void set_viewport(int32_t x, int32_t y, int32_t width, int32_t height) override;
+    void clear_viewport(const glm::vec4& clear_color, uint32_t clear_mask) override;
     void set_color_mask(bool enabled_or_disabled) override;
     void set_depth_mask(bool enabled_or_disabled) override;
     void set_depth_test(bool enabled_or_disabled) override;
@@ -84,7 +87,7 @@ namespace other {
     void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) override;
     void draw_mesh_instanced(const resource_handle& handle, const draw_call& call) override;
 
-    void bind_framebuffer_resource(const resource_handle& handle) override;
+    void bind_framebuffer_resource(const resource_handle& handle, bool clear = true) override;
     void unbind_framebuffer_resource(const resource_handle& handle) override;
     void framebuffer_texture_2d(const resource_handle& handle, const resource_handle& texture, framebuffer::attachment_type type, uint32_t mip_level, uint32_t color_attachment_index = 0) override;
     void finalize_framebuffer(const resource_handle& handle) override;

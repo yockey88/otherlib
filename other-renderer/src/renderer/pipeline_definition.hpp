@@ -106,6 +106,9 @@ namespace other {
     uint32_t iterations_per_frame = 1;
     // for passes that use the "draw_scene" executor, used to provision per-draw-call resources
     opt<uint32_t> expected_max_draws;
+
+    framebuffer::clear_mask_bit clear_flags = framebuffer::ALL_BITS;
+    bool override_fb_clear = false;
   };
 
   struct pipeline_definition {
@@ -137,6 +140,7 @@ namespace other {
   texture::tex_type texture_type_from_string(const std::string_view str);
   texture::format texture_format_from_string(const std::string_view str);
   render_pass::type render_pass_type_from_string(const std::string_view str);
+  framebuffer::clear_mask_bit render_pass_clear_bits_from_strings(const std::span<const std::string> str);
   binding_scope pass_binding_scope_from_string(const std::string_view str);
   binding_type pass_binding_type_from_string(const std::string_view str);
   framebuffer::attachment_type framebuffer_attachment_type_from_string(const std::string_view str);

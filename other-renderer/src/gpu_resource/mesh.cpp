@@ -9,7 +9,6 @@
 #include "model/vertex.hpp"
 #include "renderer/renderer_backend.hpp"
 
-
 namespace other {
   namespace {
 
@@ -65,7 +64,7 @@ namespace other {
     return *this;
   }
 
-  mesh& mesh::upload_vertex_buffer(const std::string_view res_name, uint32_t vertex_count, const void* data, size_t size) {
+  mesh& mesh::upload_vertex_buffer(const std::string_view res_name, gpu_buffer::usage usage, uint32_t vertex_count, const void* data, size_t size) {
     destroy_vertex_buffer();
 
     bind();
@@ -77,7 +76,7 @@ namespace other {
 
     gpu_buffer* vert_buffer = subsystem<renderer_backend>::get()->api()->get_resource_as<gpu_buffer>(vertex_buffer_handle);
     vert_buffer->set_buffer_type(gpu_buffer::buf_type::VERTEX_BUFFER)
-      .set_usage(gpu_buffer::usage::STATIC)
+      .set_usage(usage)
       .set_data(data, size);
     unbind();
 
@@ -86,7 +85,7 @@ namespace other {
     return *this;
   }
 
-  mesh& mesh::upload_index_buffer(const std::string_view res_name, uint32_t index_count, const void* data, size_t size) {
+  mesh& mesh::upload_index_buffer(const std::string_view res_name, gpu_buffer::usage usage, uint32_t index_count, const void* data, size_t size) {
     destroy_index_buffer();
 
     bind();
@@ -98,7 +97,7 @@ namespace other {
 
     gpu_buffer* index_buffer = subsystem<renderer_backend>::get()->api()->get_resource_as<gpu_buffer>(*index_buffer_handle);
     index_buffer->set_buffer_type(gpu_buffer::buf_type::INDEX_BUFFER)
-      .set_usage(gpu_buffer::usage::STATIC)
+      .set_usage(usage)
       .set_data(data, size);
     unbind();
 

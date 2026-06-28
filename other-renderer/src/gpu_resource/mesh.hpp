@@ -4,6 +4,7 @@
 #ifndef OTHER_RENDERER_GPU_RESOURCE_MESH_HPP
 #define OTHER_RENDERER_GPU_RESOURCE_MESH_HPP
 
+#include "gpu_resource/gpu_buffer.hpp"
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/vertex.hpp"
 
@@ -56,8 +57,8 @@ namespace other {
     resource_type type() const override { return resource_type::MESH; }
 
     mesh& bind();
-    mesh& upload_vertex_buffer(const std::string_view res_name, uint32_t vertex_count, const void* data, size_t size);
-    mesh& upload_index_buffer(const std::string_view res_name, uint32_t index_count, const void* data, size_t size);
+    mesh& upload_vertex_buffer(const std::string_view res_name, gpu_buffer::usage usage, uint32_t vertex_count, const void* data, size_t size);
+    mesh& upload_index_buffer(const std::string_view res_name, gpu_buffer::usage usage, uint32_t index_count, const void* data, size_t size);
     mesh& set_primitive_type(primitive_type type);
     mesh& set_vertex_count(size_t count);
     mesh& set_index_count(size_t count);

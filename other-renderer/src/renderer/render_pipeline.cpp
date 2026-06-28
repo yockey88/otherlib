@@ -297,97 +297,6 @@ namespace other {
         ring.head = 0;
       }
     }
-
-    for (auto& dpass : debug_passes) {
-      frame_binding_view bv{
-        .defs = std::span{ dpass.runtime->def->bindings },
-        .per_frame_handles = std::span{ dpass.runtime->state.per_frame_handles },
-        .per_draw_offsets = {},
-      };
-      pass_diagnostics diag{};
-
-      const uint32_t iters = std::max<uint32_t>(dpass.runtime->def->iterations_per_frame, 1u);
-
-      for (uint32_t iter = 0; iter < iters; ++iter) {
-        PROFILE_SECTION("render_pipeline::render_frame--render_pass--iteration");
-        diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
-
-        pass_begin_info info{
-          .framebuffer = dpass.pass->framebuffer_handle,
-          .render_area_size = dpass.pass->size,
-          .clear_color = dpass.pass->clear_color,  // see note
-          .clear_depth = std::nullopt,
-          .pass_type = dpass.pass->pass_type,
-        };
-        renderer_ptr->rendering()->api()->begin_pass(info);
-
-        if (dpass.pass->shader_handle.has_value()) {
-          dpass.pass->bind_pass(renderer_ptr);
-          for (const auto& [id, buffer] : dpass.input_buffers) {
-            renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
-              .set_shader_resource(buffer.binding_point, *dpass.pass->shader_handle)
-              .bind_to_shader()
-              .bind();
-          }
-          for (const auto& [id, buffer] : dpass.output_buffers) {
-            renderer_ptr->get_resource<gpu_buffer>(buffer.handle)
-              .set_shader_resource(buffer.binding_point, *dpass.pass->shader_handle)
-              .bind_to_shader()
-              .bind();
-          }
-
-          if (dpass.pass->pass_type == render_pass::RENDER_PASS) {
-            for (const auto& [id, tex] : dpass.input_textures) {
-              renderer_ptr->get_resource<texture>(tex.handle).bind(tex.slot);
-            }
-          } else if (dpass.pass->pass_type == render_pass::COMPUTE_PASS) {
-            for (const auto& [id, tex] : dpass.input_textures) {
-              auto& t = renderer_ptr->get_resource<texture>(tex.handle);
-              t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), READ);
-            }
-            for (const auto& [id, tex] : dpass.output_textures) {
-              auto& t = renderer_ptr->get_resource<texture>(tex.handle);
-              t.bind_image(tex.slot, tex.mip_level, true, 0, t.get_format(), WRITE);
-            }
-          }
-          {
-            pass_context ctx{
-              renderer_ptr,
-              this,
-              nullptr,
-              frame_render_data,
-              bv,
-              &diag,
-            };
-            dpass.executor(ctx);
-          }
-          if (dpass.pass->shader_handle.has_value()) {
-            for (const auto& [id, tex] : dpass.input_textures) {
-              renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
-            }
-            if (dpass.pass->pass_type == render_pass::COMPUTE_PASS) {
-              for (const auto& [id, tex] : dpass.output_textures) {
-                renderer_ptr->get_resource<texture>(tex.handle).unbind(tex.slot);
-              }
-            }
-
-            for (const auto& [id, buffer] : dpass.output_buffers) {
-              renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
-            }
-            for (const auto& [id, buffer] : dpass.input_buffers) {
-              renderer_ptr->get_resource<gpu_buffer>(buffer.handle).unbind();
-            }
-            dpass.pass->unbind_pass(renderer_ptr);
-          }
-
-          renderer_ptr->rendering()->api()->end_pass();
-        }
-
-        for (auto& ring : dpass.runtime->state.per_draw_rings) {
-          ring.head = 0;
-        }
-      }
-    }
   }
 
   void render_pipeline::reset_draw_buffers() {
@@ -403,8 +312,63 @@ namespace other {
     return renderer_ptr->get_window_size();
   }
 
+  void render_pipeline::register_texture_resource(const std::string_view name, resource_handle handle) {
+    auto hash = FNV(name);
+    auto itr = texture_resources.find(hash);
+    if (itr == texture_resources.end()) {
+      CORE_LOG_ERROR("Texture resource with name '{}' not declared in pipeline '{}'.", name, definition.name);
+      return;
+    }
+    replace_texture_resource(name, handle);
+  }
+
+  void render_pipeline::register_buffer_resource(const std::string_view name, resource_handle handle) {
+    auto hash = FNV(name);
+    auto itr = buffer_resources.find(hash);
+    if (itr == buffer_resources.end()) {
+      CORE_LOG_ERROR("Buffer resource with name '{}' not declared in pipeline '{}'.", name, definition.name);
+      return;
+    }
+
+    if (!renderer_ptr->resource_exists(handle)) {
+      CORE_LOG_ERROR("Cannot register buffer resource '{}' with handle {} — resource does not exist.", name, handle);
+      return;
+    }
+
+    // destroy existing resource if handle is changing
+    if (itr->second.handle != handle) {
+      if (renderer_ptr->resource_exists(itr->second.handle)) {
+        renderer_ptr->destroy_resource(itr->second.handle);
+      }
+      itr->second.handle = handle;
+    }
+  }
+
+  void render_pipeline::register_shader_resource(const std::string_view name, resource_handle handle) {
+    auto hash = FNV(name);
+    auto itr = shader_handles.find(hash);
+    if (itr == shader_handles.end()) {
+      CORE_LOG_ERROR("Shader resource with name '{}' not declared in pipeline '{}'.", name, definition.name);
+      return;
+    }
+
+    if (!renderer_ptr->resource_exists(handle)) {
+      CORE_LOG_ERROR("Cannot register shader resource '{}' with handle {} — resource does not exist.", name, handle);
+      return;
+    }
+
+    // destroy existing resource if handle is changing
+    if (itr->second != handle) {
+      if (renderer_ptr->resource_exists(itr->second)) {
+        renderer_ptr->destroy_resource(itr->second);
+      }
+      itr->second = handle;
+    }
+  }
+
   ImTextureID render_pipeline::get_final_output_texture_id() {
     if (!screen_texture_handle.has_value() || !get_renderer()->resource_exists(*screen_texture_handle)) {
+      CORE_LOG_ERROR("Screen texture handle not set or resource does not exist for pipeline '{}'.", definition.name);
       return 0;
     }
     return get_renderer()->get_resource<texture>(*screen_texture_handle).get_imgui_texture_id();
@@ -413,6 +377,7 @@ namespace other {
   ImTextureID render_pipeline::get_texture_id(const std::string_view name) {
     auto handle_opt = find_texture_by_name(name);
     if (!handle_opt.has_value() || !get_renderer()->resource_exists(*handle_opt)) {
+      CORE_LOG_ERROR("Texture resource with name '{}' not found or does not exist for pipeline '{}'.", name, definition.name);
       return 0;
     }
     return get_renderer()->get_resource<texture>(*handle_opt).get_imgui_texture_id();
@@ -670,8 +635,56 @@ namespace other {
       .set_primitive_type(mesh::primitive_type::TRIANGLES)
       .add_attribute("position", mesh::attribute_type::FLOAT, 2, 0)
       .add_attribute("tex_coords", mesh::attribute_type::FLOAT, 2, 2)
-      .upload_vertex_buffer("quad_vertices", 6, kQuadVertices, sizeof(kQuadVertices))
+      .upload_vertex_buffer("quad_vertices", gpu_buffer::usage::STATIC, 6, kQuadVertices, sizeof(kQuadVertices))
       .finalize_mesh();
+  }
+
+  void render_pipeline::replace_texture_resource(const std::string_view name, resource_handle new_handle) {
+    auto hash = FNV(name);
+    auto itr = texture_resources.find(hash);
+    if (itr == texture_resources.end()) {
+      CORE_LOG_ERROR("Texture resource with name '{}' not declared in pipeline '{}'.", name, definition.name);
+      return;
+    }
+
+    CORE_LOG_DEBUG("Replacing texture resource [{}] in pipeline '{}' with new handle {}.", name, definition.name, new_handle);
+    graph->replace_texture_resource(itr->second.handle, new_handle);
+    if (renderer_ptr->resource_exists(itr->second.handle)) {
+      renderer_ptr->destroy_resource(itr->second.handle);
+    }
+    itr->second.handle = new_handle;
+  }
+
+  void render_pipeline::replace_buffer_resource(const std::string_view name, resource_handle new_handle) {
+    auto hash = FNV(name);
+    auto itr = buffer_resources.find(hash);
+    if (itr == buffer_resources.end()) {
+      CORE_LOG_ERROR("Buffer resource with name '{}' not declared in pipeline '{}'.", name, definition.name);
+      return;
+    }
+
+    CORE_LOG_DEBUG("Replacing buffer resource '{}' in pipeline '{}' with new handle {}.", name, definition.name, new_handle);
+    graph->replace_buffer_resource(itr->second.handle, new_handle);
+    if (renderer_ptr->resource_exists(itr->second.handle)) {
+      renderer_ptr->destroy_resource(itr->second.handle);
+    }
+    itr->second.handle = new_handle;
+  }
+
+  void render_pipeline::replace_shader_resource(const std::string_view name, resource_handle new_handle) {
+    auto hash = FNV(name);
+    auto itr = shader_handles.find(hash);
+    if (itr == shader_handles.end()) {
+      CORE_LOG_ERROR("Shader resource with name '{}' not declared in pipeline '{}'.", name, definition.name);
+      return;
+    }
+
+    CORE_LOG_DEBUG("Replacing shader resource '{}' in pipeline '{}' with new handle {}.", name, definition.name, new_handle);
+    graph->replace_pass_shader(itr->second, new_handle);
+    if (renderer_ptr->resource_exists(itr->second)) {
+      renderer_ptr->destroy_resource(itr->second);
+    }
+    itr->second = new_handle;
   }
 
   void render_pipeline::build_tag_maps() {
@@ -706,6 +719,8 @@ namespace other {
       glm::ivec2 size = resolve_size(pass_def.use_window_size, pass_def.fixed_size);
       auto builder = graph->start_pass(pass_def.name, shader_handle, pass_def.pass_type, size, pass_def.create_framebuffer);
       build_pass(pass_def, builder);
+      builder.pass.clear_flags = pass_def.clear_flags;
+      builder.pass.override_fb_clear = pass_def.override_fb_clear;
       builder.end_pass();
     }
   }

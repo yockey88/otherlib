@@ -7,8 +7,8 @@
 
 namespace other {
 
-  framebuffer& framebuffer::bind() {
-    subsystem<renderer_backend>::get()->api()->bind_framebuffer_resource(handle());
+  framebuffer& framebuffer::bind(bool clear) {
+    subsystem<renderer_backend>::get()->api()->bind_framebuffer_resource(handle(), clear);
     return *this;
   }
 
@@ -43,8 +43,8 @@ namespace other {
       .set_type(tex_type)
       .set_format(format)
       .set_size(size.x, size.y)
-      .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
-      .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE)
+      .set_filter(min_filter, max_filter)
+      .set_wrap_mode(wrap_s, wrap_t, wrap)
       .finalize_texture();
 
     return add_attachment(attachment, type);

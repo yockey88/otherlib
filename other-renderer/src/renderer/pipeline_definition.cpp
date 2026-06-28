@@ -173,6 +173,23 @@ namespace other {
     }
   }
 
+  framebuffer::clear_mask_bit render_pass_clear_bits_from_strings(const std::span<const std::string> str) {
+    framebuffer::clear_mask_bit flags = framebuffer::ALL_BITS;
+    for (const auto& s : str) {
+      switch (FNV(s)) {
+        case FNV("COLOR"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::COLOR_BIT); break;
+        case FNV("DEPTH"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::DEPTH_BIT); break;
+        case FNV("STENCIL"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::STENCIL_BIT); break;
+        case FNV("DEPTH_STENCIL"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::DEPTH_BIT | framebuffer::STENCIL_BIT); break;
+        case FNV("ALL"): return framebuffer::ALL_BITS;
+        default:
+          OTHER_ASSERT(false, "Unsupported render pass clear bit string {}", s);
+          break;
+      }
+    }
+    return flags;
+  }
+
   binding_scope pass_binding_scope_from_string(const std::string_view str) {
     switch (FNV(str)) {
       case FNV("PER_PIPELINE"): return binding_scope::PER_PIPELINE;
@@ -969,6 +986,17 @@ namespace other {
             std::string depends_on_str = depends_on.as_array()->at(i).as_string()->get();
             p.depends_on.push_back(depends_on_str);
           }
+        }
+
+        auto clear_bits = pass.at_path("clear_bits");
+        if (clear_bits && clear_bits.is_array()) {
+          std::vector<std::string> clear_bits_strs;
+          for (size_t i = 0; i < clear_bits.as_array()->size(); ++i) {
+            std::string bit_str = clear_bits.as_array()->at(i).as_string()->get();
+            clear_bits_strs.push_back(bit_str);
+          }
+          p.clear_flags = render_pass_clear_bits_from_strings(clear_bits_strs);
+          p.override_fb_clear = true;
         }
 
         std::stringstream ss_pass;

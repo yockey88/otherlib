@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL_dialog.h>
 
+#include "gpu_resource/framebuffer.hpp"
 #include "renderer/gpu_structs.hpp"
 
 #include "driver/driver.hpp"
@@ -33,7 +34,8 @@ namespace other {
     render_graph::pass_executor make_voxelize(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl);
-    render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_debug_overlay(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_debug_meshes(const pipeline_pass_definition& def, render_pipeline* pl);
 
     void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
@@ -236,13 +238,37 @@ namespace other {
     register_interfaces_in_registry(kernel->project_registry());
   }
 
+  void rendering_system::on_driver_ready(driver_kernel* kernel) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system on_driver_ready.");
+    PROFILE_SECTION("rendering_system::on_driver_ready");
+
+    add_debug_overlay = get_driver().get_config_value<bool>("rendering.enable-debug", true);
+    if (add_debug_overlay) {
+      debug_pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.debug-pipelines", {});
+      if (debug_pipeline_names.empty()) {
+        debug_pipeline_names = renderer_ptr->get_pipeline_names();
+      }
+
+      auto& reg = renderer_ptr->get_debug_stream_registry();
+      const std::vector<vertex_attribute> vtx = {
+        { value_type::VEC3, "OE_position", 0, sizeof(glm::vec3) },
+        { value_type::VEC4, "OE_color", 1, sizeof(glm::vec4) },
+      };
+      reg.register_stream(builtin_debug_streams::kLines, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::LINES, vtx } });
+      reg.register_stream(builtin_debug_streams::kTris, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::TRIANGLES, vtx } });
+      reg.register_stream(builtin_debug_streams::kPoints, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 14, .draw_recipe = { "debug_overlay", mesh::POINTS, vtx } });
+      reg.register_stream(builtin_debug_streams::kMeshes, { .element_size = sizeof(debug_mesh_instance), .max_per_frame = 4096, .draw_recipe = {} });
+    }
+  }
+
   void rendering_system::tick(driver_kernel* kernel, double dt) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system tick.");
     PROFILE_SECTION("rendering_system::tick");
   }
 
   void rendering_system::shutdown(driver_kernel* kernel) {
-    PROFILE_SECTION("rendering_system::shutdown");
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized in rendering system shutdown.");
+    PROFILE_SECTION("rendering_system::shutdown");
     driver_ui_ptr->shutdown();
     driver_ui_ptr = nullptr;
 
@@ -276,18 +302,18 @@ namespace other {
     }
 
     if (data_ptr != nullptr) {
-      auto& registry = renderer_ptr->get_debug_stream_registry();
-      for (const auto& [name, def] : registry.entries()) {
-        data_ptr->debug_data.configure_stream(def.name, def.element_size, def.max_per_frame);
-      }
+      auto& reg = renderer_ptr->get_debug_stream_registry();
+      data_ptr->debug_data.configure_streams(renderer_ptr.get(), reg);
     }
 
     {
       PROFILE_SECTION("rendering_system::render--frame");
       renderer_ptr->begin_frame(data_ptr);
       get_driver().on_begin_frame(data_ptr);
+
       renderer_ptr->render();
       get_driver().on_render();
+      get_driver().on_debug_render(data_ptr);
 
       const bool ui_enabled = get_driver().get_config_value<bool>("ui.enable", true);
       if (ui_enabled) {
@@ -413,7 +439,8 @@ namespace other {
     reg.register_executor("voxelize", &detail::make_voxelize);
     reg.register_executor("generate_mipmaps", &detail::make_generate_mipmaps);
     reg.register_executor("downsample_chain", &detail::make_downsample_chain);
-    reg.register_executor("debug_stream", &detail::make_debug_stream);
+    reg.register_executor("debug_overlay", &detail::make_debug_overlay);
+    reg.register_executor("debug_meshes", &detail::make_debug_meshes);
   }
 
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
@@ -496,13 +523,23 @@ namespace other {
 
     CORE_LOG_INFO("Adding Rendering Pipeline: {}", itr->definition.name);
     renderer_ptr->add_pipeline(itr->definition.name, itr->definition);
-    rendering_pipeline_assets.push_back(*itr);
-    pending_rendering_pipeline_assets.erase(itr);
 
     /// load all of it's resources that are on disk as assets (shaders/textures/etc..)
     // for (auto& resource : pl->definition.textures) {
     //   kernel->get_core_system<asset_system>().add_texture_asset(resource.seed_texture_path.value_or(""));
     // }
+
+    if (debug_pipeline_names.empty() && add_debug_overlay) {
+      add_debug_overlay_to_pipeline(itr->definition.name);
+    } else if (add_debug_overlay) {
+      auto debug_it = std::ranges::find(debug_pipeline_names, itr->definition.name);
+      if (add_debug_overlay && debug_it != debug_pipeline_names.end()) {
+        add_debug_overlay_to_pipeline(itr->definition.name);
+      }
+    }
+
+    rendering_pipeline_assets.push_back(*itr);
+    pending_rendering_pipeline_assets.erase(itr);
   }
 
   void rendering_system::handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data) {
@@ -516,6 +553,92 @@ namespace other {
 
     renderer_ptr->remove_pipeline(itr->definition.name);
     rendering_pipeline_assets.erase(itr);
+  }
+
+  void rendering_system::add_debug_overlay_to_pipeline(const std::string_view pipeline_name) {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized.");
+    if (!renderer_ptr->has_pipeline(pipeline_name)) {
+      CORE_LOG_WARN("Debug overlay pipeline '{}' does not exist in renderer, skipping.", pipeline_name);
+      return;
+    }
+
+    auto def = get_debug_overlay_pipeline_definition();
+    def.name = std::format("{}:debug-overlay", pipeline_name);
+    renderer_ptr->add_post_processing_pipeline(pipeline_name, def.name, def);
+    auto* source_pipeline = renderer_ptr->get_pipeline(pipeline_name);
+    OTHER_ASSERT(source_pipeline != nullptr, "Source pipeline '{}' not found for debug overlay", pipeline_name);
+
+    opt<resource_handle> src_frame = source_pipeline->get_screen_texture();
+    if (src_frame.has_value()) {
+      renderer_ptr->register_texture_resource(def.name, "frame", src_frame.value());
+    } else {
+      CORE_LOG_WARN("Source pipeline '{}' does not have a screen texture for debug overlay, skipping.", pipeline_name);
+      return;
+    }
+  }
+
+  pipeline_definition rendering_system::get_debug_overlay_pipeline_definition() const {
+    pipeline_definition def;
+    def.name = "debug-overlay";
+
+    def.textures.push_back({ .name = "frame", .use_window_size = true, .format = texture::format::RGBA16F });
+    def.textures.push_back({ .name = "depth", .use_window_size = true, .format = texture::format::DEPTHF });
+    def.textures.push_back({ .name = "debug_frame", .use_window_size = true, .format = texture::format::RGBA16F });
+    def.buffers.push_back({ .name = "camera_buffer", .type = gpu_buffer::UNIFORM_BUFFER, .usage = gpu_buffer::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) });
+    def.shaders.push_back({ .name = "blit", .vertex_path = "resources/basic-textured-quad.vert", .fragment_path = "resources/debug-overlay-blit.frag" });
+    def.shaders.push_back({ .name = "debug_overlay", .vertex_path = "resources/debug-overlay.vert", .fragment_path = "resources/debug-overlay.frag" });
+    def.shaders.push_back({ .name = "debug_meshes", .vertex_path = "resources/debug-mesh.vert", .fragment_path = "resources/debug-overlay.frag" });
+
+    def.passes.emplace_back() = {
+      .name = "overlay-blit",
+      .pass_type = render_pass::RENDER_PASS,
+      .shader_name = "blit",
+      .inputs = {
+        { .resource_name = "frame", .uniform_name = "OE_frame", .binding = 0 },
+        { .resource_name = "depth", .uniform_name = "OE_depth", .binding = 1 },
+      },
+      .outputs = {
+        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
+      },
+      .executor = { .name = "fullscreen_quad" },
+    };
+    def.passes.emplace_back() = {
+      .name = "overlay-geometry",
+      .shader_name = "debug_overlay",
+      .inputs = {
+        { .resource_name = "camera_buffer", .uniform_name = "OE_camera", .binding = 0 },
+      },
+      .outputs = {
+        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
+      },
+      .executor = { .name = "debug_overlay" },
+      .depends_on = { "overlay-blit" },
+      .bindings = {
+        { .name = "per_frame.camera_buffer", .tag = resource_tag(resource_tag::kCameraTag), .scope = binding_scope::PER_FRAME, .type = binding_type::UNIFORM_BUFFER, .binding = 0 },
+      },
+      .clear_flags = framebuffer::DEPTH_BIT,
+      .override_fb_clear = true,
+    };
+    def.passes.emplace_back() = {
+      .name = "overlay-meshes",
+      .shader_name = "debug_meshes",
+      .inputs = {
+        { .resource_name = "camera_buffer", .uniform_name = "OE_camera", .binding = 0 },
+      },
+      .outputs = {
+        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
+      },
+      .executor = { .name = "debug_meshes" },
+      .depends_on = { "overlay-geometry" },
+      .bindings = {
+        { .name = "per_frame.camera_buffer", .tag = resource_tag(resource_tag::kCameraTag), .scope = binding_scope::PER_FRAME, .type = binding_type::UNIFORM_BUFFER, .binding = 0 },
+      },
+      .clear_flags = framebuffer::DEPTH_BIT,
+      .override_fb_clear = true,
+    };
+
+    def.display_texture_name = "debug_frame";
+    return def;
   }
 
   namespace detail {
@@ -642,20 +765,30 @@ namespace other {
       };
     }
 
-    render_graph::pass_executor make_debug_stream(const pipeline_pass_definition& def, render_pipeline* pl) {
-      const auto& params = def.executor.params;
-      auto stream_it = params.find("stream");
-      OTHER_ASSERT(stream_it != params.end(), "debug_stream: pass '{}' missing 'stream' param", def.name);
-      std::string stream_name = stream_it->second;
+    render_graph::pass_executor make_debug_overlay(const pipeline_pass_definition& def, render_pipeline* pl) {
+      return [pass = def.name](pass_context& ctx) {
+        const debug_streams& s = ctx.get_frame_data().debug_data;
+        ctx.draw_debug_vertices(builtin_debug_streams::kTris, mesh::TRIANGLES);
+        ctx.draw_debug_vertices(builtin_debug_streams::kLines, mesh::LINES);
+        ctx.draw_debug_vertices(builtin_debug_streams::kPoints, mesh::POINTS);
+      };
+    }
 
-      return [stream_name = std::move(stream_name), pass_name = def.name](pass_context& ctx) {
-        auto& streams = ctx.get_frame_data().debug_data;
-        auto* stream = ctx.get_renderer().get_debug_stream_registry().find(stream_name);
-        if (stream == nullptr) {
-          CORE_LOG_ERROR("Debug stream '{}' not found for pass '{}'", stream_name, pass_name);
+    render_graph::pass_executor make_debug_meshes(const pipeline_pass_definition& def, render_pipeline* pl) {
+      return [pass = def.name](pass_context& ctx) {
+        const debug_streams& s = ctx.get_frame_data().debug_data;
+        const size_t n = s.count(builtin_debug_streams::kMeshes);
+        if (n == 0) {
           return;
         }
-        ctx.draw_debug_stream(stream_name, *stream, streams.view(stream_name), streams.count(stream_name));
+
+        const auto bytes = s.view(builtin_debug_streams::kMeshes);
+        OTHER_ASSERT(bytes.size() == n * sizeof(debug_mesh_instance), "debug_meshes: stream byte size {} != {} instances", bytes.size(), n);
+
+        const auto* inst = reinterpret_cast<const debug_mesh_instance*>(bytes.data());
+        for (size_t i = 0; i < n; ++i) {
+          ctx.draw_debug_mesh(inst[i]);
+        }
       };
     }
 

@@ -35,6 +35,7 @@ target_sources(other_renderer
       src/renderer/render_graph.cpp
       src/renderer/pipeline_definition.cpp
       src/renderer/debug_render_stream.cpp
+      src/renderer/debug_draw.cpp
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
 )

@@ -802,8 +802,21 @@ namespace other {
             if (name.is_string() && shader_name.is_string()) {
               const std::string shader_str = shader_name.as_string()->get();
               if (!shader_names.contains(shader_str)) {
-                result.fail(std::format("frame.passes['{}']: shader '{}' is not declared in resources.shaders",
-                                        name.as_string()->get(), shader_str));
+                result.fail(std::format("frame.passes['{}']: shader '{}' is not declared in resources.shaders", name.as_string()->get(), shader_str));
+              }
+            }
+
+            const auto clear_bits = pass.at_path("clear_bits");
+            if (clear_bits && clear_bits.is_array()) {
+              for (size_t i = 0; i < clear_bits.as_array()->size(); ++i) {
+                if (!clear_bits.as_array()->at(i).is_string()) {
+                  result.fail(std::format("frame.passes['{}']: clear_bits[{}] must be a string", name.as_string()->get(), i));
+                } else {
+                  const std::string clear_bit_str = clear_bits.as_array()->at(i).as_string()->get();
+                  if (!is_valid_enum(clear_bit_str, kValidAttachmentTypes)) {
+                    result.fail(std::format("frame.passes['{}']: '{}' is not a valid clear bit", name.as_string()->get(), clear_bit_str));
+                  }
+                }
               }
             }
           }

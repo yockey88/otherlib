@@ -24,6 +24,7 @@ namespace other {
 
     void initialize(driver_kernel* kernel) override;
     void late_initialize(driver_kernel* kernel) override;
+    void on_driver_ready(driver_kernel* kernel) override;
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
@@ -52,6 +53,9 @@ namespace other {
       pipeline_definition definition;
     };
 
+    bool add_debug_overlay = false;
+    std::vector<std::string> debug_pipeline_names = {};
+
     scope<renderer> renderer_ptr = nullptr;
     scope<pass_executor_resolver> pass_resolver_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
@@ -68,6 +72,9 @@ namespace other {
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);
     void handle_rendering_pipeline_asset_loaded_event(driver_kernel* kernel, const value& data);
     void handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data);
+
+    void add_debug_overlay_to_pipeline(const std::string_view pl_name);
+    pipeline_definition get_debug_overlay_pipeline_definition() const;
   };
 
 }  // namespace other

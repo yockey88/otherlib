@@ -44,8 +44,6 @@ namespace other {
     static constexpr uint32_t kMaxFramesInFlight = 3;
 
     render_pipeline() = default;
-    render_pipeline(pipeline_definition&& def)
-        : definition(std::move(def)) {}
     render_pipeline(const pipeline_definition& def)
         : definition(def) {}
     virtual ~render_pipeline() = default;
@@ -65,6 +63,10 @@ namespace other {
     void render_frame(renderer* renderer_ptr);
     void reset_draw_buffers();
     glm::ivec2 get_window_size() const;
+
+    void register_texture_resource(const std::string_view name, resource_handle handle);
+    void register_buffer_resource(const std::string_view name, resource_handle handle);
+    void register_shader_resource(const std::string_view name, resource_handle handle);
 
     ImTextureID get_final_output_texture_id();
     ImTextureID get_texture_id(const std::string_view name);
@@ -92,17 +94,6 @@ namespace other {
       resource_handle handle;
       resource_tag tag = resource_tag::none();
     };
-    struct debug_pass {
-      std::string name;
-      render_pass* pass;
-      pass_runtime* runtime;
-      render_graph::pass_executor executor;
-
-      std::map<natural_t, render_pass::buffer_resource> input_buffers;
-      std::map<natural_t, render_pass::buffer_resource> output_buffers;
-      std::map<natural_t, render_pass::texture_resource> input_textures;
-      std::map<natural_t, render_pass::texture_resource> output_textures;
-    };
 
     pipeline_definition definition;
     bool valid = false;
@@ -127,8 +118,6 @@ namespace other {
     using executor_fn = render_graph::pass_executor;
     std::map<std::string, executor_fn> executor_overrides;
 
-    std::vector<debug_pass> debug_passes;
-
     // for avoiding resource collisions in rendering backend when user loads multiple pipelines with same resource names
     std::string get_pipeline_name(const std::string_view n) const;
 
@@ -138,6 +127,10 @@ namespace other {
     void override_pass_executor(const std::string_view pass_name, executor_fn&& fn);
 
     void create_resources_from_def();
+
+    void replace_texture_resource(const std::string_view name, resource_handle new_handle);
+    void replace_buffer_resource(const std::string_view name, resource_handle new_handle);
+    void replace_shader_resource(const std::string_view name, resource_handle new_handle);
 
     void build_tag_maps();
     void build_passes_from_def();

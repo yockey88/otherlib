@@ -75,16 +75,6 @@ namespace other {
     float line_thickness = 1.f;
   };
 
-  /*
-  struct DrawElementsIndirectCommand {
-    uint32_t  count;
-    uint32_t  instanceCount;
-    uint32_t  firstIndex;
-    int32_t  baseVertex;
-    uint32_t  baseInstance;
-  };
-  */
-
 }  // namespace other
 
 OTHER_REFLECT(

@@ -122,6 +122,60 @@ namespace other {
     return pass_builder(*this, rp);
   }
 
+  void render_graph::replace_texture_resource(resource_handle old_handle, resource_handle new_handle) {
+    for (auto& [_, pass] : passes) {
+      for (auto& [_, texture] : pass.pass.texture_resources) {
+        if (texture.handle == old_handle) {
+          texture.handle = new_handle;
+        }
+      }
+    }
+
+    for (auto& n : pass_graph.nodes) {
+      for (auto& [_, texture] : n.second.input_textures) {
+        if (texture.handle == old_handle) {
+          texture.handle = new_handle;
+        }
+      }
+      for (auto& [_, texture] : n.second.output_textures) {
+        if (texture.handle == old_handle) {
+          texture.handle = new_handle;
+        }
+      }
+    }
+  }
+
+  void render_graph::replace_buffer_resource(resource_handle old_handle, resource_handle new_handle) {
+    for (auto& [_, pass] : passes) {
+      for (auto& [_, buffer] : pass.pass.buffer_resources) {
+        if (buffer.handle == old_handle) {
+          buffer.handle = new_handle;
+        }
+      }
+    }
+
+    for (auto& n : pass_graph.nodes) {
+      for (auto& [_, buffer] : n.second.input_buffers) {
+        if (buffer.handle == old_handle) {
+          buffer.handle = new_handle;
+        }
+      }
+      for (auto& [_, buffer] : n.second.output_buffers) {
+        if (buffer.handle == old_handle) {
+          buffer.handle = new_handle;
+        }
+      }
+    }
+  }
+
+  void render_graph::replace_pass_shader(resource_handle old_handle, resource_handle new_handle) {
+    for (auto& [_, pass] : passes) {
+      if (pass.pass.shader_handle.has_value() && *pass.pass.shader_handle == old_handle) {
+        pass.pass.shader_handle = new_handle;
+      }
+    }
+  }
+
   render_graph::pass& render_graph::create_pass(render_pass::type rptype) {
     natural_t id = get_next_pass_id();
     auto [itr, inserted] = passes.insert({ id, { .type = rptype, .pass = render_pass{ .pass_type = rptype, .id = id } } });

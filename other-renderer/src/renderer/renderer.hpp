@@ -11,6 +11,7 @@
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/camera.hpp"
+#include "renderer/debug_draw.hpp"
 #include "renderer/debug_render_stream.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/frame_binding_registry.hpp"
@@ -78,8 +79,13 @@ namespace other {
 
     void begin_frame(render_data* data);
     void bind_frame_bindings(const render_data& data);
+    void clear(framebuffer::clear_mask_bit clear_flags, const glm::vec4& clear_color = glm::vec4(0.0f), float clear_depth = 1.0f, uint32_t clear_stencil = 0);
     void render();
     void end_frame();
+
+    debug_draw debug() {
+      return debug_draw{ scene_data ? &scene_data->debug_data : nullptr };
+    }
 
     inline void set_override_camera(const camera& cam) { forced_camera = cam; }
     inline void set_should_force_camera(bool force) { should_force_camera = force; }
@@ -88,13 +94,33 @@ namespace other {
       return should_force_camera ? &forced_camera : nullptr;
     }
 
+    bool has_pipeline(const std::string_view name) const {
+      return pipelines.find(FNV(name)) != pipelines.end();
+    }
+    render_pipeline* get_pipeline(const std::string_view name) const {
+      auto itr = pipelines.find(FNV(name));
+      if (itr == pipelines.end()) {
+        return nullptr;
+      }
+      return itr->second;
+    }
+    std::vector<std::string> get_pipeline_names() const;
+
+    void register_texture_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
+    void register_buffer_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
+
+    void register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& vert_path, const filepath& geom_path, const filepath& frag_path);
+    void register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& comp_path);
+    void register_shader_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
+
+    ImTextureID get_debug_overlay_id(const std::string_view pipeline_name);
     ImTextureID get_texture_id(const std::string_view pipeline, const std::string_view name);
 
     opt<resource_handle> find_texture_resource(const std::string_view name) const;
     opt<resource_handle> find_buffer_resource(const std::string_view name) const;
 
     opt<resource_handle> get_pipeline_output(const std::string_view pipeline_name) const;
-    resource_handle get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_recipe& recipe);
+    resource_handle get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_definition& definition);
     opt<resource_handle> get_debug_stream_shader_handle(std::string_view shader_name);
 
     void begin_ui_frame();
@@ -151,8 +177,23 @@ namespace other {
         arena_allocator<render_pipeline>{}.free(pl);
         return;
       }
+
+      auto [ditr, dres] = pipeline_dependencies.insert({ hash, {} });
+      OTHER_ASSERT(dres, "Failed to insert pipeline dependency entry for pipeline [{}].", name);
+      pipeline_ids = get_pipeline_order();
     }
 
+    void add_post_processing_pipeline(const std::string_view source_name, const std::string_view name, const pipeline_definition& definition) {
+      auto itr = pipelines.find(FNV(name));
+      if (itr != pipelines.end()) {
+        CORE_LOG_ERROR("Pipeline with name [{}] already exists.", name);
+        return;
+      }
+      add_pipeline(name, definition);
+      add_pipeline_dependency(name, source_name);
+    }
+
+    void add_pipeline_dependency(const std::string_view pipeline, const std::string_view depends_on);
     void remove_pipeline(const std::string_view name);
 
     virtual void draw_mesh(const resource_handle& mesh_handle);
@@ -184,6 +225,11 @@ namespace other {
     std::map<natural_t, resource_handle> debug_stream_meshes;
     std::map<natural_t, resource_handle> debug_stream_shaders;
     std::map<natural_t, render_pipeline*> pipelines;
+
+    std::map<natural_t, std::vector<natural_t>> pipeline_dependencies;
+    std::vector<natural_t> pipeline_ids;
+
+    std::vector<natural_t> get_pipeline_order() const;
 
     render_pipeline* get_pass_pipeline(natural_t pass_id) const;
   };
