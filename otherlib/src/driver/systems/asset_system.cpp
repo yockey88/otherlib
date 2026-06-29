@@ -180,6 +180,11 @@ namespace other {
     return asset_mgr->get_virtual_asset_path(asset_id);
   }
 
+  std::vector<asset*> asset_system::get_assets_of_type(asset::type type) const {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_assets_of_type(type);
+  }
+
   void asset_system::mount_mounts(driver_kernel* kernel) {
     PROFILE_SECTION("asset_system::mount_mounts");
     auto* fs = subsystem<file_system>::get();

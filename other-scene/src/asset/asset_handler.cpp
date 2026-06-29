@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <ranges>
+#include <span>
 
 #include <asio/asio.hpp>
 
@@ -352,6 +353,14 @@ namespace other {
     }
 
     return nullptr;
+  }
+
+  std::vector<asset*> asset_handler::get_assets_of_type(asset::type type) {
+    return loaded_assets |
+      std::views::values |
+      std::views::filter([type](asset& a) { return a.asset_type == type; }) |
+      std::views::transform([](asset& a) { return &a; }) |
+      std::ranges::to<std::vector>();
   }
 
   std::span<const natural_t> asset_handler::get_all_asset_ids() const {

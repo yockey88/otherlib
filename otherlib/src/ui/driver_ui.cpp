@@ -58,6 +58,40 @@ namespace other {
     shutdown_builtin_windows();
   }
 
+  void driver_ui::available_ui_window_menu() {
+    auto builtin_window_item = [this](const builtin_window& win) {
+      if (ImGui::MenuItem(win.get_name().data(), nullptr, win.open)) {
+        if (win.open) {
+          close_builtin_window(win.type);
+        } else {
+          open_builtin_window(win.type);
+        }
+      }
+    };
+    auto custom_window_item = [this](const driver_window& win) {
+      if (ImGui::MenuItem(win.name.data(), nullptr, win.open)) {
+        if (win.open) {
+          close_custom_window(win.name);
+        } else {
+          open_custom_window(win.name);
+        }
+      }
+    };
+
+    for (const auto& win : builtin_windows) {
+      if (win.type == BUILTIN_WINDOW_NONE || win.type == INVALID_WINDOW_TYPE) {
+        continue;
+      }
+      builtin_window_item(win);
+    }
+    if (!custom_windows.empty()) {
+      ImGui::Separator();
+      for (const auto& [id, win] : custom_windows) {
+        custom_window_item(win);
+      }
+    }
+  }
+
   std::vector<std::string> driver_ui::get_open_window_names() const {
     std::vector<std::string> open_windows;
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
@@ -227,6 +261,7 @@ namespace other {
       CORE_LOG_DEBUG("Registered custom window: {} [{}]", name, hash);
     }
     OTHER_ASSERT(itr->second.window_ptr != nullptr, "Registered custom window with name '{}' has null window pointer.", name);
+    OTHER_ASSERT(driver_ptr != nullptr, "Driver pointer is null in driver UI register_window.");
     itr->second.window_ptr->set_driver_ptr(driver_ptr);
     return hash;
   }
@@ -321,7 +356,8 @@ namespace other {
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       auto& window = builtin_windows[i];
       if (window.open && window.window_ptr != nullptr) {
-        window.open = window.window_ptr->render();
+        window.window_ptr->render();
+        window.open = !window.window_ptr->just_closed();
       }
     }
   }
@@ -329,7 +365,8 @@ namespace other {
   void driver_ui::render_custom_windows() {
     for (auto& [hash, window] : custom_windows) {
       if (window.open && window.window_ptr != nullptr) {
-        window.open = window.window_ptr->render();
+        window.window_ptr->render();
+        window.open = !window.window_ptr->just_closed();
       }
     }
 

@@ -37,6 +37,9 @@ namespace other {
     // true if open
     bool render();
 
+    inline bool just_closed() const { return state.just_closed; }
+    inline bool just_opened() const { return state.just_opened; }
+
     void toggle_open();
     void toggle_close();
 

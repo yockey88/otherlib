@@ -7,6 +7,8 @@
 #include "core/defines.hpp"
 #include "serialization/reflection.hpp"
 
+#include "renderer/render_stream_registry.hpp"
+
 namespace other {
 
   class scene;
@@ -19,6 +21,9 @@ namespace other {
     uint32_t generation = 0;
     std::string name = "SceneObject";
     bool visible = true;
+
+    // each stream here must be configure to the other::vertex layout
+    render_stream_registry geometry_streams;
 
     scene_object() = default;
   };
@@ -38,7 +43,6 @@ OTHER_REFLECT(
   field(id, other::attr::serializable()),
   field(registry_id, other::attr::serializable()),
   field(name, other::attr::serializable()),
-  field(visible, other::attr::serializable())
-)
+  field(visible, other::attr::serializable()))
 
 #endif  // OTHER_SCENE_OBJECT_SCENE_OBJECT_HPP

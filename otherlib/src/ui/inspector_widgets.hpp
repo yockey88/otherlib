@@ -138,6 +138,10 @@ namespace other {
       void draw_no_selection_message();
       void draw_multi_selection_message(uint32_t count);
 
+      static inline void draw_filled_circle(ImDrawList* dl, const ImVec2& center, float radius, ImU32 color) {
+        dl->AddCircleFilled(center, radius, color);
+      }
+
     }  // namespace inspector
   }  // namespace ui
 }  // namespace other

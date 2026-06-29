@@ -16,6 +16,9 @@ namespace other {
       std::vector<menu> sub_menus;
       std::vector<menu_item> items;
 
+      std::function<void()> dynamic_sub_menus = nullptr;
+      std::function<void()> dynamic_items = nullptr;
+
       void render();
     };
 

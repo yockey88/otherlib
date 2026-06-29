@@ -82,7 +82,7 @@ namespace other {
 
   void pass_context::draw_debug_vertices(std::string_view stream_name, mesh::primitive_type topology) {
     ASSERT_MAIN_THREAD();
-    const debug_streams& s = frame_data->debug_data;
+    const render_stream& s = frame_data->debug_data;
     const size_t verts = s.count(stream_name);
 
     if (verts == 0) {

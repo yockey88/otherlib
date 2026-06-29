@@ -352,20 +352,6 @@ namespace other {
     if (name_str.empty()) {
       OTHER_ASSERT(false, "Rendering pipeline name cannot be empty");
     }
-    CORE_LOG_DEBUG(" - pipeline: {}, version: {}", name_str, definition.version);
-
-    auto shadow_map_pass = pipeline_table.at_path("lighting.shadow_map_pass_name");
-    auto shading_pass = pipeline_table.at_path("lighting.shading_pass_name");
-    auto light_space_matrix_uniform = pipeline_table.at_path("lighting.light_space_matrix_uniform_name");
-    if (shadow_map_pass && shadow_map_pass.is_string()) {
-      definition.shadow_map_pass_name = shadow_map_pass.as_string()->get();
-    }
-    if (shading_pass && shading_pass.is_string()) {
-      definition.shading_pass_name = shading_pass.as_string()->get();
-    }
-    if (light_space_matrix_uniform && light_space_matrix_uniform.is_string()) {
-      definition.light_space_matrix_uniform_name = light_space_matrix_uniform.as_string()->get();
-    }
 
     detail::parse_resources(definition, pipeline_table);
 

@@ -16,10 +16,6 @@ namespace other {
   namespace ui {
     namespace inspector {
 
-      static void draw_filled_circle(ImDrawList* dl, const ImVec2& center, float radius, ImU32 color) {
-        dl->AddCircleFilled(center, radius, color);
-      }
-
       glm::vec4 get_component_color(component::id tag) {
         switch (tag) {
           case component::id::TRANSFORM: return colors::scene_object::kComponentTransform;

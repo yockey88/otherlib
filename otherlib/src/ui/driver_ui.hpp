@@ -40,6 +40,8 @@ namespace other {
     void render();
     void shutdown();
 
+    void available_ui_window_menu();
+
     std::vector<std::string> get_open_window_names() const;
     std::vector<std::string> get_available_window_names() const;
 

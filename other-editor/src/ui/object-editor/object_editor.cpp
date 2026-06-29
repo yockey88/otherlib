@@ -10,7 +10,7 @@ namespace other {
   namespace ui {
 
     object_editor::object_editor(editor_context& ctx, event_system& events, driver* drvr)
-        : ui_window(&events, "Object Editor"), driver_ptr(drvr), editor_ctx(ctx) {
+        : ui_window(&events, "Object Editor"), editor_ctx(ctx) {
       property_inspector_node_id = add_node(make_ref<property_inspector_node>(ctx, this, drvr));
     }
 

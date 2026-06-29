@@ -242,6 +242,14 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system on_driver_ready.");
     PROFILE_SECTION("rendering_system::on_driver_ready");
 
+    {
+      ui::menu view = {
+        .name = "View",
+        .dynamic_sub_menus = [this]() { get_driver().get_ui()->available_ui_window_menu(); }
+      };
+      get_driver().get_ui()->register_main_menu_bar_menu(view);
+    }
+
     add_debug_overlay = get_driver().get_config_value<bool>("rendering.enable-debug", true);
     if (add_debug_overlay) {
       debug_pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.debug-pipelines", {});
@@ -298,6 +306,7 @@ namespace other {
     }
 
     if (auto* c = renderer_ptr->get_override_camera(); c != nullptr) {
+      c->calculate_matrices(viewport_size);
       prepared_data.primary_camera = c;
     }
 
@@ -775,7 +784,7 @@ namespace other {
 
     render_graph::pass_executor make_debug_meshes(const pipeline_pass_definition& def, render_pipeline* pl) {
       return [pass = def.name](pass_context& ctx) {
-        const debug_streams& s = ctx.get_frame_data().debug_data;
+        const render_stream& s = ctx.get_frame_data().debug_data;
         const size_t n = s.count(builtin_debug_streams::kMeshes);
         if (n == 0) {
           return;

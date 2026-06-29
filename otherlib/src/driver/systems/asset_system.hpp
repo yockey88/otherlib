@@ -53,6 +53,8 @@ namespace other {
       return asset_mgr->is_asset_extension(extension);
     }
 
+    std::vector<asset*> get_assets_of_type(asset::type type) const;
+
    private:
     scope<asset_handler> asset_mgr = nullptr;
     std::deque<natural_t> loading_asset_ids;

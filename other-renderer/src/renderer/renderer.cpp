@@ -245,9 +245,9 @@ namespace other {
     return pipeline->get_screen_texture();
   }
 
-  resource_handle renderer::get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_definition& definition) {
+  resource_handle renderer::get_or_create_stream_mesh(std::string_view stream_name, const render_stream_definition& definition) {
     natural_t key = FNV(stream_name);
-    if (auto itr = debug_stream_meshes.find(key); itr != debug_stream_meshes.end()) {
+    if (auto itr = stream_meshes.find(key); itr != stream_meshes.end()) {
       return itr->second;
     }
     auto handle = create_resource(std::format("__debug.mesh.{}", stream_name), resource_type::MESH);
@@ -258,16 +258,16 @@ namespace other {
     }
     m.upload_vertex_buffer(std::format("{}_vertices", stream_name), gpu_buffer::usage::DYNAMIC, definition.max_per_frame, nullptr, definition.element_size * definition.max_per_frame)
       .finalize_mesh();
-    debug_stream_meshes.insert({ key, handle });
+    stream_meshes.insert({ key, handle });
     return handle;
   }
 
-  opt<resource_handle> renderer::get_debug_stream_shader_handle(std::string_view shader_name) {
+  opt<resource_handle> renderer::get_stream_shader_handle(std::string_view shader_name) {
     natural_t key = FNV(shader_name);
-    if (auto itr = debug_stream_shaders.find(key); itr != debug_stream_shaders.end()) {
+    if (auto itr = stream_shaders.find(key); itr != stream_shaders.end()) {
       return itr->second;
     }
-    CORE_LOG_ERROR("renderer: debug stream shader '{}' not registered before first draw", shader_name);
+    CORE_LOG_ERROR("renderer: stream shader '{}' not registered before first draw", shader_name);
     return std::nullopt;
   }
 
@@ -322,6 +322,10 @@ namespace other {
 
   glm::ivec2 renderer::get_window_size() {
     ASSERT_MAIN_THREAD();
+    if (cached_window_size.has_value()) {
+      return *cached_window_size;
+    }
+
     SDL_Window* window = rendering()->api()->window_handle();
     if (window == nullptr) {
       CORE_LOG_ERROR("SDL window handle is null, cannot get window size.");
@@ -336,6 +340,11 @@ namespace other {
     }
 
     return { width, height };
+  }
+
+  void renderer::set_window_size(const glm::ivec2& size) {
+    ASSERT_MAIN_THREAD();
+    cached_window_size = size;
   }
 
   void renderer::set_clear_color(const glm::vec4& color) {

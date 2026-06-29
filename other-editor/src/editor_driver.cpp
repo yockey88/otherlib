@@ -18,6 +18,7 @@
 
 #include "tools/environment_console.hpp"
 #include "ui/object-editor/object_editor.hpp"
+#include "ui/render-pipeline-ui/render_pipeline_viewer.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/viewport/viewport.hpp"
 
@@ -30,6 +31,7 @@ namespace other {
     viewport_id = ui->register_window<ui::viewport>("viewport", context, *get_event_system(), get_renderer(), this);
     ui->register_window<ui::scene_hierarchy>("scene-hierarchy", context, *get_event_system(), this);
     ui->register_window<ui::object_editor>("object-editor", context, *get_event_system(), this);
+    ui->register_window<ui::render_pipeline_viewer>("render-pipeline-viewer", context, *get_event_system());
   }
 
   void editor_driver::on_initialize() {
@@ -120,7 +122,7 @@ namespace other {
   }
 
   void editor_driver::on_viewport_resize(const glm::vec2& size) {
-    context.editor_camera.set_viewport_size(size);
+    // context.editor_camera.set_viewport_size(size);
   }
 
   void editor_driver::on_begin_frame(render_data* data) {
@@ -134,30 +136,39 @@ namespace other {
     }
 
     auto draw = get_renderer().debug();
+    glm::vec4 select_color = basic_colors::kGreen;
     if (context.has_selection()) {
-      auto aabb = context.get_selection_bounding_box();
-      draw.aabb(aabb);
-
       for (const auto& obj_id : context.current_selection.objects) {
         auto& obj = scene->get_object(obj_id);
+        auto aabb = scene->get_bounding_box(obj.id);
+        draw.aabb(aabb, select_color);
+
         auto world_trans = scene->get_world_transform(obj_id);
         auto* render = scene->try_get_component<render_component>(obj.id);
         auto* pl_comp = scene->try_get_component<point_light_component>(obj.id);
         auto* camera_comp = scene->try_get_component<camera_component>(obj.id);
         if (render != nullptr) {
-          draw.mesh(render->obj_model.source->get_mesh_handle(), world_trans);
+          draw.mesh(render->obj_model.source->get_mesh_handle(), world_trans, select_color, true);
         }
+
         if (pl_comp != nullptr) {
           glm::vec4 world_light_pos = world_trans * glm::vec4(pl_comp->light.position, 1.f);
           glm::mat4 world_light_trans = glm::mat4(1.f);
           world_light_trans = glm::translate(world_light_trans, glm::vec3(world_light_pos));
           world_light_trans = glm::scale(world_light_trans, glm::vec3(0.33f));
-          auto aabb = bounding_box(glm::vec3(-0.5f), glm::vec3(0.5f)).transform(world_light_trans);
-          draw.aabb(aabb, pl_comp->light.color);
+          draw.sphere(glm::vec3(world_light_pos), 0.2, pl_comp->light.color, 32);
         }
+
         if (camera_comp != nullptr) {
+          camera::clip_planes save = camera_comp->camera.clip;
+          constexpr camera::clip_planes debug_clip{
+            .near_plane = 0.33f,
+            .far_plane = 15.f,
+          };
+          camera_comp->camera.clip = debug_clip;
           glm::mat4 view_proj = camera_comp->camera.get_projection_matrix(get_renderer().get_window_size()) * camera_comp->camera.get_view_matrix();
-          draw.frustum(glm::inverse(view_proj) * world_trans);
+          camera_comp->camera.clip = save;
+          draw.frustum(glm::inverse(view_proj) * world_trans, basic_colors::kBlue);
         }
       }
     }

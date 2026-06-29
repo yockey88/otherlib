@@ -13,6 +13,8 @@ add_static_driver(other_editor
   src/ui/scene-hierarchy/scene_hierarchy.cpp
   src/ui/object-editor/object_editor.cpp
   src/ui/object-editor/property_inspector_node.cpp
+  src/ui/render-pipeline-ui/render_pipeline_widgets.cpp
+  src/ui/render-pipeline-ui/render_pipeline_viewer.cpp
   src/ui/viewport/viewport.cpp
   src/ui/viewport/viewport_node.cpp
   
