@@ -50,11 +50,13 @@ namespace other {
     void set_color_mask(bool enabled_or_disabled) override;
     void set_depth_mask(bool enabled_or_disabled) override;
     void set_depth_test(bool enabled_or_disabled) override;
+    void set_stencil_test(bool enabled) override;
 
     void memory_barrier(shader::compute_barrier_type bits) override;
 
     void set_polygon_mode(render_polygon_mode mode) override;
     void set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) override;
+    void set_stencil_op(stencil_op sfail, stencil_op dpfail, stencil_op dppass) override;
     void set_stencil_mask(uint32_t mask) override;
     void set_depth_func(depth_func func) override;
 
@@ -168,6 +170,7 @@ namespace other {
 
     int32_t get_gl_render_polygon_mode(render_polygon_mode mode) const;
     int32_t get_gl_stencil_func(stencil_func func) const;
+    int32_t get_gl_stencil_op(stencil_op op) const;
     int32_t get_gl_depth_func(depth_func func) const;
 
     int32_t get_gl_texture_type(texture::tex_type type) const;

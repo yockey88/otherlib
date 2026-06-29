@@ -36,6 +36,17 @@ namespace other {
     STENCIL_ALWAYS = 7
   };
 
+  enum stencil_op {
+    STENCIL_KEEP = 0,
+    STENCIL_ZERO = 1,
+    STENCIL_REPLACE = 2,
+    STENCIL_INCR = 3,
+    STENCIL_INCR_WRAP = 4,
+    STENCIL_DECR = 5,
+    STENCIL_DECR_WRAP = 6,
+    STENCIL_INVERT = 7
+  };
+
   enum depth_func {
     DEPTH_NEVER = 0,
     DEPTH_LESS = 1,

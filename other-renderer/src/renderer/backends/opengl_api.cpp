@@ -299,6 +299,15 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::set_stencil_test(bool enabled) {
+    if (enabled) {
+      glEnable(GL_STENCIL_TEST);
+    } else {
+      glDisable(GL_STENCIL_TEST);
+    }
+    CHECKGL();
+  }
+
   void opengl_api::memory_barrier(shader::compute_barrier_type bits) {
     PROFILE_SECTION("opengl_api::memory_barrier");
     GLbitfield gl_bits = 0;
@@ -319,6 +328,11 @@ namespace other {
 
   void opengl_api::set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) {
     glStencilFunc(get_gl_stencil_func(func), ref, mask);
+    CHECKGL();
+  }
+
+  void opengl_api::set_stencil_op(stencil_op sfail, stencil_op dpfail, stencil_op dppass) {
+    glStencilOp(get_gl_stencil_op(sfail), get_gl_stencil_op(dpfail), get_gl_stencil_op(dppass));
     CHECKGL();
   }
 
@@ -1792,6 +1806,22 @@ namespace other {
       default:
         CORE_LOG_ERROR("Unsupported stencil function: {}", func);
         return -1;  // Invalid function
+    }
+  }
+
+  int32_t opengl_api::get_gl_stencil_op(stencil_op op) const {
+    switch (op) {
+      case stencil_op::STENCIL_KEEP: return GL_KEEP;
+      case stencil_op::STENCIL_ZERO: return GL_ZERO;
+      case stencil_op::STENCIL_REPLACE: return GL_REPLACE;
+      case stencil_op::STENCIL_INCR: return GL_INCR;
+      case stencil_op::STENCIL_INCR_WRAP: return GL_INCR_WRAP;
+      case stencil_op::STENCIL_DECR: return GL_DECR;
+      case stencil_op::STENCIL_DECR_WRAP: return GL_DECR_WRAP;
+      case stencil_op::STENCIL_INVERT: return GL_INVERT;
+      default:
+        CORE_LOG_ERROR("Unsupported stencil operation: {}", op);
+        return -1;  // Invalid operation
     }
   }
 

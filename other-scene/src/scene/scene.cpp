@@ -722,7 +722,11 @@ namespace other {
       }
     }
 
-    return box.transform(get_world_transform(object));
+    if (box == bounding_box::empty) {
+      return bounding_box(glm::vec3(-1.f), glm::vec3(1.f)).transform(get_world_transform(object));
+    } else {
+      return box.transform(get_world_transform(object));
+    }
   }
 
   bounding_box scene::get_bounding_box(natural_t id) const {
@@ -826,8 +830,9 @@ namespace other {
     }
 
     storage->registry.view<object_handle, point_light_component>().each([&](const object_handle& handle, const point_light_component& light) {
+      glm::vec3 world_pos = get_world_transform(handle.id) * glm::vec4(light.light.position, 1.f);
       gpu::light l{
-        .vector = { light.light.position.x, light.light.position.y, light.light.position.z, 0.f },
+        .vector = { world_pos.x, world_pos.y, world_pos.z, 0.f },
         .color = light.light.color,
         .light_type = gpu::light::kPoint,
       };
@@ -992,6 +997,11 @@ namespace other {
     data.simulation_environment.world_max = glm::vec4(c + half, 1.0f);  // exposure);
 
     return data;
+  }
+
+  void scene::debug_render(debug_draw draw) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::debug_render");
   }
 
   bool scene::object_has_tag(natural_t id, const std::string_view tag) const {

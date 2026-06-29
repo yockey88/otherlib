@@ -44,7 +44,7 @@ namespace other {
 
     void draw_quad();
     void draw_stream();
-    void submit_draw_call(const draw_call& call, const mesh_key& key);
+    void execute_draw_call(const draw_call& call, const mesh_key& key);
     void dispatch(const glm::uvec3& groups, shader::compute_barrier_type barrier);
     void draw_debug_vertices(std::string_view stream_name, mesh::primitive_type topology);
     void draw_debug_mesh(const debug_mesh_instance& instance);

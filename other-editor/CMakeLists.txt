@@ -17,6 +17,7 @@ add_static_driver(other_editor
   src/ui/viewport/viewport_node.cpp
   
   src/edit_stack.cpp
+  src/editor_context.cpp
   src/editor_driver.cpp
 )
 target_include_directories(other_editor 

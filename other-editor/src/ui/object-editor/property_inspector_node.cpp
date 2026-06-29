@@ -52,32 +52,8 @@ namespace other {
 
   namespace ui {
 
-    property_inspector_node::property_inspector_node(ui_window* window, driver* drvr)
-        : ui_node(window, "Property Inspector"), driver_ptr(drvr) {
-      events().add_listener("ui.scene-hierarchy.object-selected", [this](const value& data) {
-        if (data.type() != value_type::UINT64) {
-          CORE_LOG_ERROR("Invalid data type for object-selected event. Expected uint64.");
-          return;
-        }
-
-        natural_t object_id = data;
-        handle_object_selection(object_id);
-      });
-    }
-
-    void property_inspector_node::handle_object_selection(natural_t object_id) {
-      CORE_LOG_DEBUG("Handling object selection for ID {}", object_id);
-      if (multi_selection_enabled) {
-        auto it = std::ranges::find(selected_object_ids, object_id);
-        if (it != selected_object_ids.end()) {
-          return;
-        }
-      }
-      /// if multi-select is off, clear previous selection if any
-      else if (selected_object_ids.size() > 0) {
-        selected_object_ids.clear();
-      }
-      selected_object_ids.push_back(object_id);
+    property_inspector_node::property_inspector_node(editor_context& ctx, ui_window* window, driver* drvr)
+        : ui_node(window, "Property Inspector"), context(ctx), driver_ptr(drvr) {
     }
 
     template <typename T>
@@ -124,18 +100,19 @@ namespace other {
     void property_inspector_node::on_render_node_body() {
       auto& scenes = driver_ptr->get_kernel().get_core_system<scene_system>();
       auto* active_scene = scenes.get_active_scene();
-      if (active_scene == nullptr) {
-        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextFriendlyAlert));
-        ImGui::Text("No active scene.");
-      } else if (selected_object_ids.empty()) {
+
+      if (!context.has_selection()) {
         scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextFriendlyAlert));
         ImGui::Text("No object selected.");
-      } else if (selected_object_ids.size() > 1) {
+      } else if (active_scene == nullptr) {
+        scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextFriendlyAlert));
+        ImGui::Text("No active scene.");
+      } else if (context.multi_select_enabled()) {
         scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
-        ImGui::Text("Multiple objects selected (%zu).", selected_object_ids.size());
+        ImGui::Text("Multiple objects selected (%zu).", context.current_selection.objects.size());
       } else {
         OTHER_ASSERT(active_scene != nullptr, "Active scene must not be nullptr");
-        natural_t obj_id = selected_object_ids.front();
+        natural_t obj_id = context.current_selection.objects.front();
         scene_object& obj = active_scene->get_object(obj_id);
 
         char name_buf[256];

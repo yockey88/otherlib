@@ -101,6 +101,8 @@ namespace other {
 
     virtual void set_polygon_mode(render_polygon_mode mode) = 0;
     virtual void set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) = 0;
+    virtual void set_stencil_test(bool enabled) = 0;
+    virtual void set_stencil_op(stencil_op sfail, stencil_op dpfail, stencil_op dppass) = 0;
     virtual void set_stencil_mask(uint32_t mask) = 0;
     virtual void set_depth_func(depth_func func) = 0;
 

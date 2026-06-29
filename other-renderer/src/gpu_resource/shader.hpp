@@ -64,22 +64,22 @@ namespace other {
     shader& bind();
     shader& dispatch(const glm::ivec3& group_dims = { 1, 1, 1 }, compute_barrier_type barrier_type = compute_barrier_type::NONE);
 
-    shader& add_source(const std::string& source, source_type type);
+    shader& add_source(const std::string_view source, source_type type);
 
-    shader& set_uniform(const std::string& name, int8_t value);
-    shader& set_uniform(const std::string& name, uint8_t value);
-    shader& set_uniform(const std::string& name, int16_t value);
-    shader& set_uniform(const std::string& name, uint16_t value);
-    shader& set_uniform(const std::string& name, int32_t value);
-    shader& set_uniform(const std::string& name, uint32_t value);
-    shader& set_uniform(const std::string& name, int64_t value);
-    shader& set_uniform(const std::string& name, uint64_t value);
-    shader& set_uniform(const std::string& name, real_t value);
-    shader& set_uniform(const std::string& name, const glm::vec2& value);
-    shader& set_uniform(const std::string& name, const glm::vec3& value);
-    shader& set_uniform(const std::string& name, const glm::vec4& value);
-    shader& set_uniform(const std::string& name, const glm::mat4& value, bool transpose = false);
-    shader& add_setting(const std::string& setting, opt<std::string> value = std::nullopt);
+    shader& set_uniform(const std::string_view name, int8_t value);
+    shader& set_uniform(const std::string_view name, uint8_t value);
+    shader& set_uniform(const std::string_view name, int16_t value);
+    shader& set_uniform(const std::string_view name, uint16_t value);
+    shader& set_uniform(const std::string_view name, int32_t value);
+    shader& set_uniform(const std::string_view name, uint32_t value);
+    shader& set_uniform(const std::string_view name, int64_t value);
+    shader& set_uniform(const std::string_view name, uint64_t value);
+    shader& set_uniform(const std::string_view name, real_t value);
+    shader& set_uniform(const std::string_view name, const glm::vec2& value);
+    shader& set_uniform(const std::string_view name, const glm::vec3& value);
+    shader& set_uniform(const std::string_view name, const glm::vec4& value);
+    shader& set_uniform(const std::string_view name, const glm::mat4& value, bool transpose = false);
+    shader& add_setting(const std::string_view setting, opt<std::string> value = std::nullopt);
 
     void unbind();
     void finalize_shader();

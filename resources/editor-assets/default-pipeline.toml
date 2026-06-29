@@ -39,7 +39,7 @@ shaders = [
   { name = "geometry_pass_shader", vertex_path = "resources/basic-instancing-gbuffer.vert", fragment_path = "resources/basic-instancing-gbuffer.frag" },
   { name = "voxel_occupied_shader", compute_path = "resources/voxel-occupied.comp" },
   { name = "voxelize_shader", vertex_path = "resources/voxelizer.vert", geometry_path = "resources/voxelizer.geom", fragment_path = "resources/voxelizer.frag" },
-  { name = "shadow_map_shader", vertex_path = "resources/basic-instancing-shadow-map.vert", fragment_path = "resources/basic-instancing-shadow-map.frag" },
+  { name = "shadow_map_shader", vertex_path = "resources/basic-instancing-shadow-map.vert", fragment_path = "resources/basic-shadow-map.frag" },
   { name = "environment_map_pass", compute_path = "resources/basic-environment-map.comp" },
   { name = "shading_pass_shader", vertex_path = "resources/basic-shading.vert", fragment_path = "resources/basic-shading.frag" },
   { name = "smaa_edges_shader", vertex_path = "resources/smaa-edges.vert", fragment_path = "resources/smaa-edges.frag" },

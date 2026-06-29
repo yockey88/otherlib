@@ -42,6 +42,10 @@ namespace other {
 
     input_map get_default_editor_input_map();
     void on_input_event(const input_state_change_event& event) override;
+
+    std::vector<selected_draw> get_selection_draws() const;
+    void run_selection_outline(pass_context& ctx);
+    pipeline_definition get_editor_viewport_pipeline_definition() const;
   };
 
 }  // namespace other

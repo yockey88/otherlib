@@ -33,7 +33,8 @@ namespace other {
     events->register_event("scene.playback-command");
     events->add_listener("scene.playback-command", std::bind_front(&scene_system::handle_scene_playback_command_event, this));
 
-    events->register_event("scene.scene-activated");
+    events->register_event("scene.activated");
+    events->register_event("scene.deactivated");
     events->register_event("scene.played");
     events->register_event("scene.paused");
     events->register_event("scene.stopped");
@@ -199,7 +200,7 @@ namespace other {
     }
 
     auto& events = get_driver().get_event_system();
-    events->trigger_event("scene.scene-activated", active_scene->id);
+    events->trigger_event("scene.activated", active_scene->id);
   }
 
   void scene_system::synchronize_active_scene(natural_t scene_id) {

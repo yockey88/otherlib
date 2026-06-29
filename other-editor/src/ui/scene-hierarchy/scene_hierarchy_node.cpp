@@ -10,33 +10,8 @@
 namespace other {
   namespace ui {
 
-    scene_hierarchy_node::scene_hierarchy_node(ui_window* window, driver* drvr)
-        : ui_node(window, "Scene Hierarchy"), driver_ptr(drvr) {
-      /// listen for external selection requests (e.g. from viewport click)
-      // events().add_listener("ui.viewport.object-selected", [this](const value& data) {
-      //   if (data.type() != value_type::UINT64) {
-      //     return;
-      //   }
-      //   natural_t object_id = data;
-      //   selected_object_id = object_id;
-
-      //   /// \todo
-      //   // /// auto-expand parents so the selected item is visible
-      //   // auto* active_scene = driver_ptr->get_active_scene();
-      //   // if (active_scene != nullptr) {
-      //   //   /// walk up the parent chain and expand each ancestor
-      //   //   scene_object* obj = active_scene->find_object(object_id);
-      //   //   while (obj != nullptr && obj->id != 0) {
-      //   //     scene_object* parent = active_scene->get_parent(obj->id);
-      //   //     if (parent != nullptr) {
-      //   //       expanded_ids.insert(parent->id);
-      //   //       obj = parent;
-      //   //     } else {
-      //   //       obj = nullptr;
-      //   //     }
-      //   //   }
-      //   // }
-      // });
+    scene_hierarchy_node::scene_hierarchy_node(editor_context& context, ui_window* window, driver* drvr)
+        : ui_node(window, "Scene Hierarchy"), context(context), driver_ptr(drvr) {
     }
 
     bool scene_hierarchy_node::passes_filter(scene* active_scene, scene_object& object) const {
@@ -121,7 +96,7 @@ namespace other {
         auto interaction = hierarchy::draw_item(scene_name, 0, root_flags);
 
         if (interaction.clicked) {
-          select_object(0);
+          context.select_object(0);
         }
         if (interaction.expand_toggled) {
           if (scene_expanded) {
@@ -222,7 +197,7 @@ namespace other {
 #endif
 
       if (interaction.clicked) {
-        select_object(object.id);
+        context.select_object(object.id);
       }
 
       if (interaction.expand_toggled) {
@@ -246,7 +221,7 @@ namespace other {
       }
 
       if (interaction.right_clicked) {
-        select_object(object.id);
+        context.select_object(object.id);
         ImGui::OpenPopup("##hier_context");
       }
 
@@ -307,11 +282,6 @@ namespace other {
       }
 
       ImGui::PopStyleColor(4);
-    }
-
-    void scene_hierarchy_node::select_object(natural_t object_id) {
-      selected_object_id = object_id;
-      events().trigger_event("ui.scene-hierarchy.object-selected", value(object_id));
     }
 
   }  // namespace ui

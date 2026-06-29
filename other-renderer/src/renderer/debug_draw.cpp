@@ -99,6 +99,41 @@ namespace other {
     if (sink == nullptr) {
       return;
     }
+
+    const glm::vec3 ndc[8] = {
+      { -1, -1, -1 },
+      { 1, -1, -1 },
+      { 1, 1, -1 },
+      { -1, 1, -1 },
+      { -1, -1, 1 },
+      { 1, -1, 1 },
+      { 1, 1, 1 },
+      { -1, 1, 1 },
+    };
+    constexpr int e[12][2] = {
+      { 0, 1 },
+      { 1, 2 },
+      { 2, 3 },
+      { 3, 0 },
+      { 4, 5 },
+      { 5, 6 },
+      { 6, 7 },
+      { 7, 4 },
+      { 0, 4 },
+      { 1, 5 },
+      { 2, 6 },
+      { 3, 7 },
+    };
+
+    glm::vec3 w[8];
+    for (int i = 0; i < 8; ++i) {
+      glm::vec4 p = inv_view_proj * glm::vec4(ndc[i], 1.0f);
+      w[i] = glm::vec3(p) / p.w;
+    }
+
+    for (auto& pr : e) {
+      line(w[pr[0]], w[pr[1]], c);
+    }
   }
 
   void debug_draw::transform(const glm::mat4& m, float scale) {

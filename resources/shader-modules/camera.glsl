@@ -58,3 +58,5 @@ vec3 oe_view_ray(vec2 tex_coords) {
   vec3 world_dir = mat3(inverse(view_matrix)) * view_dir;
   return normalize(world_dir);
 }
+
+uniform ivec2 OE_viewport_size;

@@ -8,6 +8,7 @@
 
 #include "core/defines.hpp"
 
+#include "renderer/debug_draw.hpp"
 #include "renderer/renderer.hpp"
 
 #include "object/component.hpp"
@@ -138,6 +139,7 @@ namespace other {
     bounding_box get_bounding_box_from_camera_frustum(const camera& cam) const;
 
     render_data prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const;
+    void debug_render(debug_draw draw);
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;
     void add_object_tag(natural_t id, const std::string_view tag);

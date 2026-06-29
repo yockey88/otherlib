@@ -6,9 +6,13 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 
+#include "thread/thread_safety.hpp"
+
 #include "model/vertex.hpp"
 
 #include "object/camera_component.hpp"
+#include "object/light_component.hpp"
+#include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
 
@@ -53,6 +57,13 @@ namespace other {
     get_renderer().set_override_camera(context.editor_camera);
     get_renderer().set_should_force_camera(true);
 
+    auto& reg = get_renderer().get_executor_registry();
+    reg.register_executor("editor_highlight", [this](const pipeline_pass_definition& def, render_pipeline* pl) {
+      return [this](pass_context& ctx) {
+        run_selection_outline(ctx);
+      };
+    });
+
     get_event_system()->add_listener("scene.played", [this](const value& data) {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.played event data to be of type UINT64 representing the active scene ID.");
       get_renderer().set_should_force_camera(false);
@@ -64,6 +75,16 @@ namespace other {
     get_event_system()->add_listener("scene.stopped", [this](const value& data) {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.stopped event data to be of type UINT64 representing the active scene ID.");
       get_renderer().set_should_force_camera(true);
+    });
+
+    get_event_system()->add_listener("scene.activated", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.activated event data to be of type UINT64 representing the active scene ID.");
+      context.current_selection.scene_ptr = get_active_scene();
+      OTHER_ASSERT(context.current_selection.scene_ptr != nullptr, "Active scene pointer is null in scene.activated event listener.");
+    });
+    get_event_system()->add_listener("scene.deactivated", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.deactivated event data to be of type UINT64 representing the active scene ID.");
+      context.current_selection.scene_ptr = nullptr;
     });
   }
 
@@ -113,8 +134,33 @@ namespace other {
     }
 
     auto draw = get_renderer().debug();
-    draw.line(glm::vec3(0), glm::vec3(0, 1, 0));
-    draw.aabb(scene->get_bounding_box());
+    if (context.has_selection()) {
+      auto aabb = context.get_selection_bounding_box();
+      draw.aabb(aabb);
+
+      for (const auto& obj_id : context.current_selection.objects) {
+        auto& obj = scene->get_object(obj_id);
+        auto world_trans = scene->get_world_transform(obj_id);
+        auto* render = scene->try_get_component<render_component>(obj.id);
+        auto* pl_comp = scene->try_get_component<point_light_component>(obj.id);
+        auto* camera_comp = scene->try_get_component<camera_component>(obj.id);
+        if (render != nullptr) {
+          draw.mesh(render->obj_model.source->get_mesh_handle(), world_trans);
+        }
+        if (pl_comp != nullptr) {
+          glm::vec4 world_light_pos = world_trans * glm::vec4(pl_comp->light.position, 1.f);
+          glm::mat4 world_light_trans = glm::mat4(1.f);
+          world_light_trans = glm::translate(world_light_trans, glm::vec3(world_light_pos));
+          world_light_trans = glm::scale(world_light_trans, glm::vec3(0.33f));
+          auto aabb = bounding_box(glm::vec3(-0.5f), glm::vec3(0.5f)).transform(world_light_trans);
+          draw.aabb(aabb, pl_comp->light.color);
+        }
+        if (camera_comp != nullptr) {
+          glm::mat4 view_proj = camera_comp->camera.get_projection_matrix(get_renderer().get_window_size()) * camera_comp->camera.get_view_matrix();
+          draw.frustum(glm::inverse(view_proj) * world_trans);
+        }
+      }
+    }
   }
 
   void editor_driver::update_running() {
@@ -184,6 +230,152 @@ namespace other {
   }
 
   void editor_driver::on_input_event(const input_state_change_event& event) {
+  }
+
+  std::vector<selected_draw> editor_driver::get_selection_draws() const {
+    std::vector<selected_draw> draws;
+    if (!context.has_selection()) {
+      return draws;
+    }
+
+    auto* scene = context.current_selection.scene_ptr;
+    if (scene == nullptr) {
+      return draws;
+    }
+
+    for (const auto& obj_id : context.current_selection.objects) {
+      auto& obj = scene->get_object(obj_id);
+      auto* render = scene->try_get_component<render_component>(obj.id);
+      auto aabb = scene->get_bounding_box(obj.id);
+      if (aabb == bounding_box::empty) {
+        aabb = bounding_box(glm::vec3(-0.5f), glm::vec3(0.5f));
+      }
+
+      if (render == nullptr) {
+        draws.emplace_back() = {
+          .mesh = false,
+          .aabb = aabb,
+        };
+      } else {
+        const glm::mat4 world = scene->get_world_transform(obj_id);
+        model& m = render->obj_model;
+        const auto& submeshes = m.source->get_submeshes();
+
+        for (uint32_t sm_idx : m.submesh_indices) {
+          const submesh& sm = submeshes[sm_idx];
+          draws.emplace_back() = selected_draw{
+            .call = draw_call{
+              .mesh_handle = m.source->get_mesh_handle(),
+              .submesh_index = sm_idx,
+              .instance_count = 1,  // submit_draw_call asserts > 0
+              .vertex_offset = sm.base_vertex,
+              .vertex_count = sm.vert_cnt,
+              .index_offset = sm.base_idx,
+              .index_count = sm.idx_cnt,
+            },
+            .key = mesh_key{
+              .model_source_handle = m.source->get_mesh_handle(),
+              .render_state = POLYGON_MODE_FILL,
+              .draw_mode = mesh::TRIANGLES,
+              .submesh_index = sm_idx,
+            },
+            .world = world,
+          };
+        }
+      }
+    }
+
+    return draws;
+  }
+
+  void editor_driver::run_selection_outline(pass_context& ctx) {
+    ASSERT_MAIN_THREAD();
+    if (!context.has_selection()) {
+      return;
+    }
+
+    auto* scene = context.current_selection.scene_ptr;
+    if (scene == nullptr) {
+      return;
+    }
+
+    auto draws = get_selection_draws();
+    if (draws.empty()) {
+      return;
+    }
+
+    auto& api = get_renderer().rendering()->api();
+    const glm::vec4 outline_color = context.settings.selection_outline_color;
+    const float outline_px = context.settings.selection_outline_width;
+
+    api->set_clear_stencil(0);
+    api->clear_viewport(glm::vec4(0), framebuffer::clear_mask_bit::STENCIL_BIT);
+    api->set_stencil_test(true);
+
+    api->set_color_mask(false);
+    api->set_depth_mask(false);
+    api->set_depth_test(false);
+    api->set_stencil_op(STENCIL_KEEP, STENCIL_KEEP, STENCIL_REPLACE);
+    api->set_stencil_func(STENCIL_ALWAYS, 1, 0xFF);
+    api->set_stencil_mask(0xFF);
+    ctx.set_uniform("OE_outline_width", 0.0f);
+    for (const auto& d : draws) {
+      ctx.set_uniform("OE_model", d.world);
+      ctx.execute_draw_call(d.call, d.key);
+    }
+
+    api->set_color_mask(true);
+    api->set_stencil_mask(0x00);
+    api->set_stencil_func(STENCIL_NOTEQUAL, 1, 0xFF);
+    ctx.set_uniform("OE_outline_width", outline_px);
+    ctx.set_uniform("OE_outline_color", outline_color);
+    for (const auto& d : draws) {
+      if (d.mesh) {
+        ctx.set_uniform("OE_model", d.world);
+        ctx.execute_draw_call(d.call, d.key);
+      }
+    }
+
+    api->set_stencil_test(false);
+    api->set_stencil_mask(0xFF);
+    api->set_depth_mask(true);
+    api->set_depth_test(true);
+    api->set_color_mask(true);
+  }
+
+  pipeline_definition editor_driver::get_editor_viewport_pipeline_definition() const {
+    pipeline_definition def;
+    def.name = "editor-viewport";
+
+    def.textures.push_back({ .name = "frame", .use_window_size = true, .format = texture::format::RGBA16F });
+    def.textures.push_back({ .name = "stencil", .use_window_size = true, .format = texture::format::R8 });
+    def.textures.push_back({ .name = "viewport", .use_window_size = true, .format = texture::format::RGBA16F });
+    def.buffers.push_back({ .name = "camera_buffer", .type = gpu_buffer::UNIFORM_BUFFER, .usage = gpu_buffer::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) });
+
+    def.shaders.push_back({ .name = "blit", .vertex_path = "resources/basic-textured-quad.vert", .fragment_path = "resources/basic-textured-quad.frag" });
+    def.shaders.push_back({ .name = "selection_outline", .vertex_path = "resources/selection-outline.vert", .fragment_path = "resources/selection-outline.frag" });
+
+    def.passes.emplace_back() = {
+      .name = "overlay-blit",
+      .pass_type = render_pass::RENDER_PASS,
+      .shader_name = "blit",
+      .inputs = { { .resource_name = "frame", .uniform_name = "OE_texture", .binding = 0 } },
+      .outputs = { { .resource_name = "viewport", .attachment = framebuffer::COLOR, .access = access_flags::WRITE } },
+      .executor = { .name = "fullscreen_quad" },
+    };
+    def.passes.emplace_back() = {
+      .name = "selection-outline",
+      .pass_type = render_pass::RENDER_PASS,
+      .shader_name = "selection_outline",
+      .outputs = { { .resource_name = "viewport", .attachment = framebuffer::COLOR, .access = access_flags::WRITE } },
+      .executor = { .name = "editor_highlight" },
+      .depends_on = { "overlay-blit" },
+      .bindings = {
+        { .name = "camera", .tag = resource_tag(resource_tag::kCameraTag), .scope = binding_scope::PER_FRAME, .type = binding_type::UNIFORM_BUFFER, .binding = 0 },
+      },
+    };
+    def.display_texture_name = "viewport";
+    return def;
   }
 
 }  // namespace other

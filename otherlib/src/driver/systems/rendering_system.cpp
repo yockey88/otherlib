@@ -767,7 +767,6 @@ namespace other {
 
     render_graph::pass_executor make_debug_overlay(const pipeline_pass_definition& def, render_pipeline* pl) {
       return [pass = def.name](pass_context& ctx) {
-        const debug_streams& s = ctx.get_frame_data().debug_data;
         ctx.draw_debug_vertices(builtin_debug_streams::kTris, mesh::TRIANGLES);
         ctx.draw_debug_vertices(builtin_debug_streams::kLines, mesh::LINES);
         ctx.draw_debug_vertices(builtin_debug_streams::kPoints, mesh::POINTS);

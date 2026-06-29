@@ -11,6 +11,7 @@
 #include "ui/scene-hierarchy/hierarchy_widgets.hpp"
 #include "ui/ui_node.hpp"
 
+#include "editor_context.hpp"
 
 namespace other {
 
@@ -22,10 +23,11 @@ namespace other {
 
     class scene_hierarchy_node : public ui_node {
      public:
-      scene_hierarchy_node(ui_window* window, driver* driver);
+      scene_hierarchy_node(editor_context& ctx, ui_window* window, driver* driver);
       virtual ~scene_hierarchy_node() = default;
 
      private:
+      editor_context& context;
       driver* driver_ptr = nullptr;
 
       natural_t selected_object_id = 0;

@@ -302,12 +302,12 @@ namespace other {
     driver_kernel_ptr->load_driver_plugins_from_config(this);
     load_client();
 
+    driver_kernel_ptr->driver_initialized();
+
     {
       PROFILE_SECTION("driver::confirm_initialization--on_initialize");
       on_initialize();
     }
-
-    driver_kernel_ptr->driver_initialized();
 
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }

@@ -12,18 +12,15 @@
 #include "scene/scene.hpp"
 
 #include "edit_stack.hpp"
+#include "editor_selection.hpp"
 #include "editor_settings.hpp"
+
 
 namespace other {
 
   class editor_driver;
 
   struct editor_context {
-    struct selection {
-      natural_t scene = 0;
-      std::vector<natural_t> objects = {};
-    };
-
     editor_driver* driver;
     editor_settings settings;
 
@@ -34,9 +31,15 @@ namespace other {
     ImGuizmo::OPERATION gizmo_operation = ImGuizmo::OPERATION::TRANSLATE;
 
     edit_stack editing_history;
+
     selection current_selection;
 
     std::string current_viewport = "default-instancing";
+
+    void select_object(natural_t object_id);
+    bool has_selection() const;
+    bool multi_select_enabled() const;
+    bounding_box get_selection_bounding_box() const;
   };
 
 }  // namespace other
