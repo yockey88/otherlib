@@ -20,8 +20,13 @@ vec3 oe_linear_to_gamma(vec3 c, float gamma) {
   return pow(max(c, vec3(0.0)), vec3(1.0 / gamma)); 
 }
 
-vec3 oe_tonemap_reinhard(vec3 x)               { return x / (1.0 + x); }
-vec3 oe_tonemap_exposure(vec3 x, float exp_)   { return vec3(1.0) - exp(-x * exp_); }
+vec3 oe_tonemap_reinhard(vec3 x) { 
+  return x / (1.0 + x); 
+}
+
+vec3 oe_tonemap_exposure(vec3 x, float ex)   { 
+  return vec3(1.0) - exp(-x * ex); 
+}
 
 // ACES filmic fit (Narkowicz 2015)
 // linear -> linear [0,1].

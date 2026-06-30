@@ -6,8 +6,8 @@ add_static_driver(other_editor
   src/ui/asset-editor/asset_editor_registry.cpp
   src/ui/asset-editor/asset_editor.cpp
   src/ui/asset-editor/asset_editor_node.cpp
-  src/ui/node-editor/node_editor_canvas_node.cpp
-  src/ui/node-editor/node_editor.cpp
+  src/ui/node-editor/node_editor_canvas.cpp
+  src/ui/node-editor/node_editor_display.cpp
   src/ui/scene-hierarchy/hierarchy_widgets.cpp
   src/ui/scene-hierarchy/scene_hierarchy_node.cpp
   src/ui/scene-hierarchy/scene_hierarchy.cpp
@@ -15,6 +15,7 @@ add_static_driver(other_editor
   src/ui/object-editor/property_inspector_node.cpp
   src/ui/render-pipeline-ui/render_pipeline_widgets.cpp
   src/ui/render-pipeline-ui/render_pipeline_viewer.cpp
+  src/ui/render-pipeline-ui/render_pipeline_editor.cpp
   src/ui/viewport/viewport.cpp
   src/ui/viewport/viewport_node.cpp
   

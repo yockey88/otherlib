@@ -31,11 +31,11 @@ vec3 oe_sky_radiance(vec3 dir) {
 }
 
 vec3 oe_sky_irradiance_up(vec3 world_pos) {
-  float h   = clamp((world_pos.y - world_min.y) / max(world_extent().y, 1e-3), 0.0, 1.0);
-  vec3  dome = mix(horizon_color.rgb, zenith_color.rgb, 0.5 + 0.5 * h); // zenith dominates up
-  vec3  sun  = sun_color.rgb * sun_color.w * max(sun_direction.y, 0.0)  // sun above horizon
-                              * (1.0 - cos(sun_direction.w));            // ~solid angle
-  vec3  haze = horizon_color.rgb * (1.0 - h) * 0.25;                     // low-altitude lift
+  float h = clamp((world_pos.y - world_min.y) / max(world_extent().y, 1e-3), 0.0, 1.0);
+  
+  vec3  dome = mix(horizon_color.rgb, zenith_color.rgb, 0.5 + 0.5 * h);
+  vec3  sun  = sun_color.rgb * sun_color.w * max(sun_direction.y, 0.0) * (1.0 - cos(sun_direction.w));
+  vec3  haze = horizon_color.rgb * (1.0 - h) * 0.25;
   return (dome + sun + haze);
 }
 

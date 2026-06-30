@@ -15,6 +15,7 @@ namespace other {
     const natural_t conn_id;
 
     bool decoded = false;
+
     // message_view msg;
     std::span<const uint8_t> bytes;
 
@@ -25,14 +26,6 @@ namespace other {
       packet_sink* sink;
     };
     std::vector<emit_target> emit_targets;  // reused; not allocated per packet
-
-    // scratch storage for filters that need temporary buffers (decoder, decryptor).
-    // per-sink, owned by host, reset per packet.
-    // scratch_arena* scratch;
-
-    // For multi-message decoders (framer + decoder split): an outbox of decoded messages.
-    // The chain typically processes one at a time inside a loop driven by the framer filter.
-    // ... see §6 for framer/decoder cooperation.
   };
 
 }  // namespace other

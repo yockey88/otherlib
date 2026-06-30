@@ -153,7 +153,6 @@ namespace other {
 
         std::string_view name = line.substr(0, colon_pos);
         std::string_view value = line.substr(colon_pos + 1);
-        // Trim whitespace from value
         value.remove_prefix(std::min(value.find_first_not_of(' '), value.size()));
         value.remove_suffix(std::min(value.size() - value.find_last_not_of(' ') - 1, value.size()));
 

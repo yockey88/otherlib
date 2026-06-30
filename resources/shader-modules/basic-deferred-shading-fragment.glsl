@@ -19,7 +19,7 @@ uniform sampler3D OE_voxel_tex;
 #endif
 
 vec3 oe_environment_ambient_color(vec3 amb_col, vec3 N) {
-  float up = clamp(N.y * 0.5 + 0.5, 0.0, 1.0);
+  float up = clamp(normalize(N).y * 0.5 + 0.5, 0.0, 1.0);
   return mix(ground_color.rgb, amb_col, up);
 }
 
@@ -78,16 +78,16 @@ vec4 calculate_lighting(vec3 diffuse, vec3 world_position, vec3 world_normal, fl
       float atten = attenuate(length(lp - world_position));
 
       float vis = oe_point_shadow(world_position, world_normal, lp);
-      diffuse_specular += ((diff * atten) + (specular * atten));
-      // vis * ((diff * atten) + (specular * atten));
+      diffuse_specular += 
+      // vis * 
+      ((diff * atten) + (specular * atten));
     }
   }
 
   vec4 env = texture(OE_env_cubemap, oe_world_to_volume(world_position));
-  float sun_shadow_sharp = calculate_direction_light_shadow(world_position, world_normal);
-
   vec3 ambient = oe_environment_ambient_color(env.rgb, world_normal) * env.a;
-  vec3 lighting = ambient * diffuse + (1.0 - sun_shadow_sharp) * diffuse_specular;
 
+  float shadow_calc = calculate_direction_light_shadow(world_position, world_normal);
+  vec3 lighting = ambient * diffuse + (1.0 - shadow_calc) * diffuse_specular;
   return vec4(lighting, 1.0);
 }

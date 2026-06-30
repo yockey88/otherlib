@@ -15,7 +15,6 @@
 #include "editor_selection.hpp"
 #include "editor_settings.hpp"
 
-
 namespace other {
 
   class editor_driver;
@@ -25,6 +24,7 @@ namespace other {
     editor_settings settings;
 
     scene* active_scene = nullptr;
+    natural_t scene_render_pl_handle = 0;
 
     camera editor_camera;
     ImGuizmo::MODE gizmo_mode = ImGuizmo::MODE::LOCAL;

@@ -16,13 +16,11 @@
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
 
-#include "tools/environment_console.hpp"
 #include "ui/object-editor/object_editor.hpp"
+#include "ui/render-pipeline-ui/render_pipeline_editor.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_viewer.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/viewport/viewport.hpp"
-
-// #include "ui/project-creator/.."
 
 namespace other {
 
@@ -32,6 +30,7 @@ namespace other {
     ui->register_window<ui::scene_hierarchy>("scene-hierarchy", context, *get_event_system(), this);
     ui->register_window<ui::object_editor>("object-editor", context, *get_event_system(), this);
     ui->register_window<ui::render_pipeline_viewer>("render-pipeline-viewer", context, *get_event_system());
+    ui->register_window<ui::render_pipeline_editor>("render-pipeline-editor", context, *get_event_system());
   }
 
   void editor_driver::on_initialize() {

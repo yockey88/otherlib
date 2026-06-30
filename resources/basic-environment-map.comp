@@ -56,8 +56,8 @@ void main() {
   vec3 world_pos = world_min.xyz + uvw * world_extent();
 
   vec3 irradiance = oe_sky_irradiance_up(world_pos);
-  // float sun_vis = oe_sun_visibility(world_pos);
-  // float ao = oe_sky_ao(world_pos);
+  float sun_vis = oe_sun_visibility(world_pos);
+  float ao = oe_sky_ao(world_pos);
 
-  imageStore(OE_env_cubemap, texel_coord, vec4(irradiance, 1.0));
+  imageStore(OE_env_cubemap, texel_coord, vec4(irradiance, sun_vis * ao));
 }
