@@ -4,6 +4,7 @@
 #ifndef OTHER_RENDERER_RENDER_PIPELINE_HPP
 #define OTHER_RENDERER_RENDER_PIPELINE_HPP
 
+#include <string>
 #include <string_view>
 
 #include <imgui/imgui.h>
@@ -68,10 +69,13 @@ namespace other {
     void register_buffer_resource(const std::string_view name, resource_handle handle);
     void register_shader_resource(const std::string_view name, resource_handle handle);
 
+    std::vector<std::string> get_texture_names() const;
+
     ImTextureID get_final_output_texture_id();
     ImTextureID get_texture_id(const std::string_view name);
 
     glm::ivec2 get_texture_size(const std::string_view name) const;
+    opt<resource_handle> get_final_output_texture() const;
 
     resource_handle get_screen_texture() const;
     frame_resources get_frame_resources() const;

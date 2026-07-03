@@ -22,8 +22,6 @@ namespace other {
       viewport(editor_context& ctx, event_system& events, renderer& renderer_instance, driver* driver_ptr);
       ~viewport() override = default;
 
-      void initialize_debug_passes();
-
       void on_render_header() override;
       void on_render_body() override;
       void on_pre_render_nodes() override;
@@ -37,6 +35,8 @@ namespace other {
       ImVec2 previous_size = ImVec2(0, 0);
 
       resource_handle display_texture_id = {};
+
+      void draw_viewport(const other::viewport& vp, const ImVec2& size);
     };
 
   }  // namespace ui

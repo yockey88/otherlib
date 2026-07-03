@@ -105,6 +105,8 @@ namespace other {
     std::string get_driver_info_string(const std::string_view str) const;
 
     void confirm_initialization();
+
+    void confirm_shutdown();
     void confirm_assets_clean();
     void confirm_network_thread_shutdown();
 
@@ -120,8 +122,10 @@ namespace other {
 
     scene* get_active_scene();
     renderer& get_renderer();
-
     asset* get_asset(natural_t asset_id);
+
+    void handle_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline);
+    void handle_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline);
 
     inline bool network_enabled() const {
       return !configuration().get_value<bool>("networking.force-disable", false);
@@ -196,10 +200,18 @@ namespace other {
     virtual void on_viewport_resize(const glm::vec2& size) {}
 
     // other
+    virtual void on_scene_activated(natural_t scene_id) {}
+    virtual void on_scene_played(natural_t scene_id) {}
+    virtual void on_scene_paused(natural_t scene_id) {}
+    virtual void on_scene_stopped(natural_t scene_id) {}
+    virtual void on_scene_deactivated(natural_t scene_id) {}
+
     virtual void on_render() {}
     virtual void on_debug_render(render_data* data) {}
     virtual void on_begin_frame(render_data* frame_data) {}
     virtual void on_ui_render() {}
+    virtual void on_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline) {}
+    virtual void on_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline) {}
 
    protected:
     template <typename R = void, typename... Args>
@@ -250,6 +262,8 @@ namespace other {
     virtual void on_http_request_received(natural_t id, const http::request& req) {}
     virtual void on_new_connection_accepted(natural_t main_connection_id, natural_t connection_id) {}
     virtual void on_connection_closed(natural_t connection_id) {}
+
+    virtual void on_rendering_pipeline_loaded(natural_t asset_id, const pipeline_definition& definition) {}
     /// acknowledgments
     /// control messages
     /// command messages

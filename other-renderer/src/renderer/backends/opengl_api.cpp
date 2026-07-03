@@ -167,6 +167,16 @@ namespace other {
     override_clear_stencil(stencil);
   }
 
+  void opengl_api::debug_group_begin(const std::string_view name) {
+    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name.data());
+    CHECKGL();
+  }
+
+  void opengl_api::debug_group_end() {
+    glPopDebugGroup();
+    CHECKGL();
+  }
+
   void opengl_api::on_begin_frame(scope<window_manager>& window_mgr) {
     PROFILE_SECTION("opengl_api::on_begin_frame");
     glm::vec3 clear_color = get_clear_color();
@@ -757,6 +767,30 @@ namespace other {
       return nullptr;
     }
     return (void*)(uintptr_t)itr->second;
+  }
+
+  void opengl_api::blit_texture(const blit_data& src, const blit_data& dest, const glm::ivec3& size) {
+    PROFILE_SECTION("opengl_api::blit_texture");
+    auto src_itr = gpu_resources.find(src.handle.id);
+    if (src_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Source texture resource with ID {} not found. Can't blit texture", src.handle.id);
+      return;
+    }
+
+    auto dest_itr = gpu_resources.find(dest.handle.id);
+    if (dest_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Destination texture resource with ID {} not found. Can't blit texture", dest.handle.id);
+      return;
+    }
+
+    debug_group_begin(std::format("Blit Texture '{}'", get_resource_name(src.handle)));
+    glBindTexture(get_gl_texture_type(texture_resources[src.handle.id].get_type()), src_itr->second);
+    glCopyImageSubData(src_itr->second, get_gl_texture_type(texture_resources[src.handle.id].get_type()), 0, src.x, src.y, src.z,
+                       dest_itr->second, get_gl_texture_type(texture_resources[dest.handle.id].get_type()), 0, dest.x, dest.y, dest.z,
+                       size.x, size.y, size.z);
+    glBindTexture(get_gl_texture_type(texture_resources[src.handle.id].get_type()), 0);
+    debug_group_end();
+    CHECKGL();
   }
 
   void opengl_api::bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) {

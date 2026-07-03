@@ -16,6 +16,7 @@
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
 
+#include "driver/systems/scene_system.hpp"
 #include "ui/object-editor/object_editor.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_editor.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_viewer.hpp"
@@ -47,35 +48,15 @@ namespace other {
     OTHER_ASSERT(input_sys != nullptr, "Input system is null");
     input_sys->push_context("editor-controls");
 
-    get_event_system()->add_listener("viewport.resize", [this](const value& val) {
-      get_kernel().get_core_system<rendering_system>().handle_viewport_resize_event(val);
-    });
-
     context.editor_camera.position = { 0.f, 1.f, 4.5f };
     context.editor_camera.sensitivity = 10.f;
     context.editor_camera.look_at({ 0.f, 0.f, 0.f });
-
-    get_renderer().set_override_camera(context.editor_camera);
-    get_renderer().set_should_force_camera(true);
 
     auto& reg = get_renderer().get_executor_registry();
     reg.register_executor("editor_highlight", [this](const pipeline_pass_definition& def, render_pipeline* pl) {
       return [this](pass_context& ctx) {
         run_selection_outline(ctx);
       };
-    });
-
-    get_event_system()->add_listener("scene.played", [this](const value& data) {
-      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.played event data to be of type UINT64 representing the active scene ID.");
-      get_renderer().set_should_force_camera(false);
-    });
-    get_event_system()->add_listener("scene.paused", [this](const value& data) {
-      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.paused event data to be of type UINT64 representing the active scene ID.");
-      get_renderer().set_should_force_camera(true);
-    });
-    get_event_system()->add_listener("scene.stopped", [this](const value& data) {
-      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.stopped event data to be of type UINT64 representing the active scene ID.");
-      get_renderer().set_should_force_camera(true);
     });
 
     get_event_system()->add_listener("scene.activated", [this](const value& data) {
@@ -87,14 +68,19 @@ namespace other {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.deactivated event data to be of type UINT64 representing the active scene ID.");
       context.current_selection.scene_ptr = nullptr;
     });
+
+    auto& r = get_renderer().get_debug_stream_registry();
+    const std::vector<vertex_attribute> vtx = {
+      { value_type::VEC3, "OE_position", 0, sizeof(glm::vec3) },
+      { value_type::VEC4, "OE_color", 1, sizeof(glm::vec4) },
+    };
+    r.register_stream(builtin_debug_streams::kLines, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::LINES, vtx } });
+    r.register_stream(builtin_debug_streams::kTris, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::TRIANGLES, vtx } });
+    r.register_stream(builtin_debug_streams::kPoints, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 14, .draw_recipe = { "debug_overlay", mesh::POINTS, vtx } });
+    r.register_stream(builtin_debug_streams::kMeshes, { .element_size = sizeof(debug_mesh_instance), .max_per_frame = 4096, .draw_recipe = {} });
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
-    {
-      auto* main_ctx = map.find_context("driver-core");
-      OTHER_ASSERT(main_ctx != nullptr, "Main context 'driver-core' not found");
-    }
-
     auto& ctx = map.add_context("editor-controls", true);
     ctx.add_action("move", action_value_type::AXIS_2D, false)
       // keyboard – each key contributes ±1 to one component
@@ -120,8 +106,37 @@ namespace other {
       .bind_mouse_button(mouse_button::MIDDLE);
   }
 
-  void editor_driver::on_viewport_resize(const glm::vec2& size) {
-    // context.editor_camera.set_viewport_size(size);
+  void editor_driver::on_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline) {
+    OTHER_ASSERT(pipeline != nullptr, "Loaded rendering pipeline is null.");
+    const auto& definition = pipeline->get_definition();
+    if (definition.name == "default-instancing") {
+      auto& renderer_ptr = get_renderer();
+
+      auto def = get_debug_overlay_pipeline_definition();
+      def.name = "editor-debug-rendering";
+      renderer_ptr.add_post_processing_pipeline("default-instancing", def.name, def);
+      auto* source_pipeline = renderer_ptr.get_pipeline("default-instancing");
+      OTHER_ASSERT(source_pipeline != nullptr, "Source pipeline 'default-instancing' not found when setting up editor debug overlay.");
+
+      opt<resource_handle> src_frame = source_pipeline->get_screen_texture();
+      OTHER_ASSERT(src_frame.has_value(), "Source frame texture is not available in the default-instancing pipeline.");
+      renderer_ptr.register_texture_resource(def.name, "frame", src_frame.value());
+
+      viewport_id = context.register_viewport("editor-viewport", "editor-debug-rendering");
+    }
+
+    CORE_LOG_INFO("Editor driver received notification of loaded rendering pipeline asset. Asset ID: {}, Pipeline Name: {}", asset_id, definition.name);
+  }
+
+  void editor_driver::on_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline) {
+    OTHER_ASSERT(pipeline != nullptr, "Unloaded rendering pipeline is null.");
+    const auto& definition = pipeline->get_definition();
+    if (definition.name == "default-instancing") {
+      get_renderer().remove_pipeline("editor-debug-rendering");
+      context.remove_viewport(viewport_id);
+    }
+
+    CORE_LOG_INFO("Editor driver received notification of unloaded rendering pipeline asset. Asset ID: {}, Pipeline Name: {}", asset_id, definition.name);
   }
 
   void editor_driver::on_begin_frame(render_data* data) {
@@ -130,7 +145,7 @@ namespace other {
     }
 
     auto* scene = get_active_scene();
-    if (scene == nullptr || scene->is_playing()) {
+    if (scene == nullptr) {
       return;
     }
 
@@ -143,22 +158,20 @@ namespace other {
         draw.aabb(aabb, select_color);
 
         auto world_trans = scene->get_world_transform(obj_id);
-        auto* render = scene->try_get_component<render_component>(obj.id);
-        auto* pl_comp = scene->try_get_component<point_light_component>(obj.id);
-        auto* camera_comp = scene->try_get_component<camera_component>(obj.id);
-        if (render != nullptr) {
+
+        if (auto* render = scene->try_get_component<render_component>(obj.id);
+            render != nullptr) {
           draw.mesh(render->obj_model.source->get_mesh_handle(), world_trans, select_color, true);
         }
 
-        if (pl_comp != nullptr) {
+        if (auto* pl_comp = scene->try_get_component<point_light_component>(obj.id);
+            pl_comp != nullptr) {
           glm::vec4 world_light_pos = world_trans * glm::vec4(pl_comp->light.position, 1.f);
-          glm::mat4 world_light_trans = glm::mat4(1.f);
-          world_light_trans = glm::translate(world_light_trans, glm::vec3(world_light_pos));
-          world_light_trans = glm::scale(world_light_trans, glm::vec3(0.33f));
           draw.sphere(glm::vec3(world_light_pos), 0.2, pl_comp->light.color, 32);
         }
 
-        if (camera_comp != nullptr) {
+        if (auto* camera_comp = scene->try_get_component<camera_component>(obj.id);
+            camera_comp != nullptr) {
           camera::clip_planes save = camera_comp->camera.clip;
           constexpr camera::clip_planes debug_clip{
             .near_plane = 0.33f,
@@ -173,21 +186,42 @@ namespace other {
     }
   }
 
+  void editor_driver::on_shutdown() {
+    context.remove_all_viewports();
+  }
+
   void editor_driver::update_running() {
+    auto& kernel = get_kernel();
+    auto& rendering_sys = kernel.get_core_system<rendering_system>();
+    auto* s = get_active_scene();
+    if (s != nullptr) {
+      for (auto& vp : rendering_sys.get_viewports()) {
+        OTHER_ASSERT(vp.pipeline != nullptr, "Viewport '{}' has null pipeline.", vp.name);
+        if (vp.cam != nullptr) {
+          continue;
+        }
+
+        vp.cam = s->get_primary_camera();
+      }
+    }
+
     update_input();
+  }
+
+  void editor_driver::on_scene_activated(natural_t scene_id) {
+    auto* s = get_kernel().get_core_system<scene_system>().get_scene(scene_id);
+    OTHER_ASSERT(s != nullptr, "Activated scene with ID {} not found in scene system.", scene_id);
+
+    context.scene_viewport_handle = context.register_viewport("scene-viewport", "default-instancing", s->get_primary_camera());
+  }
+
+  void editor_driver::on_scene_deactivated(natural_t scene_id) {
+    context.remove_viewport(context.scene_viewport_handle);
   }
 
   void editor_driver::update_input() {
     auto* input_sys = subsystem<input_system>::get();
     OTHER_ASSERT(input_sys != nullptr, "Input system is null");
-
-    auto* scene = get_active_scene();
-    if (scene != nullptr && scene->is_playing()) {
-      return;
-    }
-
-    // update camera
-    get_renderer().set_override_camera(context.editor_camera);
 
     const bool is_looking_around = input_sys->is_action_pressed("orbit_hold");
     if (!is_looking_around) {
@@ -353,38 +387,67 @@ namespace other {
     api->set_color_mask(true);
   }
 
-  pipeline_definition editor_driver::get_editor_viewport_pipeline_definition() const {
+  pipeline_definition editor_driver::get_debug_overlay_pipeline_definition() const {
     pipeline_definition def;
-    def.name = "editor-viewport";
+    def.name = "debug-overlay";
 
     def.textures.push_back({ .name = "frame", .use_window_size = true, .format = texture::format::RGBA16F });
-    def.textures.push_back({ .name = "stencil", .use_window_size = true, .format = texture::format::R8 });
-    def.textures.push_back({ .name = "viewport", .use_window_size = true, .format = texture::format::RGBA16F });
+    def.textures.push_back({ .name = "depth", .use_window_size = true, .format = texture::format::DEPTHF });
+    def.textures.push_back({ .name = "debug_frame", .use_window_size = true, .format = texture::format::RGBA16F });
     def.buffers.push_back({ .name = "camera_buffer", .type = gpu_buffer::UNIFORM_BUFFER, .usage = gpu_buffer::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) });
-
-    def.shaders.push_back({ .name = "blit", .vertex_path = "resources/basic-textured-quad.vert", .fragment_path = "resources/basic-textured-quad.frag" });
-    def.shaders.push_back({ .name = "selection_outline", .vertex_path = "resources/selection-outline.vert", .fragment_path = "resources/selection-outline.frag" });
+    def.shaders.push_back({ .name = "blit", .vertex_path = "resources/basic-textured-quad.vert", .fragment_path = "resources/debug-overlay-blit.frag" });
+    def.shaders.push_back({ .name = "debug_overlay", .vertex_path = "resources/debug-overlay.vert", .fragment_path = "resources/debug-overlay.frag" });
+    def.shaders.push_back({ .name = "debug_meshes", .vertex_path = "resources/debug-mesh.vert", .fragment_path = "resources/debug-overlay.frag" });
 
     def.passes.emplace_back() = {
       .name = "overlay-blit",
       .pass_type = render_pass::RENDER_PASS,
       .shader_name = "blit",
-      .inputs = { { .resource_name = "frame", .uniform_name = "OE_texture", .binding = 0 } },
-      .outputs = { { .resource_name = "viewport", .attachment = framebuffer::COLOR, .access = access_flags::WRITE } },
+      .inputs = {
+        { .resource_name = "frame", .uniform_name = "OE_frame", .binding = 0 },
+        { .resource_name = "depth", .uniform_name = "OE_depth", .binding = 1 },
+      },
+      .outputs = {
+        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
+      },
       .executor = { .name = "fullscreen_quad" },
     };
     def.passes.emplace_back() = {
-      .name = "selection-outline",
-      .pass_type = render_pass::RENDER_PASS,
-      .shader_name = "selection_outline",
-      .outputs = { { .resource_name = "viewport", .attachment = framebuffer::COLOR, .access = access_flags::WRITE } },
-      .executor = { .name = "editor_highlight" },
+      .name = "overlay-geometry",
+      .shader_name = "debug_overlay",
+      .inputs = {
+        { .resource_name = "camera_buffer", .uniform_name = "OE_camera", .binding = 0 },
+      },
+      .outputs = {
+        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
+      },
+      .executor = { .name = "debug_overlay" },
       .depends_on = { "overlay-blit" },
       .bindings = {
-        { .name = "camera", .tag = resource_tag(resource_tag::kCameraTag), .scope = binding_scope::PER_FRAME, .type = binding_type::UNIFORM_BUFFER, .binding = 0 },
+        { .name = "per_frame.camera_buffer", .tag = resource_tag(resource_tag::kCameraTag), .scope = binding_scope::PER_FRAME, .type = binding_type::UNIFORM_BUFFER, .binding = 0 },
       },
+      .clear_flags = framebuffer::DEPTH_BIT,
+      .override_fb_clear = true,
     };
-    def.display_texture_name = "viewport";
+    def.passes.emplace_back() = {
+      .name = "overlay-meshes",
+      .shader_name = "debug_meshes",
+      .inputs = {
+        { .resource_name = "camera_buffer", .uniform_name = "OE_camera", .binding = 0 },
+      },
+      .outputs = {
+        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
+      },
+      .executor = { .name = "debug_meshes" },
+      .depends_on = { "overlay-geometry" },
+      .bindings = {
+        { .name = "per_frame.camera_buffer", .tag = resource_tag(resource_tag::kCameraTag), .scope = binding_scope::PER_FRAME, .type = binding_type::UNIFORM_BUFFER, .binding = 0 },
+      },
+      .clear_flags = framebuffer::DEPTH_BIT,
+      .override_fb_clear = true,
+    };
+
+    def.display_texture_name = "debug_frame";
     return def;
   }
 

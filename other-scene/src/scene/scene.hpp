@@ -112,6 +112,9 @@ namespace other {
 
     size_t get_object_count() const;
 
+    camera* get_primary_camera();
+    const camera* get_primary_camera() const;
+
     transform& get_transform(scene_object* object);
     const transform& get_transform(const scene_object* object) const;
     void set_transform(scene_object* object, const transform& t);
@@ -138,7 +141,7 @@ namespace other {
     bounding_box get_bounding_box() const;
     bounding_box get_bounding_box_from_camera_frustum(const camera& cam) const;
 
-    render_data prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const;
+    render_data prepare_render_data(scope<asset_handler>& asset_handler) const;
     void debug_render(debug_draw draw);
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;

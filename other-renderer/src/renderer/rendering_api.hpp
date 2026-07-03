@@ -44,6 +44,14 @@ namespace other {
     size_t size = 0;    // 0 = whole resource
   };
 
+  struct blit_data {
+    resource_handle handle;
+    uint32_t level;
+    uint32_t x;
+    uint32_t y;
+    uint32_t z;
+  };
+
   class rendering_api {
    public:
     rendering_api() = default;
@@ -65,6 +73,7 @@ namespace other {
 
     virtual void on_initialize(scope<window_manager>& window_mgr) = 0;
     virtual void on_shutdown(scope<window_manager>& window_mgr) = 0;
+    void verify_shutdown();
 
     void destroy_windows();
 
@@ -79,6 +88,9 @@ namespace other {
 
     void begin_frame();
     void end_frame();
+
+    virtual void debug_group_begin(const std::string_view name) = 0;
+    virtual void debug_group_end() = 0;
 
     virtual void on_begin_frame(scope<window_manager>& window_mgr) = 0;
     virtual void on_end_frame(scope<window_manager>& window_mgr) = 0;
@@ -125,6 +137,7 @@ namespace other {
     virtual void upload_texture(const resource_handle& handle, texture::tex_type type, texture::format format, uint32_t mip_levels, bool generate_mipmaps, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size) = 0;
     virtual void bind_image(const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer = 0, texture::format frmt = texture::format::RGBA32F, access_flags flags = access_flags::READ_WRITE) = 0;
     virtual void* get_texture_gpu_resource(const resource_handle& handle) = 0;
+    virtual void blit_texture(const blit_data& src, const blit_data& dest, const glm::ivec3& size) = 0;
 
     virtual void bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) = 0;
     virtual void unbind_buffer_resource(const resource_handle& handle) = 0;
@@ -163,6 +176,8 @@ namespace other {
     resource_handle create_resource(const std::string_view name, resource_type type);
     void destroy_resource(const resource_handle& handle);
 
+    uint32_t get_reference_count(const resource_handle& handle) const;
+
     void set_resource_name(const resource_handle& handle, const std::string_view name);
 
     bool resource_exists(const resource_handle& handle);
@@ -192,6 +207,9 @@ namespace other {
 
     glm::ivec2 get_window_size() const;
     void set_window_size(const glm::ivec2& size);
+
+    void increment_resource_reference(const resource_handle& handle);
+    void decrement_resource_reference(const resource_handle& handle);
 
     inline natural_t get_next_resource_id() {
       static natural_t next_id = 0;

@@ -60,6 +60,7 @@ namespace other {
     // const std::string get_name() const { return name; }
     const resource_handle& handle() const { return res_handle; }
 
+    uint32_t reference_count = 0;
     std::string name;
     resource_handle res_handle;
   };

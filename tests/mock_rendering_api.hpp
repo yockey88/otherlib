@@ -27,6 +27,9 @@ namespace other {
     MOCK_METHOD(void, set_clear_depth, (float depth), (override));
     MOCK_METHOD(void, set_clear_stencil, (uint32_t stencil), (override));
 
+    MOCK_METHOD(void, debug_group_begin, (const std::string_view name), (override));
+    MOCK_METHOD(void, debug_group_end, (), (override));
+
     MOCK_METHOD(void, on_begin_frame, (scope<window_manager> & window_mgr), (override));
     MOCK_METHOD(void, on_end_frame, (scope<window_manager> & window_mgr), (override));
 
@@ -69,6 +72,7 @@ namespace other {
     MOCK_METHOD(void, upload_texture, (const resource_handle& handle, texture::tex_type type, texture::format format, uint32_t mip_levels, bool generate_mipmaps, const glm::ivec2& img_size, uint32_t depth, void* data, size_t data_size), (override));
     MOCK_METHOD(void, bind_image, (const resource_handle& handle, uint32_t index, uint32_t level, bool layered, int32_t layer, texture::format frmt, access_flags flags), (override));
     MOCK_METHOD(void*, get_texture_gpu_resource, (const resource_handle& handle), (override));
+    MOCK_METHOD(void, blit_texture, (const blit_data& src, const blit_data& dest, const glm::ivec3& size), (override));
 
     MOCK_METHOD(void, bind_buffer_resource, (const resource_handle& handle, gpu_buffer::buf_type type), (override));
     MOCK_METHOD(void, unbind_buffer_resource, (const resource_handle& handle), (override));

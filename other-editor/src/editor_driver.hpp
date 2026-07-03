@@ -20,11 +20,19 @@ namespace other {
     void on_early_initialize() override;
     void on_initialize() override;
     void on_build_driver_input_map(input_map& map) override;
-    void on_viewport_resize(const glm::vec2& size) override;
-    void on_begin_frame(render_data* data) override;
-    void on_shutdown() override {}
+    void on_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline) override;
+    void on_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline) override;
 
     void update_running() override;
+    void on_scene_activated(natural_t scene_id) override;
+    void on_scene_played(natural_t scene_id) override {}
+    void on_scene_paused(natural_t scene_id) override {}
+    void on_scene_stopped(natural_t scene_id) override {}
+    void on_scene_deactivated(natural_t scene_id) override;
+    void on_begin_frame(render_data* data) override;
+
+    void on_shutdown() override;
+
     struct mouse_state {
       glm::vec2 position = { 0, 0 };
       glm::vec2 delta = { 0, 0 };
@@ -45,7 +53,8 @@ namespace other {
 
     std::vector<selected_draw> get_selection_draws() const;
     void run_selection_outline(pass_context& ctx);
-    pipeline_definition get_editor_viewport_pipeline_definition() const;
+
+    pipeline_definition get_debug_overlay_pipeline_definition() const;
   };
 
 }  // namespace other

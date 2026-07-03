@@ -367,6 +367,14 @@ namespace other {
     }
   }
 
+  std::vector<std::string> render_pipeline::get_texture_names() const {
+    std::vector<std::string> names;
+    for (const auto& [_, res] : texture_resources) {
+      names.push_back(res.name);
+    }
+    return names;
+  }
+
   ImTextureID render_pipeline::get_final_output_texture_id() {
     if (!screen_texture_handle.has_value() || !get_renderer()->resource_exists(*screen_texture_handle)) {
       CORE_LOG_ERROR("Screen texture handle not set or resource does not exist for pipeline '{}'.", definition.name);
@@ -391,6 +399,14 @@ namespace other {
       return { 0, 0 };
     }
     return get_renderer()->get_resource<texture>(*handle_opt).get_size();
+  }
+
+  opt<resource_handle> render_pipeline::get_final_output_texture() const {
+    if (!screen_texture_handle.has_value() || !get_renderer()->resource_exists(*screen_texture_handle)) {
+      CORE_LOG_ERROR("Screen texture handle not set or resource does not exist for pipeline '{}'.", definition.name);
+      return std::nullopt;
+    }
+    return get_screen_texture();
   }
 
   resource_handle render_pipeline::get_screen_texture() const {

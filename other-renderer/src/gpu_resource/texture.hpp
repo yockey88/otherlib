@@ -182,6 +182,9 @@ namespace other {
     const void* get_data() const { return data; }
     tex_type get_type() const { return (tex_type)texture_type; }
     const glm::ivec2& get_size() const { return size; }
+    uint32_t get_depth() const { return depth; }
+    uint32_t get_mips() const { return mip_levels; }
+    bool generated_mips() const { return generate_mips; }
     format get_format() const { return (format)texture_format; }
     filter get_min_filter() const { return (filter)min_filter; }
     filter get_mag_filter() const { return (filter)mag_filter; }

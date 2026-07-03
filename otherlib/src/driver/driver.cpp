@@ -312,6 +312,16 @@ namespace other {
     process_driver_event(driver_event::DRIVER_EVENT_READY);
   }
 
+  void driver::confirm_shutdown() {
+    OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
+    CORE_LOG_DEBUG("Confirming shutdown...");
+
+    on_shutdown_confirm();
+
+    driver_kernel_ptr->unload_driver_plugins();
+    process_driver_event(driver_event::DRIVER_EVENT_READY);
+  }
+
   void driver::confirm_assets_clean() {
     CORE_LOG_DEBUG("Confirming assets are clean...");
     shutdown_state.asset_manager_shutdown = true;
@@ -368,6 +378,22 @@ namespace other {
   asset* driver::get_asset(natural_t asset_id) {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<asset_system>().get_asset(asset_id);
+  }
+
+  void driver::handle_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline) {
+    OTHER_ASSERT(asset_id != 0, "Invalid asset ID for loaded rendering pipeline.");
+    OTHER_ASSERT(pipeline != nullptr, "Loaded rendering pipeline is null.");
+
+    CORE_LOG_INFO("Rendering pipeline loaded: asset_id={}, pipeline_name={}", asset_id, pipeline->get_definition().name);
+    on_rendering_pipeline_loaded(asset_id, pipeline);
+  }
+
+  void driver::handle_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline) {
+    OTHER_ASSERT(asset_id != 0, "Invalid asset ID for unloaded rendering pipeline.");
+    OTHER_ASSERT(pipeline != nullptr, "Unloaded rendering pipeline is null.");
+
+    CORE_LOG_INFO("Rendering pipeline unloaded: asset_id={}, pipeline_name={}", asset_id, pipeline->get_definition().name);
+    on_rendering_pipeline_unloaded(asset_id, pipeline);
   }
 
   void driver::input_event(const input_state_change_event& event) {
@@ -528,7 +554,6 @@ namespace other {
       case driver_state::DRIVER_STATE_INITIALIZING: update_initializing(); break;
 
       case driver_state::DRIVER_STATE_RUNNING: {
-        /// this feels gross but we if a project file was queued we want to load it before the next frame ticks
         const bool should_lock = runtime_state.queued_project_file.has_value();
         if (should_lock) {
           std::lock_guard lock(runtime_state.mutex);
@@ -543,10 +568,7 @@ namespace other {
         update_shutting_down();
 
         if (shutdown_state.ready_to_shutdown(this)) {
-          on_shutdown_confirm();
-
-          driver_kernel_ptr->unload_driver_plugins();
-          process_driver_event(driver_event::DRIVER_EVENT_READY);
+          confirm_shutdown();
         }
       } break;
 

@@ -33,6 +33,8 @@ namespace other {
     std::map<natural_t, render_stream_definition>& entries() { return defs; }
     const std::map<natural_t, render_stream_definition>& entries() const { return defs; }
 
+    void clear() { defs.clear(); }
+
    private:
     std::map<natural_t, render_stream_definition> defs;
   };
