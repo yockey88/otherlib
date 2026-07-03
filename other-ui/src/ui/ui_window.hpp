@@ -82,6 +82,9 @@ namespace other {
     natural_t id = 0;
     std::string title;
 
+    virtual bool override_render() { return false; }
+    virtual void custom_render() {}
+
    protected:
     virtual void on_initialize() {}
     virtual void on_shutdown() {}

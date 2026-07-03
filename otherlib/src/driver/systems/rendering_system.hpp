@@ -73,7 +73,6 @@ namespace other {
     scope<renderer> renderer_ptr = nullptr;
     scope<pass_executor_resolver> pass_resolver_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
-    glm::vec2 viewport_size = { 0.0f, 0.0f };
 
     std::vector<pipeline_asset> pending_rendering_pipeline_assets;
     std::vector<pipeline_asset> rendering_pipeline_assets;

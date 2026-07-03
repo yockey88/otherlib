@@ -440,7 +440,7 @@ namespace other {
       CORE_LOG_ERROR("Invalid data type for viewport resize event. Expected VEC2.");
       return;
     }
-    viewport_size = data;
+    glm::vec2 viewport_size = data;
     get_driver().on_viewport_resize(viewport_size);
   }
 

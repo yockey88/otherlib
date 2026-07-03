@@ -626,8 +626,16 @@ namespace other {
       }
 
       rendering()->api()->debug_group_begin(std::format("Render Viewport: {}", vp.name).c_str());
+
       camera* restore_cam = nullptr;
       if (scene_data != nullptr) {
+        if (vp.size.x == 0 || vp.size.y == 0) {
+          glm::ivec2 window_size = get_window_size();
+          vp.size = window_size;
+        }
+        vp.cam->set_viewport_size(vp.size);
+        vp.cam->calculate_matrices(vp.size);
+
         restore_cam = scene_data->primary_camera;
         scene_data->primary_camera = vp.cam;
       }

@@ -22,9 +22,8 @@ namespace other {
       viewport(editor_context& ctx, event_system& events, renderer& renderer_instance, driver* driver_ptr);
       ~viewport() override = default;
 
-      void on_render_header() override;
-      void on_render_body() override;
-      void on_pre_render_nodes() override;
+      bool override_render() override { return true; }
+      void custom_render() override;
 
      private:
       renderer& renderer_instance;
@@ -36,7 +35,7 @@ namespace other {
 
       resource_handle display_texture_id = {};
 
-      void draw_viewport(const other::viewport& vp, const ImVec2& size);
+      void draw_viewport(other::viewport& vp);
     };
 
   }  // namespace ui
