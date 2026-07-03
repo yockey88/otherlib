@@ -4,6 +4,7 @@
 #include "editor_context.hpp"
 
 #include "editor_driver.hpp"
+
 namespace other {
 
   void editor_context::select_object(natural_t object_id) {
