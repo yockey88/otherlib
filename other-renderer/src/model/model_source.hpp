@@ -19,6 +19,8 @@ namespace other {
     // clang-format on
     ~model_source();
 
+    void destroy_resources();
+
     inline std::string get_name() const { return name; }
 
     model produce_model(const std::string& name = "", const std::vector<uint32_t>& submesh_idxs = {});

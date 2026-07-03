@@ -50,11 +50,12 @@ namespace other {
     filepath load_path = "";
     /// virtual path is resolved via the filesystem mounts
     ///  we use string to help avoid confusion since virtual_path is probably not a real filesystem path (although it can be)
-    std::string virtual_path = "";
+    filepath virtual_path = "";
     filepath absolute_path = "";
 
     static asset::type get_type_from_extension(const std::string_view extension);
     static asset::type get_type_from_declaration(const filepath& file_path);
+    static std::string get_name_from_declaration(const filepath& file_path);
     static std::vector<std::string> get_supported_extensions(asset::type asset_type);
 
     std::string get_filesystem_directory() const;

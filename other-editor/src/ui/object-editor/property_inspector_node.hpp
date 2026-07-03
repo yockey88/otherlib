@@ -6,10 +6,9 @@
 
 #include <imgui/ImReflect.hpp>
 
-#include "object/component.hpp"
-
 #include "ui/ui_node.hpp"
 
+#include "editor_context.hpp"
 
 namespace other {
 
@@ -28,16 +27,12 @@ namespace other {
 
     class property_inspector_node : public ui_node {
      public:
-      property_inspector_node(ui_window* window, driver* drvr);
+      property_inspector_node(editor_context& context, ui_window* window, driver* drvr);
       virtual ~property_inspector_node() = default;
 
      private:
+      editor_context& context;
       driver* driver_ptr = nullptr;
-
-      bool multi_selection_enabled = false;
-      std::deque<natural_t> selected_object_ids;
-
-      void handle_object_selection(natural_t object_id);
 
       template <typename T>
       using on_component_modified_fn = void (*)(T* component, scene_object* object, scene* active_scene, driver* drvr);

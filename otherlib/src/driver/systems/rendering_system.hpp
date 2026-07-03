@@ -15,6 +15,15 @@
 
 namespace other {
 
+  struct viewport_definition {
+    natural_t id;
+    std::string name;
+    std::string render_pipeline_name;
+    camera* cam = nullptr;
+
+    resource_handle texture;
+  };
+
   class OTHER_CLASS rendering_system : public core_system<rendering_system> {
    public:
     rendering_system(driver* driver_instance)
@@ -34,11 +43,17 @@ namespace other {
     void close_ui_window(const std::string_view name);
     void close_all_windows();
 
+    std::span<viewport> get_viewports() { return viewports; }
+    ImTextureID get_texture_id(const resource_handle& handle) const;
+
     ui::menu build_menu(const std::string_view name, const sol::table& menu_table);
     ui::menu_item build_menu_item(const std::string_view name, sol::function action);
 
     scope<renderer>& get_renderer();
     scope<driver_ui>& get_driver_ui();
+
+    natural_t register_viewport(const std::string_view name, const viewport_definition& def);
+    void remove_viewport(natural_t vp_id);
 
     using file_dialog_callback_fn = void (*)(void* userdata, const char* const* filelist, int32_t filter);
     void show_open_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);
@@ -53,13 +68,11 @@ namespace other {
       pipeline_definition definition;
     };
 
-    bool add_debug_overlay = false;
-    std::vector<std::string> debug_pipeline_names = {};
+    std::vector<viewport> viewports;
 
     scope<renderer> renderer_ptr = nullptr;
     scope<pass_executor_resolver> pass_resolver_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
-    glm::vec2 viewport_size = { 0.0f, 0.0f };
 
     std::vector<pipeline_asset> pending_rendering_pipeline_assets;
     std::vector<pipeline_asset> rendering_pipeline_assets;
@@ -72,9 +85,6 @@ namespace other {
     void handle_ls_windows_event(driver_kernel* kernel, const value& data);
     void handle_rendering_pipeline_asset_loaded_event(driver_kernel* kernel, const value& data);
     void handle_rendering_pipeline_asset_unloaded_event(driver_kernel* kernel, const value& data);
-
-    void add_debug_overlay_to_pipeline(const std::string_view pl_name);
-    pipeline_definition get_debug_overlay_pipeline_definition() const;
   };
 
 }  // namespace other

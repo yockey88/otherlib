@@ -1,22 +1,21 @@
 /**
- * \file ui/node-editor/node_editor_canvas_node.hpp
+ * \file ui/node-editor/node_editor_canvas.hpp
  **/
-#ifndef OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_NODE_HPP
-#define OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_NODE_HPP
+#ifndef OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_HPP
+#define OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_HPP
+
+#include <glm/glm.hpp>
 
 #include "core/defines.hpp"
 
 #include "ui/ui_interactable.hpp"
-#include "ui/ui_node.hpp"
-
-#include "imgui.h"
 
 namespace other {
   namespace ui {
 
-    struct node_editor;
+    struct node_editor_display;
 
-    struct node_editor_canvas_node : public ui_node {
+    struct node_editor_canvas {
       constexpr static float kNodeResizeGripPadding = 25.f;
       constexpr static float kNodeResizeGripSize = 10.f;
       constexpr static float kMinNodeWidth = 300.f;
@@ -81,8 +80,8 @@ namespace other {
         natural_t create(natural_t start_pin_idx, natural_t end_pin_idx, const glm::vec4& color);
       };
 
-      node_editor_canvas_node(node_editor* parent);
-      virtual ~node_editor_canvas_node() = default;
+      node_editor_canvas(node_editor_display* parent);
+      virtual ~node_editor_canvas() = default;
 
       natural_t create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins);
       void remove_single_node(natural_t node_id);
@@ -91,9 +90,9 @@ namespace other {
       void connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx);
       void connect_node_pins(natural_t from_node_id, uint8_t from_pin_idx, natural_t to_node_id, uint8_t to_pin_idx);
 
-      void on_prepare_render() override;
-      void on_render_node_body() override;
-      void on_render_end() override;
+      void on_prepare_render();
+      void on_render_node_body();
+      void on_render_end();
 
       void draw_grid_lines();
 
@@ -103,7 +102,7 @@ namespace other {
       glm::vec2 canvas_next_node_position{ 0.f, 0.f };
 
      private:
-      friend struct node_editor;
+      friend struct node_editor_display;
       node_data nodes;
       pin_data pins;
       link_data links;
@@ -122,7 +121,7 @@ namespace other {
       opt<open_link> dragging_link = std::nullopt;
       bool drop_dragged_link = false;
 
-      node_editor* editor = nullptr;
+      node_editor_display* editor_display = nullptr;
 
       bool snap_to_grid = true;
 
@@ -146,4 +145,4 @@ namespace other {
   }  // namespace ui
 }  // namespace other
 
-#endif  // OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_NODE_HPP
+#endif  // OTHERLIB_UI_NODE_EDITOR_NODES_NODE_EDITOR_CANVAS_HPP

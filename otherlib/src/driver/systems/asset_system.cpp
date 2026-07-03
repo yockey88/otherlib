@@ -99,7 +99,7 @@ namespace other {
         return entry == asset_ptr->id;
       });
       OTHER_ASSERT(it != loading_asset_ids.end(), "Loading asset ID not found in tracking list.");
-      CORE_LOG_DEBUG("Asset loaded callback for asset ID: {} @ path: {} (virtual path: {})", asset_ptr->id, asset_path.string(), asset_ptr->virtual_path);
+      CORE_LOG_DEBUG("Asset loaded callback for asset ID: {} @ path: {} (virtual path: {})", asset_ptr->id, asset_path.string(), asset_ptr->virtual_path.string());
 
       loading_asset_ids.erase(it);
       get_driver().get_event_system()->trigger_event("assets.new-asset-loaded", asset_ptr->id);
@@ -144,6 +144,11 @@ namespace other {
     return asset_mgr->get_asset(asset_id);
   }
 
+  asset* asset_system::get_asset_by_virtual_path(const filepath& virtual_path) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_asset_by_virtual_path(virtual_path);
+  }
+
   asset_handler::pipeline_context* asset_system::get_asset_pipeline_context(natural_t asset_id) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->get_asset_pipeline_context(asset_id);
@@ -178,6 +183,11 @@ namespace other {
   opt<filepath> asset_system::get_virtual_asset_path(natural_t asset_id) const {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->get_virtual_asset_path(asset_id);
+  }
+
+  std::vector<asset*> asset_system::get_assets_of_type(asset::type type) const {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    return asset_mgr->get_assets_of_type(type);
   }
 
   void asset_system::mount_mounts(driver_kernel* kernel) {
@@ -292,7 +302,7 @@ namespace other {
     for (const natural_t id : assets) {
       auto* asset = asset_mgr->get_asset(id);
       if (asset != nullptr) {
-        ss << std::format("ID: {}, Type: {}, Path: {}", asset->id, asset->asset_type, asset->virtual_path);
+        ss << std::format("ID: {}, Type: {}, Path: {}", asset->id, asset->asset_type, asset->virtual_path.string());
         ss << std::format(" [State: {}]", asset_mgr->get_asset_state(id));
         ss << "\n";
       }

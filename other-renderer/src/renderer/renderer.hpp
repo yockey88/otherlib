@@ -12,7 +12,6 @@
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/debug_draw.hpp"
-#include "renderer/debug_render_stream.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/frame_binding_registry.hpp"
 #include "renderer/gpu_structs.hpp"
@@ -21,6 +20,8 @@
 #include "renderer/render_executor_registry.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_pipeline.hpp"
+#include "renderer/render_stream.hpp"
+#include "renderer/render_stream_registry.hpp"
 #include "renderer/renderer_backend.hpp"
 
 namespace other {
@@ -59,7 +60,19 @@ namespace other {
     std::vector<gpu::model_matrix_buffer> model_buffers;
     std::vector<gpu::bone_matrix_buffer> bone_buffers;
 
-    debug_streams debug_data;
+    render_stream scene_geometry_stream;
+    render_stream debug_data;
+  };
+
+  struct viewport {
+    natural_t id;
+    std::string name;
+    glm::ivec2 size;
+
+    render_pipeline* pipeline = nullptr;
+    camera* cam = nullptr;
+
+    resource_handle texture;
   };
 
   class renderer {
@@ -71,27 +84,22 @@ namespace other {
     render_executor_registry& get_executor_registry() { return executor_registry; }
     frame_binding_registry& get_binding_registry() { return binding_registry; }
     pass_executor_resolver* get_pass_executor_resolver() { return pass_exec_resolver; }
-    debug_stream_registry& get_debug_stream_registry() { return debug_stream_registry; }
+    render_stream_registry& get_debug_stream_registry() { return debug_stream_registry; }
 
     void initialize_pass_resolver(pass_executor_resolver* resolver);
 
     void rebuild_pipeline(const std::string_view pipeline_name);
 
+    void shutdown();
+
     void begin_frame(render_data* data);
     void bind_frame_bindings(const render_data& data);
     void clear(framebuffer::clear_mask_bit clear_flags, const glm::vec4& clear_color = glm::vec4(0.0f), float clear_depth = 1.0f, uint32_t clear_stencil = 0);
-    void render();
+    void render(std::span<viewport> viewports);
     void end_frame();
 
     debug_draw debug() {
       return debug_draw{ scene_data ? &scene_data->debug_data : nullptr };
-    }
-
-    inline void set_override_camera(const camera& cam) { forced_camera = cam; }
-    inline void set_should_force_camera(bool force) { should_force_camera = force; }
-    inline bool override_camera() const { return should_force_camera; }
-    inline camera* get_override_camera() {
-      return should_force_camera ? &forced_camera : nullptr;
     }
 
     bool has_pipeline(const std::string_view name) const {
@@ -113,6 +121,7 @@ namespace other {
     void register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& comp_path);
     void register_shader_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
 
+    ImTextureID get_texture_id(const resource_handle& handle);
     ImTextureID get_debug_overlay_id(const std::string_view pipeline_name);
     ImTextureID get_texture_id(const std::string_view pipeline, const std::string_view name);
 
@@ -120,8 +129,12 @@ namespace other {
     opt<resource_handle> find_buffer_resource(const std::string_view name) const;
 
     opt<resource_handle> get_pipeline_output(const std::string_view pipeline_name) const;
-    resource_handle get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_definition& definition);
-    opt<resource_handle> get_debug_stream_shader_handle(std::string_view shader_name);
+    resource_handle get_or_create_stream_mesh(std::string_view stream_name, const render_stream_definition& definition);
+    opt<resource_handle> get_stream_shader_handle(std::string_view shader_name);
+
+    resource_handle copy_texture(const std::string_view pipeline_name, const resource_handle& src_handle, const std::string_view dst_name);
+    void destroy_texture(const resource_handle& handle);
+    void resize_viewport_texture(const resource_handle& texture_handle, const glm::ivec2& new_size);
 
     void begin_ui_frame();
     void end_ui_frame();
@@ -142,6 +155,8 @@ namespace other {
     }
 
     glm::ivec2 get_window_size();
+    void set_window_size(const glm::ivec2& size);
+    void clear_cache_window_size() { cached_window_size.reset(); }
     void set_clear_color(const glm::vec4& color);
 
     glm::vec2 get_mouse_position();
@@ -210,9 +225,7 @@ namespace other {
     friend class pass_context;
 
     config_table config;
-
-    bool should_force_camera = false;
-    camera forced_camera;
+    opt<glm::ivec2> cached_window_size;
 
     frame_resources current_frame_resources;
     render_data* scene_data = nullptr;
@@ -220,18 +233,23 @@ namespace other {
     pass_executor_resolver* pass_exec_resolver = nullptr;
     render_executor_registry executor_registry;
     frame_binding_registry binding_registry;
-    debug_stream_registry debug_stream_registry;
+    render_stream_registry debug_stream_registry;
 
-    std::map<natural_t, resource_handle> debug_stream_meshes;
-    std::map<natural_t, resource_handle> debug_stream_shaders;
+    std::map<natural_t, resource_handle> stream_meshes;
+    std::map<natural_t, resource_handle> stream_shaders;
     std::map<natural_t, render_pipeline*> pipelines;
 
+    /// \todo replace this with chains to reduce current rendering time when we are rendering
+    ///         to multiple viewports
     std::map<natural_t, std::vector<natural_t>> pipeline_dependencies;
     std::vector<natural_t> pipeline_ids;
 
     std::vector<natural_t> get_pipeline_order() const;
 
     render_pipeline* get_pass_pipeline(natural_t pass_id) const;
+
+    void render_current_scene(render_data* data, opt<std::string> break_on = std::nullopt);
+    void render_scene_to_viewports(std::span<viewport> viewports, render_data* data);
   };
 
 }  // namespace other

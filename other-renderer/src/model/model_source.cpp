@@ -60,6 +60,21 @@ namespace other {
     arena_allocator<skeleton>{}.free(skel);
   }
 
+  void model_source::destroy_resources() {
+    if (subsystem<renderer_backend>::get()->api()->resource_exists(index_buffer_handle)) {
+      subsystem<renderer_backend>::get()->api()->destroy_resource(index_buffer_handle);
+      CORE_LOG_DEBUG("Destroyed index buffer resource for model source '{}'", name);
+    }
+    if (subsystem<renderer_backend>::get()->api()->resource_exists(vertex_buffer_handle)) {
+      subsystem<renderer_backend>::get()->api()->destroy_resource(vertex_buffer_handle);
+      CORE_LOG_DEBUG("Destroyed vertex buffer resource for model source '{}'", name);
+    }
+    if (subsystem<renderer_backend>::get()->api()->resource_exists(mesh_handle)) {
+      subsystem<renderer_backend>::get()->api()->destroy_resource(mesh_handle);
+      CORE_LOG_DEBUG("Destroyed mesh resource for model source '{}'", name);
+    }
+  }
+
   model model_source::produce_model(const std::string& name, const std::vector<uint32_t>& submesh_idxs) {
     model m = {
       .name = name.empty() ? this->name + "_instance_" + std::to_string(num_models_produced++) : name,

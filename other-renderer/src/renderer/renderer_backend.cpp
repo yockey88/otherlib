@@ -152,6 +152,7 @@ namespace other {
       rendering_api_instance->destroy_windows();
 
       rendering_api_instance->shutdown();
+      rendering_api_instance->verify_shutdown();
       rendering_api_instance = nullptr;
 
       SDL_Quit();
@@ -185,6 +186,8 @@ namespace other {
   void renderer_backend::remove_model_source(natural_t handle) {
     auto it = model_sources.find(handle);
     if (it != model_sources.end()) {
+      it->second->destroy_resources();
+
       model_sources.erase(it);
       CORE_LOG_DEBUG("Removed model source with handle: {}", handle);
     } else {

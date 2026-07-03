@@ -20,16 +20,11 @@ namespace other {
       virtual ~scene_hierarchy() = default;
 
      private:
-      bool multiple_selection_enabled = false;
-      std::vector<natural_t> selected_object_ids;
-
       driver* driver_ptr = nullptr;
       editor_context& editor_ctx;
       natural_t hierarchy_node_id = 0;
 
       void on_post_render_nodes() override;
-
-      void select_scene_object(natural_t object_id);
     };
 
   }  // namespace ui

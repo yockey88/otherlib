@@ -49,6 +49,31 @@ namespace other {
     return levels;  // 1 + floor(log2(max_dim))
   }
 
+  void rendering_api::verify_shutdown() {
+    if (!resources.empty()) {
+      CORE_LOG_ERROR("Rendering API shutdown with {} unreleased resources!", resources.size());
+      for (const auto& [id, res] : resources) {
+        auto name_itr = resource_names.find(id);
+        std::string name = (name_itr != resource_names.end()) ? name_itr->second : "<unknown>";
+        CORE_LOG_ERROR("    Resource ID: {}, Name: {}, Type: {}, Ref Count: {}", id, name, res->res_handle.type, res->reference_count);
+      }
+      std::vector<resource_handle> handles_to_clear = resources |
+        std::views::values |
+        std::views::transform([](resource* res) { return res->res_handle; }) |
+        std::ranges::to<std::vector>();
+      for (const auto& handle : handles_to_clear) {
+        destroy_resource(handle);
+      }
+      resources.clear();
+      resource_names.clear();
+      resource_handles.clear();
+    } else {
+      OTHER_ASSERT(resource_handles.empty(), "Resource handles map should be empty when there are no resources.");
+      OTHER_ASSERT(resource_names.empty(), "Resource names map should be empty when there are no resources.");
+      CORE_LOG_DEBUG("Rendering API shutdown with all resources released.");
+    }
+  }
+
   void rendering_api::destroy_windows() {
     if (native_window() != nullptr) {
       SDL_DestroyWindow(native_window());
@@ -143,27 +168,25 @@ namespace other {
       return { 0, resource_type::EMPTY };
     }
 
-    CORE_LOG_DEBUG("      Created resource of type: {}, ID: {}", type, handle.id);
+    CORE_LOG_DEBUG("      Created resource '{}'. type: {}, ID: {}", name, type, handle.id);
     set_resource_name(handle, name);
+    increment_resource_reference(handle);
     return handle;
   }
 
   void rendering_api::destroy_resource(const resource_handle& handle) {
     auto itr = resources.find(handle.id);
     if (itr == resources.end()) {
-      CORE_LOG_ERROR("Resource with ID {} not found.", handle.id);
+      return;
+    }
+
+    decrement_resource_reference(handle);
+
+    if (get_reference_count(handle) > 0) {
       return;
     }
 
     resources.erase(itr);
-    {
-      auto itr = resource_names.find(handle.id);
-      if (itr != resource_names.end()) {
-        resource_names.erase(itr);
-      } else {
-        CORE_LOG_ERROR("Resource name for ID {} not found.", handle.id);
-      }
-    }
     CORE_LOG_DEBUG("Destroying resource [{}]", handle);
 
     switch (handle.type) {
@@ -192,9 +215,27 @@ namespace other {
         break;
 
       default:
-        CORE_LOG_ERROR("Unsupported resource type for destruction: {}", handle.type);
-        break;
+        OTHER_ASSERT(false, "Unsupported resource type. id: {}, type: {}", handle.id, handle.type);
     }
+    {
+      auto itr = resource_names.find(handle.id);
+      if (itr != resource_names.end()) {
+        CORE_LOG_DEBUG("      Destroyed resource '{}'. ID: {}", itr->second, handle.id);
+        resource_names.erase(itr);
+      } else {
+        CORE_LOG_ERROR("Resource name for ID {} not found.", handle.id);
+      }
+    }
+  }
+
+  uint32_t rendering_api::get_reference_count(const resource_handle& handle) const {
+    auto itr = resources.find(handle.id);
+    if (itr != resources.end()) {
+      return itr->second->reference_count;
+    }
+
+    CORE_LOG_ERROR("Resource with ID {} not found.", handle.id);
+    return 0;
   }
 
   void rendering_api::set_resource_name(const resource_handle& handle, const std::string_view name) {
@@ -261,9 +302,29 @@ namespace other {
   glm::ivec2 rendering_api::get_window_size() const {
     return window_size;
   }
+
   void rendering_api::set_window_size(const glm::ivec2& size) {
     window_size = size;
     SDL_SetWindowSize(window_mgr->get_main_window(), size.x, size.y);
+  }
+
+  void rendering_api::increment_resource_reference(const resource_handle& handle) {
+    auto itr = resources.find(handle.id);
+    if (itr != resources.end()) {
+      itr->second->reference_count++;
+    } else {
+      CORE_LOG_ERROR("Resource with ID {} not found.", handle.id);
+    }
+  }
+
+  void rendering_api::decrement_resource_reference(const resource_handle& handle) {
+    auto itr = resources.find(handle.id);
+    if (itr != resources.end()) {
+      OTHER_ASSERT(itr->second->reference_count > 0, "Resource with ID {} has a reference count of 0, cannot decrement further.", handle.id);
+      itr->second->reference_count--;
+    } else {
+      CORE_LOG_ERROR("Resource with ID {} not found.", handle.id);
+    }
   }
 
 }  // namespace other

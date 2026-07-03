@@ -37,6 +37,7 @@ namespace other {
     void begin_full_unload();
 
     asset* get_asset(natural_t asset_id);
+    asset* get_asset_by_virtual_path(const filepath& virtual_path);
     /// to be called only inside 'assets.new-asset-(un)loaded' or various 'xxx.asset-(un)loaded' events.
     asset_handler::pipeline_context* get_asset_pipeline_context(natural_t asset_id);
 
@@ -52,6 +53,8 @@ namespace other {
     inline bool is_asset_extension(const std::string_view extension) const {
       return asset_mgr->is_asset_extension(extension);
     }
+
+    std::vector<asset*> get_assets_of_type(asset::type type) const;
 
    private:
     scope<asset_handler> asset_mgr = nullptr;

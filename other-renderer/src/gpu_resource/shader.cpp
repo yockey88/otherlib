@@ -229,7 +229,7 @@ namespace other {
     return *this;
   }
 
-  shader& shader::add_source(const std::string& source, source_type type) {
+  shader& shader::add_source(const std::string_view source, source_type type) {
     if (complete) {
       CORE_LOG_ERROR("Shader already completed, cannot add more sources.");
       return *this;
@@ -243,7 +243,7 @@ namespace other {
     CORE_LOG_DEBUG("      Attaching shader source [{}], resource-handle = {}", type, handle().id);
     subsystem<renderer_backend>::get()->api()->compile_and_attach_source(handle(), source, type);
 
-    sources.push_back(source);
+    sources.push_back(std::string(source));
     sources_attached.push_back(type);
     check_build_status();
 
@@ -270,73 +270,73 @@ namespace other {
     subsystem<renderer_backend>::get()->api()->finalize_shader(handle());
   }
 
-  shader& shader::set_uniform(const std::string& name, int8_t value) {
+  shader& shader::set_uniform(const std::string_view name, int8_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, uint8_t value) {
+  shader& shader::set_uniform(const std::string_view name, uint8_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, int16_t value) {
+  shader& shader::set_uniform(const std::string_view name, int16_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, uint16_t value) {
+  shader& shader::set_uniform(const std::string_view name, uint16_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, int32_t value) {
+  shader& shader::set_uniform(const std::string_view name, int32_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, uint32_t value) {
+  shader& shader::set_uniform(const std::string_view name, uint32_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, int64_t value) {
+  shader& shader::set_uniform(const std::string_view name, int64_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, uint64_t value) {
+  shader& shader::set_uniform(const std::string_view name, uint64_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, real_t value) {
+  shader& shader::set_uniform(const std::string_view name, real_t value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, const glm::vec2& value) {
+  shader& shader::set_uniform(const std::string_view name, const glm::vec2& value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, const glm::vec3& value) {
+  shader& shader::set_uniform(const std::string_view name, const glm::vec3& value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, const glm::vec4& value) {
+  shader& shader::set_uniform(const std::string_view name, const glm::vec4& value) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value);
     return *this;
   }
 
-  shader& shader::set_uniform(const std::string& name, const glm::mat4& value, bool transpose) {
+  shader& shader::set_uniform(const std::string_view name, const glm::mat4& value, bool transpose) {
     subsystem<renderer_backend>::get()->api()->set_shader_uniform(handle(), name, value, transpose);
     return *this;
   }
 
-  shader& shader::add_setting(const std::string& setting, opt<std::string> value) {
-    std::string defn = "#define " + setting;
+  shader& shader::add_setting(const std::string_view setting, opt<std::string> value) {
+    std::string defn = "#define " + std::string(setting);
     if (value.has_value()) {
       defn += " " + value.value();
     }

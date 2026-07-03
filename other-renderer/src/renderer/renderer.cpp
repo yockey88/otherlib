@@ -37,6 +37,23 @@ namespace other {
     itr->second->rebuild();
   }
 
+  void renderer::shutdown() {
+    for (auto& [_, res] : stream_meshes) {
+      destroy_resource(res);
+    }
+    for (auto& [_, res] : stream_shaders) {
+      destroy_resource(res);
+    }
+
+    for (auto& [_, pl] : pipelines) {
+      if (pl != nullptr) {
+        pl->shutdown_pipeline();
+        arena_allocator<render_pipeline>{}.free(pl);
+      }
+    }
+    pipelines.clear();
+  }
+
   void renderer::begin_frame(render_data* data) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("renderer::begin_frame");
@@ -73,16 +90,14 @@ namespace other {
     rendering()->api()->clear_viewport(clear_color, clear_flags);
   }
 
-  void renderer::render() {
+  void renderer::render(std::span<viewport> viewports) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("renderer::render");
-    for (const auto& [id, pl] : pipelines) {
-      if (pl->is_valid()) {
-        /// necessary to save here when pipeline calls execute_draw_calls
-        current_frame_resources = pl->get_frame_resources();
-        pl->prepare_frame(scene_data);
-        pl->render_frame(this);
-      }
+
+    if (viewports.empty()) {
+      render_current_scene(scene_data);
+    } else {
+      render_scene_to_viewports(viewports, scene_data);
     }
   }
 
@@ -177,6 +192,14 @@ namespace other {
     itr->second->register_shader_resource(name, handle);
   }
 
+  ImTextureID renderer::get_texture_id(const resource_handle& handle) {
+    if (!resource_exists(handle)) {
+      CORE_LOG_ERROR("Cannot get texture ID for handle {} — resource does not exist.", handle);
+      return 0;
+    }
+    return get_resource<texture>(handle).get_imgui_texture_id();
+  }
+
   ImTextureID renderer::get_debug_overlay_id(const std::string_view pipeline_name) {
     {
       auto itr = pipelines.find(FNV(pipeline_name));
@@ -245,9 +268,9 @@ namespace other {
     return pipeline->get_screen_texture();
   }
 
-  resource_handle renderer::get_or_create_debug_stream_mesh(std::string_view stream_name, const debug_stream_definition& definition) {
+  resource_handle renderer::get_or_create_stream_mesh(std::string_view stream_name, const render_stream_definition& definition) {
     natural_t key = FNV(stream_name);
-    if (auto itr = debug_stream_meshes.find(key); itr != debug_stream_meshes.end()) {
+    if (auto itr = stream_meshes.find(key); itr != stream_meshes.end()) {
       return itr->second;
     }
     auto handle = create_resource(std::format("__debug.mesh.{}", stream_name), resource_type::MESH);
@@ -258,17 +281,65 @@ namespace other {
     }
     m.upload_vertex_buffer(std::format("{}_vertices", stream_name), gpu_buffer::usage::DYNAMIC, definition.max_per_frame, nullptr, definition.element_size * definition.max_per_frame)
       .finalize_mesh();
-    debug_stream_meshes.insert({ key, handle });
+    stream_meshes.insert({ key, handle });
     return handle;
   }
 
-  opt<resource_handle> renderer::get_debug_stream_shader_handle(std::string_view shader_name) {
+  opt<resource_handle> renderer::get_stream_shader_handle(std::string_view shader_name) {
     natural_t key = FNV(shader_name);
-    if (auto itr = debug_stream_shaders.find(key); itr != debug_stream_shaders.end()) {
+    if (auto itr = stream_shaders.find(key); itr != stream_shaders.end()) {
       return itr->second;
     }
-    CORE_LOG_ERROR("renderer: debug stream shader '{}' not registered before first draw", shader_name);
+    CORE_LOG_ERROR("renderer: stream shader '{}' not registered before first draw", shader_name);
     return std::nullopt;
+  }
+
+  resource_handle renderer::copy_texture(const std::string_view pipeline_name, const resource_handle& src_handle, const std::string_view dst_name) {
+    auto* pl = get_pipeline(pipeline_name);
+    OTHER_ASSERT(pl != nullptr, "Pipeline with name '{}' not found. Cannot copy texture.", pipeline_name);
+
+    const std::string dst_full_name = std::format("{}:{}", pipeline_name, dst_name);
+
+    auto& src_texture = get_resource<texture>(src_handle);
+    glm::ivec2 size = src_texture.get_size();
+    uint32_t mips = src_texture.get_mips();
+
+    resource_handle handle;
+    if (src_texture.get_type() == texture::tex_type::TEXTURE_CUBE) {
+      handle = cube_map::create(dst_full_name, src_texture.get_format(), size.x, size.y);
+    } else if (src_texture.get_type() == texture::tex_type::TEXTURE_3D) {
+      glm::vec3 dimensions(size.x, size.y, src_texture.get_depth() > 0 ? src_texture.get_depth() : 1);
+      handle = texture::create3d(dst_full_name, src_texture.get_format(),
+                                 { src_texture.get_min_filter(), src_texture.get_mag_filter() },
+                                 { src_texture.get_wrap_r(), src_texture.get_wrap_s(), src_texture.get_wrap_t() },
+                                 mips, src_texture.generated_mips(), dimensions);
+    } else {
+      handle = texture::create(dst_full_name, src_texture.get_type(), src_texture.get_format(),
+                               { src_texture.get_min_filter(), src_texture.get_mag_filter() },
+                               { src_texture.get_wrap_r(), src_texture.get_wrap_s(), src_texture.get_wrap_t() },
+                               mips, src_texture.generated_mips(), size.x, size.y);
+    }
+
+    return handle;
+  }
+
+  void renderer::destroy_texture(const resource_handle& handle) {
+    if (!resource_exists(handle)) {
+      CORE_LOG_ERROR("Cannot destroy texture with handle {} — resource does not exist.", handle);
+      return;
+    }
+    rendering()->api()->destroy_resource(handle);
+  }
+
+  void renderer::resize_viewport_texture(const resource_handle& texture_handle, const glm::ivec2& new_size) {
+    if (!resource_exists(texture_handle)) {
+      CORE_LOG_ERROR("Cannot resize viewport texture with handle {} — resource does not exist.", texture_handle);
+      return;
+    }
+    auto& tex = get_resource<texture>(texture_handle);
+    tex
+      .set_size(new_size.x, new_size.y)
+      .finalize_texture();
   }
 
   void renderer::begin_ui_frame() {
@@ -322,6 +393,10 @@ namespace other {
 
   glm::ivec2 renderer::get_window_size() {
     ASSERT_MAIN_THREAD();
+    if (cached_window_size.has_value()) {
+      return *cached_window_size;
+    }
+
     SDL_Window* window = rendering()->api()->window_handle();
     if (window == nullptr) {
       CORE_LOG_ERROR("SDL window handle is null, cannot get window size.");
@@ -336,6 +411,11 @@ namespace other {
     }
 
     return { width, height };
+  }
+
+  void renderer::set_window_size(const glm::ivec2& size) {
+    ASSERT_MAIN_THREAD();
+    cached_window_size = size;
   }
 
   void renderer::set_clear_color(const glm::vec4& color) {
@@ -422,6 +502,8 @@ namespace other {
     pipeline->shutdown_pipeline();
     arena_allocator<render_pipeline>{}.free(pipeline);
     pipelines.erase(itr);
+    pipeline_dependencies.erase(hash);
+    pipeline_ids = get_pipeline_order();
   }
 
   void renderer::execute_draw_calls(frame_node* current_node) {
@@ -459,13 +541,8 @@ namespace other {
 
   std::vector<natural_t> renderer::get_pipeline_order() const {
     std::map<natural_t, uint32_t> in_degree;
-    for (const auto& [id, _] : pipelines) {
-      in_degree[id] = 0;
-    }
-    for (const auto& [_, deps] : pipeline_dependencies) {
-      for (natural_t dep : deps) {
-        in_degree[dep]++;
-      }
+    for (const auto& [id, deps] : pipeline_dependencies) {
+      in_degree[id] = deps.size();
     }
 
     std::queue<natural_t> ready;
@@ -481,12 +558,11 @@ namespace other {
       ready.pop();
       order.push_back(id);
 
-      auto dep_itr = pipeline_dependencies.find(id);
-      if (dep_itr != pipeline_dependencies.end()) {
-        for (natural_t dep : dep_itr->second) {
-          in_degree[dep]--;
-          if (in_degree[dep] == 0) {
-            ready.push(dep);
+      for (const auto& [other_id, deps] : pipeline_dependencies) {
+        if (std::ranges::find(deps, id) != deps.end()) {
+          in_degree[other_id]--;
+          if (in_degree[other_id] == 0) {
+            ready.push(other_id);
           }
         }
       }
@@ -510,6 +586,86 @@ namespace other {
       }
     }
     return nullptr;
+  }
+
+  void renderer::render_current_scene(render_data* data, opt<std::string> break_on) {
+    if (pipeline_ids.empty()) {
+      return;
+    }
+
+    for (natural_t pl_id : pipeline_ids) {
+      PROFILE_SECTION(std::format("renderer::render--pipeline-{}", pl_id));
+      auto itr = pipelines.find(pl_id);
+      if (itr == pipelines.end()) {
+        continue;
+      }
+
+      auto* pl = itr->second;
+      if (pl == nullptr || !pl->is_valid()) {
+        continue;
+      }
+
+      rendering()->api()->debug_group_begin(std::format("Render Pipeline: {}", pl->get_name()).c_str());
+      pl->prepare_frame(scene_data);
+      pl->render_frame(this);
+      rendering()->api()->debug_group_end();
+
+      if (break_on.has_value() && pl->get_name() == *break_on) {
+        break;
+      }
+    }
+  }
+
+  void renderer::render_scene_to_viewports(std::span<viewport> viewports, render_data* data) {
+    OTHER_ASSERT(viewports.size() > 0, "viewports must not be empty in render_scene_to_viewports");
+
+    for (auto& vp : viewports) {
+      OTHER_ASSERT(vp.pipeline != nullptr, "Viewport pipeline must not be null in render_scene_to_viewports");
+      if (vp.cam == nullptr) {
+        continue;
+      }
+
+      rendering()->api()->debug_group_begin(std::format("Render Viewport: {}", vp.name).c_str());
+
+      camera* restore_cam = nullptr;
+      if (scene_data != nullptr) {
+        if (vp.size.x == 0 || vp.size.y == 0) {
+          glm::ivec2 window_size = get_window_size();
+          vp.size = window_size;
+        }
+        vp.cam->set_viewport_size(vp.size);
+        vp.cam->calculate_matrices(vp.size);
+
+        restore_cam = scene_data->primary_camera;
+        scene_data->primary_camera = vp.cam;
+      }
+
+      render_current_scene(scene_data, vp.pipeline->get_name());
+
+      resource_handle output_handle = vp.pipeline->get_screen_texture();
+      glm::ivec2 output_size = get_resource<texture>(output_handle).get_size();
+      uint32_t depth = get_resource<texture>(output_handle).depth;
+      blit_data src = {
+        .handle = output_handle,
+        .level = 0,
+        .x = 0,
+        .y = 0,
+        .z = 0,
+      };
+      blit_data dest = {
+        .handle = vp.texture,
+        .level = 0,
+        .x = 0,
+        .y = 0,
+        .z = 0,
+      };
+      rendering()->api()->blit_texture(src, dest, glm::ivec3(output_size, depth));
+
+      if (restore_cam != nullptr) {
+        scene_data->primary_camera = restore_cam;
+      }
+      rendering()->api()->debug_group_end();
+    }
   }
 
 }  // namespace other

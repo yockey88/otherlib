@@ -24,6 +24,11 @@ namespace other {
       ImGui::PushID(id);
     }
 
+    template <>
+    scoped_id(const std::string_view id) {
+      ImGui::PushID(id.data());
+    }
+
     ~scoped_id() {
       ImGui::PopID();
     }
@@ -75,8 +80,7 @@ namespace other {
         : count((sizeof...(colors) / 2) + 1) {
       static_assert(
         (sizeof...(colors) & 1u) == 0,
-        "scoped_color_stack requires an even number of arguments"
-      );
+        "scoped_color_stack requires an even number of arguments");
 
       PushColor(first_color, first, std::forward<Colors>(colors)...);
     }

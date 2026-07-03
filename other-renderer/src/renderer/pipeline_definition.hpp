@@ -14,6 +14,7 @@
 #include "renderer/frame_binding_definition.hpp"
 #include "renderer/render_pass.hpp"
 #include "renderer/resource_tag.hpp"
+#include "renderer/util/pipeline_asset_validation.hpp"
 
 namespace other {
 
@@ -124,10 +125,6 @@ namespace other {
 
     /// if non-empty, assert these tags are present before marking valid
     std::vector<resource_tag> required_tags;
-
-    opt<std::string> shadow_map_pass_name;
-    opt<std::string> shading_pass_name;
-    opt<std::string> light_space_matrix_uniform_name;
   };
 
   executor_type executor_type_from_string(const std::string_view str);
@@ -149,6 +146,8 @@ namespace other {
 
   pipeline_definition read_pipeline_definition_from_file(const filepath& path);
   pipeline_definition get_empty_pipeline();
+
+  detail::validation_result validate_pipeline_definition(const pipeline_definition& def);
 
 }  // namespace other
 

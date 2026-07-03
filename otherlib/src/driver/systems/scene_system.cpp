@@ -33,7 +33,8 @@ namespace other {
     events->register_event("scene.playback-command");
     events->add_listener("scene.playback-command", std::bind_front(&scene_system::handle_scene_playback_command_event, this));
 
-    events->register_event("scene.scene-activated");
+    events->register_event("scene.activated");
+    events->register_event("scene.deactivated");
     events->register_event("scene.played");
     events->register_event("scene.paused");
     events->register_event("scene.stopped");
@@ -193,13 +194,15 @@ namespace other {
       active_scene->fixed_update(kSixtyHertzFixedDeltaTime);
     });
 
+    auto& events = get_driver().get_event_system();
+    events->trigger_event("scene.activated", active_scene->id);
+    get_driver().on_scene_activated(active_scene->id);
+
     if (get_driver().should_auto_play_scenes()) {
       CORE_LOG_DEBUG("Auto-playing scene [{}:{}] on activation.", active_scene->id, active_scene->name);
       active_scene->play();
+      get_driver().on_scene_played(active_scene->id);
     }
-
-    auto& events = get_driver().get_event_system();
-    events->trigger_event("scene.scene-activated", active_scene->id);
   }
 
   void scene_system::synchronize_active_scene(natural_t scene_id) {
@@ -282,6 +285,7 @@ namespace other {
       CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
     }
 
+    get_driver().on_scene_deactivated(active_scene->id);
     active_scene = nullptr;
   }
 
@@ -486,12 +490,15 @@ namespace other {
     std::string command = data.as_string();
     if (command == "play") {
       active_scene->play();
+      get_driver().on_scene_played(active_scene->id);
       get_driver().get_event_system()->trigger_event("scene.played", active_scene->id);
     } else if (command == "pause") {
       active_scene->pause();
+      get_driver().on_scene_paused(active_scene->id);
       get_driver().get_event_system()->trigger_event("scene.paused", active_scene->id);
     } else if (command == "stop") {
       active_scene->stop();
+      get_driver().on_scene_stopped(active_scene->id);
       get_driver().get_event_system()->trigger_event("scene.stopped", active_scene->id);
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);

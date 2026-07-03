@@ -67,6 +67,12 @@ namespace other {
     return containing_window->get_event_system();
   }
 
+  ref<ui_node> ui_node::get_child(natural_t child_id) {
+    ref<ui_node> child_node = containing_window->get_node(child_id);
+    OTHER_ASSERT(child_node != nullptr, "Child node with ID {} not found in UI node {}", child_id, node_title);
+    return child_node;
+  }
+
   natural_t ui_node::add_node_to(ref<ui_node> node, const std::string_view remaining_search_pattern) {
     OTHER_ASSERT(node != nullptr, "Cannot add null child node to UI node {}", node_title);
     if (remaining_search_pattern.empty()) {

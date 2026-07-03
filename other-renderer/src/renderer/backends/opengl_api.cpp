@@ -167,6 +167,16 @@ namespace other {
     override_clear_stencil(stencil);
   }
 
+  void opengl_api::debug_group_begin(const std::string_view name) {
+    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name.data());
+    CHECKGL();
+  }
+
+  void opengl_api::debug_group_end() {
+    glPopDebugGroup();
+    CHECKGL();
+  }
+
   void opengl_api::on_begin_frame(scope<window_manager>& window_mgr) {
     PROFILE_SECTION("opengl_api::on_begin_frame");
     glm::vec3 clear_color = get_clear_color();
@@ -299,6 +309,15 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::set_stencil_test(bool enabled) {
+    if (enabled) {
+      glEnable(GL_STENCIL_TEST);
+    } else {
+      glDisable(GL_STENCIL_TEST);
+    }
+    CHECKGL();
+  }
+
   void opengl_api::memory_barrier(shader::compute_barrier_type bits) {
     PROFILE_SECTION("opengl_api::memory_barrier");
     GLbitfield gl_bits = 0;
@@ -319,6 +338,11 @@ namespace other {
 
   void opengl_api::set_stencil_func(stencil_func func, int32_t ref, uint32_t mask) {
     glStencilFunc(get_gl_stencil_func(func), ref, mask);
+    CHECKGL();
+  }
+
+  void opengl_api::set_stencil_op(stencil_op sfail, stencil_op dpfail, stencil_op dppass) {
+    glStencilOp(get_gl_stencil_op(sfail), get_gl_stencil_op(dpfail), get_gl_stencil_op(dppass));
     CHECKGL();
   }
 
@@ -743,6 +767,30 @@ namespace other {
       return nullptr;
     }
     return (void*)(uintptr_t)itr->second;
+  }
+
+  void opengl_api::blit_texture(const blit_data& src, const blit_data& dest, const glm::ivec3& size) {
+    PROFILE_SECTION("opengl_api::blit_texture");
+    auto src_itr = gpu_resources.find(src.handle.id);
+    if (src_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Source texture resource with ID {} not found. Can't blit texture", src.handle.id);
+      return;
+    }
+
+    auto dest_itr = gpu_resources.find(dest.handle.id);
+    if (dest_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Destination texture resource with ID {} not found. Can't blit texture", dest.handle.id);
+      return;
+    }
+
+    debug_group_begin(std::format("Blit Texture '{}'", get_resource_name(src.handle)));
+    glBindTexture(get_gl_texture_type(texture_resources[src.handle.id].get_type()), src_itr->second);
+    glCopyImageSubData(src_itr->second, get_gl_texture_type(texture_resources[src.handle.id].get_type()), 0, src.x, src.y, src.z,
+                       dest_itr->second, get_gl_texture_type(texture_resources[dest.handle.id].get_type()), 0, dest.x, dest.y, dest.z,
+                       size.x, size.y, size.z);
+    glBindTexture(get_gl_texture_type(texture_resources[src.handle.id].get_type()), 0);
+    debug_group_end();
+    CHECKGL();
   }
 
   void opengl_api::bind_buffer_resource(const resource_handle& handle, gpu_buffer::buf_type type) {
@@ -1792,6 +1840,22 @@ namespace other {
       default:
         CORE_LOG_ERROR("Unsupported stencil function: {}", func);
         return -1;  // Invalid function
+    }
+  }
+
+  int32_t opengl_api::get_gl_stencil_op(stencil_op op) const {
+    switch (op) {
+      case stencil_op::STENCIL_KEEP: return GL_KEEP;
+      case stencil_op::STENCIL_ZERO: return GL_ZERO;
+      case stencil_op::STENCIL_REPLACE: return GL_REPLACE;
+      case stencil_op::STENCIL_INCR: return GL_INCR;
+      case stencil_op::STENCIL_INCR_WRAP: return GL_INCR_WRAP;
+      case stencil_op::STENCIL_DECR: return GL_DECR;
+      case stencil_op::STENCIL_DECR_WRAP: return GL_DECR_WRAP;
+      case stencil_op::STENCIL_INVERT: return GL_INVERT;
+      default:
+        CORE_LOG_ERROR("Unsupported stencil operation: {}", op);
+        return -1;  // Invalid operation
     }
   }
 

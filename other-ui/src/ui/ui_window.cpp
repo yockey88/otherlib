@@ -47,6 +47,12 @@ namespace other {
 
   bool ui_window::render() {
     PROFILE_SECTION("ui_window::render");
+
+    if (override_render()) {
+      custom_render();
+      return state.open;
+    }
+
     on_prepare_render();
     {
       detail::ui_window_end_helper ___ui_window_end_helper_instance{};

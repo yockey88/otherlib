@@ -242,22 +242,12 @@ namespace other {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system on_driver_ready.");
     PROFILE_SECTION("rendering_system::on_driver_ready");
 
-    add_debug_overlay = get_driver().get_config_value<bool>("rendering.enable-debug", true);
-    if (add_debug_overlay) {
-      debug_pipeline_names = get_driver().get_config_value<std::vector<std::string>>("rendering.debug-pipelines", {});
-      if (debug_pipeline_names.empty()) {
-        debug_pipeline_names = renderer_ptr->get_pipeline_names();
-      }
-
-      auto& reg = renderer_ptr->get_debug_stream_registry();
-      const std::vector<vertex_attribute> vtx = {
-        { value_type::VEC3, "OE_position", 0, sizeof(glm::vec3) },
-        { value_type::VEC4, "OE_color", 1, sizeof(glm::vec4) },
+    {
+      ui::menu view = {
+        .name = "View",
+        .dynamic_sub_menus = [this]() { get_driver().get_ui()->available_ui_window_menu(); }
       };
-      reg.register_stream(builtin_debug_streams::kLines, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::LINES, vtx } });
-      reg.register_stream(builtin_debug_streams::kTris, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::TRIANGLES, vtx } });
-      reg.register_stream(builtin_debug_streams::kPoints, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 14, .draw_recipe = { "debug_overlay", mesh::POINTS, vtx } });
-      reg.register_stream(builtin_debug_streams::kMeshes, { .element_size = sizeof(debug_mesh_instance), .max_per_frame = 4096, .draw_recipe = {} });
+      get_driver().get_ui()->register_main_menu_bar_menu(view);
     }
   }
 
@@ -269,6 +259,9 @@ namespace other {
   void rendering_system::shutdown(driver_kernel* kernel) {
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized in rendering system shutdown.");
     PROFILE_SECTION("rendering_system::shutdown");
+
+    renderer_ptr->shutdown();
+
     driver_ui_ptr->shutdown();
     driver_ui_ptr = nullptr;
 
@@ -278,32 +271,21 @@ namespace other {
 
   void rendering_system::render(driver_kernel* kernel) {
     PROFILE_SECTION("rendering_system::render");
-    render_data data = {};
-    auto window_size = renderer_ptr->get_window_size();
-    if (viewport_size.x == 0 && viewport_size.y == 0) {
-      viewport_size = window_size;
-    }
 
     OTHER_ASSERT(kernel->has_core_system<scene_system>(), "Scene system is not available in driver kernel.");
     auto& scenes = sibling<scene_system>(*kernel);
     auto* active_scene = scenes.get_active_scene();
+
     OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not available in driver kernel.");
     auto& asset_mgr = sibling<asset_system>(*kernel).get_asset_manager();
 
     render_data* data_ptr = nullptr;
     render_data prepared_data = {};
     if (active_scene != nullptr) {
-      prepared_data = active_scene->prepare_render_data(viewport_size, asset_mgr);
-      data_ptr = &prepared_data;
-    }
-
-    if (auto* c = renderer_ptr->get_override_camera(); c != nullptr) {
-      prepared_data.primary_camera = c;
-    }
-
-    if (data_ptr != nullptr) {
+      prepared_data = active_scene->prepare_render_data(asset_mgr);
       auto& reg = renderer_ptr->get_debug_stream_registry();
-      data_ptr->debug_data.configure_streams(renderer_ptr.get(), reg);
+      prepared_data.debug_data.configure_streams(renderer_ptr.get(), reg);
+      data_ptr = &prepared_data;
     }
 
     {
@@ -311,7 +293,7 @@ namespace other {
       renderer_ptr->begin_frame(data_ptr);
       get_driver().on_begin_frame(data_ptr);
 
-      renderer_ptr->render();
+      renderer_ptr->render(viewports);
       get_driver().on_render();
       get_driver().on_debug_render(data_ptr);
 
@@ -344,6 +326,11 @@ namespace other {
   void rendering_system::close_all_windows() {
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI subsystem is not initialized. Cannot close all UI windows");
     driver_ui_ptr->close_all_windows();
+  }
+
+  ImTextureID rendering_system::get_texture_id(const resource_handle& handle) const {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in rendering system get_ui_texture_id.");
+    return renderer_ptr->get_texture_id(handle);
   }
 
   ui::menu rendering_system::build_menu(const std::string_view name, const sol::table& menu_table) {
@@ -393,6 +380,49 @@ namespace other {
     return driver_ui_ptr;
   }
 
+  natural_t rendering_system::register_viewport(const std::string_view name, const viewport_definition& def) {
+    natural_t id = FNV(name);
+    if (std::ranges::find_if(viewports, [id](const viewport& vd) { return vd.id == id; }) != viewports.end()) {
+      CORE_LOG_WARN("Viewport with name '{}' already exists.", name);
+      return id;
+    }
+
+    auto* pl = renderer_ptr->get_pipeline(def.render_pipeline_name);
+    if (pl == nullptr) {
+      CORE_LOG_ERROR("Render pipeline '{}' specified for viewport '{}' does not exist.", def.render_pipeline_name, name);
+      return 0;
+    }
+
+    opt<resource_handle> final_texture_opt = pl->get_final_output_texture();
+    if (!final_texture_opt.has_value()) {
+      CORE_LOG_ERROR("Pipeline {} must have a screen texture to be a valid viewport. Cannot register '{}'.", def.render_pipeline_name, name);
+      return 0;
+    }
+
+    // make a unique texture for this viewport that we will blit to later to reuse the pipeline for other viewports
+    resource_handle viewport_texture = get_renderer()->copy_texture(def.render_pipeline_name, *final_texture_opt, std::format("viewport-{}", name));
+    viewports.push_back(viewport{
+      .id = id,
+      .name = std::string{ name },
+      .pipeline = pl,
+      .cam = def.cam,
+      .texture = viewport_texture,
+    });
+    CORE_LOG_DEBUG("Registered viewport '{}' with pipeline '{}'", name, def.render_pipeline_name);
+    return id;
+  }
+
+  void rendering_system::remove_viewport(natural_t vp_id) {
+    auto it = std::ranges::find_if(viewports, [vp_id](const viewport& vp) { return vp.id == vp_id; });
+    if (it != viewports.end()) {
+      get_renderer()->destroy_texture(it->texture);
+      viewports.erase(it);
+      CORE_LOG_DEBUG("Removed viewport with ID '{}'", vp_id);
+    } else {
+      CORE_LOG_WARN("Tried to remove viewport with ID '{}', but no matching viewport was found.", vp_id);
+    }
+  }
+
   void rendering_system::show_open_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props) {
     detail::file_dialog(SDL_FILEDIALOG_OPENFILE, nullptr, callback_fn, user_data, props);
   }
@@ -410,7 +440,7 @@ namespace other {
       CORE_LOG_ERROR("Invalid data type for viewport resize event. Expected VEC2.");
       return;
     }
-    viewport_size = data;
+    glm::vec2 viewport_size = data;
     get_driver().on_viewport_resize(viewport_size);
   }
 
@@ -529,14 +559,17 @@ namespace other {
     //   kernel->get_core_system<asset_system>().add_texture_asset(resource.seed_texture_path.value_or(""));
     // }
 
-    if (debug_pipeline_names.empty() && add_debug_overlay) {
-      add_debug_overlay_to_pipeline(itr->definition.name);
-    } else if (add_debug_overlay) {
-      auto debug_it = std::ranges::find(debug_pipeline_names, itr->definition.name);
-      if (add_debug_overlay && debug_it != debug_pipeline_names.end()) {
-        add_debug_overlay_to_pipeline(itr->definition.name);
-      }
-    }
+    // if (debug_pipeline_names.empty() && add_debug_overlay) {
+    //   add_debug_overlay_to_pipeline(itr->definition.name);
+    // } else if (add_debug_overlay) {
+    //   auto debug_it = std::ranges::find(debug_pipeline_names, itr->definition.name);
+    //   if (add_debug_overlay && debug_it != debug_pipeline_names.end()) {
+    //     add_debug_overlay_to_pipeline(itr->definition.name);
+    //   }
+    // }
+
+    auto* pl_ptr = renderer_ptr->get_pipeline(itr->definition.name);
+    get_driver().handle_rendering_pipeline_loaded(itr->asset_id, pl_ptr);
 
     rendering_pipeline_assets.push_back(*itr);
     pending_rendering_pipeline_assets.erase(itr);
@@ -551,94 +584,9 @@ namespace other {
     auto itr = std::ranges::find(rendering_pipeline_assets, asset_id, &pipeline_asset::asset_id);
     OTHER_ASSERT(itr != rendering_pipeline_assets.end(), "Rendering pipeline asset unloaded event for unknown asset ID: {}", asset_id);
 
+    get_driver().handle_rendering_pipeline_unloaded(itr->asset_id, renderer_ptr->get_pipeline(itr->definition.name));
     renderer_ptr->remove_pipeline(itr->definition.name);
     rendering_pipeline_assets.erase(itr);
-  }
-
-  void rendering_system::add_debug_overlay_to_pipeline(const std::string_view pipeline_name) {
-    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized.");
-    if (!renderer_ptr->has_pipeline(pipeline_name)) {
-      CORE_LOG_WARN("Debug overlay pipeline '{}' does not exist in renderer, skipping.", pipeline_name);
-      return;
-    }
-
-    auto def = get_debug_overlay_pipeline_definition();
-    def.name = std::format("{}:debug-overlay", pipeline_name);
-    renderer_ptr->add_post_processing_pipeline(pipeline_name, def.name, def);
-    auto* source_pipeline = renderer_ptr->get_pipeline(pipeline_name);
-    OTHER_ASSERT(source_pipeline != nullptr, "Source pipeline '{}' not found for debug overlay", pipeline_name);
-
-    opt<resource_handle> src_frame = source_pipeline->get_screen_texture();
-    if (src_frame.has_value()) {
-      renderer_ptr->register_texture_resource(def.name, "frame", src_frame.value());
-    } else {
-      CORE_LOG_WARN("Source pipeline '{}' does not have a screen texture for debug overlay, skipping.", pipeline_name);
-      return;
-    }
-  }
-
-  pipeline_definition rendering_system::get_debug_overlay_pipeline_definition() const {
-    pipeline_definition def;
-    def.name = "debug-overlay";
-
-    def.textures.push_back({ .name = "frame", .use_window_size = true, .format = texture::format::RGBA16F });
-    def.textures.push_back({ .name = "depth", .use_window_size = true, .format = texture::format::DEPTHF });
-    def.textures.push_back({ .name = "debug_frame", .use_window_size = true, .format = texture::format::RGBA16F });
-    def.buffers.push_back({ .name = "camera_buffer", .type = gpu_buffer::UNIFORM_BUFFER, .usage = gpu_buffer::DYNAMIC, .tag = resource_tag(resource_tag::kCameraTag) });
-    def.shaders.push_back({ .name = "blit", .vertex_path = "resources/basic-textured-quad.vert", .fragment_path = "resources/debug-overlay-blit.frag" });
-    def.shaders.push_back({ .name = "debug_overlay", .vertex_path = "resources/debug-overlay.vert", .fragment_path = "resources/debug-overlay.frag" });
-    def.shaders.push_back({ .name = "debug_meshes", .vertex_path = "resources/debug-mesh.vert", .fragment_path = "resources/debug-overlay.frag" });
-
-    def.passes.emplace_back() = {
-      .name = "overlay-blit",
-      .pass_type = render_pass::RENDER_PASS,
-      .shader_name = "blit",
-      .inputs = {
-        { .resource_name = "frame", .uniform_name = "OE_frame", .binding = 0 },
-        { .resource_name = "depth", .uniform_name = "OE_depth", .binding = 1 },
-      },
-      .outputs = {
-        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
-      },
-      .executor = { .name = "fullscreen_quad" },
-    };
-    def.passes.emplace_back() = {
-      .name = "overlay-geometry",
-      .shader_name = "debug_overlay",
-      .inputs = {
-        { .resource_name = "camera_buffer", .uniform_name = "OE_camera", .binding = 0 },
-      },
-      .outputs = {
-        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
-      },
-      .executor = { .name = "debug_overlay" },
-      .depends_on = { "overlay-blit" },
-      .bindings = {
-        { .name = "per_frame.camera_buffer", .tag = resource_tag(resource_tag::kCameraTag), .scope = binding_scope::PER_FRAME, .type = binding_type::UNIFORM_BUFFER, .binding = 0 },
-      },
-      .clear_flags = framebuffer::DEPTH_BIT,
-      .override_fb_clear = true,
-    };
-    def.passes.emplace_back() = {
-      .name = "overlay-meshes",
-      .shader_name = "debug_meshes",
-      .inputs = {
-        { .resource_name = "camera_buffer", .uniform_name = "OE_camera", .binding = 0 },
-      },
-      .outputs = {
-        { .resource_name = "debug_frame", .attachment = framebuffer::COLOR, .access = access_flags::WRITE },
-      },
-      .executor = { .name = "debug_meshes" },
-      .depends_on = { "overlay-geometry" },
-      .bindings = {
-        { .name = "per_frame.camera_buffer", .tag = resource_tag(resource_tag::kCameraTag), .scope = binding_scope::PER_FRAME, .type = binding_type::UNIFORM_BUFFER, .binding = 0 },
-      },
-      .clear_flags = framebuffer::DEPTH_BIT,
-      .override_fb_clear = true,
-    };
-
-    def.display_texture_name = "debug_frame";
-    return def;
   }
 
   namespace detail {
@@ -767,7 +715,6 @@ namespace other {
 
     render_graph::pass_executor make_debug_overlay(const pipeline_pass_definition& def, render_pipeline* pl) {
       return [pass = def.name](pass_context& ctx) {
-        const debug_streams& s = ctx.get_frame_data().debug_data;
         ctx.draw_debug_vertices(builtin_debug_streams::kTris, mesh::TRIANGLES);
         ctx.draw_debug_vertices(builtin_debug_streams::kLines, mesh::LINES);
         ctx.draw_debug_vertices(builtin_debug_streams::kPoints, mesh::POINTS);
@@ -776,7 +723,7 @@ namespace other {
 
     render_graph::pass_executor make_debug_meshes(const pipeline_pass_definition& def, render_pipeline* pl) {
       return [pass = def.name](pass_context& ctx) {
-        const debug_streams& s = ctx.get_frame_data().debug_data;
+        const render_stream& s = ctx.get_frame_data().debug_data;
         const size_t n = s.count(builtin_debug_streams::kMeshes);
         if (n == 0) {
           return;

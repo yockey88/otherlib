@@ -66,9 +66,9 @@ namespace other {
     renderer_ptr->execute_draw_calls(node);
   }
 
-  void pass_context::submit_draw_call(const draw_call& call, const mesh_key& key) {
+  void pass_context::execute_draw_call(const draw_call& call, const mesh_key& key) {
     ASSERT_MAIN_THREAD();
-    OTHER_ASSERT(call.instance_count > 0, "submit_draw_call: instance_count = 0");
+    OTHER_ASSERT(call.instance_count > 0, "draw_call: instance_count = 0");
     renderer_ptr->rendering()->api()->execute_draw_call(key.render_state, key.draw_mode, call);
   }
 
@@ -82,7 +82,7 @@ namespace other {
 
   void pass_context::draw_debug_vertices(std::string_view stream_name, mesh::primitive_type topology) {
     ASSERT_MAIN_THREAD();
-    const debug_streams& s = frame_data->debug_data;
+    const render_stream& s = frame_data->debug_data;
     const size_t verts = s.count(stream_name);
 
     if (verts == 0) {
@@ -122,25 +122,5 @@ namespace other {
 
     api->set_polygon_mode(POLYGON_MODE_FILL);
   }
-
-  // void pass_context::draw_debug_stream(std::string_view stream_name, const debug_stream_definition& def, std::span<const uint8_t> data, size_t count) {
-  //   ASSERT_MAIN_THREAD();
-  //   if (count == 0) return;
-  //   OTHER_ASSERT(data.size() == def.element_size * count, "draw_debug_stream('{}'): data.size()={} but element_size*count={}", stream_name, data.size(), def.element_size * count);
-
-  //   resource_handle stream_mesh = renderer_ptr->get_or_create_debug_stream_mesh(stream_name, def.draw_recipe);
-  //   auto& mesh_res = renderer_ptr->get_resource<mesh>(stream_mesh);
-  //   mesh_res.upload_vertex_buffer(std::format("{}.vertices", stream_name), count, data.data(), data.size())
-  //     .finalize_mesh();
-
-  //   auto shader_handle = renderer_ptr->get_debug_stream_shader_handle(def.draw_recipe.shader);
-  //   OTHER_ASSERT(shader_handle.has_value(), "draw_debug_stream('{}'): shader '{}' not loaded", stream_name, def.draw_recipe.shader);
-
-  //   auto& sh = renderer_ptr->get_resource<shader>(*shader_handle);
-  //   sh.bind();
-  //   // camera stuff??
-  //   renderer_ptr->rendering()->api()->draw_mesh(stream_mesh, def.draw_recipe.topology, count);
-  //   sh.unbind();
-  // }
 
 }  // namespace other

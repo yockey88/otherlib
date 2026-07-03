@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <ranges>
+#include <span>
 
 #include <asio/asio.hpp>
 
@@ -60,7 +61,7 @@ namespace other {
         natural_t id = successful_pipelines.front();
         successful_pipelines.pop();
 
-        switch (auto state = get_asset_state(id)) {
+        switch (get_asset_state(id)) {
           case asset_state::LOADING:
           case asset_state::REFRESHING_LOAD:
             on_asset_loaded(id);
@@ -78,7 +79,7 @@ namespace other {
         natural_t id = failed_pipelines.front();
         failed_pipelines.pop();
 
-        switch (auto state = get_asset_state(id)) {
+        switch (get_asset_state(id)) {
           case asset_state::LOADING:
           case asset_state::REFRESHING_LOAD:
             on_asset_load_failed(id);
@@ -99,6 +100,7 @@ namespace other {
 
     std::string extension = file_path.extension().string();
     asset::type asset_type = asset::get_type_from_extension(extension);
+    std::string name = file_path.filename().string();
     if (asset_type == asset::type::EMPTY) {
       CORE_LOG_ERROR("Unsupported asset file extension: {}", extension);
       return 0;
@@ -107,6 +109,12 @@ namespace other {
     if (asset_type == asset::ASSET_DECLARATION) {
       // have to read file and see what it is (.toml)
       asset_type = asset::get_type_from_declaration(file_path);
+      if (asset_type == asset::type::EMPTY) {
+        CORE_LOG_ERROR("Failed to determine asset type from declaration file: {}", file_path.string());
+        return 0;
+      }
+
+      name = asset::get_name_from_declaration(file_path);
     }
 
     bool exists = std::filesystem::exists(file_path);
@@ -132,7 +140,7 @@ namespace other {
                                                                 .load_path = file_path,
                                                                 // clang-format off
                                                                 .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, 
-                                                                                asset::get_filesystem_directory(asset_type), file_path.filename().string()),
+                                                                                asset::get_filesystem_directory(asset_type), name),
                                                                 // clang-format on
                                                                 .absolute_path = std::filesystem::absolute(absolute_path),
                                                               },
@@ -229,7 +237,7 @@ namespace other {
 
     auto [state_it, state_inserted] = asset_states.emplace(scene_id, asset_state_machine{});
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for scene asset ID: {}", scene_id);
-    CORE_LOG_DEBUG("Beginning add_scene_asset for asset ID: {} (Name: {})", scene_id, it->loading_asset.virtual_path);
+    CORE_LOG_DEBUG("Beginning add_scene_asset for asset ID: {} (Name: {})", scene_id, it->loading_asset.virtual_path.string());
 
     begin_load(it, state_it);
 
@@ -256,7 +264,7 @@ namespace other {
 
     auto [state_it, state_inserted] = asset_states.emplace(pl_id, asset_state_machine{});
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for rendering pipeline asset ID: {}", pl_id);
-    CORE_LOG_DEBUG("Beginning add_rendering_pipeline_asset for asset ID: {} (Name: {})", pl_id, it->loading_asset.virtual_path);
+    CORE_LOG_DEBUG("Beginning add_rendering_pipeline_asset for asset ID: {} (Name: {})", pl_id, it->loading_asset.virtual_path.string());
 
     begin_load(it, state_it);
     return pl_id;
@@ -352,6 +360,27 @@ namespace other {
     }
 
     return nullptr;
+  }
+
+  asset* asset_handler::get_asset_by_virtual_path(const filepath& virtual_path) {
+    if (auto it = std::ranges::find_if(loaded_assets, [&virtual_path](const auto& pair) { return pair.second.virtual_path == virtual_path; }); it != loaded_assets.end()) {
+      return &it->second;
+    }
+
+    auto it = std::ranges::find_if(asset_pipelines, [&virtual_path](const auto& a) { return a.loading_asset.virtual_path == virtual_path; });
+    if (it != asset_pipelines.end()) {
+      return &it->loading_asset;
+    }
+
+    return nullptr;
+  }
+
+  std::vector<asset*> asset_handler::get_assets_of_type(asset::type type) {
+    return loaded_assets |
+      std::views::values |
+      std::views::filter([type](asset& a) { return a.asset_type == type; }) |
+      std::views::transform([](asset& a) { return &a; }) |
+      std::ranges::to<std::vector>();
   }
 
   std::span<const natural_t> asset_handler::get_all_asset_ids() const {
@@ -639,7 +668,7 @@ namespace other {
     if (fs == nullptr) {
       return;
     }
-    CORE_LOG_DEBUG("Registering asset in filesystem: {} (ID: {})", asset_ptr->virtual_path, asset_ptr->id);
+    CORE_LOG_DEBUG("Registering asset in filesystem: {} (ID: {})", asset_ptr->virtual_path.string(), asset_ptr->id);
 
     /// generated/created assets are full virtual, where as all assets are registered under
     //    a virtual path with it's local path attached to the asset itself
@@ -648,18 +677,18 @@ namespace other {
     OTHER_ASSERT(!asset_ptr->virtual_path.empty(), "Asset virtual path is empty for asset ID: {}", asset_ptr->id);
 
     /// assets must have a mount name
-    resolved_path resolved = fs->resolve_path(asset_ptr->virtual_path);
-    OTHER_ASSERT(!resolved.mount_name.empty(), "Failed to resolve mount for asset virtual path: {}", asset_ptr->virtual_path);
+    resolved_path resolved = fs->resolve_path(asset_ptr->virtual_path.string());
+    OTHER_ASSERT(!resolved.mount_name.empty(), "Failed to resolve mount for asset virtual path: {}", asset_ptr->virtual_path.string());
 
     CORE_LOG_DEBUG("Resolved path: {}", resolved);
 
     ref<directory> mount = fs->get_or_create_mount(default_mount);
-    OTHER_ASSERT(mount != nullptr, "Failed to get or create mount '{}' for asset: {}", asset_ptr->virtual_path, asset_ptr->id);
+    OTHER_ASSERT(mount != nullptr, "Failed to get or create mount '{}' for asset: {}", asset_ptr->virtual_path.string(), asset_ptr->id);
 
     std::string curr_virtual_path = mount->absolute_path().string() + std::string{ file_system::kPathSeparator };
     ref<directory> dir_handle = mount;
     for (const auto& piece : resolved.relative_path_components) {
-      OTHER_ASSERT(dir_handle != nullptr, "Directory handle is null after creation or retrieval for piece '{}' in asset virtual path: {}", piece, asset_ptr->virtual_path);
+      OTHER_ASSERT(dir_handle != nullptr, "Directory handle is null after creation or retrieval for piece '{}' in asset virtual path: {}", piece, asset_ptr->virtual_path.string());
       auto next = dir_handle->get_child_directory(piece);
       if (next == nullptr) {
         dir_handle = dir_handle->add_child_directory(piece);
@@ -669,7 +698,7 @@ namespace other {
       curr_virtual_path += std::format("/{}/", piece);
     }
 
-    OTHER_ASSERT(dir_handle != nullptr, "Final directory handle is null for asset virtual path: {}", asset_ptr->virtual_path);
+    OTHER_ASSERT(dir_handle != nullptr, "Final directory handle is null for asset virtual path: {}", asset_ptr->virtual_path.string());
     CORE_LOG_DEBUG("Directory for asset ID {}: {}", asset_ptr->id, dir_handle->to_string());
 
     file_type type = full_virtual_file ? file_type::VIRTUAL : file_type::LOCAL;
@@ -680,15 +709,15 @@ namespace other {
       OTHER_ASSERT(file != nullptr, "Failed to register local file for asset load path: {}", asset_ptr->load_path.string());
     }
 
-    file_handle = fs->create_asset_virtual_file(asset_ptr->virtual_path);
+    file_handle = fs->create_asset_virtual_file(asset_ptr->virtual_path.string());
     if (type == file_type::LOCAL) {
       file_handle->set_absolute_path(asset_ptr->absolute_path);
     } else {
       file_handle->set_absolute_path(asset_ptr->virtual_path);
     }
-    file_handle->set_virtual_path(asset_ptr->virtual_path);
+    file_handle->set_virtual_path(asset_ptr->virtual_path.string());
 
-    OTHER_ASSERT(file_handle != nullptr, "Failed to create file handle for asset: {}", asset_ptr->virtual_path);
+    OTHER_ASSERT(file_handle != nullptr, "Failed to create file handle for asset: {}", asset_ptr->virtual_path.string());
     CORE_LOG_DEBUG("Asset file registered for asset [{}] of type [{}] :\n{}", asset_ptr->id, asset_ptr->asset_type, file_handle->to_string());
     dir_handle->add_file(file_handle);
   }

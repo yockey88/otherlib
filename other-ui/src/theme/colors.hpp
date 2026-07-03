@@ -242,7 +242,7 @@ namespace other {
         constexpr inline glm::vec4 kComponentSeparator = hex_col_to_rgba(IM_COL32(46, 46, 46, 255));
 
         /// property rows
-        constexpr inline glm::vec4 kPropertyLabel = hex_col_to_rgba(IM_COL32(170, 175, 185, 255));
+        constexpr inline glm::vec4 kPropertyLabel = hex_col_to_rgba(IM_COL32(176, 105, 5, 255));
         constexpr inline glm::vec4 kPropertyValueText = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
         constexpr inline glm::vec4 kPropertyRowHover = hex_col_to_rgba(IM_COL32(40, 40, 42, 255));
         constexpr inline glm::vec4 kPropertyRowAlt = hex_col_to_rgba(IM_COL32(26, 26, 28, 255));

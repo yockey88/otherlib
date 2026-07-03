@@ -12,6 +12,7 @@ namespace other {
   struct peer_record {
     natural_t peer_id = 0;
     natural_t connection_id = 0;
+
     // 32-bits available for client applications to specify role
     uint32_t role_mask = 0;
 

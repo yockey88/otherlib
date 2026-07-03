@@ -22,6 +22,12 @@ namespace other {
     static bounding_box empty;
     static bounding_box infinite;
 
+    constexpr auto operator<=>(const bounding_box& other) const {
+      return min.x >= other.min.x && min.y >= other.min.y && min.z >= other.min.z &&
+        max.x <= other.max.x && max.y <= other.max.y && max.z <= other.max.z;
+    }
+    inline bool operator==(const bounding_box& other) const = default;
+
     bool contains(const glm::vec3& point) const;
 
     bool intersects(const bounding_box& other) const;

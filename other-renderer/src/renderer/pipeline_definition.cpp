@@ -352,20 +352,6 @@ namespace other {
     if (name_str.empty()) {
       OTHER_ASSERT(false, "Rendering pipeline name cannot be empty");
     }
-    CORE_LOG_DEBUG(" - pipeline: {}, version: {}", name_str, definition.version);
-
-    auto shadow_map_pass = pipeline_table.at_path("lighting.shadow_map_pass_name");
-    auto shading_pass = pipeline_table.at_path("lighting.shading_pass_name");
-    auto light_space_matrix_uniform = pipeline_table.at_path("lighting.light_space_matrix_uniform_name");
-    if (shadow_map_pass && shadow_map_pass.is_string()) {
-      definition.shadow_map_pass_name = shadow_map_pass.as_string()->get();
-    }
-    if (shading_pass && shading_pass.is_string()) {
-      definition.shading_pass_name = shading_pass.as_string()->get();
-    }
-    if (light_space_matrix_uniform && light_space_matrix_uniform.is_string()) {
-      definition.light_space_matrix_uniform_name = light_space_matrix_uniform.as_string()->get();
-    }
 
     detail::parse_resources(definition, pipeline_table);
 
@@ -401,6 +387,43 @@ namespace other {
     /// no passes, no textures, no shaders
     ///     useful for UI-only
     return def;
+  }
+
+  detail::validation_result validate_pipeline_definition(const pipeline_definition& def) {
+    detail::validation_result result;
+    if (def.name.empty()) {
+      result.valid = false;
+      result.errors.push_back("Pipeline name cannot be empty");
+    }
+    if (def.passes.empty()) {
+      result.valid = false;
+      result.errors.push_back("Pipeline must contain at least one pass");
+    }
+
+    /// to do actually validate definition in way similar to toml
+    // validate_resources(result, tbl, buffer_names, texture_names, shader_names);
+
+    // auto display_tex = tbl.at_path("frame.display-texture");
+    // if (display_tex) {
+    //   if (!display_tex.is_string()) {
+    //     result.fail("'frame.display-texture': must be a string");
+    //   } else if (display_tex.as_string()->get().empty()) {
+    //     result.fail("'frame.display-texture': must not be empty");
+    //   }
+    // }
+
+    // validate_frame_bindings(result, tbl, binding_names);
+    // validate_frame_inputs_outputs(result, tbl);
+    // validate_frame_executors(result, tbl);
+    // validate_frame_resource_tags(result, tbl);
+    // validate_frame_passes(result, tbl, pass_names);
+    // validate_frame_pass_bindings(result, tbl);
+    // if (result.valid) {
+    //   validate_cross_references(result, tbl, buffer_names, texture_names, shader_names, binding_names, pass_names);
+    //   validate_pass_uniforms(result, tbl);
+    // }
+
+    return result;
   }
 
   namespace detail {

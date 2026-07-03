@@ -586,6 +586,32 @@ namespace other {
     return storage->tree.get_object_count();
   }
 
+  camera* scene::get_primary_camera() {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_primary_camera");
+    scene_object* obj = find_object_with_tag("main-camera");
+    if (obj != nullptr) {
+      camera_component* cam_comp = get_component<camera_component>(obj);
+      if (cam_comp != nullptr) {
+        return &cam_comp->camera;
+      }
+    }
+    return nullptr;
+  }
+
+  const camera* scene::get_primary_camera() const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::get_primary_camera_const");
+    const scene_object* obj = find_object_with_tag("main-camera");
+    if (obj != nullptr) {
+      const camera_component* cam_comp = get_component<camera_component>(obj);
+      if (cam_comp != nullptr) {
+        return &cam_comp->camera;
+      }
+    }
+    return nullptr;
+  }
+
   transform& scene::get_transform(scene_object* object) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_transform");
@@ -722,7 +748,11 @@ namespace other {
       }
     }
 
-    return box.transform(get_world_transform(object));
+    if (box == bounding_box::empty) {
+      return bounding_box(glm::vec3(-1.f), glm::vec3(1.f)).transform(get_world_transform(object));
+    } else {
+      return box.transform(get_world_transform(object));
+    }
   }
 
   bounding_box scene::get_bounding_box(natural_t id) const {
@@ -805,29 +835,19 @@ namespace other {
     return bbox;
   }
 
-  render_data scene::prepare_render_data(const glm::ivec2 window_size, scope<asset_handler>& asset_handler) const {
+  render_data scene::prepare_render_data(scope<asset_handler>& asset_handler) const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::prepare_render_data");
 
     render_data data;
     data.clear_color = storage->clear_color;
 
-    camera* primary_camera = nullptr;
-    storage->registry.view<object_handle, camera_component>().each([&](const object_handle& handle, camera_component& cam) {
-      if (primary_camera == nullptr && object_has_tag(handle.id, "main-camera")) {
-        cam.camera.calculate_matrices(window_size);
-        primary_camera = &cam.camera;
-      }
-    });
-
-    if (primary_camera != nullptr) {
-      /// \todo fix this const cast
-      data.primary_camera = primary_camera;
-    }
+    const camera* primary_camera = get_primary_camera();
 
     storage->registry.view<object_handle, point_light_component>().each([&](const object_handle& handle, const point_light_component& light) {
+      glm::vec3 world_pos = get_world_transform(handle.id) * glm::vec4(light.light.position, 1.f);
       gpu::light l{
-        .vector = { light.light.position.x, light.light.position.y, light.light.position.z, 0.f },
+        .vector = { world_pos.x, world_pos.y, world_pos.z, 0.f },
         .color = light.light.color,
         .light_type = gpu::light::kPoint,
       };
@@ -977,6 +997,7 @@ namespace other {
     data.simulation_environment.ambient_color += data.simulation_environment.sun_color;
     data.simulation_environment.ambient_color /= static_cast<float>(data.lights.size() + 1);
 
+    data.primary_camera = const_cast<camera*>(primary_camera);
     bounding_box scene_bounding_box = get_bounding_box_from_camera_frustum(*primary_camera);
     constexpr float kEnvHalfExtent = 16.0f;
     const float half = kEnvHalfExtent;
@@ -992,6 +1013,11 @@ namespace other {
     data.simulation_environment.world_max = glm::vec4(c + half, 1.0f);  // exposure);
 
     return data;
+  }
+
+  void scene::debug_render(debug_draw draw) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::debug_render");
   }
 
   bool scene::object_has_tag(natural_t id, const std::string_view tag) const {

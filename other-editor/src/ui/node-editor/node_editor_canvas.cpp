@@ -1,7 +1,7 @@
 /**
- * \file ui/node-editor/node_editor_canvas_node.cpp
+ * \file ui/node-editor/node_editor_canvas.cpp
  **/
-#include "ui/node-editor/node_editor_canvas_node.hpp"
+#include "ui/node-editor/node_editor_canvas.hpp"
 
 #include <ranges>
 
@@ -9,14 +9,13 @@
 #include <imgui/imgui_internal.h>
 
 #include "theme/colors.hpp"
-#include "ui/node-editor/node_editor.hpp"
-#include "ui/node-editor/node_editor_canvas_node.hpp"
+#include "ui/node-editor/node_editor_display.hpp"
 #include "ui/ui_helpers.hpp"
 
 namespace other {
   namespace ui {
 
-    natural_t node_editor_canvas_node::node_data::create(const std::string_view node_name, const glm::vec2& position, const glm::vec2& size, const glm::vec4& header_color, const glm::vec4& body_color) {
+    natural_t node_editor_canvas::node_data::create(const std::string_view node_name, const glm::vec2& position, const glm::vec2& size, const glm::vec4& header_color, const glm::vec4& body_color) {
       natural_t node_id = node_names.size();
 
       node_names.emplace_back(std::string{ node_name });
@@ -37,7 +36,7 @@ namespace other {
       return node_id;
     }
 
-    natural_t node_editor_canvas_node::pin_data::create(natural_t node_id, natural_t pin_index, pin_type type) {
+    natural_t node_editor_canvas::pin_data::create(natural_t node_id, natural_t pin_index, pin_type type) {
       natural_t pin_id = pin_node_indices.size();
 
       pin_node_indices.emplace_back(node_id);
@@ -53,7 +52,7 @@ namespace other {
       return pin_id;
     }
 
-    natural_t node_editor_canvas_node::link_data::create(natural_t start_pin_idx, natural_t end_pin_idx, const glm::vec4& color) {
+    natural_t node_editor_canvas::link_data::create(natural_t start_pin_idx, natural_t end_pin_idx, const glm::vec4& color) {
       natural_t link_id = link_start_pin_indices.size();
 
       link_start_pin_indices.emplace_back(start_pin_idx);
@@ -66,11 +65,12 @@ namespace other {
       return link_id;
     }
 
-    node_editor_canvas_node::node_editor_canvas_node(node_editor* parent)
-        : ui_node((ui_window*)parent, "Node Editor Canvas", glm::vec2(0, 0), ImGuiChildFlags_Borders /* | ImGuiChildFlags_FrameStyle */, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar), editor(parent) {
+    node_editor_canvas::node_editor_canvas(node_editor_display* parent)
+        :  // ui_node((ui_window*)parent, "Node Editor Canvas", glm::vec2(0, 0), ImGuiChildFlags_Borders /* | ImGuiChildFlags_FrameStyle */, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar),
+          editor_display(parent) {
     }
 
-    natural_t node_editor_canvas_node::create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins) {
+    natural_t node_editor_canvas::create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins) {
       glm::vec2 position = glm::vec2(0.f, 0.f);
       glm::vec2 size = glm::vec2(kMinNodeWidth, kMinNodeHeight);
 
@@ -109,7 +109,7 @@ namespace other {
       return node_id;
     }
 
-    void node_editor_canvas_node::remove_single_node(natural_t node_id) {
+    void node_editor_canvas::remove_single_node(natural_t node_id) {
       auto node_pins = { nodes.node_input_pin_indices[node_id], nodes.node_output_pin_indices[node_id] };
       for (const auto& in_pin : node_pins | std::views::join) {
         // Remove pin data
@@ -163,13 +163,13 @@ namespace other {
       nodes.node_body_begins.erase(nodes.node_body_begins.begin() + node_id);
     }
 
-    void node_editor_canvas_node::clear_all_nodes() {
+    void node_editor_canvas::clear_all_nodes() {
       nodes = node_data{};
       pins = pin_data{};
       links = link_data{};
     }
 
-    void node_editor_canvas_node::connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx) {
+    void node_editor_canvas::connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx) {
       natural_t from_name_hash = FNV(from_node);
       natural_t to_name_hash = FNV(to_node);
 
@@ -190,7 +190,7 @@ namespace other {
       connect_node_pins(from_node_id, from_pin_idx, to_node_id, to_pin_idx);
     }
 
-    void node_editor_canvas_node::connect_node_pins(natural_t from_node_id, uint8_t from_pin_idx, natural_t to_node_id, uint8_t to_pin_idx) {
+    void node_editor_canvas::connect_node_pins(natural_t from_node_id, uint8_t from_pin_idx, natural_t to_node_id, uint8_t to_pin_idx) {
       natural_t start_pin_id = nodes.node_output_pin_indices[from_node_id][from_pin_idx];
       natural_t end_pin_id = nodes.node_input_pin_indices[to_node_id][to_pin_idx];
       glm::vec4 link_color = { colors::kBasicNodeLinkColor.x, colors::kBasicNodeLinkColor.y, colors::kBasicNodeLinkColor.z, colors::kBasicNodeLinkColor.w };
@@ -199,10 +199,10 @@ namespace other {
       pins.pin_states[end_pin_id] = pin_data::pin_state::LINKED;
     }
 
-    void node_editor_canvas_node::on_prepare_render() {
+    void node_editor_canvas::on_prepare_render() {
     }
 
-    void node_editor_canvas_node::on_render_node_body() {
+    void node_editor_canvas::on_render_node_body() {
       canvas_position = { ImGui::GetCurrentWindow()->Pos.x, ImGui::GetCurrentWindow()->Pos.y };
       canvas_size = { ImGui::GetCurrentWindow()->Size.x * zoom_level, ImGui::GetCurrentWindow()->Size.y * zoom_level };
 
@@ -281,7 +281,7 @@ namespace other {
       }
     }
 
-    void node_editor_canvas_node::on_render_end() {
+    void node_editor_canvas::on_render_end() {
       if (create_node) {
         ImVec2 mouse_pos = ImGui::GetIO().MousePos;
         natural_t node_id = create_single_node("New Node", 2, 2);
@@ -345,7 +345,7 @@ namespace other {
       }
     }
 
-    void node_editor_canvas_node::draw_grid_lines() {
+    void node_editor_canvas::draw_grid_lines() {
       static constexpr float grid_step = 50.0f;
       static constexpr float major_grid_step = grid_step * 5.0f;
       static constexpr glm::vec4 grid_color = glm::vec4(0.2f, 0.2f, 0.2f, 0.4f);
@@ -395,7 +395,7 @@ namespace other {
       }
     }
 
-    void node_editor_canvas_node::render_node(natural_t node_id) {
+    void node_editor_canvas::render_node(natural_t node_id) {
       auto& node_name = nodes.node_names[node_id];
 
       std::string item_tag = std::format("##node_{}", node_name);
@@ -474,7 +474,7 @@ namespace other {
       };
 
       ImGui::SetCursorPos(ImVec2{ body_without_pins_rect.Min.x - ImGui::GetWindowPos().x, body_without_pins_rect.Min.y - ImGui::GetWindowPos().y });
-      editor->render_node_body(node_id, body_without_pins_rect);
+      editor_display->render_node_body(node_id, body_without_pins_rect);
 
       /// frame
       draw_list->AddRect(rect.Min, rect.Max, colors::rgba_to_hex(colors::kNodeOutlineColor), 4.0f, ImDrawFlags_None, 2.0f);
@@ -483,7 +483,7 @@ namespace other {
       ImGui::PopID();
     }
 
-    void node_editor_canvas_node::render_pin(natural_t pin_id) {
+    void node_editor_canvas::render_pin(natural_t pin_id) {
       ImVec4 ig_pin_color = ImVec4(1.f, 0.f, 0.f, 1.f);
       ImVec2 pin_pos = ImVec2{ pins.pin_positions[pin_id].x, pins.pin_positions[pin_id].y };
 
@@ -491,7 +491,7 @@ namespace other {
       ImGui::GetWindowDrawList()->AddCircleFilled(pin_pos, radius, ImGui::GetColorU32(ig_pin_color));
     }
 
-    void node_editor_canvas_node::render_link(natural_t link_id) {
+    void node_editor_canvas::render_link(natural_t link_id) {
       const auto& start_pin = pins.pin_positions[links.link_start_pin_indices[link_id]];
       const auto& end_pin = pins.pin_positions[links.link_end_pin_indices[link_id]];
 
@@ -507,7 +507,7 @@ namespace other {
         3.0f);
     }
 
-    void node_editor_canvas_node::update_node_state(natural_t node_id) {
+    void node_editor_canvas::update_node_state(natural_t node_id) {
       const auto& node_name = nodes.node_names[node_id];
 
       nodes.global_node_positions[node_id] = { canvas_base_position.x + nodes.node_positions[node_id].x, canvas_base_position.y + nodes.node_positions[node_id].y };
@@ -630,7 +630,7 @@ namespace other {
       }
     }
 
-    void node_editor_canvas_node::update_pin_state(natural_t pin_id) {
+    void node_editor_canvas::update_pin_state(natural_t pin_id) {
       auto& position = pins.pin_positions[pin_id];
       // auto& size = glm::vec2(12.0f, 12.0f);
       auto& state = pins.interactables[pin_id];

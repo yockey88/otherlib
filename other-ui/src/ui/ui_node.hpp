@@ -61,6 +61,15 @@ namespace other {
 
     event_system& events();
 
+    ref<ui_node> get_child(natural_t child_id);
+
+    template <typename T>
+    T& get_child_as(natural_t child_id) {
+      auto* casted_node = dynamic_cast<T*>(get_child(child_id).raw_ptr());
+      OTHER_ASSERT(casted_node != nullptr, "Child node with ID {} is not of requested type in UI node {}", child_id, node_title);
+      return *casted_node;
+    }
+
     void add_child_flag(uint32_t flag) { flags |= flag; }
     void remove_child_flag(uint32_t flag) { flags &= ~flag; }
 

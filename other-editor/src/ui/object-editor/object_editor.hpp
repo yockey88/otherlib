@@ -8,7 +8,6 @@
 
 #include "editor_context.hpp"
 
-
 namespace other {
 
   class driver;
@@ -21,16 +20,9 @@ namespace other {
       virtual ~object_editor() = default;
 
      private:
-      driver* driver_ptr = nullptr;
       editor_context& editor_ctx;
 
-      /// \todo: this should be stored in editor state
-      bool multiple_selection_enabled = false;
-      std::vector<natural_t> selected_object_ids;
-
       natural_t property_inspector_node_id = 0;
-
-      void select_scene_object(natural_t object_id);
     };
 
   }  // namespace ui

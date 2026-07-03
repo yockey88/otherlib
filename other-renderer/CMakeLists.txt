@@ -27,17 +27,19 @@ target_sources(other_renderer
       src/renderer/window_manager.cpp
       src/renderer/rendering_api.cpp
       src/renderer/renderer_backend.cpp
-      src/renderer/backends/opengl_api.cpp
       src/renderer/camera.cpp
       src/renderer/pass_context.cpp
       src/renderer/render_pass.cpp
       src/renderer/frame_node.cpp
       src/renderer/render_graph.cpp
       src/renderer/pipeline_definition.cpp
-      src/renderer/debug_render_stream.cpp
+      src/renderer/render_stream_registry.cpp
+      src/renderer/render_stream.cpp
       src/renderer/debug_draw.cpp
       src/renderer/render_pipeline.cpp
       src/renderer/renderer.cpp
+
+      src/renderer/backends/opengl_api.cpp
 )
 
 target_include_directories(other_renderer 

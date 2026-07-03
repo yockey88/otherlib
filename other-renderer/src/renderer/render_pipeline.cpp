@@ -276,7 +276,8 @@ namespace other {
           renderer_ptr->get_resource<shader>(*n.pass->shader_handle)
             .set_uniform("OE_light_space_matrix", light_space_matrix)
             .set_uniform("OE_sun_dir", glm::normalize(env.sun_direction))
-            .set_uniform("OE_num_lights", static_cast<int32_t>(frame_render_data->lights.size()));
+            .set_uniform("OE_num_lights", static_cast<int32_t>(frame_render_data->lights.size()))
+            .set_uniform("OE_window_size", glm::vec2(renderer_ptr->get_window_size()));
         }
 
         {
@@ -366,6 +367,14 @@ namespace other {
     }
   }
 
+  std::vector<std::string> render_pipeline::get_texture_names() const {
+    std::vector<std::string> names;
+    for (const auto& [_, res] : texture_resources) {
+      names.push_back(res.name);
+    }
+    return names;
+  }
+
   ImTextureID render_pipeline::get_final_output_texture_id() {
     if (!screen_texture_handle.has_value() || !get_renderer()->resource_exists(*screen_texture_handle)) {
       CORE_LOG_ERROR("Screen texture handle not set or resource does not exist for pipeline '{}'.", definition.name);
@@ -381,6 +390,23 @@ namespace other {
       return 0;
     }
     return get_renderer()->get_resource<texture>(*handle_opt).get_imgui_texture_id();
+  }
+
+  glm::ivec2 render_pipeline::get_texture_size(const std::string_view name) const {
+    auto handle_opt = find_texture_by_name(name);
+    if (!handle_opt.has_value() || !get_renderer()->resource_exists(*handle_opt)) {
+      CORE_LOG_ERROR("Texture resource with name '{}' not found or does not exist for pipeline '{}'.", name, definition.name);
+      return { 0, 0 };
+    }
+    return get_renderer()->get_resource<texture>(*handle_opt).get_size();
+  }
+
+  opt<resource_handle> render_pipeline::get_final_output_texture() const {
+    if (!screen_texture_handle.has_value() || !get_renderer()->resource_exists(*screen_texture_handle)) {
+      CORE_LOG_ERROR("Screen texture handle not set or resource does not exist for pipeline '{}'.", definition.name);
+      return std::nullopt;
+    }
+    return get_screen_texture();
   }
 
   resource_handle render_pipeline::get_screen_texture() const {

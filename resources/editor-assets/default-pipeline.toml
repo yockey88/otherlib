@@ -17,10 +17,16 @@ buffers = [
   { name = "material_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "material" },
 ]
 textures = [
+  # basic gbuffer
   { name = "color_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "normal_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "position_texture", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "depth_texture", use_window_size = true, type = "TEXTURE_2D", format = "R16F" },
+  # voxel gbuffer
+  # { name = "voxel_gbuff_color", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 128, y = 128 }, depth = 128 },
+  # { name = "voxel_gbuff_normal", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 128, y = 128 }, depth = 128 },
+  # { name = "voxel_gbuff_emissive", use_window_size = false, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 128, y = 128 }, depth = 128 },
+
   { name = "ambient_shadow_map", use_window_size = true, type = "TEXTURE_2D", format = "DEPTHF" },
   { name = "sun_depth_color", use_window_size = true, type = "TEXTURE_2D", format = "RGBA16F" },
   { name = "voxel_texture", use_window_size = true, type = "TEXTURE_3D", format = "RGBA16F", size = { x = 128, y = 128 }, depth = 128 },
@@ -37,9 +43,10 @@ textures = [
 shaders = [
   { name = "voxel_clear_shader", compute_path = "resources/voxel-clear.comp" },
   { name = "geometry_pass_shader", vertex_path = "resources/basic-instancing-gbuffer.vert", fragment_path = "resources/basic-instancing-gbuffer.frag" },
+  # { name = "voxel_geometry_shader", vertex_path = "resources/voxel-geometry.vert", geometry_path = "resources/voxel-geometry.geom", fragment_path = "resources/voxel-geometry.frag" },
   { name = "voxel_occupied_shader", compute_path = "resources/voxel-occupied.comp" },
   { name = "voxelize_shader", vertex_path = "resources/voxelizer.vert", geometry_path = "resources/voxelizer.geom", fragment_path = "resources/voxelizer.frag" },
-  { name = "shadow_map_shader", vertex_path = "resources/basic-instancing-shadow-map.vert", fragment_path = "resources/basic-instancing-shadow-map.frag" },
+  { name = "shadow_map_shader", vertex_path = "resources/basic-instancing-shadow-map.vert", fragment_path = "resources/basic-shadow-map.frag" },
   { name = "environment_map_pass", compute_path = "resources/basic-environment-map.comp" },
   { name = "shading_pass_shader", vertex_path = "resources/basic-shading.vert", fragment_path = "resources/basic-shading.frag" },
   { name = "smaa_edges_shader", vertex_path = "resources/smaa-edges.vert", fragment_path = "resources/smaa-edges.frag" },
@@ -73,13 +80,18 @@ pass-bindings = [
   { pass_name = "shading-pass", name = "per_frame.simulation_environment_buffer", binding = 1 }
 ]
 passes = [
+  ## geometry and data preparation passes
   { name = "voxel-clear-pass", pass_type = "COMPUTE_PASS", shader_name = "voxel_clear_shader" },
   { name = "geometry-pass", pass_type = "RENDER_PASS", shader_name = "geometry_pass_shader" },
   { name = "voxel-occupied-pass", pass_type = "COMPUTE_PASS", shader_name = "voxel_occupied_shader" },
   { name = "voxelize-pass", pass_type = "RENDER_PASS", shader_name = "voxelize_shader", create_framebuffer = false, depends_on = [ "voxel-occupied-pass" ] },
+  ## shadows and main shading passes
   { name = "shadow-map-pass", pass_type = "RENDER_PASS", shader_name = "shadow_map_shader" },
   { name = "environment-map-pass", pass_type = "COMPUTE_PASS", shader_name = "environment_map_pass" },
   { name = "shading-pass", pass_type = "RENDER_PASS", shader_name = "shading_pass_shader" },
+  ## additional shading
+  ## screen-space passes
+  ## anit-aliasing and post-processing passes
   { name = "smaa-edges", pass_type = "RENDER_PASS", shader_name = "smaa_edges_shader" },
   { name = "smaa-weights", pass_type = "RENDER_PASS", shader_name = "smaa_weights_shader" },
   { name = "smaa-blend", pass_type = "RENDER_PASS", shader_name = "smaa_blend_shader" },
