@@ -3,6 +3,7 @@
  **/
 #include "editor_context.hpp"
 
+#include "editor_driver.hpp"
 namespace other {
 
   void editor_context::select_object(natural_t object_id) {
@@ -41,6 +42,43 @@ namespace other {
       result = bounding_box(glm::vec3(-1.f), glm::vec3(1.f));
     }
     return result;
+  }
+
+  ImTextureID editor_context::get_texture_id_by_name(const std::string_view name) const {
+    if (name.empty()) {
+      return 0;
+    }
+
+    return 0;
+  }
+
+  ImTextureID editor_context::get_pipeline_texture_id(const std::string_view pipeline_name, const std::string_view texture_name) const {
+    if (pipeline_name.empty() || texture_name.empty()) {
+      return 0;
+    }
+
+    auto* pl = driver->get_renderer().get_pipeline(std::string{ pipeline_name });
+    if (pl == nullptr) {
+      CORE_LOG_WARN("Pipeline '{}' not found when trying to get texture ID for texture '{}'", pipeline_name, texture_name);
+      return 0;
+    }
+
+    return pl->get_texture_id(std::string{ texture_name });
+  }
+
+  ImVec2 editor_context::get_pipeline_texture_size(const std::string_view pipeline_name, const std::string_view texture_name) const {
+    if (pipeline_name.empty() || texture_name.empty()) {
+      return ImVec2(0.f, 0.f);
+    }
+
+    auto* pl = driver->get_renderer().get_pipeline(std::string{ pipeline_name });
+    if (pl == nullptr) {
+      CORE_LOG_WARN("Pipeline '{}' not found when trying to get texture size for texture '{}'", pipeline_name, texture_name);
+      return ImVec2(0.f, 0.f);
+    }
+
+    glm::ivec2 size = pl->get_texture_size(std::string{ texture_name });
+    return ImVec2(static_cast<float>(size.x), static_cast<float>(size.y));
   }
 
 }  // namespace other

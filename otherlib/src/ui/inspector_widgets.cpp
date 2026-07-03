@@ -232,7 +232,7 @@ namespace other {
         /// property row is a horizontal group: label on left, fields on right
         const float avail_w = ImGui::GetContentRegionAvail().x;
 
-        /// clamp label width: at least kPropertyLabelMinWidth, at most 55% of available
+        /// clamp label width: at least kPropertyLabelMinWidth
         float effective_label_w = label_width;
         float max_label_w = avail_w * 0.55f;
         if (effective_label_w > max_label_w) {
@@ -247,17 +247,14 @@ namespace other {
           field_region_w = kFieldMaxWidth;
         }
 
-        /// label — clipped to the label column so long names don't bleed into fields
+        /// label - clipped to the label column so long names don't bleed into fields
         {
           scoped_color text_col(ImGuiCol_Text, colors::rgba_to_imvec4(colors::inspector::kPropertyLabel));
           ImGui::AlignTextToFramePadding();
 
           const ImVec2 cursor = ImGui::GetCursorScreenPos();
           const float clip_right = cursor.x + effective_label_w - kFieldGap;
-          ImGui::PushClipRect(
-            cursor,
-            ImVec2(clip_right, cursor.y + ImGui::GetFrameHeight()),
-            true);
+          ImGui::PushClipRect(cursor, ImVec2(clip_right, cursor.y + ImGui::GetFrameHeight()), true);
           ImGui::Text("%s", label.data());
           ImGui::PopClipRect();
         }
@@ -293,12 +290,7 @@ namespace other {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         ImVec2 item_min = ImGui::GetItemRectMin();
         ImVec2 item_max = ImGui::GetItemRectMax();
-        dl->AddRectFilled(
-          { item_min.x, item_min.y },
-          { item_min.x + 2.f, item_max.y },
-          colors::to_im_col(axis_color),
-          3.f,
-          ImDrawFlags_RoundCornersLeft);
+        dl->AddRectFilled({ item_min.x, item_min.y }, { item_min.x + 2.f, item_max.y }, colors::to_im_col(axis_color), 3.f, ImDrawFlags_RoundCornersLeft);
       }
 
       /// draw focused border accent on the last drawn item if active

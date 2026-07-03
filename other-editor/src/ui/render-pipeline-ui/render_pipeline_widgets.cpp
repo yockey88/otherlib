@@ -28,7 +28,7 @@ namespace other {
 
         bool hovered = ImGui::IsMouseHoveringRect(header_min, header_max);
         ImU32 header_bg = colors::to_im_col(hovered ? colors::inspector::kComponentHeaderHover : colors::inspector::kComponentHeaderBG);
-        dl->AddRectFilled(header_min, header_max, header_bg);
+        dl->AddRectFilled(header_min, header_max, header_bg, kRenderPipelineListUiRounding);
 
         float dot_cx = cursor.x + kInnerPadding;
         float dot_cy = cursor.y + kComponentHeaderHeight * 0.5f;
@@ -77,9 +77,7 @@ namespace other {
           s_component_section_open = storage->GetBool(state_id, true);
         }
 
-        dl->AddLine({ cursor.x, header_max.y }, { cursor.x + avail_w, header_max.y }, colors::to_im_col(colors::inspector::kComponentSeparator));
         ImGui::SetCursorScreenPos({ cursor.x, header_max.y + 1.f });
-
         ImGui::PopID();
         return s_component_section_open;
       }

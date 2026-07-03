@@ -17,7 +17,6 @@ add_static_driver(other_editor
   src/ui/render-pipeline-ui/render_pipeline_viewer.cpp
   src/ui/render-pipeline-ui/render_pipeline_editor.cpp
   src/ui/viewport/viewport.cpp
-  src/ui/viewport/viewport_node.cpp
   
   src/edit_stack.cpp
   src/editor_context.cpp

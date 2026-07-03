@@ -40,6 +40,11 @@ namespace other {
     bool has_selection() const;
     bool multi_select_enabled() const;
     bounding_box get_selection_bounding_box() const;
+
+    ImTextureID get_texture_id_by_name(const std::string_view name) const;
+    ImTextureID get_pipeline_texture_id(const std::string_view pipeline_name, const std::string_view texture_name) const;
+
+    ImVec2 get_pipeline_texture_size(const std::string_view pipeline_name, const std::string_view texture_name) const;
   };
 
 }  // namespace other

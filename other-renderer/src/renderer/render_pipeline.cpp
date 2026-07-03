@@ -384,6 +384,15 @@ namespace other {
     return get_renderer()->get_resource<texture>(*handle_opt).get_imgui_texture_id();
   }
 
+  glm::ivec2 render_pipeline::get_texture_size(const std::string_view name) const {
+    auto handle_opt = find_texture_by_name(name);
+    if (!handle_opt.has_value() || !get_renderer()->resource_exists(*handle_opt)) {
+      CORE_LOG_ERROR("Texture resource with name '{}' not found or does not exist for pipeline '{}'.", name, definition.name);
+      return { 0, 0 };
+    }
+    return get_renderer()->get_resource<texture>(*handle_opt).get_size();
+  }
+
   resource_handle render_pipeline::get_screen_texture() const {
     OTHER_ASSERT(screen_texture_handle.has_value(), "Screen texture handle is not set.");
     return *screen_texture_handle;

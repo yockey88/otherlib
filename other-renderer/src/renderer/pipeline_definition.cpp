@@ -389,6 +389,43 @@ namespace other {
     return def;
   }
 
+  detail::validation_result validate_pipeline_definition(const pipeline_definition& def) {
+    detail::validation_result result;
+    if (def.name.empty()) {
+      result.valid = false;
+      result.errors.push_back("Pipeline name cannot be empty");
+    }
+    if (def.passes.empty()) {
+      result.valid = false;
+      result.errors.push_back("Pipeline must contain at least one pass");
+    }
+
+    /// to do actually validate definition in way similar to toml
+    // validate_resources(result, tbl, buffer_names, texture_names, shader_names);
+
+    // auto display_tex = tbl.at_path("frame.display-texture");
+    // if (display_tex) {
+    //   if (!display_tex.is_string()) {
+    //     result.fail("'frame.display-texture': must be a string");
+    //   } else if (display_tex.as_string()->get().empty()) {
+    //     result.fail("'frame.display-texture': must not be empty");
+    //   }
+    // }
+
+    // validate_frame_bindings(result, tbl, binding_names);
+    // validate_frame_inputs_outputs(result, tbl);
+    // validate_frame_executors(result, tbl);
+    // validate_frame_resource_tags(result, tbl);
+    // validate_frame_passes(result, tbl, pass_names);
+    // validate_frame_pass_bindings(result, tbl);
+    // if (result.valid) {
+    //   validate_cross_references(result, tbl, buffer_names, texture_names, shader_names, binding_names, pass_names);
+    //   validate_pass_uniforms(result, tbl);
+    // }
+
+    return result;
+  }
+
   namespace detail {
 
     void parse_resources(pipeline_definition& into_def, const toml::table& pipeline_table) {

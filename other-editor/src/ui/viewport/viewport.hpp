@@ -33,6 +33,9 @@ namespace other {
       driver* driver_ptr = nullptr;
       editor_context& editor_ctx;
 
+      ImVec2 header_size = ImVec2(0, 0);
+      ImVec2 previous_size = ImVec2(0, 0);
+
       resource_handle display_texture_id = {};
     };
 

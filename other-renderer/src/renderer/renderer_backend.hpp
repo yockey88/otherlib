@@ -17,8 +17,7 @@ struct ImGuiContext;
 namespace other {
 
   constexpr static ImWchar kUnicodeExtraRanges[] = {
-    0x0020, 0x00FF,
-    0x0100, 0xFFFF,  /// enough range to cover all unicode characters
+    0x0020, 0xFFFF,  /// enough range to cover all unicode characters
     0
   };
 

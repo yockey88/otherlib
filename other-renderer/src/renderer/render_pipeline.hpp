@@ -70,6 +70,9 @@ namespace other {
 
     ImTextureID get_final_output_texture_id();
     ImTextureID get_texture_id(const std::string_view name);
+
+    glm::ivec2 get_texture_size(const std::string_view name) const;
+
     resource_handle get_screen_texture() const;
     frame_resources get_frame_resources() const;
 

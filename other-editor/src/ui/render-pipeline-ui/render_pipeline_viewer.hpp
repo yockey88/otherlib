@@ -56,21 +56,10 @@ namespace other {
       int32_t selected = -1;
       int32_t pending_select = -1;
 
-      pipeline_definition working_def;  // THE shared document
+      pipeline_definition working_def;
       bool has_doc = false;
       bool is_dirty = false;
       detail::validation_result last_validation;
-
-      // opt<size_t> sel_pass;
-      // opt<resource_selection> sel_resource;
-
-      struct chain_link {
-        std::string producer_pipeline;
-        std::string producer_texture;
-        std::string consumer_input;
-      };
-      std::vector<chain_link> chain;
-      chain_link new_link;
 
       std::map<resource_tag, std::string> tag_strings;
       char picked_tag[kTagBuffSize] = {};
@@ -82,32 +71,33 @@ namespace other {
       }
 
       void draw_list();
-      void draw_delete_confirm_popup();
       void draw_validation_banner();
       void draw_properties();
-      void draw_required_tags();
-      void draw_chain_section();
-      void draw_add_chain_link_popup();
-      bool chip(const std::string_view text, bool closable);
-
-      void rebuild_list();
-      int index_of(const std::string_view name) const;
-      void load_into_working(const std::string_view pipeline_name);
+      // void draw_delete_confirm_popup();
+      // void draw_required_tags();
+      // void draw_chain_section();
+      // void draw_add_chain_link_popup();
+      // bool chip(const std::string_view text, bool closable);
       void draw_discard_confirm_popup();
 
-      void create_new();
-      void clone_current();
-      void delete_current();
-      void save_current();
-      std::string make_unique_name(const std::string_view base) const;
-      filepath default_pipeline_dir() const;
+      void rebuild_list();
+      void load_into_working(const std::string_view pipeline_name);
+      void clear_working();
+      // int index_of(const std::string_view name) const;
+
+      // void create_new();
+      // void clone_current();
+      // void delete_current();
+      // void save_current();
+      // std::string make_unique_name(const std::string_view base) const;
+      // filepath default_pipeline_dir() const;
 
       bool texture_name_combo(const char* label, std::string& out);
-      bool pass_name_combo_opt(const char* label, opt<std::string>& out);
+      // bool pass_name_combo_opt(const char* label, opt<std::string>& out);
 
-      std::string tag_display_string(resource_tag t) const;
-      bool tag_picker_popup(const char* id, std::string& out);
-      void register_tag_string(resource_tag t, const std::string_view s);
+      // std::string tag_display_string(resource_tag t) const;
+      // bool tag_picker_popup(const char* id, std::string& out);
+      // void register_tag_string(resource_tag t, const std::string_view s);
 
       void revalidate() {
         // last_validation = validate_pipeline_definition(working_def);

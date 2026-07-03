@@ -126,6 +126,7 @@ namespace other {
     void reload_asset(natural_t asset_id);
 
     asset* get_asset(natural_t asset_id);
+    asset* get_asset_by_virtual_path(const filepath& virtual_path);
     std::vector<asset*> get_assets_of_type(asset::type type);
 
     std::span<const natural_t> get_all_asset_ids() const;

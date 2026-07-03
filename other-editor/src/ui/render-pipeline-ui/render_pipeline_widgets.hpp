@@ -8,6 +8,8 @@ namespace other {
   namespace ui {
     namespace inspector {
 
+      constexpr inline float kRenderPipelineListUiRounding = 10.f;
+
       bool begin_pipeline_properties(const std::string_view title, natural_t id);
       void end_pipeline_properties();
 

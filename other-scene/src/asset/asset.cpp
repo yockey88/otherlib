@@ -57,6 +57,36 @@ namespace other {
     OTHER_ASSERT(false, "Unknown asset type specified in TOML file: {}", file_path.string());
   }
 
+  std::string asset::get_name_from_declaration(const filepath& file_path) {
+    toml::table t;
+    try {
+      t = toml::parse_file(file_path.string());
+    } catch (const toml::parse_error& e) {
+      CORE_LOG_ERROR("TOML parse error in file: {}: {}", file_path.string(), e.what());
+      return "";
+    } catch (const std::exception& e) {
+      CORE_LOG_ERROR("Exception occurred while parsing TOML file: {}: {}", file_path.string(), e.what());
+      return "";
+    } catch (...) {
+      CORE_LOG_ERROR("Unknown exception occurred while parsing TOML file: {}", file_path.string());
+      return "";
+    }
+
+    auto n = t.at_path("name");
+    if (!n) {
+      CORE_LOG_ERROR("Asset name not specified in TOML file: {}", file_path.string());
+      return "";
+    }
+
+    if (!n.is_string()) {
+      CORE_LOG_ERROR("Asset name in TOML file is not a string: {}", file_path.string());
+      CORE_LOG_ERROR("name type: {}", n.type());
+      return "";
+    }
+
+    return n.as_string()->get();
+  }
+
   std::vector<std::string> asset::get_supported_extensions(asset::type asset_type) {
     std::vector<std::string> extensions;
     for (const auto& asset_ext : kAssetExtensions) {

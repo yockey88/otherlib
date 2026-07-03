@@ -338,8 +338,8 @@ namespace other {
 
         dependencies.push_back(source_job->id);
       } else {
-        CORE_LOG_DEBUG(" - finalizing model upload for model {}", asset_ptr->virtual_path);
-        asset_ptr->path_hash = FNV(asset_ptr->virtual_path);
+        CORE_LOG_DEBUG(" - finalizing model upload for model {}", asset_ptr->virtual_path.string());
+        asset_ptr->path_hash = FNV(asset_ptr->virtual_path.string());
         builder = std::move(reinterpret_cast<model_source_pipeline*>(pipeline)->builder);
       }
 
@@ -538,7 +538,7 @@ namespace other {
 
       scene* scene_ptr = nullptr;
       if (asset_ptr->path_hash == 0) {
-        asset_ptr->path_hash = FNV(asset_ptr->virtual_path);
+        asset_ptr->path_hash = FNV(asset_ptr->virtual_path.string());
         scene_ptr = reinterpret_cast<scene_pipeline*>(pipeline)->scene_ptr;
       } else {
         OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Scene file does not exist: {}", asset_ptr->absolute_path.string());

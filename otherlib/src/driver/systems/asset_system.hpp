@@ -37,6 +37,7 @@ namespace other {
     void begin_full_unload();
 
     asset* get_asset(natural_t asset_id);
+    asset* get_asset_by_virtual_path(const filepath& virtual_path);
     /// to be called only inside 'assets.new-asset-(un)loaded' or various 'xxx.asset-(un)loaded' events.
     asset_handler::pipeline_context* get_asset_pipeline_context(natural_t asset_id);
 

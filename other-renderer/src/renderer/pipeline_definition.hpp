@@ -14,6 +14,7 @@
 #include "renderer/frame_binding_definition.hpp"
 #include "renderer/render_pass.hpp"
 #include "renderer/resource_tag.hpp"
+#include "renderer/util/pipeline_asset_validation.hpp"
 
 namespace other {
 
@@ -145,6 +146,8 @@ namespace other {
 
   pipeline_definition read_pipeline_definition_from_file(const filepath& path);
   pipeline_definition get_empty_pipeline();
+
+  detail::validation_result validate_pipeline_definition(const pipeline_definition& def);
 
 }  // namespace other
 
