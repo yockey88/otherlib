@@ -5,6 +5,8 @@ target_sources(other_ui
     src/ui/ui_helpers.cpp
     src/ui/ui_node.cpp
     src/ui/ui_window.cpp
+    src/ui/node_editor_math.cpp
+    src/ui/node_editor.cpp
 )
 target_link_libraries(other_ui PRIVATE imgui other_core other_renderer)
 target_include_directories(other_ui 

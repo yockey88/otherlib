@@ -209,6 +209,7 @@ namespace other {
       //  Node Editor (canvas-level)
       constexpr inline glm::vec4 kNodeHeaderColor = hex_col_to_rgba(IM_COL32(46, 46, 46, 255));
       constexpr inline glm::vec4 kNodeBodyColor = hex_col_to_rgba(IM_COL32(59, 59, 59, 255));
+      constexpr inline glm::vec4 kNodeTextColor = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
       constexpr inline glm::vec4 kBasicNodeLinkColor = hex_col_to_rgba(IM_COL32(199, 199, 199, 255));
       constexpr inline glm::vec4 kDataLinkColor = hex_col_to_rgba(IM_COL32(39, 185, 242, 255));
       constexpr inline glm::vec4 kNodeCardStrokeColor = hex_col_to_rgba(IM_COL32(80, 80, 80, 255));

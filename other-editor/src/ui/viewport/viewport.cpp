@@ -66,6 +66,7 @@ namespace other {
 
       auto size = ImGui::GetContentRegionAvail();
       vp.size = glm::ivec2(size.x, size.y);
+      vp.hovered = ImGui::IsWindowHovered();
 
       ImTextureID tex_id = rendering_sys.get_texture_id(vp.texture);
       if (tex_id == 0) {

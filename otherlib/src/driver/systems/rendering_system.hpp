@@ -55,6 +55,8 @@ namespace other {
     natural_t register_viewport(const std::string_view name, const viewport_definition& def);
     void remove_viewport(natural_t vp_id);
 
+    viewport& get_viewport(natural_t vp_id);
+
     using file_dialog_callback_fn = void (*)(void* userdata, const char* const* filelist, int32_t filter);
     void show_open_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);
     void show_open_folder_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props);

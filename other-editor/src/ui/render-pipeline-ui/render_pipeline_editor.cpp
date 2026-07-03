@@ -50,6 +50,7 @@ namespace other {
       draw_list();
       draw_validation_banner();
       draw_properties();
+      draw_node_editor();
 
       // draw_required_tags();
       // draw_chain_section();
@@ -131,6 +132,20 @@ namespace other {
         }
         inspector::end_pipeline_properties();
       }
+    }
+
+    void render_pipeline_editor::draw_node_editor() {
+      if (!has_doc) {
+        ImGui::TextDisabled("No pipeline loaded.");
+        return;
+      }
+
+      working_editor.begin(working_def.name);
+      for (auto& p : working_def.passes) {
+        working_editor.begin_node(p.name);
+        working_editor.end_node();
+      }
+      working_editor.end();
     }
 
     void render_pipeline_editor::draw_discard_confirm_popup() {
