@@ -28,7 +28,7 @@ After building, you should have the following in the build folder:
 - `build/otherlib/${build-type}/otherlib_driver.lib`
 - `build/otherlib/${build-type}/otherlib_driver.exe`
 
-`other-editor` and `other-server` are currently work-in-progress applications for personal usage. They can be ran by providing the following command line arguments:
+`other-editor` and `other-server` are currently work-in-progress applications for personal usage, this means they are in constant development (as of now) are not stable. As of right now the exception to this is the console commands in the editor, those should all work. The editor and server can be ran by providing the following command line arguments:
 
 To run the editor:
 
