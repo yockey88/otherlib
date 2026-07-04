@@ -3,19 +3,127 @@
  **/
 #include "ui/render-pipeline-ui/render_pipeline_widgets.hpp"
 
+#include <algorithm>
+
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
 #include "theme/colors.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/ui_helpers.hpp"
+#include "ui/unicode.hpp"
 
 namespace other {
   namespace ui {
     namespace inspector {
 
-      static bool s_component_section_open = true;
+      std::vector<render_pipeline_data> rebuild_render_pipeline_list(const renderer& r, const asset_system& assets) {
+        std::vector<render_pipeline_data> entries;
 
+        for (const std::string& name : r.get_pipeline_names()) {
+          entries.push_back({
+            .name = name,
+            .live = true,
+            .on_disk = false,
+            .path = {},
+          });
+        }
+
+        for (const asset* a : assets.get_assets_of_type(asset::RENDERING_PIPELINE)) {
+          if (auto e = std::ranges::find_if(entries, [&](const render_pipeline_data& d) { return d.name == a->virtual_path.stem().string(); });
+              e != entries.end()) {
+            e->on_disk = true;
+            e->path = a->virtual_path;
+          } else {
+            entries.push_back({
+              .name = a->virtual_path.stem().string(),
+              .live = false,
+              .on_disk = true,
+              .path = a->virtual_path,
+            });
+          }
+        }
+
+        std::ranges::sort(entries, [](auto& x, auto& y) { return x.name < y.name; });
+        return entries;
+      }
+
+      int32_t draw_render_pipeline_list(const std::vector<render_pipeline_data>& entries, int32_t selected_index, int32_t pending_select_index, bool current_dirty) {
+        static constexpr glm::vec4 kLiveDot = colors::hex_col_to_rgba(IM_COL32(90, 200, 120, 255));
+        static constexpr glm::vec4 kDiskDot = colors::hex_col_to_rgba(IM_COL32(140, 140, 140, 255));
+        static constexpr float kTitleHeaderHeight = 24.f;
+        static constexpr float kListHeight = 140.f;
+
+        if (!ImGui::BeginChild("pl-list", ImVec2(0.f, kListHeight))) {
+          ImGui::EndChild();
+          return pending_select_index;
+        }
+
+        /// place a dark background behind the list
+        auto* draw_list = ImGui::GetWindowDrawList();
+        OTHER_ASSERT(draw_list != nullptr, "ImGui::GetWindowDrawList() returned null in render_pipeline_viewer::draw_list");
+        ImVec2 p0 = ImGui::GetCursorScreenPos();
+        ImVec2 current_child_size = ImGui::GetContentRegionAvail();
+
+        // list background
+        {
+          ImVec2 p1 = ImVec2(p0.x + current_child_size.x, p0.y + current_child_size.y);
+          draw_list->AddRectFilled(p0, p1, colors::rgba_to_hex(colors::kBG1), ui::inspector::kRenderPipelineListUiRounding);
+        }
+        // list title header
+        {
+          ImVec2 p1 = ImVec2(p0.x + current_child_size.x, p0.y + kTitleHeaderHeight);
+          draw_list->AddRectFilled(p0, p1, colors::rgba_to_hex(colors::kBG2), ui::inspector::kRenderPipelineListUiRounding);
+          ImGui::SetCursorScreenPos(ImVec2(p0.x + 8.f, p0.y + 4.f));
+          ImGui::Text("Pipelines");
+        }
+
+        for (size_t i = 0; i < entries.size(); ++i) {
+          const auto& e = entries[i];
+          scoped_id row_id{ i };
+          {
+            scoped_color dot{ ImGuiCol_Text, colors::rgba_to_imvec4(e.live ? kLiveDot : kDiskDot) };
+            std::string mod_text_str = std::string(e.live ? unicode::kStatusDot : unicode::kHollowDot);  // ● / ○
+            ImGui::Text("%s", mod_text_str.c_str());
+          }
+          ImGui::SameLine();
+
+          const bool is_current = (i == selected_index);
+          std::string label = e.name;
+          if (is_current && current_dirty) {
+            label += " *";
+          }
+
+          if (ImGui::Selectable(label.c_str(), is_current, ImGuiSelectableFlags_AllowDoubleClick | ImGuiSelectableFlags_SpanAllColumns)) {
+            if (is_current) {
+              pending_select_index = selected_index;
+            } else {
+              pending_select_index = i;
+            }
+          }
+
+          // right-aligned source tag
+          std::string tag = " ";
+          if (e.live) {
+            tag += "live ";
+          } else {
+            tag += "     ";
+          }
+          if (e.on_disk) {
+            tag += "disk";
+          } else {
+            tag += "    ";
+          }
+          tag += " ";
+          ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(tag.c_str()).x - 4.f);
+          ImGui::TextDisabled("%s", tag.c_str());
+        }
+
+        ImGui::EndChild();
+        return pending_select_index;
+      }
+
+      static bool s_component_section_open = true;
       bool begin_pipeline_properties(const std::string_view title, natural_t id) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 cursor = ImGui::GetCursorScreenPos();

@@ -53,6 +53,8 @@ namespace other {
     void remove_viewport(natural_t vp_id);
     void remove_all_viewports();
 
+    viewport& get_viewport(natural_t vp_id);
+
     ImTextureID get_texture_id_by_name(const std::string_view name) const;
     ImTextureID get_pipeline_texture_id(const std::string_view pipeline_name, const std::string_view texture_name) const;
 

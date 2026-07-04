@@ -239,7 +239,7 @@ namespace other {
   }
 
   void project_system::handle_new_project(driver_kernel* kernel, const value& data) {
-    // get_driver().trigger_event("open-driver-ui-window", "project-creator");
+    get_driver().on_create_project();
   }
 
   void project_system::handle_open_project(driver_kernel* kernel, const value& data) {

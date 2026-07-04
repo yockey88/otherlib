@@ -69,6 +69,8 @@ namespace other {
     std::string name;
     glm::ivec2 size;
 
+    bool hovered = false;
+
     render_pipeline* pipeline = nullptr;
     camera* cam = nullptr;
 

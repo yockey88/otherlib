@@ -1130,6 +1130,29 @@ namespace other {
         }
       }
 
+      for (auto& p : into_def.passes) {
+        for (auto& i : p.inputs) {
+          auto t_itr = std::ranges::find(into_def.textures, i.resource_name, &pipeline_texture_definition::name);
+          auto b_itr = std::ranges::find(into_def.buffers, i.resource_name, &pipeline_buffer_definition::name);
+          OTHER_ASSERT(!((t_itr == into_def.textures.end()) && (b_itr == into_def.buffers.end())), "Input '{}' references non-existent resource '{}'", i.resource_name, i.resource_name);
+          if (t_itr != into_def.textures.end()) {
+            i.type = resource_type::TEXTURE;
+          } else if (b_itr != into_def.buffers.end()) {
+            i.type = resource_type::BUFFER;
+          }
+        }
+        for (auto& o : p.outputs) {
+          auto t_itr = std::ranges::find(into_def.textures, o.resource_name, &pipeline_texture_definition::name);
+          auto b_itr = std::ranges::find(into_def.buffers, o.resource_name, &pipeline_buffer_definition::name);
+          OTHER_ASSERT(!((t_itr == into_def.textures.end()) && (b_itr == into_def.buffers.end())), "Output '{}' references non-existent resource '{}'", o.resource_name, o.resource_name);
+          if (t_itr != into_def.textures.end()) {
+            o.type = resource_type::TEXTURE;
+          } else if (b_itr != into_def.buffers.end()) {
+            o.type = resource_type::BUFFER;
+          }
+        }
+      }
+
       for (const auto& e : frame.executors) {
         auto pass_itr = std::ranges::find(into_def.passes, e.pass_name, &pipeline_pass_definition::name);
         if (pass_itr == into_def.passes.end()) {

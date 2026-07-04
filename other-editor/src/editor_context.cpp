@@ -4,6 +4,7 @@
 #include "editor_context.hpp"
 
 #include "editor_driver.hpp"
+
 namespace other {
 
   void editor_context::select_object(natural_t object_id) {
@@ -98,6 +99,24 @@ namespace other {
       rendering_sys.remove_viewport(vp.vp_id);
     }
     viewports.clear();
+  }
+
+  viewport& editor_context::get_viewport(natural_t vp_id) {
+    auto vp_itr = std::ranges::find_if(viewports, [vp_id](const viewport_info& vp) { return vp.vp_id == vp_id; });
+    if (vp_itr != viewports.end()) {
+      auto& kernel = driver->get_kernel();
+      auto& rendering_sys = kernel.get_core_system<rendering_system>();
+      return rendering_sys.get_viewport(vp_itr->vp_id);
+    } else {
+      static viewport null_viewport{
+        .id = 0,
+        .name = "null",
+        .pipeline = nullptr,
+        .cam = nullptr,
+        .texture = {},
+      };
+      return null_viewport;
+    }
   }
 
   ImTextureID editor_context::get_texture_id_by_name(const std::string_view name) const {

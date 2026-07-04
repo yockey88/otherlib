@@ -423,6 +423,22 @@ namespace other {
     }
   }
 
+  viewport& rendering_system::get_viewport(natural_t vp_id) {
+    auto it = std::ranges::find_if(viewports, [vp_id](const viewport& vp) { return vp.id == vp_id; });
+    if (it != viewports.end()) {
+      return *it;
+    } else {
+      static viewport null_viewport{
+        .id = 0,
+        .name = "null",
+        .pipeline = nullptr,
+        .cam = nullptr,
+        .texture = {},
+      };
+      return null_viewport;
+    }
+  }
+
   void rendering_system::show_open_file_dialog(file_dialog_callback_fn callback_fn, void* user_data, uint32_t props) {
     detail::file_dialog(SDL_FILEDIALOG_OPENFILE, nullptr, callback_fn, user_data, props);
   }

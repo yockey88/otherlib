@@ -18,6 +18,7 @@
 
 #include "driver/systems/scene_system.hpp"
 #include "ui/object-editor/object_editor.hpp"
+#include "ui/project-creator/project_creator.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_editor.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_viewer.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
@@ -30,6 +31,7 @@ namespace other {
     viewport_id = ui->register_window<ui::viewport>("viewport", context, *get_event_system(), get_renderer(), this);
     ui->register_window<ui::scene_hierarchy>("scene-hierarchy", context, *get_event_system(), this);
     ui->register_window<ui::object_editor>("object-editor", context, *get_event_system(), this);
+    ui->register_window<ui::project_creator>("project-creator", context, *get_event_system());
     ui->register_window<ui::render_pipeline_viewer>("render-pipeline-viewer", context, *get_event_system());
     ui->register_window<ui::render_pipeline_editor>("render-pipeline-editor", context, *get_event_system());
   }
@@ -51,13 +53,6 @@ namespace other {
     context.editor_camera.position = { 0.f, 1.f, 4.5f };
     context.editor_camera.sensitivity = 10.f;
     context.editor_camera.look_at({ 0.f, 0.f, 0.f });
-
-    auto& reg = get_renderer().get_executor_registry();
-    reg.register_executor("editor_highlight", [this](const pipeline_pass_definition& def, render_pipeline* pl) {
-      return [this](pass_context& ctx) {
-        run_selection_outline(ctx);
-      };
-    });
 
     get_event_system()->add_listener("scene.activated", [this](const value& data) {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.activated event data to be of type UINT64 representing the active scene ID.");
@@ -223,6 +218,11 @@ namespace other {
     auto* input_sys = subsystem<input_system>::get();
     OTHER_ASSERT(input_sys != nullptr, "Input system is null");
 
+    auto vp = context.get_viewport(viewport_id);
+    if (vp.cam == nullptr || !vp.hovered) {
+      return;
+    }
+
     const bool is_looking_around = input_sys->is_action_pressed("orbit_hold");
     if (!is_looking_around) {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), false);
@@ -252,28 +252,24 @@ namespace other {
     }
   }
 
-  input_map editor_driver::get_default_editor_input_map() {
-    input_map map;
-    map.name = "editor-default";
-    map.stick_dead_zone = 0.15f;
-    map.trigger_dead_zone = 0.05f;
-
-    {
-      auto& ctx = map.add_context("global", /* transparent */ true);
-
-      /// quit / close
-      ctx.add_action("quit")
-        .bind_key(key_code::Q, modifier_flags::CTRL);
-
-      /// toggle fullscreen
-      ctx.add_action("toggle_fullscreen")
-        .bind_key(key_code::F11);
-    }
-
-    return map;
+  void editor_driver::on_create_project() {
+    auto& ui = get_ui();
+    ui->open_window("project-creator");
   }
 
   void editor_driver::on_input_event(const input_state_change_event& event) {
+    if (event.action_name == "toggle_editor_controls" && event.pressed) {
+      auto* input_sys = subsystem<input_system>::get();
+      OTHER_ASSERT(input_sys != nullptr, "Input system is null");
+
+      if (auto* active_ctx = input_sys->active_context(); active_ctx != nullptr) {
+        if (active_ctx->name == "editor-camera-controls") {
+          input_sys->pop_context();
+        } else {
+          input_sys->push_context("editor-camera-controls");
+        }
+      }
+    }
   }
 
   std::vector<selected_draw> editor_driver::get_selection_draws() const {
@@ -330,61 +326,6 @@ namespace other {
     }
 
     return draws;
-  }
-
-  void editor_driver::run_selection_outline(pass_context& ctx) {
-    ASSERT_MAIN_THREAD();
-    if (!context.has_selection()) {
-      return;
-    }
-
-    auto* scene = context.current_selection.scene_ptr;
-    if (scene == nullptr) {
-      return;
-    }
-
-    auto draws = get_selection_draws();
-    if (draws.empty()) {
-      return;
-    }
-
-    auto& api = get_renderer().rendering()->api();
-    const glm::vec4 outline_color = context.settings.selection_outline_color;
-    const float outline_px = context.settings.selection_outline_width;
-
-    api->set_clear_stencil(0);
-    api->clear_viewport(glm::vec4(0), framebuffer::clear_mask_bit::STENCIL_BIT);
-    api->set_stencil_test(true);
-
-    api->set_color_mask(false);
-    api->set_depth_mask(false);
-    api->set_depth_test(false);
-    api->set_stencil_op(STENCIL_KEEP, STENCIL_KEEP, STENCIL_REPLACE);
-    api->set_stencil_func(STENCIL_ALWAYS, 1, 0xFF);
-    api->set_stencil_mask(0xFF);
-    ctx.set_uniform("OE_outline_width", 0.0f);
-    for (const auto& d : draws) {
-      ctx.set_uniform("OE_model", d.world);
-      ctx.execute_draw_call(d.call, d.key);
-    }
-
-    api->set_color_mask(true);
-    api->set_stencil_mask(0x00);
-    api->set_stencil_func(STENCIL_NOTEQUAL, 1, 0xFF);
-    ctx.set_uniform("OE_outline_width", outline_px);
-    ctx.set_uniform("OE_outline_color", outline_color);
-    for (const auto& d : draws) {
-      if (d.mesh) {
-        ctx.set_uniform("OE_model", d.world);
-        ctx.execute_draw_call(d.call, d.key);
-      }
-    }
-
-    api->set_stencil_test(false);
-    api->set_stencil_mask(0xFF);
-    api->set_depth_mask(true);
-    api->set_depth_test(true);
-    api->set_color_mask(true);
   }
 
   pipeline_definition editor_driver::get_debug_overlay_pipeline_definition() const {
