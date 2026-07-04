@@ -48,6 +48,8 @@ namespace other {
 
     void update_input();
 
+    void on_create_project() override;
+
     void on_input_event(const input_state_change_event& event) override;
 
     std::vector<selected_draw> get_selection_draws() const;

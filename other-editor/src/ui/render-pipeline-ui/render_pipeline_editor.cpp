@@ -140,25 +140,198 @@ namespace other {
         return;
       }
 
-      working_editor.begin(working_def.name);
-      for (auto& p : working_def.passes) {
-        working_editor.begin_node(p.name);
+      struct resource_pin {
+        pipeline_resource_reference* ref;
+        natural_t pin_id;
+      };
+      struct editor_node {
+        std::vector<resource_pin> input_textures;
+        std::vector<resource_pin> input_buffers;
+        std::vector<resource_pin> output_textures;
+        std::vector<resource_pin> output_buffers;
+      };
+      struct graph {
+        std::map<natural_t, editor_node> nodes;
+        std::map<natural_t, std::set<natural_t>> edges;
+      };
+      graph g;
 
-        for (auto& input : p.inputs) {
-          working_editor.begin_input_pin(input.resource_name);
+      working_editor.begin(working_def.name);
+      std::map<natural_t, pipeline_pass_definition*> node_to_pass;
+      for (auto& p : working_def.passes) {
+        natural_t id = working_editor.begin_node(p.name);
+        node_to_pass[id] = &p;
+
+        auto& n = g.nodes.emplace(id, editor_node{}).first->second;
+
+        auto input_buffers = p.inputs |
+          std::views::filter([](const pipeline_resource_reference& r) { return r.type == resource_type::BUFFER; }) |
+          std::views::transform([](pipeline_resource_reference& r) { return &r; }) |
+          std::ranges::to<std::vector>();
+        auto output_buffers = p.outputs |
+          std::views::filter([](const pipeline_resource_reference& r) { return r.type == resource_type::BUFFER; }) |
+          std::views::transform([](pipeline_resource_reference& r) { return &r; }) |
+          std::ranges::to<std::vector>();
+
+        auto input_textures = p.inputs |
+          std::views::filter([](const pipeline_resource_reference& r) { return r.type == resource_type::TEXTURE; }) |
+          std::views::transform([](pipeline_resource_reference& r) { return &r; }) |
+          std::ranges::to<std::vector>();
+        auto output_textures = p.outputs |
+          std::views::filter([](const pipeline_resource_reference& r) { return r.type == resource_type::TEXTURE; }) |
+          std::views::transform([](pipeline_resource_reference& r) { return &r; }) |
+          std::ranges::to<std::vector>();
+
+        for (auto& input : input_buffers) {
+          natural_t p = working_editor.begin_input_pin(input->resource_name);
+          n.input_buffers.push_back({ input, p });
+          working_editor.end_pin();
+        }
+        for (auto& input : input_textures) {
+          natural_t p = working_editor.begin_input_pin(input->resource_name);
+          n.input_textures.push_back({ input, p });
           working_editor.end_pin();
         }
 
-        for (auto& output : p.outputs) {
-          working_editor.begin_output_pin(output.resource_name);
+        for (auto& output : output_buffers) {
+          natural_t p = working_editor.begin_output_pin(output->resource_name);
+          n.output_buffers.push_back({ output, p });
+          working_editor.end_pin();
+        }
+        for (auto& output : output_textures) {
+          natural_t p = working_editor.begin_output_pin(output->resource_name);
+          n.output_textures.push_back({ output, p });
           working_editor.end_pin();
         }
 
         working_editor.end_node();
       }
+
+      for (const auto& n1 : g.nodes) {
+        auto& e1 = g.edges[n1.first];
+
+        for (const auto& n2 : g.nodes) {
+          if (n1.first == n2.first) {
+            continue;
+          }
+          auto& e2 = g.edges[n2.first];
+
+          for (const auto& res : n1.second.output_textures) {
+            if (auto itr = std::ranges::find_if(n2.second.input_textures, [&](const auto& r) -> bool { return r.ref->resource_name == res.ref->resource_name; });
+                itr != n2.second.input_textures.end() &&  // if n2 reads from a texture that n1 writes to
+                !e2.contains(n1.first)) {                 // and there is not already a backwards edge from n2 to n1
+              e1.insert(n2.first);
+            }
+          }
+          for (const auto& res : n1.second.output_buffers) {
+            if (auto itr = std::ranges::find_if(n2.second.input_buffers, [&](const auto& r) -> bool { return r.ref->resource_name == res.ref->resource_name; });
+                itr != n2.second.input_buffers.end() &&  // if n2 reads from a buffer that n1 writes to
+                !e2.contains(n1.first)) {                // and there is not already a backwards edge from n2 to n1
+              e1.insert(n2.first);
+            }
+          }
+        }
+      }
+
+      for (const auto& [nid, e] : g.edges) {
+        for (const auto& to_nid : e) {
+          auto& from_node = g.nodes.at(nid);
+          auto& to_node = g.nodes.at(to_nid);
+
+          for (const auto& from_res : from_node.output_textures) {
+            if (auto itr = std::ranges::find_if(to_node.input_textures, [&](const auto& r) -> bool { return r.ref->resource_name == from_res.ref->resource_name; });
+                itr != to_node.input_textures.end()) {
+              working_editor.link(from_res.pin_id, itr->pin_id);
+            }
+          }
+          for (const auto& from_res : from_node.output_buffers) {
+            if (auto itr = std::ranges::find_if(to_node.input_buffers, [&](const auto& r) -> bool { return r.ref->resource_name == from_res.ref->resource_name; });
+                itr != to_node.input_buffers.end()) {
+              working_editor.link(from_res.pin_id, itr->pin_id);
+            }
+          }
+        }
+      }
+
       working_editor.end();
     }
+    /*
+    std::vector<frame_node> nodes;
+    nodes.reserve(passes.size());
 
+    for (auto& [id, pass] : passes) {
+      auto& n = nodes.emplace_back() = frame_node{
+        .id = pass.pass.id,
+        .pass = &pass.pass,
+      };
+
+      for (const auto& [id, texture] : pass.pass.texture_resources) {
+        if (texture.flags & READ || texture.flags & SAMPLE) {
+          n.input_textures.insert({ id, texture });
+        }
+        if (texture.flags & WRITE) {
+          n.output_textures.insert({ id, texture });
+        }
+      }
+
+      for (const auto& [id, buffer] : pass.pass.buffer_resources) {
+        if (buffer.flags & READ) {
+          n.input_buffers.insert({ id, buffer });
+        }
+        if (buffer.flags & WRITE) {
+          n.output_buffers.insert({ id, buffer });
+        }
+      }
+    }
+
+    /// list of outgoing edges
+    std::map<natural_t, std::set<natural_t>> edges;
+    for (const auto& n1 : nodes) {
+      auto& e1 = edges[n1.id];
+
+      for (const auto& n2 : nodes) {
+        if (n1 == n2) {
+          continue;
+        }
+        auto& e2 = edges[n2.id];
+
+        for (const auto& [slot, texture] : n1.output_textures) {
+          if (auto itr = std::ranges::find_if(n2.input_textures, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
+              itr != n2.input_textures.end() &&  // if n2 reads from a texture that n1 writes to
+              !e2.contains(n1.id)) {             // and there is not already a backwards edge from n2 to n1
+            e1.insert(n2.id);
+          }
+        }
+        for (const auto& [slot, texture] : n1.output_buffers) {
+          if (auto itr = std::ranges::find_if(n2.input_buffers, [&](const auto pair) -> bool { return pair.second.handle == texture.handle; });
+              itr != n2.input_buffers.end() &&  // if n2 reads from a buffer that n1 writes to
+              !e2.contains(n1.id)) {            // and there is not already a backwards edge from n2 to n1
+            e1.insert(n2.id);
+          }
+        }
+      }
+    }
+
+    for (const auto& n : nodes) {
+      for (const auto& depends_on_str : n.pass->depends_on) {
+        auto itr = std::ranges::find_if(nodes, [&](const frame_node& node) -> bool { return node.pass->name == depends_on_str; });
+        if (itr == nodes.end()) {
+          continue;
+        }
+
+        auto& e = edges[itr->id];
+        if (!e.contains(n.id)) {
+          e.insert(n.id);
+        }
+      }
+    }
+
+    for (natural_t i = 0; i < nodes.size(); ++i) {
+      const auto& n = nodes[i];
+      pass_graph.nodes.insert({ n.id, n });
+    }
+    pass_graph.edges = std::move(edges);
+    */
     void render_pipeline_editor::draw_discard_confirm_popup() {
       if (!ImGui::BeginPopupModal("confirm-discard", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         return;

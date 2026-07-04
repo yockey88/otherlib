@@ -34,6 +34,8 @@ namespace other {
     glm::vec4 grid_major = { 0.8f, 0.8f, 0.8f, 0.35f };
     glm::vec4 node_body = ui::colors::kNodeBodyColor;
     glm::vec4 node_text = ui::colors::kNodeTextColor;
+    glm::vec4 node_header = ui::colors::kNodeHeaderColor;
+    glm::vec4 node_header_hovered = ui::colors::kNodeHeaderHoverColor;
     glm::vec4 node_title_text = ui::colors::kNodeTitleTextColor;
     glm::vec4 node_outline = ui::colors::kNodeOutlineColor;
     glm::vec4 node_outline_selected = ui::colors::kOutlineFocus;

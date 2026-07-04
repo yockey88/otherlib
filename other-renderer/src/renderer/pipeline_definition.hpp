@@ -65,6 +65,8 @@ namespace other {
 
   struct pipeline_resource_reference {
     std::string resource_name;
+    resource_type type;
+
     std::string uniform_name;  //< for samplerXD uniforms, imageXD uniforms, or bindless resource indexing
     uint32_t binding = 0;
     framebuffer::attachment_type attachment = framebuffer::COLOR;

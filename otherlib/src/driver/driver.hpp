@@ -200,6 +200,11 @@ namespace other {
     virtual void on_viewport_resize(const glm::vec2& size) {}
 
     // other
+    virtual void on_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline) {}
+    virtual void on_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline) {}
+
+    virtual void on_create_project() {}
+
     virtual void on_scene_activated(natural_t scene_id) {}
     virtual void on_scene_played(natural_t scene_id) {}
     virtual void on_scene_paused(natural_t scene_id) {}
@@ -210,8 +215,6 @@ namespace other {
     virtual void on_debug_render(render_data* data) {}
     virtual void on_begin_frame(render_data* frame_data) {}
     virtual void on_ui_render() {}
-    virtual void on_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline) {}
-    virtual void on_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline) {}
 
    protected:
     template <typename R = void, typename... Args>

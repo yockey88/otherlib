@@ -18,6 +18,7 @@
 
 #include "driver/systems/scene_system.hpp"
 #include "ui/object-editor/object_editor.hpp"
+#include "ui/project-creator/project_creator.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_editor.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_viewer.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
@@ -30,6 +31,7 @@ namespace other {
     viewport_id = ui->register_window<ui::viewport>("viewport", context, *get_event_system(), get_renderer(), this);
     ui->register_window<ui::scene_hierarchy>("scene-hierarchy", context, *get_event_system(), this);
     ui->register_window<ui::object_editor>("object-editor", context, *get_event_system(), this);
+    ui->register_window<ui::project_creator>("project-creator", context, *get_event_system());
     ui->register_window<ui::render_pipeline_viewer>("render-pipeline-viewer", context, *get_event_system());
     ui->register_window<ui::render_pipeline_editor>("render-pipeline-editor", context, *get_event_system());
   }
@@ -248,6 +250,11 @@ namespace other {
     } else {
       SDL_SetWindowRelativeMouseMode(subsystem<renderer_backend>::get()->get_main_window(), false);
     }
+  }
+
+  void editor_driver::on_create_project() {
+    auto& ui = get_ui();
+    ui->open_window("project-creator");
   }
 
   void editor_driver::on_input_event(const input_state_change_event& event) {

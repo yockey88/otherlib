@@ -59,10 +59,12 @@ namespace other {
       float row_center_offset_y = 0.f;
     };
     struct node_layout {
+      std::string title;
       glm::vec2 position = { 0.f, 0.f };
       glm::vec2 size = { 0.f, 0.f };
       glm::vec2 min_size = { 0.f, 0.f };
       natural_t last_submit_frame = 0;
+      float header_height = 0.f;
       std::vector<pin_offset> pin_offsets;
     };
     node_editor() = default;
@@ -99,6 +101,8 @@ namespace other {
     natural_t begin_output_pin(const std::string_view name, const glm::vec4& color = ui::colors::kOutputPinColor);
     natural_t open_pin(const std::string_view name, pin_type direction, const glm::vec4& color = ui::colors::kInputPinColor);
     void end_pin();
+
+    void link(natural_t from_pin_id, natural_t to_pin_id, const glm::vec4& color = ui::colors::kBasicNodeLinkColor);
 
     inline canvas_rect node_screen_rect(const node_layout& layout) const {
       return {
@@ -169,6 +173,7 @@ namespace other {
     canvas_action action = canvas_action::NONE;
 
     std::vector<natural_t> node_submission_order;
+    std::vector<natural_t> node_draw_order;
     std::vector<natural_t> selected_nodes;
 
     std::vector<node_move> pending_moves;
@@ -189,11 +194,17 @@ namespace other {
       return std::ranges::find(ids, id) != ids.end();
     }
 
+    void sort_nodes_for_drawing();
+
     void refresh_pin_dot_positions(natural_t node_id);
 
     float distance_to_link(const link_record& rec, const glm::vec2& point, float max_distance) const;
 
     void draw_grid();
+
+    void draw_nodes();
+    void draw_pins();
+    void draw_links();
 
     void update_hover(const glm::vec2& mouse_pos, bool canvas_hovered);
     void process_interactions();

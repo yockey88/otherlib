@@ -1,9 +1,9 @@
 /entry: main
 
 $main:
-  set r0, test_project_folder.path
-  set r1, [test_project_folder.length]
-  syscall project.load
+  ; set r0, test_project_folder.path
+  ; set r1, [test_project_folder.length]
+  ; syscall project.load
 end
 
 #test_project_folder {
