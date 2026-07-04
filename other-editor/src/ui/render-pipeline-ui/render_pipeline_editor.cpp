@@ -143,6 +143,17 @@ namespace other {
       working_editor.begin(working_def.name);
       for (auto& p : working_def.passes) {
         working_editor.begin_node(p.name);
+
+        for (auto& input : p.inputs) {
+          working_editor.begin_input_pin(input.resource_name);
+          working_editor.end_pin();
+        }
+
+        for (auto& output : p.outputs) {
+          working_editor.begin_output_pin(output.resource_name);
+          working_editor.end_pin();
+        }
+
         working_editor.end_node();
       }
       working_editor.end();

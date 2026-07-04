@@ -25,13 +25,13 @@ namespace other {
     glm::vec2 pan = { 0.f, 0.f };
     float zoom = 1.f;
 
-    inline glm::vec2 to_screen(const glm::vec2& canvas_pos) const { return window_origin + (canvas_pos - pan) * zoom; }
-    inline glm::vec2 to_canvas(const glm::vec2& screen_pos) const { return (screen_pos - window_origin) / zoom + pan; }
+    inline glm::vec2 to_screen(const glm::vec2& canvas_pos) const { return window_origin + (canvas_pos + pan) * zoom; }
+    inline glm::vec2 to_canvas(const glm::vec2& screen_pos) const { return (screen_pos - window_origin) / zoom - pan; }
 
     inline void zoom_around(const glm::vec2& screen_anchor, float new_zoom) {
       const glm::vec2 anchor_canvas = to_canvas(screen_anchor);
       zoom = new_zoom;
-      pan = anchor_canvas - (screen_anchor - window_origin) / zoom;
+      pan = ((screen_anchor - window_origin) / zoom) - anchor_canvas;
     }
   };
 

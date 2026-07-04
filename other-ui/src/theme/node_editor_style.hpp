@@ -43,6 +43,7 @@ namespace other {
     float node_rounding = 4.f;
     float node_padding = 8.f;
     float pin_label_gap = 6.f;
+    float pin_spacing = 20.f;
     float pin_radius = 5.f;
     float header_height_scale = 1.2f;   ///< × ImGui::GetFrameHeight()
     float lod_body_cutoff_zoom = 0.4f;  ///< below this, bodies collapse to title bars

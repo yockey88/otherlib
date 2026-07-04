@@ -61,6 +61,7 @@ namespace other {
     struct node_layout {
       glm::vec2 position = { 0.f, 0.f };
       glm::vec2 size = { 0.f, 0.f };
+      glm::vec2 min_size = { 0.f, 0.f };
       natural_t last_submit_frame = 0;
       std::vector<pin_offset> pin_offsets;
     };
@@ -83,8 +84,8 @@ namespace other {
     inline glm::vec2 spawn_position() const {
       const natural_t n = layouts.size();
       return view_transform.pan + glm::vec2{
-        40.f + 30.f * static_cast<float>(n % 5),
-        40.f + 30.f * static_cast<float>(n % 7),
+        100.f + 60.f * static_cast<float>(n % 5),
+        100.f + 60.f * static_cast<float>(n % 7),
       };
     }
 
@@ -93,6 +94,11 @@ namespace other {
 
     natural_t begin_node(const std::string_view title, const glm::vec4& header_color = ui::colors::kNodeHeaderColor);
     void end_node();
+
+    natural_t begin_input_pin(const std::string_view name, const glm::vec4& color = ui::colors::kInputPinColor);
+    natural_t begin_output_pin(const std::string_view name, const glm::vec4& color = ui::colors::kOutputPinColor);
+    natural_t open_pin(const std::string_view name, pin_type direction, const glm::vec4& color = ui::colors::kInputPinColor);
+    void end_pin();
 
     inline canvas_rect node_screen_rect(const node_layout& layout) const {
       return {
@@ -114,9 +120,10 @@ namespace other {
     struct pin_record {
       natural_t id;
       natural_t node_id;
-      float row_min_y, row_max_y;
 
+      float row_center_y = 0.f;
       glm::vec2 dot_screen_position;
+
       pin_type direction;
       pin_style style;
 
@@ -132,6 +139,7 @@ namespace other {
       NONE,
       PANNING,
       DRAGGING_NODES,
+      RESIZING_NODE,
       LINKING,
       RELINKING,
       BOX_SELECTING,
@@ -145,14 +153,30 @@ namespace other {
     natural_t current_pin = kInvalidId;
 
     natural_t hovered_node_id = kInvalidId;
+    natural_t active_node_id = kInvalidId;
+
+    natural_t resize_node = kInvalidId;
+    glm::vec2 resize_grab_offset = { 0.f, 0.f };
+    glm::vec2 resize_old_size = { 0.f, 0.f };
+
     natural_t hovered_pin_id = kInvalidId;
     natural_t hovered_link_id = kInvalidId;
+
+    float node_required_width = 0.f;
+    float node_content_bottom = 0.f;
 
     canvas_transform view_transform = {};
     canvas_action action = canvas_action::NONE;
 
+    std::vector<natural_t> node_submission_order;
+    std::vector<natural_t> selected_nodes;
+
+    std::vector<node_move> pending_moves;
+    std::vector<node_move> moves_completed;
+
     std::vector<pin_record> pins;
     std::vector<link_record> links;
+    std::unordered_map<natural_t, natural_t> pin_lookup;
 
     std::unordered_map<natural_t, node_layout> layouts;
     std::unordered_map<natural_t, natural_t> submitted_nodes;
@@ -164,6 +188,8 @@ namespace other {
     inline bool contains_id(const std::vector<natural_t>& ids, natural_t id) {
       return std::ranges::find(ids, id) != ids.end();
     }
+
+    void refresh_pin_dot_positions(natural_t node_id);
 
     float distance_to_link(const link_record& rec, const glm::vec2& point, float max_distance) const;
 
