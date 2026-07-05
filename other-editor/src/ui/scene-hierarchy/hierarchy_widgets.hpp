@@ -10,10 +10,10 @@ namespace other {
   namespace ui {
     namespace hierarchy {
 
-      constexpr float kItemHeight = 22.f;
+      constexpr float kItemHeight = 15.f;
       constexpr float kSearchBarHeight = 28.f;
       constexpr float kSearchBarPadding = 8.f;
-      constexpr float kIndentWidth = 16.f;
+      constexpr float kIndentWidth = 8.f;
       constexpr float kArrowWidth = 12.f;
       constexpr float kVisibilityIconWidth = 18.f;
       constexpr float kItemPaddingX = 10.f;
@@ -24,7 +24,6 @@ namespace other {
         bool has_children = false;
         bool expanded = false;  /// arrow points down (▾) vs right (▸)
         bool visible = true;
-        bool is_scene_root = false;
         bool disabled = false;
         uint32_t indent_level = 0;
       };
@@ -37,24 +36,7 @@ namespace other {
         bool right_clicked = false;
       };
 
-      // =======================================================================
-      //
-      //  |-----------------------------------------|
-      //  |  x filter objects...                    |
-      //  |-----------------------------------------|
-      //
-      //  true if the filter text changed.
-      // =======================================================================
       bool draw_search_bar(char* filter_buf, uint32_t buf_size);
-
-      // =======================================================================
-      //
-      //  |------------------------------------------|
-      //  |  -  ObjectName                        x  |
-      //  |------------------------------------------|
-      //
-      //  single row in the hierarchy tree.
-      // =======================================================================
       item_interaction draw_item(const std::string_view label, natural_t object_id, item_flags flags);
 
       void draw_indent_guide(uint32_t indent_level, float row_top_y, float row_height);

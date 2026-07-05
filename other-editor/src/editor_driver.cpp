@@ -12,6 +12,7 @@
 
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
+#include "object/physics_component.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
@@ -148,6 +149,10 @@ namespace other {
     glm::vec4 select_color = basic_colors::kGreen;
     if (context.has_selection()) {
       for (const auto& obj_id : context.current_selection.objects) {
+        if (!scene->is_visible(obj_id)) {
+          continue;
+        }
+
         auto& obj = scene->get_object(obj_id);
         auto aabb = scene->get_bounding_box(obj.id);
         draw.aabb(aabb, select_color);
@@ -208,6 +213,17 @@ namespace other {
     OTHER_ASSERT(s != nullptr, "Activated scene with ID {} not found in scene system.", scene_id);
 
     context.scene_viewport_handle = context.register_viewport("scene-viewport", "default-instancing", s->get_primary_camera());
+
+    auto& floor = s->get_object("Floor");
+    auto& donut = s->get_object("Donut");
+
+    physics_body::settings phys_settings = {
+      .body_type = physics_body::STATIC,
+      .world_transform = glm::mat4(1.f),
+      .mass = 1.f,
+    };
+    auto& phys_comp = s->add_component<physics_component>(floor.id);
+    // phys_comp.settings.body_type = physics_body::STATIC;
   }
 
   void editor_driver::on_scene_deactivated(natural_t scene_id) {

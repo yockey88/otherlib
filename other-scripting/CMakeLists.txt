@@ -37,16 +37,11 @@ set(LUA_LIB_DIRECTORY
   $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 
-# message(STATUS "Python Include Directory: ${PYTHON_INCLUDE_DIR}")
-# message(STATUS "Python Library Directory: ${PYTHON_LIB_DIR}")
-# message(STATUS "Lua Library Directory: ${LUA_LIB_DIRECTORY}")
-
 target_include_directories(other_scripting 
   PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scripting>
 )
-
 target_link_directories(other_scripting 
   PUBLIC
     $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}> 
@@ -54,7 +49,6 @@ target_link_directories(other_scripting
     $<BUILD_INTERFACE:${LUA_LIB_DIRECTORY}>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
-
 target_link_libraries(other_scripting PRIVATE lua-5.4.4 other_core)
 
 other_install_module(other_scripting "scripting")

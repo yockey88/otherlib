@@ -126,7 +126,6 @@ target_sources(otherlib
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp
 
-    src/ui/script/script_field_ui.cpp
     src/ui/script/script_property_widget.cpp
     src/ui/type-bindings/value_ui.cpp
     src/ui/type-bindings/vm_ui.cpp
@@ -138,6 +137,8 @@ target_sources(otherlib
     src/ui/menu-bar/menu_item.cpp
     src/ui/menu-bar/menu.cpp
     src/ui/menu-bar/menu_bar.cpp
+    src/ui/component_widget_registry.cpp
+    src/ui/field_ui.cpp
     src/ui/field_editor_registry.cpp
     src/ui/inspector_widgets.cpp
     src/ui/ui_widgets.cpp

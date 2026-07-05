@@ -3,11 +3,11 @@
  **/
 #include "driver/systems/scene_system.hpp"
 
+#include <sol/types.hpp>
+
 #include "driver/driver.hpp"
 #include "driver/systems/project_system.hpp"
 #include "scripting/scene_interface.hpp"
-
-#include "types.hpp"
 
 namespace other {
 
@@ -15,6 +15,9 @@ namespace other {
     PROFILE_SECTION("scene_system::initialize");
     project_scene_graph = make_scope<scene_graph>();
     OTHER_ASSERT(project_scene_graph != nullptr, "Failed to create project scene graph.");
+
+    component_reg = make_scope<component_registry>();
+    OTHER_ASSERT(component_reg != nullptr, "Failed to create component registry for scene system.");
 
     auto& events = get_driver().get_event_system();
     OTHER_ASSERT(events != nullptr, "Event system is not initialized.");
@@ -41,6 +44,8 @@ namespace other {
 
     events->register_event("ls.scenes");
     events->add_listener("ls.scenes", [this](const value& data) { handle_ls_scenes_event(&get_driver().get_kernel(), data); });
+
+    register_components();
 
     scene_interface::initialize(&get_driver());
   }
@@ -337,6 +342,20 @@ namespace other {
   //   constexpr bool requires_udp_binding = true;
   //   get_driver().send_load_command(active_scene->name, scene_id, is_empty, requires_udp_binding);
   // }
+
+  void scene_system::register_components() {
+    OTHER_ASSERT(component_reg != nullptr, "Component registry is not initialized in scene system.");
+    PROFILE_SECTION("scene_system::register_components");
+
+    component_reg->register_component_type<transform>("Transform");
+    component_reg->register_component_type<script_component>("Script");
+    component_reg->register_component_type<render_component>("Graphics Object");
+    component_reg->register_component_type<physics_component>("Physics Object");
+    component_reg->register_component_type<point_light_component>("Point Light");
+    component_reg->register_component_type<direction_light_component>("Directional Light");
+    component_reg->register_component_type<camera_component>("Camera");
+    component_reg->register_component_type<animation_controller>("Animation Controller");
+  }
 
   void scene_system::handle_scene_load_event(const value& data) {
     PROFILE_SECTION("scene_system::handle_scene_load_event");

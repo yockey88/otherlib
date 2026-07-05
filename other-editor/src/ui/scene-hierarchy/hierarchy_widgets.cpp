@@ -27,23 +27,19 @@ namespace other {
 
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + kSearchBarPadding);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + kSearchBarPadding);
+
         float search_w = ImGui::GetContentRegionAvail().x - kSearchBarPadding * 2.f;
         ImGui::PushItemWidth(search_w);
-
-        bool changed = ImGui::InputTextWithHint(
-          "##hier_filter", "filter objects...", filter_buf, buf_size);
-
+        bool changed = ImGui::InputTextWithHint("##hier_filter", "filter objects...", filter_buf, buf_size);
         ImGui::PopItemWidth();
 
         if (was_active) {
-          ImGui::PopStyleColor();  // focused border
+          ImGui::PopStyleColor();
         }
 
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
-
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.f);
-
         return changed;
       }
 
@@ -75,9 +71,6 @@ namespace other {
           dl->AddRectFilled(row_min, row_max, colors::to_im_col(colors::hierarchy::kItemHover));
         }
 
-        // ─────────────────────────────────────────────────────────
-        //  Expand Arrow
-        // ─────────────────────────────────────────────────────────
         float content_x = row_min.x + kItemPaddingX + indent;
         float text_y = row_min.y + (kItemHeight - ImGui::GetFontSize()) * 0.5f;
 
@@ -91,51 +84,24 @@ namespace other {
 
           if (arrow_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             result.expand_toggled = true;
-            result.clicked = false;  // don't also select when toggling expand
+            result.clicked = false;
           }
 
-          /// draw the triangle
           const float arrow_size = 5.f;
           float cx = content_x + kArrowWidth * 0.5f;
           float cy = row_min.y + kItemHeight * 0.5f;
 
           if (flags.expanded) {
-            /// ▾ pointing down
-            dl->AddTriangleFilled(
-              { cx - arrow_size, cy - arrow_size * 0.4f },
-              { cx + arrow_size, cy - arrow_size * 0.4f },
-              { cx, cy + arrow_size * 0.6f },
-              arrow_col);
+            /// down
+            dl->AddTriangleFilled({ cx - arrow_size, cy - arrow_size * 0.4f }, { cx + arrow_size, cy - arrow_size * 0.4f }, { cx, cy + arrow_size * 0.6f }, arrow_col);
           } else {
-            /// ▸ pointing right
-            dl->AddTriangleFilled(
-              { cx - arrow_size * 0.4f, cy - arrow_size },
-              { cx + arrow_size * 0.6f, cy },
-              { cx - arrow_size * 0.4f, cy + arrow_size },
-              arrow_col);
+            /// right
+            dl->AddTriangleFilled({ cx - arrow_size * 0.4f, cy - arrow_size }, { cx + arrow_size * 0.6f, cy }, { cx - arrow_size * 0.4f, cy + arrow_size }, arrow_col);
           }
         }
 
         content_x += kArrowWidth + kItemGap;
 
-        // ─────────────────────────────────────────────────────────
-        //  Scene Root Icon (optional)
-        // ─────────────────────────────────────────────────────────
-        if (flags.is_scene_root) {
-          const float icon_size = 12.f;
-          float icon_y = row_min.y + (kItemHeight - icon_size) * 0.5f;
-
-          /// small filled circle as scene icon
-          dl->AddCircleFilled(
-            { content_x + icon_size * 0.5f, icon_y + icon_size * 0.5f },
-            icon_size * 0.45f,
-            colors::to_im_col(colors::scene_object::kSignature));
-          content_x += icon_size + kItemGap;
-        }
-
-        // ─────────────────────────────────────────────────────────
-        //  Label Text
-        // ─────────────────────────────────────────────────────────
         ImU32 text_col;
         if (flags.disabled) {
           text_col = colors::to_im_col(colors::hierarchy::kItemTextDisabled);
@@ -145,18 +111,11 @@ namespace other {
           text_col = colors::to_im_col(colors::hierarchy::kItemText);
         }
 
-        /// clip label so it doesn't bleed into the visibility icon
         float label_max_x = row_max.x - kItemPaddingX - kVisibilityIconWidth;
-        ImGui::PushClipRect(
-          { content_x, row_min.y },
-          { label_max_x, row_max.y },
-          true);
+        ImGui::PushClipRect({ content_x, row_min.y }, { label_max_x, row_max.y }, true);
         dl->AddText({ content_x, text_y }, text_col, label.data(), label.data() + label.size());
         ImGui::PopClipRect();
 
-        // ─────────────────────────────────────────────────────────
-        //  Visibility Icon (eye)
-        // ─────────────────────────────────────────────────────────
         {
           float icon_x = row_max.x - kItemPaddingX - kVisibilityIconWidth;
           ImVec2 icon_min = { icon_x, row_min.y };
@@ -166,7 +125,7 @@ namespace other {
 
           if (icon_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             result.visibility_toggled = true;
-            result.clicked = false;  // don't also select
+            result.clicked = false;
           }
 
           /// draw a simple eye glyph using draw primitives
@@ -174,7 +133,6 @@ namespace other {
           float ecy = row_min.y + kItemHeight * 0.5f;
 
           ImU32 eye_col = flags.visible ? colors::to_im_col(colors::hierarchy::kIconVisible) : colors::to_im_col(colors::hierarchy::kIconHidden);
-
           if (flags.visible) {
             /// eye shape: two arcs forming an almond + filled pupil
             const float ew = 5.f;   // half-width of eye
@@ -190,18 +148,12 @@ namespace other {
             dl->AddCircleFilled({ ecx, ecy }, 1.8f, eye_col);
           } else {
             /// hidden: just a dash
-            dl->AddLine(
-              { ecx - 4.f, ecy },
-              { ecx + 4.f, ecy },
-              eye_col, 1.2f);
+            dl->AddLine({ ecx - 4.f, ecy }, { ecx + 4.f, ecy }, eye_col, 1.2f);
           }
         }
 
         ImGui::PopID();
-
-        /// advance cursor past this row
         ImGui::SetCursorScreenPos({ row_min.x, row_max.y });
-
         return result;
       }
 

@@ -4,12 +4,7 @@
 #ifndef OTHERLIB_UI_INSPECTOR_WIDGETS_HPP
 #define OTHERLIB_UI_INSPECTOR_WIDGETS_HPP
 
-#include <string>
-#include <vector>
-
 #include "core/defines.hpp"
-
-#include "object/component.hpp"
 
 #include "asset/asset.hpp"
 
@@ -41,46 +36,14 @@ namespace other {
       };
 
       /// returns the glm::vec4 signature color for the given component type
-      glm::vec4 get_component_color(component::id tag);
+      // glm::vec4 get_component_color(component::id tag);
 
-      // ═══════════════════════════════════════════════════════════════════════
-      //  Object Header
-      //
-      //  ┌──────────────────────────────────────────┐
-      //  │ [icon]  ObjectName              #0x4A2F  │
-      //  └──────────────────────────────────────────┘
-      // ═══════════════════════════════════════════════════════════════════════
       void draw_object_header(const std::string_view object_name, natural_t object_id, const glm::vec4& icon_color);
-      /// editable version — returns true if name was changed, writes new
-      /// name back into `name_buf` (must be at least `buf_size` chars)
       bool draw_object_header_editable(char* name_buf, uint32_t buf_size, natural_t object_id, const glm::vec4& icon_color);
 
-      // ═══════════════════════════════════════════════════════════════════════
-      //  Component Section
-      //
-      //  ┌──────────────────────────────────────────┐
-      //  │ ● ComponentName                ● modified│
-      //  ├──────────────────────────────────────────┤
-      //  │  (property rows rendered by caller)      │
-      //  └──────────────────────────────────────────┘
-      //
-      //  begin_component_section / end_component_section form a pair.
-      //  begin returns false if the section is collapsed (caller should skip
-      //  property rows but MUST still call end_component_section).
-      // ═══════════════════════════════════════════════════════════════════════
-      bool begin_component_section(const std::string_view component_name, component::id tag, component_section_flags flags = {}, bool* out_remove_requested = nullptr);
+      bool begin_component_section(const std::string_view component_name, const glm::vec4& color, component_section_flags flags = {}, bool* out_remove_requested = nullptr);
       void end_component_section();
 
-      // ═══════════════════════════════════════════════════════════════════════
-      //  Property Row
-      //
-      //  ┌──────────────────────────────────────────┐
-      //  │ Label      [  field  ] [  field  ]       │
-      //  └──────────────────────────────────────────┘
-      //
-      //  begin_property_row / end_property_row sets up the two-column
-      //  layout.  The caller draws widgets in between for the value side.
-      // ═══════════════════════════════════════════════════════════════════════
       void begin_property_row(const std::string_view label, float label_width = kPropertyLabelWidth);
       void end_property_row();
 
@@ -133,7 +96,7 @@ namespace other {
       /// returns id if an asset is dropped into the slot, or nullopt if no drop occurred
       opt<natural_t> property_asset_slot(const std::string_view label, natural_t asset_id, const std::string_view current_asset_name, const asset::type field_asset_type, asset_handler* handler = nullptr);
 
-      bool draw_add_component_button();
+      bool draw_add_component_button(const std::string_view label);
 
       void draw_no_selection_message();
       void draw_multi_selection_message(uint32_t count);

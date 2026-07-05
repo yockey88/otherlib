@@ -19,6 +19,7 @@ core-log-file = "logs/editor.log"
 auto-play-loaded-scenes = false
 
 [rendering]
+# fullscreen = true
 # enable-debug = false
 ui-layout-ini = "resources/ui/editor-layout.ini"
 imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"

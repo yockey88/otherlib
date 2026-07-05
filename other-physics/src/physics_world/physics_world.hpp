@@ -39,7 +39,7 @@ namespace other {
 
     void step_simulation(double delta_time);
 
-    physics_body* create_physics_body(const physics_body_settings& settings);
+    physics_body* create_physics_body(const physics_body::settings& settings);
     void destroy_physics_body(physics_body* body);
 
     physics_shape* create_empty_shape(physics_body* body);

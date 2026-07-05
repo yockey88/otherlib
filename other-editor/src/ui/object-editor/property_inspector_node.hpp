@@ -38,7 +38,10 @@ namespace other {
       using on_component_modified_fn = void (*)(T* component, scene_object* object, scene* active_scene, driver* drvr);
 
       template <typename T>
-      void draw_component_section(const std::string_view component_name, scene* active_scene, scene_object* object, on_component_modified_fn<T> on_modified = nullptr);
+      void draw_component_section(const std::string_view component_name, const glm::vec4& color, scene* active_scene, scene_object* object, on_component_modified_fn<T> on_modified = nullptr);
+
+      template <typename T>
+      bool draw_component_selector(const std::string_view component_name, scene* active_scene, scene_object* object);
 
       void on_render_node_body() override;
     };

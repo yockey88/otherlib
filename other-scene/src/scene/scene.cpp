@@ -514,6 +514,16 @@ namespace other {
     return storage->tree.get_all_object_ids();
   }
 
+  bool scene::is_visible(natural_t id) const {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::is_visible");
+    const scene_tree::node* node = storage->tree.node_at(id);
+    if (node == nullptr || node->object == nullptr) {
+      return false;
+    }
+    return node->object->visible;
+  }
+
   void scene::destroy_object(natural_t id) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::destroy_object");
@@ -868,6 +878,10 @@ namespace other {
       if (!render.visible) {
         return;
       }
+      auto& obj = get_object(handle.id);
+      if (!obj.visible) {
+        return;
+      }
 
       /**
        * \todo currently @ref render_component::model_asset_id stores the model source id since models are not individually stored in the asset handler
@@ -1106,7 +1120,7 @@ namespace other {
 
     // object handle and component registery are 'invisible' components (user should not know about them)
     storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
-    storage->registry.emplace<component_registry>(entity, component_registry{});
+    storage->registry.emplace<object_component_registry>(entity, object_component_registry{});
     storage->registry.emplace<transform>(entity, transform{
                                                    orthonormal_basis(glm::vec3(0, 1, 0)),
                                                    world_position,
@@ -1118,7 +1132,7 @@ namespace other {
     transform& transf = storage->registry.get<transform>(entity);
     script_component& script = storage->registry.get<script_component>(entity);
 
-    auto& comp_reg = storage->registry.get<component_registry>(entity);
+    auto& comp_reg = storage->registry.get<object_component_registry>(entity);
     comp_reg.register_component(transf);
     comp_reg.register_component(script);
   }
@@ -1133,13 +1147,13 @@ namespace other {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::unregister_object");
     {
-      // auto& comb_reg = get_component<component_registry>(object);
+      // auto& comb_reg = get_component<object_component_registry>(object);
       // comp_reg.unregister_all();
     }
 
     storage->registry.remove<script_component>(entt::entity(object->registry_id));
     storage->registry.remove<transform>(entt::entity(object->registry_id));
-    storage->registry.remove<component_registry>(entt::entity(object->registry_id));
+    storage->registry.remove<object_component_registry>(entt::entity(object->registry_id));
     storage->registry.remove<object_handle>(entt::entity(object->registry_id));
     storage->registry.destroy(entt::entity(object->registry_id));
   }

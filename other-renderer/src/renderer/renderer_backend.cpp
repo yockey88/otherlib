@@ -62,6 +62,10 @@ namespace other {
     PROFILE_SECTION("renderer_backend::load-backend");
     uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
+    if (config.get_value<bool>("rendering.fullscreen", false)) {
+      flags |= SDL_WINDOW_FULLSCREEN;
+    }
+
     {
       PROFILE_SECTION("renderer_backend::load-backend--initialize-sdl3");
 

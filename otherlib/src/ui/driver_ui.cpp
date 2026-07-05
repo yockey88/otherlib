@@ -18,6 +18,9 @@
 namespace other {
 
   void driver_ui::initialize() {
+    component_reg = make_scope<ui::component_widget_registry>();
+    OTHER_ASSERT(component_reg != nullptr, "Failed to create component widget registry in driver UI initialization.");
+
     initialize_builtin_windows();
 
     main_menu_bar.main_menu_bar = true;

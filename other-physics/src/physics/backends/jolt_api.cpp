@@ -247,9 +247,9 @@ namespace other {
 
     JPH::EMotionType type;
     switch (body->body_type) {
-      case BODY_TYPE_STATIC: type = JPH::EMotionType::Static; break;
-      case BODY_TYPE_DYNAMIC: type = JPH::EMotionType::Dynamic; break;
-      case BODY_TYPE_KINEMATIC: type = JPH::EMotionType::Kinematic; break;
+      case physics_body::STATIC: type = JPH::EMotionType::Static; break;
+      case physics_body::KINEMATIC: type = JPH::EMotionType::Kinematic; break;
+      case physics_body::DYNAMIC: type = JPH::EMotionType::Dynamic; break;
       default: type = JPH::EMotionType::Static; break;
     }
 

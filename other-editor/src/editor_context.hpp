@@ -44,6 +44,8 @@ namespace other {
     std::vector<viewport_info> viewports;
 
     void select_object(natural_t object_id);
+    void deselect_object(natural_t object_id);
+
     bool has_selection() const;
     bool multi_select_enabled() const;
     bounding_box get_selection_bounding_box() const;

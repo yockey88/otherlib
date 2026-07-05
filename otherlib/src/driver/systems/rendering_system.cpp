@@ -14,8 +14,8 @@
 #include "driver/systems/scene_system.hpp"
 #include "driver/systems/scripting_system.hpp"
 #include "render/default_pass_executor_resolver.hpp"
+#include "ui/field_ui.hpp"
 #include "ui/inspector_widgets.hpp"
-#include "ui/script/script_field_ui.hpp"
 
 #include "asset/pipelines/rendering_pipeline_pipeline.hpp"
 
@@ -73,141 +73,8 @@ namespace other {
     events.add_listener("rendering-pipeline.asset-loaded", [this](const value& data) { handle_rendering_pipeline_asset_loaded_event(&get_driver().get_kernel(), data); });
     events.add_listener("rendering-pipeline.asset-unloaded", [this](const value& data) { handle_rendering_pipeline_asset_unloaded_event(&get_driver().get_kernel(), data); });
 
-    auto& field_editors = get_driver().get_field_editors();
-    field_editors.register_editor<bool>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_bool(l, *static_cast<bool*>(d)); });
-    field_editors.register_editor<int8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int8(l, *static_cast<int8_t*>(d)); });
-    field_editors.register_editor<int16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int16(l, *static_cast<int16_t*>(d)); });
-    field_editors.register_editor<int32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int32(l, *static_cast<int32_t*>(d)); });
-    field_editors.register_editor<int64_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int64(l, *static_cast<int64_t*>(d)); });
-    field_editors.register_editor<uint8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint8(l, *static_cast<uint8_t*>(d)); });
-    field_editors.register_editor<uint16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint16(l, *static_cast<uint16_t*>(d)); });
-    field_editors.register_editor<uint32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint32(l, *static_cast<uint32_t*>(d)); });
-    field_editors.register_editor<uint64_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint64(l, *static_cast<uint64_t*>(d)); });
-    field_editors.register_editor<float>([](const std::string_view l, void* d, const ui::field_context& c) {
-      float& v = *static_cast<float*>(d);
-      if (c.flags.is_color) {
-        ui::inspector::begin_property_row(c.flags.display_name.empty() ? l : c.flags.display_name);
-        std::string id = std::format("##{}", l);
-        bool ch = ImGui::ColorEdit3(id.c_str(), &v, ImGuiColorEditFlags_Float);
-        ui::inspector::end_property_row();
-        return ch;
-      }
-
-      if (c.flags.has_range) {
-        ui::inspector::begin_property_row(l);
-        std::string id = std::format("##{}", l);
-        bool ch = ImGui::SliderFloat(id.c_str(), &v, c.flags.range.x, c.flags.range.y);
-        ui::inspector::end_property_row();
-        return ch;
-      }
-
-      float speed = c.flags.speed.value_or(0.01f);
-      return ui::inspector::property_float(l, v, speed);
-    });
-
-    field_editors.register_editor<double>([](const std::string_view label, void* d, const ui::field_context& c) {
-      double& v = *static_cast<double*>(d);
-      float f = static_cast<float>(v);
-      if (c.flags.has_range) {
-        ui::inspector::begin_property_row(label);
-
-        std::string id = std::format("##{}", label);
-        bool ch = ImGui::SliderFloat(id.c_str(), &f, c.flags.range.x, c.flags.range.y);
-
-        ui::inspector::end_property_row();
-        if (ch) {
-          v = f;
-        }
-
-        return ch;
-      }
-
-      float speed = c.flags.speed.value_or(0.01f);
-      if (ui::inspector::property_float(label, f, speed)) {
-        v = static_cast<double>(f);
-        return true;
-      }
-
-      return false;
-    });
-
-    field_editors.register_editor<glm::vec2>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec2(l, *static_cast<glm::vec2*>(d), c.flags.speed.value_or(0.01f)); });
-    field_editors.register_editor<glm::vec3>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec3(l, *static_cast<glm::vec3*>(d), c.flags.speed.value_or(0.01f)); });
-    field_editors.register_editor<glm::vec4>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec4(l, *static_cast<glm::vec4*>(d), c.flags.speed.value_or(0.01f)); });
-    field_editors.register_editor<glm::mat3>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_mat3(l, *static_cast<glm::mat3*>(d), c.flags.speed.value_or(0.01f)); });
-    field_editors.register_editor<glm::mat4>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_mat4(l, *static_cast<glm::mat4*>(d), c.flags.speed.value_or(0.01f)); });
-    field_editors.register_editor<glm::quat>([](const std::string_view label, void* d, const ui::field_context& c) {
-      auto& q = *static_cast<glm::quat*>(d);
-
-      glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
-      if (ui::inspector::property_vec3(label, euler, c.flags.speed.value_or(0.01f))) {
-        q = glm::quat(glm::radians(euler));
-        return true;
-      }
-      return false;
-    });
-    field_editors.register_editor<std::string>([](const std::string_view label, void* d, const ui::field_context& c) {
-      auto& s = *static_cast<std::string*>(d);
-
-      char buf[256];
-      std::strncpy(buf, s.c_str(), sizeof(buf));
-      buf[sizeof(buf) - 1] = '\0';
-
-      if (ui::inspector::property_text(label, buf, sizeof(buf))) {
-        s = std::string(buf);
-        return true;
-      }
-      return false;
-    });
-    field_editors.register_editor<orthonormal_basis>([](const std::string_view, void*, const ui::field_context&) {
-      return false;  // intentional no-op, preserves transform.local_basis behaviour
-    });
-
-    auto scalar = [](ImGuiDataType ig) {
-      return [ig](const std::string_view label, void* d, const ui::field_context&) {
-        std::string id = std::format("{}##scalar", label);
-        return ImGui::DragScalar(id.c_str(), ig, d, 0.1f, nullptr, nullptr, nullptr, 0);
-      };
-    };
-    field_editors.register_value_editor(value_type::INT8, scalar(ImGuiDataType_S8), true);
-    field_editors.register_value_editor(value_type::INT16, scalar(ImGuiDataType_S16), true);
-    field_editors.register_value_editor(value_type::INT32, scalar(ImGuiDataType_S32), true);
-    field_editors.register_value_editor(value_type::INT64, scalar(ImGuiDataType_S64), true);
-    field_editors.register_value_editor(value_type::UINT8, scalar(ImGuiDataType_U8), true);
-    field_editors.register_value_editor(value_type::UINT16, scalar(ImGuiDataType_U16), true);
-    field_editors.register_value_editor(value_type::UINT32, scalar(ImGuiDataType_U32), true);
-    field_editors.register_value_editor(value_type::UINT64, scalar(ImGuiDataType_U64), true);
-
-    field_editors.register_editor<point_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
-      point_light& pl = *reinterpret_cast<point_light*>(d);
-      bool modified = false;
-
-      ImGui::Text("%s", label.data());
-
-      const std::string id = std::format("{}##point_light", label);
-      ImGui::PushID(id.c_str());
-
-      modified |= ui::inspector::property_vec3("Position", pl.position, ctx.flags.speed.value_or(0.01));
-      modified |= ui::inspector::property_vec4("Color", pl.color, ctx.flags.speed.value_or(0.01));
-
-      ImGui::PopID();
-      return modified;
-    });
-    field_editors.register_editor<direction_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
-      direction_light& dl = *reinterpret_cast<direction_light*>(d);
-      bool modified = false;
-
-      ImGui::Text("%s", label.data());
-
-      const std::string id = std::format("{}##directional_light", label);
-      ImGui::PushID(id.c_str());
-
-      modified |= ui::inspector::property_vec3("Direction", dl.direction, ctx.flags.speed.value_or(0.01));
-      modified |= ui::inspector::property_vec4("Color", dl.color, ctx.flags.speed.value_or(0.01));
-
-      ImGui::PopID();
-      return modified;
-    });
+    register_field_widgets();
+    register_component_widgets();
   }
 
   void rendering_system::late_initialize(driver_kernel* kernel) {
@@ -458,6 +325,147 @@ namespace other {
     }
     glm::vec2 viewport_size = data;
     get_driver().on_viewport_resize(viewport_size);
+  }
+
+  void rendering_system::register_field_widgets() {
+    auto& field_editors = get_driver().get_field_editors();
+    field_editors.register_editor<bool>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_bool(l, *static_cast<bool*>(d)); });
+    field_editors.register_editor<int8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int8(l, *static_cast<int8_t*>(d)); });
+    field_editors.register_editor<int16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int16(l, *static_cast<int16_t*>(d)); });
+    field_editors.register_editor<int32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int32(l, *static_cast<int32_t*>(d)); });
+    field_editors.register_editor<int64_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int64(l, *static_cast<int64_t*>(d)); });
+    field_editors.register_editor<uint8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint8(l, *static_cast<uint8_t*>(d)); });
+    field_editors.register_editor<uint16_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint16(l, *static_cast<uint16_t*>(d)); });
+    field_editors.register_editor<uint32_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint32(l, *static_cast<uint32_t*>(d)); });
+    field_editors.register_editor<uint64_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_uint64(l, *static_cast<uint64_t*>(d)); });
+    field_editors.register_editor<float>([](const std::string_view l, void* d, const ui::field_context& c) {
+      float& v = *static_cast<float*>(d);
+      if (c.flags.is_color) {
+        ui::inspector::begin_property_row(c.flags.display_name.empty() ? l : c.flags.display_name);
+        std::string id = std::format("##{}", l);
+        bool ch = ImGui::ColorEdit3(id.c_str(), &v, ImGuiColorEditFlags_Float);
+        ui::inspector::end_property_row();
+        return ch;
+      }
+
+      if (c.flags.has_range) {
+        ui::inspector::begin_property_row(l);
+        std::string id = std::format("##{}", l);
+        bool ch = ImGui::SliderFloat(id.c_str(), &v, c.flags.range.x, c.flags.range.y);
+        ui::inspector::end_property_row();
+        return ch;
+      }
+
+      float speed = c.flags.speed.value_or(0.01f);
+      return ui::inspector::property_float(l, v, speed);
+    });
+
+    field_editors.register_editor<double>([](const std::string_view label, void* d, const ui::field_context& c) {
+      double& v = *static_cast<double*>(d);
+      float f = static_cast<float>(v);
+      if (c.flags.has_range) {
+        ui::inspector::begin_property_row(label);
+
+        std::string id = std::format("##{}", label);
+        bool ch = ImGui::SliderFloat(id.c_str(), &f, c.flags.range.x, c.flags.range.y);
+
+        ui::inspector::end_property_row();
+        if (ch) {
+          v = f;
+        }
+
+        return ch;
+      }
+
+      float speed = c.flags.speed.value_or(0.01f);
+      if (ui::inspector::property_float(label, f, speed)) {
+        v = static_cast<double>(f);
+        return true;
+      }
+
+      return false;
+    });
+
+    field_editors.register_editor<glm::vec2>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec2(l, *static_cast<glm::vec2*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::vec3>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec3(l, *static_cast<glm::vec3*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::vec4>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_vec4(l, *static_cast<glm::vec4*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::mat3>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_mat3(l, *static_cast<glm::mat3*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::mat4>([](auto l, void* d, const ui::field_context& c) { return ui::inspector::property_mat4(l, *static_cast<glm::mat4*>(d), c.flags.speed.value_or(0.01f)); });
+    field_editors.register_editor<glm::quat>([](const std::string_view label, void* d, const ui::field_context& c) {
+      auto& q = *static_cast<glm::quat*>(d);
+
+      glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
+      if (ui::inspector::property_vec3(label, euler, c.flags.speed.value_or(0.01f))) {
+        q = glm::quat(glm::radians(euler));
+        return true;
+      }
+      return false;
+    });
+    field_editors.register_editor<std::string>([](const std::string_view label, void* d, const ui::field_context& c) {
+      auto& s = *static_cast<std::string*>(d);
+
+      char buf[256];
+      std::strncpy(buf, s.c_str(), sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+
+      if (ui::inspector::property_text(label, buf, sizeof(buf))) {
+        s = std::string(buf);
+        return true;
+      }
+      return false;
+    });
+    field_editors.register_editor<orthonormal_basis>([](const std::string_view, void*, const ui::field_context&) {
+      return false;  // intentional no-op, preserves transform.local_basis behaviour
+    });
+
+    auto scalar = [](ImGuiDataType ig) {
+      return [ig](const std::string_view label, void* d, const ui::field_context&) {
+        std::string id = std::format("{}##scalar", label);
+        return ImGui::DragScalar(id.c_str(), ig, d, 0.1f, nullptr, nullptr, nullptr, 0);
+      };
+    };
+    field_editors.register_value_editor(value_type::INT8, scalar(ImGuiDataType_S8), true);
+    field_editors.register_value_editor(value_type::INT16, scalar(ImGuiDataType_S16), true);
+    field_editors.register_value_editor(value_type::INT32, scalar(ImGuiDataType_S32), true);
+    field_editors.register_value_editor(value_type::INT64, scalar(ImGuiDataType_S64), true);
+    field_editors.register_value_editor(value_type::UINT8, scalar(ImGuiDataType_U8), true);
+    field_editors.register_value_editor(value_type::UINT16, scalar(ImGuiDataType_U16), true);
+    field_editors.register_value_editor(value_type::UINT32, scalar(ImGuiDataType_U32), true);
+    field_editors.register_value_editor(value_type::UINT64, scalar(ImGuiDataType_U64), true);
+
+    field_editors.register_editor<point_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
+      point_light& pl = *reinterpret_cast<point_light*>(d);
+      bool modified = false;
+
+      ImGui::Text("%s", label.data());
+
+      const std::string id = std::format("{}##point_light", label);
+      ImGui::PushID(id.c_str());
+
+      modified |= ui::inspector::property_vec3("Position", pl.position, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec4("Color", pl.color, ctx.flags.speed.value_or(0.01));
+
+      ImGui::PopID();
+      return modified;
+    });
+    field_editors.register_editor<direction_light>([](const std::string_view label, void* d, const ui::field_context& ctx) {
+      direction_light& dl = *reinterpret_cast<direction_light*>(d);
+      bool modified = false;
+
+      ImGui::Text("%s", label.data());
+
+      const std::string id = std::format("{}##directional_light", label);
+      ImGui::PushID(id.c_str());
+
+      modified |= ui::inspector::property_vec3("Direction", dl.direction, ctx.flags.speed.value_or(0.01));
+      modified |= ui::inspector::property_vec4("Color", dl.color, ctx.flags.speed.value_or(0.01));
+
+      ImGui::PopID();
+      return modified;
+    });
+  }
+
+  void rendering_system::register_component_widgets() {
   }
 
   void rendering_system::register_builtin_resource_tags() {

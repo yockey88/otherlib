@@ -9,12 +9,12 @@ target_sources(other_scene
       src/asset/asset_pipeline.cpp
       src/asset/asset_handler.cpp
 
-      src/object/component.cpp
       src/object/scene_object.cpp
       src/object/script_component.cpp
       src/object/physics_component.cpp
       src/object/animation_controller.cpp
       src/object/object_serialization.cpp
+      src/object/component_registry.cpp
       
       src/scene/scene_network_context.cpp
       src/scene/scene_tree.cpp

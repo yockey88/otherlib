@@ -20,6 +20,21 @@ namespace other {
     current_selection.objects.push_back(object_id);
   }
 
+  void editor_context::deselect_object(natural_t object_id) {
+    if (current_selection.scene_ptr == nullptr) {
+      CORE_LOG_ERROR("Cannot deselect object with ID {} because there is no active scene.", object_id);
+      return;
+    }
+
+    auto& objects = current_selection.objects;
+    auto it = std::ranges::find(objects, object_id);
+    if (it != objects.end()) {
+      objects.erase(it);
+    } else {
+      CORE_LOG_WARN("Tried to deselect object with ID {}, but it was not in the current selection.", object_id);
+    }
+  }
+
   bool editor_context::has_selection() const {
     return current_selection.scene_ptr != nullptr &&
       !current_selection.objects.empty();

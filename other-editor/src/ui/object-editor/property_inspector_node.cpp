@@ -40,7 +40,7 @@ IMGUI_REFLECT(other::script_component, script_object_id);
 IMGUI_REFLECT(other::render_component, material, visible, animated);
 IMGUI_REFLECT(other::model, name, submesh_indices);
 IMGUI_REFLECT(other::physics_component, body, shape);
-IMGUI_REFLECT(other::physics_body_settings, body_type, mass);
+IMGUI_REFLECT(other::physics_body::settings, body_type, mass);
 IMGUI_REFLECT(other::point_light_component, light);
 IMGUI_REFLECT(other::direction_light_component, light);
 
@@ -49,7 +49,6 @@ IMGUI_REFLECT(other::camera, position, direction, euler_angles, world_up, basis)
 IMGUI_REFLECT(other::camera_component, camera);
 
 namespace other {
-
   namespace ui {
 
     property_inspector_node::property_inspector_node(editor_context& ctx, ui_window* window, driver* drvr)
@@ -57,7 +56,9 @@ namespace other {
     }
 
     template <typename T>
-    void property_inspector_node::draw_component_section(const std::string_view component_name, scene* active_scene, scene_object* object, on_component_modified_fn<T> on_modified) {
+    void property_inspector_node::draw_component_section(const std::string_view component_name, const glm::vec4& color, scene* active_scene, scene_object* object, on_component_modified_fn<T> on_modified) {
+      OTHER_ASSERT(active_scene != nullptr, "Active scene must not be nullptr in draw_component_section");
+      OTHER_ASSERT(object != nullptr, "Object must not be nullptr in draw_component_section");
       if (!active_scene->has_component<T>(object)) {
         return;
       }
@@ -65,14 +66,13 @@ namespace other {
       T* comp = active_scene->get_component<T>(object);
       OTHER_ASSERT(comp != nullptr, "Component of type '{}' not found on object with ID {}", component_name, object->id);
 
-      const auto tag = comp->get_id();
       inspector::component_section_flags section_flags{};
       if constexpr (std::is_same_v<T, transform>) {
         section_flags.removable = false;
       }
 
       bool remove_requested = false;
-      bool is_open = inspector::begin_component_section(component_name, tag, section_flags, &remove_requested);
+      bool is_open = inspector::begin_component_section(component_name, color, section_flags, &remove_requested);
 
       bool changed = false;
       OTHER_ASSERT(driver_ptr != nullptr, "Driver is null");
@@ -94,6 +94,15 @@ namespace other {
       /// \todo flesh this out more, this could be it but it may be more complicated
       if (remove_requested) {
         // active_scene->remove_component<T>(object);
+      }
+    }
+
+    template <typename T>
+    bool property_inspector_node::draw_component_selector(const std::string_view component_name, scene* active_scene, scene_object* object) {
+      OTHER_ASSERT(active_scene != nullptr, "Active scene must not be nullptr in draw_add_component_button");
+      OTHER_ASSERT(object != nullptr, "Object must not be nullptr in draw_add_component_button");
+      if (active_scene->has_component<T>(object)) {
+        return false;
       }
     }
 
@@ -143,11 +152,15 @@ namespace other {
         }
 
         /// components
-        draw_component_section<transform>("Transform", active_scene, &obj);
-        draw_component_section<script_component>("Scripts", active_scene, &obj);
+        draw_component_section<transform>("Transform", colors::scene_object::kComponentTransform, active_scene, &obj);
+        draw_component_section<script_component>("Scripts", colors::scene_object::kComponentScript, active_scene, &obj);
         draw_component_section<render_component>(
-          "Graphics Object", active_scene, &obj,
+          "Graphics Object", colors::scene_object::kComponentRenderer, active_scene, &obj,
           [](render_component* comp, scene_object* object, scene* active_scene, driver* drvr) {
+            OTHER_ASSERT(comp != nullptr, "Render component is null in on_modified callback");
+            OTHER_ASSERT(object != nullptr, "Scene object is null in render_component on_modified callback");
+            OTHER_ASSERT(active_scene != nullptr, "Active scene is null in render_component on_modified callback");
+            OTHER_ASSERT(drvr != nullptr, "Driver is null in render_component on_modified callback");
             natural_t new_asset_id = comp->model_asset_id;
 
             auto& assets = drvr->get_kernel().get_core_system<asset_system>();
@@ -169,25 +182,53 @@ namespace other {
               CORE_LOG_ERROR("Error: Asset ID {} is not a valid model or model source asset in render_component on_modified callback", new_asset_id);
             }
           });
-        draw_component_section<camera_component>("Camera", active_scene, &obj);
-        draw_component_section<physics_component>("Physics Body", active_scene, &obj);
-        draw_component_section<point_light_component>("Point Light", active_scene, &obj);
-        draw_component_section<direction_light_component>("Direction Light", active_scene, &obj);
-        draw_component_section<animation_controller>("Animation Controller", active_scene, &obj);
+        draw_component_section<physics_component>(
+          "Physics Object", colors::scene_object::kComponentPhysics, active_scene, &obj,
+          [](physics_component* comp, scene_object* object, scene* active_scene, driver* drvr) {
 
-        if (inspector::draw_add_component_button()) {
+          });
+        draw_component_section<camera_component>("Camera", colors::scene_object::kComponentCamera, active_scene, &obj);
+        draw_component_section<physics_component>("Physics Body", colors::scene_object::kComponentPhysics, active_scene, &obj);
+        draw_component_section<point_light_component>("Point Light", colors::scene_object::kComponentPointLight, active_scene, &obj);
+        draw_component_section<direction_light_component>("Direction Light", colors::scene_object::kComponentDirectionLight, active_scene, &obj);
+        draw_component_section<animation_controller>("Animation Controller", colors::scene_object::kComponentAnimationController, active_scene, &obj);
+
+        const std::string button_str = std::format("Add Component##{}", obj.name);
+        if (inspector::draw_add_component_button(button_str)) {
           /// \todo open component picker popup
           ImGui::OpenPopup("##add_component_popup");
         }
 
         /// \todo component picker popup
+        constexpr ImVec2 picker_size = { 800.f, 600.f };
+        ImGui::SetNextWindowSize(picker_size);
         if (ImGui::BeginPopup("##add_component_popup")) {
-          {
-            scoped_color text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kText));
-            ImGui::Text("Add Component...");
-            ImGui::Separator();
+          ImGui::BeginChild("##add_component_child");
+
+          auto* draw_list = ImGui::GetWindowDrawList();
+
+          ImVec2 picker_pos = ImGui::GetWindowPos();
+          ImVec2 picker_size = ImGui::GetWindowSize();
+          ImVec2 picker_end = { picker_pos.x + picker_size.x, picker_pos.y + picker_size.y };
+          draw_list->AddRectFilled(picker_pos, picker_end, colors::to_im_col({ 0.2f, 0.2f, 0.2f, 1.f }));
+
+          auto& kernel = driver_ptr->get_kernel();
+          auto& scene_sys = kernel.get_core_system<scene_system>();
+          auto& comp_registry = scene_sys.get_component_registry();
+
+          for (const auto& [comp_name, comp_info] : comp_registry.get_registry()) {
+            if (comp_info.has_component(active_scene, &obj)) {
+              continue;
+            }
+
+            if (ImGui::Selectable(comp_info.component_name.c_str())) {
+              OTHER_ASSERT(comp_info.add_component != nullptr, "Add component function is null for component '{}'", comp_info.component_name);
+              comp_info.add_component(active_scene, &obj);
+              ImGui::CloseCurrentPopup();
+            }
           }
-          /// list available component types here
+
+          ImGui::EndChild();
           ImGui::EndPopup();
         }
       }

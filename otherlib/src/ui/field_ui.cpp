@@ -1,7 +1,7 @@
 /**
  * \file ui/script/script_field_ui.cpp
  **/
-#include "ui/script/script_field_ui.hpp"
+#include "ui/field_ui.hpp"
 
 namespace other {
   namespace ui {
