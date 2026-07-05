@@ -6,9 +6,8 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "data-structures/std_container.hpp"
 #include "math/vector.hpp"
-
-#include "data-structures/arena_vector.hpp"
 
 namespace other {
 
@@ -54,7 +53,7 @@ namespace other {
 
    public:
     natural_t size = 0;
-    arena_vector<real_t> data = {};
+    ostd::vector<real_t> data = {};
   };
 
   using vectorn = dynamic_vector;

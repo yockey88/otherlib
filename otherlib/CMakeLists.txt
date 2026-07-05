@@ -169,7 +169,6 @@ target_include_directories(otherlib
     $<BUILD_INTERFACE:${PLATFORM_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}>
 )
-target_precompile_headers(otherlib REUSE_FROM other_core)
 target_compile_definitions(otherlib PRIVATE OTHERLIB_STATIC_LIBRARY)
 
 foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})

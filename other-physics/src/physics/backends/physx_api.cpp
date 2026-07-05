@@ -15,14 +15,15 @@
 #include <physx/extensions/PxExtensionsAPI.h>
 #include <physx/omnipvd/PxOmniPvd.h>
 
-#include "core/arena.hpp"
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "memory/arena.hpp"
 
 #include "physics_world/physics_world.hpp"
 
 #include "physx/OmniPvdDefines.h"
 #include "physx/foundation/PxErrors.h"
+
 
 namespace other {
   namespace {

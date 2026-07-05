@@ -21,6 +21,7 @@ Other:Driver():AddMainMenuBarMenu(
   }
 )
 
+-- Other:Driver():OpenWindow("vm-debugger")
 Other:Driver():OpenWindow("console")
 Other:Driver():OpenWindow("viewport")
 Other:Driver():OpenWindow("scene-hierarchy")

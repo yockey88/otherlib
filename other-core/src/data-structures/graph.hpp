@@ -5,6 +5,7 @@
 #define OTHER_CORE_DATA_STRUCTURES_GRAPH_HPP
 
 #include <map>
+#include <ranges>
 #include <set>
 #include <vector>
 

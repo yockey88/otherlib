@@ -1,13 +1,13 @@
 /**
- * \file core/arena_storage.hpp
+ * \file memory/arena_storage.hpp
  **/
-#ifndef OTHER_CORE_CORE_ARENA_STORAGE_HPP
-#define OTHER_CORE_CORE_ARENA_STORAGE_HPP
+#ifndef OTHER_CORE_MEMORY_ARENA_STORAGE_HPP
+#define OTHER_CORE_MEMORY_ARENA_STORAGE_HPP
 
 #include <cstdint>
 #include <vector>
 
-#include "core/page.hpp"
+#include "memory/page.hpp"
 
 namespace other {
 

@@ -108,6 +108,7 @@ namespace other {
     {
       PROFILE_SECTION("renderer_backend::load-backend--imgui-init");
       IMGUI_CHECKVERSION();
+      ImGui::SetAllocatorFunctions(&detail::imgui_allocate, &detail::imgui_deallocate);
       ImGui::CreateContext();
       ImGuiIO& io = ImGui::GetIO();
       io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -125,8 +126,6 @@ namespace other {
 
       ui_context = ImGui::GetCurrentContext();
       api()->initialize_ui_context();
-
-      ImGui::SetAllocatorFunctions(&detail::imgui_allocate, &detail::imgui_deallocate);
 
       ui_context = GImGui;
     }

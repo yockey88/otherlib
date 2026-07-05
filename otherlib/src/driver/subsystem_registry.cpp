@@ -3,12 +3,12 @@
  **/
 #include "driver/subsystem_registry.hpp"
 
-#include "core/arena.hpp"
 #include "core/logger.hpp"
 #include "core/logger_sinks.hpp"
 #include "core/subsystem.hpp"
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
+#include "memory/arena.hpp"
 
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
@@ -16,6 +16,7 @@
 
 #include "driver/driver_mounts.hpp"
 #include "scripting/bindings.hpp"
+
 
 namespace other {
   namespace detail {

@@ -1,5 +1,6 @@
 [driver]
 boot-file = "resources/editor-assets/editor-boot.oasm"
+# vm-debug-mode = true
 plugins = [
   # { name = "Other Management", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" },
   { name = "Tcp Side Channel", path = "build/other-editor/plugins/${build-config}/tcp_side_channel_plugin.dll" },

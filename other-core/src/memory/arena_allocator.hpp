@@ -1,16 +1,16 @@
 /**
- * @file core/arena_allocator.hpp
+ * @file memory/arena_allocator.hpp
  */
-#ifndef OTHER_CORE_CORE_ARENA_ALLOCATOR_HPP
-#define OTHER_CORE_CORE_ARENA_ALLOCATOR_HPP
+#ifndef OTHER_CORE_MEMORY_ARENA_ALLOCATOR_HPP
+#define OTHER_CORE_MEMORY_ARENA_ALLOCATOR_HPP
 
 #include <cstring>
 #include <new>
 #include <type_traits>
 #include <utility>
 
-#include "core/allocator.hpp"
-#include "core/arena.hpp"
+#include "memory/allocator.hpp"
+#include "memory/arena.hpp"
 
 namespace other {
 
@@ -47,9 +47,9 @@ namespace other {
       /// TODO: custom alignment
       void* memory = nullptr;
       if (override_arena != nullptr) {
-        memory = override_arena->allocate(type_size, alignof(T));
+        memory = override_arena->allocate(type_size, type_alignment);
       } else {
-        memory = arena::allocate(type_size, alignof(T));
+        memory = arena::allocate(type_size, type_alignment);
       }
 
       new (memory) T(std::forward<Args>(args)...);
@@ -61,9 +61,9 @@ namespace other {
     {
       void* memory = nullptr;
       if (override_arena != nullptr) {
-        memory = override_arena->allocate(type_size, alignof(T));
+        memory = override_arena->allocate(type_size, type_alignment);
       } else {
-        memory = arena::allocate(type_size, alignof(T));
+        memory = arena::allocate(type_size, type_alignment);
       }
 
       new (memory) T(other);
@@ -75,9 +75,9 @@ namespace other {
     {
       void* memory = nullptr;
       if (override_arena != nullptr) {
-        memory = override_arena->allocate(type_size, alignof(T));
+        memory = override_arena->allocate(type_size, type_alignment);
       } else {
-        memory = arena::allocate(type_size, alignof(T));
+        memory = arena::allocate(type_size, type_alignment);
       }
 
       new (memory) T(std::move(other));
@@ -85,7 +85,7 @@ namespace other {
     }
 
     T* allocate_block(size_t size) {
-      T* ptr = (T*)arena::allocate(size * sizeof(T), alignof(T));
+      T* ptr = (T*)arena::allocate(size * type_size, type_alignment);
       for (size_t i = 0; i < size; i++) {
         new (&ptr[i]) T();
       }
@@ -97,9 +97,9 @@ namespace other {
       }
 
       if (override_arena != nullptr) {
-        override_arena->free(ptr, size * sizeof(T));
+        override_arena->free(ptr, size * type_size);
       } else {
-        arena::free(ptr, size * sizeof(T));
+        arena::free(ptr, size * type_size);
       }
     }
 
@@ -109,16 +109,10 @@ namespace other {
       }
 
       if (override_arena != nullptr) {
-        override_arena->free(ptr, type_size);
+        override_arena->free(ptr);
       } else {
-        arena::free(ptr, type_size);
+        arena::free(ptr);
       }
-    }
-
-    template <typename T2>
-      requires std::is_base_of_v<T, T2>
-    void free(T2* ptr) {
-      free((T*)ptr);
     }
 
     static constexpr size_t type_size = sizeof(T);
@@ -138,4 +132,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_CORE_ARENA_ALLOCATOR_HPP
+#endif  // OTHER_CORE_MEMORY_ARENA_ALLOCATOR_HPP

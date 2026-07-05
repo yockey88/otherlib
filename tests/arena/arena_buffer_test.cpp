@@ -3,7 +3,7 @@
  **/
 #include "arena_buffer_test.hpp"
 
-#include "core/arena.hpp"
+#include "memory/arena.hpp"
 
 #include "gtest/gtest.h"
 

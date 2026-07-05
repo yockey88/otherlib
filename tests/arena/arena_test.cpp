@@ -7,7 +7,17 @@
 
 namespace other {
 
+  static constexpr size_t expected_block_bytes(size_t user_size) {
+    return free_list::bin_block_size(free_list::bin_index(user_size + arena::kHeaderSize));
+  }
+
   namespace {
+
+    // compile time tests
+    constexpr size_t kTestBlockSize = 64;
+    constexpr size_t kLargeBlockSize = 1024;
+    static_assert(expected_block_bytes(kTestBlockSize) == 128, "64 + 16-byte header rounds to the 128 bin.");
+    static_assert(expected_block_bytes(kLargeBlockSize) == 2048, "1024 + header rounds to the 2048 bin.");
 
     std::vector<size_t> generate_random_sizes(size_t count, size_t min_size, size_t max_size) {
       std::random_device rd;
@@ -41,12 +51,8 @@ namespace other {
   }
 
   void arena_test::verify_alignment(void* ptr, size_t alignment) {
-    CORE_LOG_DEBUG("Verifying alignment for pointer: {:p}", ptr);
     uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
-    CORE_LOG_DEBUG("Pointer address: 0x{:x}, Alignment requirement: {}", addr, alignment);
     EXPECT_EQ(addr % alignment, 0) << "Pointer is not aligned to " << alignment << " bytes: " << addr;
-    EXPECT_GE(reinterpret_cast<uint8_t*>(ptr) + kTestBlockSize, reinterpret_cast<uint8_t*>(ptr)) << "Pointer is not within valid memory range.";
-    EXPECT_LE(reinterpret_cast<uint8_t*>(ptr) + kTestBlockSize, reinterpret_cast<uint8_t*>(ptr) + kPageSize) << "Pointer exceeds page size limit.";
   }
 
   void arena_test::test_memory_boundaries(void* ptr, size_t size) {
@@ -55,8 +61,8 @@ namespace other {
     arena* a = subsystem<arena>::get();
     page* page = a->get_current_page();
     EXPECT_NE(page, nullptr) << "Current page is null during memory boundary test.";
-    EXPECT_GE(addr, reinterpret_cast<uintptr_t>(page->data())) << "Pointer is below page start address.";
-    EXPECT_LT(addr + size, reinterpret_cast<uintptr_t>(page->data()) + page::kPageSize) << "Pointer exceeds page end address.";
+    EXPECT_GE(addr, reinterpret_cast<uintptr_t>(page->data()) + arena::kHeaderSize) << "Pointer is inside the first block's header region.";
+    EXPECT_LE(addr + size, reinterpret_cast<uintptr_t>(page->data()) + page::kPageSize) << "Pointer payload exceeds page end address.";
   }
 
   void* arena_test::allocate_and_verify(size_t size) {
@@ -86,19 +92,29 @@ namespace other {
 
   void arena_test::verify_arena_state() {
     size_t total_allocated = 0;
+    size_t total_block_bytes = 0;
     for (const auto& alloc : allocations) {
       total_allocated += alloc.size;
+      total_block_bytes += expected_block_bytes(alloc.size);
     }
 
     arena* a = subsystem<arena>::get();
 
     ASSERT_EQ(a->total_allocations, allocations.size()) << "Total allocations do not match recorded allocations.";
-    ASSERT_EQ(a->used_memory, total_allocated) << "Total allocated memory does not match recorded allocations.";
+    ASSERT_EQ(a->live_allocations, allocations.size()) << "Requested memory does not match recorded allocations.";
+    ASSERT_EQ(a->requested_memory, total_allocated) << "Requested memory does not match recorded allocations.";
+    ASSERT_EQ(a->used_memory, total_block_bytes) << "Total allocated memory does not match recorded allocations.";
+    ASSERT_GE(a->used_memory, a->requested_memory + arena::kHeaderSize * allocations.size()) << "Total allocated memory does not match recorded allocations.";
+    ASSERT_EQ(a->used_memory % free_list::kMinBlockSize, 0u);
+
     ASSERT_LE(a->allocated_memory, arena_storage::kMaxMemoryAllowed) << "Allocated memory exceeds maximum allowed limit.";
     ASSERT_LE(a->page_allocation_cursor, a->storage.kMaxPages) << "Page allocation cursor exceeds maximum number pages.";
     ASSERT_NE(a->get_current_page(), nullptr) << "Current page is null after verification.";
-    ASSERT_GT(a->get_current_page()->cursor, 0) << "Current page cursor is negative.";
-    ASSERT_LT(a->get_current_page()->cursor, page::kPageSize) << "Current page cursor exceeds page size limit.";
+
+    auto* current_page = a->get_current_page();
+    ASSERT_GT(current_page->cursor, 0) << "Current page cursor is negative.";
+    ASSERT_EQ(current_page->cursor, total_block_bytes) << "Current page cursor does not match total allocated block bytes.";
+    ASSERT_LT(current_page->cursor, page::kPageSize) << "Current page cursor exceeds page size limit.";
   }
 
   TEST_F(arena_test, basic_allocation) {
@@ -111,13 +127,15 @@ namespace other {
 
     page* current_page = a->get_current_page();
     ASSERT_NE(current_page, nullptr) << "Current page is null after allocation.";
-    ASSERT_EQ(current_page->cursor, kTestBlockSize) << "Current page cursor does not match allocation size.";
+
+    const size_t expected_block_size = expected_block_bytes(kTestBlockSize);
+    ASSERT_EQ(current_page->cursor, expected_block_size) << "Current page cursor does not match allocation size.";
 
     uint64_t& value = *static_cast<uint64_t*>(ptr);
     value = 0xDEADBEEF;  // Fill with a test pattern
 
-    EXPECT_EQ(a->get_current_page()->get_ptr_at(0), ptr) << "Pointer does not match expected address in current page.";
-    EXPECT_EQ(*(uint64_t*)a->get_current_page()->get_ptr_at(0), value) << "Pointer does not match expected address in current page.";
+    EXPECT_EQ(a->get_current_page()->get_ptr_at(arena::kHeaderSize), ptr) << "Pointer does not match expected address in current page.";
+    EXPECT_EQ(*(uint64_t*)a->get_current_page()->get_ptr_at(arena::kHeaderSize), value) << "Pointer does not match expected address in current page.";
   }
 
   TEST_F(arena_test, alignment_requirements) {

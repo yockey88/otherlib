@@ -2,6 +2,48 @@
 
 ## A Game Development Framework for C++
 
+### Other Environment Architecture
+
+Key concepts of the Other Environment are defined here:
+
+- Module: any of the libraries on which `otherlib.lib` is built (`other-core`, `other-network`, `other-renderer`, etc...)
+- Other Driver: the core class of `otherlib.lib` that loads a configuration and possibly a project file and is the main application object.
+  - Drivers can be any type of program and custom drivers can load their own subsystem profiles to, for example, leave out rendering or physics for a command line application
+- Other Project: a project defined in a `.toml` file (separate from the driver configuration `.toml` file) that specifies a collection of scenes/assets/plugins.
+- Other Application: a driver with an application.
+
+Below is an incredibly rough diagram of how an Other Application works
+
+      other-core ---------------------------------------------------|
+                    |             |              |                  |
+                other-network  other-physics  other-scripting  other-renderer
+                    |             |              |                  |
+                    |             |              |                  |
+                    |             |----|    |----|                  |
+                    |                  |    |                       |
+                    |----------------| |    | |---------------------|
+                                     | |    | |
+                                    other-scene
+                                         |
+                                         |
+                                     other-ui
+                                         |
+                                         |
+                                     otherlib
+                                         |
+                                |------------------------------|
+                                |                              |
+                                |                              |
+                      (driver-author utils)--------------------|
+                                |                              |
+            otherlib-driver --------- otherlib-main     User Driver (Other Driver)
+        (for dynamic drivers)     (for static drivers)         |  
+                                                               |        Other Project (.toml)
+                                                               |                 |
+                                                               |-----------------|
+                                        |----------------------|
+                                   Other Application
+
 ### Dev Branch Status
 
 [![Dev Stability Assurance - Windows/Release](https://github.com/yockey88/otherlib/actions/workflows/build-and-test-windows-release.yml/badge.svg)](https://github.com/yockey88/otherlib/actions/workflows/build-and-test-windows-release.yml)

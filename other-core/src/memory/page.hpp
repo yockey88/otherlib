@@ -1,8 +1,8 @@
 /**
- * \file core/page.hpp
+ * \file memory/page.hpp
  **/
-#ifndef OTHER_CORE_CORE_PAGE_HPP
-#define OTHER_CORE_CORE_PAGE_HPP
+#ifndef OTHER_CORE_MEMORY_PAGE_HPP
+#define OTHER_CORE_MEMORY_PAGE_HPP
 
 #include <cstdint>
 #include <type_traits>
@@ -24,7 +24,9 @@ namespace other {
     void* get_ptr_at(size_t offset);
   };
   static_assert(std::is_trivially_destructible_v<page>, "Page must be trivially destructible to avoid destructor calls on deallocation.");
+  static_assert(alignof(page) >= page::kAlignment, "page must carry the arena alignment.");
+  static_assert(offsetof(page, storage) % page::kAlignment == 0, "page storage must start aligned.");
 
 }  // namespace other
 
-#endif  // OTHER_CORE_CORE_PAGE_HPP
+#endif  // OTHER_CORE_MEMORY_PAGE_HPP

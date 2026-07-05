@@ -8,7 +8,6 @@
 #include <spdlog/common.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
-#include "core/arena.hpp"
 #include "core/command_line.hpp"
 #include "core/config_table.hpp"
 #include "core/defines.hpp"
@@ -18,6 +17,7 @@
 #include "core/version.hpp"
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
+#include "memory/arena.hpp"
 #include "serialization/reflection.hpp"
 #include "serialization/serialization.hpp"
 #include "thread/thread_safety.hpp"
@@ -27,6 +27,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/subsystem_registry.hpp"
+
 
 extern other::exit_code other_main(const other::command_line& cmd, const other::config_table& config, const other::subsystem_registry& registry);
 

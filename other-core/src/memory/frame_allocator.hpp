@@ -1,10 +1,10 @@
 /**
- * \file core/frame_allocator.hpp
+ * \file memory/frame_allocator.hpp
  **/
-#ifndef OTHER_CORE_CORE_FRAME_ALLOCATOR_HPP
-#define OTHER_CORE_CORE_FRAME_ALLOCATOR_HPP
+#ifndef OTHER_CORE_MEMORY_FRAME_ALLOCATOR_HPP
+#define OTHER_CORE_MEMORY_FRAME_ALLOCATOR_HPP
 
-#include "core/arena.hpp"
+#include "memory/arena.hpp"
 
 namespace other {
 
@@ -28,4 +28,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_CORE_CORE_FRAME_ALLOCATOR_HPP
+#endif  // OTHER_CORE_MEMORY_FRAME_ALLOCATOR_HPP
