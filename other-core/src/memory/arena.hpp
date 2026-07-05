@@ -74,9 +74,6 @@ namespace other {
     size_t get_allocation_padding(size_t size, size_t alignment) const;
     void allocate_page();
 
-    size_t check_page_and_recalculate_padding(size_t size, size_t alignment, size_t space_needed);
-    void* do_allocation(size_t size, size_t alignment, size_t padding, size_t final_size);
-
 #ifdef OTHER_TEST_ENVIRONMENT
     friend class arena_test;
 #endif

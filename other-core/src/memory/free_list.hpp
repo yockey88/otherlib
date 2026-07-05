@@ -28,7 +28,6 @@ namespace other {
       return counts[bin];
     }
 
-    /// bytes sitting idle in bins — the number that must plateau in a long editor session
     inline size_t idle_bytes() const {
       size_t total = 0;
       for (size_t bin = 0; bin < kNumBins; bin++) {
