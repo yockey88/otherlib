@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "core/arena.hpp"
+#include "memory/arena.hpp"
 
 #include "other_test.hpp"
 

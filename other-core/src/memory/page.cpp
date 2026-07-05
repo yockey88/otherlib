@@ -1,7 +1,7 @@
 /**
  * \file core/page.cpp
  **/
-#include "core/page.hpp"
+#include "memory/page.hpp"
 
 #include "core/logger.hpp"
 

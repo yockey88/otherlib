@@ -1,7 +1,7 @@
 /**
  * \file core/frame_allocator.cpp
  **/
-#include "core/frame_allocator.hpp"
+#include "memory/frame_allocator.hpp"
 
 #include "core/logger.hpp"
 

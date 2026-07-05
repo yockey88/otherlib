@@ -9,12 +9,11 @@
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 #include "core/ref_counted.hpp"
+#include "data-structures/std_container.hpp"
 #include "math/dynamic_vector.hpp"
 #include "math/epsilon_math.hpp"
 #include "math/matrix.hpp"
 #include "math/random.hpp"
-
-#include "data-structures/arena_vector.hpp"
 
 namespace other {
 
@@ -26,7 +25,7 @@ namespace other {
 
     dynamic_matrix(natural_t r, natural_t c)
         : rows(r), cols(c) {
-      data.reserve(rows * cols);
+      data.resize(rows * cols);
       for (size_t i = 0; i < rows * cols; ++i) {
         data[i] = 0;
       }
@@ -34,7 +33,7 @@ namespace other {
 
     dynamic_matrix(natural_t r, natural_t c, real_t vals)
         : rows(r), cols(c) {
-      data.reserve(rows * cols);
+      data.resize(rows * cols);
       for (size_t i = 0; i < rows * cols; ++i) {
         data[i] = vals;
       }
@@ -58,7 +57,7 @@ namespace other {
 
     dynamic_matrix(const dynamic_matrix& other)
         : rows(other.rows), cols(other.cols) {
-      data.reserve(rows * cols);
+      data.resize(rows * cols);
       for (size_t i = 0; i < rows * cols; ++i) {
         data[i] = other.data[i];
       }
@@ -67,7 +66,7 @@ namespace other {
       if (this != &other) {
         rows = other.rows;
         cols = other.cols;
-        data.reserve(rows * cols);
+        data.resize(rows * cols);
         for (size_t i = 0; i < rows * cols; ++i) {
           data[i] = other.data[i];
         }
@@ -92,7 +91,7 @@ namespace other {
     dynamic_matrix(const std::array<real_t, N>& vals)
         : rows(R), cols(C) {
       static_assert(N == R * C, "Array size must match matrix dimensions.");
-      data.reserve(rows * cols);
+      data.resize(rows * cols);
       for (size_t i = 0; i < N; ++i) {
         data[i] = vals[i];
       }
@@ -101,7 +100,7 @@ namespace other {
     template <size_t R, size_t C>
     dynamic_matrix(const std::array<std::array<real_t, C>, R>& vals)
         : rows(R), cols(C) {
-      data.reserve(rows * cols);
+      data.resize(rows * cols);
       for (size_t i = 0; i < R; ++i) {
         for (size_t j = 0; j < C; ++j) {
           (*this)(i, j) = vals[i][j];
@@ -112,7 +111,7 @@ namespace other {
     template <natural_t R, natural_t C>
     dynamic_matrix(const matrix<R, C>& vals)
         : rows(R), cols(C) {
-      data.reserve(rows * cols);
+      data.resize(rows * cols);
       for (natural_t i = 0; i < R; ++i) {
         for (natural_t j = 0; j < C; ++j) {
           (*this)(i, j) = vals(i, j);
@@ -164,7 +163,7 @@ namespace other {
       return ss.str();
     }
 
-    arena_vector<T> data;
+    std::vector<T> data;
   };
 
   template <typename T>

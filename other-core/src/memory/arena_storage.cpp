@@ -1,7 +1,7 @@
 /**
  * \file core/arena_storage.cpp
  **/
-#include "core/arena_storage.hpp"
+#include "memory/arena_storage.hpp"
 
 #include "core/logger.hpp"
 

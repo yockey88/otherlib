@@ -8,10 +8,6 @@ target_sources(other_core
 		src/core/config_table.cpp
 		src/core/defines.cpp
 		src/core/logger.cpp
-		src/core/page.cpp
-		src/core/arena_storage.cpp
-		src/core/arena.cpp
-		src/core/frame_allocator.cpp
 		src/core/arena_buffer.cpp
 		src/core/ref_counted.cpp
 		src/core/value_storage.cpp
@@ -21,6 +17,12 @@ target_sources(other_core
 		src/core/job_graph.cpp
 		src/core/job_system.cpp
 		src/core/coroutine.cpp
+		
+		src/memory/page.cpp
+		src/memory/free_list.cpp
+		src/memory/arena_storage.cpp
+		src/memory/arena.cpp
+		src/memory/frame_allocator.cpp
 
 		src/file/file_watcher.cpp
 		src/file/file_handle.cpp
@@ -30,7 +32,6 @@ target_sources(other_core
 		src/file/directory.cpp
 		src/file/filesystem.cpp
 
-		src/data-structures/arena_vector.cpp
 		src/data-structures/graph.cpp
 
 		src/math/morton_codes.cpp

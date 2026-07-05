@@ -5,8 +5,8 @@
 
 #include <chrono>
 
-#include "core/arena_allocator.hpp"
 #include "core/logger.hpp"
+#include "memory/arena_allocator.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "vm/command_bus.hpp"
@@ -14,7 +14,6 @@
 #include "vm/command_files/ocmd_toolchain.hpp"
 #include "vm/control_table.hpp"
 #include "vm/opcode.hpp"
-
 
 namespace other {
   namespace {

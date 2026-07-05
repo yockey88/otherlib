@@ -210,8 +210,7 @@ namespace other {
         return accumulate_vector_elements(
           p1, p2, 0.f,
           [](const real_t& acc, const real_t& x) { return acc + x; },
-          [](const real_t& x, const real_t& y) { return x * y; }
-        );
+          [](const real_t& x, const real_t& y) { return x * y; });
       }
     };
 

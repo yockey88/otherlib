@@ -6,17 +6,18 @@
 #include <filesystem>
 #include <optional>
 
-#include "core/arena.hpp"
 #include "core/config_table.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "memory/arena.hpp"
 #include "serialization/reflection.hpp"
 
 #include "bindings/native_logger.hpp"
 #include "dotnet/interop_interface.hpp"
 #include "dotnet/native_string.hpp"
 #include "script/scripting_environment.hpp"
+
 
 namespace other {
   namespace {

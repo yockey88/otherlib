@@ -4,13 +4,12 @@
 
 #include "core/arena_buffer.hpp"
 
-#include "core/arena.hpp"
 #include "core/logger.hpp"
+#include "memory/arena.hpp"
 
 namespace other {
 
-  arena_buffer::arena_buffer(void* data, size_t size)
-      : memory_start(data), memory_cursor(data), capacity(size) {
+  arena_buffer::arena_buffer(void* data, size_t size) {
     if (data == nullptr || size == 0) {
       throw std::runtime_error("Invalid arena buffer initialization: data is null or size is zero.");
     }
@@ -41,9 +40,6 @@ namespace other {
   arena_buffer::arena_buffer(const arena_buffer& other) {
     allocate(other.capacity);
     write(other.memory_start, other.capacity);
-    memory_start = other.memory_start;
-    memory_cursor = other.memory_cursor;
-    capacity = other.capacity;
     offset = other.offset;
     element_sizes = other.element_sizes;
   }
@@ -69,9 +65,6 @@ namespace other {
     if (this != &other) {
       allocate(other.capacity);
       write(other.memory_start, other.capacity);
-      memory_start = other.memory_start;
-      memory_cursor = other.memory_cursor;
-      capacity = other.capacity;
       offset = other.offset;
       element_sizes = other.element_sizes;
     }
@@ -103,17 +96,16 @@ namespace other {
   }
 
   void arena_buffer::extend() {
-    size_t new_capacity = capacity * 2;
-
+    OTHER_ASSERT(memory_start != nullptr && capacity > 0, "extend() called on an unallocated arena buffer.");
+    const size_t new_capacity = capacity * 2;
     void* new_memory = subsystem<arena>::get()->allocate(new_capacity);
     OTHER_ASSERT(new_memory != nullptr, "Failed to extend arena buffer memory.");
 
-    std::memcpy(new_memory, memory_start, capacity);
-    release();
+    std::memcpy(new_memory, memory_start, offset);
+    subsystem<arena>::get()->free(memory_start, capacity);
 
     memory_start = new_memory;
-    memory_cursor = static_cast<uint8_t*>(memory_start) + offset;
-
+    memory_cursor = static_cast<uint8_t*>(new_memory) + offset;
     capacity = new_capacity;
   }
 
