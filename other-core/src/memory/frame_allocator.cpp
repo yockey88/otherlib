@@ -8,11 +8,11 @@
 namespace other {
 
   frame_allocator::frame_allocator() {
-    page = arena::request_memory_page();
+    // page = arena::request_memory_page();
   }
 
   frame_allocator::~frame_allocator() {
-    arena::free_memory_page(page);
+    // arena::free_memory_page(page);
   }
 
   void* frame_allocator::allocate(size_t size) {
@@ -20,8 +20,8 @@ namespace other {
     OTHER_ASSERT(page->cursor + size <= page::kPageSize, "Frame allocator out of memory for the current frame. Requested size: {}, Available size: {}.", size, page::kPageSize - page->cursor);
 
     void* ptr = page->get_ptr_at(page->cursor);
-    page->cursor += size;
-    frame_size += size;
+    // page->cursor += size;
+    // frame_size += size;
 
     return ptr;
   }
@@ -31,8 +31,8 @@ namespace other {
   }
 
   void frame_allocator::end_frame() {
-    page->cursor = 0;
-    frame_size = 0;
+    // page->cursor = 0;
+    // frame_size = 0;
   }
 
 }  // namespace other

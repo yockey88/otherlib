@@ -116,7 +116,7 @@ namespace other {
 
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
-    natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    natural_t add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);

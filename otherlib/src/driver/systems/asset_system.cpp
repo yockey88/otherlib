@@ -119,7 +119,7 @@ namespace other {
     asset_mgr->unload_asset(asset_id);
   }
 
-  natural_t asset_system::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+  natural_t asset_system::add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->add_model_source_asset(name, vertices, indices);
   }

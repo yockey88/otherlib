@@ -16,7 +16,7 @@ namespace other {
   }
 
   void job_system::poll() {
-    std::vector<completion_record> completions;
+    ostd::vector<completion_record> completions;
     {
       std::lock_guard lck{ completion_mutex };
       std::swap(completions, pending_completions);

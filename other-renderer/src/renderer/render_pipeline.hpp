@@ -69,7 +69,7 @@ namespace other {
     void register_buffer_resource(const std::string_view name, resource_handle handle);
     void register_shader_resource(const std::string_view name, resource_handle handle);
 
-    std::vector<std::string> get_texture_names() const;
+    ostd::vector<std::string> get_texture_names() const;
 
     ImTextureID get_final_output_texture_id();
     ImTextureID get_texture_id(const std::string_view name);

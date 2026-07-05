@@ -147,7 +147,7 @@ namespace other {
 
     virtual void bind_mesh_resource(const resource_handle& handle) = 0;
     virtual void unbind_mesh_resource(const resource_handle& handle) = 0;
-    virtual void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) = 0;
+    virtual void set_mesh_vertex_attributes(const resource_handle& handle, const std::span<const vertex_attribute> attributes) = 0;
     virtual void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) = 0;
     virtual void draw_mesh_instanced(const resource_handle& handle, const draw_call& call) = 0;
 

@@ -62,7 +62,7 @@ namespace other {
     void unbind();
     void finalize_framebuffer();
 
-    std::vector<resource_handle> color_attachments;
+    ostd::vector<resource_handle> color_attachments;
     // DEPTH, STENCIL, DEPTH_STENCIL
     std::array<opt<resource_handle>, 3> attachment_textures;
 

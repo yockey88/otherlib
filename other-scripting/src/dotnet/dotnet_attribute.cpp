@@ -24,11 +24,11 @@ namespace other {
     return res;
   }
 
-  bool dotnet_attribute_has_dotnet_attribute(const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name) {
+  bool dotnet_attribute_has_dotnet_attribute(const ostd::vector<dotnet_attribute>& attributes, const std::string_view attr_name) {
     return find_dotnet_attribute(attributes, attr_name) != attributes.end();
   }
 
-  std::vector<dotnet_attribute>::const_iterator find_dotnet_attribute(const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name) {
+  ostd::vector<dotnet_attribute>::const_iterator find_dotnet_attribute(const ostd::vector<dotnet_attribute>& attributes, const std::string_view attr_name) {
     if (auto itr = std::ranges::find_if(attributes, [&attr_name](const dotnet_attribute& attr) { return attr.name() == attr_name; }); itr != attributes.end()) {
       return itr;
     }
@@ -71,7 +71,7 @@ namespace other {
     return attributes.end();
   }
 
-  bool dotnet_attribute_get_attribute_object(dotnet_host* host, const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name, const std::string_view field_name, void* out) {
+  bool dotnet_attribute_get_attribute_object(dotnet_host* host, const ostd::vector<dotnet_attribute>& attributes, const std::string_view attr_name, const std::string_view field_name, void* out) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
 
     auto itr = find_dotnet_attribute(attributes, attr_name);

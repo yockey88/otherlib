@@ -46,9 +46,9 @@ namespace other {
     physics_shape* create_box_shape(physics_body* body, const glm::vec3& half_extents);
     physics_shape* create_sphere_shape(physics_body* body, float radius);
     physics_shape* create_capsule_shape(physics_body* body, float radius, float height);
-    physics_shape* create_convex_hull_shape(physics_body* body, const std::vector<glm::vec3>& points);
-    physics_shape* create_triangle_mesh_shape(physics_body* body, const std::vector<glm::vec3>& vertices, const std::vector<natural_t>& indices);
-    physics_shape* create_heightfield_shape(physics_body* body, const std::vector<float>& height_data, natural_t width, natural_t depth, float min_height, float max_height);
+    physics_shape* create_convex_hull_shape(physics_body* body, const ostd::vector<glm::vec3>& points);
+    physics_shape* create_triangle_mesh_shape(physics_body* body, const ostd::vector<glm::vec3>& vertices, const ostd::vector<natural_t>& indices);
+    physics_shape* create_heightfield_shape(physics_body* body, const ostd::vector<float>& height_data, natural_t width, natural_t depth, float min_height, float max_height);
     void destroy_physics_shape(physics_shape* shape);
 
     template <typename Fn>

@@ -20,7 +20,6 @@
 #include "dotnet/dotnet_type.hpp"
 #include "dotnet/types.hpp"
 
-
 namespace other {
 
   class dotnet_host;
@@ -44,12 +43,12 @@ namespace other {
     std::string get_type_name() const;
 
     bool has_attribute(const std::string_view attr_name);
-    std::vector<std::string> get_attribute_names() const;
+    ostd::vector<std::string> get_attribute_names() const;
 
-    std::vector<uint8_t> serialize_to_bytes();
+    ostd::vector<uint8_t> serialize_to_bytes();
     void load_from_bytes(const std::span<const uint8_t> buffer);
 
-    std::vector<uint8_t> serialize_field_to_bytes(const std::string_view name);
+    ostd::vector<uint8_t> serialize_field_to_bytes(const std::string_view name);
 
     template <typename T>
     T get_attribute(const std::string_view attr_name, const std::string_view field_name) {

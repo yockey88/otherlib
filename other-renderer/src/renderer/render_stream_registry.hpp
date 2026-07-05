@@ -15,7 +15,7 @@ namespace other {
   struct render_stream_recipe {
     std::string shader;  // pipeline shader name to use
     mesh::primitive_type topology;
-    std::vector<vertex_attribute> vertex_layout;
+    ostd::vector<vertex_attribute> vertex_layout;
   };
 
   struct render_stream_definition {

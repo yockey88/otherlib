@@ -16,6 +16,7 @@
 #include <glm/fwd.hpp>
 
 #include "core/build_config.hpp"
+#include "data-structures/std_container.hpp"
 
 #define bit(x) (1ll << x)
 
@@ -29,7 +30,7 @@ namespace other {
   template <typename T>
   concept is_opaque_pointer = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, void*>;
   template <typename T>
-  concept is_byte_buffer_type = std::is_same_v<std::remove_cvref_t<T>, std::vector<uint8_t>> || std::is_same_v<std::remove_cvref_t<T>, std::span<const uint8_t>>;
+  concept is_byte_buffer_type = std::is_same_v<std::remove_cvref_t<T>, ostd::vector<uint8_t>> || std::is_same_v<std::remove_cvref_t<T>, std::span<const uint8_t>>;
   template <typename T>
   concept is_character_array_ptr = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, char*>;
   template <typename T>
@@ -304,7 +305,6 @@ namespace other {
   std::string get_current_exe_name();
   std::string get_current_exe_full_path();
   std::string get_system_error_message();
-  void launch_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
 
 }  // namespace other
 

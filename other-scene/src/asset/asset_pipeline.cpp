@@ -105,7 +105,7 @@ namespace other {
     }
   }
 
-  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
     CORE_LOG_DEBUG("Building model source pipeline for model '{}', vertex count {}, index count {}", name, vertices.size(), indices.size());
     scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(events, handler);
     pl->builder = model_importer::build_model_data(name, vertices, indices);

@@ -48,10 +48,10 @@ namespace other {
   };
 
   struct draw_buffer {
-    std::vector<draw_op> draw_ops;
+    ostd::vector<draw_op> draw_ops;
     arena_buffer payload_buffer;
 
-    // std::vector<pass_state> pass_states;
+    // ostd::vector<pass_state> pass_states;
     // resource_state_table resource_states;
 
     template <typename T>

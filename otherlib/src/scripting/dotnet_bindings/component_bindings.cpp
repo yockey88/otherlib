@@ -12,12 +12,11 @@
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/dotnet_bindings/scene_bindings.hpp"
 
-
 namespace other {
   namespace detail {
 
-    std::vector<vertex> build_vertex_data(const float* vertex_data, int32_t vertex_count);
-    std::vector<index> build_index_data(const int32_t* index_data, int32_t index_count);
+    ostd::vector<vertex> build_vertex_data(const float* vertex_data, int32_t vertex_count);
+    ostd::vector<index> build_index_data(const int32_t* index_data, int32_t index_count);
 
   }  // namespace detail
   namespace bindings {
@@ -139,8 +138,8 @@ namespace other {
         OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
         OTHER_ASSERT(comp->obj_model.source != nullptr, "Render component's model source is null for object with ID {}", object_id);
 
-        const std::vector<vertex>& vertices = comp->obj_model.source->get_vertices();
-        const std::vector<index>& indices = comp->obj_model.source->get_indices();
+        const ostd::vector<vertex>& vertices = comp->obj_model.source->get_vertices();
+        const ostd::vector<index>& indices = comp->obj_model.source->get_indices();
 
         *out_num_vertices = static_cast<int32_t>(vertices.size());
         *out_num_indices = static_cast<int32_t>(indices.size());
@@ -177,8 +176,8 @@ namespace other {
       OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
 
       /// build mesh
-      std::vector<vertex> vertices = detail::build_vertex_data(vertex_data, *vertex_count);
-      std::vector<index> indices = detail::build_index_data(index_data, *index_count);
+      ostd::vector<vertex> vertices = detail::build_vertex_data(vertex_data, *vertex_count);
+      ostd::vector<index> indices = detail::build_index_data(index_data, *index_count);
 
       std::string model_name = name;
       CORE_LOG_DEBUG("Uploading mesh data for object ID {} with name '{}', vertex count {}, index count {}", object_id, model_name, vertices.size(), indices.size());
@@ -253,8 +252,8 @@ namespace other {
   }  // namespace bindings
   namespace detail {
 
-    std::vector<vertex> build_vertex_data(const float* vertex_data, int32_t vertex_count) {
-      std::vector<vertex> vertices(vertex_count);
+    ostd::vector<vertex> build_vertex_data(const float* vertex_data, int32_t vertex_count) {
+      ostd::vector<vertex> vertices(vertex_count);
 
       size_t cursor = 0;
       for (int32_t i = 0; i < vertex_count; ++i) {
@@ -293,13 +292,11 @@ namespace other {
       return vertices;
     }
 
-    std::vector<index> build_index_data(const int32_t* index_data, int32_t index_count) {
-      std::vector<index> indices(index_count);
+    ostd::vector<index> build_index_data(const int32_t* index_data, int32_t index_count) {
+      ostd::vector<index> indices(index_count);
 
       size_t cursor = 0;
       for (int32_t i = 0; i < index_count; i++) {
-        size_t start_cursor = cursor;
-
         index idx;
         idx.v0 = static_cast<uint32_t>(index_data[cursor]);
         idx.v1 = static_cast<uint32_t>(index_data[cursor + 1]);

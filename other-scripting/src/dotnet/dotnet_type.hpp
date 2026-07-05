@@ -31,7 +31,7 @@ namespace other {
     std::string class_name() const;
 
     bool has_attribute(const std::string_view attr_name) const;
-    std::vector<std::string> get_attribute_names() const;
+    ostd::vector<std::string> get_attribute_names() const;
 
     template <typename T>
     T get_attribute(const std::string_view attr_name, const std::string_view field_name) {
@@ -54,13 +54,13 @@ namespace other {
     dotnet_object* instantiate_object(const std::string_view name, const void** argv, const managed_type* arg_ts, size_t argc);
     void destroy_object(dotnet_object* obj);
 
-    const std::vector<dotnet_method>& get_methods() {
+    const ostd::vector<dotnet_method>& get_methods() {
       if (!type_interface_initialized) {
         initialize_type_interface();
       }
       return dotnet_methods;
     }
-    const std::vector<dotnet_field>& get_fields() {
+    const ostd::vector<dotnet_field>& get_fields() {
       if (!type_interface_initialized) {
         initialize_type_interface();
       }
@@ -72,13 +72,13 @@ namespace other {
    private:
     dotnet_host* host = nullptr;
 
-    std::vector<dotnet_method> dotnet_methods = {};
-    std::vector<dotnet_field> dotnet_fields = {};
-    std::vector<dotnet_attribute> dotnet_attributes = {};
+    ostd::vector<dotnet_method> dotnet_methods = {};
+    ostd::vector<dotnet_field> dotnet_fields = {};
+    ostd::vector<dotnet_attribute> dotnet_attributes = {};
 
     bool type_interface_initialized = false;
 
-    void fill_out_type_information(std::vector<int32_t>& dotnet_ids, get_type_information fn);
+    void fill_out_type_information(ostd::vector<int32_t>& dotnet_ids, get_type_information fn);
 
     void get_attribute_object(const std::string_view name, const std::string_view field_name, void* out) const;
   };

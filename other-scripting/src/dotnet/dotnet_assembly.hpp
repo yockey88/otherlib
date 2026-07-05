@@ -42,10 +42,10 @@ namespace other {
     assembly(const std::string_view name, natural_t handle, dotnet_host* host)
         : name(name), handle(handle), host(host) {}
 
-    void cache_types(type_cache* cache, const std::vector<int32_t>& dotnet_type_ids);
+    void cache_types(type_cache* cache, const ostd::vector<int32_t>& dotnet_type_ids);
     bool has_method(const std::string_view type_name, const std::string_view method_name) const;
 
-    std::vector<callback_binding> get_native_function_bindings() const;
+    ostd::vector<callback_binding> get_native_function_bindings() const;
 
     natural_t get_handle() const {
       return handle;
@@ -66,12 +66,12 @@ namespace other {
 
     dotnet_host* host = nullptr;
 
-    std::vector<dotnet_type*> types;
+    ostd::vector<dotnet_type*> types;
 
     // AssemblyLoadStatus load_status = AssemblyLoadStatus::UNKNOWN_ERROR;
-    // std::vector<dostring> internal_call_names = {};
-    // std::vector<InternalCall> internal_calls = {};
-    // std::vector<Type*> types = {};
+    // ostd::vector<dostring> internal_call_names = {};
+    // ostd::vector<InternalCall> internal_calls = {};
+    // ostd::vector<Type*> types = {};
 
     void add_call(const std::string& name, void* fn);
   };

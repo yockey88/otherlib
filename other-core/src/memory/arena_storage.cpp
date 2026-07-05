@@ -35,24 +35,4 @@ namespace other {
     return pages[idx];
   }
 
-  page* arena_storage::create_page() {
-    page* new_page = (page*)malloc(sizeof(page));
-    active_pages.push_back(new_page);
-    return new_page;
-  }
-
-  void arena_storage::free_page(page* p) {
-    if (p == nullptr) {
-      return;
-    }
-
-    auto it = std::find(active_pages.begin(), active_pages.end(), p);
-    if (it != active_pages.end()) {
-      active_pages.erase(it);
-      free(p);
-    } else {
-      CORE_LOG_ERROR("Attempted to free a page that is not in the active pages list.");
-    }
-  }
-
 }  // namespace other

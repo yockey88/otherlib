@@ -15,7 +15,6 @@
 #include "dotnet/dotnet_attribute.hpp"
 #include "dotnet/native_string.hpp"
 
-
 namespace other {
 
   class dotnet_host;
@@ -83,7 +82,7 @@ namespace other {
 
     value_type valtype = value_type::EMPTY_TYPE;
 
-    std::vector<dotnet_attribute> attributes;
+    ostd::vector<dotnet_attribute> attributes;
 
     struct field_flags {
       bool is_property = false;

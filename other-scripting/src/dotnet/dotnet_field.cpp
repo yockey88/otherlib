@@ -11,7 +11,6 @@
 #include "dotnet/host.hpp"
 #include "dotnet/native_string.hpp"
 
-
 namespace other {
 
   void dotnet_field::storage::load_from_bytes(const uint8_t* new_data, uint64_t data_size) {
@@ -44,7 +43,7 @@ namespace other {
 
   void dotnet_field::initialize_field() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
-    std::vector<int32_t> attribute_ids;
+    ostd::vector<int32_t> attribute_ids;
     int32_t num_attributes = 0;
 
     host->interop().get_field_attributes(dotnet_id, nullptr, &num_attributes);

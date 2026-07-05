@@ -47,7 +47,7 @@ namespace other {
     return std::string(cached_data.begin(), cached_data.end());
   }
 
-  std::vector<uint8_t> remote_file::read_all() {
+  ostd::vector<uint8_t> remote_file::read_all() {
     PROFILE_SECTION("remote_file::read_all");
 
     if (fetch_state != remote_fetch_state::COMPLETE) {
@@ -62,8 +62,7 @@ namespace other {
     PROFILE_SECTION("remote_file::read");
     OTHER_ASSERT(
       current_mode == file_mode::READ,
-      "Remote file '{}' is not open for reading", file_name
-    );
+      "Remote file '{}' is not open for reading", file_name);
 
     if (fetch_state != remote_fetch_state::COMPLETE) {
       CORE_LOG_WARN("Attempting to read remote file '{}' before fetch is complete", file_name);

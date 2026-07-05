@@ -83,8 +83,8 @@ namespace other {
 
     std::mutex providers_mutex;
     std::mutex sink_mutex;
-    std::vector<transport_provider*> providers;
-    std::vector<target> packet_sinks;
+    ostd::vector<transport_provider*> providers;
+    ostd::vector<target> packet_sinks;
 
     acknowledgement_list ack_list;
 

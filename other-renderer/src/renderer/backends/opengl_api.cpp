@@ -441,7 +441,7 @@ namespace other {
 
     auto itr = in_process_resources.find(handle.id);
     if (itr == in_process_resources.end()) {
-      auto [empl_itr, inserted] = in_process_resources.emplace(handle.id, std::vector<uint32_t>());
+      auto [empl_itr, inserted] = in_process_resources.emplace(handle.id, ostd::vector<uint32_t>());
       if (!inserted || empl_itr == in_process_resources.end()) {
         CORE_LOG_ERROR("Failed to create in-process resources for shader ID: {}", handle.id);
         return;
@@ -942,7 +942,7 @@ namespace other {
     glBindVertexArray(0);
   }
 
-  void opengl_api::set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) {
+  void opengl_api::set_mesh_vertex_attributes(const resource_handle& handle, const std::span<const vertex_attribute> attributes) {
     PROFILE_SECTION("opengl_api::set_mesh_vertex_attributes");
     auto itr = gpu_resources.find(handle.id);
     if (itr == gpu_resources.end()) {
@@ -1124,7 +1124,7 @@ namespace other {
       glDrawBuffer(GL_NONE);
       glReadBuffer(GL_NONE);
     } else {
-      std::vector<uint32_t> draw_buffers;
+      ostd::vector<uint32_t> draw_buffers;
       for (size_t i = 0; i < itr->second.color_attachments.size(); ++i) {
         draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + i);
       }
@@ -2198,8 +2198,8 @@ namespace other {
     glGenFramebuffers(1, &msaa_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, msaa_fbo);
 
-    std::vector<uint32_t> color_rbs;
-    std::vector<uint32_t> draw_bufs;
+    ostd::vector<uint32_t> color_rbs;
+    ostd::vector<uint32_t> draw_bufs;
     color_rbs.reserve(fb.color_attachments.size());
 
     for (size_t i = 0; i < fb.color_attachments.size(); ++i) {

@@ -72,7 +72,7 @@ namespace other {
   struct message {
     uint16_t category;
     uint16_t id;
-    std::vector<uint8_t> data;
+    ostd::vector<uint8_t> data;
 
     void set_category(message_category category) { this->category = category; }
     message_category get_category() const { return (message_category)this->category; }
@@ -87,7 +87,7 @@ namespace other {
     }
     message(message_category category, uint16_t type)
         : category(category), id(type) {}
-    message(const uint16_t cat, const uint16_t id, const std::vector<uint8_t>& msg_data)
+    message(const uint16_t cat, const uint16_t id, const ostd::vector<uint8_t>& msg_data)
         : category(cat), id(id), data(msg_data) {}
   };
 

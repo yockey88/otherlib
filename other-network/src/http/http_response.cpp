@@ -9,7 +9,7 @@
 namespace other {
   namespace http {
 
-    void response::set_headers(const std::vector<header>& headers) {
+    void response::set_headers(const ostd::vector<header>& headers) {
       this->headers = headers;
     }
 
@@ -23,7 +23,7 @@ namespace other {
       headers.push_back(header);
     }
 
-    void response::set_body(const std::vector<uint8_t>& body, const std::string_view content_type) {
+    void response::set_body(const ostd::vector<uint8_t>& body, const std::string_view content_type) {
       if (auto itr = std::ranges::find_if(headers, [&](const header& h) { return h.name == "Content-Type"; });
           itr != headers.end()) {
         headers.erase(itr);
@@ -38,7 +38,7 @@ namespace other {
     }
 
     void response::set_body_content(const std::string_view content, const std::string_view content_type) {
-      std::vector<uint8_t> body_bytes(content.begin(), content.end());
+      ostd::vector<uint8_t> body_bytes(content.begin(), content.end());
       set_body(body_bytes, content_type);
     }
 
@@ -52,11 +52,11 @@ namespace other {
       return status_line + headers_str + "\r\n" + std::string(body.begin(), body.end());
     }
 
-    std::vector<uint8_t> response::serialize(http::version ver) const {
+    ostd::vector<uint8_t> response::serialize(http::version ver) const {
       std::string resp_str = get_response_string(ver);
 
       const uint8_t* resp_bytes = reinterpret_cast<const uint8_t*>(resp_str.data());
-      return std::vector<uint8_t>{ resp_bytes, resp_bytes + resp_str.size() };
+      return ostd::vector<uint8_t>{ resp_bytes, resp_bytes + resp_str.size() };
     }
 
     std::string response::status_message() const {

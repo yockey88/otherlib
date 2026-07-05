@@ -24,7 +24,7 @@ namespace other {
     dotnet_attributes.clear();
 
     {
-      std::vector<int32_t> dotnet_attribute_ids;
+      ostd::vector<int32_t> dotnet_attribute_ids;
       fill_out_type_information(dotnet_attribute_ids, host->interop().get_attributes);
 
       dotnet_attributes.reserve(dotnet_attribute_ids.size());
@@ -36,7 +36,7 @@ namespace other {
     }
 
     {
-      std::vector<int32_t> dotnet_method_ids;
+      ostd::vector<int32_t> dotnet_method_ids;
       fill_out_type_information(dotnet_method_ids, host->interop().get_type_methods);
 
       dotnet_methods.reserve(dotnet_method_ids.size());
@@ -46,10 +46,10 @@ namespace other {
       }
     }
     {
-      std::vector<int32_t> dotnet_field_ids;
+      ostd::vector<int32_t> dotnet_field_ids;
       fill_out_type_information(dotnet_field_ids, host->interop().get_type_fields);
 
-      std::vector<int32_t> dotnet_property_ids;
+      ostd::vector<int32_t> dotnet_property_ids;
       fill_out_type_information(dotnet_property_ids, host->interop().get_type_properties);
 
       dotnet_fields.reserve(dotnet_field_ids.size() + dotnet_property_ids.size());
@@ -94,8 +94,8 @@ namespace other {
     return dotnet_attribute_has_dotnet_attribute(dotnet_attributes, attr_name);
   }
 
-  std::vector<std::string> dotnet_type::get_attribute_names() const {
-    std::vector<std::string> names;
+  ostd::vector<std::string> dotnet_type::get_attribute_names() const {
+    ostd::vector<std::string> names;
     for (const auto& attr : dotnet_attributes) {
       names.push_back(attr.name());
     }
@@ -170,7 +170,7 @@ namespace other {
     host->destroy_managed_object(obj);
   }
 
-  void dotnet_type::fill_out_type_information(std::vector<int32_t>& dotnet_ids, get_type_information fn) {
+  void dotnet_type::fill_out_type_information(ostd::vector<int32_t>& dotnet_ids, get_type_information fn) {
     OTHER_ASSERT(fn != nullptr, "get_type_information function is null");
 
     int32_t count = 0;

@@ -17,9 +17,7 @@ namespace other {
     constexpr std_arena_allocator(const std_arena_allocator<U>&) noexcept {}
 
     T* allocate(size_t n) {
-      T* obj = static_cast<T*>(arena::allocate(n * sizeof(T), alignof(T)));
-      OTHER_ASSERT(obj != nullptr, "Failed to allocate memory for {} objects.", n);
-      return obj;
+      return static_cast<T*>(arena::allocate(n * sizeof(T), alignof(T)));
     }
 
     void deallocate(T* ptr, size_t n) {

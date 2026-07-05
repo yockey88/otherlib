@@ -20,6 +20,7 @@
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 #include "core/subsystem.hpp"
+#include "data-structures/std_container.hpp"
 
 namespace other {
 
@@ -98,16 +99,16 @@ namespace other {
 
       // functions only
       opt<other::value_type> return_type;
-      std::vector<param_desc> parameters;
+      ostd::vector<param_desc> parameters;
 
       std::string get_name() const;
     };
 
     uint64_t type_hash;
     std::string type_name;
-    std::vector<member> member_descriptors;
+    ostd::vector<member> member_descriptors;
 
-    std::vector<uint64_t> base_types;
+    ostd::vector<uint64_t> base_types;
   };
 
   static inline type_key type_key_of(const reflection_data& rd) {
@@ -181,7 +182,7 @@ namespace other {
     requires { type_data_handler<T>::as_string(std::declval<const T&>()); } &&
     requires { type_data_handler<T>::as_string(std::declval<const std::string&>(), std::declval<const T&>()); } &&
     requires { type_data_handler<T>::as_bytes(std::declval<const T&>()); } &&
-    requires { type_data_handler<T>::from_bytes(std::declval<const std::vector<uint8_t>&>()); };
+    requires { type_data_handler<T>::from_bytes(std::declval<const std::span<const uint8_t>>()); };
 
   template <typename T>
   concept is_non_stringlike_container_type = is_container_type<T> && !is_stringlike_type<T>;
@@ -196,7 +197,7 @@ namespace other {
   concept reflected_type = meets_core_reflection_requirements<T> && has_type_data_handler<T>;
 
   template <typename T>
-  constexpr static bool is_buffer_type = std::is_same_v<T, std::vector<uint8_t>>;
+  constexpr static bool is_buffer_type = std::is_same_v<T, ostd::vector<uint8_t>>;
 
   template <typename T>
     requires reflected_type<T>
@@ -286,11 +287,11 @@ namespace other {
 
     template <typename T>
       requires reflected_type<T>
-    std::vector<uint8_t> write_fields_to_bytes(const T& value) const;
+    ostd::vector<uint8_t> write_fields_to_bytes(const T& value) const;
 
     template <typename T>
       requires reflected_type<T>
-    T read_fields_from_bytes(const std::vector<uint8_t>& data) const;
+    T read_fields_from_bytes(const std::span<const uint8_t> data) const;
 
     template <typename T>
       requires reflected_type<T>
@@ -364,7 +365,7 @@ namespace other {
 
   // template <typename T>
   //   requires reflected_type<T>
-  // T serializer::read_fields_from_bytes(const std::vector<uint8_t>& data) const {
+  // T serializer::read_fields_from_bytes(const std::span<const uint8_t> data) const {
   //   auto outer_map = flexbuffers::GetRoot(data).AsMap();
   //   CORE_LOG_DEBUG("Deserialized type hash: {}", outer_map["type-hash"].AsUInt64());
   //   CORE_LOG_DEBUG("Deserialized type name: {}", outer_map["type-name"].AsString().str());
@@ -395,7 +396,7 @@ namespace other {
   template <typename T>
     requires reflected_type<T>
   T serializer::read_from_file(const std::string& file_path) const {
-    std::vector<uint8_t> bytes;
+    ostd::vector<uint8_t> bytes;
     {
       std::ifstream ifs(file_path, std::ios::binary);
       if (!ifs.is_open()) {
@@ -550,8 +551,8 @@ namespace std {
     static other::reflection_data& get_reflection_data(const T& value) { return *other::type_database::get()->get_reflection_data<T>(value); }              \
     static std::string as_string(const T& value) { return other::serializer{}.write_fields_to_string<T>(std::string{ refl::reflect(value).name }, value); } \
     static std::string as_string(const std::string& name, const T& value) { return other::serializer{}.write_fields_to_string<T>(name, value); }            \
-    static std::vector<uint8_t> as_bytes(const T& value) { return other::serializer{}.write_fields_to_bytes<T>(value); }                                    \
-    static T from_bytes(const std::vector<uint8_t>& data) { return other::serializer{}.read_fields_from_bytes<T>(data); }                                   \
+    static ostd::vector<uint8_t> as_bytes(const T& value) { return other::serializer{}.write_fields_to_bytes<T>(value); }                                   \
+    static T from_bytes(const std::span<const uint8_t> data) { return other::serializer{}.read_fields_from_bytes<T>(data); }                                \
   };                                                                                                                                                        \
   static_assert(other::reflected_type<T>, "Type '" #T "' does not meet the requirements for reflection. Ensure it is default constructible and reflectable.");
 

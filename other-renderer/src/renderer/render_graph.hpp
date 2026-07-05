@@ -81,7 +81,7 @@ namespace other {
 
     graph& get_graph() { return pass_graph; }
     const graph& get_graph() const { return pass_graph; }
-    const std::vector<natural_t>& get_topological_sort() const { return topological_sort; }
+    const ostd::vector<natural_t>& get_topological_sort() const { return topological_sort; }
 
     renderer* get_renderer() { return renderer_ptr; }
 
@@ -101,13 +101,13 @@ namespace other {
 
     // graph<render_pass> pass_graph;
     graph pass_graph;
-    std::vector<natural_t> topological_sort;
+    ostd::vector<natural_t> topological_sort;
 
     pass& create_pass(render_pass::type rptype);
 
     void build_graph();
 
-    std::vector<natural_t> get_topological_sort(const graph& g);
+    ostd::vector<natural_t> get_topological_sort(const graph& g);
     void dump_pass_graph(const graph& g);
     void log_topo_sort_error(const graph& g, const std::map<natural_t, uint32_t>& remaining_in_degrees);
 

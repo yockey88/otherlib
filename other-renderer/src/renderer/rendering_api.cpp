@@ -57,10 +57,10 @@ namespace other {
         std::string name = (name_itr != resource_names.end()) ? name_itr->second : "<unknown>";
         CORE_LOG_ERROR("    Resource ID: {}, Name: {}, Type: {}, Ref Count: {}", id, name, res->res_handle.type, res->reference_count);
       }
-      std::vector<resource_handle> handles_to_clear = resources |
+      ostd::vector<resource_handle> handles_to_clear = resources |
         std::views::values |
         std::views::transform([](resource* res) { return res->res_handle; }) |
-        std::ranges::to<std::vector>();
+        std::ranges::to<ostd::vector<resource_handle>>();
       for (const auto& handle : handles_to_clear) {
         destroy_resource(handle);
       }

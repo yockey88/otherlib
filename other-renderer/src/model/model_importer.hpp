@@ -28,19 +28,19 @@ namespace other {
     glm::mat4 global_transform = glm::mat4(1.0f);
     glm::mat4 inverse_global_transform = glm::mat4(1.0f);
 
-    std::vector<vertex> vertices;
-    std::vector<index> indices;
+    ostd::vector<vertex> vertices;
+    ostd::vector<index> indices;
 
-    std::vector<submesh> submeshes;
-    std::vector<mesh_node> nodes;
+    ostd::vector<submesh> submeshes;
+    ostd::vector<mesh_node> nodes;
 
-    std::vector<material> materials;
+    ostd::vector<material> materials;
 
     skeleton skel;
 
-    std::vector<animation> animations;
+    ostd::vector<animation> animations;
 
-    std::vector<triangle> triangles;
+    ostd::vector<triangle> triangles;
 
     bounding_box bounds = bounding_box::empty;
 
@@ -53,7 +53,7 @@ namespace other {
   namespace model_importer {
 
     model_builder load_model_data(const filepath& file_path);
-    model_builder build_model_data(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    model_builder build_model_data(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices);
 
   }  // namespace model_importer
 }  // namespace other

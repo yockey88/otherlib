@@ -22,7 +22,7 @@ namespace other {
 
   void dotnet_method::initialize_method() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
-    std::vector<int32_t> attribute_ids;
+    ostd::vector<int32_t> attribute_ids;
     int32_t num_attributes = 0;
 
     host->interop().get_method_attributes(dotnet_id, nullptr, &num_attributes);
@@ -54,8 +54,8 @@ namespace other {
     }
   }
 
-  std::vector<std::string> dotnet_method::get_attribute_names() const {
-    std::vector<std::string> names;
+  ostd::vector<std::string> dotnet_method::get_attribute_names() const {
+    ostd::vector<std::string> names;
     for (const auto& attr : attributes) {
       names.push_back(attr.name());
     }

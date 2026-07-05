@@ -43,12 +43,12 @@ namespace other {
     buffer_layout(buffer_layout&& layout) noexcept;
     buffer_layout& operator=(buffer_layout&& layout) noexcept;
 
-    using attribute_list = std::vector<vertex_attribute>;
+    using attribute_list = ostd::vector<vertex_attribute>;
 
     uint32_t get_stride() const;
-    const std::vector<vertex_attribute>& get_elements() const;
+    const ostd::vector<vertex_attribute>& get_elements() const;
 
-    std::vector<uint32_t> raw_layout() const;
+    ostd::vector<uint32_t> raw_layout() const;
     uint32_t count() const;
 
     [[nodiscard]] attribute_list::iterator begin();
@@ -57,10 +57,10 @@ namespace other {
     [[nodiscard]] attribute_list::const_iterator end() const;
 
     uint32_t stride = 0;
-    std::vector<vertex_attribute> elements;
+    ostd::vector<vertex_attribute> elements;
 
    private:
-    std::vector<uint32_t> raw_layout_cache;
+    ostd::vector<uint32_t> raw_layout_cache;
 
     void calculate_offsets();
   };
@@ -78,7 +78,7 @@ namespace other {
   struct vertex {
     /// CPU side vertex data
     uint32_t id = 0;
-    std::vector<uint32_t> connected_triangles;
+    ostd::vector<uint32_t> connected_triangles;
 
     /// GPU vertex data
     glm::vec3 position = { 0, 0, 0 };
@@ -96,9 +96,9 @@ namespace other {
 
     static buffer_layout get_buffer_layout();
 
-    inline std::vector<float> to_gpu_buffer() const { return to_gpu_buffer(*this); }
-    static std::vector<float> to_gpu_buffer(const vertex& v);
-    static std::vector<float> to_gpu_buffer(const std::vector<vertex>& v);
+    inline ostd::vector<float> to_gpu_buffer() const { return to_gpu_buffer(*this); }
+    static ostd::vector<float> to_gpu_buffer(const vertex& v);
+    static ostd::vector<float> to_gpu_buffer(const std::span<const vertex> v);
   };
 
   struct index {
@@ -106,8 +106,8 @@ namespace other {
     uint32_t v1 = 0;
     uint32_t v2 = 0;
 
-    static std::vector<uint32_t> to_gpu_buffer(const index& idx);
-    static std::vector<uint32_t> to_gpu_buffer(const std::vector<index>& indices);
+    static ostd::vector<uint32_t> to_gpu_buffer(const index& idx);
+    static ostd::vector<uint32_t> to_gpu_buffer(const std::span<const index> indices);
   };
 
   struct triangle {
@@ -134,7 +134,7 @@ namespace other {
     natural_t node_id;
     natural_t sub_mesh_id;
 
-    std::vector<uint32_t> bone_ids;
+    ostd::vector<uint32_t> bone_ids;
 
     std::string name;
 
@@ -144,8 +144,8 @@ namespace other {
   struct mesh_node {
     constexpr static uint32_t kNoParent = 0xFFFFFFFF;
     uint32_t parent = kNoParent;
-    std::vector<uint32_t> children;
-    std::vector<uint32_t> sub_meshes;
+    ostd::vector<uint32_t> children;
+    ostd::vector<uint32_t> sub_meshes;
 
     std::string name;
     glm::mat4 local_transform;
@@ -166,36 +166,31 @@ OTHER_REFLECT(
   field(bitangent, other::attr::serializable()),
   field(tex_coord, other::attr::serializable()),
   field(bone_ids, other::attr::serializable()),
-  field(bone_weights, other::attr::serializable())
-)
+  field(bone_weights, other::attr::serializable()))
 
 OTHER_REFLECT(
   other::index,
   field(v0, other::attr::serializable()),
   field(v1, other::attr::serializable()),
-  field(v2, other::attr::serializable())
-)
+  field(v2, other::attr::serializable()))
 
 OTHER_REFLECT(
   other::triangle,
   field(v0_id, other::attr::serializable()),
   field(v1_id, other::attr::serializable()),
   field(v2_id, other::attr::serializable()),
-  field(centroid, other::attr::serializable())
-)
+  field(centroid, other::attr::serializable()))
 
 OTHER_REFLECT(
   other::vertex_attribute,
   field(name, other::attr::serializable()),
   field(type, other::attr::serializable()),
   field(size, other::attr::serializable()),
-  field(offset, other::attr::serializable())
-)
+  field(offset, other::attr::serializable()))
 
 OTHER_REFLECT(
   other::buffer_layout,
-  field(stride, other::attr::serializable())
-)
+  field(stride, other::attr::serializable()))
 
 OTHER_REFLECT(
   other::submesh,
@@ -207,8 +202,7 @@ OTHER_REFLECT(
   // field(local_transform, other::attr::serializable()),
   field(bounds, other::attr::serializable()),
   field(sub_mesh_id, other::attr::serializable()),
-  field(rigged, other::attr::serializable())
-)
+  field(rigged, other::attr::serializable()))
 
 OTHER_REFLECT(
   other::mesh_node,

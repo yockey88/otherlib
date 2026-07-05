@@ -51,10 +51,10 @@ namespace other {
 
     ref<file_handle> find_file_by_name(const std::string_view name, const std::string_view ext = "") const;
 
-    std::vector<ref<directory>> child_directories() const;
-    std::vector<ref<file_handle>> files() const;
+    ostd::vector<ref<directory>> child_directories() const;
+    ostd::vector<ref<file_handle>> files() const;
 
-    static std::vector<std::string> split_path(const std::string_view path);
+    static ostd::vector<std::string> split_path(const std::string_view path);
 
     const std::map<natural_t, ref<directory>>& get_children() const { return children; }
     const std::map<natural_t, ref<file_handle>>& get_files() const { return file_handles; }

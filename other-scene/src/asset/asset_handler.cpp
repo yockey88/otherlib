@@ -178,7 +178,7 @@ namespace other {
     return load_asset(file->absolute_path(), std::move(on_complete));
   }
 
-  natural_t asset_handler::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+  natural_t asset_handler::add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
     CORE_LOG_DEBUG("Adding model source asset with name: {} (vertex count: {}, index count: {})", name, vertices.size(), indices.size());
     natural_t model_id = get_next_asset_id();
 

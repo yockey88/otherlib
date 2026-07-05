@@ -18,23 +18,23 @@ namespace other {
 
       response() = default;
       response(uint16_t status_code) : status_code(status_code) {}
-      response(uint16_t status_code, std::vector<uint8_t> body)
+      response(uint16_t status_code, ostd::vector<uint8_t> body)
           : status_code(status_code), body(std::move(body)) {}
-      response(uint16_t status_code, std::vector<header> headers, std::vector<uint8_t> body)
+      response(uint16_t status_code, ostd::vector<header> headers, ostd::vector<uint8_t> body)
           : status_code(status_code), headers(std::move(headers)), body(std::move(body)) {}
 
-      void set_headers(const std::vector<header>& headers);
+      void set_headers(const ostd::vector<header>& headers);
       void add_header(const header& header);
 
-      void set_body(const std::vector<uint8_t>& body, const std::string_view content_type = "application/octet-stream");
+      void set_body(const ostd::vector<uint8_t>& body, const std::string_view content_type = "application/octet-stream");
       void set_body_content(const std::string_view content, const std::string_view content_type = "text/plain");
       std::string get_response_string(http::version version) const;
 
-      std::vector<uint8_t> serialize(http::version version) const;
+      ostd::vector<uint8_t> serialize(http::version version) const;
 
      private:
-      std::vector<header> headers;
-      std::vector<uint8_t> body;
+      ostd::vector<header> headers;
+      ostd::vector<uint8_t> body;
 
       std::string status_message() const;
     };

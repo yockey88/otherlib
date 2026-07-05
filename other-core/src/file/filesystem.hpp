@@ -24,7 +24,7 @@ namespace other {
 
   struct resolved_path {
     std::string mount_name;
-    std::vector<std::string> relative_path_components;
+    ostd::vector<std::string> relative_path_components;
     std::string file_name;
     std::string extension;
 
@@ -55,7 +55,7 @@ namespace other {
     }
 
     void initialize_file_events(event_system& events);
-    void initialize_directory_structure(const std::vector<std::string_view>& mounts = {});
+    void initialize_directory_structure(const ostd::vector<std::string_view>& mounts = {});
     void shutdown_file_system();
     void poll_files();
 
@@ -74,7 +74,7 @@ namespace other {
 
     ref<file_handle> get_file(const std::string_view engine_path);
 
-    std::vector<std::string> mounted_names() const;
+    ostd::vector<std::string> mounted_names() const;
     ref<directory> get_mount(const std::string_view mount_name) const;
     ref<directory> get_or_create_mount(const std::string_view mount_name, const filepath& path = "");
     resolved_path deep_search_for_mount(const filepath& path) const;
@@ -88,8 +88,8 @@ namespace other {
 
     ref<local_file> register_local_file(const filepath& path);
     ref<virtual_file> create_asset_virtual_file(const std::string_view virtual_path);
-    ref<virtual_file> create_virtual_file(const std::string_view mount_name, const std::string_view relative_path, std::vector<uint8_t>&& initial_data = {});
-    ref<virtual_file> create_virtual_file(const std::string_view mount_name, const std::string_view file_name, const std::string_view ext, std::vector<uint8_t>&& initial_data = {});
+    ref<virtual_file> create_virtual_file(const std::string_view mount_name, const std::string_view relative_path, ostd::vector<uint8_t>&& initial_data = {});
+    ref<virtual_file> create_virtual_file(const std::string_view mount_name, const std::string_view file_name, const std::string_view ext, ostd::vector<uint8_t>&& initial_data = {});
     ref<remote_file> register_remote_file(const std::string_view mount_name, const std::string_view relative_path, const std::string_view url);
 
     task fetch_remote(ref<remote_file> file);
@@ -107,8 +107,8 @@ namespace other {
 
     ref<local_file> create_local_file(const filepath& path);
 
-    ref<directory> walk_or_create_path(ref<directory> root, const std::vector<std::string>& components);
-    ref<directory> walk_path(ref<directory> root, const std::vector<std::string>& components) const;
+    ref<directory> walk_or_create_path(ref<directory> root, const ostd::vector<std::string>& components);
+    ref<directory> walk_path(ref<directory> root, const ostd::vector<std::string>& components) const;
     void scan_directory_impl(ref<directory> dir, const filepath& disk_path, bool recursive);
   };
 

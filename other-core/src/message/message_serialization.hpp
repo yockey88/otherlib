@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
 #define OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
 
+#include "data-structures/std_container.hpp"
 #include "serialization/reflection.hpp"
 #include "serialization/serialization.hpp"
 
@@ -41,8 +42,8 @@ namespace other {
 
   template <typename T>
     requires reflected_type<T>
-  std::vector<uint8_t> serialize_direct(const T& value, size_t level = 0) {
-    std::vector<uint8_t> data;
+  ostd::vector<uint8_t> serialize_direct(const T& value, size_t level = 0) {
+    ostd::vector<uint8_t> data;
 
     CORE_LOG_TRACE("{}[WRITE: {}]", std::string(level * 2, ' '), get_type_name<T>());
     for_each(refl::reflect(value).members, [&](const auto member) {
@@ -108,7 +109,7 @@ namespace other {
             throw buffer_parsing_error("Buffer size specified in message data for field '" + name + "' exceeds remaining data size");
           }
 
-          member(value) = std::vector<uint8_t>(remaining_data.data(), remaining_data.data() + buff_size);
+          member(value) = ostd::vector<uint8_t>(remaining_data.data(), remaining_data.data() + buff_size);
           CORE_LOG_TRACE("{}[FIELD: {}] [BLOB ({} bytes)] (type: {}, offset: {})", std::string((level + 1) * 2, ' '), name, buff_size, get_value_type<T>(), data.size() - remaining_data.size());
         }
         //

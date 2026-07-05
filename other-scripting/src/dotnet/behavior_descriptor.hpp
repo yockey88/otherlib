@@ -65,11 +65,11 @@ namespace other {
     std::string display_name;
     int32_t behavior_index = -1;
 
-    std::vector<behavior_field_descriptor> fields;
+    ostd::vector<behavior_field_descriptor> fields;
   };
 
   struct behavior_snapshot {
-    std::vector<behavior_descriptor> behaviors;
+    ostd::vector<behavior_descriptor> behaviors;
     bool valid = false;
   };
 

@@ -921,10 +921,10 @@ namespace other {
       }
 
       model* draw_model = &render.obj_model;
-      const std::vector<submesh>& submeshes = draw_model->source->get_submeshes();
+      const ostd::vector<submesh>& submeshes = draw_model->source->get_submeshes();
       OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
 
-      const std::vector<uint32_t>& sm_idxs = draw_model->submesh_indices;
+      const ostd::vector<uint32_t>& sm_idxs = draw_model->submesh_indices;
       OTHER_ASSERT(!sm_idxs.empty(), "Model has no submeshes");
       for (const auto& sm_idx : sm_idxs) {
         OTHER_ASSERT(sm_idx < submeshes.size(), "Submesh index out of bounds");

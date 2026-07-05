@@ -95,14 +95,6 @@ namespace other {
     get_instance().free(ptr);
   }
 
-  page* arena::request_memory_page() {
-    return instance_ref().storage.create_page();
-  }
-
-  void arena::free_memory_page(page* region) {
-    instance_ref().storage.free_page(region);
-  }
-
   page* arena::get_current_page() {
     return instance_ref().current_page;
   }

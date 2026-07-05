@@ -11,6 +11,7 @@
 #include "core/enum_formatter.hpp"
 #include "core/formatting.hpp"
 #include "core/logger.hpp"
+#include "data-structures/std_container.hpp"
 
 namespace other {
 
@@ -68,7 +69,7 @@ namespace other {
     virtual void on_enter_state(ST state) {}
     virtual void on_exit_state(ST state) {}
 
-    std::array<std::vector<transition>, static_cast<size_t>(ST::NUM_STATES)> transition_table = {};
+    std::array<ostd::vector<transition>, static_cast<size_t>(ST::NUM_STATES)> transition_table = {};
 
    protected:
     void add_transition(ST from, ET event, ST to, action on_transition = nullptr) {

@@ -38,7 +38,7 @@ namespace other {
     cube_map& set_format(texture::format frmt);
     cube_map& set_filter(texture::filter min_filter, texture::filter mag_filter = texture::NEAREST);
     cube_map& set_wrap_mode(texture::wrap wrap_s, texture::wrap wrap_t = texture::CLAMP_TO_EDGE, texture::wrap wrap_r = texture::CLAMP_TO_EDGE);
-    cube_map& set_data(face face_idx, const std::vector<uint8_t>& data);
+    cube_map& set_data(face face_idx, const std::span<const uint8_t> data);
     cube_map& set_data(face face_idx, const uint8_t* data, size_t size);
 
     void unbind(uint32_t slot = 0);
@@ -47,7 +47,7 @@ namespace other {
     constexpr static inline size_t kCubeFaces = 6;
 
    private:
-    std::array<std::vector<uint8_t>, kCubeFaces> faces;
+    std::array<ostd::vector<uint8_t>, kCubeFaces> faces;
 
     uint32_t mip_level = 0;
     glm::ivec2 face_size = { 0, 0 };

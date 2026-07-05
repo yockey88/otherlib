@@ -49,16 +49,16 @@ namespace other {
 
     camera* primary_camera = nullptr;             //< tag = 'main-camera'
     gpu::light* sun_directional_light = nullptr;  //< tag = 'sun'
-    std::vector<gpu::light> lights;
+    ostd::vector<gpu::light> lights;
     gpu::simulation_environment_buffer simulation_environment;
 
     size_t num_draw_calls = 0;
     std::map<mesh_key, size_t> mesh_indices;
-    std::vector<mesh_key> mesh_keys;
-    std::vector<draw_call> draw_calls;
-    std::vector<gpu::graphics_material_buffer> material_buffers;
-    std::vector<gpu::model_matrix_buffer> model_buffers;
-    std::vector<gpu::bone_matrix_buffer> bone_buffers;
+    ostd::vector<mesh_key> mesh_keys;
+    ostd::vector<draw_call> draw_calls;
+    ostd::vector<gpu::graphics_material_buffer> material_buffers;
+    ostd::vector<gpu::model_matrix_buffer> model_buffers;
+    ostd::vector<gpu::bone_matrix_buffer> bone_buffers;
 
     render_stream scene_geometry_stream;
     render_stream debug_data;
@@ -114,7 +114,7 @@ namespace other {
       }
       return itr->second;
     }
-    std::vector<std::string> get_pipeline_names() const;
+    ostd::vector<std::string> get_pipeline_names() const;
 
     void register_texture_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
     void register_buffer_resource(const std::string_view pipeline, const std::string_view name, resource_handle handle);
@@ -243,10 +243,10 @@ namespace other {
 
     /// \todo replace this with chains to reduce current rendering time when we are rendering
     ///         to multiple viewports
-    std::map<natural_t, std::vector<natural_t>> pipeline_dependencies;
-    std::vector<natural_t> pipeline_ids;
+    std::map<natural_t, ostd::vector<natural_t>> pipeline_dependencies;
+    ostd::vector<natural_t> pipeline_ids;
 
-    std::vector<natural_t> get_pipeline_order() const;
+    ostd::vector<natural_t> get_pipeline_order() const;
 
     render_pipeline* get_pass_pipeline(natural_t pass_id) const;
 

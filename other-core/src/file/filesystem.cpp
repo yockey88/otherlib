@@ -37,7 +37,7 @@ namespace other {
     this->events = &events;
   }
 
-  void file_system::initialize_directory_structure(const std::vector<std::string_view>& mounts) {
+  void file_system::initialize_directory_structure(const ostd::vector<std::string_view>& mounts) {
     for (const auto& mount : mounts) {
       if (!mount.empty()) {
         mount_virtual(mount);
@@ -243,9 +243,9 @@ namespace other {
     return nullptr;
   }
 
-  std::vector<std::string> file_system::mounted_names() const {
+  ostd::vector<std::string> file_system::mounted_names() const {
     std::lock_guard lock(fs_mutex);
-    std::vector<std::string> names;
+    ostd::vector<std::string> names;
     names.reserve(mounts.size());
     for (const auto& [hash, dir] : mounts) {
       names.push_back(dir->name());
@@ -386,7 +386,7 @@ namespace other {
     return make_ref<virtual_file>(*events, virtual_path);
   }
 
-  ref<virtual_file> file_system::create_virtual_file(const std::string_view mount_name, const std::string_view relative_path, std::vector<uint8_t>&& initial_data) {
+  ref<virtual_file> file_system::create_virtual_file(const std::string_view mount_name, const std::string_view relative_path, ostd::vector<uint8_t>&& initial_data) {
     PROFILE_SECTION("file_system::create_virtual_file");
 
     ref<directory> mount = get_mount(mount_name);
@@ -425,7 +425,7 @@ namespace other {
     return vfile;
   }
 
-  ref<virtual_file> file_system::create_virtual_file(const std::string_view mount_name, const std::string_view file_name, const std::string_view ext, std::vector<uint8_t>&& initial_data) {
+  ref<virtual_file> file_system::create_virtual_file(const std::string_view mount_name, const std::string_view file_name, const std::string_view ext, ostd::vector<uint8_t>&& initial_data) {
     PROFILE_SECTION("file_system::create_virtual_file");
 
     ref<directory> mount = get_mount(mount_name);
@@ -512,7 +512,7 @@ namespace other {
     return make_ref<local_file>(*events, path, path.string());
   }
 
-  ref<directory> file_system::walk_or_create_path(ref<directory> root, const std::vector<std::string>& components) {
+  ref<directory> file_system::walk_or_create_path(ref<directory> root, const ostd::vector<std::string>& components) {
     ref<directory> current = root;
     for (const auto& comp : components) {
       ref<directory> child = current->get_child_directory(comp);
@@ -528,7 +528,7 @@ namespace other {
     return current;
   }
 
-  ref<directory> file_system::walk_path(ref<directory> root, const std::vector<std::string>& components) const {
+  ref<directory> file_system::walk_path(ref<directory> root, const ostd::vector<std::string>& components) const {
     ref<directory> current = root;
     for (const auto& comp : components) {
       current = current->get_child_directory(comp);

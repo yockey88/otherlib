@@ -27,7 +27,7 @@ namespace other {
     str.append("\n");
   }
 
-  resource_handle shader::create(const std::string_view name, const filepath& filepath, const std::vector<setting>& settings) {
+  resource_handle shader::create(const std::string_view name, const filepath& filepath, const std::span<const setting> settings) {
     resource_handle handle = create_handle(name);
     if (handle.id == 0) {
       return { 0, resource_type::EMPTY };
@@ -48,7 +48,7 @@ namespace other {
     return handle;
   }
 
-  resource_handle shader::create(const std::string_view name, const filepath& vertpath, const filepath& fragpath, const std::vector<setting>& settings) {
+  resource_handle shader::create(const std::string_view name, const filepath& vertpath, const filepath& fragpath, const std::span<const setting> settings) {
     resource_handle handle = create_handle(name);
     if (handle.id == 0) {
       return { 0, resource_type::EMPTY };
@@ -74,7 +74,7 @@ namespace other {
     return handle;
   }
 
-  resource_handle shader::create(const std::string_view name, const filepath& vertpath, const filepath& geompath, const filepath& fragpath, const std::vector<setting>& settings) {
+  resource_handle shader::create(const std::string_view name, const filepath& vertpath, const filepath& geompath, const filepath& fragpath, const std::span<const setting> settings) {
     resource_handle handle = create_handle(name);
     if (handle.id == 0) {
       return { 0, resource_type::EMPTY };
@@ -142,7 +142,7 @@ namespace other {
     return handle;
   }
 
-  std::string shader::preprocess_file(const filepath& file, const std::vector<setting>& setting_definitions) {
+  std::string shader::preprocess_file(const filepath& file, const std::span<const setting> setting_definitions) {
     CORE_LOG_DEBUG(" - Attempting to preprocess shader source from file: {}", file.string());
     std::ifstream file_stream(file);
     if (!file_stream.is_open()) {

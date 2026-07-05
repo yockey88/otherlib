@@ -60,7 +60,7 @@ namespace other {
     std::string fragment_path;
     opt<std::string> geometry_path;
     opt<std::string> compute_path;
-    std::vector<shader::setting> defines;
+    ostd::vector<shader::setting> defines;
   };
 
   struct pipeline_resource_reference {
@@ -96,12 +96,12 @@ namespace other {
     uint32_t samples = 1;
     opt<glm::vec4> clear_color;
 
-    std::vector<pipeline_resource_reference> inputs;
-    std::vector<pipeline_resource_reference> outputs;
+    ostd::vector<pipeline_resource_reference> inputs;
+    ostd::vector<pipeline_resource_reference> outputs;
     pipeline_executor_definition executor;
 
-    std::vector<std::string> depends_on;
-    std::vector<frame_binding_definition> bindings;
+    ostd::vector<std::string> depends_on;
+    ostd::vector<frame_binding_definition> bindings;
 
     std::map<natural_t, pass_uniform_definition> uniforms;  //< FNV(pass_name + "." + name) -> value
 
@@ -120,13 +120,13 @@ namespace other {
 
     std::string display_texture_name;
 
-    std::vector<pipeline_buffer_definition> buffers;
-    std::vector<pipeline_texture_definition> textures;
-    std::vector<pipeline_shader_definition> shaders;
-    std::vector<pipeline_pass_definition> passes;
+    ostd::vector<pipeline_buffer_definition> buffers;
+    ostd::vector<pipeline_texture_definition> textures;
+    ostd::vector<pipeline_shader_definition> shaders;
+    ostd::vector<pipeline_pass_definition> passes;
 
     /// if non-empty, assert these tags are present before marking valid
-    std::vector<resource_tag> required_tags;
+    ostd::vector<resource_tag> required_tags;
   };
 
   executor_type executor_type_from_string(const std::string_view str);

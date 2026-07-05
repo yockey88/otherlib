@@ -28,6 +28,7 @@ namespace other {
     opt<uint16_t> port = 49222;                // Port to use for server communication, default is 49222
 
     /// rest of command line arguments without specific options
+    /// \note: not using arena container because this is used during startup (before arena initialization)
     std::vector<std::string> args;
 
     opt<filepath> project_file = std::nullopt;  // Path to the project file to load on startup, if applicable

@@ -199,7 +199,7 @@ namespace other {
     }
 
     {
-      std::vector<frame_node> nodes;
+      ostd::vector<frame_node> nodes;
       nodes.reserve(passes.size());
 
       for (auto& [id, pass] : passes) {
@@ -324,7 +324,7 @@ else
     return L   (a topologically sorted order)
   */
 
-  std::vector<natural_t> render_graph::get_topological_sort(const graph& g) {
+  ostd::vector<natural_t> render_graph::get_topological_sort(const graph& g) {
     /// if graph is empty (i.e. no passes), return a vector with -1 to signal that this
     ///   is a valid but empty graph (the -1 is to differentiate from an invalid graph which returns {})
     if (g.nodes.empty()) {
@@ -349,7 +349,7 @@ else
       }
     }
 
-    std::vector<natural_t> sorted;  //< L
+    ostd::vector<natural_t> sorted;  //< L
     sorted.reserve(g.nodes.size());
     while (!ready_nodes.empty()) {
       natural_t n = *ready_nodes.begin();  //< remove n from S

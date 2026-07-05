@@ -69,7 +69,7 @@ namespace other {
     return ss.str();
   }
 
-  std::vector<uint8_t> local_file::read_all() {
+  ostd::vector<uint8_t> local_file::read_all() {
     PROFILE_SECTION("local_file::read_all");
 
     bool was_open = is_open();
@@ -90,7 +90,7 @@ namespace other {
       return {};
     }
 
-    std::vector<uint8_t> buffer(static_cast<size_t>(file_size));
+    ostd::vector<uint8_t> buffer(static_cast<size_t>(file_size));
     stream.read(reinterpret_cast<char*>(buffer.data()), file_size);
 
     if (!was_open) {
@@ -103,10 +103,7 @@ namespace other {
   uint64_t local_file::read(std::span<uint8_t> buffer, uint64_t offset) {
     PROFILE_SECTION("local_file::read");
     OTHER_ASSERT(is_open(), "Cannot read from closed file '{}'", file_name);
-    OTHER_ASSERT(
-      current_mode == file_mode::READ || current_mode == file_mode::READ_WRITE,
-      "File '{}' is not open for reading", file_name
-    );
+    OTHER_ASSERT(current_mode == file_mode::READ || current_mode == file_mode::READ_WRITE, "File '{}' is not open for reading", file_name);
 
     stream.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
     stream.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
@@ -116,10 +113,7 @@ namespace other {
   uint64_t local_file::write(std::span<const uint8_t> data) {
     PROFILE_SECTION("local_file::write");
     OTHER_ASSERT(is_open(), "Cannot write to closed file '{}'", file_name);
-    OTHER_ASSERT(
-      current_mode == file_mode::WRITE || current_mode == file_mode::READ_WRITE,
-      "File '{}' is not open for writing", file_name
-    );
+    OTHER_ASSERT(current_mode == file_mode::WRITE || current_mode == file_mode::READ_WRITE, "File '{}' is not open for writing", file_name);
 
     auto before = stream.tellp();
     stream.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));

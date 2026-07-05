@@ -46,9 +46,6 @@ namespace other {
     void* request_region(size_t size, size_t alignment = page::kAlignment);
     void free_region(void* ptr);
 
-    static page* request_memory_page();
-    static void free_memory_page(page* region);
-
     page* get_current_page();
 
    private:

@@ -70,7 +70,7 @@ namespace other {
       ref<assembly> asm_ref = env->get_dotnet_module_by_asset_path(asset_ptr->absolute_path);
       OTHER_ASSERT(asm_ref != nullptr, "Failed to load .NET assembly for script asset: {}", asset_ptr->absolute_path.string());
 
-      std::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
+      ostd::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
       CORE_LOG_DEBUG("Found {} native callback bindings in assembly [{}:{}]", bindings.size(), asm_ref->get_handle(), asm_ref->get_name());
       for (const auto& binding : bindings) {
         auto last_dot = binding.full_type_and_method_name.find_last_of('.');
@@ -116,7 +116,7 @@ namespace other {
     ref<assembly> asm_ref = subsystem<scripting_environment>::get()->load_dotnet_module(path.string());
     OTHER_ASSERT(asm_ref != nullptr, "Failed to load .NET assembly from path: {}", module_path);
 
-    std::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
+    ostd::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
     CORE_LOG_DEBUG("Found {} native callback bindings in assembly [{}:{}]", bindings.size(), asm_ref->get_handle(), asm_ref->get_name());
     for (const auto& binding : bindings) {
       auto last_dot = binding.full_type_and_method_name.find_last_of('.');

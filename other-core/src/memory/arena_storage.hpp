@@ -5,7 +5,6 @@
 #define OTHER_CORE_MEMORY_ARENA_STORAGE_HPP
 
 #include <cstdint>
-#include <vector>
 
 #include "memory/page.hpp"
 
@@ -22,16 +21,11 @@ namespace other {
 
     page* get_page(size_t idx);
 
-    page* create_page();
-    void free_page(page* p);
-
    private:
 #ifdef OTHER_TEST_ENVIRONMENT
     friend class arena_test;
 #endif
     page* pages[kMaxPages];
-
-    std::vector<page*> active_pages;
   };
 
 }  // namespace other

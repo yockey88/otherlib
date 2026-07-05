@@ -13,7 +13,7 @@
 namespace other {
 
   struct per_pass_binding_state {
-    std::vector<resource_handle> per_frame_handles;
+    ostd::vector<resource_handle> per_frame_handles;
     struct draw_ring {
       resource_handle ring_buffer;  // GPU-side
       uint8_t* cpu_staging;         // CPU-side
@@ -24,7 +24,7 @@ namespace other {
       uint32_t binding_point;
       uint32_t set;  // needed for some rendering apis, gl ignores, vk uses, dx12 uses sort of..., etc.
     };
-    std::vector<draw_ring> per_draw_rings;
+    ostd::vector<draw_ring> per_draw_rings;
   };
 
   struct pass_runtime {

@@ -39,7 +39,7 @@ namespace other {
   }
 
   buffer_layout::buffer_layout(std::initializer_list<vertex_attribute> attributes) {
-    elements = std::vector<vertex_attribute>(attributes);
+    elements = ostd::vector<vertex_attribute>(attributes);
     calculate_offsets();
   }
 
@@ -79,11 +79,11 @@ namespace other {
     return stride;
   }
 
-  const std::vector<vertex_attribute>& buffer_layout::get_elements() const {
+  const ostd::vector<vertex_attribute>& buffer_layout::get_elements() const {
     return elements;
   }
 
-  std::vector<uint32_t> buffer_layout::raw_layout() const {
+  ostd::vector<uint32_t> buffer_layout::raw_layout() const {
     return raw_layout_cache;
   }
 
@@ -120,7 +120,7 @@ namespace other {
     stride = offset;
   }
 
-  std::vector<uint32_t> vertex::layout = actual_layout;
+  std::vector<uint32_t> vertex::layout = { actual_layout.begin(), actual_layout.end() };
 
   size_t vertex::stride() {
     size_t stride = 0;
@@ -142,8 +142,8 @@ namespace other {
     };
   }
 
-  std::vector<float> vertex::to_gpu_buffer(const vertex& v) {
-    std::vector<float> buffer;
+  ostd::vector<float> vertex::to_gpu_buffer(const vertex& v) {
+    ostd::vector<float> buffer;
     buffer.push_back(v.position.x);
     buffer.push_back(v.position.y);
     buffer.push_back(v.position.z);
@@ -169,20 +169,20 @@ namespace other {
     return buffer;
   }
 
-  std::vector<float> vertex::to_gpu_buffer(const std::vector<vertex>& v) {
-    std::vector<float> buffer;
+  ostd::vector<float> vertex::to_gpu_buffer(const std::span<const vertex> v) {
+    ostd::vector<float> buffer;
     for (const auto& vert : v) {
       buffer.append_range(to_gpu_buffer(vert));
     }
     return buffer;
   }
 
-  std::vector<uint32_t> index::to_gpu_buffer(const index& idx) {
+  ostd::vector<uint32_t> index::to_gpu_buffer(const index& idx) {
     return { idx.v0, idx.v1, idx.v2 };
   }
 
-  std::vector<uint32_t> index::to_gpu_buffer(const std::vector<index>& indices) {
-    std::vector<uint32_t> buffer;
+  ostd::vector<uint32_t> index::to_gpu_buffer(const std::span<const index> indices) {
+    ostd::vector<uint32_t> buffer;
     for (const auto& idx : indices) {
       buffer.append_range(to_gpu_buffer(idx));
     }

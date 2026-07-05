@@ -45,4 +45,17 @@ namespace other {
     return node;
   }
 
+  size_t free_list::free_blocks(size_t bin) const {
+    OTHER_ASSERT(bin < kNumBins, "free_list bin {} out of range.", bin);
+    return counts[bin];
+  }
+
+  size_t free_list::idle_bytes() const {
+    size_t total = 0;
+    for (size_t bin = 0; bin < kNumBins; bin++) {
+      total += counts[bin] * bin_block_size(bin);
+    }
+    return total;
+  }
+
 }  // namespace other

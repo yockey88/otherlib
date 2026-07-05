@@ -113,17 +113,17 @@ namespace other {
     input_map map;
 
     /// back = top (active)
-    std::vector<natural_t> context_stack;
+    ostd::vector<natural_t> context_stack;
 
     struct sdl_gamepad_entry {
       SDL_Gamepad* handle = nullptr;
       uint32_t instance_id = 0;
       int32_t our_index = -1;
     };
-    std::vector<sdl_gamepad_entry> sdl_gamepads;
+    ostd::vector<sdl_gamepad_entry> sdl_gamepads;
 
-    std::vector<gamepad_connection_callback> gamepad_connection_callbacks;
-    std::vector<input_state_change_callback> action_edge_callbacks;
+    ostd::vector<gamepad_connection_callback> gamepad_connection_callbacks;
+    ostd::vector<input_state_change_callback> action_edge_callbacks;
 
     key_code translate_sdl_keycode(uint32_t sdl_key) const;
     modifier_flags translate_sdl_modifiers(uint16_t sdl_mod) const;

@@ -89,7 +89,7 @@ namespace other {
 
     void bind_mesh_resource(const resource_handle& handle) override;
     void unbind_mesh_resource(const resource_handle& handle) override;
-    void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) override;
+    void set_mesh_vertex_attributes(const resource_handle& handle, const std::span<const vertex_attribute> attributes) override;
     void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) override;
     void draw_mesh_instanced(const resource_handle& handle, const draw_call& call) override;
 
@@ -118,7 +118,7 @@ namespace other {
    private:
     std::map<natural_t, uint32_t> gpu_resources;
     std::map<natural_t, resource_type> resource_types;
-    std::map<natural_t, std::vector<uint32_t>> in_process_resources;
+    std::map<natural_t, ostd::vector<uint32_t>> in_process_resources;
 
     std::map<natural_t, shader> shader_resources;
     struct uniform_key {
@@ -146,7 +146,7 @@ namespace other {
     std::map<natural_t, framebuffer> framebuffer_resources;
     std::map<natural_t, uint32_t> framebuffer_renderbuffers;
     std::map<natural_t, uint32_t> framebuffer_msaa_fbos;
-    std::map<natural_t, std::vector<uint32_t>> framebuffer_msaa_color_rbs;
+    std::map<natural_t, ostd::vector<uint32_t>> framebuffer_msaa_color_rbs;
     std::map<natural_t, uint32_t> framebuffer_msaa_depth_rbs;
     natural_t current_pass_framebuffer_id = 0;
 

@@ -163,7 +163,7 @@ namespace other {
       return ss.str();
     }
 
-    std::vector<T> data;
+    ostd::vector<T> data;
   };
 
   template <typename T>
