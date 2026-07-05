@@ -23,7 +23,7 @@ namespace other {
     /// behavior script_object IDs managed by the scripting_environment.
     /// each behavior is a separate script_object with its own dotnet_object,
     /// but is also linked to the parent SceneObject's behavior list in C#.
-    std::vector<integer_t> behavior_ids;
+    ostd::vector<integer_t> behavior_ids;
 
     void fixed_update(double delta_time);
     void update(double delta_time);

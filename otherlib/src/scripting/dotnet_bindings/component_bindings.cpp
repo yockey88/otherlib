@@ -138,8 +138,8 @@ namespace other {
         OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
         OTHER_ASSERT(comp->obj_model.source != nullptr, "Render component's model source is null for object with ID {}", object_id);
 
-        const ostd::vector<vertex>& vertices = comp->obj_model.source->get_vertices();
-        const ostd::vector<index>& indices = comp->obj_model.source->get_indices();
+        const std::span<const vertex> vertices = comp->obj_model.source->get_vertices();
+        const std::span<const index> indices = comp->obj_model.source->get_indices();
 
         *out_num_vertices = static_cast<int32_t>(vertices.size());
         *out_num_indices = static_cast<int32_t>(indices.size());

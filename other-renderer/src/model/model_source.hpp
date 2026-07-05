@@ -30,22 +30,22 @@ namespace other {
     size_t get_num_indices() const;
 
     /// non-const overloads (not all are provided)
-    inline ostd::vector<vertex>& get_vertices() { return vertices; }
-    inline ostd::vector<index>& get_indices() { return indices; }
-    inline ostd::vector<triangle>& get_triangles() { return triangles; }
-    inline ostd::vector<submesh>& get_submeshes() { return submeshes; }
-    inline ostd::vector<mesh_node>& get_nodes() { return nodes; }
+    inline std::span<vertex> get_vertices() { return vertices; }
+    inline std::span<index> get_indices() { return indices; }
+    inline std::span<triangle> get_triangles() { return triangles; }
+    inline std::span<submesh> get_submeshes() { return submeshes; }
+    inline std::span<mesh_node> get_nodes() { return nodes; }
     inline bounding_box& get_bounding_box() { return bounds; }
     /// const overloads
     inline const glm::mat4& get_global_transform() const { return global_transform; }
     inline const glm::mat4& get_inverse_global_transform() const { return inverse_global_transform; }
-    inline const ostd::vector<vertex>& get_vertices() const { return vertices; }
-    inline const ostd::vector<index>& get_indices() const { return indices; }
-    inline const ostd::vector<triangle>& get_triangles() const { return triangles; }
-    inline const ostd::vector<submesh>& get_submeshes() const { return submeshes; }
-    inline const ostd::vector<mesh_node>& get_nodes() const { return nodes; }
-    inline const ostd::vector<material>& get_materials() const { return materials; }
-    inline const ostd::vector<animation>& get_animations() const { return animations; }
+    inline const std::span<const vertex> get_vertices() const { return vertices; }
+    inline const std::span<const index> get_indices() const { return indices; }
+    inline const std::span<const triangle> get_triangles() const { return triangles; }
+    inline const std::span<const submesh> get_submeshes() const { return submeshes; }
+    inline const std::span<const mesh_node> get_nodes() const { return nodes; }
+    inline const std::span<const material> get_materials() const { return materials; }
+    inline const std::span<const animation> get_animations() const { return animations; }
     inline const bounding_box& get_bounding_box() const { return bounds; }
 
     animation* get_animation_by_name(const std::string& name);

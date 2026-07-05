@@ -42,9 +42,9 @@ namespace other {
       // contains object and all children nodes
       bounding_box bbox = {};
       scene_object* object = nullptr;
-      std::vector<node*> children = {};
+      ostd::vector<node*> children = {};
 
-      std::vector<object_tag> tags = {};
+      ostd::vector<object_tag> tags = {};
     };
 
     scene_tree();
@@ -75,7 +75,7 @@ namespace other {
 
     void destroy_object(natural_t id);
 
-    std::vector<uint64_t> get_all_object_ids() const;
+    ostd::vector<uint64_t> get_all_object_ids() const;
 
     size_t get_object_count() const;
 

@@ -13,8 +13,8 @@ namespace other {
 
     struct menu {
       std::string name;
-      std::vector<menu> sub_menus;
-      std::vector<menu_item> items;
+      ostd::vector<menu> sub_menus;
+      ostd::vector<menu_item> items;
 
       std::function<void()> dynamic_sub_menus = nullptr;
       std::function<void()> dynamic_items = nullptr;

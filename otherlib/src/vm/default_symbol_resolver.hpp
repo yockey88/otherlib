@@ -24,7 +24,7 @@ namespace other {
       std::string name;
       operand_kind kind;
       uint16_t address;
-      std::vector<uint8_t> invocation_thunk;
+      ostd::vector<uint8_t> invocation_thunk;
     };
     std::unordered_map<natural_t, symbol_info> symbols;
   };

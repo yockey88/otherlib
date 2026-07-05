@@ -15,13 +15,13 @@
 namespace other {
   namespace serialization {
 
-    std::vector<uint8_t> write_scene_to_bytes(const scene& s, uint8_t scene_index) {
+    ostd::vector<uint8_t> write_scene_to_bytes(const scene& s, uint8_t scene_index) {
       /**
        | 1 bytes | 1 byte | 1 byte | 8 bytes | 2 bytes  | <scene name> | 2 bytes    | <objects>    |
        |-------------------------------------------------------------------------------------------|
        |  marker | type   | index  |   id    | name len |   name       | obj count  |   objects    |
        **/
-      std::vector<uint8_t> data = {
+      ostd::vector<uint8_t> data = {
         0xFF,  /// marker for scene start
         parsed_scene::INLINE,
         scene_index,  /// scene index
@@ -31,14 +31,14 @@ namespace other {
       // write_string_value(s.name, data);
       // write_value<uint16_t>((uint16_t)s.get_object_count(), data);
 
-      // std::vector<uint64_t> object_ids = s.get_all_object_ids();
+      // ostd::vector<uint64_t> object_ids = s.get_all_object_ids();
       // for (uint64_t id : object_ids) {
       //   if (id == 0) {
       //     /// root object, skip
       //     continue;
       //   }
 
-      //   std::vector<uint8_t> object_data = write_object_to_bytes(s, s.get_object(id));
+      //   ostd::vector<uint8_t> object_data = write_object_to_bytes(s, s.get_object(id));
       //   data.append_range(object_data);
       // }
 
@@ -76,8 +76,8 @@ namespace other {
       return { std::move(scene1), cur };
     }
 
-    std::pair<std::vector<scene>, natural_t> parse_scene_list(const std::span<const uint8_t> buffer, natural_t num_scenes) {
-      std::vector<scene> scenes = {};
+    std::pair<ostd::vector<scene>, natural_t> parse_scene_list(const std::span<const uint8_t> buffer, natural_t num_scenes) {
+      ostd::vector<scene> scenes = {};
       size_t cur = 0;
 
       // for (uint16_t i = 0; i < num_scenes && cur < buffer.size(); ++i) {
@@ -91,7 +91,7 @@ namespace other {
 
     namespace detail {
 
-      std::string get_entity_and_children_string(const parsed_scene_object& obj, const std::vector<parsed_scene_object>& all_objects, size_t indent_level = 0) {
+      std::string get_entity_and_children_string(const parsed_scene_object& obj, const std::span<const parsed_scene_object> all_objects, size_t indent_level = 0) {
         std::stringstream ss;
         // std::string indent(indent_level * 2, ' ');
         // ss << indent << " '" << obj.object.name << "' (ID: " << obj.object.id << ")\n";

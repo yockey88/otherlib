@@ -81,7 +81,7 @@ namespace other {
 
     graph& get_graph() { return pass_graph; }
     const graph& get_graph() const { return pass_graph; }
-    const ostd::vector<natural_t>& get_topological_sort() const { return topological_sort; }
+    const std::span<const natural_t> get_topological_sort() const { return topological_sort; }
 
     renderer* get_renderer() { return renderer_ptr; }
 

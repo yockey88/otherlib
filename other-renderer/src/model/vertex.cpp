@@ -79,7 +79,7 @@ namespace other {
     return stride;
   }
 
-  const ostd::vector<vertex_attribute>& buffer_layout::get_elements() const {
+  const std::span<const vertex_attribute> buffer_layout::get_elements() const {
     return elements;
   }
 

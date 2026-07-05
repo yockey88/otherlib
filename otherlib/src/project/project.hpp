@@ -49,14 +49,14 @@ namespace other {
       bool scene_loaded;
       natural_t scene_id;
 
-      std::vector<std::string> incoming_scenes;
-      std::vector<std::string> outgoing_scenes;
+      ostd::vector<std::string> incoming_scenes;
+      ostd::vector<std::string> outgoing_scenes;
     };
     struct script_data {
       filepath csproject_path;
       filepath cs_script_source;
-      std::vector<filepath> cs_scripts;
-      std::vector<filepath> lua_scripts;
+      ostd::vector<filepath> cs_scripts;
+      ostd::vector<filepath> lua_scripts;
     };
 
     project(project_system* proj_system);
@@ -100,8 +100,8 @@ namespace other {
     inline bool scene_graph_unloaded() const { return all_scenes_unloaded; }
 
     inline natural_t get_starting_scene_id() const { return starting_scene_id; }
-    inline std::vector<project::scene>& get_scenes() { return scenes_in_project; }
-    inline const std::vector<project::scene>& get_scenes() const { return scenes_in_project; }
+    inline std::span<project::scene> get_scenes() { return scenes_in_project; }
+    inline const std::span<const project::scene> get_scenes() const { return scenes_in_project; }
 
    private:
     struct project_args {
@@ -121,7 +121,7 @@ namespace other {
     script_data project_scripts;
 
     natural_t starting_scene_id = 0;
-    std::vector<scene> scenes_in_project;
+    ostd::vector<scene> scenes_in_project;
     bool all_scenes_loaded = false;
     bool all_scenes_unloaded = true;
 
@@ -156,10 +156,10 @@ namespace other {
   //   filepath output_directory = "${project-directory}/build";
   //   filepath exe_name = "${project-directory}/${project-name}.exe";
 
-  //   std::vector<std::string> configurations = { "Debug", "Release" };
+  //   ostd::vector<std::string> configurations = { "Debug", "Release" };
 
   //   size_t active_configuration = 0;
-  //   std::vector<std::string> cmd_args = {};
+  //   ostd::vector<std::string> cmd_args = {};
 
   //   std::string version = "0.1.0";
   //   std::string description = "An Other project.";

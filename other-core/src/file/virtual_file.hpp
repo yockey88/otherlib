@@ -37,8 +37,8 @@ namespace other {
     uint64_t write(std::span<const uint8_t> data) override;
 
     /// direct access to the underlying buffer for zero-copy reads
-    const ostd::vector<uint8_t>& raw_buffer() const { return buffer; }
-    ostd::vector<uint8_t>& raw_buffer() { return buffer; }
+    const std::span<const uint8_t> raw_buffer() const { return buffer; }
+    std::span<uint8_t> raw_buffer() { return buffer; }
 
     /// resets the read/write cursor to the beginning
     void rewind() { cursor = 0; }

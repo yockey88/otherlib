@@ -52,7 +52,7 @@ namespace other {
     return std::ranges::find(kKeywordTokens, str, &keyword_token::text) != kKeywordTokens.end();
   }
 
-  std::vector<token> ocmd_lexer::tokenize(diagnostic_engine* diag) {
+  ostd::vector<token> ocmd_lexer::tokenize(diagnostic_engine* diag) {
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine is null in lexer!");
     diagnostics = diag;
 
@@ -83,7 +83,7 @@ namespace other {
           throw ocmd_toolchain_error(LEX_INVALID_CHAR, { loc }, "Unexpected character encountered during lexing");
         }
       } catch (const ocmd_toolchain_error& e) {
-        diagnostic d = kDiagnostics[e.error];
+        diagnostic d = get_diagnostic(e.error);
         d.span = e.loc;
         d.final_message = e.msg;
         diagnostics->emit(d);

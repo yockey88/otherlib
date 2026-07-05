@@ -30,8 +30,8 @@ namespace other {
     };
 
     std::string name;
-    std::vector<instruction_ir> instructions = {};
-    std::vector<jump_label_ir> jump_labels = {};
+    ostd::vector<instruction_ir> instructions = {};
+    ostd::vector<jump_label_ir> jump_labels = {};
   };
 
   struct data_section_ir {
@@ -43,20 +43,20 @@ namespace other {
     };
 
     std::string name;
-    std::vector<data_object_ir> objects = {};
+    ostd::vector<data_object_ir> objects = {};
   };
 
   struct section_ir {
-    std::vector<code_section_ir> sections = {};
-    std::vector<data_section_ir> data_sections = {};
+    ostd::vector<code_section_ir> sections = {};
+    ostd::vector<data_section_ir> data_sections = {};
   };
 
   namespace detail {
 
     template <typename R>
       requires std::ranges::input_range<R> && std::is_same_v<std::ranges::range_value_t<R>, token>
-    std::vector<token> recombine_parameter_tokens(R token_view) {
-      std::vector<token> combined_tokens;
+    ostd::vector<token> recombine_parameter_tokens(R token_view) {
+      ostd::vector<token> combined_tokens;
       for (auto it = std::ranges::begin(token_view); it != std::ranges::end(token_view);) {
         if (it->type == TOKEN_TYPE_LEFT_BRACKET) {
           token accessed_token = *it;
@@ -130,9 +130,9 @@ namespace other {
 
     template <typename R>
       requires std::ranges::input_range<R> && std::is_same_v<std::ranges::range_value_t<R>, token>
-    std::vector<token> collect_instruction_parameter_tokens(R token_view) {
-      std::vector<token> combined_tokens;
-      std::vector<token> current_parameter_tokens;
+    ostd::vector<token> collect_instruction_parameter_tokens(R token_view) {
+      ostd::vector<token> combined_tokens;
+      ostd::vector<token> current_parameter_tokens;
 
       auto flush_current_parameter = [&combined_tokens, &current_parameter_tokens]() {
         if (current_parameter_tokens.empty()) {

@@ -59,7 +59,7 @@ namespace other {
     driver_ui_ptr = make_scope<driver_ui>(&get_driver());
     driver_ui_ptr->initialize();
 
-    auto open_windows = get_driver().configuration().get_value<std::vector<std::string>>("ui.open-windows", std::vector<std::string>{});
+    auto open_windows = get_driver().configuration().get_value<ostd::vector<std::string>>("ui.open-windows", ostd::vector<std::string>{});
     for (const auto& window_name : open_windows) {
       value val = window_name;
       sibling<event_driver_system>(*kernel).handle_open_ui_window_event(kernel, val);
@@ -519,7 +519,7 @@ namespace other {
     //   ass.asset_id = default_pl;
     // }
 
-    std::vector<std::string> pipeline_paths = get_driver().get_config_value<std::vector<std::string>>("rendering.pipelines", {});
+    ostd::vector<std::string> pipeline_paths = get_driver().get_config_value<ostd::vector<std::string>>("rendering.pipelines", {});
     if (pipeline_paths.size() > 0) {
       CORE_LOG_WARN("No rendering pipelines specified in configuration.");
       for (const auto& pipeline_path : pipeline_paths) {
@@ -537,10 +537,10 @@ namespace other {
     auto& driver_ui_ptr = get_driver().get_ui();
     OTHER_ASSERT(driver_ui_ptr != nullptr, "Driver UI is not initialized.");
 
-    std::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
-    std::vector<std::string> windows = driver_ui_ptr->get_available_window_names() |
+    ostd::vector<std::string> open_windows = driver_ui_ptr->get_open_window_names();
+    ostd::vector<std::string> windows = driver_ui_ptr->get_available_window_names() |
       std::views::filter([&open_windows](const std::string& name) { return std::ranges::find(open_windows, name) == open_windows.end(); }) |
-      std::ranges::to<std::vector>();
+      std::ranges::to<ostd::vector<std::string>>();
 
     std::stringstream ss;
     ss << "Available Driver UI Windows:\n";

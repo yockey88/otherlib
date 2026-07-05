@@ -11,7 +11,7 @@ namespace other {
     if (auto itr = symbols.find(FNV(symbol)); itr != symbols.end()) {
       return;
     }
-    auto [itr, inserted] = symbols.emplace(FNV(symbol), symbol_info{ .address = 0xFFFF, .invocation_thunk = std::vector<uint8_t>(invocation_thunk.begin(), invocation_thunk.end()) });
+    auto [itr, inserted] = symbols.emplace(FNV(symbol), symbol_info{ .address = 0xFFFF, .invocation_thunk = ostd::vector<uint8_t>(invocation_thunk.begin(), invocation_thunk.end()) });
     if (!inserted) {
       throw ocmd_linking_error(std::format("Symbol '{}' is already registered as a code label", symbol));
     }

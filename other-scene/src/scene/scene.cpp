@@ -444,12 +444,12 @@ namespace other {
     return get_parent(object->id);
   }
 
-  std::vector<uint64_t> scene::get_children_ids(natural_t id) const {
+  ostd::vector<uint64_t> scene::get_children_ids(natural_t id) const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children_ids");
     const scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
-    std::vector<uint64_t> children_ids;
+    ostd::vector<uint64_t> children_ids;
     for (const scene_tree::node* child : node->children) {
       if (child != nullptr && child->object != nullptr) {
         children_ids.push_back(child->object->id);
@@ -458,7 +458,7 @@ namespace other {
     return children_ids;
   }
 
-  std::vector<uint64_t> scene::get_children_ids(const scene_object* object) const {
+  ostd::vector<uint64_t> scene::get_children_ids(const scene_object* object) const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children_ids");
     if (object == nullptr) {
@@ -467,7 +467,7 @@ namespace other {
     return get_children_ids(object->id);
   }
 
-  std::vector<scene_object*> scene::get_children(natural_t id) {
+  ostd::vector<scene_object*> scene::get_children(natural_t id) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children");
 
@@ -477,7 +477,7 @@ namespace other {
       return {};
     }
 
-    std::vector<scene_object*> children;
+    ostd::vector<scene_object*> children;
     for (const scene_tree::node* child : node->children) {
       if (child != nullptr && child->object != nullptr) {
         children.push_back(child->object);
@@ -498,7 +498,7 @@ namespace other {
     return nullptr;
   }
 
-  std::vector<scene_object*> scene::get_children(const scene_object* object) {
+  ostd::vector<scene_object*> scene::get_children(const scene_object* object) {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_children");
 
@@ -508,7 +508,7 @@ namespace other {
     return get_children(object->id);
   }
 
-  std::vector<uint64_t> scene::get_all_object_ids() const {
+  ostd::vector<uint64_t> scene::get_all_object_ids() const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_all_object_ids");
     return storage->tree.get_all_object_ids();
@@ -921,10 +921,10 @@ namespace other {
       }
 
       model* draw_model = &render.obj_model;
-      const ostd::vector<submesh>& submeshes = draw_model->source->get_submeshes();
+      const auto submeshes = draw_model->source->get_submeshes();
       OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
 
-      const ostd::vector<uint32_t>& sm_idxs = draw_model->submesh_indices;
+      const auto sm_idxs = draw_model->submesh_indices;
       OTHER_ASSERT(!sm_idxs.empty(), "Model has no submeshes");
       for (const auto& sm_idx : sm_idxs) {
         OTHER_ASSERT(sm_idx < submeshes.size(), "Submesh index out of bounds");

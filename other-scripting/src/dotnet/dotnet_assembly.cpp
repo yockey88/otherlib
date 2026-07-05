@@ -14,7 +14,7 @@
 
 namespace other {
 
-  void assembly::cache_types(type_cache* cache, const ostd::vector<int32_t>& dotnet_type_ids) {
+  void assembly::cache_types(type_cache* cache, const std::span<const int32_t> dotnet_type_ids) {
     for (auto id : dotnet_type_ids) {
       types.emplace_back(cache->cache_type(host, id));
     }

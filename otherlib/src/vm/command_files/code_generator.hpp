@@ -19,9 +19,9 @@ namespace other {
   };
 
   struct lowering_artifact {
-    std::vector<instruction> machine_instructions = {};
-    std::vector<fixup_handle> jump_labels = {};
-    std::vector<fixup_handle> unresolved_labels = {};
+    ostd::vector<instruction> machine_instructions = {};
+    ostd::vector<fixup_handle> jump_labels = {};
+    ostd::vector<fixup_handle> unresolved_labels = {};
   };
 
   class ocmd_code_generator {

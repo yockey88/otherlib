@@ -54,13 +54,13 @@ namespace other {
     dotnet_object* instantiate_object(const std::string_view name, const void** argv, const managed_type* arg_ts, size_t argc);
     void destroy_object(dotnet_object* obj);
 
-    const ostd::vector<dotnet_method>& get_methods() {
+    const std::span<dotnet_method> get_methods() {
       if (!type_interface_initialized) {
         initialize_type_interface();
       }
       return dotnet_methods;
     }
-    const ostd::vector<dotnet_field>& get_fields() {
+    const std::span<dotnet_field> get_fields() {
       if (!type_interface_initialized) {
         initialize_type_interface();
       }

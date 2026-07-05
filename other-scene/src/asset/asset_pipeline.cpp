@@ -270,7 +270,7 @@ namespace other {
   //     co_await task::yield();
   //   }
 
-  //   std::vector<natural_t> dependencies = {};
+  //   ostd::vector<natural_t> dependencies = {};
   //   if (load_job != nullptr) {
   //     /// it is probably done here since we yielded after posting it,
   //     //   but just in case we can yield again until it is done
@@ -316,7 +316,7 @@ namespace other {
       }
 
       model_builder builder;
-      std::vector<natural_t> dependencies = {};
+      ostd::vector<natural_t> dependencies = {};
 
       ref<job> source_job = nullptr;
       if (load_model) {

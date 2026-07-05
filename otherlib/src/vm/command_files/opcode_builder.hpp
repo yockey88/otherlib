@@ -42,8 +42,8 @@ namespace other {
 
     vm_version target_vm_version;
 
-    std::vector<fixup_handle> jump_labels;
-    std::vector<canonical_instruction> emitted_instructions;
+    ostd::vector<fixup_handle> jump_labels;
+    ostd::vector<canonical_instruction> emitted_instructions;
 
     void emit(const canonical_instruction& instr);
   };

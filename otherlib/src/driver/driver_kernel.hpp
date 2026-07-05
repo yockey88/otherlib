@@ -12,7 +12,6 @@
 #include "driver/systems/driver_plugin.hpp"
 #include "plugin/plugin_manifest.hpp"
 
-
 namespace other {
 
   class driver;
@@ -130,7 +129,7 @@ namespace other {
     driver* driver_instance;
 
     std::map<size_t, driver_system_type> registered_core_systems;
-    std::vector<driver_system_type> system_order;
+    ostd::vector<driver_system_type> system_order;
 
     std::map<system_key, std::string> plugin_name;
     std::map<system_key, driver_system*> plugin_systems;
@@ -143,7 +142,7 @@ namespace other {
 
     struct plugin_registry {
       environment_registry registry;
-      std::vector<plugin_library_info> provided_plugins;
+      ostd::vector<plugin_library_info> provided_plugins;
 
       plugin_registry(interface_scope scope)
           : registry(scope) {}

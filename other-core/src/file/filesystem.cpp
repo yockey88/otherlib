@@ -3,8 +3,8 @@
  **/
 #include "file/filesystem.hpp"
 
-#include <algorithm>
 #include <filesystem>
+#include <ranges>
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
@@ -37,7 +37,7 @@ namespace other {
     this->events = &events;
   }
 
-  void file_system::initialize_directory_structure(const ostd::vector<std::string_view>& mounts) {
+  void file_system::initialize_directory_structure(const std::span<const std::string_view> mounts) {
     for (const auto& mount : mounts) {
       if (!mount.empty()) {
         mount_virtual(mount);
@@ -305,7 +305,7 @@ namespace other {
       return nullptr;
     }
 
-    auto& components = rp.relative_path_components;
+    std::span<const std::string> components = rp.relative_path_components;
     if (components.empty()) {
       CORE_LOG_ERROR("Cannot open '{}': empty relative path", engine_path);
       return nullptr;
@@ -313,7 +313,7 @@ namespace other {
 
     /// the last component is the file name, everything before is directory path
     std::string file_name = components.back();
-    components.pop_back();
+    components = components.subspan(0, components.size() - 1);
 
     ref<directory> target_dir = mount;
     if (!components.empty()) {
@@ -395,7 +395,7 @@ namespace other {
       return nullptr;
     }
 
-    auto components = directory::split_path(relative_path);
+    ostd::vector<std::string> components = directory::split_path(relative_path);
     if (components.empty()) {
       CORE_LOG_ERROR("Cannot create virtual file: empty relative path");
       return nullptr;
@@ -512,7 +512,7 @@ namespace other {
     return make_ref<local_file>(*events, path, path.string());
   }
 
-  ref<directory> file_system::walk_or_create_path(ref<directory> root, const ostd::vector<std::string>& components) {
+  ref<directory> file_system::walk_or_create_path(ref<directory> root, const std::span<const std::string> components) {
     ref<directory> current = root;
     for (const auto& comp : components) {
       ref<directory> child = current->get_child_directory(comp);
@@ -528,7 +528,7 @@ namespace other {
     return current;
   }
 
-  ref<directory> file_system::walk_path(ref<directory> root, const ostd::vector<std::string>& components) const {
+  ref<directory> file_system::walk_path(ref<directory> root, const std::span<const std::string> components) const {
     ref<directory> current = root;
     for (const auto& comp : components) {
       current = current->get_child_directory(comp);

@@ -100,7 +100,11 @@ namespace other {
     if (!force_disable_network) {
       PROFILE_SECTION("network_system::tick--network_thread_messages");
 
-      auto msg_opt = net_context->net_thread_message_bus.receive_message();
+      opt<message> msg_opt = std::nullopt;
+      {
+        PROFILE_SECTION("network_system::tick--await_message");
+        msg_opt = net_context->net_thread_message_bus.receive_message();
+      }
       if (msg_opt.has_value()) {
         process_network_thread_messages(kernel, std::move(*msg_opt));
       }

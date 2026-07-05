@@ -17,11 +17,11 @@ namespace other {
 
   namespace serialization {
 
-    std::vector<uint8_t> write_object_to_bytes(const scene& s, const scene_object& obj);
+    ostd::vector<uint8_t> write_object_to_bytes(const scene& s, const scene_object& obj);
     std::pair<parsed_scene_object, natural_t> parse_single_object(const std::span<const uint8_t> buffer);
-    std::pair<std::vector<parsed_scene_object>, natural_t> parse_object_list(const std::span<const uint8_t> buffer, natural_t num_objects);
+    std::pair<ostd::vector<parsed_scene_object>, natural_t> parse_object_list(const std::span<const uint8_t> buffer, natural_t num_objects);
 
-    std::vector<uint8_t> write_attached_scripts_to_bytes(const script_component* obj);
+    ostd::vector<uint8_t> write_attached_scripts_to_bytes(const script_component* obj);
     natural_t parse_attached_scripts_into_object(const std::span<const uint8_t> buffer, parsed_scene_object& object);
 
   }  // namespace serialization

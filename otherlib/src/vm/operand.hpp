@@ -77,7 +77,7 @@ namespace other {
 
     uint8_t reg = 0;
     uint16_t val = 0;
-    std::vector<uint8_t> bytes = {};
+    ostd::vector<uint8_t> bytes = {};
   };
 
 }  // namespace other

@@ -72,7 +72,7 @@ namespace other {
       std::string name;
       std::string path;
     };
-    std::vector<plugin_info> plugins_to_load;
+    ostd::vector<plugin_info> plugins_to_load;
 
     for (const auto& table : *plugin_tables) {
       if (!table.is_table()) {

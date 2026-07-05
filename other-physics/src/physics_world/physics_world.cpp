@@ -149,7 +149,7 @@ namespace other {
     return nullptr;
   }
 
-  physics_shape* physics_world::create_convex_hull_shape(physics_body* body, const ostd::vector<glm::vec3>& points) {
+  physics_shape* physics_world::create_convex_hull_shape(physics_body* body, const std::span<const glm::vec3> points) {
     OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
     CORE_LOG_ERROR("Convex hull shape creation not yet implemented.");
     // physics_shape* shape = create_empty_shape(body);
@@ -157,7 +157,7 @@ namespace other {
     return nullptr;
   }
 
-  physics_shape* physics_world::create_triangle_mesh_shape(physics_body* body, const ostd::vector<glm::vec3>& vertices, const ostd::vector<natural_t>& indices) {
+  physics_shape* physics_world::create_triangle_mesh_shape(physics_body* body, const std::span<const glm::vec3> vertices, const std::span<const natural_t> indices) {
     OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
     CORE_LOG_ERROR("Triangle mesh shape creation not yet implemented.");
     // physics_shape* shape = create_empty_shape(body);
@@ -165,7 +165,7 @@ namespace other {
     return nullptr;
   }
 
-  physics_shape* physics_world::create_heightfield_shape(physics_body* body, const ostd::vector<float>& height_data, natural_t width, natural_t depth, float min_height, float max_height) {
+  physics_shape* physics_world::create_heightfield_shape(physics_body* body, const std::span<const float> height_data, natural_t width, natural_t depth, float min_height, float max_height) {
     OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
     CORE_LOG_ERROR("Heightfield shape creation not yet implemented.");
     // physics_shape* shape = create_empty_shape(body);

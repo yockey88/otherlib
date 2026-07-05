@@ -17,7 +17,7 @@
 
 namespace other {
 
-  std::vector<uint8_t> ocmd_toolchain::assemble_oasm_source(other_command_device* device, const filepath& path) {
+  ostd::vector<uint8_t> ocmd_toolchain::assemble_oasm_source(other_command_device* device, const filepath& path) {
     OTHER_ASSERT(std::filesystem::exists(path), "File does not exist: {}", path.string());
     OTHER_ASSERT(path.extension() == ".oasm", "File is not an OASM source file: {}", path.string());
 
@@ -31,7 +31,7 @@ namespace other {
       contents = ss.str();
     }
 
-    std::vector<uint8_t> bytecode;
+    ostd::vector<uint8_t> bytecode;
     if (contents.empty()) {
       return bytecode;
     }

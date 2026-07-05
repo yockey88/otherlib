@@ -55,7 +55,7 @@ namespace other {
     }
 
     void initialize_file_events(event_system& events);
-    void initialize_directory_structure(const ostd::vector<std::string_view>& mounts = {});
+    void initialize_directory_structure(const std::span<const std::string_view> mounts = {});
     void shutdown_file_system();
     void poll_files();
 
@@ -107,8 +107,8 @@ namespace other {
 
     ref<local_file> create_local_file(const filepath& path);
 
-    ref<directory> walk_or_create_path(ref<directory> root, const ostd::vector<std::string>& components);
-    ref<directory> walk_path(ref<directory> root, const ostd::vector<std::string>& components) const;
+    ref<directory> walk_or_create_path(ref<directory> root, const std::span<const std::string> components);
+    ref<directory> walk_path(ref<directory> root, const std::span<const std::string> components) const;
     void scan_directory_impl(ref<directory> dir, const filepath& disk_path, bool recursive);
   };
 

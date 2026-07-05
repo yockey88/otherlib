@@ -30,13 +30,13 @@ namespace other {
 
     natural_t num_instructions = 0;
 
-    std::vector<uint8_t> code = {};
-    std::vector<uint8_t> data = {};
+    ostd::vector<uint8_t> code = {};
+    ostd::vector<uint8_t> data = {};
 
-    std::vector<definition> definitions = {};
-    std::vector<section_bound_ptr> code_section_bounds = {};
-    std::vector<unresolved_label> unresolved_labels = {};
-    std::vector<data_object_ptr> data_object_ptrs = {};
+    ostd::vector<definition> definitions = {};
+    ostd::vector<section_bound_ptr> code_section_bounds = {};
+    ostd::vector<unresolved_label> unresolved_labels = {};
+    ostd::vector<data_object_ptr> data_object_ptrs = {};
 
     bool malformed = true;
   };

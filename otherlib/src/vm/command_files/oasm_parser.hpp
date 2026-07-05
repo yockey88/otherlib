@@ -19,8 +19,8 @@ namespace other {
 
   class oasm_parser {
    public:
-    oasm_parser(const vm_version& vmversion, const std::vector<token>& tokens)
-        : ir_result{ .target_vm_version = vmversion }, tokens(tokens) {}
+    oasm_parser(const vm_version& vmversion, const std::span<const token> tokens)
+        : ir_result{ .target_vm_version = vmversion }, tokens({ tokens.begin(), tokens.end() }) {}
     ~oasm_parser() = default;
 
     inline void set_vm_version(const vm_version& version) {
@@ -35,7 +35,7 @@ namespace other {
 
     bool failure_processing = false;
 
-    std::vector<token> tokens;
+    ostd::vector<token> tokens;
 
     size_t cursor = 0;
 
@@ -53,8 +53,8 @@ namespace other {
 
     data_section_ir parse_data_block(const token& directive_token);
 
-    void process_code_sections(std::vector<code_section_ir>& sections);
-    void process_data_sections(std::vector<data_section_ir>& sections);
+    void process_code_sections(ostd::vector<code_section_ir>& sections);
+    void process_data_sections(ostd::vector<data_section_ir>& sections);
 
     const token& peek(size_t offset) const;
     const token& current() const;

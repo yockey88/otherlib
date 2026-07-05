@@ -38,7 +38,7 @@ namespace other {
 
     /// load client specific .NET
     /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
-    std::vector<std::string> dotnet_modules = get_driver().get_config_value<std::vector<std::string>>("scripting.dotnet-modules");
+    ostd::vector<std::string> dotnet_modules = get_driver().get_config_value<ostd::vector<std::string>>("scripting.dotnet-modules");
     for (const auto& module : dotnet_modules) {
       CORE_LOG_DEBUG(" - .NET module to load: {}", module);
       auto assembly = load_dotnet_module(module);

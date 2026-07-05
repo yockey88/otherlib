@@ -185,7 +185,7 @@ namespace other {
     return asset_mgr->get_virtual_asset_path(asset_id);
   }
 
-  std::vector<asset*> asset_system::get_assets_of_type(asset::type type) const {
+  ostd::vector<asset*> asset_system::get_assets_of_type(asset::type type) const {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     return asset_mgr->get_assets_of_type(type);
   }
@@ -195,11 +195,12 @@ namespace other {
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "File system is null while mounting asset mounts!");
 
-    fs->initialize_directory_structure({
+    const ostd::vector<std::string_view> default_mounts{
       driver_mounts::kAssetMount,
       driver_mounts::kSceneMount,
       driver_mounts::kScriptMount,
-    });
+    };
+    fs->initialize_directory_structure(default_mounts);
 
     event_system& events = *get_driver().get_event_system();
     auto& jobs = sibling<job_driver_system>(*kernel).get_job_system();

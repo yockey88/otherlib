@@ -215,11 +215,11 @@ namespace other {
     destroy_object(target_node);
   }
 
-  std::vector<uint64_t> scene_tree::get_all_object_ids() const {
+  ostd::vector<uint64_t> scene_tree::get_all_object_ids() const {
     PROFILE_SECTION("scene_tree::get_all_object_ids");
 
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
-    std::vector<uint64_t> ids;
+    ostd::vector<uint64_t> ids;
     for (const auto& node : *nodes) {
       if (node.object != nullptr && node.object->id != 0) {
         ids.push_back(node.object->id);

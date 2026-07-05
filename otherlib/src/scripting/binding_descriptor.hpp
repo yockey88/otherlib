@@ -44,7 +44,7 @@ namespace other {
     std::string display_name;
 
     value_type return_type = value_type::EMPTY_TYPE;
-    std::vector<reflection_data::member::param_desc> param_types;
+    ostd::vector<reflection_data::member::param_desc> param_types;
 
     using invoke_fn_t = bool (*)(void* comp, const void** params, void* out_return);
     invoke_fn_t invoke_fn = nullptr;
@@ -54,8 +54,8 @@ namespace other {
     uint64_t component_id = 0;
     std::string name;
 
-    std::vector<field_binding_descriptor> fields;
-    std::vector<method_binding_descriptor> methods;
+    ostd::vector<field_binding_descriptor> fields;
+    ostd::vector<method_binding_descriptor> methods;
 
     using try_get_fn_t = void* (*)(void* scene, uint64_t object_id);
     using add_fn_t = void* (*)(void* scene, uint64_t object_id);
@@ -75,7 +75,7 @@ namespace other {
   struct service_binding_descriptor {
     uint64_t service_id = 0;
     std::string name;
-    std::vector<method_binding_descriptor> methods;
+    ostd::vector<method_binding_descriptor> methods;
 
     const method_binding_descriptor* find_method(uint64_t id) const;
   };

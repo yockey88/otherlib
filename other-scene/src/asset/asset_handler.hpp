@@ -101,7 +101,7 @@ namespace other {
     }
     ~asset_handler() = default;
 
-    static std::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
+    static ostd::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
 
     job_system& get_job_system() { return jobs; }
 
@@ -127,7 +127,7 @@ namespace other {
 
     asset* get_asset(natural_t asset_id);
     asset* get_asset_by_virtual_path(const filepath& virtual_path);
-    std::vector<asset*> get_assets_of_type(asset::type type);
+    ostd::vector<asset*> get_assets_of_type(asset::type type);
 
     std::span<const natural_t> get_all_asset_ids() const;
 
@@ -160,7 +160,7 @@ namespace other {
     opt<filepath> get_virtual_asset_path(natural_t asset_id) const;
 
     const asset* get_loaded_asset(natural_t asset_id) const;
-    std::vector<natural_t> get_all_tracked_ids() const;
+    ostd::vector<natural_t> get_all_tracked_ids() const;
 
     size_t get_num_loading_assets() const { return asset_pipelines.size(); }
     size_t get_num_loaded_assets() const { return loaded_assets.size(); }
@@ -192,7 +192,7 @@ namespace other {
     std::queue<natural_t> successful_pipelines;
     std::queue<natural_t> failed_pipelines;
 
-    std::vector<natural_t> all_assets;
+    ostd::vector<natural_t> all_assets;
     std::unordered_map<natural_t, asset> loaded_assets;
     std::unordered_map<natural_t, asset> unloaded_assets;
     std::unordered_map<natural_t, asset_state_machine> asset_states;

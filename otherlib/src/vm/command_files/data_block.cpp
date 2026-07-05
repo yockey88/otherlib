@@ -13,8 +13,8 @@ namespace other {
 
     template <typename T>
       requires std::is_integral_v<T> || std::is_floating_point_v<T>
-    std::vector<uint8_t> raw_data_from_value(const T& value) {
-      std::vector<uint8_t> data(sizeof(T));
+    ostd::vector<uint8_t> raw_data_from_value(const T& value) {
+      ostd::vector<uint8_t> data(sizeof(T));
       std::memcpy(data.data(), &value, sizeof(T));
       return data;
     }
@@ -60,7 +60,7 @@ namespace other {
     return true;
   }
 
-  data_type data_object::deduce_data_type_from_tokens(const std::vector<token>& value_tokens) {
+  data_type data_object::deduce_data_type_from_tokens(const std::span<const token> value_tokens) {
     /// check if blob is of the form DE AD BE EF which shows as either all HEX_LITERAL or mix of HEX_LITERAL and INTEGER_LITERAL, but
     /// we don't want to misinterpret integer literals like "123456" as blob, we will interpret any thing more than two 123 456 as blob or 0x123456 as blob,
 
@@ -110,7 +110,7 @@ namespace other {
 
   }  // namespace
 
-  std::vector<uint8_t> data_object::data_from_token_and_type(const token& value_token, data_type type) {
+  ostd::vector<uint8_t> data_object::data_from_token_and_type(const token& value_token, data_type type) {
     switch (type) {
       case OCMD_DATA_TYPE_I8: {
         int16_t val = static_cast<int16_t>(std::stol(value_token.text));
@@ -149,7 +149,7 @@ namespace other {
       case OCMD_DATA_TYPE_STRING:
         return value_token.text |
           std::views::transform([](char c) { return static_cast<uint8_t>(c); }) |
-          std::ranges::to<std::vector>();
+          std::ranges::to<ostd::vector<uint8_t>>();
       case OCMD_DATA_TYPE_ADDRESS: {
         const int base = value_token.text.starts_with("0x") ? 16 : 10;
         const uint16_t value = static_cast<uint16_t>(std::stoul(value_token.text, nullptr, base));
@@ -172,14 +172,14 @@ namespace other {
                  const std::string byte_str = byte_str_view | std::ranges::to<std::string>();
                  size_t num_bytes = byte_str.size() / 2 + (byte_str.size() % 2 != 0 ? 1 : 0);
 
-                 std::vector<uint8_t> bytes = {};
+                 ostd::vector<uint8_t> bytes = {};
                  for (size_t i = 0; i < num_bytes; ++i) {
                    bytes.push_back(static_cast<uint8_t>(std::stoul(byte_str.substr(i * 2, 2), nullptr, 16)));
                  }
                  return bytes;
                }) |
           std::views::join |
-          std::ranges::to<std::vector>();
+          std::ranges::to<ostd::vector<uint8_t>>();
       }
 
       case OCMD_DATA_TYPE_USER_DEFINED: {

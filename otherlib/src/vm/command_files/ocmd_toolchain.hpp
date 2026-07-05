@@ -13,7 +13,7 @@ namespace other {
 
   class ocmd_toolchain {
    public:
-    std::vector<uint8_t> assemble_oasm_source(other_command_device* device, const filepath& path);
+    ostd::vector<uint8_t> assemble_oasm_source(other_command_device* device, const filepath& path);
   };
 
 }  // namespace other

@@ -43,7 +43,7 @@ namespace other {
     opt<uint16_t> constant = std::nullopt;
     opt<uint16_t> address = std::nullopt;
 
-    std::vector<uint8_t> bytes = {};
+    ostd::vector<uint8_t> bytes = {};
   };
 
   struct raw_instruction {
@@ -55,7 +55,7 @@ namespace other {
       /// either address, constant, or register index (all 16 bits or 8 bits)
       opt<uint16_t> value = 0;
       /// for raw data (e.g., string literals, floating-point literals)
-      std::vector<uint8_t> raw_data = {};
+      ostd::vector<uint8_t> raw_data = {};
 
       static argument from_token(const token& tok);
     };
@@ -63,7 +63,7 @@ namespace other {
     constexpr static inline size_t kMaxArguments = 3;
 
     canonical_opcode opcode = canonical_opcode::INVALID_OP;
-    std::vector<argument> arguments = {};
+    ostd::vector<argument> arguments = {};
   };
 
   struct jump_label {
@@ -74,8 +74,8 @@ namespace other {
   struct code_block {
     std::string name = "";
     natural_t name_hash = 0;
-    std::vector<raw_instruction> instructions = {};
-    std::vector<jump_label> jump_labels = {};
+    ostd::vector<raw_instruction> instructions = {};
+    ostd::vector<jump_label> jump_labels = {};
   };
 
   normalized_operand normalize_argument(const canonical_opcode cat_and_type, size_t idx, const raw_instruction::argument& arg);

@@ -42,7 +42,7 @@ namespace other {
     assembly(const std::string_view name, natural_t handle, dotnet_host* host)
         : name(name), handle(handle), host(host) {}
 
-    void cache_types(type_cache* cache, const ostd::vector<int32_t>& dotnet_type_ids);
+    void cache_types(type_cache* cache, const std::span<const int32_t> dotnet_type_ids);
     bool has_method(const std::string_view type_name, const std::string_view method_name) const;
 
     ostd::vector<callback_binding> get_native_function_bindings() const;

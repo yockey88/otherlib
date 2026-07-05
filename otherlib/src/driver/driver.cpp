@@ -653,7 +653,7 @@ namespace other {
     }
   }
 
-  void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
+  void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::span<const std::string> args) {
     // launch_process(working_dir, exe_name, args);
   }
 

@@ -48,16 +48,14 @@ namespace other {
       std::convertible_to<std::invoke_result_t<Args>, typename T::construction_args_t>
     void register_interface(
       std::function<natural_t(scope<T>)> on_provided, std::function<void(natural_t)> on_revoked,
-      Args&& args_producer, interface_cardinality card = interface_cardinality::MULTIPLE
-    );
+      Args&& args_producer, interface_cardinality card = interface_cardinality::MULTIPLE);
 
     template <typename T, typename Args>
       requires kIsEnvironmentInterface<T> && std::invocable<Args> &&
       std::convertible_to<std::invoke_result_t<Args>, typename T::construction_args_t>
     void register_interface(
       std::function<natural_t(scope<T>, plugin_param_view)> on_provided, std::function<void(natural_t)> on_revoked,
-      Args&& args_producer, interface_cardinality card = interface_cardinality::MULTIPLE
-    );
+      Args&& args_producer, interface_cardinality card = interface_cardinality::MULTIPLE);
 
     natural_t install_from_manifest(std::string_view plugin_name, const plugin_manifest& m);
     void uninstall_plugin(std::string_view plugin_name);
@@ -75,18 +73,18 @@ namespace other {
       std::function<void(natural_t)> revoke_thunk;
       std::function<natural_t(void*, plugin_param_view)> install_thunk;
 
-      std::vector<plugin_provider> providers;
+      ostd::vector<plugin_provider> providers;
 
-      inline std::vector<std::string> get_name_components() const {
+      inline ostd::vector<std::string> get_name_components() const {
         return interface_full_name |
           std::views::split('.') |
           std::views::transform([](auto&& part) { return std::string(part.begin(), part.end()); }) |
-          std::ranges::to<std::vector<std::string>>();
+          std::ranges::to<ostd::vector<std::string>>();
       }
     };
 
     interface_scope registry_scope;
-    std::vector<registered_interface> registered_interfaces;
+    ostd::vector<registered_interface> registered_interfaces;
   };
 
   template <typename T, typename Args>

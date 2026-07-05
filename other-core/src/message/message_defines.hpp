@@ -87,8 +87,8 @@ namespace other {
     }
     message(message_category category, uint16_t type)
         : category(category), id(type) {}
-    message(const uint16_t cat, const uint16_t id, const ostd::vector<uint8_t>& msg_data)
-        : category(cat), id(id), data(msg_data) {}
+    message(const uint16_t cat, const uint16_t id, const std::span<const uint8_t> msg_data)
+        : category(cat), id(id), data(msg_data.begin(), msg_data.end()) {}
   };
 
   using message_channel = channel<message>;

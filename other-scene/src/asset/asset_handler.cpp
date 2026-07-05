@@ -20,8 +20,8 @@
 
 namespace other {
 
-  std::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
-    std::vector<asset::type> out_acceptable_types;
+  ostd::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
+    ostd::vector<asset::type> out_acceptable_types;
     // switch (requested_type) {
     //   case asset::type::MODEL:
     //   case asset::type::MODEL_SOURCE:
@@ -375,12 +375,12 @@ namespace other {
     return nullptr;
   }
 
-  std::vector<asset*> asset_handler::get_assets_of_type(asset::type type) {
+  ostd::vector<asset*> asset_handler::get_assets_of_type(asset::type type) {
     return loaded_assets |
       std::views::values |
       std::views::filter([type](asset& a) { return a.asset_type == type; }) |
       std::views::transform([](asset& a) { return &a; }) |
-      std::ranges::to<std::vector>();
+      std::ranges::to<ostd::vector<asset*>>();
   }
 
   std::span<const natural_t> asset_handler::get_all_asset_ids() const {
@@ -774,8 +774,8 @@ namespace other {
     return nullptr;
   }
 
-  std::vector<natural_t> asset_handler::get_all_tracked_ids() const {
-    std::vector<natural_t> ids;
+  ostd::vector<natural_t> asset_handler::get_all_tracked_ids() const {
+    ostd::vector<natural_t> ids;
     ids.reserve(loaded_assets.size() + asset_pipelines.size());
 
     for (const auto& [id, a] : loaded_assets) {

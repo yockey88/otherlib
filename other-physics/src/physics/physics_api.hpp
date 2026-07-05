@@ -58,9 +58,9 @@ namespace other {
     virtual void configure_box_shape(physics_shape* shape, const glm::vec3& half_extents) = 0;
     virtual void configure_sphere_shape(physics_shape* shape, float radius) {}
     virtual void configure_capsule_shape(physics_shape* shape, float radius, float height) {}
-    virtual void configure_convex_hull_shape(physics_shape* shape, const ostd::vector<glm::vec3>& points) {}
-    virtual void configure_triangle_mesh_shape(physics_shape* shape, const ostd::vector<glm::vec3>& vertices, const ostd::vector<natural_t>& indices) {}
-    virtual void configure_heightfield_shape(physics_shape* shape, const ostd::vector<float>& height_data, natural_t width, natural_t depth, float min_height, float max_height) {}
+    virtual void configure_convex_hull_shape(physics_shape* shape, const std::span<const glm::vec3> points) {}
+    virtual void configure_triangle_mesh_shape(physics_shape* shape, const std::span<const glm::vec3> vertices, const std::span<const natural_t> indices) {}
+    virtual void configure_heightfield_shape(physics_shape* shape, const std::span<const float> height_data, natural_t width, natural_t depth, float min_height, float max_height) {}
 
     virtual void step_simulation(natural_t world_id, physics_world* world, double delta_time) = 0;
     virtual void update_active_transforms(natural_t world_id, physics_world* world, double delta_time) = 0;

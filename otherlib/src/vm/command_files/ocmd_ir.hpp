@@ -13,9 +13,9 @@ namespace other {
 
   struct ocmd_ir {
     vm_version target_vm_version;
-    std::vector<compiler_definition> definitions = {};
-    std::vector<code_block> code_blocks = {};
-    std::vector<data_block> data_blocks = {};
+    ostd::vector<compiler_definition> definitions = {};
+    ostd::vector<code_block> code_blocks = {};
+    ostd::vector<data_block> data_blocks = {};
 
     bool valid = false;
   };

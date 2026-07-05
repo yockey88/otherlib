@@ -46,7 +46,7 @@ namespace other {
     using attribute_list = ostd::vector<vertex_attribute>;
 
     uint32_t get_stride() const;
-    const ostd::vector<vertex_attribute>& get_elements() const;
+    const std::span<const vertex_attribute> get_elements() const;
 
     ostd::vector<uint32_t> raw_layout() const;
     uint32_t count() const;

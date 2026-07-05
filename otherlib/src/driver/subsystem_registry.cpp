@@ -17,7 +17,6 @@
 #include "driver/driver_mounts.hpp"
 #include "scripting/bindings.hpp"
 
-
 namespace other {
   namespace detail {
 
@@ -80,6 +79,7 @@ namespace other {
       if (def.initialize_fn == nullptr) {
         throw std::runtime_error(std::format("Subsystem '{}' does not have an initialization function.", def.name));
       }
+      std::println(std::cout, " - subsystem init: '{}'", def.name);
       def.initialize_fn(config);
     }
   }
