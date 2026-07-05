@@ -6,8 +6,10 @@
 
 #include "lua/lua_host.hpp"
 
+#include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
+#include "object/physics_component.hpp"
 #include "object/render_component.hpp"
 
 namespace other {

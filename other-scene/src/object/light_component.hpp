@@ -8,8 +8,6 @@
 
 #include "renderer/gpu_structs.hpp"
 
-#include "object/component.hpp"
-
 namespace other {
 
   struct point_light {
@@ -22,18 +20,12 @@ namespace other {
     glm::vec4 color;
   };
 
-  struct point_light_component : public component {
+  struct point_light_component {
     point_light light;
-
-    point_light_component()
-        : component(component::POINT_LIGHT) {}
   };
 
-  struct direction_light_component : public component {
+  struct direction_light_component {
     direction_light light;
-
-    direction_light_component()
-        : component(component::DIRECTION_LIGHT) {}
   };
 
 }  // namespace other

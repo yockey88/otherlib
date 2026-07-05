@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 
+#include "ui/component_widget_registry.hpp"
 #include "ui/menu-bar/menu_bar.hpp"
 #include "ui/ui_window.hpp"
 
@@ -65,6 +66,11 @@ namespace other {
     void unregister_window(natural_t id);
     void unregister_window(const std::string_view name);
 
+    inline ui::component_widget_registry& get_component_widget_registry() {
+      OTHER_ASSERT(component_reg != nullptr, "Component widget registry is not initialized in driver UI.");
+      return *component_reg;
+    }
+
    private:
     struct builtin_window {
       builtin_window_type type = BUILTIN_WINDOW_NONE;
@@ -102,6 +108,8 @@ namespace other {
 
     natural_t window_registry_id = 0;
     std::unordered_map<natural_t, driver_window> custom_windows;
+
+    scope<ui::component_widget_registry> component_reg = nullptr;
 
     event_system& events();
 

@@ -1,5 +1,5 @@
 /**
- * \file ui/script/script_field_ui.hpp
+ * \file ui/field_ui.hpp
  **/
 #ifndef OTHERLIB_UI_SCRIPT_FIELD_UI_HPP
 #define OTHERLIB_UI_SCRIPT_FIELD_UI_HPP

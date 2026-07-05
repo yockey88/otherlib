@@ -79,6 +79,9 @@ namespace other {
     std::vector<pipeline_asset> pending_rendering_pipeline_assets;
     std::vector<pipeline_asset> rendering_pipeline_assets;
 
+    void register_field_widgets();
+    void register_component_widgets();
+
     void register_builtin_resource_tags();
     void register_builtin_render_executors();
 

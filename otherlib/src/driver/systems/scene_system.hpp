@@ -6,6 +6,7 @@
 
 #include "core/value.hpp"
 
+#include "object/component_registry.hpp"
 #include "scene/scene.hpp"
 #include "scene/scene_graph.hpp"
 
@@ -43,12 +44,22 @@ namespace other {
     inline scene* get_active_scene() { return active_scene; }
     scene_graph& get_scene_graph();
 
+    inline component_registry& get_component_registry() {
+      OTHER_ASSERT(component_reg != nullptr, "Component registry is not initialized in scene system.");
+      return *component_reg;
+    }
+
    private:
     constexpr inline static natural_t kObjectContextStackSize = 16;
     size_t context_stack_top = 0;
     scene_object* context_stack[kObjectContextStackSize] = { nullptr };
+
+    scope<component_registry> component_reg = nullptr;
+
     scene* active_scene = nullptr;
     scope<scene_graph> project_scene_graph = nullptr;
+
+    void register_components();
 
     void handle_scene_load_event(const value& data);
     void handle_scene_asset_loaded_event(const value& data);

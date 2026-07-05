@@ -10,13 +10,11 @@
 #include "model/model.hpp"
 #include "renderer/gpu_structs.hpp"
 
-#include "object/component.hpp"
-
 #include "asset/asset.hpp"
 
 namespace other {
 
-  struct render_component : public component {
+  struct render_component {
     bool animated = false;
     bool visible = true;
 
@@ -24,9 +22,6 @@ namespace other {
     natural_t last_model_asset_id = 0;
     natural_t model_asset_id = 0;
     gpu::graphics_material material = {};
-
-    render_component()
-        : component(component::RENDERER) {}
   };
 
   struct render_component_lua_proxy {
@@ -40,7 +35,7 @@ OTHER_REFLECT(
   field(animated, other::attr::serializable("Animated")),
   field(visible, other::attr::serializable("Visible")),
   field(obj_model, other::attr::serializable("Model")),
-  field(model_asset_id, other::attr::serializable("Model"), other::attr::asset_identifier_field(other::asset::MODEL))
-)
+  field(model_asset_id, other::attr::serializable("Model"),
+        other::attr::asset_identifier_field(other::asset::MODEL)))
 
 #endif  // OTHER_SCENE_OBJECT_RENDER_COMPONENT_HPP

@@ -11,19 +11,18 @@
 
 namespace other {
 
-  enum physics_body_type {
-    BODY_TYPE_STATIC,
-    BODY_TYPE_DYNAMIC,
-    BODY_TYPE_KINEMATIC
-  };
-
-  struct physics_body_settings {
-    physics_body_type body_type = BODY_TYPE_STATIC;
-    glm::mat4 world_transform = glm::mat4(1.0f);
-    float mass = 1.0f;
-  };
-
   struct physics_body {
+    enum type {
+      STATIC,
+      KINEMATIC,
+      DYNAMIC,
+    };
+    struct settings {
+      physics_body::type body_type = physics_body::STATIC;
+      glm::mat4 world_transform = glm::mat4(1.0f);
+      float mass = 1.0f;
+    };
+
     integer_t id = 0;
     natural_t scene_id = 0;
 
@@ -31,7 +30,7 @@ namespace other {
 
     bool active = false;
 
-    physics_body_type body_type = BODY_TYPE_STATIC;
+    physics_body::type body_type = physics_body::STATIC;
     float mass = 1.0f;
 
     glm::mat4 previous_transform = glm::mat4(1.0f);
@@ -54,8 +53,7 @@ namespace other {
 }  // namespace other
 
 OTHER_REFLECT(
-  other::physics_body_settings,
-  field(mass, other::attr::serializable())
-)
+  other::physics_body::settings,
+  field(mass, other::attr::serializable()))
 
 #endif  // OTHER_PHYSICS_PHYSICS_WORLD_PHYSICS_BODY_HPP

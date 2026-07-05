@@ -10,8 +10,6 @@
 
 #include "serialization/reflection.hpp"
 
-#include "object/component.hpp"
-
 #include "asset/asset.hpp"
 
 namespace other {
@@ -19,7 +17,7 @@ namespace other {
   struct animation;
   struct model;
 
-  struct animation_controller : public component {
+  struct animation_controller {
     double animation_accumulator = 0.0;
     double animation_speed = 1.0;
     double animation_time = 0.0;
@@ -31,11 +29,7 @@ namespace other {
     natural_t model_asset_id = 0;
     glm::mat4 root_transform = glm::mat4(1.0f);
 
-    animation_controller()
-        : component(component::ANIMATION) {}
-
     void update(double delta_time);
-
     double get_interpolation_factor(double current_time, double start_time, double end_time) const;
   };
 
@@ -47,7 +41,6 @@ OTHER_REFLECT(
   field(animation_speed, other::attr::serializable("Animation Speed")),
   field(animation_time, other::attr::serializable("Animation Time")),
   field(animation_index, other::attr::serializable("Animation Index")),
-  field(animation_asset_id, other::attr::serializable("Animation"), other::attr::asset_identifier_field(other::asset::ANIMATION))
-)
+  field(animation_asset_id, other::attr::serializable("Animation"), other::attr::asset_identifier_field(other::asset::ANIMATION)))
 
 #endif  // OTHER_SCENE_OBJECT_ANIMATION_CONTROLLER_HPP

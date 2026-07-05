@@ -16,20 +16,6 @@ namespace other {
   namespace ui {
     namespace inspector {
 
-      glm::vec4 get_component_color(component::id tag) {
-        switch (tag) {
-          case component::id::TRANSFORM: return colors::scene_object::kComponentTransform;
-          case component::id::RENDERER: return colors::scene_object::kComponentRenderer;
-          case component::id::PHYSICS: return colors::scene_object::kComponentPhysics;
-          case component::id::SCRIPT: return colors::scene_object::kComponentScript;
-          case component::id::AUDIO: return colors::scene_object::kComponentAudio;
-          case component::id::POINT_LIGHT: return colors::scene_object::kComponentPointLight;
-          case component::id::DIRECTION_LIGHT: return colors::scene_object::kComponentDirectionLight;
-          case component::id::CAMERA: return colors::scene_object::kComponentCamera;
-          default: return colors::scene_object::kComponentCustom;
-        }
-      }
-
       void draw_object_header(const std::string_view object_name, natural_t object_id, const glm::vec4& icon_color) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 cursor = ImGui::GetCursorScreenPos();
@@ -128,11 +114,11 @@ namespace other {
       /// internal stack to track open/closed state per section
       static bool s_component_section_open = false;
 
-      bool begin_component_section(const std::string_view component_name, component::id tag, component_section_flags flags, bool* out_remove_requested) {
+      bool begin_component_section(const std::string_view component_name, const glm::vec4& color, component_section_flags flags, bool* out_remove_requested) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 cursor = ImGui::GetCursorScreenPos();
         const float avail_w = ImGui::GetContentRegionAvail().x;
-        const glm::vec4 dot_color = get_component_color(tag);
+        const glm::vec4 dot_color = color;
 
         ImGui::PushID(component_name.data());
 
@@ -830,8 +816,69 @@ namespace other {
         return out_dropped_id;
       }
 
-      bool draw_add_component_button() {
-        return false;
+      bool draw_add_component_button(const std::string_view label) {
+        ImVec2 cursor = ImGui::GetCursorScreenPos();
+        float avail_w = ImGui::GetContentRegionAvail().x;
+        float h = ImGui::GetFrameHeight();
+        uint32_t flags = 0;
+
+        /// take from imgui_widgets.cpp: ImGui::ButtonEx()
+        ///  we replace the color and styling in the center of the function
+        // Try to vertically align buttons that are smaller/have no padding so that text baseline matches (bit hacky, since it shouldn't be a flag)
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (window->SkipItems) {
+          return false;
+        }
+
+        ImGuiContext& g = *GImGui;
+        const ImGuiStyle& style = g.Style;
+        const ImGuiID id = window->GetID(label.data());
+        const ImVec2 label_size = ImGui::CalcTextSize(label.data(), NULL, true);
+
+        ImVec2 pos = window->DC.CursorPos;
+        // Try to vertically align buttons that are smaller/have no padding so that text baseline matches (bit hacky, since it shouldn't be a flag)
+        if ((flags & ImGuiButtonFlags_AlignTextBaseLine) && style.FramePadding.y < window->DC.CurrLineTextBaseOffset) {
+          pos.y += window->DC.CurrLineTextBaseOffset - style.FramePadding.y;
+        }
+        ImVec2 size = ImGui::CalcItemSize(ImVec2{ avail_w, h }, label_size.x + style.FramePadding.x * 2.0f, label_size.y + style.FramePadding.y * 2.0f);
+
+        const ImRect bb(pos, ImVec2{ pos.x + size.x, pos.y + size.y });
+        ImGui::ItemSize(size, style.FramePadding.y);
+        if (!ImGui::ItemAdd(bb, id)) {
+          return false;
+        }
+
+        constexpr glm::vec4 kAddComponentButton = glm::vec4{ 0.2f, 0.2f, 0.2f, 1.f };
+        constexpr glm::vec4 kAddComponentButtonHover = glm::vec4{ 0.3f, 0.3f, 0.3f, 1.f };
+        constexpr glm::vec4 kAddComponentButtonActive = glm::vec4{ 0.4f, 0.4f, 0.4f, 1.f };
+
+        bool hovered, held;
+        bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
+        const bool held_and_hovered = held && hovered;
+        ImU32 col = 0;
+        if (held_and_hovered) {
+          col = colors::to_im_col(kAddComponentButtonActive);
+        } else if (hovered) {
+          col = colors::to_im_col(kAddComponentButtonHover);
+        } else {
+          col = colors::to_im_col(kAddComponentButton);
+        }
+        ImGui::RenderNavCursor(bb, id);
+        ImGui::RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
+
+        // if (g.LogEnabled) {
+        //   LogSetNextTextDecoration("[", "]");
+        // }
+        ImRect shift_bb = {
+          bb.Min.x + style.FramePadding.x,
+          bb.Min.y + style.FramePadding.y,
+          bb.Max.x - style.FramePadding.x,
+          bb.Max.y - style.FramePadding.y
+        };
+        ImGui::RenderTextClipped(shift_bb.Min, shift_bb.Max, label.data(), NULL, &label_size, style.ButtonTextAlign, &shift_bb);
+        /// end of ImGui::ButtonEx() code
+
+        return pressed;
       }
 
       void draw_no_selection_message() {

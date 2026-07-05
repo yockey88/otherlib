@@ -11,8 +11,7 @@
 #include "renderer/debug_draw.hpp"
 #include "renderer/renderer.hpp"
 
-#include "object/component.hpp"
-#include "object/component_registry.hpp"
+#include "object/object_component_registry.hpp"
 #include "object/object_serialization_data.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
@@ -96,6 +95,8 @@ namespace other {
 
     std::vector<uint64_t> get_all_object_ids() const;
 
+    bool is_visible(natural_t id) const;
+
     void destroy_object(natural_t id);
 
     bool has_object(const std::string_view name) const;
@@ -154,18 +155,16 @@ namespace other {
     }
 
     template <typename T>
-      requires std::is_base_of_v<component, T>
     void register_component(scene_object* object, T& comp) {
       OTHER_ASSERT(object != nullptr, "Cannot register component to a null scene object.");
 
-      auto* comp_reg = get_component<component_registry>(object);
+      auto* comp_reg = get_component<object_component_registry>(object);
       OTHER_ASSERT(comp_reg != nullptr, "Component registry not found for object with ID {}", object->id);
 
       comp_reg->register_component(comp);
     }
 
     template <typename T>
-      requires std::is_base_of_v<component, T>
     T& add_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
@@ -243,10 +242,10 @@ namespace other {
       OTHER_ASSERT(object != nullptr, "Cannot remove component from a null scene object.");
       entt::entity entity = entt::entity(object->registry_id);
 
-      auto* comp_reg = get_component<component_registry>(object);
+      auto* comp_reg = get_component<object_component_registry>(object);
       OTHER_ASSERT(comp_reg != nullptr, "Component registry not found for object with ID {}", object->id);
 
-      comp_reg->remove_component<T>();
+      comp_reg->template remove_component<T>();
       comp_reg = nullptr;
 
       storage->registry.remove<T>(entity);

@@ -57,7 +57,7 @@ namespace other {
     interpolate_active_transforms(delta_time);
   }
 
-  physics_body* physics_world::create_physics_body(const physics_body_settings& settings) {
+  physics_body* physics_world::create_physics_body(const physics_body::settings& settings) {
     OTHER_ASSERT(physics_bodies != nullptr, "Physics body memory pool is not initialized.");
     auto [body, idx] = physics_bodies->emplace();
 
@@ -220,13 +220,11 @@ namespace other {
     glm::vec3 prev_scale = glm::vec3(
       glm::length(glm::vec3(previous[0])),
       glm::length(glm::vec3(previous[1])),
-      glm::length(glm::vec3(previous[2]))
-    );
+      glm::length(glm::vec3(previous[2])));
     glm::vec3 curr_scale = glm::vec3(
       glm::length(glm::vec3(current[0])),
       glm::length(glm::vec3(current[1])),
-      glm::length(glm::vec3(current[2]))
-    );
+      glm::length(glm::vec3(current[2])));
     glm::vec3 inter_scale = glm::mix(prev_scale, curr_scale, alpha);
 
     glm::mat4 translation_mat = glm::translate(glm::mat4(1.0f), inter_pos);
