@@ -3,11 +3,11 @@
  **/
 #include "plugin/plugin.hpp"
 
-#include "core/arena.hpp"
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
+#include "memory/arena.hpp"
 #include "serialization/reflection.hpp"
 #include "thread/thread_safety.hpp"
 
@@ -16,6 +16,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "driver/driver.hpp"
+
 
 namespace other {
 

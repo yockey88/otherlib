@@ -3,12 +3,13 @@
  **/
 #include "vm/device_utils.hpp"
 
-#include "core/arena.hpp"
 #include "core/logger.hpp"
+#include "memory/arena.hpp"
 
 #include "vm/other_device.hpp"
 #include "vm/vm.hpp"
 #include "vm/vm_error.hpp"
+
 
 namespace other {
   namespace detail {

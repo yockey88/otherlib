@@ -5,11 +5,12 @@
 
 #include <cstring>
 
-#include "core/arena.hpp"
 #include "core/logger.hpp"
+#include "memory/arena.hpp"
 
 #include "dotnet/host.hpp"
 #include "dotnet/native_string.hpp"
+
 
 namespace other {
 

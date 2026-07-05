@@ -5,9 +5,10 @@
 
 #include <pybind11/embed.h>
 
-#include "core/arena_allocator.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "memory/arena_allocator.hpp"
+
 
 namespace py = pybind11;
 

@@ -9,16 +9,17 @@
 #include <string>
 #include <type_traits>
 
-#include "core/arena.hpp"
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
 #include "core/value.hpp"
 #include "core/value_type_size.hpp"
+#include "memory/arena.hpp"
 
 #include "dotnet/behavior_descriptor.hpp"
 #include "dotnet/dotnet_field.hpp"
 #include "dotnet/dotnet_type.hpp"
 #include "dotnet/types.hpp"
+
 
 namespace other {
 

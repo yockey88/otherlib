@@ -3,15 +3,16 @@
  **/
 #include <gtest/gtest.h>
 
-#include "core/arena.hpp"
 #include "core/command_line.hpp"
 #include "core/logger_sinks.hpp"
 #include "core/version.hpp"
+#include "memory/arena.hpp"
 
 #include "physics/physics_environment.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "other.hpp"
+
 
 namespace other {
 

@@ -3,7 +3,7 @@
  **/
 #include "scene/octree.hpp"
 
-#include "core/arena.hpp"
+#include "memory/arena.hpp"
 
 namespace other {
 

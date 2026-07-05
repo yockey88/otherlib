@@ -26,7 +26,7 @@ namespace other {
     core_device.bus->register_device(make_scope<scene_device>());
     core_device.bus->register_device(make_scope<project_device>());
 
-    const bool vm_debug_mode_on = get_driver().get_config_value<bool>("driver.vm-debug-mode-on", false);
+    const bool vm_debug_mode_on = get_driver().get_config_value<bool>("driver.vm-debug-mode", false);
     vm::set_debug_mode(vm_debug_mode_on);
     instruction_budget = get_driver().get_config_value<uint32_t>("driver.vm-instruction-per-step-budget", kDefaultInstructionBudget);
   }
