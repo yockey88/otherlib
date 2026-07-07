@@ -181,10 +181,10 @@ namespace other {
 
     ostd::vector<pin_record> pins;
     ostd::vector<link_record> links;
-    std::unordered_map<natural_t, natural_t> pin_lookup;
+    ostd::unordered_map<natural_t, natural_t> pin_lookup;
 
-    std::unordered_map<natural_t, node_layout> layouts;
-    std::unordered_map<natural_t, natural_t> submitted_nodes;
+    ostd::unordered_map<natural_t, node_layout> layouts;
+    ostd::unordered_map<natural_t, natural_t> submitted_nodes;
 
     ImDrawList* draw_list = nullptr;
     // 0 = grid + links, 1 = nodes

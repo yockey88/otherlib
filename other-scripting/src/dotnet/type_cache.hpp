@@ -43,8 +43,8 @@ namespace other {
    private:
     std::map<int32_t, dotnet_type> cached_types;
 
-    std::unordered_map<uint64_t, dotnet_type*> name_cache;
-    std::unordered_map<int32_t, dotnet_type*> id_cache;
+    ostd::unordered_map<uint64_t, dotnet_type*> name_cache;
+    ostd::unordered_map<int32_t, dotnet_type*> id_cache;
   };
 
 }  // namespace other

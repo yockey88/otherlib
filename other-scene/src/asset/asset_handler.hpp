@@ -195,9 +195,9 @@ namespace other {
     std::queue<natural_t> failed_pipelines;
 
     ostd::vector<natural_t> all_assets;
-    std::unordered_map<natural_t, asset> loaded_assets;
-    std::unordered_map<natural_t, asset> unloaded_assets;
-    std::unordered_map<natural_t, asset_state_machine> asset_states;
+    ostd::unordered_map<natural_t, asset> loaded_assets;
+    ostd::unordered_map<natural_t, asset> unloaded_assets;
+    ostd::unordered_map<natural_t, asset_state_machine> asset_states;
 
     /// normally we might want to recreate, but if we are closing the editor
     // or doing
@@ -212,8 +212,8 @@ namespace other {
       return next_asset_id++;
     }
 
-    void begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it);
-    std::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
+    void begin_load(std::deque<pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it);
+    ostd::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
 
     asset* find_asset_by_path(const filepath& file_path) const;
 

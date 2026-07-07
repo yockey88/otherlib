@@ -107,8 +107,8 @@ namespace other {
     input_frame_state current;  // read-only during the frame
     input_frame_state previous;
 
-    std::unordered_map<natural_t, action_state> action_cache;
-    std::unordered_map<natural_t, action_state> prev_action_cache;
+    ostd::unordered_map<natural_t, action_state> action_cache;
+    ostd::unordered_map<natural_t, action_state> prev_action_cache;
 
     input_map map;
 

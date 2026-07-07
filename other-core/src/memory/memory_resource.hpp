@@ -39,17 +39,12 @@ namespace other {
     constexpr std_frame_allocator(const std_frame_allocator<U>& other) noexcept
         : frame(other.frame) {}
 
-    T* allocate(size_t n) {
-      OTHER_ASSERT(frame != nullptr, "Frame allocator is null.");
-      return static_cast<T*>(frame->allocate(n * sizeof(T), alignof(T)));
-    }
-
+    T* allocate(size_t n) { return static_cast<T*>(frame->allocate(n * sizeof(T), alignof(T))); }
     void deallocate(T* ptr, size_t n) { /* end of frame resets allocator*/ }
 
     template <typename U>
     bool operator==(const std_frame_allocator<U>&) const { return true; }
 
-   private:
     frame_allocator* frame;
   };
 

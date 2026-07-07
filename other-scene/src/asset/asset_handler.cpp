@@ -450,7 +450,7 @@ namespace other {
     return std::nullopt;
   }
 
-  void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
+  void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
     OTHER_ASSERT(pipeline_it != asset_pipelines.end(), "Invalid pipeline iterator in begin_load");
     OTHER_ASSERT(state_it != asset_states.end(), "Invalid state machine iterator in begin_load");
 
@@ -468,7 +468,7 @@ namespace other {
     }
   }
 
-  std::unordered_map<natural_t, asset>::iterator asset_handler::begin_unload(natural_t asset_id) {
+  ostd::unordered_map<natural_t, asset>::iterator asset_handler::begin_unload(natural_t asset_id) {
     auto state_itr = asset_states.find(asset_id);
     if (state_itr == asset_states.end()) {
       CORE_LOG_ERROR("Asset state machine not found for asset ID: {}", asset_id);

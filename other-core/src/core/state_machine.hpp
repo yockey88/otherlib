@@ -85,7 +85,7 @@ namespace other {
    private:
     ST current_state;
 
-    std::unordered_map<ST, std::unordered_map<ET, ST>> transitions;
+    ostd::unordered_map<ST, ostd::unordered_map<ET, ST>> transitions;
   };
 
 }  // namespace other
