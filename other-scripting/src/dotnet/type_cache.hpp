@@ -41,7 +41,7 @@ namespace other {
     auto size() const { return cached_types.size(); }
 
    private:
-    std::map<int32_t, dotnet_type> cached_types;
+    ostd::map<int32_t, dotnet_type> cached_types;
 
     ostd::unordered_map<uint64_t, dotnet_type*> name_cache;
     ostd::unordered_map<int32_t, dotnet_type*> id_cache;

@@ -483,7 +483,7 @@ namespace other {
     return *quad_mesh_handle;
   }
 
-  void render_pipeline::apply_uniforms(shader& s, const std::map<std::string, value>& uniforms) {
+  void render_pipeline::apply_uniforms(shader& s, const ostd::map<std::string, value>& uniforms) {
     for (const auto& [name, val] : uniforms) {
       switch (val.type()) {
         case value_type::INT8: s.set_uniform(name, (int8_t)val); break;

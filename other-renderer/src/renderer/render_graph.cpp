@@ -228,7 +228,7 @@ namespace other {
       }
 
       /// list of outgoing edges
-      std::map<natural_t, std::set<natural_t>> edges;
+      ostd::map<natural_t, std::set<natural_t>> edges;
       for (const auto& n1 : nodes) {
         auto& e1 = edges[n1.id];
 
@@ -331,7 +331,7 @@ else
       return { static_cast<natural_t>(-1) };
     }
 
-    std::map<natural_t, uint32_t> in_degree;
+    ostd::map<natural_t, uint32_t> in_degree;
     for (const auto& [id, node] : g.nodes) {
       in_degree[id] = 0;
     }
@@ -387,7 +387,7 @@ else
     CORE_LOG_INFO("{}", ss.str());
   }
 
-  void render_graph::log_topo_sort_error(const graph& g, const std::map<natural_t, uint32_t>& remaining_in_degrees) {
+  void render_graph::log_topo_sort_error(const graph& g, const ostd::map<natural_t, uint32_t>& remaining_in_degrees) {
     CORE_LOG_ERROR("Topological sort error: graph has cycles.");
     for (const auto& [id, deg] : remaining_in_degrees) {
       if (deg > 0) {

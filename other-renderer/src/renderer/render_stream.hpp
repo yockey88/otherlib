@@ -47,7 +47,7 @@ namespace other {
       // the renderer will create/clean up these resources
       resource_handle mesh_handle;
     };
-    std::map<natural_t, render_stream_storage> storages;
+    ostd::map<natural_t, render_stream_storage> storages;
   };
 
 }  // namespace other

@@ -60,6 +60,7 @@ namespace other {
     std::mutex log_mutex;
     const config_table* current_config_table = nullptr;
 
+    // can not use ostd:: has to use normal std::map here because log sinks can be registered before the arena is initialized
     std::map<uint16_t, spdlog::sink_ptr> sinks;
     constexpr static size_t kMaxLoggers = 256;
 

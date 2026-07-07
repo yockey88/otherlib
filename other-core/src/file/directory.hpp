@@ -56,8 +56,8 @@ namespace other {
 
     static ostd::vector<std::string> split_path(const std::string_view path);
 
-    const std::map<natural_t, ref<directory>>& get_children() const { return children; }
-    const std::map<natural_t, ref<file_handle>>& get_files() const { return file_handles; }
+    const ostd::map<natural_t, ref<directory>>& get_children() const { return children; }
+    const ostd::map<natural_t, ref<file_handle>>& get_files() const { return file_handles; }
 
     template <typename OS>
     OS& print(OS& os, size_t indent_level = 0) const {
@@ -82,8 +82,8 @@ namespace other {
     filepath abs_path;
 
     /// keyed by FNV hash of the name
-    std::map<natural_t, ref<directory>> children;
-    std::map<natural_t, ref<file_handle>> file_handles;
+    ostd::map<natural_t, ref<directory>> children;
+    ostd::map<natural_t, ref<file_handle>> file_handles;
 
     scope<file_watcher> watcher = nullptr;
   };

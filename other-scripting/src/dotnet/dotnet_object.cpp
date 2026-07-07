@@ -366,7 +366,7 @@ namespace other {
     return itr->second.stored_type;
   }
 
-  std::map<uint64_t, dotnet_field::storage>::iterator dotnet_object::load_field(const std::string_view field_name, value_type type) {
+  ostd::map<uint64_t, dotnet_field::storage>::iterator dotnet_object::load_field(const std::string_view field_name, value_type type) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
 
@@ -401,7 +401,7 @@ namespace other {
     return itr;
   }
 
-  void dotnet_object::write_storage_to_field(std::map<uint64_t, dotnet_field::storage>::const_iterator itr, const std::string_view field_name) {
+  void dotnet_object::write_storage_to_field(ostd::map<uint64_t, dotnet_field::storage>::const_iterator itr, const std::string_view field_name) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
 

@@ -132,10 +132,10 @@ namespace other {
     component_registration get_registration(natural_t type_id) const;
     bool has_registration(natural_t type_id) const;
 
-    inline const std::map<natural_t, component_registration>& get_registry() const { return registry; }
+    inline const ostd::map<natural_t, component_registration>& get_registry() const { return registry; }
 
    private:
-    std::map<natural_t, component_registration> registry;
+    ostd::map<natural_t, component_registration> registry;
   };
 
 }  // namespace other

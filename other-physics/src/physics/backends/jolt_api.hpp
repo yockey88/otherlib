@@ -51,10 +51,10 @@ namespace other {
     ObjectVsBroadPhaseLayerFilterImpl* object_vs_broadphase_layer_filter = nullptr;
     ObjectLayerPairFilterImpl* object_layer_pair_filter = nullptr;
 
-    std::map<natural_t, JPH::PhysicsSystem*> jolt_scenes;
+    ostd::map<natural_t, JPH::PhysicsSystem*> jolt_scenes;
 
-    std::map<natural_t, uint32_t> jolt_body_ids;
-    std::map<uint32_t, void*> jolt_shapes;
+    ostd::map<natural_t, uint32_t> jolt_body_ids;
+    ostd::map<uint32_t, void*> jolt_shapes;
 
     void on_initialize(const config_table& configuration) override;
     void on_shutdown() override;

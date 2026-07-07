@@ -108,9 +108,9 @@ namespace other {
 
     dotnet_host* host = nullptr;
 
-    std::map<natural_t, ref<assembly>> assemblies{};
+    ostd::map<natural_t, ref<assembly>> assemblies{};
 
-    using iterator_t = std::map<natural_t, ref<assembly>>::iterator;
+    using iterator_t = ostd::map<natural_t, ref<assembly>>::iterator;
     iterator_t unload_assembly_and_erase(natural_t assembly_id);
   };
 

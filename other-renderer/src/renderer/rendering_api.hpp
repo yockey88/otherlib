@@ -237,7 +237,7 @@ namespace other {
     virtual shader* create_shader_resource(const resource_handle& handle, resource_type type) = 0;
     virtual void destroy_shader_resource(const resource_handle& handle) = 0;
 
-    std::map<natural_t, resource_handle> resource_handles;
+    ostd::map<natural_t, resource_handle> resource_handles;
 
    private:
     void* gpu_context = nullptr;
@@ -248,8 +248,8 @@ namespace other {
     uint32_t clear_stencil = 0;
     glm::ivec2 window_size;
 
-    std::map<natural_t, resource*> resources;
-    std::map<natural_t, std::string> resource_names;
+    ostd::map<natural_t, resource*> resources;
+    ostd::map<natural_t, std::string> resource_names;
   };
 
 }  // namespace other

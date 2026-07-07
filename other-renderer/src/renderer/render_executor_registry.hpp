@@ -20,8 +20,8 @@ namespace other {
     ostd::vector<std::string> known_executors() const;
 
    private:
-    std::map<natural_t, std::string> debug_names;
-    std::map<natural_t, executor_factory_fn> factories;
+    ostd::map<natural_t, std::string> debug_names;
+    ostd::map<natural_t, executor_factory_fn> factories;
   };
 
 }  // namespace other

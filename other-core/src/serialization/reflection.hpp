@@ -312,7 +312,7 @@ namespace other {
     bool has_type(const std::string_view type_name) const;
     const reflection_data* get_reflection_data(const std::string_view type_name);
 
-    const std::map<uint64_t, reflection_data>& get_type_data() const {
+    const ostd::map<uint64_t, reflection_data>& get_type_data() const {
       return data_map;
     }
 
@@ -320,7 +320,7 @@ namespace other {
     std::string get_namespace_string(const std::string_view full_name) const;
     std::string strip_namespace(const std::string_view full_name) const;
 
-    std::map<uint64_t, reflection_data> data_map;
+    ostd::map<uint64_t, reflection_data> data_map;
   };
 
   template <typename T>

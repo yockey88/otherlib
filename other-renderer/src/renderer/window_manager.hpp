@@ -23,14 +23,14 @@ namespace other {
     SDL_Window* get_window(SDL_WindowID window_id);
     SDL_Window* get_main_window() const;
 
-    std::map<SDL_WindowID, SDL_Window*>& get_all_windows() {
+    ostd::map<SDL_WindowID, SDL_Window*>& get_all_windows() {
       return windows;
     }
 
    private:
     /// first window created is the main window
     SDL_Window* main_window = nullptr;
-    std::map<SDL_WindowID, SDL_Window*> windows;
+    ostd::map<SDL_WindowID, SDL_Window*> windows;
   };
 
 }  // namespace other

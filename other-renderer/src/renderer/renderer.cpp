@@ -540,7 +540,7 @@ namespace other {
   }
 
   ostd::vector<natural_t> renderer::get_pipeline_order() const {
-    std::map<natural_t, uint32_t> in_degree;
+    ostd::map<natural_t, uint32_t> in_degree;
     for (const auto& [id, deps] : pipeline_dependencies) {
       in_degree[id] = deps.size();
     }

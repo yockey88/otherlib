@@ -95,15 +95,15 @@ namespace other {
     task fetch_remote(ref<remote_file> file);
     void scan_directory(const std::string_view mount_name, bool recursive = false);
 
-    const std::map<natural_t, ref<directory>>& get_all_mounts() const { return mounts; }
-    const std::map<natural_t, ref<file_handle>>& get_all_files() const { return toplevel_files; }
+    const ostd::map<natural_t, ref<directory>>& get_all_mounts() const { return mounts; }
+    const ostd::map<natural_t, ref<file_handle>>& get_all_files() const { return toplevel_files; }
 
    private:
     mutable std::mutex fs_mutex;
 
     event_system* events = nullptr;
-    std::map<natural_t, ref<directory>> mounts;
-    std::map<natural_t, ref<file_handle>> toplevel_files;
+    ostd::map<natural_t, ref<directory>> mounts;
+    ostd::map<natural_t, ref<file_handle>> toplevel_files;
 
     ref<local_file> create_local_file(const filepath& path);
 

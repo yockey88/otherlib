@@ -18,7 +18,6 @@
 #include "dotnet/native_string.hpp"
 #include "script/scripting_environment.hpp"
 
-
 namespace other {
   namespace {
 
@@ -294,7 +293,7 @@ namespace other {
     [[maybe_unused]] auto _ = remove_object(obj->object_name);
   }
 
-  std::map<natural_t, dotnet_object>::iterator dotnet_host::destroy_managed_object(std::map<natural_t, dotnet_object>::iterator obj_itr) {
+  ostd::map<natural_t, dotnet_object>::iterator dotnet_host::destroy_managed_object(ostd::map<natural_t, dotnet_object>::iterator obj_itr) {
     OTHER_ASSERT(obj_itr != managed_objects.end(), "Invalid object iterator");
     if (obj_itr->second.managed_object == nullptr) {
       CORE_LOG_ERROR("Cannot destroy object: managed_object is null");
@@ -325,7 +324,7 @@ namespace other {
     return &itr->second;
   }
 
-  std::map<natural_t, dotnet_object>::iterator dotnet_host::remove_object(const std::string_view name) {
+  ostd::map<natural_t, dotnet_object>::iterator dotnet_host::remove_object(const std::string_view name) {
     CORE_LOG_DEBUG("Removing managed object '{}'", name);
     auto it = managed_objects.find(FNV(name));
     if (it != managed_objects.end()) {

@@ -30,13 +30,13 @@ namespace other {
     void register_stream(std::string_view name, render_stream_definition defn);
     const render_stream_definition* find(std::string_view name) const;
 
-    std::map<natural_t, render_stream_definition>& entries() { return defs; }
-    const std::map<natural_t, render_stream_definition>& entries() const { return defs; }
+    ostd::map<natural_t, render_stream_definition>& entries() { return defs; }
+    const ostd::map<natural_t, render_stream_definition>& entries() const { return defs; }
 
     void clear() { defs.clear(); }
 
    private:
-    std::map<natural_t, render_stream_definition> defs;
+    ostd::map<natural_t, render_stream_definition> defs;
   };
 
 }  // namespace other

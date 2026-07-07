@@ -226,7 +226,7 @@ namespace other {
 
       topo.sorted_node_ids.reserve(nodes.size());
 
-      std::map<natural_t, natural_t> in_degree;
+      ostd::map<natural_t, natural_t> in_degree;
       std::set<natural_t> no_incoming_edges;
 
       for (const auto& node_id : get_all_node_ids()) {

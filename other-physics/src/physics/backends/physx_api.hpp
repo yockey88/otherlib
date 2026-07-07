@@ -50,7 +50,7 @@ namespace other {
     physx::PxPvd* pvd = nullptr;
     physx::PxOmniPvd* omni_pvd = nullptr;
 
-    std::map<natural_t, physx::PxScene*> physx_scenes;
+    ostd::map<natural_t, physx::PxScene*> physx_scenes;
   };
 
 }  // namespace other

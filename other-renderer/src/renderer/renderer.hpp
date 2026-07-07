@@ -53,7 +53,7 @@ namespace other {
     gpu::simulation_environment_buffer simulation_environment;
 
     size_t num_draw_calls = 0;
-    std::map<mesh_key, size_t> mesh_indices;
+    ostd::map<mesh_key, size_t> mesh_indices;
     ostd::vector<mesh_key> mesh_keys;
     ostd::vector<draw_call> draw_calls;
     ostd::vector<gpu::graphics_material_buffer> material_buffers;
@@ -237,13 +237,13 @@ namespace other {
     frame_binding_registry binding_registry;
     render_stream_registry debug_stream_registry;
 
-    std::map<natural_t, resource_handle> stream_meshes;
-    std::map<natural_t, resource_handle> stream_shaders;
-    std::map<natural_t, render_pipeline*> pipelines;
+    ostd::map<natural_t, resource_handle> stream_meshes;
+    ostd::map<natural_t, resource_handle> stream_shaders;
+    ostd::map<natural_t, render_pipeline*> pipelines;
 
     /// \todo replace this with chains to reduce current rendering time when we are rendering
     ///         to multiple viewports
-    std::map<natural_t, ostd::vector<natural_t>> pipeline_dependencies;
+    ostd::map<natural_t, ostd::vector<natural_t>> pipeline_dependencies;
     ostd::vector<natural_t> pipeline_ids;
 
     ostd::vector<natural_t> get_pipeline_order() const;

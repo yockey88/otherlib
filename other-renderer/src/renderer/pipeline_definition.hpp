@@ -76,7 +76,7 @@ namespace other {
 
   struct pipeline_executor_definition {
     std::string name = "noop";
-    std::map<std::string, value> params;
+    ostd::map<std::string, value> params;
   };
 
   struct pass_uniform_definition {
@@ -103,7 +103,7 @@ namespace other {
     ostd::vector<std::string> depends_on;
     ostd::vector<frame_binding_definition> bindings;
 
-    std::map<natural_t, pass_uniform_definition> uniforms;  //< FNV(pass_name + "." + name) -> value
+    ostd::map<natural_t, pass_uniform_definition> uniforms;  //< FNV(pass_name + "." + name) -> value
 
     // for passes that need to run multiple times per frame, i.e cascaded shadow maps
     uint32_t iterations_per_frame = 1;

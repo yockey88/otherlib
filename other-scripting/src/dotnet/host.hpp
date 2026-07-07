@@ -218,17 +218,17 @@ namespace other {
     std::basic_string<char_t> dotnet_binding_assembly;
     std::basic_string<char_t> dotnet_runtime_config;
 
-    std::map<natural_t, assembly_context> assembly_contexts;
-    std::map<natural_t, dotnet_object> managed_objects;
+    ostd::map<natural_t, assembly_context> assembly_contexts;
+    ostd::map<natural_t, dotnet_object> managed_objects;
 
     opt<int32_t> behavior_base_type_id = std::nullopt;
 
-    std::map<natural_t, dotnet_object>::iterator destroy_managed_object(std::map<natural_t, dotnet_object>::iterator obj_itr);
+    ostd::map<natural_t, dotnet_object>::iterator destroy_managed_object(ostd::map<natural_t, dotnet_object>::iterator obj_itr);
 
     filepath get_bindings_assembly_path() const;
 
     dotnet_object* new_object(const std::string_view name, dotnet_type* type);
-    std::map<natural_t, dotnet_object>::iterator remove_object(const std::string_view name);
+    ostd::map<natural_t, dotnet_object>::iterator remove_object(const std::string_view name);
 
     void bind_interop_table();
     void bind_native_functions();

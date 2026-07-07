@@ -77,8 +77,8 @@ namespace other {
 
     std::atomic<natural_t> connection_id_counter = 1;
 
-    std::map<natural_t, connection_route> active_connections;
-    std::map<natural_t, listener_route> active_listeners;
+    ostd::map<natural_t, connection_route> active_connections;
+    ostd::map<natural_t, listener_route> active_listeners;
     std::deque<natural_t> recently_closed_connections;
 
     std::mutex providers_mutex;
