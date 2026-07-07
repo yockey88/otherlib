@@ -33,11 +33,22 @@ namespace other {
   struct std_frame_allocator {
     using value_type = T;
 
+    std_frame_allocator() noexcept
+        : frame(arena::create_frame_allocator()) {}
     explicit std_frame_allocator(frame_allocator* frame) noexcept
         : frame(frame) {}
     template <typename U>
     constexpr std_frame_allocator(const std_frame_allocator<U>& other) noexcept
         : frame(other.frame) {}
+    ~std_frame_allocator() { arena::destroy_frame_allocator(frame); }
+
+    /// an assigned/swapped container must carry its arena with it — with these
+    /// false (the default), assigning across unequal allocators degrades to
+    /// element-wise moves through the TARGET's allocator: a hidden allocation
+    /// nobody wrote. true makes every assignment a pointer steal.
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
 
     T* allocate(size_t n) { return static_cast<T*>(frame->allocate(n * sizeof(T), alignof(T))); }
     void deallocate(T* ptr, size_t n) { /* end of frame resets allocator*/ }

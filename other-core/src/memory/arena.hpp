@@ -19,6 +19,7 @@
 namespace other {
 
   struct page;
+  class frame_allocator;
 
   struct alloc_header {
     uint32_t user_size;  // caller requested size
@@ -45,6 +46,9 @@ namespace other {
 
     static page* request_memory_page();
     static void free_memory_page(page* p);
+
+    static frame_allocator* create_frame_allocator();
+    static void destroy_frame_allocator(frame_allocator* frame);
 
     void* request_region(size_t size, size_t alignment = page::kAlignment);
     void free_region(void* ptr);

@@ -8,13 +8,12 @@
 
 namespace other {
 
-  frame_allocator::frame_allocator() {
-    page = arena::request_memory_page();
-    OTHER_ASSERT(page != nullptr, "Failed to allocate initial page for frame allocator.");
+  frame_allocator::frame_allocator(struct page* p) {
+    OTHER_ASSERT(p != nullptr, "Frame allocator must be initialized with a valid page.");
+    this->page = p;
   }
 
   frame_allocator::~frame_allocator() {
-    arena::free_memory_page(page);
   }
 
   void* frame_allocator::allocate(size_t size, size_t alignment) {

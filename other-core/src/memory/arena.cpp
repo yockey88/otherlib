@@ -18,6 +18,7 @@ namespace other {
 
   arena::~arena() {
     storage.cleanup(page_allocation_cursor);
+    storage.finalize();
     page_allocation_cursor = 0;
   }
 
@@ -92,6 +93,18 @@ namespace other {
     auto& instance = instance_ref();
     std::lock_guard lock(instance.arena_mutex);
     instance.storage.destroy_page(p);
+  }
+
+  frame_allocator* arena::create_frame_allocator() {
+    auto& instance = instance_ref();
+    std::lock_guard lock(instance.arena_mutex);
+    return instance.storage.create_frame_allocator();
+  }
+
+  void arena::destroy_frame_allocator(frame_allocator* frame) {
+    auto& instance = instance_ref();
+    std::lock_guard lock(instance.arena_mutex);
+    instance.storage.destroy_frame_allocator(frame);
   }
 
   void* arena::request_region(size_t size, size_t alignment) {
