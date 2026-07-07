@@ -184,12 +184,6 @@ target_link_directories(otherlib PUBLIC
 )
 target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_scripting other_network other_core)
 
-# if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
-#   target_link_libraries(otherlib PRIVATE nfd_d)
-# else()
-#   target_link_libraries(otherlib PRIVATE nfd)
-# endif()
-
 add_library(otherlib_main STATIC src/other_main.cpp)
 target_link_libraries(otherlib_main PUBLIC otherlib)
 target_include_directories(otherlib_main PUBLIC

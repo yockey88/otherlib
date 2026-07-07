@@ -8,17 +8,6 @@ set_target_properties(OtherCs PROPERTIES
   VS_GLOBAL_AllowUnsafeBlocks "true"
   VS_GLOBAL_Nullable "enable"
 )
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set_target_properties(OtherCs PROPERTIES
-    VS_GLOBAL_DebugType "portable"
-    VS_GLOBAL_OptimizeFor "Debug"
-  )
-else()
-  set_target_properties(OtherCs PROPERTIES
-    VS_GLOBAL_DebugType "pdbonly"
-    VS_GLOBAL_OptimizeFor "Release"
-  )
-endif()
 
 target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/fnv.cs

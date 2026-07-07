@@ -49,16 +49,16 @@ namespace other {
 
     camera* primary_camera = nullptr;             //< tag = 'main-camera'
     gpu::light* sun_directional_light = nullptr;  //< tag = 'sun'
-    ostd::vector<gpu::light> lights;
+    ostd::frame_vector<gpu::light> lights;
     gpu::simulation_environment_buffer simulation_environment;
 
     size_t num_draw_calls = 0;
     std::map<mesh_key, size_t> mesh_indices;
-    ostd::vector<mesh_key> mesh_keys;
-    ostd::vector<draw_call> draw_calls;
-    ostd::vector<gpu::graphics_material_buffer> material_buffers;
-    ostd::vector<gpu::model_matrix_buffer> model_buffers;
-    ostd::vector<gpu::bone_matrix_buffer> bone_buffers;
+    ostd::frame_vector<mesh_key> mesh_keys;
+    ostd::frame_vector<draw_call> draw_calls;
+    ostd::frame_vector<gpu::graphics_material_buffer> material_buffers;
+    ostd::frame_vector<gpu::model_matrix_buffer> model_buffers;
+    ostd::frame_vector<gpu::bone_matrix_buffer> bone_buffers;
 
     render_stream scene_geometry_stream;
     render_stream debug_data;

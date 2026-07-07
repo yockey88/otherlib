@@ -47,7 +47,9 @@ namespace other {
     UNLOADED,
 
     ERROR_STATE,
-    NUM_STATES = ERROR_STATE,
+
+    INVALID_STATE,
+    NUM_STATES = INVALID_STATE,
   };
 
   enum asset_event {
@@ -218,9 +220,9 @@ namespace other {
     void handle_asset_file_changed_event(const file_event& event);
 
     void notify_asset_load_complete(asset* asset_ptr);
-    void notify_asset_load_failed(asset* asset_ptr, const std::string& error_message);
+    void notify_asset_load_failed(asset* asset_ptr, const std::string_view error_message);
     void notify_asset_unload_complete(asset* asset_ptr);
-    void notify_asset_unload_failed(asset* asset_ptr, const std::string& error_message);
+    void notify_asset_unload_failed(asset* asset_ptr, const std::string_view error_message);
 
     void on_asset_loaded(natural_t id);
     void on_asset_load_failed(natural_t id);

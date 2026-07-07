@@ -13,17 +13,14 @@ namespace other {
     frame_allocator();
     ~frame_allocator();
 
-    void* allocate(size_t size);
+    void* allocate(size_t size, size_t alignment = page::kAlignment);
+    void reset();
 
-    void begin_frame();
-    void end_frame();
+    inline size_t get_max_frame_usage() const { return max_frame_usage; }
 
    private:
     page* page = nullptr;
-    size_t frame_size = 0;
-
-    size_t current_offset = 0;
-    size_t current_frame_index = 0;
+    size_t max_frame_usage = 0;
   };
 
 }  // namespace other

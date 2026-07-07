@@ -212,12 +212,24 @@ namespace other {
   }
 
   std::string get_environment_build_config_string() {
-#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
+#if defined(OTHER_ENVIRONMENT_DEBUG)
     return "Debug";
-#elif defined(OTHER_ENVIRONMENT_RELEASE) || defined(OTHER_ENVIRONMENT_PROFILE)
+#elif defined(OTHER_ENVIRONMENT_PROFILED)
+    return "ProfileD";
+#elif defined(OTHER_ENVIRONMENT_RELEASE)
     return "Release";
+#elif defined(OTHER_ENVIRONMENT_PROFILE)
+    return "Profile";
 #else
     return "Unknown";
+#endif
+  }
+
+  std::string get_project_build_config_string() {
+#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
+    return "Debug";
+#else
+    return "Release";
 #endif
   }
 

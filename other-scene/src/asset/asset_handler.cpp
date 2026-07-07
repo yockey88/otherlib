@@ -498,8 +498,8 @@ namespace other {
     auto rit = loaded_assets.erase(it);
     pl_itr->pipeline->start_unload(
       jobs, &pl_itr->loading_asset,
-      std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this));
+      std::bind_front(&asset_handler::notify_asset_unload_complete, this),
+      std::bind_front(&asset_handler::notify_asset_unload_failed, this));
     return rit;
   }
 
@@ -539,8 +539,9 @@ namespace other {
     successful_pipelines.push(asset_ptr->id);
   }
 
-  void asset_handler::notify_asset_load_failed(asset* asset_ptr, const std::string& error_message) {
+  void asset_handler::notify_asset_load_failed(asset* asset_ptr, const std::string_view error_message) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load failure callback");
+    CORE_LOG_ERROR("Asset load failed for asset ID: {}: {}", asset_ptr->id, error_message);
     failed_pipelines.push(asset_ptr->id);
   }
 
@@ -549,8 +550,9 @@ namespace other {
     successful_pipelines.push(asset_ptr->id);
   }
 
-  void asset_handler::notify_asset_unload_failed(asset* asset_ptr, const std::string& error_message) {
+  void asset_handler::notify_asset_unload_failed(asset* asset_ptr, const std::string_view error_message) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unload failure callback");
+    CORE_LOG_ERROR("Asset unload failed for asset ID: {}: {}", asset_ptr->id, error_message);
     failed_pipelines.push(asset_ptr->id);
   }
 

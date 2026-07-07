@@ -28,10 +28,10 @@ namespace other {
     using executor_t = asio::thread_pool::executor_type;
 
     using on_asset_loaded = std::function<void(asset*)>;
-    using on_asset_load_failed = std::function<void(asset*, const std::string&)>;
+    using on_asset_load_failed = std::function<void(asset*, const std::string_view)>;
 
     using on_load_success_fn = void (asset_pipeline::*)();
-    using on_load_failure_fn = void (asset_pipeline::*)(const std::string&);
+    using on_load_failure_fn = void (asset_pipeline::*)(const std::string_view);
 
     asset_pipeline(event_system* events, asset_handler* handler)
         : events(events), handler(handler) {
@@ -67,7 +67,7 @@ namespace other {
     void start_load_operation(job_system& jobs, asset* asset_ptr, on_asset_loaded on_success, on_asset_load_failed on_failure, loading_table::loader_fn_t function);
 
     void pipeline_finished();
-    void pipeline_failed(const std::string& error_message);
+    void pipeline_failed(const std::string_view error_message);
 
     event_system& get_events() {
       OTHER_ASSERT(events != nullptr, "Events is null in asset_pipeline::get_events");
@@ -101,7 +101,7 @@ namespace other {
     on_asset_load_failed on_failure_callback = nullptr;
 
     void pipeline_complete(asset* asset_ptr);
-    void pipeline_failed(asset* asset_ptr, const std::string& error_message);
+    void pipeline_failed(asset* asset_ptr, const std::string_view error_message);
 
     // task load_asset(asset* asset_ptr);
   };

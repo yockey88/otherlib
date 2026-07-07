@@ -21,11 +21,17 @@ namespace other {
 
     page* get_page(size_t idx);
 
+    page* create_page();
+    void destroy_page(page* p);
+
    private:
 #ifdef OTHER_TEST_ENVIRONMENT
     friend class arena_test;
 #endif
+    // core arena
     page* pages[kMaxPages];
+    // memory pools and other that want to manage their own memory
+    std::vector<page*> requested_pages;
   };
 
 }  // namespace other

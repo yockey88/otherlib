@@ -81,6 +81,19 @@ namespace other {
     instance.used_memory -= free_list::bin_block_size(header->bin);
   }
 
+  page* arena::request_memory_page() {
+    auto& instance = instance_ref();
+    std::lock_guard lock(instance.arena_mutex);
+    OTHER_ASSERT(instance.page_allocation_cursor < arena_storage::kMaxPages, "Exceeded maximum number of pages. Allocating page : {}.", instance.page_allocation_cursor);
+    return instance.storage.create_page();
+  }
+
+  void arena::free_memory_page(page* p) {
+    auto& instance = instance_ref();
+    std::lock_guard lock(instance.arena_mutex);
+    instance.storage.destroy_page(p);
+  }
+
   void* arena::request_region(size_t size, size_t alignment) {
     PROFILE_SECTION("arena::request_region");
     std::lock_guard lock_arena_mutex(arena_mutex);
@@ -134,17 +147,6 @@ namespace other {
       cursor += block;
     }
     current_page->cursor = page::kPageSize;
-  }
-
-  size_t arena::get_allocation_padding(size_t size, size_t alignment) const {
-    size_t alignment_shift = 0;
-    if (current_page != nullptr) {
-      alignment_shift = current_page->cursor % alignment;
-      if (alignment_shift != 0) {
-        return alignment - alignment_shift;
-      }
-    }
-    return 0;
   }
 
   void arena::allocate_page() {

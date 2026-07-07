@@ -35,4 +35,25 @@ namespace other {
     return pages[idx];
   }
 
+  page* arena_storage::create_page() {
+    page* p = new page();
+    std::memset(p->data(), 0, page::kPageSize);
+    requested_pages.push_back(p);
+    return p;
+  }
+
+  void arena_storage::destroy_page(page* p) {
+    if (p == nullptr) {
+      return;
+    }
+
+    auto it = std::find(requested_pages.begin(), requested_pages.end(), p);
+    if (it != requested_pages.end()) {
+      delete p;
+      requested_pages.erase(it);
+    } else {
+      CORE_LOG_ERROR("Attempted to destroy a page that was not allocated through arena_storage.");
+    }
+  }
+
 }  // namespace other

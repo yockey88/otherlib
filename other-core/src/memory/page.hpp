@@ -10,7 +10,7 @@
 namespace other {
 
   struct page {
-    static inline constexpr size_t kPageSize = 4096 * 4096u;  // 16mb pages
+    static inline constexpr size_t kPageSize = 2 * 4096 * 4096u;  // 32mb pages
     static inline constexpr size_t kAlignment = 16;
 
     size_t cursor = 0;

@@ -43,6 +43,9 @@ namespace other {
     static void free(void* ptr, size_t size);
     static void free(void* ptr);
 
+    static page* request_memory_page();
+    static void free_memory_page(page* p);
+
     void* request_region(size_t size, size_t alignment = page::kAlignment);
     void free_region(void* ptr);
 
@@ -67,8 +70,6 @@ namespace other {
 
     void* bump(size_t size);
     void handle_spillover();
-
-    size_t get_allocation_padding(size_t size, size_t alignment) const;
     void allocate_page();
 
 #ifdef OTHER_TEST_ENVIRONMENT

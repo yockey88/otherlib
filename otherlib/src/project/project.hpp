@@ -65,6 +65,7 @@ namespace other {
     void load_from_file(driver_kernel* kernel, const filepath& path);
     void generate_at(driver_kernel* kernel, const filepath& directory);
 
+    void fail_load();
     void unload();
     void set_state(state new_state);
 
@@ -79,14 +80,21 @@ namespace other {
 
     const std::string& get_project_name() const { return project_metadata.name; }
 
+    inline void error_building_script_project() { able_to_load_script_project = false; }
+    inline bool did_script_project_error_occurred() const { return !able_to_load_script_project; }
+
+    inline void error_building_scene_graph() { able_to_load_scene_graph = false; }
+    inline bool did_scene_graph_error_occurred() const { return !able_to_load_scene_graph; }
+
     inline const filepath& get_project_rc_path() const { return rc_path; }
     inline const filepath get_csproj_path() const { return project_scripts.csproject_path; }
 
     inline void set_dotnet_assembly(ref<assembly> a) { project_assembly = a; }
     inline state get_state() const { return current_state; }
     inline bool is_empty() const { return current_state == EMPTY; }
-    inline bool is_loaded() const { return current_state == LOADED; }
     inline bool is_loading() const { return current_state == LOADING; }
+    inline bool is_loaded() const { return current_state == LOADED; }
+    inline bool load_failed() const { return current_state == LOAD_FAILED; }
     inline bool is_unloading() const { return current_state == UNLOADING; }
 
     inline bool script_project_mounted() const {
@@ -124,6 +132,9 @@ namespace other {
     ostd::vector<scene> scenes_in_project;
     bool all_scenes_loaded = false;
     bool all_scenes_unloaded = true;
+
+    bool able_to_load_script_project = true;
+    bool able_to_load_scene_graph = true;
 
     void attach_project_dll(const filepath& dll_path);
     void attach_project_cs_file(const filepath& cs_file);
