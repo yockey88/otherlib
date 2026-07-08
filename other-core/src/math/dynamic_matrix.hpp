@@ -129,6 +129,15 @@ namespace other {
       return data[row * cols + col];
     }
 
+    real_t& operator[](natural_t i) {
+      OTHER_ASSERT(i < rows * cols, "Index out of bounds.");
+      return data[i];
+    }
+    const real_t operator[](natural_t i) const {
+      OTHER_ASSERT(i < rows * cols, "Index out of bounds.");
+      return data[i];
+    }
+
     dynamic_vector get_row(natural_t row) const {
       dynamic_vector res{ cols };
       for (natural_t i = 0; i < cols; ++i) {
@@ -298,5 +307,16 @@ namespace other {
   }
 
 }  // namespace other
+
+namespace std {
+
+  template <typename T>
+  struct formatter<other::dynamic_matrix<T>> : public std::formatter<std::string> {
+    auto format(const other::dynamic_matrix<T>& m, std::format_context& ctx) const {
+      return std::format_to(ctx.out(), "{}", other::dynamic_matrix<T>::write_string(m));
+    }
+  };
+
+}  // namespace std
 
 #endif  // OTHER_CORE_MATH_DYNAMIC_MATRIX_HPP
