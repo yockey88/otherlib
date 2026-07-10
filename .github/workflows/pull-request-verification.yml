@@ -8,6 +8,9 @@ jobs:
   pull-request-verification-windows:
     runs-on: windows-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: "Build and Test (Windows/Debug)"
         uses: ./.github/workflows/build-and-test-windows.yml
         with:
