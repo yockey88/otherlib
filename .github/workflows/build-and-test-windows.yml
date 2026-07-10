@@ -35,7 +35,10 @@ jobs:
       continue-on-error: true
 
     - name: Check Test Results
-      run: python ${{ github.workspace }}/tools/test-validation.py ${{ github.workspace }}/other_test_results.windows.${{ inputs.configuration | lower }}.xml
+      run: |
+        $lcconfig = ${{ inputs.configuration }}.ToLower()
+        $respath = "${{ github.workspace }}\build\tests\${lcconfig}\test_results.xml"
+        python ${{ github.workspace }}/tools/test-validation.py $respath
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
