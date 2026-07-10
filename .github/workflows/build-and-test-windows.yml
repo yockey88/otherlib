@@ -40,9 +40,12 @@ jobs:
         $respath = "${{ github.workspace }}\build\tests\${lcconfig}\test_results.xml"
         python ${{ github.workspace }}/tools/test-validation.py $respath
 
+    - name: Write Config Env Var
+      run: echo "CONFIGURATION=${{ inputs.configuration }}.ToLower" >> $GITHUB_ENV
+
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: other-test-results-windows-${{ inputs.configuration.ToLower() }}
-        path: ${{ github.workspace }}/other_test_results.windows.${{ inputs.configuration.ToLower() }}.xml
+        name: other-test-results-windows-${{ $CONFIGURATION.ToLower() }}
+        path: ${{ github.workspace }}/other_test_results.windows.${{ $CONFIGURATION.ToLower() }}.xml
