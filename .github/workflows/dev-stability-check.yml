@@ -5,17 +5,11 @@ on:
     branches: [ "dev" ]
 
 jobs:
-  dev-stability-assurance-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: "Build and Test (Windows/Debug)"
-        uses: ./.github/workflows/build-and-test-windows.yml
-        with:
-          configuration: Debug
-      - name: "Build and Test (Windows/Release)"
-        uses: ./.github/workflows/build-and-test-windows.yml
-        with:
-          configuration: Release
+  build-and-test-windows-debug:
+    uses: ./.github/workflows/build-and-test-windows.yml
+    with:
+      configuration: Debug
+  build-and-test-windows-release:
+    uses: ./.github/workflows/build-and-test-windows.yml
+    with:
+      configuration: Release
