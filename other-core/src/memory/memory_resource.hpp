@@ -34,18 +34,29 @@ namespace other {
     using value_type = T;
 
     std_frame_allocator() noexcept
-        : frame(arena::create_frame_allocator()) {}
+        : frame(arena::create_frame_allocator()) {
+      OTHER_ASSERT(frame != nullptr, "Failed to create frame allocator for std_frame_allocator.");
+      ++frame->reference_count;
+    }
     explicit std_frame_allocator(frame_allocator* frame) noexcept
-        : frame(frame) {}
+        : frame(frame) {
+      OTHER_ASSERT(frame != nullptr, "std_frame_allocator cannot be constructed with a null frame allocator.");
+      ++frame->reference_count;
+    }
     template <typename U>
     constexpr std_frame_allocator(const std_frame_allocator<U>& other) noexcept
-        : frame(other.frame) {}
-    ~std_frame_allocator() { arena::destroy_frame_allocator(frame); }
+        : frame(other.frame) {
+      OTHER_ASSERT(frame != nullptr, "std_frame_allocator cannot be constructed with a null frame allocator.");
+      ++frame->reference_count;
+    }
+    ~std_frame_allocator() {
+      OTHER_ASSERT(frame != nullptr, "std_frame_allocator cannot have a null frame allocator.");
+      --frame->reference_count;
+      if (frame->reference_count == 0) {
+        arena::destroy_frame_allocator(frame);
+      }
+    }
 
-    /// an assigned/swapped container must carry its arena with it — with these
-    /// false (the default), assigning across unequal allocators degrades to
-    /// element-wise moves through the TARGET's allocator: a hidden allocation
-    /// nobody wrote. true makes every assignment a pointer steal.
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_move_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;

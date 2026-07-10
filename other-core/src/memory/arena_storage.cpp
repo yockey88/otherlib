@@ -15,11 +15,14 @@ namespace other {
   }
 
   void arena_storage::finalize() {
-    for (auto* frame : frame_allocators) {
+    std::span fallocs = frame_allocators;
+    for (auto* frame : fallocs) {
       destroy_frame_allocator(frame);
     }
     frame_allocators.clear();
-    for (auto* page : requested_pages) {
+
+    std::span req_pages = requested_pages;
+    for (auto* page : req_pages) {
       destroy_page(page);
     }
     requested_pages.clear();

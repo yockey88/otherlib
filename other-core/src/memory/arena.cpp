@@ -86,7 +86,6 @@ namespace other {
   page* arena::request_memory_page() {
     auto& instance = instance_ref();
     std::lock_guard lock(instance.arena_mutex);
-    OTHER_ASSERT(instance.page_allocation_cursor < arena_storage::kMaxPages, "Exceeded maximum number of pages. Allocating page : {}.", instance.page_allocation_cursor);
     return instance.storage.create_page();
   }
 
@@ -99,7 +98,9 @@ namespace other {
   frame_allocator* arena::create_frame_allocator() {
     auto& instance = instance_ref();
     std::lock_guard lock(instance.arena_mutex);
-    return instance.storage.create_frame_allocator();
+    auto* f = instance.storage.create_frame_allocator();
+    OTHER_ASSERT(f != nullptr, "Failed to create frame allocator.");
+    return f;
   }
 
   void arena::destroy_frame_allocator(frame_allocator* frame) {

@@ -11,6 +11,7 @@ namespace other {
   struct frame_allocator {
     page* page = nullptr;
     size_t max_frame_usage = 0;
+    uint32_t reference_count = 0;
 
     void* allocate(size_t size, size_t alignment = page::kAlignment);
     void reset();

@@ -4,7 +4,7 @@
 #ifndef OTHER_CORE_MEMORY_ARENA_STORAGE_HPP
 #define OTHER_CORE_MEMORY_ARENA_STORAGE_HPP
 
-#include <cstdint>
+#include <vector>
 
 #include "memory/page.hpp"
 
