@@ -47,5 +47,5 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: other-test-results-windows-${{ $CONFIGURATION.ToLower() }}
-        path: ${{ github.workspace }}/other_test_results.windows.${{ $CONFIGURATION.ToLower() }}.xml
+        name: other-test-results-windows-${{ env.CONFIGURATION }}
+        path: ${{ github.workspace }}/other_test_results.windows.${{ env.CONFIGURATION }}.xml
