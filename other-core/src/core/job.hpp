@@ -10,6 +10,7 @@
 
 #include "core/defines.hpp"
 #include "core/ref_counted.hpp"
+#include "data-structures/std_container.hpp"
 
 namespace other {
 
@@ -69,7 +70,7 @@ namespace other {
 
    private:
     std::mutex cont_mutex;
-    std::vector<continuation_fn> continuations;
+    ostd::vector<continuation_fn> continuations;
   };
 
 }  // namespace other

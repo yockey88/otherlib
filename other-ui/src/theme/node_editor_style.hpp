@@ -56,7 +56,7 @@ namespace other {
     pin_style output_pin_style;
 
     link_style default_link_style;
-    std::map<natural_t, link_style> link_styles;
+    ostd::map<natural_t, link_style> link_styles;
   };
 
 }  // namespace other

@@ -8,7 +8,7 @@
 
 namespace other {
 
-  class state_machine_test : public testing::Test {
+  class state_machine_test : public other_test {
    protected:
   };
 

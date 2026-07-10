@@ -22,8 +22,8 @@ namespace other {
   class renderer;
 
   struct frame_resources {
-    std::map<resource_tag, resource_handle> tagged_buffers;
-    std::map<resource_tag, resource_handle> tagged_textures;
+    ostd::map<resource_tag, resource_handle> tagged_buffers;
+    ostd::map<resource_tag, resource_handle> tagged_textures;
 
     inline opt<resource_handle> find(resource_tag tag) const {
       if (auto itr = tagged_buffers.find(tag); itr != tagged_buffers.end()) {
@@ -69,7 +69,7 @@ namespace other {
     void register_buffer_resource(const std::string_view name, resource_handle handle);
     void register_shader_resource(const std::string_view name, resource_handle handle);
 
-    std::vector<std::string> get_texture_names() const;
+    ostd::vector<std::string> get_texture_names() const;
 
     ImTextureID get_final_output_texture_id();
     ImTextureID get_texture_id(const std::string_view name);
@@ -93,7 +93,7 @@ namespace other {
 
     resource_handle get_quad_mesh_handle() const;
 
-    static void apply_uniforms(shader& s, const std::map<std::string, value>& uniforms);
+    static void apply_uniforms(shader& s, const ostd::map<std::string, value>& uniforms);
 
    private:
     struct named_resource {
@@ -110,20 +110,20 @@ namespace other {
 
     renderer* renderer_ptr = nullptr;
 
-    std::map<natural_t, named_resource> buffer_resources;   /// keyed by FNV(name)
-    std::map<natural_t, named_resource> texture_resources;  /// keyed by FNV(name)
-    std::map<natural_t, resource_handle> shader_handles;    /// keyed by shader def name
+    ostd::map<natural_t, named_resource> buffer_resources;   /// keyed by FNV(name)
+    ostd::map<natural_t, named_resource> texture_resources;  /// keyed by FNV(name)
+    ostd::map<natural_t, resource_handle> shader_handles;    /// keyed by shader def name
 
-    std::map<resource_tag, resource_handle> tagged_buffer_handles;
-    std::map<resource_tag, resource_handle> tagged_texture_handles;
+    ostd::map<resource_tag, resource_handle> tagged_buffer_handles;
+    ostd::map<resource_tag, resource_handle> tagged_texture_handles;
 
     opt<resource_handle> screen_texture_handle;
     opt<resource_handle> quad_mesh_handle;
 
-    std::map<natural_t, pass_runtime> pass_runtimes;
+    ostd::map<natural_t, pass_runtime> pass_runtimes;
 
     using executor_fn = render_graph::pass_executor;
-    std::map<std::string, executor_fn> executor_overrides;
+    ostd::map<std::string, executor_fn> executor_overrides;
 
     // for avoiding resource collisions in rendering backend when user loads multiple pipelines with same resource names
     std::string get_pipeline_name(const std::string_view n) const;

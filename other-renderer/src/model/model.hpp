@@ -27,10 +27,10 @@ namespace other {
     model_source* source = nullptr;
     skeleton* skel = nullptr;
 
-    std::vector<uint32_t> submesh_indices;
+    ostd::vector<uint32_t> submesh_indices;
 
-    std::vector<glm::mat4> bone_matrices;
-    std::unordered_map<uint32_t, glm::mat4> local_submesh_transforms;
+    ostd::vector<glm::mat4> bone_matrices;
+    ostd::unordered_map<uint32_t, glm::mat4> local_submesh_transforms;
 
     mesh_node* get_node_by_name(const std::string& name);
     submesh* get_submesh_by_name(const std::string& name);

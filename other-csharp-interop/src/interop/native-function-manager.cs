@@ -39,6 +39,11 @@ namespace OtherCsBindings
       }
     }
 
+    public static void ClearBindingPoints()
+    {
+      binding_points.Clear();
+    }
+
     private static void DiscoverAssemblyBindingPoints(Assembly assembly)
     {
       try
@@ -112,6 +117,8 @@ namespace OtherCsBindings
 
     [UnmanagedCallersOnly]
     private static void RediscoverBindingPoints() => DiscoverAndRegisterFunctions();
+    [UnmanagedCallersOnly]
+    private static void CleanupBindingPoints() => ClearBindingPoints();
 
     [UnmanagedCallersOnly]
     private static void BindNativeFunction(NativeString name_str, IntPtr target)
@@ -175,8 +182,7 @@ namespace OtherCsBindings
       }
     }
 
-    [UnmanagedCallersOnly]
-    private static NativeBool32 ValidateBindingPoints()
+    public static bool BindingPointsValid()
     {
       var all_bound = true;
       foreach (var kvp in binding_points)
@@ -195,6 +201,12 @@ namespace OtherCsBindings
         Logger.LogInfo("All native functions successfully bound to managed counterparts.");
       }
       return all_bound;
+    }
+
+    [UnmanagedCallersOnly]
+    private static NativeBool32 ValidateBindingPoints()
+    {
+      return BindingPointsValid();
     }
   }
 }

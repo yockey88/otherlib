@@ -269,19 +269,19 @@ namespace other {
       std::string name;
       value val;
     };
-    std::vector<uniform_or_param> uniforms;
-    std::vector<uniform_or_param> params;
+    ostd::vector<uniform_or_param> uniforms;
+    ostd::vector<uniform_or_param> params;
   };
   struct frame_resource_tag {
     std::string name;
     std::string type;
   };
   struct frame_section {
-    std::vector<frame_binding_table> bindings;
-    std::vector<frame_input_output_table> inputs;
-    std::vector<frame_input_output_table> outputs;
-    std::vector<frame_executor_table> executors;
-    std::vector<frame_resource_tag> resource_tags;
+    ostd::vector<frame_binding_table> bindings;
+    ostd::vector<frame_input_output_table> inputs;
+    ostd::vector<frame_input_output_table> outputs;
+    ostd::vector<frame_executor_table> executors;
+    ostd::vector<frame_resource_tag> resource_tags;
   };
 
   namespace detail {
@@ -1013,7 +1013,7 @@ namespace other {
 
         auto clear_bits = pass.at_path("clear_bits");
         if (clear_bits && clear_bits.is_array()) {
-          std::vector<std::string> clear_bits_strs;
+          ostd::vector<std::string> clear_bits_strs;
           for (size_t i = 0; i < clear_bits.as_array()->size(); ++i) {
             std::string bit_str = clear_bits.as_array()->at(i).as_string()->get();
             clear_bits_strs.push_back(bit_str);

@@ -92,7 +92,7 @@ namespace other {
     natural_t begin_asset_load(const filepath& asset_path);
     void begin_asset_unload(natural_t asset_id);
 
-    natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    natural_t add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     natural_t get_asset_hash(natural_t asset_id) const;
@@ -189,7 +189,7 @@ namespace other {
     }
 
     void input_event(const input_state_change_event& event);
-    // void data_received(natural_t id, std::vector<uint8_t> data);
+    // void data_received(natural_t id, ostd::vector<uint8_t> data);
     // void handle_http_request_received(natural_t id, const http::request& req);
     // void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
     // void connection_closed(natural_t connection_id);
@@ -381,7 +381,7 @@ namespace other {
     void on_project_loaded();
     void on_project_unloaded();
 
-    void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args);
+    void launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::span<const std::string> args);
 
     void handle_driver_event_with_lua_table(const std::string_view event_name, const sol::table& event_data);
 

@@ -17,7 +17,7 @@ namespace other {
       void* comp_ptr = nullptr;
     };
     std::set<size_t> registered_component_types;
-    std::unordered_map<size_t, component_data> components;
+    ostd::unordered_map<size_t, component_data> components;
 
     template <typename T>
     void register_component(T& comp) {

@@ -15,7 +15,7 @@ namespace other {
   struct render_stream_recipe {
     std::string shader;  // pipeline shader name to use
     mesh::primitive_type topology;
-    std::vector<vertex_attribute> vertex_layout;
+    ostd::vector<vertex_attribute> vertex_layout;
   };
 
   struct render_stream_definition {
@@ -30,13 +30,13 @@ namespace other {
     void register_stream(std::string_view name, render_stream_definition defn);
     const render_stream_definition* find(std::string_view name) const;
 
-    std::map<natural_t, render_stream_definition>& entries() { return defs; }
-    const std::map<natural_t, render_stream_definition>& entries() const { return defs; }
+    ostd::map<natural_t, render_stream_definition>& entries() { return defs; }
+    const ostd::map<natural_t, render_stream_definition>& entries() const { return defs; }
 
     void clear() { defs.clear(); }
 
    private:
-    std::map<natural_t, render_stream_definition> defs;
+    ostd::map<natural_t, render_stream_definition> defs;
   };
 
 }  // namespace other

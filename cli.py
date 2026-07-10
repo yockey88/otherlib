@@ -127,7 +127,7 @@ if __name__ == "__main__":
     if args.build:
       ## why on God's green earth would microsoft change the fucking file extension
       if not os.path.exists("build/other.sln") and not os.path.exists("build/other.slnx"):
-        run_subprocess(["cmake", "-S", ".", "-B", "build", f"-DCMAKE_BUILD_TYPE={cfg}"])
+        run_subprocess(["cmake", "-S", ".", "-B", "build"])
       run_subprocess(["cmake", "--build", "build", "--config", cfg, "--parallel"])
 
       dll_cfg = "Release"

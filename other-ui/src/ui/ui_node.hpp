@@ -43,7 +43,7 @@ namespace other {
     int32_t get_window_flags() const { return window_flags; }
 
     natural_t parent = 0;
-    std::vector<natural_t> children;
+    ostd::vector<natural_t> children;
 
     natural_t id = 0;
     std::string node_title;

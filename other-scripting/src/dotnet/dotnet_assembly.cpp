@@ -6,15 +6,16 @@
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/dotnet_type.hpp"
-#include "dotnet/host.hpp"
 #include "dotnet/native_string.hpp"
 #include "dotnet/type_cache.hpp"
 #include "script/scripting_environment.hpp"
 
+
 namespace other {
 
-  void assembly::cache_types(type_cache* cache, const std::vector<int32_t>& dotnet_type_ids) {
+  void assembly::cache_types(type_cache* cache, const std::span<const int32_t> dotnet_type_ids) {
     for (auto id : dotnet_type_ids) {
       types.emplace_back(cache->cache_type(host, id));
     }
@@ -31,9 +32,9 @@ namespace other {
     return t->has_method(method_name);
   }
 
-  std::vector<callback_binding> assembly::get_native_function_bindings() const {
+  ostd::vector<callback_binding> assembly::get_native_function_bindings() const {
     // for each type in assembly check method for CallbackBindingAttribute and if it exists add to list of bindings to return
-    std::vector<callback_binding> bindings;
+    ostd::vector<callback_binding> bindings;
 
     for (auto* type : types) {
       OTHER_ASSERT(type != nullptr, "Null type found in assembly [{}:{}]", handle, name);
@@ -102,7 +103,7 @@ namespace other {
       int32_t type_counter = 0;
       host->interop().get_assembly_types(asm_ref->dotnet_id, nullptr, &type_counter);
 
-      std::vector<int32_t> type_ids;
+      ostd::vector<int32_t> type_ids;
       type_ids.resize(type_counter);
       host->interop().get_assembly_types(asm_ref->dotnet_id, type_ids.data(), &type_counter);
 

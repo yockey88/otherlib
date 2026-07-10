@@ -64,7 +64,9 @@ namespace other {
 
     /// registered in asset_system::initialize
     events.add_listener("script-project.asset-loaded", [this, kernel](const value& data) { handle_script_project_loaded(kernel, data); });
+    events.add_listener("script-project.asset-load-failed", [this, kernel](const value& data) { handle_script_project_load_failed(kernel, data); });
     events.add_listener("script-source.asset-loaded", [this, kernel](const value& data) { handle_script_source_loaded(kernel, data); });
+    events.add_listener("script-source.asset-load-failed", [this, kernel](const value& data) { handle_script_source_load_failed(kernel, data); });
     events.add_listener("script-source.asset-unloaded", [this, kernel](const value& data) { handle_script_source_unloaded(kernel, data); });
     events.add_listener("script-file.asset-loaded", [this, kernel](const value& data) { handle_script_file_loaded(kernel, data); });
     events.add_listener("script-file.asset-unloaded", [this, kernel](const value& data) { handle_script_file_unloaded(kernel, data); });
@@ -82,11 +84,27 @@ namespace other {
     if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING &&
         loaded_project->is_loading()) {
       // if all scenes loaded and all scripts loaded trigger project.loaded
+      // const bool csproj_error = loaded_project->script_project_error_occurred();
+      // const bool scene_graph_error = loaded_project->scene_graph_error_occurred();
+      // const bool error_occurred = csproj_error || scene_graph_error;
+
       const bool csproj_built_and_attached = loaded_project->script_project_mounted();
+      const bool csproj_error = loaded_project->did_script_project_error_occurred();
+
       const bool scene_graph_loaded = loaded_project->scene_graph_loaded();
-      if (csproj_built_and_attached && scene_graph_loaded) {
+      // const bool scene_graph_error = loaded_project->did_scene_graph_error_occurred();
+
+      const bool finished_loading = csproj_built_and_attached && scene_graph_loaded;
+      if (finished_loading) {
         loaded_project->set_state(project::state::LOADED);
         get_driver().trigger_event("project.loaded");
+      }
+      // only want to call this if we have finished everything so we have to check all the combinations of what could have finished and errored to know if we should
+      // reset project or wait
+      else if (scene_graph_loaded && csproj_error) {
+        CORE_LOG_ERROR("Failed to load project due to script project load error. Unloading project.");
+        loaded_project->set_state(project::state::LOAD_FAILED);
+        loaded_project->fail_load();
       }
     }
 
@@ -161,7 +179,6 @@ namespace other {
     PROFILE_SECTION("project_system::unload_project");
 
     if (!loaded_project->is_loaded()) {
-      CORE_LOG_ERROR("Project not loaded. Cannot unload");
       return;
     }
 
@@ -268,6 +285,27 @@ namespace other {
     }
   }
 
+  void project_system::handle_script_project_load_failed(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script project load failed event data.");
+    PROFILE_SECTION("project_system::handle_script_project_load_failed");
+
+    CORE_LOG_DEBUG("Script project load failed. Project state: {}", loaded_project->get_state());
+    if (loaded_project->is_loading()) {
+      natural_t asset_id = data;
+      opt<filepath> script = sibling<asset_system>(*kernel).get_local_asset_path(asset_id);
+      if (!script.has_value()) {
+        CORE_LOG_ERROR("Failed to get local asset path for script project asset with ID: {} that failed to load", asset_id);
+        return;
+      }
+
+      loaded_project->error_building_script_project();
+      CORE_LOG_ERROR("Failed to load script project asset with ID: {} at path '{}'", asset_id, script.value().string());
+    } else {
+      CORE_LOG_WARN("Unimplemented handling of script project asset load failed event in project for project state {}", loaded_project->get_state());
+    }
+  }
+
   void project_system::handle_script_source_loaded(driver_kernel* kernel, const value& data) {
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script source loaded event data.");
@@ -289,6 +327,14 @@ namespace other {
     } else {
       CORE_LOG_WARN("Unimplemented handling of script source asset loaded event in project for project state {}", loaded_project->get_state());
     }
+  }
+
+  void project_system::handle_script_source_load_failed(driver_kernel* kernel, const value& data) {
+    OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
+    OTHER_ASSERT(data.type() == value_type::UINT64, "Expected asset ID as uint64 in script source load failed event data.");
+    PROFILE_SECTION("project_system::handle_script_source_load_failed");
+    natural_t asset_id = data;
+    CORE_LOG_ERROR("Failed to load script source asset with ID: {}", asset_id);
   }
 
   void project_system::handle_script_source_unloaded(driver_kernel* kernel, const value& data) {

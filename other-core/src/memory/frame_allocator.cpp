@@ -4,35 +4,33 @@
 #include "memory/frame_allocator.hpp"
 
 #include "core/logger.hpp"
+#include "thread/thread_safety.hpp"
 
 namespace other {
 
-  frame_allocator::frame_allocator() {
-    page = arena::request_memory_page();
+  frame_allocator::frame_allocator(struct page* p) {
+    OTHER_ASSERT(p != nullptr, "Frame allocator must be initialized with a valid page.");
+    this->page = p;
   }
 
   frame_allocator::~frame_allocator() {
-    arena::free_memory_page(page);
   }
 
-  void* frame_allocator::allocate(size_t size) {
+  void* frame_allocator::allocate(size_t size, size_t alignment) {
+    ASSERT_MAIN_THREAD();
     OTHER_ASSERT(page != nullptr, "Frame allocator page is null.");
-    OTHER_ASSERT(page->cursor + size <= page::kPageSize, "Frame allocator out of memory for the current frame. Requested size: {}, Available size: {}.", size, page::kPageSize - page->cursor);
-
-    void* ptr = page->get_ptr_at(page->cursor);
-    page->cursor += size;
-    frame_size += size;
-
-    return ptr;
+    const size_t unaligned = page->cursor;
+    const size_t aligned_ptr = (unaligned + (alignment - 1)) & ~(alignment - 1);
+    const size_t aligned = aligned_ptr;
+    OTHER_ASSERT(aligned + size <= page::kPageSize, "frame_allocator overflow: {} + {} > {}.  Debug memory usage.", aligned, size, page::kPageSize);
+    page->cursor = aligned + size;
+    return page->get_ptr_at(aligned);
   }
 
-  void frame_allocator::begin_frame() {
+  void frame_allocator::reset() {
     OTHER_ASSERT(page != nullptr, "Frame allocator page is null.");
-  }
-
-  void frame_allocator::end_frame() {
+    max_frame_usage = page->cursor > max_frame_usage ? page->cursor : max_frame_usage;
     page->cursor = 0;
-    frame_size = 0;
   }
 
 }  // namespace other

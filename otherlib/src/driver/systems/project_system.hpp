@@ -57,7 +57,9 @@ namespace other {
     void handle_save_project(driver_kernel* kernel, const value& data);
 
     void handle_script_project_loaded(driver_kernel* kernel, const value& data);
+    void handle_script_project_load_failed(driver_kernel* kernel, const value& data);
     void handle_script_source_loaded(driver_kernel* kernel, const value& data);
+    void handle_script_source_load_failed(driver_kernel* kernel, const value& data);
     void handle_script_source_unloaded(driver_kernel* kernel, const value& data);
     void handle_script_file_loaded(driver_kernel* kernel, const value& data);
     void handle_script_file_unloaded(driver_kernel* kernel, const value& data);

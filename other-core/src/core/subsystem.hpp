@@ -211,8 +211,8 @@ namespace other {
     subsystem<T>::get();
   }
 
-  using subsystem_initializer = void (*)(const config_table*);
-  using subsystem_shutdown = void (*)();
+  using subsystem_initializer = std::function<void(const config_table*)>;
+  using subsystem_shutdown = std::function<void()>;
   struct subsystem_definition {
     std::string name;
     std::span<const std::string_view> depends_on;

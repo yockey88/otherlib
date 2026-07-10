@@ -31,7 +31,7 @@ namespace other {
     void destroy_world(natural_t id);
 
    private:
-    std::map<natural_t, physics_world*> worlds;
+    ostd::map<natural_t, physics_world*> worlds;
     scope<physics_api> physics_backend = nullptr;
 
     scope<memory_pool<physics_body>> physics_bodies = nullptr;
@@ -45,7 +45,6 @@ namespace other {
 OTHER_DEPENDENT_SUBSYSTEM(
   other::physics_environment,
   subsystem_profile::kArena,
-  subsystem_profile::kLogger
-);
+  subsystem_profile::kLogger);
 
 #endif  // OTHER_PHYSICS_PHYSICS_PHYSICS_ENVIRONMENT_HPP

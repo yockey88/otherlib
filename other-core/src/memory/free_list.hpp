@@ -23,18 +23,10 @@ namespace other {
     void push(uint8_t bin_idx, void* block);
     void* pop(uint8_t bin_idx);
 
-    inline size_t free_blocks(size_t bin) const {
-      OTHER_ASSERT(bin < kNumBins, "free_list bin {} out of range.", bin);
-      return counts[bin];
-    }
+    size_t free_blocks(size_t bin) const;
+    size_t idle_bytes() const;
 
-    inline size_t idle_bytes() const {
-      size_t total = 0;
-      for (size_t bin = 0; bin < kNumBins; bin++) {
-        total += counts[bin] * bin_block_size(bin);
-      }
-      return total;
-    }
+    void cleanup();
 
    private:
     struct free_node {

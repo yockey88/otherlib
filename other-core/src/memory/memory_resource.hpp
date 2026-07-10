@@ -5,6 +5,7 @@
 #define OTHER_CORE_MEMORY_MEMORY_RESOURCE_HPP
 
 #include "memory/arena.hpp"
+#include "memory/frame_allocator.hpp"
 
 namespace other {
 
@@ -17,9 +18,7 @@ namespace other {
     constexpr std_arena_allocator(const std_arena_allocator<U>&) noexcept {}
 
     T* allocate(size_t n) {
-      T* obj = static_cast<T*>(arena::allocate(n * sizeof(T), alignof(T)));
-      OTHER_ASSERT(obj != nullptr, "Failed to allocate memory for {} objects.", n);
-      return obj;
+      return static_cast<T*>(arena::allocate(n * sizeof(T), alignof(T)));
     }
 
     void deallocate(T* ptr, size_t n) {
@@ -28,6 +27,43 @@ namespace other {
 
     template <typename U>
     bool operator==(const std_arena_allocator<U>&) const { return true; }
+  };
+
+  template <typename T>
+  struct std_frame_allocator {
+    using value_type = T;
+
+    std_frame_allocator() noexcept
+        : frame(arena::create_frame_allocator()) {
+      ++frame->reference_count;
+    }
+    explicit std_frame_allocator(frame_allocator* frame) noexcept
+        : frame(frame) {
+      ++frame->reference_count;
+    }
+    template <typename U>
+    constexpr std_frame_allocator(const std_frame_allocator<U>& other) noexcept
+        : frame(other.frame) {
+      ++frame->reference_count;
+    }
+    ~std_frame_allocator() {
+      --frame->reference_count;
+      if (frame->reference_count == 0) {
+        arena::destroy_frame_allocator(frame);
+      }
+    }
+
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+
+    T* allocate(size_t n) { return static_cast<T*>(frame->allocate(n * sizeof(T), alignof(T))); }
+    void deallocate(T* ptr, size_t n) { /* end of frame resets allocator*/ }
+
+    template <typename U>
+    bool operator==(const std_frame_allocator<U>&) const { return true; }
+
+    frame_allocator* frame;
   };
 
 }  // namespace other

@@ -41,7 +41,7 @@ namespace other {
       auto menus =
         main_menu_bar_menus |
         std::views::transform(&main_menu_bar_menu::menu) |
-        std::ranges::to<std::vector>();
+        std::ranges::to<ostd::vector<ui::menu>>();
       main_menu_bar.render(menus);
     }
 
@@ -95,8 +95,8 @@ namespace other {
     }
   }
 
-  std::vector<std::string> driver_ui::get_open_window_names() const {
-    std::vector<std::string> open_windows;
+  ostd::vector<std::string> driver_ui::get_open_window_names() const {
+    ostd::vector<std::string> open_windows;
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       if (i == 0 || i == static_cast<size_t>(INVALID_WINDOW_TYPE)) {
         continue;
@@ -110,8 +110,8 @@ namespace other {
     return open_windows;
   }
 
-  std::vector<std::string> driver_ui::get_available_window_names() const {
-    std::vector<std::string> available_windows;
+  ostd::vector<std::string> driver_ui::get_available_window_names() const {
+    ostd::vector<std::string> available_windows;
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       if (i == 0 || i == static_cast<size_t>(INVALID_WINDOW_TYPE)) {
         continue;

@@ -112,25 +112,14 @@ function(other_install_external_library LIB_NAME LIBPATH)
   
   if(EXISTS "${LIBPATH}" AND EXISTS "${LIBPATH}")
     ## Configuration-specific installation
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-      install(
-        DIRECTORY "${LIBPATH}/"
-        DESTINATION "${OTHER_INSTALL_LIBDIR}"
-        FILES_MATCHING 
-        PATTERN "*.lib"
-        PATTERN "*.exp"
-        PATTERN "*.pdb"
-      )
-    elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
-      install(
-        DIRECTORY "${LIBPATH}/"
-        DESTINATION "${OTHER_INSTALL_LIBDIR}"
-        FILES_MATCHING 
-        PATTERN "*.lib"
-        PATTERN "*.exp"
-        PATTERN "*.pdb"
-      )
-    endif()
+    install(
+      DIRECTORY "${LIBPATH}/"
+      DESTINATION "${OTHER_INSTALL_LIBDIR}"
+      FILES_MATCHING 
+      PATTERN "*.lib"
+      PATTERN "*.exp"
+      PATTERN "*.pdb"
+    )
   else()
    message(FATAL_ERROR "External library path '${LIBPATH}' does not exist for '${LIB_NAME}'")
   endif()

@@ -5,7 +5,7 @@
 
 #include "core/logger.hpp"
 
-#include "dotnet/host.hpp"
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/types.hpp"
 
 namespace other {
@@ -22,14 +22,14 @@ namespace other {
 
   void dotnet_method::initialize_method() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
-    std::vector<int32_t> attribute_ids;
+    ostd::vector<int32_t> attribute_ids;
     int32_t num_attributes = 0;
 
     host->interop().get_method_attributes(dotnet_id, nullptr, &num_attributes);
     attribute_ids.resize(num_attributes);
     host->interop().get_method_attributes(dotnet_id, attribute_ids.data(), &num_attributes);
 
-    CORE_LOG_DEBUG("Initializing method [{}] with {} attributes", name(), attribute_ids.size());
+    CORE_LOG_TRACE("Initializing method [{}] with {} attributes", name(), attribute_ids.size());
     attributes.reserve(attribute_ids.size());
     for (int32_t attribute_id : attribute_ids) {
       int32_t attribute_type_id = -1;
@@ -54,8 +54,8 @@ namespace other {
     }
   }
 
-  std::vector<std::string> dotnet_method::get_attribute_names() const {
-    std::vector<std::string> names;
+  ostd::vector<std::string> dotnet_method::get_attribute_names() const {
+    ostd::vector<std::string> names;
     for (const auto& attr : attributes) {
       names.push_back(attr.name());
     }

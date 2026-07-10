@@ -21,13 +21,13 @@ namespace other {
       transform obj_transform = {};
 
       natural_t parent_id = 0;
-      std::vector<natural_t> children_ids = {};
+      ostd::vector<natural_t> children_ids = {};
 
       integer_t script_object_id = -1;
 
       struct dotnet_object {
         std::string name = "";
-        std::vector<uint8_t> dotnet_blob = {};
+        ostd::vector<uint8_t> dotnet_blob = {};
       } dotnet_obj;
       struct python_object {
       } python_obj;

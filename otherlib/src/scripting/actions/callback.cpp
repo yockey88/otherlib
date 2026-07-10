@@ -23,7 +23,7 @@ namespace other {
     //     case value_type::STRING: return sol::make_object(L, v.as_string());
     //     case value_type::BYTE_BUFFER: {
     //       std::span<const uint8_t> data_span = v.as_byte_buffer();
-    //       return sol::make_object(L, std::vector<uint8_t>(data_span.begin(), data_span.end()));
+    //       return sol::make_object(L, ostd::vector<uint8_t>(data_span.begin(), data_span.end()));
     //     }
     //     default: return sol::make_object(L, sol::lua_nil);
     //   }

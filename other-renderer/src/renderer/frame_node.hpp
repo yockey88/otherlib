@@ -20,10 +20,10 @@ namespace other {
     natural_t id;
     render_pass* pass = nullptr;
 
-    std::map<natural_t, render_pass::buffer_resource> input_buffers;
-    std::map<natural_t, render_pass::buffer_resource> output_buffers;
-    std::map<natural_t, render_pass::texture_resource> input_textures;
-    std::map<natural_t, render_pass::texture_resource> output_textures;
+    ostd::map<natural_t, render_pass::buffer_resource> input_buffers;
+    ostd::map<natural_t, render_pass::buffer_resource> output_buffers;
+    ostd::map<natural_t, render_pass::texture_resource> input_textures;
+    ostd::map<natural_t, render_pass::texture_resource> output_textures;
 
     void start_pass(renderer* renderer_ptr, pass_runtime* runtime) const;
     void end_pass(renderer* renderer_ptr) const;

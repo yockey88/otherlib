@@ -34,7 +34,7 @@ namespace other {
     // dotnet_object* dotnet_window_registry = nullptr;
     lua_script* driver_main_lua_script = nullptr;
     lua_script* envrc = nullptr;
-    std::vector<ref<assembly>> loaded_dotnet_modules;
+    ostd::vector<ref<assembly>> loaded_dotnet_modules;
   };
 
 }  // namespace other

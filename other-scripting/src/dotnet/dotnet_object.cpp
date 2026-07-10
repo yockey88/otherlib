@@ -9,7 +9,7 @@
 #include "core/fnv.hpp"
 #include "serialization/serialization.hpp"
 
-#include "dotnet/host.hpp"
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/native_string.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -194,7 +194,7 @@ namespace other {
     return dn_type->has_attribute(attr_name);
   }
 
-  std::vector<std::string> dotnet_object::get_attribute_names() const {
+  ostd::vector<std::string> dotnet_object::get_attribute_names() const {
     return dn_type->get_attribute_names();
   }
 
@@ -206,11 +206,11 @@ namespace other {
 
   }  // namespace detail
 
-  std::vector<uint8_t> dotnet_object::serialize_to_bytes() {
+  ostd::vector<uint8_t> dotnet_object::serialize_to_bytes() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
 
-    std::vector<uint8_t> bytes = {};
+    ostd::vector<uint8_t> bytes = {};
 
     /**
      | num fields | fields |
@@ -274,11 +274,11 @@ namespace other {
     // }
   }
 
-  std::vector<uint8_t> dotnet_object::serialize_field_to_bytes(const std::string_view name) {
+  ostd::vector<uint8_t> dotnet_object::serialize_field_to_bytes(const std::string_view name) {
     // const auto& fields = dn_type->get_fields();
     // auto itr = std::ranges::find_if(fields, [&](const dotnet_field& f) { return f.name() == name; });
 
-    std::vector<uint8_t> bytes = {};
+    ostd::vector<uint8_t> bytes = {};
     // if (itr == fields.end()) {
     //   CORE_LOG_ERROR("Failed to find field {} on type {}", name, dn_type->full_name());
     //   return bytes;
@@ -366,7 +366,7 @@ namespace other {
     return itr->second.stored_type;
   }
 
-  std::map<uint64_t, dotnet_field::storage>::iterator dotnet_object::load_field(const std::string_view field_name, value_type type) {
+  ostd::map<uint64_t, dotnet_field::storage>::iterator dotnet_object::load_field(const std::string_view field_name, value_type type) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
 
@@ -401,7 +401,7 @@ namespace other {
     return itr;
   }
 
-  void dotnet_object::write_storage_to_field(std::map<uint64_t, dotnet_field::storage>::const_iterator itr, const std::string_view field_name) {
+  void dotnet_object::write_storage_to_field(ostd::map<uint64_t, dotnet_field::storage>::const_iterator itr, const std::string_view field_name) {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
     OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
 

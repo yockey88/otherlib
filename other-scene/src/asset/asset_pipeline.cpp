@@ -105,7 +105,7 @@ namespace other {
     }
   }
 
-  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+  scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
     CORE_LOG_DEBUG("Building model source pipeline for model '{}', vertex count {}, index count {}", name, vertices.size(), indices.size());
     scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(events, handler);
     pl->builder = model_importer::build_model_data(name, vertices, indices);
@@ -140,6 +140,7 @@ namespace other {
     /// \todo look up custom asset loader if need be (will have to reference symbol in plugin)
 
     pipeline_state.loading = true;
+    error_message = "";
     start_load_operation(
       jobs, asset_ptr, on_success, on_failure,
       loading_table::loaders[asset_ptr->asset_type]);
@@ -161,6 +162,7 @@ namespace other {
     /// \todo look up custom asset unloader if need be (will have to reference symbol in plugin)
 
     pipeline_state.unloading = true;
+    error_message = "";
     start_load_operation(
       jobs, asset_ptr, on_success, on_failure,
       loading_table::unloaders[asset_ptr->asset_type]);
@@ -174,7 +176,6 @@ namespace other {
     if (pipeline_state.success) {
       pipeline_complete(asset_ptr);
     } else if (pipeline_state.failure) {
-      std::string error_message;
       pipeline_failed(asset_ptr, error_message);
     }
 
@@ -201,8 +202,8 @@ namespace other {
     pipeline_state.success = true;
   }
 
-  void asset_pipeline::pipeline_failed(const std::string& err_msg) {
-    error_message = err_msg;
+  void asset_pipeline::pipeline_failed(const std::string_view err_msg) {
+    error_message = std::string(err_msg);
     pipeline_state.failure = true;
   }
 
@@ -212,7 +213,6 @@ namespace other {
 
     pipeline_state.loading = false;
     pipeline_state.unloading = false;
-    error_message = "";
   }
 
   void asset_pipeline::pipeline_complete(asset* asset_ptr) {
@@ -235,12 +235,11 @@ namespace other {
     }
   }
 
-  void asset_pipeline::pipeline_failed(asset* asset_ptr, const std::string& error_message) {
+  void asset_pipeline::pipeline_failed(asset* asset_ptr, const std::string_view error_message) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in pipeline_failed");
     OTHER_ASSERT(pipeline_state.loading || pipeline_state.unloading, "Pipeline is not in loading or unloading state in pipeline_failed");
 
     CORE_LOG_ERROR("Pipeline failed for asset ID: {}", asset_ptr->id);
-    CORE_LOG_ERROR(" - Error message: {}", error_message);
 
     std::string event_name = "";
     if (pipeline_state.loading) {
@@ -248,12 +247,12 @@ namespace other {
     } else if (pipeline_state.unloading) {
       event_name = "asset-unload-failed";
     }
-    get_events().trigger_event(get_asset_event_name(asset_ptr->asset_type, event_name), std::make_tuple(asset_ptr->id, error_message));
 
     /// \todo remove this
     if (on_failure_callback != nullptr) {
       on_failure_callback(asset_ptr, error_message);
     }
+    get_events().trigger_event(get_asset_event_name(asset_ptr->asset_type, event_name), asset_ptr->id);
   }
 
   // task asset_pipeline::load_asset(asset* asset_ptr) {
@@ -270,7 +269,7 @@ namespace other {
   //     co_await task::yield();
   //   }
 
-  //   std::vector<natural_t> dependencies = {};
+  //   ostd::vector<natural_t> dependencies = {};
   //   if (load_job != nullptr) {
   //     /// it is probably done here since we yielded after posting it,
   //     //   but just in case we can yield again until it is done
@@ -316,7 +315,7 @@ namespace other {
       }
 
       model_builder builder;
-      std::vector<natural_t> dependencies = {};
+      ostd::vector<natural_t> dependencies = {};
 
       ref<job> source_job = nullptr;
       if (load_model) {
@@ -462,7 +461,7 @@ namespace other {
         [h = handler, t = build_tool, project_path]() {
           filepath csproj = t->get_dotnet_project_path();
           /// \todo fixed hardcoded build configuration and output path assumptions
-          filepath build = csproj.parent_path() / "bin" / get_environment_build_config_string() / (csproj.stem().string() + ".dll");
+          filepath build = csproj.parent_path() / "bin" / get_project_build_config_string() / (csproj.stem().string() + ".dll");
           if (!std::filesystem::exists(build)) {
             throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
           }
@@ -474,6 +473,11 @@ namespace other {
       do {
         co_await task::yield();
       } while (!load_build_asset_job->done());
+
+      if (load_build_asset_job->get_status() == job::status::CANCELLED) {
+        call_pipeline_fn<script_project_pipeline>(pipeline, on_failure, std::format("Loading built assembly for .NET project '{}' was cancelled.", project_path.string()));
+        co_return;
+      }
 
       call_pipeline_fn<script_project_pipeline>(pipeline, on_success);
       co_return;

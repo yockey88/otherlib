@@ -5,10 +5,10 @@
 #define OTHER_SCENE_SCENE_SCENE_GRAPH_HPP
 
 #include "core/defines.hpp"
+#include "data-structures/graph.hpp"
 
 #include "scene/scene.hpp"
 
-#include "data-structures/graph.hpp"
 
 namespace other {
 
@@ -71,7 +71,7 @@ namespace other {
     };
     graph<scene> g;
 
-    std::vector<id_pair> id_pairs;
+    ostd::vector<id_pair> id_pairs;
   };
 
 }  // namespace other

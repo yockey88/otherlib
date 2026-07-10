@@ -220,8 +220,8 @@ namespace other {
     return nullptr;
   }
 
-  std::vector<ref<directory>> directory::child_directories() const {
-    std::vector<ref<directory>> result;
+  ostd::vector<ref<directory>> directory::child_directories() const {
+    ostd::vector<ref<directory>> result;
     result.reserve(children.size());
     for (const auto& [hash, child] : children) {
       result.push_back(child);
@@ -229,8 +229,8 @@ namespace other {
     return result;
   }
 
-  std::vector<ref<file_handle>> directory::files() const {
-    std::vector<ref<file_handle>> result;
+  ostd::vector<ref<file_handle>> directory::files() const {
+    ostd::vector<ref<file_handle>> result;
     result.reserve(file_handles.size());
     for (const auto& [hash, file] : file_handles) {
       result.push_back(file);
@@ -238,8 +238,8 @@ namespace other {
     return result;
   }
 
-  std::vector<std::string> directory::split_path(const std::string_view path) {
-    std::vector<std::string> components;
+  ostd::vector<std::string> directory::split_path(const std::string_view path) {
+    ostd::vector<std::string> components;
     std::string current;
 
     for (char c : path) {

@@ -34,7 +34,7 @@ namespace other {
       // const scene_object* parent = s.get_parent(&obj);
       // uint64_t parent_id = parent != nullptr ? parent->id : 0;
 
-      // std::vector<uint64_t> children_ids = s.get_children_ids(obj.id);
+      // ostd::vector<uint64_t> children_ids = s.get_children_ids(obj.id);
 
       std::vector<uint8_t> bytes = {};
       // write_reflected_object(obj, bytes);
@@ -80,12 +80,12 @@ namespace other {
 
     namespace detail {
 
-      void write_dotnet_object(dotnet_object* dn_obj, std::vector<uint8_t>& bytes) {
+      void write_dotnet_object(dotnet_object* dn_obj, ostd::vector<uint8_t>& bytes) {
         // if (dn_obj != nullptr) {
         //   write_value<uint16_t>((uint16_t)dn_obj->get_type_name().size(), bytes);
         //   write_string_value(dn_obj->get_type_name(), bytes);
 
-        //   std::vector<uint8_t> data = dn_obj->serialize_to_bytes();
+        //   ostd::vector<uint8_t> data = dn_obj->serialize_to_bytes();
         //   write_value<uint16_t>((uint16_t)data.size(), bytes);
         //   bytes.append_range(data);
         // } else {
@@ -107,7 +107,7 @@ namespace other {
 
         // uint16_t data_len = read_value<uint16_t>(buffer, cursor);
         // if (data_len > 0) {
-        //   obj.dotnet_blob = read_bytes(buffer, data_len, cursor) | std::ranges::to<std::vector<uint8_t>>();
+        //   obj.dotnet_blob = read_bytes(buffer, data_len, cursor) | std::ranges::to<ostd::vector<uint8_t>>();
         // }
 
         return { obj, cursor };

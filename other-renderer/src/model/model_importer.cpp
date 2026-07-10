@@ -16,10 +16,8 @@
 #include <glm/fwd.hpp>
 #include <mio/mmap.hpp>
 
-#include "core/formatting.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
-#include "serialization/serialization.hpp"
 
 #include "model/animation.hpp"
 #include "model/skeleton.hpp"
@@ -130,17 +128,17 @@ namespace other {
         CORE_LOG_ERROR("Unsupported model file extension: {}", extension);
       }
 
-      return std::move(builder);
+      return builder;
     }
 
-    model_builder build_model_data(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+    model_builder build_model_data(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
       PROFILE_SECTION("model_importer::build_model_data--from-vertices");
 
       model_builder builder;
       builder.name = name;
 
-      builder.vertices = vertices;
-      builder.indices = indices;
+      builder.vertices = { vertices.begin(), vertices.end() };
+      builder.indices = { indices.begin(), indices.end() };
 
       if (vertices.empty() || indices.empty()) {
         CORE_LOG_ERROR("Model data is empty");
@@ -676,7 +674,7 @@ namespace other {
     }
 
     void process_assimp_nodes(const aiScene* scene, model_builder& builder) {
-      mesh_node& root = builder.nodes.emplace_back();
+      mesh_node& _ = builder.nodes.emplace_back();
       traverse_assimp_nodes(scene->mRootNode, 0, builder);
 
       /// check if we created a bone from an animation channel and need to update the skeleton data and unrigged submeshes

@@ -11,13 +11,14 @@
 
 #include "core/value.hpp"
 
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/dotnet_object.hpp"
-#include "dotnet/host.hpp"
 #include "lua/lua_script.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "forward.hpp"
 #include "table.hpp"
+
 
 namespace other {
 
@@ -119,8 +120,7 @@ namespace other {
       auto converted_args = std::make_tuple(convert_arg(std::forward<CallArgs>(args))...);
       return std::apply(
         [this](auto&&... converted) { return dotnet_obj->invoke<Ret>(method_name, std::forward<decltype(converted)>(converted)...); },
-        converted_args
-      );
+        converted_args);
     }
   };
 

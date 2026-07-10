@@ -28,7 +28,7 @@ namespace other {
   struct environment_interface {
     std::string name;
     std::string description;
-    std::vector<interface_method> actions;
+    ostd::vector<interface_method> actions;
   };
 
 }  // namespace other

@@ -20,7 +20,7 @@ namespace other {
     microseconds rtt_estimate{ 0 };
 
     natural_t last_seen_tick = 0;
-    std::vector<uint8_t> peer_metadata;
+    ostd::vector<uint8_t> peer_metadata;
   };
 
 }  // namespace other

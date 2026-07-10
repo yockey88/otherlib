@@ -58,7 +58,8 @@ namespace other {
 
       // expected padding pattern is to pad to 8 bytes with zeros
 
-      EXPECT_EQ(actual.data, expected_data) << std::format("Data content mismatch for data section '{}', data size: {}/{}.", actual.name, actual.data.size(), expected_data.size());
+      std::vector<uint8_t> actual_data{ actual.data.begin(), actual.data.end() };
+      EXPECT_EQ(actual_data, expected_data) << std::format("Data content mismatch for data section '{}', data size: {}/{}.", actual.name, actual.data.size(), expected_data.size());
     }
 
     void expect_symbol_fixups_match(const lowering_artifact& actual, const std::span<const expected_symbol_fixup> expected_fixups) {

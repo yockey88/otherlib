@@ -8,6 +8,7 @@
 
 #include "core/defines.hpp"
 #include "core/time.hpp"
+#include "data-structures/std_container.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "network/tcp/tcp_transport_provider.hpp"
@@ -99,7 +100,11 @@ namespace other {
     if (!force_disable_network) {
       PROFILE_SECTION("network_system::tick--network_thread_messages");
 
-      auto msg_opt = net_context->net_thread_message_bus.receive_message();
+      opt<message> msg_opt = std::nullopt;
+      {
+        PROFILE_SECTION("network_system::tick--await_message");
+        msg_opt = net_context->net_thread_message_bus.receive_message();
+      }
       if (msg_opt.has_value()) {
         process_network_thread_messages(kernel, std::move(*msg_opt));
       }
@@ -253,7 +258,7 @@ namespace other {
     message msg{ COMMAND, TX_DATA };
     command_tx_data tx_data{
       .connection_id = connection_id,
-      .data = std::vector(data.begin(), data.end()),
+      .data = ostd::vector<uint8_t>(data.begin(), data.end()),
     };
     msg.data = serialize_direct(tx_data);
     send_message(&get_driver().get_kernel(), std::move(msg));

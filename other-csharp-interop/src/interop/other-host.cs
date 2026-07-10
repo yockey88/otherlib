@@ -58,13 +58,17 @@ namespace OtherCsBindings
 
     [UnmanagedCallersOnly]
     private static unsafe void Entry(Argv args)
-    {
+    { 
       Logger.Initialize(args.logger_native_handle);
       Logger.LogInfo("Initializing Other Environment .NET Host");
 
       AssemblyLoader.LoadCoreAssemblies();
 
       NativeFunctionManager.DiscoverAndRegisterFunctions();
+      if (!NativeFunctionManager.BindingPointsValid())
+      {
+        Logger.LogError("One or more native function binding points were not properly bound. Check previous log messages for details.");
+      }
     }
 
   }

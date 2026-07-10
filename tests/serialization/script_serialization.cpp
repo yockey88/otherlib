@@ -14,7 +14,7 @@
 namespace other {
 
   TEST_F(serialization_tests, write_dotnet_object_to_bytes) {
-    std::vector<uint8_t> bytes = {};
+    ostd::vector<uint8_t> bytes = {};
 
     scene s1("Test Scene");
     scene_object& obj = s1.create_object("Test Object");
@@ -75,7 +75,7 @@ namespace other {
       ASSERT_NO_FATAL_FAILURE(script_obj->dotnet_object->set_property("PropertyString", std::string("Property Hello from DotNet Object")));
 
       ASSERT_NO_FATAL_FAILURE({
-        std::vector<uint8_t> script_bytes = script_obj->dotnet_object->serialize_to_bytes();
+        ostd::vector<uint8_t> script_bytes = script_obj->dotnet_object->serialize_to_bytes();
         expected_data_length = script_bytes.size();
       });
 

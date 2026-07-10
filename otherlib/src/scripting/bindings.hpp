@@ -4,7 +4,7 @@
 #ifndef OTHERLIB_SCRIPTING_BINDINGS_HPP
 #define OTHERLIB_SCRIPTING_BINDINGS_HPP
 
-#include "dotnet/host.hpp"
+#include "dotnet/dotnet_host.hpp"
 #include "lua/lua_host.hpp"
 #include "lua/sol_bridge.hpp"
 

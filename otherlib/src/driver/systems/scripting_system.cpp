@@ -38,7 +38,7 @@ namespace other {
 
     /// load client specific .NET
     /// \note this has to happen here because .NET can override native subsystem implementations meaning we need to load these before initializing rendering or other subsystems
-    std::vector<std::string> dotnet_modules = get_driver().get_config_value<std::vector<std::string>>("scripting.dotnet-modules");
+    ostd::vector<std::string> dotnet_modules = get_driver().get_config_value<ostd::vector<std::string>>("scripting.dotnet-modules");
     for (const auto& module : dotnet_modules) {
       CORE_LOG_DEBUG(" - .NET module to load: {}", module);
       auto assembly = load_dotnet_module(module);
@@ -70,7 +70,7 @@ namespace other {
       ref<assembly> asm_ref = env->get_dotnet_module_by_asset_path(asset_ptr->absolute_path);
       OTHER_ASSERT(asm_ref != nullptr, "Failed to load .NET assembly for script asset: {}", asset_ptr->absolute_path.string());
 
-      std::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
+      ostd::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
       CORE_LOG_DEBUG("Found {} native callback bindings in assembly [{}:{}]", bindings.size(), asm_ref->get_handle(), asm_ref->get_name());
       for (const auto& binding : bindings) {
         auto last_dot = binding.full_type_and_method_name.find_last_of('.');
@@ -116,7 +116,7 @@ namespace other {
     ref<assembly> asm_ref = subsystem<scripting_environment>::get()->load_dotnet_module(path.string());
     OTHER_ASSERT(asm_ref != nullptr, "Failed to load .NET assembly from path: {}", module_path);
 
-    std::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
+    ostd::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
     CORE_LOG_DEBUG("Found {} native callback bindings in assembly [{}:{}]", bindings.size(), asm_ref->get_handle(), asm_ref->get_name());
     for (const auto& binding : bindings) {
       auto last_dot = binding.full_type_and_method_name.find_last_of('.');

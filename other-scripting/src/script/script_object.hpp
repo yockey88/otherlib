@@ -34,7 +34,7 @@ namespace other {
       std::string type_name;
       integer_t script_object_id = -1;  ///< the script_object ID for this behavior in the pool
     };
-    std::vector<behavior_handle> behavior_handles;
+    ostd::vector<behavior_handle> behavior_handles;
 
     behavior_snapshot get_behavior_snapshot() const;
   };

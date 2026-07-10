@@ -68,7 +68,7 @@ namespace other {
 
     virtual void execute_node() = 0;
     /// vector of opcodes representing compiled version of this node
-    // virtual natural_t compile_node(std::vector<uint32_t>& curr_program) = 0;
+    // virtual natural_t compile_node(ostd::vector<uint32_t>& curr_program) = 0;
 
    protected:
     template <typename T>

@@ -20,7 +20,7 @@ namespace other {
    public:
     struct topology {
       bool has_cycles = false;
-      std::vector<natural_t> sorted_node_ids;
+      ostd::vector<natural_t> sorted_node_ids;
     };
 
     graph()
@@ -79,8 +79,8 @@ namespace other {
       }
     }
 
-    std::vector<natural_t> get_neighbors(natural_t node_id) const {
-      std::vector<natural_t> neighbors;
+    ostd::vector<natural_t> get_neighbors(natural_t node_id) const {
+      ostd::vector<natural_t> neighbors;
       if (adjacency_matrix == nullptr) {
         return neighbors;
       }
@@ -157,10 +157,10 @@ namespace other {
       return nullptr;
     }
 
-    std::vector<natural_t> get_all_node_ids() const {
+    ostd::vector<natural_t> get_all_node_ids() const {
       return nodes |
         std::views::transform(&node::id) |
-        std::ranges::to<std::vector>();
+        std::ranges::to<ostd::vector<natural_t>>();
     }
 
     template <typename Pred>
@@ -226,7 +226,7 @@ namespace other {
 
       topo.sorted_node_ids.reserve(nodes.size());
 
-      std::map<natural_t, natural_t> in_degree;
+      ostd::map<natural_t, natural_t> in_degree;
       std::set<natural_t> no_incoming_edges;
 
       for (const auto& node_id : get_all_node_ids()) {
@@ -303,7 +303,7 @@ namespace other {
 
       constexpr auto operator<=>(const node& other) const = default;
     };
-    std::vector<node> nodes;
+    ostd::vector<node> nodes;
     ref<matrix_nxm<real_t>> adjacency_matrix;
 
     natural_t id_counter = 0;

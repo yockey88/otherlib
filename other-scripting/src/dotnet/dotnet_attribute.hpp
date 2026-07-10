@@ -26,9 +26,9 @@ namespace other {
     int32_t dotnet_id = 0;
   };
 
-  bool dotnet_attribute_has_dotnet_attribute(const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name);
-  std::vector<dotnet_attribute>::const_iterator find_dotnet_attribute(const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name);
-  bool dotnet_attribute_get_attribute_object(dotnet_host* host, const std::vector<dotnet_attribute>& attributes, const std::string_view attr_name, const std::string_view field_name, void* out);
+  bool dotnet_attribute_has_dotnet_attribute(const std::span<const dotnet_attribute> attributes, const std::string_view attr_name);
+  std::span<const dotnet_attribute>::const_iterator find_dotnet_attribute(const std::span<const dotnet_attribute> attributes, const std::string_view attr_name);
+  bool dotnet_attribute_get_attribute_object(dotnet_host* host, const std::span<const dotnet_attribute> attributes, const std::string_view attr_name, const std::string_view field_name, void* out);
 
 }  // namespace other
 

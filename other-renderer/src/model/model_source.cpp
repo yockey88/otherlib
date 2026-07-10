@@ -9,19 +9,21 @@ namespace other {
 
   namespace detail {
 
-    std::vector<float> build_vertex_buffer(const std::vector<vertex>& vertices);
-    std::vector<uint32_t> build_index_buffer(const std::vector<index>& indices);
-    std::tuple<resource_handle, resource_handle, resource_handle> get_mesh_handles(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    ostd::vector<float> build_vertex_buffer(const std::span<const vertex> vertices);
+    ostd::vector<uint32_t> build_index_buffer(const std::span<const index> indices);
+    std::tuple<resource_handle, resource_handle, resource_handle> get_mesh_handles(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices);
 
   }  // namespace detail
 
   // clang-format off
-  model_source::model_source(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices, const std::vector<triangle>& triangles,
-                              const std::vector<submesh>& submeshes, const std::vector<mesh_node>& nodes, const std::vector<material>& materials, const std::vector<animation>& animations, 
+  model_source::model_source(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices, const std::span<const triangle> triangles,
+                              const std::span<const submesh> submeshes, const std::span<const mesh_node> nodes, const std::span<const material> materials, const std::span<const animation> animations, 
                               const skeleton& skel, const glm::mat4& global_transform, const glm::mat4& inverse_global_transform, const bounding_box& bounds)
       // clang-format on
-      : name(name), global_transform(global_transform), inverse_global_transform(inverse_global_transform), vertices(vertices), indices(indices), triangles(triangles), submeshes(submeshes), nodes(nodes),
-        materials(materials), animations(animations), bounds(bounds), file_path("") {
+      : name(name), global_transform(global_transform), inverse_global_transform(inverse_global_transform),
+        vertices({ vertices.begin(), vertices.end() }), indices({ indices.begin(), indices.end() }), triangles({ triangles.begin(), triangles.end() }), submeshes({ submeshes.begin(), submeshes.end() }), nodes({ nodes.begin(), nodes.end() }),
+        materials({ materials.begin(), materials.end() }), animations({ animations.begin(), animations.end() }),
+        bounds(bounds), file_path("") {
     OTHER_ASSERT(!vertices.empty(), "Model source must have at least one vertex.");
     OTHER_ASSERT(!indices.empty(), "Model source must have at least one index.");
     OTHER_ASSERT(!submeshes.empty(), "Model source must have at least one submesh.");
@@ -75,13 +77,13 @@ namespace other {
     }
   }
 
-  model model_source::produce_model(const std::string& name, const std::vector<uint32_t>& submesh_idxs) {
+  model model_source::produce_model(const std::string& name, const std::span<const uint32_t> submesh_idxs) {
     model m = {
       .name = name.empty() ? this->name + "_instance_" + std::to_string(num_models_produced++) : name,
       .source = this,
       .submesh_indices = submesh_idxs.empty() ?
-        (std::ranges::iota_view{ 0u, (uint32_t)submeshes.size() } | std::ranges::to<std::vector<uint32_t>>()) :
-        submesh_idxs
+        (std::ranges::iota_view{ 0u, (uint32_t)submeshes.size() } | std::ranges::to<ostd::vector<uint32_t>>()) :
+        ostd::vector<uint32_t>(submesh_idxs.begin(), submesh_idxs.end())
     };
 
     for (const auto& sm_idx : m.submesh_indices) {
@@ -123,8 +125,8 @@ namespace other {
 
   namespace detail {
 
-    std::vector<float> build_vertex_buffer(const std::vector<vertex>& vertices) {
-      std::vector<float> raw_vertices;
+    ostd::vector<float> build_vertex_buffer(const std::span<const vertex> vertices) {
+      ostd::vector<float> raw_vertices;
       for (const auto& v : vertices) {
         raw_vertices.push_back(v.position.x);
         raw_vertices.push_back(v.position.y);
@@ -158,8 +160,8 @@ namespace other {
       return raw_vertices;
     }
 
-    std::vector<uint32_t> build_index_buffer(const std::vector<index>& indices) {
-      std::vector<uint32_t> raw_indices;
+    ostd::vector<uint32_t> build_index_buffer(const std::span<const index> indices) {
+      ostd::vector<uint32_t> raw_indices;
       for (const auto& idx : indices) {
         raw_indices.push_back(idx.v0);
         raw_indices.push_back(idx.v1);
@@ -168,9 +170,9 @@ namespace other {
       return raw_indices;
     }
 
-    std::tuple<resource_handle, resource_handle, resource_handle> get_mesh_handles(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
-      std::vector<float> vertex_data = vertex::to_gpu_buffer(vertices);
-      std::vector<uint32_t> indices_data = index::to_gpu_buffer(indices);
+    std::tuple<resource_handle, resource_handle, resource_handle> get_mesh_handles(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
+      ostd::vector<float> vertex_data = vertex::to_gpu_buffer(vertices);
+      ostd::vector<uint32_t> indices_data = index::to_gpu_buffer(indices);
 
       resource_handle mesh_handle = subsystem<renderer_backend>::get()->api()->create_resource(name + "_vertex_buffer", resource_type::MESH);
       (*subsystem<renderer_backend>::get()->api()->get_resource_as<mesh>(mesh_handle))

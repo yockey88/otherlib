@@ -91,7 +91,7 @@ namespace other {
 
     namespace detail {
 
-      std::string get_entity_and_children_string(const parsed_scene_object& obj, const std::vector<parsed_scene_object>& all_objects, size_t indent_level = 0) {
+      std::string get_entity_and_children_string(const parsed_scene_object& obj, const std::span<const parsed_scene_object> all_objects, size_t indent_level = 0) {
         std::stringstream ss;
         // std::string indent(indent_level * 2, ' ');
         // ss << indent << " '" << obj.object.name << "' (ID: " << obj.object.id << ")\n";

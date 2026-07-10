@@ -40,7 +40,7 @@ namespace other {
   //     registration_fn custom_registration;
   //   };
 
-  //   std::map<natural_t, type_data> component_types;
+  //   ostd::map<natural_t, type_data> component_types;
   // };
 
   struct scene_storage {

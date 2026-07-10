@@ -16,8 +16,13 @@ namespace other {
 
     template <typename T>
     using vector = ::std::vector<T, std_arena_allocator<T>>;
+    template <typename T>
+    using frame_vector = ::std::vector<T, std_frame_allocator<T>>;
 
-    using string = ::std::basic_string<char, ::std::char_traits<char>, std_arena_allocator<char>>;
+    // undecided on whether or not to do this
+    // going to take a lot more effort to migrate this one and string handling requires
+    // special handling usually so how much might I break?
+    // using string = ::std::basic_string<char, ::std::char_traits<char>, std_arena_allocator<char>>;
 
     template <typename K, typename V, typename Cmp = ::std::less<K>>
     using map = ::std::map<K, V, Cmp, std_arena_allocator<::std::pair<const K, V>>>;

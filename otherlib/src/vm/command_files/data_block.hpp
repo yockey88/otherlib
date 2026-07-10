@@ -44,18 +44,18 @@ namespace other {
 
     data_type type = OCMD_DATA_TYPE_INVALID;
     uint16_t address = 0;
-    std::vector<uint8_t> data = {};
+    ostd::vector<uint8_t> data = {};
 
     static data_type data_type_from_label(const std::string& label);
-    static data_type deduce_data_type_from_tokens(const std::vector<token>& tokens);
-    static std::vector<uint8_t> data_from_token_and_type(const token& value_token, data_type type);
+    static data_type deduce_data_type_from_tokens(const std::span<const token> tokens);
+    static ostd::vector<uint8_t> data_from_token_and_type(const token& value_token, data_type type);
   };
 
   struct data_block {
     std::string name = "";
     natural_t name_hash = 0;
 
-    std::vector<data_object> objects = {};
+    ostd::vector<data_object> objects = {};
   };
 
 }  // namespace other

@@ -103,6 +103,9 @@ namespace OtherCsBindings
     }
 
     [UnmanagedCallersOnly]
+    private static void ClearMethods() => methods.Clear();
+
+    [UnmanagedCallersOnly]
     private static unsafe IntPtr CreateObject(Int32 typeid, NativeBool32 weak_ref, IntPtr parameters, ManagedType* param_types, Int32 count)
     {
       try

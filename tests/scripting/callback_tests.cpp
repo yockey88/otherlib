@@ -75,20 +75,6 @@ namespace other {
   TEST_F(action_tests, dotnet_callback_test) {
     GTEST_SKIP() << "Dotnet callback implementation needs to be redesigned";
 
-    subsystem<arena>::get()->shutdown();
-    subsystem<arena>::get();
-
-    subsystem<scripting_environment>::get()->initialize_script_environment(environment->config);
-#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
-    dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_debug.string());
-    testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_debug.string());
-#elif defined(OTHER_ENVIRONMENT_RELEASE) || defined(OTHER_ENVIRONMENT_PROFILE)
-    dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_release.string());
-    testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_release.string());
-#else
-  #error "Unknown build configuration!"
-#endif
-
     auto* env = subsystem<scripting_environment>::get();
     integer_t obj_id = env->create_object("MyObject");
 
@@ -104,15 +90,6 @@ namespace other {
     }
 
     env->detach_dotnet_object(obj_id);
-
-    subsystem<scripting_environment>::get()->unload_dotnet_module(testing_asm);
-    subsystem<scripting_environment>::get()->unload_dotnet_module(dotnet_asm);
-    testing_asm = nullptr;
-    dotnet_asm = nullptr;
-    subsystem<scripting_environment>::get()->destroy_all_objects();
-    subsystem<scripting_environment>::get()->shutdown_script_environment();
-
-    subsystem<arena>::get()->shutdown();
   }
 
   TEST_F(action_tests, lua_callback_test) {
@@ -120,7 +97,6 @@ namespace other {
 
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
-    env->initialize_script_environment(environment->config);
 
     lua_script* test1 = env->load_lua_file("tests/test1.lua");
     ASSERT_TRUE(test1->is_valid());
@@ -132,9 +108,6 @@ namespace other {
       int ret = callback_fn->call<int>(15, 27);
       ASSERT_EQ(ret, 42);
     }
-
-    env->destroy_all_objects();
-    env->shutdown_script_environment();
   }
 
   TEST_F(action_tests, lua_callback_test_with_sol_function) {

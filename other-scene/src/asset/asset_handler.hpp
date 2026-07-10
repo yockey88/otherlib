@@ -47,7 +47,9 @@ namespace other {
     UNLOADED,
 
     ERROR_STATE,
-    NUM_STATES = ERROR_STATE,
+
+    INVALID_STATE,
+    NUM_STATES = INVALID_STATE,
   };
 
   enum asset_event {
@@ -101,7 +103,7 @@ namespace other {
     }
     ~asset_handler() = default;
 
-    static std::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
+    static ostd::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
 
     job_system& get_job_system() { return jobs; }
 
@@ -116,7 +118,7 @@ namespace other {
 
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
-    natural_t add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices);
+    natural_t add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
@@ -127,7 +129,7 @@ namespace other {
 
     asset* get_asset(natural_t asset_id);
     asset* get_asset_by_virtual_path(const filepath& virtual_path);
-    std::vector<asset*> get_assets_of_type(asset::type type);
+    ostd::vector<asset*> get_assets_of_type(asset::type type);
 
     std::span<const natural_t> get_all_asset_ids() const;
 
@@ -160,7 +162,7 @@ namespace other {
     opt<filepath> get_virtual_asset_path(natural_t asset_id) const;
 
     const asset* get_loaded_asset(natural_t asset_id) const;
-    std::vector<natural_t> get_all_tracked_ids() const;
+    ostd::vector<natural_t> get_all_tracked_ids() const;
 
     size_t get_num_loading_assets() const { return asset_pipelines.size(); }
     size_t get_num_loaded_assets() const { return loaded_assets.size(); }
@@ -192,10 +194,10 @@ namespace other {
     std::queue<natural_t> successful_pipelines;
     std::queue<natural_t> failed_pipelines;
 
-    std::vector<natural_t> all_assets;
-    std::unordered_map<natural_t, asset> loaded_assets;
-    std::unordered_map<natural_t, asset> unloaded_assets;
-    std::unordered_map<natural_t, asset_state_machine> asset_states;
+    ostd::vector<natural_t> all_assets;
+    ostd::unordered_map<natural_t, asset> loaded_assets;
+    ostd::unordered_map<natural_t, asset> unloaded_assets;
+    ostd::unordered_map<natural_t, asset_state_machine> asset_states;
 
     /// normally we might want to recreate, but if we are closing the editor
     // or doing
@@ -210,17 +212,17 @@ namespace other {
       return next_asset_id++;
     }
 
-    void begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it);
-    std::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
+    void begin_load(std::deque<pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it);
+    ostd::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
 
     asset* find_asset_by_path(const filepath& file_path) const;
 
     void handle_asset_file_changed_event(const file_event& event);
 
     void notify_asset_load_complete(asset* asset_ptr);
-    void notify_asset_load_failed(asset* asset_ptr, const std::string& error_message);
+    void notify_asset_load_failed(asset* asset_ptr, const std::string_view error_message);
     void notify_asset_unload_complete(asset* asset_ptr);
-    void notify_asset_unload_failed(asset* asset_ptr, const std::string& error_message);
+    void notify_asset_unload_failed(asset* asset_ptr, const std::string_view error_message);
 
     void on_asset_loaded(natural_t id);
     void on_asset_load_failed(natural_t id);

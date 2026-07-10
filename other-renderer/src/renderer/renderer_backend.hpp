@@ -53,7 +53,7 @@ namespace other {
     ImGuiContext* ui_context = nullptr;
     scope<rendering_api> rendering_api_instance;
 
-    std::map<natural_t, ref<model_source>> model_sources;
+    ostd::map<natural_t, ref<model_source>> model_sources;
 
     struct {
       bool backend_loaded = false;

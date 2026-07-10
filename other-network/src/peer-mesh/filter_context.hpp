@@ -25,7 +25,7 @@ namespace other {
     struct emit_target {
       packet_sink* sink;
     };
-    std::vector<emit_target> emit_targets;  // reused; not allocated per packet
+    ostd::vector<emit_target> emit_targets;  // reused; not allocated per packet
   };
 
 }  // namespace other

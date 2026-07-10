@@ -28,7 +28,7 @@ namespace other {
 
     bool has_attribute(const std::string_view attr_name) const;
     void get_attribute(const std::string_view attr_name, const std::string_view field_name, void* out) const;
-    std::vector<std::string> get_attribute_names() const;
+    ostd::vector<std::string> get_attribute_names() const;
 
     std::string name() const;
 
@@ -39,7 +39,7 @@ namespace other {
     dotnet_type* type = nullptr;
     dotnet_type* return_type = nullptr;
 
-    std::vector<dotnet_attribute> attributes;
+    ostd::vector<dotnet_attribute> attributes;
   };
 
 }  // namespace other

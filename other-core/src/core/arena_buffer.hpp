@@ -8,9 +8,10 @@
 
 #include <glm/glm.hpp>
 
-#include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "data-structures/std_container.hpp"
 #include "serialization//reflection.hpp"
+
 
 namespace other {
 
@@ -144,7 +145,7 @@ namespace other {
 
     uint64_t offset = 0;
     uint64_t capacity = 0;
-    std::vector<uint64_t> element_sizes;
+    ostd::vector<uint64_t> element_sizes;
 
     void shift_cursor(uint64_t size);
 

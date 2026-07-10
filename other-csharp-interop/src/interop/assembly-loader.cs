@@ -49,7 +49,6 @@ namespace OtherCsBindings
       "System.Threading"
     };
 
-
     private static Assembly[] core_assemblies = new Assembly[(int)CoreAssembly.NumCoreAssemblies];
 
     private static List<Type> core_types = new List<Type>();

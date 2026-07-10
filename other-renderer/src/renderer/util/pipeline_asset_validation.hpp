@@ -11,7 +11,7 @@ namespace other {
 
     struct validation_result {
       bool valid = true;
-      std::vector<std::string> errors;
+      ostd::vector<std::string> errors;
 
       void fail(std::string msg) {
         valid = false;

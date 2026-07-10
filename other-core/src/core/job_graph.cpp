@@ -84,9 +84,9 @@ namespace other {
     child_node->handle->current_status.store(job::status::WAITING_FOR_DEPENDENCIES, std::memory_order_release);
   }
 
-  std::vector<natural_t> job_graph::collect_ready() {
+  ostd::vector<natural_t> job_graph::collect_ready() {
     std::lock_guard lck{ graph_mutex };
-    std::vector<natural_t> ready_jobs;
+    ostd::vector<natural_t> ready_jobs;
     work_graph.for_each_node([&ready_jobs](const job_node& node) {
       if (node.handle->current_status.load(std::memory_order_acquire) == job::status::PENDING &&
           node.waiting_on == 0) {
@@ -103,14 +103,14 @@ namespace other {
     return ready_jobs;
   }
 
-  std::vector<natural_t> job_graph::resolve(natural_t job_id, job::status status) {
+  ostd::vector<natural_t> job_graph::resolve(natural_t job_id, job::status status) {
     job_node* completed_node = find_node(node_id_from_job_id(job_id));
     if (completed_node == nullptr) {
       return {};
     }
 
     std::lock_guard lck{ graph_mutex };
-    std::vector<natural_t> newly_ready;
+    ostd::vector<natural_t> newly_ready;
 
     completed_node->handle->current_status.store(status, std::memory_order_release);
     for (const natural_t child_node_id : work_graph.get_neighbors(node_id_from_job_id(job_id))) {
@@ -189,7 +189,7 @@ namespace other {
     return work_graph.empty();
   }
 
-  bool job_graph::size() const {
+  natural_t job_graph::size() const {
     std::lock_guard lck{ graph_mutex };
     return work_graph.size();
   }

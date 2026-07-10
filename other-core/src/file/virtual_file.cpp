@@ -31,7 +31,7 @@ namespace other {
     return std::string(buffer.begin(), buffer.end());
   }
 
-  std::vector<uint8_t> virtual_file::read_all() {
+  ostd::vector<uint8_t> virtual_file::read_all() {
     PROFILE_SECTION("virtual_file::read_all");
     return buffer;
   }
@@ -40,8 +40,7 @@ namespace other {
     PROFILE_SECTION("virtual_file::read");
     OTHER_ASSERT(
       current_mode == file_mode::READ || current_mode == file_mode::READ_WRITE,
-      "Virtual file '{}' is not open for reading", file_name
-    );
+      "Virtual file '{}' is not open for reading", file_name);
 
     uint64_t read_start = offset;
     if (read_start >= buffer.size()) {
@@ -60,8 +59,7 @@ namespace other {
     PROFILE_SECTION("virtual_file::write");
     OTHER_ASSERT(
       current_mode == file_mode::WRITE || current_mode == file_mode::READ_WRITE,
-      "Virtual file '{}' is not open for writing", file_name
-    );
+      "Virtual file '{}' is not open for writing", file_name);
 
     uint64_t write_end = cursor + data.size();
     if (write_end > buffer.size()) {

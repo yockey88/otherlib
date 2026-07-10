@@ -12,7 +12,7 @@ namespace other {
     // std::string final_message;
 
     // // notes/fix to format
-    // std::vector<diagnostic_note> notes = {};
+    // ostd::vector<diagnostic_note> notes = {};
     // opt<std::string> suggested_fix = {};
 
     std::stringstream ss;

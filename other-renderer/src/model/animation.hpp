@@ -27,9 +27,9 @@ namespace other {
   struct animation_channel {
     std::string node_name;
     glm::mat4 local_transform = glm::mat4(1.0f);
-    std::vector<translation_key<glm::vec3>> position_keys;
-    std::vector<translation_key<glm::quat>> rotation_keys;
-    std::vector<translation_key<glm::vec3>> scale_keys;
+    ostd::vector<translation_key<glm::vec3>> position_keys;
+    ostd::vector<translation_key<glm::quat>> rotation_keys;
+    ostd::vector<translation_key<glm::vec3>> scale_keys;
 
     const glm::mat4& get_transform_at_time(double time);
     glm::vec3 interpolated_position_at_time(double time) const;
@@ -55,7 +55,7 @@ namespace other {
 
     double current_time = 0.0f;
 
-    std::vector<animation_channel> channels;
+    ostd::vector<animation_channel> channels;
   };
 
 }  // namespace other

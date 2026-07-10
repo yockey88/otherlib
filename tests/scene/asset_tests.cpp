@@ -69,11 +69,11 @@ namespace other {
 
   namespace {
 
-    static mesh test_mesh;
-    static gpu_buffer test_vertex_buffer(resource_handle(1, resource_type::BUFFER));
-    static gpu_buffer test_index_buffer(resource_handle(2, resource_type::BUFFER));
-
     void set_up_mock_rendering_api_and_expect_mesh_creation(event_system& events) {
+      static mesh test_mesh;
+      static gpu_buffer test_vertex_buffer(resource_handle(1, resource_type::BUFFER));
+      static gpu_buffer test_index_buffer(resource_handle(2, resource_type::BUFFER));
+
       using ::testing::_;
       /// first we have to override the rendering subsystem api to avoid nullptr dereference
       scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
@@ -113,11 +113,15 @@ namespace other {
       auto* fs = subsystem<file_system>::get();
       OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
       fs->initialize_file_events(events);
-      fs->initialize_directory_structure({
+      constexpr std::array kDefaultMounts = {
         driver_mounts::kAssetMount,
         driver_mounts::kSceneMount,
         driver_mounts::kScriptMount,
-      });
+        driver_mounts::kAssetMount,
+        driver_mounts::kSceneMount,
+        driver_mounts::kScriptMount,
+      };
+      fs->initialize_directory_structure(kDefaultMounts);
     }
 
     void shutdown_mock_rendering_api() {
@@ -144,6 +148,7 @@ worker_count = {}
     dtor ___destructor_guard;
 
     job_system jobs{ io_context };
+    event_system events{ io_context };
 
     config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
     jobs.initialize(cfg);
@@ -236,6 +241,7 @@ worker_count = {}
     GTEST_SKIP() << "Skipping omesh test until we have a way to generate them in CI, files are too large to push to git (may have to use github lfs?)";
 
     job_system jobs{ io_context };
+    event_system events{ io_context };
     scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
 
     set_up_mock_rendering_api_and_expect_mesh_creation(events);

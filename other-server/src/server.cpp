@@ -73,7 +73,7 @@ namespace other {
       OTHER_ASSERT(mount != nullptr, "Server mount directory not found in file system");
       return mount->absolute_path().string();
     });
-    add_native_lua_function(lua_name("ReadFileToHttpBody"), [this](const std::string& path) -> std::vector<uint8_t> {
+    add_native_lua_function(lua_name("ReadFileToHttpBody"), [this](const std::string& path) -> ostd::vector<uint8_t> {
       CORE_LOG_DEBUG("Attempting to read file '{}' to HTTP body", path);
       const filepath full_path = path;
       if (std::filesystem::exists(full_path) && std::filesystem::is_regular_file(full_path)) {
@@ -82,7 +82,7 @@ namespace other {
           CORE_LOG_ERROR("Failed to open file at path: '{}'", full_path.string());
           return {};
         }
-        std::vector<uint8_t> data((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
+        ostd::vector<uint8_t> data((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
         CORE_LOG_DEBUG(" - read {} bytes from '{}'", data.size(), path);
         return data;
       }

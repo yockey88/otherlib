@@ -27,9 +27,9 @@ namespace other {
     per_instance_producer_fn find_per_instance(resource_tag) const;
 
    private:
-    std::map<resource_tag, per_frame_producer_fn> per_frame_binders;
-    std::map<resource_tag, per_draw_producer_fn> per_draw_binders;
-    std::map<resource_tag, per_instance_producer_fn> per_instance_binders;
+    ostd::map<resource_tag, per_frame_producer_fn> per_frame_binders;
+    ostd::map<resource_tag, per_draw_producer_fn> per_draw_binders;
+    ostd::map<resource_tag, per_instance_producer_fn> per_instance_binders;
   };
 
 }  // namespace other

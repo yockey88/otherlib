@@ -52,12 +52,12 @@ namespace other {
         : resource(handle) {}
     virtual ~shader() = default;
 
-    static resource_handle create(const std::string_view name, const filepath& filepath, const std::vector<setting>& settings);
-    static resource_handle create(const std::string_view name, const filepath& vertpath, const filepath& fragpath, const std::vector<setting>& settings);
-    static resource_handle create(const std::string_view name, const filepath& vertpath, const filepath& geompath, const filepath& fragpath, const std::vector<setting>& settings);
+    static resource_handle create(const std::string_view name, const filepath& filepath, const std::span<const setting> settings);
+    static resource_handle create(const std::string_view name, const filepath& vertpath, const filepath& fragpath, const std::span<const setting> settings);
+    static resource_handle create(const std::string_view name, const filepath& vertpath, const filepath& geompath, const filepath& fragpath, const std::span<const setting> settings);
     static resource_handle create(const std::string_view name, const std::string_view source, source_type type);
     static resource_handle create(const std::string_view name, const std::string_view vert_source, const std::string_view frag_source);
-    static std::string preprocess_file(const filepath& file, const std::vector<setting>& settings);
+    static std::string preprocess_file(const filepath& file, const std::span<const setting> settings);
 
     resource_type type() const override { return resource_type::SHADER; }
 
@@ -88,10 +88,9 @@ namespace other {
     bool compiled = false;
 
     uint8_t final_type = source_type::INVALID;
-    std::vector<source_type> sources_attached;
-    std::vector<std::string> sources;
-
-    std::vector<std::string> setting_definitions;
+    ostd::vector<source_type> sources_attached;
+    ostd::vector<std::string> sources;
+    ostd::vector<std::string> setting_definitions;
 
     static resource_handle create_handle(const std::string_view name);
 

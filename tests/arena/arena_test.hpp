@@ -27,18 +27,6 @@ namespace other {
       uint64_t pattern;
     };
 
-    void SetUp() override {
-      /// reset because we are testing the arena here
-      subsystem<arena>::get()->shutdown();
-      subsystem<arena>::get();
-
-      allocations.clear();
-    }
-
-    void TearDown() override {
-      subsystem<arena>::get()->shutdown();
-    }
-
     std::vector<test_allocation_data> allocations;
 
     void print_current_page();
@@ -51,6 +39,11 @@ namespace other {
     void test_allocation_pattern(const std::vector<size_t>& sizes);
     void simulate_memory_pressure();
     void verify_arena_state();
+
+    void TearDown() override {
+      other_test::TearDown();
+      allocations.clear();
+    }
   };
 
 }  // namespace other

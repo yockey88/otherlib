@@ -236,7 +236,7 @@ namespace other {
   }
 
   void node_editor::sort_nodes_for_drawing() {
-    // std::map<natural_t, uint32_t> in_degree;
+    // ostd::map<natural_t, uint32_t> in_degree;
     // for (const auto& [id, layout] : layouts) {
     //   in_degree[id] = 0;
     // }
@@ -325,7 +325,7 @@ namespace other {
     }
 
     // now adjust layout positions according to topo sort and linkage
-    // std::map<natural_t, glm::vec2> new_canvas_pos;
+    // ostd::map<natural_t, glm::vec2> new_canvas_pos;
     // for (natural_t nid : topo_sorted) {
     //   const node_layout& layout = layouts.at(nid);
     //   glm::vec2 pos = layout.position;

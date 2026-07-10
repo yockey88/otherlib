@@ -38,8 +38,7 @@ namespace other {
         handle_type,
         file_name,
         abs_path.string(),
-        virt_path
-      );
+        virt_path);
     }
 
     inline const std::string& name() const { return file_name; }
@@ -66,7 +65,7 @@ namespace other {
     virtual void close() = 0;
 
     virtual std::string read_all_as_string() = 0;
-    virtual std::vector<uint8_t> read_all() = 0;
+    virtual ostd::vector<uint8_t> read_all() = 0;
 
     /// reads up to `count` bytes starting at `offset` into the provided buffer returns the number of bytes actually read
     /// \note caller is responsible for ensuring the buffer is large enough, environment will assert otherwise

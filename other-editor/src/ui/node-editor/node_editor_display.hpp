@@ -57,7 +57,7 @@ namespace other {
       node_editor_canvas canvas;
 
       node_editor_node* selected_node = nullptr;
-      std::map<natural_t, node_display_data> node_data;
+      ostd::map<natural_t, node_display_data> node_data;
     };
 
   }  // namespace ui

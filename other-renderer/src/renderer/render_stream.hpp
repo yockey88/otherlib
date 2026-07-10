@@ -41,13 +41,13 @@ namespace other {
       size_t element_size;
       size_t max_per_frame = 0;
       size_t count;
-      std::vector<uint8_t> bytes;
+      ostd::vector<uint8_t> bytes;
 
       // render stream not responsible for managing this mesh resource
       // the renderer will create/clean up these resources
       resource_handle mesh_handle;
     };
-    std::map<natural_t, render_stream_storage> storages;
+    ostd::map<natural_t, render_stream_storage> storages;
   };
 
 }  // namespace other

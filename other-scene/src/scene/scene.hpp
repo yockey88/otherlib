@@ -86,14 +86,14 @@ namespace other {
     scene_object* get_parent(scene_object* object);
     const scene_object* get_parent(const scene_object* object) const;
 
-    std::vector<uint64_t> get_children_ids(natural_t id) const;
-    std::vector<uint64_t> get_children_ids(const scene_object* object) const;
-    std::vector<scene_object*> get_children(natural_t id);
-    std::vector<scene_object*> get_children(const scene_object* object);
+    ostd::vector<uint64_t> get_children_ids(natural_t id) const;
+    ostd::vector<uint64_t> get_children_ids(const scene_object* object) const;
+    ostd::vector<scene_object*> get_children(natural_t id);
+    ostd::vector<scene_object*> get_children(const scene_object* object);
 
     scene_object* find_object_with_tag(const std::string_view tag) const;
 
-    std::vector<uint64_t> get_all_object_ids() const;
+    ostd::vector<uint64_t> get_all_object_ids() const;
 
     bool is_visible(natural_t id) const;
 

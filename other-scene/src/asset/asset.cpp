@@ -87,8 +87,8 @@ namespace other {
     return n.as_string()->get();
   }
 
-  std::vector<std::string> asset::get_supported_extensions(asset::type asset_type) {
-    std::vector<std::string> extensions;
+  ostd::vector<std::string> asset::get_supported_extensions(asset::type asset_type) {
+    ostd::vector<std::string> extensions;
     for (const auto& asset_ext : kAssetExtensions) {
       if (asset_ext.asset_type == asset_type) {
         extensions.emplace_back(std::string{ asset_ext.extension });
