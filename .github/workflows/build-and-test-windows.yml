@@ -37,7 +37,7 @@ jobs:
     - name: Check Test Results
       run: |
         $lcconfig = "${{ inputs.configuration }}".ToLower()
-        $respath = "${{ github.workspace }}\build\tests\${lcconfig}\test_results.xml"
+        $respath = "${{ github.workspace }}\other_test_results.windows.${lcconfig}.xml"
         python ${{ github.workspace }}/tools/test-validation.py $respath
 
     - name: Write Config Env Var
