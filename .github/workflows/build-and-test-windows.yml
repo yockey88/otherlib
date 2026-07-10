@@ -6,10 +6,6 @@ on:
       configuration:
         required: true
         type: string
-      platform:
-        required: false
-        default: "Windowsx64"
-        type: string
 
 jobs:
   build-and-test:
