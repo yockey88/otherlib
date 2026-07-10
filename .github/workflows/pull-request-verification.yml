@@ -6,6 +6,10 @@ on:
 
 jobs:
   build-and-test-windows-debug:
-    uses: ./.github/workflows/build-and-test-windows-debug.yml
+    uses: ./.github/workflows/build-and-test-windows.yml
+    with:
+      configuration: Debug
   build-and-test-windows-release:
-    uses: ./.github/workflows/build-and-test-windows-release.yml
+    uses: ./.github/workflows/build-and-test-windows.yml
+    with:
+      configuration: Release
