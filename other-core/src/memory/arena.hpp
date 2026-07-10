@@ -47,8 +47,7 @@ namespace other {
     static page* request_memory_page();
     static void free_memory_page(page* p);
 
-    static frame_allocator* create_frame_allocator();
-    static void destroy_frame_allocator(frame_allocator* frame);
+    static frame_allocator* get_frame_allocator();
 
     void* request_region(size_t size, size_t alignment = page::kAlignment);
     void free_region(void* ptr);

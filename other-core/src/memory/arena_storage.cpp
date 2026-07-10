@@ -15,11 +15,11 @@ namespace other {
   }
 
   void arena_storage::finalize() {
-    std::span fallocs = frame_allocators;
-    for (auto* frame : fallocs) {
-      destroy_frame_allocator(frame);
+    if (current_frame_allocator != nullptr) {
+      destroy_page(current_frame_allocator->page);
+      delete current_frame_allocator;
+      current_frame_allocator = nullptr;
     }
-    frame_allocators.clear();
 
     std::span req_pages = requested_pages;
     for (auto* page : req_pages) {
@@ -71,26 +71,12 @@ namespace other {
     }
   }
 
-  frame_allocator* arena_storage::create_frame_allocator() {
-    auto* p = create_page();
-    auto* frame = new frame_allocator(p);
-    frame_allocators.push_back(frame);
-    return frame;
+  frame_allocator* arena_storage::get_frame_allocator() {
+    if (current_frame_allocator == nullptr) {
+      auto* p = create_page();
+      current_frame_allocator = new frame_allocator(p);
+    }
+    return current_frame_allocator;
   }
-
-  void arena_storage::destroy_frame_allocator(frame_allocator* frame) {
-    if (frame == nullptr) {
-      return;
-    }
-
-    auto it = std::find(frame_allocators.begin(), frame_allocators.end(), frame);
-    if (it != frame_allocators.end()) {
-      destroy_page(frame->page);
-      delete frame;
-      frame_allocators.erase(it);
-    } else {
-      CORE_LOG_ERROR("Attempted to destroy a frame allocator that was not allocated through arena_storage.");
-    }
-  };
 
 }  // namespace other

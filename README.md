@@ -23,11 +23,11 @@ Below is an incredibly rough diagram of how an Other Application works
                     |                  |    |                       |
                     |----------------| |    | |---------------------|
                                      | |    | |
-                                    other-scene
-                                         |
+                                     |---|----|
                                          |
                                      other-ui
                                          |
+                                    other-scene
                                          |
                                      otherlib
                                          |

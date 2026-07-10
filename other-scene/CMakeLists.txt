@@ -30,6 +30,6 @@ target_include_directories(other_scene
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scene>
 )
 target_link_directories(other_scene PRIVATE ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_scene PRIVATE other_renderer other_physics other_scripting other_network other_core)
+target_link_libraries(other_scene PRIVATE other_renderer other_ui other_physics other_scripting other_network other_core)
 
 other_install_module(other_scene "scene")
