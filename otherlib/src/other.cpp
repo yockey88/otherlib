@@ -28,7 +28,6 @@
 
 #include "driver/subsystem_registry.hpp"
 
-
 extern other::exit_code other_main(const other::command_line& cmd, const other::config_table& config, const other::subsystem_registry& registry);
 
 namespace other {
@@ -66,7 +65,8 @@ namespace other {
       CORE_LOG_ERROR("An unknown error occurred in other_main.");
     }
 
-    /// simply want the exit code to be the last thing in the logs
+    /// skip logger so that the the exit code can be the last thing in the logs
+    // it works cause logger is the only subsystem with no dependencies
     registry.shutdown_all(/* skip logger */ true);
     return res;
   }
