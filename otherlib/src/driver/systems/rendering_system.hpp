@@ -70,14 +70,14 @@ namespace other {
       pipeline_definition definition;
     };
 
-    std::vector<viewport> viewports;
+    ostd::vector<viewport> viewports;
 
     scope<renderer> renderer_ptr = nullptr;
     scope<pass_executor_resolver> pass_resolver_ptr = nullptr;
     scope<driver_ui> driver_ui_ptr = nullptr;
 
-    std::vector<pipeline_asset> pending_rendering_pipeline_assets;
-    std::vector<pipeline_asset> rendering_pipeline_assets;
+    ostd::vector<pipeline_asset> pending_rendering_pipeline_assets;
+    ostd::vector<pipeline_asset> rendering_pipeline_assets;
 
     void register_field_widgets();
     void register_component_widgets();

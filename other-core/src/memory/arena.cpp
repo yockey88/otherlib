@@ -17,7 +17,9 @@
 namespace other {
 
   arena::~arena() {
+    freelist.cleanup();
     storage.cleanup(page_allocation_cursor);
+    storage.finalize();
     page_allocation_cursor = 0;
   }
 
@@ -81,6 +83,32 @@ namespace other {
     instance.used_memory -= free_list::bin_block_size(header->bin);
   }
 
+  page* arena::request_memory_page() {
+    auto& instance = instance_ref();
+    std::lock_guard lock(instance.arena_mutex);
+    return instance.storage.create_page();
+  }
+
+  void arena::free_memory_page(page* p) {
+    auto& instance = instance_ref();
+    std::lock_guard lock(instance.arena_mutex);
+    instance.storage.destroy_page(p);
+  }
+
+  frame_allocator* arena::create_frame_allocator() {
+    auto& instance = instance_ref();
+    std::lock_guard lock(instance.arena_mutex);
+    auto* f = instance.storage.create_frame_allocator();
+    OTHER_ASSERT(f != nullptr, "Failed to create frame allocator.");
+    return f;
+  }
+
+  void arena::destroy_frame_allocator(frame_allocator* frame) {
+    auto& instance = instance_ref();
+    std::lock_guard lock(instance.arena_mutex);
+    instance.storage.destroy_frame_allocator(frame);
+  }
+
   void* arena::request_region(size_t size, size_t alignment) {
     PROFILE_SECTION("arena::request_region");
     std::lock_guard lock_arena_mutex(arena_mutex);
@@ -93,14 +121,6 @@ namespace other {
   void arena::free_region(void* ptr) {
     PROFILE_SECTION("arena::free_region");
     get_instance().free(ptr);
-  }
-
-  page* arena::request_memory_page() {
-    return instance_ref().storage.create_page();
-  }
-
-  void arena::free_memory_page(page* region) {
-    instance_ref().storage.free_page(region);
   }
 
   page* arena::get_current_page() {
@@ -142,17 +162,6 @@ namespace other {
       cursor += block;
     }
     current_page->cursor = page::kPageSize;
-  }
-
-  size_t arena::get_allocation_padding(size_t size, size_t alignment) const {
-    size_t alignment_shift = 0;
-    if (current_page != nullptr) {
-      alignment_shift = current_page->cursor % alignment;
-      if (alignment_shift != 0) {
-        return alignment - alignment_shift;
-      }
-    }
-    return 0;
   }
 
   void arena::allocate_page() {

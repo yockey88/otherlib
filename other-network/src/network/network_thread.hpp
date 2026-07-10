@@ -77,14 +77,14 @@ namespace other {
 
     std::atomic<natural_t> connection_id_counter = 1;
 
-    std::map<natural_t, connection_route> active_connections;
-    std::map<natural_t, listener_route> active_listeners;
+    ostd::map<natural_t, connection_route> active_connections;
+    ostd::map<natural_t, listener_route> active_listeners;
     std::deque<natural_t> recently_closed_connections;
 
     std::mutex providers_mutex;
     std::mutex sink_mutex;
-    std::vector<transport_provider*> providers;
-    std::vector<target> packet_sinks;
+    ostd::vector<transport_provider*> providers;
+    ostd::vector<target> packet_sinks;
 
     acknowledgement_list ack_list;
 

@@ -9,6 +9,7 @@
 
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
+#include "data-structures/std_container.hpp"
 #include "input/input_types.hpp"
 
 namespace other {
@@ -31,7 +32,7 @@ namespace other {
     natural_t id = 0;  // FNV hash of name
     action_value_type value_type = action_value_type::DIGITAL;
 
-    std::vector<action_binding> bindings{};
+    ostd::vector<action_binding> bindings{};
 
     /// whether this action should pass the raw text event to the consumer.
     /// if true, the action fires on any text input (used for console/chat).
@@ -66,7 +67,7 @@ namespace other {
     std::string name{};
     natural_t id = 0;
 
-    std::vector<input_action> actions{};
+    ostd::vector<input_action> actions{};
 
     /// if true, input that this context does not consume falls through to the next context on the stack
     /// if false, this context blocks all input from reaching lower contexts.
@@ -88,7 +89,7 @@ namespace other {
   /// this gets serialized as an input_map_asset.
   struct input_map {
     std::string name = "default";
-    std::vector<input_context> contexts{};
+    ostd::vector<input_context> contexts{};
 
     /// dead-zone settings for gamepad axes.
     float stick_dead_zone = 0.15f;

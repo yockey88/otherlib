@@ -5,9 +5,7 @@
 #define OTHER_NETWORK_HTTP_HTTP_REQUEST_HPP
 
 #include <cstdint>
-#include <span>
 #include <string>
-#include <vector>
 
 #include "http/http_header.hpp"
 #include "http/http_method.hpp"
@@ -21,9 +19,8 @@ namespace other {
       std::string path;
       std::string query_string;
 
-      std::vector<header> headers;
-
-      std::vector<uint8_t> body;
+      ostd::vector<header> headers;
+      ostd::vector<uint8_t> body;
     };
 
   }  // namespace http

@@ -56,7 +56,7 @@ namespace other {
     static asset::type get_type_from_extension(const std::string_view extension);
     static asset::type get_type_from_declaration(const filepath& file_path);
     static std::string get_name_from_declaration(const filepath& file_path);
-    static std::vector<std::string> get_supported_extensions(asset::type asset_type);
+    static ostd::vector<std::string> get_supported_extensions(asset::type asset_type);
 
     std::string get_filesystem_directory() const;
     static std::string get_filesystem_directory(asset::type asset_type);

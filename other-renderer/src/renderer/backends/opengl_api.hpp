@@ -89,7 +89,7 @@ namespace other {
 
     void bind_mesh_resource(const resource_handle& handle) override;
     void unbind_mesh_resource(const resource_handle& handle) override;
-    void set_mesh_vertex_attributes(const resource_handle& handle, const std::vector<vertex_attribute>& attributes) override;
+    void set_mesh_vertex_attributes(const resource_handle& handle, const std::span<const vertex_attribute> attributes) override;
     void draw_mesh(const resource_handle& handle, mesh::primitive_type prim_type, size_t vertex_count, size_t index_count = 0, mesh::attribute_type index_type = mesh::UNSIGNED_BYTE) override;
     void draw_mesh_instanced(const resource_handle& handle, const draw_call& call) override;
 
@@ -116,22 +116,22 @@ namespace other {
     uint32_t storage_buffer_offset_alignment() const override;
 
    private:
-    std::map<natural_t, uint32_t> gpu_resources;
-    std::map<natural_t, resource_type> resource_types;
-    std::map<natural_t, std::vector<uint32_t>> in_process_resources;
+    ostd::map<natural_t, uint32_t> gpu_resources;
+    ostd::map<natural_t, resource_type> resource_types;
+    ostd::map<natural_t, ostd::vector<uint32_t>> in_process_resources;
 
-    std::map<natural_t, shader> shader_resources;
+    ostd::map<natural_t, shader> shader_resources;
     struct uniform_key {
       natural_t resource_id;
       natural_t uniform_hash;
 
       constexpr auto operator<=>(const uniform_key&) const = default;
     };
-    std::map<uniform_key, uint32_t> shader_uniforms;
+    ostd::map<uniform_key, uint32_t> shader_uniforms;
 
-    std::map<natural_t, texture> texture_resources;
-    std::map<natural_t, cube_map> cube_map_resources;
-    std::map<natural_t, std::array<uint32_t, cube_map::kCubeFaces>> cube_map_faces;
+    ostd::map<natural_t, texture> texture_resources;
+    ostd::map<natural_t, cube_map> cube_map_resources;
+    ostd::map<natural_t, std::array<uint32_t, cube_map::kCubeFaces>> cube_map_faces;
 
     struct shader_binding {
       uint32_t buffer_id;
@@ -139,15 +139,15 @@ namespace other {
 
       constexpr auto operator<=>(const shader_binding&) const = default;
     };
-    std::map<natural_t, gpu_buffer> buffer_resources;
+    ostd::map<natural_t, gpu_buffer> buffer_resources;
 
-    std::map<natural_t, mesh> mesh_resources;
+    ostd::map<natural_t, mesh> mesh_resources;
 
-    std::map<natural_t, framebuffer> framebuffer_resources;
-    std::map<natural_t, uint32_t> framebuffer_renderbuffers;
-    std::map<natural_t, uint32_t> framebuffer_msaa_fbos;
-    std::map<natural_t, std::vector<uint32_t>> framebuffer_msaa_color_rbs;
-    std::map<natural_t, uint32_t> framebuffer_msaa_depth_rbs;
+    ostd::map<natural_t, framebuffer> framebuffer_resources;
+    ostd::map<natural_t, uint32_t> framebuffer_renderbuffers;
+    ostd::map<natural_t, uint32_t> framebuffer_msaa_fbos;
+    ostd::map<natural_t, ostd::vector<uint32_t>> framebuffer_msaa_color_rbs;
+    ostd::map<natural_t, uint32_t> framebuffer_msaa_depth_rbs;
     natural_t current_pass_framebuffer_id = 0;
 
     int32_t get_gpu_api_window_flags() const override;

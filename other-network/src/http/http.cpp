@@ -14,7 +14,7 @@ namespace other {
     http::method_info parse_http_method(std::span<const uint8_t>& bytes);
     std::string_view parse_http_path(std::span<const uint8_t>& bytes);
     std::string_view parse_http_query_string(std::span<const uint8_t>& bytes);
-    std::vector<http::header> parse_headers(std::span<const uint8_t>& bytes);
+    ostd::vector<http::header> parse_headers(std::span<const uint8_t>& bytes);
 
   }  // namespace detail
   namespace http {
@@ -56,7 +56,7 @@ namespace other {
         }
 
         // req.headers = detail::parse_headers(bytes);
-        req.body = std::vector<uint8_t>(bytes.begin(), bytes.end());
+        req.body = ostd::vector<uint8_t>(bytes.begin(), bytes.end());
       } catch (const http_method_parse_error& e) {
         return fail(std::format("Failed to parse HTTP method: {}", e.what()));
       } catch (const std::exception& e) {
@@ -128,8 +128,8 @@ namespace other {
       return query;
     }
 
-    std::vector<http::header> parse_headers(std::span<const uint8_t>& bytes) {
-      std::vector<http::header> headers;
+    ostd::vector<http::header> parse_headers(std::span<const uint8_t>& bytes) {
+      ostd::vector<http::header> headers;
       while (true) {
         size_t pos = 0;
         while (pos < bytes.size() && !(bytes[pos] == '\r' && pos + 1 < bytes.size() && bytes[pos + 1] == '\n')) {

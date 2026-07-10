@@ -108,8 +108,8 @@ namespace other {
     scene_data = nullptr;
   }
 
-  std::vector<std::string> renderer::get_pipeline_names() const {
-    std::vector<std::string> names;
+  ostd::vector<std::string> renderer::get_pipeline_names() const {
+    ostd::vector<std::string> names;
     for (const auto& [_, pl] : pipelines) {
       if (pl != nullptr && pl->is_valid()) {
         names.push_back(pl->get_name());
@@ -539,8 +539,8 @@ namespace other {
     return subsystem<renderer_backend>::get();
   }
 
-  std::vector<natural_t> renderer::get_pipeline_order() const {
-    std::map<natural_t, uint32_t> in_degree;
+  ostd::vector<natural_t> renderer::get_pipeline_order() const {
+    ostd::map<natural_t, uint32_t> in_degree;
     for (const auto& [id, deps] : pipeline_dependencies) {
       in_degree[id] = deps.size();
     }
@@ -552,7 +552,7 @@ namespace other {
       }
     }
 
-    std::vector<natural_t> order;
+    ostd::vector<natural_t> order;
     while (!ready.empty()) {
       natural_t id = ready.front();
       ready.pop();
@@ -594,7 +594,7 @@ namespace other {
     }
 
     for (natural_t pl_id : pipeline_ids) {
-      PROFILE_SECTION(std::format("renderer::render--pipeline-{}", pl_id));
+      PROFILE_SECTION("renderer::render--pipeline");
       auto itr = pipelines.find(pl_id);
       if (itr == pipelines.end()) {
         continue;

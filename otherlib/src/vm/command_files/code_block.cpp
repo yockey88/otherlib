@@ -61,7 +61,7 @@ namespace other {
       arg.raw_data.resize(sizeof(float));
       std::memcpy(arg.raw_data.data(), &fvalue, sizeof(float));
     } else if (tok.type == TOKEN_TYPE_STRING_LITERAL) {
-      arg.raw_data = std::vector<uint8_t>(tok.text.begin(), tok.text.end());
+      arg.raw_data = ostd::vector<uint8_t>(tok.text.begin(), tok.text.end());
     } else if (tok.type == TOKEN_TYPE_LABEL) {
       /// mark as unresolved address for now
       arg.value = 0xFFFF;

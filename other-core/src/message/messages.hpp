@@ -71,7 +71,7 @@ namespace other {
 
   struct notification_rx_data {
     natural_t connection_id;
-    std::vector<uint8_t> data;
+    ostd::vector<uint8_t> data;
   };
 
   /// control messages
@@ -95,7 +95,7 @@ namespace other {
 
   struct command_tx_data {
     natural_t connection_id;
-    std::vector<uint8_t> data;
+    ostd::vector<uint8_t> data;
   };
 
   struct command_attach_transport_listener {
@@ -122,7 +122,7 @@ namespace other {
   struct request_acknowledgment {
     natural_t ack_id;
     message_header original_header;
-    std::vector<uint8_t> message_data;
+    ostd::vector<uint8_t> message_data;
   };
 
   /// error alert messages
@@ -134,28 +134,24 @@ namespace other {
 OTHER_REFLECT(
   other::message_header,
   OTHER_MSG_FIELD(category, MESSAGE_CAT),
-  OTHER_MSG_FIELD(id, MESSAGE_ID)
-)
+  OTHER_MSG_FIELD(id, MESSAGE_ID))
 
 OTHER_REFLECT(
   other::binding_point,
   OTHER_MSG_FIELD(port, PORT_NUMBER),
-  OTHER_MSG_FIELD(ip, IP_ADDRESS)
-)
+  OTHER_MSG_FIELD(ip, IP_ADDRESS))
 
 OTHER_REFLECT(
   other::version,
   OTHER_MSG_FIELD(major, MAJOR_VERSION_NUM),
   OTHER_MSG_FIELD(minor, MINOR_VERSION_NUM),
-  OTHER_MSG_FIELD(patch, PATCH_VERSION_NUM)
-)
+  OTHER_MSG_FIELD(patch, PATCH_VERSION_NUM))
 
 OTHER_REFLECT(
   other::acknowledgement_ack,
   OTHER_MSG_FIELD(ack_id, ACK_ID),
   OTHER_MSG_FIELD(acked_header, ACKED_HEADER),
-  OTHER_MSG_FIELD(ack, ACK)
-)
+  OTHER_MSG_FIELD(ack, ACK))
 
 OTHER_REFLECT(
   other::notification_connect_connection,
@@ -163,65 +159,55 @@ OTHER_REFLECT(
   OTHER_MSG_FIELD(endpoint, ENDPOINT),
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
   OTHER_MSG_FIELD(new_connection_id, NEW_CONNECTION_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH)
-)
+  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
   other::notification_close_connection,
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH)
-)
+  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
   other::notification_rx_data,
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(data, DATA)
-)
+  OTHER_MSG_FIELD(data, DATA))
 
 OTHER_REFLECT(
   other::command_listen_connection,
   OTHER_MSG_FIELD(endpoint, ENDPOINT),
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH)
-)
+  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
   other::command_connect_connection,
   OTHER_MSG_FIELD(endpoint, ENDPOINT),
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH)
-)
+  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
   other::command_close_connection,
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH)
-)
+  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
   other::command_tx_data,
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(data, DATA)
-)
+  OTHER_MSG_FIELD(data, DATA))
 
 OTHER_REFLECT(
   other::command_attach_transport_listener,
   OTHER_MSG_FIELD(sink_id, SINK_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH)
-)
+  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
   other::command_detach_transport_listener,
   OTHER_MSG_FIELD(sink_id, SINK_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH)
-)
+  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
   other::request_acknowledgment,
   OTHER_MSG_FIELD(ack_id, ACK_ID),
   OTHER_MSG_FIELD(original_header, ACKED_HEADER),
-  OTHER_MSG_FIELD(message_data, DATA)
-)
+  OTHER_MSG_FIELD(message_data, DATA))
 
 namespace std {
 

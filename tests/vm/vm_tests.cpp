@@ -218,7 +218,8 @@ namespace other {
           << std::format("Argument value mismatch. Expected: {}, Actual: {}", expected.value.value(), actual.value.value());
       }
       if (!expected.raw_data.empty()) {
-        EXPECT_EQ(actual.raw_data, expected.raw_data)
+        std::vector<uint8_t> actual_raw_data{ actual.raw_data.begin(), actual.raw_data.end() };
+        EXPECT_EQ(actual_raw_data, expected.raw_data)
           << std::format("Argument raw data mismatch. Expected size: {}, Actual size: {}", expected.raw_data.size(), actual.raw_data.size());
       }
     }
@@ -268,8 +269,9 @@ namespace other {
         // clang-format on
         EXPECT_EQ(actual.objects[index].value_token.text, expected_objects[index].value_text);
         if (!expected_objects[index].data.empty()) {
-          EXPECT_EQ(actual.objects[index].data, expected_objects[index].data)
-            << std::format("Data content mismatch for object '{}', data size: {}/{}.", expected_objects[index].name, actual.objects[index].data.size(), expected_objects[index].data.size());
+          std::vector<uint8_t> actual_data{ actual.objects[index].data.begin(), actual.objects[index].data.end() };
+          EXPECT_EQ(actual_data, expected_objects[index].data)
+            << std::format("Data content mismatch for object '{}', data size: {}/{}.", expected_objects[index].name, actual_data.size(), expected_objects[index].data.size());
         }
       }
     }

@@ -20,6 +20,19 @@ if (NOT CMAKE_EXE_LINKER_FLAGS_PROFILED)
   set(CMAKE_EXE_LINKER_FLAGS_PROFILED "${CMAKE_EXE_LINKER_FLAGS_DEBUG}" CACHE STRING "Flags used by the linker during all build types." FORCE)
 endif()
 
+if (NOT CMAKE_CXX_FLAGS_PROFILE)
+  set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}" CACHE STRING "C++ flags for Profile builds." FORCE)
+endif()
+if (NOT CMAKE_CXX_FLAGS_PROFILED)
+  set(CMAKE_CXX_FLAGS_PROFILED "${CMAKE_CXX_FLAGS_DEBUG}" CACHE STRING "C++ flags for ProfileD builds." FORCE)
+endif()
+if (NOT CMAKE_CSharp_FLAGS_PROFILE)
+  set(CMAKE_CSharp_FLAGS_PROFILE "${CMAKE_CSharp_FLAGS_RELEASE}" CACHE STRING "C# flags for Profile builds." FORCE)
+endif()
+if (NOT CMAKE_CSharp_FLAGS_PROFILED)
+  set(CMAKE_CSharp_FLAGS_PROFILED "${CMAKE_CSharp_FLAGS_DEBUG}" CACHE STRING "C# flags for ProfileD builds." FORCE)
+endif()
+
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
@@ -54,16 +67,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(BUILD_CONFIG_MACRO "")
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_DEBUG")
-elseif (CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-  set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_PROFILED")
-elseif (CMAKE_BUILD_TYPE STREQUAL "Profile")
-  set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_PROFILE")
-else()
-  set(BUILD_CONFIG_MACRO "OTHER_ENVIRONMENT_RELEASE")
-endif()
+set(BUILD_CONFIG_MACRO "$<$<CONFIG:Debug>:OTHER_ENVIRONMENT_DEBUG>$<$<CONFIG:Release>:OTHER_ENVIRONMENT_RELEASE>$<$<CONFIG:Profile>:OTHER_ENVIRONMENT_PROFILE>$<$<CONFIG:ProfileD>:OTHER_ENVIRONMENT_PROFILED>")
 message(STATUS "Build configuration: ${BUILD_CONFIG_MACRO}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -90,51 +94,29 @@ if(BUILD_PLATFORM STREQUAL "WINDOWS")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:preprocessor")
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-
-  if(CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
-    if (CMAKE_BUILD_TYPE STREQUAL Debug-AS)
-      add_compile_options("/fsanitize=address")
-    endif()
-    
-    add_compile_options("/D_CRT_SECURE_NO_WARNINGS")
-    add_compile_options("/Od" "/Zi" "/RTC1" "/D_DEBUG")
-  elseif(CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL Profile)
-    ## optimize as much as possible, also need iterator levels to be 0 for release builds
-    add_compile_options("/DNDEBUG" "/O2" "/Ob2")
-  endif()
+  add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>:Debug>DLL")
 else()
   message(FATAL_ERROR "Unix builds are not supported yet. Please use Windows development.")
 endif()
 
 add_subdirectory(extern)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-  set(OTHER_LIBRARIES_PATH 
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/debug" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/debug" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/debug"
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/debug"
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/debug"
-  )
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Profile")
-  set(OTHER_LIBRARIES_PATH 
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/release" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/release"
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/release"
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/release"
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/release"
-  )
-endif()
+
+set(OTHER_LIB_FAMILY "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,release>")
+set(OTHER_LIBRARIES_PATH
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/${OTHER_LIB_FAMILY}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/${OTHER_LIB_FAMILY}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/${OTHER_LIB_FAMILY}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/${OTHER_LIB_FAMILY}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/${OTHER_LIB_FAMILY}")
 
 set(ASSIMP_NAME "assimp-vc143-mt")
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} 
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/assimp/lib"
 )
   
-if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-  add_compile_definitions("TRACY_ENABLE" "TRACY_CALLSTACK=10")
-endif()
+add_compile_definitions("$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_ENABLE>" "$<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:TRACY_CALLSTACK=10>")
 
 set(OTHER_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set(OTHER_EXTERN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
@@ -166,6 +148,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/tinyxml2
   ${IMGUI_INCLUDE_DIRS}
 )
+set(OTHER_EXTERN_INCLUDE_DIRS ${OTHER_EXTERN_INCLUDE_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/extern/tracy")
 set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/magic_enum
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/args
@@ -191,12 +174,6 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/tinyxml2
   ${OTHER_EXTERN_INCLUDE_DIRS}
 )
-
-if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-  set(OTHER_EXTERN_INCLUDE_DIRS ${OTHER_EXTERN_INCLUDE_DIRS} 
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/tracy"
-  )
-endif()
 
 set(DOTNET_INCLUDE_DIRECTORY 
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
@@ -275,12 +252,8 @@ other_install_external_library("jolt" "${OTHER_EXTERN_DIR}/jolt/lib")
 other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
 other_install_external_library("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2/lib")
   
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-  set(DLL_CONFIG "debug")
-else()
-  set(DLL_CONFIG "release")
-endif()
-  
+set(DLL_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,release>")
+set(ASSEMBLY_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>")
 install(
   FILES
     "${OTHER_EXTERN_DIR}/python312/python312.dll"
@@ -302,12 +275,6 @@ install(
   FILES "${CMAKE_CURRENT_SOURCE_DIR}/other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
   DESTINATION "${OTHER_INSTALL_ASSEMBLIES}"
 )
-
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-  set(ASSEMBLY_CONFIG "Debug")
-else()
-  set(ASSEMBLY_CONFIG "Release")
-endif()
 
 if (NOT EXISTS "${OTHER_INSTALL_PROJECT}")
   file(MAKE_DIRECTORY "${OTHER_INSTALL_PROJECT}")

@@ -70,10 +70,10 @@ namespace other {
     std::mutex pending_coroutines_mutex;
     std::mutex live_coroutines_mutex;
     std::queue<task> pending_coroutines;
-    std::vector<live_coroutine> live_coroutines;
+    ostd::vector<live_coroutine> live_coroutines;
 
     mutable std::mutex completion_mutex;
-    std::vector<completion_record> pending_completions;
+    ostd::vector<completion_record> pending_completions;
 
     void dispatch_ready();
     void dispatch_node(natural_t id);

@@ -20,7 +20,7 @@ namespace other {
                    .set_filter(texture::filter::LINEAR, texture::filter::LINEAR)
                    .set_wrap_mode(texture::wrap::CLAMP_TO_EDGE, texture::wrap::CLAMP_TO_EDGE);
 
-    std::ranges::fill(text.faces, std::vector<uint8_t>());
+    std::ranges::fill(text.faces, ostd::vector<uint8_t>());
     text.finalize_cube_map();
 
     return handle;
@@ -74,7 +74,7 @@ namespace other {
     return *this;
   }
 
-  cube_map& cube_map::set_data(face face_idx, const std::vector<uint8_t>& data) {
+  cube_map& cube_map::set_data(face face_idx, const std::span<const uint8_t> data) {
     if (data.empty()) {
       CORE_LOG_ERROR("Invalid cube map data: data vector is empty.");
       return *this;

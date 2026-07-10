@@ -344,7 +344,7 @@ namespace other {
 
     auto raw_param_tokens = look_from_now() |
       std::views::take_while([](const token& tok) { return !detail::is_eol_marker(tok); }) |
-      std::ranges::to<std::vector>();
+      std::ranges::to<ostd::vector<token>>();
     for (const auto& _ : raw_param_tokens) {
       consume();
     }
@@ -428,7 +428,7 @@ namespace other {
         //    collect all tokens until the next dot or closing brace
         auto value_tokens = look_from_now() |
           detail::get_data_object_value_filter() |
-          std::ranges::to<std::vector>();
+          std::ranges::to<ostd::vector<token>>();
         if (value_tokens.empty()) {
           throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected value for data object, but found none"));
         }
@@ -479,7 +479,7 @@ namespace other {
             if (!std::ranges::all_of(value_tokens, [](const token& tok) { return tok.type == TOKEN_TYPE_STRING_LITERAL; })) {
               throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected all tokens to be string literals for string data type, but found a token of type {}", std::ranges::find_if(value_tokens, [](const token& tok) { return tok.type != TOKEN_TYPE_STRING_LITERAL; })->type));
             }
-            value_tokens = value_tokens | detail::filter_empty_strings() | std::ranges::to<std::vector>();
+            value_tokens = value_tokens | detail::filter_empty_strings() | std::ranges::to<ostd::vector<token>>();
           } else {
             if (value_tokens[0].type != TOKEN_TYPE_STRING_LITERAL) {
               throw ocmd_toolchain_error(PARSE_EXPECTED_TOKEN, current().source_view, std::format("Expected string literal for string data type, but found token of type {}", value_tokens[0].type));
@@ -507,7 +507,7 @@ namespace other {
     return section;
   }
 
-  void oasm_parser::process_code_sections(std::vector<code_section_ir>& sections) {
+  void oasm_parser::process_code_sections(ostd::vector<code_section_ir>& sections) {
     EMIT_TRACE("Processing code sections");
 
     /// \todo type-checking
@@ -618,7 +618,7 @@ namespace other {
     }
   }
 
-  void oasm_parser::process_data_sections(std::vector<data_section_ir>& sections) {
+  void oasm_parser::process_data_sections(ostd::vector<data_section_ir>& sections) {
     EMIT_TRACE("Processing data sections");
 
     for (auto& data_section : sections) {

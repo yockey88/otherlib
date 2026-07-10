@@ -45,10 +45,10 @@ namespace other {
     filepath output_directory = "${CWD}/build";
     filepath exe_name = "${CWD}/OtherApp.exe";
 
-    std::vector<std::string> configurations = { "Debug", "Release" };
+    ostd::vector<std::string> configurations = { "Debug", "Release" };
     size_t active_configuration = 0;
 
-    std::vector<std::string> cmd_args = {};
+    ostd::vector<std::string> cmd_args = {};
 
     std::string version = "0.1.0";
     std::string description = "An Other project.";

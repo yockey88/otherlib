@@ -41,7 +41,7 @@ namespace other {
     void close() override;
 
     std::string read_all_as_string() override;
-    std::vector<uint8_t> read_all() override;
+    ostd::vector<uint8_t> read_all() override;
     uint64_t read(std::span<uint8_t> buffer, uint64_t offset = 0) override;
     uint64_t write(std::span<const uint8_t> data) override;
 
@@ -56,7 +56,7 @@ namespace other {
 
    private:
     std::string remote_url;
-    std::vector<uint8_t> cached_data;
+    ostd::vector<uint8_t> cached_data;
     remote_fetch_state fetch_state = remote_fetch_state::IDLE;
   };
 

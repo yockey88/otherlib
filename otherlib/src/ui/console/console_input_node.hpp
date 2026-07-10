@@ -21,7 +21,7 @@ namespace other {
       virtual ~command_suggestion_provider() = default;
 
       /// given the current input prefix, return matching suggestions
-      virtual std::vector<console_w::autocomplete_item> get_suggestions(const std::string& prefix) const = 0;
+      virtual ostd::vector<console_w::autocomplete_item> get_suggestions(const std::string& prefix) const = 0;
     };
 
     class console_input_node : public ui_node {
@@ -41,12 +41,12 @@ namespace other {
       bool force_drop_focus = false;
 
       static constexpr size_t kMaxHistory = 256;
-      std::vector<std::string> history;
+      ostd::vector<std::string> history;
       int32_t history_index = -1;
       std::string saved_input;
 
       command_suggestion_provider* suggestion_provider = nullptr;
-      std::vector<console_w::autocomplete_item> suggestions;
+      ostd::vector<console_w::autocomplete_item> suggestions;
       int32_t autocomplete_index = -1;
       bool autocomplete_visible = false;
 

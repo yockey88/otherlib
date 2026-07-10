@@ -12,7 +12,6 @@
 #include "core/ref_counted.hpp"
 #include "memory/arena_allocator.hpp"
 
-
 namespace other {
 
   struct value_storage : public ref_counted {

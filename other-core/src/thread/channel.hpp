@@ -49,11 +49,23 @@ namespace other {
       return queue->queue.empty();
     }
 
-    opt<T> await_message(microseconds timeout = microseconds(1000)) {
+    opt<T> await_message(opt<microseconds> timeout = std::nullopt) {
       OTHER_ASSERT(queue != nullptr, "Awaiting message on a null queue!");
 
+      if (!timeout.has_value() && queue->queue.empty()) {
+        return std::nullopt;
+      }
+      // no timout and there is a message
+      else if (!timeout.has_value()) {
+        std::lock_guard lck(queue->mutex);
+        T item = std::move(queue->queue.front());
+        queue->queue.pop();
+        return std::move(item);
+      }
+      OTHER_ASSERT(timeout.has_value(), "Timeout must have a value at this point.");
+
       std::unique_lock lck(queue->mutex);
-      queue->condition.wait_for(lck, timeout, [&]() -> bool { return !queue->queue.empty(); });
+      queue->condition.wait_for(lck, *timeout, [&]() -> bool { return !queue->queue.empty(); });
       if (queue->queue.empty()) {
         return std::nullopt;
       }
@@ -65,6 +77,7 @@ namespace other {
     }
 
     size_t size() const {
+      std::lock_guard lck(queue->mutex);
       return queue->queue.size();
     }
 

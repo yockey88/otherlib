@@ -13,12 +13,12 @@
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/scope.hpp"
+#include "data-structures/graph.hpp"
 
 #include "object/scene_object.hpp"
 
 #include "scripting/execution_node.hpp"
 
-#include "data-structures/graph.hpp"
 
 namespace other {
 
@@ -57,10 +57,10 @@ namespace other {
 
     void connect_nodes(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx);
 
-    std::vector<natural_t> topological_sort();
+    ostd::vector<natural_t> topological_sort();
 
     graph<node> nodes;
-    std::vector<execution_link> links;
+    ostd::vector<execution_link> links;
 
    protected:
     template <typename T>

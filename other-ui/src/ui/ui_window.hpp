@@ -117,7 +117,7 @@ namespace other {
     } state;
     uint32_t window_flags = 0;
 
-    std::unordered_map<natural_t, ref<ui_node>> node_map;
+    ostd::unordered_map<natural_t, ref<ui_node>> node_map;
 
     driver* driver_ptr = nullptr;
     event_system* events;

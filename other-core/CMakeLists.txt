@@ -93,10 +93,8 @@ foreach(extern_dir ${OTHER_EXTERN_INCLUDE_DIRS})
   target_include_directories(other_core PUBLIC $<BUILD_INTERFACE:${extern_dir}>)
 endforeach()
 
-if (CMAKE_BUILD_TYPE STREQUAL "Profile" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-	target_sources(other_core PRIVATE ${OTHER_EXTERN_DIR}/tracy/tracy/TracyClient.cpp)
-	target_include_directories(other_core PRIVATE ${OTHER_EXTERN_DIR}/tracy)
-endif()
+target_sources(other_core PRIVATE $<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:${OTHER_EXTERN_DIR}/tracy/tracy/TracyClient.cpp>)
+target_include_directories(other_core PRIVATE $<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:${OTHER_EXTERN_DIR}/tracy>)
 
 target_link_directories(other_core PRIVATE ${OTHER_LIBRARIES_PATH})
 target_link_libraries(other_core PRIVATE glad Threads::Threads)

@@ -33,11 +33,11 @@ namespace other {
     };
     // clang-format on
 
-    std::vector<uint8_t> read_seed_texture_file(const filepath& path) {
+    ostd::vector<uint8_t> read_seed_texture_file(const filepath& path) {
       OTHER_ASSERT(std::filesystem::exists(path), "Seed texture file does not exist: {}", path.string());
       std::ifstream file(path, std::ios::binary);
       OTHER_ASSERT(file.is_open(), "Failed to open seed texture file: {}", path.string());
-      return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+      return ostd::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
     }
 
   }  // namespace
@@ -367,8 +367,8 @@ namespace other {
     }
   }
 
-  std::vector<std::string> render_pipeline::get_texture_names() const {
-    std::vector<std::string> names;
+  ostd::vector<std::string> render_pipeline::get_texture_names() const {
+    ostd::vector<std::string> names;
     for (const auto& [_, res] : texture_resources) {
       names.push_back(res.name);
     }
@@ -483,7 +483,7 @@ namespace other {
     return *quad_mesh_handle;
   }
 
-  void render_pipeline::apply_uniforms(shader& s, const std::map<std::string, value>& uniforms) {
+  void render_pipeline::apply_uniforms(shader& s, const ostd::map<std::string, value>& uniforms) {
     for (const auto& [name, val] : uniforms) {
       switch (val.type()) {
         case value_type::INT8: s.set_uniform(name, (int8_t)val); break;
@@ -613,7 +613,7 @@ namespace other {
       }
 
       if (tex_def.seed_texture_path.has_value()) {
-        std::vector<uint8_t> bytes = read_seed_texture_file(tex_def.seed_texture_path.value());
+        ostd::vector<uint8_t> bytes = read_seed_texture_file(tex_def.seed_texture_path.value());
         if (!bytes.empty()) {
           (*get_renderer()->rendering()->api()->get_resource_as<texture>(handle))
             .set_data(bytes.data(), bytes.size())

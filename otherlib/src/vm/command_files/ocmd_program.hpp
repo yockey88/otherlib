@@ -21,15 +21,15 @@ namespace other {
       uint32_t size;
     };
     std::string name;
-    std::vector<field> fields;
-    std::vector<uint8_t> data;
+    ostd::vector<field> fields;
+    ostd::vector<uint8_t> data;
   };
 
   struct ocmd_program {
     vm_version compiler_version;
-    std::vector<compiler_definition> definitions;
-    std::vector<compiled_code_block> compiled_blocks;
-    std::vector<compiled_data_section> compiled_data_sections;
+    ostd::vector<compiler_definition> definitions;
+    ostd::vector<compiled_code_block> compiled_blocks;
+    ostd::vector<compiled_data_section> compiled_data_sections;
 
     bool valid = false;
   };

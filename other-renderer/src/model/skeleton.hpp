@@ -27,7 +27,7 @@ namespace other {
     size_t vertex_group_size = 0;
 
     glm::mat4 offset_matrix = glm::mat4(1.0f);
-    std::vector<bone_weight> weights;
+    ostd::vector<bone_weight> weights;
   };
 
   struct bone_info {
@@ -56,21 +56,21 @@ namespace other {
     glm::mat4 skeleton_transform = glm::mat4(1.0f);
 
     std::set<std::string> bone_names;
-    std::vector<bone> bones;
-    std::vector<bone_influence> bone_influence;
+    ostd::vector<bone> bones;
+    ostd::vector<bone_influence> bone_influence;
 
-    std::vector<uint32_t> parent_ids;
-    std::vector<std::vector<uint32_t>> children_ids;
+    ostd::vector<uint32_t> parent_ids;
+    ostd::vector<ostd::vector<uint32_t>> children_ids;
 
-    std::vector<glm::vec3> bone_positions;
-    std::vector<glm::quat> bone_rotations;
-    std::vector<glm::vec3> bone_scales;
+    ostd::vector<glm::vec3> bone_positions;
+    ostd::vector<glm::quat> bone_rotations;
+    ostd::vector<glm::vec3> bone_scales;
 
-    std::vector<glm::mat4> local_bone_positions;
-    std::vector<glm::mat4> final_bone_positions;
+    ostd::vector<glm::mat4> local_bone_positions;
+    ostd::vector<glm::mat4> final_bone_positions;
 
-    std::vector<glm::mat4> model_space_rest_transforms;
-    std::vector<glm::mat4> model_space_rest_inverse_transforms;
+    ostd::vector<glm::mat4> model_space_rest_transforms;
+    ostd::vector<glm::mat4> model_space_rest_inverse_transforms;
 
     const glm::vec3& get_bone_position(uint32_t bone_id) const { return bone_positions[bone_id]; }
     const glm::quat& get_bone_rotation(uint32_t bone_id) const { return bone_rotations[bone_id]; }

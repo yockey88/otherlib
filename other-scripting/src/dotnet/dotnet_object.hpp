@@ -20,7 +20,6 @@
 #include "dotnet/dotnet_type.hpp"
 #include "dotnet/types.hpp"
 
-
 namespace other {
 
   class dotnet_host;
@@ -44,12 +43,12 @@ namespace other {
     std::string get_type_name() const;
 
     bool has_attribute(const std::string_view attr_name);
-    std::vector<std::string> get_attribute_names() const;
+    ostd::vector<std::string> get_attribute_names() const;
 
-    std::vector<uint8_t> serialize_to_bytes();
+    ostd::vector<uint8_t> serialize_to_bytes();
     void load_from_bytes(const std::span<const uint8_t> buffer);
 
-    std::vector<uint8_t> serialize_field_to_bytes(const std::string_view name);
+    ostd::vector<uint8_t> serialize_field_to_bytes(const std::string_view name);
 
     template <typename T>
     T get_attribute(const std::string_view attr_name, const std::string_view field_name) {
@@ -109,7 +108,7 @@ namespace other {
    private:
     dotnet_host* host = nullptr;
 
-    std::map<uint64_t, dotnet_field::storage> field_storage;
+    ostd::map<uint64_t, dotnet_field::storage> field_storage;
     // scope<object_proxy<dotnet_object>> object_proxy = nullptr;
 
     template <typename FT>
@@ -139,7 +138,7 @@ namespace other {
     }
 
     template <typename FT>
-    std::map<uint64_t, dotnet_field::storage>::iterator load_field(const std::string_view field_name) {
+    ostd::map<uint64_t, dotnet_field::storage>::iterator load_field(const std::string_view field_name) {
       OTHER_ASSERT(host != nullptr, "dotnet_host is null");
       OTHER_ASSERT(managed_object != nullptr, "Object handle is null");
 
@@ -177,9 +176,9 @@ namespace other {
       return itr;
     }
 
-    std::map<uint64_t, dotnet_field::storage>::iterator load_field(const std::string_view field_name, value_type type);
+    ostd::map<uint64_t, dotnet_field::storage>::iterator load_field(const std::string_view field_name, value_type type);
 
-    void write_storage_to_field(std::map<uint64_t, dotnet_field::storage>::const_iterator itr, const std::string_view field_name);
+    void write_storage_to_field(ostd::map<uint64_t, dotnet_field::storage>::const_iterator itr, const std::string_view field_name);
 
     size_t managed_strlen(const std::string_view field_name);
     bool type_has_field(const std::string_view field_name);

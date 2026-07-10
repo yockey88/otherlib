@@ -68,7 +68,7 @@ namespace other {
       dotnet_object* dotnet_interface_object = nullptr;
       plugin* plugin_ptr = nullptr;
 
-      std::vector<bound_interface_method> methods;
+      ostd::vector<bound_interface_method> methods;
     };
     struct bound_callback {
       std::string name;

@@ -16,6 +16,9 @@ namespace other {
   class subsystem_registry {
    public:
     void register_subsystem(const subsystem_definition& def);
+    void override_subsystem_initialization(const std::string_view name, subsystem_initializer init_fn);
+    void override_subsystem_shutdown(const std::string_view name, subsystem_shutdown shutdown_fn);
+
     void initialize_profile(const std::string_view profile, const config_table* config);
     void resolve_dependency_list_and_do_initialization(std::span<const std::string_view> requested_systems, const config_table* config);
     void shutdown_all(bool skip_logger);

@@ -8,22 +8,17 @@
 
 namespace other {
 
-  class frame_allocator {
-   public:
-    frame_allocator();
-    ~frame_allocator();
-
-    void* allocate(size_t size);
-
-    void begin_frame();
-    void end_frame();
-
-   private:
+  struct frame_allocator {
     page* page = nullptr;
-    size_t frame_size = 0;
+    size_t max_frame_usage = 0;
+    uint32_t reference_count = 0;
 
-    size_t current_offset = 0;
-    size_t current_frame_index = 0;
+    void* allocate(size_t size, size_t alignment = page::kAlignment);
+    void reset();
+
+    inline size_t get_max_frame_usage() const { return max_frame_usage; }
+    frame_allocator(struct page* page);
+    ~frame_allocator();
   };
 
 }  // namespace other

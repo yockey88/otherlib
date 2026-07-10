@@ -20,12 +20,11 @@ macro(add_driver_target type driver_name)
     )
   endif()
 
-  if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL Debug-AS OR CMAKE_BUILD_TYPE STREQUAL ProfileD)
-    set(COMPILE_DEFS ${COMPILE_DEFS} "OTHER_ENVIRONMENT_DEBUG")
-  else()
-    set(COMPILE_DEFS ${COMPILE_DEFS} "OTHER_ENVIRONMENT_RELEASE")
-  endif()
-
+  target_compile_definitions(
+    ${driver_name} 
+      PRIVATE 
+        "$<$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>:OTHER_ENVIRONMENT_DEBUG>"
+        "$<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>>:OTHER_ENVIRONMENT_RELEASE>")
   set(driver_src_list "")
   foreach(src_file ${ARGN})
     set(src_file_full_path "${CMAKE_CURRENT_SOURCE_DIR}/${src_file}")

@@ -44,8 +44,8 @@ namespace other {
 
    private:
     sol::state lua_state;
-    std::map<natural_t, sol::load_result> loaded_scripts;
-    std::map<natural_t, lua_script> loaded_lua_scripts;
+    ostd::map<natural_t, sol::load_result> loaded_scripts;
+    ostd::map<natural_t, lua_script> loaded_lua_scripts;
 
     filepath script_directory;
   };

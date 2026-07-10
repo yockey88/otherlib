@@ -17,11 +17,11 @@ namespace other {
    public:
     natural_t register_executor(std::string_view name, executor_factory_fn fn);
     executor_factory_fn find(std::string_view name) const;
-    std::vector<std::string> known_executors() const;
+    ostd::vector<std::string> known_executors() const;
 
    private:
-    std::map<natural_t, std::string> debug_names;
-    std::map<natural_t, executor_factory_fn> factories;
+    ostd::map<natural_t, std::string> debug_names;
+    ostd::map<natural_t, executor_factory_fn> factories;
   };
 
 }  // namespace other

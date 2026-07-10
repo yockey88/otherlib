@@ -38,7 +38,7 @@ namespace other {
   }
 
   void event_system::trigger_event(natural_t event_id) {
-    std::vector<event::handler> listeners;
+    ostd::vector<event::handler> listeners;
     value data;
     {
       std::scoped_lock lock(events_mutex);

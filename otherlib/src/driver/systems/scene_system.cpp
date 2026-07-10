@@ -422,10 +422,14 @@ namespace other {
       if (project_sys.project_loading()) {
         project_sys.get_project().add_loaded_scene(s->id);
       }
+      /// TODO:
+      else {
+        CORE_LOG_WARN("Unimplemented handling of scene asset loaded event in project for project state {}", project_sys.get_project().get_state());
+      }
     }
 
     /**
-     * \note:
+     * \note (is this still relevant?):
      *    - scene must be active to be bound to the native scripting interfaces so we activate it to run the creation script, and then restore the old one.
      *    - we don't want to do any of the other stuff associated with 'primary' activation like triggering events or synchronizing over the network,
      *      so we set the pointer, run the script, and reset it back to the old one before doing the 'real' activation below if needed

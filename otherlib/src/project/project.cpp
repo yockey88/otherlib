@@ -120,25 +120,31 @@ namespace other {
     OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in project generate_at.");
   }
 
+  void project::fail_load() {
+    OTHER_ASSERT(load_failed(), "Project load has not failed. Cannot call fail_load.");
+    unload();
+    set_state(EMPTY);
+    CORE_LOG_INFO("Project reset successful.");
+  }
+
   void project::unload() {
-    if (current_state == EMPTY) {
+    if (current_state != LOADED && current_state != LOAD_FAILED) {
       return;
     }
+
+    if (project_assembly != nullptr) {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+      env->unload_dotnet_module(project_assembly);
+    }
+
+    system->unload_plugins();
 
     if (project_file_handle != nullptr && project_file_handle->is_open()) {
       project_file_handle->close();
     }
     project_file_handle = nullptr;
     file_buffer.release();
-
-    system->unload_plugins();
-
-    // we should do this through the scripting system and not here
-    if (project_assembly != nullptr) {
-      auto* env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
-      env->unload_dotnet_module(project_assembly);
-    }
 
     project_assembly = nullptr;
     set_state(UNLOADING);
@@ -223,7 +229,7 @@ namespace other {
   }
 
   void project::remove_loaded_scene(natural_t scene_id) {
-    OTHER_ASSERT(is_unloading(), "Project is not in loading state. Cannot remove loaded scene.");
+    OTHER_ASSERT(is_unloading(), "Project is not in unloading state. Cannot remove loaded scene.");
     auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
     OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
     CORE_LOG_DEBUG("[PROJECT] Removing loaded scene with ID '{}'.", scene_id);
@@ -238,7 +244,7 @@ namespace other {
 
   void project::attach_project_dll(const filepath& dll_path) {
     OTHER_ASSERT(std::filesystem::exists(dll_path), "Project assembly file '{}' does not exist.", dll_path.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach project assembly.");
+    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach project assembly. current state = {}", current_state);
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
 
@@ -251,13 +257,13 @@ namespace other {
 
   void project::attach_project_cs_file(const filepath& cs_file) {
     OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach C# script file.");
+    OTHER_ASSERT(is_loading(), "Project is not in loading  state. Cannot attach C# script file. current state = {}", current_state);
     project_scripts.cs_scripts.push_back(cs_file);
   }
 
   void project::attach_project_lua_file(const filepath& cs_file) {
     OTHER_ASSERT(std::filesystem::exists(cs_file), "Lua script file '{}' does not exist.", cs_file.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach Lua script file.");
+    OTHER_ASSERT(is_loading(), "Project is not in loading  state. Cannot attach Lua script file. current state = {}", current_state);
     project_scripts.lua_scripts.push_back(cs_file);
   }
 

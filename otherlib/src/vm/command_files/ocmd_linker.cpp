@@ -52,7 +52,7 @@ namespace other {
      * Layout:
      * | Header | Compiler Generated Code | Code | Data Sections |
      **/
-    std::vector<uint8_t> linked_binary;
+    ostd::vector<uint8_t> linked_binary;
 
     // Compiler Generated Code
     // Code
@@ -75,7 +75,7 @@ namespace other {
        *   <invocation thunk code>
        *   goto __compiler:my_symbol_w_thunk_invocation_ready
        **/
-      // std::vector<uint8_t> compiler_generated_binary = create_compiler_generated_symbols(resolver);
+      // ostd::vector<uint8_t> compiler_generated_binary = create_compiler_generated_symbols(resolver);
       // rewrite_instructions(resolver);
       // write_generated_code(resolver, linked_binary, compiler_generated_binary);
       write_code(resolver, linked_binary);
@@ -176,13 +176,13 @@ namespace other {
     }
   }
 
-  void ocmd_linker::write_code(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary) {
+  void ocmd_linker::write_code(scope<symbol_resolver>& resolver, ostd::vector<uint8_t>& binary) {
     for (const auto& code_block : code.compiled_blocks) {
       auto bytes_view =
         code_block.artifact.machine_instructions |
         std::views::transform([&](const instruction& instr) { return opcode_to_bytes(instr); }) |
         std::views::join |
-        std::ranges::to<std::vector>();
+        std::ranges::to<ostd::vector<uint8_t>>();
       uint16_t code_block_offset = get_current_linking_address(binary);
       resolver->attach_code_label(code_block.name, code_block_offset);
       EMIT_TRACE("[LINK] Attaching code label '{}' @ {:#04x}", code_block.name, code_block_offset);
@@ -200,11 +200,11 @@ namespace other {
     }
   }
 
-  // void ocmd_linker::write_generated_code(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary, std::span<const uint8_t> generated_code) {
+  // void ocmd_linker::write_generated_code(scope<symbol_resolver>& resolver, ostd::vector<uint8_t>& binary, std::span<const uint8_t> generated_code) {
   //   binary.append_range(generated_code);
   // }
 
-  void ocmd_linker::write_data_sections(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary) {
+  void ocmd_linker::write_data_sections(scope<symbol_resolver>& resolver, ostd::vector<uint8_t>& binary) {
     for (const auto& data_section : code.compiled_data_sections) {
       // don't normalize here because using acutal size of output binary here
       uint16_t data_section_start_address = get_current_linking_address(binary);
@@ -229,7 +229,7 @@ namespace other {
     }
   }
 
-  void ocmd_linker::do_final_linking(scope<symbol_resolver>& resolver, std::vector<uint8_t>& binary) {
+  void ocmd_linker::do_final_linking(scope<symbol_resolver>& resolver, ostd::vector<uint8_t>& binary) {
     for (uint32_t code_block_index = 0; code_block_index < code.compiled_blocks.size(); ++code_block_index) {
       auto& code_block = code.compiled_blocks[code_block_index];
       uint16_t code_block_start_address = calculate_code_section_offset(code_block_index);
@@ -266,10 +266,10 @@ namespace other {
     EMIT_TRACE("[FINAL LINKED CODE]\n{}", ss.str());
   }
 
-  std::vector<uint8_t> ocmd_linker::create_compiler_generated_symbols(scope<symbol_resolver>& resolver) {
-    std::vector<fixup_handle> new_fixups;
+  ostd::vector<uint8_t> ocmd_linker::create_compiler_generated_symbols(scope<symbol_resolver>& resolver) {
+    ostd::vector<fixup_handle> new_fixups;
 
-    std::vector<uint8_t> binary;
+    ostd::vector<uint8_t> binary;
     for (auto& code_block : code.compiled_blocks) {
       for (auto& instr : code_block.artifact.unresolved_labels) {
         auto fixup = resolver->resolve_symbol(instr.symbol_name);
@@ -310,7 +310,7 @@ namespace other {
   }
 
   void ocmd_linker::rewrite_instructions(scope<symbol_resolver>& resolver) {
-    std::vector<uint8_t> unlinked_code_section;
+    ostd::vector<uint8_t> unlinked_code_section;
     for (const auto& code_block : code.compiled_blocks) {
       auto bytes_view =
         code_block.artifact.machine_instructions |
@@ -341,7 +341,7 @@ namespace other {
         instruction goto_instr = opcode_goto(fixup.final_address);
 
         // create new instruction list
-        std::vector<instruction> artifact_copy = code_block.artifact.machine_instructions;
+        ostd::vector<instruction> artifact_copy = code_block.artifact.machine_instructions;
         auto before_gen_view = artifact_copy | std::views::take(instr.opcode_index);
         auto after_gen_view = artifact_copy | std::views::drop(instr.opcode_index);
 

@@ -12,15 +12,6 @@ namespace other {
    public:
     action_tests() = default;
     virtual ~action_tests() = default;
-
-    filepath other_dll_debug = "build/other-csharp/Debug/OtherCs.dll";
-    filepath other_dll_release = "build/other-csharp/Release/OtherCs.dll";
-
-    filepath testing_dll_debug = "build/script-testing/Debug/DotnetTesting.dll";
-    filepath testing_dll_release = "build/script-testing/Release/DotnetTesting.dll";
-
-    ref<assembly> dotnet_asm = nullptr;
-    ref<assembly> testing_asm = nullptr;
   };
 
 }  // namespace other

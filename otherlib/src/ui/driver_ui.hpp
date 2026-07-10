@@ -43,8 +43,8 @@ namespace other {
 
     void available_ui_window_menu();
 
-    std::vector<std::string> get_open_window_names() const;
-    std::vector<std::string> get_available_window_names() const;
+    ostd::vector<std::string> get_open_window_names() const;
+    ostd::vector<std::string> get_available_window_names() const;
 
     void open_window(const std::string_view window_name);
     void close_window(const std::string_view window_name);
@@ -104,7 +104,7 @@ namespace other {
     builtin_window builtin_windows[NUM_BUILTIN_WINDOW_TYPES];
 
     ui::menu_bar main_menu_bar;
-    std::vector<main_menu_bar_menu> main_menu_bar_menus;
+    ostd::vector<main_menu_bar_menu> main_menu_bar_menus;
 
     natural_t window_registry_id = 0;
     std::unordered_map<natural_t, driver_window> custom_windows;

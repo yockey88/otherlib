@@ -331,7 +331,7 @@ namespace other {
   }
 
   TEST_F(value_test, byte_buffer_test) {
-    std::vector<uint8_t> buffer = { 0xDE, 0xAD, 0xBE, 0xEF };
+    ostd::vector<uint8_t> buffer = { 0xDE, 0xAD, 0xBE, 0xEF };
     value byte_buffer_val(buffer);
     CORE_LOG_INFO("type: {}, size: {}", byte_buffer_val.type(), byte_buffer_val.size());
 
@@ -339,7 +339,7 @@ namespace other {
     ASSERT_EQ(byte_buffer_val.size(), buffer.size());
     ASSERT_EQ(byte_buffer_val.type(), value_type::BYTE_BUFFER);
 
-    std::vector<uint8_t> retrieved_buffer = byte_buffer_val;
+    ostd::vector<uint8_t> retrieved_buffer = byte_buffer_val;
     ASSERT_EQ(retrieved_buffer, buffer);
   }
 

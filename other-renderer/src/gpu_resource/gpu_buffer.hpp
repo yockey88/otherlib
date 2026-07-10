@@ -67,7 +67,7 @@ namespace other {
 
     usage buf_usage = usage::STATIC;
     buf_type buffer_type = buf_type::UNIFORM_BUFFER;
-    std::vector<uint8_t> buffer_data;
+    ostd::vector<uint8_t> buffer_data;
 
     uint8_t* get_data();
     size_t get_data_size();

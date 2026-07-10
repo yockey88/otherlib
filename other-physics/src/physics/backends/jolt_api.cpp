@@ -31,6 +31,7 @@
 #include <Jolt/Renderer/DebugRendererSimple.h>
 // clang-format on
 
+#include "data-structures/std_container.hpp"
 #include "math/matrix.hpp"
 
 #include "physics_world/physics_world.hpp"
@@ -161,10 +162,10 @@ namespace other {
     itr->second->DrawConstraints(&debug_renderer);
 
     physics_api::physics_render_debug_data debug_data;
-    debug_data.debug_lines = std::move(debug_renderer.debug_lines);
-    debug_data.debug_line_colors = std::move(debug_renderer.debug_line_colors);
-    debug_data.debug_triangles = std::move(debug_renderer.debug_triangles);
-    debug_data.debug_triangle_colors = std::move(debug_renderer.debug_triangle_colors);
+    debug_data.debug_lines = ostd::vector<line>(debug_renderer.debug_lines.begin(), debug_renderer.debug_lines.end());
+    debug_data.debug_line_colors = ostd::vector<glm::vec4>(debug_renderer.debug_line_colors.begin(), debug_renderer.debug_line_colors.end());
+    debug_data.debug_triangles = ostd::vector<triangle>(debug_renderer.debug_triangles.begin(), debug_renderer.debug_triangles.end());
+    debug_data.debug_triangle_colors = ostd::vector<glm::vec4>(debug_renderer.debug_triangle_colors.begin(), debug_renderer.debug_triangle_colors.end());
 
     return debug_data;
   }

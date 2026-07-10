@@ -13,6 +13,7 @@
 #include "core/logger.hpp"
 #include "core/ref.hpp"
 #include "core/value_storage.hpp"
+#include "data-structures/std_container.hpp"
 
 namespace other {
 
@@ -79,7 +80,7 @@ namespace other {
       requires is_byte_buffer_type<T>
     operator T() const {
       auto byte_span = as_byte_buffer();
-      return std::vector<uint8_t>(byte_span.begin(), byte_span.end());
+      return ostd::vector<uint8_t>(byte_span.begin(), byte_span.end());
     }
 
     std::string as_string() {

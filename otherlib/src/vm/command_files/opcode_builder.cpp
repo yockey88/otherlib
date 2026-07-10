@@ -15,7 +15,7 @@ namespace other {
 
     canonical_instruction canon_instr{ .opcode = instr.opcode };
 
-    std::vector<normalized_operand> normalized_operands;
+    ostd::vector<normalized_operand> normalized_operands;
     for (size_t i = 0; i < instr.arguments.size(); ++i) {
       normalized_operands.push_back(normalize_argument(canon_instr.opcode, i, instr.arguments[i]));
     }

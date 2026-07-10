@@ -78,13 +78,13 @@ namespace other {
 
     struct event_ctx {
       event ev;
-      std::vector<event::handler> listeners;
+      ostd::vector<event::handler> listeners;
     };
     struct event_timer {
       natural_t event_id;
       asio::steady_timer timer;
     };
-    std::vector<event_ctx> registered_events;
+    ostd::vector<event_ctx> registered_events;
     std::deque<event_timer> event_timers;
 
     void post_event_callback(natural_t event_id, microseconds duration);

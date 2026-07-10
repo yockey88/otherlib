@@ -106,4 +106,16 @@ namespace other {
 
 }  // namespace other
 
+namespace std {
+
+  template <>
+  struct formatter<other::dynamic_vector> : public std::formatter<std::string> {
+    auto format(const other::dynamic_vector& v, std::format_context& ctx) const {
+      std::string s = other::dynamic_vector::write_string(v);
+      return std::format_to(ctx.out(), "{}", s);
+    }
+  };
+
+}  // namespace std
+
 #endif  // OTHER_CORE_MATH_DYNAMIC_VECTOR_HPP

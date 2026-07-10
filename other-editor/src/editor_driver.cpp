@@ -66,7 +66,7 @@ namespace other {
     });
 
     auto& r = get_renderer().get_debug_stream_registry();
-    const std::vector<vertex_attribute> vtx = {
+    const ostd::vector<vertex_attribute> vtx = {
       { value_type::VEC3, "OE_position", 0, sizeof(glm::vec3) },
       { value_type::VEC4, "OE_color", 1, sizeof(glm::vec4) },
     };

@@ -34,8 +34,8 @@ namespace other {
       bool has_editor(asset::type type) const;
 
      private:
-      std::unordered_map<asset::type, editor_factory_fn> builtin_editors;
-      std::unordered_map<natural_t, editor_factory_fn> script_editors;
+      ostd::unordered_map<asset::type, editor_factory_fn> builtin_editors;
+      ostd::unordered_map<natural_t, editor_factory_fn> script_editors;
     };
 
   }  // namespace ui

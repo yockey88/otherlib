@@ -65,7 +65,7 @@ namespace other {
       glm::vec2 min_size = { 0.f, 0.f };
       natural_t last_submit_frame = 0;
       float header_height = 0.f;
-      std::vector<pin_offset> pin_offsets;
+      ostd::vector<pin_offset> pin_offsets;
     };
     node_editor() = default;
     ~node_editor() = default;
@@ -172,25 +172,25 @@ namespace other {
     canvas_transform view_transform = {};
     canvas_action action = canvas_action::NONE;
 
-    std::vector<natural_t> node_submission_order;
-    std::vector<natural_t> node_draw_order;
-    std::vector<natural_t> selected_nodes;
+    ostd::vector<natural_t> node_submission_order;
+    ostd::vector<natural_t> node_draw_order;
+    ostd::vector<natural_t> selected_nodes;
 
-    std::vector<node_move> pending_moves;
-    std::vector<node_move> moves_completed;
+    ostd::vector<node_move> pending_moves;
+    ostd::vector<node_move> moves_completed;
 
-    std::vector<pin_record> pins;
-    std::vector<link_record> links;
-    std::unordered_map<natural_t, natural_t> pin_lookup;
+    ostd::vector<pin_record> pins;
+    ostd::vector<link_record> links;
+    ostd::unordered_map<natural_t, natural_t> pin_lookup;
 
-    std::unordered_map<natural_t, node_layout> layouts;
-    std::unordered_map<natural_t, natural_t> submitted_nodes;
+    ostd::unordered_map<natural_t, node_layout> layouts;
+    ostd::unordered_map<natural_t, natural_t> submitted_nodes;
 
     ImDrawList* draw_list = nullptr;
     // 0 = grid + links, 1 = nodes
     ImDrawListSplitter* splitter = nullptr;
 
-    inline bool contains_id(const std::vector<natural_t>& ids, natural_t id) {
+    inline bool contains_id(const std::span<const natural_t> ids, natural_t id) {
       return std::ranges::find(ids, id) != ids.end();
     }
 

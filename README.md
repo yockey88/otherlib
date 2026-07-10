@@ -46,18 +46,23 @@ Below is an incredibly rough diagram of how an Other Application works
 
 ### Dev Branch Status
 
-[![Dev Stability Assurance - Windows/Release](https://github.com/yockey88/otherlib/actions/workflows/build-and-test-windows-release.yml/badge.svg)](https://github.com/yockey88/otherlib/actions/workflows/build-and-test-windows-release.yml)
-
-[![Dev Stability Assurance - Windows/Debug](https://github.com/yockey88/otherlib/actions/workflows/build-and-test-windows-debug.yml/badge.svg)](https://github.com/yockey88/otherlib/actions/workflows/build-and-test-windows-debug.yml)
+[![Dev Stability Assurance](https://github.com/yockey88/otherlib/actions/workflows/dev-stability-check.yml/badge.svg)](https://github.com/yockey88/otherlib/actions/workflows/dev-stability-check.yml)
 
 ### Building And Running
 
 After cloning the repo, simply run the cmake and then use the python scripts to build the projects and copy the DLLs to the correct place:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-python cli.py -b -c=release
+cmake -S . -B build
+python cli.py -b -c=<config>
 ```
+
+Configurations available:
+
+- Debug: unoptimized build with debug symbols
+- Release: optimized build with no debug symbols
+- ProfileD: unoptimized build with debug symbols and Tracy profiler built in
+- Profile: optimized build with no debug symbols and Tracy profile built in
 
 > CMAKE_BUILD_TYPE will default to debug if not included, the same is true for `cli.py`
 

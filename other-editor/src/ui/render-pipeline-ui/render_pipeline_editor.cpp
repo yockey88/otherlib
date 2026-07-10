@@ -151,13 +151,13 @@ namespace other {
         std::vector<resource_pin> output_buffers;
       };
       struct graph {
-        std::map<natural_t, editor_node> nodes;
-        std::map<natural_t, std::set<natural_t>> edges;
+        ostd::map<natural_t, editor_node> nodes;
+        ostd::map<natural_t, std::set<natural_t>> edges;
       };
       graph g;
 
       working_editor.begin(working_def.name);
-      std::map<natural_t, pipeline_pass_definition*> node_to_pass;
+      ostd::map<natural_t, pipeline_pass_definition*> node_to_pass;
       for (auto& p : working_def.passes) {
         natural_t id = working_editor.begin_node(p.name);
         node_to_pass[id] = &p;
@@ -285,7 +285,7 @@ namespace other {
     }
 
     /// list of outgoing edges
-    std::map<natural_t, std::set<natural_t>> edges;
+    ostd::map<natural_t, std::set<natural_t>> edges;
     for (const auto& n1 : nodes) {
       auto& e1 = edges[n1.id];
 

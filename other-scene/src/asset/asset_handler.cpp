@@ -20,8 +20,8 @@
 
 namespace other {
 
-  std::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
-    std::vector<asset::type> out_acceptable_types;
+  ostd::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
+    ostd::vector<asset::type> out_acceptable_types;
     // switch (requested_type) {
     //   case asset::type::MODEL:
     //   case asset::type::MODEL_SOURCE:
@@ -178,7 +178,7 @@ namespace other {
     return load_asset(file->absolute_path(), std::move(on_complete));
   }
 
-  natural_t asset_handler::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+  natural_t asset_handler::add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
     CORE_LOG_DEBUG("Adding model source asset with name: {} (vertex count: {}, index count: {})", name, vertices.size(), indices.size());
     natural_t model_id = get_next_asset_id();
 
@@ -375,12 +375,12 @@ namespace other {
     return nullptr;
   }
 
-  std::vector<asset*> asset_handler::get_assets_of_type(asset::type type) {
+  ostd::vector<asset*> asset_handler::get_assets_of_type(asset::type type) {
     return loaded_assets |
       std::views::values |
       std::views::filter([type](asset& a) { return a.asset_type == type; }) |
       std::views::transform([](asset& a) { return &a; }) |
-      std::ranges::to<std::vector>();
+      std::ranges::to<ostd::vector<asset*>>();
   }
 
   std::span<const natural_t> asset_handler::get_all_asset_ids() const {
@@ -450,7 +450,7 @@ namespace other {
     return std::nullopt;
   }
 
-  void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, std::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
+  void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
     OTHER_ASSERT(pipeline_it != asset_pipelines.end(), "Invalid pipeline iterator in begin_load");
     OTHER_ASSERT(state_it != asset_states.end(), "Invalid state machine iterator in begin_load");
 
@@ -468,7 +468,7 @@ namespace other {
     }
   }
 
-  std::unordered_map<natural_t, asset>::iterator asset_handler::begin_unload(natural_t asset_id) {
+  ostd::unordered_map<natural_t, asset>::iterator asset_handler::begin_unload(natural_t asset_id) {
     auto state_itr = asset_states.find(asset_id);
     if (state_itr == asset_states.end()) {
       CORE_LOG_ERROR("Asset state machine not found for asset ID: {}", asset_id);
@@ -498,8 +498,8 @@ namespace other {
     auto rit = loaded_assets.erase(it);
     pl_itr->pipeline->start_unload(
       jobs, &pl_itr->loading_asset,
-      std::bind_front(&asset_handler::notify_asset_load_complete, this),
-      std::bind_front(&asset_handler::notify_asset_load_failed, this));
+      std::bind_front(&asset_handler::notify_asset_unload_complete, this),
+      std::bind_front(&asset_handler::notify_asset_unload_failed, this));
     return rit;
   }
 
@@ -539,8 +539,9 @@ namespace other {
     successful_pipelines.push(asset_ptr->id);
   }
 
-  void asset_handler::notify_asset_load_failed(asset* asset_ptr, const std::string& error_message) {
+  void asset_handler::notify_asset_load_failed(asset* asset_ptr, const std::string_view error_message) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load failure callback");
+    CORE_LOG_ERROR("Asset load failed for asset ID: {}: {}", asset_ptr->id, error_message);
     failed_pipelines.push(asset_ptr->id);
   }
 
@@ -549,8 +550,9 @@ namespace other {
     successful_pipelines.push(asset_ptr->id);
   }
 
-  void asset_handler::notify_asset_unload_failed(asset* asset_ptr, const std::string& error_message) {
+  void asset_handler::notify_asset_unload_failed(asset* asset_ptr, const std::string_view error_message) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unload failure callback");
+    CORE_LOG_ERROR("Asset unload failed for asset ID: {}: {}", asset_ptr->id, error_message);
     failed_pipelines.push(asset_ptr->id);
   }
 
@@ -774,8 +776,8 @@ namespace other {
     return nullptr;
   }
 
-  std::vector<natural_t> asset_handler::get_all_tracked_ids() const {
-    std::vector<natural_t> ids;
+  ostd::vector<natural_t> asset_handler::get_all_tracked_ids() const {
+    ostd::vector<natural_t> ids;
     ids.reserve(loaded_assets.size() + asset_pipelines.size());
 
     for (const auto& [id, a] : loaded_assets) {

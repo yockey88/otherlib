@@ -21,11 +21,11 @@ namespace other {
         : source(source_code) {}
     ~ocmd_lexer() = default;
 
-    std::vector<token> tokenize(diagnostic_engine* diag);
+    ostd::vector<token> tokenize(diagnostic_engine* diag);
 
    private:
     diagnostic_engine* diagnostics;
-    std::vector<token> tokens;
+    ostd::vector<token> tokens;
 
     std::string source;
 

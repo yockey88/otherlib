@@ -44,7 +44,7 @@ namespace other {
 
   template <typename T>
     requires is_writable_field<T>
-  static void append_named_field_to_raw_buffer(const std::string_view field_name, const T& value, std::vector<uint8_t>& data) {
+  static void append_named_field_to_raw_buffer(const std::string_view field_name, const T& value, ostd::vector<uint8_t>& data) {
     const uint8_t* value_data = reinterpret_cast<const uint8_t*>(&value);
     if (value_data == nullptr) {
       throw buffer_parsing_error("Null data pointer when appending field '" + std::string(field_name) + "' of type " + std::string(typeid(T).name()));

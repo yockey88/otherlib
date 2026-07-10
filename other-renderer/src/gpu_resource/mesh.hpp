@@ -85,7 +85,7 @@ namespace other {
 
     primitive_type prim_type = primitive_type::TRIANGLES;
 
-    std::vector<vertex_attribute> attributes;
+    ostd::vector<vertex_attribute> attributes;
 
     void destroy_vertex_buffer();
     void destroy_index_buffer();

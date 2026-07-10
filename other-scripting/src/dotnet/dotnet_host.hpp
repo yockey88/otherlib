@@ -1,8 +1,8 @@
 /**
- * \file dotnet/host.hpp
+ * \file dotnet/dotnet_host.hpp
  **/
-#ifndef OTHER_SCRIPTING_DOTNET_HOST_HPP
-#define OTHER_SCRIPTING_DOTNET_HOST_HPP
+#ifndef OTHER_SCRIPTING_DOTNET_DOTNET_HOST_HPP
+#define OTHER_SCRIPTING_DOTNET_DOTNET_HOST_HPP
 
 #include <map>
 
@@ -60,6 +60,7 @@ namespace other {
 
       /// NativeFunctionManager
       discover_binding_points discover_binding_points = nullptr;
+      cleanup_binding_points cleanup_binding_points = nullptr;
       bind_native_function bind_native_function = nullptr;
       register_internal_call register_internal_call = nullptr;
       validate_binding_points validate_binding_points = nullptr;
@@ -110,6 +111,7 @@ namespace other {
       get_managed_object_from_object get_attribute_object = nullptr;
 
       /// ManagedObject
+      clear_methods clear_methods = nullptr;
       create_object create_object = nullptr;
       destroy_object destroy_object = nullptr;
       invoke_method invoke_instance_method = nullptr;
@@ -218,17 +220,17 @@ namespace other {
     std::basic_string<char_t> dotnet_binding_assembly;
     std::basic_string<char_t> dotnet_runtime_config;
 
-    std::map<natural_t, assembly_context> assembly_contexts;
-    std::map<natural_t, dotnet_object> managed_objects;
+    ostd::map<natural_t, assembly_context> assembly_contexts;
+    ostd::map<natural_t, dotnet_object> managed_objects;
 
     opt<int32_t> behavior_base_type_id = std::nullopt;
 
-    std::map<natural_t, dotnet_object>::iterator destroy_managed_object(std::map<natural_t, dotnet_object>::iterator obj_itr);
+    ostd::map<natural_t, dotnet_object>::iterator destroy_managed_object(ostd::map<natural_t, dotnet_object>::iterator obj_itr);
 
     filepath get_bindings_assembly_path() const;
 
     dotnet_object* new_object(const std::string_view name, dotnet_type* type);
-    std::map<natural_t, dotnet_object>::iterator remove_object(const std::string_view name);
+    ostd::map<natural_t, dotnet_object>::iterator remove_object(const std::string_view name);
 
     void bind_interop_table();
     void bind_native_functions();
@@ -314,4 +316,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHER_SCRIPTING_DOTNET_HOST_HPP
+#endif  // OTHER_SCRIPTING_DOTNET_DOTNET_HOST_HPP

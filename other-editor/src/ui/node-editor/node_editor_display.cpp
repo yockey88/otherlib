@@ -97,7 +97,7 @@ namespace other {
       ///     for each output node placed before it
 
       /// graph data
-      std::map<natural_t, std::vector<natural_t>> adjacency_list;
+      ostd::map<natural_t, std::vector<natural_t>> adjacency_list;
       for (natural_t i = 0; i < canvas.links.link_start_pin_indices.size(); ++i) {
         natural_t start_pin = canvas.links.link_start_pin_indices[i];
         natural_t end_pin = canvas.links.link_end_pin_indices[i];
@@ -142,7 +142,7 @@ namespace other {
       }
 
       /// build list of edges to process
-      std::map<natural_t, std::set<natural_t>> edges;
+      ostd::map<natural_t, std::set<natural_t>> edges;
       for (const auto& [nid, neighbors] : adjacency_list) {
         for (const auto& neighbor : neighbors) {
           edges[nid].insert(neighbor);
@@ -174,7 +174,7 @@ namespace other {
 
       /// first place all nodes with no inputs in the first col
       /// then place all nodes connected to those nodes in the next col, etc
-      std::map<natural_t, natural_t> node_columns;
+      ostd::map<natural_t, natural_t> node_columns;
       for (const auto& node_id : sorted) {
         natural_t col = 0;
         for (const auto& [from_node, neighbors] : adjacency_list) {
@@ -188,7 +188,7 @@ namespace other {
         node_columns[node_id] = col;
       }
 
-      std::map<natural_t, natural_t> column_node_counts;
+      ostd::map<natural_t, natural_t> column_node_counts;
       for (const auto& node_id : sorted) {
         natural_t col = node_columns[node_id];
         natural_t row = column_node_counts[col]++;

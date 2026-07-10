@@ -36,8 +36,8 @@ namespace other {
     return itr->second;
   }
 
-  std::vector<std::string> render_executor_registry::known_executors() const {
-    return debug_names | std::views::values | std::ranges::to<std::vector>();
+  ostd::vector<std::string> render_executor_registry::known_executors() const {
+    return debug_names | std::views::values | std::ranges::to<ostd::vector<std::string>>();
   }
 
 }  // namespace other

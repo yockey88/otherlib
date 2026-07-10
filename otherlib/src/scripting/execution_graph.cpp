@@ -60,12 +60,12 @@ namespace other {
     l.to = { to_n->id, to_pin_idx };
   }
 
-  std::vector<natural_t> execution_graph::topological_sort() {
+  ostd::vector<natural_t> execution_graph::topological_sort() {
     if (nodes.empty()) {
       return {};
     }
 
-    std::vector<natural_t> sorted;
+    ostd::vector<natural_t> sorted;
     sorted.reserve(nodes.size());
 
     std::map<natural_t, natural_t> in_degree;

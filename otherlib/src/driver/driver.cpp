@@ -215,7 +215,7 @@ namespace other {
     driver_kernel_ptr->get_core_system<asset_system>().begin_asset_unload(asset_id);
   }
 
-  natural_t driver::add_model_source_asset(const std::string& name, const std::vector<vertex>& vertices, const std::vector<index>& indices) {
+  natural_t driver::add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     return driver_kernel_ptr->get_core_system<asset_system>().add_model_source_asset(name, vertices, indices);
   }
@@ -653,8 +653,8 @@ namespace other {
     }
   }
 
-  void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
-    launch_process(working_dir, exe_name, args);
+  void driver::launch_detached_process(const filepath& working_dir, const filepath& exe_name, const std::span<const std::string> args) {
+    // launch_process(working_dir, exe_name, args);
   }
 
   void driver::handle_driver_event_with_lua_table(const std::string_view event_name, const sol::table& event_data) {

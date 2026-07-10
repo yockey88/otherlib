@@ -26,8 +26,8 @@ namespace other {
     ///        this has special implementation considerations because of the
     ///        rendering passes and their resources but maybe we can still do it?
     struct graph {
-      std::map<natural_t, frame_node> nodes;
-      std::map<natural_t, std::set<natural_t>> edges;
+      ostd::map<natural_t, frame_node> nodes;
+      ostd::map<natural_t, std::set<natural_t>> edges;
     };
 
     using pass_executor = std::function<void(pass_context&)>;
@@ -75,13 +75,13 @@ namespace other {
 
     bool is_valid() const { return graph_valid; }
 
-    const std::map<natural_t, pass>& get_passes() const { return passes; }
-    const std::map<natural_t, pass_executor>& get_executors() const { return executors; }
+    const ostd::map<natural_t, pass>& get_passes() const { return passes; }
+    const ostd::map<natural_t, pass_executor>& get_executors() const { return executors; }
     opt<resource_handle> get_output_texture() const { return output_texture_handle; }
 
     graph& get_graph() { return pass_graph; }
     const graph& get_graph() const { return pass_graph; }
-    const std::vector<natural_t>& get_topological_sort() const { return topological_sort; }
+    const std::span<const natural_t> get_topological_sort() const { return topological_sort; }
 
     renderer* get_renderer() { return renderer_ptr; }
 
@@ -95,21 +95,21 @@ namespace other {
     renderer* renderer_ptr = nullptr;
     bool graph_valid = false;
 
-    std::map<natural_t, pass> passes;
-    std::map<natural_t, pass_executor> executors;
+    ostd::map<natural_t, pass> passes;
+    ostd::map<natural_t, pass_executor> executors;
     opt<resource_handle> output_texture_handle = std::nullopt;
 
     // graph<render_pass> pass_graph;
     graph pass_graph;
-    std::vector<natural_t> topological_sort;
+    ostd::vector<natural_t> topological_sort;
 
     pass& create_pass(render_pass::type rptype);
 
     void build_graph();
 
-    std::vector<natural_t> get_topological_sort(const graph& g);
+    ostd::vector<natural_t> get_topological_sort(const graph& g);
     void dump_pass_graph(const graph& g);
-    void log_topo_sort_error(const graph& g, const std::map<natural_t, uint32_t>& remaining_in_degrees);
+    void log_topo_sort_error(const graph& g, const ostd::map<natural_t, uint32_t>& remaining_in_degrees);
 
     natural_t next_pass_id = 0;
     inline natural_t get_next_pass_id() { return ++next_pass_id; }

@@ -55,10 +55,10 @@ namespace other {
       value val;
     };
 
-    std::vector<std::string> depends_on;
-    std::map<natural_t, texture_resource> texture_resources;
-    std::map<natural_t, buffer_resource> buffer_resources;
-    std::map<natural_t, uniform> uniforms;
+    ostd::vector<std::string> depends_on;
+    ostd::map<natural_t, texture_resource> texture_resources;
+    ostd::map<natural_t, buffer_resource> buffer_resources;
+    ostd::map<natural_t, uniform> uniforms;
 
     void bind_pass(renderer* renderer_ptr);
     void unbind_pass(renderer* renderer_ptr);
