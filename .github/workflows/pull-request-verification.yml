@@ -5,11 +5,14 @@ on:
     branches: [ "dev" ]
 
 jobs:
-  build-and-test-windows-debug:
-    uses: ./.github/workflows/build-and-test-windows.yml
-    with:
-      configuration: Debug
-  build-and-test-windows-release:
-    uses: ./.github/workflows/build-and-test-windows.yml
-    with:
-      configuration: Release
+  pull-request-verification-windows:
+    runs-on: windows-latest
+    steps:
+      - name: "Build and Test (Windows/Debug)"
+        uses: ./.github/workflows/build-and-test-windows.yml
+        with:
+          configuration: Debug
+      - name: "Build and Test (Windows/Release)"
+        uses: ./.github/workflows/build-and-test-windows.yml
+        with:
+          configuration: Release

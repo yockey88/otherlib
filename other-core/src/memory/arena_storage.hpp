@@ -27,8 +27,7 @@ namespace other {
     page* create_page();
     void destroy_page(page* p);
 
-    frame_allocator* create_frame_allocator();
-    void destroy_frame_allocator(frame_allocator* frame);
+    frame_allocator* get_frame_allocator();
 
    private:
 #ifdef OTHER_TEST_ENVIRONMENT
@@ -38,7 +37,7 @@ namespace other {
     page* pages[kMaxPages];
     // memory pools and other that want to manage their own memory
     std::vector<page*> requested_pages;
-    std::vector<frame_allocator*> frame_allocators;
+    frame_allocator* current_frame_allocator = nullptr;
   };
 
 }  // namespace other

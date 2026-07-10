@@ -34,23 +34,16 @@ namespace other {
     using value_type = T;
 
     std_frame_allocator() noexcept
-        : frame(arena::create_frame_allocator()) {
-      ++frame->reference_count;
+        : frame(arena::get_frame_allocator()) {
     }
     explicit std_frame_allocator(frame_allocator* frame) noexcept
         : frame(frame) {
-      ++frame->reference_count;
     }
     template <typename U>
     constexpr std_frame_allocator(const std_frame_allocator<U>& other) noexcept
         : frame(other.frame) {
-      ++frame->reference_count;
     }
     ~std_frame_allocator() {
-      --frame->reference_count;
-      if (frame->reference_count == 0) {
-        arena::destroy_frame_allocator(frame);
-      }
     }
 
     using propagate_on_container_copy_assignment = std::true_type;

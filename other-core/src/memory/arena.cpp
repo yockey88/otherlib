@@ -95,18 +95,12 @@ namespace other {
     instance.storage.destroy_page(p);
   }
 
-  frame_allocator* arena::create_frame_allocator() {
+  frame_allocator* arena::get_frame_allocator() {
     auto& instance = instance_ref();
     std::lock_guard lock(instance.arena_mutex);
-    auto* f = instance.storage.create_frame_allocator();
+    auto* f = instance.storage.get_frame_allocator();
     OTHER_ASSERT(f != nullptr, "Failed to create frame allocator.");
     return f;
-  }
-
-  void arena::destroy_frame_allocator(frame_allocator* frame) {
-    auto& instance = instance_ref();
-    std::lock_guard lock(instance.arena_mutex);
-    instance.storage.destroy_frame_allocator(frame);
   }
 
   void* arena::request_region(size_t size, size_t alignment) {
