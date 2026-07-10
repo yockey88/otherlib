@@ -110,6 +110,10 @@ namespace other {
 
     frame_rate_enforcer<120> frame_rate_guard;
     do {
+      auto* falloc = arena::get_frame_allocator();
+      OTHER_ASSERT(falloc != nullptr, "Failed to get frame allocator at start of main loop.");
+      falloc->reset();
+
       MARK_NAMED_FRAME("driver_main_loop");
       update();
       render();
