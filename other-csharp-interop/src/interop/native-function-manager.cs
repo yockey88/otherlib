@@ -175,8 +175,7 @@ namespace OtherCsBindings
       }
     }
 
-    [UnmanagedCallersOnly]
-    private static NativeBool32 ValidateBindingPoints()
+    public static bool BindingPointsValid()
     {
       var all_bound = true;
       foreach (var kvp in binding_points)
@@ -195,6 +194,12 @@ namespace OtherCsBindings
         Logger.LogInfo("All native functions successfully bound to managed counterparts.");
       }
       return all_bound;
+    }
+
+    [UnmanagedCallersOnly]
+    private static NativeBool32 ValidateBindingPoints()
+    {
+      return BindingPointsValid();
     }
   }
 }

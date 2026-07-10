@@ -10,15 +10,6 @@ namespace other {
 
   class memory_pool_tests : public other_test {
    public:
-    void SetUp() override {
-      /// reset because we are testing the arena here
-      subsystem<arena>::get()->shutdown();
-      subsystem<arena>::get();
-    }
-
-    void TearDown() override {
-      subsystem<arena>::get()->shutdown();
-    }
   };
 
 }  // namespace other

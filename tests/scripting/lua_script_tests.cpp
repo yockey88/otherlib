@@ -10,7 +10,6 @@ namespace other {
   TEST_F(lua_script_tests, read_lua_table) {
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
-    env->initialize_script_environment(environment->config);
 
     lua_script* test1 = env->load_lua_file("tests/test1.lua");
     ASSERT_TRUE(test1->is_valid());
@@ -36,27 +35,19 @@ namespace other {
     ASSERT_EQ(vec_key3[2], 3);
     ASSERT_EQ(vec_key3[3], 4);
     ASSERT_EQ(vec_key3[4], 5);
-
-    env->destroy_all_objects();
-    env->shutdown_script_environment();
   }
 
   TEST_F(lua_script_tests, invalid_lua_file) {
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
-    env->initialize_script_environment(environment->config);
 
     lua_script* invalid_script = env->load_lua_file("other-lua-interop/non_existent.lua");
     ASSERT_EQ(invalid_script, nullptr);
-
-    env->destroy_all_objects();
-    env->shutdown_script_environment();
   }
 
   TEST_F(lua_script_tests, call_lua_function) {
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
-    env->initialize_script_environment(environment->config);
 
     lua_script* test1 = env->load_lua_file("tests/test1.lua");
     ASSERT_NE(test1, nullptr);
@@ -69,9 +60,6 @@ namespace other {
 
     int result = test1->call_function<int>("add", 5, 7);
     ASSERT_EQ(result, 12);
-
-    env->destroy_all_objects();
-    env->shutdown_script_environment();
   }
 
 }  // namespace other

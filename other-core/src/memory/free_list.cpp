@@ -58,4 +58,11 @@ namespace other {
     return total;
   }
 
+  void free_list::cleanup() {
+    for (size_t bin = 0; bin < kNumBins; bin++) {
+      bins[bin] = nullptr;
+      counts[bin] = 0;
+    }
+  }
+
 }  // namespace other

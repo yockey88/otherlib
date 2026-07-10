@@ -17,6 +17,7 @@
 namespace other {
 
   arena::~arena() {
+    freelist.cleanup();
     storage.cleanup(page_allocation_cursor);
     storage.finalize();
     page_allocation_cursor = 0;

@@ -12,6 +12,8 @@ namespace other {
    public:
     lua_script_tests() = default;
     virtual ~lua_script_tests() = default;
+
+    bool script_and_physics() const override { return true; }
   };
 
 }  // namespace other

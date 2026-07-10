@@ -29,7 +29,7 @@ namespace other {
     attribute_ids.resize(num_attributes);
     host->interop().get_method_attributes(dotnet_id, attribute_ids.data(), &num_attributes);
 
-    CORE_LOG_DEBUG("Initializing method [{}] with {} attributes", name(), attribute_ids.size());
+    CORE_LOG_TRACE("Initializing method [{}] with {} attributes", name(), attribute_ids.size());
     attributes.reserve(attribute_ids.size());
     for (int32_t attribute_id : attribute_ids) {
       int32_t attribute_type_id = -1;

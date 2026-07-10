@@ -1,14 +1,20 @@
 [application]
-core-log-level = "warn"
-# fix test logs, currently this is every test and does not have good information, should have a log
-#   for each seperate test-case 
-core-log-file = "logs/dev-test-log.log"
+name = "Other Tests"
+metadata = [ 
+  { key = "name", value = "Other Tests"}, 
+  { key = "description", value = "Other Environment Project Tests"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"} 
+]
 
 [rendering]
 force-no-window = true
+[ui]
+# enable = false
+enable-environment-menu-bar = true
 
 [scripting]
-dotnet-bindings = "build/other-csharp-interop/${build-config}/OtherCsBindings.dll"
-dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
+dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
 other-lua-directory = "other-lua-interop"

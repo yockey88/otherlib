@@ -18,7 +18,7 @@
 namespace other {
   namespace serialization {
 
-    ostd::vector<uint8_t> write_object_to_bytes(const scene& s, const scene_object& obj) {
+    std::vector<uint8_t> write_object_to_bytes(const scene& s, const scene_object& obj) {
       /**
        | <entity-data-length> | <object> | transform-length | <transform> | <parent id> | <num children> | <children ids> | <script-id> | <script data> | <component data> |
        |-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -36,7 +36,7 @@ namespace other {
 
       // ostd::vector<uint64_t> children_ids = s.get_children_ids(obj.id);
 
-      ostd::vector<uint8_t> bytes = {};
+      std::vector<uint8_t> bytes = {};
       // write_reflected_object(obj, bytes);
       // write_reflected_object(s.get_transform(obj.id), bytes);
       // write_value(parent_id, bytes);
@@ -64,8 +64,8 @@ namespace other {
       return { obj, cursor };
     }
 
-    std::pair<ostd::vector<parsed_scene_object>, natural_t> parse_object_list(const std::span<const uint8_t> buffer, natural_t num_objects) {
-      ostd::vector<parsed_scene_object> objects = {};
+    std::pair<std::vector<parsed_scene_object>, natural_t> parse_object_list(const std::span<const uint8_t> buffer, natural_t num_objects) {
+      std::vector<parsed_scene_object> objects = {};
       objects.reserve(num_objects);
 
       size_t cursor = 0;
@@ -123,7 +123,7 @@ namespace other {
 
     }  // namespace detail
 
-    ostd::vector<uint8_t> write_attached_scripts_to_bytes(const script_component* obj) {
+    std::vector<uint8_t> write_attached_scripts_to_bytes(const script_component* obj) {
       /**
        | dotnet | python | lua |
        |-----------------------|
@@ -144,7 +144,7 @@ namespace other {
        |-|
        | |
        **/
-      ostd::vector<uint8_t> bytes = {};
+      std::vector<uint8_t> bytes = {};
 
       scripting_environment* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "Scripting environment subsystem not found");

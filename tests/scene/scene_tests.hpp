@@ -10,48 +10,7 @@ namespace other {
 
   class scene_tests : public other_test {
    protected:
-    void SetUp() {
-      subsystem<arena>::get()->shutdown();
-      subsystem<arena>::get();
-
-      subsystem<scripting_environment>::get()->initialize_script_environment(environment->config);
-#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
-      dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_debug.string());
-      testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_debug.string());
-#elif defined(OTHER_ENVIRONMENT_RELEASE) || defined(OTHER_ENVIRONMENT_PROFILE)
-      dotnet_asm = subsystem<scripting_environment>::get()->load_dotnet_module(other_dll_release.string());
-      testing_asm = subsystem<scripting_environment>::get()->load_dotnet_module(testing_dll_release.string());
-#else
-  #error "Unknown build configuration!"
-#endif
-      subsystem<physics_environment>::get()->load_backend(environment->config);
-      subsystem<physics_environment>::get()->initialize_physics_environment(environment->config);
-    }
-
-    void TearDown() {
-      subsystem<physics_environment>::get()->shutdown_physics_environment();
-      subsystem<physics_environment>::get()->unload_backend();
-      // subsystem<scripting_environment>::get()->shutdown();
-
-      subsystem<scripting_environment>::get()->unload_dotnet_module(testing_asm);
-      subsystem<scripting_environment>::get()->unload_dotnet_module(dotnet_asm);
-      testing_asm = nullptr;
-      dotnet_asm = nullptr;
-
-      subsystem<scripting_environment>::get()->destroy_all_objects();
-      subsystem<scripting_environment>::get()->shutdown_script_environment();
-
-      subsystem<arena>::get()->shutdown();
-    }
-
-    filepath other_dll_debug = "build/other-csharp/Debug/OtherCs.dll";
-    filepath other_dll_release = "build/other-csharp/Release/OtherCs.dll";
-
-    filepath testing_dll_debug = "build/script-testing/Debug/DotnetTesting.dll";
-    filepath testing_dll_release = "build/script-testing/Release/DotnetTesting.dll";
-
-    ref<assembly> dotnet_asm = nullptr;
-    ref<assembly> testing_asm = nullptr;
+    bool script_and_physics() const override { return true; }
   };
 
 }  // namespace other

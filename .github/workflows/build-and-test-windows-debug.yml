@@ -1,8 +1,8 @@
-name: Dev Stability Assurance - Windows/Debug
+name: Build And Test Windows/Debug
 
 on:
-  pull_request:
-    branches: [ "dev" ]
+  workflow_call:
+    # no in/out
 
 jobs:
   build-and-test-debug:

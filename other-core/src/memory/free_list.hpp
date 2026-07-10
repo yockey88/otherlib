@@ -26,6 +26,8 @@ namespace other {
     size_t free_blocks(size_t bin) const;
     size_t idle_bytes() const;
 
+    void cleanup();
+
    private:
     struct free_node {
       free_node* next;

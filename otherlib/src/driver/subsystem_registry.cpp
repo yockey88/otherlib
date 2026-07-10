@@ -58,6 +58,24 @@ namespace other {
     registry.emplace(FNV(def.name), def);
   }
 
+  void subsystem_registry::override_subsystem_initialization(const std::string_view name, subsystem_initializer init_fn) {
+    auto it = registry.find(FNV(name));
+    if (it == registry.end()) {
+      CORE_LOG_ERROR("Subsystem with name '{}' is not registered.", name);
+      return;
+    }
+    it->second.initialize_fn = init_fn;
+  }
+
+  void subsystem_registry::override_subsystem_shutdown(const std::string_view name, subsystem_shutdown shutdown_fn) {
+    auto it = registry.find(FNV(name));
+    if (it == registry.end()) {
+      CORE_LOG_ERROR("Subsystem with name '{}' is not registered.", name);
+      return;
+    }
+    it->second.shutdown_fn = shutdown_fn;
+  }
+
   void subsystem_registry::initialize_profile(const std::string_view profile, const config_table* config) {
     current_profile = profile;
     std::println(std::cout, "Initializing subsystems for profile '{}'", current_profile);
