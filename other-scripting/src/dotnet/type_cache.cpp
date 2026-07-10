@@ -5,7 +5,7 @@
 
 #include "core/fnv.hpp"
 
-#include "dotnet/host.hpp"
+#include "dotnet/dotnet_host.hpp"
 
 namespace other {
 

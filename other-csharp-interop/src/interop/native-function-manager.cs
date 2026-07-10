@@ -39,6 +39,11 @@ namespace OtherCsBindings
       }
     }
 
+    public static void ClearBindingPoints()
+    {
+      binding_points.Clear();
+    }
+
     private static void DiscoverAssemblyBindingPoints(Assembly assembly)
     {
       try
@@ -112,6 +117,8 @@ namespace OtherCsBindings
 
     [UnmanagedCallersOnly]
     private static void RediscoverBindingPoints() => DiscoverAndRegisterFunctions();
+    [UnmanagedCallersOnly]
+    private static void CleanupBindingPoints() => ClearBindingPoints();
 
     [UnmanagedCallersOnly]
     private static void BindNativeFunction(NativeString name_str, IntPtr target)

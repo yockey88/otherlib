@@ -7,8 +7,9 @@
 #include <string>
 
 #include "dotnet/dotnet_assembly.hpp"
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/dotnet_object.hpp"
-#include "dotnet/host.hpp"
+
 
 namespace other {
 

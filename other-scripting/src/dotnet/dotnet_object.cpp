@@ -9,7 +9,7 @@
 #include "core/fnv.hpp"
 #include "serialization/serialization.hpp"
 
-#include "dotnet/host.hpp"
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/native_string.hpp"
 #include "script/scripting_environment.hpp"
 

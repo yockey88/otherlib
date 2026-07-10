@@ -8,11 +8,12 @@
 #include "core/scope.hpp"
 #include "core/subsystem.hpp"
 
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/dotnet_object.hpp"
-#include "dotnet/host.hpp"
 #include "lua/lua_host.hpp"
 #include "python/interpreter.hpp"
 #include "script/script_object.hpp"
+
 
 namespace other {
 

@@ -12,7 +12,7 @@ PRIVATE
   src/dotnet/dotnet_type.cpp
   src/dotnet/dotnet_assembly.cpp
   src/dotnet/dotnet_object.cpp
-  src/dotnet/host.cpp
+  src/dotnet/dotnet_host.cpp
 
   src/lua/lua_sandbox.cpp
   src/lua/lua_host.cpp

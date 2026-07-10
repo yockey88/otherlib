@@ -6,11 +6,12 @@
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/dotnet_type.hpp"
-#include "dotnet/host.hpp"
 #include "dotnet/native_string.hpp"
 #include "dotnet/type_cache.hpp"
 #include "script/scripting_environment.hpp"
+
 
 namespace other {
 

@@ -23,6 +23,7 @@ namespace other {
 
   /// NativeFunctionManager
   using discover_binding_points = void (*)();
+  using cleanup_binding_points = void (*)();
   using bind_native_function = void (*)(native_string, void*);
   using register_internal_call = void (*)(native_string, void*);
   using validate_binding_points = nbool32 (*)();
@@ -70,6 +71,7 @@ namespace other {
   using get_managed_object_from_object = void (*)(int32_t, native_string, void*);
 
   /// ManagedObject
+  using clear_methods = void (*)();
   using create_object = void* (*)(int32_t, nbool32, const void**, const managed_type*, int32_t);
   using destroy_object = void (*)(void*);
   using invoke_method = void (*)(void*, native_string, const void**, const managed_type*, int32_t);

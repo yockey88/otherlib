@@ -5,7 +5,7 @@
 
 #include "core/logger.hpp"
 
-#include "dotnet/host.hpp"
+#include "dotnet/dotnet_host.hpp"
 #include "dotnet/types.hpp"
 
 namespace other {

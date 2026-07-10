@@ -1,7 +1,7 @@
 /**
  * \file dotnet/host.cpp
  **/
-#include "dotnet/host.hpp"
+#include "dotnet/dotnet_host.hpp"
 
 #include <filesystem>
 #include <optional>
@@ -136,6 +136,9 @@ namespace other {
       interop_functions.collect_garbage(0, gc_mode::DEFAULT, true, true);
       interop_functions.wait_for_pending_finalizers();
     }
+
+    interop_functions.cleanup_binding_points();
+    interop_functions.clear_methods();
 
     auto* type_cache = get_type_cache();
     OTHER_ASSERT(type_cache != nullptr, "Type cache is null");
@@ -370,6 +373,9 @@ namespace other {
     interop_functions.discover_binding_points = load_managed_function<discover_binding_points>(native_function_manager_type_str, DNET_STR("RediscoverBindingPoints"));
     OTHER_ASSERT(interop_functions.discover_binding_points != nullptr, "Failed to load DiscoverBindingPoints function from managed assembly.");
 
+    interop_functions.cleanup_binding_points = load_managed_function<cleanup_binding_points>(native_function_manager_type_str, DNET_STR("CleanupBindingPoints"));
+    OTHER_ASSERT(interop_functions.cleanup_binding_points != nullptr, "Failed to load CleanupBindingPoints function from managed assembly.");
+
     interop_functions.bind_native_function = load_managed_function<bind_native_function>(native_function_manager_type_str, DNET_STR("BindNativeFunction"));
     OTHER_ASSERT(interop_functions.bind_native_function != nullptr, "Failed to load BindNativeFunction function from managed assembly.");
 
@@ -479,6 +485,9 @@ namespace other {
     OTHER_ASSERT(interop_functions.get_attribute_object != nullptr, "Failed to load GetAttributeValue from managed assembly.");
 
     /// ManagedObject
+    interop_functions.clear_methods = load_managed_function<clear_methods>(managed_object_type_str, DNET_STR("ClearMethods"));
+    OTHER_ASSERT(interop_functions.clear_methods != nullptr, "Failed to load ClearMethods from managed assembly.");
+
     interop_functions.create_object = load_managed_function<create_object>(managed_object_type_str, DNET_STR("CreateObject"));
     OTHER_ASSERT(interop_functions.create_object != nullptr, "Failed to load CreateObject from managed assembly.");
 
