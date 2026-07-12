@@ -7,9 +7,9 @@ namespace other {
 
   natural_t environment_registry::install_from_manifest(std::string_view plugin_name, const plugin_manifest& m) {
     OTHER_ASSERT(m.factory_function != nullptr, "Plugin manifest for plugin '{}' does not have a valid factory function.", plugin_name);
-    CORE_LOG_INFO("Installing plugin '{}' for interface [{}]", plugin_name, m.class_name);
-    CORE_LOG_INFO(" - Plugin Instance Name: {}", m.plugin_instance_name);
-    CORE_LOG_INFO(" - Interface Hash: {}", m.interface_hash);
+    CORE_LOG_DEBUG("Installing plugin '{}' to interface [{}]", plugin_name, m.class_name);
+    CORE_LOG_DEBUG(" - Plugin Instance Name: {}", m.plugin_instance_name);
+    CORE_LOG_DEBUG(" - Interface Hash: {}", m.interface_hash);
 
     auto itr = std::ranges::find(registered_interfaces, m.interface_hash, &registered_interface::interface_hash);
     if (itr == registered_interfaces.end()) {
@@ -27,11 +27,11 @@ namespace other {
 
     natural_t provider_id = reg_interface.install_thunk(reinterpret_cast<void*>(m.factory_function), m.parameters);
     if (provider_id == 0) {
-      CORE_LOG_ERROR("Failed to install plugin '{}' for interface [{}].", plugin_name, reg_interface.interface_full_name);
+      CORE_LOG_ERROR("Failed to install plugin '{}' to interface [{}].", plugin_name, reg_interface.interface_full_name);
       return 0;
     }
 
-    CORE_LOG_INFO("Plugin '{}' installed succesfully for interface [{}] with provider ID {}", plugin_name, reg_interface.interface_full_name, provider_id);
+    CORE_LOG_INFO("Plugin '{}' installed succesfully to interface [{}] with provider ID {}", plugin_name, reg_interface.interface_full_name, provider_id);
     reg_interface.providers.push_back({
       std::string{ plugin_name },
       provider_id,

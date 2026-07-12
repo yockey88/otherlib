@@ -1,8 +1,8 @@
 /**
- * \file scene/scene_serialization_data.hpp
+ * \file serialization/scene_serialization_data.hpp
  **/
-#ifndef OTHER_SCENE_SCENE_SCENE_SERIALIZATION_DATA_HPP
-#define OTHER_SCENE_SCENE_SCENE_SERIALIZATION_DATA_HPP
+#ifndef OTHERLIB_SERIALIZATION_SCENE_SERIALIZATION_DATA_HPP
+#define OTHERLIB_SERIALIZATION_SCENE_SERIALIZATION_DATA_HPP
 
 #include <cstdint>
 
@@ -34,4 +34,4 @@ namespace other {
   }  // namespace serialization
 }  // namespace other
 
-#endif  // OTHER_SCENE_SCENE_SCENE_SERIALIZATION_DATA_HPP
+#endif  // OTHERLIB_SERIALIZATION_SCENE_SERIALIZATION_DATA_HPP

@@ -12,7 +12,6 @@
 #include "renderer/renderer.hpp"
 
 #include "object/object_component_registry.hpp"
-#include "object/object_serialization_data.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
@@ -78,7 +77,6 @@ namespace other {
     scene_object& create_object(const std::string& name, const glm::vec3& world_position, scene_object* parent_object = nullptr);
 
     scene_object& add_object(scene_object* object, const transform& transformation, scene_object* parent_object = nullptr);
-    void add_objects(const std::span<serialization::parsed_scene_object> objects);
 
     scene_object* get_parent(natural_t id);
     const scene_object* get_parent(natural_t id) const;

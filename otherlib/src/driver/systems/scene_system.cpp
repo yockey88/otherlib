@@ -435,7 +435,7 @@ namespace other {
      *      so we set the pointer, run the script, and reset it back to the old one before doing the 'real' activation below if needed
      **/
 
-    CORE_LOG_INFO("Scene asset loaded: {}", s->name);
+    CORE_LOG_DEBUG("Scene asset loaded: {}", s->name);
     CORE_LOG_DEBUG("try_activate: {}, activate_on_load: {}", try_activate, s->activate_on_load);
     if (try_activate && s->activate_on_load) {
       /// 'real activation'

@@ -140,7 +140,7 @@ namespace other {
       return 0;
     }
 
-    CORE_LOG_INFO("Registering transport provider '{}' ({:#010x})", provider->name(), id);
+    CORE_LOG_DEBUG("Registering transport provider '{}' ({:#010x})", provider->name(), id);
     auto [itr, success] = net_context->registered_transport_providers.emplace(id, std::move(provider));
     OTHER_ASSERT(success, "Failed to register transport provider: {}!", itr->second->name());
 
@@ -158,7 +158,7 @@ namespace other {
     natural_t id = net_context->generate_packet_sink_id();
     OTHER_ASSERT(net_context->registered_packet_sinks.find(id) == net_context->registered_packet_sinks.end(), "Packet sink ID {} is already in use.", id);
 
-    CORE_LOG_INFO("Registering packet sink [{}] to transport [{}]", id, transport_name);
+    CORE_LOG_DEBUG("Registering packet sink [{}] to transport [{}]", id, transport_name);
     auto [itr, success] = net_context->registered_packet_sinks.emplace(id, std::move(sink));
     OTHER_ASSERT(success, "Failed to register packet sink with ID {}!", id);
 
@@ -182,7 +182,7 @@ namespace other {
       return;
     }
 
-    CORE_LOG_INFO("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
+    CORE_LOG_DEBUG("Unregistering transport provider '{}' ({:#010x})", itr->second->name(), provider_id);
     net_context->net_thread->unregister_provider(itr->second.get());
     net_context->registered_transport_providers.erase(itr);
   }
@@ -198,7 +198,7 @@ namespace other {
       return;
     }
 
-    CORE_LOG_INFO("Unregistering packet sink [{}]", sink_id);
+    CORE_LOG_DEBUG("Unregistering packet sink [{}]", sink_id);
     net_context->net_thread->unregister_packet_sink(sink_id);
     net_context->registered_packet_sinks.erase(itr);
   }

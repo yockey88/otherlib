@@ -13,7 +13,6 @@ target_sources(other_scene
       src/object/script_component.cpp
       src/object/physics_component.cpp
       src/object/animation_controller.cpp
-      src/object/object_serialization.cpp
       src/object/component_registry.cpp
       
       src/scene/scene_network_context.cpp
@@ -21,7 +20,6 @@ target_sources(other_scene
       src/scene/scene_storage.cpp
       src/scene/scene.cpp
       src/scene/scene_graph.cpp
-      src/scene/scene_serialization.cpp
 )
 
 target_include_directories(other_scene 

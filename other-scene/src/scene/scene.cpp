@@ -23,7 +23,6 @@
 #include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
-#include "object/object_serialization_data.hpp"
 #include "object/physics_component.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
@@ -205,7 +204,7 @@ namespace other {
       }
     }
 
-    CORE_LOG_INFO("Loaded scene '{}' from Lua file '{}'.", name, script_path->string());
+    CORE_LOG_DEBUG("Scene '{}' Lua file '{}' executed", name, script_path->string());
     script_loaded = true;
   }
 
@@ -221,9 +220,8 @@ namespace other {
       return;
     }
 
-    /// store initial state for reset
+    /// \todo: store initial state for reset
 
-    CORE_LOG_INFO("Starting scene '{}'", name);
     playing = true;
     storage->physics->start_simulation();
 
@@ -250,7 +248,6 @@ namespace other {
       return;
     }
 
-    CORE_LOG_INFO("Stopping scene '{}'", name);
     pause();
 
     storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
@@ -258,12 +255,13 @@ namespace other {
     });
 
     reset();
-    /// reset initial state
+
+    /// \todo: reset initial state
   }
 
   void scene::reset() {
     ASSERT_MAIN_THREAD();
-    /// restore initial state
+    /// \todo: restore initial state
   }
 
   void scene::enable_physics_debug_rendering() {
@@ -393,25 +391,6 @@ namespace other {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::add_object");
     return storage->tree.add_object(object, transformation, parent_object);
-  }
-
-  void scene::add_objects(const std::span<serialization::parsed_scene_object> objects) {
-    ASSERT_MAIN_THREAD();
-    PROFILE_SECTION("scene::add_objects");
-    for (serialization::parsed_scene_object& obj : objects) {
-      add_object(&obj.object, obj.obj_transform, &get_object(obj.parent_id));
-
-      auto* env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(env != nullptr, "Failed to retrieve scripting environment");
-
-      script_component* comp = get_component<script_component>(&obj.object);
-      OTHER_ASSERT(comp != nullptr, "Failed to retrieve script component for object w/ id {}", obj.object.id);
-
-      if (obj.dotnet_obj.name != "" && obj.dotnet_obj.dotnet_blob.size() > 0) {
-        CORE_LOG_DEBUG(" - attaching serialized .NET object '{}' to script object ID {}", obj.dotnet_obj.name, comp->script_object_id);
-        env->attach_serialized_dotnet_object(comp->script_object_id, obj.dotnet_obj.name, obj.dotnet_obj.dotnet_blob);
-      }
-    }
   }
 
   scene_object* scene::get_parent(natural_t id) {
@@ -911,8 +890,6 @@ namespace other {
       /// handle the case this is first load of the model asset ID/a change for this render component
       ///  and we need to produce the model
       if (render.obj_model.source == nullptr) {
-        CORE_LOG_INFO("Looking up model source for asset ID {}", render.model_asset_id);
-
         /// we check the asset exists and is loaded so this can not ever be null
         ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
         OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", render.model_asset_id);

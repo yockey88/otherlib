@@ -9,6 +9,7 @@
 #include "thread/thread_safety.hpp"
 
 #include "model/vertex.hpp"
+#include "renderer/colors.hpp"
 
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
@@ -120,8 +121,6 @@ namespace other {
 
       viewport_id = context.register_viewport("editor-viewport", "editor-debug-rendering");
     }
-
-    CORE_LOG_INFO("Editor driver received notification of loaded rendering pipeline asset. Asset ID: {}, Pipeline Name: {}", asset_id, definition.name);
   }
 
   void editor_driver::on_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline) {
@@ -131,8 +130,6 @@ namespace other {
       get_renderer().remove_pipeline("editor-debug-rendering");
       context.remove_viewport(viewport_id);
     }
-
-    CORE_LOG_INFO("Editor driver received notification of unloaded rendering pipeline asset. Asset ID: {}, Pipeline Name: {}", asset_id, definition.name);
   }
 
   void editor_driver::on_begin_frame(render_data* data) {
@@ -158,6 +155,16 @@ namespace other {
         draw.aabb(aabb, select_color);
 
         auto world_trans = scene->get_world_transform(obj_id);
+
+        glm::vec3 local_up = { 0, 1, 0 };
+        glm::vec3 local_right = { 1, 0, 0 };
+        glm::vec3 local_forward = { 0, 0, -1 };
+        glm::vec3 world_up = glm::normalize(glm::vec3(world_trans * glm::vec4(local_up, 0)));
+        glm::vec3 world_right = glm::normalize(glm::vec3(world_trans * glm::vec4(local_right, 0)));
+        glm::vec3 world_forward = glm::normalize(glm::vec3(world_trans * glm::vec4(local_forward, 0)));
+        draw.arrow(glm::vec3(0, 0, 0), world_up, basic_colors::kRed);
+        draw.arrow(glm::vec3(0, 0, 0), world_right, basic_colors::kGreen);
+        draw.arrow(glm::vec3(0, 0, 0), world_forward, basic_colors::kBlue);
 
         if (auto* render = scene->try_get_component<render_component>(obj.id);
             render != nullptr) {

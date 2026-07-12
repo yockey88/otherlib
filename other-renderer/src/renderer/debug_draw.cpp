@@ -66,10 +66,11 @@ namespace other {
     const float wid = head * 0.5f;
     const glm::vec3 base = b - fwd * head;
 
-    line(b, base + right * wid, c);
-    line(b, base - right * wid, c);
-    line(b, base + up * wid, c);
-    line(b, base - up * wid, c);
+    // cone
+    triangle(b, base + right * wid + up * wid, base - right * wid + up * wid, c);
+    triangle(b, base - right * wid + up * wid, base - right * wid - up * wid, c);
+    triangle(b, base - right * wid - up * wid, base + right * wid - up * wid, c);
+    triangle(b, base + right * wid - up * wid, base + right * wid + up * wid, c);
   }
 
   void debug_draw::aabb(const bounding_box& b, const glm::vec4& c) {

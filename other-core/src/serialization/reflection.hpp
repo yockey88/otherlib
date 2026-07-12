@@ -180,9 +180,7 @@ namespace other {
   concept has_type_data_handler =
     requires { type_data_handler<T>::get_reflection_data(std::declval<const T&>()); } &&
     requires { type_data_handler<T>::as_string(std::declval<const T&>()); } &&
-    requires { type_data_handler<T>::as_string(std::declval<const std::string&>(), std::declval<const T&>()); } &&
-    requires { type_data_handler<T>::as_bytes(std::declval<const T&>()); } &&
-    requires { type_data_handler<T>::from_bytes(std::declval<const std::span<const uint8_t>>()); };
+    requires { type_data_handler<T>::as_string(std::declval<const std::string&>(), std::declval<const T&>()); };
 
   template <typename T>
   concept is_non_stringlike_container_type = is_container_type<T> && !is_stringlike_type<T>;
@@ -218,13 +216,13 @@ namespace other {
     return dname.empty() ? mname : dname;
   }
 
-  struct serializer {
+  struct string_writer {
     struct field_writer {
       template <typename U>
       constexpr void operator()(std::ostream& os, const U& value, uint32_t indent_level, const std::string& name, bool new_line = true) const {
         /// exclude linear algebra types from this because they look gross
         if constexpr (reflected_type<U> && !is_linear_algebra_type<U>) {
-          os << serializer{}.write_fields_to_string<U>(name, value, indent_level + 1);
+          os << string_writer{}.write_fields_to_string<U>(name, value, indent_level + 1);
         }
         /// string-like container special case
         else if constexpr (is_stringlike_type<U>) {
@@ -239,7 +237,7 @@ namespace other {
           for (const auto& val : value) {
             if constexpr (reflected_type<value_t> && !is_linear_algebra_type<value_t>) {
               os << "\n";
-              os << serializer{}.write_fields_to_string<value_t>(name + "[" + std::to_string(count) + "]", val, indent_level + 1);
+              os << string_writer{}.write_fields_to_string<value_t>(name + "[" + std::to_string(count) + "]", val, indent_level + 1);
             } else if constexpr (is_stringlike_type<value_t>) {
               os << "[" << count++ << "] = \"" << val << "\"";
             } else if constexpr (is_container<value_t>) {
@@ -284,18 +282,6 @@ namespace other {
     template <typename T>
       requires reflected_type<T>
     std::string write_fields_to_string(const std::string& name, const T& value, int32_t indent_level = 1) const;
-
-    template <typename T>
-      requires reflected_type<T>
-    ostd::vector<uint8_t> write_fields_to_bytes(const T& value) const;
-
-    template <typename T>
-      requires reflected_type<T>
-    T read_fields_from_bytes(const std::span<const uint8_t> data) const;
-
-    template <typename T>
-      requires reflected_type<T>
-    T read_from_file(const std::string& file_path) const;
   };
 
   class type_database : public subsystem<type_database> {
@@ -325,7 +311,7 @@ namespace other {
 
   template <typename T>
     requires reflected_type<T>
-  std::string serializer::write_fields_to_string(const std::string& name, const T& value, int32_t indent_level) const {
+  std::string string_writer::write_fields_to_string(const std::string& name, const T& value, int32_t indent_level) const {
     std::stringstream ss;
     std::string indent = std::string((indent_level - 1) * 2, ' ');
     ss << indent << name;
@@ -363,57 +349,6 @@ namespace other {
     return ss.str();
   }
 
-  // template <typename T>
-  //   requires reflected_type<T>
-  // T serializer::read_fields_from_bytes(const std::span<const uint8_t> data) const {
-  //   auto outer_map = flexbuffers::GetRoot(data).AsMap();
-  //   CORE_LOG_DEBUG("Deserialized type hash: {}", outer_map["type-hash"].AsUInt64());
-  //   CORE_LOG_DEBUG("Deserialized type name: {}", outer_map["type-name"].AsString().str());
-  //   CORE_LOG_DEBUG("Deserialized number of fields: {}", outer_map["num-fields"].AsUInt64());
-  //   /**
-  //    * \todo: check num fields and type-hash against version requirements to validate version compatibility
-  //    **/
-
-  //   T deserialized_obj;
-  //   for_each(refl::reflect(deserialized_obj).members, [&](auto member) {
-  //     if constexpr (refl::descriptor::has_attribute<other::attr::serializable>(member) &&
-  //                   !refl::descriptor::is_function(member)) {
-  //       std::string name = std::string{ member.name };
-  //       flexbuffers::Reference reference = outer_map[name.c_str()];
-  //       if (reference.IsNull()) {
-  //         CORE_LOG_WARN("Field '{}' not found in serialized data.", name);
-  //         return;
-  //       }
-
-  //       using member_t = std::remove_cvref_t<decltype(member(deserialized_obj))>;
-  //       member(deserialized_obj) = other::get_field<member_t>(reference, std::string{ member.name });
-  //     }
-  //   });
-
-  //   return deserialized_obj;
-  // }
-
-  template <typename T>
-    requires reflected_type<T>
-  T serializer::read_from_file(const std::string& file_path) const {
-    ostd::vector<uint8_t> bytes;
-    {
-      std::ifstream ifs(file_path, std::ios::binary);
-      if (!ifs.is_open()) {
-        CORE_LOG_ERROR("Failed to open file '{}'.", file_path);
-        return T{};
-      }
-
-      ifs.seekg(0, std::ios::end);
-      size_t size = ifs.tellg();
-      ifs.seekg(0, std::ios::beg);
-
-      bytes.resize(size);
-      ifs.read(reinterpret_cast<char*>(bytes.data()), size);
-    }
-    return read_fields_from_bytes<T>(bytes);
-  }
-
   template <typename T>
     requires reflected_type<T>
   reflection_data* type_database::get_reflection_data() {
@@ -430,7 +365,6 @@ namespace other {
   template <typename T>
     requires reflected_type<T>
   reflection_data* type_database::get_reflection_data(const T& value) {
-    /// this works because its a template function, so it will be instantiated for each type T
     static const auto refl_data = refl::reflect(value);
     static const std::string refl_type_name = std::string{ refl_data.name };
     static const uint64_t type_hash = typeid(T).hash_code();
@@ -447,7 +381,6 @@ namespace other {
       CORE_LOG_ERROR("Failed to insert reflection data for type '{}'.", refl_type_name);
       return nullptr;
     }
-    // CORE_LOG_TRACE("Stashing reflection data for type '{}'.", refl_type_name);
 
     it->second.type_hash = type_hash;
     it->second.type_name = refl_type_name;
@@ -466,8 +399,6 @@ namespace other {
       m.size = sizeof(member_t);
 
       if constexpr (!refl::descriptor::is_function(member)) {
-        /// compute offset via member pointer
-        /// is there a better way to do this?
         m.offset = reinterpret_cast<size_t>(&(static_cast<T*>(nullptr)->*member.pointer));
       }
 
@@ -492,14 +423,6 @@ namespace other {
         m.since_version = version.version;
       }
 
-      // CORE_LOG_TRACE("Member '{}' [{}] of type '{}' has value type '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", m.value_type);
-      // if (m.value_type == value_type::USER_TYPE) {
-      //   if constexpr (reflected_type<member_t>) {
-      //     CORE_LOG_TRACE("  - reflected member type = {}", std::string{ refl::reflect<member_t>().name });
-      //   }
-      // }
-
-      // CORE_LOG_TRACE("  - Adding member '{}' [{}] of type '{}' to reflection data for '{}'.", m.name, m.display_name ? *m.display_name : m.name, m.type == reflection_data::member::FIELD ? "field" : "function", it->second.type_name);
       it->second.member_descriptors.push_back(m);
     });
 
@@ -518,6 +441,20 @@ namespace other {
     }
   }
 
+  // minimum size in bytes to serialize a value of type T,
+  // type tag, 4 byte size, and the value itself, strings and buffers could be empty
+  // so minimum is smaller than sizeof(value_type) + sizeof(uint32_t) + sizeof(T)
+  template <typename T>
+    requires(!is_stringlike_type<T> && !is_buffer_type<T>)
+  static inline natural_t get_type_minimum_size() {
+    return sizeof(value_type) + sizeof(uint32_t) + sizeof(T);
+  }
+  template <typename T>
+    requires(is_stringlike_type<T> || is_buffer_type<T>)
+  static inline natural_t get_type_minimum_size() {
+    return sizeof(value_type) + sizeof(uint32_t);
+  }
+
 }  // namespace other
 
 OTHER_DEPENDENT_SUBSYSTEM(
@@ -525,35 +462,20 @@ OTHER_DEPENDENT_SUBSYSTEM(
   subsystem_profile::kArena,
   subsystem_profile::kLogger);
 
-namespace std {
-
-  // template <typename T>
-  //   requires other::reflected_type<T>
-  // struct formatter<T> : public formatter<std::string_view> {
-  //   auto format(const T& value, format_context& ctx) const {
-  //     std::string str = other::serializer{}.write_fields_to_string<T>(std::string{ refl::reflect(value).name }, value);
-  //     return formatter<std::string_view>::format(str, ctx);
-  //   }
-  // };
-
-}  // namespace std
-
 #define VA_ARGS(...) , ##__VA_ARGS__
 
-#define OTHER_REFLECTABLE(T)         \
-  friend class other::type_database; \
-  friend struct other::serializer;   \
+#define OTHER_REFLECTABLE(T)          \
+  friend class other::type_database;  \
+  friend struct other::string_writer; \
   friend struct other::type_data_handler<T>;
 
-#define OTHER_TYPE_HANDLER(T)                                                                                                                               \
-  template <>                                                                                                                                               \
-  struct other::type_data_handler<T> {                                                                                                                      \
-    static other::reflection_data& get_reflection_data(const T& value) { return *other::type_database::get()->get_reflection_data<T>(value); }              \
-    static std::string as_string(const T& value) { return other::serializer{}.write_fields_to_string<T>(std::string{ refl::reflect(value).name }, value); } \
-    static std::string as_string(const std::string& name, const T& value) { return other::serializer{}.write_fields_to_string<T>(name, value); }            \
-    static ostd::vector<uint8_t> as_bytes(const T& value) { return other::serializer{}.write_fields_to_bytes<T>(value); }                                   \
-    static T from_bytes(const std::span<const uint8_t> data) { return other::serializer{}.read_fields_from_bytes<T>(data); }                                \
-  };                                                                                                                                                        \
+#define OTHER_TYPE_HANDLER(T)                                                                                                                                  \
+  template <>                                                                                                                                                  \
+  struct other::type_data_handler<T> {                                                                                                                         \
+    static other::reflection_data& get_reflection_data(const T& value) { return *other::type_database::get()->get_reflection_data<T>(value); }                 \
+    static std::string as_string(const T& value) { return other::string_writer{}.write_fields_to_string<T>(std::string{ refl::reflect(value).name }, value); } \
+    static std::string as_string(const std::string& name, const T& value) { return other::string_writer{}.write_fields_to_string<T>(name, value); }            \
+  };                                                                                                                                                           \
   static_assert(other::reflected_type<T>, "Type '" #T "' does not meet the requirements for reflection. Ensure it is default constructible and reflectable.");
 
 #define OTHER_REFLECT(T, ...)             \
@@ -563,8 +485,5 @@ namespace std {
 #define OTHER_REFLECT_DERIVED(T, BT, ...) \
   REFL_AUTO(T, BT VA_ARGS(__VA_ARGS__))   \
   OTHER_TYPE_HANDLER(T)
-
-OTHER_REFLECT(
-  other::value_type)
 
 #endif  // OTHER_CORE_REFLECTION_HPP

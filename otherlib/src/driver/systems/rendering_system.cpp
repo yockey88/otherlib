@@ -523,7 +523,7 @@ namespace other {
     if (pipeline_paths.size() > 0) {
       CORE_LOG_WARN("No rendering pipelines specified in configuration.");
       for (const auto& pipeline_path : pipeline_paths) {
-        CORE_LOG_INFO("Adding rendering pipeline: {}", pipeline_path);
+        CORE_LOG_DEBUG("Adding rendering pipeline: {}", pipeline_path);
         auto& ass = pending_rendering_pipeline_assets.emplace_back(pipeline_asset{
           .asset_id = 0,
         });
@@ -575,7 +575,7 @@ namespace other {
 
     itr->definition = pl->definition;
 
-    CORE_LOG_INFO("Adding Rendering Pipeline: {}", itr->definition.name);
+    CORE_LOG_DEBUG("Adding Rendering Pipeline: {}", itr->definition.name);
     renderer_ptr->add_pipeline(itr->definition.name, itr->definition);
 
     /// load all of it's resources that are on disk as assets (shaders/textures/etc..)

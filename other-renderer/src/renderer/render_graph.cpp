@@ -292,18 +292,19 @@ namespace other {
     graph_valid = true;
 
     std::stringstream ss;
-    ss << "Render Pass Order:\n";
-    for (const auto& pass_id : topological_sort) {
-      if (pass_id == static_cast<natural_t>(-1)) {
-        ss << "  (empty graph)";
-      } else {
+    ss << "Render Pass Order:";
+    if (topological_sort.empty() || (topological_sort.size() == 1 && topological_sort[0] == static_cast<natural_t>(-1))) {
+      ss << " (empty graph)";
+    } else {
+      ss << " ";
+      for (const auto& pass_id : topological_sort) {
         auto itr = pass_graph.nodes.find(pass_id);
         if (itr != pass_graph.nodes.end()) {
           ss << itr->second.pass->name << " ";
         }
       }
     }
-    CORE_LOG_INFO("{}", ss.str());
+    CORE_LOG_DEBUG("{}", ss.str());
   }
 
   /*

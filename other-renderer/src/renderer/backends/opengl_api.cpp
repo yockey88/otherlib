@@ -89,7 +89,6 @@ namespace other {
     glDepthFunc(GL_LESS);
 
     SDL_GL_MakeCurrent(window_mgr->get_main_window(), gl_ctx(get_gpu_context()));
-    CORE_LOG_INFO("OpenGL API initialized successfully.");
   }
 
   void opengl_api::on_shutdown(scope<window_manager>& window_mgr) {
@@ -117,8 +116,6 @@ namespace other {
 
     SDL_GL_DestroyContext(ctx);
     set_gpu_context(nullptr);
-
-    CORE_LOG_INFO("OpenGL API shutdown successfully.");
   }
 
   void opengl_api::initialize_ui_context() {

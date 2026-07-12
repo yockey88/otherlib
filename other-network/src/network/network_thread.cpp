@@ -76,7 +76,7 @@ namespace other {
       for (auto* p : providers) {
         OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
         if (p->hash() == transport_hash) {
-          CORE_LOG_INFO("Packet Sink [{}] subscribed to tranport '{}'", id, p->name());
+          CORE_LOG_DEBUG("Packet Sink [{}] subscribed to tranport '{}'", id, p->name());
           p->register_packet_sink(sink);
           return;
         }

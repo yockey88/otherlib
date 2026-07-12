@@ -26,9 +26,10 @@ target_sources(other_tests
     
     ${CMAKE_CURRENT_SOURCE_DIR}/value/value_test.cpp
     
-    ${CMAKE_CURRENT_SOURCE_DIR}/serialization/script_serialization.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/serialization/scene_serialization.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/serialization/asset_serialization.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/serialization/serialization_tests.cpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/serialization/script_serialization.cpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/serialization/scene_serialization.cpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/serialization/asset_serialization.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/parser-combinator/parser_combinator_tests.cpp
     

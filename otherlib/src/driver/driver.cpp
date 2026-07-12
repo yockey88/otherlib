@@ -327,12 +327,12 @@ namespace other {
   }
 
   void driver::confirm_assets_clean() {
-    CORE_LOG_DEBUG("Confirming assets are clean...");
+    CORE_LOG_DEBUG("Asset system shutdown confirmed.");
     shutdown_state.asset_manager_shutdown = true;
   }
 
   void driver::confirm_network_thread_shutdown() {
-    CORE_LOG_INFO("Network thread shutdown confirmed.");
+    CORE_LOG_DEBUG("Network thread shutdown confirmed.");
     shutdown_state.network_thread_shutdown = true;
   }
 
@@ -388,7 +388,7 @@ namespace other {
     OTHER_ASSERT(asset_id != 0, "Invalid asset ID for loaded rendering pipeline.");
     OTHER_ASSERT(pipeline != nullptr, "Loaded rendering pipeline is null.");
 
-    CORE_LOG_INFO("Rendering pipeline loaded: asset_id={}, pipeline_name={}", asset_id, pipeline->get_definition().name);
+    CORE_LOG_DEBUG("Rendering pipeline loaded: asset_id={}, pipeline_name={}", asset_id, pipeline->get_definition().name);
     on_rendering_pipeline_loaded(asset_id, pipeline);
   }
 
@@ -396,7 +396,7 @@ namespace other {
     OTHER_ASSERT(asset_id != 0, "Invalid asset ID for unloaded rendering pipeline.");
     OTHER_ASSERT(pipeline != nullptr, "Unloaded rendering pipeline is null.");
 
-    CORE_LOG_INFO("Rendering pipeline unloaded: asset_id={}, pipeline_name={}", asset_id, pipeline->get_definition().name);
+    CORE_LOG_DEBUG("Rendering pipeline unloaded: asset_id={}, pipeline_name={}", asset_id, pipeline->get_definition().name);
     on_rendering_pipeline_unloaded(asset_id, pipeline);
   }
 
@@ -606,7 +606,7 @@ namespace other {
       CORE_LOG_WARN("Project loaded event triggered but project is empty. This may indicate a problem with the project loading process.");
       return;
     }
-    CORE_LOG_INFO("Project loaded: {}", p.get_project_name());
+    CORE_LOG_DEBUG("Project loaded: {}", p.get_project_name());
 
     if (driver_kernel_ptr->has_core_system<scene_system>()) {
       auto& scenes = driver_kernel_ptr->get_core_system<scene_system>();
@@ -649,7 +649,7 @@ namespace other {
 
   void driver::on_project_unloaded() {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
-    CORE_LOG_INFO("Project unloaded.");
+    CORE_LOG_DEBUG("Project unloaded.");
     shutdown_state.project_unloaded = true;
 
     if (runtime_state.shutdown_requested) {
@@ -678,7 +678,7 @@ namespace other {
   }
 
   void driver::begin_shutdown_sequence() {
-    CORE_LOG_INFO("Beginning shutdown sequence");
+    CORE_LOG_DEBUG("Beginning shutdown sequence");
 
     if (driver_kernel_ptr->has_core_system<rendering_system>()) {
       auto& rendering = driver_kernel_ptr->get_core_system<rendering_system>();

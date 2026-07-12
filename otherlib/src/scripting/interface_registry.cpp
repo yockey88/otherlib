@@ -40,7 +40,7 @@ namespace other {
                                                                      .interface_id = itr->first,
                                                                      .interface_table = std::move(interface_table),
                                                                    });
-    OTHER_ASSERT(inserted, "Failed to register interface binding for interface '{}'.", interface_name);
+    OTHER_ASSERT(inserted, "Failed to register interface binding to interface '{}'.", interface_name);
 
     CORE_LOG_DEBUG("[INTERFACE BINDING: {}] new {}", new_binding_id, interface_name);
     bind_lua_interface_methods(it->second, itr->second);
@@ -95,7 +95,7 @@ namespace other {
   }
 
   void interface_registry::bind_lua_interface_methods(bound_interface& bound_interface, const environment_interface& env_interface) {
-    OTHER_ASSERT(bound_interface.interface_table.has_value(), "Cannot bind Lua interface methods for interface '{}' because the bound interface has no Lua table.", env_interface.name);
+    OTHER_ASSERT(bound_interface.interface_table.has_value(), "Cannot bind Lua interface methods to interface '{}' because the bound interface has no Lua table.", env_interface.name);
 
     sol::table& table = bound_interface.interface_table.value();
     for (const auto& method : env_interface.actions) {
@@ -105,7 +105,7 @@ namespace other {
       const bool has = func_obj.valid() && func_obj.get_type() == sol::type::function;
 
       if (!has && method.required) {
-        OTHER_ASSERT(false, "Lua interface table is missing required method '{}' for interface '{}'.", resolved_name, env_interface.name);
+        OTHER_ASSERT(false, "Lua interface table is missing required method '{}' to interface '{}'.", resolved_name, env_interface.name);
       } else if (!has) {
         CORE_LOG_DEBUG(" - method '{}' not implemented", resolved_name);
       } else {
