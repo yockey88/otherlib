@@ -63,22 +63,11 @@ namespace other {
       return;
     }
 
-    std::ofstream ofs(directory / "model.tnn", std::ios::binary);
+    std::ofstream ofs(directory / "model.onn", std::ios::binary);
     if (!ofs) {
       CORE_LOG_ERROR("Failed to open file {} for writing.", (directory / "model.tnn").string());
       return;
     }
-
-    // Write model metadata
-    // ofs << "Topology: " << model.print_topology() << "\n";
-    // ofs << "Weights: \n";
-    // for (const auto& weight : model.W) {
-    //   ofs << weight << "\n";
-    // }
-    // ofs << "Biases: \n";
-    // for (const auto& bias : model.b) {
-    //   ofs << bias << "\n";
-    // }
 
     // ofs.close();
   }
