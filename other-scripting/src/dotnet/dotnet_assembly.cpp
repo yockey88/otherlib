@@ -12,7 +12,6 @@
 #include "dotnet/type_cache.hpp"
 #include "script/scripting_environment.hpp"
 
-
 namespace other {
 
   void assembly::cache_types(type_cache* cache, const std::span<const int32_t> dotnet_type_ids) {
@@ -86,7 +85,7 @@ namespace other {
     OTHER_ASSERT(inserted, "Failed to insert assembly into context map");
 
     auto asm_ref = itr->second;
-    CORE_LOG_INFO("Loading assembly [{}:{}] from path: {}", asm_ref->get_handle(), asm_ref->get_name(), asm_path.string());
+    CORE_LOG_DEBUG("Loading assembly [{}:{}] from path: {}", asm_ref->get_handle(), asm_ref->get_name(), asm_path.string());
 
     native_string native_path = native_string::new_str(asm_path.string());
     asm_ref->dotnet_id = host->interop().load_managed_assembly(this->dotnet_id, native_path);
@@ -111,7 +110,7 @@ namespace other {
       OTHER_ASSERT(types != nullptr, "Failed to get type cache!");
 
       asm_ref->cache_types(types, type_ids);
-      CORE_LOG_INFO("Loaded assembly [{}:{}]", itr->second->get_handle(), itr->second->get_name());
+      CORE_LOG_DEBUG("Loaded assembly [{}:{}]", itr->second->get_handle(), itr->second->get_name());
     } else {
       CORE_LOG_ERROR("Failed to load assembly [{}:{}] | status: {}", asm_ref->get_handle(), asm_ref->get_name(), asm_ref->load_status);
     }
@@ -149,7 +148,7 @@ namespace other {
       CORE_LOG_ERROR("Failed to unload assembly: ID {} not found", assembly_id);
       return;
     }
-    CORE_LOG_INFO("Unloading assembly [{}:{}]", itr->second->get_handle(), itr->second->get_name());
+    CORE_LOG_DEBUG("Unloading assembly [{}:{}]", itr->second->get_handle(), itr->second->get_name());
 
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");

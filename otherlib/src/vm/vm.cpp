@@ -162,11 +162,11 @@ namespace other {
       .header = header,
       .state = other_command_device::program_state::PROGRAM_RUNNING,
     };
-    CORE_LOG_INFO("[VM] Loading program at address: {:#06x}", device->program_load_cursor);
-    CORE_LOG_INFO("     - entry point address: {:#06x}", header.prog_header.entry_point_address + device->program_load_cursor);
-    CORE_LOG_INFO("     - data section address: {:#06x}", header.prog_header.data_section_offset + device->program_load_cursor);
-    CORE_LOG_INFO("     - number of instructions: {}", header.prog_header.num_instructions);
-    CORE_LOG_INFO("     - data section size: {}", device->current_program_metadata.data_size);
+    CORE_LOG_DEBUG("[VM] Loading program at address: {:#06x}", device->program_load_cursor);
+    CORE_LOG_DEBUG("     - entry point address: {:#06x}", header.prog_header.entry_point_address + device->program_load_cursor);
+    CORE_LOG_DEBUG("     - data section address: {:#06x}", header.prog_header.data_section_offset + device->program_load_cursor);
+    CORE_LOG_DEBUG("     - number of instructions: {}", header.prog_header.num_instructions);
+    CORE_LOG_DEBUG("     - data section size: {}", device->current_program_metadata.data_size);
 
     auto program_bytes = bytes.subspan(sizeof(ocmd_file_header));
     size_t program_size = std::ranges::size(program_bytes);

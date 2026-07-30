@@ -60,7 +60,7 @@ namespace OtherCsBindings
     private static unsafe void Entry(Argv args)
     { 
       Logger.Initialize(args.logger_native_handle);
-      Logger.LogInfo("Initializing Other Environment .NET Host");
+      Logger.LogDebug("Initializing Other Environment .NET Host");
 
       AssemblyLoader.LoadCoreAssemblies();
 

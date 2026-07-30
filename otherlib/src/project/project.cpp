@@ -38,7 +38,7 @@ namespace other {
 
     OTHER_ASSERT(std::filesystem::exists(path), "Project file '{}' does not exist.", path.string());
     OTHER_ASSERT(std::filesystem::is_regular_file(path), "Project file '{}' is not a regular file.", path.string());
-    CORE_LOG_INFO("Loading project from file: '{}'", path.string());
+    CORE_LOG_DEBUG("Loading project from file: '{}'", path.string());
 
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available.");

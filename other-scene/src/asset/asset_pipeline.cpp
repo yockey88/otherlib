@@ -371,7 +371,7 @@ namespace other {
           }
 
           subsystem<renderer_backend>::get()->add_model_source(asset_ptr->path_hash, src);
-          CORE_LOG_INFO("Model source loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
+          CORE_LOG_DEBUG("Model source loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
         },
         dependencies);
 
@@ -442,7 +442,7 @@ namespace other {
             t->cleanup_build();
 
             if (result == 0) {
-              CORE_LOG_INFO("Successfully built .NET project '{}'", path.string());
+              CORE_LOG_DEBUG("Successfully built .NET project '{}'", path.string());
             } else {
               throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path.string(), result));
             }

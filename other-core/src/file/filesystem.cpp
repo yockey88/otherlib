@@ -111,7 +111,7 @@ namespace other {
     auto dir = make_ref<directory>(*events, mount_name, std::filesystem::absolute(path));
     mounts.insert({ hash, dir });
 
-    CORE_LOG_INFO("Mounted directory '{}' -> '{}'", mount_name, path.string());
+    CORE_LOG_DEBUG("Mounted directory '{}' -> '{}'", mount_name, path.string());
     return dir;
   }
 
@@ -132,7 +132,7 @@ namespace other {
     auto dir = make_ref<directory>(*events, mount_name, filepath{}, file_type::VIRTUAL);
     mounts.insert({ hash, dir });
 
-    CORE_LOG_INFO("Mounted virtual directory '{}'", mount_name);
+    CORE_LOG_DEBUG("Mounted virtual directory '{}'", mount_name);
     return dir;
   }
 
@@ -158,7 +158,7 @@ namespace other {
     }
 
     mounts.erase(it);
-    CORE_LOG_INFO("Unmounted '{}'", mount_name);
+    CORE_LOG_DEBUG("Unmounted '{}'", mount_name);
   }
 
   ref<directory> file_system::get_mount(const std::string_view mount_name) const {

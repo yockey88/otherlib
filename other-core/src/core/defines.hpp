@@ -30,7 +30,9 @@ namespace other {
   template <typename T>
   concept is_opaque_pointer = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, void*>;
   template <typename T>
-  concept is_byte_buffer_type = std::is_same_v<std::remove_cvref_t<T>, ostd::vector<uint8_t>> || std::is_same_v<std::remove_cvref_t<T>, std::span<const uint8_t>>;
+  concept is_byte_buffer_type =
+    std::is_same_v<std::remove_cvref_t<T>, ostd::vector<uint8_t>> || std::is_same_v<std::remove_cvref_t<T>, std::span<const uint8_t>> ||
+    std::is_same_v<std::remove_cvref_t<T>, std::span<uint8_t>> || std::is_same_v<std::remove_cvref_t<T>, std::vector<uint8_t>>;
   template <typename T>
   concept is_character_array_ptr = is_pointer_type<T> && std::is_same_v<std::remove_cvref_t<T>, char*>;
   template <typename T>

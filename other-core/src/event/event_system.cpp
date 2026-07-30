@@ -144,7 +144,7 @@ namespace other {
       event_timers.erase(timer_itr);
     }
 
-    CORE_LOG_INFO("Cancelled event with ID {}", event_id);
+    CORE_LOG_DEBUG("Cancelled event with ID {}", event_id);
   }
 
   void event_system::set_user_data(natural_t event_id, const value& data) {

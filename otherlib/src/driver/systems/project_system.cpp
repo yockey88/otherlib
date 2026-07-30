@@ -163,7 +163,7 @@ namespace other {
       return;
     }
 
-    CORE_LOG_INFO("Begin project load: {}", project_file.string());
+    CORE_LOG_DEBUG("Begin project load: {}", project_file.string());
     loaded_project->load_from_file(kernel, project_file);
     last_loaded_project_file = project_file;
 
@@ -221,7 +221,7 @@ namespace other {
 
   void project_system::handle_project_event(driver_kernel* kernel, const project_event_data& data) {
     PROFILE_SECTION("project_system::handle_project_event");
-    CORE_LOG_INFO("Received project event '{}' for project '{}' at path '{}'", data.type, data.project_name, data.project_path);
+    CORE_LOG_DEBUG("Received project event '{}' for project '{}' at path '{}'", data.type, data.project_name, data.project_path);
     std::string type = data.type;
     filepath project_path = data.project_path;
     if (type == "load") {
@@ -319,7 +319,7 @@ namespace other {
       return;
     }
     OTHER_ASSERT(std::filesystem::exists(script_source_path.value()), "Local asset path '{}' for loaded script source asset with ID {} does not exist.", script_source_path.value().string(), asset_id);
-    CORE_LOG_INFO("Script source loaded with path '{}' for asset ID {}", script_source_path.value().string(), asset_id);
+    CORE_LOG_DEBUG("Script source loaded with path '{}' for asset ID {}", script_source_path.value().string(), asset_id);
 
     CORE_LOG_DEBUG("Script source loaded. Project State: {}", loaded_project->get_state());
     if (loaded_project->is_loading()) {
@@ -350,7 +350,7 @@ namespace other {
       return;
     }
     OTHER_ASSERT(std::filesystem::exists(script_source_path.value()), "Local asset path '{}' for unloaded script source asset with ID {} does not exist.", script_source_path.value().string(), asset_id);
-    CORE_LOG_INFO("Script source unloaded with path '{}' for asset ID {}", script_source_path.value().string(), asset_id);
+    CORE_LOG_DEBUG("Script source unloaded with path '{}' for asset ID {}", script_source_path.value().string(), asset_id);
 
     CORE_LOG_DEBUG("Script source unloaded. Project State: {}", loaded_project->get_state());
     if (loaded_project->is_unloading()) {
@@ -373,7 +373,7 @@ namespace other {
       return;
     }
     OTHER_ASSERT(std::filesystem::exists(script_file_path.value()), "Local asset path '{}' for loaded script file asset with ID {} does not exist.", script_file_path.value().string(), asset_id);
-    CORE_LOG_INFO("Script file loaded with path '{}' for asset ID {}", script_file_path.value().string(), asset_id);
+    CORE_LOG_DEBUG("Script file loaded with path '{}' for asset ID {}", script_file_path.value().string(), asset_id);
 
     loaded_project->add_script_file(script_file_path.value());
   }
@@ -390,7 +390,7 @@ namespace other {
       return;
     }
     OTHER_ASSERT(std::filesystem::exists(script_file_path.value()), "Local asset path '{}' for unloaded script file asset with ID {} does not exist.", script_file_path.value().string(), asset_id);
-    CORE_LOG_INFO("Script file unloaded with path '{}' for asset ID {}", script_file_path.value().string(), asset_id);
+    CORE_LOG_DEBUG("Script file unloaded with path '{}' for asset ID {}", script_file_path.value().string(), asset_id);
 
     loaded_project->remove_script_file(script_file_path.value());
   }
@@ -404,7 +404,7 @@ namespace other {
     // clang-format on
     PROFILE_SECTION("project_system::load_plugin");
 
-    CORE_LOG_INFO("Loading project plugin: '{}' @ {}", plugin_name, plugin_path.string());
+    CORE_LOG_DEBUG("Loading project plugin: '{}' @ {}", plugin_name, plugin_path.string());
     auto* lib = plugin::load_plugin_library(plugin_path.string());
     if (lib == nullptr) {
       CORE_LOG_ERROR("Failed to load project plugin library: {}", plugin_path.string());

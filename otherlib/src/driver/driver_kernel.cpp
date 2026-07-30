@@ -105,7 +105,7 @@ namespace other {
     }
 
     for (const auto& plugin : plugins_to_load) {
-      CORE_LOG_INFO("Loading driver plugin: '{}' @ {}", plugin.name, plugin.path);
+      CORE_LOG_DEBUG("Loading driver plugin: '{}' @ {}", plugin.name, plugin.path);
 
       auto* lib = plugin::load_plugin_library(plugin.path);
       if (lib == nullptr) {
@@ -120,7 +120,7 @@ namespace other {
 
   void driver_kernel::initialize() {
     PROFILE_SECTION("driver_kernel::initialize");
-    CORE_LOG_INFO("Initializing driver kernel.");
+    CORE_LOG_DEBUG("Initializing driver kernel.");
 
     {
       auto& driver_reg = environment_registries[static_cast<size_t>(interface_scope::DRIVER)];
@@ -151,7 +151,7 @@ namespace other {
 
   void driver_kernel::driver_initialized() {
     PROFILE_SECTION("driver_kernel::driver_initialized");
-    CORE_LOG_INFO("Driver kernel initialization complete. Driver is now ready.");
+    CORE_LOG_DEBUG("Driver kernel initialization complete.");
 
     for (const auto type : system_order) {
       OTHER_ASSERT(builtin_systems[static_cast<size_t>(type)] != nullptr, "Builtin system of type {} is not initialized.", static_cast<uint32_t>(type));
@@ -329,7 +329,7 @@ namespace other {
     auto& manifest = *manifest_ptr;
     auto id = registry.registry.install_from_manifest(name, manifest);
     registry.provided_plugins.push_back({ name, id });
-    CORE_LOG_INFO("Registered driver plugin '{}' from library '{}'", name, path.string());
+    CORE_LOG_DEBUG("Successfully registered driver plugin '{}' from library '{}'", name, path.string());
   }
 
   void driver_kernel::register_driver_plugin(const filepath& path, library_handle* lib) {

@@ -41,7 +41,7 @@ namespace other {
       }
 
       if (std::string boot_oasm_path = get_driver().get_config_value<std::string>("driver.boot-file"); !boot_oasm_path.empty()) {
-        CORE_LOG_INFO("Loading VM boot file: {}", boot_oasm_path);
+        CORE_LOG_DEBUG("Loading VM boot file: {}", boot_oasm_path);
         vm::load_program_from_file(&core_device, boot_oasm_path);
       }
 

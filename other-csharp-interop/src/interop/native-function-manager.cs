@@ -198,7 +198,7 @@ namespace OtherCsBindings
 
       if (all_bound)
       {
-        Logger.LogInfo("All native functions successfully bound to managed counterparts.");
+        Logger.LogDebug("All native functions successfully bound to managed counterparts.");
       }
       return all_bound;
     }

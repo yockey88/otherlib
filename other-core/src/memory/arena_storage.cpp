@@ -21,9 +21,8 @@ namespace other {
       current_frame_allocator = nullptr;
     }
 
-    std::span req_pages = requested_pages;
-    for (auto* page : req_pages) {
-      destroy_page(page);
+    for (page* p : requested_pages) {
+      delete p;
     }
     requested_pages.clear();
   }

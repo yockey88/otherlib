@@ -218,7 +218,7 @@ namespace other {
     action_cache.clear();
     prev_action_cache.clear();
 
-    CORE_LOG_INFO("Loaded input map '{}' with {} context(s).", this->map.name, this->map.contexts.size());
+    CORE_LOG_DEBUG("Loaded input map '{}' with {} context(s).", this->map.name, this->map.contexts.size());
   }
 
   void input_system::push_context(const std::string_view name) {

@@ -76,7 +76,7 @@ namespace other {
         auto last_dot = binding.full_type_and_method_name.find_last_of('.');
         std::string type_name = binding.full_type_and_method_name.substr(0, last_dot);
         std::string method_name = binding.full_type_and_method_name.substr(last_dot + 1);
-        CORE_LOG_INFO("Native Callback Binding registered: {} -> {}.{}", binding.binding_name, type_name, method_name);
+        CORE_LOG_DEBUG("Native Callback Binding registered: {} -> {}.{}", binding.binding_name, type_name, method_name);
         get_driver().get_interface_registry().register_named_callback(binding.binding_name, make_ref<dotnet_callback>(type_name, method_name));
       }
     });
@@ -122,7 +122,7 @@ namespace other {
       auto last_dot = binding.full_type_and_method_name.find_last_of('.');
       std::string type_name = binding.full_type_and_method_name.substr(0, last_dot);
       std::string method_name = binding.full_type_and_method_name.substr(last_dot + 1);
-      CORE_LOG_INFO("Native Callback Binding registered: {} -> {}.{}", binding.binding_name, type_name, method_name);
+      CORE_LOG_DEBUG("Native Callback Binding registered: {} -> {}.{}", binding.binding_name, type_name, method_name);
       get_driver().get_interface_registry().register_named_callback(binding.binding_name, make_ref<dotnet_callback>(type_name, method_name));
     }
 
