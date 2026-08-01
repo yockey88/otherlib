@@ -86,6 +86,17 @@ namespace other {
     fs->shutdown_file_system();
   }
 
+  void asset_system::resolve_and_load_roots(std::span<const filepath> roots) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    PROFILE_SECTION("asset_system::resolve_and_load_roots");
+
+    for (const filepath& root : roots) {
+      OTHER_ASSERT(std::filesystem::exists(root), "Resolve root '{}' does not exist.", root.string());
+      CORE_LOG_DEBUG("Resolving asset root: {}", root.string());
+    }
+    asset_mgr->resolve_roots(roots);
+  }
+
   natural_t asset_system::begin_asset_load(const filepath& asset_path) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     PROFILE_SECTION("asset_system::begin_asset_load");
@@ -117,6 +128,12 @@ namespace other {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     CORE_LOG_DEBUG("Beginning asset unload for asset ID: {}", asset_id);
     asset_mgr->unload_asset(asset_id);
+  }
+
+  void asset_system::reload_asset(natural_t asset_id) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    CORE_LOG_DEBUG("Reloading asset for asset ID: {}", asset_id);
+    asset_mgr->reload_asset(asset_id);
   }
 
   natural_t asset_system::add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {

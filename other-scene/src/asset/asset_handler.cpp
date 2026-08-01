@@ -13,6 +13,7 @@
 #include "core/logger.hpp"
 #include "core/subsystem.hpp"
 #include "file/filesystem.hpp"
+#include "file/path_helpers.hpp"
 
 #include "scene/scene.hpp"
 
@@ -95,6 +96,37 @@ namespace other {
     }
   }
 
+  void asset_handler::resolve_roots(std::span<const filepath> roots) {
+    PROFILE_SECTION("asset_handler::resolve_roots");
+    snapshot = resolver.resolve(roots);
+    execute_plan();
+  }
+
+  void asset_handler::re_resolve(const filepath& changed) {
+    PROFILE_SECTION("asset_handler::re_resolve");
+    const resolve_delta delta = resolver.re_resolve(snapshot, changed);
+    if (delta.empty()) {
+      return;
+    }
+    CORE_LOG_DEBUG("asset delta for '{}': {}", changed.string(), delta.to_string());
+
+    for (const natural_t dead : delta.removed) {
+      if (const natural_t id = runtime_id(dead); id != 0) {
+        unload_asset(id);
+        runtime_by_stable.erase(dead);
+      }
+    }
+
+    for (const natural_t stable : delta.modified) {
+      needs_refresh.insert(stable);
+    }
+    for (const natural_t stable : delta.affected_parents) {
+      needs_refresh.insert(stable);
+    }
+
+    execute_plan();
+  }
+
   natural_t asset_handler::load_asset(const filepath& file_path, load_completion_callback on_complete) {
     PROFILE_SECTION("asset_handler::load_asset");
 
@@ -126,7 +158,6 @@ namespace other {
     auto absolute_path = std::filesystem::absolute(file_path);
     natural_t hash = FNV(absolute_path.string());
     if (auto itr = std::ranges::find_if(loaded_assets, [hash](const auto& pair) { return pair.second.path_hash == hash; }); itr != loaded_assets.end()) {
-      CORE_LOG_WARN("Asset already loaded for path: {}. Returning existing asset ID: {}", file_path.string(), itr->second.id);
       return itr->second.id;
     }
 
@@ -136,6 +167,7 @@ namespace other {
                                                               .loading_asset = asset{
                                                                 .asset_type = asset_type,
                                                                 .id = asset_id,
+                                                                .stable_id = stable_id_for(virtualize(absolute_path)),
                                                                 .path_hash = hash,
                                                                 .load_path = file_path,
                                                                 // clang-format off
@@ -152,6 +184,7 @@ namespace other {
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for asset ID: {}", asset_id);
     CORE_LOG_DEBUG("Beginning load for asset ID: {} (Type: {}, Path: {})", asset_id, asset_type, file_path.string());
 
+    runtime_by_stable[it->loading_asset.stable_id] = asset_id;
     begin_load(it, state_it);
 
     return asset_id;
@@ -187,6 +220,7 @@ namespace other {
                                                               .loading_asset = {
                                                                 .asset_type = asset::type::MODEL_SOURCE,
                                                                 .id = model_id,
+                                                                .stable_id = stable_id_for(std::format("mem:{}/{}", asset::get_filesystem_directory(asset::type::MODEL_SOURCE), name)),
                                                                 .path_hash = 0,
                                                                 .load_path = filepath{},
                                                                 .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::MODEL_SOURCE), name + ".modelsource"),
@@ -221,6 +255,7 @@ namespace other {
       .loading_asset = {
         .asset_type = asset::type::SCENE,
         .id = scene_id,
+        .stable_id = stable_id_for(std::format("mem:{}/{}", asset::get_filesystem_directory(asset::type::SCENE), name)),
         // since we are loading an already existing scene into system
         // we use 0 here to tell the pipeline to set scene's asset id
         // so scene can be found when load is finished
@@ -254,6 +289,7 @@ namespace other {
                                                               .loading_asset = {
                                                                 .asset_type = asset::type::RENDERING_PIPELINE,
                                                                 .id = pl_id,
+                                                                .stable_id = stable_id_for(std::format("mem:{}/{}", asset::get_filesystem_directory(asset::type::RENDERING_PIPELINE), pl_name)),
                                                                 .path_hash = 0,
                                                                 .load_path = filepath{},
                                                                 .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::RENDERING_PIPELINE), pl_name + ".orpl"),
@@ -557,34 +593,30 @@ namespace other {
   }
 
   void asset_handler::on_asset_loaded(natural_t id) {
+    PROFILE_SECTION("asset_handler::on_asset_loaded");
     CORE_LOG_DEBUG("Asset loaded successfully (ID: {})", id);
-
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
     auto prev_state = state_itr->second.get_current_state();
-    if (prev_state == asset_state::LOADING || prev_state == asset_state::REFRESHING_LOAD) {
-      auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
-      OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Loaded asset not found in loading assets");
+    OTHER_ASSERT(prev_state == asset_state::LOADING, "Asset ID {} completed a load outside LOADING", id);
 
-      auto [itr, success] = loaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
-      OTHER_ASSERT(success, "Failed to insert loaded asset into loaded assets map");
-      if (pending_itr->on_complete) {
-        pending_itr->on_complete(&itr->second);
-      }
+    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
+    OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Loaded asset not found in loading assets");
 
-      pending_itr->pipeline = nullptr;
-      asset_pipelines.erase(pending_itr);
-
-      if (prev_state == asset_state::REFRESHING_LOAD) {
-        state_itr->second.handle_event(asset_event::REFRESH_COMPLETED);
-      } else {
-        register_asset_in_filesystem(&itr->second);
-        state_itr->second.handle_event(asset_event::LOAD_COMPLETED);
-      }
-    } else {
-      OTHER_ASSERT(false, "Asset ID {} in unexpected state after successful load completion", id);
+    auto [itr, success] = loaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
+    OTHER_ASSERT(success, "Failed to insert loaded asset into loaded assets map");
+    if (pending_itr->on_complete) {
+      pending_itr->on_complete(&itr->second);
     }
+
+    pending_itr->pipeline = nullptr;
+    asset_pipelines.erase(pending_itr);
+
+    register_asset_in_filesystem(&itr->second);
+    state_itr->second.handle_event(asset_event::LOAD_COMPLETED);
+
+    on_planned_child_loaded(itr->second.stable_id);
   }
 
   void asset_handler::on_asset_load_failed(natural_t id) {
@@ -596,7 +628,10 @@ namespace other {
     auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
     OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Failed asset not found in loading assets");
 
-    CORE_LOG_ERROR("Failed to load asset (ID: {}): {}", id, pending_itr->pipeline->get_last_error());
+    const natural_t stable = pending_itr->loading_asset.stable_id;
+    const std::string error = pending_itr->pipeline->get_last_error();
+    CORE_LOG_ERROR("Failed to load asset (ID: {}): {}", id, error);
+
     pending_itr->pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
@@ -609,6 +644,9 @@ namespace other {
       unregister_asset_in_filesystem(&it->second);
       unloaded_assets.erase(it);
     }
+
+    runtime_by_stable.erase(stable);
+    on_planned_child_failed(stable, error);
   }
 
   void asset_handler::on_asset_unloaded(natural_t id) {
@@ -699,9 +737,7 @@ namespace other {
       }
       curr_virtual_path += std::format("/{}/", piece);
     }
-
     OTHER_ASSERT(dir_handle != nullptr, "Final directory handle is null for asset virtual path: {}", asset_ptr->virtual_path.string());
-    CORE_LOG_DEBUG("Directory for asset ID {}: {}", asset_ptr->id, dir_handle->to_string());
 
     file_type type = full_virtual_file ? file_type::VIRTUAL : file_type::LOCAL;
     ref<file_handle> file_handle = nullptr;
@@ -798,6 +834,91 @@ namespace other {
       }
     }
     return nullptr;
+  }
+
+  void asset_handler::execute_plan() {
+    PROFILE_SECTION("asset_handler::execute_plan");
+    plan.remaining_children.assign(snapshot.nodes.size(), 0);
+    plan.failed.assign(snapshot.nodes.size(), false);
+
+    for (const auto& [parent, child] : snapshot.edges) {
+      const dependency_snapshot::node& c = snapshot.nodes[child];
+      const natural_t cid = runtime_id(c.stable_id);
+      if (cid == 0 || !asset_loaded(cid) || needs_refresh.contains(c.stable_id)) {
+        ++plan.remaining_children[parent];
+      }
+    }
+
+    for (uint32_t slot = 0; slot < snapshot.nodes.size(); ++slot) {
+      if (plan.remaining_children[slot] == 0) {
+        dispatch_slot(slot);
+      }
+    }
+  }
+
+  void asset_handler::dispatch_slot(uint32_t slot) {
+    OTHER_ASSERT(slot < snapshot.nodes.size(), "dispatch_slot out of range: {}", slot);
+    if (plan.failed[slot]) {
+      return;
+    }
+
+    const dependency_snapshot::node& n = snapshot.nodes[slot];
+    const natural_t id = runtime_id(n.stable_id);
+    if (id != 0 && asset_loaded(id)) {
+      if (needs_refresh.erase(n.stable_id) > 0) {
+        reload_asset(id);
+      }
+      return;
+    }
+
+    load_asset(absolute_of(n.virtual_path));
+  }
+
+  void asset_handler::on_planned_child_loaded(natural_t stable_id) {
+    if (snapshot.nodes.empty()) {
+      return;
+    }
+
+    const dependency_snapshot::node* n = snapshot.find(stable_id);
+    if (n == nullptr) {
+      return;
+    }
+
+    for (const uint32_t parent : snapshot.reverse[detail::slot_of(snapshot, stable_id)]) {
+      OTHER_ASSERT(plan.remaining_children[parent] > 0, "indegree underflow for '{}'", snapshot.nodes[parent].virtual_path);
+      if (--plan.remaining_children[parent] == 0) {
+        dispatch_slot(parent);
+      }
+    }
+  }
+
+  void asset_handler::on_planned_child_failed(natural_t stable_id, const std::string_view error_msg) {
+    const dependency_snapshot::node* n = snapshot.find(stable_id);
+    if (n == nullptr) {
+      return;
+    }
+
+    const uint32_t slot = detail::slot_of(snapshot, stable_id);
+    plan.failed[slot] = true;
+
+    ostd::vector<uint32_t> worklist{ slot };
+    while (!worklist.empty()) {
+      const uint32_t failed_slot = worklist.back();
+      worklist.pop_back();
+      for (const uint32_t parent : snapshot.reverse[failed_slot]) {
+        if (plan.failed[parent]) {
+          continue;
+        }
+
+        plan.failed[parent] = true;
+        const dependency_snapshot::node& p = snapshot.nodes[parent];
+        const std::string chain = std::format("{} failed: {}", p.virtual_path, error_msg);
+        CORE_LOG_ERROR("{}", chain);
+
+        events.trigger_event(get_asset_event_name(p.type, "asset-load-failed"), runtime_id(p.stable_id));
+        worklist.push_back(parent);
+      }
+    }
   }
 
 }  // namespace other

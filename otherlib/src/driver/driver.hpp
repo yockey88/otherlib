@@ -189,6 +189,8 @@ namespace other {
     }
 
     void input_event(const input_state_change_event& event);
+    void file_event(const struct file_event& event);
+
     // void data_received(natural_t id, ostd::vector<uint8_t> data);
     // void handle_http_request_received(natural_t id, const http::request& req);
     // void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
@@ -247,6 +249,8 @@ namespace other {
 
     void http_request_received(natural_t id, const http::request& req);
 
+    void handle_file_refresh(const filepath& path);
+
     virtual void on_early_initialize() {}
     virtual void on_initialize() = 0;
     virtual void on_system_initialization() {}
@@ -260,6 +264,8 @@ namespace other {
     virtual void on_shutdown_confirm() {}
 
     virtual void on_input_event(const input_state_change_event& event) {}
+    virtual void on_file_event(const struct file_event& event) {}
+
     /// notifications
     virtual void on_data_received(natural_t id, std::span<const uint8_t> data) {}
     virtual void on_http_request_received(natural_t id, const http::request& req) {}

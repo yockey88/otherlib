@@ -89,6 +89,10 @@ namespace other {
     return handle;
   }
 
+  void texture::destroy_texture(resource_handle handle) {
+    subsystem<renderer_backend>::get()->api()->destroy_resource(handle);
+  }
+
   texture& texture::bind(uint32_t slot) {
     subsystem<renderer_backend>::get()->api()->bind_texture_resource(handle(), slot);
     return *this;

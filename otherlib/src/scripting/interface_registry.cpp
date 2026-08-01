@@ -22,6 +22,7 @@ namespace other {
   }
 
   natural_t interface_registry::register_interface_binding(const std::string_view interface_name, sol::table interface_table) {
+    PROFILE_SECTION("interface_registry::register_interface_binding");
     auto itr = std::find_if(interfaces.begin(), interfaces.end(), [&interface_name](const auto& pair) {
       return pair.second.name == interface_name;
     });

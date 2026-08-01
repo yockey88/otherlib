@@ -198,7 +198,6 @@ namespace other {
   }
 
   void asset_pipeline::pipeline_finished() {
-    CORE_LOG_DEBUG("Pipeline finished successfully for asset: {}", asset_ptr->id);
     pipeline_state.success = true;
   }
 
@@ -238,8 +237,6 @@ namespace other {
   void asset_pipeline::pipeline_failed(asset* asset_ptr, const std::string_view error_message) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in pipeline_failed");
     OTHER_ASSERT(pipeline_state.loading || pipeline_state.unloading, "Pipeline is not in loading or unloading state in pipeline_failed");
-
-    CORE_LOG_ERROR("Pipeline failed for asset ID: {}", asset_ptr->id);
 
     std::string event_name = "";
     if (pipeline_state.loading) {

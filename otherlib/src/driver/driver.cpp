@@ -404,11 +404,34 @@ namespace other {
     on_input_event(event);
   }
 
+  void driver::file_event(const struct file_event& event) {
+    on_file_event(event);
+
+    switch (event.type) {
+      case file_event::type::CREATED:
+      case file_event::type::MODIFIED:
+      case file_event::type::DELETED:
+        handle_file_refresh(event.path);
+        break;
+
+      case file_event::type::RENAMED:
+        handle_file_refresh(*event.old_path);
+        handle_file_refresh(event.path);
+        break;
+
+      default:
+        CORE_LOG_WARN("Unknown file event type unhandled!");
+        break;
+    }
+  }
+
   natural_t driver::add_interface(const std::string_view interface_name, sol::table inteface_table) {
+    PROFILE_SECTION("driver::add_interface");
     return interfaces.register_interface_binding(interface_name, std::move(inteface_table));
   }
 
   void driver::http_request_received(natural_t id, const http::request& req) {
+    PROFILE_SECTION("driver::http_request_received");
 #if OTHER_ENVIRONMENT_DEBUG
     {
       std::stringstream ss;
@@ -437,6 +460,24 @@ namespace other {
 
     on_http_request_received(id, req);
     interfaces.invoke("Other.HttpServer", "HandleHttpRequest", id, req);
+  }
+
+  void driver::handle_file_refresh(const filepath& path) {
+    PROFILE_SECTION("driver::handle_file_refresh");
+    CORE_LOG_DEBUG("File refresh event for path: {}", path.string());
+
+    if (!driver_kernel_ptr->has_core_system<asset_system>()) {
+      CORE_LOG_WARN("Asset system is not initialized, cannot handle file refresh for path: {}", path.string());
+      return;
+    }
+
+    auto& assets = driver_kernel_ptr->get_core_system<asset_system>();
+    natural_t asset_id = assets.get_asset_id_from_path(path);
+    if (asset_id == 0) {
+      return;
+    }
+
+    assets.reload_asset(asset_id);
   }
 
   driver::metadata driver::build_metadata() {
@@ -602,10 +643,7 @@ namespace other {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     auto& p = driver_kernel_ptr->get_core_system<project_system>().get_project();
-    if (p.is_empty()) {
-      CORE_LOG_WARN("Project loaded event triggered but project is empty. This may indicate a problem with the project loading process.");
-      return;
-    }
+    OTHER_ASSERT(p.is_loaded(), "Project is not loaded in on_project_loaded!");
     CORE_LOG_DEBUG("Project loaded: {}", p.get_project_name());
 
     if (driver_kernel_ptr->has_core_system<scene_system>()) {
@@ -617,8 +655,10 @@ namespace other {
       }
 
       natural_t starting_scene_id = p.get_starting_scene_id();
-      CORE_LOG_DEBUG("Project starting scene ID: {}", starting_scene_id);
-      scenes.set_scene_to_active(starting_scene_id);
+      if (starting_scene_id != 0) {
+        CORE_LOG_DEBUG("Project starting scene ID: {}", starting_scene_id);
+        scenes.set_scene_to_active(starting_scene_id);
+      }
     }
 
     filepath rc_path = p.get_project_rc_path();

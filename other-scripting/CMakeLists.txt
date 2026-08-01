@@ -3,6 +3,7 @@ target_sources(other_scripting
 PRIVATE
   src/bindings/native_logger.cpp
 
+  src/dotnet/csproj_helpers.cpp
   src/dotnet/dotnet_memory.cpp
   src/dotnet/native_string.cpp
   src/dotnet/type_cache.cpp

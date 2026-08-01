@@ -95,13 +95,15 @@ namespace other {
     }
 
     waiting_for_script_load = process_scripting_sections(table, kernel);
-    if (waiting_for_script_load && (project_scripts.csproject_path.empty() || !std::filesystem::exists(project_scripts.csproject_path))) {
+    if (waiting_for_script_load &&
+        (project_scripts.csproject_path.empty() || !std::filesystem::exists(project_scripts.csproject_path))) {
       CORE_LOG_ERROR("Project's .NET project file '{}' does not exist. Cannot load project scripts.", project_scripts.csproject_path.string());
       waiting_for_script_load = false;
       project_scripts.csproject_path.clear();
     } else if (waiting_for_script_load) {
       CORE_LOG_INFO("Loading .NET project from '{}'", project_scripts.csproject_path.string());
-      system->sibling<asset_system>(*kernel).begin_asset_load(project_scripts.csproject_path);
+      const std::array roots{ project_scripts.csproject_path };
+      system->sibling<asset_system>(*kernel).resolve_and_load_roots(roots);
     }
 
     waiting_for_scene_load = process_scene_sections(table);
@@ -112,6 +114,7 @@ namespace other {
 
     all_scenes_loaded = !waiting_for_scene_load;
     if (!(waiting_for_script_load || waiting_for_scene_load)) {
+      CORE_LOG_DEBUG("All project assets loaded successfully.");
       set_state(LOADED);
     }
   }
@@ -244,9 +247,13 @@ namespace other {
 
   void project::attach_project_dll(const filepath& dll_path) {
     OTHER_ASSERT(std::filesystem::exists(dll_path), "Project assembly file '{}' does not exist.", dll_path.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach project assembly. current state = {}", current_state);
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+
+    if (project_assembly != nullptr) {
+      env->unload_dotnet_module(project_assembly);
+      project_assembly = nullptr;
+    }
 
     ref<assembly> asm_ref = env->get_dotnet_module(dll_path.stem().string());
     OTHER_ASSERT(asm_ref != nullptr, "Failed to load project assembly from '{}'", dll_path.string());
@@ -257,13 +264,11 @@ namespace other {
 
   void project::attach_project_cs_file(const filepath& cs_file) {
     OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading  state. Cannot attach C# script file. current state = {}", current_state);
     project_scripts.cs_scripts.push_back(cs_file);
   }
 
   void project::attach_project_lua_file(const filepath& cs_file) {
     OTHER_ASSERT(std::filesystem::exists(cs_file), "Lua script file '{}' does not exist.", cs_file.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading  state. Cannot attach Lua script file. current state = {}", current_state);
     project_scripts.lua_scripts.push_back(cs_file);
   }
 
@@ -458,7 +463,6 @@ namespace other {
         continue;
       }
 
-      CORE_LOG_DEBUG(" - Added scene '{}' [{}] with path '{}' to project scene list.", data.name, data.scene_id, data.path.string());
       scenes_in_project.push_back({
         .name = name_node.as_string()->get(),
         .path = filepath(path_node.as_string()->get()),

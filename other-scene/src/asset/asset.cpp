@@ -7,8 +7,26 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "file/path_helpers.hpp"
 
 namespace other {
+
+  domain_hit classify(const manifest_domain& d, const filepath& abs) {
+    const opt<std::string> rel = try_relative(abs, d.root_abs);
+    if (!rel.has_value()) {
+      return domain_hit::OUTSIDE;
+    }
+
+    if (d.set.matches(*rel)) {
+      return domain_hit::INSIDE;
+    }
+
+    if (d.set.excluded(*rel)) {
+      return domain_hit::EXCLUDED;
+    }
+
+    return domain_hit::OUTSIDE;
+  }
 
   asset::type asset::get_type_from_extension(const std::string_view extension) {
     for (const auto& asset_ext : kAssetExtensions) {
@@ -110,7 +128,9 @@ namespace other {
       case asset::ANIMATION:
         return "animations";
 
+      case asset::SCRIPT_PROJECT:
       case asset::SCRIPT_SOURCE:
+      case asset::SCRIPT_FILE:
       case asset::SCRIPT:
         return "scripts";
 

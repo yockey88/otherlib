@@ -7,6 +7,7 @@
 #include "core/scope.hpp"
 #include "core/value.hpp"
 #include "event/event_system.hpp"
+#include "file/file_watcher.hpp"
 
 #include "driver/systems/core_system.hpp"
 

@@ -83,25 +83,13 @@ namespace other {
 
     if (get_driver().current_driver_state() == driver_state::DRIVER_STATE_RUNNING &&
         loaded_project->is_loading()) {
-      // if all scenes loaded and all scripts loaded trigger project.loaded
-      // const bool csproj_error = loaded_project->script_project_error_occurred();
-      // const bool scene_graph_error = loaded_project->scene_graph_error_occurred();
-      // const bool error_occurred = csproj_error || scene_graph_error;
-
       const bool csproj_built_and_attached = loaded_project->script_project_mounted();
-      const bool csproj_error = loaded_project->did_script_project_error_occurred();
-
       const bool scene_graph_loaded = loaded_project->scene_graph_loaded();
-      // const bool scene_graph_error = loaded_project->did_scene_graph_error_occurred();
-
       const bool finished_loading = csproj_built_and_attached && scene_graph_loaded;
       if (finished_loading) {
         loaded_project->set_state(project::state::LOADED);
         get_driver().trigger_event("project.loaded");
-      }
-      // only want to call this if we have finished everything so we have to check all the combinations of what could have finished and errored to know if we should
-      // reset project or wait
-      else if (scene_graph_loaded && csproj_error) {
+      } else if (scene_graph_loaded && loaded_project->did_script_project_error_occurred()) {
         CORE_LOG_ERROR("Failed to load project due to script project load error. Unloading project.");
         loaded_project->set_state(project::state::LOAD_FAILED);
         loaded_project->fail_load();
@@ -154,9 +142,9 @@ namespace other {
   void project_system::load_project(driver_kernel* kernel, const filepath& project_file) {
     OTHER_ASSERT(kernel != nullptr, "Kernel pointer is null in project system load_project.");
     OTHER_ASSERT(loaded_project != nullptr, "No project loaded in project system.");
-
     OTHER_ASSERT(std::filesystem::exists(project_file), "Project file '{}' does not exist.", project_file.string());
     OTHER_ASSERT(std::filesystem::is_regular_file(project_file), "Project file '{}' is not a regular file.", project_file.string());
+
     PROFILE_SECTION("project_system::load_project");
     if (loaded_project->is_loaded()) {
       CORE_LOG_ERROR("Can not load project file '{}' while other project is open.", project_file.string());
@@ -222,6 +210,7 @@ namespace other {
   void project_system::handle_project_event(driver_kernel* kernel, const project_event_data& data) {
     PROFILE_SECTION("project_system::handle_project_event");
     CORE_LOG_DEBUG("Received project event '{}' for project '{}' at path '{}'", data.type, data.project_name, data.project_path);
+
     std::string type = data.type;
     filepath project_path = data.project_path;
     if (type == "load") {
@@ -229,10 +218,12 @@ namespace other {
         CORE_LOG_ERROR("Project file '{}' does not exist for project load event.", project_path.string());
         return;
       }
+
       if (std::filesystem::is_directory(project_path)) {
         if (project_path.string().ends_with(std::filesystem::path::preferred_separator)) {
           project_path = project_path.parent_path();
         }
+
         /// \todo refactor this to something more robust to check lots of possible project files
         // check if there is a same-named .toml/.oproj file in the directory and use that as the project file, if not error out
         filepath expected_toml_project_file = project_path / (project_path.filename().string() + ".toml");

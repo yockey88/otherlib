@@ -7,6 +7,7 @@ target_sources(other_scene
       src/asset/asset_serialization.cpp
       src/asset/asset.cpp
       src/asset/asset_pipeline.cpp
+      src/asset/asset_resolver.cpp
       src/asset/asset_handler.cpp
 
       src/object/scene_object.cpp
@@ -28,6 +29,6 @@ target_include_directories(other_scene
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scene>
 )
 target_link_directories(other_scene PRIVATE ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_scene PRIVATE other_renderer other_ui other_physics other_scripting other_network other_core)
+target_link_libraries(other_scene PRIVATE other_renderer other_ui other_physics other_scripting other_network other_core tinyxml2)
 
 other_install_module(other_scene "scene")

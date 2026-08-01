@@ -84,13 +84,16 @@ namespace other {
     scene_object* object = &scene_ptr->get_object(id);
     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in scene_object_interface::attach_model_to_object");
 
-    /// this call is coming from user script, so we should add the component if it's not here assuming they want it
     render_component* render_comp = nullptr;
+
     if (!scene_ptr->has_component<render_component>(object)) {
       render_comp = &scene_ptr->add_component<render_component>(object);
-    } else {
+    }
+    /// this call is from user script so handle errors gracefully
+    else {
       render_comp = scene_ptr->get_component<render_component>(object);
     }
+    OTHER_ASSERT(render_comp != nullptr, "Render component pointer is null in scene_object_interface::attach_model_to_object");
 
     filepath path = model_path;
     if (!std::filesystem::exists(path)) {
@@ -101,12 +104,9 @@ namespace other {
       }
     }
 
-    OTHER_ASSERT(render_comp != nullptr, "Render component pointer is null in scene_object_interface::attach_model_to_object");
-
     CORE_LOG_DEBUG(" [LUA] Beginning asset load for model '{}' to attach to object '{}'.", model_path, object->name);
     render_comp->model_asset_id = driver_ptr->begin_asset_load(model_path);
     render_comp->last_model_asset_id = render_comp->model_asset_id;
-
     return render_component_lua_proxy{ render_comp };
   }
 

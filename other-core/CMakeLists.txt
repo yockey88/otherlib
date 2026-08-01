@@ -24,11 +24,14 @@ target_sources(other_core
 		src/memory/arena.cpp
 		src/memory/frame_allocator.cpp
 
+		src/file/path_helpers.cpp
+		src/file/xml_helpers.cpp
 		src/file/file_watcher.cpp
 		src/file/file_handle.cpp
 		src/file/local_file.cpp
 		src/file/virtual_file.cpp
 		src/file/remote_file.cpp
+		src/file/glob.cpp
 		src/file/directory.cpp
 		src/file/filesystem.cpp
 
@@ -97,6 +100,6 @@ target_sources(other_core PRIVATE $<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:$
 target_include_directories(other_core PRIVATE $<$<OR:$<CONFIG:Profile>,$<CONFIG:ProfileD>>:${OTHER_EXTERN_DIR}/tracy>)
 
 target_link_directories(other_core PRIVATE ${OTHER_LIBRARIES_PATH})
-target_link_libraries(other_core PRIVATE glad Threads::Threads)
+target_link_libraries(other_core PRIVATE glad Threads::Threads xxhash)
 
 other_install_module(other_core "core")

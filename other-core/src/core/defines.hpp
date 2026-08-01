@@ -307,6 +307,7 @@ namespace other {
 
   std::string get_current_exe_name();
   std::string get_current_exe_full_path();
+  std::string get_current_exe_directory();
   std::string get_system_error_message();
 
 }  // namespace other

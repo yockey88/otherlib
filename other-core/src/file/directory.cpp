@@ -3,18 +3,18 @@
  **/
 #include "file/directory.hpp"
 
-#include <algorithm>
 #include <filesystem>
 #include <ranges>
 
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 #include "file/local_file.hpp"
+#include "file/path_helpers.hpp"
 
 namespace other {
 
-  directory::directory(event_system& events, const std::string_view name, const filepath& path, file_type type)
-      : events(events), hash(FNV(name)), type(type), dir_name(name), abs_path(path) {
+  directory::directory(event_system& events, const std::string_view name, const filepath& path, file_type type, mount_scope scope)
+      : events(events), hash(FNV(name)), type(type), dir_name(name), abs_path(path), scope(scope) {
     watcher = file_watcher::make_directory_watcher(events, abs_path.empty() ? dir_name : abs_path, file_watcher::watch_mode::RECURSIVE);
     if (type == file_type::VIRTUAL) {
       abs_path = name;
@@ -88,7 +88,7 @@ namespace other {
     }
 
     CORE_LOG_DEBUG(" - adding child directory '{}' with path '{}' to '{}'", name, path.string(), dir_name);
-    auto child = make_ref<directory>(events, name, path, path.empty() ? file_type::VIRTUAL : file_type::LOCAL);
+    auto child = make_ref<directory>(events, name, path, path.empty() ? file_type::VIRTUAL : file_type::LOCAL, scope);
     children.insert({ hash, child });
     return child;
   }
@@ -127,20 +127,10 @@ namespace other {
     if (type == file_type::VIRTUAL) {
       return false;
     }
-
-    std::string path_str = path.string();
-    std::string abs_path_str = abs_path.string();
-
-    // check if the given path is contained in this directory in any way (no matter how many subdirectories down it is)
-    filepath this_path = abs_path;
-    filepath target_path = std::filesystem::absolute(path);
-
-    return target_path.string().starts_with(this_path.string());
+    return try_relative(std::filesystem::absolute(path), abs_path).has_value();
   }
 
-  ref<file_handle> directory::get_file(const std::string_view name) {
-    const filepath path = name;
-    natural_t hash = FNV(path.filename().stem().string());
+  ref<file_handle> directory::get_file(natural_t hash) {
     auto it = file_handles.find(hash);
     if (it != file_handles.end()) {
       return it->second;
@@ -152,9 +142,39 @@ namespace other {
 
     OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_directory(abs_path), "Directory '{}' has invalid path '{}'", dir_name, abs_path.string());
     for (const auto& entry : std::filesystem::directory_iterator(abs_path)) {
-      if (entry.is_regular_file() && entry.path().filename() == path.filename()) {
+      if (entry.is_regular_file() && entry.path().filename() == it->second->absolute_path().filename()) {
         auto local = make_ref<local_file>(events, entry.path(), filepath{ abs_path / entry.path().filename() }.string());
         return add_file(local);
+      }
+    }
+
+    return nullptr;
+  }
+
+  ref<file_handle> directory::get_file(const std::string_view name, const std::string_view ext) {
+    for (const auto& [hash, file] : file_handles) {
+      bool name_match = (file->name() == name);
+      bool ext_match = ext.empty() || (file->extension() == ext);
+      if (name_match && ext_match) {
+        return file;
+      }
+    }
+
+    if (type == file_type::VIRTUAL) {
+      return nullptr;
+    }
+
+    OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_directory(abs_path), "Directory '{}' has invalid path '{}'", dir_name, abs_path.string());
+    for (const auto& entry : std::filesystem::directory_iterator(abs_path)) {
+      if (entry.is_regular_file()) {
+        std::string entry_name = entry.path().stem().string();
+        std::string entry_ext = entry.path().extension().string();
+        bool name_match = (entry_name == name);
+        bool ext_match = ext.empty() || (entry_ext == ext);
+        if (name_match && ext_match) {
+          auto local = make_ref<local_file>(events, entry.path(), filepath{ abs_path / entry.path().filename() }.string());
+          return add_file(local);
+        }
       }
     }
 
@@ -165,7 +185,7 @@ namespace other {
     PROFILE_SECTION("directory::add_file");
     OTHER_ASSERT(file != nullptr, "Cannot add null file handle to directory '{}'", dir_name);
 
-    natural_t hash = FNV(file->name());
+    natural_t hash = file->hash();
     auto it = file_handles.find(hash);
     if (it != file_handles.end()) {
       CORE_LOG_WARN("File '{}' already exists in directory '{}', overwriting existing file", file->name(), dir_name);
@@ -177,8 +197,7 @@ namespace other {
     return file;
   }
 
-  void directory::remove_file(const std::string_view name) {
-    natural_t hash = FNV(name);
+  void directory::remove_file(natural_t hash) {
     auto it = file_handles.find(hash);
     if (it != file_handles.end()) {
       file_handles.erase(it);
@@ -194,8 +213,8 @@ namespace other {
     }
   }
 
-  bool directory::has_file(const std::string_view name) const {
-    return file_handles.find(FNV(name)) != file_handles.end();
+  bool directory::has_file(natural_t hash) const {
+    return file_handles.find(hash) != file_handles.end();
   }
 
   ref<file_handle> directory::find_file_by_name(const std::string_view name, const std::string_view ext) const {

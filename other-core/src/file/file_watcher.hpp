@@ -4,9 +4,12 @@
 #ifndef OTHER_CORE_FILE_FILE_WATCHER_HPP
 #define OTHER_CORE_FILE_FILE_WATCHER_HPP
 
+#include <unordered_set>
+
 #include "core/defines.hpp"
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
+#include "file/glob.hpp"
 
 namespace other {
 
@@ -37,7 +40,10 @@ namespace other {
     ~file_watcher() = default;
 
     void poll();
+    void poll_directory();
+
     event_system& get_event_system() { return events; }
+    void set_filter(const glob_set* set) { filter = set; }
 
     static scope<file_watcher> make_file_watcher(event_system& events, const filepath& path);
     static scope<file_watcher> make_directory_watcher(event_system& events, const filepath& path, watch_mode mode = watch_mode::NON_RECURSIVE);
@@ -51,6 +57,13 @@ namespace other {
     filepath watch_path;
     watch_type type;
     watch_mode mode;
+
+    std::unordered_set<std::string> subtree;
+    const glob_set* filter = nullptr;
+
+    natural_t checksum = 0;
+
+    natural_t compute_checksum(const filepath& path);
   };
 
 }  // namespace other
