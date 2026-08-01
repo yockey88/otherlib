@@ -109,7 +109,9 @@ set(OTHER_LIBRARIES_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/${OTHER_LIB_FAMILY}"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/${OTHER_LIB_FAMILY}"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/${OTHER_LIB_FAMILY}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/${OTHER_LIB_FAMILY}")
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/${OTHER_LIB_FAMILY}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/xxHash/lib/${OTHER_LIB_FAMILY}"
+)
 
 set(ASSIMP_NAME "assimp-vc143-mt")
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} 
@@ -146,6 +148,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/physx
   ${OTHER_EXTERN_DIR}/jolt
   ${OTHER_EXTERN_DIR}/tinyxml2
+  ${OTHER_EXTERN_DIR}/xxHash/include
   ${IMGUI_INCLUDE_DIRS}
 )
 set(OTHER_EXTERN_INCLUDE_DIRS ${OTHER_EXTERN_INCLUDE_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/extern/tracy")
@@ -172,6 +175,7 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/lua
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/sol
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/tinyxml2
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/xxHash/include
   ${OTHER_EXTERN_INCLUDE_DIRS}
 )
 
@@ -219,6 +223,9 @@ endif()
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test-project)
   add_subdirectory(test-project)
 endif()
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/spacesim)
+  add_subdirectory(spacesim)
+endif()
 
 include(CMakePackageConfigHelpers)
 other_install_external_headers("magic_enum" "${OTHER_EXTERN_DIR}/magic_enum")
@@ -242,6 +249,7 @@ other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/includ
 other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
 other_install_external_headers("jolt" "${OTHER_EXTERN_DIR}/jolt/Jolt")
 other_install_external_headers("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2")
+other_install_external_headers("xxHash" "${OTHER_EXTERN_DIR}/xxHash/include")
 
 # ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")
@@ -251,6 +259,7 @@ other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
 other_install_external_library("jolt" "${OTHER_EXTERN_DIR}/jolt/lib")
 other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
 other_install_external_library("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2/lib")
+other_install_external_library("xxHash" "${OTHER_EXTERN_DIR}/xxHash/lib")
   
 set(DLL_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,release>")
 set(ASSEMBLY_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>")
@@ -260,6 +269,7 @@ install(
     "${OTHER_EXTERN_DIR}/sdl/lib/${DLL_CONFIG}/SDL3.dll"
     "${OTHER_EXTERN_DIR}/assimp/lib/assimp-vc143-mt.dll"
     "${OTHER_EXTERN_DIR}/sol2/lib/lua-5.4.4.dll"
+    "${OTHER_EXTERN_DIR}/xxHash/bin/${DLL_CONFIG}/xxhash.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysX_64.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCommon_64.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCooking_64.dll"
