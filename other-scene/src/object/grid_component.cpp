@@ -15,9 +15,12 @@ namespace other {
     constexpr uint32_t kMaxCartesianExtent = 2048;
     constexpr uint32_t kMaxRingExtent = 256;
     constexpr uint32_t kMaxLayerExtent = 16;
-    /// cylindrical off-plane layers collapse to their boundary ring past this circle count, so the
-    ///   whole stack costs at most one extra maxed-out polar grid worth of lines
+    /// cylindrical off-plane layers thin their rings to the major cadence, then their boundary
+    ///   ring, past this circle count, so the whole stack costs at most one extra maxed-out polar
+    ///   grid worth of lines
     constexpr uint32_t kMaxOffPlaneRingCircles = 256;
+    /// cylindrical shell verticals thin the same way, on the same emitted-line budget
+    constexpr uint32_t kMaxShellVerticalLines = kMaxOffPlaneRingCircles * kRingSegments;
 
     /// layers stacked on each side of the base plane after the caps (0 unless cylindrical)
     uint32_t clamped_layer_extent(const grid_component& grid) {
@@ -78,7 +81,6 @@ namespace other {
     gd.major_line_every = grid.major_line_every;
     gd.sector_count = grid.sector_count;
     gd.polar = grid.coordinate_system == GRID_COORDINATES_POLAR || grid.coordinate_system == GRID_COORDINATES_CYLINDRICAL;
-    gd.rings_only = layer_offset != 0;
     gd.show_axes = grid.show_axes && layer_offset == 0;
     return gd;
   }
@@ -138,10 +140,14 @@ namespace other {
     }
 
     if (grid.coordinate_system == GRID_COORDINATES_CYLINDRICAL) {
-      /// off-plane layers repeat only the major rings (every ring when majors are disabled) so the
-      ///   base plane stays the readable reference, and thin further once the stack outgrows the budget
+      /// off-plane layers repeat the full polar pattern so the lattice reads above and below the
+      ///   base plane, thinning rings to the major cadence and finally the boundary ring once the
+      ///   stack outgrows the budget
       const uint32_t layers = clamped_layer_extent(grid);
-      const uint32_t ring_step = grid.major_line_every > 0 ? grid.major_line_every : 1;
+      uint32_t ring_step = 1;
+      if (2u * layers * rings > kMaxOffPlaneRingCircles && grid.major_line_every > 0) {
+        ring_step = grid.major_line_every;
+      }
       const bool boundary_only = 2u * layers * (rings / ring_step) > kMaxOffPlaneRingCircles;
       for (int32_t layer = -static_cast<int32_t>(layers); layer <= static_cast<int32_t>(layers); ++layer) {
         if (layer == 0) {
@@ -156,6 +162,10 @@ namespace other {
         /// the boundary ring always closes the layer so the shell verticals land on something
         if (boundary_only || rings % ring_step != 0) {
           ring_circle(outer_radius, lift, line_col(rings));
+        }
+        for (uint32_t sector = 0; sector < grid.sector_count; ++sector) {
+          const float theta = static_cast<float>(sector) / static_cast<float>(grid.sector_count) * tau;
+          draw.line(tp(lift), tp(ring_point(outer_radius, theta) + lift), grid.line_color);
         }
       }
       emit_grid_shell_lines(draw, grid, world);
@@ -199,11 +209,28 @@ namespace other {
     const float half_height = static_cast<float>(layers) * grid.layer_spacing;
     constexpr float tau = 2.f * glm::pi<float>();
 
-    /// verticals at each sector angle on the boundary ring tie the stacked layers into one shell
+    const auto is_major = [&](uint32_t i) { return grid.major_line_every > 0 && i % grid.major_line_every == 0; };
+    const auto line_col = [&](uint32_t i) { return is_major(i) ? grid.major_line_color : grid.line_color; };
+
+    /// verticals at each ring/sector intersection tie the stacked layers into one lattice, thinning
+    ///   to the major cadence and finally the boundary ring once they outgrow the budget
+    uint32_t ring_step = 1;
+    if (rings * grid.sector_count > kMaxShellVerticalLines && grid.major_line_every > 0) {
+      ring_step = grid.major_line_every;
+    }
+    const bool boundary_only = (rings / ring_step) * grid.sector_count > kMaxShellVerticalLines;
     for (uint32_t sector = 0; sector < grid.sector_count; ++sector) {
       const float theta = static_cast<float>(sector) / static_cast<float>(grid.sector_count) * tau;
-      const glm::vec3 p = u * (outer_radius * glm::cos(theta)) + v * (outer_radius * glm::sin(theta));
-      draw.line(tp(p - n * half_height), tp(p + n * half_height), grid.line_color);
+      const glm::vec3 dir = u * glm::cos(theta) + v * glm::sin(theta);
+      if (!boundary_only) {
+        for (uint32_t ring = ring_step; ring < rings; ring += ring_step) {
+          const glm::vec3 p = dir * (static_cast<float>(ring) * grid.cell_size);
+          draw.line(tp(p - n * half_height), tp(p + n * half_height), line_col(ring));
+        }
+      }
+      /// the boundary vertical always closes the shell
+      const glm::vec3 p = dir * outer_radius;
+      draw.line(tp(p - n * half_height), tp(p + n * half_height), line_col(rings));
     }
 
     if (grid.show_axes) {

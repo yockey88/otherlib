@@ -86,6 +86,8 @@ namespace OtherCsBindings
       { typeof(double), ManagedType.Double },
       { typeof(bool), ManagedType.Bool },
       { typeof(NativeBool32), ManagedType.Bool },
+      { typeof(string), ManagedType.String },
+      { typeof(NativeString), ManagedType.String },
     };
 
     internal enum TypeAccessibility

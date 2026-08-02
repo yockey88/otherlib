@@ -125,7 +125,16 @@ namespace other {
       } else {
         OTHER_ASSERT(active_scene != nullptr, "Active scene must not be nullptr");
         natural_t obj_id = context.current_selection.objects.front();
-        scene_object& obj = active_scene->get_object(obj_id);
+        /// selection ids die when a snapshot restore (play/stop, undo) reassigns runtime
+        ///  ids — a stale entry is dropped, never dereferenced
+        scene_object* selected = active_scene->find_object(obj_id);
+        if (selected == nullptr) {
+          context.current_selection.objects.clear();
+          scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextFriendlyAlert));
+          ImGui::Text("No object selected.");
+          return;
+        }
+        scene_object& obj = *selected;
 
         char name_buf[256];
         std::strncpy(name_buf, obj.name.c_str(), sizeof(name_buf));

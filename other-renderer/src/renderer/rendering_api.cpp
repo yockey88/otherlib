@@ -226,6 +226,7 @@ namespace other {
         CORE_LOG_ERROR("Resource name for ID {} not found.", handle.id);
       }
     }
+    resource_handles.erase(handle.id);
   }
 
   uint32_t rendering_api::get_reference_count(const resource_handle& handle) const {

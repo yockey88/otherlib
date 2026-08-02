@@ -25,9 +25,9 @@ namespace other {
 
     void update_running() override;
     void on_scene_activated(natural_t scene_id) override;
-    void on_scene_played(natural_t scene_id) override {}
+    void on_scene_played(natural_t scene_id) override;
     void on_scene_paused(natural_t scene_id) override {}
-    void on_scene_stopped(natural_t scene_id) override {}
+    void on_scene_stopped(natural_t scene_id) override;
     void on_scene_deactivated(natural_t scene_id) override;
     void on_begin_frame(render_data* data) override;
 

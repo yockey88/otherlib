@@ -5,10 +5,12 @@
 
 #include <sol/types.hpp>
 
-#include "object/grid_component.hpp"
 #include "serialization/scene_serializer.hpp"
 
+#include "object/grid_component.hpp"
+
 #include "driver/driver.hpp"
+#include "driver/systems/asset_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "scripting/scene_interface.hpp"
 
@@ -41,9 +43,6 @@ namespace other {
 
     events->register_event("scene.activated");
     events->register_event("scene.deactivated");
-    events->register_event("scene.played");
-    events->register_event("scene.paused");
-    events->register_event("scene.stopped");
 
     events->register_event("ls.scenes");
     events->add_listener("ls.scenes", [this](const value& data) { handle_ls_scenes_event(&get_driver().get_kernel(), data); });
@@ -420,6 +419,17 @@ namespace other {
       CORE_LOG_TRACE(" - scene name: {}, id: {}, asset-id: {}", s.name, s.id, s.asset_id);
       return s.asset_id == scene_asset_id;
     });
+    if (s == nullptr && get_driver().get_kernel().has_core_system<asset_system>()) {
+      /// resolver-dispatched scene documents are tracked file assets (snapshot nodes)
+      //  with no graph scene attached; only assets born through add_scene_asset must
+      //  resolve to a graph scene here
+      auto& assets = get_driver().get_kernel().get_core_system<asset_system>();
+      const asset* scene_asset = assets.get_asset(scene_asset_id);
+      if (scene_asset != nullptr && assets.get_asset_manager()->in_snapshot(scene_asset->stable_id)) {
+        CORE_LOG_DEBUG("Scene document asset {} ('{}') loaded; no graph scene attached.", scene_asset_id, scene_asset->virtual_path.string());
+        return;
+      }
+    }
     OTHER_ASSERT(s != nullptr, "Scene with asset ID {} not found in scene graph after scene asset loaded event.", scene_asset_id);
 
     /// this happens here so it only happens once when the asset is fully loaded and registered
@@ -468,6 +478,16 @@ namespace other {
     auto* s = project_scene_graph->find_scene([scene_asset_id](const scene& sc) {
       return sc.asset_id == scene_asset_id;
     });
+    if (s == nullptr && get_driver().get_kernel().has_core_system<asset_system>()) {
+      /// scene documents (snapshot nodes) unload on refresh/teardown with no graph
+      //  scene attached — same contract split as handle_scene_asset_loaded_event
+      auto& assets = get_driver().get_kernel().get_core_system<asset_system>();
+      const asset* scene_asset = assets.get_asset(scene_asset_id);
+      if (scene_asset != nullptr && assets.get_asset_manager()->in_snapshot(scene_asset->stable_id)) {
+        CORE_LOG_DEBUG("Scene document asset {} ('{}') unloaded; no graph scene attached.", scene_asset_id, scene_asset->virtual_path.string());
+        return;
+      }
+    }
     OTHER_ASSERT(s != nullptr, "Scene with asset ID '{}' not found in scene graph.", scene_asset_id);
 
     if (get_driver().get_kernel().has_core_system<project_system>()) {
@@ -527,15 +547,12 @@ namespace other {
     if (command == "play") {
       active_scene->play();
       get_driver().on_scene_played(active_scene->id);
-      get_driver().get_event_system()->trigger_event("scene.played", active_scene->id);
     } else if (command == "pause") {
       active_scene->pause();
       get_driver().on_scene_paused(active_scene->id);
-      get_driver().get_event_system()->trigger_event("scene.paused", active_scene->id);
     } else if (command == "stop") {
       active_scene->stop();
       get_driver().on_scene_stopped(active_scene->id);
-      get_driver().get_event_system()->trigger_event("scene.stopped", active_scene->id);
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
     }

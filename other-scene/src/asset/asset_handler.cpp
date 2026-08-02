@@ -52,7 +52,7 @@ namespace other {
     {
       PROFILE_SECTION("asset_handler::update_pipelines--poll");
       for (auto& pl : asset_pipelines) {
-        pl.pipeline->poll();
+        pl.second.pipeline->poll();
       }
     }
 
@@ -91,6 +91,31 @@ namespace other {
             break;
           default:
             OTHER_ASSERT(false, "Asset ID {} in unexpected state after failed pipeline completion", id);
+        }
+      }
+    }
+
+    {
+      PROFILE_SECTION("asset_handler::update_pipelines--pending-unloads");
+      for (size_t remaining = pending_unloads.size(); remaining > 0; --remaining) {
+        const natural_t id = pending_unloads.front();
+        pending_unloads.pop();
+
+        if (asset_loaded(id)) {
+          unload_asset(id);
+          continue;
+        }
+
+        switch (get_asset_state(id)) {
+          case asset_state::LOADING:
+          case asset_state::REFRESHING_UNLOAD:
+          case asset_state::REFRESHING_LOAD:
+            /// still in flight
+            pending_unloads.push(id);
+            break;
+          default:
+            /// failed, already unloading/unloaded, or gone
+            break;
         }
       }
     }
@@ -163,31 +188,39 @@ namespace other {
     if (auto itr = std::ranges::find_if(loaded_assets, [hash](const auto& pair) { return pair.second.path_hash == hash; }); itr != loaded_assets.end()) {
       return itr->second.id;
     }
+    /// a plan-dispatched load and a direct load (scene instantiation resolving the same
+    //  model) can race; a second pipeline for the same file would double-load the payload
+    if (auto itr = std::ranges::find_if(asset_pipelines, [hash](const auto& pair) { return pair.second.loading_asset.path_hash == hash; }); itr != asset_pipelines.end()) {
+      if (on_complete != nullptr) {
+        CORE_LOG_WARN("Asset '{}' is already loading (ID: {}); completion callback dropped", file_path.string(), itr->second.loading_asset.id);
+      }
+      return itr->second.loading_asset.id;
+    }
 
     natural_t asset_id = get_next_asset_id();
-    auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_type),
-                                                              .loading_asset = asset{
-                                                                .asset_type = asset_type,
-                                                                .id = asset_id,
-                                                                .stable_id = stable_id_for(virtualize(absolute_path)),
-                                                                .path_hash = hash,
-                                                                .load_path = file_path,
-                                                                // clang-format off
+    auto [it, success] = asset_pipelines.insert_or_assign(asset_id, pipeline_context{
+                                                                      .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_type),
+                                                                      .loading_asset = asset{
+                                                                        .asset_type = asset_type,
+                                                                        .id = asset_id,
+                                                                        .stable_id = stable_id_for(virtualize(absolute_path)),
+                                                                        .path_hash = hash,
+                                                                        .load_path = file_path,
+                                                                        // clang-format off
                                                                 .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, 
                                                                                 asset::get_filesystem_directory(asset_type), name),
-                                                                // clang-format on
-                                                                .absolute_path = std::filesystem::absolute(absolute_path),
-                                                              },
-                                                              .on_complete = on_complete,
-                                                            });
+                                                                        // clang-format on
+                                                                        .absolute_path = std::filesystem::absolute(absolute_path),
+                                                                      },
+                                                                      .on_complete = on_complete,
+                                                                    });
     OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
 
     auto [state_it, state_inserted] = asset_states.emplace(asset_id, asset_state_machine{});
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for asset ID: {}", asset_id);
     CORE_LOG_DEBUG("Beginning load for asset ID: {} (Type: {}, Path: {})", asset_id, asset_type, file_path.string());
 
-    runtime_by_stable[it->loading_asset.stable_id] = asset_id;
+    runtime_by_stable[it->second.loading_asset.stable_id] = asset_id;
     begin_load(it, state_it);
 
     return asset_id;
@@ -218,7 +251,7 @@ namespace other {
     CORE_LOG_DEBUG("Adding model source asset with name: {} (vertex count: {}, index count: {})", name, vertices.size(), indices.size());
     natural_t model_id = get_next_asset_id();
 
-    auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
+    auto [it, inserted] = asset_pipelines.emplace(model_id, pipeline_context{
                                                               .pipeline = asset_pipeline::get_model_source_pipeline(&events, this, name, vertices, indices),
                                                               .loading_asset = {
                                                                 .asset_type = asset::type::MODEL_SOURCE,
@@ -230,13 +263,13 @@ namespace other {
                                                                 .absolute_path = filepath{},
                                                               },
                                                             });
-    OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+    OTHER_ASSERT(inserted, "Failed to insert asset into loading assets list");
 
     auto [state_it, state_inserted] = asset_states.emplace(model_id, asset_state_machine{});
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for model source asset ID: {}", model_id);
     CORE_LOG_DEBUG("Beginning add_model_source_asset for asset ID: {} (Name: {})", model_id, name);
 
-    runtime_by_stable[it->loading_asset.stable_id] = model_id;
+    runtime_by_stable[it->second.loading_asset.stable_id] = model_id;
     begin_load(it, state_it);
 
     return model_id;
@@ -254,31 +287,29 @@ namespace other {
       name = std::format("scene_{}", scene_id);
     }
 
-    asset_pipelines.emplace_back(pipeline_context{
-      .pipeline = asset_pipeline::get_scene_pipeline(&events, this, scene_ptr),
-      .loading_asset = {
-        .asset_type = asset::type::SCENE,
-        .id = scene_id,
-        .stable_id = stable_id_for(std::format("mem:{}/{}", asset::get_filesystem_directory(asset::type::SCENE), name)),
-        // since we are loading an already existing scene into system
-        // we use 0 here to tell the pipeline to set scene's asset id
-        // so scene can be found when load is finished
-        .path_hash = 0,
-        .load_path = p,
-        .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::SCENE), name + ".scene"),
-        .absolute_path = absolute_path,
-      },
-    });
-    auto it = std::ranges::find_if(asset_pipelines, [scene_id](const pipeline_context& pc) {
-      return pc.loading_asset.id == scene_id;
-    });
+    asset_pipelines.emplace(scene_id, pipeline_context{
+                                        .pipeline = asset_pipeline::get_scene_pipeline(&events, this, scene_ptr),
+                                        .loading_asset = {
+                                          .asset_type = asset::type::SCENE,
+                                          .id = scene_id,
+                                          .stable_id = stable_id_for(std::format("mem:{}/{}", asset::get_filesystem_directory(asset::type::SCENE), name)),
+                                          // since we are loading an already existing scene into system
+                                          // we use 0 here to tell the pipeline to set scene's asset id
+                                          // so scene can be found when load is finished
+                                          .path_hash = 0,
+                                          .load_path = p,
+                                          .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::SCENE), name + ".scene"),
+                                          .absolute_path = absolute_path,
+                                        },
+                                      });
+    auto it = asset_pipelines.find(scene_id);
     OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert scene asset into loading assets list");
 
     auto [state_it, state_inserted] = asset_states.emplace(scene_id, asset_state_machine{});
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for scene asset ID: {}", scene_id);
-    CORE_LOG_DEBUG("Beginning add_scene_asset for asset ID: {} (Name: {})", scene_id, it->loading_asset.virtual_path.string());
+    CORE_LOG_DEBUG("Beginning add_scene_asset for asset ID: {} (Name: {})", scene_id, it->second.loading_asset.virtual_path.string());
 
-    runtime_by_stable[it->loading_asset.stable_id] = scene_id;
+    runtime_by_stable[it->second.loading_asset.stable_id] = scene_id;
     begin_load(it, state_it);
 
     return scene_id;
@@ -289,25 +320,25 @@ namespace other {
     natural_t pl_id = get_next_asset_id();
 
     std::string pl_name = std::string{ name };
-    auto it = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                              .pipeline = asset_pipeline::get_rendering_pipeline_pipeline(&events, this, definition),
-                                                              .loading_asset = {
-                                                                .asset_type = asset::type::RENDERING_PIPELINE,
-                                                                .id = pl_id,
-                                                                .stable_id = stable_id_for(std::format("mem:{}/{}", asset::get_filesystem_directory(asset::type::RENDERING_PIPELINE), pl_name)),
-                                                                .path_hash = 0,
-                                                                .load_path = filepath{},
-                                                                .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::RENDERING_PIPELINE), pl_name + ".orpl"),
-                                                                .absolute_path = filepath{},
-                                                              },
-                                                            });
+    auto [it, inserted] = asset_pipelines.emplace(pl_id, pipeline_context{
+                                                           .pipeline = asset_pipeline::get_rendering_pipeline_pipeline(&events, this, definition),
+                                                           .loading_asset = {
+                                                             .asset_type = asset::type::RENDERING_PIPELINE,
+                                                             .id = pl_id,
+                                                             .stable_id = stable_id_for(std::format("mem:{}/{}", asset::get_filesystem_directory(asset::type::RENDERING_PIPELINE), pl_name)),
+                                                             .path_hash = 0,
+                                                             .load_path = filepath{},
+                                                             .virtual_path = std::format("{}{}{}/{}", default_mount, file_system::kPathSeparator, asset::get_filesystem_directory(asset::type::RENDERING_PIPELINE), pl_name + ".orpl"),
+                                                             .absolute_path = filepath{},
+                                                           },
+                                                         });
     OTHER_ASSERT(it != asset_pipelines.end(), "Failed to insert asset into loading assets list");
 
     auto [state_it, state_inserted] = asset_states.emplace(pl_id, asset_state_machine{});
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for rendering pipeline asset ID: {}", pl_id);
-    CORE_LOG_DEBUG("Beginning add_rendering_pipeline_asset for asset ID: {} (Name: {})", pl_id, it->loading_asset.virtual_path.string());
+    CORE_LOG_DEBUG("Beginning add_rendering_pipeline_asset for asset ID: {} (Name: {})", pl_id, it->second.loading_asset.virtual_path.string());
 
-    runtime_by_stable[it->loading_asset.stable_id] = pl_id;
+    runtime_by_stable[it->second.loading_asset.stable_id] = pl_id;
     begin_load(it, state_it);
     return pl_id;
   }
@@ -336,16 +367,16 @@ namespace other {
     OTHER_ASSERT(it != loaded_assets.end(), "Asset not found in loaded assets map for asset ID: {}", asset_id);
 
     asset::type asset_type = it->second.asset_type;
-    auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
+    auto [pl_itr, inserted] = asset_pipelines.emplace(asset_id, pipeline_context{
                                                                   .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_type),
                                                                   /// create a copy here? or should this be a pointer?
                                                                   .loading_asset = std::move(it->second),
                                                                 });
-    OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+    OTHER_ASSERT(inserted, "Failed to insert asset into loading assets list");
 
     loaded_assets.erase(it);
-    pl_itr->pipeline->start_unload(
-      jobs, &pl_itr->loading_asset,
+    pl_itr->second.pipeline->start_unload(
+      jobs, &pl_itr->second.loading_asset,
       std::bind_front(&asset_handler::notify_asset_unload_complete, this),
       std::bind_front(&asset_handler::notify_asset_unload_failed, this));
   }
@@ -371,16 +402,16 @@ namespace other {
       loaded_assets.erase(it);
     }
 
-    auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
+    auto [pl_itr, inserted] = asset_pipelines.emplace(asset_id, pipeline_context{
                                                                   .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_to_reload.asset_type),
                                                                   .loading_asset = std::move(asset_to_reload),
                                                                 });
-    OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
+    OTHER_ASSERT(inserted, "Failed to insert asset into loading assets list");
 
-    state_it->second.handle_event(asset_event::REFRESH_REQUESTED, &pl_itr->loading_asset);
+    state_it->second.handle_event(asset_event::REFRESH_REQUESTED, &pl_itr->second.loading_asset);
 
-    pl_itr->pipeline->start_unload(
-      jobs, &pl_itr->loading_asset,
+    pl_itr->second.pipeline->start_unload(
+      jobs, &pl_itr->second.loading_asset,
       std::bind_front(&asset_handler::notify_asset_unload_complete, this),
       std::bind_front(&asset_handler::notify_asset_unload_failed, this));
   }
@@ -390,9 +421,9 @@ namespace other {
       return &it->second;
     }
 
-    auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+    auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.second.loading_asset.id == asset_id; });
     if (it != asset_pipelines.end()) {
-      return &it->loading_asset;
+      return &it->second.loading_asset;
     }
 
     return nullptr;
@@ -403,9 +434,9 @@ namespace other {
       return &it->second;
     }
 
-    auto it = std::ranges::find_if(asset_pipelines, [&virtual_path](const auto& a) { return a.loading_asset.virtual_path == virtual_path; });
+    auto it = std::ranges::find_if(asset_pipelines, [&virtual_path](const auto& a) { return a.second.loading_asset.virtual_path == virtual_path; });
     if (it != asset_pipelines.end()) {
-      return &it->loading_asset;
+      return &it->second.loading_asset;
     }
 
     return nullptr;
@@ -435,9 +466,9 @@ namespace other {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.path_hash;
     }
-    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
-      if (it->loading_asset.id == asset_id) {
-        return it->loading_asset.path_hash;
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.second.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
+      if (it->second.loading_asset.id == asset_id) {
+        return it->second.loading_asset.path_hash;
       }
     }
 
@@ -455,7 +486,7 @@ namespace other {
       }
     }
 
-    for (const auto& ctx : asset_pipelines) {
+    for (const auto& [id, ctx] : asset_pipelines) {
       if (ctx.loading_asset.path_hash == path_hash) {
         return ctx.loading_asset.id;
       }
@@ -468,8 +499,8 @@ namespace other {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.absolute_path;
     }
-    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
-      return it->loading_asset.absolute_path;
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& pair) { return pair.second.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
+      return it->second.loading_asset.absolute_path;
     }
 
     return std::nullopt;
@@ -479,23 +510,23 @@ namespace other {
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.virtual_path;
     }
-    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
-      return it->loading_asset.virtual_path;
+    if (auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& pair) { return pair.second.loading_asset.id == asset_id; }); it != asset_pipelines.end()) {
+      return it->second.loading_asset.virtual_path;
     }
 
     return std::nullopt;
   }
 
-  void asset_handler::begin_load(std::deque<pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
+  void asset_handler::begin_load(ostd::map<natural_t, pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
     OTHER_ASSERT(pipeline_it != asset_pipelines.end(), "Invalid pipeline iterator in begin_load");
     OTHER_ASSERT(state_it != asset_states.end(), "Invalid state machine iterator in begin_load");
 
-    asset* loading_asset = &pipeline_it->loading_asset;
+    asset* loading_asset = &pipeline_it->second.loading_asset;
 
     CORE_LOG_TRACE("Executing load operation for asset ID: {}", loading_asset->id);
     state_it->second.handle_event(asset_event::LOAD_REQUESTED, loading_asset);
-    pipeline_it->pipeline->start_load(
-      jobs, &pipeline_it->loading_asset,
+    pipeline_it->second.pipeline->start_load(
+      jobs, &pipeline_it->second.loading_asset,
       std::bind_front(&asset_handler::notify_asset_load_complete, this),
       std::bind_front(&asset_handler::notify_asset_load_failed, this));
 
@@ -525,15 +556,15 @@ namespace other {
     OTHER_ASSERT(it != loaded_assets.end(), "Asset not found in loaded assets map for asset ID: {}", asset_id);
 
     asset::type asset_type = it->second.asset_type;
-    auto pl_itr = asset_pipelines.insert(asset_pipelines.end(), pipeline_context{
-                                                                  .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_type),
-                                                                  .loading_asset = std::move(it->second),
-                                                                });
+    auto [pl_itr, success] = asset_pipelines.insert_or_assign(asset_id, pipeline_context{
+                                                                          .pipeline = asset_pipeline::get_asset_pipeline(&events, this, asset_type),
+                                                                          .loading_asset = std::move(it->second),
+                                                                        });
     OTHER_ASSERT(pl_itr != asset_pipelines.end(), "Failed to insert asset into loading assets list");
 
     auto rit = loaded_assets.erase(it);
-    pl_itr->pipeline->start_unload(
-      jobs, &pl_itr->loading_asset,
+    pl_itr->second.pipeline->start_unload(
+      jobs, &pl_itr->second.loading_asset,
       std::bind_front(&asset_handler::notify_asset_unload_complete, this),
       std::bind_front(&asset_handler::notify_asset_unload_failed, this));
     return rit;
@@ -548,7 +579,7 @@ namespace other {
       }
     }
 
-    for (const auto& ctx : asset_pipelines) {
+    for (const auto& [key, ctx] : asset_pipelines) {
       if (ctx.loading_asset.path_hash == hash) {
         return const_cast<asset*>(&ctx.loading_asset);
       }
@@ -588,16 +619,16 @@ namespace other {
     auto prev_state = state_itr->second.get_current_state();
     OTHER_ASSERT(prev_state == asset_state::LOADING, "Asset ID {} completed a load outside LOADING", id);
 
-    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
+    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.second.loading_asset.id == id; });
     OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Loaded asset not found in loading assets");
 
-    auto [itr, success] = loaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
+    auto [itr, success] = loaded_assets.insert({ id, std::move(pending_itr->second.loading_asset) });
     OTHER_ASSERT(success, "Failed to insert loaded asset into loaded assets map");
-    if (pending_itr->on_complete) {
-      pending_itr->on_complete(&itr->second);
+    if (pending_itr->second.on_complete) {
+      pending_itr->second.on_complete(&itr->second);
     }
 
-    pending_itr->pipeline = nullptr;
+    pending_itr->second.pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
     register_asset_in_filesystem(&itr->second);
@@ -612,14 +643,14 @@ namespace other {
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
-    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
+    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.second.loading_asset.id == id; });
     OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Failed asset not found in loading assets");
 
-    const natural_t stable = pending_itr->loading_asset.stable_id;
-    const std::string error = pending_itr->pipeline->get_last_error();
+    const natural_t stable = pending_itr->second.loading_asset.stable_id;
+    const std::string error = pending_itr->second.pipeline->get_last_error();
     CORE_LOG_ERROR("Failed to load asset (ID: {}): {}", id, error);
 
-    pending_itr->pipeline = nullptr;
+    pending_itr->second.pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
     state_itr->second.handle_event(asset_event::LOAD_FAILED);
@@ -642,7 +673,7 @@ namespace other {
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
-    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
+    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.second.loading_asset.id == id; });
     OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Unloaded asset not found in loading assets");
 
     auto prev_state = state_itr->second.get_current_state();
@@ -650,7 +681,7 @@ namespace other {
 
     if (prev_state == asset_state::UNLOADING) {
       if (remove_after_unload) {
-        auto it = unloaded_assets.insert({ id, std::move(pending_itr->loading_asset) });
+        auto it = unloaded_assets.insert({ id, std::move(pending_itr->second.loading_asset) });
         OTHER_ASSERT(it.second, "Failed to insert unloaded asset into unloaded assets map");
         unregister_asset_in_filesystem(&it.first->second);
 
@@ -658,7 +689,7 @@ namespace other {
         asset_states.erase(state_itr);
       }
 
-      pending_itr->pipeline = nullptr;
+      pending_itr->second.pipeline = nullptr;
       asset_pipelines.erase(pending_itr);
     } else if (prev_state == asset_state::REFRESHING_UNLOAD) {
       // begin load again with the same asset data to refresh it
@@ -672,14 +703,14 @@ namespace other {
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
-    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.loading_asset.id == id; });
+    auto pending_itr = std::ranges::find_if(asset_pipelines, [id](const auto& a) { return a.second.loading_asset.id == id; });
     OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Failed asset not found in loading assets");
 
-    CORE_LOG_ERROR("Failed to unload asset (ID: {}): {}", id, pending_itr->pipeline->get_last_error());
+    CORE_LOG_ERROR("Failed to unload asset (ID: {}): {}", id, pending_itr->second.pipeline->get_last_error());
 
     /// keep the asset alive past the pipeline erase; the iterator is dead after it
-    asset failed_asset = std::move(pending_itr->loading_asset);
-    pending_itr->pipeline = nullptr;
+    asset failed_asset = std::move(pending_itr->second.loading_asset);
+    pending_itr->second.pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
     state_itr->second.handle_event(asset_event::UNLOAD_FAILED);
@@ -788,8 +819,8 @@ namespace other {
     }
 
     for (const auto& ctx : asset_pipelines) {
-      if (ctx.loading_asset.path_hash == path_hash) {
-        return get_asset_state(ctx.loading_asset.id);
+      if (ctx.second.loading_asset.path_hash == path_hash) {
+        return get_asset_state(ctx.second.loading_asset.id);
       }
     }
 
@@ -813,7 +844,7 @@ namespace other {
     }
 
     for (const auto& ctx : asset_pipelines) {
-      ids.push_back(ctx.loading_asset.id);
+      ids.push_back(ctx.second.loading_asset.id);
     }
 
     return ids;
@@ -821,8 +852,8 @@ namespace other {
 
   asset_handler::pipeline_context* asset_handler::get_asset_pipeline_context(natural_t asset_id) {
     for (auto& ctx : asset_pipelines) {
-      if (ctx.loading_asset.id == asset_id) {
-        return &ctx;
+      if (ctx.second.loading_asset.id == asset_id) {
+        return &ctx.second;
       }
     }
     return nullptr;

@@ -183,8 +183,9 @@ namespace other {
         draw.arrow(glm::vec3(0, 0, 0), world_right, basic_colors::kGreen);
         draw.arrow(glm::vec3(0, 0, 0), world_forward, basic_colors::kBlue);
 
+        /// obj_model.source stays null until the model asset finishes its async load
         if (auto* render = scene->try_get_component<render_component>(obj.id);
-            render != nullptr) {
+            render != nullptr && render->obj_model.source != nullptr) {
           draw.mesh(render->obj_model.source->get_mesh_handle(), world_trans, select_color, true);
         }
 
@@ -242,6 +243,14 @@ namespace other {
     OTHER_ASSERT(s != nullptr, "Activated scene with ID {} not found in scene system.", scene_id);
 
     context.scene_viewport_handle = context.register_viewport("scene-viewport", "default-instancing", s->get_primary_camera());
+  }
+
+  void editor_driver::on_scene_played(natural_t scene_id) {
+    context.capture_playback_selection();
+  }
+
+  void editor_driver::on_scene_stopped(natural_t scene_id) {
+    context.restore_playback_selection();
   }
 
   void editor_driver::on_scene_deactivated(natural_t scene_id) {
@@ -337,19 +346,22 @@ namespace other {
     }
 
     for (const auto& obj_id : context.current_selection.objects) {
-      auto& obj = scene->get_object(obj_id);
+      /// selection ids can be stale for a frame around a snapshot restore — skip
+      ///  entries that no longer resolve
+      scene_object* selected = scene->find_object(obj_id);
+      if (selected == nullptr) {
+        continue;
+      }
+      auto& obj = *selected;
       auto* render = scene->try_get_component<render_component>(obj.id);
       auto aabb = scene->get_bounding_box(obj.id);
       if (aabb == bounding_box::empty) {
         aabb = bounding_box(glm::vec3(-0.5f), glm::vec3(0.5f));
       }
 
-      if (render == nullptr) {
-        draws.emplace_back() = {
-          .mesh = false,
-          .aabb = aabb,
-        };
-      } else {
+      /// obj_model.source stays null until the model asset finishes its async load —
+      ///  outline the aabb only until then
+      if (render == nullptr || render->obj_model.source == nullptr) {
         const glm::mat4 world = scene->get_world_transform(obj_id);
         model& m = render->obj_model;
         const auto& submeshes = m.source->get_submeshes();

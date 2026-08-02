@@ -66,8 +66,8 @@ namespace other {
   /// emits the grid described by @p grid into the given line stream, oriented by @p world
   void emit_grid_lines(debug_draw& draw, const grid_component& grid, const glm::mat4& world);
 
-  /// emits the lines a cylindrical grid needs beyond its stacked plane layers (shell verticals
-  ///   at the sector angles and the normal axis); no-op for other coordinate systems
+  /// emits the lines a cylindrical grid needs beyond its stacked plane layers (verticals at the
+  ///   ring/sector intersections and the normal axis); no-op for other coordinate systems
   void emit_grid_shell_lines(debug_draw& draw, const grid_component& grid, const glm::mat4& world);
 
   /// stacked plane layers the in-scene grid pass draws for @p grid (cylindrical: 2 * layers + 1, else 1)
@@ -75,7 +75,7 @@ namespace other {
 
   /// packs plane layer @p layer (see grid_draw_layer_count) of @p grid into a procedural grid
   ///   submission for renderer::submit_grid, oriented by @p world; cylindrical layers off the base
-  ///   plane are offset along the plane normal and draw rings only
+  ///   plane are offset along the plane normal and draw the full polar pattern without the axes
   grid_draw_data make_grid_draw_data(const grid_component& grid, const glm::mat4& world, uint32_t layer = 0);
 
   /// world axis identity color for a plane basis axis (X = red, Y = green, Z = blue)

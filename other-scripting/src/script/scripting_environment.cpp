@@ -156,6 +156,28 @@ namespace other {
     return script_object_pool->at(id);
   }
 
+  void scripting_environment::reset_dotnet_object_binding(integer_t id) {
+    script_object* obj = get_object(id);
+    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+    if (obj->dotnet_object == nullptr) {
+      return;
+    }
+
+    CORE_LOG_DEBUG("[script {}] resetting .NET native binding for [{}]", id, obj->name);
+    obj->dotnet_object->invoke<>("ResetNativeHandle");
+  }
+
+  void scripting_environment::rebind_dotnet_object(integer_t id, void* native_handle) {
+    script_object* obj = get_object(id);
+    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+    if (obj->dotnet_object == nullptr) {
+      return;
+    }
+
+    CORE_LOG_DEBUG("[script {}] rebinding .NET object [{}] to a new native handle", id, obj->name);
+    obj->dotnet_object->invoke<>("RebindNativeHandle", native_handle);
+  }
+
   ref<assembly> scripting_environment::load_dotnet_module(const std::string_view module_path) {
     OTHER_ASSERT(dotnet_load_context != nullptr, "DotNet load context is not initialized.");
     OTHER_ASSERT(!module_path.empty(), "Module path cannot be empty.");
@@ -236,6 +258,16 @@ namespace other {
     script_object* parent = get_object(parent_id);
     OTHER_ASSERT(parent != nullptr, "Script object with ID {} does not exist.", parent_id);
     OTHER_ASSERT(parent->dotnet_object != nullptr, "Script object with ID {} does not have a .NET object attached.", parent_id);
+
+    /// re-applying a scene document to a surviving object (play-stop restore) re-adds
+    ///  behaviors that never detached — attach is idempotent per type
+    auto existing = std::find_if(parent->behavior_handles.begin(), parent->behavior_handles.end(), [&behavior_name](const script_object::behavior_handle& handle) {
+      return handle.type_name == behavior_name;
+    });
+    if (existing != parent->behavior_handles.end()) {
+      CORE_LOG_DEBUG("[script {}] behavior '{}' already attached with script_object ID {}", parent_id, behavior_name, existing->script_object_id);
+      return;
+    }
 
     /// \todo check if this is actually a behavior type
 

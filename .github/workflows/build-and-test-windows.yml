@@ -6,6 +6,13 @@ on:
       configuration:
         required: true
         type: string
+      ## the extensive tier runs on tag builds/releases: everything the standard tier
+      ##  runs plus the soak harness (and, as they land, the rest of the integration
+      ##  test pipeline)
+      extensive:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-and-test:
@@ -24,14 +31,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install regex
 
-    - name: Configure CMake
-      run: cmake --version && cmake -S ${{ github.workspace }} -B ${{ github.workspace }}/build -DBUILD_OTHER_TESTS=ON
+    - name: Bootstrap oecli
+      run: python ${{ github.workspace }}/cli.py bootstrap -c ${{ inputs.configuration }} --tests
 
     - name: Build
-      run: python ${{ github.workspace }}/cli.py -b -c=${{ inputs.configuration }}
+      run: python ${{ github.workspace }}/cli.py build -c ${{ inputs.configuration }} --tests
 
-    - name: Run Tests
-      run: python ${{ github.workspace }}/cli.py -t -c=${{ inputs.configuration }}
+    - name: Run Unit Tests
+      run: python ${{ github.workspace }}/cli.py test -c ${{ inputs.configuration }}
+
+    ## integration pipeline stages (extensive tier only). GPU-dependent stages may need
+    ##  a self-hosted runner once they exercise the renderer for real.
+    - name: Run Soak Harness
+      if: ${{ inputs.extensive }}
+      run: python ${{ github.workspace }}/cli.py test --soak -c ${{ inputs.configuration }}
 
     - name: Check Test Results
       if: always()

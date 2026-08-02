@@ -11,7 +11,7 @@ namespace other {
 
     /// a snapshot-pair edit: undo restores `before`, redo restores `after`. the scene is
     ///  resolved at invoke time through the context — never a captured scene pointer —
-    ///  and the selection is cleared because restore reassigns runtime ids
+    ///  and the selection is carried across by name because restore reassigns runtime ids
     edit make_snapshot_edit(editor_context* ctx, ostd::vector<uint8_t> before, ostd::vector<uint8_t> after) {
       auto restore = [ctx](const ostd::vector<uint8_t>& snapshot) {
         scene* s = ctx->current_selection.scene_ptr;
@@ -19,8 +19,26 @@ namespace other {
           CORE_LOG_ERROR("Cannot restore scene edit: no active scene.");
           return;
         }
+
+        std::vector<std::string> selected_names = {};
+        for (const natural_t obj_id : ctx->current_selection.objects) {
+          const scene_object* obj = s->find_object(obj_id);
+          if (obj != nullptr) {
+            selected_names.push_back(obj->name);
+          }
+        }
+
         s->restore_snapshot(snapshot);
+
+        /// objects absent from the restored state (e.g. undoing a create) drop out
         ctx->current_selection.objects.clear();
+        for (const std::string& obj_name : selected_names) {
+          const scene_object* obj = s->find_object(obj_name);
+          if (obj != nullptr && std::ranges::find(ctx->current_selection.objects, obj->id) == ctx->current_selection.objects.end()) {
+            ctx->current_selection.objects.push_back(obj->id);
+          }
+        }
+
         ctx->edit_tracker.baseline = s->capture_snapshot();
       };
       return edit{
@@ -108,6 +126,39 @@ namespace other {
       return;
     }
     editing_history.redo();
+  }
+
+  void editor_context::capture_playback_selection() {
+    playback_selection_names.clear();
+    scene* s = current_selection.scene_ptr;
+    if (s == nullptr) {
+      return;
+    }
+
+    for (const natural_t obj_id : current_selection.objects) {
+      const scene_object* obj = s->find_object(obj_id);
+      if (obj != nullptr) {
+        playback_selection_names.push_back(obj->name);
+      }
+    }
+  }
+
+  void editor_context::restore_playback_selection() {
+    scene* s = current_selection.scene_ptr;
+    if (s == nullptr) {
+      return;
+    }
+
+    /// every pre-stop id is dead after the restore; objects absent from the restored
+    ///  state (e.g. selected while playing after being spawned by a script) drop out
+    current_selection.objects.clear();
+    for (const std::string& obj_name : playback_selection_names) {
+      const scene_object* obj = s->find_object(obj_name);
+      if (obj != nullptr && std::ranges::find(current_selection.objects, obj->id) == current_selection.objects.end()) {
+        current_selection.objects.push_back(obj->id);
+      }
+    }
+    playback_selection_names.clear();
   }
 
   void editor_context::select_object(natural_t object_id) {

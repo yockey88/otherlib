@@ -92,14 +92,24 @@ namespace other {
     ASSERT_EQ(calls, 11);
   }
 
-  TEST_F(action_tests, dotnet_callback_test) {
-    GTEST_SKIP() << "Dotnet callback implementation needs to be redesigned";
+  /// dotnet callbacks need the headless profile: base action_tests runs the minimal profile,
+  ///  which never initializes the scripting environment or loads the DotnetTesting assembly
+  class dotnet_action_tests : public action_tests {
+   protected:
+    bool script_and_physics() const override { return true; }
+  };
 
+  TEST_F(dotnet_action_tests, dotnet_callback_test) {
     auto* env = subsystem<scripting_environment>::get();
+    ASSERT_NE(env, nullptr);
+
     integer_t obj_id = env->create_object("MyObject");
+    ASSERT_GE(obj_id, 0);
 
     env->attach_dotnet_object(obj_id, "TestObject");
     script_object* script_obj = env->get_object(obj_id);
+    ASSERT_NE(script_obj, nullptr);
+    ASSERT_NE(script_obj->dotnet_object, nullptr);
 
     {
       ref<callback> callback_fn = make_ref<dotnet_callback>(script_obj->dotnet_object, "Add");
@@ -110,6 +120,7 @@ namespace other {
     }
 
     env->detach_dotnet_object(obj_id);
+    env->destroy_object(obj_id);
   }
 
   TEST_F(action_tests, lua_callback_test) {

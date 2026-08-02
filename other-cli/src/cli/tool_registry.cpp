@@ -9,8 +9,12 @@
 
 #include "core/logger.hpp"
 
+#include "cli/tools/build_environment.hpp"
 #include "cli/tools/create_project.hpp"
+#include "cli/tools/install_environment.hpp"
 #include "cli/tools/open_project.hpp"
+#include "cli/tools/run_driver.hpp"
+#include "cli/tools/test_runner.hpp"
 
 namespace other {
   namespace cli {
@@ -54,8 +58,14 @@ namespace other {
     tool_registry& default_tool_registry() {
       static tool_registry registry = [] {
         tool_registry tools;
+        /// project workflow first, then the developer/source-tree workflow
         tools.add_tool(std::make_unique<create_project_tool>());
         tools.add_tool(std::make_unique<open_project_tool>());
+        tools.add_tool(std::make_unique<run_driver_tool>());
+        tools.add_tool(std::make_unique<build_environment_tool>());
+        tools.add_tool(std::make_unique<test_runner_tool>());
+        tools.add_tool(std::make_unique<install_environment_tool>());
+        tools.add_tool(std::make_unique<package_environment_tool>());
         return tools;
       }();
       return registry;

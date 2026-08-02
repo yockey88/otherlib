@@ -40,6 +40,13 @@ namespace other {
       std::function<natural_t(const std::string& path)> resolve_asset = nullptr;
     };
 
+    /// a portable asset reference decoded out of a component payload, as stored —
+    /// resolution against the working directory / mounts is the caller's concern
+    struct component_asset_ref {
+      std::string path = "";
+      asset::type type = asset::EMPTY;
+    };
+
     struct component_codec {
       std::string_view key = "";           /// toml table key + binary hash source
       std::string_view display_name = "";  /// matches scene_system's component_registry name
@@ -56,6 +63,10 @@ namespace other {
       /// component's own table (e.g. "objects.components.camera") for nested sub-tables
       std::function<void(std::span<const uint8_t>, toml_writer&, const std::string&)> payload_to_toml = nullptr;
       std::function<ostd::vector<uint8_t>(const toml::table&, ostd::vector<std::string>&)> payload_from_toml = nullptr;
+
+      /// document-level, engine-free: append every non-empty asset path the payload
+      /// carries (manifest parsing); null for codecs without asset reference members
+      std::function<void(std::span<const uint8_t>, ostd::vector<component_asset_ref>&)> collect_asset_refs = nullptr;
     };
 
     /// registration order = document emission order; self-populates with the builtin
@@ -427,6 +438,29 @@ namespace other {
         });
         /// pass 1b scalars + pass 2 nested tables (asset members excluded above)
         detail::emit_toml_members<T>(w, table_path, value);
+      };
+
+      codec.collect_asset_refs = [](std::span<const uint8_t> payload, ostd::vector<component_asset_ref>& out) {
+        ostd::map<natural_t, detail::payload_field> fields = {};
+        if (!detail::index_payload(payload, fields)) {
+          return;
+        }
+        refl::util::for_each(refl::reflect<T>().members, [&](auto member) {
+          using member_descriptor_t = std::decay_t<decltype(member)>;
+          if constexpr (other::detail::should_serialize_member<member_descriptor_t>() && detail::is_asset_reference_member<member_descriptor_t>()) {
+            const auto it = fields.find(FNV(std::string{ member.name }));
+            if (it == fields.end()) {
+              return;
+            }
+            std::string path = "";
+            if (field_codec::decode_body(it->second.tag, it->second.body, path) && !path.empty()) {
+              out.push_back({
+                .path = std::move(path),
+                .type = refl::descriptor::get_attribute<attr::asset_identifier_field>(member_descriptor_t{}).asset_type,
+              });
+            }
+          }
+        });
       };
 
       codec.payload_from_toml = [](const toml::table& table, ostd::vector<std::string>& warnings) -> ostd::vector<uint8_t> {

@@ -32,6 +32,7 @@ namespace other {
     void print_current_page();
 
     void verify_alignment(void* ptr, size_t alignment = kAlignment);
+    void verify_allocation_header(void* ptr, size_t size);
     void test_memory_boundaries(void* ptr, size_t size);
 
     void* allocate_and_verify(size_t size);

@@ -31,6 +31,9 @@ namespace other {
 
     void scene_start();
     void scene_stop();
+    /// end-of-disable hook for play-stop restores: the managed instance survives the
+    ///  native rebuild, so only its native binding is reset here (no Remove fires)
+    void reset_dotnet_binding();
 
     void add_behavior(const std::string_view behavior_type_name);
     void remove_behavior(const std::string_view behavior_type_name);

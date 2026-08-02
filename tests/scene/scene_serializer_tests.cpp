@@ -10,6 +10,7 @@
 
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
+#include "object/script_component.hpp"
 #include "object/transform.hpp"
 #include "scene/scene.hpp"
 #include "serialization/scene_serializer.hpp"
@@ -168,6 +169,14 @@ namespace other {
     scene s("Play Scene");
     populate_test_scene(s);
 
+    /// an id held across the play/stop cycle, editor-selection style
+    scene_object* pre_play_parent = s.find_object(std::string_view{ "Parent" });
+    ASSERT_NE(pre_play_parent, nullptr);
+    const natural_t pre_play_parent_id = pre_play_parent->id;
+    script_component* pre_play_script = s.try_get_component<script_component>(pre_play_parent_id);
+    ASSERT_NE(pre_play_script, nullptr);
+    const integer_t pre_play_script_id = pre_play_script->script_object_id;
+
     s.play();
     EXPECT_TRUE(s.is_playing());
 
@@ -183,6 +192,21 @@ namespace other {
     EXPECT_FALSE(s.is_playing());
 
     expect_test_scene_state(s);
+
+    /// stop's restore reassigns runtime ids: a pre-play id must resolve to null (not a
+    ///  live object, not UB), and the object's name is its stable identity across the
+    ///  restore — the contract editor selection re-resolution depends on
+    EXPECT_EQ(s.find_object(pre_play_parent_id), nullptr);
+    scene_object* restored_parent = s.find_object(std::string_view{ "Parent" });
+    ASSERT_NE(restored_parent, nullptr);
+    EXPECT_NE(restored_parent->id, pre_play_parent_id);
+
+    /// stop is a disable, not a remove: the script object (and its managed instance)
+    ///  survives the restore and is rebound to the re-created scene object, so
+    ///  Awake/Remove stay reserved for load/unload/reload
+    script_component* restored_script = s.try_get_component<script_component>(restored_parent->id);
+    ASSERT_NE(restored_script, nullptr);
+    EXPECT_EQ(restored_script->script_object_id, pre_play_script_id);
   }
 
   TEST_F(scene_serializer_tests, snapshot_restore_is_repeatable) {

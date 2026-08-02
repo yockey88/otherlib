@@ -16,6 +16,8 @@
 
 #include "tools/project_tool.hpp"
 
+#include "gpu_resource/texture_importer.hpp"
+
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
 #include "asset/pipelines/asset_declaration_pipeline.hpp"
@@ -26,11 +28,15 @@
 #include "asset/pipelines/script_pipeline.hpp"
 #include "asset/pipelines/script_project_pipeline.hpp"
 #include "asset/pipelines/script_source_pipeline.hpp"
+#include "asset/pipelines/stub_pipeline.hpp"
+#include "asset/pipelines/texture_pipeline.hpp"
 
 namespace other {
 
   namespace detail {
 
+    task load_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_stub_asset(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -41,6 +47,8 @@ namespace other {
     task load_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
+    task unload_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_stub_asset(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -54,34 +62,34 @@ namespace other {
   }  // namespace detail
 
   std::array<asset_pipeline::loading_table::loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> asset_pipeline::loading_table::loaders = {
-    detail::empty_loader,  // detail::load_texture,
+    detail::load_texture,
     detail::load_model_source,
-    detail::empty_loader,  // detail::load_model,
-    detail::empty_loader,  // detail::load_animation,
+    detail::empty_loader,  // MODEL: no extension maps here; models load as MODEL_SOURCE
+    detail::load_stub_asset,  // ANIMATION: no animation import backend yet
     detail::load_script_project,
     detail::load_script_source,
     detail::load_script_file,
     detail::load_script,
-    detail::empty_loader,  // detail::load_audio,
+    detail::load_stub_asset,  // AUDIO: no audio backend yet
     detail::load_scene,
-    detail::empty_loader,  // detail::load_input_map,
+    detail::load_stub_asset,  // INPUT_MAP: asset model undefined; runtime input_map exists
     detail::load_rendering_pipeline,
     detail::load_asset_declaration,
     detail::empty_loader,
   };
 
   std::array<asset_pipeline::loading_table::loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> asset_pipeline::loading_table::unloaders = {
-    detail::empty_unloader,  // detail::unload_texture,
+    detail::unload_texture,
     detail::unload_model_source,
-    detail::empty_unloader,  // detail::unload_model,
-    detail::empty_unloader,  // detail::unload_animation,
+    detail::empty_unloader,  // MODEL: see loaders
+    detail::unload_stub_asset,
     detail::unload_script_project,
     detail::unload_script_source,
     detail::unload_script_file,
     detail::unload_script,
-    detail::empty_unloader,  // detail::unload_audio,
+    detail::unload_stub_asset,
     detail::unload_scene,
-    detail::empty_unloader,  // detail::unload_input_map,
+    detail::unload_stub_asset,
     detail::unload_rendering_pipeline,
     detail::unload_asset_declaration,
     detail::empty_unloader,
@@ -93,6 +101,11 @@ namespace other {
 
   scope<asset_pipeline> asset_pipeline::get_asset_pipeline(event_system* events, asset_handler* handler, asset::type type) {
     switch (type) {
+      case asset::TEXTURE: return make_scope<texture_pipeline>(events, handler);
+      case asset::ANIMATION:
+      case asset::AUDIO:
+      case asset::INPUT_MAP:
+        return make_scope<stub_pipeline>(events, handler);
       case asset::MODEL_SOURCE: return make_scope<model_source_pipeline>(events, handler);
       case asset::SCRIPT_PROJECT: return make_scope<script_project_pipeline>(events, handler);
       case asset::SCRIPT_SOURCE: return make_scope<script_source_pipeline>(events, handler);
@@ -300,6 +313,72 @@ namespace other {
       (reinterpret_cast<T*>(pipeline)->*function)(std::forward<Args>(args)...);
     }
 
+    task load_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      const filepath source_path = asset_ptr->absolute_path;
+      if (!std::filesystem::exists(source_path)) {
+        call_pipeline_fn<texture_pipeline>(pipeline, on_failure, std::format("Texture file does not exist: {}", source_path.string()));
+        co_return;
+      }
+      CORE_LOG_DEBUG("Loading texture from file: {}", source_path.string());
+
+      texture_importer::texture_data data;
+      ref<job> decode_job = handler->get_job_system().submit(
+        {
+          .name = std::format("Decode Texture Asset {}", asset_ptr->id),
+          .priority = job::priority::LOW,
+          .thread_affinity = job::affinity::WORKER_THREAD,
+        },
+        [&data, source_path]() {
+          /// local to this coroutine; the upload job depends on this one, so no concurrent access
+          data = texture_importer::load_texture_data(source_path);
+        });
+
+      ref<job> upload_job = handler->get_job_system().submit(
+        {
+          .name = std::format("Upload Texture Asset {}", asset_ptr->id),
+          .priority = job::priority::LOW,
+          /// gpu upload must happen on the thread owning the gl context
+          .thread_affinity = job::affinity::MAIN_THREAD,
+        },
+        [asset_ptr, d = &data]() {
+          OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in upload texture job");
+          if (!d->valid()) {
+            throw std::runtime_error(std::format("Failed to decode texture asset: {}", asset_ptr->load_path.string()));
+          }
+
+          const std::string name = asset_ptr->load_path.filename().stem().string();
+          resource_handle handle = texture_importer::upload_texture_data(name, *d);
+          if (handle.id == 0) {
+            throw std::runtime_error(std::format("Failed to upload texture asset: {}", asset_ptr->load_path.string()));
+          }
+
+          subsystem<renderer_backend>::get()->add_texture(asset_ptr->path_hash, handle);
+          CORE_LOG_DEBUG("Texture loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
+        },
+        std::array{ decode_job->id });
+
+      do {
+        co_await task::yield();
+      } while (!upload_job->done());
+
+      if (upload_job->get_status() == job::status::COMPLETED) {
+        call_pipeline_fn<texture_pipeline>(pipeline, on_success);
+      } else {
+        call_pipeline_fn<texture_pipeline>(pipeline, on_failure, std::format("Failed to load texture asset: {}", source_path.string()));
+      }
+    }
+
+    task load_stub_asset(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      CORE_LOG_WARN("No {} backend yet; asset '{}' is tracked but carries no runtime data", asset_ptr->asset_type, asset_ptr->load_path.string());
+      co_await task::yield();
+      call_pipeline_fn<stub_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
     task load_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
@@ -494,11 +573,28 @@ namespace other {
     task load_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
-      /// scenes enter through the scene graph (add_scene_asset), which always routes here
-      /// with path_hash == 0 and the live scene attached to the pipeline; a direct
-      /// begin_asset_load of a scene path has no scene object to fill and is unsupported
+      /// live scenes enter through the scene graph (add_scene_asset): path_hash == 0 and the
+      /// scene attached to the pipeline. resolver-dispatched scene documents (path_hash != 0,
+      /// no scene attached) parse to validate + track the file; instantiation stays with the
+      /// scene graph, which re-parses through this same path when the scene activates
       if (asset_ptr->path_hash != 0) {
-        call_pipeline_fn<scene_pipeline>(pipeline, on_failure, "scene files load through the project scene graph, not begin_asset_load");
+        const std::string standalone_extension = asset_ptr->load_path.extension().string();
+        if (!serialization::is_scene_file_extension(standalone_extension)) {
+          call_pipeline_fn<scene_pipeline>(pipeline, on_failure, std::format("'{}' is not a scene document ({}/{} expected)", asset_ptr->load_path.string(), serialization::kSceneTomlExtension, serialization::kSceneBinaryExtension));
+          co_return;
+        }
+
+        serialization::scene_parse_result parsed = serialization::load_scene_document(asset_ptr->absolute_path);
+        if (!parsed.success()) {
+          call_pipeline_fn<scene_pipeline>(pipeline, on_failure, std::format("failed to parse scene document '{}': {}", asset_ptr->load_path.string(), parsed.error));
+          co_return;
+        }
+        for (const std::string& warning : parsed.warnings) {
+          CORE_LOG_WARN("scene document '{}': {}", asset_ptr->load_path.string(), warning);
+        }
+
+        co_await task::yield();
+        call_pipeline_fn<scene_pipeline>(pipeline, on_success);
         co_return;
       }
 
@@ -601,6 +697,25 @@ namespace other {
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       OTHER_ASSERT(false, "No loader implemented for asset type {} in empty_loader", asset_ptr->asset_type);
+      co_return;
+    }
+
+    task unload_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+      CORE_LOG_DEBUG("Unloading texture (ID: {})", asset_ptr->id);
+
+      auto* renderer = subsystem<renderer_backend>::get();
+      OTHER_ASSERT(renderer != nullptr, "Renderer backend subsystem is not available in unload_texture");
+
+      renderer->remove_texture(asset_ptr->path_hash);
+      call_pipeline_fn<texture_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task unload_stub_asset(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+      CORE_LOG_DEBUG("Unloading {} stub asset (ID: {})", asset_ptr->asset_type, asset_ptr->id);
+      call_pipeline_fn<stub_pipeline>(pipeline, on_success);
       co_return;
     }
 

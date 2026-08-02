@@ -3,6 +3,8 @@
  **/
 #include "asset_tests.hpp"
 
+#include <fstream>
+
 #include <asio/asio.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -247,76 +249,175 @@ worker_count = {}
     handler = nullptr;
   }
 
-  TEST_F(asset_tests, omesh_async_load) {
-    GTEST_SKIP() << "Skipping omesh test until we have a way to generate them in CI, files are too large to push to git (may have to use github lfs?)";
+  namespace {
+
+    void set_up_mock_rendering_api_for_texture(event_system& events) {
+      static texture test_texture;
+
+      using ::testing::_;
+      scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
+      EXPECT_CALL(*mock_api, on_initialize(_)).Times(1);
+      EXPECT_CALL(*mock_api, shutdown_ui_context()).Times(1);
+      EXPECT_CALL(*mock_api, on_shutdown(_)).Times(1);
+
+      EXPECT_CALL(*mock_api, create_texture_resource(_, _))
+        .Times(1)
+        .WillOnce(testing::Return(&test_texture));
+      EXPECT_CALL(*mock_api, set_texture_filter(_, _, _)).Times(1);
+      EXPECT_CALL(*mock_api, set_texture_wrap_mode(_, _, _, _)).Times(1);
+      EXPECT_CALL(*mock_api, upload_texture(_, _, _, _, _, _, _, _, _)).Times(1);
+      /// unload_texture must actually destroy the gpu resource
+      EXPECT_CALL(*mock_api, destroy_texture_resource(_)).Times(1);
+
+      subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
+      fs->initialize_file_events(events);
+      constexpr std::array kDefaultMounts = {
+        driver_mounts::kAssetMount,
+        driver_mounts::kSceneMount,
+        driver_mounts::kScriptMount,
+      };
+      fs->initialize_directory_structure(kDefaultMounts);
+    }
+
+    void set_up_mock_rendering_api_and_expect_no_resource_creation(event_system& events) {
+      using ::testing::_;
+      scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
+      EXPECT_CALL(*mock_api, on_initialize(_)).Times(1);
+      EXPECT_CALL(*mock_api, shutdown_ui_context()).Times(1);
+      EXPECT_CALL(*mock_api, on_shutdown(_)).Times(1);
+
+      subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
+      fs->initialize_file_events(events);
+      constexpr std::array kDefaultMounts = {
+        driver_mounts::kAssetMount,
+        driver_mounts::kSceneMount,
+        driver_mounts::kScriptMount,
+      };
+      fs->initialize_directory_structure(kDefaultMounts);
+    }
+
+    void pump_until(asio::io_context& io_context, job_system& jobs, asset_handler& handler, auto&& done) {
+      const std::chrono::seconds timeout{ 5 };
+      const auto start_time = std::chrono::steady_clock::now();
+      while (!done() && std::chrono::steady_clock::now() - start_time < timeout) {
+        io_context.poll();
+        jobs.poll();
+        handler.update_pipelines();
+      }
+      ASSERT_TRUE(done()) << "Timed out pumping asset pipelines";
+    }
+
+  }  // namespace
+
+  TEST_F(asset_tests, texture_async_load_and_unload) {
+    dtor ___destructor_guard;
 
     job_system jobs{ io_context };
     event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
     scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    set_up_mock_rendering_api_for_texture(events);
 
-    set_up_mock_rendering_api_and_expect_mesh_creation(events);
-
-    struct dtor {
-      ~dtor() {
-        shutdown_mock_rendering_api();
-      }
-    } ___destructor_guard;
-
-    filepath test_file_path = "tests/resources/models/NewSponza_Curtains_FBX_YUp_fbx7binary.omesh";
-    ASSERT_EQ(std::filesystem::exists(test_file_path), true)
-      << "Test asset file does not exist: "
-      << test_file_path.string();
+    filepath test_file_path = "tests/resources/textures/checker4x4.png";
+    ASSERT_TRUE(std::filesystem::exists(test_file_path)) << "Test texture does not exist: " << test_file_path.string();
 
     natural_t asset_id = handler->load_asset(test_file_path);
-    EXPECT_NE(asset_id, 0);
-    ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
-    EXPECT_EQ(handler->get_num_loading_assets(), 1);
-    EXPECT_EQ(handler->get_num_loaded_assets(), 0);
-    EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    ASSERT_NE(asset_id, 0);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::LOADING; });
+    ASSERT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
 
-    /// no io-context polling yet so should still be loading
-    EXPECT_THAT(handler->get_asset_state(asset_id), asset_state::LOADING);
-
-    std::chrono::seconds load_timeout{ 10 };
-
-    auto start_time = std::chrono::steady_clock::now();
-    while (handler->get_asset_state(asset_id) == asset_state::LOADING &&
-           std::chrono::steady_clock::now() - start_time < load_timeout) {
-      io_context.poll();
-      handler->update_pipelines();
-    }
-    std::chrono::seconds duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
-    ASSERT_LT(duration, load_timeout) << "Timed out waiting for asset to load";
-
-    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
-    ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
-    EXPECT_EQ(handler->get_num_loading_assets(), 0);
-    EXPECT_EQ(handler->get_num_loaded_assets(), 1);
-    EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    /// decoded, uploaded, and registered on the backend under the asset's path hash
+    resource_handle texture_handle = subsystem<renderer_backend>::get()->get_texture(handler->get_asset_hash(asset_id));
+    EXPECT_NE(texture_handle.id, 0u);
+    EXPECT_EQ(texture_handle.type, resource_type::TEXTURE);
 
     handler->unload_asset(asset_id);
-    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADING);
-
-    start_time = std::chrono::steady_clock::now();
-    while (handler->get_asset_state(asset_id) == asset_state::UNLOADING &&
-           std::chrono::steady_clock::now() - start_time < load_timeout) {
-      io_context.poll();
-      handler->update_pipelines();
-    }
-    duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
-    ASSERT_LT(duration, load_timeout) << "Timed out waiting for asset to unload";
-
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::UNLOADING; });
     EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
-    ASSERT_EQ(handler->get_num_assets_in_flight(), 1);
-    EXPECT_EQ(handler->get_num_loading_assets(), 0);
-    EXPECT_EQ(handler->get_num_loaded_assets(), 1);
-    EXPECT_EQ(handler->get_num_pending_unloads(), 1);
+    EXPECT_EQ(subsystem<renderer_backend>::get()->get_texture(handler->get_asset_hash(asset_id)).id, 0u);
 
-    ASSERT_NO_FATAL_FAILURE(handler->begin_unload());
-    EXPECT_EQ(handler->get_num_assets_in_flight(), 0);
-    EXPECT_EQ(handler->get_num_loading_assets(), 0);
-    EXPECT_EQ(handler->get_num_loaded_assets(), 0);
+    handler = nullptr;
+  }
+
+  TEST_F(asset_tests, backendless_types_load_as_tracked_stubs) {
+    dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+    event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    set_up_mock_rendering_api_and_expect_no_resource_creation(events);
+
+    /// audio/animation/input-map have no runtime backend yet; loading must succeed
+    /// as a tracked stub, not abort in empty_loader
+    const filepath stub_dir = std::filesystem::temp_directory_path() / "other-asset-stub-tests";
+    std::filesystem::create_directories(stub_dir);
+    const std::array stub_files = {
+      stub_dir / "tone.wav",
+      stub_dir / "walk.anim",
+      stub_dir / "controls.oinputmap",
+    };
+    for (const filepath& file : stub_files) {
+      std::ofstream out(file);
+      out << "stub";
+    }
+    /// stable ids virtualize against the mount table, so the stub dir must be mounted
+    ASSERT_NE(subsystem<file_system>::get()->mount_directory("stubassets", stub_dir), nullptr);
+
+    for (const filepath& file : stub_files) {
+      natural_t asset_id = handler->load_asset(file);
+      ASSERT_NE(asset_id, 0) << file.string();
+      pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::LOADING; });
+      EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED) << file.string();
+    }
+
+    handler = nullptr;
+    std::error_code ec;
+    std::filesystem::remove_all(stub_dir, ec);
+  }
+
+  TEST_F(asset_tests, unload_requested_while_loading_defers_and_drains) {
+    dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+    event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    set_up_mock_rendering_api_and_expect_mesh_creation(events);
+
+    filepath test_file_path = "tests/resources/models/suzanne3.fbx";
+    ASSERT_TRUE(std::filesystem::exists(test_file_path));
+
+    natural_t asset_id = handler->load_asset(test_file_path);
+    ASSERT_NE(asset_id, 0);
+    ASSERT_EQ(handler->get_asset_state(asset_id), asset_state::LOADING);
+
+    /// loading a path already in flight folds into the existing pipeline
+    EXPECT_EQ(handler->load_asset(test_file_path), asset_id);
+    EXPECT_EQ(handler->get_num_loading_assets(), 1);
+
+    /// unload during load defers; the load must not be torn down mid-flight
+    handler->unload_asset(asset_id);
+    EXPECT_EQ(handler->get_num_pending_unloads(), 1);
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADING);
+
+    /// once the load settles, update_pipelines drains the deferred unload to completion
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) == asset_state::UNLOADED; });
     EXPECT_EQ(handler->get_num_pending_unloads(), 0);
+    EXPECT_FALSE(handler->asset_loaded(asset_id));
+    EXPECT_EQ(handler->get_num_loaded_assets(), 0);
 
     handler = nullptr;
   }

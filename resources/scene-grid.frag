@@ -12,7 +12,6 @@ uniform int OE_grid_extent;
 uniform int OE_grid_major_every;
 uniform int OE_grid_sector_count;
 uniform int OE_grid_polar;
-uniform int OE_grid_rings_only;
 uniform int OE_grid_show_axes;
 
 out vec4 frag_color;
@@ -86,16 +85,10 @@ vec4 oe_polar_grid() {
   vec2 fw_plane = fwidth(OE_plane_coords);
   float pixel_world = max(max(fw_plane.x, fw_plane.y), 0.0000001);
 
-  /// stacked cylindrical layers keep only their ring families: majors when configured, minors otherwise
-  bool rings_only = OE_grid_rings_only != 0;
-
   /// rings at integer multiples of the cell size
   float rings_t = radius_world / OE_grid_cell_size;
   float rings_ft = pixel_world / OE_grid_cell_size;
   float rings = oe_grid_line_mask(rings_t, rings_ft, width) * oe_grid_lod_fade(rings_ft);
-  if (rings_only && OE_grid_major_every > 0) {
-    rings = 0.0;
-  }
 
   float major = 0.0;
   if (OE_grid_major_every > 0) {
@@ -111,7 +104,7 @@ vec4 oe_polar_grid() {
   float center_fade = smoothstep(0.5, 1.5, rings_t);
 
   float spokes = 0.0;
-  if (OE_grid_sector_count > 0 && !rings_only) {
+  if (OE_grid_sector_count > 0) {
     float sector_t = theta / (2.0 * kPi) * float(OE_grid_sector_count);
     float sector_ft = theta_ft / (2.0 * kPi) * float(OE_grid_sector_count);
     spokes = oe_grid_line_mask(sector_t, sector_ft, width) * oe_grid_lod_fade(sector_ft) * center_fade;

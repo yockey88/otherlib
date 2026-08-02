@@ -3,6 +3,7 @@
  **/
 #include "cli/process.hpp"
 
+#include <array>
 #include <format>
 
 #ifdef OTHER_ENVIRONMENT_WINDOWS
@@ -73,6 +74,16 @@ namespace other {
 
 #ifdef OTHER_ENVIRONMENT_WINDOWS
 
+    opt<filepath> find_program_on_path(std::string_view name) {
+      std::array<wchar_t, 4096> buffer = {};
+      const std::wstring wide_name = widen(name);
+      const DWORD length = SearchPathW(nullptr, wide_name.c_str(), L".exe", static_cast<DWORD>(buffer.size()), buffer.data(), nullptr);
+      if (length == 0 || length >= buffer.size()) {
+        return std::nullopt;
+      }
+      return filepath(std::wstring_view(buffer.data(), length));
+    }
+
     process_result launch_process(const process_launch& launch) {
       process_result result;
       if (launch.executable.empty()) {
@@ -122,6 +133,11 @@ namespace other {
     }
 
 #else
+
+    opt<filepath> find_program_on_path(std::string_view name) {
+      (void)name;
+      return std::nullopt;
+    }
 
     process_result launch_process(const process_launch& launch) {
       process_result result;
