@@ -134,7 +134,8 @@ namespace other {
         std::println(std::cerr, "Invalid value for 'application.project-file', file does not exist: {}", path.string());
       } else {
         config.project_file = path;
-        CORE_LOG_INFO("Using project file: {}", path.string());
+        /// config parsing runs before the logger subsystem boots; CORE_LOG_* here aborts
+        std::println(std::cout, "Using project file: {}", path.string());
       }
     }
 

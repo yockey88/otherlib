@@ -4,6 +4,7 @@
 #include "core/ref.hpp"
 
 #include "scripting/actions/callback.hpp"
+#include "scripting/interface_registry.hpp"
 
 #include "action_tests.hpp"
 
@@ -70,6 +71,25 @@ namespace other {
 
     double ret = callback_fn->call<double>(5, 3.2f);
     ASSERT_NEAR(ret, 8.2, 1e-6);
+  }
+
+  /// regression: assembly hot reload unregisters an assembly's named callbacks on the unload
+  /// half so the fresh assembly can register the same names again (previously fatal)
+  TEST_F(action_tests, named_callback_reregistration_after_unregister) {
+    interface_registry registry;
+
+    int calls = 0;
+    registry.register_named_callback("Test.Callback", make_ref<native_callback<void>>([&calls]() { calls += 1; }));
+    registry.invoke_callback("Test.Callback");
+    ASSERT_EQ(calls, 1);
+
+    registry.unregister_named_callback("Test.Callback");
+    registry.invoke_callback("Test.Callback");  /// unknown callback warns and no-ops
+    ASSERT_EQ(calls, 1);
+
+    registry.register_named_callback("Test.Callback", make_ref<native_callback<void>>([&calls]() { calls += 10; }));
+    registry.invoke_callback("Test.Callback");
+    ASSERT_EQ(calls, 11);
   }
 
   TEST_F(action_tests, dotnet_callback_test) {

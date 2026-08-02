@@ -60,6 +60,18 @@ namespace OtherCsBindings
     internal readonly static Set<PropertyInfo> cached_properties = new();
     internal readonly static Set<Attribute> cached_attributes = new();
 
+    /// cached reflection objects root their declaring assembly, which would keep an unloaded
+    ///  AssemblyLoadContext alive forever — evict everything belonging to the assembly before
+    ///  its context is unloaded
+    internal static void EvictAssemblyFromCaches(Assembly asm)
+    {
+      cached_types.RemoveWhere(t => t.Assembly == asm);
+      cached_methods.RemoveWhere(m => m.Module.Assembly == asm);
+      cached_fields.RemoveWhere(f => f.Module.Assembly == asm);
+      cached_properties.RemoveWhere(p => p.Module.Assembly == asm);
+      cached_attributes.RemoveWhere(a => a.GetType().Assembly == asm);
+    }
+
     private static Dictionary<Type, ManagedType> type_converters = new()
     {
       { typeof(sbyte), ManagedType.SByte },

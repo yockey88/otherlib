@@ -72,13 +72,32 @@ namespace other {
 
       ostd::vector<callback_binding> bindings = asm_ref->get_native_function_bindings();
       CORE_LOG_DEBUG("Found {} native callback bindings in assembly [{}:{}]", bindings.size(), asm_ref->get_handle(), asm_ref->get_name());
+      OTHER_ASSERT(!asset_callback_bindings.contains(asset_id), "SCRIPT_SOURCE asset {} loaded twice without an unload in between, named callbacks would collide.", asset_id);
       for (const auto& binding : bindings) {
         auto last_dot = binding.full_type_and_method_name.find_last_of('.');
         std::string type_name = binding.full_type_and_method_name.substr(0, last_dot);
         std::string method_name = binding.full_type_and_method_name.substr(last_dot + 1);
         CORE_LOG_DEBUG("Native Callback Binding registered: {} -> {}.{}", binding.binding_name, type_name, method_name);
         get_driver().get_interface_registry().register_named_callback(binding.binding_name, make_ref<dotnet_callback>(type_name, method_name));
+        asset_callback_bindings[asset_id].push_back(binding.binding_name);
       }
+    });
+
+    /// fires for both the unload half of an assembly hot reload and a real unload (project
+    ///   close), so refreshed assemblies re-register their callbacks against a clean registry
+    events.add_listener("script-source.asset-unloaded", [this](const value& data) {
+      OTHER_ASSERT(data.type() == value_type::UINT64, "Expected uint64 asset ID for script source asset-unloaded event");
+      natural_t asset_id = data;
+
+      auto itr = asset_callback_bindings.find(asset_id);
+      if (itr == asset_callback_bindings.end()) {
+        return;
+      }
+
+      for (const auto& binding_name : itr->second) {
+        get_driver().get_interface_registry().unregister_named_callback(binding_name);
+      }
+      asset_callback_bindings.erase(itr);
     });
   }
 

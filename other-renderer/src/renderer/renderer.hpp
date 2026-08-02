@@ -44,6 +44,7 @@ namespace other {
     glm::vec4 color;
   };
 
+
   struct render_data {
     glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
 
@@ -59,9 +60,6 @@ namespace other {
     ostd::frame_vector<gpu::graphics_material_buffer> material_buffers;
     ostd::frame_vector<gpu::model_matrix_buffer> model_buffers;
     ostd::frame_vector<gpu::bone_matrix_buffer> bone_buffers;
-
-    render_stream scene_geometry_stream;
-    render_stream debug_data;
   };
 
   struct viewport {
@@ -86,7 +84,7 @@ namespace other {
     render_executor_registry& get_executor_registry() { return executor_registry; }
     frame_binding_registry& get_binding_registry() { return binding_registry; }
     pass_executor_resolver* get_pass_executor_resolver() { return pass_exec_resolver; }
-    render_stream_registry& get_debug_stream_registry() { return debug_stream_registry; }
+    render_stream_registry& get_stream_registry() { return stream_registry; }
 
     void initialize_pass_resolver(pass_executor_resolver* resolver);
 
@@ -100,9 +98,24 @@ namespace other {
     void render(std::span<viewport> viewports);
     void end_frame();
 
+    /// emitters over the renderer-owned draw streams, valid from any point in the frame
+    ///   (including script ticks); streams accumulate until the frame is rendered and are
+    ///   cleared in end_frame
     debug_draw debug() {
-      return debug_draw{ scene_data ? &scene_data->debug_data : nullptr };
+      return debug_draw{ &draw_streams, builtin_debug_streams::kSet };
     }
+    debug_draw scene_overlay() {
+      return debug_draw{ &draw_streams, builtin_scene_streams::kSet };
+    }
+
+    /// registers the stream and configures its storage/mesh immediately
+    void register_draw_stream(std::string_view name, render_stream_definition defn);
+    render_stream& get_draw_streams() { return draw_streams; }
+
+    /// immediate-mode procedural grid submission, drawn by the scene pipeline's grid pass
+    ///   this frame and discarded in end_frame
+    void submit_grid(const grid_draw_data& grid) { pending_grids.push_back(grid); }
+    const ostd::vector<grid_draw_data>& get_pending_grids() const { return pending_grids; }
 
     bool has_pipeline(const std::string_view name) const {
       return pipelines.find(FNV(name)) != pipelines.end();
@@ -235,7 +248,11 @@ namespace other {
     pass_executor_resolver* pass_exec_resolver = nullptr;
     render_executor_registry executor_registry;
     frame_binding_registry binding_registry;
-    render_stream_registry debug_stream_registry;
+    render_stream_registry stream_registry;
+    /// renderer-owned dynamic draw storage (debug + in-scene streams and grid submissions),
+    ///   cleared every end_frame
+    render_stream draw_streams;
+    ostd::vector<grid_draw_data> pending_grids;
 
     ostd::map<natural_t, resource_handle> stream_meshes;
     ostd::map<natural_t, resource_handle> stream_shaders;

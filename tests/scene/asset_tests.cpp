@@ -31,8 +31,15 @@ namespace other {
     EXPECT_EQ(asset::get_type_from_extension(".cs"), asset::SCRIPT_FILE);
     EXPECT_EQ(asset::get_type_from_extension(".mp3"), asset::AUDIO);
     EXPECT_EQ(asset::get_type_from_extension(".wav"), asset::AUDIO);
-    EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCENE);
+    /// scenes are declarative documents; lua files are behavior-hook scripts
+    EXPECT_EQ(asset::get_type_from_extension(".lua"), asset::SCRIPT_FILE);
+    EXPECT_EQ(asset::get_type_from_extension(".oscn"), asset::SCENE);
+    EXPECT_EQ(asset::get_type_from_extension(".oscnb"), asset::SCENE);
+    EXPECT_EQ(asset::get_type_from_extension(".os"), asset::SCRIPT);
     EXPECT_EQ(asset::get_type_from_extension(".unknown"), asset::EMPTY);
+    /// regression: the extension table once value-initialized a trailing slot, making
+    ///  the empty extension classify as TEXTURE (type 0)
+    EXPECT_EQ(asset::get_type_from_extension(""), asset::EMPTY);
   }
 
   TEST_F(asset_tests, supported_extensions) {
@@ -53,13 +60,16 @@ namespace other {
 
     auto script_file_exts = asset::get_supported_extensions(asset::SCRIPT_FILE);
     EXPECT_NE(std::find(script_file_exts.begin(), script_file_exts.end(), ".cs"), script_file_exts.end());
+    EXPECT_NE(std::find(script_file_exts.begin(), script_file_exts.end(), ".lua"), script_file_exts.end());
 
     auto audio_exts = asset::get_supported_extensions(asset::AUDIO);
     EXPECT_NE(std::find(audio_exts.begin(), audio_exts.end(), ".mp3"), audio_exts.end());
     EXPECT_NE(std::find(audio_exts.begin(), audio_exts.end(), ".wav"), audio_exts.end());
 
     auto scene_exts = asset::get_supported_extensions(asset::SCENE);
-    EXPECT_NE(std::find(scene_exts.begin(), scene_exts.end(), ".lua"), scene_exts.end());
+    EXPECT_NE(std::find(scene_exts.begin(), scene_exts.end(), ".oscn"), scene_exts.end());
+    EXPECT_NE(std::find(scene_exts.begin(), scene_exts.end(), ".oscnb"), scene_exts.end());
+    EXPECT_EQ(std::find(scene_exts.begin(), scene_exts.end(), ".lua"), scene_exts.end());
   }
 
   MATCHER(IsLoadingOrLoaded, "") {

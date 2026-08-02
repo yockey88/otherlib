@@ -10,7 +10,7 @@ Key concepts of the Other Environment are defined here:
 - Other Driver: the core class of `otherlib.lib` that loads a configuration and possibly a project file and is the main application object.
   - Drivers can be any type of program and custom drivers can load their own subsystem profiles to, for example, leave out rendering or physics for a command line application
 - Other Project: a project defined in a `.toml` file (separate from the driver configuration `.toml` file) that specifies a collection of scenes/assets/plugins.
-- Other Application: a driver with an application.
+- Other Application: a driver with a project.
 
 Below is an incredibly rough diagram of how an Other Application works
 

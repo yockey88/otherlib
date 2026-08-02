@@ -4,6 +4,9 @@
 #ifndef OTHERLIB_UI_INSPECTOR_WIDGETS_HPP
 #define OTHERLIB_UI_INSPECTOR_WIDGETS_HPP
 
+#include <glm/glm.hpp>
+#include <imgui/imgui.h>
+
 #include "core/defines.hpp"
 
 #include "asset/asset.hpp"

@@ -17,8 +17,10 @@
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
+#include "serialization/scene_serializer.hpp"
 
 #include "driver/systems/scene_system.hpp"
+#include "ui/menu-bar/menu_item.hpp"
 #include "ui/object-editor/object_editor.hpp"
 #include "ui/project-creator/project_creator.hpp"
 #include "ui/render-pipeline-ui/render_pipeline_editor.hpp"
@@ -60,21 +62,29 @@ namespace other {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.activated event data to be of type UINT64 representing the active scene ID.");
       context.current_selection.scene_ptr = get_active_scene();
       OTHER_ASSERT(context.current_selection.scene_ptr != nullptr, "Active scene pointer is null in scene.activated event listener.");
+      context.reset_scene_edit_tracking();
     });
     get_event_system()->add_listener("scene.deactivated", [this](const value& data) {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Expected scene.deactivated event data to be of type UINT64 representing the active scene ID.");
       context.current_selection.scene_ptr = nullptr;
+      context.reset_scene_edit_tracking();
     });
 
-    auto& r = get_renderer().get_debug_stream_registry();
+    /// editor.lua created the File menu before on_initialize ran; append the scene entry
+    get_ui()->register_main_menu_bar_menu_item("File", ui::menu_item{
+                                                         .name = "Save Scene",
+                                                         .action = action{ std::function<void()>([this]() { save_active_scene(); }) },
+                                                       });
+
+    auto& r = get_renderer();
     const ostd::vector<vertex_attribute> vtx = {
       { value_type::VEC3, "OE_position", 0, sizeof(glm::vec3) },
       { value_type::VEC4, "OE_color", 1, sizeof(glm::vec4) },
     };
-    r.register_stream(builtin_debug_streams::kLines, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::LINES, vtx } });
-    r.register_stream(builtin_debug_streams::kTris, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::TRIANGLES, vtx } });
-    r.register_stream(builtin_debug_streams::kPoints, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 14, .draw_recipe = { "debug_overlay", mesh::POINTS, vtx } });
-    r.register_stream(builtin_debug_streams::kMeshes, { .element_size = sizeof(debug_mesh_instance), .max_per_frame = 4096, .draw_recipe = {} });
+    r.register_draw_stream(builtin_debug_streams::kLines, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::LINES, vtx } });
+    r.register_draw_stream(builtin_debug_streams::kTris, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::TRIANGLES, vtx } });
+    r.register_draw_stream(builtin_debug_streams::kPoints, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 14, .draw_recipe = { "debug_overlay", mesh::POINTS, vtx } });
+    r.register_draw_stream(builtin_debug_streams::kMeshes, { .element_size = sizeof(debug_mesh_instance), .max_per_frame = 4096, .draw_recipe = {} });
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
@@ -101,6 +111,13 @@ namespace other {
 
     ctx.add_action("orbit_hold")
       .bind_mouse_button(mouse_button::MIDDLE);
+
+    ctx.add_action("undo")
+      .bind_key(key_code::Z, modifier_flags::CTRL);
+    ctx.add_action("redo")
+      .bind_key(key_code::Y, modifier_flags::CTRL);
+    ctx.add_action("save-scene")
+      .bind_key(key_code::S, modifier_flags::CTRL);
   }
 
   void editor_driver::on_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline) {
@@ -184,10 +201,14 @@ namespace other {
             .near_plane = 0.33f,
             .far_plane = 15.f,
           };
+          /// the render camera's pose comes from camera.position/direction (see
+          ///  render_scene_to_viewports), not the object's transform, so inverse(view_proj)
+          ///  alone is the NDC->world map; image_size holds the scene viewport's size, which
+          ///  is the aspect the game camera actually renders with
           camera_comp->camera.clip = debug_clip;
-          glm::mat4 view_proj = camera_comp->camera.get_projection_matrix(get_renderer().get_window_size()) * camera_comp->camera.get_view_matrix();
+          glm::mat4 view_proj = camera_comp->camera.get_projection_matrix(glm::ivec2(camera_comp->camera.image_size)) * camera_comp->camera.get_view_matrix();
           camera_comp->camera.clip = save;
-          draw.frustum(glm::inverse(view_proj) * world_trans, basic_colors::kBlue);
+          draw.frustum(glm::inverse(view_proj), basic_colors::kBlue);
         }
       }
     }
@@ -212,6 +233,7 @@ namespace other {
       }
     }
 
+    context.tick_edit_tracker();
     update_input();
   }
 
@@ -220,17 +242,6 @@ namespace other {
     OTHER_ASSERT(s != nullptr, "Activated scene with ID {} not found in scene system.", scene_id);
 
     context.scene_viewport_handle = context.register_viewport("scene-viewport", "default-instancing", s->get_primary_camera());
-
-    auto& floor = s->get_object("Floor");
-    auto& donut = s->get_object("Donut");
-
-    physics_body::settings phys_settings = {
-      .body_type = physics_body::STATIC,
-      .world_transform = glm::mat4(1.f),
-      .mass = 1.f,
-    };
-    auto& phys_comp = s->add_component<physics_component>(floor.id);
-    // phys_comp.settings.body_type = physics_body::STATIC;
   }
 
   void editor_driver::on_scene_deactivated(natural_t scene_id) {
@@ -281,17 +292,36 @@ namespace other {
   }
 
   void editor_driver::on_input_event(const input_state_change_event& event) {
-    if (event.action_name == "toggle_editor_controls" && event.pressed) {
-      auto* input_sys = subsystem<input_system>::get();
-      OTHER_ASSERT(input_sys != nullptr, "Input system is null");
+    if (!event.pressed) {
+      return;
+    }
 
-      if (auto* active_ctx = input_sys->active_context(); active_ctx != nullptr) {
-        if (active_ctx->name == "editor-camera-controls") {
-          input_sys->pop_context();
-        } else {
-          input_sys->push_context("editor-camera-controls");
-        }
-      }
+    if (event.action_name == "undo") {
+      context.undo_scene_edit();
+    } else if (event.action_name == "redo") {
+      context.redo_scene_edit();
+    } else if (event.action_name == "save-scene") {
+      save_active_scene();
+    }
+  }
+
+  void editor_driver::save_active_scene() {
+    scene* s = get_active_scene();
+    if (s == nullptr) {
+      CORE_LOG_WARN("No active scene to save.");
+      return;
+    }
+
+    if (!s->source_path.has_value()) {
+      CORE_LOG_ERROR("Scene '{}' has no scene document path to save to (in-memory scenes cannot be saved yet).", s->name);
+      return;
+    }
+
+    const serialization::scene_document doc = serialization::capture_scene(*s, serialization::default_codec_services());
+    if (serialization::save_scene_document(doc, *s->source_path)) {
+      CORE_LOG_INFO("Saved scene '{}' to '{}' ({} objects).", s->name, s->source_path->string(), doc.objects.size());
+    } else {
+      CORE_LOG_ERROR("Failed to save scene '{}' to '{}'.", s->name, s->source_path->string());
     }
   }
 

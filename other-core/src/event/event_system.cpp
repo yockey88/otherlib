@@ -129,7 +129,7 @@ namespace other {
     if (itr == registered_events.end()) {
       /// expected if event system is cleared before the timer is polled to call the final cancel,
       ///  usually will occur if clear is called before the events are fully purged
-      CORE_LOG_ERROR("Attempted to cancel unregistered event ID {}", event_id);
+      CORE_LOG_TRACE("Attempted to cancel unregistered event ID {}", event_id);
       return;
     }
     itr->listeners.clear();
@@ -195,14 +195,26 @@ namespace other {
   void event_system::post_event_callback(natural_t event_id, microseconds duration) {
     {
       std::scoped_lock lock(events_mutex);
-      auto& timer = event_timers.emplace_back(event_timer{ event_id, asio::steady_timer(io_context) });
+      /// one timer entry per event: recurring events re-arm their existing timer instead of
+      ///  appending a new (never-erased) entry every period
+      auto timer_itr = std::find_if(event_timers.begin(), event_timers.end(), [event_id](const event_timer& et) {
+        return et.event_id == event_id;
+      });
+      if (timer_itr == event_timers.end()) {
+        event_timers.emplace_back(event_timer{ event_id, asio::steady_timer(io_context) });
+        timer_itr = std::prev(event_timers.end());
+      }
+
+      auto& timer = *timer_itr;
       timer.timer.expires_after(duration);
       timer.timer.async_wait([this, event_id](const asio::error_code& ec) {
         if (ec && ec != asio::error::operation_aborted) {
           CORE_LOG_ERROR("Event {} timer error: {}", event_id, ec.message());
           return;
         } else if (ec) {
-          cancel_event(event_id);
+          if (has_event(event_id)) {
+            cancel_event(event_id);
+          }
           return;
         }
 

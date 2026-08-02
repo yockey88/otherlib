@@ -1,6 +1,6 @@
-set(OTHERLIB_VERSION_MAJOR "0")
+set(OTHERLIB_VERSION_MAJOR "1")
 set(OTHERLIB_VERSION_MINOR "0")
-set(OTHERLIB_VERSION_PATCH "2")
+set(OTHERLIB_VERSION_PATCH "0")
 configure_version_header(
   "otherlib_version.hpp"
   "OTHERLIB"
@@ -69,6 +69,7 @@ target_sources(otherlib
     src/scripting/dotnet_bindings/scene_bindings.cpp
     src/scripting/dotnet_bindings/scene_object_bindings.cpp
     src/scripting/dotnet_bindings/component_bindings.cpp
+    src/scripting/dotnet_bindings/draw_bindings.cpp
     src/scripting/dotnet_bindings/event_bindings.cpp
     src/scripting/dotnet_bindings/input_bindings.cpp
     src/scripting/dotnet_bindings/network_bindings.cpp
@@ -125,6 +126,7 @@ target_sources(otherlib
 
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp
+    src/tools/scene_cli_tool.cpp
 
     src/ui/script/script_property_widget.cpp
     src/ui/type-bindings/value_ui.cpp
@@ -182,7 +184,8 @@ endforeach()
 target_link_directories(otherlib PUBLIC 
   $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/sol2/lib>
 )
-target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_scripting other_network other_core)
+## other_cli rides along so cli tools stay invocable from inside any running environment
+target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_scripting other_network other_core other_cli)
 
 add_library(otherlib_main STATIC src/other_main.cpp)
 target_link_libraries(otherlib_main PUBLIC otherlib)

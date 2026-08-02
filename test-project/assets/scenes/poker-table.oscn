@@ -1,0 +1,12 @@
+# other environment scene document
+[scene]
+schema-version = 1
+name = "poker-table"
+clear-color = [0.2, 0.22, 0.233, 1.0]
+
+[[objects]]
+id = 1
+name = "PokerTable"
+
+[objects.components.transform]
+local_position = [0.0, 0.0, 0.0]

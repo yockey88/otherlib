@@ -6,11 +6,37 @@
 
 #include <array>
 
-#include "core/defines.hpp"
+#include <refl/refl.hpp>
 
-#include "model/model.hpp"
+#include <xxHash/xxh3.h>
+
+#include "core/defines.hpp"
+#include "core/enum_formatter.hpp"
+#include "file/glob.hpp"
 
 namespace other {
+
+  inline static natural_t stable_id_for(const std::string_view virtual_path) {
+    OTHER_ASSERT(!virtual_path.empty(), "empty virtual path");
+    OTHER_ASSERT(virtual_path.find('\\') == std::string_view::npos, "virtual paths use forward slashes: '{}'", virtual_path);
+    OTHER_ASSERT(virtual_path.find("..") == std::string_view::npos && virtual_path.find("./") == std::string_view::npos, "virtual paths must be normalized: '{}'", virtual_path);
+    OTHER_ASSERT(virtual_path.front() != '/', "virtual paths are mount-relative: '{}'", virtual_path);
+    return XXH3_64bits(virtual_path.data(), virtual_path.size());
+  }
+
+  struct manifest_domain {
+    natural_t owner_stable_id = 0;
+    filepath root_abs;
+    glob_set set;
+  };
+
+  enum class domain_hit : uint8_t {
+    OUTSIDE,   /// not this domain's concern
+    EXCLUDED,  /// inside the root but matches the exclude set (bin/, obj/, ...)
+    INSIDE,    /// attributable to the owner
+  };
+
+  domain_hit classify(const manifest_domain& d, const filepath& abs);
 
   struct asset {
     enum type {
@@ -41,7 +67,7 @@ namespace other {
     type asset_type = type::EMPTY;
 
     natural_t id = 0;
-    natural_t parent_id = 0;
+    natural_t stable_id = 0;
 
     /// hash uses absolute path string to avoid issues with relative paths and different working directories
     natural_t path_hash = 0;
@@ -109,7 +135,7 @@ namespace other {
     asset_name{ "empty", "Empty" },
   };
 
-  constexpr inline size_t kNumAssetExtensions = 18;
+  constexpr inline size_t kNumAssetExtensions = 20;
   constexpr inline std::array<std::string_view, kNumAssetExtensions> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
@@ -123,8 +149,10 @@ namespace other {
 
     ".csproj",  // SCRIPT_PROJECT
     ".cs",      // SCRIPT_FILE
-    ".dll",     // SCRIPT_SOURCE
-    ".so",      // SCRIPT_SOURCE
+    /// scene behavior-hook scripts and projectrc files; scenes themselves are .oscn/.oscnb
+    ".lua",  // SCRIPT_FILE
+    ".dll",  // SCRIPT_SOURCE
+    ".so",   // SCRIPT_SOURCE
 
     /// no real extension since scripts can be anything loaded out of a script source
     ".os",  // SCRIPT
@@ -132,11 +160,8 @@ namespace other {
     ".mp3",  // AUDIO
     ".wav",  // AUDIO
 
-    /// fix this so that we load lua as SCRIPT_FILE
-    //  involves fixing scene loading
-    ".lua",  // SCENE
-    // ".scene",         // SCENE
-    // ".scene-object",  // SCENE_OBJECT
+    ".oscn",   // SCENE (toml scene document)
+    ".oscnb",  // SCENE (compiled binary scene document)
 
     ".oinputmap",  // INPUT_MAP
     ".oeim",       // INPUT_MAP
@@ -161,11 +186,15 @@ namespace other {
       { asset::SCRIPT_SOURCE, ".dll" },
       { asset::SCRIPT_SOURCE, ".so" },
       { asset::SCRIPT_FILE, ".cs" },
+      { asset::SCRIPT_FILE, ".lua" },
+
+      { asset::SCRIPT, ".os" },
 
       { asset::AUDIO, ".mp3" },
       { asset::AUDIO, ".wav" },
 
-      { asset::SCENE, ".lua" },
+      { asset::SCENE, ".oscn" },
+      { asset::SCENE, ".oscnb" },
       { asset::INPUT_MAP, ".oinputmap" },
       { asset::INPUT_MAP, ".oeim" },
 

@@ -39,11 +39,6 @@ namespace other {
 
   namespace detail {
 
-    /// imgui functions so that imgui works across dll boundaries
-
-    // typedef void* (*ImGuiMemAllocFunc)(size_t sz, void* user_data);  // Function signature for ImGui::SetAllocatorFunctions()
-    // typedef void (*ImGuiMemFreeFunc)(void* ptr, void* user_data);    // Function signature for ImGui::SetAllocatorFunctions()
-
     void* imgui_allocate(size_t size, void* user_data) {
       return arena::allocate(size);
     }
@@ -107,8 +102,9 @@ namespace other {
     static std::string main_imgui_font = config.get_value<std::string>("rendering.imgui-font", "${other-directory}/resources/fonts/BlexMonoNerdFont-Regular.ttf");
     {
       PROFILE_SECTION("renderer_backend::load-backend--imgui-init");
+      // ImGui::SetAllocatorFunctions(&detail::imgui_allocate, &detail::imgui_deallocate);
+
       IMGUI_CHECKVERSION();
-      ImGui::SetAllocatorFunctions(&detail::imgui_allocate, &detail::imgui_deallocate);
       ImGui::CreateContext();
       ImGuiIO& io = ImGui::GetIO();
       io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -118,8 +114,8 @@ namespace other {
       io.IniFilename = real_ini_name.c_str();
       ImGui::StyleColorsDark();
       OTHER_ASSERT(std::filesystem::exists(main_imgui_font), "Failed to find ImGui font: {}", main_imgui_font);
-      ImFontConfig config;
 
+      ImFontConfig config;
       ImFont* font = ImGui::GetIO().Fonts->AddFontFromFileTTF(main_imgui_font.c_str(), 16.0f, &config, kUnicodeExtraRanges);
       OTHER_ASSERT(font != nullptr, "Failed to load ImGui font: {}", main_imgui_font);
       io.FontDefault = font;

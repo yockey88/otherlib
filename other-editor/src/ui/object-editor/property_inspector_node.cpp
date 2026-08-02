@@ -14,6 +14,7 @@
 
 #include "object/animation_controller.hpp"
 #include "object/camera_component.hpp"
+#include "object/grid_component.hpp"
 #include "object/light_component.hpp"
 #include "object/physics_component.hpp"
 #include "object/render_component.hpp"
@@ -43,6 +44,7 @@ IMGUI_REFLECT(other::physics_component, body, shape);
 IMGUI_REFLECT(other::physics_body::settings, body_type, mass);
 IMGUI_REFLECT(other::point_light_component, light);
 IMGUI_REFLECT(other::direction_light_component, light);
+IMGUI_REFLECT(other::grid_component, visible, show_axes, coordinate_system, plane, origin, cell_size, extent, major_line_every, sector_count, layer_extent, layer_spacing, line_width, line_color, major_line_color);
 
 IMGUI_REFLECT(other::orthonormal_basis, i, j, k);
 IMGUI_REFLECT(other::camera, position, direction, euler_angles, world_up, basis);
@@ -86,6 +88,7 @@ namespace other {
       inspector::end_component_section();
 
       if (changed) {
+        context.notify_scene_edited();
         if (on_modified != nullptr) {
           on_modified(comp, object, active_scene, driver_ptr);
         }
@@ -130,6 +133,7 @@ namespace other {
 
         if (inspector::draw_object_header_editable(name_buf, sizeof(name_buf), obj.id, colors::scene_object::kSignature)) {
           obj.name = std::string(name_buf);
+          context.notify_scene_edited();
         }
         ImGui::Separator();
 
@@ -188,6 +192,7 @@ namespace other {
 
           });
         draw_component_section<camera_component>("Camera", colors::scene_object::kComponentCamera, active_scene, &obj);
+        draw_component_section<grid_component>("Grid", colors::scene_object::kComponentGrid, active_scene, &obj);
         draw_component_section<physics_component>("Physics Body", colors::scene_object::kComponentPhysics, active_scene, &obj);
         draw_component_section<point_light_component>("Point Light", colors::scene_object::kComponentPointLight, active_scene, &obj);
         draw_component_section<direction_light_component>("Direction Light", colors::scene_object::kComponentDirectionLight, active_scene, &obj);
@@ -224,6 +229,7 @@ namespace other {
             if (ImGui::Selectable(comp_info.component_name.c_str())) {
               OTHER_ASSERT(comp_info.add_component != nullptr, "Add component function is null for component '{}'", comp_info.component_name);
               comp_info.add_component(active_scene, &obj);
+              context.notify_scene_edited();
               ImGui::CloseCurrentPopup();
             }
           }

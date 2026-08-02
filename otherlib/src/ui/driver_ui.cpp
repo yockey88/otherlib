@@ -112,6 +112,13 @@ namespace other {
 
   ostd::vector<std::string> driver_ui::get_available_window_names() const {
     ostd::vector<std::string> available_windows;
+    available_windows.append_range(get_available_builtin_window_names());
+    available_windows.append_range(get_available_custom_window_names());
+    return available_windows;
+  }
+
+  ostd::vector<std::string> driver_ui::get_available_builtin_window_names() const {
+    ostd::vector<std::string> available_windows;
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       if (i == 0 || i == static_cast<size_t>(INVALID_WINDOW_TYPE)) {
         continue;
@@ -120,6 +127,11 @@ namespace other {
       const auto& window = builtin_windows[i];
       available_windows.push_back(std::string(window.get_name()));
     }
+    return available_windows;
+  }
+
+  ostd::vector<std::string> driver_ui::get_available_custom_window_names() const {
+    ostd::vector<std::string> available_windows;
     for (const auto& [hash, window] : custom_windows) {
       available_windows.push_back(window.name);
     }
@@ -277,19 +289,14 @@ namespace other {
     }
 
     CORE_LOG_DEBUG("Unregistered custom window: {} [{}]", it->second.name, id);
+
+    it->second.window_ptr = nullptr;
     custom_windows.erase(it);
   }
 
   void driver_ui::unregister_window(const std::string_view name) {
     natural_t hash = FNV(name);
-    auto it = custom_windows.find(hash);
-    if (it == custom_windows.end()) {
-      CORE_LOG_ERROR("Failed to unregister custom window with name '{}': no such window registered.", name);
-      return;
-    }
-
-    CORE_LOG_DEBUG("Unregistered custom window: {} [{}]", name, hash);
-    custom_windows.erase(it);
+    unregister_window(hash);
   }
 
   event_system& driver_ui::events() {

@@ -84,6 +84,7 @@ namespace other {
 
     void register_builtin_resource_tags();
     void register_builtin_render_executors();
+    void register_builtin_draw_streams();
 
     void configure_pipelines(driver_kernel* kernel);
 

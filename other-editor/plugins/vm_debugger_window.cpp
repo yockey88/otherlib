@@ -17,6 +17,7 @@ void vm_debugger_window::render_main_device_controls(other_command_device& devic
     ImGui::Text("VM device memory not initialized.");
     return;
   }
+
   if (device.control_table == nullptr) {
     scoped_color red_color(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
     ImGui::Text("VM device control table not loaded.");
@@ -38,7 +39,6 @@ void vm_debugger_window::render_device(other_command_device& device) {
   ImGui::Text("R[FLAG] 0x%016llX", device.read_flag_register());
   ImGui::Separator();
 
-  static MemoryEditor mem_editor;
   mem_editor.Cols = 8;
 
   void* memory_data_in_device = device.memory->data;

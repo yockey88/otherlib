@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 4.0.2)
 include(cmake/add_other_driver.cmake)
 include(cmake/configure_version_header.cmake)
 
-project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
+project(other VERSION 1.0.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
 if (NOT CMAKE_SHARED_LINKER_FLAGS_PROFILE)
@@ -37,7 +37,10 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
 
-set(CMAKE_INSTALL_PREFIX "C:/OtherEnvironment" CACHE PATH "Installation directory" FORCE)
+## default SDK location; overridable with -DCMAKE_INSTALL_PREFIX=<path>
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "C:/OtherEnvironment" CACHE PATH "Installation directory" FORCE)
+endif()
 include(GNUInstallDirs)
 include(cmake/other_install.cmake)
 set(OTHER_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/other")
@@ -109,7 +112,9 @@ set(OTHER_LIBRARIES_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/${OTHER_LIB_FAMILY}"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/${OTHER_LIB_FAMILY}"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/${OTHER_LIB_FAMILY}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/${OTHER_LIB_FAMILY}")
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/${OTHER_LIB_FAMILY}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/xxHash/lib/${OTHER_LIB_FAMILY}"
+)
 
 set(ASSIMP_NAME "assimp-vc143-mt")
 set(OTHER_LIBRARIES_PATH ${OTHER_LIBRARIES_PATH} 
@@ -146,6 +151,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/physx
   ${OTHER_EXTERN_DIR}/jolt
   ${OTHER_EXTERN_DIR}/tinyxml2
+  ${OTHER_EXTERN_DIR}/xxHash/include
   ${IMGUI_INCLUDE_DIRS}
 )
 set(OTHER_EXTERN_INCLUDE_DIRS ${OTHER_EXTERN_INCLUDE_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/extern/tracy")
@@ -172,6 +178,7 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/lua
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/sol
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/tinyxml2
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/xxHash/include
   ${OTHER_EXTERN_INCLUDE_DIRS}
 )
 
@@ -201,11 +208,11 @@ add_subdirectory(other-csharp-interop)
 add_subdirectory(other-physics)
 add_subdirectory(other-scene)
 add_subdirectory(other-csharp)
+add_subdirectory(other-cli)
 add_subdirectory(otherlib)
 
 add_subdirectory(other-editor)
 add_subdirectory(other-server)
-add_subdirectory(tools)
 
 add_subdirectory(script-testing)
 if (BUILD_OTHER_TESTS)
@@ -218,6 +225,9 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scratch)
 endif()
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test-project)
   add_subdirectory(test-project)
+endif()
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/spacesim)
+  add_subdirectory(spacesim)
 endif()
 
 include(CMakePackageConfigHelpers)
@@ -242,6 +252,7 @@ other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/includ
 other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
 other_install_external_headers("jolt" "${OTHER_EXTERN_DIR}/jolt/Jolt")
 other_install_external_headers("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2")
+other_install_external_headers("xxHash" "${OTHER_EXTERN_DIR}/xxHash/include")
 
 # ## Install external libraries
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")
@@ -251,6 +262,7 @@ other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
 other_install_external_library("jolt" "${OTHER_EXTERN_DIR}/jolt/lib")
 other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
 other_install_external_library("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2/lib")
+other_install_external_library("xxHash" "${OTHER_EXTERN_DIR}/xxHash/lib")
   
 set(DLL_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,release>")
 set(ASSEMBLY_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>")
@@ -260,6 +272,8 @@ install(
     "${OTHER_EXTERN_DIR}/sdl/lib/${DLL_CONFIG}/SDL3.dll"
     "${OTHER_EXTERN_DIR}/assimp/lib/assimp-vc143-mt.dll"
     "${OTHER_EXTERN_DIR}/sol2/lib/lua-5.4.4.dll"
+    "${OTHER_EXTERN_DIR}/jolt/bin/$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>/Jolt.dll"
+    "${OTHER_EXTERN_DIR}/xxHash/bin/${DLL_CONFIG}/xxhash.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysX_64.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCommon_64.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCooking_64.dll"
@@ -267,7 +281,6 @@ install(
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXGpu_64.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PVDRuntime_64.dll"
   DESTINATION "${OTHER_INSTALL_BINDIR}/${DLL_CONFIG}"
-  CONFIGURATIONS ${CMAKE_BUILD_TYPE}
   OPTIONAL
 )
 
@@ -281,7 +294,7 @@ if (NOT EXISTS "${OTHER_INSTALL_PROJECT}")
 endif()
 
 install(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/other-csharp/${ASSEMBLY_CONFIG}/"
+  DIRECTORY "${CMAKE_BINARY_DIR}/other-csharp/${ASSEMBLY_CONFIG}/"
   DESTINATION "${OTHER_INSTALL_ASSEMBLIES}"
 )
 
@@ -290,37 +303,23 @@ install(
   DESTINATION "${OTHER_INSTALL_PROJECT_TEMPLATES}"
 )
 
-### now install resources (lua scripts, shaders, etc.)
+### now install resources (shaders, pipelines, boot scripts, fonts, ui layouts, ...)
+## everything the runtime references from resources/ ships with the SDK; models are
+##  local development content and stay out of the install
 set(OTHERLIB_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/resources")
-set(OTHERLIB_FONTS_RESOURCES "${OTHERLIB_RESOURCES}/fonts")
-set(OTHERLIB_LUA_RESOURCES "${OTHERLIB_RESOURCES}/lua")
-set(OTHERLIB_SHADER_MODULE_RESOURCES "${OTHERLIB_RESOURCES}/shader-modules")
-
 install(
   DIRECTORY "${OTHERLIB_RESOURCES}/"
   DESTINATION "${OTHER_INSTALL_RESOURCES}"
-  FILES_MATCHING 
-  PATTERN "*.vert"
-  PATTERN "*.geom"
-  PATTERN "*.frag"
+  PATTERN "models" EXCLUDE
 )
+
+## the engine's lua runtime (bridge, console, interfaces); the dotnet/lua hosts default
+##  scripting.other-lua-directory to <prefix>/lua
 install(
-  DIRECTORY "${OTHERLIB_LUA_RESOURCES}"
-  DESTINATION "${CMAKE_INSTALL_PREFIX}"
-  FILES_MATCHING 
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/other-lua-interop/"
+  DESTINATION "lua"
+  FILES_MATCHING
   PATTERN "*.lua"
-)
-install(
-  DIRECTORY "${OTHERLIB_FONTS_RESOURCES}"
-  DESTINATION "${OTHER_INSTALL_RESOURCES}"
-  FILES_MATCHING 
-  PATTERN "*.ttf"
-)
-install(
-  DIRECTORY "${OTHERLIB_SHADER_MODULE_RESOURCES}"
-  DESTINATION "${OTHER_INSTALL_RESOURCES}"
-  FILES_MATCHING 
-  PATTERN "*.glsl"
 )
 
 configure_package_config_file(

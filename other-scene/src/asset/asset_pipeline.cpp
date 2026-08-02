@@ -12,6 +12,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "scene/scene.hpp"
+#include "serialization/scene_serializer.hpp"
 
 #include "tools/project_tool.hpp"
 
@@ -198,7 +199,6 @@ namespace other {
   }
 
   void asset_pipeline::pipeline_finished() {
-    CORE_LOG_DEBUG("Pipeline finished successfully for asset: {}", asset_ptr->id);
     pipeline_state.success = true;
   }
 
@@ -238,8 +238,6 @@ namespace other {
   void asset_pipeline::pipeline_failed(asset* asset_ptr, const std::string_view error_message) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in pipeline_failed");
     OTHER_ASSERT(pipeline_state.loading || pipeline_state.unloading, "Pipeline is not in loading or unloading state in pipeline_failed");
-
-    CORE_LOG_ERROR("Pipeline failed for asset ID: {}", asset_ptr->id);
 
     std::string event_name = "";
     if (pipeline_state.loading) {
@@ -392,93 +390,49 @@ namespace other {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
       filepath project_path = asset_ptr->absolute_path;
-
-      //  launch all project files since they are simple and are only registered in the correct place,
-      //  if does not exist, then path is generated in the build job below
-      if (std::filesystem::exists(project_path)) {
-        std::error_code ec;
-        for (auto it = std::filesystem::recursive_directory_iterator(project_path.parent_path(), ec);
-             it != std::filesystem::recursive_directory_iterator();
-             it.increment(ec)) {
-          // skip build files/generated files
-          if (it->is_directory() && (it->path().filename() == "obj" || it->path().filename() == "bin")) {
-            it.disable_recursion_pending();
-            continue;
-          }
-
-          if (it->is_regular_file() && it->path().extension() == ".cs") {
-            handler->load_asset(it->path());
-          }
-        }
-      }
-
       auto& jobs = handler->get_job_system();
 
       ref<project_tool> build_tool = make_ref<project_tool>();
-      natural_t build_id = 0;
-      {
-        ref<job> build_project_job = jobs.submit(
-          {
-            .name = std::format("Build .NET project '{}'", project_path.string()),
-            .priority = job::priority::LOW,
-            .thread_affinity = job::affinity::WORKER_THREAD,
-          },
-          [t = build_tool, path = project_path]() mutable {
-            OTHER_ASSERT(t != nullptr, "Failed to create project tool for building .NET project.");
-            /// create dotnet project for the loaded project
-            if (!std::filesystem::exists(path)) {
-              CORE_LOG_INFO("No .NET project file found at '{}', creating a new one.", path.string());
-              t->generate_dotnet_project(path);
-            }
-
-            /// .csproj file exists we go straight to building it
-            t->start_project_build(path);
-
-            do {
-              std::this_thread::yield();
-            } while (t->project_build_in_progress());
-
-            int32_t result = t->get_build_result();
-            t->cleanup_build();
-
-            if (result == 0) {
-              CORE_LOG_DEBUG("Successfully built .NET project '{}'", path.string());
-            } else {
-              throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path.string(), result));
-            }
-          });
-        OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
-        build_id = build_project_job->id;
-      }
-
-      ref<job> load_build_asset_job = jobs.submit_deferred(
-        build_id,
+      ref<job> build_project_job = jobs.submit(
         {
-          .name = std::format("Load built assembly for .NET project '{}'", project_path.string()),
+          .name = std::format("Build .NET project '{}'", project_path.string()),
           .priority = job::priority::LOW,
-          .thread_affinity = job::affinity::MAIN_THREAD,
+          .thread_affinity = job::affinity::WORKER_THREAD,
         },
-        [h = handler, t = build_tool, project_path]() {
-          filepath csproj = t->get_dotnet_project_path();
-          /// \todo fixed hardcoded build configuration and output path assumptions
-          filepath build = csproj.parent_path() / "bin" / get_project_build_config_string() / (csproj.stem().string() + ".dll");
-          if (!std::filesystem::exists(build)) {
-            throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
-          }
+        [t = build_tool, path = project_path]() mutable {
+          OTHER_ASSERT(t != nullptr, "Failed to create project tool for building .NET project.");
+          /// csproj generation is a project-creation concern; the resolver refuses a
+          //  missing root long before this pipeline runs
+          OTHER_ASSERT(std::filesystem::exists(path), "csproj '{}' vanished between resolve and build", path.string());
+          t->start_project_build(path);
 
-          h->load_asset(build);
+          do {
+            std::this_thread::yield();
+          } while (t->project_build_in_progress());
+
+          int32_t result = t->get_build_result();
+          t->cleanup_build();
+          t = nullptr;
+
+          if (result == 0) {
+            CORE_LOG_DEBUG("Successfully built .NET project '{}'", path.string());
+          } else {
+            throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path.string(), result));
+          }
         });
-      OTHER_ASSERT(load_build_asset_job != nullptr, "Failed to create job for loading built assembly of .NET project.");
+      OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
 
       do {
         co_await task::yield();
-      } while (!load_build_asset_job->done());
+      } while (!build_project_job->done());
 
-      if (load_build_asset_job->get_status() == job::status::CANCELLED) {
+      if (build_project_job->get_status() != job::status::COMPLETED) {
         call_pipeline_fn<script_project_pipeline>(pipeline, on_failure, std::format("Loading built assembly for .NET project '{}' was cancelled.", project_path.string()));
         co_return;
       }
+      CORE_LOG_DEBUG("Successfully loaded built assembly for .NET project '{}'", project_path.string());
 
+      build_tool = nullptr;
       call_pipeline_fn<script_project_pipeline>(pipeline, on_success);
       co_return;
     }
@@ -540,20 +494,37 @@ namespace other {
     task load_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
-      scene* scene_ptr = nullptr;
-      if (asset_ptr->path_hash == 0) {
-        asset_ptr->path_hash = FNV(asset_ptr->virtual_path.string());
-        scene_ptr = reinterpret_cast<scene_pipeline*>(pipeline)->scene_ptr;
-      } else {
-        OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Scene file does not exist: {}", asset_ptr->absolute_path.string());
-        OTHER_ASSERT(false, "unimplemented");
-        CORE_LOG_DEBUG("Loading scene from file: {}", asset_ptr->load_path.string());
-        /**
-         * \todo load scene from file if binary file attached
-         **/
+      /// scenes enter through the scene graph (add_scene_asset), which always routes here
+      /// with path_hash == 0 and the live scene attached to the pipeline; a direct
+      /// begin_asset_load of a scene path has no scene object to fill and is unsupported
+      if (asset_ptr->path_hash != 0) {
+        call_pipeline_fn<scene_pipeline>(pipeline, on_failure, "scene files load through the project scene graph, not begin_asset_load");
+        co_return;
       }
 
-      OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null after loading.");
+      asset_ptr->path_hash = FNV(asset_ptr->virtual_path.string());
+      scene* scene_ptr = reinterpret_cast<scene_pipeline*>(pipeline)->scene_ptr;
+      OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene pipeline.");
+
+      /// file-backed scenes parse their document here (pure, safe off the main thread);
+      /// activation instantiates it on the main thread (scene::instantiate_pending_document)
+      const std::string extension = asset_ptr->load_path.extension().string();
+      if (serialization::is_scene_file_extension(extension)) {
+        serialization::scene_parse_result parsed = serialization::load_scene_document(asset_ptr->absolute_path);
+        if (!parsed.success()) {
+          call_pipeline_fn<scene_pipeline>(pipeline, on_failure, std::format("failed to parse scene document '{}': {}", asset_ptr->load_path.string(), parsed.error));
+          co_return;
+        }
+        for (const std::string& warning : parsed.warnings) {
+          CORE_LOG_WARN("scene document '{}': {}", asset_ptr->load_path.string(), warning);
+        }
+        scene_ptr->source_path = asset_ptr->absolute_path;
+        scene_ptr->set_pending_document(std::move(*parsed.document));
+      } else if (!asset_ptr->load_path.empty()) {
+        call_pipeline_fn<scene_pipeline>(pipeline, on_failure, std::format("'{}' is not a scene document ({}/{} expected)", asset_ptr->load_path.string(), serialization::kSceneTomlExtension, serialization::kSceneBinaryExtension));
+        co_return;
+      }
+
       scene_ptr->asset_id = asset_ptr->id;
       co_await task::yield();
 

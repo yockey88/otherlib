@@ -22,7 +22,13 @@ set(OTHERLIB_EXTERN_INCLUDE_DIRS
   "${OTHERLIB_INCLUDE_DIR}/extern/sdl"
   "${OTHERLIB_INCLUDE_DIR}/extern/python312"
   "${OTHERLIB_INCLUDE_DIR}/extern/sol2"
+  "${OTHERLIB_INCLUDE_DIR}/extern/sol2/lua"
+  "${OTHERLIB_INCLUDE_DIR}/extern/sol2/sol"
   "${OTHERLIB_INCLUDE_DIR}/extern/json"
+  "${OTHERLIB_INCLUDE_DIR}/third_party/imgui"
+  "${OTHERLIB_INCLUDE_DIR}/extern/tinyxml2"
+  "${OTHERLIB_INCLUDE_DIR}/extern/xxHash"
+  "${OTHERLIB_INCLUDE_DIR}/extern/jolt"
   "${OTHERLIB_INCLUDE_DIR}/third_party"
 )
 
@@ -169,9 +175,17 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/otherlib-targets.cmake")
 
+## compatibility aliases so CMakeLists written against the in-tree target names
+##  (target_link_libraries(... otherlib otherlib_main)) work unchanged against the SDK
+if(TARGET otherlib::otherlib AND NOT TARGET otherlib)
+  add_library(otherlib ALIAS otherlib::otherlib)
+endif()
+if(TARGET otherlib::otherlib_main AND NOT TARGET otherlib_main)
+  add_library(otherlib_main ALIAS otherlib::otherlib_main)
+endif()
+
 if(TARGET otherlib::otherlib)
   ## NOTE: The following macros are automatically defined for all consumers:
-  ## - OTHER_APPLICATION: Enables the otherlib main() entry point in other.hpp
   ## - OTHER_ENVIRONMENT_WINDOWS/UNIX: Platform detection
   ## - OTHER_ENVIRONMENT_DEBUG/RELEASE/PROFILE/PROFILED: Build configuration
   ## - OTHER_API, OTHER_CLASS, OTHER_ALIGN: API decoration macros (defined in core/defines.hpp)
@@ -184,9 +198,11 @@ if(TARGET otherlib::otherlib)
   ## add to your target: target_compile_definitions(your_target PRIVATE OTHER_DISABLE_MAIN)
   ## and then define OTHER_DISABLE_MAIN before including other.hpp
 
-  ## Determine platform-specific macros
-  set(_OTHERLIB_COMPILE_DEFS "OTHER_APPLICATION")
-  
+  ## Determine platform-specific macros. OTHER_APPLICATION / OTHER_CLIENT are set
+  ##  per-target by the add_static_driver / add_dynamic_driver macros, NOT forced on
+  ##  every consumer (plugins and dynamic drivers must not see OTHER_APPLICATION)
+  set(_OTHERLIB_COMPILE_DEFS "")
+
   ## Platform detection
   if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND _OTHERLIB_COMPILE_DEFS 
@@ -210,6 +226,11 @@ if(TARGET otherlib::otherlib)
   set_target_properties(otherlib::otherlib PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${OTHERLIB_INCLUDE_DIR};${OTHERLIB_EXTERN_INCLUDE_DIRS}"
     INTERFACE_COMPILE_DEFINITIONS "${_OTHERLIB_COMPILE_DEFS}"
+    ## exported module libs reference some prebuilt third-party libs by bare name
+    ##  (SDL3, glad, Jolt, lua-5.4.4, ...); every consumer needs the SDK lib dirs
+    INTERFACE_LINK_DIRECTORIES "${OTHERLIB_LIB_DIR};${OTHERLIB_LIB_DIR}/$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,release>"
+    ## the engine headers require the conformant preprocessor (__VA_OPT__) and utf-8
+    INTERFACE_COMPILE_OPTIONS "$<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor;/utf-8;/bigobj>"
   )
   
   ## Link external libraries to otherlib interface
@@ -253,14 +274,3 @@ endif()
 
 set(OTHERLIB_LIBRARY_DIR "@PACKAGE_OTHER_INSTALL_LIBDIR@")
 set(OTHERLIB_BINARY_DIR "@PACKAGE_OTHER_INSTALL_BINDIR@")
-
-## Add bin directory to PATH for finding DLLs
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(ENV{PATH} "${OTHERLIB_BINARY_DIR};$ENV{PATH}")
-endif()
-
-## Include exported targets (includes otherlib::otherlib and otherlib::main)
-include("${CMAKE_CURRENT_LIST_DIR}/otherlib-targets.cmake")
-
-## Include helper macros for creating Other drivers/applications
-include("${CMAKE_CURRENT_LIST_DIR}/other_driver.cmake")

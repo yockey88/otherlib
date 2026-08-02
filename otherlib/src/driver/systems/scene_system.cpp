@@ -5,6 +5,9 @@
 
 #include <sol/types.hpp>
 
+#include "object/grid_component.hpp"
+#include "serialization/scene_serializer.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/systems/project_system.hpp"
 #include "scripting/scene_interface.hpp"
@@ -55,6 +58,8 @@ namespace other {
     if (scene* active_scene = get_active_scene(); active_scene != nullptr) {
       active_scene->update(dt);
       active_scene->late_update(dt);
+      /// not gated on playback, scripts draw debug/scene overlays every frame
+      active_scene->render_update(dt);
     }
   }
 
@@ -89,6 +94,12 @@ namespace other {
       return 0;
     }
 
+    if (!serialization::is_scene_file_extension(scene_path.extension().string())) {
+      CORE_LOG_ERROR("Scene file '{}' is not a scene document ({}/{} expected).", scene_path.string(), serialization::kSceneTomlExtension, serialization::kSceneBinaryExtension);
+      CORE_LOG_ERROR("Lua scene files are no longer loadable — migrate the scene to a .oscn document and reference the lua as its behavior-hook `script`.");
+      return 0;
+    }
+
     if (project_scene_graph->has_scene(scene_path.filename().stem().string())) {
       CORE_LOG_DEBUG("Scene '{}' already exists in scene graph.", scene_path.filename().stem().string());
       return FNV(scene_path.filename().stem().string());
@@ -100,7 +111,6 @@ namespace other {
 
     auto* s = get_scene(id);
     OTHER_ASSERT(s != nullptr, "Failed to retrieve scene [{}] after adding to scene graph.", scene_path.string());
-    s->script_path = scene_path;
 
     get_driver().add_scene_asset(s, scene_path);
     return id;
@@ -171,7 +181,9 @@ namespace other {
       CORE_LOG_WARN("Scene native binding table '__other_native' is invalid.");
     }
 
-    // do this every activation, will only happen first time
+    /// declarative content first, then the behavior-hook script — both only happen the
+    ///  first time the scene activates
+    active_scene->instantiate_pending_document();
     active_scene->run_script_file();
 
     auto& storage = active_scene->get_storage();
@@ -354,6 +366,7 @@ namespace other {
     component_reg->register_component_type<point_light_component>("Point Light");
     component_reg->register_component_type<direction_light_component>("Directional Light");
     component_reg->register_component_type<camera_component>("Camera");
+    component_reg->register_component_type<grid_component>("Grid");
     component_reg->register_component_type<animation_controller>("Animation Controller");
   }
 

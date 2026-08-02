@@ -176,6 +176,7 @@ namespace OtherCsBindings
     {
       try
       {
+        AssemblyLoader.UnregisterHandle(handle);
         GCHandle.FromIntPtr(handle).Free();
       }
       catch (Exception e)

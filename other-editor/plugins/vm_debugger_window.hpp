@@ -14,7 +14,6 @@
 #include "ui/ui_window.hpp"
 #include "vm/vm.hpp"
 
-
 using namespace other;
 
 class vm_debugger_window : public ui_window {
@@ -28,6 +27,8 @@ class vm_debugger_window : public ui_window {
   void render_main_device_controls(other_command_device& device);
 
  private:
+  MemoryEditor mem_editor;
+
   void render_device(other_command_device& device);
   void render_debugger_home(other_command_device& device);
   void render_program_debugger(other_command_device& device);

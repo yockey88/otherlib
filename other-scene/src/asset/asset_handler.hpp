@@ -18,10 +18,9 @@
 
 #include "renderer/pipeline_definition.hpp"
 
-#include "asio/asio/strand.hpp"
-#include "asio/asio/system_executor.hpp"
 #include "asset/asset.hpp"
 #include "asset/asset_pipeline.hpp"
+#include "asset/asset_resolver.hpp"
 
 namespace other {
   namespace detail {
@@ -87,7 +86,8 @@ namespace other {
 
       add_transition(asset_state::REFRESHING_UNLOAD, asset_event::UNLOAD_COMPLETED, asset_state::REFRESHING_LOAD);
       add_transition(asset_state::REFRESHING_UNLOAD, asset_event::UNLOAD_FAILED, asset_state::ERROR_STATE);
-      add_transition(asset_state::REFRESHING_LOAD, asset_event::REFRESH_COMPLETED, asset_state::LOADED);
+
+      add_transition(asset_state::REFRESHING_LOAD, asset_event::LOAD_REQUESTED, asset_state::LOADING);
       add_transition(asset_state::REFRESHING_LOAD, asset_event::LOAD_FAILED, asset_state::ERROR_STATE);
 
       add_transition(asset_state::UNLOADING, asset_event::UNLOAD_COMPLETED, asset_state::UNLOADED);
@@ -116,14 +116,15 @@ namespace other {
     using load_completion_callback = std::function<void(asset*)>;
     using load_error_callback = std::function<void(asset*)>;
 
+    void resolve_roots(std::span<const filepath> roots);
+    void re_resolve(const filepath& changed);
+
     natural_t load_asset(const filepath& file_path, load_completion_callback on_complete = nullptr);
     natural_t load_asset(const std::string_view engine_path, load_completion_callback on_complete = nullptr);
     natural_t add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
-
-    void handle_file_event(const file_event& event);
 
     void reload_asset(natural_t asset_id);
 
@@ -164,6 +165,12 @@ namespace other {
     const asset* get_loaded_asset(natural_t asset_id) const;
     ostd::vector<natural_t> get_all_tracked_ids() const;
 
+    void execute_plan();
+    void dispatch_slot(uint32_t slot);
+
+    void on_planned_child_loaded(natural_t stable_id);
+    void on_planned_child_failed(natural_t stable_id, const std::string_view error_msg);
+
     size_t get_num_loading_assets() const { return asset_pipelines.size(); }
     size_t get_num_loaded_assets() const { return loaded_assets.size(); }
     size_t get_num_assets_in_flight() const { return asset_pipelines.size() + loaded_assets.size(); }
@@ -184,8 +191,33 @@ namespace other {
     /// to be called only inside 'assets.new-asset-(un)loaded' or various 'xxx.asset-(un)loaded' events.
     asset_handler::pipeline_context* get_asset_pipeline_context(natural_t asset_id);
 
+    inline natural_t runtime_id(natural_t stable_id) const {
+      const auto it = runtime_by_stable.find(stable_id);
+      return it != runtime_by_stable.end() ?
+        it->second :
+        0;
+    }
+
+    inline bool in_snapshot(natural_t stable_id) const {
+      return snapshot.find(stable_id) != nullptr;
+    }
+
+    inline std::span<const manifest_domain> manifest_domains() const {
+      return resolver.manifest_domains();
+    }
+
    private:
     friend class asset_pipeline;
+
+    struct load_plan {
+      ostd::vector<uint32_t> remaining_children;
+      ostd::vector<bool> failed;
+      ostd::vector<bool> pending;
+    };
+    load_plan plan;
+
+    asset_resolver resolver;
+    dependency_snapshot snapshot;
 
     event_system& events;
     job_system& jobs;
@@ -198,6 +230,10 @@ namespace other {
     ostd::unordered_map<natural_t, asset> loaded_assets;
     ostd::unordered_map<natural_t, asset> unloaded_assets;
     ostd::unordered_map<natural_t, asset_state_machine> asset_states;
+
+    std::unordered_set<natural_t> needs_refresh;
+    // stable_id -> id
+    ostd::unordered_map<natural_t, natural_t> runtime_by_stable;
 
     /// normally we might want to recreate, but if we are closing the editor
     // or doing
@@ -216,8 +252,6 @@ namespace other {
     ostd::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
 
     asset* find_asset_by_path(const filepath& file_path) const;
-
-    void handle_asset_file_changed_event(const file_event& event);
 
     void notify_asset_load_complete(asset* asset_ptr);
     void notify_asset_load_failed(asset* asset_ptr, const std::string_view error_message);

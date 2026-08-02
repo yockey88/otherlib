@@ -129,10 +129,10 @@ namespace Other
       process_handle = new Process();
       process_handle.StartInfo.FileName = "cmake.exe";
       process_handle.StartInfo.Arguments = $"-S {project.working_dir} -B {project.working_dir}/build -G \"Visual Studio 17 2022\"";
+      process_handle.StartInfo.CreateNoWindow = true;
       // process_handle.StartInfo.RedirectStandardOutput = false;  // true;
       // process_handle.StartInfo.RedirectStandardError = false;   // true;
       // process_handle.StartInfo.UseShellExecute = false;
-      // process_handle.StartInfo.CreateNoWindow = true;
       // process_handle.OutputDataReceived += (sender, e) =>
       // {
       //   if (!string.IsNullOrEmpty(e.Data))

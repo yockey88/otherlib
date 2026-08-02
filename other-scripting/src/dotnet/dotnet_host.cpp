@@ -271,6 +271,9 @@ namespace other {
 
     CORE_LOG_DEBUG("Attempting to create managed object [{}] of type [{}]", name, type->full_name());
     dotnet_object* obj = new_object(name, type);
+    if (obj == nullptr) {
+      return nullptr;
+    }
     obj->managed_object = interop_functions.create_object(type->dotnet_id, false, argv, arg_ts, argc);
     if (obj->managed_object == nullptr) {
       CORE_LOG_ERROR("Failed to create managed object of type [{}]", type->full_name());
@@ -319,8 +322,10 @@ namespace other {
 
     auto [itr, success] = managed_objects.emplace(FNV(name), dotnet_object{ this });
     if (!success) {
+      /// returning the existing entry here would alias two owners onto one slot and
+      ///  leak the old GC handle when the caller overwrites managed_object
       CORE_LOG_ERROR("Failed to create new managed object: Object with name '{}' already exists.", name);
-      return &managed_objects.at(FNV(name));
+      return nullptr;
     }
     itr->second.object_name = name;
     itr->second.dn_type = type;

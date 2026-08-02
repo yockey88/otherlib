@@ -71,6 +71,12 @@ namespace other {
     bool has_event(const std::string_view name) const;
     bool has_event(natural_t event_id) const;
 
+    /// number of live timer entries; a recurring event holds exactly one for its lifetime
+    natural_t active_timer_count() const {
+      std::scoped_lock lock(events_mutex);
+      return event_timers.size();
+    }
+
    private:
     asio::io_context& io_context;
 

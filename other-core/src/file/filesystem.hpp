@@ -16,20 +16,13 @@
 #include "event/event_system.hpp"
 #include "file/directory.hpp"
 #include "file/file_handle.hpp"
+#include "file/glob.hpp"
 #include "file/local_file.hpp"
+#include "file/path_resolution.hpp"
 #include "file/remote_file.hpp"
 #include "file/virtual_file.hpp"
 
 namespace other {
-
-  struct resolved_path {
-    std::string mount_name;
-    ostd::vector<std::string> relative_path_components;
-    std::string file_name;
-    std::string extension;
-
-    bool is_valid() const { return !mount_name.empty(); }
-  };
 
   /**
    * \note this should only ever be used by the main thread
@@ -54,6 +47,8 @@ namespace other {
       return std::filesystem::current_path().string();
     }
 
+    ostd::vector<resolved_file> expand(const filepath& root_abs, const glob_set& set);
+
     void initialize_file_events(event_system& events);
     void initialize_directory_structure(const std::span<const std::string_view> mounts = {});
     void shutdown_file_system();
@@ -64,7 +59,7 @@ namespace other {
     ///  or  "C:/path/to/file.txt" -> { "C", "path/to/file.txt", "file.txt" }
     static resolved_path resolve_path(const std::string_view engine_path);
 
-    ref<directory> mount_directory(const std::string_view mount_name, const filepath& path);
+    ref<directory> mount_directory(const std::string_view mount_name, const filepath& path, mount_scope scope = mount_scope::ENGINE);
     ref<directory> mount_virtual(const std::string_view mount_name);
     void add_toplevel_file(ref<file_handle> file);
 
@@ -78,6 +73,10 @@ namespace other {
     ref<directory> get_mount(const std::string_view mount_name) const;
     ref<directory> get_or_create_mount(const std::string_view mount_name, const filepath& path = "");
     resolved_path deep_search_for_mount(const filepath& path) const;
+
+    /// hands the deepest watched mount covering @p root_abs the domain's exclude set;
+    //  must be re-applied after every resolve/re_resolve (sets are replace-registered)
+    void apply_watch_filter(const filepath& root_abs, const glob_set* set);
 
     bool path_exists(const std::string_view engine_path) const;
     bool file_exists(const std::string_view engine_path) const;

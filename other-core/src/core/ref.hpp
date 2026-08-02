@@ -12,7 +12,6 @@
 #include "core/ref_counted.hpp"
 #include "memory/arena_allocator.hpp"
 
-
 namespace other {
 
   template <typename T, typename U>
@@ -78,8 +77,14 @@ namespace other {
     }
     ref& operator=(const ref<T>& other) {
       if (this != &other) {
-        object.store(other.object.load(std::memory_order_acquire), std::memory_order_release);
-        inc_ref();
+        /// increment the incoming referent before releasing the old one so self-aliasing
+        ///  assignment (both refs already pointing at the same object) stays balanced
+        T* new_p = other.object.load(std::memory_order_acquire);
+        if (new_p != nullptr) {
+          new_p->increment();
+        }
+        T* old_p = object.exchange(new_p, std::memory_order_acq_rel);
+        dec_ref_ptr(old_p);
       }
       return *this;
     }
@@ -87,8 +92,12 @@ namespace other {
       requires std::is_base_of_v<T, T2>
     ref& operator=(const ref<T2>& other) {
       static_assert(std::is_base_of_v<T, T2>, "No viable conversion to construct ref with");
-      object.store(reinterpret_cast<T*>(other.object.load(std::memory_order_acquire)), std::memory_order_release);
-      inc_ref();
+      T2* new_p = other.object.load(std::memory_order_acquire);
+      if (new_p != nullptr) {
+        new_p->increment();
+      }
+      T* old_p = object.exchange(reinterpret_cast<T*>(new_p), std::memory_order_acq_rel);
+      dec_ref_ptr(old_p);
       return *this;
     }
 
@@ -158,17 +167,6 @@ namespace other {
       return ref<std::remove_cvref_t<T>>(arena_allocator<std::remove_cvref_t<T>>{}.allocate(std::forward<Args>(args)...));
     }
 
-    void increment_weak() const {
-      if (object.load(std::memory_order_acquire) != nullptr) {
-        object.load(std::memory_order_acquire)->view_increment();
-      }
-    }
-    void decrement_weak() const {
-      if (object.load(std::memory_order_acquire) != nullptr) {
-        object.load(std::memory_order_acquire)->view_decrement();
-      }
-    }
-
     operator bool() { return object.load(std::memory_order_acquire) != nullptr; }
     operator bool() const { return object.load(std::memory_order_acquire) != nullptr; }
 
@@ -217,6 +215,17 @@ namespace other {
       }
 
       if (ptr->decrement() == 0) {
+        std::atomic_thread_fence(std::memory_order_acquire);
+        dec_view_ptr(ptr);
+      }
+    }
+
+    static void dec_view_ptr(T* ptr) {
+      if (ptr == nullptr) {
+        return;
+      }
+
+      if (ptr->view_decrement() == 0) {
         std::atomic_thread_fence(std::memory_order_acquire);
         allocator.free(ptr);
       }

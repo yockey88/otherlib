@@ -35,6 +35,21 @@ namespace other {
     ~my_thing() override = default;
   };
 
+  struct destruction_probe : public ref_counted {
+    explicit destruction_probe(bool* destroyed_flag) : destroyed(destroyed_flag) {}
+    ~destruction_probe() override { *destroyed = true; }
+
+    bool* destroyed;
+  };
+
+  struct derived_probe : public destruction_probe {
+    derived_probe(bool* base_flag, bool* derived_flag)
+        : destruction_probe(base_flag), derived_destroyed(derived_flag) {}
+    ~derived_probe() override { *derived_destroyed = true; }
+
+    bool* derived_destroyed;
+  };
+
   class ref_test : public other_test {
    protected:
   };

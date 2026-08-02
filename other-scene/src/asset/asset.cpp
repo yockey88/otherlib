@@ -7,8 +7,26 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "file/path_helpers.hpp"
 
 namespace other {
+
+  domain_hit classify(const manifest_domain& d, const filepath& abs) {
+    const opt<std::string> rel = try_relative(abs, d.root_abs);
+    if (!rel.has_value()) {
+      return domain_hit::OUTSIDE;
+    }
+
+    if (d.set.matches(*rel)) {
+      return domain_hit::INSIDE;
+    }
+
+    if (d.set.excluded(*rel)) {
+      return domain_hit::EXCLUDED;
+    }
+
+    return domain_hit::OUTSIDE;
+  }
 
   asset::type asset::get_type_from_extension(const std::string_view extension) {
     for (const auto& asset_ext : kAssetExtensions) {
@@ -49,6 +67,7 @@ namespace other {
     std::string type_str = type.as_string()->get();
     switch (FNV(type_str)) {
       case FNV("rendering-pipeline"): return asset::type::RENDERING_PIPELINE;
+      case FNV("scene"): return asset::type::SCENE;
       default:
         CORE_LOG_ERROR("asset type {} not supported through TOML file: {}", type_str, file_path.string());
         return asset::type::EMPTY;
@@ -110,7 +129,9 @@ namespace other {
       case asset::ANIMATION:
         return "animations";
 
+      case asset::SCRIPT_PROJECT:
       case asset::SCRIPT_SOURCE:
+      case asset::SCRIPT_FILE:
       case asset::SCRIPT:
         return "scripts";
 

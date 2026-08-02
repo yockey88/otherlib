@@ -9,6 +9,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "object/animation_controller.hpp"
+#include "object/grid_component.hpp"
 #include "object/light_component.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
@@ -17,6 +18,7 @@
 #include "scripting/binding_descriptor.hpp"
 #include "scripting/dotnet_bindings/component_bindings.hpp"
 #include "scripting/dotnet_bindings/core_bindings.hpp"
+#include "scripting/dotnet_bindings/draw_bindings.hpp"
 #include "scripting/dotnet_bindings/driver_bindings.hpp"
 #include "scripting/dotnet_bindings/environment_api_bindings.hpp"
 #include "scripting/dotnet_bindings/event_bindings.hpp"
@@ -264,6 +266,13 @@ namespace other {
       .bind("InputGetMouseWheel", bindings::native_input_get_mouse_wheel);
 
     bindings::binding_context{ dn_host }
+      /// Dynamic drawing (in-scene overlay or debug view).
+      .bind("DrawLine", bindings::native_draw_line)
+      .bind("DrawTriangle", bindings::native_draw_triangle)
+      .bind("DrawPoint", bindings::native_draw_point)
+      .bind("DrawGrid", bindings::native_draw_grid);
+
+    bindings::binding_context{ dn_host }
       /// Time.
       .bind("TimeGetDeltaTime", bindings::native_time_get_delta_time)
       .bind("TimeGetElapsedTime", bindings::native_time_get_elapsed_time)
@@ -502,6 +511,7 @@ namespace other {
       bind_lua_component<script_component>(lua_state, "__native_script_component");
       bind_lua_component<render_component>(lua_state, "__native_render_component");
       bind_lua_component<camera_component>(lua_state, "__native_camera_component");
+      bind_lua_component<grid_component>(lua_state, "__native_grid_component");
       bind_lua_component<point_light_component>(lua_state, "__native_point_light_component");
       bind_lua_component<direction_light_component>(lua_state, "__native_direction_light_component");
       bind_lua_component<animation_controller>(lua_state, "__native_animation_controller_component");
@@ -517,6 +527,7 @@ namespace other {
       bind_dotnet_component<script_component>(dn_host, obj);
       bind_dotnet_component<render_component>(dn_host, obj);
       bind_dotnet_component<camera_component>(dn_host, obj);
+      bind_dotnet_component<grid_component>(dn_host, obj);
       bind_dotnet_component<point_light_component>(dn_host, obj);
       bind_dotnet_component<direction_light_component>(dn_host, obj);
       bind_dotnet_component<animation_controller>(dn_host, obj);

@@ -11,6 +11,7 @@
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
 
+#include "model/vertex.hpp"
 #include "renderer/pipeline_definition.hpp"
 
 #include "asset/asset.hpp"

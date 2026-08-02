@@ -50,9 +50,12 @@ namespace other {
 
         pool = std::move(other.pool);
         num_objects = other.num_objects;
+        num_live = other.num_live;
+        is_full = other.is_full;
         object_flags = std::move(other.object_flags);
 
         other.num_objects = 0;
+        other.num_live = 0;
         other.is_full = false;
         other.object_flags = {};
         other.pool = {};
@@ -71,7 +74,7 @@ namespace other {
     void free(size_t idx) {
       PROFILE_SECTION("memory_pool::free");
       OTHER_ASSERT(idx < max_objects(), "Index out of bounds");
-      if (idx >= max_objects() || !object_flags[idx].is_free) {
+      if (idx >= max_objects() || object_flags[idx].is_free) {
         return;
       }
 
@@ -95,23 +98,9 @@ namespace other {
       PROFILE_SECTION("memory_pool::emplace");
 
       OTHER_ASSERT(!is_full, "Memory pool is full, cannot allocate more objects.");
-      /// save the index before incrementing num_objects
-      size_t idx = num_objects++;
-      if (idx >= max_objects()) {
-        /// \todo: defragment memory to see if there are any free slots and move all objects to the front,
-        /// for now we will just find the first free slot
-        for (size_t i = 0; i < max_objects(); ++i) {
-          if (object_flags[i].is_free) {
-            idx = i;
-            break;
-          }
-        }
-
-        if (idx >= max_objects()) {
-          OTHER_ASSERT(false, "Memory pool is full, cannot allocate more objects.");
-        }
-      }
-      if (num_objects >= max_objects()) {
+      size_t idx = acquire_slot();
+      num_live++;
+      if (num_live >= max_objects()) {
         is_full = true;
       }
       return { create_object(idx), idx };
@@ -121,35 +110,21 @@ namespace other {
       PROFILE_SECTION("memory_pool::emplace");
 
       OTHER_ASSERT(!is_full, "Memory pool is full, cannot allocate more objects.");
-      /// save the index before incrementing num_objects
-      size_t idx = num_objects++;
-      if (idx >= max_objects()) {
-        /// \todo: defragment memory to see if there are any free slots and move all objects to the front,
-        /// for now we will just find the first free slot
-        for (size_t i = 0; i < max_objects(); ++i) {
-          if (object_flags[i].is_free) {
-            idx = i;
-            break;
-          }
-        }
-
-        if (idx >= max_objects()) {
-          OTHER_ASSERT(false, "Memory pool is full, cannot allocate more objects.");
-        }
-      }
-      if (num_objects >= max_objects()) {
+      size_t idx = acquire_slot();
+      num_live++;
+      if (num_live >= max_objects()) {
         is_full = true;
       }
       return { create_object(idx, std::move(value)), idx };
     }
 
-    const size_t size() const { return num_objects; }
-    const size_t free_objects() const { return max_objects() - num_objects; }
+    const size_t size() const { return num_live; }
+    const size_t free_objects() const { return max_objects() - num_live; }
     const size_t max_objects() const { return Max; }
-    const size_t object_count() const { return num_objects; }
+    const size_t object_count() const { return num_live; }
 
     const bool full() const { return is_full; }
-    const bool empty() const { return num_objects == 0; }
+    const bool empty() const { return num_live == 0; }
 
     std::span<T> objects() { return std::span<T>(get_array(), Max); }
     const std::span<const T> objects() const { return std::span<const T>(get_array(), Max); }
@@ -167,7 +142,32 @@ namespace other {
 
     storage_type pool;
 
+    /// high-water allocation cursor
+    /// slots below it are handed out first
+    /// freed slots below it are only reused once it reaches Max
+    /// never decremented freed slots are found by scanning object_flags
     size_t num_objects = 0;
+
+    /// number of currently-allocated objects; drives is_full/size()
+    size_t num_live = 0;
+
+    /// next slot for a new object: the cursor while it lasts, then the first free slot
+    size_t acquire_slot() {
+      if (num_objects < max_objects()) {
+        return num_objects++;
+      }
+
+      /// \todo: defragment memory to see if there are any free slots and move all objects to the front,
+      /// for now we will just find the first free slot
+      for (size_t i = 0; i < max_objects(); ++i) {
+        if (object_flags[i].is_free) {
+          return i;
+        }
+      }
+
+      OTHER_ASSERT(false, "Memory pool is full, cannot allocate more objects.");
+      return max_objects();
+    }
 
     struct obj_flags {
       bool is_free = true;
@@ -216,9 +216,8 @@ namespace other {
         /// clear the memory at the index
         std::memset(get_memory_raw_at(idx), 0, sizeof(T));
       }
-      if (num_objects < max_objects()) {
-        is_full = false;
-      }
+      num_live--;
+      is_full = false;
 
       object_flags[idx].is_free = true;
     }
@@ -258,6 +257,8 @@ namespace other {
           object_flags[i].is_free = true;
         }
         num_objects = 0;
+        num_live = 0;
+        is_full = false;
       }
     }
 
@@ -275,6 +276,7 @@ namespace other {
         std::memset(pool.data, 0, storage_type::storage_size);
         std::ranges::fill(object_flags, obj_flags{ true });
         num_objects = 0;
+        num_live = 0;
         is_full = false;
       }
     }

@@ -12,8 +12,8 @@ namespace other {
       return;
     }
 
-    sink->submit(builtin_debug_streams::kLines, debug_vertex{ a, c });
-    sink->submit(builtin_debug_streams::kLines, debug_vertex{ b, c });
+    sink->submit(streams.lines, debug_vertex{ a, c });
+    sink->submit(streams.lines, debug_vertex{ b, c });
   }
 
   void debug_draw::triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& d, const glm::vec4& c) {
@@ -21,9 +21,9 @@ namespace other {
       return;
     }
 
-    sink->submit(builtin_debug_streams::kTris, debug_vertex{ a, c });
-    sink->submit(builtin_debug_streams::kTris, debug_vertex{ b, c });
-    sink->submit(builtin_debug_streams::kTris, debug_vertex{ d, c });
+    sink->submit(streams.tris, debug_vertex{ a, c });
+    sink->submit(streams.tris, debug_vertex{ b, c });
+    sink->submit(streams.tris, debug_vertex{ d, c });
   }
 
   void debug_draw::point(const glm::vec3& p, const glm::vec4& c) {
@@ -31,7 +31,7 @@ namespace other {
       return;
     }
 
-    sink->submit(builtin_debug_streams::kPoints, debug_vertex{ p, c });
+    sink->submit(streams.points, debug_vertex{ p, c });
   }
 
   void debug_draw::ray(const glm::vec3& o, const glm::vec3& dir, float len, const glm::vec4& c) {
@@ -219,7 +219,7 @@ namespace other {
     if (sink == nullptr) {
       return;
     }
-    sink->submit(builtin_debug_streams::kMeshes, debug_mesh_instance{
+    sink->submit(streams.meshes, debug_mesh_instance{
                                                    .mesh_handle = h,
                                                    .model = model,
                                                    .color = tint,

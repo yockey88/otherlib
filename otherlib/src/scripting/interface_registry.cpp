@@ -22,6 +22,7 @@ namespace other {
   }
 
   natural_t interface_registry::register_interface_binding(const std::string_view interface_name, sol::table interface_table) {
+    PROFILE_SECTION("interface_registry::register_interface_binding");
     auto itr = std::find_if(interfaces.begin(), interfaces.end(), [&interface_name](const auto& pair) {
       return pair.second.name == interface_name;
     });
@@ -54,6 +55,13 @@ namespace other {
     OTHER_ASSERT(inserted, "Failed to register named callback '{}'.", callback_name);
     CORE_LOG_DEBUG("[CALLBACK] Registered named callback '{}' with ID {}", callback_name, new_id);
     return new_id;
+  }
+
+  void interface_registry::unregister_named_callback(const std::string_view callback_name) {
+    auto itr = bound_callbacks.find(FNV(callback_name));
+    OTHER_ASSERT(itr != bound_callbacks.end(), "Attempted to unregister unknown named callback '{}'.", callback_name);
+    CORE_LOG_DEBUG("[CALLBACK] Unregistered named callback '{}'", callback_name);
+    bound_callbacks.erase(itr);
   }
 
   bool interface_registry::has_interface_method(const std::string_view interface_name, const std::string_view method_name) const {

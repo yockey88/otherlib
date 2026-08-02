@@ -57,6 +57,21 @@ namespace other {
     }
   }
 
+  void script_component::render_update(double delta_time) {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
+    PROFILE_SECTION("script_component::render_update");
+
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    script_object* script_obj = env->get_object(script_object_id);
+    OTHER_ASSERT(script_obj != nullptr, "Script object with ID {} not found in scripting environment.", script_object_id);
+
+    if (auto* dn_obj = script_obj->dotnet_object; dn_obj != nullptr) {
+      dn_obj->invoke<>("Render");
+    }
+  }
+
   void script_component::scene_start() {
     OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::scene_start");
@@ -114,17 +129,8 @@ namespace other {
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
 
-    /// destroy behavior script_objects in reverse order
-    for (auto it = behavior_ids.rbegin(); it != behavior_ids.rend(); ++it) {
-      env->destroy_object(*it);
-    }
-    behavior_ids.clear();
-
-    /// also clear the C# side behavior list
-    script_object* script_obj = env->get_object(script_object_id);
-    if (script_obj != nullptr && script_obj->dotnet_object != nullptr) {
-      script_obj->dotnet_object->invoke<>("RemoveAllBehaviors");
-    }
+    /// destroys the behavior script_objects and clears the C# side behavior list
+    env->detach_all_dotnet_behaviors(script_object_id);
   }
 
 }  // namespace other

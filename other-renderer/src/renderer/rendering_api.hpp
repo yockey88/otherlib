@@ -108,6 +108,8 @@ namespace other {
     virtual void set_color_mask(bool enabled_or_disabled) = 0;
     virtual void set_depth_mask(bool enabled_or_disabled) = 0;
     virtual void set_depth_test(bool enabled_or_disabled) = 0;
+    /// standard alpha blending (src_alpha, one_minus_src_alpha); disabled by default
+    virtual void set_blending(bool enabled_or_disabled) = 0;
 
     virtual void memory_barrier(shader::compute_barrier_type bits) = 0;
 

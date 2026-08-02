@@ -9,30 +9,52 @@
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
-
-#include "directory.hpp"
-#include "file_watcher.hpp"
+#include "file/directory.hpp"
+#include "file/path_helpers.hpp"
 
 namespace other {
+  namespace {
+
+    static void expand_walk(const filepath& root_abs, const filepath& dir,
+                            const glob_set& set, ostd::vector<resolved_file>& out) {
+      for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+        const opt<std::string> rel = try_relative(entry.path(), root_abs);
+        OTHER_ASSERT(rel.has_value(), "walk escaped its root: '{}'", entry.path().string());
+
+        if (entry.is_directory()) {
+          if (set.may_contain(*rel)) {  /// prunes bin/, obj/, .git/ ...
+            expand_walk(root_abs, entry.path(), set, out);
+          }
+        } else if (entry.is_regular_file() && set.matches(*rel)) {
+          out.push_back({ entry.path(), virtualize(entry.path()) });
+        }
+      }
+    }
+
+  }  // namespace
+
+  ostd::vector<resolved_file> file_system::expand(const filepath& root_abs, const glob_set& set) {
+    PROFILE_SECTION("file_system::expand");
+    OTHER_ASSERT(std::filesystem::is_directory(root_abs),
+                 "expand root is not a directory: '{}'", root_abs.string());
+
+    ostd::vector<resolved_file> out;
+    expand_walk(root_abs, root_abs, set, out);
+
+    std::ranges::sort(out, {}, &resolved_file::virtual_path);
+
+    /// case-collision landmine detection: legal on Linux, breaks on NTFS
+    for (size_t i = 1; i < out.size(); ++i) {
+      if (detail::equals_case_insensitive(out[i - 1].virtual_path, out[i].virtual_path)) {
+        CORE_LOG_WARN("case-colliding paths '{}' / '{}' — unportable",
+                      out[i - 1].virtual_path, out[i].virtual_path);
+      }
+    }
+    return out;
+  }
 
   void file_system::initialize_file_events(event_system& events) {
     events.register_event("filesystem.watch-event");
-    events.add_listener("filesystem.watch-event", [this](const value& data) {
-      if (data.type() != value_type::USER_TYPE) {
-        CORE_LOG_ERROR("Received invalid file event: expected user type with file_event data");
-        return;
-      }
-      file_event event = data;
-      CORE_LOG_DEBUG("File event: {} - {}", event.path.string(), [&]() {
-        switch (event.type) {
-          case file_event::type::CREATED: return "Created";
-          case file_event::type::MODIFIED: return "Modified";
-          case file_event::type::DELETED: return "Deleted";
-          case file_event::type::RENAMED: return "Renamed";
-          default: return "Unknown";
-        }
-      }());
-    });
 
     this->events = &events;
   }
@@ -85,7 +107,7 @@ namespace other {
     return result;
   }
 
-  ref<directory> file_system::mount_directory(const std::string_view mount_name, const filepath& path) {
+  ref<directory> file_system::mount_directory(const std::string_view mount_name, const filepath& path, mount_scope scope) {
     PROFILE_SECTION("file_system::mount_directory");
     OTHER_ASSERT(!mount_name.empty(), "Mount name cannot be empty");
 
@@ -108,7 +130,8 @@ namespace other {
       return it->second;
     }
 
-    auto dir = make_ref<directory>(*events, mount_name, std::filesystem::absolute(path));
+    const bool watch_subtree = scope == mount_scope::PROJECT;
+    auto dir = make_ref<directory>(*events, mount_name, std::filesystem::absolute(path), file_type::LOCAL, scope, watch_subtree);
     mounts.insert({ hash, dir });
 
     CORE_LOG_DEBUG("Mounted directory '{}' -> '{}'", mount_name, path.string());
@@ -192,26 +215,68 @@ namespace other {
 
   resolved_path file_system::deep_search_for_mount(const filepath& path) const {
     PROFILE_SECTION("file_system::deep_search_for_mount");
-
     std::lock_guard lock(fs_mutex);
+
+    ref<directory> best = nullptr;
+    size_t best_len = 0;
     for (const auto& [hash, mount] : mounts) {
-      if (mount->contains_path(path)) {
-        resolved_path rp;
-        rp.mount_name = mount->name();
-        rp.file_name = path.filename().stem().string();
-        rp.extension = path.filename().extension().string();
-        rp.relative_path_components = directory::split_path(std::filesystem::relative(path, mount->absolute_path()).string());
-        rp.relative_path_components.pop_back();  // remove filename from relative path components
-        return rp;
+      if (!mount->contains_path(path)) {
+        continue;
+      }
+
+      const size_t len = normalize_lexical(mount->absolute_path()).size();
+      if (best == nullptr || len > best_len) {
+        best = mount;
+        best_len = len;
       }
     }
 
-    return {};
+    if (best == nullptr) {
+      return {};
+    }
+
+    resolved_path rp;
+    rp.mount_name = best->name();
+    rp.scope = best->get_scope();
+    rp.file_name = path.filename().stem().string();
+    rp.extension = path.filename().extension().string();
+    rp.relative_path_components = directory::split_path(std::filesystem::relative(path, best->absolute_path()).string());
+    rp.relative_path_components.pop_back();
+    return rp;
   }
 
   bool file_system::is_mounted(const std::string_view mount_name) const {
     std::lock_guard lock(fs_mutex);
     return mounts.find(FNV(mount_name)) != mounts.end();
+  }
+
+  void file_system::apply_watch_filter(const filepath& root_abs, const glob_set* set) {
+    PROFILE_SECTION("file_system::apply_watch_filter");
+    std::lock_guard lock(fs_mutex);
+    const std::string target = normalize_lexical(std::filesystem::absolute(root_abs));
+
+    /// deepest watched mount covering the domain root owns the filter
+    ref<directory> best = nullptr;
+    size_t best_len = 0;
+    for (const auto& [hash, mount] : mounts) {
+      if (!mount->watches_subtree()) {
+        continue;
+      }
+      const std::string mount_root = normalize_lexical(mount->absolute_path());
+      if (mount_root != target && !try_relative(target, mount_root).has_value()) {
+        continue;
+      }
+      if (best == nullptr || mount_root.size() > best_len) {
+        best = mount;
+        best_len = mount_root.size();
+      }
+    }
+
+    if (best == nullptr) {
+      CORE_LOG_WARN("No watched mount covers '{}'; domain watch filter not applied", root_abs.string());
+      return;
+    }
+    best->set_watch_filter(set);
   }
 
   ref<file_handle> file_system::get_file(const std::string_view engine_path) {
@@ -229,14 +294,32 @@ namespace other {
       return nullptr;
     }
 
-    if (ref<file_handle> file = mount->get_file(rp.file_name);
+    ref<directory> target_dir = mount;
+    if (!rp.relative_path_components.empty()) {
+      if (ref<directory> walked = walk_path(mount, rp.relative_path_components); walked != nullptr) {
+        target_dir = walked;
+      }
+    }
+
+    if (ref<file_handle> file = target_dir->get_file(rp.file_name, rp.extension);
         file != nullptr) {
       return file;
     }
 
-    filepath disk_path = mount->absolute_path() / rp.file_name;
+    filepath disk_path = mount->absolute_path();
+    for (const auto& comp : rp.relative_path_components) {
+      disk_path /= comp;
+    }
+    disk_path /= (rp.file_name + rp.extension);
     if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
-      return register_local_file(disk_path);
+      /// materialize the directory chain under the mount so later lookups cache-hit
+      ref<directory> registry_dir = mount;
+      if (!rp.relative_path_components.empty()) {
+        registry_dir = walk_or_create_path(mount, rp.relative_path_components);
+      }
+      ref<local_file> local = create_local_file(disk_path);
+      registry_dir->add_file(local);
+      return local;
     }
 
     CORE_LOG_ERROR("Cannot get file '{}': file '{}' not found in mount '{}'", engine_path, rp.file_name, rp.mount_name);
@@ -264,6 +347,39 @@ namespace other {
     }
 
     resolved_path rp = resolve_path(engine_path);
+    if (!rp.is_valid() || rp.file_name.empty()) {
+      return false;
+    }
+
+    ref<directory> mount = get_mount(rp.mount_name);
+    if (mount == nullptr) {
+      return false;
+    }
+
+    /// tolerate an unindexed directory chain: a failed walk just skips the cache check
+    ///  and falls through to the disk probe
+    ref<directory> target_dir = mount;
+    if (!rp.relative_path_components.empty()) {
+      target_dir = walk_path(mount, rp.relative_path_components);
+    }
+
+    if (target_dir != nullptr) {
+      for (const auto& [hash, file] : target_dir->get_files()) {
+        if (file->name() == rp.file_name && (rp.extension.empty() || file->extension() == rp.extension)) {
+          return true;
+        }
+      }
+    }
+
+    if (!mount->absolute_path().empty()) {
+      filepath disk_path = mount->absolute_path();
+      for (const auto& comp : rp.relative_path_components) {
+        disk_path /= comp;
+      }
+      disk_path /= (rp.file_name + rp.extension);
+      return std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path);
+    }
+
     return false;
   }
 
@@ -305,26 +421,22 @@ namespace other {
       return nullptr;
     }
 
+    /// resolve_path already split the file name off; relative_path_components holds
+    ///  only the directory chain (empty for mount://file.ext)
     std::span<const std::string> components = rp.relative_path_components;
-    if (components.empty()) {
-      CORE_LOG_ERROR("Cannot open '{}': empty relative path", engine_path);
+    if (rp.file_name.empty()) {
+      CORE_LOG_ERROR("Cannot open '{}': no file name in path", engine_path);
       return nullptr;
     }
 
-    /// the last component is the file name, everything before is directory path
-    std::string file_name = components.back();
-    components = components.subspan(0, components.size() - 1);
-
+    /// the directory chain may not be indexed yet (mounting does not scan the disk),
+    ///  so a failed walk falls through to the disk probe below
     ref<directory> target_dir = mount;
     if (!components.empty()) {
       target_dir = walk_path(mount, components);
-      if (target_dir == nullptr) {
-        CORE_LOG_ERROR("Cannot open '{}': directory path not found", engine_path);
-        return nullptr;
-      }
     }
 
-    ref<file_handle> file = target_dir->get_file(file_name);
+    ref<file_handle> file = target_dir != nullptr ? target_dir->get_file(rp.file_name, rp.extension) : nullptr;
     if (file == nullptr) {
       /// try to open it as a local file if the mount has a disk path
       if (!mount->absolute_path().empty()) {
@@ -332,16 +444,16 @@ namespace other {
         for (const auto& comp : components) {
           disk_path /= comp;
         }
-        disk_path /= file_name;
+        disk_path /= (rp.file_name + rp.extension);
 
         if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
           auto local = make_ref<local_file>(*events, disk_path, engine_path);
-          local->parent = target_dir.raw_ptr();
+          local->parent = (target_dir != nullptr ? target_dir : mount).raw_ptr();
           return local;
         }
       }
 
-      CORE_LOG_ERROR("Cannot open '{}': file '{}' not found in mount '{}'", engine_path, file_name, rp.mount_name);
+      CORE_LOG_ERROR("Cannot open '{}': file '{}{}' not found in mount '{}'", engine_path, rp.file_name, rp.extension, rp.mount_name);
       return nullptr;
     }
 
@@ -354,30 +466,32 @@ namespace other {
     filepath abs_path = std::filesystem::absolute(path);
     OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_regular_file(abs_path), "Cannot register local file: path '{}' does not exist or is not a regular file", abs_path.string());
 
-    auto components = directory::split_path(path.string());
-    OTHER_ASSERT(!components.empty(), "Cannot register local file: path '{}' is empty", path.string());
+    /// register under the deepest existing mount so the file's canonical virtual path —
+    //  and with it stable_id — matches what the resolver computed at resolve time.
+    //  minting a new mount per parent-directory name made virtualize() output depend on
+    //  load history and collide across same-named directories.
+    const resolved_path rp = deep_search_for_mount(abs_path);
+    if (rp.is_valid()) {
+      ref<directory> mount = get_mount(rp.mount_name);
+      OTHER_ASSERT(mount != nullptr, "Resolved mount '{}' vanished while registering local file '{}'", rp.mount_name, path.string());
 
-    filepath name = components.back();
-    components.pop_back();
+      ref<directory> target_dir = mount;
+      if (!rp.relative_path_components.empty()) {
+        target_dir = walk_or_create_path(mount, rp.relative_path_components);
+      }
+      OTHER_ASSERT(target_dir != nullptr, "Failed to walk directory chain for local file '{}'", path.string());
+      CORE_LOG_DEBUG("Registering local file '{}' under mount '{}'", path.string(), rp.mount_name);
 
-    if (components.empty()) {
       ref<local_file> local = create_local_file(abs_path);
-      add_toplevel_file(local);
+      OTHER_ASSERT(local != nullptr, "Failed to create local file for path: {}", path.string());
+      target_dir->add_file(local);
       return local;
     }
 
-    filepath dir = abs_path.parent_path();
-    std::string dir_last_name = dir.filename().string();
-    ref<directory> target_dir = get_or_create_mount(dir_last_name, dir);
-    OTHER_ASSERT(target_dir != nullptr, "Failed to get or create mount '{}' while registering local file '{}'", dir_last_name, path.string());
-
-    filepath current_abs_path = target_dir->absolute_path();
-    CORE_LOG_DEBUG("Registering local file '{}' in directory '{}'", path.string(), target_dir->to_string());
-
+    /// outside every mount: keep it reachable as a toplevel file, no new mounts
     ref<local_file> local = create_local_file(abs_path);
     OTHER_ASSERT(local != nullptr, "Failed to create local file for path: {}", path.string());
-    CORE_LOG_DEBUG("Registering local file '{}' at '{}'", path.string(), local->to_string());
-    target_dir->add_file(local);
+    add_toplevel_file(local);
     return local;
   }
 

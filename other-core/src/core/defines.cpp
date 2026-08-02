@@ -281,6 +281,14 @@ namespace other {
 #endif
   }
 
+  std::string get_current_exe_directory() {
+    std::string curr_exe_full_path = get_current_exe_full_path();
+    if (curr_exe_full_path.empty()) {
+      return "";  // Error or not found
+    }
+    return filepath{ curr_exe_full_path }.parent_path().string();
+  }
+
   std::string get_system_error_message() {
 #ifdef OTHER_ENVIRONMENT_WINDOWS
     LPSTR msg_buffer = nullptr;

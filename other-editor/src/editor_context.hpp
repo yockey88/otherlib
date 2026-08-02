@@ -38,6 +38,27 @@ namespace other {
 
     edit_stack editing_history;
 
+    /// snapshot-based scene edit coalescing: continuous widget edits (inspector drags)
+    ///  open a session on the first notify and commit one {baseline, after} snapshot
+    ///  pair once the widgets go quiet; discrete ops use commit_discrete_scene_edit
+    struct scene_edit_tracker {
+      constexpr static uint32_t kIdleFramesToCommit = 12;
+
+      ostd::vector<uint8_t> baseline = {};
+      bool session_active = false;
+      uint32_t idle_frames = 0;
+    } edit_tracker;
+
+    /// a scene-mutating widget changed this frame (no-op while the scene plays)
+    void notify_scene_edited();
+    /// once per frame: commits the open edit session after the widgets go quiet
+    void tick_edit_tracker();
+    /// re-baselines and clears history (scene switched)
+    void reset_scene_edit_tracking();
+
+    void undo_scene_edit();
+    void redo_scene_edit();
+
     selection current_selection;
 
     std::string current_primary_viewport = "default-instancing";

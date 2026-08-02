@@ -75,6 +75,9 @@ namespace other {
     void remove_built_script(const filepath& script_asset_path);
     void remove_script_file(const filepath& script_file_path);
 
+    void begin_assembly_refresh(const filepath& dll_path);
+    bool refresh_built_script(const filepath& script_asset_path);
+
     void add_loaded_scene(natural_t scene_id);
     void remove_loaded_scene(natural_t scene_id);
 
@@ -122,6 +125,9 @@ namespace other {
     project_system* system = nullptr;
     metadata project_metadata;
     arena_buffer file_buffer;
+
+    /// PROJECT-scope mount created at load, removed at unload
+    std::string project_mount_name;
 
     filepath rc_path;
     ref<file_handle> project_file_handle;

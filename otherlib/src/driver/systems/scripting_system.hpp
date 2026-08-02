@@ -35,6 +35,10 @@ namespace other {
     lua_script* driver_main_lua_script = nullptr;
     lua_script* envrc = nullptr;
     ostd::vector<ref<assembly>> loaded_dotnet_modules;
+
+    /// callback names registered per SCRIPT_SOURCE asset so a refreshed/unloaded assembly
+    ///   unregisters its callbacks before the fresh assembly registers them again
+    ostd::map<natural_t, ostd::vector<std::string>> asset_callback_bindings;
   };
 
 }  // namespace other

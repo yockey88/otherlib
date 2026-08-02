@@ -13,8 +13,11 @@
 #include "core/ref.hpp"
 #include "core/ref_counted.hpp"
 #include "file/file_handle.hpp"
+#include "file/path_resolution.hpp"
 
 namespace other {
+
+  class glob_set;
 
   /// represents a directory node in the engine's virtual filesystem
   /**
@@ -23,8 +26,9 @@ namespace other {
    * allowing path resolution through the `mount_name://path/to/file` scheme.
    **/
   struct directory : public ref_counted {
-    directory(event_system& events, const std::string_view name, const filepath& path, file_type type = file_type::LOCAL);
-
+    directory(event_system& events, const std::string_view name, const filepath& path,
+              file_type type = file_type::LOCAL, mount_scope scope = mount_scope::ENGINE,
+              bool watch_subtree = false);
     ~directory() override = default;
 
     std::string to_string() const;
@@ -43,11 +47,12 @@ namespace other {
     bool directory_exists(const std::string_view relative_path) const;
     bool contains_path(const filepath& path) const;
 
-    ref<file_handle> get_file(const std::string_view name);
+    ref<file_handle> get_file(natural_t hash);
+    ref<file_handle> get_file(const std::string_view name, const std::string_view ext = "");
     ref<file_handle> add_file(ref<file_handle> file);
-    void remove_file(const std::string_view name);
+    void remove_file(natural_t hash);
     void remove_file_by_path(const filepath& path);
-    bool has_file(const std::string_view name) const;
+    bool has_file(natural_t hash) const;
 
     ref<file_handle> find_file_by_name(const std::string_view name, const std::string_view ext = "") const;
 
@@ -73,6 +78,12 @@ namespace other {
       return os;
     }
 
+    mount_scope get_scope() const { return scope; }
+
+    /// domain exclude filter for the subtree watcher (rebaselines its snapshot)
+    void set_watch_filter(const glob_set* set);
+    bool watches_subtree() const { return watcher != nullptr; }
+
    private:
     event_system& events;
 
@@ -81,11 +92,13 @@ namespace other {
     std::string dir_name;
     filepath abs_path;
 
+    mount_scope scope = mount_scope::ENGINE;
+
     /// keyed by FNV hash of the name
     ostd::map<natural_t, ref<directory>> children;
     ostd::map<natural_t, ref<file_handle>> file_handles;
 
-    scope<file_watcher> watcher = nullptr;
+    other::scope<file_watcher> watcher = nullptr;
   };
 
 }  // namespace other

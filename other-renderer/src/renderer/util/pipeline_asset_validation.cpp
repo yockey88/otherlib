@@ -196,6 +196,8 @@ namespace other {
         "voxelize",
         "noop",
         "script",
+        "scene_grids",
+        "scene_overlay",
       };
 
       constexpr std::string_view kValidParamNames[] = {

@@ -1,0 +1,3 @@
+add_library(net_sim_plugin SHARED plugins/network_sim.cpp)
+target_link_libraries(net_sim_plugin PRIVATE otherlib)
+target_compile_definitions(net_sim_plugin PRIVATE OTHER_PLUGIN_LIBRARY)

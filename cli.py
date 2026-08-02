@@ -3,6 +3,7 @@ import subprocess
 import sys
 import argparse
 import shutil
+import json
 
 def get_physx_dlls(dll_cfg):
   physx_base_path = "extern/physx/bin/"
@@ -43,7 +44,8 @@ def copy_dlls(cfg, dll_cfg):
     f"build/other-terminal/src/{cfg}/",
     f"build/scratch/{cfg}/",
     f"build/tests/{cfg}/",
-    f"build/tools/{cfg}/",
+    f"build/tests/harness/{cfg}/",
+    f"build/other-cli/{cfg}/",
     f"build/other-editor/{cfg}/",
     f"build/other-server/{cfg}/",
   ]
@@ -66,7 +68,9 @@ def run_subprocess(args):
     sys.exit(1)
 
 def run_project(out_dir, cfg, name, config_file, verbose = False, extra_args=None, project_path=None):
-  run_command = [f"build/{out_dir}/{cfg}/{name}.exe", f"{config_file}"]
+  ## normpath so the exe token contains backslashes; otherwise CreateProcess PATH-searches
+  ##  the forward-slash name and misses it in shells that exclude the CWD from PATH
+  run_command = [os.path.normpath(f"build/{out_dir}/{cfg}/{name}.exe"), f"{config_file}"]
   
   if verbose:  
     run_command.append("--verbose")
@@ -78,14 +82,10 @@ def run_project(out_dir, cfg, name, config_file, verbose = False, extra_args=Non
     run_command.extend(extra_args)
   run_subprocess(run_command)
   
-## TODO: this is ugly, fix this
 def validate_args(args, parser):
-  if not args.build and not args.regen_project \
-      and not args.run and not args.run_scratch \
-      and not args.run_terminal and not args.run_tests \
-      and not args.run_test_suite and not args.run_server \
-      and not args.install \
-      and not args.daemon_server and not args.run_project:
+  ## every flag except --verbose/--cfg is an action; require at least one
+  actions = {k: v for k, v in vars(args).items() if k not in ("verbose", "cfg")}
+  if not any(actions.values()):
     parser.print_help()
     sys.exit(1)
 
@@ -102,6 +102,7 @@ if __name__ == "__main__":
   parser.add_argument("--run-terminal", "-rt", action="store_true", help="Run the other terminal application.")
   parser.add_argument("--run-tests", "-t", action="store_true", help="Run the collection of other environment test suites.")
   parser.add_argument("--run-test-suite", "-ts", nargs=1, type=str, metavar="TEST_FILTER", help="Runs the test suites by passing the argument to GTests's --gtest-filter=<arg> flag.")
+  parser.add_argument("--run-soak", "-soak", action="store_true", help="Run the soak test harness against the test project and validate its report.")
   parser.add_argument("--cfg", "-c", type=str, default="Debug", choices=["Debug", "Release", "Profile", "ProfileD"])
   # parser.add_argument("--generate-cs-bindings", "-gcb", action="store_true", help="Generate C# bindings.")
   parser.add_argument("--install", "-i", action="store_true", help="Install Other Environment to the system.")
@@ -179,6 +180,23 @@ if __name__ == "__main__":
         extra_args.append("--gtest_output=xml:other_test_results.windows.release.xml")
       run_project("tests", cfg, "other_tests", "resources/dev-test-config.toml", args.verbose, extra_args=extra_args)
     
+    elif args.run_soak:
+      print(f"Running Soak Harness [{cfg}]")
+      report_path = "logs/soak-report.json"
+      if os.path.exists(report_path):
+        os.remove(report_path)
+      run_project("tests/harness", cfg, "other_soak", "tests/harness/soak-config.toml", args.verbose)
+
+      ## the driver exits 0 for any clean run; the verdict lives in the report
+      if not os.path.exists(report_path):
+        print(f"Soak FAILED: no report written to {report_path} (harness crashed or never finalized).")
+        sys.exit(1)
+      with open(report_path, "r") as f:
+        report = json.load(f)
+      print(f"Soak result: {'PASS' if report.get('pass') else 'FAIL'} - {report.get('reason')}")
+      if not report.get("pass"):
+        sys.exit(1)
+
     elif args.daemon_server:
       run_subprocess(["pwsh.exe", "-File", "tools/daemon-server.ps1"])
       

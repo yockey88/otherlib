@@ -28,8 +28,14 @@ namespace other {
     void tick(driver_kernel* kernel, double dt) override;
     void shutdown(driver_kernel* kernel) override;
 
+    void resolve_and_load_roots(std::span<const filepath> roots);
+    /// structural watch signal (created/deleted/unknown path) routed to the resolver
+    void file_changed(const filepath& path);
+
     natural_t begin_asset_load(const filepath& asset_path);
     void begin_asset_unload(natural_t asset_id);
+
+    void reload_asset(natural_t asset_id);
 
     natural_t add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices);
     natural_t add_scene_asset(scene* scene_ptr, opt<filepath> scene_path = std::nullopt);
@@ -58,9 +64,9 @@ namespace other {
 
    private:
     scope<asset_handler> asset_mgr = nullptr;
-    std::deque<natural_t> loading_asset_ids;
 
     void mount_mounts(driver_kernel* kernel);
+    void push_watch_filters();
 
     void handle_ls_event(driver_kernel* kernel, const value& data);
     void handle_ls_assets_event(driver_kernel* kernel, const value& data);

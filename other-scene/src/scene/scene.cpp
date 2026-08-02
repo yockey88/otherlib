@@ -30,6 +30,7 @@
 #include "object/transform.hpp"
 #include "scene/scene_network_context.hpp"
 #include "scene/scene_storage.hpp"
+#include "serialization/scene_serializer.hpp"
 
 #include "entt/entity/fwd.hpp"
 #include "glm/fwd.hpp"
@@ -160,28 +161,26 @@ namespace other {
       return;
     }
 
-    CORE_LOG_DEBUG("Running Lua script file '{}' in scene '{}'.", script_path->string(), name);
-    // Load and execute the Lua script
+    if (!std::filesystem::exists(*script_path)) {
+      CORE_LOG_ERROR("Scene '{}' hook script '{}' does not exist.", name, script_path->string());
+      script_loaded = true;
+      return;
+    }
+
+    /// the chunk defines behavior hooks (OnSceneLoad/Update/Render/...) in this scene's
+    ///  sandbox; scene CONTENT comes from the scene document, never from lua
+    CORE_LOG_DEBUG("Running Lua hook script '{}' in scene '{}'.", script_path->string(), name);
     auto* scripting_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment.");
 
     lua_sandbox& sandbox = storage->sandbox;
     lua_host& lua = scripting_env->get_lua_host();
-    opt<sol::table> scene_table = sandbox.try_load_table(&lua, *script_path);
-
-    sol::table objects_table;
-    if (scene_table.has_value()) {
-      objects_table = scene_table.value()["Objects"];
-      const bool scene_valid = objects_table.valid();
-      if (!scene_valid) {
-      } else {
-      }
-    }
+    (void)sandbox.try_load_table(&lua, *script_path);  /// return value optional and unused
 
     if (sandbox["OnSceneLoad"].valid()) {
       CORE_LOG_DEBUG("Calling 'OnSceneLoad' from Lua file: {}", script_path->string());
       sol::protected_function on_scene_load_fn = sandbox["OnSceneLoad"];
-      sol::protected_function_result result = on_scene_load_fn(scene_table);
+      sol::protected_function_result result = on_scene_load_fn();
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnSceneLoad' from Lua file: {}", script_path->string());
         sol::error err = result;
@@ -189,23 +188,35 @@ namespace other {
       }
     }
 
-    if (scene_table.has_value() && objects_table.valid()) {
-      CORE_LOG_DEBUG("Loading scene objects from Lua file: {}", script_path->string());
-      for (auto& obj : objects_table) {
-        sol::table obj_table = obj.second.as<sol::table>();
+    CORE_LOG_DEBUG("Scene '{}' Lua file '{}' executed", name, script_path->string());
+    script_loaded = true;
+  }
 
-        // running script should have created the objects, this should be a valid ID
-        natural_t id = obj_table["GetId"](obj_table);
-        const bool valid_object = has_object(id);
-        OTHER_ASSERT(valid_object, "Scene object with ID {} is not valid!", id);
+  void scene::set_pending_document(serialization::scene_document&& doc) {
+    pending_document = std::move(doc);
+  }
 
-        scene_object& scene_obj = get_object(id);
-        construct_object_from_lua_table(scene_obj, obj_table);
+  void scene::instantiate_pending_document() {
+    ASSERT_MAIN_THREAD();
+    if (!pending_document.has_value()) {
+      return;
+    }
+
+    CORE_LOG_DEBUG("Instantiating scene document into scene '{}' ({} objects).", name, pending_document->objects.size());
+    serialization::instantiate_scene(*this, *pending_document, serialization::default_codec_services());
+
+    script_source = pending_document->script;
+    if (!script_source.empty()) {
+      if (const filepath script_relative = filepath(script_source); script_relative.is_absolute()) {
+        script_path = script_relative;
+      } else if (source_path.has_value()) {
+        script_path = source_path->parent_path() / script_relative;
+      } else {
+        CORE_LOG_ERROR("Scene '{}' declares hook script '{}' but has no source path to resolve it against.", name, script_source);
       }
     }
 
-    CORE_LOG_DEBUG("Scene '{}' Lua file '{}' executed", name, script_path->string());
-    script_loaded = true;
+    pending_document.reset();
   }
 
   scene scene::create_scene(const std::string& name) {
@@ -220,7 +231,7 @@ namespace other {
       return;
     }
 
-    /// \todo: store initial state for reset
+    play_snapshot = capture_snapshot();
 
     playing = true;
     storage->physics->start_simulation();
@@ -255,13 +266,61 @@ namespace other {
     });
 
     reset();
-
-    /// \todo: reset initial state
   }
 
   void scene::reset() {
     ASSERT_MAIN_THREAD();
-    /// \todo: restore initial state
+    if (play_snapshot.empty()) {
+      return;
+    }
+
+    CORE_LOG_DEBUG("Restoring scene '{}' to its pre-play state ({} snapshot bytes).", name, play_snapshot.size());
+    /// restore consumes the snapshot — the next play() captures a fresh one
+    ostd::vector<uint8_t> snapshot = std::move(play_snapshot);
+    play_snapshot.clear();
+    restore_snapshot(snapshot);
+  }
+
+  ostd::vector<uint8_t> scene::capture_snapshot() {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::capture_snapshot");
+    return serialization::write_scene_binary(serialization::capture_scene(*this, serialization::default_codec_services()));
+  }
+
+  void scene::restore_snapshot(std::span<const uint8_t> snapshot_bytes) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::restore_snapshot");
+
+    serialization::scene_parse_result parsed = serialization::parse_scene_binary(snapshot_bytes);
+    if (!parsed.success()) {
+      CORE_LOG_ERROR("Cannot restore scene '{}' snapshot: {}", name, parsed.error);
+      return;
+    }
+
+    destroy_all_non_root_objects();
+    serialization::instantiate_scene(*this, *parsed.document, serialization::default_codec_services());
+  }
+
+  void scene::destroy_all_non_root_objects() {
+    ASSERT_MAIN_THREAD();
+    const natural_t root_id = root_object().id;
+    /// copy the child list — destroy mutates it
+    const ostd::vector<uint64_t> children = get_children_ids(root_id);
+    for (const natural_t child_id : children) {
+      destroy_object(child_id);
+    }
+  }
+
+  ostd::vector<std::string> scene::get_object_tags(natural_t id) const {
+    ASSERT_MAIN_THREAD();
+    const scene_tree::node* node = storage->tree.node_at(id);
+    OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+
+    ostd::vector<std::string> tags = {};
+    for (const object_tag& tag : node->tags) {
+      tags.push_back(tag.name);
+    }
+    return tags;
   }
 
   void scene::enable_physics_debug_rendering() {
@@ -358,6 +417,24 @@ namespace other {
       sol::protected_function_result result = on_late_update_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnLateUpdate' for scene [{}:{}]", id, name);
+        sol::error err = result;
+        CORE_LOG_ERROR("Lua Error: {}", err.what());
+      }
+    }
+  }
+
+  void scene::render_update(double delta_time) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::render_update");
+
+    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
+      comp.render_update(delta_time);
+    });
+
+    if (sol::protected_function on_render_fn = storage->sandbox["OnSceneRender"]; on_render_fn.valid()) {
+      sol::protected_function_result result = on_render_fn(delta_time);
+      if (!result.valid()) {
+        CORE_LOG_ERROR("Failed to execute 'OnSceneRender' for scene [{}:{}]", id, name);
         sol::error err = result;
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
@@ -988,27 +1065,27 @@ namespace other {
     data.simulation_environment.ambient_color += data.simulation_environment.sun_color;
     data.simulation_environment.ambient_color /= static_cast<float>(data.lights.size() + 1);
 
-    data.primary_camera = const_cast<camera*>(primary_camera);
-    bounding_box scene_bounding_box = get_bounding_box_from_camera_frustum(*primary_camera);
     constexpr float kEnvHalfExtent = 16.0f;
     const float half = kEnvHalfExtent;
     const glm::vec3 voxel = glm::vec3(2.0f * half / 64.0f);
+
+    data.primary_camera = const_cast<camera*>(primary_camera);
+
+    bounding_box scene_bounding_box = {};
     glm::vec3 c = {};
-    if (primary_camera != nullptr) {
-      c = primary_camera->center();
-    } else {
+    if (data.primary_camera == nullptr) {
+      scene_bounding_box = get_bounding_box();
       c = (scene_bounding_box.min + scene_bounding_box.max) / 2.0f;
+    } else {
+      scene_bounding_box = get_bounding_box_from_camera_frustum(*primary_camera);
+      c = primary_camera->center();
     }
+
     c = glm::round(c / voxel) * voxel;
     data.simulation_environment.world_min = glm::vec4(c - half, 1.0f);
     data.simulation_environment.world_max = glm::vec4(c + half, 1.0f);  // exposure);
 
     return data;
-  }
-
-  void scene::debug_render(debug_draw draw) {
-    ASSERT_MAIN_THREAD();
-    PROFILE_SECTION("scene::debug_render");
   }
 
   bool scene::object_has_tag(natural_t id, const std::string_view tag) const {
@@ -1213,69 +1290,6 @@ namespace other {
     storage->physics->destroy_physics_body(physics_comp.body);
     physics_comp.shape = nullptr;
     physics_comp.body = nullptr;
-  }
-
-  void scene::construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table) {
-    ASSERT_MAIN_THREAD();
-    PROFILE_SECTION("scene::construct_object_from_lua_table");
-
-    CORE_LOG_DEBUG("Constructing scene object '{}' from Lua table.", scene_obj.name);
-    const auto transform_table = obj_table["Transform"];
-    const auto scripts_table = obj_table["Scripts"];
-    OTHER_ASSERT(transform_table.valid(), "No Transform table found in the Lua object table for object w/ id {}", scene_obj.id);
-    OTHER_ASSERT(scripts_table.valid(), "No scripts found in the Lua object table for object w/ id {}", scene_obj.id);
-
-    transform obj_transform = get_transform(&scene_obj);
-
-    auto position = transform_table["local_position"];
-    auto rotation = transform_table["local_rotation_quat"];
-    auto scale = transform_table["local_scale"];
-
-    if (position.valid()) {
-      obj_transform.local_position = glm::vec3{ position["x"].get_or(0.0f), position["y"].get_or(0.0f), position["z"].get_or(0.0f) };
-    }
-    if (rotation.valid()) {
-      obj_transform.local_rotation_quat = glm::quat{ rotation["w"].get_or(1.0f), rotation["x"].get_or(0.0f), rotation["y"].get_or(0.0f), rotation["z"].get_or(0.0f) };
-    }
-    if (scale.valid()) {
-      obj_transform.local_scale = glm::vec3{ scale["x"].get_or(1.0f), scale["y"].get_or(1.0f), scale["z"].get_or(1.0f) };
-    }
-
-    set_transform(&scene_obj, obj_transform);
-
-    opt<sol::table> dotnet = obj_table["DotNetClasses"];
-    // opt<sol::table> lua_scripts = scripts_table["Lua"];
-    if (dotnet.has_value() && dotnet->valid()) {
-      script_component* script_comp = get_component<script_component>(&scene_obj);
-      OTHER_ASSERT(script_comp != nullptr, "Failed to retrieve script component for object w/ id {}", scene_obj.id);
-
-      auto* scripting_env = subsystem<scripting_environment>::get();
-      OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment");
-
-      CORE_LOG_DEBUG(" - attaching .NET scripts to script object ID {} ({} scripts)", script_comp->script_object_id, dotnet->size());
-      for (const auto& kv : *dotnet) {
-        const auto& script_name = kv.first.as<std::string>();
-        if (!kv.second.is<std::string>()) {
-          CORE_LOG_WARN(" - .NET script '{}' for object ID {} does not have a valid class name string, skipping.", script_name, scene_obj.id);
-          continue;
-        }
-
-        const auto& class_name = kv.second.as<std::string>();
-        CORE_LOG_DEBUG("   - attaching .NET script '{}' with class name '{}' to script object ID {}", script_name, class_name, script_comp->script_object_id);
-        scripting_env->attach_dotnet_object(script_comp->script_object_id, class_name);
-      }
-    }
-
-    // if (lua_scripts.has_value() && lua_scripts->valid()) {
-    //   CORE_LOG_DEBUG(" - attaching Lua scripts to script object ID {}", script_comp->script_object_id);
-    //   // for (auto& item : lua_scripts) {
-    //   //   std::string script_name = item.first.as<std::string>();
-    //   //   // sol::table script_data = item.second.as<sol::table>();
-
-    //   //   // Load and attach the Lua script to the script component
-    //   //   subsystem<scripting_environment>::get()->attach_lua_script(script_comp->script_object_id, script_name);
-    //   // }
-    // }
   }
 
 }  // namespace other

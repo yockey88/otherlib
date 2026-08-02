@@ -6,6 +6,8 @@
 
 #include <functional>
 
+#include "serialization/reflection.hpp"
+
 #include "ui/field_ui.hpp"
 
 namespace other {

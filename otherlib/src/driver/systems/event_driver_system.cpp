@@ -23,6 +23,16 @@ namespace other {
       OTHER_ASSERT(fs != nullptr, "File system subsystem must be initialized before event driver system.");
 
       fs->initialize_file_events(*event_system_ptr);
+
+      event_system_ptr->add_listener("filesystem.watch-event", [this](const value& data) {
+        if (data.type() != value_type::USER_TYPE) {
+          CORE_LOG_ERROR("Received invalid file event: expected user type with file_event data");
+          return;
+        }
+        file_event event = data;
+
+        get_driver().file_event(event);
+      });
     }
 
     /// register the core driver events that were previously in driver::initialize
@@ -41,21 +51,10 @@ namespace other {
     event_system_ptr->add_listener("open-driver-ui-window", [this, kernel](const value& val) { handle_open_ui_window_event(kernel, val); });
     event_system_ptr->add_listener("close-driver-ui-window", [this, kernel](const value& val) { handle_close_ui_window_event(kernel, val); });
 
-    // // open/close file events
-    // /// \todo ...
+    // open/close file events
+    /// \todo ...
 
-    // events->register_event("ls-driver-default");
-    // events->add_listener("ls-driver-default", std::bind_front(&event_driver_system::handle_list_driver_default_event, this));
-    // events->register_event("ls-driver-windows");
-    // events->add_listener("ls-driver-windows", std::bind_front(&event_driver_system::handle_list_driver_windows_event, this));
-    // events->register_event("ls-driver-files");
-    // events->add_listener("ls-driver-files", std::bind_front(&event_driver_system::handle_list_driver_files_event, this));
-    // events->register_event("ls-driver-scenes");
-    // events->add_listener("ls-driver-scenes", std::bind_front(&event_driver_system::handle_list_driver_scenes_event, this));
-    // events->register_event("ls-driver-assets");
-    // events->add_listener("ls-driver-assets", std::bind_front(&event_driver_system::handle_list_driver_assets_event, this));
-
-    // // object commands
+    // object commands
     // events->register_event("object-driver-create");
     // events->add_listener("object-driver-create", std::bind_front(&event_driver_system::handle_object_driver_create_event, this));
     // events->register_event("object-driver-destroy");

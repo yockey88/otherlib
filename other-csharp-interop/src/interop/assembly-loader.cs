@@ -58,8 +58,17 @@ namespace OtherCsBindings
 
     private static readonly Dictionary<Type, AssemblyLoadStatus> load_errors = new();
     private static readonly Dictionary<Int32, AssemblyLoadContext> contexts = new();
+    private static readonly Dictionary<Int32, List<Int32>> context_members = new();
     private static readonly Dictionary<Int32, Assembly> assemblies = new();
-    private static Dictionary<Int32, List<GCHandle>> handles = new();
+    /// each engine-loaded assembly gets its own collectible AssemblyLoadContext: .NET can only
+    ///  unload whole contexts, never single assemblies, so per-assembly unload (script hot
+    ///  reload) requires per-assembly contexts
+    private static readonly Dictionary<Int32, AssemblyLoadContext> assembly_alcs = new();
+    /// GCHandles are tracked as their IntPtr representation so entries can be removed when the
+    ///  native side frees a handle — GCHandle struct copies go stale after Free and must never
+    ///  be double-freed
+    private static readonly Dictionary<Int32, HashSet<IntPtr>> handles = new();
+    private static readonly Dictionary<IntPtr, Int32> handle_owners = new();
 
     static Assembly? current_executing_assembly = null;
     static AssemblyLoadContext? current_load_context = null;
@@ -134,16 +143,25 @@ namespace OtherCsBindings
         Int32 asm_id = asm_name.Name!.GetHashCode();
         if (assemblies.TryGetValue(asm_id, out var asm))
         {
-          return asm;
+          if (IsResolvable(context, asm))
+          {
+            return asm;
+          }
+          return null;
         }
 
-        foreach (var alc in contexts.Values)
+        foreach (var alc in AllLoadContexts())
         {
           foreach (var assembly in alc.Assemblies)
           {
             if (assembly.GetName().Name != asm_name.Name)
             {
               continue;
+            }
+
+            if (!IsResolvable(context, assembly))
+            {
+              return null;
             }
 
             assemblies.Add(asm_id, assembly);
@@ -156,6 +174,34 @@ namespace OtherCsBindings
         Host.HandleException(e);
       }
       return null;
+    }
+
+    /// the runtime forbids non-collectible assemblies from referencing collectible ones, and
+    ///  this handler is also attached to the (non-collectible) default context: when a
+    ///  collectible context resolves a reference, the binder consults the default context
+    ///  FIRST — handing it a collectible assembly poisons the whole bind. Returning null lets
+    ///  resolution fall through to the requesting assembly's own context, where a
+    ///  collectible→collectible reference is legal. Reflection lookups pass context == null
+    ///  and create no reference edge, so they may see every assembly.
+    private static bool IsResolvable(AssemblyLoadContext? requesting_context, Assembly asm)
+    {
+      if (requesting_context == null || requesting_context.IsCollectible)
+      {
+        return true;
+      }
+      return AssemblyLoadContext.GetLoadContext(asm)?.IsCollectible != true;
+    }
+
+    private static IEnumerable<AssemblyLoadContext> AllLoadContexts()
+    {
+      foreach (var alc in contexts.Values)
+      {
+        yield return alc;
+      }
+      foreach (var alc in assembly_alcs.Values)
+      {
+        yield return alc;
+      }
     }
 
     internal static List<Assembly> GetFullLoadedAssemblyContext()
@@ -183,21 +229,15 @@ namespace OtherCsBindings
         return -1;
       }
 
+      /// the context created here is a logical group: member assemblies are loaded into their
+      ///  own per-assembly contexts (see LoadManagedAssembly) so they can be unloaded one at a
+      ///  time — this context itself never contains engine assemblies
       var alc = new AssemblyLoadContext(name, true);
-
       alc.Resolving += ResolveAssembly;
-      alc.Unloading += ctx =>
-      {
-        foreach (var asm in ctx.Assemblies)
-        {
-          var asm_name = asm.GetName();
-          Int32 asm_id = asm_name.Name!.GetHashCode();
-          assemblies.Remove(asm_id);
-        }
-      };
 
       Int32 ctx_id = name.GetHashCode();
       contexts.Add(ctx_id, alc);
+      context_members.Add(ctx_id, new List<Int32>());
       return ctx_id;
     }
 
@@ -205,46 +245,42 @@ namespace OtherCsBindings
     [UnmanagedCallersOnly]
     private static void UnloadAssemblyLoadContext(Int32 context_id)
     {
-      if (!contexts.TryGetValue(context_id, out var alc))
+      try
       {
-        Logger.LogError($"Cannot unload AssemblyLoadContext '{context_id}', it was either never loaded or already unloaded.");
-        return;
-      }
-
-      if (alc == null)
-      {
-        Logger.LogError($"Cannot unload AssemblyLoadContext '{context_id}', it is null.");
-        return;
-      }
-
-      foreach (var assembly in alc.Assemblies)
-      {
-        var asm_name = assembly.GetName();
-        int asm_id = asm_name.Name!.GetHashCode();
-
-        if (!handles.TryGetValue(asm_id, out var hs))
+        if (!contexts.TryGetValue(context_id, out var alc))
         {
-          continue;
+          Logger.LogError($"Cannot unload AssemblyLoadContext '{context_id}', it was either never loaded or already unloaded.");
+          return;
         }
 
-        foreach (var h in hs)
+        if (alc == null)
         {
-          if (!h.IsAllocated || h.Target == null)
+          Logger.LogError($"Cannot unload AssemblyLoadContext '{context_id}', it is null.");
+          return;
+        }
+
+        // unload every member assembly (each owns its own context)
+        if (context_members.Remove(context_id, out var members))
+        {
+          foreach (var asm_id in members)
           {
-            continue;
+            UnloadAssemblyById(asm_id);
           }
-          h.Free();
         }
+
+        TypeInterface.cached_types.Clear();
+        TypeInterface.cached_methods.Clear();
+        TypeInterface.cached_fields.Clear();
+        TypeInterface.cached_properties.Clear();
+        TypeInterface.cached_attributes.Clear();
+
+        contexts.Remove(context_id);
+        alc.Unload();
       }
-
-      TypeInterface.cached_types.Clear();
-      TypeInterface.cached_methods.Clear();
-      TypeInterface.cached_fields.Clear();
-      TypeInterface.cached_properties.Clear();
-      TypeInterface.cached_attributes.Clear();
-
-      contexts.Remove(context_id);
-      alc.Unload();
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+      }
     }
 
     [UnmanagedCallersOnly]
@@ -270,19 +306,25 @@ namespace OtherCsBindings
           return -1;
         }
 
-        if (!contexts.TryGetValue(context_id, out var alc))
+        if (!contexts.TryGetValue(context_id, out var group_alc))
         {
           last_load_status = AssemblyLoadStatus.InvalidAssembly;
           Logger.LogError($"Failed to load assembly '{file_path}', couldn't find Load Context with id '{context_id}'");
           return -1;
         }
 
-        if (alc == null)
+        if (group_alc == null)
         {
           last_load_status = AssemblyLoadStatus.CorruptContext;
           Logger.LogError($"Failed to load assembly '{file_path}', Load Context with id '{context_id}' is null");
           return -1;
         }
+
+        /// load into a dedicated collectible context so this assembly can be unloaded (and hot
+        ///  reloaded) individually — assemblies resolve each other through the Resolving
+        ///  handler, which searches across every context
+        var alc = new AssemblyLoadContext($"{group_alc.Name}:{Path.GetFileNameWithoutExtension(path)}", true);
+        alc.Resolving += ResolveAssembly;
 
         Assembly? asm = null;
 
@@ -293,18 +335,23 @@ namespace OtherCsBindings
         }
 
         var name = asm.GetName();
-        Logger.LogDebug($"Successfully loaded assembly : '{name}' [{context_id}]");
 
         Int32 asm_id = name.Name!.GetHashCode();
-        try
-        {
-          assemblies.Add(asm_id, asm);
-        }
-        catch (Exception e)
+        if (assemblies.ContainsKey(asm_id))
         {
           last_load_status = AssemblyLoadStatus.Failed;
-          Host.HandleException(e);
+          Logger.LogError($"Failed to load assembly '{file_path}': an assembly named '{name.Name}' is already loaded, unload it first");
+          alc.Unload();
           return -1;
+        }
+
+        Logger.LogDebug($"Successfully loaded assembly : '{name}' [{context_id}]");
+
+        assemblies.Add(asm_id, asm);
+        assembly_alcs.Add(asm_id, alc);
+        if (context_members.TryGetValue(context_id, out var members))
+        {
+          members.Add(asm_id);
         }
 
         last_load_status = AssemblyLoadStatus.Success;
@@ -320,13 +367,64 @@ namespace OtherCsBindings
     [UnmanagedCallersOnly]
     private static void UnloadManagedAssembly(Int32 asm_id)
     {
-      if (!assemblies.TryGetValue(asm_id, out var asm))
+      try
       {
-        Logger.LogError($"Couldn't unload assembly '{asm_id}', assembly not found!");
+        /// assemblies cached from the default context (the bindings assembly and friends)
+        ///  have no dedicated context and can never be unloaded
+        if (!assembly_alcs.ContainsKey(asm_id))
+        {
+          Logger.LogError($"Couldn't unload assembly '{asm_id}', assembly not found!");
+          return;
+        }
+
+        UnloadAssemblyById(asm_id);
+      }
+      catch (Exception e)
+      {
+        Host.HandleException(e);
+      }
+    }
+
+    /// unloads one engine-loaded assembly for real: releases its GCHandles and cached
+    ///  reflection objects (both would otherwise root the assembly forever), then unloads its
+    ///  dedicated context. A subsequent LoadManagedAssembly yields a fresh instance — this is
+    ///  the unload half of script hot reload.
+    private static void UnloadAssemblyById(Int32 asm_id)
+    {
+      if (!assemblies.Remove(asm_id, out var asm))
+      {
         return;
       }
 
-      assemblies.Remove(asm_id);
+      FreeAssemblyHandles(asm_id);
+      TypeInterface.EvictAssemblyFromCaches(asm);
+
+      if (assembly_alcs.Remove(asm_id, out var alc))
+      {
+        foreach (var members in context_members.Values)
+        {
+          members.Remove(asm_id);
+        }
+        alc.Unload();
+      }
+    }
+
+    private static void FreeAssemblyHandles(Int32 asm_id)
+    {
+      if (!handles.Remove(asm_id, out var asm_handles))
+      {
+        return;
+      }
+
+      foreach (var ptr in asm_handles)
+      {
+        handle_owners.Remove(ptr);
+        var handle = GCHandle.FromIntPtr(ptr);
+        if (handle.IsAllocated)
+        {
+          handle.Free();
+        }
+      }
     }
 
     [UnmanagedCallersOnly]
@@ -352,11 +450,29 @@ namespace OtherCsBindings
 
       if (!handles.TryGetValue(asm_id, out var hs))
       {
-        handles.Add(asm_id, new List<GCHandle>());
-        hs = handles[asm_id];
+        hs = new HashSet<IntPtr>();
+        handles.Add(asm_id, hs);
       }
 
-      hs.Add(handle);
+      IntPtr ptr = GCHandle.ToIntPtr(handle);
+      hs.Add(ptr);
+      handle_owners[ptr] = asm_id;
+    }
+
+    /// must be called wherever a registered handle is freed, otherwise the stale entry would
+    ///  be freed a second time on assembly unload — after the handle slot has been recycled,
+    ///  that would free an unrelated live handle
+    internal static void UnregisterHandle(IntPtr ptr)
+    {
+      if (!handle_owners.Remove(ptr, out var asm_id))
+      {
+        return;
+      }
+
+      if (handles.TryGetValue(asm_id, out var hs))
+      {
+        hs.Remove(ptr);
+      }
     }
 
     public static void LoadCoreAssemblies()

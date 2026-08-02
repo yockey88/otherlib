@@ -43,6 +43,14 @@ namespace other {
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available.");
 
+    /// the project root mount anchors every canonical virtual path (=> stable_id) the
+    //  resolver produces; it must exist before anything under it is registered or virtualized
+    const filepath project_root = std::filesystem::absolute(path).parent_path();
+    project_mount_name = project_root.filename().string();
+    ref<directory> project_mount = fs->mount_directory(project_mount_name, project_root, mount_scope::PROJECT);
+    OTHER_ASSERT(project_mount != nullptr, "Failed to mount project root '{}'", project_root.string());
+    OTHER_ASSERT(project_mount->get_scope() == mount_scope::PROJECT, "Mount '{}' already exists with non-project scope", project_mount_name);
+
     project_file_handle = fs->register_local_file(path.string());
     OTHER_ASSERT(project_file_handle != nullptr, "Failed to open project file '{}'", path.string());
     current_state = LOADING;
@@ -95,13 +103,15 @@ namespace other {
     }
 
     waiting_for_script_load = process_scripting_sections(table, kernel);
-    if (waiting_for_script_load && (project_scripts.csproject_path.empty() || !std::filesystem::exists(project_scripts.csproject_path))) {
+    if (waiting_for_script_load &&
+        (project_scripts.csproject_path.empty() || !std::filesystem::exists(project_scripts.csproject_path))) {
       CORE_LOG_ERROR("Project's .NET project file '{}' does not exist. Cannot load project scripts.", project_scripts.csproject_path.string());
       waiting_for_script_load = false;
       project_scripts.csproject_path.clear();
     } else if (waiting_for_script_load) {
       CORE_LOG_INFO("Loading .NET project from '{}'", project_scripts.csproject_path.string());
-      system->sibling<asset_system>(*kernel).begin_asset_load(project_scripts.csproject_path);
+      const std::array roots{ project_scripts.csproject_path };
+      system->sibling<asset_system>(*kernel).resolve_and_load_roots(roots);
     }
 
     waiting_for_scene_load = process_scene_sections(table);
@@ -112,6 +122,7 @@ namespace other {
 
     all_scenes_loaded = !waiting_for_scene_load;
     if (!(waiting_for_script_load || waiting_for_scene_load)) {
+      CORE_LOG_DEBUG("All project assets loaded successfully.");
       set_state(LOADED);
     }
   }
@@ -146,6 +157,15 @@ namespace other {
     project_file_handle = nullptr;
     file_buffer.release();
 
+    /// unmounting the project root also drops its domain watcher, so no re_resolve
+    //  can arrive between project close and the next resolve_roots
+    if (!project_mount_name.empty()) {
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available.");
+      fs->unmount(project_mount_name);
+      project_mount_name.clear();
+    }
+
     project_assembly = nullptr;
     set_state(UNLOADING);
   }
@@ -169,8 +189,8 @@ namespace other {
   }
 
   void project::add_built_script(const filepath& script_path) {
+    OTHER_ASSERT(is_loading(), "add_built_script is boot-only; hot reload goes through begin_assembly_refresh/refresh_built_script.");
     OTHER_ASSERT(std::filesystem::exists(script_path), "Script asset file '{}' does not exist.", script_path.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add built script.");
     CORE_LOG_TRACE("[PROJECT] Adding built script: {}", script_path.string());
     if (script_path.extension() == ".dll") {
       attach_project_dll(script_path);
@@ -213,8 +233,31 @@ namespace other {
     }
   }
 
+  void project::begin_assembly_refresh(const filepath& dll_path) {
+    if (dll_path != project_scripts.cs_script_source) {
+      return;
+    }
+
+    CORE_LOG_INFO("[PROJECT] Assembly refresh: detaching '{}'", dll_path.string());
+    if (project_assembly != nullptr) {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+      env->unload_dotnet_module(project_assembly);
+      project_assembly = nullptr;
+    }
+  }
+
+  bool project::refresh_built_script(const filepath& script_asset_path) {
+    if (script_asset_path.extension() != ".dll" || script_asset_path != project_scripts.cs_script_source) {
+      return false;
+    }
+
+    CORE_LOG_INFO("[PROJECT] Assembly refresh: reattaching '{}'", script_asset_path.string());
+    attach_project_dll(script_asset_path);
+    return true;
+  }
+
   void project::add_loaded_scene(natural_t scene_id) {
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add loaded scene.");
     auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
     OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
     CORE_LOG_DEBUG("[PROJECT] Adding loaded scene with ID '{}'.", scene_id);
@@ -229,7 +272,6 @@ namespace other {
   }
 
   void project::remove_loaded_scene(natural_t scene_id) {
-    OTHER_ASSERT(is_unloading(), "Project is not in unloading state. Cannot remove loaded scene.");
     auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
     OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
     CORE_LOG_DEBUG("[PROJECT] Removing loaded scene with ID '{}'.", scene_id);
@@ -244,9 +286,13 @@ namespace other {
 
   void project::attach_project_dll(const filepath& dll_path) {
     OTHER_ASSERT(std::filesystem::exists(dll_path), "Project assembly file '{}' does not exist.", dll_path.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot attach project assembly. current state = {}", current_state);
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+
+    if (project_assembly != nullptr) {
+      env->unload_dotnet_module(project_assembly);
+      project_assembly = nullptr;
+    }
 
     ref<assembly> asm_ref = env->get_dotnet_module(dll_path.stem().string());
     OTHER_ASSERT(asm_ref != nullptr, "Failed to load project assembly from '{}'", dll_path.string());
@@ -257,13 +303,11 @@ namespace other {
 
   void project::attach_project_cs_file(const filepath& cs_file) {
     OTHER_ASSERT(std::filesystem::exists(cs_file), "C# script file '{}' does not exist.", cs_file.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading  state. Cannot attach C# script file. current state = {}", current_state);
     project_scripts.cs_scripts.push_back(cs_file);
   }
 
   void project::attach_project_lua_file(const filepath& cs_file) {
     OTHER_ASSERT(std::filesystem::exists(cs_file), "Lua script file '{}' does not exist.", cs_file.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading  state. Cannot attach Lua script file. current state = {}", current_state);
     project_scripts.lua_scripts.push_back(cs_file);
   }
 
@@ -458,7 +502,6 @@ namespace other {
         continue;
       }
 
-      CORE_LOG_DEBUG(" - Added scene '{}' [{}] with path '{}' to project scene list.", data.name, data.scene_id, data.path.string());
       scenes_in_project.push_back({
         .name = name_node.as_string()->get(),
         .path = filepath(path_node.as_string()->get()),

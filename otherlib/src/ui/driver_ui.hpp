@@ -46,6 +46,9 @@ namespace other {
     ostd::vector<std::string> get_open_window_names() const;
     ostd::vector<std::string> get_available_window_names() const;
 
+    ostd::vector<std::string> get_available_builtin_window_names() const;
+    ostd::vector<std::string> get_available_custom_window_names() const;
+
     void open_window(const std::string_view window_name);
     void close_window(const std::string_view window_name);
     void close_all_windows();

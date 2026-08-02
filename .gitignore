@@ -4,6 +4,8 @@ logs/
 docs/
 */logs/*
 other_test_results.*.xml
+bin/
+obj/
 
 #only for local testing linux builds
 dockerfile
@@ -25,8 +27,11 @@ code-generator/
 *.d2
 
 #large local development files
-test-project/
-resources/models/
+spacesim/
+# models are local content, except the small things for test-project's scenes for simple hello world demo in repo
+resources/models/*
+!resources/models/floor.fbx
+!resources/models/spinning-torus.fbx
 # this is really large, don't have a better way to do this yet
 tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.fbx
 tests/resources/models/NewSponza_Curtains_FBX_YUP_fbx7binary.omesh
@@ -45,3 +50,5 @@ extern/python312/DLLs
 extern/python312/include
 extern/python312/Lib
 extern/physx
+# local scratch / prompt context (untracked by design)
+test.ps1

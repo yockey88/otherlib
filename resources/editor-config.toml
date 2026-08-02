@@ -4,7 +4,7 @@ boot-file = "resources/editor-assets/editor-boot.oasm"
 plugins = [
   # { name = "Other Management", path = "build/other-editor/plugins/${build-config}/other_management_plugin.dll" },
   { name = "Tcp Side Channel", path = "build/other-editor/plugins/${build-config}/tcp_side_channel_plugin.dll" },
-  { name = "VM Debugger", path = "build/other-editor/plugins/${build-config}/vm_debugger_plugin.dll" }
+  # { name = "VM Debugger", path = "build/other-editor/plugins/${build-config}/vm_debugger_plugin.dll" }
 ]
 
 [application]

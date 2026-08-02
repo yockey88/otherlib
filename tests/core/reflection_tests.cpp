@@ -54,4 +54,21 @@ namespace other {
     ASSERT_EQ(found_count, reflected_fields);
   }
 
+  /// regression: the no-arg overload used to insert an empty record and return it
+  ///  forever without ever generating the member descriptors
+  TEST_F(reflection_tests, get_or_create_populates_member_descriptors) {
+    auto* db = subsystem<type_database>::get();
+    ASSERT_NE(db, nullptr);
+
+    reflection_data* generated = db->get_reflection_data<test_struct>();
+    ASSERT_NE(generated, nullptr);
+    ASSERT_FALSE(generated->member_descriptors.empty());
+    ASSERT_NE(generated->type_name.find("test_struct"), std::string::npos);
+
+    /// the value-taking overload must resolve to the same cached record
+    test_struct ts{};
+    reflection_data* by_value = db->get_reflection_data(ts);
+    ASSERT_EQ(generated, by_value);
+  }
+
 }  // namespace other

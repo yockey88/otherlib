@@ -78,6 +78,8 @@ namespace other {
       return os;
     }
 
+    natural_t hash() const { return FNV(abs_path.string()); }
+
     /// may be null for root-level files
     directory* parent = nullptr;
 

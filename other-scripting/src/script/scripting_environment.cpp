@@ -85,11 +85,25 @@ namespace other {
     if (id < 0 || id >= kMaxScriptObjects) {
       return;
     }
+    /// stale handles (hot reload, behaviors already detached) may point at freed slots
+    if (live_objects[id].status != live_script_object::LIVE) {
+      return;
+    }
 
     CORE_LOG_DEBUG(" - destroying script object with ID {}", id);
 
     script_object* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+
+    /// behaviors live in their own script slots and own their managed objects;
+    ///  destroy them with their parent so the managed names are released for reuse
+    ///  (scene teardown destroys only the parent's slot)
+    for (auto it = obj->behavior_handles.rbegin(); it != obj->behavior_handles.rend(); ++it) {
+      if (it->script_object_id >= 0) {
+        destroy_object(it->script_object_id);
+      }
+    }
+    obj->behavior_handles.clear();
 
     if (obj->dotnet_object != nullptr) {
       CORE_LOG_DEBUG(" - destroying .NET object for script object with ID {}", id);
@@ -120,6 +134,7 @@ namespace other {
     native_string type_str = native_string::new_str(type_name);
     get_dotnet_host().interop().attach_native_object(id, obj->dotnet_object, type_str);
     native_string::free_str(type_str);
+    obj->dotnet_native_registered = true;
   }
 
   void scripting_environment::dotnet_unregister_native_object(integer_t id) {
@@ -132,6 +147,7 @@ namespace other {
     }
 
     get_dotnet_host().interop().detach_native_object(id, obj->dotnet_object);
+    obj->dotnet_native_registered = false;
   }
 
   script_object* scripting_environment::get_object(integer_t id) {
@@ -225,6 +241,20 @@ namespace other {
 
     CORE_LOG_DEBUG("[script {}] attaching behavior '{}' to object '{}'", parent_id, behavior_name, parent->name);
 
+    integer_t behavior_script_id = instantiate_dotnet_behavior(parent, behavior_name);
+    if (behavior_script_id < 0) {
+      return;
+    }
+
+    parent->behavior_handles.push_back({
+      .type_name = std::string(behavior_name),
+      .script_object_id = behavior_script_id,
+    });
+
+    CORE_LOG_DEBUG("[script {}] behavior '{}' attached with script_object ID {}", parent_id, behavior_name, behavior_script_id);
+  }
+
+  integer_t scripting_environment::instantiate_dotnet_behavior(script_object* parent, const std::string_view behavior_name) {
     /// create a script_object slot for this behavior so we have a native-side handle
     std::string behavior_obj_name = std::format("{}__behavior__{}", parent->name, behavior_name);
     integer_t behavior_script_id = create_object(behavior_obj_name);
@@ -233,16 +263,14 @@ namespace other {
     if (behavior_dotnet_obj == nullptr) {
       CORE_LOG_ERROR("Failed to instantiate .NET behavior object of type '{}' for script object with ID {}", behavior_name, behavior_script_id);
       destroy_object(behavior_script_id);
-      return;
+      return -1;
     }
 
-    parent->dotnet_object->invoke<>("AddNativeBehavior", behavior_dotnet_obj->managed_object);
-    parent->behavior_handles.push_back({
-      .type_name = std::string(behavior_name),
-      .script_object_id = behavior_script_id,
-    });
+    /// the slot owns the managed object so destroy_object releases the name for reuse
+    get_object(behavior_script_id)->dotnet_object = behavior_dotnet_obj;
 
-    CORE_LOG_DEBUG("[script {}] behavior '{}' attached with script_object ID {}", parent_id, behavior_name, behavior_script_id);
+    parent->dotnet_object->invoke<>("AddNativeBehavior", behavior_dotnet_obj->managed_object);
+    return behavior_script_id;
   }
 
   void scripting_environment::detach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name) {
@@ -305,6 +333,40 @@ namespace other {
     PROFILE_SECTION("scripting_environment::invalidate_dotnet_script_objects_of_type");
     CORE_LOG_DEBUG("Invalidating script objects with .NET type ID {}", dotnet_type_id);
 
+    /// behaviors of this type are referenced from their parent OtherObject's C# behavior
+    ///  list, so they must be removed through the parent: a behavior only destroyed
+    ///  native-side keeps its old instance ticking through the parent's Update loop and
+    ///  roots the unloading assembly forever. the handle is kept with an invalid id so
+    ///  reattach_invalidated_dotnet_behaviors can restore it from the refreshed assembly.
+    if (dotnet_type* invalidated_type = dotnet.get_type_cache()->get_type(dotnet_type_id); invalidated_type != nullptr) {
+      const std::string type_class_name = invalidated_type->class_name();
+      const std::string type_full_name = invalidated_type->full_name();
+      for (auto& live_obj : live_objects) {
+        if (live_obj.status != live_script_object::LIVE || live_obj.object == nullptr) {
+          continue;
+        }
+
+        script_object* parent = live_obj.object;
+        if (parent->dotnet_object == nullptr) {
+          continue;
+        }
+
+        for (auto& handle : parent->behavior_handles) {
+          if (handle.script_object_id < 0 || (handle.type_name != type_class_name && handle.type_name != type_full_name)) {
+            continue;
+          }
+
+          CORE_LOG_DEBUG(" - invalidating behavior '{}' on object '{}' due to matching .NET type ID {}", handle.type_name, parent->name, dotnet_type_id);
+          native_string type_str = native_string::new_str(handle.type_name);
+          parent->dotnet_object->invoke<>("RemoveBehavior", type_str);
+          native_string::free_str(type_str);
+
+          destroy_object(handle.script_object_id);
+          handle.script_object_id = -1;
+        }
+      }
+    }
+
     for (auto& live_obj : live_objects) {
       if (live_obj.status == live_script_object::LIVE && live_obj.object != nullptr) {
         script_object* obj = live_obj.object;
@@ -320,6 +382,32 @@ namespace other {
           CORE_LOG_DEBUG(" - invalidating script object [{}:{}] with ID {} due to matching .NET type ID {}", obj->name, obj->id, obj->id, dotnet_type_id);
           detach_dotnet_object(obj->id);
         }
+      }
+    }
+  }
+
+  void scripting_environment::reattach_invalidated_dotnet_behaviors() {
+    PROFILE_SECTION("scripting_environment::reattach_invalidated_dotnet_behaviors");
+
+    for (auto& live_obj : live_objects) {
+      if (live_obj.status != live_script_object::LIVE || live_obj.object == nullptr) {
+        continue;
+      }
+
+      script_object* parent = live_obj.object;
+      if (parent->dotnet_object == nullptr) {
+        continue;
+      }
+
+      for (auto& handle : parent->behavior_handles) {
+        if (handle.script_object_id >= 0) {
+          continue;
+        }
+
+        CORE_LOG_DEBUG("[script {}] reattaching behavior '{}' to object '{}'", parent->id, handle.type_name, parent->name);
+        /// failure leaves the handle invalid so the next assembly refresh retries it
+        ///  (e.g. the behavior class was removed from this build of the assembly)
+        handle.script_object_id = instantiate_dotnet_behavior(parent, handle.type_name);
       }
     }
   }
@@ -340,7 +428,11 @@ namespace other {
       obj->dotnet_object->invoke<>("RemoveAllBehaviors");
     }
 
-    dotnet_unregister_native_object(id);
+    /// behaviors were never attached to the NativeObjectManager; detaching them
+    ///  there would throw C#-side
+    if (obj->dotnet_native_registered) {
+      dotnet_unregister_native_object(id);
+    }
     dotnet.destroy_managed_object(obj->dotnet_object);
     obj->dotnet_object = nullptr;
   }

@@ -352,13 +352,7 @@ namespace other {
   template <typename T>
     requires reflected_type<T>
   reflection_data* type_database::get_reflection_data() {
-    static const uint64_t type_hash = typeid(T).hash_code();
-    auto [it, inserted] = data_map.emplace(type_hash, reflection_data{});
-    if (it != data_map.end()) {
-      CORE_LOG_TRACE("Reflection data for type '{}' already exists.", it->second.type_name);
-      return &it->second;
-    }
-    CORE_LOG_TRACE("No reflection data for type '{}', generating...", std::string{ refl::reflect<T>().name });
+    /// the value-taking overload checks the map before generating, so this is get-or-create
     return get_reflection_data(T{});
   }
 

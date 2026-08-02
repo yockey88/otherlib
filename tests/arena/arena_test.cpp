@@ -105,16 +105,19 @@ namespace other {
     ASSERT_GE(a->total_allocations, allocations.size()) << "Total allocations do not match recorded allocations.";
     ASSERT_GE(a->live_allocations, allocations.size()) << "Requested memory does not match recorded allocations.";
     ASSERT_GE(a->requested_memory, total_allocated) << "Requested memory does not match recorded allocations.";
+    /// used_memory is a LIVE gauge (decremented on free) while requested_memory is
+    ///  cumulative, so the only valid used_memory invariant is against the blocks this
+    ///  test currently holds
     ASSERT_GE(a->used_memory, total_block_bytes) << "Total allocated memory does not match recorded allocations.";
-    ASSERT_GE(a->used_memory, a->requested_memory + arena::kHeaderSize * allocations.size()) << "Total allocated memory does not match recorded allocations.";
 
     ASSERT_LE(a->allocated_memory, arena_storage::kMaxMemoryAllowed) << "Allocated memory exceeds maximum allowed limit.";
     ASSERT_LE(a->page_allocation_cursor, a->storage.kMaxPages) << "Page allocation cursor exceeds maximum number pages.";
     ASSERT_NE(a->get_current_page(), nullptr) << "Current page is null after verification.";
 
     auto* current_page = a->get_current_page();
+    /// allocations may be served from recycled free-list bins rather than the bump
+    ///  cursor, so the cursor carries no relation to this test's live bytes
     ASSERT_GE(current_page->cursor, 0) << "Current page cursor is negative.";
-    ASSERT_GE(current_page->cursor, total_block_bytes) << "Current page cursor does not match total allocated block bytes.";
     ASSERT_LT(current_page->cursor, page::kPageSize) << "Current page cursor exceeds page size limit.";
   }
 
@@ -272,5 +275,19 @@ namespace other {
   //   // TODO: Verify arena can detect out-of-bounds writes
   //   // TODO: Test guard pages or other protection mechanisms
   // }
+
+  /// regression: request_region used to lock arena_mutex and then call allocate(),
+  ///  which locks it again — this test would hang instead of passing
+  TEST_F(arena_test, request_region_returns_usable_memory) {
+    arena* a = subsystem<arena>::get();
+    ASSERT_NE(a, nullptr);
+
+    void* region = a->request_region(kLargeBlockSize, kAlignment);
+    ASSERT_NE(region, nullptr);
+    verify_alignment(region, kAlignment);
+
+    std::memset(region, 0xAB, kLargeBlockSize);
+    a->free_region(region);
+  }
 
 }  // namespace other

@@ -17,6 +17,7 @@
 #include "object/transform.hpp"
 #include "scene/scene_storage.hpp"
 #include "scene/scene_tree.hpp"
+#include "serialization/scene_document.hpp"
 
 #include "asset/asset_handler.hpp"
 
@@ -46,6 +47,19 @@ namespace other {
 
     void run_script_file();
 
+    /// declarative scene documents: the asset loader parses a scene file (any thread)
+    ///  and parks the result here; activation instantiates it on the main thread
+    void set_pending_document(serialization::scene_document&& doc);
+    bool has_pending_document() const { return pending_document.has_value(); }
+    void instantiate_pending_document();
+
+    /// binary scene snapshot (same wire format as .oscnb) — the fast store/restore
+    ///  primitive behind play/stop restore, editor undo/redo, and state replication
+    ostd::vector<uint8_t> capture_snapshot();
+    void restore_snapshot(std::span<const uint8_t> snapshot_bytes);
+
+    ostd::vector<std::string> get_object_tags(natural_t id) const;
+
     inline scene_storage& get_storage() {
       OTHER_ASSERT(storage != nullptr, "Scene storage is not initialized.");
       return *storage;
@@ -70,6 +84,10 @@ namespace other {
     /// per frame updates called with variable timestep
     void update(double delta_time);
     void late_update(double delta_time);
+
+    /// per frame draw hook, runs whether or not the scene is playing so scripts can
+    ///   submit debug/scene overlay draws while editing
+    void render_update(double delta_time);
 
     scene_object& root_object();
 
@@ -141,7 +159,6 @@ namespace other {
     bounding_box get_bounding_box_from_camera_frustum(const camera& cam) const;
 
     render_data prepare_render_data(scope<asset_handler>& asset_handler) const;
-    void debug_render(debug_draw draw);
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;
     void add_object_tag(natural_t id, const std::string_view tag);
@@ -284,7 +301,12 @@ namespace other {
     integer_t kNoStreamBinding = -1;
     integer_t update_stream_id = kNoStreamBinding;
 
+    /// the scene document file backing this scene (.oscn / .oscnb), when file-backed
+    opt<filepath> source_path = std::nullopt;
+    /// behavior-hooks lua script; resolved from the document's `script` entry
     opt<filepath> script_path = std::nullopt;
+    /// the document's `script` entry verbatim (scene-file-relative) for round-trip saves
+    std::string script_source = "";
     bool script_loaded = false;
 
     bool activate_on_load = false;
@@ -321,10 +343,14 @@ namespace other {
     // void on_update_physics_component(const entt::registry&, const entt::entity entity);
     void on_destroy_physics_component(const entt::registry&, const entt::entity entity);
 
-    void construct_object_from_lua_table(scene_object& scene_obj, sol::table& obj_table);
+    void destroy_all_non_root_objects();
 
     bool playing = false;
     scope<scene_storage> storage = nullptr;
+
+    opt<serialization::scene_document> pending_document = std::nullopt;
+    /// state captured by play() and restored by reset() when the scene stops
+    ostd::vector<uint8_t> play_snapshot = {};
   };
 
 }  // namespace other

@@ -1,46 +1,25 @@
-cmake_minimum_required(VERSION 3.27.0..4.0.2)
+cmake_minimum_required(VERSION 3.27)
 
-project(${project-name} VERSION 0.1.0 LANGUAGES CXX CSharp)
+project(${project-name} VERSION 0.1.0 LANGUAGES CXX)
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF) 
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Find otherlib package
+## must match the SDK's dynamic CRT (the installed otherlib libraries are built /MD[d])
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>:Debug>DLL")
+
+## provides otherlib targets plus the add_static_driver/add_dynamic_driver macros,
+##  which set OTHER_CLIENT, the platform defines, and the otherlib link
 find_package(otherlib REQUIRED)
 
 ###
-##  The main driver code for your application
+##  A dynamic driver module (loaded by a host at runtime)
 ##
-add_executable(${project-name})
-target_sources(${project-name} PRIVATE
+add_dynamic_driver(${project-name}
   src/${project-name}.cpp
   src/${project-name}_driver.cpp
 )
-
-if (MSVC)
-  add_compile_definitions("OTHER_ENVIRONMENT_WINDOWS" "HAS_SEH_EXCEPTIONS" "NOMINMAX")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0A00") # Windows 10+
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWIN32_LEAN_AND_MEAN")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
-
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-  target_compile_options(${project-name} PRIVATE /W4 /permissive- /bigobj /MP)
-else()  
-  add_compile_definitions("OTHER_ENVIRONMENT_LINUX")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32_WINNT=0x0A00") # Windows 10+
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWIN32_LEAN_AND_MEAN")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
-  
-  target_compile_options(${project-name} PRIVATE -Wall -Wextra -Wpedantic -Werror)
-endif()
-
-target_compile_definitions(${project-name} PRIVATE OTHER_CLIENT)
-target_link_libraries(${project-name} PRIVATE otherlib::otherlib)
+target_compile_options(${project-name} PRIVATE /W4 /permissive-)

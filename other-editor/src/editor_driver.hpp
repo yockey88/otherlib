@@ -47,6 +47,7 @@ namespace other {
     bool move_toggled_on = false;
 
     void update_input();
+    void save_active_scene();
 
     void on_create_project() override;
 

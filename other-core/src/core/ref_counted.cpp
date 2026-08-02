@@ -17,16 +17,26 @@ namespace other {
     views.fetch_add(1, std::memory_order_relaxed);
   }
 
-  void ref_counted::view_decrement() const {
-    views.fetch_sub(1, std::memory_order_acq_rel);
+  natural_t ref_counted::view_decrement() const {
+    return views.fetch_sub(1, std::memory_order_acq_rel) - 1;
   }
 
   natural_t ref_counted::increment() {
-    return ref_count.fetch_add(1, std::memory_order_relaxed);
+    return ref_count.fetch_add(1, std::memory_order_relaxed) + 1;
   }
 
   natural_t ref_counted::decrement() {
-    return ref_count.fetch_sub(1, std::memory_order_acq_rel);
+    return ref_count.fetch_sub(1, std::memory_order_acq_rel) - 1;
+  }
+
+  bool ref_counted::try_increment() {
+    natural_t current = ref_count.load(std::memory_order_relaxed);
+    while (current != 0) {
+      if (ref_count.compare_exchange_weak(current, current + 1, std::memory_order_acq_rel, std::memory_order_relaxed)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   natural_t ref_counted::view_count() const {
