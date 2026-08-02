@@ -16,6 +16,7 @@ namespace other {
     natural_t register_interface_binding(const std::string_view interface_name, sol::table interface_table);
 
     natural_t register_named_callback(const std::string_view callback_name, ref<callback> callback_ref);
+    void unregister_named_callback(const std::string_view callback_name);
 
     template <typename... Args>
     void invoke(const std::string_view interface_name, const std::string_view method_name, Args&&... args) {

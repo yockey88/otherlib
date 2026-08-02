@@ -57,6 +57,13 @@ namespace other {
     return new_id;
   }
 
+  void interface_registry::unregister_named_callback(const std::string_view callback_name) {
+    auto itr = bound_callbacks.find(FNV(callback_name));
+    OTHER_ASSERT(itr != bound_callbacks.end(), "Attempted to unregister unknown named callback '{}'.", callback_name);
+    CORE_LOG_DEBUG("[CALLBACK] Unregistered named callback '{}'", callback_name);
+    bound_callbacks.erase(itr);
+  }
+
   bool interface_registry::has_interface_method(const std::string_view interface_name, const std::string_view method_name) const {
     auto itr = std::ranges::find_if(interfaces, [&interface_name](const auto& pair) { return pair.second.name == interface_name; });
     if (itr == interfaces.end()) {
