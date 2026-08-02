@@ -13,8 +13,13 @@ target_sources(other_cli
     src/cli/environment.cpp
     src/cli/process.cpp
     src/cli/tool_registry.cpp
+    src/cli/tools/build_environment.cpp
     src/cli/tools/create_project.cpp
+    src/cli/tools/dev_common.cpp
+    src/cli/tools/install_environment.cpp
     src/cli/tools/open_project.cpp
+    src/cli/tools/run_driver.cpp
+    src/cli/tools/test_runner.cpp
 )
 target_include_directories(other_cli
   PUBLIC

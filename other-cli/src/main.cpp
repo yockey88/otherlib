@@ -17,7 +17,7 @@
 
 namespace {
 
-  constexpr std::string_view kCliVersion = "0.1.0";
+  constexpr std::string_view kCliVersion = "0.2.0";
 
   void print_usage(const other::cli::tool_registry& registry) {
     std::println("Other Environment CLI v{}", kCliVersion);

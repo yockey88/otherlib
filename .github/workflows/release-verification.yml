@@ -1,0 +1,57 @@
+name: "Release Verification"
+
+## the extensive tier: PRs run the unit suite (pull-request-verification.yml); version
+##  tags run every build config through the full test pipeline and package the
+##  release artifacts (windows installer + sdk zip)
+on:
+  push:
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+jobs:
+  extensive-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [ Debug, Release, Profile, ProfileD ]
+    uses: ./.github/workflows/build-and-test-windows.yml
+    with:
+      configuration: ${{ matrix.configuration }}
+      extensive: true
+
+  package:
+    needs: extensive-tests
+    runs-on: windows-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Bootstrap oecli
+      run: python ${{ github.workspace }}/cli.py bootstrap -c Release
+
+    - name: Build
+      run: python ${{ github.workspace }}/cli.py build -c Release
+
+    - name: Package installer and sdk zip
+      run: python ${{ github.workspace }}/cli.py package -c Release -G "NSIS;ZIP"
+
+    - name: Upload Packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: other-environment-packages
+        path: |
+          build/packages/*.exe
+          build/packages/*.zip
+
+    - name: Attach Packages To Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          build/packages/*.exe
+          build/packages/*.zip

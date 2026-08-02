@@ -360,3 +360,5 @@ install(
   NAMESPACE otherlib::
   DESTINATION "${OTHER_INSTALL_CMAKEDIR}"
 )
+
+include(cmake/other_packaging.cmake)

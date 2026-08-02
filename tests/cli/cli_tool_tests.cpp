@@ -86,6 +86,11 @@ namespace {
     auto& registry = default_tool_registry();
     EXPECT_NE(registry.find_tool("create"), nullptr);
     EXPECT_NE(registry.find_tool("open"), nullptr);
+    EXPECT_NE(registry.find_tool("run"), nullptr);
+    EXPECT_NE(registry.find_tool("build"), nullptr);
+    EXPECT_NE(registry.find_tool("test"), nullptr);
+    EXPECT_NE(registry.find_tool("install"), nullptr);
+    EXPECT_NE(registry.find_tool("package"), nullptr);
     EXPECT_EQ(registry.find_tool("does-not-exist"), nullptr);
   }
 
@@ -186,6 +191,82 @@ namespace {
     const tool_result by_dir = execute("open my-proj --dry-run");
     ASSERT_TRUE(by_dir.success()) << by_dir.message;
     EXPECT_NE(captured_out.find(project_file.string()), std::string::npos);
+  }
+
+  TEST_F(cli_tool_tests, dev_tools_require_an_environment) {
+    ctx.env = {};
+    for (const std::string_view line : { "build --dry-run", "test --dry-run", "run --dry-run", "install --dry-run", "package --dry-run" }) {
+      const tool_result result = execute(line);
+      EXPECT_FALSE(result.success()) << line;
+      EXPECT_NE(result.message.find("no Other Environment found"), std::string::npos) << line;
+    }
+  }
+
+  TEST_F(cli_tool_tests, build_dry_run_emits_cmake_commands) {
+    ctx.env = locate_environment(make_fake_environment_root());
+    ASSERT_TRUE(ctx.env.in_source_tree);
+
+    /// no build/other.sln in the fake tree -> project generation runs before the build
+    const tool_result result = execute("build --dry-run --config Release");
+    ASSERT_TRUE(result.success()) << result.message;
+    EXPECT_NE(captured_out.find("would run:"), std::string::npos);
+    EXPECT_NE(captured_out.find("-S"), std::string::npos);
+    EXPECT_NE(captured_out.find("--parallel"), std::string::npos);
+
+    EXPECT_FALSE(execute("build --config Bogus").success());
+    EXPECT_FALSE(execute("build --frobnicate").success());
+  }
+
+  TEST_F(cli_tool_tests, test_dry_run_resolves_test_build) {
+    const filepath root = make_fake_environment_root();
+    ctx.env = locate_environment(root);
+
+    const tool_result no_build = execute("test --dry-run");
+    EXPECT_FALSE(no_build.success());
+    EXPECT_NE(no_build.message.find("no test build found"), std::string::npos);
+
+    const filepath tests_dir = root / "build" / "tests" / "Debug";
+    std::filesystem::create_directories(tests_dir);
+    write_file(tests_dir / "other_tests.exe", "stub");
+
+    const tool_result result = execute("test --dry-run --config Debug --filter 'scene*'");
+    ASSERT_TRUE(result.success()) << result.message;
+    EXPECT_NE(captured_out.find("other_tests"), std::string::npos);
+    EXPECT_NE(captured_out.find("--gtest_filter=scene*"), std::string::npos);
+    EXPECT_NE(captured_out.find("--gtest_output=xml:other_test_results.windows.debug.xml"), std::string::npos);
+  }
+
+  TEST_F(cli_tool_tests, run_dry_run_launches_a_built_driver) {
+    ctx.env = locate_environment(make_fake_environment_root({ "Debug" }));
+
+    const tool_result editor = execute("run --dry-run --config Debug");
+    ASSERT_TRUE(editor.success()) << editor.message;
+    EXPECT_NE(captured_out.find("other_editor"), std::string::npos);
+    EXPECT_NE(captured_out.find("editor-config.toml"), std::string::npos);
+
+    EXPECT_FALSE(execute("run bogus --dry-run").success());
+    const tool_result missing = execute("run server --dry-run");
+    EXPECT_FALSE(missing.success());
+    EXPECT_NE(missing.message.find("no other_server build found"), std::string::npos);
+  }
+
+  TEST_F(cli_tool_tests, install_and_package_need_a_configured_build) {
+    const filepath root = make_fake_environment_root();
+    ctx.env = locate_environment(root);
+
+    EXPECT_NE(execute("install --dry-run").message.find("has not been configured"), std::string::npos);
+    EXPECT_NE(execute("package --dry-run").message.find("has not been configured"), std::string::npos);
+
+    std::filesystem::create_directories(root / "build");
+    write_file(root / "build" / "CMakeCache.txt", "## fake cache\n");
+    const tool_result install = execute("install --dry-run --prefix C:/other-sdk");
+    ASSERT_TRUE(install.success()) << install.message;
+    EXPECT_NE(captured_out.find("--install"), std::string::npos);
+    EXPECT_NE(captured_out.find("C:/other-sdk"), std::string::npos);
+
+    const tool_result package = execute("package --dry-run");
+    ASSERT_TRUE(package.success()) << package.message;
+    EXPECT_NE(captured_out.find("ZIP"), std::string::npos);
   }
 
   TEST_F(cli_tool_tests, open_reports_missing_projects_and_builds) {

@@ -1,13 +1,25 @@
 # Other Environment CLI
 
-`oecli` manages Other Environment projects from the command line. It boots no engine
-subsystems, so it starts instantly and works outside a running environment.
+`oecli` manages Other Environment projects and source trees from the command line. It
+boots no engine subsystems, so it starts instantly and works outside a running
+environment.
 
 ```
 oecli create my-game --author "Me"     # scaffold a project in ./my-game
 oecli open my-game                     # launch it in the editor
+oecli run server                       # launch a source-tree driver
+oecli build --tests -c Debug           # build the environment from source
+oecli test -f 'scene*'                 # run (a subset of) the unit suites
+oecli test --soak                      # run the soak harness
+oecli install --prefix C:/other-sdk    # cmake --install the built SDK
+oecli package -G "NSIS;ZIP"            # produce the installer / sdk zip
 oecli help <tool>                      # per-tool usage
 ```
+
+The developer tools (`run`, `build`, `test`, `install`, `package`) only operate on a
+source tree, never an installed SDK. Because `oecli` is itself a build artifact, the
+repo root's `cli.py` bootstraps it (configure + build the `oecli` target) and then
+forwards every command here verbatim — `python cli.py <args>` is `oecli <args>`.
 
 `create` generates the project file (`<name>.toml`), a projectrc (`<name>.lua`), a starter
 scene, and a C# script project wired against the environment's `OtherCs.dll`. `open`
