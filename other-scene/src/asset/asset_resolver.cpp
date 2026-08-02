@@ -7,13 +7,13 @@
 #include <unordered_set>
 
 #include <nlohmann/json.hpp>
+
 #include <tinyxml2/tinyxml2.h>
 
 #include "file/filesystem.hpp"
+#include "serialization/scene_serializer.hpp"
 
 #include "dotnet/csproj_helpers.hpp"
-
-#include "serialization/scene_serializer.hpp"
 
 namespace other {
   namespace detail {
@@ -184,7 +184,6 @@ namespace other {
 
     ostd::vector<dependency_declaration> parse_csproj_manifest(const filepath& manifest_path);
     ostd::vector<dependency_declaration> parse_scene_manifest(const filepath& manifest_path);
-    ostd::vector<dependency_declaration> parse_model_manifest(const filepath& manifest_path);
     ostd::vector<dependency_declaration> empty_parser(const filepath& manifest_path);
 
     opt<manifest_domain> build_csproj_manifest_domain(const filepath& manifest_path);
@@ -195,7 +194,7 @@ namespace other {
 
   std::array<manifest_parser_fn, kNumAssetTypes> asset_resolver_tables::parsers = {
     &detail::empty_parser,           // texture
-    &detail::parse_model_manifest,   // model-source
+    &detail::empty_parser,           // model-source
     &detail::empty_parser,           // animation
     &detail::parse_csproj_manifest,  // script-project
     &detail::empty_parser,           // script-source
@@ -570,7 +569,7 @@ namespace other {
         //  [chunkLength u32][chunkType u32 'JSON'] followed by the json bytes; only the json
         //  chunk is read - binary chunks never carry dependencies
         constexpr size_t kGlbHeaderSize = 20;
-        constexpr uint32_t kGlbMagic = 0x46546C67;   // 'glTF'
+        constexpr uint32_t kGlbMagic = 0x46546C67;       // 'glTF'
         constexpr uint32_t kJsonChunkType = 0x4E4F534A;  // 'JSON'
 
         uint32_t magic = 0;

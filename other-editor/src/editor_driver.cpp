@@ -6,6 +6,7 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 
+#include "serialization/scene_serializer.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "model/vertex.hpp"
@@ -17,7 +18,6 @@
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
-#include "serialization/scene_serializer.hpp"
 
 #include "driver/systems/scene_system.hpp"
 #include "ui/menu-bar/menu_item.hpp"
@@ -27,6 +27,7 @@
 #include "ui/render-pipeline-ui/render_pipeline_viewer.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/viewport/viewport.hpp"
+
 
 namespace other {
 

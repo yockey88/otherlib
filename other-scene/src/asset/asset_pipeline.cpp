@@ -6,17 +6,16 @@
 #include <filesystem>
 
 #include "core/job_system.hpp"
+#include "serialization/scene_serializer.hpp"
 
+#include "gpu_resource/texture_importer.hpp"
 #include "model/model_source.hpp"
 #include "renderer/pipeline_definition.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "scene/scene.hpp"
-#include "serialization/scene_serializer.hpp"
 
 #include "tools/project_tool.hpp"
-
-#include "gpu_resource/texture_importer.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
