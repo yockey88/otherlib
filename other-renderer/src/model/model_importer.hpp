@@ -9,51 +9,23 @@
 
 #include "core/defines.hpp"
 
-#include "model/animation.hpp"
-#include "model/material.hpp"
-#include "model/skeleton.hpp"
-#include "model/vertex.hpp"
-
-#include "glm/fwd.hpp"
+#include "model/model_data.hpp"
 
 namespace other {
 
-  struct model_builder {
-    opt<std::string> name;
-
-    uint32_t vertex_offset = 0;
-    uint32_t index_offset = 0;
-    std::stack<uint32_t> index_stack;
-
-    glm::mat4 global_transform = glm::mat4(1.0f);
-    glm::mat4 inverse_global_transform = glm::mat4(1.0f);
-
-    ostd::vector<vertex> vertices;
-    ostd::vector<index> indices;
-
-    ostd::vector<submesh> submeshes;
-    ostd::vector<mesh_node> nodes;
-
-    ostd::vector<material> materials;
-
-    skeleton skel;
-
-    ostd::vector<animation> animations;
-
-    ostd::vector<triangle> triangles;
-
-    bounding_box bounds = bounding_box::empty;
-
-    submesh& new_submesh(const std::string_view name, uint32_t idx, uint32_t base_vert, uint32_t num_vertices, uint32_t base_idx, uint32_t num_faces);
-    void build_triangle_list();
-
-    void dump_model_info() const;
+  struct model_import_result {
+    opt<model_data> data = std::nullopt;
+    std::string error;
+    ostd::vector<std::string> warnings;
   };
+
+  model_import_result import(const filepath& file_path);
+  model_data build(const std::string& name, std::span<const vertex> vertices, std::span<const index> indices);
 
   namespace model_importer {
 
-    model_builder load_model_data(const filepath& file_path);
-    model_builder build_model_data(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices);
+    model_import_result import_assimp(const filepath& file_path);
+    model_import_result import_omdl(const filepath& file_path);
 
   }  // namespace model_importer
 }  // namespace other

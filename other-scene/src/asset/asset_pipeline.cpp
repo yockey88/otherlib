@@ -122,7 +122,7 @@ namespace other {
   scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
     CORE_LOG_DEBUG("Building model source pipeline for model '{}', vertex count {}, index count {}", name, vertices.size(), indices.size());
     scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(events, handler);
-    pl->builder = model_importer::build_model_data(name, vertices, indices);
+    pl->data = build(name, vertices, indices);
     return pl;
   }
 
@@ -266,37 +266,6 @@ namespace other {
     get_events().trigger_event(get_asset_event_name(asset_ptr->asset_type, event_name), asset_ptr->id);
   }
 
-  // task asset_pipeline::load_asset(asset* asset_ptr) {
-  //   OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load_asset");
-
-  //   opt<filepath> load_path = get_asset_load_path(asset_ptr);
-  //   opt<job::descriptor> job_desc = get_asset_load_job_descriptor(asset_ptr, load_path);
-
-  //   ref<job> load_job = nullptr;
-  //   if (job_desc.has_value()) {
-  //     // source_job = handler->get_job_system().submit(job_desc.value(), std::bind_front(&detail::load_model_from_path, std::ref(builder), load_path.value()));
-
-  //     /// yield if we posted the job for the worker thread to pick it up
-  //     co_await task::yield();
-  //   }
-
-  //   ostd::vector<natural_t> dependencies = {};
-  //   if (load_job != nullptr) {
-  //     /// it is probably done here since we yielded after posting it,
-  //     //   but just in case we can yield again until it is done
-  //     co_await task::wait_for_job(load_job);
-  //     if (load_job->get_status() != job::status::COMPLETED) {
-  //       // builder = {};
-  //     }
-
-  //     dependencies.push_back(load_job->id);
-  //   } else {
-  //     // builder = reinterpret_cast<model_source_pipeline*>(pipeline)->builder;
-  //   }
-
-  //   co_return;
-  // }
-
   namespace detail {
 
     void verify_parameters(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
@@ -391,68 +360,71 @@ namespace other {
         source_path = asset_ptr->absolute_path;
       }
 
-      model_builder builder;
+      if (load_model && !std::filesystem::exists(source_path)) {
+        call_pipeline_fn<model_source_pipeline>(pipeline, on_failure, std::format("Model source file does not exist: {}", source_path.string()));
+        co_return;
+      }
+
+      model_import_result result;
       ostd::vector<natural_t> dependencies = {};
 
-      ref<job> source_job = nullptr;
+      ref<job> import_job = nullptr;
       if (load_model) {
-        OTHER_ASSERT(std::filesystem::exists(source_path), "Model source file does not exist: {}", source_path.string());
         CORE_LOG_DEBUG("Loading model source from file: {}", source_path.string());
 
-        source_job = handler->get_job_system().submit(
+        import_job = handler->get_job_system().submit(
           {
-            .name = std::format("Load Model Source Asset {}", asset_ptr->id),
+            .name = std::format("Import Model Source Asset {}", asset_ptr->id),
             .priority = job::priority::LOW,
-            /// this should run on worker thread since it could take aribitrarily long
+            /// pure cpu import that can take arbitrarily long, so keep it off the main thread
             .thread_affinity = job::affinity::WORKER_THREAD,
           },
-          [&builder, source_path]() {
-            /// this is fine to leave unprotected by a mutex because the job system garuantees this won't be touched
-            ///  until first job finishes and since it is local to the coroutine loading it there won't be any concurrent access to it
-            builder = model_importer::load_model_data(source_path);
+          [&result, source_path]() {
+            /// local to this coroutine; the store job depends on this one, so no concurrent access
+            result = import(source_path);
           });
 
-        dependencies.push_back(source_job->id);
+        dependencies.push_back(import_job->id);
       } else {
         CORE_LOG_DEBUG(" - finalizing model upload for model {}", asset_ptr->virtual_path.string());
         asset_ptr->path_hash = FNV(asset_ptr->virtual_path.string());
-        builder = std::move(reinterpret_cast<model_source_pipeline*>(pipeline)->builder);
+        result.data = std::move(reinterpret_cast<model_source_pipeline*>(pipeline)->data);
       }
 
       auto store_job = handler->get_job_system().submit(
         {
           .name = std::format("Finalize Load Model Source Asset {}", asset_ptr->id),
           .priority = job::priority::LOW,
-          /// this job runs on main thread because it is gonna upload to the gpu
+          /// runs on main thread because the model_source constructor uploads to the gpu
           .thread_affinity = job::affinity::MAIN_THREAD,
         },
-        [asset_ptr, b = &builder]() {
+        [asset_ptr, r = &result]() {
           OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in finalize load model source job");
-          if (b->vertices.empty() || b->indices.empty() || b->submeshes.empty() || b->nodes.empty()) {
-            throw std::runtime_error(std::format("Failed to load model source asset: {} (data invalid)", asset_ptr->load_path.string()));
+          if (!r->data.has_value() || !r->data->valid()) {
+            throw std::runtime_error(std::format("Failed to load model source asset {}: {}", asset_ptr->load_path.string(),
+                                                 r->error.empty() ? "model data invalid" : r->error));
           }
 
+          model_data& data = *r->data;
           std::string name = asset_ptr->load_path.filename().stem().string();
           if (name.empty()) {
-            OTHER_ASSERT(b->name.has_value(), "Model builder name is not set for model source asset with empty filename");
-            name = b->name.value();
+            name = data.name;
           }
 
+          /// import no longer produces triangles/materials/animations (dead code / handed off to the material
+          ///  and animation systems), so those stay empty until model_source stores model_data whole
           // clang-format off
-          ref<model_source> src = make_ref<model_source>(name, b->vertices,  b->indices, b->triangles, b->submeshes, b->nodes, b->materials, 
-                                                         b->animations, b->skel, b->global_transform, b->inverse_global_transform, b->bounds);
+          ref<model_source> src = make_ref<model_source>(name, data.vertices, data.indices, std::span<const triangle>{}, data.submeshes, data.nodes,
+                                                         std::span<const material>{}, std::span<const animation>{}, data.skel,
+                                                         data.global_transform, data.inverse_global_transform, data.bounds);
           // clang-format on
-          if (!src) {
-            CORE_LOG_ERROR("Failed to create model source for file: {}", asset_ptr->load_path.string());
-            return;
-          }
 
           subsystem<renderer_backend>::get()->add_model_source(asset_ptr->path_hash, src);
           CORE_LOG_DEBUG("Model source loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
         },
         dependencies);
 
-      /// waiting on this will also wait on the first job
+      /// waiting on this will also wait on the import job
       do {
         co_await task::yield();
       } while (!store_job->done());
@@ -460,6 +432,8 @@ namespace other {
 
       if (store_job->get_status() == job::status::COMPLETED) {
         call_pipeline_fn<model_source_pipeline>(pipeline, on_success);
+      } else if (!result.error.empty()) {
+        call_pipeline_fn<model_source_pipeline>(pipeline, on_failure, std::format("Failed to load model source asset {}: {}", source_path.string(), result.error));
       } else {
         call_pipeline_fn<model_source_pipeline>(pipeline, on_failure, std::format("Failed to finalize model source asset: {}", source_path.string()));
       }

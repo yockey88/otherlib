@@ -127,15 +127,15 @@ namespace other {
     uint32_t idx_cnt = 0;
     uint32_t vert_cnt = 0;
 
-    glm::mat4 local_transform{ 0.f };
+    uint32_t material_index = 0;
 
+    glm::mat4 local_transform{ 0.f };
     bounding_box bounds{};
 
     natural_t node_id;
     natural_t sub_mesh_id;
 
     ostd::vector<uint32_t> bone_ids;
-
     std::string name;
 
     bool rigged = false;
