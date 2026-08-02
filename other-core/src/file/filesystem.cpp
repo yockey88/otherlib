@@ -264,12 +264,23 @@ namespace other {
       return nullptr;
     }
 
-    if (ref<file_handle> file = mount->get_file(rp.file_name, rp.extension);
+    ref<directory> target_dir = mount;
+    if (!rp.relative_path_components.empty()) {
+      if (ref<directory> walked = walk_path(mount, rp.relative_path_components); walked != nullptr) {
+        target_dir = walked;
+      }
+    }
+
+    if (ref<file_handle> file = target_dir->get_file(rp.file_name, rp.extension);
         file != nullptr) {
       return file;
     }
 
-    filepath disk_path = mount->absolute_path() / rp.file_name;
+    filepath disk_path = mount->absolute_path();
+    for (const auto& comp : rp.relative_path_components) {
+      disk_path /= comp;
+    }
+    disk_path /= (rp.file_name + rp.extension);
     if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
       return register_local_file(disk_path);
     }
@@ -299,6 +310,38 @@ namespace other {
     }
 
     resolved_path rp = resolve_path(engine_path);
+    if (!rp.is_valid() || rp.file_name.empty()) {
+      return false;
+    }
+
+    ref<directory> mount = get_mount(rp.mount_name);
+    if (mount == nullptr) {
+      return false;
+    }
+
+    ref<directory> target_dir = mount;
+    if (!rp.relative_path_components.empty()) {
+      target_dir = walk_path(mount, rp.relative_path_components);
+      if (target_dir == nullptr) {
+        return false;
+      }
+    }
+
+    for (const auto& [hash, file] : target_dir->get_files()) {
+      if (file->name() == rp.file_name && (rp.extension.empty() || file->extension() == rp.extension)) {
+        return true;
+      }
+    }
+
+    if (!mount->absolute_path().empty()) {
+      filepath disk_path = mount->absolute_path();
+      for (const auto& comp : rp.relative_path_components) {
+        disk_path /= comp;
+      }
+      disk_path /= (rp.file_name + rp.extension);
+      return std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path);
+    }
+
     return false;
   }
 
@@ -340,15 +383,13 @@ namespace other {
       return nullptr;
     }
 
+    /// resolve_path already split the file name off; relative_path_components holds
+    ///  only the directory chain (empty for mount://file.ext)
     std::span<const std::string> components = rp.relative_path_components;
-    if (components.empty()) {
-      CORE_LOG_ERROR("Cannot open '{}': empty relative path", engine_path);
+    if (rp.file_name.empty()) {
+      CORE_LOG_ERROR("Cannot open '{}': no file name in path", engine_path);
       return nullptr;
     }
-
-    /// the last component is the file name, everything before is directory path
-    std::string file_name = components.back();
-    components = components.subspan(0, components.size() - 1);
 
     ref<directory> target_dir = mount;
     if (!components.empty()) {
@@ -359,7 +400,7 @@ namespace other {
       }
     }
 
-    ref<file_handle> file = target_dir->get_file(file_name);
+    ref<file_handle> file = target_dir->get_file(rp.file_name, rp.extension);
     if (file == nullptr) {
       /// try to open it as a local file if the mount has a disk path
       if (!mount->absolute_path().empty()) {
@@ -367,7 +408,7 @@ namespace other {
         for (const auto& comp : components) {
           disk_path /= comp;
         }
-        disk_path /= file_name;
+        disk_path /= (rp.file_name + rp.extension);
 
         if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
           auto local = make_ref<local_file>(*events, disk_path, engine_path);
@@ -376,7 +417,7 @@ namespace other {
         }
       }
 
-      CORE_LOG_ERROR("Cannot open '{}': file '{}' not found in mount '{}'", engine_path, file_name, rp.mount_name);
+      CORE_LOG_ERROR("Cannot open '{}': file '{}{}' not found in mount '{}'", engine_path, rp.file_name, rp.extension, rp.mount_name);
       return nullptr;
     }
 

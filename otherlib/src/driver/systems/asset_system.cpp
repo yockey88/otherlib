@@ -133,7 +133,18 @@ namespace other {
   void asset_system::reload_asset(natural_t asset_id) {
     OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
     CORE_LOG_DEBUG("Reloading asset for asset ID: {}", asset_id);
-    asset_mgr->reload_asset(asset_id);
+
+    auto* ass = asset_mgr->get_asset(asset_id);
+    if (ass == nullptr) {
+      CORE_LOG_ERROR("Cannot reload asset for asset ID: {} because it is not currently loaded.", asset_id);
+      return;
+    }
+
+    if (asset_mgr->in_snapshot(ass->stable_id)) {
+      asset_mgr->re_resolve(ass->load_path);
+    } else {
+      asset_mgr->reload_asset(asset_id);
+    }
   }
 
   natural_t asset_system::add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {

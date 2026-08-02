@@ -16,11 +16,11 @@ namespace other {
 
   using manifest_parser_fn = ostd::vector<dependency_declaration> (*)(const filepath& manifest_path);
   using manifest_builder_fn = opt<manifest_domain> (*)(const filepath& manifest_path);
-  struct manifest_parser_table {
+  using dependency_declaration_fn = opt<dependency_declaration> (*)(const filepath& path);
+  struct asset_resolver_tables {
     static std::array<manifest_parser_fn, kNumAssetTypes> parsers;
-  };
-  struct manifest_domain_table {
     static std::array<manifest_builder_fn, kNumAssetTypes> builders;
+    static std::array<dependency_declaration_fn, kNumAssetTypes> declarations;
   };
 
   struct dependency_snapshot {

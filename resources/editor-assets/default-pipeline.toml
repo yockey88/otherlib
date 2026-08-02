@@ -98,7 +98,7 @@ passes = [
   { name = "tonemap-pass", pass_type = "RENDER_PASS", shader_name = "tonemap_pass_shader" },
 ]
 pass-uniforms = [
-  { pass_name = "voxel-clear-pass", name = "OE_voxel_decay", value = 2 },
+  { pass_name = "voxel-clear-pass", name = "OE_voxel_decay", value = 2.0 },
   { pass_name = "voxel-occupied-pass", name = "OE_gbuff_position", value = 1 }, 
   { pass_name = "voxel-occupied-pass", name = "OE_gbuff_normal", value = 2 },
   { pass_name = "environment-map-pass", name = "OE_sun_softness", value = 1.5 },

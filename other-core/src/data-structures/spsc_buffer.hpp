@@ -16,7 +16,8 @@ namespace other {
   class spsc_buffer {
    public:
     static_assert(Cap > 0, "Capacity must be greater than 0.");
-    static_assert(Cap % 2 == 0, "Capacity must be even to avoid ambiguity between full and empty states.");
+    /// indices grow monotonically and are wrapped with mask(), which requires a power of two
+    static_assert((Cap & (Cap - 1)) == 0, "Capacity must be a power of two.");
 
     void push(const T& item) {
       push(T(item));
@@ -28,9 +29,10 @@ namespace other {
       natural_t next_write_index = write_index + 1;
 
       if (size() == Cap) {
-        // Buffer is full, advance the read index to overwrite the oldest item
-        natural_t next_read_index = read_idx.load(std::memory_order_relaxed) + 1;
-        read_idx.store(next_read_index, std::memory_order_release);
+        // Buffer is full, destroy the oldest item and advance the read index to overwrite it
+        natural_t read_index = read_idx.load(std::memory_order_relaxed);
+        std::destroy_at(static_cast<T*>(get_memory_for_slot(read_index)));
+        read_idx.store(read_index + 1, std::memory_order_release);
       }
 
       void* slot = get_memory_for_slot(write_index);
@@ -83,7 +85,7 @@ namespace other {
     }
 
     void* get_memory_for_slot(natural_t index) {
-      return static_cast<void*>(buffer.data() + (index * sizeof(T)));
+      return static_cast<void*>(buffer.data() + (mask(index) * sizeof(T)));
     }
   };
 

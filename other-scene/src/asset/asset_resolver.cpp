@@ -152,15 +152,44 @@ namespace other {
       }
     }
 
+    filepath produced_assembly_path(const filepath& csproj) {
+      return dir_of(csproj) / "bin" / get_project_build_config_string() / (csproj.stem().string() + ".dll");
+    }
+
+    static void apply_produces(dependency_snapshot& snap, ostd::unordered_map<natural_t, uint32_t>& slots,
+                               ostd::vector<natural_t>& root_ids, uint32_t producer_slot) {
+      const auto produces = asset_resolver_tables::declarations[snap.nodes[producer_slot].type];
+      if (produces == nullptr) {
+        return;
+      }
+
+      opt<dependency_declaration> artifact = produces(absolute_of(snap.nodes[producer_slot].virtual_path));
+      if (!artifact.has_value()) {
+        return;
+      }
+
+      const uint32_t artifact_slot = intern(snap, slots, artifact->virtual_path, artifact->type);
+      if (!std::ranges::contains(snap.edges, std::pair{ artifact_slot, producer_slot })) {
+        snap.edges.emplace_back(artifact_slot, producer_slot);
+      }
+
+      if (!std::ranges::contains(root_ids, snap.nodes[artifact_slot].stable_id)) {
+        root_ids.push_back(snap.nodes[artifact_slot].stable_id);
+      }
+    }
+
     ostd::vector<dependency_declaration> parse_csproj_manifest(const filepath& manifest_path);
     ostd::vector<dependency_declaration> empty_parser(const filepath& manifest_path);
 
     opt<manifest_domain> build_csproj_manifest_domain(const filepath& manifest_path);
     opt<manifest_domain> build_empty_manifest_domain(const filepath& manifest_path);
 
+    opt<dependency_declaration> get_csproj_produced_assembly(const filepath& path);
+    opt<dependency_declaration> get_empty_dependency_declaration(const filepath& path);
+
   }  // namespace detail
 
-  std::array<manifest_parser_fn, kNumAssetTypes> manifest_parser_table::parsers = {
+  std::array<manifest_parser_fn, kNumAssetTypes> asset_resolver_tables::parsers = {
     &detail::empty_parser,           // texture
     &detail::empty_parser,           // model-source
     &detail::empty_parser,           // model
@@ -177,21 +206,38 @@ namespace other {
     &detail::empty_parser            // empty
   };
 
-  std::array<manifest_builder_fn, kNumAssetTypes> manifest_domain_table::builders = {
-    &detail::build_empty_manifest_domain,  // texture
-    &detail::build_empty_manifest_domain,  // model-source
-    &detail::build_empty_manifest_domain,  // model
-    &detail::build_empty_manifest_domain,  // animation
-    &detail::build_empty_manifest_domain,  // script-project
-    &detail::build_empty_manifest_domain,  // script-source
-    &detail::build_empty_manifest_domain,  // script-file
-    &detail::build_empty_manifest_domain,  // script
-    &detail::build_empty_manifest_domain,  // audio
-    &detail::build_empty_manifest_domain,  // scene
-    &detail::build_empty_manifest_domain,  // input-map
-    &detail::build_empty_manifest_domain,  // rendering-pipeline
-    &detail::build_empty_manifest_domain,  // asset-declaration
-    &detail::build_empty_manifest_domain   // empty
+  std::array<manifest_builder_fn, kNumAssetTypes> asset_resolver_tables::builders = {
+    nullptr,                                // texture
+    nullptr,                                // model-source
+    nullptr,                                // model
+    nullptr,                                // animation
+    &detail::build_csproj_manifest_domain,  // script-project
+    nullptr,                                // script-source
+    nullptr,                                // script-file
+    nullptr,                                // script
+    nullptr,                                // audio
+    nullptr,                                // scene
+    nullptr,                                // input-map
+    nullptr,                                // rendering-pipeline
+    nullptr,                                // asset-declaration
+    nullptr                                 // empty
+  };
+
+  std::array<dependency_declaration_fn, kNumAssetTypes> asset_resolver_tables::declarations = {
+    nullptr,                                // texture
+    nullptr,                                // model-source
+    nullptr,                                // model
+    nullptr,                                // animation
+    &detail::get_csproj_produced_assembly,  // script-project
+    nullptr,                                // script-source
+    nullptr,                                // script-file
+    nullptr,                                // script
+    nullptr,                                // audio
+    nullptr,                                // scene
+    nullptr,                                // input-map
+    nullptr,                                // rendering-pipeline
+    nullptr,                                // asset-declaration
+    nullptr                                 // empty
   };
 
   const dependency_snapshot::node* dependency_snapshot::find(natural_t stable_id) const {
@@ -249,6 +295,8 @@ namespace other {
           worklist.push_back(child_slot);
         }
       }
+
+      detail::apply_produces(snap, slots, root_ids, slot);
     }
 
     detail::build_reverse_and_layers(snap);
@@ -258,6 +306,7 @@ namespace other {
   resolve_delta asset_resolver::re_resolve(dependency_snapshot& snap, const filepath& changed) {
     PROFILE_SECTION("asset_resolver::re_resolve");
     const filepath abs = std::filesystem::absolute(changed);
+    const dependency_snapshot::node* known = snap.find(stable_id_for(virtualize(abs)));
 
     ostd::vector<natural_t> dirty_owners;
     for (const manifest_domain& d : domains) {
@@ -265,21 +314,22 @@ namespace other {
         case domain_hit::INSIDE:
           dirty_owners.push_back(d.owner_stable_id);
           break;
+
         case domain_hit::EXCLUDED:
-          CORE_LOG_ERROR("excluded path '{}' reached re_resolve for owner {:#x}", abs.string(), d.owner_stable_id);
-          CORE_LOG_ERROR("         watcher registration must pre-filter excludes");
-          OTHER_ASSERT(false, "should never re-resolve excluded domains {:#x}", d.owner_stable_id);
-          return {};
-        case domain_hit::OUTSIDE: break;
+          CORE_LOG_TRACE("'{}' excluded from domain {:#x}", abs.string(), d.owner_stable_id);
+          break;
+
+        case domain_hit::OUTSIDE:
+          break;
       }
     }
 
-    const dependency_snapshot::node* known = snap.find(stable_id_for(virtualize(abs)));
     if (known != nullptr) {
       for (const uint32_t parent : snap.reverse[detail::slot_of(snap, known->stable_id)]) {
         dirty_owners.push_back(snap.nodes[parent].stable_id);
       }
     }
+
     std::ranges::sort(dirty_owners);
     const auto dead = std::ranges::unique(dirty_owners);
     dirty_owners.erase(dead.begin(), dead.end());
@@ -314,40 +364,52 @@ namespace other {
           worklist.push_back(child);
         }
       }
+
+      detail::apply_produces(snap, slots, root_ids, slot);
     }
 
     while (!worklist.empty()) {
       const uint32_t slot = worklist.back();
       worklist.pop_back();
+
       const dependency_snapshot::node parent = next.nodes[slot];
       const ostd::vector<dependency_declaration> decls = parse_manifest(parent);
       next.nodes[slot].manifest_hash = effective_hash_for(parent, decls);
+
       for (const dependency_declaration& decl : decls) {
         const size_t before = next.nodes.size();
         const uint32_t child = detail::intern(next, slots, decl.virtual_path, decl.type);
         next.edges.emplace_back(slot, child);
-        if (next.nodes.size() != before) worklist.push_back(child);
+        if (next.nodes.size() != before) {
+          worklist.push_back(child);
+        }
       }
+
+      detail::apply_produces(snap, slots, root_ids, slot);
     }
 
-    detail::garbage_collect_unreachable(next, root_ids);  /// §2.6 — orphans = removed files
+    detail::garbage_collect_unreachable(next, root_ids);
     detail::build_reverse_and_layers(next);
 
     resolve_delta delta;
     for (const dependency_snapshot::node& n : next.nodes) {
-      if (snap.find(n.stable_id) == nullptr) delta.added.push_back(n.stable_id);
+      if (snap.find(n.stable_id) == nullptr) {
+        delta.added.push_back(n.stable_id);
+      }
     }
     for (const dependency_snapshot::node& n : snap.nodes) {
-      if (next.find(n.stable_id) == nullptr) delta.removed.push_back(n.stable_id);
+      if (next.find(n.stable_id) == nullptr) {
+        delta.removed.push_back(n.stable_id);
+      }
     }
     if (known != nullptr && next.find(known->stable_id) != nullptr) {
-      delta.modified.push_back(known->stable_id);  /// content changed, node survives
+      delta.modified.push_back(known->stable_id);
     }
 
     std::unordered_set<natural_t> seeds;
     seeds.insert(delta.added.begin(), delta.added.end());
     seeds.insert(delta.modified.begin(), delta.modified.end());
-    for (const natural_t removed : delta.removed) {  /// removed nodes' parents live in OLD snap
+    for (const natural_t removed : delta.removed) {
       for (const uint32_t parent : snap.reverse[detail::slot_of(snap, removed)]) {
         seeds.insert(snap.nodes[parent].stable_id);
       }
@@ -356,7 +418,9 @@ namespace other {
     std::unordered_set<uint32_t> affected;
     const auto mark_parents = [&](auto&& self, uint32_t slot) -> void {
       for (const uint32_t parent : next.reverse[slot]) {
-        if (affected.insert(parent).second) self(self, parent);
+        if (affected.insert(parent).second) {
+          self(self, parent);
+        }
       }
     };
 
@@ -370,7 +434,7 @@ namespace other {
       }
     }
 
-    for (const ostd::vector<uint32_t>& layer : next.topo_layers) {  /// leaves-first order
+    for (const ostd::vector<uint32_t>& layer : next.topo_layers) {
       for (const uint32_t slot : layer) {
         if (affected.contains(slot) && !std::ranges::contains(delta.modified, next.nodes[slot].stable_id)) {
           delta.affected_parents.push_back(next.nodes[slot].stable_id);
@@ -383,13 +447,13 @@ namespace other {
   }
 
   ostd::vector<dependency_declaration> asset_resolver::parse_manifest(const dependency_snapshot::node& n) {
-    const manifest_parser_fn parser = manifest_parser_table::parsers[n.type];
+    const manifest_parser_fn parser = asset_resolver_tables::parsers[n.type];
     OTHER_ASSERT(parser != nullptr, "no parser slot for asset type {}", n.type);
     return parser(absolute_of(n.virtual_path));
   }
 
   natural_t asset_resolver::effective_hash_for(const dependency_snapshot::node& n, std::span<const dependency_declaration> decls) {
-    if (decls.empty() && manifest_domain_table::builders[n.type] == nullptr) {
+    if (decls.empty() && asset_resolver_tables::builders[n.type] == nullptr) {
       return 0;
     }
 
@@ -398,12 +462,12 @@ namespace other {
     XXH3_state_t state;
     XXH3_64bits_reset(&state);
     XXH3_64bits_update(&state, bytes.data(), bytes.size());
-    for (const dependency_declaration& d : decls) {  /// deterministic: expand output is sorted
+    for (const dependency_declaration& d : decls) {
       XXH3_64bits_update(&state, d.virtual_path.data(), d.virtual_path.size());
       XXH3_64bits_update(&state, &d.type, sizeof(d.type));
     }
 
-    if (const manifest_builder_fn builder = manifest_domain_table::builders[n.type]; builder != nullptr) {
+    if (const manifest_builder_fn builder = asset_resolver_tables::builders[n.type]; builder != nullptr) {
       if (opt<manifest_domain> domain = builder(absolute_of(n.virtual_path)); domain.has_value()) {
         const natural_t set_hash = domain->set.content_hash();
         XXH3_64bits_update(&state, &set_hash, sizeof(set_hash));
@@ -495,6 +559,17 @@ namespace other {
     }
 
     opt<manifest_domain> build_empty_manifest_domain(const filepath& manifest_path) {
+      return std::nullopt;
+    }
+
+    opt<dependency_declaration> get_csproj_produced_assembly(const filepath& path) {
+      return dependency_declaration{
+        .virtual_path = virtualize(produced_assembly_path(path)),
+        .type = asset::SCRIPT_SOURCE,
+      };
+    }
+
+    opt<dependency_declaration> get_empty_dependency_declaration(const filepath& path) {
       return std::nullopt;
     }
 

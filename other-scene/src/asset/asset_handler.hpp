@@ -200,12 +200,17 @@ namespace other {
         0;
     }
 
+    inline bool in_snapshot(natural_t stable_id) const {
+      return snapshot.find(stable_id) != nullptr;
+    }
+
    private:
     friend class asset_pipeline;
 
     struct load_plan {
       ostd::vector<uint32_t> remaining_children;
       ostd::vector<bool> failed;
+      ostd::vector<bool> pending;
     };
     load_plan plan;
 

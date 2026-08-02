@@ -14,7 +14,7 @@ namespace other {
    public:
     project_tool()
         : tool("Other.Toolset.ProjectTool") {}
-    ~project_tool() = default;
+    ~project_tool() override = default;
 
     void generate_dotnet_project(const filepath& csproj_path);
 

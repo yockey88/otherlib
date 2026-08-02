@@ -195,7 +195,17 @@ namespace other {
   void event_system::post_event_callback(natural_t event_id, microseconds duration) {
     {
       std::scoped_lock lock(events_mutex);
-      auto& timer = event_timers.emplace_back(event_timer{ event_id, asio::steady_timer(io_context) });
+      /// one timer entry per event: recurring events re-arm their existing timer instead of
+      ///  appending a new (never-erased) entry every period
+      auto timer_itr = std::find_if(event_timers.begin(), event_timers.end(), [event_id](const event_timer& et) {
+        return et.event_id == event_id;
+      });
+      if (timer_itr == event_timers.end()) {
+        event_timers.emplace_back(event_timer{ event_id, asio::steady_timer(io_context) });
+        timer_itr = std::prev(event_timers.end());
+      }
+
+      auto& timer = *timer_itr;
       timer.timer.expires_after(duration);
       timer.timer.async_wait([this, event_id](const asio::error_code& ec) {
         if (ec && ec != asio::error::operation_aborted) {

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
@@ -327,6 +328,15 @@ namespace OtherCsBindings
       }
 
       assemblies.Remove(asm_id);
+      // now remove from context so next LoadManagedAssembly will load a new instance of the assembly
+      foreach (var ctx in contexts.Values)
+      {
+        if (ctx.Assemblies.Contains(asm))
+        {
+          ctx.Unload();
+          break;
+        }
+      }
     }
 
     [UnmanagedCallersOnly]

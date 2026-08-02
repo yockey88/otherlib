@@ -389,93 +389,53 @@ namespace other {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
       filepath project_path = asset_ptr->absolute_path;
-
-      //  launch all project files since they are simple and are only registered in the correct place,
-      //  if does not exist, then path is generated in the build job below
-      if (std::filesystem::exists(project_path)) {
-        std::error_code ec;
-        for (auto it = std::filesystem::recursive_directory_iterator(project_path.parent_path(), ec);
-             it != std::filesystem::recursive_directory_iterator();
-             it.increment(ec)) {
-          // skip build files/generated files
-          if (it->is_directory() && (it->path().filename() == "obj" || it->path().filename() == "bin")) {
-            it.disable_recursion_pending();
-            continue;
-          }
-
-          if (it->is_regular_file() && it->path().extension() == ".cs") {
-            handler->load_asset(it->path());
-          }
-        }
-      }
-
       auto& jobs = handler->get_job_system();
 
       ref<project_tool> build_tool = make_ref<project_tool>();
-      natural_t build_id = 0;
-      {
-        ref<job> build_project_job = jobs.submit(
-          {
-            .name = std::format("Build .NET project '{}'", project_path.string()),
-            .priority = job::priority::LOW,
-            .thread_affinity = job::affinity::WORKER_THREAD,
-          },
-          [t = build_tool, path = project_path]() mutable {
-            OTHER_ASSERT(t != nullptr, "Failed to create project tool for building .NET project.");
-            /// create dotnet project for the loaded project
-            if (!std::filesystem::exists(path)) {
-              CORE_LOG_INFO("No .NET project file found at '{}', creating a new one.", path.string());
-              t->generate_dotnet_project(path);
-            }
-
-            /// .csproj file exists we go straight to building it
-            t->start_project_build(path);
-
-            do {
-              std::this_thread::yield();
-            } while (t->project_build_in_progress());
-
-            int32_t result = t->get_build_result();
-            t->cleanup_build();
-
-            if (result == 0) {
-              CORE_LOG_DEBUG("Successfully built .NET project '{}'", path.string());
-            } else {
-              throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path.string(), result));
-            }
-          });
-        OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
-        build_id = build_project_job->id;
-      }
-
-      ref<job> load_build_asset_job = jobs.submit_deferred(
-        build_id,
+      ref<job> build_project_job = jobs.submit(
         {
-          .name = std::format("Load built assembly for .NET project '{}'", project_path.string()),
+          .name = std::format("Build .NET project '{}'", project_path.string()),
           .priority = job::priority::LOW,
-          .thread_affinity = job::affinity::MAIN_THREAD,
+          .thread_affinity = job::affinity::WORKER_THREAD,
         },
-        [h = handler, t = build_tool, project_path]() {
-          filepath csproj = t->get_dotnet_project_path();
-          /// \todo fixed hardcoded build configuration and output path assumptions
-          filepath build = csproj.parent_path() / "bin" / get_project_build_config_string() / (csproj.stem().string() + ".dll");
-          if (!std::filesystem::exists(build)) {
-            throw std::runtime_error(std::format("Expected built assembly '{}' does not exist.", build.string()));
+        [t = build_tool, path = project_path]() mutable {
+          OTHER_ASSERT(t != nullptr, "Failed to create project tool for building .NET project.");
+          /// create dotnet project for the loaded project
+          if (!std::filesystem::exists(path)) {
+            CORE_LOG_INFO("No .NET project file found at '{}', creating a new one.", path.string());
+            t->generate_dotnet_project(path);
           }
 
-          h->load_asset(build);
+          /// .csproj file exists we go straight to building it
+          t->start_project_build(path);
+
+          do {
+            std::this_thread::yield();
+          } while (t->project_build_in_progress());
+
+          int32_t result = t->get_build_result();
+          t->cleanup_build();
+          t = nullptr;
+
+          if (result == 0) {
+            CORE_LOG_DEBUG("Successfully built .NET project '{}'", path.string());
+          } else {
+            throw std::runtime_error(std::format("Failed to build .NET project '{}'. Build result code: {}", path.string(), result));
+          }
         });
-      OTHER_ASSERT(load_build_asset_job != nullptr, "Failed to create job for loading built assembly of .NET project.");
+      OTHER_ASSERT(build_project_job != nullptr, "Failed to create job for building .NET project.");
 
       do {
         co_await task::yield();
-      } while (!load_build_asset_job->done());
+      } while (!build_project_job->done());
 
-      if (load_build_asset_job->get_status() == job::status::CANCELLED) {
+      if (build_project_job->get_status() != job::status::COMPLETED) {
         call_pipeline_fn<script_project_pipeline>(pipeline, on_failure, std::format("Loading built assembly for .NET project '{}' was cancelled.", project_path.string()));
         co_return;
       }
+      CORE_LOG_DEBUG("Successfully loaded built assembly for .NET project '{}'", project_path.string());
 
+      build_tool = nullptr;
       call_pipeline_fn<script_project_pipeline>(pipeline, on_success);
       co_return;
     }

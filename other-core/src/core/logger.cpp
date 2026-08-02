@@ -29,7 +29,7 @@ namespace other {
 
     natural_t id = num_loggers++;
     if (id >= kMaxLoggers) {
-      log_failure_error("Maximum number of loggers reached.");
+      log_failure_error_unlocked("Maximum number of loggers reached.");
       return static_cast<natural_t>(-1);
     }
     loggers[id] = log{
@@ -77,7 +77,7 @@ namespace other {
     {
       auto [itr, inserted] = sinks.insert({ sink->id, std::move(sink_ptr) });
       if (!inserted) {
-        log_failure_error(std::format("Sink with ID {} ({}) already exists.", sink->id, sink->sink_name));
+        log_failure_error_unlocked(std::format("Sink with ID {} ({}) already exists.", sink->id, sink->sink_name));
         return;
       }
 
@@ -136,9 +136,12 @@ namespace other {
 
   void logger::log_failure_error(const std::string& message) {
     std::unique_lock lock(log_mutex);
+    log_failure_error_unlocked(message);
+  }
 
+  void logger::log_failure_error_unlocked(const std::string& message) {
     if (error_log_file == nullptr) {
-      error_log_file = std::make_unique<std::ofstream>(kLogFailureFile.data(), std::ios::out);
+      error_log_file = std::make_unique<std::ofstream>(kLogFailureFile.data(), std::ios::app);
     }
     /// get time and date
     auto now = std::chrono::system_clock::now();

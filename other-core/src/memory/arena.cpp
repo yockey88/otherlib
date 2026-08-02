@@ -105,8 +105,8 @@ namespace other {
 
   void* arena::request_region(size_t size, size_t alignment) {
     PROFILE_SECTION("arena::request_region");
-    std::lock_guard lock_arena_mutex(arena_mutex);
 
+    /// allocate() locks arena_mutex itself; taking it here first would self-deadlock
     void* region = allocate(size, alignment);
     OTHER_ASSERT(region != nullptr, "Failed to allocate aligned region.");
     return region;

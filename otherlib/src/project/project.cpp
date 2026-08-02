@@ -173,7 +173,6 @@ namespace other {
 
   void project::add_built_script(const filepath& script_path) {
     OTHER_ASSERT(std::filesystem::exists(script_path), "Script asset file '{}' does not exist.", script_path.string());
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add built script.");
     CORE_LOG_TRACE("[PROJECT] Adding built script: {}", script_path.string());
     if (script_path.extension() == ".dll") {
       attach_project_dll(script_path);
@@ -216,8 +215,31 @@ namespace other {
     }
   }
 
+  void project::begin_assembly_refresh(const filepath& dll_path) {
+    if (dll_path != project_scripts.cs_script_source) {
+      return;
+    }
+
+    CORE_LOG_INFO("[PROJECT] Assembly refresh: detaching '{}'", dll_path.string());
+    if (project_assembly != nullptr) {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+      env->unload_dotnet_module(project_assembly);
+      project_assembly = nullptr;
+    }
+  }
+
+  bool project::refresh_built_script(const filepath& script_asset_path) {
+    if (script_asset_path.extension() != ".dll" || script_asset_path != project_scripts.cs_script_source) {
+      return false;
+    }
+
+    CORE_LOG_INFO("[PROJECT] Assembly refresh: reattaching '{}'", script_asset_path.string());
+    attach_project_dll(script_asset_path);
+    return true;
+  }
+
   void project::add_loaded_scene(natural_t scene_id) {
-    OTHER_ASSERT(is_loading(), "Project is not in loading state. Cannot add loaded scene.");
     auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
     OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
     CORE_LOG_DEBUG("[PROJECT] Adding loaded scene with ID '{}'.", scene_id);
@@ -232,7 +254,6 @@ namespace other {
   }
 
   void project::remove_loaded_scene(natural_t scene_id) {
-    OTHER_ASSERT(is_unloading(), "Project is not in unloading state. Cannot remove loaded scene.");
     auto it = std::ranges::find_if(scenes_in_project, [scene_id](const scene& s) { return s.scene_id == scene_id; });
     OTHER_ASSERT(it != scenes_in_project.end(), "Scene with ID '{}' not found in project.", scene_id);
     CORE_LOG_DEBUG("[PROJECT] Removing loaded scene with ID '{}'.", scene_id);

@@ -36,6 +36,7 @@ namespace other {
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "scripting_environment subsystem is not available.");
 
+    CORE_LOG_DEBUG("Shutting down tool of type '{}'", type_name);
     if (build_tool_obj_id != -1) {
       env->destroy_object(build_tool_obj_id);
       build_tool_obj_id = -1;

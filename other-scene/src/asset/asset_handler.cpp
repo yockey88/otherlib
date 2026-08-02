@@ -840,12 +840,14 @@ namespace other {
     PROFILE_SECTION("asset_handler::execute_plan");
     plan.remaining_children.assign(snapshot.nodes.size(), 0);
     plan.failed.assign(snapshot.nodes.size(), false);
+    plan.pending.assign(snapshot.nodes.size(), false);
 
     for (const auto& [parent, child] : snapshot.edges) {
       const dependency_snapshot::node& c = snapshot.nodes[child];
       const natural_t cid = runtime_id(c.stable_id);
       if (cid == 0 || !asset_loaded(cid) || needs_refresh.contains(c.stable_id)) {
         ++plan.remaining_children[parent];
+        plan.pending[child] = true;
       }
     }
 
@@ -864,6 +866,10 @@ namespace other {
 
     const dependency_snapshot::node& n = snapshot.nodes[slot];
     const natural_t id = runtime_id(n.stable_id);
+    if (id != 0 && !asset_loaded(id) && asset_states.contains(id)) {
+      return;
+    }
+
     if (id != 0 && asset_loaded(id)) {
       if (needs_refresh.erase(n.stable_id) > 0) {
         reload_asset(id);
@@ -884,7 +890,13 @@ namespace other {
       return;
     }
 
-    for (const uint32_t parent : snapshot.reverse[detail::slot_of(snapshot, stable_id)]) {
+    const uint32_t slot = detail::slot_of(snapshot, stable_id);
+    if (slot >= plan.pending.size() || !plan.pending[slot]) {
+      return;
+    }
+    plan.pending[slot] = false;
+
+    for (const uint32_t parent : snapshot.reverse[slot]) {
       OTHER_ASSERT(plan.remaining_children[parent] > 0, "indegree underflow for '{}'", snapshot.nodes[parent].virtual_path);
       if (--plan.remaining_children[parent] == 0) {
         dispatch_slot(parent);
@@ -893,6 +905,10 @@ namespace other {
   }
 
   void asset_handler::on_planned_child_failed(natural_t stable_id, const std::string_view error_msg) {
+    if (snapshot.nodes.empty()) {
+      return;
+    }
+
     const dependency_snapshot::node* n = snapshot.find(stable_id);
     if (n == nullptr) {
       return;
@@ -900,6 +916,7 @@ namespace other {
 
     const uint32_t slot = detail::slot_of(snapshot, stable_id);
     plan.failed[slot] = true;
+    plan.pending[slot] = false;
 
     ostd::vector<uint32_t> worklist{ slot };
     while (!worklist.empty()) {

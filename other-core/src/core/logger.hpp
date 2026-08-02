@@ -72,6 +72,7 @@ namespace other {
     std::array<log, kMaxLoggers> loggers;
 
     void log_failure_error(const std::string& message);
+    void log_failure_error_unlocked(const std::string& message);
   };
 
 }  // namespace other

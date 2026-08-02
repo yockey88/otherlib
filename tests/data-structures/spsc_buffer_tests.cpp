@@ -71,7 +71,7 @@ namespace other {
   }
 
   TEST_F(spsc_buffer_tests, byte_packets) {
-    spsc_buffer<std::vector<uint8_t>, 10> buffer;
+    spsc_buffer<std::vector<uint8_t>, 16> buffer;
 
     {
       std::vector<uint8_t> packet1 = { 0x01, 0x02, 0x03 };
@@ -113,7 +113,7 @@ namespace other {
   }
 
   TEST_F(spsc_buffer_tests, thread_safety) {
-    spsc_buffer<int, 1000> buffer;
+    spsc_buffer<int, 1024> buffer;
 
     std::thread producer([&buffer]() {
       for (int i = 0; i < 1000; ++i) {
@@ -143,7 +143,7 @@ namespace other {
 
   TEST_F(spsc_buffer_tests, thread_safety_2) {
     using packet_t = std::vector<uint8_t>;
-    spsc_buffer<packet_t, 1000> buffer;
+    spsc_buffer<packet_t, 1024> buffer;
 
     std::thread producer([&buffer]() {
       for (int i = 0; i < 1000; ++i) {

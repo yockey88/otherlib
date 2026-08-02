@@ -142,7 +142,9 @@ namespace other {
 
     OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_directory(abs_path), "Directory '{}' has invalid path '{}'", dir_name, abs_path.string());
     for (const auto& entry : std::filesystem::directory_iterator(abs_path)) {
-      if (entry.is_regular_file() && entry.path().filename() == it->second->absolute_path().filename()) {
+      /// file_handle::hash() is FNV of the absolute path string, so hashing each candidate
+      ///  the same way finds the on-disk file this hash would have been created from
+      if (entry.is_regular_file() && FNV(entry.path().string()) == hash) {
         auto local = make_ref<local_file>(events, entry.path(), filepath{ abs_path / entry.path().filename() }.string());
         return add_file(local);
       }
@@ -184,16 +186,15 @@ namespace other {
   ref<file_handle> directory::add_file(ref<file_handle> file) {
     PROFILE_SECTION("directory::add_file");
     OTHER_ASSERT(file != nullptr, "Cannot add null file handle to directory '{}'", dir_name);
+    file->parent = this;
 
     natural_t hash = file->hash();
-    auto it = file_handles.find(hash);
-    if (it != file_handles.end()) {
-      CORE_LOG_WARN("File '{}' already exists in directory '{}', overwriting existing file", file->name(), dir_name);
-      return it->second;
+    if (auto it = file_handles.find(hash); it != file_handles.end()) {
+      it->second = file;
+    } else {
+      file_handles.insert({ hash, file });
     }
 
-    file->parent = this;
-    file_handles.insert({ hash, file });
     return file;
   }
 

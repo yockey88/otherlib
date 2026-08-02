@@ -29,11 +29,30 @@ namespace other {
 
     void check_for_gl_error(const char* func_name, const char* file, int line);
 
+#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
+    void APIENTRY gl_debug_message_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei /* length */, const GLchar* message, const void* /* user_param */) {
+      switch (severity) {
+        case GL_DEBUG_SEVERITY_HIGH:
+          CORE_LOG_ERROR("[GL] {} (id {:#x}, type {:#x}, source {:#x})", message, id, type, source);
+          break;
+        case GL_DEBUG_SEVERITY_MEDIUM:
+        case GL_DEBUG_SEVERITY_LOW:
+          CORE_LOG_WARN("[GL] {} (id {:#x}, type {:#x}, source {:#x})", message, id, type, source);
+          break;
+        default:
+          CORE_LOG_TRACE("[GL] {}", message);
+          break;
+      }
+    }
+#endif
+
   }  // namespace
 
 }  // namespace other
 
-#if 0
+/// GL error checks (and the debug-output callback below) are compiled into the debug
+///  configurations only; release builds stay free of per-call glGetError round-trips
+#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
   #define CHECKGL()                                     \
     do {                                                \
       check_for_gl_error(__func__, __FILE__, __LINE__); \
@@ -78,6 +97,13 @@ namespace other {
     }
 
     CHECKGL();
+
+#if defined(OTHER_ENVIRONMENT_DEBUG) || defined(OTHER_ENVIRONMENT_PROFILED)
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(gl_debug_message_callback, nullptr);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
+#endif
 
     std::string gl_version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     std::string gl_renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
@@ -698,21 +724,31 @@ namespace other {
       glBindTexture(get_gl_texture_type(type), texture_id);
 
       int32_t gl_type = get_gl_texture_type(type);
+
+      GLint has_storage = GL_FALSE;
+      glGetTexParameteriv(gl_type, GL_TEXTURE_IMMUTABLE_FORMAT, &has_storage);
+
       switch (gl_type) {
         case GL_TEXTURE_1D:
-          glTexStorage1D(gl_type, 1, gl_iformat, img_size.x);
+          if (has_storage == GL_FALSE) {
+            glTexStorage1D(gl_type, levels, gl_iformat, img_size.x);
+          }
           if (data != nullptr) {
             glTexSubImage1D(gl_type, 0, 0, img_size.x, gl_cformat, gl_ctype, data);
           }
           break;
         case GL_TEXTURE_2D:
-          glTexStorage2D(gl_type, 1, gl_iformat, img_size.x, img_size.y);
+          if (has_storage == GL_FALSE) {
+            glTexStorage2D(gl_type, levels, gl_iformat, img_size.x, img_size.y);
+          }
           if (data != nullptr) {
             glTexSubImage2D(gl_type, 0, 0, 0, img_size.x, img_size.y, gl_cformat, gl_ctype, data);
           }
           break;
         case GL_TEXTURE_3D:
-          glTexStorage3D(gl_type, 1, gl_iformat, img_size.x, img_size.y, depth);
+          if (has_storage == GL_FALSE) {
+            glTexStorage3D(gl_type, levels, gl_iformat, img_size.x, img_size.y, depth);
+          }
           if (data != nullptr) {
             glTexSubImage3D(gl_type, 0, 0, 0, 0, img_size.x, img_size.y, depth, gl_cformat, gl_ctype, data);
           }
@@ -1071,7 +1107,6 @@ namespace other {
       return;
     }
 
-    glBindTexture(GL_TEXTURE_CUBE_MAP, text_gpu_itr->second);
     glBindFramebuffer(GL_FRAMEBUFFER, fb_gpu_itr->second);
 
     auto texture_res_itr = texture_resources.find(texture.id);
@@ -1091,7 +1126,6 @@ namespace other {
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
     CHECKGL();
   }
 

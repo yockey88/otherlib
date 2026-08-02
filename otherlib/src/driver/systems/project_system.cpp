@@ -315,6 +315,11 @@ namespace other {
     CORE_LOG_DEBUG("Script source loaded. Project State: {}", loaded_project->get_state());
     if (loaded_project->is_loading()) {
       loaded_project->add_built_script(script_source_path.value());
+    } else if (loaded_project->is_loaded()) {
+      /// hot reload: the plan just refreshed the project assembly artifact
+      if (loaded_project->refresh_built_script(script_source_path.value())) {
+        get_driver().trigger_event("project.assembly-refreshed");  /// instance-refresh consumers
+      }
     } else {
       CORE_LOG_WARN("Unimplemented handling of script source asset loaded event in project for project state {}", loaded_project->get_state());
     }
@@ -346,6 +351,8 @@ namespace other {
     CORE_LOG_DEBUG("Script source unloaded. Project State: {}", loaded_project->get_state());
     if (loaded_project->is_unloading()) {
       loaded_project->remove_built_script(script_source_path.value());
+    } else if (loaded_project->is_loaded()) {
+      loaded_project->begin_assembly_refresh(script_source_path.value());  /// unload half of a refresh
     } else {
       CORE_LOG_WARN("Unimplemented handling of script source asset unloaded event in project for project state {}", loaded_project->get_state());
     }
