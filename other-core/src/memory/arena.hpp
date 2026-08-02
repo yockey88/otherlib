@@ -37,8 +37,18 @@ namespace other {
    public:
     constexpr static inline size_t kHeaderSize = sizeof(alloc_header);
 
+    /// consistent snapshot of the allocation counters (diagnostics/soak testing)
+    struct stats {
+      size_t total_allocations = 0;
+      size_t live_allocations = 0;
+      size_t requested_memory = 0;
+      size_t used_memory = 0;
+    };
+
     arena() = default;
     ~arena();
+
+    stats get_stats();
 
     static void* allocate(size_t size, size_t alignment = page::kAlignment);
     static void free(void* ptr, size_t size);

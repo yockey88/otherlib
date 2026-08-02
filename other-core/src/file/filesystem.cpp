@@ -282,7 +282,14 @@ namespace other {
     }
     disk_path /= (rp.file_name + rp.extension);
     if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
-      return register_local_file(disk_path);
+      /// materialize the directory chain under the mount so later lookups cache-hit
+      ref<directory> registry_dir = mount;
+      if (!rp.relative_path_components.empty()) {
+        registry_dir = walk_or_create_path(mount, rp.relative_path_components);
+      }
+      ref<local_file> local = create_local_file(disk_path);
+      registry_dir->add_file(local);
+      return local;
     }
 
     CORE_LOG_ERROR("Cannot get file '{}': file '{}' not found in mount '{}'", engine_path, rp.file_name, rp.mount_name);
@@ -319,17 +326,18 @@ namespace other {
       return false;
     }
 
+    /// tolerate an unindexed directory chain: a failed walk just skips the cache check
+    ///  and falls through to the disk probe
     ref<directory> target_dir = mount;
     if (!rp.relative_path_components.empty()) {
       target_dir = walk_path(mount, rp.relative_path_components);
-      if (target_dir == nullptr) {
-        return false;
-      }
     }
 
-    for (const auto& [hash, file] : target_dir->get_files()) {
-      if (file->name() == rp.file_name && (rp.extension.empty() || file->extension() == rp.extension)) {
-        return true;
+    if (target_dir != nullptr) {
+      for (const auto& [hash, file] : target_dir->get_files()) {
+        if (file->name() == rp.file_name && (rp.extension.empty() || file->extension() == rp.extension)) {
+          return true;
+        }
       }
     }
 
@@ -391,16 +399,14 @@ namespace other {
       return nullptr;
     }
 
+    /// the directory chain may not be indexed yet (mounting does not scan the disk),
+    ///  so a failed walk falls through to the disk probe below
     ref<directory> target_dir = mount;
     if (!components.empty()) {
       target_dir = walk_path(mount, components);
-      if (target_dir == nullptr) {
-        CORE_LOG_ERROR("Cannot open '{}': directory path not found", engine_path);
-        return nullptr;
-      }
     }
 
-    ref<file_handle> file = target_dir->get_file(rp.file_name, rp.extension);
+    ref<file_handle> file = target_dir != nullptr ? target_dir->get_file(rp.file_name, rp.extension) : nullptr;
     if (file == nullptr) {
       /// try to open it as a local file if the mount has a disk path
       if (!mount->absolute_path().empty()) {
@@ -412,7 +418,7 @@ namespace other {
 
         if (std::filesystem::exists(disk_path) && std::filesystem::is_regular_file(disk_path)) {
           auto local = make_ref<local_file>(*events, disk_path, engine_path);
-          local->parent = target_dir.raw_ptr();
+          local->parent = (target_dir != nullptr ? target_dir : mount).raw_ptr();
           return local;
         }
       }

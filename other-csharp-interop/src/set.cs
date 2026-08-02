@@ -53,6 +53,24 @@ namespace OtherCsBindings
       elements.Clear();
     }
 
+    public Int32 RemoveWhere(Func<T, bool> predicate)
+    {
+      List<Int32> to_remove = new();
+      foreach (var (id, element) in elements)
+      {
+        if (predicate(element))
+        {
+          to_remove.Add(id);
+        }
+      }
+
+      foreach (var id in to_remove)
+      {
+        elements.Remove(id);
+      }
+      return to_remove.Count;
+    }
+
     public T? FirstOrDefault(Func<T, bool> fn)
     {
       return elements.Values.FirstOrDefault(fn);

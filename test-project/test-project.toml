@@ -1,0 +1,31 @@
+[project]
+metadata = [ 
+  { key = "name", value = "Test Project"}, 
+  { key = "description", value = "Test Project"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"} 
+]
+plugins = [
+  { name = "Network Simulation", path = "build/test-project/${build-config}/net_sim_plugin.dll" }
+]
+
+[filesystem]
+working-directory = "test-project"
+
+[scripting]
+projectrc-path = "test-project/project.lua"
+cs_project = "test-project/TestProject.csproj"
+
+[scene-graph]
+starting-scene = "SpinningDonut"
+scenes = [
+  { name = "SpinningDonut", path = "test-project/assets/scenes/spinning-donut.lua" },
+  { name = "PokerTable", path = "test-project/assets/scenes/poker-table.lua"  },
+]
+graph = [
+  { name = "SpinningDonut", incoming = [], outgoing = [ "PokerTable" ] },
+  { name = "PokerTable", incoming = [ "SpinningDonut" ], outgoing = [] },
+]
+# scene-transitions = [
+#   { from = "SpinningDonut", to = "PokerTable", type = "callback.ocl", symbol = "donut_to_poker" }
+# ]

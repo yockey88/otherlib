@@ -129,7 +129,7 @@ namespace other {
     if (itr == registered_events.end()) {
       /// expected if event system is cleared before the timer is polled to call the final cancel,
       ///  usually will occur if clear is called before the events are fully purged
-      CORE_LOG_ERROR("Attempted to cancel unregistered event ID {}", event_id);
+      CORE_LOG_TRACE("Attempted to cancel unregistered event ID {}", event_id);
       return;
     }
     itr->listeners.clear();
@@ -212,7 +212,9 @@ namespace other {
           CORE_LOG_ERROR("Event {} timer error: {}", event_id, ec.message());
           return;
         } else if (ec) {
-          cancel_event(event_id);
+          if (has_event(event_id)) {
+            cancel_event(event_id);
+          }
           return;
         }
 

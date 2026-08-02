@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace></RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <Reference Include="OtherCs">
+      <HintPath>C:\Yock\code\Other2\OtherEnv\build\other-csharp\Debug\OtherCs.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Reference Include="OtherCs">
+      <HintPath>C:\Yock\code\Other2\OtherEnv\build\other-csharp\Release\OtherCs.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

@@ -78,9 +78,12 @@ namespace other {
 
     auto& instance = instance_ref();
     std::lock_guard lock_arena_mutex(instance.arena_mutex);
-    instance.freelist.push(header->bin, header);
+    /// the free-list node overlays the header (see the static_asserts in arena.hpp),
+    ///  so the bin must be read before push clobbers it
+    const uint8_t bin = header->bin;
+    instance.freelist.push(bin, header);
     instance.live_allocations--;
-    instance.used_memory -= free_list::bin_block_size(header->bin);
+    instance.used_memory -= free_list::bin_block_size(bin);
   }
 
   page* arena::request_memory_page() {
@@ -101,6 +104,16 @@ namespace other {
     auto* f = instance.storage.get_frame_allocator();
     OTHER_ASSERT(f != nullptr, "Failed to create frame allocator.");
     return f;
+  }
+
+  arena::stats arena::get_stats() {
+    std::lock_guard lock(arena_mutex);
+    return stats{
+      .total_allocations = total_allocations,
+      .live_allocations = live_allocations,
+      .requested_memory = requested_memory,
+      .used_memory = used_memory,
+    };
   }
 
   void* arena::request_region(size_t size, size_t alignment) {

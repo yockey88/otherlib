@@ -270,6 +270,7 @@ namespace OtherCsBindings
         GCHandle handle = GCHandle.FromIntPtr(behavior_handle);
         if (handle.IsAllocated)
         {
+          AssemblyLoader.UnregisterHandle(behavior_handle);
           handle.Free();
         }
       }

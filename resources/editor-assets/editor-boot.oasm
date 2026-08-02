@@ -7,8 +7,8 @@ $main:
 end
 
 #test_project_folder {
-  ; .length: int32 = 8
-  ; .path: string = "spacesim"
-  .length: int32 = 12
-  .path: string = "test-project"
+  .length: int32 = 8
+  .path: string = "spacesim"
+  ; .length: int32 = 12
+  ; .path: string = "test-project"
 }

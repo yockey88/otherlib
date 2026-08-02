@@ -4,6 +4,8 @@ logs/
 docs/
 */logs/*
 other_test_results.*.xml
+bin/
+obj/
 
 #only for local testing linux builds
 dockerfile
@@ -25,7 +27,6 @@ code-generator/
 *.d2
 
 #large local development files
-test-project/
 spacesim/
 resources/models/
 # this is really large, don't have a better way to do this yet

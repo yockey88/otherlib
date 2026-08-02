@@ -1,0 +1,51 @@
+## engine + harness configuration for the memory soak run against test-project.
+## run from the repo root:  python cli.py -soak
+
+[application]
+name = "Other Soak Harness"
+metadata = [
+  { key = "name", value = "Other Soak Harness"},
+  { key = "description", value = "Long-running memory soak against the test project"},
+  { key = "author", value = "N/A"},
+  { key = "version", value = "0.1.0"}
+]
+core-log-level = "info"
+core-log-file = "logs/soak.log"
+## scenes must play so scripts + physics churn every frame
+auto-play-loaded-scenes = true
+## the project under soak; loads automatically once the driver is running
+project-file = "test-project/test-project.toml"
+
+[rendering]
+pipelines = [
+  "resources/editor-assets/default-pipeline.toml"
+]
+## keep imgui state out of the tracked resources/ layouts
+ui-layout-ini = "logs/soak-ui-layout.ini"
+imgui-font = "resources/fonts/BlexMonoNerdFont-Regular.ttf"
+
+[ui]
+## no tool windows; the soak only needs the engine render/update loop
+enable = false
+
+[scripting]
+dotnet-runtime-config = "other-csharp-interop/resources/OtherCsBindings.runtimeconfig.json"
+dotnet-bindings = "build/other-csharp/${build-config}/OtherCsBindings.dll"
+other-csharp = "build/other-csharp/${build-config}/OtherCs.dll"
+other-lua-directory = "other-lua-interop"
+
+[harness]
+scenario = "soak"
+
+[harness.soak]
+duration-seconds = 120.0
+warmup-seconds = 30.0
+sample-interval-seconds = 5.0
+## alternate between the project's scenes to exercise activate/deactivate churn;
+##  names are scene FILE STEMS (scene ids are FNV of the stem)
+scene-cycle-seconds = 15.0
+scene-cycle = [ "spinning-donut", "poker-table" ]
+## verdict thresholds: post-warmup growth beyond these fails the run
+max-live-allocation-growth = 128
+max-used-memory-growth-bytes = 1048576
+report-path = "logs/soak-report.json"

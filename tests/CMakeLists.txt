@@ -13,16 +13,20 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/core/reflection_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/state_machine_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/job_system_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/filesystem_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/event_system_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/logger_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_buffer_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/scope_tests.cpp
-    
+
     ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/memory_pool_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/graph_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/data-structures/spsc_buffer_tests.cpp
-    
+
     ${CMAKE_CURRENT_SOURCE_DIR}/ref/ref_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ref/weak_ref_tests.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/value/value_test.cpp
     
@@ -69,3 +73,5 @@ target_link_libraries(other_tests PUBLIC otherlib gmock)
 #        so it fails to find them and errors out, breaking the pipeline
 # include(GoogleTest)
 # gtest_discover_tests(other_tests)
+
+add_subdirectory(harness)
