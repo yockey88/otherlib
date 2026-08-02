@@ -68,8 +68,7 @@ namespace other {
     uint32_t extent = 0;      //< cells (cartesian) or rings (polar) from the origin
     uint32_t major_line_every = 0;
     uint32_t sector_count = 0;  //< polar radial spokes
-    bool polar = false;         //< false = cartesian lattice, true = polar rings/spokes
-    bool rings_only = false;    //< polar only: no spokes, rings at major cadence (stacked cylindrical layers)
+    bool polar = false;  //< false = cartesian lattice, true = polar rings/spokes
     bool show_axes = false;
   };
 

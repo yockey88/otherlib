@@ -175,6 +175,8 @@ namespace other {
         build_args.push_back(target.value());
       }
 
+      sidestep_running_executable(ctx, build_dir, "build", options.dry_run);
+
       const tool_result built = run_attached(ctx,
         { .executable = cmake.value(), .arguments = build_args, .working_directory = root }, options.dry_run);
       if (!built.success()) {

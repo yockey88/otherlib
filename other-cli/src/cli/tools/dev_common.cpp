@@ -91,6 +91,76 @@ namespace other {
       return { .code = result.exit_code, .message = "" };
     }
 
+    void sidestep_running_executable(const tool_context& ctx, const filepath& output_root, std::string_view verb, bool dry_run) {
+      const std::string exe_string = get_current_exe_full_path();
+      if (exe_string.empty()) {
+        return;
+      }
+
+      std::error_code ec;
+      const filepath exe = std::filesystem::weakly_canonical(filepath(exe_string), ec);
+      if (ec) {
+        return;
+      }
+      const filepath root = std::filesystem::weakly_canonical(output_root, ec);
+      if (ec) {
+        return;
+      }
+
+      bool inside = false;
+      for (filepath dir = exe.parent_path(); !dir.empty(); dir = dir.parent_path()) {
+        if (dir == root) {
+          inside = true;
+          break;
+        }
+        if (dir == dir.parent_path()) {
+          break;
+        }
+      }
+      if (!inside) {
+        return;
+      }
+
+      if (dry_run) {
+        ctx.print("would move the running '{}' aside so the {} can overwrite it", exe.filename().string(), verb);
+        return;
+      }
+
+      /// leftover slots from exited runs delete fine; a slot still backing a live
+      ///  process refuses deletion and is skipped
+      filepath stale = "";
+      for (int32_t slot = 0; slot < 8; ++slot) {
+        filepath candidate = exe;
+        candidate += (slot == 0) ? std::string(".stale") : std::format(".stale{}", slot);
+        if (std::filesystem::exists(candidate)) {
+          std::filesystem::remove(candidate, ec);
+        }
+        if (stale.empty() && !std::filesystem::exists(candidate)) {
+          stale = candidate;
+        }
+      }
+      if (stale.empty()) {
+        ctx.print("warning: no free slot to move the running '{}' aside; the {} cannot overwrite it while it runs", exe.filename().string(), verb);
+        return;
+      }
+
+      std::filesystem::rename(exe, stale, ec);
+      if (ec) {
+        ctx.print("warning: could not move the running '{}' aside ({}); the {} cannot overwrite it while it runs",
+          exe.filename().string(), ec.message(), verb);
+        return;
+      }
+
+      std::filesystem::copy_file(stale, exe, std::filesystem::copy_options::overwrite_existing, ec);
+      if (ec) {
+        /// a missing output only means the next build or install of it runs from scratch
+        ctx.print("warning: could not restore '{}' after moving it aside ({}); the {} will recreate it from scratch",
+          exe.filename().string(), ec.message(), verb);
+        return;
+      }
+      ctx.print("moved the running '{}' aside so the {} can overwrite it", exe.filename().string(), verb);
+    }
+
     filepath find_built_executable(const environment_paths& env, const filepath& output_dir, std::string_view executable_name,
                                    const opt<std::string>& config, std::string& resolved_config) {
       const auto candidate_for = [&env, &output_dir, &executable_name](std::string_view build_config) {

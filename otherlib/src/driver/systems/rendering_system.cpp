@@ -822,7 +822,6 @@ namespace other {
           ctx.set_uniform("OE_grid_major_every", g.major_line_every);
           ctx.set_uniform("OE_grid_sector_count", g.sector_count);
           ctx.set_uniform("OE_grid_polar", static_cast<uint32_t>(g.polar ? 1 : 0));
-          ctx.set_uniform("OE_grid_rings_only", static_cast<uint32_t>(g.rings_only ? 1 : 0));
           ctx.set_uniform("OE_grid_show_axes", static_cast<uint32_t>(g.show_axes ? 1 : 0));
           ctx.draw_quad();
         }

@@ -34,6 +34,17 @@ namespace other {
     ///  under --dry-run); the returned result carries the child's exit code
     tool_result run_attached(const tool_context& ctx, process_launch launch, bool dry_run);
 
+    /// cmake overwrites outputs in place (build relinks them, install copies over
+    ///  them), which fails on windows when an output is this very process's image
+    ///  (oecli building or installing oecli, an editor-hosted build relinking
+    ///  other_editor): a running image is locked against writes and deletes, but not
+    ///  renames. when this executable lives under output_root it is renamed aside and
+    ///  an identical copy is left at its path; the copy is unlocked, and it keeps the
+    ///  write time so up-to-date checks still hold. moved-aside images stay locked
+    ///  until their process exits, so each call only sweeps the leftovers of earlier
+    ///  runs. verb names the operation in messages ("build", "install")
+    void sidestep_running_executable(const tool_context& ctx, const filepath& output_root, std::string_view verb, bool dry_run);
+
     /// finds a built executable under <root>/build/<output_dir>/<config>/, honoring an
     ///  explicit config or probing build_config_probe_order(); an empty path means
     ///  nothing is built, resolved_config receives the config that matched

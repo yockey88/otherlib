@@ -4,6 +4,8 @@
 #include "cli/tools/install_environment.hpp"
 
 #include <filesystem>
+#include <fstream>
+#include <string>
 #include <vector>
 
 #include "cli/tools/dev_common.hpp"
@@ -44,6 +46,38 @@ namespace other {
           return tool_result::error(std::format("'{}' has not been configured yet (run: build)", build_dir.string()));
         }
         return tool_result::ok();
+      }
+
+      /// the effective install prefix: an explicit --prefix wins, otherwise the
+      ///  CMAKE_INSTALL_PREFIX the build tree was configured with; empty when neither
+      ///  resolves. cmake resolves a relative --prefix against its working directory,
+      ///  which run_attached sets to the environment root
+      filepath resolve_install_prefix(const opt<std::string>& prefix, const filepath& root) {
+        filepath resolved = "";
+        if (prefix.has_value()) {
+          resolved = filepath(prefix.value());
+        } else {
+          std::ifstream cache(root / "build" / "CMakeCache.txt");
+          std::string line;
+          while (std::getline(cache, line)) {
+            if (!line.starts_with("CMAKE_INSTALL_PREFIX:")) {
+              continue;
+            }
+            if (const size_t equals = line.find('='); equals != std::string::npos) {
+              std::string value = line.substr(equals + 1);
+              if (!value.empty() && value.back() == '\r') {
+                value.pop_back();
+              }
+              resolved = filepath(value);
+            }
+            break;
+          }
+        }
+
+        if (!resolved.empty() && resolved.is_relative()) {
+          resolved = root / resolved;
+        }
+        return resolved;
       }
 
     }  // namespace
@@ -94,6 +128,12 @@ namespace other {
       if (prefix.has_value()) {
         install_args.push_back("--prefix");
         install_args.push_back(prefix.value());
+      }
+
+      /// an installed oecli reinstalling over itself hits the same image lock as the
+      ///  build relinking a running oecli
+      if (const filepath install_prefix = resolve_install_prefix(prefix, ctx.env.root); !install_prefix.empty()) {
+        sidestep_running_executable(ctx, install_prefix, "install", options.dry_run);
       }
 
       const tool_result installed = run_attached(ctx,

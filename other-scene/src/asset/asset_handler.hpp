@@ -140,7 +140,7 @@ namespace other {
     }
     /// checks if asset is currently loading
     inline bool asset_loading(natural_t asset_id) const {
-      auto it = std::ranges::find_if(asset_pipelines, [asset_id](const auto& a) { return a.loading_asset.id == asset_id; });
+      auto it = asset_pipelines.find(asset_id);
       return it != asset_pipelines.end();
     }
     /// checks if asset exists in system, usable or not
@@ -222,7 +222,7 @@ namespace other {
     event_system& events;
     job_system& jobs;
 
-    std::deque<pipeline_context> asset_pipelines;
+    ostd::map<natural_t, pipeline_context> asset_pipelines;
     std::queue<natural_t> successful_pipelines;
     std::queue<natural_t> failed_pipelines;
 
@@ -249,7 +249,7 @@ namespace other {
       return next_asset_id++;
     }
 
-    void begin_load(std::deque<pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it);
+    void begin_load(ostd::map<natural_t, pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it);
     ostd::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
 
     asset* find_asset_by_path(const filepath& file_path) const;
