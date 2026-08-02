@@ -20,10 +20,8 @@ namespace other {
     scene_object* object = nullptr;
     integer_t script_object_id = -1;
 
-    /// behavior script_object IDs managed by the scripting_environment.
-    /// each behavior is a separate script_object with its own dotnet_object,
-    /// but is also linked to the parent SceneObject's behavior list in C#.
-    ostd::vector<integer_t> behavior_ids;
+    /// behavior bookkeeping lives on the script_object (behavior_handles) in the
+    ///  scripting_environment, keyed by script_object_id
 
     void fixed_update(double delta_time);
     void update(double delta_time);
@@ -42,7 +40,6 @@ namespace other {
     script_component(const script_component& other) {
       this->object = other.object;
       this->script_object_id = other.script_object_id;
-      this->behavior_ids = other.behavior_ids;
     }
     script_component(scene_object* obj) : object(obj) {
       OTHER_ASSERT(object != nullptr, "Script component initialized with null scene object.");

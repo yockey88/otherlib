@@ -85,11 +85,25 @@ namespace other {
     if (id < 0 || id >= kMaxScriptObjects) {
       return;
     }
+    /// stale handles (hot reload, behaviors already detached) may point at freed slots
+    if (live_objects[id].status != live_script_object::LIVE) {
+      return;
+    }
 
     CORE_LOG_DEBUG(" - destroying script object with ID {}", id);
 
     script_object* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
+
+    /// behaviors live in their own script slots and own their managed objects;
+    ///  destroy them with their parent so the managed names are released for reuse
+    ///  (scene teardown destroys only the parent's slot)
+    for (auto it = obj->behavior_handles.rbegin(); it != obj->behavior_handles.rend(); ++it) {
+      if (it->script_object_id >= 0) {
+        destroy_object(it->script_object_id);
+      }
+    }
+    obj->behavior_handles.clear();
 
     if (obj->dotnet_object != nullptr) {
       CORE_LOG_DEBUG(" - destroying .NET object for script object with ID {}", id);
@@ -120,6 +134,7 @@ namespace other {
     native_string type_str = native_string::new_str(type_name);
     get_dotnet_host().interop().attach_native_object(id, obj->dotnet_object, type_str);
     native_string::free_str(type_str);
+    obj->dotnet_native_registered = true;
   }
 
   void scripting_environment::dotnet_unregister_native_object(integer_t id) {
@@ -132,6 +147,7 @@ namespace other {
     }
 
     get_dotnet_host().interop().detach_native_object(id, obj->dotnet_object);
+    obj->dotnet_native_registered = false;
   }
 
   script_object* scripting_environment::get_object(integer_t id) {
@@ -249,6 +265,9 @@ namespace other {
       destroy_object(behavior_script_id);
       return -1;
     }
+
+    /// the slot owns the managed object so destroy_object releases the name for reuse
+    get_object(behavior_script_id)->dotnet_object = behavior_dotnet_obj;
 
     parent->dotnet_object->invoke<>("AddNativeBehavior", behavior_dotnet_obj->managed_object);
     return behavior_script_id;
@@ -409,7 +428,11 @@ namespace other {
       obj->dotnet_object->invoke<>("RemoveAllBehaviors");
     }
 
-    dotnet_unregister_native_object(id);
+    /// behaviors were never attached to the NativeObjectManager; detaching them
+    ///  there would throw C#-side
+    if (obj->dotnet_native_registered) {
+      dotnet_unregister_native_object(id);
+    }
     dotnet.destroy_managed_object(obj->dotnet_object);
     obj->dotnet_object = nullptr;
   }

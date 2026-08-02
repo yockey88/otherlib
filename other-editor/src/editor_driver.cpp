@@ -201,10 +201,14 @@ namespace other {
             .near_plane = 0.33f,
             .far_plane = 15.f,
           };
+          /// the render camera's pose comes from camera.position/direction (see
+          ///  render_scene_to_viewports), not the object's transform, so inverse(view_proj)
+          ///  alone is the NDC->world map; image_size holds the scene viewport's size, which
+          ///  is the aspect the game camera actually renders with
           camera_comp->camera.clip = debug_clip;
-          glm::mat4 view_proj = camera_comp->camera.get_projection_matrix(get_renderer().get_window_size()) * camera_comp->camera.get_view_matrix();
+          glm::mat4 view_proj = camera_comp->camera.get_projection_matrix(glm::ivec2(camera_comp->camera.image_size)) * camera_comp->camera.get_view_matrix();
           camera_comp->camera.clip = save;
-          draw.frustum(glm::inverse(view_proj) * world_trans, basic_colors::kBlue);
+          draw.frustum(glm::inverse(view_proj), basic_colors::kBlue);
         }
       }
     }
