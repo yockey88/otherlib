@@ -351,6 +351,13 @@ namespace other {
     opt<serialization::scene_document> pending_document = std::nullopt;
     /// state captured by play() and restored by reset() when the scene stops
     ostd::vector<uint8_t> play_snapshot = {};
+
+    /// stop is a disable, not a remove: managed script instances survive the restore so
+    ///  Awake/Remove stay reserved for load/unload/reload. ids park here between the
+    ///  teardown and the by-name rebind; leftovers (objects created during play) are
+    ///  swept as real removals at the end of restore_snapshot
+    bool preserving_script_objects = false;
+    ostd::vector<integer_t> preserved_script_objects = {};
   };
 
 }  // namespace other

@@ -16,7 +16,6 @@ namespace other {
       /// listen for external focus requests (/ or :)
       events().add_listener("console.focus", [this](const value&) { request_focus(); });
       events().add_listener("console.focus-for-command", [this](const value&) { request_focus(); });
-      // events().add_listener("scene.played", [this](const value&) { drop_focus(); });
     }
 
     void console_input_node::set_suggestion_provider(command_suggestion_provider* provider) {

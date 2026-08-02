@@ -5,8 +5,9 @@
 
 #include <sol/types.hpp>
 
-#include "object/grid_component.hpp"
 #include "serialization/scene_serializer.hpp"
+
+#include "object/grid_component.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
@@ -42,9 +43,6 @@ namespace other {
 
     events->register_event("scene.activated");
     events->register_event("scene.deactivated");
-    events->register_event("scene.played");
-    events->register_event("scene.paused");
-    events->register_event("scene.stopped");
 
     events->register_event("ls.scenes");
     events->add_listener("ls.scenes", [this](const value& data) { handle_ls_scenes_event(&get_driver().get_kernel(), data); });
@@ -549,15 +547,12 @@ namespace other {
     if (command == "play") {
       active_scene->play();
       get_driver().on_scene_played(active_scene->id);
-      get_driver().get_event_system()->trigger_event("scene.played", active_scene->id);
     } else if (command == "pause") {
       active_scene->pause();
       get_driver().on_scene_paused(active_scene->id);
-      get_driver().get_event_system()->trigger_event("scene.paused", active_scene->id);
     } else if (command == "stop") {
       active_scene->stop();
       get_driver().on_scene_stopped(active_scene->id);
-      get_driver().get_event_system()->trigger_event("scene.stopped", active_scene->id);
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
     }

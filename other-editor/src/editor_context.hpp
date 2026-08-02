@@ -61,6 +61,13 @@ namespace other {
 
     selection current_selection;
 
+    /// stop's snapshot restore reassigns every runtime id, so the selection is carried
+    ///  across a play/stop cycle by name (same identity rule as undo/redo restores)
+    std::vector<std::string> playback_selection_names = {};
+
+    void capture_playback_selection();
+    void restore_playback_selection();
+
     std::string current_primary_viewport = "default-instancing";
     std::vector<viewport_info> viewports;
 

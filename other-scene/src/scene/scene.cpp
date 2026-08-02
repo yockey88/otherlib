@@ -10,6 +10,7 @@
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 #include "math/matrix.hpp"
+#include "serialization/scene_serializer.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "model/model.hpp"
@@ -30,11 +31,11 @@
 #include "object/transform.hpp"
 #include "scene/scene_network_context.hpp"
 #include "scene/scene_storage.hpp"
-#include "serialization/scene_serializer.hpp"
 
 #include "entt/entity/fwd.hpp"
 #include "glm/fwd.hpp"
 #include "sol/table.hpp"
+
 
 namespace other {
 
@@ -265,7 +266,23 @@ namespace other {
       comp.scene_stop();
     });
 
-    reset();
+    /// end of the disable pass: the restore invalidates every runtime id, so the
+    ///  surviving managed instances drop their native bindings here and are rebound
+    ///  during the rebuild — Awake/Remove never fire on a play-stop cycle. the root
+    ///  survives the restore untouched, so its binding stays valid
+    if (!play_snapshot.empty()) {
+      scene_object& root = root_object();
+      storage->registry.view<script_component>().each([&root](entt::entity entity, script_component& comp) {
+        if (comp.object == &root) {
+          return;
+        }
+        comp.reset_dotnet_binding();
+      });
+
+      preserving_script_objects = true;
+      reset();
+      preserving_script_objects = false;
+    }
   }
 
   void scene::reset() {
@@ -299,6 +316,18 @@ namespace other {
 
     destroy_all_non_root_objects();
     serialization::instantiate_scene(*this, *parsed.document, serialization::default_codec_services());
+
+    /// whatever the rebuild did not reclaim was created during play and is not part of
+    ///  the restored state — destroying it now is a genuine removal (Remove fires)
+    if (!preserved_script_objects.empty()) {
+      auto* script_env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
+      for (const integer_t orphan_id : preserved_script_objects) {
+        CORE_LOG_DEBUG("Destroying script object with ID {} left unclaimed by the restore.", orphan_id);
+        script_env->destroy_object(orphan_id);
+      }
+      preserved_script_objects.clear();
+    }
   }
 
   void scene::destroy_all_non_root_objects() {
@@ -622,6 +651,9 @@ namespace other {
     PROFILE_SECTION("scene::get_object");
     scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+    /// a reset node means the id outlived its object (snapshot restores reassign runtime
+    ///  ids) — callers that can hold stale ids must resolve through find_object instead
+    OTHER_ASSERT(node->object != nullptr, "Scene object with ID {} no longer exists.", id);
     return *node->object;
   }
 
@@ -630,6 +662,7 @@ namespace other {
     PROFILE_SECTION("scene::get_object_const");
     const scene_tree::node* node = storage->tree.node_at(id);
     OTHER_ASSERT(node != nullptr, "Node with the given ID does not exist in the scene storage->tree.");
+    OTHER_ASSERT(node->object != nullptr, "Scene object with ID {} no longer exists.", id);
     return *node->object;
   }
 
@@ -1173,7 +1206,7 @@ namespace other {
     object->registry_id = (uint32_t)entity;
 
     // object handle and component registery are 'invisible' components (user should not know about them)
-    storage->registry.emplace<object_handle>(entity, object_handle{ .id = (natural_t)entity, .object = object });
+    storage->registry.emplace<object_handle>(entity, object_handle{ .id = object->id, .object = object });
     storage->registry.emplace<object_component_registry>(entity, object_component_registry{});
     storage->registry.emplace<transform>(entity, transform{
                                                    orthonormal_basis(glm::vec3(0, 1, 0)),
@@ -1238,6 +1271,19 @@ namespace other {
     auto* script_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
+    if (preserving_script_objects) {
+      for (auto it = preserved_script_objects.begin(); it != preserved_script_objects.end(); ++it) {
+        script_object* preserved = script_env->get_object(*it);
+        if (preserved != nullptr && preserved->name == script->object->name) {
+          script->script_object_id = *it;
+          script_env->rebind_dotnet_object(*it, (void*)script->object);
+          preserved_script_objects.erase(it);
+          CORE_LOG_DEBUG("Rebound script object with ID {} for scene object '{}' [ID: {}] (entity {})", script->script_object_id, script->object->name, script->object->id, (natural_t)entity);
+          return;
+        }
+      }
+    }
+
     script->script_object_id = script_env->create_object(script->object->name);
     CORE_LOG_DEBUG("Created script object with ID {} for scene object '{}' [ID: {}] (entity {})", script->script_object_id, script->object->name, script->object->id, (natural_t)entity);
 
@@ -1258,6 +1304,12 @@ namespace other {
     OTHER_ASSERT(script_env != nullptr, "Scripting environment is not initialized.");
 
     script_component& script = storage->registry.get<script_component>(entity);
+    if (preserving_script_objects && script.script_object_id >= 0) {
+      /// play-stop restore: the managed instance outlives the native rebuild and is
+      ///  reclaimed by name in on_create_script_component
+      preserved_script_objects.push_back(script.script_object_id);
+      return;
+    }
     script_env->destroy_object(script.script_object_id);
   }
 

@@ -50,31 +50,34 @@ namespace other {
 
     template <typename TArg>
     constexpr managed_type get_managed_type() {
-      if constexpr (std::is_pointer_v<std::remove_reference_t<TArg>>) {
+      /// callers forward arguments through tuples/std::apply (see dotnet_callback), so TArg
+      ///  arrives as a (possibly const) lvalue reference — classify the underlying value type
+      using T = std::remove_cvref_t<TArg>;
+      if constexpr (std::is_pointer_v<T>) {
         return managed_type::POINTER_TYPE;
-      } else if constexpr (std::same_as<TArg, uint8_t> || std::same_as<TArg, std::byte>) {
+      } else if constexpr (std::same_as<T, uint8_t> || std::same_as<T, std::byte>) {
         return managed_type::BYTE_TYPE;
-      } else if constexpr (std::same_as<TArg, uint16_t>) {
+      } else if constexpr (std::same_as<T, uint16_t>) {
         return managed_type::USHORT_TYPE;
-      } else if constexpr (std::same_as<TArg, uint32_t> || (std::same_as<TArg, unsigned long> && sizeof(TArg) == 4)) {
+      } else if constexpr (std::same_as<T, uint32_t> || (std::same_as<T, unsigned long> && sizeof(T) == 4)) {
         return managed_type::UINT_TYPE;
-      } else if constexpr (std::same_as<TArg, uint64_t> || (std::same_as<TArg, unsigned long> && sizeof(TArg) == 8)) {
+      } else if constexpr (std::same_as<T, uint64_t> || (std::same_as<T, unsigned long> && sizeof(T) == 8)) {
         return managed_type::ULONG_TYPE;
-      } else if constexpr (std::same_as<TArg, char8_t>) {
+      } else if constexpr (std::same_as<T, char8_t>) {
         return managed_type::SBYTE_TYPE;
-      } else if constexpr (std::same_as<TArg, int16_t>) {
+      } else if constexpr (std::same_as<T, int16_t>) {
         return managed_type::SHORT_TYPE;
-      } else if constexpr (std::same_as<TArg, int32_t> || (std::same_as<TArg, long> && sizeof(TArg) == 4)) {
+      } else if constexpr (std::same_as<T, int32_t> || (std::same_as<T, long> && sizeof(T) == 4)) {
         return managed_type::INT_TYPE;
-      } else if constexpr (std::same_as<TArg, int64_t> || (std::same_as<TArg, long> && sizeof(TArg) == 8)) {
+      } else if constexpr (std::same_as<T, int64_t> || (std::same_as<T, long> && sizeof(T) == 8)) {
         return managed_type::LONG_TYPE;
-      } else if constexpr (std::same_as<TArg, float>) {
+      } else if constexpr (std::same_as<T, float>) {
         return managed_type::FLOAT_TYPE;
-      } else if constexpr (std::same_as<TArg, double>) {
+      } else if constexpr (std::same_as<T, double>) {
         return managed_type::DOUBLE_TYPE;
-      } else if constexpr (std::same_as<TArg, bool>) {
+      } else if constexpr (std::same_as<T, bool>) {
         return managed_type::BOOL_TYPE;
-      } else if constexpr (std::is_same_v<TArg, native_string>) {
+      } else if constexpr (std::is_same_v<T, native_string>) {
         return managed_type::STRING_TYPE;
       } else {
         return managed_type::UNKNOWN_TYPE;

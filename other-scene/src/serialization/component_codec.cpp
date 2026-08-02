@@ -3,6 +3,8 @@
  **/
 #include "serialization/component_codec.hpp"
 
+#include <algorithm>
+
 #include "script/script_object.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -85,8 +87,32 @@ namespace other {
         codec.apply = [](scene& s, scene_object* object, std::span<const uint8_t> payload, const codec_services&) {
           script_component* component = s.get_component<script_component>(object);
           OTHER_ASSERT(component != nullptr, "script apply called for an object without a script component");
-          for (const std::string& name : decode_behavior_names(payload)) {
+          const ostd::vector<std::string> names = decode_behavior_names(payload);
+          for (const std::string& name : names) {
+            /// attach is idempotent,  behaviors surviving a play-stop restore are kept as-is
             component->add_behavior(name);
+          }
+
+          /// reconcile: behaviors on the live object that the document does not list are
+          ///  genuine removals (e.g. added during play, rolled back by stop's restore).
+          ///  objects whose captured behavior list was empty emit no script record at
+          ///  all, so play-added behaviors on those objects escape this prune
+          auto* script_env = subsystem<scripting_environment>::get();
+          if (script_env == nullptr || component->script_object_id < 0) {
+            return;
+          }
+          script_object* script_obj = script_env->get_object(component->script_object_id);
+          if (script_obj == nullptr) {
+            return;
+          }
+          ostd::vector<std::string> extras = {};
+          for (const auto& handle : script_obj->behavior_handles) {
+            if (std::find(names.begin(), names.end(), handle.type_name) == names.end()) {
+              extras.push_back(handle.type_name);
+            }
+          }
+          for (const std::string& extra : extras) {
+            component->remove_behavior(extra);
           }
         };
 

@@ -102,6 +102,16 @@ namespace other {
     }
   }
 
+  void script_component::reset_dotnet_binding() {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
+    PROFILE_SECTION("script_component::reset_dotnet_binding");
+
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    env->reset_dotnet_object_binding(script_object_id);
+  }
+
   void script_component::add_behavior(const std::string_view behavior_type_name) {
     OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::add_behavior");

@@ -17,6 +17,13 @@ namespace Other
       handle = new SceneObjectHandle(ObjectID);
     }
 
+    /// the cached handle carries the runtime object id, which a play-stop restore
+    /// reassigns
+    protected override void OnNativeRebind()
+    {
+      handle = new SceneObjectHandle(ObjectID);
+    }
+
     public Mat4 WorldMatrix
     {
       get

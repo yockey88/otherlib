@@ -128,6 +128,39 @@ namespace other {
     editing_history.redo();
   }
 
+  void editor_context::capture_playback_selection() {
+    playback_selection_names.clear();
+    scene* s = current_selection.scene_ptr;
+    if (s == nullptr) {
+      return;
+    }
+
+    for (const natural_t obj_id : current_selection.objects) {
+      const scene_object* obj = s->find_object(obj_id);
+      if (obj != nullptr) {
+        playback_selection_names.push_back(obj->name);
+      }
+    }
+  }
+
+  void editor_context::restore_playback_selection() {
+    scene* s = current_selection.scene_ptr;
+    if (s == nullptr) {
+      return;
+    }
+
+    /// every pre-stop id is dead after the restore; objects absent from the restored
+    ///  state (e.g. selected while playing after being spawned by a script) drop out
+    current_selection.objects.clear();
+    for (const std::string& obj_name : playback_selection_names) {
+      const scene_object* obj = s->find_object(obj_name);
+      if (obj != nullptr && std::ranges::find(current_selection.objects, obj->id) == current_selection.objects.end()) {
+        current_selection.objects.push_back(obj->id);
+      }
+    }
+    playback_selection_names.clear();
+  }
+
   void editor_context::select_object(natural_t object_id) {
     if (current_selection.scene_ptr == nullptr) {
       CORE_LOG_ERROR("Cannot select object with ID {} because there is no active scene.", object_id);

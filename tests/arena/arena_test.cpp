@@ -55,6 +55,14 @@ namespace other {
     EXPECT_EQ(addr % alignment, 0) << "Pointer is not aligned to " << alignment << " bytes: " << addr;
   }
 
+  /// member of arena_test so it can reach arena::kAllocationTag through the test friendship
+  void arena_test::verify_allocation_header(void* ptr, size_t size) {
+    auto* header = static_cast<alloc_header*>(ptr) - 1;
+    EXPECT_EQ(header->magic, arena::kAllocationTag) << "Allocation header magic is corrupt for " << ptr;
+    EXPECT_EQ(header->user_size, size) << "Allocation header does not record the requested size.";
+    EXPECT_EQ(header->bin, free_list::bin_index(size + arena::kHeaderSize)) << "Allocation header records the wrong bin.";
+  }
+
   void arena_test::test_memory_boundaries(void* ptr, size_t size) {
     uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
 
@@ -121,28 +129,42 @@ namespace other {
     ASSERT_LT(current_page->cursor, page::kPageSize) << "Current page cursor exceeds page size limit.";
   }
 
+  /// allocations may be served from the bump cursor or a recycled free-list bin depending
+  ///  on what earlier tests freed, so this asserts the allocation contract (header, counters,
+  ///  usability, recycling) rather than any page-relative placement
   TEST_F(arena_test, basic_allocation) {
-    GTEST_SKIP()
-      << "this test may need rewriting, the page may shift depending on order of execution of tests so the prealloc_cursor -> allocation_cursor check may not be valid anymore.";
     arena* a = subsystem<arena>::get();
-    page* current_page = a->get_current_page();
-    ASSERT_NE(current_page, nullptr) << "Current page is null after allocation.";
+    ASSERT_NE(a, nullptr);
 
-    size_t prealloc_cursor = current_page->cursor;
-    size_t allocation_cursor = prealloc_cursor + arena::kHeaderSize;
-    void* ptr = allocate_and_verify(kTestBlockSize);
+    const arena::stats before = a->get_stats();
+
+    void* ptr = a->allocate(kTestBlockSize);
     ASSERT_NE(ptr, nullptr) << "Allocation failed for size " << kTestBlockSize;
-    /// make sure it is 16-byte aligned
     verify_alignment(ptr, kAlignment);
-
-    const size_t expected_block_size = expected_block_bytes(kTestBlockSize);
-    ASSERT_GE(current_page->cursor, expected_block_size) << "Current page cursor does not match allocation size.";
+    verify_allocation_header(ptr, kTestBlockSize);
 
     uint64_t& value = *static_cast<uint64_t*>(ptr);
     value = 0xDEADBEEF;  // Fill with a test pattern
+    EXPECT_EQ(value, 0xDEADBEEF);
 
-    EXPECT_EQ(current_page->get_ptr_at(allocation_cursor), ptr) << "Pointer does not match expected address in current page.";
-    EXPECT_EQ(*(uint64_t*)current_page->get_ptr_at(allocation_cursor), value) << "Pointer does not match expected address in current page.";
+    /// counter deltas are exact here (single-threaded, no other arena users between snapshots)
+    const arena::stats allocated = a->get_stats();
+    EXPECT_EQ(allocated.total_allocations, before.total_allocations + 1);
+    EXPECT_EQ(allocated.live_allocations, before.live_allocations + 1);
+    EXPECT_EQ(allocated.requested_memory, before.requested_memory + kTestBlockSize);
+    EXPECT_EQ(allocated.used_memory, before.used_memory + expected_block_bytes(kTestBlockSize));
+
+    a->free(ptr, kTestBlockSize);
+    const arena::stats freed = a->get_stats();
+    EXPECT_EQ(freed.total_allocations, before.total_allocations + 1) << "total_allocations is cumulative and must survive the free.";
+    EXPECT_EQ(freed.live_allocations, before.live_allocations);
+    EXPECT_EQ(freed.used_memory, before.used_memory);
+
+    /// the free-list is LIFO, so the freed block sits at the head of its bin and the next
+    ///  same-size allocation must recycle it
+    void* recycled = a->allocate(kTestBlockSize);
+    EXPECT_EQ(recycled, ptr) << "Freed block was not recycled for a same-bin allocation.";
+    a->free(recycled, kTestBlockSize);
   }
 
   TEST_F(arena_test, alignment_requirements) {

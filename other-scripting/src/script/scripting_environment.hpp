@@ -33,6 +33,12 @@ namespace other {
     void dotnet_register_native_object(integer_t id, const std::string_view type_name);
     void dotnet_unregister_native_object(integer_t id);
 
+    /// play-stop restore support: managed instances survive while the native scene
+    ///  rebuilds, so only their native binding is reset (end of the disable pass) and
+    ///  re-established once the restored native object exists — no Awake/Remove fires
+    void reset_dotnet_object_binding(integer_t id);
+    void rebind_dotnet_object(integer_t id, void* native_handle);
+
     // template <typename T>
     // void register_native_object(string name, T&& value);
 

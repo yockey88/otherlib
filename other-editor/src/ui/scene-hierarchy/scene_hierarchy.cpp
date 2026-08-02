@@ -105,7 +105,12 @@ namespace other {
       ImGui::EndChild();
 
       if (editor_ctx.has_selection()) {
-        draw_object_context_menu(active_scene, active_scene->get_object(editor_ctx.current_selection.objects.front()));
+        /// the selected id can be stale right after a snapshot restore — no menu for
+        ///  ids that no longer resolve
+        scene_object* selected = active_scene->find_object(editor_ctx.current_selection.objects.front());
+        if (selected != nullptr) {
+          draw_object_context_menu(active_scene, *selected);
+        }
       } else {
       }
     }

@@ -113,6 +113,25 @@ namespace Other.Core
       behaviors.Clear();
     }
 
+    /// play/stop keeps managed instances alive while the native scene rebuilds; the old
+    /// native ids die in the restore, so the binding is reset at the end of the disable
+    /// pass and rebound once the restored native object exists
+    public void ResetNativeHandle()
+    {
+      internal_handles.object_id = 0;
+      internal_handles.native_handle = IntPtr.Zero;
+    }
+
+    public void RebindNativeHandle(IntPtr native_handle)
+    {
+      internal_handles.native_handle = native_handle;
+      internal_handles.object_id = 0;
+      internal_handles.object_id = ObjectID;
+      OnNativeRebind();
+    }
+
+    protected virtual void OnNativeRebind() {}
+
     public T GetBehavior<T>() where T : OtherBehavior
     {
       for (int i = 0; i < behaviors.Count; i++)
