@@ -23,8 +23,10 @@ target_include_directories(other_cli
 )
 target_link_libraries(other_cli PUBLIC other_core)
 
+## oecli links otherlib for the engine-level tools (scene compile/decompile/info need the
+##  scene component codecs); it still boots no subsystems, so tools stay instant
 add_executable(oecli src/main.cpp)
-target_link_libraries(oecli PRIVATE other_cli)
+target_link_libraries(oecli PRIVATE other_cli otherlib)
 ## other_core's third-party link deps (glad, xxhash) resolve by bare name
 target_link_directories(oecli PRIVATE ${OTHER_LIBRARIES_PATH})
 

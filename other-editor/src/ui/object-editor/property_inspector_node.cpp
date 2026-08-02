@@ -88,6 +88,7 @@ namespace other {
       inspector::end_component_section();
 
       if (changed) {
+        context.notify_scene_edited();
         if (on_modified != nullptr) {
           on_modified(comp, object, active_scene, driver_ptr);
         }
@@ -132,6 +133,7 @@ namespace other {
 
         if (inspector::draw_object_header_editable(name_buf, sizeof(name_buf), obj.id, colors::scene_object::kSignature)) {
           obj.name = std::string(name_buf);
+          context.notify_scene_edited();
         }
         ImGui::Separator();
 
@@ -227,6 +229,7 @@ namespace other {
             if (ImGui::Selectable(comp_info.component_name.c_str())) {
               OTHER_ASSERT(comp_info.add_component != nullptr, "Add component function is null for component '{}'", comp_info.component_name);
               comp_info.add_component(active_scene, &obj);
+              context.notify_scene_edited();
               ImGui::CloseCurrentPopup();
             }
           }

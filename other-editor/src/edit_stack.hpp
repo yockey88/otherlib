@@ -14,9 +14,14 @@ namespace other {
 
   class edit_stack {
    public:
+    /// applies the edit immediately, then records it
     void commit(const edit& e);
+    /// records an edit whose mutation ALREADY happened (widget writes, snapshot pairs);
+    ///  apply only runs on redo
+    void record(const edit& e);
     void undo();
     void redo();
+    void clear();
 
     inline bool can_undo() const { return !edit_history.empty(); }
     inline bool can_redo() const { return !edit_future.empty(); }

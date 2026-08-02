@@ -7,6 +7,109 @@
 
 namespace other {
 
+  namespace {
+
+    /// a snapshot-pair edit: undo restores `before`, redo restores `after`. the scene is
+    ///  resolved at invoke time through the context — never a captured scene pointer —
+    ///  and the selection is cleared because restore reassigns runtime ids
+    edit make_snapshot_edit(editor_context* ctx, ostd::vector<uint8_t> before, ostd::vector<uint8_t> after) {
+      auto restore = [ctx](const ostd::vector<uint8_t>& snapshot) {
+        scene* s = ctx->current_selection.scene_ptr;
+        if (s == nullptr) {
+          CORE_LOG_ERROR("Cannot restore scene edit: no active scene.");
+          return;
+        }
+        s->restore_snapshot(snapshot);
+        ctx->current_selection.objects.clear();
+        ctx->edit_tracker.baseline = s->capture_snapshot();
+      };
+      return edit{
+        .apply = [restore, after = std::move(after)]() { restore(after); },
+        .undo = [restore, before = std::move(before)]() { restore(before); },
+      };
+    }
+
+  }  // namespace
+
+  void editor_context::notify_scene_edited() {
+    scene* s = current_selection.scene_ptr;
+    if (s == nullptr || s->is_playing()) {
+      return;
+    }
+
+    if (!edit_tracker.session_active) {
+      if (edit_tracker.baseline.empty()) {
+        /// no baseline means we cannot reconstruct the pre-edit state; skip this session
+        CORE_LOG_WARN("Scene edit began without a baseline snapshot; this edit will not be undoable.");
+        edit_tracker.baseline = s->capture_snapshot();
+        return;
+      }
+      edit_tracker.session_active = true;
+    }
+    edit_tracker.idle_frames = 0;
+  }
+
+  void editor_context::tick_edit_tracker() {
+    scene* s = current_selection.scene_ptr;
+    if (s == nullptr) {
+      return;
+    }
+
+    /// keep a baseline ready from the first quiet frame so the next session has a
+    ///  true pre-edit state to restore to
+    if (!edit_tracker.session_active) {
+      if (edit_tracker.baseline.empty() && !s->is_playing()) {
+        edit_tracker.baseline = s->capture_snapshot();
+      }
+      return;
+    }
+
+    if (++edit_tracker.idle_frames < scene_edit_tracker::kIdleFramesToCommit) {
+      return;
+    }
+
+    ostd::vector<uint8_t> after = s->capture_snapshot();
+    editing_history.record(make_snapshot_edit(this, edit_tracker.baseline, after));
+    edit_tracker.baseline = std::move(after);
+    edit_tracker.session_active = false;
+    edit_tracker.idle_frames = 0;
+  }
+
+  void editor_context::reset_scene_edit_tracking() {
+    editing_history.clear();
+    edit_tracker.baseline.clear();
+    edit_tracker.session_active = false;
+    edit_tracker.idle_frames = 0;
+  }
+
+  void editor_context::undo_scene_edit() {
+    scene* s = current_selection.scene_ptr;
+    if (s == nullptr || s->is_playing()) {
+      return;
+    }
+    if (edit_tracker.session_active) {
+      edit_tracker.idle_frames = scene_edit_tracker::kIdleFramesToCommit;
+      tick_edit_tracker();
+    }
+    if (!editing_history.can_undo()) {
+      CORE_LOG_DEBUG("Nothing to undo.");
+      return;
+    }
+    editing_history.undo();
+  }
+
+  void editor_context::redo_scene_edit() {
+    scene* s = current_selection.scene_ptr;
+    if (s == nullptr || s->is_playing()) {
+      return;
+    }
+    if (!editing_history.can_redo()) {
+      CORE_LOG_DEBUG("Nothing to redo.");
+      return;
+    }
+    editing_history.redo();
+  }
+
   void editor_context::select_object(natural_t object_id) {
     if (current_selection.scene_ptr == nullptr) {
       CORE_LOG_ERROR("Cannot select object with ID {} because there is no active scene.", object_id);

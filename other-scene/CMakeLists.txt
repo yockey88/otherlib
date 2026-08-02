@@ -22,6 +22,9 @@ target_sources(other_scene
       src/scene/scene_storage.cpp
       src/scene/scene.cpp
       src/scene/scene_graph.cpp
+
+      src/serialization/component_codec.cpp
+      src/serialization/scene_serializer.cpp
 )
 
 target_include_directories(other_scene 

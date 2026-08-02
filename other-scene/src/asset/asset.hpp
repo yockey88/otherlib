@@ -135,7 +135,7 @@ namespace other {
     asset_name{ "empty", "Empty" },
   };
 
-  constexpr inline size_t kNumAssetExtensions = 18;
+  constexpr inline size_t kNumAssetExtensions = 20;
   constexpr inline std::array<std::string_view, kNumAssetExtensions> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
@@ -149,8 +149,10 @@ namespace other {
 
     ".csproj",  // SCRIPT_PROJECT
     ".cs",      // SCRIPT_FILE
-    ".dll",     // SCRIPT_SOURCE
-    ".so",      // SCRIPT_SOURCE
+    /// scene behavior-hook scripts and projectrc files; scenes themselves are .oscn/.oscnb
+    ".lua",  // SCRIPT_FILE
+    ".dll",  // SCRIPT_SOURCE
+    ".so",   // SCRIPT_SOURCE
 
     /// no real extension since scripts can be anything loaded out of a script source
     ".os",  // SCRIPT
@@ -158,11 +160,8 @@ namespace other {
     ".mp3",  // AUDIO
     ".wav",  // AUDIO
 
-    /// fix this so that we load lua as SCRIPT_FILE
-    //  involves fixing scene loading
-    ".lua",  // SCENE
-    // ".scene",         // SCENE
-    // ".scene-object",  // SCENE_OBJECT
+    ".oscn",   // SCENE (toml scene document)
+    ".oscnb",  // SCENE (compiled binary scene document)
 
     ".oinputmap",  // INPUT_MAP
     ".oeim",       // INPUT_MAP
@@ -187,11 +186,15 @@ namespace other {
       { asset::SCRIPT_SOURCE, ".dll" },
       { asset::SCRIPT_SOURCE, ".so" },
       { asset::SCRIPT_FILE, ".cs" },
+      { asset::SCRIPT_FILE, ".lua" },
+
+      { asset::SCRIPT, ".os" },
 
       { asset::AUDIO, ".mp3" },
       { asset::AUDIO, ".wav" },
 
-      { asset::SCENE, ".lua" },
+      { asset::SCENE, ".oscn" },
+      { asset::SCENE, ".oscnb" },
       { asset::INPUT_MAP, ".oinputmap" },
       { asset::INPUT_MAP, ".oeim" },
 

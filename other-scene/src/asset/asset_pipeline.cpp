@@ -12,6 +12,7 @@
 #include "script/scripting_environment.hpp"
 
 #include "scene/scene.hpp"
+#include "serialization/scene_serializer.hpp"
 
 #include "tools/project_tool.hpp"
 
@@ -493,20 +494,37 @@ namespace other {
     task load_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
-      scene* scene_ptr = nullptr;
-      if (asset_ptr->path_hash == 0) {
-        asset_ptr->path_hash = FNV(asset_ptr->virtual_path.string());
-        scene_ptr = reinterpret_cast<scene_pipeline*>(pipeline)->scene_ptr;
-      } else {
-        OTHER_ASSERT(std::filesystem::exists(asset_ptr->absolute_path), "Scene file does not exist: {}", asset_ptr->absolute_path.string());
-        OTHER_ASSERT(false, "unimplemented");
-        CORE_LOG_DEBUG("Loading scene from file: {}", asset_ptr->load_path.string());
-        /**
-         * \todo load scene from file if binary file attached
-         **/
+      /// scenes enter through the scene graph (add_scene_asset), which always routes here
+      /// with path_hash == 0 and the live scene attached to the pipeline; a direct
+      /// begin_asset_load of a scene path has no scene object to fill and is unsupported
+      if (asset_ptr->path_hash != 0) {
+        call_pipeline_fn<scene_pipeline>(pipeline, on_failure, "scene files load through the project scene graph, not begin_asset_load");
+        co_return;
       }
 
-      OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null after loading.");
+      asset_ptr->path_hash = FNV(asset_ptr->virtual_path.string());
+      scene* scene_ptr = reinterpret_cast<scene_pipeline*>(pipeline)->scene_ptr;
+      OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null in scene pipeline.");
+
+      /// file-backed scenes parse their document here (pure, safe off the main thread);
+      /// activation instantiates it on the main thread (scene::instantiate_pending_document)
+      const std::string extension = asset_ptr->load_path.extension().string();
+      if (serialization::is_scene_file_extension(extension)) {
+        serialization::scene_parse_result parsed = serialization::load_scene_document(asset_ptr->absolute_path);
+        if (!parsed.success()) {
+          call_pipeline_fn<scene_pipeline>(pipeline, on_failure, std::format("failed to parse scene document '{}': {}", asset_ptr->load_path.string(), parsed.error));
+          co_return;
+        }
+        for (const std::string& warning : parsed.warnings) {
+          CORE_LOG_WARN("scene document '{}': {}", asset_ptr->load_path.string(), warning);
+        }
+        scene_ptr->source_path = asset_ptr->absolute_path;
+        scene_ptr->set_pending_document(std::move(*parsed.document));
+      } else if (!asset_ptr->load_path.empty()) {
+        call_pipeline_fn<scene_pipeline>(pipeline, on_failure, std::format("'{}' is not a scene document ({}/{} expected)", asset_ptr->load_path.string(), serialization::kSceneTomlExtension, serialization::kSceneBinaryExtension));
+        co_return;
+      }
+
       scene_ptr->asset_id = asset_ptr->id;
       co_await task::yield();
 

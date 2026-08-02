@@ -6,6 +6,7 @@
 #include "file/filesystem.hpp"
 
 #include "scene/scene.hpp"
+#include "serialization/component_codec.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/driver_mounts.hpp"
@@ -20,6 +21,27 @@ namespace other {
     OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in asset system initialization.");
 
     mount_mounts(kernel);
+
+    /// scene serialization converts asset ids <-> portable paths through these; wiring
+    ///  them here keeps other-scene free of any driver dependency
+    serialization::codec_services& scene_codec_services = serialization::default_codec_services();
+    scene_codec_services.asset_path_of = [this](natural_t asset_id) -> std::string {
+      asset* ass = get_asset(asset_id);
+      if (ass == nullptr) {
+        CORE_LOG_WARN("Scene serialization referenced unknown asset id {}; storing an empty path.", asset_id);
+        return "";
+      }
+      const filepath& path = !ass->load_path.empty() ? ass->load_path : ass->virtual_path;
+      return path.generic_string();
+    };
+    scene_codec_services.resolve_asset = [this](const std::string& path) -> natural_t {
+      filepath asset_path = path;
+      if (!std::filesystem::exists(asset_path) && !std::filesystem::exists(std::filesystem::absolute(asset_path))) {
+        CORE_LOG_ERROR("Scene document references asset '{}' which does not exist.", path);
+        return 0;
+      }
+      return begin_asset_load(asset_path);
+    };
 
     event_system& events = *get_driver().get_event_system();
 

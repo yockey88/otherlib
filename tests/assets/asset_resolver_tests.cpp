@@ -16,7 +16,6 @@
 #include "file/path_helpers.hpp"
 
 #include "asset/asset_resolver.hpp"
-
 #include "other_test.hpp"
 
 namespace other {
@@ -224,27 +223,29 @@ namespace other {
   TEST_F(asset_resolver_tests, csproj_conditional_group_selected_by_config) {
     /// tests run as a Debug/ProfileD engine build => dotnet config "Debug":
     /// a Release-conditioned Remove must not apply, a Debug-conditioned one must
-    write_file(csproj_path(), default_csproj(
-                                "  <ItemGroup Condition=\"'$(Configuration)' == 'Release'\">\n"
-                                "    <Compile Remove=\"scripts/a.cs\" />\n"
-                                "  </ItemGroup>\n"
-                                "  <ItemGroup Condition=\"'$(Configuration)' == 'Debug'\">\n"
-                                "    <Compile Remove=\"scripts/b.cs\" />\n"
-                                "  </ItemGroup>\n"));
+    write_file(csproj_path(), default_csproj("  <ItemGroup Condition=\"'$(Configuration)' == 'Release'\">\n"
+                                             "    <Compile Remove=\"scripts/a.cs\" />\n"
+                                             "  </ItemGroup>\n"
+                                             "  <ItemGroup Condition=\"'$(Configuration)' == 'Debug'\">\n"
+                                             "    <Compile Remove=\"scripts/b.cs\" />\n"
+                                             "  </ItemGroup>\n"));
 
     asset_resolver resolver;
     const std::array roots{ csproj_path() };
     dependency_snapshot snap = resolver.resolve(roots);
 
-    EXPECT_NE(snap.find(stable_of(proj_root / "scripts" / "a.cs")), nullptr);
-    EXPECT_EQ(snap.find(stable_of(proj_root / "scripts" / "b.cs")), nullptr);
+    const bool debug_config = get_project_build_config_string() == "Debug";
+    const filepath kept = proj_root / "scripts" / (debug_config ? "a.cs" : "b.cs");
+    const filepath removed = proj_root / "scripts" / (debug_config ? "b.cs" : "a.cs");
+
+    EXPECT_NE(snap.find(stable_of(kept)), nullptr);
+    EXPECT_EQ(snap.find(stable_of(removed)), nullptr);
   }
 
   TEST_F(asset_resolver_tests, csproj_semicolon_split_and_backslash_normalization) {
-    write_file(csproj_path(), default_csproj(
-                                "  <ItemGroup>\n"
-                                "    <Compile Remove=\"scripts\\a.cs;scripts\\b.cs\" />\n"
-                                "  </ItemGroup>\n"));
+    write_file(csproj_path(), default_csproj("  <ItemGroup>\n"
+                                             "    <Compile Remove=\"scripts\\a.cs;scripts\\b.cs\" />\n"
+                                             "  </ItemGroup>\n"));
 
     asset_resolver resolver;
     const std::array roots{ csproj_path() };

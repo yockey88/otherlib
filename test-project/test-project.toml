@@ -19,8 +19,8 @@ cs_project = "test-project/TestProject.csproj"
 [scene-graph]
 starting-scene = "SpinningDonut"
 scenes = [
-  { name = "SpinningDonut", path = "test-project/assets/scenes/spinning-donut.lua" },
-  { name = "PokerTable", path = "test-project/assets/scenes/poker-table.lua"  },
+  { name = "SpinningDonut", path = "test-project/assets/scenes/spinning-donut.oscn" },
+  { name = "PokerTable", path = "test-project/assets/scenes/poker-table.oscn"  },
 ]
 graph = [
   { name = "SpinningDonut", incoming = [], outgoing = [ "PokerTable" ] },

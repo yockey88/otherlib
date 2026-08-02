@@ -67,6 +67,7 @@ namespace other {
     std::string type_str = type.as_string()->get();
     switch (FNV(type_str)) {
       case FNV("rendering-pipeline"): return asset::type::RENDERING_PIPELINE;
+      case FNV("scene"): return asset::type::SCENE;
       default:
         CORE_LOG_ERROR("asset type {} not supported through TOML file: {}", type_str, file_path.string());
         return asset::type::EMPTY;

@@ -13,6 +13,7 @@
 #include "core/version.hpp"
 
 #include "cli/tool_registry.hpp"
+#include "tools/scene_cli_tool.hpp"
 
 namespace {
 
@@ -35,6 +36,7 @@ namespace {
 
 int main(int argc, char* argv[]) {
   auto& registry = other::cli::default_tool_registry();
+  other::cli::register_environment_tools(registry);
   const std::vector<std::string> args(argv + 1, argv + argc);
 
   if (args.empty() || args[0] == "-h" || args[0] == "--help" || args[0] == "help") {

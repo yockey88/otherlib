@@ -54,6 +54,7 @@ target_sources(other_core
 		src/serialization/reflection.cpp
 		src/serialization/parser_combinators.cpp
 		src/serialization/serialization.cpp
+		src/serialization/toml_writer.cpp
 
 		src/message/message_bus.cpp
 		src/message/messages.cpp

@@ -82,6 +82,7 @@ namespace other {
 
             if (ImGui::InputText("##rename_input", rename_buf, sizeof(rename_buf), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll)) {
               obj->name = std::string(rename_buf);
+              editor_ctx.notify_scene_edited();
               renaming_object_id = 0;
               ImGui::CloseCurrentPopup();
             }
@@ -115,7 +116,10 @@ namespace other {
       }
 
       if (ImGui::MenuItem("Delete")) {
+        /// the destroyed id must leave the selection before anything dereferences it
+        editor_ctx.current_selection.objects.clear();
         active_scene->destroy_object(object.id);
+        editor_ctx.notify_scene_edited();
         ImGui::CloseCurrentPopup();
       }
 
@@ -129,8 +133,9 @@ namespace other {
 
       if (ImGui::MenuItem("Create Empty Object")) {
         if (active_scene != nullptr) {
-          auto new_obj = active_scene->create_object("New Object");
+          auto& new_obj = active_scene->create_object("New Object");
           editor_ctx.select_object(new_obj.id);
+          editor_ctx.notify_scene_edited();
         } else {
           CORE_LOG_ERROR("Cannot create object: no active scene.");
         }
@@ -214,6 +219,7 @@ namespace other {
 
       if (interaction.visibility_toggled) {
         object.visible = !object.visible;
+        editor_ctx.notify_scene_edited();
       }
 
       if (interaction.double_clicked) {

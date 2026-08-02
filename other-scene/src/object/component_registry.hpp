@@ -12,15 +12,14 @@ namespace other {
 
   using scene_object_has_component_fn = std::function<bool(scene*, scene_object*)>;
   using scene_object_component_fn = std::function<void(scene*, scene_object*)>;
-  /// can we do this without std::any? possibly using value?
-  using component_snapshot_fn = std::function<std::any(scene*, scene_object*)>;
-  using component_restore_fn = std::function<void(scene*, scene_object*, const std::any&)>;
 
   struct component_type_flags {
     bool removable = true;
     bool implicit = false;
   };
 
+  /// component snapshot/restore lives in serialization/component_codec.hpp (real payloads),
+  ///  not here — this registry only backs ui-driven has/add/remove
   struct component_registration {
     std::string component_name;
     natural_t type_id = 0;
@@ -30,8 +29,6 @@ namespace other {
     scene_object_has_component_fn has_component = nullptr;
     scene_object_component_fn add_component = nullptr;
     scene_object_component_fn remove_component = nullptr;
-    component_snapshot_fn snapshot_component = nullptr;
-    component_restore_fn restore_component = nullptr;
   };
 
   class component_registry {
@@ -64,32 +61,6 @@ namespace other {
                                     OTHER_ASSERT(object != nullptr, "Scene object pointer is null in component registry remove_component check for component '{}'.", n);
                                     s->template remove_component<T>(object);
                                   },
-                                  .snapshot_component = [n = std::string(name)](scene* s, scene_object* object) -> std::any {
-                                    OTHER_ASSERT(s != nullptr, "Scene pointer is null in component registry snapshot_component for component '{}'.", n);
-                                    OTHER_ASSERT(object != nullptr, "Scene object pointer is null in component registry snapshot_component for component '{}'.", n);
-                                    if (!s->template has_component<T>(object)) {
-                                      CORE_LOG_ERROR("Cannot snapshot component '{}' on object with ID {} because the object does not have that component.", n, object->id);
-                                      return {};
-                                    }
-                                    return s->template get_component<T>(object);
-                                  },
-                                  .restore_component = [n = std::string(name)](scene* s, scene_object* object, const std::any& snapshot) -> void {
-                                    OTHER_ASSERT(s != nullptr, "Scene pointer is null in component registry restore_component for component '{}'.", n);
-                                    OTHER_ASSERT(object != nullptr, "Scene object pointer is null in component registry restore_component for component '{}'.", n);
-                                    if (!snapshot.has_value()) {
-                                      CORE_LOG_ERROR("Cannot restore component '{}' on object with ID {} because the snapshot does not have a value.", n, object->id);
-                                      return;
-                                    }
-                                    if (snapshot.type() != typeid(T)) {
-                                      CORE_LOG_ERROR("Cannot restore component '{}' on object with ID {} because the snapshot type does not match the component type.", n, object->id);
-                                      return;
-                                    }
-                                    if (!s->template has_component<T>(object)) {
-                                      CORE_LOG_ERROR("Cannot restore component '{}' on object with ID {} because the object does not have that component.", n, object->id);
-                                      return;
-                                    }
-                                    *s->template get_component<T>(object) = std::any_cast<T>(snapshot);
-                                  },
                                 });
       return type_id;
     }
@@ -117,16 +88,6 @@ namespace other {
     void remove_component(scene* s, scene_object* object) const {
       auto reg = get_registration<T>();
       reg.remove_component(s, object);
-    }
-    template <typename T>
-    std::any snapshot_component(scene* s, scene_object* object) const {
-      auto reg = get_registration<T>();
-      return reg.snapshot_component(s, object);
-    }
-    template <typename T>
-    void restore_component(scene* s, scene_object* object, const std::any& snapshot) const {
-      auto reg = get_registration<T>();
-      reg.restore_component(s, object, snapshot);
     }
 
     component_registration get_registration(natural_t type_id) const;

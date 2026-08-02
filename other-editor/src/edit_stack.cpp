@@ -13,6 +13,18 @@ namespace other {
     edit_history.push_back(e);
   }
 
+  void edit_stack::record(const edit& e) {
+    OTHER_ASSERT(e.apply != nullptr, "Cannot record edit: no apply action defined.");
+    OTHER_ASSERT(e.undo != nullptr, "Cannot record edit: no undo action defined.");
+    edit_future.clear();
+    edit_history.push_back(e);
+  }
+
+  void edit_stack::clear() {
+    edit_history.clear();
+    edit_future.clear();
+  }
+
   void edit_stack::undo() {
     if (can_undo()) {
       edit e = edit_history.back();

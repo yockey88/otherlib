@@ -312,15 +312,27 @@ namespace other {
     OTHER_ASSERT(objects != nullptr, "Memory pool for scene objects is not initialized.");
     OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
 
-    if (n->object != nullptr) {
+    /// children go first so no node is ever orphaned with a dangling parent; each child's
+    ///  destroy erases itself from n->children, so this loop terminates
+    while (!n->children.empty()) {
+      destroy_object(n->children.back());
+    }
+
+    /// the parent link must be read before the reset — resetting first left the parent's
+    ///  children list holding a dangling node* that went live again on node reuse
+    node* parent_node = n->parent;
+    const bool had_object = n->object != nullptr;
+    if (had_object) {
       scene_ptr->unregister_object(n->object);
       objects->free(n->object->id);
-      *n = node{};  // Reset the node
+    }
+    *n = node{};  // Reset the node
+    if (had_object) {
       --num_objects;
     }
 
-    if (n->parent != nullptr) {
-      auto& siblings = n->parent->children;
+    if (parent_node != nullptr) {
+      auto& siblings = parent_node->children;
       std::erase_if(siblings, [n](node* child) { return child == n; });
     }
   }

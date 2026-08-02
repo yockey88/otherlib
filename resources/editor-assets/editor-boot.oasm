@@ -10,8 +10,8 @@ end
   ; the spacesim project lives beside the engine repo and builds against the installed SDK
   ; .length: int32 = 11
   ; .path: string = "../spacesim"
-  ; .length: int32 = 8
-  ; .path: string = "spacesim"
-  .length: int32 = 12
-  .path: string = "test-project"
+  .length: int32 = 8
+  .path: string = "spacesim"
+  ; .length: int32 = 12
+  ; .path: string = "test-project"
 }

@@ -18,6 +18,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/core/logger_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/cli/cli_tool_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cli/scene_tool_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_buffer_test.cpp
@@ -33,9 +34,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/value/value_test.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization/serialization_tests.cpp
-    # ${CMAKE_CURRENT_SOURCE_DIR}/serialization/script_serialization.cpp
-    # ${CMAKE_CURRENT_SOURCE_DIR}/serialization/scene_serialization.cpp
-    # ${CMAKE_CURRENT_SOURCE_DIR}/serialization/asset_serialization.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/serialization/scene_document_tests.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/parser-combinator/parser_combinator_tests.cpp
     
@@ -48,6 +47,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/scripting/lua_script_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/scene_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scene/scene_serializer_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/asset_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/glob_tests.cpp

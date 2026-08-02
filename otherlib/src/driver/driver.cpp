@@ -21,6 +21,7 @@
 #include "scripting/interfaces/networking_interfaces.hpp"
 #include "scripting/interfaces/rendering_interfaces.hpp"
 #include "tools/environment_console_sink.hpp"
+#include "tools/scene_cli_tool.hpp"
 
 namespace other {
 
@@ -288,6 +289,11 @@ namespace other {
   void driver::confirm_initialization() {
     OTHER_ASSERT(driver_kernel_ptr != nullptr, "Driver kernel is not initialized.");
     CORE_LOG_DEBUG("Confirming initialization...");
+
+    /// engine-level cli tools (scene compile/...) become reachable from in-process
+    ///  hosts (editor console, driver code) via other::cli::run
+    cli::register_environment_tools(cli::default_tool_registry());
+
     on_initialization_confirm();
 
     if (network_enabled()) {
