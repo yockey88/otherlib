@@ -63,7 +63,6 @@ namespace other {
     };
     register_asset_events(asset::TEXTURE);
     register_asset_events(asset::MODEL_SOURCE);
-    register_asset_events(asset::MODEL);
     register_asset_events(asset::ANIMATION);
     register_asset_events(asset::SCRIPT_PROJECT);
     register_asset_events(asset::SCRIPT_SOURCE);

@@ -20,7 +20,6 @@ namespace other {
       switch (t) {
         case other::asset::TEXTURE: return texture_editor::kSignature;
         // case other::asset::MODEL_SOURCE: return model_source_editor::kSignature;
-        // case other::asset::MODEL: return model_editor::kSignature;
         // case other::asset::ANIMATION: return animation_editor::kSignature;
         case other::asset::SCRIPT_SOURCE: return script_source_editor::kSignature;
         case other::asset::SCRIPT: return script_editor::kSignature;
@@ -35,7 +34,6 @@ namespace other {
       switch (t) {
         case other::asset::TEXTURE: return texture_editor::kHeaderTint;
         // case other::asset::MODEL_SOURCE: return model_source_editor::kHeaderTint;
-        // case other::asset::MODEL: return model_editor::kHeaderTint;
         // case other::asset::ANIMATION: return animation_editor::kHeaderTint;
         case other::asset::SCRIPT_SOURCE: return script_source_editor::kHeaderTint;
         case other::asset::SCRIPT: return script_editor::kHeaderTint;
@@ -50,7 +48,6 @@ namespace other {
       switch (t) {
         case other::asset::TEXTURE: return "TEXTURE";
         case other::asset::MODEL_SOURCE: return "MODEL SRC";
-        case other::asset::MODEL: return "MODEL";
         case other::asset::ANIMATION: return "ANIMATION";
         case other::asset::SCRIPT_SOURCE: return "SCRIPT SRC";
         case other::asset::SCRIPT: return "SCRIPT";

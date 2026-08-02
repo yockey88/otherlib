@@ -103,8 +103,6 @@ namespace other {
     }
     ~asset_handler() = default;
 
-    static ostd::vector<asset::type> get_convertible_asset_types(asset::type requested_type);
-
     job_system& get_job_system() { return jobs; }
 
     bool idle() const { return asset_pipelines.empty(); }

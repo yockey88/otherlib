@@ -65,22 +65,7 @@ namespace other {
     void calculate_offsets();
   };
 
-  struct raw_vertex_data {
-    float position[3] = { 0.f, 0.f, 0.f };
-    float normal[3] = { 0.f, 0.f, 1.f };
-    float tangent[3] = { 1.f, 0.f, 0.f };
-    float bitangent[3] = { 0.f, 1.f, 0.f };
-    float tex_coord[2] = { 0.f, 0.f };
-    int bone_ids[4] = { 0, 0, 0, 0 };
-    float bone_weights[4] = { 0.f, 0.f, 0.f, 0.f };
-  };
-
   struct vertex {
-    /// CPU side vertex data
-    uint32_t id = 0;
-    ostd::vector<uint32_t> connected_triangles;
-
-    /// GPU vertex data
     glm::vec3 position = { 0, 0, 0 };
     glm::vec3 normal = { 0, 0, 1 };
     glm::vec3 tangent = { 1, 0, 0 };
@@ -91,15 +76,18 @@ namespace other {
 
     vertex() = default;
 
-    static std::vector<uint32_t> layout;
-    static size_t stride();
-
+    /// the single authority on the gpu vertex layout; stride() and to_gpu_buffer() must match it
     static buffer_layout get_buffer_layout();
+    static size_t stride();
 
     inline ostd::vector<float> to_gpu_buffer() const { return to_gpu_buffer(*this); }
     static ostd::vector<float> to_gpu_buffer(const vertex& v);
     static ostd::vector<float> to_gpu_buffer(const std::span<const vertex> v);
   };
+
+  /// the dotnet bindings memcpy vertex arrays into buffers sized Vertex.Stride == 22 floats
+  ///  (render-component.cs), so this struct must stay a tightly-packed mirror of the gpu layout
+  static_assert(sizeof(vertex) == 22 * sizeof(float), "vertex must remain a tightly-packed 22-float layout");
 
   struct index {
     uint32_t v0 = 0;
@@ -108,16 +96,6 @@ namespace other {
 
     static ostd::vector<uint32_t> to_gpu_buffer(const index& idx);
     static ostd::vector<uint32_t> to_gpu_buffer(const std::span<const index> indices);
-  };
-
-  struct triangle {
-    uint32_t id = 0;
-
-    uint32_t v0_id = 0;
-    uint32_t v1_id = 0;
-    uint32_t v2_id = 0;
-
-    glm::vec3 centroid;
   };
 
   struct submesh {
@@ -173,13 +151,6 @@ OTHER_REFLECT(
   field(v0, other::attr::serializable()),
   field(v1, other::attr::serializable()),
   field(v2, other::attr::serializable()))
-
-OTHER_REFLECT(
-  other::triangle,
-  field(v0_id, other::attr::serializable()),
-  field(v1_id, other::attr::serializable()),
-  field(v2_id, other::attr::serializable()),
-  field(centroid, other::attr::serializable()))
 
 OTHER_REFLECT(
   other::vertex_attribute,

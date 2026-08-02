@@ -141,6 +141,13 @@ namespace other {
     if (rendering_api_instance != nullptr) {
       CORE_LOG_DEBUG("Shutting down rendering API instance.");
 
+      /// model sources still registered at shutdown (asset unload never ran) must release their
+      ///  gpu half while the api is alive, or ~model_source trips its handles-destroyed assert
+      for (auto& [handle, source] : model_sources) {
+        destroy_model(*source);
+      }
+      model_sources.clear();
+
       bool should_shutdown_imgui = !state_flags.forced_api_set;
       rendering_api_instance->shutdown_ui_context();
 
@@ -186,13 +193,64 @@ namespace other {
   void renderer_backend::remove_model_source(natural_t handle) {
     auto it = model_sources.find(handle);
     if (it != model_sources.end()) {
-      it->second->destroy_resources();
+      destroy_model(*it->second);
 
       model_sources.erase(it);
       CORE_LOG_DEBUG("Removed model source with handle: {}", handle);
     } else {
       CORE_LOG_ERROR("Model source with handle {} not found.", handle);
     }
+  }
+
+  void renderer_backend::upload_model(model_source& source) {
+    OTHER_ASSERT(!source.uploaded(), "Model source '{}' is already uploaded.", source.get_name());
+
+    const model_data& data = source.source_data();
+    const std::string& name = data.name;
+
+    ostd::vector<float> vertex_data = vertex::to_gpu_buffer(data.vertices);
+    ostd::vector<uint32_t> index_data = index::to_gpu_buffer(data.indices);
+
+    resource_handle mesh_handle = api()->create_resource(name + "_vertex_buffer", resource_type::MESH);
+    mesh* m = api()->get_resource_as<mesh>(mesh_handle);
+    m->set_primitive_type(mesh::primitive_type::TRIANGLES);
+
+    /// use the static vertex function instead of the one stored in the mesh because we know the layout here and don't
+    ///      want the user to be able to get this wrong
+    buffer_layout layout = vertex::get_buffer_layout();
+    for (const auto& attr : layout) {
+      m->add_attribute(attr);
+    }
+
+    m->upload_vertex_buffer(name + "_model_vertices", gpu_buffer::usage::STATIC, data.vertices.size(), vertex_data.data(), vertex_data.size() * sizeof(float))
+      .upload_index_buffer(name + "_model_indices", gpu_buffer::usage::STATIC, index_data.size(), index_data.data(), index_data.size() * sizeof(uint32_t))
+      .finalize_mesh();
+
+    OTHER_ASSERT(m->index_handle().has_value(), "Mesh must have an index buffer handle.");
+
+    source.mesh_handle = m->handle();
+    source.vertex_buffer_handle = m->vertex_handle();
+    source.index_buffer_handle = *m->index_handle();
+    CORE_LOG_DEBUG("Uploaded model source '{}' ({} vertices, {} indices)", name, data.vertices.size(), data.indices.size());
+  }
+
+  void renderer_backend::destroy_model(model_source& source) {
+    if (api()->resource_exists(source.index_buffer_handle)) {
+      api()->destroy_resource(source.index_buffer_handle);
+      CORE_LOG_DEBUG("Destroyed index buffer resource for model source '{}'", source.get_name());
+    }
+    if (api()->resource_exists(source.vertex_buffer_handle)) {
+      api()->destroy_resource(source.vertex_buffer_handle);
+      CORE_LOG_DEBUG("Destroyed vertex buffer resource for model source '{}'", source.get_name());
+    }
+    if (api()->resource_exists(source.mesh_handle)) {
+      api()->destroy_resource(source.mesh_handle);
+      CORE_LOG_DEBUG("Destroyed mesh resource for model source '{}'", source.get_name());
+    }
+
+    source.mesh_handle = {};
+    source.vertex_buffer_handle = {};
+    source.index_buffer_handle = {};
   }
 
   void renderer_backend::add_texture(natural_t handle, resource_handle texture_handle) {

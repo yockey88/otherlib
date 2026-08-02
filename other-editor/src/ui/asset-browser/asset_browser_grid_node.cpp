@@ -43,7 +43,6 @@ namespace other {
         switch (t) {
           case asset::TEXTURE: return abw::asset_type::TEXTURE;
           case asset::MODEL_SOURCE: return abw::asset_type::MODEL_SOURCE;
-          case asset::MODEL: return abw::asset_type::MODEL;
           case asset::ANIMATION: return abw::asset_type::ANIMATION;
           case asset::SCRIPT_SOURCE: return abw::asset_type::SCRIPT_SOURCE;
           case asset::SCRIPT: return abw::asset_type::SCRIPT;
@@ -86,8 +85,7 @@ namespace other {
       filters = {
         { "All", abw::asset_type::UNKNOWN, true },
         { "Texture", abw::asset_type::TEXTURE, true },
-        { "Model", abw::asset_type::MODEL, true },
-        { "Model Src", abw::asset_type::MODEL_SOURCE, true },
+        { "Model", abw::asset_type::MODEL_SOURCE, true },
         { "Animation", abw::asset_type::ANIMATION, true },
         { "Script Src", abw::asset_type::SCRIPT_SOURCE, true },
         { "Script", abw::asset_type::SCRIPT, true },

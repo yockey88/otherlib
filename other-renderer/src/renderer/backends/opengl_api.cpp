@@ -769,9 +769,9 @@ namespace other {
           return;
       }
 
-      // if (generate_mipmaps && data != nullptr) {
-      //   glGenerateMipmap(gl_type);
-      // }
+      if (generate_mipmaps && data != nullptr) {
+        glGenerateMipmap(gl_type);
+      }
 
       glBindTexture(gl_type, 0);
       CHECKGL();

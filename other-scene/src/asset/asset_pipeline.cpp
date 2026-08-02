@@ -64,7 +64,6 @@ namespace other {
   std::array<asset_pipeline::loading_table::loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> asset_pipeline::loading_table::loaders = {
     detail::load_texture,
     detail::load_model_source,
-    detail::empty_loader,  // MODEL: no extension maps here; models load as MODEL_SOURCE
     detail::load_stub_asset,  // ANIMATION: no animation import backend yet
     detail::load_script_project,
     detail::load_script_source,
@@ -81,7 +80,6 @@ namespace other {
   std::array<asset_pipeline::loading_table::loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> asset_pipeline::loading_table::unloaders = {
     detail::unload_texture,
     detail::unload_model_source,
-    detail::empty_unloader,  // MODEL: see loaders
     detail::unload_stub_asset,
     detail::unload_script_project,
     detail::unload_script_source,
@@ -405,21 +403,11 @@ namespace other {
                                                  r->error.empty() ? "model data invalid" : r->error));
           }
 
-          model_data& data = *r->data;
-          std::string name = asset_ptr->load_path.filename().stem().string();
-          if (name.empty()) {
-            name = data.name;
-          }
+          ref<model_source> src = make_ref<model_source>(std::move(*r->data));
 
-          /// import no longer produces triangles/materials/animations (dead code / handed off to the material
-          ///  and animation systems), so those stay empty until model_source stores model_data whole
-          // clang-format off
-          ref<model_source> src = make_ref<model_source>(name, data.vertices, data.indices, std::span<const triangle>{}, data.submeshes, data.nodes,
-                                                         std::span<const material>{}, std::span<const animation>{}, data.skel,
-                                                         data.global_transform, data.inverse_global_transform, data.bounds);
-          // clang-format on
-
-          subsystem<renderer_backend>::get()->add_model_source(asset_ptr->path_hash, src);
+          renderer_backend* renderer = subsystem<renderer_backend>::get();
+          renderer->upload_model(*src);
+          renderer->add_model_source(asset_ptr->path_hash, src);
           CORE_LOG_DEBUG("Model source loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
         },
         dependencies);

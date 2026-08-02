@@ -47,6 +47,11 @@ namespace other {
     ref<model_source> get_model_source(natural_t handle) const;
     void remove_model_source(natural_t handle);
 
+    /// gpu half of a model source; upload interleaves via vertex::to_gpu_buffer into one MESH
+    ///  resource. main thread only. remove_model_source and shutdown call destroy_model.
+    void upload_model(model_source& source);
+    void destroy_model(model_source& source);
+
     /// texture assets keyed by asset path hash, mirroring model sources; removal
     /// destroys the gpu resource
     void add_texture(natural_t handle, resource_handle texture_handle);

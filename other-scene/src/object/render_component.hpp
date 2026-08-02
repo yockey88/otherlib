@@ -50,7 +50,9 @@ OTHER_REFLECT(
   /// runtime-derived (produce_model regenerates it from the source), never persisted
   field(obj_model, other::attr::serializable("Model"), other::attr::native_only()),
   field(material, other::attr::serializable("Material")),
+  /// holds the model SOURCE asset id; per-instance variation (materials) is the material
+  ///  system's job, not a model-copy's
   field(model_asset_id, other::attr::serializable("Model"),
-        other::attr::asset_identifier_field(other::asset::MODEL)))
+        other::attr::asset_identifier_field(other::asset::MODEL_SOURCE)))
 
 #endif  // OTHER_SCENE_OBJECT_RENDER_COMPONENT_HPP

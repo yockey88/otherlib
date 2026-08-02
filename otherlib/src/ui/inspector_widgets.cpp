@@ -778,14 +778,13 @@ namespace other {
         if (ImGui::BeginDragDropTarget()) {
           // const ImGuiPayload* hovering_payload = ImGui::AcceptDragDropPayload(asset_browser_w::kDragDropPayloadType, ImGuiDragDropFlags_AcceptPeekOnly);
           // const ImGuiPayload* dropped_payload = ImGui::AcceptDragDropPayload(asset_browser_w::kDragDropPayloadType);
-          // ostd::vector<asset::type> acceptable_types = asset_handler::get_convertible_asset_types(field_asset_type);
 
           // if (hovering_payload != nullptr) {
           //   OTHER_ASSERT(hovering_payload->Data != nullptr, "Expected asset drag-and-drop payload data");
           //   const auto* data = static_cast<const asset_browser_w::asset_drag_drop_payload*>(hovering_payload->Data);
           //   OTHER_ASSERT(data != nullptr, "Expected asset drag-and-drop payload data");
 
-          //   if (std::find(acceptable_types.begin(), acceptable_types.end(), data->asset_type) != acceptable_types.end()) {
+          //   if (data->asset_type == field_asset_type) {
           //     CORE_LOG_DEBUG("Accepting hovered asset id {} of type {}", data->handler_asset_id, data->asset_type);
           //     state = asset_slot_state::DRAG_HOVER;
           //   }
@@ -796,7 +795,7 @@ namespace other {
           //   const auto* data = static_cast<const asset_browser_w::asset_drag_drop_payload*>(dropped_payload->Data);
           //   OTHER_ASSERT(data != nullptr, "Expected asset drag-and-drop payload data");
 
-          //   if (std::find(acceptable_types.begin(), acceptable_types.end(), data->asset_type) != acceptable_types.end()) {
+          //   if (data->asset_type == field_asset_type) {
           //     CORE_LOG_DEBUG("Dropped asset drag-and-drop payload detected: asset id {} of type {}", data->handler_asset_id, data->asset_type);
           //     out_dropped_id = data->handler_asset_id;
           //   }

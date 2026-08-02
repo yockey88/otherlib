@@ -32,7 +32,6 @@ namespace other {
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_window_sized_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_voxelize(const pipeline_pass_definition& def, render_pipeline* pl);
-    render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_overlay(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_meshes(const pipeline_pass_definition& def, render_pipeline* pl);
@@ -488,7 +487,6 @@ namespace other {
     reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
     reg.register_executor("window_sized_compute_dispatch", &detail::make_window_sized_compute_dispatch);
     reg.register_executor("voxelize", &detail::make_voxelize);
-    reg.register_executor("generate_mipmaps", &detail::make_generate_mipmaps);
     reg.register_executor("downsample_chain", &detail::make_downsample_chain);
     reg.register_executor("debug_overlay", &detail::make_debug_overlay);
     reg.register_executor("debug_meshes", &detail::make_debug_meshes);
@@ -704,15 +702,6 @@ namespace other {
 
         shader::compute_barrier_type barrier_bits = (shader::compute_barrier_type)((uint8_t)shader::SHADER_IMAGE_ACCESS | (uint8_t)shader::TEXTURE_FETCH);
         api->memory_barrier(barrier_bits);
-      };
-    }
-
-    render_graph::pass_executor make_generate_mipmaps(const pipeline_pass_definition& def, render_pipeline* pl) {
-      OTHER_ASSERT(!def.outputs.empty(), "generate_mips: pass '{}' needs an output texture", def.name);
-      opt<resource_handle> target = pl->find_texture_by_name(def.outputs.front().resource_name);
-      OTHER_ASSERT(target.has_value(), "generate_mips: target not found for pass '{}'", def.name);
-      return [target = *target](pass_context& ctx) {
-        // ctx.get_renderer().rendering()->api()->generate_texture_mipmaps(target);  // thin backend wrapper
       };
     }
 

@@ -21,22 +21,6 @@
 
 namespace other {
 
-  ostd::vector<asset::type> asset_handler::get_convertible_asset_types(asset::type requested_type) {
-    ostd::vector<asset::type> out_acceptable_types;
-    // switch (requested_type) {
-    //   case asset::type::MODEL:
-    //   case asset::type::MODEL_SOURCE:
-    //     return { asset::type::MODEL, asset::type::MODEL_SOURCE };
-
-    //   case asset::type::SCRIPT:
-    //   case asset::type::SCRIPT_SOURCE:
-    //   case asset::type::SCRIPT:
-    //     return { asset::type::SCRIPT, asset::type::SCRIPT_SOURCE };
-    //   default: break;
-    // }
-    return out_acceptable_types;
-  }
-
   void asset_handler::begin_unload() {
     remove_after_unload = true;
     for (auto it = loaded_assets.begin(); it != loaded_assets.end();) {

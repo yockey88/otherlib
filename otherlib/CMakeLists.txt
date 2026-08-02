@@ -127,6 +127,7 @@ target_sources(otherlib
     src/tools/build_tool.cpp
     src/tools/environment_console.cpp
     src/tools/scene_cli_tool.cpp
+    src/tools/model_cli_tool.cpp
 
     src/ui/script/script_property_widget.cpp
     src/ui/type-bindings/value_ui.cpp

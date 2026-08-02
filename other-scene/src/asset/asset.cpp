@@ -124,7 +124,6 @@ namespace other {
     switch (asset_type) {
       case asset::TEXTURE: return "textures";
       case asset::MODEL_SOURCE:
-      case asset::MODEL:
         return "models";
       case asset::ANIMATION:
         return "animations";

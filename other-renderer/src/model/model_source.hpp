@@ -5,91 +5,40 @@
 #define OTHER_RENDERER_MODEL_MODEL_SOURCE_HPP
 
 #include "core/defines.hpp"
+#include "core/ref_counted.hpp"
 
 #include "model.hpp"
+#include "model/model_data.hpp"
 
 namespace other {
 
+  /// cpu-side model data plus the gpu handles for it; construction does no gpu work, so this is
+  ///  buildable on any thread (renderer_backend::upload_model / destroy_model own the gpu half)
   class model_source : public ref_counted {
    public:
-    // clang-format off
-   model_source(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices, const std::span<const triangle> triangle_map,
-                const std::span<const submesh> submeshes, const std::span<const mesh_node> nodes, const std::span<const material> materials, const std::span<const animation> animations, 
-                const skeleton& skeleton, const glm::mat4& global_transform, const glm::mat4& inverse_global_transform, const bounding_box& bounds);
-    // clang-format on
-    ~model_source();
+    explicit model_source(model_data&& data);
+    ~model_source() override;  // asserts the gpu handles were already destroyed
 
-    void destroy_resources();
+    const model_data& source_data() const { return data; }
 
-    inline std::string get_name() const { return name; }
+    inline std::string get_name() const { return data.name; }
+    inline size_t get_num_vertices() const { return data.vertices.size(); }
+    inline size_t get_num_indices() const { return data.indices.size(); }
 
-    model produce_model(const std::string& name = "", const std::span<const uint32_t> submesh_idxs = {});
+    model produce_model(const std::string& name = "", std::span<const uint32_t> submesh_idxs = {});
 
-    resource_handle get_mesh_handle() const;
-    size_t get_num_vertices() const;
-    size_t get_num_indices() const;
+    inline resource_handle get_mesh_handle() const { return mesh_handle; }
+    inline bool uploaded() const { return mesh_handle.id != 0; }
 
-    /// non-const overloads (not all are provided)
-    inline std::span<vertex> get_vertices() { return vertices; }
-    inline std::span<index> get_indices() { return indices; }
-    inline std::span<triangle> get_triangles() { return triangles; }
-    inline std::span<submesh> get_submeshes() { return submeshes; }
-    inline std::span<mesh_node> get_nodes() { return nodes; }
-    inline bounding_box& get_bounding_box() { return bounds; }
-    /// const overloads
-    inline const glm::mat4& get_global_transform() const { return global_transform; }
-    inline const glm::mat4& get_inverse_global_transform() const { return inverse_global_transform; }
-    inline const std::span<const vertex> get_vertices() const { return vertices; }
-    inline const std::span<const index> get_indices() const { return indices; }
-    inline const std::span<const triangle> get_triangles() const { return triangles; }
-    inline const std::span<const submesh> get_submeshes() const { return submeshes; }
-    inline const std::span<const mesh_node> get_nodes() const { return nodes; }
-    inline const std::span<const material> get_materials() const { return materials; }
-    inline const std::span<const animation> get_animations() const { return animations; }
-    inline const bounding_box& get_bounding_box() const { return bounds; }
-
-    animation* get_animation_by_name(const std::string& name);
-    animation* get_animation(size_t index);
+    /// gpu state, written by renderer_backend::upload_model / destroy_model
+    resource_handle mesh_handle = {};
+    resource_handle vertex_buffer_handle = {};
+    resource_handle index_buffer_handle = {};
 
    private:
-    friend struct model;
-
-    std::string name;
+    model_data data;
 
     size_t num_models_produced = 0;
-
-    skeleton* skel = nullptr;
-
-    glm::mat4 global_transform = glm::mat4(1.0f);
-    glm::mat4 inverse_global_transform = glm::mat4(1.0f);
-
-    buffer_layout layout;
-
-    /// \todo this is going to have to move to something with stable addressing consider how many pointers exist to
-    ///        the data in these vectors
-
-    /// base mesh data and geometry
-    ostd::vector<vertex> vertices;
-    ostd::vector<index> indices;
-    ostd::vector<triangle> triangles;
-
-    /// model structure data and transform relations for organizating geometry
-    ostd::vector<submesh> submeshes;
-    ostd::vector<mesh_node> nodes;
-
-    /// high level model data
-    ostd::vector<material> materials;
-    ostd::vector<animation> animations;
-
-    resource_handle mesh_handle;
-    resource_handle vertex_buffer_handle;
-    resource_handle index_buffer_handle;
-
-    bounding_box bounds = bounding_box::empty;
-    std::string file_path;
-
-    ostd::vector<float> raw_vertices;
-    ostd::vector<uint32_t> raw_indices;
   };
 
 }  // namespace other

@@ -6,11 +6,6 @@
 #include "core/enum_formatter.hpp"
 
 namespace other {
-  namespace {
-
-    static std::vector<uint32_t> actual_layout = { 3, 3, 3, 3, 2, 4, 4 };
-
-  }  // namespace
 
   size_t vertex_attribute::num_components() {
     switch (type) {
@@ -120,14 +115,8 @@ namespace other {
     stride = offset;
   }
 
-  std::vector<uint32_t> vertex::layout = { actual_layout.begin(), actual_layout.end() };
-
   size_t vertex::stride() {
-    size_t stride = 0;
-    for (const auto& component : actual_layout) {
-      stride += component;
-    }
-    return stride;
+    return get_buffer_layout().get_stride();
   }
 
   buffer_layout vertex::get_buffer_layout() {

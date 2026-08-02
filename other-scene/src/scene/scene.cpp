@@ -838,7 +838,7 @@ namespace other {
     {
       const render_component* rc = storage->registry.try_get<render_component>(entity);
       if (rc != nullptr && rc->obj_model.source != nullptr) {
-        box = rc->obj_model.source->get_bounding_box();
+        box = rc->obj_model.source->source_data().bounds;
       }
 
       const physics_component* pc = storage->registry.try_get<physics_component>(entity);
@@ -972,11 +972,6 @@ namespace other {
         return;
       }
 
-      /**
-       * \todo currently @ref render_component::model_asset_id stores the model source id since models are not individually stored in the asset handler
-       *          but we need to make it hold individual model asset IDs and do the same type of logic below except without the model source intermediary
-       **/
-
       bool changed = render.last_model_asset_id != render.model_asset_id;
       if (changed) {
         if (!asset_handler->asset_exists(render.model_asset_id)) {
@@ -997,18 +992,19 @@ namespace other {
       natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
       OTHER_ASSERT(hash != 0, "Asset hash is 0 for asset ID {}.", render.model_asset_id);
 
-      /// handle the case this is first load of the model asset ID/a change for this render component
-      ///  and we need to produce the model
-      if (render.obj_model.source == nullptr) {
-        /// we check the asset exists and is loaded so this can not ever be null
-        ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
-        OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", render.model_asset_id);
-
+      ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
+      if (model_src == nullptr) {
+        /// unloaded from the renderer (or mid-reload): drop the draw and forget the stale instance
+        render.obj_model = {};
+        return;
+      }
+      if (render.obj_model.source != model_src.raw_ptr()) {
+        /// first sight of this asset, or a hot reload swapped the source under the same hash
         render.obj_model = model_src->produce_model();
       }
 
       model* draw_model = &render.obj_model;
-      const auto submeshes = draw_model->source->get_submeshes();
+      const std::span<const submesh> submeshes = draw_model->source->source_data().submeshes;
       OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
 
       const auto sm_idxs = draw_model->submesh_indices;
@@ -1044,7 +1040,7 @@ namespace other {
         size_t mesh_index = it->second;
 
         draw_call& call = data.draw_calls[mesh_index];
-        const submesh& sm = draw_model->source->get_submeshes()[sm_idx];
+        const submesh& sm = submeshes[sm_idx];
         if (call.instance_count == 0) {
           call.instance_count = 0;
           call.submesh_index = sm_idx;

@@ -140,7 +140,6 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/glad/include
   ${OTHER_EXTERN_DIR}/assimp
   ${OTHER_EXTERN_DIR}/stb
-  ${OTHER_EXTERN_DIR}/mio
   ${OTHER_EXTERN_DIR}/dotnet
   ${OTHER_EXTERN_DIR}/entt
   ${OTHER_EXTERN_DIR}/pybind11/include
@@ -169,7 +168,6 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/glad/include
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/assimp
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/stb
-  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/mio
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/dotnet
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/entt
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/pybind11/include
@@ -182,11 +180,10 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INCLUDE_DIRS}
 )
 
-set(DOTNET_INCLUDE_DIRECTORY 
-  "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet" 
+set(DOTNET_INCLUDE_DIRECTORY
+  "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/json"
-  "${CMAKE_CURRENT_SOURCE_DIR}/extern/mio"
 )
 set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
 set(DOTNET_LIBRARIES nethost)
@@ -241,7 +238,6 @@ other_install_external_headers("asio" "${OTHER_EXTERN_DIR}/asio")
 other_install_external_headers("glad" "${OTHER_EXTERN_DIR}/glad/include")
 other_install_external_headers("assimp" "${OTHER_EXTERN_DIR}/assimp")
 other_install_external_headers("stb" "${OTHER_EXTERN_DIR}/stb")
-other_install_external_headers("mio" "${OTHER_EXTERN_DIR}/mio")
 other_install_external_headers("dotnet" "${OTHER_EXTERN_DIR}/dotnet")
 other_install_external_headers("entt" "${OTHER_EXTERN_DIR}/entt")
 other_install_external_headers("sdl" "${OTHER_EXTERN_DIR}/sdl")

@@ -190,9 +190,8 @@ namespace other {
 
               // comp->obj_model = model_src->produce_model(const std::string &name)
 
-            } else if (asset->asset_type == asset::type::MODEL) {
             } else {
-              CORE_LOG_ERROR("Error: Asset ID {} is not a valid model or model source asset in render_component on_modified callback", new_asset_id);
+              CORE_LOG_ERROR("Error: Asset ID {} is not a valid model source asset in render_component on_modified callback", new_asset_id);
             }
           });
         draw_component_section<physics_component>(
