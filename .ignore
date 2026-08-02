@@ -1,0 +1,4 @@
+# ripgrep/search-tool overrides: spacesim is gitignored (it will live in its own
+# repository) but must still show up in code searches while it lives here
+!spacesim/
+!docs/

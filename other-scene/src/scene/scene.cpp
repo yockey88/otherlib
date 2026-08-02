@@ -364,6 +364,24 @@ namespace other {
     }
   }
 
+  void scene::render_update(double delta_time) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::render_update");
+
+    storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
+      comp.render_update(delta_time);
+    });
+
+    if (sol::protected_function on_render_fn = storage->sandbox["OnSceneRender"]; on_render_fn.valid()) {
+      sol::protected_function_result result = on_render_fn(delta_time);
+      if (!result.valid()) {
+        CORE_LOG_ERROR("Failed to execute 'OnSceneRender' for scene [{}:{}]", id, name);
+        sol::error err = result;
+        CORE_LOG_ERROR("Lua Error: {}", err.what());
+      }
+    }
+  }
+
   scene_object& scene::root_object() {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::get_root_object");
@@ -1009,11 +1027,6 @@ namespace other {
     data.simulation_environment.world_max = glm::vec4(c + half, 1.0f);  // exposure);
 
     return data;
-  }
-
-  void scene::debug_render(debug_draw draw) {
-    ASSERT_MAIN_THREAD();
-    PROFILE_SECTION("scene::debug_render");
   }
 
   bool scene::object_has_tag(natural_t id, const std::string_view tag) const {

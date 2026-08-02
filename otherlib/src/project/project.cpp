@@ -43,6 +43,14 @@ namespace other {
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available.");
 
+    /// the project root mount anchors every canonical virtual path (=> stable_id) the
+    //  resolver produces; it must exist before anything under it is registered or virtualized
+    const filepath project_root = std::filesystem::absolute(path).parent_path();
+    project_mount_name = project_root.filename().string();
+    ref<directory> project_mount = fs->mount_directory(project_mount_name, project_root, mount_scope::PROJECT);
+    OTHER_ASSERT(project_mount != nullptr, "Failed to mount project root '{}'", project_root.string());
+    OTHER_ASSERT(project_mount->get_scope() == mount_scope::PROJECT, "Mount '{}' already exists with non-project scope", project_mount_name);
+
     project_file_handle = fs->register_local_file(path.string());
     OTHER_ASSERT(project_file_handle != nullptr, "Failed to open project file '{}'", path.string());
     current_state = LOADING;
@@ -149,6 +157,15 @@ namespace other {
     project_file_handle = nullptr;
     file_buffer.release();
 
+    /// unmounting the project root also drops its domain watcher, so no re_resolve
+    //  can arrive between project close and the next resolve_roots
+    if (!project_mount_name.empty()) {
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available.");
+      fs->unmount(project_mount_name);
+      project_mount_name.clear();
+    }
+
     project_assembly = nullptr;
     set_state(UNLOADING);
   }
@@ -172,6 +189,7 @@ namespace other {
   }
 
   void project::add_built_script(const filepath& script_path) {
+    OTHER_ASSERT(is_loading(), "add_built_script is boot-only; hot reload goes through begin_assembly_refresh/refresh_built_script.");
     OTHER_ASSERT(std::filesystem::exists(script_path), "Script asset file '{}' does not exist.", script_path.string());
     CORE_LOG_TRACE("[PROJECT] Adding built script: {}", script_path.string());
     if (script_path.extension() == ".dll") {

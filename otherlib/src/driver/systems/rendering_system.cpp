@@ -36,6 +36,8 @@ namespace other {
     render_graph::pass_executor make_downsample_chain(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_overlay(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_debug_meshes(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_scene_overlay(const pipeline_pass_definition& def, render_pipeline* pl);
+    render_graph::pass_executor make_scene_grids(const pipeline_pass_definition& def, render_pipeline* pl);
 
     void upload_camera_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
@@ -53,6 +55,7 @@ namespace other {
     renderer_ptr = make_scope<renderer>(get_driver().configuration());
     register_builtin_resource_tags();
     register_builtin_render_executors();
+    register_builtin_draw_streams();
 
     configure_pipelines(kernel);
 
@@ -150,8 +153,6 @@ namespace other {
     render_data prepared_data = {};
     if (active_scene != nullptr) {
       prepared_data = active_scene->prepare_render_data(asset_mgr);
-      auto& reg = renderer_ptr->get_debug_stream_registry();
-      prepared_data.debug_data.configure_streams(renderer_ptr.get(), reg);
       data_ptr = &prepared_data;
     }
 
@@ -173,10 +174,6 @@ namespace other {
       }
 
       renderer_ptr->end_frame();
-    }
-
-    if (data_ptr != nullptr) {
-      data_ptr->debug_data.clear();
     }
   }
 
@@ -495,6 +492,20 @@ namespace other {
     reg.register_executor("downsample_chain", &detail::make_downsample_chain);
     reg.register_executor("debug_overlay", &detail::make_debug_overlay);
     reg.register_executor("debug_meshes", &detail::make_debug_meshes);
+    reg.register_executor("scene_overlay", &detail::make_scene_overlay);
+    reg.register_executor("scene_grids", &detail::make_scene_grids);
+  }
+
+  void rendering_system::register_builtin_draw_streams() {
+    OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is null while registering draw streams!");
+
+    const ostd::vector<vertex_attribute> vtx = {
+      { value_type::VEC3, "OE_position", 0, sizeof(glm::vec3) },
+      { value_type::VEC4, "OE_color", 1, sizeof(glm::vec4) },
+    };
+    renderer_ptr->register_draw_stream(builtin_scene_streams::kLines, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "scene_overlay", mesh::LINES, vtx } });
+    renderer_ptr->register_draw_stream(builtin_scene_streams::kTris, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "scene_overlay", mesh::TRIANGLES, vtx } });
+    renderer_ptr->register_draw_stream(builtin_scene_streams::kPoints, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 14, .draw_recipe = { "scene_overlay", mesh::POINTS, vtx } });
   }
 
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
@@ -747,7 +758,7 @@ namespace other {
 
     render_graph::pass_executor make_debug_meshes(const pipeline_pass_definition& def, render_pipeline* pl) {
       return [pass = def.name](pass_context& ctx) {
-        const render_stream& s = ctx.get_frame_data().debug_data;
+        const render_stream& s = ctx.get_renderer().get_draw_streams();
         const size_t n = s.count(builtin_debug_streams::kMeshes);
         if (n == 0) {
           return;
@@ -760,6 +771,64 @@ namespace other {
         for (size_t i = 0; i < n; ++i) {
           ctx.draw_debug_mesh(inst[i]);
         }
+      };
+    }
+
+    /// dynamic draw streams rendered inside the scene pipeline; the pass framebuffer shares the
+    ///   scene depth attachment so the geometry is occluded by scene geometry
+    render_graph::pass_executor make_scene_overlay(const pipeline_pass_definition& def, render_pipeline* pl) {
+      return [pass = def.name](pass_context& ctx) {
+        auto& api = ctx.get_renderer().rendering()->api();
+        api->set_blending(true);
+        api->set_depth_mask(false);
+
+        ctx.draw_debug_vertices(builtin_scene_streams::kTris, mesh::TRIANGLES);
+        ctx.draw_debug_vertices(builtin_scene_streams::kLines, mesh::LINES);
+        ctx.draw_debug_vertices(builtin_scene_streams::kPoints, mesh::POINTS);
+
+        api->set_depth_mask(true);
+        api->set_blending(false);
+      };
+    }
+
+    /// procedural anti-aliased grids (cartesian lattice or polar rings/spokes) drawn as one
+    ///   world-space quad per grid submitted to the renderer this frame
+    render_graph::pass_executor make_scene_grids(const pipeline_pass_definition& def, render_pipeline* pl) {
+      return [pass = def.name](pass_context& ctx) {
+        const auto& grids = ctx.get_renderer().get_pending_grids();
+        if (grids.empty()) {
+          return;
+        }
+
+        auto& api = ctx.get_renderer().rendering()->api();
+        api->set_blending(true);
+        api->set_depth_mask(false);
+
+        for (const grid_draw_data& g : grids) {
+          if (g.extent == 0 || g.cell_size <= 0.f) {
+            continue;
+          }
+
+          ctx.set_uniform("OE_grid_basis_u", g.basis_u);
+          ctx.set_uniform("OE_grid_basis_v", g.basis_v);
+          ctx.set_uniform("OE_grid_origin", g.origin);
+          ctx.set_uniform("OE_grid_line_color", g.line_color);
+          ctx.set_uniform("OE_grid_major_line_color", g.major_line_color);
+          ctx.set_uniform("OE_grid_axis_u_color", g.axis_u_color);
+          ctx.set_uniform("OE_grid_axis_v_color", g.axis_v_color);
+          ctx.set_uniform("OE_grid_cell_size", g.cell_size);
+          ctx.set_uniform("OE_grid_line_width", g.line_width);
+          ctx.set_uniform("OE_grid_extent", g.extent);
+          ctx.set_uniform("OE_grid_major_every", g.major_line_every);
+          ctx.set_uniform("OE_grid_sector_count", g.sector_count);
+          ctx.set_uniform("OE_grid_polar", static_cast<uint32_t>(g.polar ? 1 : 0));
+          ctx.set_uniform("OE_grid_rings_only", static_cast<uint32_t>(g.rings_only ? 1 : 0));
+          ctx.set_uniform("OE_grid_show_axes", static_cast<uint32_t>(g.show_axes ? 1 : 0));
+          ctx.draw_quad();
+        }
+
+        api->set_depth_mask(true);
+        api->set_blending(false);
       };
     }
 

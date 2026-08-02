@@ -473,11 +473,11 @@ namespace other {
 
     auto& assets = driver_kernel_ptr->get_core_system<asset_system>();
     natural_t asset_id = assets.get_asset_id_from_path(path);
-    if (asset_id == 0) {
-      return;
+    if (asset_id != 0) {
+      assets.reload_asset(asset_id);
+    } else {
+      assets.file_changed(path);
     }
-
-    assets.reload_asset(asset_id);
   }
 
   driver::metadata driver::build_metadata() {
@@ -738,6 +738,10 @@ namespace other {
       } else if (projects.is_project_empty()) {
         shutdown_state.project_unloaded = true;
       }
+    } else {
+      /// profiles without a project system have nothing to unload; the shutdown gate
+      ///  must not wait on it
+      shutdown_state.project_unloaded = true;
     }
 
     driver_kernel_ptr->get_core_system<network_system>().begin_shutdown_sequence(driver_kernel_ptr.get());
@@ -768,6 +772,9 @@ namespace other {
     scene_table.set_function("attach_camera_to_object", &scene_interface::attach_camera_to_object);
     scene_table.set_function("attach_point_light_to_object", &scene_interface::attach_point_light_to_object);
     scene_table.set_function("attach_direction_light_to_object", &scene_interface::attach_direction_light_to_object);
+    scene_table.set_function("draw_line", &scene_interface::draw_line);
+    scene_table.set_function("draw_triangle", &scene_interface::draw_triangle);
+    scene_table.set_function("draw_point", &scene_interface::draw_point);
 
     driver_table["__native_pointer"] = reinterpret_cast<std::uintptr_t>(host_driver);
     driver_table.set_function("trigger_driver_event", [host_driver](const std::string& event, sol::object data) {

@@ -332,6 +332,16 @@ namespace other {
     CHECKGL();
   }
 
+  void opengl_api::set_blending(bool enabled_or_disabled) {
+    if (enabled_or_disabled) {
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    } else {
+      glDisable(GL_BLEND);
+    }
+    CHECKGL();
+  }
+
   void opengl_api::set_stencil_test(bool enabled) {
     if (enabled) {
       glEnable(GL_STENCIL_TEST);
@@ -1161,23 +1171,30 @@ namespace other {
       }
       glDrawBuffers(draw_buffers.size(), draw_buffers.data());
 
-      /// create the renderbuffer now
-      uint32_t renderbuffer_id = 0;
-      glGenRenderbuffers(1, &renderbuffer_id);
-      glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
-      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, itr->second.size.x, itr->second.size.y);
-      glBindRenderbuffer(GL_RENDERBUFFER, 0);
+      /// an explicit depth(-stencil) texture attachment replaces the implicit renderbuffer,
+      ///   otherwise attaching the renderbuffer below would clobber it
+      const bool has_explicit_depth = itr->second.attachment_textures[static_cast<size_t>(framebuffer::attachment_type::DEPTH)].has_value() ||
+        itr->second.attachment_textures[static_cast<size_t>(framebuffer::attachment_type::DEPTH_STENCIL)].has_value();
 
-      auto [rb_itr, rb_inserted] = framebuffer_renderbuffers.emplace(handle.id, renderbuffer_id);
-      if (!rb_inserted || rb_itr == framebuffer_renderbuffers.end()) {
-        CORE_LOG_ERROR("Failed to create GPU resource for framebuffer renderbuffer ID: {}", handle.id);
-        glDeleteRenderbuffers(1, &renderbuffer_id);
-        return;
+      if (!has_explicit_depth) {
+        /// create the renderbuffer now
+        uint32_t renderbuffer_id = 0;
+        glGenRenderbuffers(1, &renderbuffer_id);
+        glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, itr->second.size.x, itr->second.size.y);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+        auto [rb_itr, rb_inserted] = framebuffer_renderbuffers.emplace(handle.id, renderbuffer_id);
+        if (!rb_inserted || rb_itr == framebuffer_renderbuffers.end()) {
+          CORE_LOG_ERROR("Failed to create GPU resource for framebuffer renderbuffer ID: {}", handle.id);
+          glDeleteRenderbuffers(1, &renderbuffer_id);
+          return;
+        }
+
+        glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer_id);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
       }
-
-      glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer_id);
-      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer_id);
-      glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
 
     CHECKGL();

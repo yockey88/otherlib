@@ -201,6 +201,15 @@ namespace Other.Core
         behaviors[i].ObjectFixedUpdate();
       }
     }
+    /// invoked from native every frame, whether or not the scene is playing
+    public void Render()
+    {
+      OnRender();
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectRender();
+      }
+    }
 
     public abstract void OnStart();
     public abstract void OnStop();
@@ -208,6 +217,7 @@ namespace Other.Core
     public abstract void OnUpdate();
     public abstract void OnLateUpdate();
     public abstract void OnFixedUpdate();
+    public virtual void OnRender() {}
 
     public virtual void OnDestroy() {}
   }

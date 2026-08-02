@@ -74,6 +74,10 @@ namespace other {
     ref<directory> get_or_create_mount(const std::string_view mount_name, const filepath& path = "");
     resolved_path deep_search_for_mount(const filepath& path) const;
 
+    /// hands the deepest watched mount covering @p root_abs the domain's exclude set;
+    //  must be re-applied after every resolve/re_resolve (sets are replace-registered)
+    void apply_watch_filter(const filepath& root_abs, const glob_set* set);
+
     bool path_exists(const std::string_view engine_path) const;
     bool file_exists(const std::string_view engine_path) const;
     bool directory_exists(const std::string_view engine_path) const;

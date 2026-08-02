@@ -182,10 +182,8 @@ namespace other {
     ostd::vector<dependency_declaration> empty_parser(const filepath& manifest_path);
 
     opt<manifest_domain> build_csproj_manifest_domain(const filepath& manifest_path);
-    opt<manifest_domain> build_empty_manifest_domain(const filepath& manifest_path);
 
     opt<dependency_declaration> get_csproj_produced_assembly(const filepath& path);
-    opt<dependency_declaration> get_empty_dependency_declaration(const filepath& path);
 
   }  // namespace detail
 
@@ -325,6 +323,9 @@ namespace other {
     }
 
     if (known != nullptr) {
+      /// the changed node may itself be a manifest (editing the csproj hits neither
+      //  a domain nor a parent walk); cheap for leaf types via the effective-hash early-out
+      dirty_owners.push_back(known->stable_id);
       for (const uint32_t parent : snap.reverse[detail::slot_of(snap, known->stable_id)]) {
         dirty_owners.push_back(snap.nodes[parent].stable_id);
       }
@@ -365,7 +366,7 @@ namespace other {
         }
       }
 
-      detail::apply_produces(snap, slots, root_ids, slot);
+      detail::apply_produces(next, slots, root_ids, slot);
     }
 
     while (!worklist.empty()) {
@@ -385,7 +386,7 @@ namespace other {
         }
       }
 
-      detail::apply_produces(snap, slots, root_ids, slot);
+      detail::apply_produces(next, slots, root_ids, slot);
     }
 
     detail::garbage_collect_unreachable(next, root_ids);
@@ -558,19 +559,11 @@ namespace other {
       };
     }
 
-    opt<manifest_domain> build_empty_manifest_domain(const filepath& manifest_path) {
-      return std::nullopt;
-    }
-
     opt<dependency_declaration> get_csproj_produced_assembly(const filepath& path) {
       return dependency_declaration{
         .virtual_path = virtualize(produced_assembly_path(path)),
         .type = asset::SCRIPT_SOURCE,
       };
-    }
-
-    opt<dependency_declaration> get_empty_dependency_declaration(const filepath& path) {
-      return std::nullopt;
     }
 
   }  // namespace detail

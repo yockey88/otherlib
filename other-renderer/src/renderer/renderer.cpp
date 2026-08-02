@@ -106,6 +106,16 @@ namespace other {
     PROFILE_SECTION("renderer::end_frame");
     rendering()->api()->end_frame();
     scene_data = nullptr;
+    draw_streams.clear();
+    pending_grids.clear();
+  }
+
+  void renderer::register_draw_stream(std::string_view name, render_stream_definition defn) {
+    ASSERT_MAIN_THREAD();
+    stream_registry.register_stream(name, defn);
+    const render_stream_definition* registered = stream_registry.find(name);
+    OTHER_ASSERT(registered != nullptr, "Draw stream [{}] not found immediately after registration.", name);
+    draw_streams.configure_stream(this, *registered);
   }
 
   ostd::vector<std::string> renderer::get_pipeline_names() const {

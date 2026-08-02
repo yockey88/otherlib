@@ -5,6 +5,8 @@
 
 #include <sol/types.hpp>
 
+#include "object/grid_component.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/systems/project_system.hpp"
 #include "scripting/scene_interface.hpp"
@@ -55,6 +57,8 @@ namespace other {
     if (scene* active_scene = get_active_scene(); active_scene != nullptr) {
       active_scene->update(dt);
       active_scene->late_update(dt);
+      /// not gated on playback, scripts draw debug/scene overlays every frame
+      active_scene->render_update(dt);
     }
   }
 
@@ -354,6 +358,7 @@ namespace other {
     component_reg->register_component_type<point_light_component>("Point Light");
     component_reg->register_component_type<direction_light_component>("Directional Light");
     component_reg->register_component_type<camera_component>("Camera");
+    component_reg->register_component_type<grid_component>("Grid");
     component_reg->register_component_type<animation_controller>("Animation Controller");
   }
 

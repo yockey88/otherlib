@@ -54,6 +54,11 @@ local function _attach_dotnet_behavior_to_object(scene_handle, native_id, behavi
   return __other_native.__scene_interface.attach_dotnet_behavior_to_object(scene_handle, native_id, behavior_type_name)
 end
 
+local function _resolve_in_scene(target)
+  --- scene overlay unless the caller explicitly asks for the debug overlay
+  return target ~= DrawTarget.Debug
+end
+
 local function _attach_model_to_object(scene_handle, native_id, model_path)
   return __other_native.__scene_interface.attach_model_to_object(scene_handle, native_id, model_path)
 end
@@ -200,6 +205,19 @@ end
 
 function _SceneInterface:AttachDotNetBehaviorToObject(native_id, behavior_type_name)
   return self:CallInterfaceFunction(_attach_dotnet_behavior_to_object, native_id, behavior_type_name)
+end
+
+--- immediate-mode draws, submit every frame the shape should be visible (e.g. from
+--- OnSceneRender, which runs whether or not the scene is playing); target is an
+--- optional DrawTarget and defaults to DrawTarget.Scene
+function _SceneInterface:DrawLine(a, b, color, target)
+  __other_native.__scene_interface.draw_line(a, b, color, _resolve_in_scene(target))
+end
+function _SceneInterface:DrawTriangle(a, b, c, color, target)
+  __other_native.__scene_interface.draw_triangle(a, b, c, color, _resolve_in_scene(target))
+end
+function _SceneInterface:DrawPoint(p, color, target)
+  __other_native.__scene_interface.draw_point(p, color, _resolve_in_scene(target))
 end
 
 local _Scene = _SceneInterface:new()

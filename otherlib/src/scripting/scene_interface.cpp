@@ -163,4 +163,36 @@ namespace other {
     return light_comp->light;
   }
 
+  namespace detail {
+
+    static debug_draw get_scene_interface_draw_sink(driver* drvr, bool in_scene) {
+      OTHER_ASSERT(drvr != nullptr, "Driver pointer is null in scene_interface draw function.");
+      renderer& r = drvr->get_renderer();
+      if (in_scene) {
+        return r.scene_overlay();
+      }
+      /// drivers without a debug view never register the debug streams, drop those draws quietly
+      if (r.get_stream_registry().find(builtin_debug_streams::kLines) == nullptr) {
+        return debug_draw{ nullptr };
+      }
+      return r.debug();
+    }
+
+  }  // namespace detail
+
+  void scene_interface::draw_line(const glm::vec3& a, const glm::vec3& b, const glm::vec4& color, bool in_scene) {
+    debug_draw draw = detail::get_scene_interface_draw_sink(driver_ptr, in_scene);
+    draw.line(a, b, color);
+  }
+
+  void scene_interface::draw_triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec4& color, bool in_scene) {
+    debug_draw draw = detail::get_scene_interface_draw_sink(driver_ptr, in_scene);
+    draw.triangle(a, b, c, color);
+  }
+
+  void scene_interface::draw_point(const glm::vec3& p, const glm::vec4& color, bool in_scene) {
+    debug_draw draw = detail::get_scene_interface_draw_sink(driver_ptr, in_scene);
+    draw.point(p, color);
+  }
+
 }  // namespace other

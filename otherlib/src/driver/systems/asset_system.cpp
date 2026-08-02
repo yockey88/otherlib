@@ -28,7 +28,6 @@ namespace other {
     events.register_event("ls.assets");
     events.add_listener("ls.assets", [this](const value& data) { handle_ls_assets_event(&get_driver().get_kernel(), data); });
 
-    events.register_event("assets.new-asset-loaded");
     events.register_event("assets.all-assets-unloaded");
     events.add_listener("assets.all-assets-unloaded", [this](const value& data) {
       get_driver().confirm_assets_clean();
@@ -52,17 +51,6 @@ namespace other {
     register_asset_events(asset::SCENE);
     register_asset_events(asset::INPUT_MAP);
     register_asset_events(asset::RENDERING_PIPELINE);
-
-    events.add_listener("filesystem.watch-event", [this](const value& data) {
-      if (data.type() != value_type::USER_TYPE) {
-        CORE_LOG_ERROR("Received invalid file event: expected user type with file_event data");
-        return;
-      }
-      file_event event = data;
-      if (is_asset_extension(event.path.extension().string())) {
-        asset_mgr->handle_file_event(event);
-      }
-    });
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {
@@ -95,6 +83,15 @@ namespace other {
       CORE_LOG_DEBUG("Resolving asset root: {}", root.string());
     }
     asset_mgr->resolve_roots(roots);
+    push_watch_filters();
+  }
+
+  void asset_system::file_changed(const filepath& path) {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    PROFILE_SECTION("asset_system::file_changed");
+
+    asset_mgr->re_resolve(path);
+    push_watch_filters();
   }
 
   natural_t asset_system::begin_asset_load(const filepath& asset_path) {
@@ -103,24 +100,11 @@ namespace other {
 
     CORE_LOG_DEBUG("Loading asset at path: {}", asset_path.string());
 
-    natural_t asset_id = asset_mgr->load_asset(asset_path, [this, asset_path](asset* asset_ptr) {
-      OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null.");
-
-      auto it = std::ranges::find_if(loading_asset_ids, [asset_ptr](const auto& entry) {
-        return entry == asset_ptr->id;
-      });
-      OTHER_ASSERT(it != loading_asset_ids.end(), "Loading asset ID not found in tracking list.");
-      CORE_LOG_DEBUG("Asset loaded callback for asset ID: {} @ path: {} (virtual path: {})", asset_ptr->id, asset_path.string(), asset_ptr->virtual_path.string());
-
-      loading_asset_ids.erase(it);
-      get_driver().get_event_system()->trigger_event("assets.new-asset-loaded", asset_ptr->id);
-    });
+    natural_t asset_id = asset_mgr->load_asset(asset_path);
     if (asset_id == 0) {
       CORE_LOG_ERROR("Failed to begin asset load for path: {}", asset_path.string());
       return 0;
     }
-
-    loading_asset_ids.push_back(asset_id);
     return asset_id;
   }
 
@@ -142,8 +126,21 @@ namespace other {
 
     if (asset_mgr->in_snapshot(ass->stable_id)) {
       asset_mgr->re_resolve(ass->load_path);
+      push_watch_filters();
     } else {
       asset_mgr->reload_asset(asset_id);
+    }
+  }
+
+  void asset_system::push_watch_filters() {
+    OTHER_ASSERT(asset_mgr != nullptr, "Asset manager is not initialized in driver.");
+    auto* fs = subsystem<file_system>::get();
+    OTHER_ASSERT(fs != nullptr, "File system subsystem is not available while pushing watch filters.");
+
+    /// domain glob_sets are replace-registered on every re-parse, so the pointers must be
+    //  re-pushed after every resolve/re_resolve — stale filters would let bin/ churn through
+    for (const manifest_domain& d : asset_mgr->manifest_domains()) {
+      fs->apply_watch_filter(d.root_abs, &d.set);
     }
   }
 

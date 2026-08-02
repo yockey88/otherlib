@@ -98,6 +98,9 @@ namespace other {
 
   void asset_handler::resolve_roots(std::span<const filepath> roots) {
     PROFILE_SECTION("asset_handler::resolve_roots");
+    /// clean slate: resolve() rebuilds domains and root_ids; pending refresh marks from
+    //  a previous project must not leak into the new plan (stable_ids are deterministic)
+    needs_refresh.clear();
     snapshot = resolver.resolve(roots);
     execute_plan();
   }
@@ -233,6 +236,7 @@ namespace other {
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for model source asset ID: {}", model_id);
     CORE_LOG_DEBUG("Beginning add_model_source_asset for asset ID: {} (Name: {})", model_id, name);
 
+    runtime_by_stable[it->loading_asset.stable_id] = model_id;
     begin_load(it, state_it);
 
     return model_id;
@@ -274,6 +278,7 @@ namespace other {
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for scene asset ID: {}", scene_id);
     CORE_LOG_DEBUG("Beginning add_scene_asset for asset ID: {} (Name: {})", scene_id, it->loading_asset.virtual_path.string());
 
+    runtime_by_stable[it->loading_asset.stable_id] = scene_id;
     begin_load(it, state_it);
 
     return scene_id;
@@ -302,6 +307,7 @@ namespace other {
     OTHER_ASSERT(state_inserted, "Failed to insert asset state machine for rendering pipeline asset ID: {}", pl_id);
     CORE_LOG_DEBUG("Beginning add_rendering_pipeline_asset for asset ID: {} (Name: {})", pl_id, it->loading_asset.virtual_path.string());
 
+    runtime_by_stable[it->loading_asset.stable_id] = pl_id;
     begin_load(it, state_it);
     return pl_id;
   }
@@ -342,12 +348,6 @@ namespace other {
       jobs, &pl_itr->loading_asset,
       std::bind_front(&asset_handler::notify_asset_unload_complete, this),
       std::bind_front(&asset_handler::notify_asset_unload_failed, this));
-  }
-
-  void asset_handler::handle_file_event(const file_event& event) {
-    if (event.type == file_event::type::MODIFIED) {
-      handle_asset_file_changed_event(event);
-    }
   }
 
   void asset_handler::reload_asset(natural_t asset_id) {
@@ -557,19 +557,6 @@ namespace other {
     return nullptr;
   }
 
-  void asset_handler::handle_asset_file_changed_event(const file_event& event) {
-    OTHER_ASSERT(event.type == file_event::type::MODIFIED, "Unexpected file event type in handle_asset_file_changed_event: {}", event.type);
-
-    asset* asset_ptr = find_asset_by_path(event.path);
-    if (asset_ptr == nullptr) {
-      CORE_LOG_ERROR("Received file change event for path: {}, but no matching asset was found", event.path.string());
-      return;
-    }
-
-    CORE_LOG_DEBUG("Handling file change event for asset ID: {} (Path: {})", asset_ptr->id, event.path.string());
-    // reload_asset(asset_ptr->id);
-  }
-
   void asset_handler::notify_asset_load_complete(asset* asset_ptr) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load success callback");
     successful_pipelines.push(asset_ptr->id);
@@ -667,6 +654,7 @@ namespace other {
         OTHER_ASSERT(it.second, "Failed to insert unloaded asset into unloaded assets map");
         unregister_asset_in_filesystem(&it.first->second);
 
+        runtime_by_stable.erase(it.first->second.stable_id);
         asset_states.erase(state_itr);
       }
 
@@ -688,6 +676,9 @@ namespace other {
     OTHER_ASSERT(pending_itr != asset_pipelines.end(), "Failed asset not found in loading assets");
 
     CORE_LOG_ERROR("Failed to unload asset (ID: {}): {}", id, pending_itr->pipeline->get_last_error());
+
+    /// keep the asset alive past the pipeline erase; the iterator is dead after it
+    asset failed_asset = std::move(pending_itr->loading_asset);
     pending_itr->pipeline = nullptr;
     asset_pipelines.erase(pending_itr);
 
@@ -695,7 +686,8 @@ namespace other {
     asset_states.erase(state_itr);
 
     // fully remove it since error occurred
-    unregister_asset_in_filesystem(&pending_itr->loading_asset);
+    runtime_by_stable.erase(failed_asset.stable_id);
+    unregister_asset_in_filesystem(&failed_asset);
     auto it = unloaded_assets.find(id);
     if (it != unloaded_assets.end()) {
       unloaded_assets.erase(it);
@@ -914,7 +906,12 @@ namespace other {
       return;
     }
 
+    /// plan bookkeeping must not be initiator-blind: a failed flat reload of a snapshot
+    //  member would otherwise poison a plan that never dispatched it
     const uint32_t slot = detail::slot_of(snapshot, stable_id);
+    if (slot >= plan.pending.size() || !plan.pending[slot]) {
+      return;
+    }
     plan.failed[slot] = true;
     plan.pending[slot] = false;
 

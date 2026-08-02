@@ -44,6 +44,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/material.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/mesh.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/renderer.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/draw.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/inspector.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/UI/ui-window.cs
@@ -55,6 +56,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/transform.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/render-component.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/grid-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object-handle.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-behavior.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object.cs

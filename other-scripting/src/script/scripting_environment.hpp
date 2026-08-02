@@ -55,6 +55,7 @@ namespace other {
     void detach_dotnet_behavior(integer_t parent_id, const std::string_view behavior_name);
     void detach_all_dotnet_behaviors(integer_t parent_id);
     void invalidate_dotnet_script_objects_of_type(int32_t dotnet_type_id);
+    void reattach_invalidated_dotnet_behaviors();
 
     template <typename... Args>
     void attach_dotnet_object(integer_t id, const std::string_view type_name, Args&&... ctor_args) {
@@ -178,6 +179,8 @@ namespace other {
     ref<assembly> dotnet_binding_assembly = nullptr;
 
    private:
+    integer_t instantiate_dotnet_behavior(script_object* parent, const std::string_view behavior_name);
+
     struct live_script_object {
       enum {
         LIVE,

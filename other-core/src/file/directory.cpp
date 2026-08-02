@@ -13,12 +13,16 @@
 
 namespace other {
 
-  directory::directory(event_system& events, const std::string_view name, const filepath& path, file_type type, mount_scope scope)
+  directory::directory(event_system& events, const std::string_view name, const filepath& path, file_type type, mount_scope scope, bool watch_subtree)
       : events(events), hash(FNV(name)), type(type), dir_name(name), abs_path(path), scope(scope) {
-    watcher = file_watcher::make_directory_watcher(events, abs_path.empty() ? dir_name : abs_path, file_watcher::watch_mode::RECURSIVE);
     if (type == file_type::VIRTUAL) {
       abs_path = name;
       return;
+    }
+    /// subtree watching is reserved for project mounts — it is the only add/remove
+    //  signal for SDK-style csproj globs; engine mounts (cwd = the whole repo) must not scan
+    if (watch_subtree) {
+      watcher = file_watcher::make_directory_watcher(events, abs_path, file_watcher::watch_mode::RECURSIVE);
     }
   }
 
@@ -128,6 +132,11 @@ namespace other {
       return false;
     }
     return try_relative(std::filesystem::absolute(path), abs_path).has_value();
+  }
+
+  void directory::set_watch_filter(const glob_set* set) {
+    OTHER_ASSERT(watcher != nullptr, "directory '{}' has no subtree watcher to filter", dir_name);
+    watcher->set_filter(set);
   }
 
   ref<file_handle> directory::get_file(natural_t hash) {

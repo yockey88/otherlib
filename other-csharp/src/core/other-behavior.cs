@@ -82,6 +82,11 @@ namespace Other.Core
       FixedUpdate();
     }
 
+    public void ObjectRender()
+    {
+      Render();
+    }
+
     /// on load and unload
     protected abstract void Awake();
     protected abstract void Remove();
@@ -92,6 +97,7 @@ namespace Other.Core
     protected abstract void Update();
     protected abstract void LateUpdate();
     protected abstract void FixedUpdate();
-    /// protected virtual void Render() {}
+    /// per-frame draw hook, called whether or not the scene is playing
+    protected virtual void Render() {}
   }
 }

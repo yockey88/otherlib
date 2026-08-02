@@ -57,6 +57,21 @@ namespace other {
     }
   }
 
+  void script_component::render_update(double delta_time) {
+    OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
+    PROFILE_SECTION("script_component::render_update");
+
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    script_object* script_obj = env->get_object(script_object_id);
+    OTHER_ASSERT(script_obj != nullptr, "Script object with ID {} not found in scripting environment.", script_object_id);
+
+    if (auto* dn_obj = script_obj->dotnet_object; dn_obj != nullptr) {
+      dn_obj->invoke<>("Render");
+    }
+  }
+
   void script_component::scene_start() {
     OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::scene_start");

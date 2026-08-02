@@ -68,12 +68,12 @@ namespace other {
     return itr->second.element_size;
   }
 
+  /// resets per-frame contents but keeps the configured storages/meshes alive
   void render_stream::clear() {
     for (auto& [_, storage] : storages) {
       storage.bytes.clear();
       storage.count = 0;
     }
-    storages.clear();
   }
 
 }  // namespace other

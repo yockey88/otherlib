@@ -66,15 +66,15 @@ namespace other {
       context.current_selection.scene_ptr = nullptr;
     });
 
-    auto& r = get_renderer().get_debug_stream_registry();
+    auto& r = get_renderer();
     const ostd::vector<vertex_attribute> vtx = {
       { value_type::VEC3, "OE_position", 0, sizeof(glm::vec3) },
       { value_type::VEC4, "OE_color", 1, sizeof(glm::vec4) },
     };
-    r.register_stream(builtin_debug_streams::kLines, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::LINES, vtx } });
-    r.register_stream(builtin_debug_streams::kTris, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::TRIANGLES, vtx } });
-    r.register_stream(builtin_debug_streams::kPoints, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 14, .draw_recipe = { "debug_overlay", mesh::POINTS, vtx } });
-    r.register_stream(builtin_debug_streams::kMeshes, { .element_size = sizeof(debug_mesh_instance), .max_per_frame = 4096, .draw_recipe = {} });
+    r.register_draw_stream(builtin_debug_streams::kLines, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::LINES, vtx } });
+    r.register_draw_stream(builtin_debug_streams::kTris, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 16, .draw_recipe = { "debug_overlay", mesh::TRIANGLES, vtx } });
+    r.register_draw_stream(builtin_debug_streams::kPoints, { .element_size = sizeof(debug_vertex), .max_per_frame = 1u << 14, .draw_recipe = { "debug_overlay", mesh::POINTS, vtx } });
+    r.register_draw_stream(builtin_debug_streams::kMeshes, { .element_size = sizeof(debug_mesh_instance), .max_per_frame = 4096, .draw_recipe = {} });
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {

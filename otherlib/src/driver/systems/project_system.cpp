@@ -9,6 +9,8 @@
 
 #include "core/defines.hpp"
 
+#include "script/scripting_environment.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/systems/project_system.hpp"
 #include "driver/systems/scene_system.hpp"
@@ -43,6 +45,14 @@ namespace other {
     auto& events = *get_driver().get_event_system();
     events.register_event("project.loaded");
     events.register_event("project.unloaded");
+    events.register_event("project.assembly-refreshed");
+    /// the refresh detached every behavior whose type lived in the old assembly; rebuild
+    ///  those instances from the freshly loaded one
+    events.add_listener("project.assembly-refreshed", [](const value&) {
+      auto* env = subsystem<scripting_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
+      env->reattach_invalidated_dotnet_behaviors();
+    });
 
     events.register_event("project.new-project");
     events.add_listener("project.new-project", [this, kernel](const value& data) { handle_new_project(kernel, data); });

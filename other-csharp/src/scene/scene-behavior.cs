@@ -76,5 +76,13 @@ namespace Other
       OnFixedUpdate();
     }
     protected virtual void OnFixedUpdate() {}
+
+    protected override void Render()
+    {
+      OnRender();
+    }
+    /// draw hook called every frame, playing or not; submit Draw calls here so
+    /// debug/scene overlays stay visible while editing
+    protected virtual void OnRender() {}
   }
 }

@@ -130,7 +130,8 @@ namespace other {
       return it->second;
     }
 
-    auto dir = make_ref<directory>(*events, mount_name, std::filesystem::absolute(path), file_type::LOCAL, scope);
+    const bool watch_subtree = scope == mount_scope::PROJECT;
+    auto dir = make_ref<directory>(*events, mount_name, std::filesystem::absolute(path), file_type::LOCAL, scope, watch_subtree);
     mounts.insert({ hash, dir });
 
     CORE_LOG_DEBUG("Mounted directory '{}' -> '{}'", mount_name, path.string());
@@ -247,6 +248,35 @@ namespace other {
   bool file_system::is_mounted(const std::string_view mount_name) const {
     std::lock_guard lock(fs_mutex);
     return mounts.find(FNV(mount_name)) != mounts.end();
+  }
+
+  void file_system::apply_watch_filter(const filepath& root_abs, const glob_set* set) {
+    PROFILE_SECTION("file_system::apply_watch_filter");
+    std::lock_guard lock(fs_mutex);
+    const std::string target = normalize_lexical(std::filesystem::absolute(root_abs));
+
+    /// deepest watched mount covering the domain root owns the filter
+    ref<directory> best = nullptr;
+    size_t best_len = 0;
+    for (const auto& [hash, mount] : mounts) {
+      if (!mount->watches_subtree()) {
+        continue;
+      }
+      const std::string mount_root = normalize_lexical(mount->absolute_path());
+      if (mount_root != target && !try_relative(target, mount_root).has_value()) {
+        continue;
+      }
+      if (best == nullptr || mount_root.size() > best_len) {
+        best = mount;
+        best_len = mount_root.size();
+      }
+    }
+
+    if (best == nullptr) {
+      CORE_LOG_WARN("No watched mount covers '{}'; domain watch filter not applied", root_abs.string());
+      return;
+    }
+    best->set_watch_filter(set);
   }
 
   ref<file_handle> file_system::get_file(const std::string_view engine_path) {
@@ -436,30 +466,32 @@ namespace other {
     filepath abs_path = std::filesystem::absolute(path);
     OTHER_ASSERT(std::filesystem::exists(abs_path) && std::filesystem::is_regular_file(abs_path), "Cannot register local file: path '{}' does not exist or is not a regular file", abs_path.string());
 
-    auto components = directory::split_path(path.string());
-    OTHER_ASSERT(!components.empty(), "Cannot register local file: path '{}' is empty", path.string());
+    /// register under the deepest existing mount so the file's canonical virtual path —
+    //  and with it stable_id — matches what the resolver computed at resolve time.
+    //  minting a new mount per parent-directory name made virtualize() output depend on
+    //  load history and collide across same-named directories.
+    const resolved_path rp = deep_search_for_mount(abs_path);
+    if (rp.is_valid()) {
+      ref<directory> mount = get_mount(rp.mount_name);
+      OTHER_ASSERT(mount != nullptr, "Resolved mount '{}' vanished while registering local file '{}'", rp.mount_name, path.string());
 
-    filepath name = components.back();
-    components.pop_back();
+      ref<directory> target_dir = mount;
+      if (!rp.relative_path_components.empty()) {
+        target_dir = walk_or_create_path(mount, rp.relative_path_components);
+      }
+      OTHER_ASSERT(target_dir != nullptr, "Failed to walk directory chain for local file '{}'", path.string());
+      CORE_LOG_DEBUG("Registering local file '{}' under mount '{}'", path.string(), rp.mount_name);
 
-    if (components.empty()) {
       ref<local_file> local = create_local_file(abs_path);
-      add_toplevel_file(local);
+      OTHER_ASSERT(local != nullptr, "Failed to create local file for path: {}", path.string());
+      target_dir->add_file(local);
       return local;
     }
 
-    filepath dir = abs_path.parent_path();
-    std::string dir_last_name = dir.filename().string();
-    ref<directory> target_dir = get_or_create_mount(dir_last_name, dir);
-    OTHER_ASSERT(target_dir != nullptr, "Failed to get or create mount '{}' while registering local file '{}'", dir_last_name, path.string());
-
-    filepath current_abs_path = target_dir->absolute_path();
-    CORE_LOG_DEBUG("Registering local file '{}' in directory '{}'", path.string(), target_dir->absolute_path().string());
-
+    /// outside every mount: keep it reachable as a toplevel file, no new mounts
     ref<local_file> local = create_local_file(abs_path);
     OTHER_ASSERT(local != nullptr, "Failed to create local file for path: {}", path.string());
-
-    target_dir->add_file(local);
+    add_toplevel_file(local);
     return local;
   }
 

@@ -174,7 +174,8 @@ namespace other {
   }
 
   framebuffer::clear_mask_bit render_pass_clear_bits_from_strings(const std::span<const std::string> str) {
-    framebuffer::clear_mask_bit flags = framebuffer::ALL_BITS;
+    /// start from NONE so the listed bits are the only ones cleared (an empty list clears nothing)
+    framebuffer::clear_mask_bit flags = framebuffer::NONE;
     for (const auto& s : str) {
       switch (FNV(s)) {
         case FNV("COLOR"): flags = (framebuffer::clear_mask_bit)(flags | framebuffer::COLOR_BIT); break;

@@ -21,3 +21,10 @@ ConsoleMessage = {
 DriverState = driver_state
 DriverEvent = driver_event
 
+--- where immediate-mode draws land: Scene is depth tested inside the scene pipeline,
+--- Debug renders in the editor debug overlay on top of the finished frame
+DrawTarget = {
+  Scene = 0,
+  Debug = 1
+};
+

@@ -126,6 +126,9 @@ namespace other {
     metadata project_metadata;
     arena_buffer file_buffer;
 
+    /// PROJECT-scope mount created at load, removed at unload
+    std::string project_mount_name;
+
     filepath rc_path;
     ref<file_handle> project_file_handle;
     ref<assembly> project_assembly;

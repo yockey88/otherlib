@@ -58,3 +58,31 @@ class TestObject
     return x * x;
   }
 }
+
+/// mirrors the runtime SceneObject/behavior wiring for the assembly-refresh tests: a parent
+///   whose behavior list is driven through the native interop, plus a minimal behavior
+class TestParentObject : Other.Core.OtherObject
+{
+  public TestParentObject() : base(IntPtr.Zero, ObjectType.SceneObject)
+  {
+  }
+
+  public int CountBehaviors() => BehaviorCount;
+
+  public override void OnStart() { }
+  public override void OnStop() { }
+  public override void OnUpdate() { }
+  public override void OnLateUpdate() { }
+  public override void OnFixedUpdate() { }
+}
+
+class TestBehavior : Other.Core.OtherBehavior
+{
+  protected override void Awake() { }
+  protected override void Remove() { }
+  protected override void Enable() { }
+  protected override void Disable() { }
+  protected override void Update() { }
+  protected override void LateUpdate() { }
+  protected override void FixedUpdate() { }
+}

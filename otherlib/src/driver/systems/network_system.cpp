@@ -284,6 +284,13 @@ namespace other {
     ASSERT_MAIN_THREAD();
     net_context->signals.cancel();
 
+    /// networking disabled: there is no thread to hand a shutdown request to, so
+    ///  unblock the driver's shutdown gate immediately
+    if (net_context->net_thread == nullptr) {
+      get_driver().confirm_network_thread_shutdown();
+      return;
+    }
+
     message msg(COMMAND, SHUTDOWN_REQUEST);
     send_message(&get_driver().get_kernel(), std::move(msg));
   }

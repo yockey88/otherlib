@@ -53,6 +53,7 @@ namespace other {
     void set_color_mask(bool enabled_or_disabled) override;
     void set_depth_mask(bool enabled_or_disabled) override;
     void set_depth_test(bool enabled_or_disabled) override;
+    void set_blending(bool enabled_or_disabled) override;
     void set_stencil_test(bool enabled) override;
 
     void memory_barrier(shader::compute_barrier_type bits) override;

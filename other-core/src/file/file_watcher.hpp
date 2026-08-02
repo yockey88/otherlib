@@ -43,7 +43,8 @@ namespace other {
     void poll_directory();
 
     event_system& get_event_system() { return events; }
-    void set_filter(const glob_set* set) { filter = set; }
+    /// swaps the exclude filter and silently rebaselines the subtree snapshot
+    void set_filter(const glob_set* set);
 
     static scope<file_watcher> make_file_watcher(event_system& events, const filepath& path);
     static scope<file_watcher> make_directory_watcher(event_system& events, const filepath& path, watch_mode mode = watch_mode::NON_RECURSIVE);
@@ -64,6 +65,7 @@ namespace other {
     natural_t checksum = 0;
 
     natural_t compute_checksum(const filepath& path);
+    void scan_subtree(std::unordered_set<std::string>& out) const;
   };
 
 }  // namespace other

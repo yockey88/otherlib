@@ -400,13 +400,9 @@ namespace other {
         },
         [t = build_tool, path = project_path]() mutable {
           OTHER_ASSERT(t != nullptr, "Failed to create project tool for building .NET project.");
-          /// create dotnet project for the loaded project
-          if (!std::filesystem::exists(path)) {
-            CORE_LOG_INFO("No .NET project file found at '{}', creating a new one.", path.string());
-            t->generate_dotnet_project(path);
-          }
-
-          /// .csproj file exists we go straight to building it
+          /// csproj generation is a project-creation concern; the resolver refuses a
+          //  missing root long before this pipeline runs
+          OTHER_ASSERT(std::filesystem::exists(path), "csproj '{}' vanished between resolve and build", path.string());
           t->start_project_build(path);
 
           do {

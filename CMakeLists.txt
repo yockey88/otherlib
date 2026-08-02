@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 4.0.2)
 include(cmake/add_other_driver.cmake)
 include(cmake/configure_version_header.cmake)
 
-project(other VERSION 0.1.0 LANGUAGES CXX CSharp)
+project(other VERSION 1.0.0 LANGUAGES CXX CSharp)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;ProfileD" CACHE STRING "Build types" FORCE)
 
 if (NOT CMAKE_SHARED_LINKER_FLAGS_PROFILE)
@@ -37,7 +37,10 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
 
-set(CMAKE_INSTALL_PREFIX "C:/OtherEnvironment" CACHE PATH "Installation directory" FORCE)
+## default SDK location; overridable with -DCMAKE_INSTALL_PREFIX=<path>
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "C:/OtherEnvironment" CACHE PATH "Installation directory" FORCE)
+endif()
 include(GNUInstallDirs)
 include(cmake/other_install.cmake)
 set(OTHER_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/other")
@@ -205,11 +208,11 @@ add_subdirectory(other-csharp-interop)
 add_subdirectory(other-physics)
 add_subdirectory(other-scene)
 add_subdirectory(other-csharp)
+add_subdirectory(other-cli)
 add_subdirectory(otherlib)
 
 add_subdirectory(other-editor)
 add_subdirectory(other-server)
-add_subdirectory(tools)
 
 add_subdirectory(script-testing)
 if (BUILD_OTHER_TESTS)
@@ -269,6 +272,7 @@ install(
     "${OTHER_EXTERN_DIR}/sdl/lib/${DLL_CONFIG}/SDL3.dll"
     "${OTHER_EXTERN_DIR}/assimp/lib/assimp-vc143-mt.dll"
     "${OTHER_EXTERN_DIR}/sol2/lib/lua-5.4.4.dll"
+    "${OTHER_EXTERN_DIR}/jolt/bin/$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>/Jolt.dll"
     "${OTHER_EXTERN_DIR}/xxHash/bin/${DLL_CONFIG}/xxhash.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysX_64.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCommon_64.dll"
@@ -277,7 +281,6 @@ install(
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXGpu_64.dll"
     "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PVDRuntime_64.dll"
   DESTINATION "${OTHER_INSTALL_BINDIR}/${DLL_CONFIG}"
-  CONFIGURATIONS ${CMAKE_BUILD_TYPE}
   OPTIONAL
 )
 
@@ -291,7 +294,7 @@ if (NOT EXISTS "${OTHER_INSTALL_PROJECT}")
 endif()
 
 install(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/other-csharp/${ASSEMBLY_CONFIG}/"
+  DIRECTORY "${CMAKE_BINARY_DIR}/other-csharp/${ASSEMBLY_CONFIG}/"
   DESTINATION "${OTHER_INSTALL_ASSEMBLIES}"
 )
 
@@ -300,37 +303,23 @@ install(
   DESTINATION "${OTHER_INSTALL_PROJECT_TEMPLATES}"
 )
 
-### now install resources (lua scripts, shaders, etc.)
+### now install resources (shaders, pipelines, boot scripts, fonts, ui layouts, ...)
+## everything the runtime references from resources/ ships with the SDK; models are
+##  local development content and stay out of the install
 set(OTHERLIB_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/resources")
-set(OTHERLIB_FONTS_RESOURCES "${OTHERLIB_RESOURCES}/fonts")
-set(OTHERLIB_LUA_RESOURCES "${OTHERLIB_RESOURCES}/lua")
-set(OTHERLIB_SHADER_MODULE_RESOURCES "${OTHERLIB_RESOURCES}/shader-modules")
-
 install(
   DIRECTORY "${OTHERLIB_RESOURCES}/"
   DESTINATION "${OTHER_INSTALL_RESOURCES}"
-  FILES_MATCHING 
-  PATTERN "*.vert"
-  PATTERN "*.geom"
-  PATTERN "*.frag"
+  PATTERN "models" EXCLUDE
 )
+
+## the engine's lua runtime (bridge, console, interfaces); the dotnet/lua hosts default
+##  scripting.other-lua-directory to <prefix>/lua
 install(
-  DIRECTORY "${OTHERLIB_LUA_RESOURCES}"
-  DESTINATION "${CMAKE_INSTALL_PREFIX}"
-  FILES_MATCHING 
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/other-lua-interop/"
+  DESTINATION "lua"
+  FILES_MATCHING
   PATTERN "*.lua"
-)
-install(
-  DIRECTORY "${OTHERLIB_FONTS_RESOURCES}"
-  DESTINATION "${OTHER_INSTALL_RESOURCES}"
-  FILES_MATCHING 
-  PATTERN "*.ttf"
-)
-install(
-  DIRECTORY "${OTHERLIB_SHADER_MODULE_RESOURCES}"
-  DESTINATION "${OTHER_INSTALL_RESOURCES}"
-  FILES_MATCHING 
-  PATTERN "*.glsl"
 )
 
 configure_package_config_file(

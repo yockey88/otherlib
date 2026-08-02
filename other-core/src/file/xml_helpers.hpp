@@ -47,20 +47,6 @@ namespace other {
       const char* name;
     };
 
-    struct item {
-      const tinyxml2::XMLElement* element = nullptr;
-      std::string entry;
-      bool remove = false;
-      std::string_view dotnet_config;
-
-      bool is_remove() const { return remove; }
-      std::string_view pattern() const { return entry; }
-      filepath hint_path() const { return filepath(metadata("HintPath")); }
-
-      std::string_view include() const;
-      std::string metadata(const char* element_name) const;
-    };
-
     template <typename T>
     T parse_property(std::string_view text, std::string_view property_name) {
       static_assert(always_false_v<T>, "no csproj property parser for this type — add a specialization");

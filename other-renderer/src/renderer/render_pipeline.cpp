@@ -645,7 +645,8 @@ namespace other {
 
     bool needs_quad = false;
     for (const auto& pass : definition.passes) {
-      if (pass.executor.name == "fullscreen_quad") {
+      /// scene_grids draws the quad as world-space grid geometry
+      if (pass.executor.name == "fullscreen_quad" || pass.executor.name == "scene_grids") {
         needs_quad = true;
         break;
       }

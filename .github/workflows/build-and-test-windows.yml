@@ -13,7 +13,7 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -31,21 +31,18 @@ jobs:
       run: python ${{ github.workspace }}/cli.py -b -c=${{ inputs.configuration }}
 
     - name: Run Tests
-      run: python ${{ github.workspace }}/cli.py -ts -serialization_tests* -c=${{ inputs.configuration }}
-      continue-on-error: true
+      run: python ${{ github.workspace }}/cli.py -t -c=${{ inputs.configuration }}
 
     - name: Check Test Results
+      if: always()
       run: |
         $lcconfig = "${{ inputs.configuration }}".ToLower()
         $respath = "${{ github.workspace }}\other_test_results.windows.${lcconfig}.xml"
         python ${{ github.workspace }}/tools/test-validation.py $respath
 
-    - name: Write Config Env Var
-      run: echo 'CONFIGURATION="${{ inputs.configuration }}".ToLower()' >> $GITHUB_ENV
-
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: other-test-results-windows-${{ env.CONFIGURATION }}
-        path: ${{ github.workspace }}/other_test_results.windows.${{ env.CONFIGURATION }}.xml
+        name: other-test-results-windows-${{ inputs.configuration }}
+        path: other_test_results.windows.*.xml

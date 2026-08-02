@@ -45,7 +45,7 @@ def copy_dlls(cfg, dll_cfg):
     f"build/scratch/{cfg}/",
     f"build/tests/{cfg}/",
     f"build/tests/harness/{cfg}/",
-    f"build/tools/{cfg}/",
+    f"build/other-cli/{cfg}/",
     f"build/other-editor/{cfg}/",
     f"build/other-server/{cfg}/",
   ]
@@ -82,15 +82,10 @@ def run_project(out_dir, cfg, name, config_file, verbose = False, extra_args=Non
     run_command.extend(extra_args)
   run_subprocess(run_command)
   
-## TODO: this is ugly, fix this
 def validate_args(args, parser):
-  if not args.build and not args.regen_project \
-      and not args.run and not args.run_scratch \
-      and not args.run_terminal and not args.run_tests \
-      and not args.run_test_suite and not args.run_server \
-      and not args.install \
-      and not args.daemon_server and not args.run_project \
-      and not args.run_soak:
+  ## every flag except --verbose/--cfg is an action; require at least one
+  actions = {k: v for k, v in vars(args).items() if k not in ("verbose", "cfg")}
+  if not any(actions.values()):
     parser.print_help()
     sys.exit(1)
 

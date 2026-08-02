@@ -11,6 +11,7 @@ target_sources(other_scene
       src/asset/asset_handler.cpp
 
       src/object/scene_object.cpp
+      src/object/grid_component.cpp
       src/object/script_component.cpp
       src/object/physics_component.cpp
       src/object/animation_controller.cpp

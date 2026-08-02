@@ -132,7 +132,7 @@ namespace Other
       process_handle.StartInfo.CreateNoWindow = true;
       // process_handle.StartInfo.RedirectStandardOutput = false;  // true;
       // process_handle.StartInfo.RedirectStandardError = false;   // true;
-      // process_handle.StartInfo.UseShellExecute = fal se;
+      // process_handle.StartInfo.UseShellExecute = false;
       // process_handle.OutputDataReceived += (sender, e) =>
       // {
       //   if (!string.IsNullOrEmpty(e.Data))

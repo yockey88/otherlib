@@ -71,6 +71,10 @@ namespace other {
     void update(double delta_time);
     void late_update(double delta_time);
 
+    /// per frame draw hook, runs whether or not the scene is playing so scripts can
+    ///   submit debug/scene overlay draws while editing
+    void render_update(double delta_time);
+
     scene_object& root_object();
 
     scene_object& create_object(const std::string& name, scene_object* parent_object = nullptr);
@@ -141,7 +145,6 @@ namespace other {
     bounding_box get_bounding_box_from_camera_frustum(const camera& cam) const;
 
     render_data prepare_render_data(scope<asset_handler>& asset_handler) const;
-    void debug_render(debug_draw draw);
 
     bool object_has_tag(natural_t id, const std::string_view tag) const;
     void add_object_tag(natural_t id, const std::string_view tag);

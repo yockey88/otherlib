@@ -126,8 +126,6 @@ namespace other {
     natural_t add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition);
     void unload_asset(natural_t asset_id);
 
-    void handle_file_event(const file_event& event);
-
     void reload_asset(natural_t asset_id);
 
     asset* get_asset(natural_t asset_id);
@@ -204,6 +202,10 @@ namespace other {
       return snapshot.find(stable_id) != nullptr;
     }
 
+    inline std::span<const manifest_domain> manifest_domains() const {
+      return resolver.manifest_domains();
+    }
+
    private:
     friend class asset_pipeline;
 
@@ -250,8 +252,6 @@ namespace other {
     ostd::unordered_map<natural_t, asset>::iterator begin_unload(natural_t asset_id);
 
     asset* find_asset_by_path(const filepath& file_path) const;
-
-    void handle_asset_file_changed_event(const file_event& event);
 
     void notify_asset_load_complete(asset* asset_ptr);
     void notify_asset_load_failed(asset* asset_ptr, const std::string_view error_message);

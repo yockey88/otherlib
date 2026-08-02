@@ -28,6 +28,8 @@ namespace other {
     void fixed_update(double delta_time);
     void update(double delta_time);
     void late_update(double delta_time);
+    /// per-frame draw hook, dispatched whether or not the scene is playing
+    void render_update(double delta_time);
 
     void scene_start();
     void scene_stop();

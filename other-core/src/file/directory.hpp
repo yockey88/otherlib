@@ -17,6 +17,8 @@
 
 namespace other {
 
+  class glob_set;
+
   /// represents a directory node in the engine's virtual filesystem
   /**
    * directories can contain both child directories and file handles.
@@ -25,7 +27,8 @@ namespace other {
    **/
   struct directory : public ref_counted {
     directory(event_system& events, const std::string_view name, const filepath& path,
-              file_type type = file_type::LOCAL, mount_scope scope = mount_scope::ENGINE);
+              file_type type = file_type::LOCAL, mount_scope scope = mount_scope::ENGINE,
+              bool watch_subtree = false);
     ~directory() override = default;
 
     std::string to_string() const;
@@ -76,6 +79,10 @@ namespace other {
     }
 
     mount_scope get_scope() const { return scope; }
+
+    /// domain exclude filter for the subtree watcher (rebaselines its snapshot)
+    void set_watch_filter(const glob_set* set);
+    bool watches_subtree() const { return watcher != nullptr; }
 
    private:
     event_system& events;

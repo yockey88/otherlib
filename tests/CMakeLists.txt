@@ -17,6 +17,8 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/core/event_system_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/logger_tests.cpp
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/cli/cli_tool_tests.cpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/arena_buffer_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/arena/scope_tests.cpp
@@ -47,6 +49,10 @@ target_sources(other_tests
 
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/scene_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/asset_tests.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/glob_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/asset_resolver_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/file_watcher_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/network/network_thread_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network/transport_provider_tests.cpp

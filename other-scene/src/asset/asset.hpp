@@ -8,7 +8,7 @@
 
 #include <refl/refl.hpp>
 
-#include <xxhash/xxh3.h>
+#include <xxHash/xxh3.h>
 
 #include "core/defines.hpp"
 #include "core/enum_formatter.hpp"
