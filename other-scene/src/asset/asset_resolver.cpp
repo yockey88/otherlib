@@ -11,6 +11,8 @@
 
 #include "dotnet/csproj_helpers.hpp"
 
+#include "serialization/scene_serializer.hpp"
+
 namespace other {
   namespace detail {
 
@@ -179,6 +181,7 @@ namespace other {
     }
 
     ostd::vector<dependency_declaration> parse_csproj_manifest(const filepath& manifest_path);
+    ostd::vector<dependency_declaration> parse_scene_manifest(const filepath& manifest_path);
     ostd::vector<dependency_declaration> empty_parser(const filepath& manifest_path);
 
     opt<manifest_domain> build_csproj_manifest_domain(const filepath& manifest_path);
@@ -197,7 +200,7 @@ namespace other {
     &detail::empty_parser,           // script-file
     &detail::empty_parser,           // script
     &detail::empty_parser,           // audio
-    &detail::empty_parser,           // scene
+    &detail::parse_scene_manifest,   // scene
     &detail::empty_parser,           // input-map
     &detail::empty_parser,           // rendering-pipeline
     &detail::empty_parser,           // asset-declaration
@@ -540,6 +543,51 @@ namespace other {
         }
       });
 
+      return out;
+    }
+
+    ostd::vector<dependency_declaration> parse_scene_manifest(const filepath& scene_path) {
+      /// malformed scene files are data errors, not contracts: declare no edges and let
+      //  the scene node's own load surface the parse failure
+      serialization::scene_parse_result parsed = serialization::load_scene_document(scene_path);
+      if (!parsed.success()) {
+        CORE_LOG_WARN("scene manifest '{}' failed to parse: {}", scene_path.string(), parsed.error);
+        return {};
+      }
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available in parse_scene_manifest");
+
+      ostd::vector<dependency_declaration> out;
+      const auto declare = [&](const filepath& abs, asset::type fallback_type) {
+        if (!std::filesystem::exists(abs)) {
+          CORE_LOG_WARN("scene '{}' references missing asset '{}'; edge skipped", scene_path.string(), abs.string());
+          return;
+        }
+        if (!fs->deep_search_for_mount(abs).is_valid()) {
+          CORE_LOG_WARN("scene '{}' references '{}' outside every mount; edge skipped", scene_path.string(), abs.string());
+          return;
+        }
+        /// extension wins, matching how the resolver types its roots: a render component's
+        //  ref is attributed MODEL but points at a model SOURCE file (.fbx)
+        asset::type type = asset::get_type_from_extension(abs.extension().string());
+        if (type == asset::EMPTY) {
+          type = fallback_type;
+        }
+        std::string virtual_path = virtualize(abs);
+        if (!std::ranges::contains(out, virtual_path, &dependency_declaration::virtual_path)) {
+          out.push_back({ std::move(virtual_path), type, false });
+        }
+      };
+
+      if (!parsed.document->script.empty()) {
+        declare(resolve_relative(std::filesystem::absolute(scene_path), parsed.document->script), asset::SCRIPT_FILE);
+      }
+      /// component payload refs are load paths, resolved against the working directory —
+      //  the same convention codec_services::resolve_asset applies at instantiation
+      for (const serialization::component_asset_ref& ref : serialization::collect_scene_asset_refs(*parsed.document)) {
+        declare(std::filesystem::absolute(filepath{ ref.path }).lexically_normal(), ref.type);
+      }
       return out;
     }
 

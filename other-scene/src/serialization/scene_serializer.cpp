@@ -409,5 +409,18 @@ namespace other {
       return false;
     }
 
+    ostd::vector<component_asset_ref> collect_scene_asset_refs(const scene_document& doc) {
+      ostd::vector<component_asset_ref> refs = {};
+      for (const object_record& object : doc.objects) {
+        for (const component_record& component : object.components) {
+          const component_codec* codec = find_component_codec(component.key_hash);
+          if (codec != nullptr && codec->collect_asset_refs != nullptr) {
+            codec->collect_asset_refs(component.payload, refs);
+          }
+        }
+      }
+      return refs;
+    }
+
   }  // namespace serialization
 }  // namespace other

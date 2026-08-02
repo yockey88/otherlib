@@ -257,4 +257,94 @@ namespace other {
     EXPECT_EQ(snap.nodes.size(), 2u);  /// csproj + produced dll only
   }
 
+  /// scene manifest anchors (parsers[SCENE]): a scene document declares its hook
+  /// script (relative to the scene dir) and every component asset reference
+
+  class scene_manifest_tests : public asset_resolver_tests {
+   protected:
+    void SetUp() override {
+      asset_resolver_tests::SetUp();
+      std::filesystem::create_directories(proj_root / "scenes");
+      std::filesystem::create_directories(proj_root / "models");
+      write_file(proj_root / "scenes" / "hooks.lua", "function OnSceneLoad() end");
+      write_file(proj_root / "models" / "ship.fbx", "not a real model");
+      write_file(scene_path(), scene_toml({ model_path("ship.fbx") }));
+    }
+
+    filepath scene_path() const { return proj_root / "scenes" / "test.oscn"; }
+    filepath model_path(const std::string_view name) const { return proj_root / "models" / name; }
+
+    /// component refs are load paths; absolute + forward slashes keeps the test
+    /// independent of the runner's working directory
+    std::string scene_toml(const ostd::vector<filepath>& models) const {
+      std::string text =
+        "[scene]\n"
+        "schema-version = 1\n"
+        "name = \"resolver-scene\"\n"
+        "script = \"hooks.lua\"\n";
+      for (size_t i = 0; i < models.size(); ++i) {
+        text += std::format(
+          "\n[[objects]]\n"
+          "id = {}\n"
+          "name = \"Object{}\"\n"
+          "\n[objects.components.render]\n"
+          "model_asset_id = \"{}\"\n",
+          i + 1, i + 1, models[i].generic_string());
+      }
+      return text;
+    }
+  };
+
+  TEST_F(scene_manifest_tests, scene_declares_hook_script_and_model_edges) {
+    asset_resolver resolver;
+    const std::array roots{ scene_path() };
+    dependency_snapshot snap = resolver.resolve(roots);
+
+    ASSERT_EQ(snap.nodes.size(), 3u);
+    const dependency_snapshot::node* scene_node = snap.find(stable_of(scene_path()));
+    const dependency_snapshot::node* script_node = snap.find(stable_of(proj_root / "scenes" / "hooks.lua"));
+    const dependency_snapshot::node* model_node = snap.find(stable_of(model_path("ship.fbx")));
+    ASSERT_NE(scene_node, nullptr);
+    ASSERT_NE(script_node, nullptr);
+    ASSERT_NE(model_node, nullptr);
+    EXPECT_EQ(scene_node->type, asset::SCENE);
+    EXPECT_EQ(script_node->type, asset::SCRIPT_FILE);
+    EXPECT_EQ(model_node->type, asset::MODEL_SOURCE);
+
+    /// leaves first: [hooks.lua, ship.fbx] -> [scene]
+    ASSERT_EQ(snap.topo_layers.size(), 2u);
+    EXPECT_EQ(snap.topo_layers[0].size(), 2u);
+    ASSERT_EQ(snap.topo_layers[1].size(), 1u);
+    EXPECT_EQ(snap.nodes[snap.topo_layers[1][0]].stable_id, stable_of(scene_path()));
+  }
+
+  TEST_F(scene_manifest_tests, missing_scene_refs_skip_edges_without_asserting) {
+    write_file(scene_path(), scene_toml({ model_path("ship.fbx"), model_path("missing.fbx") }));
+
+    asset_resolver resolver;
+    const std::array roots{ scene_path() };
+    dependency_snapshot snap = resolver.resolve(roots);
+
+    /// the dangling ref is a data error: warn + skip, never a node or an assert
+    EXPECT_EQ(snap.nodes.size(), 3u);
+    EXPECT_EQ(snap.find(stable_id_for(std::string{ kMountName } + "/models/missing.fbx")), nullptr);
+    EXPECT_NE(snap.find(stable_of(model_path("ship.fbx"))), nullptr);
+  }
+
+  TEST_F(scene_manifest_tests, re_resolve_scene_edit_adds_model_edge) {
+    asset_resolver resolver;
+    const std::array roots{ scene_path() };
+    dependency_snapshot snap = resolver.resolve(roots);
+    ASSERT_EQ(snap.nodes.size(), 3u);
+
+    write_file(model_path("station.fbx"), "also not a real model");
+    write_file(scene_path(), scene_toml({ model_path("ship.fbx"), model_path("station.fbx") }));
+    const resolve_delta delta = resolver.re_resolve(snap, scene_path());
+
+    ASSERT_FALSE(delta.empty());
+    EXPECT_TRUE(std::ranges::contains(delta.modified, stable_of(scene_path())));
+    EXPECT_TRUE(std::ranges::contains(delta.added, stable_of(model_path("station.fbx"))));
+    EXPECT_NE(snap.find(stable_of(model_path("station.fbx"))), nullptr);
+  }
+
 }  // namespace other

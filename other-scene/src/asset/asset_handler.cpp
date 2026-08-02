@@ -94,6 +94,30 @@ namespace other {
         }
       }
     }
+
+    {
+      PROFILE_SECTION("asset_handler::update_pipelines--pending-unloads");
+      /// bounded pass: requeued entries (loads still in flight) must not respin this tick
+      for (size_t remaining = pending_unloads.size(); remaining > 0; --remaining) {
+        const natural_t id = pending_unloads.front();
+        pending_unloads.pop();
+
+        if (asset_loaded(id)) {
+          unload_asset(id);
+          continue;
+        }
+
+        switch (get_asset_state(id)) {
+          case asset_state::LOADING:
+          case asset_state::REFRESHING_UNLOAD:
+          case asset_state::REFRESHING_LOAD:
+            pending_unloads.push(id);  /// still in flight; retry once it settles
+            break;
+          default:
+            break;  /// failed, already unloading/unloaded, or gone — request satisfied
+        }
+      }
+    }
   }
 
   void asset_handler::resolve_roots(std::span<const filepath> roots) {
@@ -162,6 +186,14 @@ namespace other {
     natural_t hash = FNV(absolute_path.string());
     if (auto itr = std::ranges::find_if(loaded_assets, [hash](const auto& pair) { return pair.second.path_hash == hash; }); itr != loaded_assets.end()) {
       return itr->second.id;
+    }
+    /// a plan-dispatched load and a direct load (scene instantiation resolving the same
+    //  model) can race; a second pipeline for the same file would double-load the payload
+    if (auto itr = std::ranges::find_if(asset_pipelines, [hash](const auto& ctx) { return ctx.loading_asset.path_hash == hash; }); itr != asset_pipelines.end()) {
+      if (on_complete != nullptr) {
+        CORE_LOG_WARN("Asset '{}' is already loading (ID: {}); completion callback dropped", file_path.string(), itr->loading_asset.id);
+      }
+      return itr->loading_asset.id;
     }
 
     natural_t asset_id = get_next_asset_id();

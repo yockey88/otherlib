@@ -238,7 +238,8 @@ namespace other {
     /// normally we might want to recreate, but if we are closing the editor
     // or doing
     bool remove_after_unload = false;
-    std::queue<natural_t> pending_loads;
+    /// unload requests that arrived while the asset was still loading; drained by
+    /// update_pipelines once the load settles
     std::queue<natural_t> pending_unloads;
 
     std::string default_mount = "assets";

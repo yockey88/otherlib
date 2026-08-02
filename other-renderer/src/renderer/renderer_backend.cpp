@@ -16,6 +16,7 @@
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 
+#include "gpu_resource/texture.hpp"
 #include "renderer/backends/opengl_api.hpp"
 
 namespace other {
@@ -191,6 +192,35 @@ namespace other {
       CORE_LOG_DEBUG("Removed model source with handle: {}", handle);
     } else {
       CORE_LOG_ERROR("Model source with handle {} not found.", handle);
+    }
+  }
+
+  void renderer_backend::add_texture(natural_t handle, resource_handle texture_handle) {
+    OTHER_ASSERT(texture_handle.id != 0, "Texture resource handle cannot be null.");
+    OTHER_ASSERT(texture_assets.find(handle) == texture_assets.end(), "Texture with handle {} already exists.", handle);
+
+    texture_assets[handle] = texture_handle;
+    CORE_LOG_DEBUG("Added texture with handle: {}", handle);
+  }
+
+  resource_handle renderer_backend::get_texture(natural_t handle) const {
+    auto it = texture_assets.find(handle);
+    if (it != texture_assets.end()) {
+      return it->second;
+    }
+
+    return { 0, resource_type::EMPTY };
+  }
+
+  void renderer_backend::remove_texture(natural_t handle) {
+    auto it = texture_assets.find(handle);
+    if (it != texture_assets.end()) {
+      texture::destroy_texture(it->second);
+
+      texture_assets.erase(it);
+      CORE_LOG_DEBUG("Removed texture with handle: {}", handle);
+    } else {
+      CORE_LOG_ERROR("Texture with handle {} not found.", handle);
     }
   }
 

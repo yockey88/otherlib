@@ -14,6 +14,8 @@
 
 #include "script/scripting_environment.hpp"
 
+#include "serialization/scene_serializer.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/project_system.hpp"
@@ -108,13 +110,26 @@ namespace other {
       CORE_LOG_ERROR("Project's .NET project file '{}' does not exist. Cannot load project scripts.", project_scripts.csproject_path.string());
       waiting_for_script_load = false;
       project_scripts.csproject_path.clear();
-    } else if (waiting_for_script_load) {
-      CORE_LOG_INFO("Loading .NET project from '{}'", project_scripts.csproject_path.string());
-      const std::array roots{ project_scripts.csproject_path };
-      system->sibling<asset_system>(*kernel).resolve_and_load_roots(roots);
     }
 
     waiting_for_scene_load = process_scene_sections(table);
+
+    /// one resolve over everything the project declares: the csproj (scripts) and every
+    //  scene document (models/textures/hook scripts ride the scene's manifest edges)
+    ostd::vector<filepath> resolve_roots = {};
+    if (waiting_for_script_load) {
+      CORE_LOG_INFO("Loading .NET project from '{}'", project_scripts.csproject_path.string());
+      resolve_roots.push_back(project_scripts.csproject_path);
+    }
+    for (const project::scene& scene_data : scenes_in_project) {
+      if (std::filesystem::exists(scene_data.path) && serialization::is_scene_file_extension(scene_data.path.extension().string())) {
+        resolve_roots.push_back(scene_data.path);
+      }
+    }
+    if (!resolve_roots.empty()) {
+      system->sibling<asset_system>(*kernel).resolve_and_load_roots(resolve_roots);
+    }
+
     process_project_plugins(table);
 #else
     static_assert(false, "No project file format defined. define OTHER_PROJECT_FILE_XXX_FORMAT macro.");

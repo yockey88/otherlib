@@ -47,6 +47,12 @@ namespace other {
     ref<model_source> get_model_source(natural_t handle) const;
     void remove_model_source(natural_t handle);
 
+    /// texture assets keyed by asset path hash, mirroring model sources; removal
+    /// destroys the gpu resource
+    void add_texture(natural_t handle, resource_handle texture_handle);
+    resource_handle get_texture(natural_t handle) const;
+    void remove_texture(natural_t handle);
+
    protected:
     friend class renderer;
 
@@ -54,6 +60,7 @@ namespace other {
     scope<rendering_api> rendering_api_instance;
 
     ostd::map<natural_t, ref<model_source>> model_sources;
+    ostd::map<natural_t, resource_handle> texture_assets;
 
     struct {
       bool backend_loaded = false;

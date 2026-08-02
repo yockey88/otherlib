@@ -52,6 +52,11 @@ namespace other {
     scene_parse_result load_scene_document(const filepath& path);
     bool save_scene_document(const scene_document& doc, const filepath& path);
 
+    /// every asset reference the document's component payloads carry, as stored;
+    /// the scene's hook script is separate (scene_document::script, relative to the
+    /// scene file's directory). engine-free — this is what manifest parsing rides
+    ostd::vector<component_asset_ref> collect_scene_asset_refs(const scene_document& doc);
+
   }  // namespace serialization
 }  // namespace other
 

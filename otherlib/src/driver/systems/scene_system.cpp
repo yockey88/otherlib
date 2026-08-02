@@ -9,6 +9,7 @@
 #include "serialization/scene_serializer.hpp"
 
 #include "driver/driver.hpp"
+#include "driver/systems/asset_system.hpp"
 #include "driver/systems/project_system.hpp"
 #include "scripting/scene_interface.hpp"
 
@@ -420,6 +421,17 @@ namespace other {
       CORE_LOG_TRACE(" - scene name: {}, id: {}, asset-id: {}", s.name, s.id, s.asset_id);
       return s.asset_id == scene_asset_id;
     });
+    if (s == nullptr && get_driver().get_kernel().has_core_system<asset_system>()) {
+      /// resolver-dispatched scene documents are tracked file assets (snapshot nodes)
+      //  with no graph scene attached; only assets born through add_scene_asset must
+      //  resolve to a graph scene here
+      auto& assets = get_driver().get_kernel().get_core_system<asset_system>();
+      const asset* scene_asset = assets.get_asset(scene_asset_id);
+      if (scene_asset != nullptr && assets.get_asset_manager()->in_snapshot(scene_asset->stable_id)) {
+        CORE_LOG_DEBUG("Scene document asset {} ('{}') loaded; no graph scene attached.", scene_asset_id, scene_asset->virtual_path.string());
+        return;
+      }
+    }
     OTHER_ASSERT(s != nullptr, "Scene with asset ID {} not found in scene graph after scene asset loaded event.", scene_asset_id);
 
     /// this happens here so it only happens once when the asset is fully loaded and registered
@@ -468,6 +480,16 @@ namespace other {
     auto* s = project_scene_graph->find_scene([scene_asset_id](const scene& sc) {
       return sc.asset_id == scene_asset_id;
     });
+    if (s == nullptr && get_driver().get_kernel().has_core_system<asset_system>()) {
+      /// scene documents (snapshot nodes) unload on refresh/teardown with no graph
+      //  scene attached — same contract split as handle_scene_asset_loaded_event
+      auto& assets = get_driver().get_kernel().get_core_system<asset_system>();
+      const asset* scene_asset = assets.get_asset(scene_asset_id);
+      if (scene_asset != nullptr && assets.get_asset_manager()->in_snapshot(scene_asset->stable_id)) {
+        CORE_LOG_DEBUG("Scene document asset {} ('{}') unloaded; no graph scene attached.", scene_asset_id, scene_asset->virtual_path.string());
+        return;
+      }
+    }
     OTHER_ASSERT(s != nullptr, "Scene with asset ID '{}' not found in scene graph.", scene_asset_id);
 
     if (get_driver().get_kernel().has_core_system<project_system>()) {
