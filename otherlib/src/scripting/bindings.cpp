@@ -270,6 +270,14 @@ namespace other {
       .bind("DrawLine", bindings::native_draw_line)
       .bind("DrawTriangle", bindings::native_draw_triangle)
       .bind("DrawPoint", bindings::native_draw_point)
+      .bind("DrawRay", bindings::native_draw_ray)
+      .bind("DrawArrow", bindings::native_draw_arrow)
+      // .bind("DrawAABB", bindings::native_draw_aabb)
+      // .bind("DrawOBB", bindings::native_draw_obb)
+      .bind("DrawSphere", bindings::native_draw_sphere)
+      // .bind("DrawFrustum", bindings::native_draw_frustum)
+      // .bind("DrawTransform", bindings::native_draw_transform)
+      // .bind("DrawMesh", bindings::native_draw_mesh)
       .bind("DrawGrid", bindings::native_draw_grid);
 
     bindings::binding_context{ dn_host }

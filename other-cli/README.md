@@ -21,6 +21,23 @@ source tree, never an installed SDK. Because `oecli` is itself a build artifact,
 repo root's `cli.py` bootstraps it (configure + build the `oecli` target) and then
 forwards every command here verbatim — `python cli.py <args>` is `oecli <args>`.
 
+## Developer cli vs user cli
+
+The build tree produces two front ends from the same tool library, differentiated at
+compile time by `OTHER_CLI_DEV_TOOLS`:
+
+- `oecli` — the developer cli, for working on the environment itself. Carries the
+  source-tree workflow tools above next to the project workflow. Lives at
+  `build/other-cli/<config>/oecli.exe`; this is what `cli.py` builds and forwards to.
+- `oecli_user` — the user cli, for making applications/games against the SDK. Still
+  named `oecli.exe` but built into `build/other-cli/user/<config>/`. Only the project
+  and engine tools (`create`, `open`, `scene`, `model`, `material`) are registered;
+  invoking a developer tool prints where it actually lives instead of "unknown tool".
+
+`install`/`package` ship the user cli as the SDK's `oecli.exe` by default; configure
+with `-DOTHER_INSTALL_DEV_CLI=ON` to ship the developer cli instead. Build the user
+flavor locally with `python cli.py bootstrap --user`.
+
 `create` generates the project file (`<name>.toml`), a projectrc (`<name>.lua`), a starter
 scene, and a C# script project wired against the environment's `OtherCs.dll`. `open`
 resolves a project file (directly, or by searching a directory) and launches

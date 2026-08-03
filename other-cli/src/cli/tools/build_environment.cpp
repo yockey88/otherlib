@@ -56,10 +56,11 @@ namespace other {
 
         /// every directory that holds a runnable build output; plugin outputs (spacesim,
         ///  test-project, ...) load inside the editor process and need no copies
-        const std::array<filepath, 6> output_dirs = {
+        const std::array<filepath, 7> output_dirs = {
           root / "build" / "other-editor",
           root / "build" / "other-server",
           root / "build" / "other-cli",
+          root / "build" / "other-cli" / "user",
           root / "build" / "scratch",
           root / "build" / "tests",
           root / "build" / "tests" / "harness",

@@ -291,7 +291,9 @@ namespace other {
     CORE_LOG_DEBUG("Confirming initialization...");
 
     /// engine-level cli tools (scene compile/...) become reachable from in-process
-    ///  hosts (editor console, driver code) via other::cli::run
+    ///  hosts (editor console, driver code) via other::cli::run; drivers only launch
+    ///  from source trees today, so the developer workflow tools ride along
+    cli::register_dev_tools(cli::default_tool_registry());
     cli::register_environment_tools(cli::default_tool_registry());
 
     on_initialization_confirm();

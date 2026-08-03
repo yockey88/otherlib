@@ -1,0 +1,12 @@
+# POC transparent material: base_color.a is the authored opacity, rendered as 4x4 bayer
+# screen-door coverage by the gbuffer pass (see docs/material-poc-transparent-metallic.md).
+# known limits: still casts a full shadow and occupies the AO volume — the shadow-map and
+# voxelize passes bind no material buffer. roughness carries the old specular_reflectivity
+# value (the shading pass reads albedo.a as a scalar factor), so glass wants it high
+asset-type = "material"
+name = "glass"
+
+[params]
+base_color = [0.55, 0.78, 0.86, 0.35]
+roughness = 0.9
+metalness = 0.0

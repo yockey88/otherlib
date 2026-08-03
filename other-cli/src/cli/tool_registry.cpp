@@ -58,17 +58,25 @@ namespace other {
     tool_registry& default_tool_registry() {
       static tool_registry registry = [] {
         tool_registry tools;
-        /// project workflow first, then the developer/source-tree workflow
+        /// only the project workflow is builtin; the developer/source-tree workflow is
+        ///  opt-in per host (dev cli front end, driver boot) through register_dev_tools,
+        ///  so the user cli that ships with the SDK never carries it
         tools.add_tool(std::make_unique<create_project_tool>());
         tools.add_tool(std::make_unique<open_project_tool>());
-        tools.add_tool(std::make_unique<run_driver_tool>());
-        tools.add_tool(std::make_unique<build_environment_tool>());
-        tools.add_tool(std::make_unique<test_runner_tool>());
-        tools.add_tool(std::make_unique<install_environment_tool>());
-        tools.add_tool(std::make_unique<package_environment_tool>());
         return tools;
       }();
       return registry;
+    }
+
+    void register_dev_tools(tool_registry& registry) {
+      if (registry.find_tool("build") != nullptr) {
+        return;
+      }
+      registry.add_tool(std::make_unique<run_driver_tool>());
+      registry.add_tool(std::make_unique<build_environment_tool>());
+      registry.add_tool(std::make_unique<test_runner_tool>());
+      registry.add_tool(std::make_unique<install_environment_tool>());
+      registry.add_tool(std::make_unique<package_environment_tool>());
     }
 
     std::vector<std::string> split_command_line(std::string_view line) {

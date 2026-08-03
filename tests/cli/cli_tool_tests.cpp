@@ -19,13 +19,19 @@ namespace {
   using other::cli::default_tool_registry;
   using other::cli::environment_paths;
   using other::cli::locate_environment;
+  using other::cli::register_dev_tools;
   using other::cli::split_command_line;
   using other::cli::tool_context;
+  using other::cli::tool_registry;
   using other::cli::tool_result;
 
   class cli_tool_tests : public ::testing::Test {
    protected:
     void SetUp() override {
+      /// the fixture exercises the developer workflow too, which is opt-in on the
+      ///  default registry since the user cli split (idempotent across tests)
+      register_dev_tools(default_tool_registry());
+
       const auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
       sandbox = std::filesystem::temp_directory_path() / "other-cli-tests" / info->name();
       std::filesystem::remove_all(sandbox);
@@ -83,15 +89,33 @@ namespace {
   }
 
   TEST(cli_registry_tests, builtin_tools_are_registered) {
+    /// the project workflow is builtin; the developer workflow layers on top through
+    ///  register_dev_tools (this is the dev/user cli flavor split)
     auto& registry = default_tool_registry();
     EXPECT_NE(registry.find_tool("create"), nullptr);
     EXPECT_NE(registry.find_tool("open"), nullptr);
+    register_dev_tools(registry);
     EXPECT_NE(registry.find_tool("run"), nullptr);
     EXPECT_NE(registry.find_tool("build"), nullptr);
     EXPECT_NE(registry.find_tool("test"), nullptr);
     EXPECT_NE(registry.find_tool("install"), nullptr);
     EXPECT_NE(registry.find_tool("package"), nullptr);
     EXPECT_EQ(registry.find_tool("does-not-exist"), nullptr);
+  }
+
+  TEST(cli_registry_tests, dev_tools_register_separately_and_idempotently) {
+    /// a fresh registry models the user cli surface: no developer tools until a host
+    ///  explicitly opts in, and repeated opt-ins (dev cli front end + driver boot) are safe
+    tool_registry registry;
+    EXPECT_EQ(registry.find_tool("build"), nullptr);
+
+    register_dev_tools(registry);
+    register_dev_tools(registry);
+    EXPECT_EQ(registry.tools().size(), 5u);
+    for (const std::string_view name : { "run", "build", "test", "install", "package" }) {
+      EXPECT_NE(registry.find_tool(name), nullptr) << name;
+    }
+    EXPECT_EQ(registry.find_tool("create"), nullptr);
   }
 
   TEST(cli_registry_tests, unknown_tool_reports_error) {

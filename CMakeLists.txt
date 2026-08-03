@@ -58,6 +58,15 @@ message(STATUS "[INSTALL PATHS]\n  Includedir: ${OTHER_INSTALL_INCLUDEDIR}\n  Li
 ### projects to build
 option(BUILD_OTHER_TESTS "Build the other tests" OFF)
 option(BUILD_SCRATCH_PROGRAMS "Build scratch-work/development brainstorming programs" OFF)
+## every build tree produces both cli front ends (oecli with the source-tree developer
+##  tools, oecli_user with the project workflow only); this only selects which of the
+##  two `install`/`package` ship as the SDK's oecli.exe
+option(OTHER_INSTALL_DEV_CLI "Ship the developer oecli (run/build/test/install/package) with the SDK instead of the user cli" OFF)
+if (OTHER_INSTALL_DEV_CLI)
+  message(STATUS "SDK cli flavor: developer (source-tree workflow tools included)")
+else()
+  message(STATUS "SDK cli flavor: user (project workflow only)")
+endif()
 if (DISALLOW_OTHER_PLUGINS)
   message(STATUS "Disallowing other plugins")
   add_compile_definitions("OTHER_DISALLOW_OTHER_PLUGINS")

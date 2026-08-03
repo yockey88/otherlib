@@ -17,8 +17,9 @@ j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
 model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-material_asset_id = "test-project/assets/materials/floor.omat"
+material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
 visible = true
+tint = [ 1.0, 1.0, 1.0, 1.0 ]
 
 [[objects]]
 id = 2
@@ -35,11 +36,46 @@ k = [ -1.0, 0.0, 0.0 ]
 behaviors = [ "TestBehavior" ]
 [objects.components.render]
 model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-material_asset_id = "test-project/assets/materials/donut.omat"
+material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/donut.omat"
 visible = true
+tint = [ 1.0, 1.0, 1.0, 1.0 ]
 
 [[objects]]
 id = 3
+name = "GlassDonut"
+[objects.components.transform]
+local_position = [ 1.7, 0.15, 1.7 ]
+local_scale = [ 0.55, 0.55, 0.55 ]
+local_rotation_quat = [ 0.70710003, -0.0030853604, -0.004319476, 0.7070936 ]
+[objects.components.transform.local_basis]
+i = [ 0.0, 0.0, 1.0 ]
+j = [ 0.0, 1.0, 0.0 ]
+k = [ -1.0, 0.0, 0.0 ]
+[objects.components.render]
+model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
+material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
+visible = true
+tint = [ 1.0, 1.0, 1.0, 1.0 ]
+
+[[objects]]
+id = 4
+name = "GoldDonut"
+[objects.components.transform]
+local_position = [ -2.2, 0.0, 0.4 ]
+local_scale = [ 1.0, 1.0, 1.0 ]
+local_rotation_quat = [ 1.0, 0.0, 0.0, 0.0 ]
+[objects.components.transform.local_basis]
+i = [ 0.0, 0.0, 1.0 ]
+j = [ 0.0, 1.0, 0.0 ]
+k = [ -1.0, 0.0, 0.0 ]
+[objects.components.render]
+model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
+material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
+visible = true
+tint = [ 1.0, 1.0, 1.0, 1.0 ]
+
+[[objects]]
+id = 5
 name = "Light"
 [objects.components.transform]
 local_position = [ 0.0, 2.0, 0.0 ]
@@ -55,7 +91,7 @@ position = [ 2.0, 4.0, 2.0 ]
 color = [ 1.0, 0.44, 0.77, 1.0 ]
 
 [[objects]]
-id = 4
+id = 6
 name = "Camera"
 tags = [ "main-camera" ]
 [objects.components.transform]
@@ -75,7 +111,7 @@ world_up = [ 0.0, 1.0, 0.0 ]
 defocus_angle = 0.0
 focus_dist = 10.0
 image_width = 2.0
-aspect_ratio = 2.115108
+aspect_ratio = 0.85179853
 samples_per_pixel = 100
 max_bounce_depth = 50
 fov = 90.0
