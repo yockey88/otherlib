@@ -70,6 +70,7 @@ namespace other {
     ///  layout texture slots bound per draw; sampler uniforms are set once per pass execution
     bool pass_uses_material_binding(const pass_runtime& runtime) const;
     void apply_material_sampler_uniforms(const frame_node* node);
+    void apply_material_block_binding(const frame_node* node, const pass_runtime& runtime);
     void bind_material_textures(const render_data& data, size_t draw_index);
 
     void register_texture_resource(const std::string_view name, resource_handle handle);

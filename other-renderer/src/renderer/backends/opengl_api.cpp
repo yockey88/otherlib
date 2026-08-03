@@ -912,6 +912,28 @@ namespace other {
     glBindBuffer(get_gl_buffer_type(buffer_type), 0);
   }
 
+  void opengl_api::set_shader_block_binding(const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) {
+    auto gpu_itr = gpu_resources.find(shader_handle.id);
+    if (gpu_itr == gpu_resources.end()) {
+      CORE_LOG_ERROR("Shader resource with ID {} not found.", shader_handle.id);
+      return;
+    }
+
+    uint32_t shader_id = gpu_itr->second;
+    if (buffer_type == gpu_buffer::buf_type::UNIFORM_BUFFER) {
+      GLuint block_index = glGetUniformBlockIndex(shader_id, name.data());
+      if (block_index != GL_INVALID_INDEX) {
+        glUniformBlockBinding(shader_id, block_index, binding_point);
+      }
+    } else if (buffer_type == gpu_buffer::buf_type::STORAGE_BUFFER) {
+      GLuint block_index = glGetProgramResourceIndex(shader_id, GL_SHADER_STORAGE_BLOCK, name.data());
+      if (block_index != GL_INVALID_INDEX) {
+        glShaderStorageBlockBinding(shader_id, block_index, binding_point);
+      }
+    }
+    CHECKGL();
+  }
+
   void opengl_api::buffer_data(const resource_handle& handle, uint32_t binding_point, const void* data, size_t size) {
     PROFILE_SECTION("opengl_api::buffer_data");
     auto itr = gpu_resources.find(handle.id);

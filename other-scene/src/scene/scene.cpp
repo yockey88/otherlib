@@ -36,7 +36,6 @@
 #include "glm/fwd.hpp"
 #include "sol/table.hpp"
 
-
 namespace other {
 
   void scene::scene_first_construction_initialization() {
@@ -979,8 +978,6 @@ namespace other {
           CORE_LOG_ERROR("Render component model asset ID {} does not exist for object ID {}.", render.model_asset_id, handle.id);
           // avoids repeated failed lookups and objects don't disappear from scene
           render.model_asset_id = render.last_model_asset_id;
-        } else {
-          CORE_LOG_INFO("Render component model asset ID changed for object ID {}. New asset ID: {}", handle.id, render.model_asset_id);
         }
       }
 

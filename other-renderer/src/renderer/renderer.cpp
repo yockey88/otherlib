@@ -534,6 +534,7 @@ namespace other {
     const bool material_pass = pl->pass_uses_material_binding(runtime);
     if (material_pass) {
       pl->apply_material_sampler_uniforms(current_node);
+      pl->apply_material_block_binding(current_node, runtime);
     }
 
     for (natural_t i = 0; i < scene_data->num_draw_calls; ++i) {

@@ -245,6 +245,26 @@ namespace other {
     }
   }
 
+  void render_pipeline::apply_material_block_binding(const frame_node* node, const pass_runtime& runtime) {
+    OTHER_ASSERT(node != nullptr, "Frame node must not be null in apply_material_block_binding.");
+    if (!definition.materials.has_value() || !node->pass->shader_handle.has_value()) {
+      return;
+    }
+
+    auto& api = renderer_ptr->rendering()->api();
+    for (const auto& bd : runtime.def->bindings) {
+      if (bd.scope != binding_scope::PER_DRAW_CALL || bd.tag.value() != resource_tag::kMaterialTag) {
+        continue;
+      }
+
+      /// binding names follow the scope-prefix convention ("per_draw.material_buffer");
+      ///  the GLSL block name is the unprefixed suffix
+      const size_t dot = bd.name.find('.');
+      const std::string_view block_name = dot == std::string::npos ? std::string_view{ bd.name } : std::string_view{ bd.name }.substr(dot + 1);
+      api->set_shader_block_binding(*node->pass->shader_handle, block_name, bd.binding, buffer_type_from_binding(bd.type));
+    }
+  }
+
   void render_pipeline::bind_material_textures(const render_data& data, size_t draw_index) {
     if (!definition.materials.has_value() || definition.materials->texture_slots.empty()) {
       return;
@@ -1066,8 +1086,8 @@ namespace other {
         case binding_scope::PER_DRAW_CALL:
           /// the material tag is produced by the pipeline itself when it declares a layout
           ok = !bd.tag.is_none() &&
-               ((bd.tag.value() == resource_tag::kMaterialTag && definition.materials.has_value()) ||
-                reg.find_per_draw(bd.tag) != nullptr || renderer_ptr->draw_binder_resolves(bd.tag));
+            ((bd.tag.value() == resource_tag::kMaterialTag && definition.materials.has_value()) ||
+             reg.find_per_draw(bd.tag) != nullptr || renderer_ptr->draw_binder_resolves(bd.tag));
           break;
         case binding_scope::PER_INSTANCE:
           ok = !bd.tag.is_none() && (reg.find_per_instance(bd.tag) != nullptr || renderer_ptr->instance_binder_resolves(bd.tag));
