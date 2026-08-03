@@ -1,7 +1,7 @@
 struct light {
   vec4 vector;
   vec4 color;
-  float type; // 0 - directional, 1 - point light
+  float type; // gpu::light constants: 1 - point, 2 - directional, 3 - spot
 };
 
 layout (std430) readonly buffer light_buffer {

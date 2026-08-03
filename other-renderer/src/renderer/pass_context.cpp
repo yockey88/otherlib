@@ -61,9 +61,9 @@ namespace other {
     mesh_resource.draw();
   }
 
-  void pass_context::draw_stream() {
+  void pass_context::draw_stream(draw_set set) {
     ASSERT_MAIN_THREAD();
-    renderer_ptr->execute_draw_calls(node);
+    renderer_ptr->execute_draw_calls(node, set);
   }
 
   void pass_context::execute_draw_call(const draw_call& call, const mesh_key& key) {

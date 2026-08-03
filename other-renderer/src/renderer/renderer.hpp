@@ -69,6 +69,13 @@ namespace other {
     ostd::frame_vector<draw_instance_tints> draw_tints;
     ostd::frame_vector<gpu::model_matrix_buffer> model_buffers;
     ostd::frame_vector<gpu::bone_matrix_buffer> bone_buffers;
+
+    /// partition of the live draws in [0, num_draw_calls), rebuilt in renderer::begin_frame:
+    ///  a draw is transparent when its effective material authors a vec4 base_color with
+    ///  alpha < 1 or any live instance tint carries alpha < 1 (tints fold into the packed
+    ///  base_color at bind time, so either ends up as fragment alpha in the forward pass)
+    ostd::frame_vector<natural_t> opaque_draws;
+    ostd::frame_vector<natural_t> transparent_draws;
   };
 
   struct viewport {
@@ -236,7 +243,7 @@ namespace other {
     void remove_pipeline(const std::string_view name);
 
     virtual void draw_mesh(const resource_handle& mesh_handle);
-    virtual void execute_draw_calls(frame_node* current_node);
+    virtual void execute_draw_calls(frame_node* current_node, draw_set set = draw_set::kOpaque);
 
     constexpr static inline size_t kMaxDrawCalls = 1024;
 
@@ -276,6 +283,7 @@ namespace other {
 
     render_pipeline* get_pass_pipeline(natural_t pass_id) const;
 
+    void partition_draw_calls(render_data& data);
     void render_current_scene(render_data* data, opt<std::string> break_on = std::nullopt);
     void render_scene_to_viewports(std::span<viewport> viewports, render_data* data);
   };

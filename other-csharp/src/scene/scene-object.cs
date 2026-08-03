@@ -57,7 +57,9 @@ namespace Other
       {
         throw new MissingComponentException($"SceneObject does not have component of type {typeof(T).Name}");
       }
-      return Activator.CreateInstance(typeof(T), ObjectHandle.Id) as T;
+      T c = (Activator.CreateInstance(typeof(T), ObjectHandle.Id) as T)!;
+      c.BindOwner(this);
+      return c;
     }
 
     public bool HasComponent<T>()

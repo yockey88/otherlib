@@ -57,6 +57,8 @@ shaders = [
   { name = "screen_shader", vertex_path = "resources/basic-textured-quad.vert", fragment_path = "resources/basic-textured-quad.frag" },
   { name = "scene_grid_shader", vertex_path = "resources/scene-grid.vert", fragment_path = "resources/scene-grid.frag" },
   { name = "scene_overlay_shader", vertex_path = "resources/debug-overlay.vert", fragment_path = "resources/debug-overlay.frag" },
+  ## forward transparent pass reuses the instancing geometry vertex stage; only the fragment differs
+  { name = "forward_transparent_shader", vertex_path = "resources/basic-instancing-gbuffer.vert", fragment_path = "resources/basic-forward-transparent.frag" },
 ]
 
 ## the material block this pipeline's shaders read (shader-modules/basic-material.glsl mirrors
@@ -98,7 +100,15 @@ pass-bindings = [
   { pass_name = "environment-map-pass", name = "per_frame.simulation_environment_buffer", binding = 0 },
   { pass_name = "environment-map-pass", name = "per_frame.light_buffer", binding = 1 },
   { pass_name = "shading-pass", name = "per_frame.light_buffer", binding = 0 },
-  { pass_name = "shading-pass", name = "per_frame.simulation_environment_buffer", binding = 1 }
+  { pass_name = "shading-pass", name = "per_frame.simulation_environment_buffer", binding = 1 },
+  ## transparent pass binds the full per-draw ring set (vertex stage) plus the frame lighting
+  ## buffers (fragment stage); UBO points 0/1/3/5 and SSBO points 2/4 live in separate GL spaces
+  { pass_name = "transparent-pass", name = "per_draw.model_buffer", binding = 0 },
+  { pass_name = "transparent-pass", name = "per_draw.bone_buffer", binding = 1 },
+  { pass_name = "transparent-pass", name = "per_draw.material_buffer", binding = 2 },
+  { pass_name = "transparent-pass", name = "per_frame.camera_buffer", binding = 3 },
+  { pass_name = "transparent-pass", name = "per_frame.light_buffer", binding = 4 },
+  { pass_name = "transparent-pass", name = "per_frame.simulation_environment_buffer", binding = 5 }
 ]
 passes = [
   ## geometry and data preparation passes
@@ -113,6 +123,9 @@ passes = [
   ## in-scene overlays (procedural grids + dynamic scene draw streams), depth tested against scene_depth
   { name = "grid-pass", pass_type = "RENDER_PASS", shader_name = "scene_grid_shader", depends_on = [ "shading-pass" ], clear_bits = [] },
   { name = "scene-overlay-pass", pass_type = "RENDER_PASS", shader_name = "scene_overlay_shader", depends_on = [ "grid-pass" ], clear_bits = [] },
+  ## blended forward transparency, painter-sorted, depth-tested against scene_depth without
+  ## writing it; last in-scene pass so glass composites over grids and overlays too
+  { name = "transparent-pass", pass_type = "RENDER_PASS", shader_name = "forward_transparent_shader", depends_on = [ "scene-overlay-pass" ], clear_bits = [] },
   ## additional shading
   ## screen-space passes
   ## anit-aliasing and post-processing passes
@@ -153,6 +166,12 @@ inputs = [
   { pass_name = "shading-pass", resource_name = "light_buffer", binding = 1 },
   { pass_name = "grid-pass", resource_name = "camera_buffer", binding = 0 },
   { pass_name = "scene-overlay-pass", resource_name = "camera_buffer", binding = 0 },
+  { pass_name = "transparent-pass", resource_name = "camera_buffer", binding = 3 },
+  { pass_name = "transparent-pass", resource_name = "light_buffer", binding = 4 },
+  { pass_name = "transparent-pass", resource_name = "simulation_environment_buffer", binding = 5 },
+  { pass_name = "transparent-pass", resource_name = "ambient_shadow_map", binding = 0, uniform_name = "OE_shadow_map" },
+  { pass_name = "transparent-pass", resource_name = "voxel_texture", binding = 1, uniform_name = "OE_voxel_tex" },
+  { pass_name = "transparent-pass", resource_name = "environment_map", binding = 2, uniform_name = "OE_env_cubemap" },
   { pass_name = "tonemap-pass", resource_name = "shaded_texture", binding = 0, uniform_name = "OE_texture" },
   { pass_name = "smaa-edges", resource_name = "tonemapped_texture", binding = 0, uniform_name = "OE_color" },
   { pass_name = "smaa-weights", resource_name = "smaa_edge_texture", binding = 0, uniform_name = "OE_edges" },
@@ -177,6 +196,8 @@ outputs = [
   { pass_name = "grid-pass", resource_name = "scene_depth", attachment = "DEPTH" },
   { pass_name = "scene-overlay-pass", resource_name = "shaded_texture", attachment = "COLOR" },
   { pass_name = "scene-overlay-pass", resource_name = "scene_depth", attachment = "DEPTH" },
+  { pass_name = "transparent-pass", resource_name = "shaded_texture", attachment = "COLOR" },
+  { pass_name = "transparent-pass", resource_name = "scene_depth", attachment = "DEPTH" },
   { pass_name = "tonemap-pass", resource_name = "tonemapped_texture", attachment = "COLOR" },
   { pass_name = "smaa-edges", resource_name = "smaa_edge_texture", attachment = "COLOR" },
   { pass_name = "smaa-weights", resource_name = "smaa_weight_texture", attachment = "COLOR" },
@@ -192,6 +213,7 @@ executors = [
   { pass_name = "shading-pass", name = "fullscreen_quad" },
   { pass_name = "grid-pass", name = "scene_grids" },
   { pass_name = "scene-overlay-pass", name = "scene_overlay" },
+  { pass_name = "transparent-pass", name = "draw_scene_transparent" },
   { pass_name = "smaa-edges", name = "fullscreen_quad" },
   { pass_name = "smaa-weights", name = "fullscreen_quad" },
   { pass_name = "smaa-blend", name = "fullscreen_quad" },

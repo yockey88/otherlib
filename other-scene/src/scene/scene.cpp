@@ -954,6 +954,15 @@ namespace other {
 
     const direction_light* scene_ambient_light = nullptr;
     storage->registry.view<object_handle, direction_light_component>().each([&](const object_handle& handle, const direction_light_component& light) {
+      /// every directional light shades through the light buffer; vector.xyz keeps the
+      ///  component's TO-the-light convention (the same one sim env's sun_direction uses)
+      gpu::light l{
+        .vector = glm::vec4(light.light.direction, 0.f),
+        .color = light.light.color,
+        .light_type = gpu::light::kDirection,
+      };
+      data.lights.push_back(l);
+
       const bool sun_tag = object_has_tag(handle.id, "sun");
       if (scene_ambient_light == nullptr && sun_tag) {
         scene_ambient_light = &light.light;

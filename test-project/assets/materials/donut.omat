@@ -4,4 +4,5 @@ name = "donut"
 
 [params]
 base_color = [0.01, 0.01, 0.22, 1.0]
-roughness = 0.5
+roughness = 1.0
+metalness = 0.0

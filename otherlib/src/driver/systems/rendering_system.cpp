@@ -28,6 +28,7 @@ namespace other {
 
     render_graph::pass_executor make_noop(const pipeline_pass_definition&, render_pipeline*);
     render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*);
+    render_graph::pass_executor make_draw_scene_transparent(const pipeline_pass_definition&, render_pipeline*);
     render_graph::pass_executor make_fullscreen_quad(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
     render_graph::pass_executor make_window_sized_compute_dispatch(const pipeline_pass_definition& def, render_pipeline* pl);
@@ -483,6 +484,7 @@ namespace other {
     auto& reg = renderer_ptr->get_executor_registry();
     reg.register_executor("noop", &detail::make_noop);
     reg.register_executor("draw_scene", &detail::make_draw_scene);
+    reg.register_executor("draw_scene_transparent", &detail::make_draw_scene_transparent);
     reg.register_executor("fullscreen_quad", &detail::make_fullscreen_quad);
     reg.register_executor("compute_dispatch", &detail::make_compute_dispatch);
     reg.register_executor("window_sized_compute_dispatch", &detail::make_window_sized_compute_dispatch);
@@ -632,6 +634,22 @@ namespace other {
     render_graph::pass_executor make_draw_scene(const pipeline_pass_definition&, render_pipeline*) {
       return [](pass_context& ctx) {
         ctx.draw_stream();
+      };
+    }
+
+    /// blended forward pass over the frame's transparent draw set: painter-sorted per viewport
+    ///   inside execute_draw_calls, depth-tested against the shared scene depth attachment but
+    ///   not writing it, standard src-alpha-over blending
+    render_graph::pass_executor make_draw_scene_transparent(const pipeline_pass_definition&, render_pipeline*) {
+      return [](pass_context& ctx) {
+        auto& api = ctx.get_renderer().rendering()->api();
+        api->set_blending(true);
+        api->set_depth_mask(false);
+
+        ctx.draw_stream(draw_set::kTransparent);
+
+        api->set_depth_mask(true);
+        api->set_blending(false);
       };
     }
 
