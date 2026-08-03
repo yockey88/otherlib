@@ -6,21 +6,24 @@
 #include <filesystem>
 
 #include "core/job_system.hpp"
+#include "file/filesystem.hpp"
+#include "file/path_helpers.hpp"
+#include "serialization/scene_serializer.hpp"
 
+#include "gpu_resource/material.hpp"
+#include "gpu_resource/texture_importer.hpp"
 #include "model/model_source.hpp"
 #include "renderer/pipeline_definition.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "scene/scene.hpp"
-#include "serialization/scene_serializer.hpp"
 
 #include "tools/project_tool.hpp"
-
-#include "gpu_resource/texture_importer.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
 #include "asset/pipelines/asset_declaration_pipeline.hpp"
+#include "asset/pipelines/material_pipeline.hpp"
 #include "asset/pipelines/model_source_pipeline.hpp"
 #include "asset/pipelines/rendering_pipeline_pipeline.hpp"
 #include "asset/pipelines/scene_pipeline.hpp"
@@ -45,6 +48,7 @@ namespace other {
     task load_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_material(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
     task unload_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -57,6 +61,7 @@ namespace other {
     task unload_scene(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_rendering_pipeline(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_material(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task empty_unloader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
   }  // namespace detail
@@ -64,7 +69,6 @@ namespace other {
   std::array<asset_pipeline::loading_table::loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> asset_pipeline::loading_table::loaders = {
     detail::load_texture,
     detail::load_model_source,
-    detail::empty_loader,  // MODEL: no extension maps here; models load as MODEL_SOURCE
     detail::load_stub_asset,  // ANIMATION: no animation import backend yet
     detail::load_script_project,
     detail::load_script_source,
@@ -75,13 +79,13 @@ namespace other {
     detail::load_stub_asset,  // INPUT_MAP: asset model undefined; runtime input_map exists
     detail::load_rendering_pipeline,
     detail::load_asset_declaration,
+    detail::load_material,
     detail::empty_loader,
   };
 
   std::array<asset_pipeline::loading_table::loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> asset_pipeline::loading_table::unloaders = {
     detail::unload_texture,
     detail::unload_model_source,
-    detail::empty_unloader,  // MODEL: see loaders
     detail::unload_stub_asset,
     detail::unload_script_project,
     detail::unload_script_source,
@@ -92,6 +96,7 @@ namespace other {
     detail::unload_stub_asset,
     detail::unload_rendering_pipeline,
     detail::unload_asset_declaration,
+    detail::unload_material,
     detail::empty_unloader,
   };
 
@@ -114,6 +119,7 @@ namespace other {
       case asset::SCENE: return make_scope<scene_pipeline>(events, handler, nullptr);
       case asset::RENDERING_PIPELINE: return make_scope<rendering_pipeline_pipeline>(events, handler);
       case asset::ASSET_DECLARATION: return make_scope<asset_declaration_pipeline>(events, handler);
+      case asset::MATERIAL: return make_scope<material_pipeline>(events, handler);
       default:
         OTHER_ASSERT(false, "No asset pipeline for asset type {}", type);
     }
@@ -122,7 +128,7 @@ namespace other {
   scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
     CORE_LOG_DEBUG("Building model source pipeline for model '{}', vertex count {}, index count {}", name, vertices.size(), indices.size());
     scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(events, handler);
-    pl->builder = model_importer::build_model_data(name, vertices, indices);
+    pl->data = build(name, vertices, indices);
     return pl;
   }
 
@@ -266,37 +272,6 @@ namespace other {
     get_events().trigger_event(get_asset_event_name(asset_ptr->asset_type, event_name), asset_ptr->id);
   }
 
-  // task asset_pipeline::load_asset(asset* asset_ptr) {
-  //   OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in load_asset");
-
-  //   opt<filepath> load_path = get_asset_load_path(asset_ptr);
-  //   opt<job::descriptor> job_desc = get_asset_load_job_descriptor(asset_ptr, load_path);
-
-  //   ref<job> load_job = nullptr;
-  //   if (job_desc.has_value()) {
-  //     // source_job = handler->get_job_system().submit(job_desc.value(), std::bind_front(&detail::load_model_from_path, std::ref(builder), load_path.value()));
-
-  //     /// yield if we posted the job for the worker thread to pick it up
-  //     co_await task::yield();
-  //   }
-
-  //   ostd::vector<natural_t> dependencies = {};
-  //   if (load_job != nullptr) {
-  //     /// it is probably done here since we yielded after posting it,
-  //     //   but just in case we can yield again until it is done
-  //     co_await task::wait_for_job(load_job);
-  //     if (load_job->get_status() != job::status::COMPLETED) {
-  //       // builder = {};
-  //     }
-
-  //     dependencies.push_back(load_job->id);
-  //   } else {
-  //     // builder = reinterpret_cast<model_source_pipeline*>(pipeline)->builder;
-  //   }
-
-  //   co_return;
-  // }
-
   namespace detail {
 
     void verify_parameters(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
@@ -379,6 +354,66 @@ namespace other {
       co_return;
     }
 
+    /// promote the importer's value-sets to plain materials owned by the model_source —
+    ///  derived data, not assets, not files, not resolver nodes. texture paths resolve
+    ///  relative to the model file; gltf textures are already resolver-declared children
+    ///  loading through the plan (the load here dedupes), legacy formats get their lazy
+    ///  best-effort kick-off here (documented asymmetry).
+    static ostd::vector<material> build_imported_materials(const model_data& data, asset* asset_ptr, asset_handler* handler) {
+      ostd::vector<material> out;
+      if (data.materials.empty()) {
+        return out;
+      }
+
+      auto* fs = subsystem<file_system>::get();
+      out.reserve(data.materials.size());
+      for (const imported_material& imp : data.materials) {
+        material& mat = out.emplace_back();
+        mat.name = imp.name;
+
+        const auto set_param = [&mat](std::string_view name, material_value value) {
+          const natural_t hash = FNV(name);
+          mat.params[hash] = value;
+          mat.param_names[hash] = std::string{ name };
+        };
+        set_param("base_color", material_value::from(imp.base_color));
+        set_param("emissive_color", material_value::from(imp.emissive_color));
+        set_param("roughness", material_value::from(imp.roughness));
+        set_param("metalness", material_value::from(imp.metalness));
+
+        const auto set_slot = [&](std::string_view slot_name, const std::string& authored) {
+          if (authored.empty()) {
+            return;
+          }
+          if (authored.starts_with("embedded:")) {
+            CORE_LOG_WARN("model '{}': embedded texture '{}' is not supported yet; slot binds a 1x1 fallback", asset_ptr->load_path.string(), authored);
+            return;
+          }
+          filepath abs = resolve_relative(asset_ptr->absolute_path, authored);
+          if (!std::filesystem::exists(abs)) {
+            CORE_LOG_WARN("model '{}': texture '{}' does not exist; slot binds a 1x1 fallback", asset_ptr->load_path.string(), abs.string());
+            return;
+          }
+          if (fs != nullptr && fs->deep_search_for_mount(abs).is_valid()) {
+            abs = absolute_of(virtualize(abs));  /// canonical form, byte-identical with resolver dispatch
+          }
+          const natural_t texture_id = handler->load_asset(abs);
+          if (texture_id == 0) {
+            CORE_LOG_WARN("model '{}': texture '{}' could not begin loading; slot binds a 1x1 fallback", asset_ptr->load_path.string(), abs.string());
+            return;
+          }
+          const natural_t hash = FNV(slot_name);
+          mat.texture_paths[hash] = authored;
+          mat.texture_hashes[hash] = handler->get_asset_hash(texture_id);
+        };
+        set_slot("base_color", imp.base_color_texture);
+        set_slot("normal", imp.normal_texture);
+        set_slot("metallic_roughness", imp.metallic_roughness_texture);
+        set_slot("emissive", imp.emissive_texture);
+      }
+      return out;
+    }
+
     task load_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 
@@ -391,68 +426,62 @@ namespace other {
         source_path = asset_ptr->absolute_path;
       }
 
-      model_builder builder;
+      if (load_model && !std::filesystem::exists(source_path)) {
+        call_pipeline_fn<model_source_pipeline>(pipeline, on_failure, std::format("Model source file does not exist: {}", source_path.string()));
+        co_return;
+      }
+
+      model_import_result result;
       ostd::vector<natural_t> dependencies = {};
 
-      ref<job> source_job = nullptr;
+      ref<job> import_job = nullptr;
       if (load_model) {
-        OTHER_ASSERT(std::filesystem::exists(source_path), "Model source file does not exist: {}", source_path.string());
         CORE_LOG_DEBUG("Loading model source from file: {}", source_path.string());
 
-        source_job = handler->get_job_system().submit(
+        import_job = handler->get_job_system().submit(
           {
-            .name = std::format("Load Model Source Asset {}", asset_ptr->id),
+            .name = std::format("Import Model Source Asset {}", asset_ptr->id),
             .priority = job::priority::LOW,
-            /// this should run on worker thread since it could take aribitrarily long
+            /// pure cpu import that can take arbitrarily long, so keep it off the main thread
             .thread_affinity = job::affinity::WORKER_THREAD,
           },
-          [&builder, source_path]() {
-            /// this is fine to leave unprotected by a mutex because the job system garuantees this won't be touched
-            ///  until first job finishes and since it is local to the coroutine loading it there won't be any concurrent access to it
-            builder = model_importer::load_model_data(source_path);
+          [&result, source_path]() {
+            /// local to this coroutine; the store job depends on this one, so no concurrent access
+            result = import(source_path);
           });
 
-        dependencies.push_back(source_job->id);
+        dependencies.push_back(import_job->id);
       } else {
         CORE_LOG_DEBUG(" - finalizing model upload for model {}", asset_ptr->virtual_path.string());
         asset_ptr->path_hash = FNV(asset_ptr->virtual_path.string());
-        builder = std::move(reinterpret_cast<model_source_pipeline*>(pipeline)->builder);
+        result.data = std::move(reinterpret_cast<model_source_pipeline*>(pipeline)->data);
       }
 
       auto store_job = handler->get_job_system().submit(
         {
           .name = std::format("Finalize Load Model Source Asset {}", asset_ptr->id),
           .priority = job::priority::LOW,
-          /// this job runs on main thread because it is gonna upload to the gpu
+          /// runs on main thread because the model_source constructor uploads to the gpu
           .thread_affinity = job::affinity::MAIN_THREAD,
         },
-        [asset_ptr, b = &builder]() {
+        [handler, asset_ptr, r = &result]() {
           OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in finalize load model source job");
-          if (b->vertices.empty() || b->indices.empty() || b->submeshes.empty() || b->nodes.empty()) {
-            throw std::runtime_error(std::format("Failed to load model source asset: {} (data invalid)", asset_ptr->load_path.string()));
+          if (!r->data.has_value() || !r->data->valid()) {
+            throw std::runtime_error(std::format("Failed to load model source asset {}: {}", asset_ptr->load_path.string(),
+                                                 r->error.empty() ? "model data invalid" : r->error));
           }
 
-          std::string name = asset_ptr->load_path.filename().stem().string();
-          if (name.empty()) {
-            OTHER_ASSERT(b->name.has_value(), "Model builder name is not set for model source asset with empty filename");
-            name = b->name.value();
-          }
+          ref<model_source> src = make_ref<model_source>(std::move(*r->data));
+          src->set_imported_materials(build_imported_materials(src->source_data(), asset_ptr, handler));
 
-          // clang-format off
-          ref<model_source> src = make_ref<model_source>(name, b->vertices,  b->indices, b->triangles, b->submeshes, b->nodes, b->materials, 
-                                                         b->animations, b->skel, b->global_transform, b->inverse_global_transform, b->bounds);
-          // clang-format on
-          if (!src) {
-            CORE_LOG_ERROR("Failed to create model source for file: {}", asset_ptr->load_path.string());
-            return;
-          }
-
-          subsystem<renderer_backend>::get()->add_model_source(asset_ptr->path_hash, src);
+          renderer_backend* renderer = subsystem<renderer_backend>::get();
+          renderer->upload_model(*src);
+          renderer->add_model_source(asset_ptr->path_hash, src);
           CORE_LOG_DEBUG("Model source loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
         },
         dependencies);
 
-      /// waiting on this will also wait on the first job
+      /// waiting on this will also wait on the import job
       do {
         co_await task::yield();
       } while (!store_job->done());
@@ -460,6 +489,8 @@ namespace other {
 
       if (store_job->get_status() == job::status::COMPLETED) {
         call_pipeline_fn<model_source_pipeline>(pipeline, on_success);
+      } else if (!result.error.empty()) {
+        call_pipeline_fn<model_source_pipeline>(pipeline, on_failure, std::format("Failed to load model source asset {}: {}", source_path.string(), result.error));
       } else {
         call_pipeline_fn<model_source_pipeline>(pipeline, on_failure, std::format("Failed to finalize model source asset: {}", source_path.string()));
       }
@@ -694,6 +725,92 @@ namespace other {
       co_return;
     }
 
+    task load_material(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      const filepath source_path = asset_ptr->absolute_path;
+      if (!std::filesystem::exists(source_path)) {
+        call_pipeline_fn<material_pipeline>(pipeline, on_failure, std::format("Material file does not exist: {}", source_path.string()));
+        co_return;
+      }
+      CORE_LOG_DEBUG("Loading material from file: {}", source_path.string());
+
+      material_parse_result parsed;
+      ref<job> parse_job = handler->get_job_system().submit(
+        {
+          .name = std::format("Parse Material Asset {}", asset_ptr->id),
+          .priority = job::priority::LOW,
+          /// pure cpu toml parse, keep it off the main thread
+          .thread_affinity = job::affinity::WORKER_THREAD,
+        },
+        [&parsed, source_path]() {
+          /// local to this coroutine; the register job depends on this one, so no concurrent access
+          parsed = parse_material_toml(source_path);
+        });
+
+      ref<job> register_job = handler->get_job_system().submit(
+        {
+          .name = std::format("Register Material Asset {}", asset_ptr->id),
+          .priority = job::priority::LOW,
+          /// registration + texture kick-offs touch main-thread-owned state
+          .thread_affinity = job::affinity::MAIN_THREAD,
+        },
+        [handler, asset_ptr, p = &parsed]() {
+          OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in register material job");
+          if (!p->success()) {
+            throw std::runtime_error(p->error);
+          }
+          for (const std::string& warning : p->warnings) {
+            CORE_LOG_WARN("{}", warning);
+          }
+
+          auto* fs = subsystem<file_system>::get();
+          OTHER_ASSERT(fs != nullptr, "File system subsystem is not available in register material job");
+
+          material mat = std::move(*p->mat);
+          /// slot paths are authored relative to the .omat; the hash a texture registers under
+          //  is decided by the asset handler at its own load time, so never predict it — load
+          //  (idempotent for already-loaded/in-flight assets) and read the hash back. resolver
+          //  roots load textures first through the same virtual-path route, making this a no-op
+          //  dedupe hit; for legacy formats and standalone materials it is the lazy kick-off.
+          for (const auto& [slot, rel] : mat.texture_paths) {
+            if (rel.empty()) {
+              continue;
+            }
+            filepath abs = resolve_relative(asset_ptr->absolute_path, rel);
+            if (!std::filesystem::exists(abs)) {
+              CORE_LOG_WARN("material '{}': texture '{}' does not exist; slot binds a 1x1 fallback", asset_ptr->load_path.string(), abs.string());
+              continue;
+            }
+            if (fs->deep_search_for_mount(abs).is_valid()) {
+              abs = absolute_of(virtualize(abs));  /// canonical form, byte-identical with resolver dispatch
+            }
+            const natural_t texture_id = handler->load_asset(abs);
+            if (texture_id == 0) {
+              CORE_LOG_WARN("material '{}': texture '{}' could not begin loading; slot binds a 1x1 fallback", asset_ptr->load_path.string(), abs.string());
+              continue;
+            }
+            mat.texture_hashes[slot] = handler->get_asset_hash(texture_id);
+          }
+
+          subsystem<renderer_backend>::get()->add_material(asset_ptr->path_hash, std::move(mat));
+          CORE_LOG_DEBUG("Material loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
+        },
+        std::array{ parse_job->id });
+
+      do {
+        co_await task::yield();
+      } while (!register_job->done());
+
+      if (register_job->get_status() == job::status::COMPLETED) {
+        call_pipeline_fn<material_pipeline>(pipeline, on_success);
+      } else if (!parsed.error.empty()) {
+        call_pipeline_fn<material_pipeline>(pipeline, on_failure, parsed.error);
+      } else {
+        call_pipeline_fn<material_pipeline>(pipeline, on_failure, std::format("Failed to load material asset: {}", source_path.string()));
+      }
+    }
+
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       OTHER_ASSERT(false, "No loader implemented for asset type {} in empty_loader", asset_ptr->asset_type);
@@ -776,6 +893,18 @@ namespace other {
     task unload_asset_declaration(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       call_pipeline_fn<asset_declaration_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task unload_material(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+      CORE_LOG_DEBUG("Unloading material (ID: {})", asset_ptr->id);
+
+      auto* renderer = subsystem<renderer_backend>::get();
+      OTHER_ASSERT(renderer != nullptr, "Renderer backend subsystem is not available in unload_material");
+
+      renderer->remove_material(asset_ptr->path_hash);
+      call_pipeline_fn<material_pipeline>(pipeline, on_success);
       co_return;
     }
 

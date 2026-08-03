@@ -42,8 +42,16 @@ namespace other {
       std::vector<std::unique_ptr<tool>> registered_tools;
     };
 
-    /// process-wide registry with the builtin tools pre-registered
+    /// process-wide registry with the builtin project-workflow tools (create, open)
+    ///  pre-registered; developer-facing hosts layer the source-tree workflow on top
+    ///  through register_dev_tools
     tool_registry& default_tool_registry();
+
+    /// registers the developer/source-tree workflow tools (run, build, test, install,
+    ///  package); idempotent so the dev cli front end and driver boot can both call it.
+    ///  The user cli that ships with the SDK never does, which is what differentiates
+    ///  the two flavors
+    void register_dev_tools(tool_registry& registry);
 
     /// splits a raw command line into whitespace-separated arguments; segments wrapped in
     ///  single or double quotes keep their whitespace (quotes are stripped, no escapes)

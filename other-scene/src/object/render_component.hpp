@@ -8,20 +8,27 @@
 #include "serialization/reflection.hpp"
 
 #include "model/model.hpp"
-#include "renderer/gpu_structs.hpp"
 
 #include "asset/asset.hpp"
 
 namespace other {
 
   struct render_component {
-    bool animated = false;
     bool visible = true;
 
     model obj_model;
     natural_t last_model_asset_id = 0;
     natural_t model_asset_id = 0;
-    gpu::graphics_material material = {};
+
+    /// material asset override; 0 = the model's own imported materials (per submesh), and a
+    ///  material the active pipeline's layout doesn't fully know still renders — unknown
+    ///  params are skipped, missing ones take the layout defaults
+    natural_t last_material_asset_id = 0;
+    natural_t material_asset_id = 0;
+
+    /// per-instance multiplier folded into the packed base_color at bind time — the
+    ///  per-object-color use case without a material asset
+    glm::vec4 tint = glm::vec4(1.f);
   };
 
   struct render_component_lua_proxy {
@@ -30,27 +37,16 @@ namespace other {
 
 }  // namespace other
 
-/// reflected here rather than in gpu_structs.hpp so the gpu header stays free of the
-///  reflection machinery; this is the only reflection surface for the material
-OTHER_REFLECT(
-  other::gpu::graphics_material,
-  field(diffuse_color, other::attr::serializable("Diffuse Color")),
-  field(diffuse_reflectivity, other::attr::serializable("Diffuse Reflectivity")),
-  field(specular_color, other::attr::serializable("Specular Color")),
-  field(specular_reflectivity, other::attr::serializable("Specular Reflectivity")),
-  field(emissive_color, other::attr::serializable("Emissive Color")),
-  field(emissivity, other::attr::serializable("Emissivity")),
-  field(transparency, other::attr::serializable("Transparency")),
-  field(shininess, other::attr::serializable("Shininess")))
-
 OTHER_REFLECT(
   other::render_component,
-  field(animated, other::attr::serializable("Animated")),
   field(visible, other::attr::serializable("Visible")),
   /// runtime-derived (produce_model regenerates it from the source), never persisted
   field(obj_model, other::attr::serializable("Model"), other::attr::native_only()),
-  field(material, other::attr::serializable("Material")),
+  field(tint, other::attr::serializable("Tint")),
+  /// holds the model SOURCE asset id; per-instance variation is the material system's job
   field(model_asset_id, other::attr::serializable("Model"),
-        other::attr::asset_identifier_field(other::asset::MODEL)))
+        other::attr::asset_identifier_field(other::asset::MODEL_SOURCE)),
+  field(material_asset_id, other::attr::serializable("Material"),
+        other::attr::asset_identifier_field(other::asset::MATERIAL)))
 
 #endif  // OTHER_SCENE_OBJECT_RENDER_COMPONENT_HPP

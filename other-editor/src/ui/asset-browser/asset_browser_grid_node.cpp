@@ -43,12 +43,12 @@ namespace other {
         switch (t) {
           case asset::TEXTURE: return abw::asset_type::TEXTURE;
           case asset::MODEL_SOURCE: return abw::asset_type::MODEL_SOURCE;
-          case asset::MODEL: return abw::asset_type::MODEL;
           case asset::ANIMATION: return abw::asset_type::ANIMATION;
           case asset::SCRIPT_SOURCE: return abw::asset_type::SCRIPT_SOURCE;
           case asset::SCRIPT: return abw::asset_type::SCRIPT;
           case asset::AUDIO: return abw::asset_type::AUDIO;
           case asset::SCENE: return abw::asset_type::SCENE;
+          case asset::MATERIAL: return abw::asset_type::MATERIAL;
           // case asset::SCENE_OBJECT: return abw::asset_type::SCENE_OBJECT;
           default: return abw::asset_type::UNKNOWN;
         }
@@ -86,13 +86,13 @@ namespace other {
       filters = {
         { "All", abw::asset_type::UNKNOWN, true },
         { "Texture", abw::asset_type::TEXTURE, true },
-        { "Model", abw::asset_type::MODEL, true },
-        { "Model Src", abw::asset_type::MODEL_SOURCE, true },
+        { "Model", abw::asset_type::MODEL_SOURCE, true },
         { "Animation", abw::asset_type::ANIMATION, true },
         { "Script Src", abw::asset_type::SCRIPT_SOURCE, true },
         { "Script", abw::asset_type::SCRIPT, true },
         { "Audio", abw::asset_type::AUDIO, true },
         { "Scene", abw::asset_type::SCENE, true },
+        { "Material", abw::asset_type::MATERIAL, true },
         // { "Object", abw::asset_type::SCENE_OBJECT, true },
       };
 

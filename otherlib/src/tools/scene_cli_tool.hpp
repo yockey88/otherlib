@@ -30,10 +30,15 @@ namespace other {
       tool_result execute(tool_context& ctx, std::span<const std::string> args) override;
     };
 
-    /// registers the engine-level tools (scene, ...) that the core cli library cannot
-    ///  host itself; idempotent so every frontend (oecli main, driver boot, tests) can
-    ///  call it unconditionally
+    /// registers the engine-level tools (scene, model, ...) that the core cli library
+    ///  cannot host itself; idempotent so every frontend (oecli main, driver boot, tests)
+    ///  can call it unconditionally
     void register_environment_tools(tool_registry& registry);
+
+    /// engine-level tools allocate through the arena and log through the logger; when no
+    ///  host booted those subsystems (bare oecli), this activates them console-warn-only.
+    ///  inside a running environment it is a no-op.
+    void ensure_cli_runtime();
 
   }  // namespace cli
 }  // namespace other

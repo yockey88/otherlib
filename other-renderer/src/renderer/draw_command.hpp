@@ -65,7 +65,19 @@ namespace other {
 
     uint32_t submesh_index = 0;
 
+    /// material identity joins the batch key because texture binds are per draw call:
+    ///  component override material path_hash, or 0 = the model's imported material
+    natural_t material_key = 0;
+
     constexpr auto operator<=>(const mesh_key&) const = default;
+  };
+
+  /// which half of the frame's draw-list partition a scene pass consumes: opaque draws feed
+  ///  the gbuffer/shadow/voxelize passes, transparent draws only the blended forward pass.
+  ///  (k-prefixed because wingdi.h claims OPAQUE and TRANSPARENT as macros)
+  enum class draw_set : uint8_t {
+    kOpaque,
+    kTransparent,
   };
 
   struct draw_call {

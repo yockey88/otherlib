@@ -8,7 +8,8 @@ out vec4 frag_color;
 
 void main() {
   vec4 albedo = texture(OE_gbuff_albedo, frag_tex_coords);        
-  vec3 normal = texture(OE_gbuff_normal, frag_tex_coords).rgb;
+  vec4 normal_metal = texture(OE_gbuff_normal, frag_tex_coords);
+  vec3 normal = normal_metal.rgb;
   vec3 position = texture(OE_gbuff_position, frag_tex_coords).rgb;
 
 #ifndef COOL_SKY_EFFECT
@@ -17,7 +18,7 @@ void main() {
     frag_color = vec4(oe_sky_radiance(dir) * world_max.w, 1.0);
   } else {
 #endif
-    frag_color = calculate_lighting(albedo.rgb, position, normal, albedo.a);
+    frag_color = calculate_lighting(albedo.rgb, position, normal, albedo.a, normal_metal.a);
 #ifndef COOL_SKY_EFFECT
   }
 #endif

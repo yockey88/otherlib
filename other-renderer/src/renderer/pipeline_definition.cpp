@@ -288,6 +288,7 @@ namespace other {
   namespace detail {
 
     void parse_resources(pipeline_definition& into_def, const toml::table& pipeline_table);
+    void parse_materials_section(pipeline_definition& into_def, const toml::table& pipeline_table);
     bool collect_frame_details(pipeline_definition& into_def, frame_section& into_section, const toml::table& pipeline_table);
     void build_pass_definitions(pipeline_definition& into_def, const frame_section& frame, const toml::table& pipeline_table);
     void get_pass_uniforms(pipeline_definition& into_def, const frame_section& frame, const toml::table& pipeline_table);
@@ -355,6 +356,7 @@ namespace other {
     }
 
     detail::parse_resources(definition, pipeline_table);
+    detail::parse_materials_section(definition, pipeline_table);
 
     frame_section frame;
     bool valid = detail::collect_frame_details(definition, frame, pipeline_table);
@@ -587,6 +589,105 @@ namespace other {
       }
     }
 
+    static material_value::kind material_value_kind_from_string(const std::string_view str) {
+      switch (FNV(str)) {
+        case FNV("float"): return material_value::kind::F32;
+        case FNV("vec2"): return material_value::kind::VEC2;
+        case FNV("vec3"): return material_value::kind::VEC3;
+        case FNV("vec4"): return material_value::kind::VEC4;
+        case FNV("int"): return material_value::kind::I32;
+        case FNV("bool"): return material_value::kind::B32;
+        default:
+          OTHER_ASSERT(false, "Unsupported material layout param type '{}'", str);
+          return material_value::kind::F32;
+      }
+    }
+
+    static material_value material_default_from_node(toml::node_view<const toml::node> node, material_value::kind kind, const std::string_view param_name) {
+      if (!node) {
+        material_value zero{};
+        zero.value_kind = kind;
+        return zero;
+      }
+
+      switch (kind) {
+        case material_value::kind::F32:
+          OTHER_ASSERT(node.is_number(), "material layout param '{}': default must be a number", param_name);
+          return material_value::from(static_cast<float>(node.is_floating_point() ? node.as_floating_point()->get() : static_cast<double>(node.as_integer()->get())));
+        case material_value::kind::I32:
+          OTHER_ASSERT(node.is_integer(), "material layout param '{}': default must be an integer", param_name);
+          return material_value::from(static_cast<int32_t>(node.as_integer()->get()));
+        case material_value::kind::B32:
+          OTHER_ASSERT(node.is_boolean(), "material layout param '{}': default must be a boolean", param_name);
+          return material_value::from(node.as_boolean()->get());
+        default: {
+          const size_t expected = kind == material_value::kind::VEC2 ? 2 : kind == material_value::kind::VEC3 ? 3 :
+                                                                                                                4;
+          const toml::array* arr = node.as_array();
+          OTHER_ASSERT(arr != nullptr && arr->size() == expected, "material layout param '{}': default must be an array of {} numbers", param_name, expected);
+          glm::vec4 v(0.f);
+          for (size_t i = 0; i < expected; ++i) {
+            const toml::node& e = (*arr)[i];
+            OTHER_ASSERT(e.is_number(), "material layout param '{}': default element {} must be a number", param_name, i);
+            v[static_cast<glm::length_t>(i)] = e.is_floating_point() ? static_cast<float>(e.as_floating_point()->get()) : static_cast<float>(e.as_integer()->get());
+          }
+          material_value value{};
+          value.value_kind = kind;
+          value.data = v;
+          return value;
+        }
+      }
+    }
+
+    /// [materials.layout] — the material block this pipeline's shaders read; the engine
+    ///  computes std430 offsets and the element size from the declaration, so the
+    ///  hand-maintained element_size for the material binding dies here
+    void parse_materials_section(pipeline_definition& into_def, const toml::table& pipeline_table) {
+      auto params = pipeline_table.at_path("materials.layout.params");
+      if (!params) {
+        return;  /// no layout declared — this pipeline draws without materials
+      }
+      OTHER_ASSERT(params.is_array_of_tables(), "materials.layout.params must be an array of tables");
+
+      material_layout layout;
+      for (const auto& p : *params.as_array()) {
+        auto p_name = p.at_path("name");
+        auto p_type = p.at_path("type");
+        OTHER_ASSERT(p_name && p_name.is_string() && p_type && p_type.is_string(), "material layout params need string 'name' and 'type' fields");
+
+        material_layout::param& param = layout.params.emplace_back();
+        param.name = p_name.as_string()->get();
+        param.kind = material_value_kind_from_string(p_type.as_string()->get());
+        param.default_value = material_default_from_node(p.at_path("default"), param.kind, param.name);
+      }
+
+      if (auto slots = pipeline_table.at_path("materials.layout.texture-slots"); slots) {
+        OTHER_ASSERT(slots.is_array_of_tables(), "materials.layout.texture-slots must be an array of tables");
+        for (const auto& s : *slots.as_array()) {
+          auto s_name = s.at_path("name");
+          auto s_uniform = s.at_path("uniform");
+          auto s_unit = s.at_path("unit");
+          OTHER_ASSERT(s_name && s_name.is_string() && s_uniform && s_uniform.is_string() && s_unit && s_unit.is_integer(),
+                       "material layout texture slots need string 'name'/'uniform' and integer 'unit' fields");
+
+          material_layout::texture_slot& slot = layout.texture_slots.emplace_back();
+          slot.name = s_name.as_string()->get();
+          slot.uniform = s_uniform.as_string()->get();
+          slot.unit = static_cast<uint32_t>(s_unit.as_integer()->get());
+        }
+      }
+
+      if (auto capacity = pipeline_table.at_path("materials.layout.instance-capacity"); capacity) {
+        OTHER_ASSERT(capacity.is_integer(), "materials.layout.instance-capacity must be an integer");
+        layout.instance_capacity = static_cast<uint32_t>(capacity.as_integer()->get());
+      }
+
+      layout.finalize();
+      CORE_LOG_DEBUG("Material layout: {} params, {} texture slots, element_size={}, capacity={}",
+                     layout.params.size(), layout.texture_slots.size(), layout.element_size, layout.instance_capacity);
+      into_def.materials = std::move(layout);
+    }
+
     bool collect_frame_details(pipeline_definition& into_def, frame_section& into_section, const toml::table& pipeline_table) {
       auto frame_bindings = pipeline_table.at_path("frame.bindings");
       auto frame_inputs = pipeline_table.at_path("frame.inputs");
@@ -612,15 +713,20 @@ namespace other {
         auto type = binding.at_path("type");
         auto binding_value = binding.at_path("binding");
         auto element_size = binding.at_path("element_size");
-        if (!name || !tag || !scope || !type || !element_size) {
-          CORE_LOG_ERROR("name: {}, tag: {}, scope: {}, type: {}, element_size: {}",
-                         (bool)name, (bool)tag, (bool)scope, (bool)type, (bool)element_size);
-          OTHER_ASSERT(false, "Frame binding is invalid: all fields (name, tag, scope, type, element_size) must be present");
+        if (!name || !tag || !scope || !type) {
+          CORE_LOG_ERROR("name: {}, tag: {}, scope: {}, type: {}",
+                         (bool)name, (bool)tag, (bool)scope, (bool)type);
+          OTHER_ASSERT(false, "Frame binding is invalid: all fields (name, tag, scope, type) must be present");
         }
-        if (!name.is_string() || !tag.is_string() || !scope.is_string() || !type.is_string() || !element_size.is_number()) {
-          CORE_LOG_ERROR("name type: {}, tag type: {}, scope type: {}, type type: {}, element_size type: {}",
-                         name.type(), tag.type(), scope.type(), type.type(), element_size.type());
-          OTHER_ASSERT(false, "Frame binding is invalid: all fields (name, tag, scope, type, element_size) must be of correct types");
+        if (!name.is_string() || !tag.is_string() || !scope.is_string() || !type.is_string()) {
+          CORE_LOG_ERROR("name type: {}, tag type: {}, scope type: {}, type type: {}",
+                         name.type(), tag.type(), scope.type(), type.type());
+          OTHER_ASSERT(false, "Frame binding is invalid: all fields (name, tag, scope, type) must be of correct types");
+        }
+        /// optional: material-tagged bindings derive their size from [materials.layout]; any
+        ///  other per-draw binding without one fails loudly at ring build
+        if (element_size && !element_size.is_number()) {
+          OTHER_ASSERT(false, "Frame binding is invalid: element_size must be a number if present, got {}", element_size.type());
         }
 
         auto& b = into_section.bindings.emplace_back() = frame_binding_table{
@@ -628,7 +734,7 @@ namespace other {
           .tag = tag.as_string()->get(),
           .scope = scope.as_string()->get(),
           .type = type.as_string()->get(),
-          .element_size = element_size.as_integer()->get(),
+          .element_size = element_size ? element_size.as_integer()->get() : 0,
         };
         if (binding_value && binding_value.is_number()) {
           b.binding = binding_value.as_integer()->get();
@@ -1070,13 +1176,26 @@ namespace other {
             OTHER_ASSERT(false, "Binding '{}' references non-existent pass '{}'", binding_name, pass_name_str);
           }
 
+          const resource_tag binding_tag = resource_tag_from_string(itr->tag);
+          const binding_scope binding_scope_value = pass_binding_scope_from_string(itr->scope);
+          uint32_t binding_element_size = static_cast<uint32_t>(itr->element_size);
+          if (binding_tag.value() == resource_tag::kMaterialTag && binding_scope_value == binding_scope::PER_DRAW_CALL && into_def.materials.has_value()) {
+            /// the material block size is layout-derived; an explicit element_size is
+            ///  validated against it so the TOML can never drift from the shader ABI again
+            const uint32_t derived = into_def.materials->element_size * into_def.materials->instance_capacity;
+            OTHER_ASSERT(binding_element_size == 0 || binding_element_size == derived,
+                         "binding '{}': element_size {} does not match the [materials.layout]-derived size {} — delete the key, it is computed now",
+                         binding_name, binding_element_size, derived);
+            binding_element_size = derived;
+          }
+
           pass_itr->bindings.emplace_back() = frame_binding_definition{
             .name = binding_name,
-            .tag = resource_tag_from_string(itr->tag),
-            .scope = pass_binding_scope_from_string(itr->scope),
+            .tag = binding_tag,
+            .scope = binding_scope_value,
             .type = pass_binding_type_from_string(itr->type),
             .binding = static_cast<uint32_t>(binding_index),
-            .element_size = static_cast<uint32_t>(itr->element_size),
+            .element_size = binding_element_size,
           };
         }
       } else if (frame_pass_bindings) {

@@ -3,15 +3,19 @@
  **/
 #include "asset/asset_resolver.hpp"
 
+#include <cstring>
 #include <unordered_set>
+
+#include <nlohmann/json.hpp>
 
 #include <tinyxml2/tinyxml2.h>
 
 #include "file/filesystem.hpp"
+#include "serialization/scene_serializer.hpp"
+
+#include "gpu_resource/material.hpp"
 
 #include "dotnet/csproj_helpers.hpp"
-
-#include "serialization/scene_serializer.hpp"
 
 namespace other {
   namespace detail {
@@ -181,7 +185,9 @@ namespace other {
     }
 
     ostd::vector<dependency_declaration> parse_csproj_manifest(const filepath& manifest_path);
+    ostd::vector<dependency_declaration> parse_model_manifest(const filepath& manifest_path);
     ostd::vector<dependency_declaration> parse_scene_manifest(const filepath& manifest_path);
+    ostd::vector<dependency_declaration> parse_material_manifest(const filepath& manifest_path);
     ostd::vector<dependency_declaration> empty_parser(const filepath& manifest_path);
 
     opt<manifest_domain> build_csproj_manifest_domain(const filepath& manifest_path);
@@ -191,26 +197,25 @@ namespace other {
   }  // namespace detail
 
   std::array<manifest_parser_fn, kNumAssetTypes> asset_resolver_tables::parsers = {
-    &detail::empty_parser,           // texture
-    &detail::empty_parser,           // model-source
-    &detail::empty_parser,           // model
-    &detail::empty_parser,           // animation
-    &detail::parse_csproj_manifest,  // script-project
-    &detail::empty_parser,           // script-source
-    &detail::empty_parser,           // script-file
-    &detail::empty_parser,           // script
-    &detail::empty_parser,           // audio
-    &detail::parse_scene_manifest,   // scene
-    &detail::empty_parser,           // input-map
-    &detail::empty_parser,           // rendering-pipeline
-    &detail::empty_parser,           // asset-declaration
-    &detail::empty_parser            // empty
+    &detail::empty_parser,             // texture
+    &detail::parse_model_manifest,     // model-source
+    &detail::empty_parser,             // animation
+    &detail::parse_csproj_manifest,    // script-project
+    &detail::empty_parser,             // script-source
+    &detail::empty_parser,             // script-file
+    &detail::empty_parser,             // script
+    &detail::empty_parser,             // audio
+    &detail::parse_scene_manifest,     // scene
+    &detail::empty_parser,             // input-map
+    &detail::empty_parser,             // rendering-pipeline
+    &detail::empty_parser,             // asset-declaration
+    &detail::parse_material_manifest,  // material
+    &detail::empty_parser              // empty
   };
 
   std::array<manifest_builder_fn, kNumAssetTypes> asset_resolver_tables::builders = {
     nullptr,                                // texture
     nullptr,                                // model-source
-    nullptr,                                // model
     nullptr,                                // animation
     &detail::build_csproj_manifest_domain,  // script-project
     nullptr,                                // script-source
@@ -221,13 +226,13 @@ namespace other {
     nullptr,                                // input-map
     nullptr,                                // rendering-pipeline
     nullptr,                                // asset-declaration
+    nullptr,                                // material
     nullptr                                 // empty
   };
 
   std::array<dependency_declaration_fn, kNumAssetTypes> asset_resolver_tables::declarations = {
     nullptr,                                // texture
     nullptr,                                // model-source
-    nullptr,                                // model
     nullptr,                                // animation
     &detail::get_csproj_produced_assembly,  // script-project
     nullptr,                                // script-source
@@ -238,6 +243,7 @@ namespace other {
     nullptr,                                // input-map
     nullptr,                                // rendering-pipeline
     nullptr,                                // asset-declaration
+    nullptr,                                // material
     nullptr                                 // empty
   };
 
@@ -546,6 +552,96 @@ namespace other {
       return out;
     }
 
+    ostd::vector<dependency_declaration> parse_model_manifest(const filepath& model_path) {
+      /// gltf is json, so its texture dependencies are cheaply scannable without assimp; the
+      //  legacy formats (.fbx/.obj/.dae/.3ds) resolve their textures at load time through the
+      //  material system - documented asymmetry, gltf is the first-class citizen
+      const std::string extension = model_path.extension().string();
+      if (extension != ".gltf" && extension != ".glb") {
+        return {};
+      }
+
+      /// malformed model files are data errors, not contracts: declare no edges and let the
+      //  model node's own load surface the failure
+      std::ifstream file(model_path, std::ios::binary);
+      if (!file.is_open()) {
+        CORE_LOG_WARN("model manifest '{}' could not be opened; no edges declared", model_path.string());
+        return {};
+      }
+      const std::string bytes{ std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>() };
+
+      std::string_view json_text = bytes;
+      if (extension == ".glb") {
+        /// glb container: [magic u32 'glTF'][version u32][length u32], then chunk 0 header
+        //  [chunkLength u32][chunkType u32 'JSON'] followed by the json bytes; only the json
+        //  chunk is read - binary chunks never carry dependencies
+        constexpr size_t kGlbHeaderSize = 20;
+        constexpr uint32_t kGlbMagic = 0x46546C67;       // 'glTF'
+        constexpr uint32_t kJsonChunkType = 0x4E4F534A;  // 'JSON'
+
+        uint32_t magic = 0;
+        uint32_t chunk_length = 0;
+        uint32_t chunk_type = 0;
+        if (bytes.size() >= kGlbHeaderSize) {
+          std::memcpy(&magic, bytes.data(), sizeof(uint32_t));
+          std::memcpy(&chunk_length, bytes.data() + 12, sizeof(uint32_t));
+          std::memcpy(&chunk_type, bytes.data() + 16, sizeof(uint32_t));
+        }
+        if (bytes.size() < kGlbHeaderSize || magic != kGlbMagic || chunk_type != kJsonChunkType || bytes.size() - kGlbHeaderSize < chunk_length) {
+          CORE_LOG_WARN("glb '{}' has an invalid or truncated header; no edges declared", model_path.string());
+          return {};
+        }
+        json_text = std::string_view{ bytes }.substr(kGlbHeaderSize, chunk_length);
+      }
+
+      const nlohmann::json doc = nlohmann::json::parse(json_text, nullptr, false);
+      if (doc.is_discarded() || !doc.is_object()) {
+        CORE_LOG_WARN("model manifest '{}' failed to parse; no edges declared", model_path.string());
+        return {};
+      }
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available in parse_model_manifest");
+
+      ostd::vector<dependency_declaration> out;
+
+      /// buffer sidecars (.bin) are deliberately NOT declared: the plan executor loads children
+      //  through load_asset, which rejects unknown extensions - baked .omdl (doc 01 section 7)
+      //  is what makes binary payloads first-class, not fake asset nodes
+      if (!doc.contains("images") || !doc["images"].is_array()) {
+        return out;
+      }
+      for (const nlohmann::json& image : doc["images"]) {
+        if (!image.is_object() || !image.contains("uri") || !image["uri"].is_string()) {
+          continue;  // embedded textures reference a bufferView instead of a uri
+        }
+        const std::string uri = image["uri"].get<std::string>();
+        if (uri.empty() || uri.starts_with("data:")) {
+          continue;  // embedded payloads are not filesystem edges
+        }
+
+        const filepath abs = resolve_relative(std::filesystem::absolute(model_path), uri);
+        if (!std::filesystem::exists(abs)) {
+          CORE_LOG_WARN("model '{}' references missing image '{}'; edge skipped", model_path.string(), abs.string());
+          continue;
+        }
+        if (!fs->deep_search_for_mount(abs).is_valid()) {
+          CORE_LOG_WARN("model '{}' references '{}' outside every mount; edge skipped", model_path.string(), abs.string());
+          continue;
+        }
+
+        asset::type type = asset::get_type_from_extension(abs.extension().string());
+        if (type == asset::EMPTY) {
+          type = asset::TEXTURE;
+        }
+        std::string virtual_path = virtualize(abs);
+        if (!std::ranges::contains(out, virtual_path, &dependency_declaration::virtual_path)) {
+          out.push_back({ std::move(virtual_path), type, false });
+        }
+      }
+      return out;
+    }
+
     ostd::vector<dependency_declaration> parse_scene_manifest(const filepath& scene_path) {
       /// malformed scene files are data errors, not contracts: declare no edges and let
       //  the scene node's own load surface the parse failure
@@ -568,8 +664,7 @@ namespace other {
           CORE_LOG_WARN("scene '{}' references '{}' outside every mount; edge skipped", scene_path.string(), abs.string());
           return;
         }
-        /// extension wins, matching how the resolver types its roots: a render component's
-        //  ref is attributed MODEL but points at a model SOURCE file (.fbx)
+        /// extension wins, matching how the resolver types its roots
         asset::type type = asset::get_type_from_extension(abs.extension().string());
         if (type == asset::EMPTY) {
           type = fallback_type;
@@ -587,6 +682,46 @@ namespace other {
       //  the same convention codec_services::resolve_asset applies at instantiation
       for (const serialization::component_asset_ref& ref : serialization::collect_scene_asset_refs(*parsed.document)) {
         declare(std::filesystem::absolute(filepath{ ref.path }).lexically_normal(), ref.type);
+      }
+      return out;
+    }
+
+    ostd::vector<dependency_declaration> parse_material_manifest(const filepath& material_path) {
+      /// malformed material files are data errors, not contracts: declare no edges and let
+      //  the material node's own load surface the parse failure
+      const material_parse_result parsed = parse_material_toml(material_path);
+      if (!parsed.success()) {
+        CORE_LOG_WARN("material manifest '{}' failed to parse: {}", material_path.string(), parsed.error);
+        return {};
+      }
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available in parse_material_manifest");
+
+      ostd::vector<dependency_declaration> out;
+      for (const auto& [slot, rel] : parsed.mat->texture_paths) {
+        if (rel.empty()) {
+          continue;
+        }
+        const filepath abs = resolve_relative(std::filesystem::absolute(material_path), rel);
+        if (!std::filesystem::exists(abs)) {
+          CORE_LOG_WARN("material '{}' references missing texture '{}'; edge skipped", material_path.string(), abs.string());
+          continue;
+        }
+        if (!fs->deep_search_for_mount(abs).is_valid()) {
+          CORE_LOG_WARN("material '{}' references '{}' outside every mount; edge skipped", material_path.string(), abs.string());
+          continue;
+        }
+
+        /// extension wins, matching how the resolver types its roots
+        asset::type type = asset::get_type_from_extension(abs.extension().string());
+        if (type == asset::EMPTY) {
+          type = asset::TEXTURE;
+        }
+        std::string virtual_path = virtualize(abs);
+        if (!std::ranges::contains(out, virtual_path, &dependency_declaration::virtual_path)) {
+          out.push_back({ std::move(virtual_path), type, false });
+        }
       }
       return out;
     }

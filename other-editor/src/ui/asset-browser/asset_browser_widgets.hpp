@@ -48,7 +48,6 @@ namespace other {
         FOLDER = 0,
         TEXTURE,
         MODEL_SOURCE,
-        MODEL,
         ANIMATION,
         SCRIPT_SOURCE,
         SCRIPT,
@@ -56,6 +55,7 @@ namespace other {
         SCENE,
         INPUT_MAP,
         PIPELINE,
+        MATERIAL,
         UNKNOWN,
       };
 

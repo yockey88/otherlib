@@ -20,12 +20,14 @@ namespace Other
     }
 
     protected ulong object_id;
+    public UInt64 ObjectId => object_id;
+
+    private readonly ulong bound_object_id;   // raw-id fallback (wrapper built from a bare id)
+    private Core.OtherObject owner = null;    // set by SceneObject.GetComponent
     protected readonly ulong component_id;
 
     private static readonly Dictionary<Type, ulong> component_ids = new();
     private static readonly Dictionary<FieldKey, FieldInfo> field_maps = new();
-
-    public UInt64 ObjectId => object_id;
 
     protected Component(ulong object_id) 
     {
@@ -33,6 +35,11 @@ namespace Other
       component_id = TypeId(GetType());    
     }
     
+    internal void BindOwner(Core.OtherObject new_owner)
+    {
+      owner = new_owner;
+    }
+
     static public UInt64 TypeId<T>() 
       where T : Component
     {

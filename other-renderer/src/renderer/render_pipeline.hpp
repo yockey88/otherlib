@@ -61,9 +61,17 @@ namespace other {
     void prepare_frame(render_data* data);
     void bind_frame_resources(const render_data& data);
     void bind_draw_resources(pass_runtime& runtime, const render_data& data, size_t draw_index);
+    void apply_ring_block_bindings(const frame_node* node, const pass_runtime& runtime);
     void render_frame(renderer* renderer_ptr);
     void reset_draw_buffers();
     glm::ivec2 get_window_size() const;
+
+    /// material draw seam: a pass with a material-tagged PER_DRAW binding gets its ring
+    ///  slices packed against this pipeline's declared layout (bind_draw_resources) and its
+    ///  layout texture slots bound per draw; sampler uniforms are set once per pass execution
+    bool pass_uses_material_binding(const pass_runtime& runtime) const;
+    void apply_material_sampler_uniforms(const frame_node* node);
+    void bind_material_textures(const render_data& data, size_t draw_index);
 
     void register_texture_resource(const std::string_view name, resource_handle handle);
     void register_buffer_resource(const std::string_view name, resource_handle handle);
@@ -122,6 +130,15 @@ namespace other {
 
     ostd::map<natural_t, pass_runtime> pass_runtimes;
 
+    /// packed param blobs per material key, invalidated by material revision bumps (reload)
+    ///  and cleared on pipeline rebuild/reload (the layout itself may have changed)
+    struct material_pack_entry {
+      uint32_t revision = 0;
+      ostd::vector<uint8_t> blob;
+    };
+    ostd::map<natural_t, material_pack_entry> material_pack_cache;
+    ostd::vector<uint8_t> default_material_pack;
+
     using executor_fn = render_graph::pass_executor;
     ostd::map<std::string, executor_fn> executor_overrides;
 
@@ -154,6 +171,9 @@ namespace other {
 
     opt<resource_handle> get_shader_handle(const std::string_view shader_name) const;
     pass_runtime& build_pass_runtime(pass_runtime& runtime, render_pass* pass, const pipeline_pass_definition& pass_def);
+
+    void fill_material_slice(std::span<uint8_t> slice, const render_data& data, size_t draw_index);
+    const ostd::vector<uint8_t>& packed_blob_for(const material* mat);
   };
 
 }  // namespace other

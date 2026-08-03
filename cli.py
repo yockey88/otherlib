@@ -9,9 +9,16 @@ is this script.
   python cli.py build --tests -c Debug
   python cli.py test -c Debug
   python cli.py bootstrap [-c CFG] [--tests] [--regen]   (only build oecli itself)
+  python cli.py bootstrap --user                         (build the user cli instead)
 
 When no oecli build exists yet, the script configures cmake, builds the oecli target,
 stages the runtime DLLs oecli itself needs, and then forwards the command.
+
+The build tree carries two cli flavors: `oecli` (the developer cli with the source-tree
+workflow tools; what this script builds and forwards to) and `oecli_user` (the
+project-workflow-only oecli.exe that ships with the SDK, built into other-cli/user/).
+`bootstrap --user` builds the user flavor for trying the shipped experience locally;
+forwarding always targets the developer cli.
 """
 import os
 import subprocess
@@ -27,8 +34,10 @@ def run(args, cwd=None):
   return subprocess.call(args, cwd=cwd)
 
 
-def oecli_path(cfg):
-  return os.path.join(BUILD_DIR, "other-cli", cfg, "oecli.exe")
+def oecli_path(cfg, user=False):
+  ## the user cli builds into other-cli/user/<cfg>/ so the two flavors never collide
+  parts = [BUILD_DIR, "other-cli"] + (["user"] if user else []) + [cfg, "oecli.exe"]
+  return os.path.join(*parts)
 
 
 def find_oecli(preferred=None):
@@ -40,7 +49,7 @@ def find_oecli(preferred=None):
   return None
 
 
-def stage_oecli_dlls(cfg):
+def stage_oecli_dlls(cfg, user=False):
   ## mirror of the staging inside `oecli build`, trimmed to the DLLs oecli itself
   ##  loads; the full staging pass for every application runs inside the build tool
   import shutil
@@ -58,7 +67,7 @@ def stage_oecli_dlls(cfg):
     physx.append("PVDRuntime_64")
   dlls.extend(os.path.join(extern, "physx", "bin", family, f"{name}.dll") for name in physx)
 
-  destination = os.path.join(BUILD_DIR, "other-cli", cfg)
+  destination = os.path.dirname(oecli_path(cfg, user))
   for dll in dlls:
     if os.path.exists(dll):
       shutil.copy(dll, destination)
@@ -66,7 +75,7 @@ def stage_oecli_dlls(cfg):
       print(f"[cli.py] warning: {dll} does not exist")
 
 
-def bootstrap(cfg, with_tests=False, regen=False):
+def bootstrap(cfg, with_tests=False, regen=False, user=False):
   have_project_files = any(os.path.exists(os.path.join(BUILD_DIR, name)) for name in ("other.sln", "other.slnx"))
   if regen or with_tests or not have_project_files:
     configure = ["cmake", "-S", REPO_ROOT, "-B", BUILD_DIR]
@@ -76,12 +85,13 @@ def bootstrap(cfg, with_tests=False, regen=False):
       print("[cli.py] cmake project generation failed")
       sys.exit(1)
 
-  if run(["cmake", "--build", BUILD_DIR, "--config", cfg, "--parallel", "--target", "oecli"]) != 0:
-    print("[cli.py] failed to build oecli")
+  target = "oecli_user" if user else "oecli"
+  if run(["cmake", "--build", BUILD_DIR, "--config", cfg, "--parallel", "--target", target]) != 0:
+    print(f"[cli.py] failed to build {target}")
     sys.exit(1)
 
-  stage_oecli_dlls(cfg)
-  return oecli_path(cfg)
+  stage_oecli_dlls(cfg, user)
+  return oecli_path(cfg, user)
 
 
 def infer_config(args):
@@ -97,8 +107,9 @@ def main(argv):
     if cfg not in CONFIGS:
       print(f"[cli.py] invalid config '{cfg}' (expected one of {', '.join(CONFIGS)})")
       return 1
-    path = bootstrap(cfg, with_tests="--tests" in argv, regen="--regen" in argv)
-    print(f"[cli.py] oecli ready at {path}")
+    user = "--user" in argv
+    path = bootstrap(cfg, with_tests="--tests" in argv, regen="--regen" in argv, user=user)
+    print(f"[cli.py] {'user' if user else 'developer'} oecli ready at {path}")
     return 0
 
   cfg = infer_config(argv)

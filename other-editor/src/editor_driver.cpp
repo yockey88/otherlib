@@ -6,6 +6,7 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 
+#include "serialization/scene_serializer.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "model/vertex.hpp"
@@ -17,7 +18,6 @@
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "scene/scene.hpp"
-#include "serialization/scene_serializer.hpp"
 
 #include "driver/systems/scene_system.hpp"
 #include "ui/menu-bar/menu_item.hpp"
@@ -27,6 +27,7 @@
 #include "ui/render-pipeline-ui/render_pipeline_viewer.hpp"
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 #include "ui/viewport/viewport.hpp"
+
 
 namespace other {
 
@@ -360,11 +361,11 @@ namespace other {
       }
 
       /// obj_model.source stays null until the model asset finishes its async load —
-      ///  outline the aabb only until then
-      if (render == nullptr || render->obj_model.source == nullptr) {
+      ///  draw the model outline only once it is ready
+      if (render != nullptr && render->obj_model.source != nullptr) {
         const glm::mat4 world = scene->get_world_transform(obj_id);
         model& m = render->obj_model;
-        const auto& submeshes = m.source->get_submeshes();
+        const auto& submeshes = m.source->source_data().submeshes;
 
         for (uint32_t sm_idx : m.submesh_indices) {
           const submesh& sm = submeshes[sm_idx];

@@ -15,23 +15,21 @@ namespace Other
     internal static unsafe delegate*<UInt64, int> NativeGetNumIndices;
     [NativeFunction("GetMeshName")]
     internal static unsafe delegate*<UInt64, NativeString> NativeGetMeshName;
-    [NativeFunction("GetMaterialName")]
-    internal static unsafe delegate*<UInt64, NativeString> NativeGetMaterialName;
-    [NativeFunction("GetActiveMaterialId")]
-    internal static unsafe delegate*<UInt64, UInt64> NativeGetActiveMaterialId;
     [NativeFunction("FetchMesh")]
     internal static unsafe delegate*<UInt64, float*, int*, void> NativeFetchMesh;
     [NativeFunction("UploadMesh")]
     internal static unsafe delegate*<UInt64, NativeString, float*, int*, int*, int*, void> NativeUploadMesh;
+    [NativeFunction("GetMaterialPath")]
+    internal static unsafe delegate*<UInt64, NativeString> NativeGetMaterialPath;
+    [NativeFunction("SetMaterialPath")]
+    internal static unsafe delegate*<UInt64, NativeString, void> NativeSetMaterialPath;
 
     private Mesh? model = null;
-    private Material? material = null;
 
     public RenderComponent(ulong object_id)
       : base(object_id)
     {
       model = null;
-      material = null;
     }
 
     public Mesh? Model {
@@ -51,7 +49,7 @@ namespace Other
             {
               model = new Mesh("default_mesh");
             }
-            
+
             float* vertices = stackalloc float[NativeGetNumVertices(ObjectId) * Vertex.Stride];
             int* indices = stackalloc int[NativeGetNumIndices(ObjectId)];
 
@@ -81,18 +79,6 @@ namespace Other
         model = value;
         if (model == null)
         {
-          unsafe
-          {
-            NativeString mat_name = NativeGetMaterialName(ObjectId);
-            if (mat_name.ToString() != null)
-            {
-              model = new Mesh(mat_name.ToString()!);
-            }
-            else
-            {
-              model = new Mesh("default_material");
-            }
-          }
           return;
         }
 
@@ -100,12 +86,12 @@ namespace Other
         List<float> vertex_data = new List<float>();
         model.Vertices.ForEach(vertex => raw_vertices.Add(vertex.ToRawVertex()));
         raw_vertices.ForEach(raw_vertex => raw_vertex.AddToList(vertex_data));
-        
+
         List<RawIndex> raw_indices = new List<RawIndex>();
         List<int> index_data = new List<int>();
         model.Indices.ForEach(index => raw_indices.Add(index.ToRawIndex()));
         raw_indices.ForEach(raw_index => raw_index.AddToList(index_data));
-        
+
         Span<float> vertices = CollectionsMarshal.AsSpan(vertex_data);
         Span<int> indices = CollectionsMarshal.AsSpan(index_data);
         unsafe
@@ -121,36 +107,29 @@ namespace Other
       }
     }
 
-    public Material? Material {
+    /// materials are assets: the property is the .omat path ("" = the model's own imported
+    /// materials). parameter poking is a material-asset edit, not a component edit.
+    public string Material {
       get
       {
-        if (material == null)
+        unsafe
         {
-          Material.FetchMaterial(ObjectId, out material);
+          return NativeGetMaterialPath(ObjectId).ToString() ?? "";
         }
-        return material;
       }
       set
       {
-        material = value;
-        if (material == null)
+        unsafe
         {
-          unsafe
-          {
-            // ClearMaterial(ObjectId);
-          }
-        } 
-        else
-        {
-          Material.UploadMaterial(ObjectId, material);
+          NativeSetMaterialPath(ObjectId, new NativeString(value ?? ""));
         }
       }
     }
 
-    [NativeField("animated")]
-    public bool Animated { get => GetBool(); set => SetBool(value); }
     [NativeField("visible")]
     public bool Visible { get => GetBool(); set => SetBool(value); }
+    [NativeField("tint")]
+    public Vec4 Tint { get => GetVec4(); set => SetVec4(value); }
     [NativeField("model_asset_id")]
     public UInt64 ModelAssetId { get => GetU64(); set => SetU64(value); }
   }

@@ -7,27 +7,12 @@
 #include "object/light_component.hpp"
 #include "object/render_component.hpp"
 
+#include "driver/driver.hpp"
+#include "scripting/dotnet_bindings/driver_bindings.hpp"
+
 namespace other {
 
   void bind_rendering_types(sol::state& lua_state) {
-    // my_render.material.diffuse_color = glm::vec3(0.4f, 0.6f, 0.8f);
-    // my_render.material.diffuse_reflectivity = 0.5f;
-    // my_render.material.specular_color = glm::vec3(0.8f, 0.8f, 0.8f);
-    // my_render.material.specular_reflectivity = 0.5f;
-    // my_render.material.emissivity = 0.1f;
-    // my_render.material.shininess = 16.f;
-    // my_render.material.transparency = 0.f;
-    lua_state.new_usertype<gpu::graphics_material>(
-      "__native_gpu_graphics_material",
-      sol::constructors<gpu::graphics_material()>(),
-      "diffuse_color", &gpu::graphics_material::diffuse_color,
-      "diffuse_reflectivity", &gpu::graphics_material::diffuse_reflectivity,
-      "specular_color", &gpu::graphics_material::specular_color,
-      "specular_reflectivity", &gpu::graphics_material::specular_reflectivity,
-      "emissivity", &gpu::graphics_material::emissivity,
-      "shininess", &gpu::graphics_material::shininess,
-      "transparency", &gpu::graphics_material::transparency);
-
     lua_state.new_usertype<point_light>(
       "__native_point_light",
       sol::constructors<point_light()>(),
@@ -43,10 +28,36 @@ namespace other {
     lua_state.new_usertype<render_component_lua_proxy>(
       "__native_render_component",
       sol::constructors<render_component_lua_proxy()>(),
+      /// materials are assets: scripts assign a .omat path ("" clears back to the model's
+      ///  imported materials); parameter poking is a material-asset edit, not a component edit
       "SetMaterial",
-      [](render_component_lua_proxy& self, const gpu::graphics_material& mat) {
+      [](render_component_lua_proxy& self, const std::string& path) {
+        if (self.native_pointer == nullptr) {
+          return;
+        }
+        if (path.empty()) {
+          self.native_pointer->material_asset_id = 0;
+          self.native_pointer->last_material_asset_id = 0;
+          return;
+        }
+
+        driver* d = detail::get_dotnet_native_driver_unchecked();
+        if (d == nullptr) {
+          CORE_LOG_ERROR("SetMaterial('{}'): no driver bound for script interfaces yet", path);
+          return;
+        }
+        const natural_t material_id = d->begin_asset_load(filepath{ path });
+        if (material_id == 0) {
+          CORE_LOG_ERROR("SetMaterial('{}'): material could not begin loading", path);
+          return;
+        }
+        self.native_pointer->material_asset_id = material_id;
+        self.native_pointer->last_material_asset_id = material_id;
+      },
+      "SetTint",
+      [](render_component_lua_proxy& self, const glm::vec4& tint) {
         if (self.native_pointer) {
-          self.native_pointer->material = mat;
+          self.native_pointer->tint = tint;
         }
       });
 

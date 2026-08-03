@@ -347,4 +347,151 @@ namespace other {
     EXPECT_NE(snap.find(stable_of(model_path("station.fbx"))), nullptr);
   }
 
+  class model_manifest_tests : public asset_resolver_tests {
+   protected:
+    void SetUp() override {
+      asset_resolver_tests::SetUp();
+      std::filesystem::create_directories(proj_root / "models");
+      std::filesystem::create_directories(proj_root / "textures");
+      write_file(proj_root / "textures" / "hull.png", "not a real png");
+      write_file(gltf_path(), gltf_with_image_uri("../textures/hull.png"));
+    }
+
+    filepath gltf_path() const { return proj_root / "models" / "ship.gltf"; }
+
+    /// carries a buffers[].uri entry on purpose: buffer sidecars must never become nodes
+    static std::string gltf_with_image_uri(const std::string_view uri) {
+      return std::format(
+        R"({{ "asset": {{ "version": "2.0" }}, "images": [ {{ "uri": "{}" }} ], "buffers": [ {{ "byteLength": 4, "uri": "geometry.bin" }} ] }})",
+        uri);
+    }
+  };
+
+  TEST_F(model_manifest_tests, gltf_declares_image_edge_and_skips_buffers) {
+    asset_resolver resolver;
+    const std::array roots{ gltf_path() };
+    dependency_snapshot snap = resolver.resolve(roots);
+
+    /// gltf + hull.png; geometry.bin stays out of the graph
+    ASSERT_EQ(snap.nodes.size(), 2u);
+    const dependency_snapshot::node* model_node = snap.find(stable_of(gltf_path()));
+    const dependency_snapshot::node* texture_node = snap.find(stable_of(proj_root / "textures" / "hull.png"));
+    ASSERT_NE(model_node, nullptr);
+    ASSERT_NE(texture_node, nullptr);
+    EXPECT_EQ(model_node->type, asset::MODEL_SOURCE);
+    EXPECT_EQ(texture_node->type, asset::TEXTURE);
+
+    /// leaves first: [hull.png] -> [ship.gltf]
+    ASSERT_EQ(snap.topo_layers.size(), 2u);
+    EXPECT_EQ(snap.nodes[snap.topo_layers[1][0]].stable_id, stable_of(gltf_path()));
+  }
+
+  TEST_F(model_manifest_tests, gltf_data_uri_images_declare_nothing) {
+    write_file(gltf_path(), gltf_with_image_uri("data:image/png;base64,iVBORw0KGgo="));
+
+    asset_resolver resolver;
+    const std::array roots{ gltf_path() };
+    dependency_snapshot snap = resolver.resolve(roots);
+
+    EXPECT_EQ(snap.nodes.size(), 1u);
+  }
+
+  TEST_F(model_manifest_tests, malformed_gltf_declares_nothing) {
+    write_file(gltf_path(), "this is { not json");
+
+    asset_resolver resolver;
+    const std::array roots{ gltf_path() };
+    dependency_snapshot snap = resolver.resolve(roots);
+
+    /// a broken model file is a data error: warn + no edges, never an assert
+    EXPECT_EQ(snap.nodes.size(), 1u);
+    EXPECT_NE(snap.find(stable_of(gltf_path())), nullptr);
+  }
+
+  class material_manifest_tests : public asset_resolver_tests {
+   protected:
+    void SetUp() override {
+      asset_resolver_tests::SetUp();
+      std::filesystem::create_directories(proj_root / "materials");
+      std::filesystem::create_directories(proj_root / "textures");
+      std::filesystem::create_directories(proj_root / "scenes");
+      write_file(proj_root / "textures" / "hull.png", "not a real png");
+      write_file(omat_path(), omat_toml("../textures/hull.png"));
+    }
+
+    filepath omat_path() const { return proj_root / "materials" / "hull.omat"; }
+
+    static std::string omat_toml(const std::string_view texture_uri) {
+      return std::format(
+        "asset-type = \"material\"\n"
+        "name = \"hull\"\n"
+        "\n"
+        "[params]\n"
+        "base_color = [0.8, 0.85, 0.9, 1.0]\n"
+        "roughness = 0.35\n"
+        "\n"
+        "[textures]\n"
+        "base_color = \"{}\"\n",
+        texture_uri);
+    }
+  };
+
+  TEST_F(material_manifest_tests, material_declares_texture_edge) {
+    asset_resolver resolver;
+    const std::array roots{ omat_path() };
+    dependency_snapshot snap = resolver.resolve(roots);
+
+    ASSERT_EQ(snap.nodes.size(), 2u);
+    const dependency_snapshot::node* material_node = snap.find(stable_of(omat_path()));
+    const dependency_snapshot::node* texture_node = snap.find(stable_of(proj_root / "textures" / "hull.png"));
+    ASSERT_NE(material_node, nullptr);
+    ASSERT_NE(texture_node, nullptr);
+    EXPECT_EQ(material_node->type, asset::MATERIAL);
+    EXPECT_EQ(texture_node->type, asset::TEXTURE);
+
+    /// leaves first: [hull.png] -> [hull.omat]
+    ASSERT_EQ(snap.topo_layers.size(), 2u);
+    EXPECT_EQ(snap.nodes[snap.topo_layers[1][0]].stable_id, stable_of(omat_path()));
+  }
+
+  TEST_F(material_manifest_tests, missing_texture_ref_skips_edge) {
+    write_file(omat_path(), omat_toml("../textures/does-not-exist.png"));
+
+    asset_resolver resolver;
+    const std::array roots{ omat_path() };
+    dependency_snapshot snap = resolver.resolve(roots);
+
+    /// dangling texture refs are data errors: warn + skip, the material still resolves
+    EXPECT_EQ(snap.nodes.size(), 1u);
+    EXPECT_NE(snap.find(stable_of(omat_path())), nullptr);
+  }
+
+  TEST_F(material_manifest_tests, scene_material_texture_chain_resolves_in_layers) {
+    const filepath scene = proj_root / "scenes" / "chain.oscn";
+    write_file(scene, std::format(
+                        "[scene]\n"
+                        "schema-version = 1\n"
+                        "name = \"chain\"\n"
+                        "\n"
+                        "[[objects]]\n"
+                        "id = 1\n"
+                        "name = \"Hull\"\n"
+                        "\n"
+                        "[objects.components.render]\n"
+                        "material_asset_id = \"{}\"\n",
+                        omat_path().generic_string()));
+
+    asset_resolver resolver;
+    const std::array roots{ scene };
+    dependency_snapshot snap = resolver.resolve(roots);
+
+    /// scene -> material -> texture with zero new machinery: the codec's asset-ref walk
+    /// declares the material, and the material's own parser declares its texture
+    ASSERT_EQ(snap.nodes.size(), 3u);
+    ASSERT_EQ(snap.topo_layers.size(), 3u);
+    EXPECT_EQ(snap.nodes[snap.topo_layers[0][0]].stable_id, stable_of(proj_root / "textures" / "hull.png"));
+    EXPECT_EQ(snap.nodes[snap.topo_layers[1][0]].stable_id, stable_of(omat_path()));
+    EXPECT_EQ(snap.nodes[snap.topo_layers[2][0]].stable_id, stable_of(scene));
+  }
+
 }  // namespace other

@@ -9,19 +9,19 @@ target_sources(other_renderer
       src/gpu_resource/gpu_buffer.cpp
       src/gpu_resource/mesh.cpp
       src/gpu_resource/framebuffer.cpp
+      src/gpu_resource/material.cpp
       
       src/model/vertex.cpp
-      src/model/vertex_buffer.cpp
       src/model/animation.cpp
       src/model/skeleton.cpp
       src/model/model_importer.cpp
-      src/model/model.cpp
       src/model/model_source.cpp
       
       ## remove these later
       src/renderer/util/pipeline_asset_validation.cpp
       
       src/renderer/resource_tag.cpp
+      src/renderer/material_layout.cpp
       src/renderer/frame_binding_registry.cpp
       src/renderer/render_executor_registry.cpp
       src/renderer/pass_executor_resolver.cpp

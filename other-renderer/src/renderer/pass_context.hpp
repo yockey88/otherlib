@@ -43,7 +43,7 @@ namespace other {
     const render_data& get_frame_data() const;
 
     void draw_quad();
-    void draw_stream();
+    void draw_stream(draw_set set = draw_set::kOpaque);
     void execute_draw_call(const draw_call& call, const mesh_key& key);
     void dispatch(const glm::uvec3& groups, shader::compute_barrier_type barrier);
     void draw_debug_vertices(std::string_view stream_name, mesh::primitive_type topology);

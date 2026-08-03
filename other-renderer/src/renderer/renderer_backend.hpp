@@ -9,6 +9,7 @@
 #include "core/scope.hpp"
 #include "core/subsystem.hpp"
 
+#include "gpu_resource/material.hpp"
 #include "model/model.hpp"
 #include "model/model_source.hpp"
 #include "renderer/rendering_api.hpp"
@@ -47,11 +48,30 @@ namespace other {
     ref<model_source> get_model_source(natural_t handle) const;
     void remove_model_source(natural_t handle);
 
+    /// gpu half of a model source; upload interleaves via vertex::to_gpu_buffer into one MESH
+    ///  resource. main thread only. remove_model_source and shutdown call destroy_model.
+    void upload_model(model_source& source);
+    void destroy_model(model_source& source);
+
     /// texture assets keyed by asset path hash, mirroring model sources; removal
     /// destroys the gpu resource
     void add_texture(natural_t handle, resource_handle texture_handle);
     resource_handle get_texture(natural_t handle) const;
     void remove_texture(natural_t handle);
+
+    /// material assets keyed by asset path hash; pure cpu data (no gpu resource). the
+    ///  stored revision is monotonic per handle across remove/add cycles so pipeline pack
+    ///  caches invalidate on refresh (the refresh sequence runs the unload half first, which
+    ///  is why add still asserts on duplicates as programmer error)
+    void add_material(natural_t handle, material mat);
+    const material* get_material(natural_t handle) const;
+    void remove_material(natural_t handle);
+
+    enum class fallback_texture : uint8_t { WHITE, FLAT_NORMAL };
+    /// 1x1 stand-ins bound for material texture slots with no loaded texture — an untextured
+    ///  material samples white and multiplies by its params, so there are zero shader
+    ///  variants. created lazily on first use, destroyed in unload_backend.
+    resource_handle get_fallback_texture(fallback_texture kind);
 
    protected:
     friend class renderer;
@@ -61,6 +81,11 @@ namespace other {
 
     ostd::map<natural_t, ref<model_source>> model_sources;
     ostd::map<natural_t, resource_handle> texture_assets;
+    ostd::map<natural_t, material> material_assets;
+    ostd::map<natural_t, uint32_t> material_revisions;  //< high-water marks, survive remove_material
+
+    resource_handle fallback_white = {};
+    resource_handle fallback_flat_normal = {};
 
     struct {
       bool backend_loaded = false;

@@ -270,6 +270,14 @@ namespace other {
       .bind("DrawLine", bindings::native_draw_line)
       .bind("DrawTriangle", bindings::native_draw_triangle)
       .bind("DrawPoint", bindings::native_draw_point)
+      .bind("DrawRay", bindings::native_draw_ray)
+      .bind("DrawArrow", bindings::native_draw_arrow)
+      // .bind("DrawAABB", bindings::native_draw_aabb)
+      // .bind("DrawOBB", bindings::native_draw_obb)
+      .bind("DrawSphere", bindings::native_draw_sphere)
+      // .bind("DrawFrustum", bindings::native_draw_frustum)
+      // .bind("DrawTransform", bindings::native_draw_transform)
+      // .bind("DrawMesh", bindings::native_draw_mesh)
       .bind("DrawGrid", bindings::native_draw_grid);
 
     bindings::binding_context{ dn_host }
@@ -310,12 +318,10 @@ namespace other {
       .bind("GetNumVertices", bindings::native_render_component_get_num_vertices)
       .bind("GetNumIndices", bindings::native_render_component_get_num_indices)
       .bind("GetMeshName", bindings::native_render_component_get_mesh_name)
-      .bind("GetMaterialName", bindings::native_render_component_get_material_name)
-      .bind("GetActiveMaterialId", bindings::native_render_component_get_active_material_id)
       .bind("FetchMesh", bindings::native_render_component_fetch_mesh)
       .bind("UploadMesh", bindings::native_render_component_upload_mesh)
-      .bind("FetchMaterial", bindings::native_material_fetch_material)
-      .bind("UploadMaterial", bindings::native_material_upload_material);
+      .bind("GetMaterialPath", bindings::native_render_component_get_material_path)
+      .bind("SetMaterialPath", bindings::native_render_component_set_material_path);
 
     bindings::validate_binding_points(dn_host);
   }

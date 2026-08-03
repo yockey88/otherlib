@@ -47,6 +47,82 @@ namespace other {
       draw.point({ px, py, pz }, { r, g, b, a });
     }
 
+    void native_draw_ray(float ox, float oy, float oz, float dx, float dy, float dz, float len, float r, float g, float b, float a, nbool32 in_scene) {
+      debug_draw draw = detail::get_draw_sink(in_scene);
+      draw.ray({ ox, oy, oz }, { dx, dy, dz }, len, { r, g, b, a });
+    }
+
+    void native_draw_arrow(float ax, float ay, float az, float bx, float by, float bz, float r, float g, float b, float a, nbool32 in_scene) {
+      debug_draw draw = detail::get_draw_sink(in_scene);
+      draw.arrow({ ax, ay, az }, { bx, by, bz }, { r, g, b, a });
+    }
+
+    void native_draw_aabb(float min_x, float min_y, float min_z, float max_x, float max_y, float max_z, float r, float g, float b, float a, nbool32 in_scene) {
+      debug_draw draw = detail::get_draw_sink(in_scene);
+      draw.aabb({ min_x, min_y, min_z }, { max_x, max_y, max_z }, { r, g, b, a });
+    }
+
+    void native_draw_obb(float m00, float m01, float m02, float m03,
+                         float m10, float m11, float m12, float m13,
+                         float m20, float m21, float m22, float m23,
+                         float m30, float m31, float m32, float m33,
+                         float r, float g, float b, float a,
+                         nbool32 in_scene) {
+      debug_draw draw = detail::get_draw_sink(in_scene);
+      glm::mat4 xform{ { m00, m01, m02, m03 },
+                       { m10, m11, m12, m13 },
+                       { m20, m21, m22, m23 },
+                       { m30, m31, m32, m33 } };
+      draw.obb(xform, { r, g, b, a });
+    }
+
+    void native_draw_sphere(float cx, float cy, float cz, float radius, float r, float g, float b, float a, nbool32 in_scene) {
+      debug_draw draw = detail::get_draw_sink(in_scene);
+      draw.sphere({ cx, cy, cz }, radius, { r, g, b, a });
+    }
+
+    void native_draw_frustum(float m00, float m01, float m02, float m03,
+                             float m10, float m11, float m12, float m13,
+                             float m20, float m21, float m22, float m23,
+                             float m30, float m31, float m32, float m33,
+                             float r, float g, float b, float a,
+                             nbool32 in_scene) {
+      debug_draw draw = detail::get_draw_sink(in_scene);
+      glm::mat4 inv_view_proj{ { m00, m01, m02, m03 },
+                               { m10, m11, m12, m13 },
+                               { m20, m21, m22, m23 },
+                               { m30, m31, m32, m33 } };
+      draw.frustum(inv_view_proj, { r, g, b, a });
+    }
+
+    void native_draw_transform(float m00, float m01, float m02, float m03,
+                               float m10, float m11, float m12, float m13,
+                               float m20, float m21, float m22, float m23,
+                               float m30, float m31, float m32, float m33,
+                               float scale, nbool32 in_scene) {
+      debug_draw draw = detail::get_draw_sink(in_scene);
+      glm::mat4 xform{ { m00, m01, m02, m03 },
+                       { m10, m11, m12, m13 },
+                       { m20, m21, m22, m23 },
+                       { m30, m31, m32, m33 } };
+      draw.transform(xform, scale);
+    }
+
+    void native_draw_mesh(uint64_t mesh_handle, float m00, float m01, float m02, float m03,
+                          float m10, float m11, float m12, float m13,
+                          float m20, float m21, float m22, float m23,
+                          float m30, float m31, float m32, float m33,
+                          float r, float g, float b, float a,
+                          nbool32 wireframe, nbool32 in_scene) {
+      CORE_LOG_ERROR("Draw.Mesh is not yet implemented in the native renderer.");
+      // debug_draw draw = detail::get_draw_sink(in_scene);
+      // glm::mat4 model{ {m00, m01, m02, m03},
+      //                  {m10, m11, m12, m13},
+      //                  {m20, m21, m22, m23},
+      //                  {m30, m31, m32, m33} };
+      // draw.mesh(resource_handle{ mesh_handle }, model, { r, g, b, a }, wireframe);
+    }
+
     void native_draw_grid(uint64_t object_id, nbool32 in_scene) {
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene->has_object(object_id), "Draw.Grid: object {} does not exist in the active scene.", object_id);

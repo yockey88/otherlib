@@ -11,10 +11,8 @@
 #include "gpu_resource/mesh.hpp"
 #include "gpu_resource/renderer_resource.hpp"
 #include "model/animation.hpp"
-#include "model/material.hpp"
 #include "model/skeleton.hpp"
 #include "model/vertex.hpp"
-#include "model/vertex_buffer.hpp"
 
 namespace other {
 
@@ -31,9 +29,6 @@ namespace other {
 
     ostd::vector<glm::mat4> bone_matrices;
     ostd::unordered_map<uint32_t, glm::mat4> local_submesh_transforms;
-
-    mesh_node* get_node_by_name(const std::string& name);
-    submesh* get_submesh_by_name(const std::string& name);
   };
 
 }  // namespace other

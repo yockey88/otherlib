@@ -36,7 +36,6 @@
 #include "glm/fwd.hpp"
 #include "sol/table.hpp"
 
-
 namespace other {
 
   void scene::scene_first_construction_initialization() {
@@ -838,7 +837,7 @@ namespace other {
     {
       const render_component* rc = storage->registry.try_get<render_component>(entity);
       if (rc != nullptr && rc->obj_model.source != nullptr) {
-        box = rc->obj_model.source->get_bounding_box();
+        box = rc->obj_model.source->source_data().bounds;
       }
 
       const physics_component* pc = storage->registry.try_get<physics_component>(entity);
@@ -955,6 +954,15 @@ namespace other {
 
     const direction_light* scene_ambient_light = nullptr;
     storage->registry.view<object_handle, direction_light_component>().each([&](const object_handle& handle, const direction_light_component& light) {
+      /// every directional light shades through the light buffer; vector.xyz keeps the
+      ///  component's TO-the-light convention (the same one sim env's sun_direction uses)
+      gpu::light l{
+        .vector = glm::vec4(light.light.direction, 0.f),
+        .color = light.light.color,
+        .light_type = gpu::light::kDirection,
+      };
+      data.lights.push_back(l);
+
       const bool sun_tag = object_has_tag(handle.id, "sun");
       if (scene_ambient_light == nullptr && sun_tag) {
         scene_ambient_light = &light.light;
@@ -963,6 +971,7 @@ namespace other {
       }
     });
 
+    bool instance_overflow_warned = false;
     storage->registry.view<object_handle, render_component>().each([&](const object_handle& handle, render_component& render) {
       if (!render.visible) {
         return;
@@ -972,21 +981,24 @@ namespace other {
         return;
       }
 
-      /**
-       * \todo currently @ref render_component::model_asset_id stores the model source id since models are not individually stored in the asset handler
-       *          but we need to make it hold individual model asset IDs and do the same type of logic below except without the model source intermediary
-       **/
-
       bool changed = render.last_model_asset_id != render.model_asset_id;
       if (changed) {
         if (!asset_handler->asset_exists(render.model_asset_id)) {
           CORE_LOG_ERROR("Render component model asset ID {} does not exist for object ID {}.", render.model_asset_id, handle.id);
           // avoids repeated failed lookups and objects don't disappear from scene
           render.model_asset_id = render.last_model_asset_id;
-        } else {
-          CORE_LOG_INFO("Render component model asset ID changed for object ID {}. New asset ID: {}", handle.id, render.model_asset_id);
         }
       }
+
+      /// the same validation dance for the material override; a bad assignment reverts
+      ///  instead of killing the draw
+      if (render.last_material_asset_id != render.material_asset_id && render.material_asset_id != 0) {
+        if (!asset_handler->asset_exists(render.material_asset_id)) {
+          CORE_LOG_ERROR("Render component material asset ID {} does not exist for object ID {}.", render.material_asset_id, handle.id);
+          render.material_asset_id = render.last_material_asset_id;
+        }
+      }
+      render.last_material_asset_id = render.material_asset_id;
 
       /// either they are the same or we already validated the change
       const bool is_loaded = asset_handler->asset_loaded(render.model_asset_id);
@@ -997,19 +1009,32 @@ namespace other {
       natural_t hash = asset_handler->get_asset_hash(render.model_asset_id);
       OTHER_ASSERT(hash != 0, "Asset hash is 0 for asset ID {}.", render.model_asset_id);
 
-      /// handle the case this is first load of the model asset ID/a change for this render component
-      ///  and we need to produce the model
-      if (render.obj_model.source == nullptr) {
-        /// we check the asset exists and is loaded so this can not ever be null
-        ref<model_source> model_src = subsystem<renderer_backend>::get()->get_model_source(hash);
-        OTHER_ASSERT(model_src != nullptr, "Model source is null for asset ID {}", render.model_asset_id);
-
+      renderer_backend* backend = subsystem<renderer_backend>::get();
+      ref<model_source> model_src = backend->get_model_source(hash);
+      if (model_src == nullptr) {
+        /// unloaded from the renderer (or mid-reload): drop the draw and forget the stale instance
+        render.obj_model = {};
+        return;
+      }
+      if (render.obj_model.source != model_src.raw_ptr()) {
+        /// first sight of this asset, or a hot reload swapped the source under the same hash
         render.obj_model = model_src->produce_model();
       }
 
+      /// effective material resolution: component override wins when its asset is registered,
+      ///  else the model's imported material per submesh, else nullptr = layout defaults at
+      ///  bind time. the key keeps batching stable through the override's async load window.
+      const material* override_material = nullptr;
+      natural_t material_key = 0;
+      if (render.material_asset_id != 0 && asset_handler->asset_exists(render.material_asset_id)) {
+        material_key = asset_handler->get_asset_hash(render.material_asset_id);
+        override_material = backend->get_material(material_key);
+      }
+
       model* draw_model = &render.obj_model;
-      const auto submeshes = draw_model->source->get_submeshes();
+      const std::span<const submesh> submeshes = draw_model->source->source_data().submeshes;
       OTHER_ASSERT(!submeshes.empty(), "Model source has no submeshes");
+      const ostd::vector<material>& imported_materials = model_src->imported_materials();
 
       const auto sm_idxs = draw_model->submesh_indices;
       OTHER_ASSERT(!sm_idxs.empty(), "Model has no submeshes");
@@ -1024,7 +1049,14 @@ namespace other {
           .render_state = render_polygon_mode::POLYGON_MODE_FILL,
           .draw_mode = mesh::primitive_type::TRIANGLES,
           .submesh_index = sm_idx,
+          .material_key = material_key,
         };
+
+        const submesh& sm = submeshes[sm_idx];
+        const material* draw_material = override_material;
+        if (draw_material == nullptr && sm.material_index < imported_materials.size()) {
+          draw_material = &imported_materials[sm.material_index];
+        }
 
         auto it = data.mesh_indices.find(key);
         if (it == data.mesh_indices.end()) {
@@ -1033,7 +1065,8 @@ namespace other {
 
           data.mesh_keys.emplace_back() = key;
           data.draw_calls.emplace_back() = draw_call{};
-          data.material_buffers.emplace_back() = gpu::graphics_material_buffer{};
+          data.draw_materials.emplace_back() = draw_material;
+          data.draw_tints.emplace_back() = draw_instance_tints{};
           data.model_buffers.emplace_back() = gpu::model_matrix_buffer{};
           data.bone_buffers.emplace_back() = gpu::bone_matrix_buffer{};
 
@@ -1044,13 +1077,10 @@ namespace other {
         size_t mesh_index = it->second;
 
         draw_call& call = data.draw_calls[mesh_index];
-        const submesh& sm = draw_model->source->get_submeshes()[sm_idx];
         if (call.instance_count == 0) {
-          call.instance_count = 0;
           call.submesh_index = sm_idx;
 
           call.mesh_handle = draw_model->source->get_mesh_handle();
-          call.submesh_index = sm_idx;
 
           call.vertex_offset = sm.base_vertex;
           call.vertex_count = sm.vert_cnt;
@@ -1060,10 +1090,20 @@ namespace other {
           call.line_thickness = 1.f;
         }
 
+        /// per-instance slots (tints + model matrices) are fixed arrays: a dropped instance
+        ///  beats a buffer overrun; a real >kMaxMaterials-instance path is instancing work
+        if (call.instance_count >= gpu::kMaxMaterials) {
+          if (!instance_overflow_warned) {
+            CORE_LOG_WARN("Draw for submesh {} exceeded {} instances; extra instances are dropped this frame.", sm_idx, gpu::kMaxMaterials);
+            instance_overflow_warned = true;
+          }
+          continue;
+        }
+
         glm::mat4 world_transform = get_world_transform(handle.id);  // * transform_it->second;
 
-        size_t index = data.draw_calls[mesh_index].instance_count++;
-        data.material_buffers[mesh_index].materials[index] = render.material;
+        size_t index = call.instance_count++;
+        data.draw_tints[mesh_index].tints[index] = render.tint;
         data.model_buffers[mesh_index].model_matrices[index] = world_transform;
       }
 

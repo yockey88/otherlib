@@ -3,6 +3,7 @@
  **/
 #include "renderer/renderer.hpp"
 
+#include <algorithm>
 #include <queue>
 
 #include <SDL3/SDL_mouse.h>
@@ -10,6 +11,7 @@
 #include "core/defines.hpp"
 #include "thread/thread_safety.hpp"
 
+#include "gpu_resource/material.hpp"
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/frame_node.hpp"
@@ -59,6 +61,7 @@ namespace other {
     PROFILE_SECTION("renderer::begin_frame");
     if (data != nullptr) {
       scene_data = data;
+      partition_draw_calls(*data);
       rendering()->api()->set_clear_color(data->clear_color);
     }
     rendering()->api()->begin_frame();
@@ -516,7 +519,46 @@ namespace other {
     pipeline_ids = get_pipeline_order();
   }
 
-  void renderer::execute_draw_calls(frame_node* current_node) {
+  namespace {
+
+    /// a draw is transparent when its effective material authors a vec4 base_color with
+    ///  alpha < 1, or any live instance tint carries alpha < 1 — both fold into the packed
+    ///  base_color at bind time and come out as fragment alpha in the forward pass
+    bool draw_call_is_transparent(const render_data& data, natural_t index) {
+      const material* mat = index < data.draw_materials.size() ? data.draw_materials[index] : nullptr;
+      if (mat != nullptr) {
+        const auto it = mat->params.find(FNV("base_color"));
+        if (it != mat->params.end() && it->second.value_kind == material_value::kind::VEC4 && it->second.data.a < 1.f) {
+          return true;
+        }
+      }
+
+      if (index < data.draw_tints.size()) {
+        const draw_call& call = data.draw_calls[index];
+        const uint32_t instances = std::min<uint32_t>(call.instance_count, gpu::kMaxMaterials);
+        for (uint32_t i = 0; i < instances; ++i) {
+          if (data.draw_tints[index].tints[i].a < 1.f) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+  }  // namespace
+
+  void renderer::partition_draw_calls(render_data& data) {
+    data.opaque_draws.clear();
+    data.transparent_draws.clear();
+    for (natural_t i = 0; i < data.num_draw_calls; ++i) {
+      if (data.draw_calls[i].instance_count == 0) {
+        continue;
+      }
+      (draw_call_is_transparent(data, i) ? data.transparent_draws : data.opaque_draws).push_back(i);
+    }
+  }
+
+  void renderer::execute_draw_calls(frame_node* current_node, draw_set set) {
     OTHER_ASSERT(current_node != nullptr, "Current node must not be null.");
     ASSERT_MAIN_THREAD();
     if (scene_data == nullptr || scene_data->draw_calls.empty()) {
@@ -527,17 +569,43 @@ namespace other {
     auto& api = rendering()->api();
     OTHER_ASSERT(api != nullptr, "Rendering API is null in execute_draw_calls.");
 
+    /// draw lists were partitioned in begin_frame; opaque passes (geometry, shadow, voxelize)
+    ///  consume one half, the blended forward pass the other
+    if (set == draw_set::kTransparent && scene_data->primary_camera != nullptr) {
+      /// painter's order against the viewport camera (viewport rendering swaps primary_camera
+      ///  before each pipeline run): farthest first. the key is the first live instance's
+      ///  translation — ordering instances inside one batch is instancing-rework territory
+      const glm::vec3 cam_pos = scene_data->primary_camera->position;
+      std::sort(scene_data->transparent_draws.begin(), scene_data->transparent_draws.end(), [&](natural_t a, natural_t b) {
+        const glm::vec3 pa = glm::vec3(scene_data->model_buffers[a].model_matrices[0][3]);
+        const glm::vec3 pb = glm::vec3(scene_data->model_buffers[b].model_matrices[0][3]);
+        const glm::vec3 da = pa - cam_pos;
+        const glm::vec3 db = pb - cam_pos;
+        return glm::dot(da, da) > glm::dot(db, db);
+      });
+    }
+    const auto& draws = set == draw_set::kTransparent ? scene_data->transparent_draws : scene_data->opaque_draws;
+    if (draws.empty()) {
+      return;
+    }
+
     render_pipeline* pl = get_pass_pipeline(current_node->pass->id);
     OTHER_ASSERT(pl != nullptr, "execute_draw_calls: no pipeline owns pass id {}", current_node->pass->id);
 
     pass_runtime& runtime = pl->get_pass_runtime(current_node->pass->id);
-    for (natural_t i = 0; i < scene_data->num_draw_calls; ++i) {
+    const bool material_pass = pl->pass_uses_material_binding(runtime);
+    if (material_pass) {
+      pl->apply_material_sampler_uniforms(current_node);
+    }
+
+    for (const natural_t i : draws) {
       const draw_call& call = scene_data->draw_calls[i];
-      if (call.instance_count == 0) {
-        continue;
-      }
+      OTHER_ASSERT(call.instance_count > 0, "partitioned draw {} has no live instances", i);
 
       pl->bind_draw_resources(runtime, *scene_data, i);
+      if (material_pass) {
+        pl->bind_material_textures(*scene_data, i);
+      }
 
       const auto& key = scene_data->mesh_keys[i];
       api->execute_draw_call(key.render_state, key.draw_mode, call);

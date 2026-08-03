@@ -43,7 +43,6 @@ namespace other {
       TEXTURE = 0,
 
       MODEL_SOURCE,
-      MODEL,
       ANIMATION,
 
       SCRIPT_PROJECT,
@@ -59,6 +58,8 @@ namespace other {
       RENDERING_PIPELINE,
 
       ASSET_DECLARATION,
+
+      MATERIAL,
 
       EMPTY,
       NUM_ASSET_TYPES,
@@ -115,7 +116,6 @@ namespace other {
     asset_name{ "texture", "Texture" },
 
     asset_name{ "model-source", "Model Source" },
-    asset_name{ "model", "Model" },
     asset_name{ "animation", "Animation" },
 
     asset_name{ "script-project", "Script Project" },
@@ -132,17 +132,23 @@ namespace other {
 
     asset_name{ "asset-declaration", "Asset Declaration" },
 
+    asset_name{ "material", "Material" },
+
     asset_name{ "empty", "Empty" },
   };
 
-  constexpr inline size_t kNumAssetExtensions = 20;
+  constexpr inline size_t kNumAssetExtensions = 25;
   constexpr inline std::array<std::string_view, kNumAssetExtensions> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
 
-    ".omesh",  // MODEL_SOURCE
-    ".fbx",    // MODEL_SOURCE
-    ".obj",    // MODEL_SOURCE
+    ".fbx",   // MODEL_SOURCE
+    ".obj",   // MODEL_SOURCE
+    ".gltf",  // MODEL_SOURCE
+    ".glb",   // MODEL_SOURCE
+    ".dae",   // MODEL_SOURCE
+    ".3ds",   // MODEL_SOURCE
+    ".omdl",  // MODEL_SOURCE (baked model, doc 01 section 7)
 
     /// usually actually just loaded from fbx with model source
     ".anim",  // ANIMATION
@@ -168,6 +174,8 @@ namespace other {
 
     ".orpl",  // RENDERING_PIPELINE
 
+    ".omat",  // MATERIAL (toml parameter set)
+
     ".toml"
   };
 
@@ -176,9 +184,13 @@ namespace other {
       { asset::TEXTURE, ".jpg" },
       { asset::TEXTURE, ".png" },
 
-      { asset::MODEL_SOURCE, ".omesh" },
       { asset::MODEL_SOURCE, ".fbx" },
       { asset::MODEL_SOURCE, ".obj" },
+      { asset::MODEL_SOURCE, ".gltf" },
+      { asset::MODEL_SOURCE, ".glb" },
+      { asset::MODEL_SOURCE, ".dae" },
+      { asset::MODEL_SOURCE, ".3ds" },
+      { asset::MODEL_SOURCE, ".omdl" },
 
       { asset::ANIMATION, ".anim" },
 
@@ -200,9 +212,14 @@ namespace other {
 
       { asset::RENDERING_PIPELINE, ".orpl" },
 
+      { asset::MATERIAL, ".omat" },
+
       { asset::ASSET_DECLARATION, ".toml" },
     }
   };
+
+  /// the two parallel extension arrays are positional twins; a row added to one must land in both
+  static_assert(std::size(kFileExtensions) == std::size(kAssetExtensions));
 
   constexpr std::string_view get_asset_type_tag_name(asset::type type) {
     OTHER_ASSERT(type >= 0 && type < asset::type::NUM_ASSET_TYPES, "Invalid asset type: {}", type);

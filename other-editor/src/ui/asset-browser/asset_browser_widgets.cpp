@@ -18,12 +18,12 @@ namespace other {
           case asset_type::FOLDER: return kFolder;
           case asset_type::TEXTURE: return kTexture;
           case asset_type::MODEL_SOURCE: return kModelSource;
-          case asset_type::MODEL: return kModel;
           case asset_type::ANIMATION: return kAnimation;
           case asset_type::SCRIPT_SOURCE: return kScriptSource;
           case asset_type::SCRIPT: return kScript;
           case asset_type::AUDIO: return kAudio;
           case asset_type::SCENE: return kScene;
+          case asset_type::MATERIAL: return kMaterial;
           default: return kUnknown;
         }
       }
@@ -32,13 +32,13 @@ namespace other {
         switch (type) {
           case asset_type::FOLDER: return "DIR";
           case asset_type::TEXTURE: return "TEX";
-          case asset_type::MODEL_SOURCE: return "FBX";
-          case asset_type::MODEL: return "MDL";
+          case asset_type::MODEL_SOURCE: return "MDL";
           case asset_type::ANIMATION: return "ANIM";
           case asset_type::SCRIPT_SOURCE: return "LUA";
           case asset_type::SCRIPT: return "SCR";
           case asset_type::AUDIO: return "WAV";
           case asset_type::SCENE: return "SCN";
+          case asset_type::MATERIAL: return "MAT";
           default: return "???";
         }
       }
@@ -47,13 +47,13 @@ namespace other {
         switch (type) {
           case asset_type::FOLDER: return "D";
           case asset_type::TEXTURE: return "T";
-          case asset_type::MODEL_SOURCE: return "Ms";
-          case asset_type::MODEL: return "M";
+          case asset_type::MODEL_SOURCE: return "M";
           case asset_type::ANIMATION: return "An";
           case asset_type::SCRIPT_SOURCE: return "Ls";
           case asset_type::SCRIPT: return "S";
           case asset_type::AUDIO: return "Au";
           case asset_type::SCENE: return "Sc";
+          case asset_type::MATERIAL: return "Mt";
           // case asset_type::SCENE_OBJECT: return "So";
           default: return "?";
         }
@@ -67,12 +67,12 @@ namespace other {
         switch (type) {
           case asset_type::TEXTURE: return asset::TEXTURE;
           case asset_type::MODEL_SOURCE: return asset::MODEL_SOURCE;
-          case asset_type::MODEL: return asset::MODEL;
           case asset_type::ANIMATION: return asset::ANIMATION;
           case asset_type::SCRIPT_SOURCE: return asset::SCRIPT_SOURCE;
           case asset_type::SCRIPT: return asset::SCRIPT;
           case asset_type::AUDIO: return asset::AUDIO;
           case asset_type::SCENE: return asset::SCENE;
+          case asset_type::MATERIAL: return asset::MATERIAL;
           default: return asset::EMPTY;
         }
       }

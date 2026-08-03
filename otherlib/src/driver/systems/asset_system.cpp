@@ -63,7 +63,6 @@ namespace other {
     };
     register_asset_events(asset::TEXTURE);
     register_asset_events(asset::MODEL_SOURCE);
-    register_asset_events(asset::MODEL);
     register_asset_events(asset::ANIMATION);
     register_asset_events(asset::SCRIPT_PROJECT);
     register_asset_events(asset::SCRIPT_SOURCE);
@@ -73,6 +72,7 @@ namespace other {
     register_asset_events(asset::SCENE);
     register_asset_events(asset::INPUT_MAP);
     register_asset_events(asset::RENDERING_PIPELINE);
+    register_asset_events(asset::MATERIAL);
   }
 
   void asset_system::tick(driver_kernel* kernel, double dt) {

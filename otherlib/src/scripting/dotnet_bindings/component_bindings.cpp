@@ -66,22 +66,6 @@ namespace other {
       }
     }
 
-    void native_render_component_get_active_material_id(natural_t object_id, uint64_t* out_material_id) {
-      ASSERT_MAIN_THREAD();
-      OTHER_ASSERT(out_material_id != nullptr, "Output material ID pointer is null.");
-
-      scene* active_scene = detail::get_active_scene_checked();
-      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
-
-      if (active_scene->has_component<render_component>(object_id)) {
-        render_component* comp = active_scene->get_component<render_component>(object_id);
-        OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
-        // *out_material_id = comp->material_asset_id;
-      } else {
-        // *out_material_id = 0;
-      }
-    }
-
     native_string native_render_component_get_mesh_name(natural_t object_id) {
       ASSERT_MAIN_THREAD();
       scene* active_scene = detail::get_active_scene_checked();
@@ -102,7 +86,7 @@ namespace other {
       return result;
     }
 
-    native_string native_render_component_get_material_name(natural_t object_id) {
+    native_string native_render_component_get_material_path(natural_t object_id) {
       ASSERT_MAIN_THREAD();
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
@@ -111,16 +95,49 @@ namespace other {
       if (active_scene->has_component<render_component>(object_id)) {
         render_component* comp = active_scene->get_component<render_component>(object_id);
         OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
-        // if (comp->material_asset_id != 0) {
-        //   asset* mat_asset = detail::get_dotnet_native_driver()->get_asset(comp->material_asset_id);
-        //   if (mat_asset != nullptr) {
-        //     result = native_string{ mat_asset->name };
-        //   }
-        // }
+        if (comp->material_asset_id != 0) {
+          driver* d = detail::get_dotnet_native_driver();
+          OTHER_ASSERT(d != nullptr, "Driver is null in native_render_component_get_material_path.");
+          asset* mat_asset = d->get_asset(comp->material_asset_id);
+          if (mat_asset != nullptr) {
+            result = native_string{ mat_asset->load_path.generic_string() };
+          }
+        }
       } else {
         /// no-op
       }
       return result;
+    }
+
+    void native_render_component_set_material_path(natural_t object_id, native_string path) {
+      ASSERT_MAIN_THREAD();
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+
+      /// this call is from user script so handle errors gracefully
+      if (!active_scene->has_component<render_component>(object_id)) {
+        CORE_LOG_ERROR("Object with ID {} does not have a render component, cannot set material.", object_id);
+        return;
+      }
+      render_component* comp = active_scene->get_component<render_component>(object_id);
+      OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
+
+      const std::string path_str = path;
+      if (path_str.empty()) {
+        comp->material_asset_id = 0;
+        comp->last_material_asset_id = 0;
+        return;
+      }
+
+      driver* d = detail::get_dotnet_native_driver();
+      OTHER_ASSERT(d != nullptr, "Driver is null in native_render_component_set_material_path.");
+      const natural_t material_id = d->begin_asset_load(filepath{ path_str });
+      if (material_id == 0) {
+        CORE_LOG_ERROR("Material '{}' could not begin loading for object ID {}.", path_str, object_id);
+        return;
+      }
+      comp->material_asset_id = material_id;
+      comp->last_material_asset_id = material_id;
     }
 
     void native_render_component_fetch_mesh(natural_t object_id, float* out_vertex_data, int32_t* out_num_vertices, int32_t* out_index_data, int32_t* out_num_indices) {
@@ -138,8 +155,8 @@ namespace other {
         OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
         OTHER_ASSERT(comp->obj_model.source != nullptr, "Render component's model source is null for object with ID {}", object_id);
 
-        const std::span<const vertex> vertices = comp->obj_model.source->get_vertices();
-        const std::span<const index> indices = comp->obj_model.source->get_indices();
+        const std::span<const vertex> vertices = comp->obj_model.source->source_data().vertices;
+        const std::span<const index> indices = comp->obj_model.source->source_data().indices;
 
         *out_num_vertices = static_cast<int32_t>(vertices.size());
         *out_num_indices = static_cast<int32_t>(indices.size());
@@ -183,70 +200,6 @@ namespace other {
       CORE_LOG_DEBUG("Uploading mesh data for object ID {} with name '{}', vertex count {}, index count {}", object_id, model_name, vertices.size(), indices.size());
       comp->model_asset_id = d->add_model_source_asset(model_name, vertices, indices);
       CORE_LOG_DEBUG(" - Uploaded mesh data for object ID {} with asset ID {} ({})", object_id, comp->model_asset_id, d->get_asset_hash(comp->model_asset_id));
-    }
-
-    // clang-format off
-    void native_material_fetch_material(natural_t object_id, glm::vec3* out_diffuse_color, float* out_diffuse_reflectivity, glm::vec3* out_specular_color, float* out_specular_reflectivity, glm::vec3* out_emissive_color, float* out_emissivity, 
-                                        float* out_shininess, float* out_transparency) {
-      // clang-format on
-      ASSERT_MAIN_THREAD();
-      OTHER_ASSERT(out_diffuse_color != nullptr, "Output diffuse color pointer is null.");
-      OTHER_ASSERT(out_diffuse_reflectivity != nullptr, "Output diffuse reflectivity pointer is null.");
-      OTHER_ASSERT(out_specular_color != nullptr, "Output specular color pointer is null.");
-      OTHER_ASSERT(out_specular_reflectivity != nullptr, "Output specular reflectivity pointer is null.");
-      OTHER_ASSERT(out_emissive_color != nullptr, "Output emissive color pointer is null.");
-      OTHER_ASSERT(out_emissivity != nullptr, "Output emissivity pointer is null.");
-      OTHER_ASSERT(out_shininess != nullptr, "Output shininess pointer is null.");
-      OTHER_ASSERT(out_transparency != nullptr, "Output transparency pointer is null.");
-
-      scene* active_scene = detail::get_active_scene_checked();
-      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
-
-      if (active_scene->has_component<render_component>(object_id)) {
-        render_component* comp = active_scene->get_component<render_component>(object_id);
-        OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
-
-        *out_diffuse_color = comp->material.diffuse_color;
-        *out_diffuse_reflectivity = comp->material.diffuse_reflectivity;
-      } else {
-        /// no-op, leave outputs as default values
-      }
-    }
-
-    // clang-format off
-    void native_material_upload_material(natural_t object_id, native_string mat_name, const glm::vec3* diffuse_color, const float* diffuse_reflectivity, const glm::vec3* specular_color, const float* specular_reflectivity, const glm::vec3* emissive_color, const float* emissivity,
-                                        const float* transparency, const float* shininess) {
-      // clang-format on
-      ASSERT_MAIN_THREAD();
-      OTHER_ASSERT(diffuse_color != nullptr, "Input diffuse color pointer is null.");
-      OTHER_ASSERT(diffuse_reflectivity != nullptr, "Input diffuse reflectivity pointer is null.");
-      OTHER_ASSERT(specular_color != nullptr, "Input specular color pointer is null.");
-      OTHER_ASSERT(specular_reflectivity != nullptr, "Input specular reflectivity pointer is null.");
-      OTHER_ASSERT(emissive_color != nullptr, "Input emissive color pointer is null.");
-      OTHER_ASSERT(emissivity != nullptr, "Input emissivity pointer is null.");
-      OTHER_ASSERT(shininess != nullptr, "Input shininess pointer is null.");
-      OTHER_ASSERT(transparency != nullptr, "Input transparency pointer is null.");
-
-      scene* active_scene = detail::get_active_scene_checked();
-      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
-
-      if (active_scene->has_component<render_component>(object_id)) {
-        render_component* comp = active_scene->get_component<render_component>(object_id);
-        OTHER_ASSERT(comp != nullptr, "Render component not found for object with ID {}", object_id);
-
-        comp->material = {
-          .diffuse_color = *diffuse_color,
-          .diffuse_reflectivity = *diffuse_reflectivity,
-          .specular_color = *specular_color,
-          .specular_reflectivity = *specular_reflectivity,
-          .emissive_color = *emissive_color,
-          .emissivity = *emissivity,
-          .transparency = *transparency,
-          .shininess = *shininess,
-        };
-      } else {
-        /// no-op, cannot upload material to object that doesn't have a render component
-      }
     }
 
   }  // namespace bindings

@@ -4,7 +4,6 @@
 #ifndef OTHER_SCENE_ASSET_PIPELINES_MODEL_SOURCE_PIPELINE_HPP
 #define OTHER_SCENE_ASSET_PIPELINES_MODEL_SOURCE_PIPELINE_HPP
 
-#include "model/model.hpp"
 #include "model/model_importer.hpp"
 
 #include "asset/asset_pipeline.hpp"
@@ -17,7 +16,8 @@ namespace other {
         : asset_pipeline(events, handler) {}
     ~model_source_pipeline() override = default;
 
-    model_builder builder;
+    /// in-memory entry mode (add_model_source_asset): pre-built data the loader consumes instead of importing a file
+    model_data data;
   };
 
 }  // namespace other

@@ -9,45 +9,51 @@
 
 #include "core/logger_sinks.hpp"
 #include "memory/arena.hpp"
-
 #include "serialization/scene_serializer.hpp"
+
+#include "tools/material_cli_tool.hpp"
+#include "tools/model_cli_tool.hpp"
 
 namespace other {
   namespace cli {
-    namespace {
 
-      /// oecli runs without a driver, but the scene document layer constructs engine
-      ///  component types whose containers allocate through the arena, and its error
-      ///  paths log — so the two memory/log subsystems must be live before any codec
-      ///  runs. inside a running environment they already are and this is a no-op.
-      void ensure_cli_runtime() {
-        if (subsystem<logger>::inert) {
-          static config_table cli_config = [] {
-            config_table cfg;
-            cfg.core_log_level = static_cast<uint32_t>(spdlog::level::warn);
-            return cfg;
-          }();
+    /// oecli runs without a driver, but the scene document layer constructs engine
+    ///  component types whose containers allocate through the arena, and its error
+    ///  paths log — so the two memory/log subsystems must be live before any codec
+    ///  runs. inside a running environment they already are and this is a no-op.
+    void ensure_cli_runtime() {
+      if (subsystem<logger>::inert) {
+        static config_table cli_config = [] {
+          config_table cfg;
+          cfg.core_log_level = static_cast<uint32_t>(spdlog::level::warn);
+          return cfg;
+        }();
 
-          subsystem<logger>::inert = false;
-          logger* log = subsystem<logger>::get();
-          OTHER_ASSERT(log != nullptr, "failed to initialize the cli logger");
-          log->set_config(&cli_config);
-          log->create_logger("other-core-log", spdlog::level::warn);
+        subsystem<logger>::inert = false;
+        logger* log = subsystem<logger>::get();
+        OTHER_ASSERT(log != nullptr, "failed to initialize the cli logger");
+        log->set_config(&cli_config);
+        log->create_logger("other-core-log", spdlog::level::warn);
 
-          /// console only at warn — a cli tool must not scatter log files around
-          log_sink console_sink = {
-            1, "console-sink", "%^[%l]%$ %v", spdlog::level::warn,
-            [](const config_table&) -> spdlog::sink_ptr { return std::make_shared<spdlog::sinks::stdout_color_sink_mt>(); },
-          };
-          std::string loggers[] = { "other-core-log" };
-          log->register_sink(loggers, &console_sink);
-        }
-
-        if (subsystem<arena>::inert) {
-          subsystem<arena>::inert = false;
-          OTHER_ASSERT(subsystem<arena>::get() != nullptr, "failed to initialize the cli arena");
-        }
+        /// console only at warn — a cli tool must not scatter log files around
+        log_sink console_sink = {
+          1,
+          "console-sink",
+          "%^[%l]%$ %v",
+          spdlog::level::warn,
+          [](const config_table&) -> spdlog::sink_ptr { return std::make_shared<spdlog::sinks::stdout_color_sink_mt>(); },
+        };
+        std::string loggers[] = { "other-core-log" };
+        log->register_sink(loggers, &console_sink);
       }
+
+      if (subsystem<arena>::inert) {
+        subsystem<arena>::inert = false;
+        OTHER_ASSERT(subsystem<arena>::get() != nullptr, "failed to initialize the cli arena");
+      }
+    }
+
+    namespace {
 
       constexpr std::string_view kUsage =
         "usage: oecli scene <command> <input> [options]\n"
@@ -194,6 +200,12 @@ namespace other {
     void register_environment_tools(tool_registry& registry) {
       if (registry.find_tool("scene") == nullptr) {
         registry.add_tool(std::make_unique<scene_tool>());
+      }
+      if (registry.find_tool("model") == nullptr) {
+        registry.add_tool(std::make_unique<model_tool>());
+      }
+      if (registry.find_tool("material") == nullptr) {
+        registry.add_tool(std::make_unique<material_tool>());
       }
     }
 
