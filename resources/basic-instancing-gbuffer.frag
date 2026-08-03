@@ -12,10 +12,12 @@ out vec4 frag_color;
 
 void main() {
   material mat = get_instance_material();
-  
+
   OE_gbuff_position = world_position;
   OE_gbuff_normal = normalize(world_normal);
-  OE_gbuff_albedo.rgb = mat.diffuse_color;
-  OE_gbuff_albedo.a = mat.specular_reflect;
+  OE_gbuff_albedo.rgb = material_base_color().rgb;
+  /// roughness rides albedo.a into the shading pass (formerly specular_reflect; the pass
+  /// already treats .a as a scalar shading factor)
+  OE_gbuff_albedo.a = mat.roughness;
   OE_gbuff_depth = gl_FragCoord.z;
 }

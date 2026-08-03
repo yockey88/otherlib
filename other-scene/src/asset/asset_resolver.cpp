@@ -13,6 +13,8 @@
 #include "file/filesystem.hpp"
 #include "serialization/scene_serializer.hpp"
 
+#include "gpu_resource/material.hpp"
+
 #include "dotnet/csproj_helpers.hpp"
 
 namespace other {
@@ -183,7 +185,9 @@ namespace other {
     }
 
     ostd::vector<dependency_declaration> parse_csproj_manifest(const filepath& manifest_path);
+    ostd::vector<dependency_declaration> parse_model_manifest(const filepath& manifest_path);
     ostd::vector<dependency_declaration> parse_scene_manifest(const filepath& manifest_path);
+    ostd::vector<dependency_declaration> parse_material_manifest(const filepath& manifest_path);
     ostd::vector<dependency_declaration> empty_parser(const filepath& manifest_path);
 
     opt<manifest_domain> build_csproj_manifest_domain(const filepath& manifest_path);
@@ -193,19 +197,20 @@ namespace other {
   }  // namespace detail
 
   std::array<manifest_parser_fn, kNumAssetTypes> asset_resolver_tables::parsers = {
-    &detail::empty_parser,           // texture
-    &detail::empty_parser,           // model-source
-    &detail::empty_parser,           // animation
-    &detail::parse_csproj_manifest,  // script-project
-    &detail::empty_parser,           // script-source
-    &detail::empty_parser,           // script-file
-    &detail::empty_parser,           // script
-    &detail::empty_parser,           // audio
-    &detail::parse_scene_manifest,   // scene
-    &detail::empty_parser,           // input-map
-    &detail::empty_parser,           // rendering-pipeline
-    &detail::empty_parser,           // asset-declaration
-    &detail::empty_parser            // empty
+    &detail::empty_parser,             // texture
+    &detail::parse_model_manifest,     // model-source
+    &detail::empty_parser,             // animation
+    &detail::parse_csproj_manifest,    // script-project
+    &detail::empty_parser,             // script-source
+    &detail::empty_parser,             // script-file
+    &detail::empty_parser,             // script
+    &detail::empty_parser,             // audio
+    &detail::parse_scene_manifest,     // scene
+    &detail::empty_parser,             // input-map
+    &detail::empty_parser,             // rendering-pipeline
+    &detail::empty_parser,             // asset-declaration
+    &detail::parse_material_manifest,  // material
+    &detail::empty_parser              // empty
   };
 
   std::array<manifest_builder_fn, kNumAssetTypes> asset_resolver_tables::builders = {
@@ -221,6 +226,7 @@ namespace other {
     nullptr,                                // input-map
     nullptr,                                // rendering-pipeline
     nullptr,                                // asset-declaration
+    nullptr,                                // material
     nullptr                                 // empty
   };
 
@@ -237,6 +243,7 @@ namespace other {
     nullptr,                                // input-map
     nullptr,                                // rendering-pipeline
     nullptr,                                // asset-declaration
+    nullptr,                                // material
     nullptr                                 // empty
   };
 
@@ -675,6 +682,46 @@ namespace other {
       //  the same convention codec_services::resolve_asset applies at instantiation
       for (const serialization::component_asset_ref& ref : serialization::collect_scene_asset_refs(*parsed.document)) {
         declare(std::filesystem::absolute(filepath{ ref.path }).lexically_normal(), ref.type);
+      }
+      return out;
+    }
+
+    ostd::vector<dependency_declaration> parse_material_manifest(const filepath& material_path) {
+      /// malformed material files are data errors, not contracts: declare no edges and let
+      //  the material node's own load surface the parse failure
+      const material_parse_result parsed = parse_material_toml(material_path);
+      if (!parsed.success()) {
+        CORE_LOG_WARN("material manifest '{}' failed to parse: {}", material_path.string(), parsed.error);
+        return {};
+      }
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "file_system subsystem is not available in parse_material_manifest");
+
+      ostd::vector<dependency_declaration> out;
+      for (const auto& [slot, rel] : parsed.mat->texture_paths) {
+        if (rel.empty()) {
+          continue;
+        }
+        const filepath abs = resolve_relative(std::filesystem::absolute(material_path), rel);
+        if (!std::filesystem::exists(abs)) {
+          CORE_LOG_WARN("material '{}' references missing texture '{}'; edge skipped", material_path.string(), abs.string());
+          continue;
+        }
+        if (!fs->deep_search_for_mount(abs).is_valid()) {
+          CORE_LOG_WARN("material '{}' references '{}' outside every mount; edge skipped", material_path.string(), abs.string());
+          continue;
+        }
+
+        /// extension wins, matching how the resolver types its roots
+        asset::type type = asset::get_type_from_extension(abs.extension().string());
+        if (type == asset::EMPTY) {
+          type = asset::TEXTURE;
+        }
+        std::string virtual_path = virtualize(abs);
+        if (!std::ranges::contains(out, virtual_path, &dependency_declaration::virtual_path)) {
+          out.push_back({ std::move(virtual_path), type, false });
+        }
       }
       return out;
     }

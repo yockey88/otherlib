@@ -48,7 +48,6 @@ _NativeScriptComponent = __native_script_component
 _NativeRenderComponent = __native_render_component
 _NativeCameraComponent = __native_camera_component
 
-GraphicsMaterial = __native_gpu_graphics_material
 PointLight = __native_point_light
 DirectionLight = __native_direction_light
 

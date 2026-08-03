@@ -55,6 +55,7 @@ namespace other {
         SCENE,
         INPUT_MAP,
         PIPELINE,
+        MATERIAL,
         UNKNOWN,
       };
 

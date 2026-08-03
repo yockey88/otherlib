@@ -68,6 +68,7 @@ namespace other {
     switch (FNV(type_str)) {
       case FNV("rendering-pipeline"): return asset::type::RENDERING_PIPELINE;
       case FNV("scene"): return asset::type::SCENE;
+      case FNV("material"): return asset::type::MATERIAL;
       default:
         CORE_LOG_ERROR("asset type {} not supported through TOML file: {}", type_str, file_path.string());
         return asset::type::EMPTY;
@@ -139,6 +140,9 @@ namespace other {
 
       case asset::SCENE:
         return "scenes";
+
+      case asset::MATERIAL:
+        return "materials";
 
       case asset::INPUT_MAP:
       case asset::RENDERING_PIPELINE:

@@ -436,8 +436,10 @@ namespace other {
             result.fail(std::format("frame.bindings['{}']: '{}' is not a valid binding type", name_str, type.as_string()->get()));
           }
 
-          if (!element_size || !element_size.is_number()) {
-            result.fail(std::format("frame.bindings['{}']: 'element_size' must be an integer", name_str));
+          /// optional since material bindings derive their size from [materials.layout];
+          ///  a non-material per-draw binding without one still fails loudly at ring build
+          if (element_size && !element_size.is_number()) {
+            result.fail(std::format("frame.bindings['{}']: 'element_size' must be an integer if present", name_str));
           }
 
           const auto binding_slot = b.at_path("binding");

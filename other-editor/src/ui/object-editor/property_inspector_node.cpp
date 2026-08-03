@@ -33,12 +33,10 @@
 IMGUI_REFLECT(glm::vec3, x, y, z);
 IMGUI_REFLECT(glm::quat, w, x, y, z);
 
-IMGUI_REFLECT(other::gpu::graphics_material, diffuse_color, diffuse_reflectivity, specular_color, specular_reflectivity, emissivity, transparency, shininess);
-
 IMGUI_REFLECT(other::scene_object, id, registry_id, name, visible);
 IMGUI_REFLECT(other::transform, local_position, local_rotation_quat, local_scale);
 IMGUI_REFLECT(other::script_component, script_object_id);
-IMGUI_REFLECT(other::render_component, material, visible, animated);
+IMGUI_REFLECT(other::render_component, visible, tint);
 IMGUI_REFLECT(other::model, name, submesh_indices);
 IMGUI_REFLECT(other::physics_component, body, shape);
 IMGUI_REFLECT(other::physics_body::settings, body_type, mass);
@@ -52,6 +50,46 @@ IMGUI_REFLECT(other::camera_component, camera);
 
 namespace other {
   namespace ui {
+
+    /// render components draw by hand: the material override is an asset *path* (raw text
+    ///  field v1 — property_asset_slot drag-drop revival is phase 3), which the generic
+    ///  reflected walk can't express for a natural_t id field
+    template <>
+    struct component_widget<render_component> {
+      bool operator()(const std::string_view, render_component& comp, scene*, scene_object*, asset_handler* handler, driver* drvr) {
+        OTHER_ASSERT(drvr != nullptr, "component_widget<render_component> needs a driver");
+        bool changed = inspector::property_bool("Visible", comp.visible);
+        changed |= inspector::property_vec4("Tint", comp.tint, 0.01f);
+
+        std::string current_path;
+        if (comp.material_asset_id != 0 && handler != nullptr) {
+          if (const asset* mat_asset = handler->get_asset(comp.material_asset_id); mat_asset != nullptr) {
+            current_path = mat_asset->load_path.generic_string();
+          }
+        }
+        char path_buf[512];
+        std::strncpy(path_buf, current_path.c_str(), sizeof(path_buf));
+        path_buf[sizeof(path_buf) - 1] = '\0';
+        if (inspector::property_text("Material", path_buf, sizeof(path_buf))) {
+          const std::string new_path = path_buf;
+          if (new_path.empty()) {
+            comp.material_asset_id = 0;
+            comp.last_material_asset_id = 0;
+            changed = true;
+          } else if (const filepath p{ new_path }; std::filesystem::is_regular_file(p) && p.extension() == ".omat") {
+            /// commit only when the text points at a real material — partial paths while
+            ///  typing stay inert
+            const natural_t material_id = drvr->begin_asset_load(p);
+            if (material_id != 0 && material_id != comp.material_asset_id) {
+              comp.material_asset_id = material_id;
+              comp.last_material_asset_id = material_id;
+              changed = true;
+            }
+          }
+        }
+        return changed;
+      }
+    };
 
     property_inspector_node::property_inspector_node(editor_context& ctx, ui_window* window, driver* drvr)
         : ui_node(window, "Property Inspector"), context(ctx), driver_ptr(drvr) {
@@ -175,6 +213,10 @@ namespace other {
             OTHER_ASSERT(active_scene != nullptr, "Active scene is null in render_component on_modified callback");
             OTHER_ASSERT(drvr != nullptr, "Driver is null in render_component on_modified callback");
             natural_t new_asset_id = comp->model_asset_id;
+            if (new_asset_id == 0) {
+              /// tint/material edits fire this too; nothing to re-validate without a model
+              return;
+            }
 
             auto& assets = drvr->get_kernel().get_core_system<asset_system>();
             auto& handler = assets.get_asset_manager();

@@ -65,6 +65,10 @@ namespace other {
 
     uint32_t submesh_index = 0;
 
+    /// material identity joins the batch key because texture binds are per draw call:
+    ///  component override material path_hash, or 0 = the model's imported material
+    natural_t material_key = 0;
+
     constexpr auto operator<=>(const mesh_key&) const = default;
   };
 

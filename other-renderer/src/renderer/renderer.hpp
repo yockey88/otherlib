@@ -45,6 +45,11 @@ namespace other {
   };
 
 
+  /// per-instance tint multipliers for one draw, folded into the packed base_color at bind time
+  struct draw_instance_tints {
+    glm::vec4 tints[gpu::kMaxMaterials];
+  };
+
   struct render_data {
     glm::vec4 clear_color = glm::vec4(0.2f, 0.22f, 0.233f, 1.0f);
 
@@ -57,7 +62,11 @@ namespace other {
     ostd::map<mesh_key, size_t> mesh_indices;
     ostd::frame_vector<mesh_key> mesh_keys;
     ostd::frame_vector<draw_call> draw_calls;
-    ostd::frame_vector<gpu::graphics_material_buffer> material_buffers;
+    /// effective material per draw (component override, else the model's imported material,
+    ///  else nullptr = active layout defaults); pointers into renderer_backend registries and
+    ///  model sources stay valid for the frame the data was prepared for
+    ostd::frame_vector<const material*> draw_materials;
+    ostd::frame_vector<draw_instance_tints> draw_tints;
     ostd::frame_vector<gpu::model_matrix_buffer> model_buffers;
     ostd::frame_vector<gpu::bone_matrix_buffer> bone_buffers;
   };

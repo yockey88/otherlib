@@ -21,10 +21,14 @@ bool has_bones() {
   return use_bones == 1;
 }
 
-out int OE_material_index;
+flat out int OE_material_index;
+out vec2 OE_frag_uv;
 
+/// per-instance id for the material block plus the uv forward (vertex location 4 finally
+/// has a consumer — the material texture slots)
 void set_instance_id() {
   OE_material_index = gl_InstanceID;
+  OE_frag_uv = OE_tex_coords;
 }
 
 mat4 get_instance_model_matrix() {

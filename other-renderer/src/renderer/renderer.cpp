@@ -531,6 +531,11 @@ namespace other {
     OTHER_ASSERT(pl != nullptr, "execute_draw_calls: no pipeline owns pass id {}", current_node->pass->id);
 
     pass_runtime& runtime = pl->get_pass_runtime(current_node->pass->id);
+    const bool material_pass = pl->pass_uses_material_binding(runtime);
+    if (material_pass) {
+      pl->apply_material_sampler_uniforms(current_node);
+    }
+
     for (natural_t i = 0; i < scene_data->num_draw_calls; ++i) {
       const draw_call& call = scene_data->draw_calls[i];
       if (call.instance_count == 0) {
@@ -538,6 +543,9 @@ namespace other {
       }
 
       pl->bind_draw_resources(runtime, *scene_data, i);
+      if (material_pass) {
+        pl->bind_material_textures(*scene_data, i);
+      }
 
       const auto& key = scene_data->mesh_keys[i];
       api->execute_draw_call(key.render_state, key.draw_mode, call);

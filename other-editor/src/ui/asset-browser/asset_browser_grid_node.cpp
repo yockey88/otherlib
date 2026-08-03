@@ -48,6 +48,7 @@ namespace other {
           case asset::SCRIPT: return abw::asset_type::SCRIPT;
           case asset::AUDIO: return abw::asset_type::AUDIO;
           case asset::SCENE: return abw::asset_type::SCENE;
+          case asset::MATERIAL: return abw::asset_type::MATERIAL;
           // case asset::SCENE_OBJECT: return abw::asset_type::SCENE_OBJECT;
           default: return abw::asset_type::UNKNOWN;
         }
@@ -91,6 +92,7 @@ namespace other {
         { "Script", abw::asset_type::SCRIPT, true },
         { "Audio", abw::asset_type::AUDIO, true },
         { "Scene", abw::asset_type::SCENE, true },
+        { "Material", abw::asset_type::MATERIAL, true },
         // { "Object", abw::asset_type::SCENE_OBJECT, true },
       };
 

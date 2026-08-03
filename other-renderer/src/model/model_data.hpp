@@ -7,7 +7,6 @@
 #include <glm/glm.hpp>
 
 #include "model/animation.hpp"
-#include "model/material.hpp"
 #include "model/skeleton.hpp"
 #include "model/vertex.hpp"
 

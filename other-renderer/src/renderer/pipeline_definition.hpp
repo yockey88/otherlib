@@ -12,6 +12,7 @@
 #include "gpu_resource/shader.hpp"
 #include "gpu_resource/texture.hpp"
 #include "renderer/frame_binding_definition.hpp"
+#include "renderer/material_layout.hpp"
 #include "renderer/render_pass.hpp"
 #include "renderer/resource_tag.hpp"
 #include "renderer/util/pipeline_asset_validation.hpp"
@@ -124,6 +125,10 @@ namespace other {
     ostd::vector<pipeline_texture_definition> textures;
     ostd::vector<pipeline_shader_definition> shaders;
     ostd::vector<pipeline_pass_definition> passes;
+
+    /// the material block this pipeline's shaders read ([materials.layout] in the TOML);
+    ///  materials are layout-agnostic value bags packed against this at bind time
+    opt<material_layout> materials;
 
     /// if non-empty, assert these tags are present before marking valid
     ostd::vector<resource_tag> required_tags;

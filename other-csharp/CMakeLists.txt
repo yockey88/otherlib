@@ -41,7 +41,6 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/raw-index.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/index.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/texture.cs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/material.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/mesh.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/renderer.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/draw.cs

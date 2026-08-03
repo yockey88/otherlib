@@ -60,24 +60,6 @@ namespace other {
       int use_bones = 0;
     };
 
-    GPU_ALIGN struct graphics_material {
-      glm::vec3 diffuse_color;
-      float diffuse_reflectivity;
-
-      glm::vec3 specular_color;
-      float specular_reflectivity;
-
-      glm::vec3 emissive_color;
-      float emissivity;
-
-      float transparency;
-      float shininess;
-    };
-
-    GPU_ALIGN struct graphics_material_buffer {
-      graphics_material materials[kMaxMaterials];
-    };
-
     GPU_ALIGN struct lambertian {
       glm::vec3 albedo;
     };

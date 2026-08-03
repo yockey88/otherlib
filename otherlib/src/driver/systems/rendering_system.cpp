@@ -42,7 +42,6 @@ namespace other {
     void upload_light_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_simulation_environment_buffer_per_frame(render_pipeline& r, const render_data& d, resource_handle h);
     void upload_model_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
-    void upload_material_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
     void upload_bone_buffer_per_draw(const render_data&, size_t draw_idx, std::span<uint8_t> data);
 
     inline void no_op_upload_per_frame(render_pipeline&, const render_data&, resource_handle) {}
@@ -472,8 +471,9 @@ namespace other {
     reg.register_per_frame(resource_tag(resource_tag::kLightTag), &detail::upload_light_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kSimulationEnvironmentTag), &detail::upload_simulation_environment_buffer_per_frame);
     reg.register_per_frame(resource_tag(resource_tag::kScreenTag), &detail::no_op_upload_per_frame);
+    /// no material producer here: material slices pack against the owning pipeline's declared
+    ///  layout inside render_pipeline::bind_draw_resources
     reg.register_per_draw(resource_tag(resource_tag::kModelTag), &detail::upload_model_buffer_per_draw);
-    reg.register_per_draw(resource_tag(resource_tag::kMaterialTag), &detail::upload_material_buffer_per_draw);
     reg.register_per_draw(resource_tag(resource_tag::kBoneTag), &detail::upload_bone_buffer_per_draw);
   }
 
@@ -847,15 +847,6 @@ namespace other {
 
       const auto& models = d.model_buffers[draw_idx];
       std::span bytes{ reinterpret_cast<const uint8_t*>(&models), sizeof(gpu::model_matrix_buffer) };
-      std::ranges::copy(bytes, data.begin());
-    }
-
-    void upload_material_buffer_per_draw(const render_data& d, size_t draw_idx, std::span<uint8_t> data) {
-      OTHER_ASSERT(draw_idx < d.draw_calls.size(), "Draw index {} out of range for draw calls of size {}", draw_idx, d.draw_calls.size());
-      OTHER_ASSERT(data.size() == sizeof(gpu::graphics_material_buffer), "Data span size {} does not match expected size {}", data.size(), sizeof(gpu::graphics_material_buffer));
-
-      const auto& materials = d.material_buffers[draw_idx];
-      std::span bytes{ reinterpret_cast<const uint8_t*>(&materials), sizeof(gpu::graphics_material_buffer) };
       std::ranges::copy(bytes, data.begin());
     }
 

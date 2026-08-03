@@ -46,6 +46,10 @@ namespace other {
     renderer_ptr = renderer;
     graph = arena_allocator<render_graph>{}.allocate(renderer_ptr);
 
+    /// stale packs must not survive a reload — the layout itself may have changed
+    material_pack_cache.clear();
+    default_material_pack.clear();
+
     create_resources_from_def();
     build_tag_maps();
 
@@ -69,6 +73,9 @@ namespace other {
 
   void render_pipeline::shutdown_pipeline() {
     destroy_resources();
+
+    material_pack_cache.clear();
+    default_material_pack.clear();
 
     destroy_pass_runtimes();
 
@@ -181,9 +188,19 @@ namespace other {
       auto& ring = runtime.state.per_draw_rings[i];
       OTHER_ASSERT(ring.ring_buffer.id != 0, "pass '{}' binding '{}': per-draw ring not allocated", runtime.def->name, bd.name);
       // clang-format off
-      OTHER_ASSERT(ring.head + ring.element_size <= ring.capacity, "pass '{}' binding '{}': per-draw ring exhausted at draw {} (head={}, element={}, capacity={})", 
+      OTHER_ASSERT(ring.head + ring.element_size <= ring.capacity, "pass '{}' binding '{}': per-draw ring exhausted at draw {} (head={}, element={}, capacity={})",
                    runtime.def->name, bd.name, draw_index, ring.head, ring.element_size, ring.capacity);
       // clang-format on
+
+      /// material slices pack against this pipeline's declared layout — the pipeline owns the
+      ///  shader ABI, so the fill can't come from a pipeline-blind registry producer
+      if (bd.tag.value() == resource_tag::kMaterialTag && definition.materials.has_value()) {
+        std::span<uint8_t> slice{ ring.cpu_staging + ring.head, ring.element_size };
+        fill_material_slice(slice, data, draw_index);
+        api->buffer_range(ring.ring_buffer, ring.binding_point, ring.head, ring.element_size, ring.cpu_staging + ring.head);
+        ring.head += ring.stride;
+        continue;
+      }
 
       auto producer = reg.find_per_draw(bd.tag);
       if (producer == nullptr) {
@@ -202,6 +219,100 @@ namespace other {
       api->buffer_range(ring.ring_buffer, ring.binding_point, ring.head, ring.element_size, ring.cpu_staging + ring.head);
       ring.head += ring.stride;
     }
+  }
+
+  bool render_pipeline::pass_uses_material_binding(const pass_runtime& runtime) const {
+    if (!definition.materials.has_value()) {
+      return false;
+    }
+    for (const auto& bd : runtime.def->bindings) {
+      if (bd.scope == binding_scope::PER_DRAW_CALL && bd.tag.value() == resource_tag::kMaterialTag) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void render_pipeline::apply_material_sampler_uniforms(const frame_node* node) {
+    OTHER_ASSERT(node != nullptr, "Frame node must not be null in apply_material_sampler_uniforms.");
+    if (!definition.materials.has_value() || !node->pass->shader_handle.has_value()) {
+      return;
+    }
+
+    auto& sh = renderer_ptr->get_resource<shader>(*node->pass->shader_handle);
+    for (const auto& slot : definition.materials->texture_slots) {
+      sh.set_uniform(slot.uniform, static_cast<int32_t>(slot.unit));
+    }
+  }
+
+  void render_pipeline::bind_material_textures(const render_data& data, size_t draw_index) {
+    if (!definition.materials.has_value() || definition.materials->texture_slots.empty()) {
+      return;
+    }
+
+    renderer_backend* backend = renderer_ptr->rendering();
+    const material* mat = draw_index < data.draw_materials.size() ? data.draw_materials[draw_index] : nullptr;
+    for (const auto& slot : definition.materials->texture_slots) {
+      natural_t texture_hash = 0;
+      if (mat != nullptr) {
+        if (const auto it = mat->texture_hashes.find(slot.name_hash); it != mat->texture_hashes.end()) {
+          texture_hash = it->second;
+        }
+      }
+
+      resource_handle handle = texture_hash != 0 ? backend->get_texture(texture_hash) : resource_handle{};
+      if (handle.id == 0) {
+        /// always bind something: an untextured slot samples a 1x1 stand-in and the shader
+        ///  math degenerates to the params — zero shader variants
+        const bool normal_slot = slot.name == "normal";
+        handle = backend->get_fallback_texture(normal_slot ? renderer_backend::fallback_texture::FLAT_NORMAL : renderer_backend::fallback_texture::WHITE);
+      }
+      renderer_ptr->get_resource<texture>(handle).bind(slot.unit);
+    }
+  }
+
+  void render_pipeline::fill_material_slice(std::span<uint8_t> slice, const render_data& data, size_t draw_index) {
+    const material_layout& layout = *definition.materials;
+    OTHER_ASSERT(slice.size() >= static_cast<size_t>(layout.element_size) * layout.instance_capacity,
+                 "material ring slice is smaller than the layout block ({} < {})", slice.size(), layout.element_size * layout.instance_capacity);
+
+    const material* mat = draw_index < data.draw_materials.size() ? data.draw_materials[draw_index] : nullptr;
+    const ostd::vector<uint8_t>& blob = packed_blob_for(mat);
+
+    const draw_call& call = data.draw_calls[draw_index];
+    OTHER_ASSERT(call.instance_count <= gpu::kMaxMaterials, "instance count {} exceeds the per-draw slot cap {}", call.instance_count, gpu::kMaxMaterials);
+    const uint32_t instances = std::min<uint32_t>(call.instance_count, layout.instance_capacity);
+    const bool has_tints = draw_index < data.draw_tints.size();
+    for (uint32_t i = 0; i < instances; ++i) {
+      std::span<uint8_t> dst = slice.subspan(static_cast<size_t>(i) * layout.element_size, layout.element_size);
+      std::ranges::copy(blob, dst.begin());
+      if (has_tints) {
+        layout.fold_base_color_tint(dst, data.draw_tints[draw_index].tints[i]);
+      }
+    }
+  }
+
+  const ostd::vector<uint8_t>& render_pipeline::packed_blob_for(const material* mat) {
+    const material_layout& layout = *definition.materials;
+    if (mat == nullptr) {
+      if (default_material_pack.size() != layout.element_size) {
+        default_material_pack.resize(layout.element_size);
+        layout.pack(nullptr, default_material_pack);
+      }
+      return default_material_pack;
+    }
+
+    if (const auto it = material_pack_cache.find(mat->key); it != material_pack_cache.end() && it->second.revision == mat->revision) {
+      return it->second.blob;
+    }
+
+    material_pack_entry& entry = material_pack_cache[mat->key];
+    entry.revision = mat->revision;
+    entry.blob.resize(layout.element_size);
+    layout.pack(mat, entry.blob, [&](std::string_view param_name, std::string_view reason) {
+      CORE_LOG_WARN("material '{}' under pipeline '{}': param '{}' {}", mat->name, definition.name, param_name, reason);
+    });
+    return entry.blob;
   }
 
   void render_pipeline::render_frame(renderer* renderer_ptr) {
@@ -953,7 +1064,10 @@ namespace other {
           ok = !bd.tag.is_none() && (reg.find_per_frame(bd.tag) != nullptr || renderer_ptr->frame_binder_resolves(bd.tag));
           break;
         case binding_scope::PER_DRAW_CALL:
-          ok = !bd.tag.is_none() && (reg.find_per_draw(bd.tag) != nullptr || renderer_ptr->draw_binder_resolves(bd.tag));
+          /// the material tag is produced by the pipeline itself when it declares a layout
+          ok = !bd.tag.is_none() &&
+               ((bd.tag.value() == resource_tag::kMaterialTag && definition.materials.has_value()) ||
+                reg.find_per_draw(bd.tag) != nullptr || renderer_ptr->draw_binder_resolves(bd.tag));
           break;
         case binding_scope::PER_INSTANCE:
           ok = !bd.tag.is_none() && (reg.find_per_instance(bd.tag) != nullptr || renderer_ptr->instance_binder_resolves(bd.tag));
@@ -964,12 +1078,14 @@ namespace other {
 
       if (!ok) {
         // clang-format off
-          CORE_LOG_ERROR("pipeline '{}' pass '{}': no producer for binding '{}' (scope={}, tag={})", 
+          CORE_LOG_ERROR("pipeline '{}' pass '{}': no producer for binding '{}' (scope={}, tag={})",
                          definition.name, pass_def.name, bd.name, bd.scope, bd.tag.value());
         // clang-format on
         valid = false;
       }
     }
+
+    return runtime;
   }
 
 }  // namespace other

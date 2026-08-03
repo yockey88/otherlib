@@ -310,12 +310,10 @@ namespace other {
       .bind("GetNumVertices", bindings::native_render_component_get_num_vertices)
       .bind("GetNumIndices", bindings::native_render_component_get_num_indices)
       .bind("GetMeshName", bindings::native_render_component_get_mesh_name)
-      .bind("GetMaterialName", bindings::native_render_component_get_material_name)
-      .bind("GetActiveMaterialId", bindings::native_render_component_get_active_material_id)
       .bind("FetchMesh", bindings::native_render_component_fetch_mesh)
       .bind("UploadMesh", bindings::native_render_component_upload_mesh)
-      .bind("FetchMaterial", bindings::native_material_fetch_material)
-      .bind("UploadMaterial", bindings::native_material_upload_material);
+      .bind("GetMaterialPath", bindings::native_render_component_get_material_path)
+      .bind("SetMaterialPath", bindings::native_render_component_set_material_path);
 
     bindings::validate_binding_points(dn_host);
   }

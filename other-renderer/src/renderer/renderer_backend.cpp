@@ -3,6 +3,8 @@
  **/
 #include "renderer/renderer_backend.hpp"
 
+#include <array>
+
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_init.h"
 #include "SDL3/SDL_video.h"
@@ -147,6 +149,16 @@ namespace other {
         destroy_model(*source);
       }
       model_sources.clear();
+      material_assets.clear();
+
+      if (fallback_white.id != 0) {
+        texture::destroy_texture(fallback_white);
+        fallback_white = {};
+      }
+      if (fallback_flat_normal.id != 0) {
+        texture::destroy_texture(fallback_flat_normal);
+        fallback_flat_normal = {};
+      }
 
       bool should_shutdown_imgui = !state_flags.forced_api_set;
       rendering_api_instance->shutdown_ui_context();
@@ -176,6 +188,15 @@ namespace other {
   void renderer_backend::add_model_source(natural_t handle, ref<model_source> source) {
     OTHER_ASSERT(source != nullptr, "Model source cannot be null.");
     OTHER_ASSERT(model_sources.find(handle) == model_sources.end(), "Model source with handle {} already exists.", handle);
+
+    /// imported materials get registry identity here so pipeline pack caches invalidate
+    ///  across model reloads: derived keys stay stable per (model, slot), revisions bump
+    uint32_t index = 0;
+    for (material& mat : source->imported_materials()) {
+      mat.key = handle ^ (0x9e3779b97f4a7c15ull * (index + 1));
+      mat.revision = ++material_revisions[mat.key];
+      ++index;
+    }
 
     model_sources[handle] = std::move(source);
     CORE_LOG_DEBUG("Added model source with handle: {}", handle);
@@ -280,6 +301,65 @@ namespace other {
     } else {
       CORE_LOG_ERROR("Texture with handle {} not found.", handle);
     }
+  }
+
+  void renderer_backend::add_material(natural_t handle, material mat) {
+    OTHER_ASSERT(material_assets.find(handle) == material_assets.end(), "Material with handle {} already exists.", handle);
+
+    mat.key = handle;
+    mat.revision = ++material_revisions[handle];
+    material_assets[handle] = std::move(mat);
+    CORE_LOG_DEBUG("Added material with handle: {} (revision {})", handle, material_assets[handle].revision);
+  }
+
+  const material* renderer_backend::get_material(natural_t handle) const {
+    auto it = material_assets.find(handle);
+    if (it != material_assets.end()) {
+      return &it->second;
+    }
+
+    return nullptr;
+  }
+
+  void renderer_backend::remove_material(natural_t handle) {
+    auto it = material_assets.find(handle);
+    if (it != material_assets.end()) {
+      material_assets.erase(it);
+      CORE_LOG_DEBUG("Removed material with handle: {}", handle);
+    } else {
+      CORE_LOG_ERROR("Material with handle {} not found.", handle);
+    }
+  }
+
+  resource_handle renderer_backend::get_fallback_texture(fallback_texture kind) {
+    OTHER_ASSERT(rendering_api_instance != nullptr, "Rendering API must be loaded before fallback textures are requested.");
+
+    resource_handle& handle = kind == fallback_texture::FLAT_NORMAL ? fallback_flat_normal : fallback_white;
+    if (handle.id != 0) {
+      return handle;
+    }
+
+    const bool normal = kind == fallback_texture::FLAT_NORMAL;
+    /// flat tangent-space normal (128,128,255) decodes to (0,0,1); white multiplies out to identity
+    const std::array<uint8_t, 4> pixel = normal ?
+      std::array<uint8_t, 4>{ 128, 128, 255, 255 } :
+      std::array<uint8_t, 4>{ 255, 255, 255, 255 };
+
+    handle = api()->create_resource(normal ? "__material_fallback_flat_normal" : "__material_fallback_white", resource_type::TEXTURE);
+    OTHER_ASSERT(handle.id != 0, "Failed to create material fallback texture resource.");
+
+    texture& text = *api()->get_resource_as<texture>(handle);
+    text.set_type(texture::tex_type::TEXTURE_2D)
+      .set_format(texture::format::RGBA8)
+      .set_size(1, 1)
+      .set_filter(texture::filter::NEAREST, texture::filter::NEAREST)
+      .set_wrap_mode(texture::wrap::REPEAT, texture::wrap::REPEAT)
+      .set_data(const_cast<uint8_t*>(pixel.data()), pixel.size());
+    text.finalize_texture();
+    text.data = nullptr;
+    text.data_size = 0;
+
+    return handle;
   }
 
   void renderer_backend::set_rendering_api(scope<rendering_api> api, scope<window_manager> window_mgr) {

@@ -59,6 +59,8 @@ namespace other {
 
       ASSET_DECLARATION,
 
+      MATERIAL,
+
       EMPTY,
       NUM_ASSET_TYPES,
     };
@@ -130,10 +132,12 @@ namespace other {
 
     asset_name{ "asset-declaration", "Asset Declaration" },
 
+    asset_name{ "material", "Material" },
+
     asset_name{ "empty", "Empty" },
   };
 
-  constexpr inline size_t kNumAssetExtensions = 24;
+  constexpr inline size_t kNumAssetExtensions = 25;
   constexpr inline std::array<std::string_view, kNumAssetExtensions> kFileExtensions = {
     ".jpg",  // TEXTURE
     ".png",  // TEXTURE
@@ -170,6 +174,8 @@ namespace other {
 
     ".orpl",  // RENDERING_PIPELINE
 
+    ".omat",  // MATERIAL (toml parameter set)
+
     ".toml"
   };
 
@@ -205,6 +211,8 @@ namespace other {
       { asset::INPUT_MAP, ".oeim" },
 
       { asset::RENDERING_PIPELINE, ".orpl" },
+
+      { asset::MATERIAL, ".omat" },
 
       { asset::ASSET_DECLARATION, ".toml" },
     }

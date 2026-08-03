@@ -120,7 +120,7 @@ namespace other {
             asset::type sub_asset_type = asset::type::EMPTY;
             if constexpr (refl::descriptor::has_attribute<attr::asset_identifier_field>(sub_field)) {
               auto& asset_id_attr = refl::descriptor::get_attribute<attr::asset_identifier_field>(sub_field);
-              asset_type = asset_id_attr.asset_type;
+              sub_asset_type = asset_id_attr.asset_type;
             }
 
             changed |= draw_inspector_field(sub_name, sub_field(field_value), sub_asset_type, active_scene, object, handler, drvr);

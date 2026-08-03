@@ -53,6 +53,7 @@ namespace other {
         case other::asset::SCRIPT: return "SCRIPT";
         case other::asset::AUDIO: return "AUDIO";
         case other::asset::SCENE: return "SCENE";
+        case other::asset::MATERIAL: return "MATERIAL";
         // case other::asset::SCENE_OBJECT: return "OBJECT";
         default: return "UNKNOWN";
       }

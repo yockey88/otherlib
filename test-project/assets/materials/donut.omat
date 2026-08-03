@@ -1,0 +1,7 @@
+# migrated from spinning-donut.oscn's inline render.material block
+asset-type = "material"
+name = "donut"
+
+[params]
+base_color = [0.01, 0.01, 0.22, 1.0]
+roughness = 0.5

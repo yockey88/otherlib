@@ -14,7 +14,6 @@ buffers = [
   { name = "bone_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "bone" },
   { name = "light_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "light" },
   { name = "simulation_environment_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "simulation_environment" },
-  { name = "material_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "material" },
 ]
 textures = [
   # basic gbuffer
@@ -60,14 +59,32 @@ shaders = [
   { name = "scene_overlay_shader", vertex_path = "resources/debug-overlay.vert", fragment_path = "resources/debug-overlay.frag" },
 ]
 
+## the material block this pipeline's shaders read (shader-modules/basic-material.glsl mirrors
+## it); element offsets and the per-draw binding size are computed std430 from this declaration.
+## materials themselves are layout-agnostic .omat parameter sets packed against this at bind
+## time. albedo.a carries roughness into the shading pass (formerly specular_reflect — the pass
+## treats .a as a scalar shading factor either way). texture units 0-7 stay pass inputs.
+[materials.layout]
+params = [
+  { name = "base_color",     type = "vec4",  default = [1.0, 1.0, 1.0, 1.0] },
+  { name = "emissive_color", type = "vec3",  default = [0.0, 0.0, 0.0] },
+  { name = "roughness",      type = "float", default = 1.0 },
+  { name = "metalness",      type = "float", default = 0.0 },
+]
+texture-slots = [
+  { name = "base_color", uniform = "OE_mat_base_color_map", unit = 8 },
+  { name = "normal",     uniform = "OE_mat_normal_map",     unit = 9 },
+]
+
 [frame]
 display-texture = "smaa_texture"
 bindings = [
-  { name = "per_draw.material_buffer", tag = "material", scope = "PER_DRAW", type = "STORAGE_BUFFER", element_size = 6400 },
+  ## element_size omitted: derived from [materials.layout] (element * instance capacity)
+  { name = "per_draw.material_buffer", tag = "material", scope = "PER_DRAW", type = "STORAGE_BUFFER" },
   { name = "per_draw.model_buffer", tag = "model", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6400 },
   { name = "per_draw.bone_buffer", tag = "bone", scope = "PER_DRAW", type = "UNIFORM_BUFFER", element_size = 6416 },
   { name = "per_frame.camera_buffer", tag = "camera", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 208 },
-  { name = "per_frame.light_buffer", tag = "light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 9600 },
+  { name = "per_frame.light_buffer", tag = "light", scope = "PER_FRAME", type = "STORAGE_BUFFER", element_size = 4800 },
   { name = "per_frame.simulation_environment_buffer", tag = "simulation_environment", scope = "PER_FRAME", type = "UNIFORM_BUFFER", element_size = 128 }
 ]
 pass-bindings = [
@@ -117,7 +134,6 @@ inputs = [
   { pass_name = "voxel-clear-pass", resource_name = "voxel_texture", binding = 0, uniform_name = "OE_voxel_tex_in" },
   { pass_name = "geometry-pass", resource_name = "model_buffer", binding = 0 },
   { pass_name = "geometry-pass", resource_name = "bone_buffer", binding = 1 },
-  { pass_name = "geometry-pass", resource_name = "material_buffer", binding = 2 },
   { pass_name = "geometry-pass", resource_name = "camera_buffer", binding = 3 },
   { pass_name = "voxel-occupied-pass", resource_name = "simulation_environment_buffer", binding = 0 },
   { pass_name = "voxel-occupied-pass", resource_name = "voxel_texture", binding = 0, uniform_name = "OE_voxel_tex_in" },     
@@ -184,11 +200,12 @@ executors = [
   { pass_name = "smaa-blend", name = "fullscreen_quad" },
   { pass_name = "tonemap-pass", name = "fullscreen_quad" },
 ]
+## the material tag has no static resource row: the per-draw ring is the binding, filled by
+## the pipeline itself against [materials.layout]
 resource_tags = [
   { name = "camera", type = "BUFFER" },
   { name = "model", type = "BUFFER" },
   { name = "bone", type = "BUFFER" },
   { name = "light", type = "BUFFER" },
   { name = "simulation_environment", type = "BUFFER" },
-  { name = "material", type = "BUFFER" },
 ]

@@ -17,17 +17,8 @@ j = [ 0.0, 1.0, 0.0 ]
 k = [ -1.0, 0.0, 0.0 ]
 [objects.components.render]
 model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
-animated = false
+material_asset_id = "test-project/assets/materials/floor.omat"
 visible = true
-[objects.components.render.material]
-diffuse_color = [ 0.2, 0.2, 0.2 ]
-diffuse_reflectivity = 0.5
-specular_color = [ 0.8, 0.8, 0.8 ]
-specular_reflectivity = 0.5
-emissive_color = [ 0.0, 0.0, 0.0 ]
-emissivity = 0.0
-transparency = 0.0
-shininess = 16.0
 
 [[objects]]
 id = 2
@@ -44,17 +35,8 @@ k = [ -1.0, 0.0, 0.0 ]
 behaviors = [ "TestBehavior" ]
 [objects.components.render]
 model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
-animated = false
+material_asset_id = "test-project/assets/materials/donut.omat"
 visible = true
-[objects.components.render.material]
-diffuse_color = [ 0.01, 0.01, 0.22 ]
-diffuse_reflectivity = 0.5
-specular_color = [ 0.8, 0.8, 0.8 ]
-specular_reflectivity = 0.5
-emissive_color = [ 0.0, 0.0, 0.0 ]
-emissivity = 0.1
-transparency = 0.0
-shininess = 16.0
 
 [[objects]]
 id = 3

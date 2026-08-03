@@ -23,6 +23,7 @@ namespace other {
           case asset_type::SCRIPT: return kScript;
           case asset_type::AUDIO: return kAudio;
           case asset_type::SCENE: return kScene;
+          case asset_type::MATERIAL: return kMaterial;
           default: return kUnknown;
         }
       }
@@ -37,6 +38,7 @@ namespace other {
           case asset_type::SCRIPT: return "SCR";
           case asset_type::AUDIO: return "WAV";
           case asset_type::SCENE: return "SCN";
+          case asset_type::MATERIAL: return "MAT";
           default: return "???";
         }
       }
@@ -51,6 +53,7 @@ namespace other {
           case asset_type::SCRIPT: return "S";
           case asset_type::AUDIO: return "Au";
           case asset_type::SCENE: return "Sc";
+          case asset_type::MATERIAL: return "Mt";
           // case asset_type::SCENE_OBJECT: return "So";
           default: return "?";
         }
@@ -69,6 +72,7 @@ namespace other {
           case asset_type::SCRIPT: return asset::SCRIPT;
           case asset_type::AUDIO: return asset::AUDIO;
           case asset_type::SCENE: return asset::SCENE;
+          case asset_type::MATERIAL: return asset::MATERIAL;
           default: return asset::EMPTY;
         }
       }

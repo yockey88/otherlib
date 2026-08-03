@@ -11,6 +11,7 @@
 
 #include "file/filesystem.hpp"
 
+#include "gpu_resource/material.hpp"
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/renderer_backend.hpp"
 
@@ -45,6 +46,7 @@ namespace other {
     EXPECT_EQ(asset::get_type_from_extension(".oscn"), asset::SCENE);
     EXPECT_EQ(asset::get_type_from_extension(".oscnb"), asset::SCENE);
     EXPECT_EQ(asset::get_type_from_extension(".os"), asset::SCRIPT);
+    EXPECT_EQ(asset::get_type_from_extension(".omat"), asset::MATERIAL);
     EXPECT_EQ(asset::get_type_from_extension(".unknown"), asset::EMPTY);
     /// regression: the extension table once value-initialized a trailing slot, making
     ///  the empty extension classify as TEXTURE (type 0)
@@ -79,6 +81,10 @@ namespace other {
     EXPECT_NE(std::find(scene_exts.begin(), scene_exts.end(), ".oscn"), scene_exts.end());
     EXPECT_NE(std::find(scene_exts.begin(), scene_exts.end(), ".oscnb"), scene_exts.end());
     EXPECT_EQ(std::find(scene_exts.begin(), scene_exts.end(), ".lua"), scene_exts.end());
+
+    auto material_exts = asset::get_supported_extensions(asset::MATERIAL);
+    EXPECT_NE(std::find(material_exts.begin(), material_exts.end(), ".omat"), material_exts.end());
+    EXPECT_EQ(material_exts.size(), 1u);
   }
 
   MATCHER(IsLoadingOrLoaded, "") {
@@ -362,6 +368,72 @@ worker_count = {}
     EXPECT_EQ(subsystem<renderer_backend>::get()->get_texture(handler->get_asset_hash(asset_id)).id, 0u);
 
     handler = nullptr;
+  }
+
+  TEST_F(asset_tests, material_async_load_and_unload) {
+    dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+    event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    /// materials are pure cpu parameter sets: no gpu resource is ever created for one
+    set_up_mock_rendering_api_and_expect_no_resource_creation(events);
+
+    const filepath mat_dir = std::filesystem::temp_directory_path() / "other-material-asset-tests";
+    std::filesystem::remove_all(mat_dir);
+    std::filesystem::create_directories(mat_dir);
+    const filepath omat = mat_dir / "hull.omat";
+    {
+      std::ofstream out(omat);
+      out << "asset-type = \"material\"\n"
+             "name = \"hull\"\n"
+             "\n"
+             "[params]\n"
+             "base_color = [0.8, 0.85, 0.9, 1.0]\n"
+             "roughness = 0.35\n";
+    }
+    /// stable ids virtualize against the mount table, so the temp dir must be mounted
+    ASSERT_NE(subsystem<file_system>::get()->mount_directory("materialassets", mat_dir), nullptr);
+
+    natural_t asset_id = handler->load_asset(omat);
+    ASSERT_NE(asset_id, 0);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::LOADING; });
+    ASSERT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
+
+    /// parsed and registered on the backend under the asset's path hash
+    const natural_t material_hash = handler->get_asset_hash(asset_id);
+    const material* mat = subsystem<renderer_backend>::get()->get_material(material_hash);
+    ASSERT_NE(mat, nullptr);
+    EXPECT_EQ(mat->name, "hull");
+    EXPECT_EQ(mat->key, material_hash);
+    EXPECT_EQ(mat->revision, 1u);
+    ASSERT_EQ(mat->params.size(), 2u);
+    EXPECT_FLOAT_EQ(mat->params.at(FNV("roughness")).data.x, 0.35f);
+
+    handler->unload_asset(asset_id);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::UNLOADING; });
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
+    EXPECT_EQ(subsystem<renderer_backend>::get()->get_material(material_hash), nullptr);
+
+    /// reload = the refresh sequence's unload/load halves; the revision must keep climbing
+    /// so pipeline pack caches can never alias a stale blob
+    natural_t reloaded_id = handler->load_asset(omat);
+    ASSERT_NE(reloaded_id, 0);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(reloaded_id) != asset_state::LOADING; });
+    ASSERT_EQ(handler->get_asset_state(reloaded_id), asset_state::LOADED);
+    const material* reloaded = subsystem<renderer_backend>::get()->get_material(material_hash);
+    ASSERT_NE(reloaded, nullptr);
+    EXPECT_EQ(reloaded->revision, 2u);
+
+    handler->unload_asset(reloaded_id);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(reloaded_id) != asset_state::UNLOADING; });
+
+    handler = nullptr;
+    std::error_code ec;
+    std::filesystem::remove_all(mat_dir, ec);
   }
 
   TEST_F(asset_tests, backendless_types_load_as_tracked_stubs) {

@@ -1,0 +1,8 @@
+# migrated from spinning-donut.oscn's inline render.material block; roughness carries the
+# old specular_reflectivity value (the shading pass reads albedo.a as a scalar factor)
+asset-type = "material"
+name = "floor"
+
+[params]
+base_color = [0.2, 0.2, 0.2, 1.0]
+roughness = 0.5
