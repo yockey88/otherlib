@@ -331,6 +331,32 @@ namespace other {
     }
   }
 
+  void renderer_backend::add_animation(natural_t handle, animation_clip clip) {
+    OTHER_ASSERT(animation_assets.find(handle) == animation_assets.end(), "Animation clip with handle {} already exists.", handle);
+
+    animation_assets[handle] = std::move(clip);
+    CORE_LOG_DEBUG("Added animation clip with handle: {}", handle);
+  }
+
+  const animation_clip* renderer_backend::get_animation(natural_t handle) const {
+    auto it = animation_assets.find(handle);
+    if (it != animation_assets.end()) {
+      return &it->second;
+    }
+
+    return nullptr;
+  }
+
+  void renderer_backend::remove_animation(natural_t handle) {
+    auto it = animation_assets.find(handle);
+    if (it != animation_assets.end()) {
+      animation_assets.erase(it);
+      CORE_LOG_DEBUG("Removed animation clip with handle: {}", handle);
+    } else {
+      CORE_LOG_ERROR("Animation clip with handle {} not found.", handle);
+    }
+  }
+
   resource_handle renderer_backend::get_fallback_texture(fallback_texture kind) {
     OTHER_ASSERT(rendering_api_instance != nullptr, "Rendering API must be loaded before fallback textures are requested.");
 

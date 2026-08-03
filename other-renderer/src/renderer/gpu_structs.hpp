@@ -10,6 +10,8 @@
 
 #include "glm/fwd.hpp"
 
+#include "model/skeleton.hpp"
+
 namespace other {
   namespace gpu {
 
@@ -55,8 +57,9 @@ namespace other {
       glm::mat4 model_matrices[kMaxMaterials];
     };
 
+    /// sized by the skeleton joint cap, not the material cap (the two are coincidentally 100)
     GPU_ALIGN struct bone_matrix_buffer {
-      glm::mat4 bone_matrices[kMaxMaterials];
+      glm::mat4 bone_matrices[kMaxBones];
       int use_bones = 0;
     };
 

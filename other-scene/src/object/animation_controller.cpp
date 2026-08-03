@@ -7,7 +7,6 @@
 #include <stack>
 
 #include "gpu_resource/mesh.hpp"
-#include "model/animation.hpp"
 #include "model/model.hpp"
 #include "model/vertex.hpp"
 #include "renderer/gpu_structs.hpp"

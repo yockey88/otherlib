@@ -15,6 +15,8 @@
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/renderer_backend.hpp"
 
+#include "serialization/animation_serializer.hpp"
+
 #include "driver/driver_mounts.hpp"
 
 #include "asset/asset.hpp"
@@ -35,6 +37,9 @@ namespace other {
     EXPECT_EQ(asset::get_type_from_extension(".omdl"), asset::MODEL_SOURCE);
     /// the dead .omesh format no longer classifies
     EXPECT_EQ(asset::get_type_from_extension(".omesh"), asset::EMPTY);
+    EXPECT_EQ(asset::get_type_from_extension(".oanim"), asset::ANIMATION);
+    /// .anim never had a producer or consumer; the row was replaced by .oanim (doc 03 §3.2)
+    EXPECT_EQ(asset::get_type_from_extension(".anim"), asset::EMPTY);
     EXPECT_EQ(asset::get_type_from_extension(".csproj"), asset::SCRIPT_PROJECT);
     EXPECT_EQ(asset::get_type_from_extension(".dll"), asset::SCRIPT_SOURCE);
     EXPECT_EQ(asset::get_type_from_extension(".so"), asset::SCRIPT_SOURCE);
@@ -85,6 +90,10 @@ namespace other {
     auto material_exts = asset::get_supported_extensions(asset::MATERIAL);
     EXPECT_NE(std::find(material_exts.begin(), material_exts.end(), ".omat"), material_exts.end());
     EXPECT_EQ(material_exts.size(), 1u);
+
+    auto animation_exts = asset::get_supported_extensions(asset::ANIMATION);
+    EXPECT_NE(std::find(animation_exts.begin(), animation_exts.end(), ".oanim"), animation_exts.end());
+    EXPECT_EQ(animation_exts.size(), 1u);
   }
 
   MATCHER(IsLoadingOrLoaded, "") {
@@ -436,6 +445,65 @@ worker_count = {}
     std::filesystem::remove_all(mat_dir, ec);
   }
 
+  TEST_F(asset_tests, animation_async_load_and_unload) {
+    dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+    event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    /// clips are pure cpu keyframe data: no gpu resource is ever created for one
+    set_up_mock_rendering_api_and_expect_no_resource_creation(events);
+
+    animation_clip clip;
+    clip.name = "walk";
+    clip.duration = 1.5f;
+    joint_track& track = clip.joint_tracks.emplace_back();
+    track.joint_name = "root";
+    track.joint_name_hash = FNV("root");
+    track.position_keyframes.push_back({ 0.f, glm::vec3(0.f) });
+    track.position_keyframes.push_back({ 1.5f, glm::vec3(0.f, 1.f, 0.f) });
+    track.rotation_keyframes.push_back({ 0.f, glm::quat(1.f, 0.f, 0.f, 0.f) });
+
+    const filepath anim_dir = std::filesystem::temp_directory_path() / "other-animation-asset-tests";
+    std::filesystem::remove_all(anim_dir);
+    std::filesystem::create_directories(anim_dir);
+    const filepath oanim = anim_dir / "walk.oanim";
+    {
+      const ostd::vector<uint8_t> bytes = serialization::serialize_animation_clip(clip);
+      std::ofstream out(oanim, std::ios::binary);
+      out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    }
+    /// stable ids virtualize against the mount table, so the temp dir must be mounted
+    ASSERT_NE(subsystem<file_system>::get()->mount_directory("animationassets", anim_dir), nullptr);
+
+    natural_t asset_id = handler->load_asset(oanim);
+    ASSERT_NE(asset_id, 0);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::LOADING; });
+    ASSERT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
+
+    /// parsed and registered on the backend under the asset's path hash
+    const natural_t clip_hash = handler->get_asset_hash(asset_id);
+    const animation_clip* loaded = subsystem<renderer_backend>::get()->get_animation(clip_hash);
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->name, "walk");
+    EXPECT_FLOAT_EQ(loaded->duration, 1.5f);
+    ASSERT_EQ(loaded->joint_tracks.size(), 1u);
+    EXPECT_EQ(loaded->joint_tracks[0].joint_name_hash, FNV("root"));
+    EXPECT_EQ(loaded->joint_tracks[0].position_keyframes.size(), 2u);
+
+    handler->unload_asset(asset_id);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::UNLOADING; });
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
+    EXPECT_EQ(subsystem<renderer_backend>::get()->get_animation(clip_hash), nullptr);
+
+    handler = nullptr;
+    std::error_code ec;
+    std::filesystem::remove_all(anim_dir, ec);
+  }
+
   TEST_F(asset_tests, backendless_types_load_as_tracked_stubs) {
     dtor ___destructor_guard;
 
@@ -447,13 +515,12 @@ worker_count = {}
     scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
     set_up_mock_rendering_api_and_expect_no_resource_creation(events);
 
-    /// audio/animation/input-map have no runtime backend yet; loading must succeed
-    /// as a tracked stub, not abort in empty_loader
+    /// audio/input-map have no runtime backend yet; loading must succeed as a
+    /// tracked stub, not abort in empty_loader (animation graduated to a real loader)
     const filepath stub_dir = std::filesystem::temp_directory_path() / "other-asset-stub-tests";
     std::filesystem::create_directories(stub_dir);
     const std::array stub_files = {
       stub_dir / "tone.wav",
-      stub_dir / "walk.anim",
       stub_dir / "controls.oinputmap",
     };
     for (const filepath& file : stub_files) {

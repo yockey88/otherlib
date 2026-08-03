@@ -167,7 +167,7 @@ namespace other {
     const auto builtin_settings = std::array{
       shader::setting{ "MAX_OBJECTS", std::to_string(gpu::kMaxObjects) },
       shader::setting{ "MAX_VERTEX_BONE_INFLUENCE", "4" },
-      shader::setting{ "MAX_BONES", std::to_string(gpu::kMaxObjects) },
+      shader::setting{ "MAX_BONES", std::to_string(kMaxBones) },
       shader::setting{ "MAX_MATERIALS", std::to_string(gpu::kMaxMaterials) },
       shader::setting{ "MAX_LIGHTS", std::to_string(gpu::kMaxLights) },
       shader::setting{ "POINT_LIGHT_INTENSITY", "1" },

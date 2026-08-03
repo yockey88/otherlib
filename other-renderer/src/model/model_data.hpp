@@ -6,7 +6,7 @@
 
 #include <glm/glm.hpp>
 
-#include "model/animation.hpp"
+#include "model/animation_clip.hpp"
 #include "model/skeleton.hpp"
 #include "model/vertex.hpp"
 
@@ -39,7 +39,7 @@ namespace other {
     ostd::vector<imported_material> materials;
 
     skeleton skel;
-    // ostd::vector<animation_clip> clips;
+    ostd::vector<animation_clip> clips;
 
     bounding_box bounds = bounding_box::empty;
 

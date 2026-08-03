@@ -14,9 +14,18 @@ namespace other {
     OTHER_ASSERT(this->data.valid(), "Model source constructed from invalid model data.");
     OTHER_ASSERT(!this->data.name.empty(), "Model source name cannot be empty.");
 
-    CORE_LOG_DEBUG("Creating model source: {} with {} vertices, {} indices, {} submeshes, {} nodes, {} bones, and {} materials.",
+    CORE_LOG_DEBUG("Creating model source: {} with {} vertices, {} indices, {} submeshes, {} nodes, {} joints, {} materials, and {} clips.",
                    this->data.name, this->data.vertices.size(), this->data.indices.size(), this->data.submeshes.size(),
-                   this->data.nodes.size(), this->data.skel.bones.size(), this->data.materials.size());
+                   this->data.nodes.size(), this->data.skel.joints.size(), this->data.materials.size(), this->data.clips.size());
+  }
+
+  const animation_clip* model_source::find_clip(std::string_view name) const {
+    for (const animation_clip& clip : data.clips) {
+      if (clip.name == name) {
+        return &clip;
+      }
+    }
+    return nullptr;
   }
 
   model_source::~model_source() {

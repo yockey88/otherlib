@@ -23,6 +23,7 @@ target_sources(other_scene
       src/scene/scene.cpp
       src/scene/scene_graph.cpp
 
+      src/serialization/animation_serializer.cpp
       src/serialization/component_codec.cpp
       src/serialization/scene_serializer.cpp
 )

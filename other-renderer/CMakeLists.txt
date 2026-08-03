@@ -12,7 +12,6 @@ target_sources(other_renderer
       src/gpu_resource/material.cpp
       
       src/model/vertex.cpp
-      src/model/animation.cpp
       src/model/skeleton.cpp
       src/model/model_importer.cpp
       src/model/model_source.cpp

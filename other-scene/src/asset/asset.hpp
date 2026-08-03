@@ -150,8 +150,9 @@ namespace other {
     ".3ds",   // MODEL_SOURCE
     ".omdl",  // MODEL_SOURCE (baked model, doc 01 section 7)
 
-    /// usually actually just loaded from fbx with model source
-    ".anim",  // ANIMATION
+    /// standalone binary clip (doc 03 §3.2), extracted via `oecli model extract-clips`;
+    ///  clips also load embedded in their model source
+    ".oanim",  // ANIMATION
 
     ".csproj",  // SCRIPT_PROJECT
     ".cs",      // SCRIPT_FILE
@@ -192,7 +193,7 @@ namespace other {
       { asset::MODEL_SOURCE, ".3ds" },
       { asset::MODEL_SOURCE, ".omdl" },
 
-      { asset::ANIMATION, ".anim" },
+      { asset::ANIMATION, ".oanim" },
 
       { asset::SCRIPT_PROJECT, ".csproj" },
       { asset::SCRIPT_SOURCE, ".dll" },
