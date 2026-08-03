@@ -8,10 +8,10 @@ shading_pass_name = "shading-pass"
 light_space_matrix_uniform_name = "OE_light_space_matrix"
 
 [resources]
+## per-draw ring tags (model/bone/material) have no static buffer rows: the rings are the
+## storage, and their shader blocks are wired to the pass-binding points at pass start
 buffers = [
   { name = "camera_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "camera" },
-  { name = "model_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "model" },
-  { name = "bone_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "bone" },
   { name = "light_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "light" },
   { name = "simulation_environment_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "simulation_environment" },
 ]
@@ -68,10 +68,7 @@ passes = [
   { name = "to-screen", pass_type = "RENDER_PASS", shader_name = "screen_shader", create_framebuffer = false },
 ]
 inputs = [
-  { pass_name = "geometry-pass", resource_name = "model_buffer", binding = 0 },
-  { pass_name = "geometry-pass", resource_name = "bone_buffer", binding = 1 },
   { pass_name = "geometry-pass", resource_name = "camera_buffer", binding = 3 },
-  { pass_name = "shadow-map-pass", resource_name = "model_buffer", binding = 0 },
   { pass_name = "environment-map-pass", resource_name = "ambient_shadow_map", binding = 0 },
   { pass_name = "environment-map-pass", resource_name = "simulation_environment_buffer", binding = 0 },
   { pass_name = "shading-pass", resource_name = "color_texture", attachment = "COLOR" },
@@ -97,10 +94,10 @@ executors = [
   { pass_name = "shading-pass", name = "fullscreen_quad", uniforms = [ { name = "OE_gbuff_albedo", value = 0 }, { name = "OE_gbuff_normal", value = 1 }, { name = "OE_gbuff_position", value = 2 }, { name = "OE_shadow_map", value = 3 }, { name = "OE_env_cubemap", value = 5 }, { name = "OE_voxel_tex", value = 4 } ] },
   { pass_name = "to-screen", name = "fullscreen_quad", uniforms = [ { name = "OE_texture", value = 0 }, { name = "OE_exposure", value = 1.0 } ] },
 ]
+## ring tags (model/bone/material) have no rows here: required_tags demands a tagged static
+## resource, and the per-draw rings replaced those
 resource_tags = [
   { name = "camera", type = "BUFFER" },
-  { name = "model", type = "BUFFER" },
-  { name = "bone", type = "BUFFER" },
   { name = "light", type = "BUFFER" },
   { name = "simulation_environment", type = "BUFFER" },
   # { name = "screen", type = "TEXTURE" },

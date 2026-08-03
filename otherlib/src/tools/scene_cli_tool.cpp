@@ -9,9 +9,9 @@
 
 #include "core/logger_sinks.hpp"
 #include "memory/arena.hpp"
-
 #include "serialization/scene_serializer.hpp"
 
+#include "tools/material_cli_tool.hpp"
 #include "tools/model_cli_tool.hpp"
 
 namespace other {
@@ -37,7 +37,10 @@ namespace other {
 
         /// console only at warn — a cli tool must not scatter log files around
         log_sink console_sink = {
-          1, "console-sink", "%^[%l]%$ %v", spdlog::level::warn,
+          1,
+          "console-sink",
+          "%^[%l]%$ %v",
+          spdlog::level::warn,
           [](const config_table&) -> spdlog::sink_ptr { return std::make_shared<spdlog::sinks::stdout_color_sink_mt>(); },
         };
         std::string loggers[] = { "other-core-log" };
@@ -200,6 +203,9 @@ namespace other {
       }
       if (registry.find_tool("model") == nullptr) {
         registry.add_tool(std::make_unique<model_tool>());
+      }
+      if (registry.find_tool("material") == nullptr) {
+        registry.add_tool(std::make_unique<material_tool>());
       }
     }
 

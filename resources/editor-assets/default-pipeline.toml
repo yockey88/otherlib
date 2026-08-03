@@ -8,10 +8,10 @@ shading_pass_name = "shading-pass"
 light_space_matrix_uniform_name = "OE_light_space_matrix"
 
 [resources]
+## per-draw ring tags (model/bone/material) have no static buffer rows: the rings are the
+## storage, and their shader blocks are wired to the pass-binding points at pass start
 buffers = [
   { name = "camera_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "camera" },
-  { name = "model_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "model" },
-  { name = "bone_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "bone" },
   { name = "light_buffer", type = "STORAGE_BUFFER", usage = "DYNAMIC", tag = "light" },
   { name = "simulation_environment_buffer", type = "UNIFORM_BUFFER", usage = "DYNAMIC", tag = "simulation_environment" },
 ]
@@ -132,15 +132,12 @@ pass-uniforms = [
 ]
 inputs = [
   { pass_name = "voxel-clear-pass", resource_name = "voxel_texture", binding = 0, uniform_name = "OE_voxel_tex_in" },
-  { pass_name = "geometry-pass", resource_name = "model_buffer", binding = 0 },
-  { pass_name = "geometry-pass", resource_name = "bone_buffer", binding = 1 },
   { pass_name = "geometry-pass", resource_name = "camera_buffer", binding = 3 },
   { pass_name = "voxel-occupied-pass", resource_name = "simulation_environment_buffer", binding = 0 },
   { pass_name = "voxel-occupied-pass", resource_name = "voxel_texture", binding = 0, uniform_name = "OE_voxel_tex_in" },     
   { pass_name = "voxel-occupied-pass", resource_name = "position_texture", attachment = "COLOR", binding = 1, uniform_name = "OE_gbuff_position" },
   { pass_name = "voxel-occupied-pass", resource_name = "normal_texture", attachment = "COLOR", binding = 2, uniform_name = "OE_gbuff_normal" },
   { pass_name = "voxelize-pass", resource_name = "voxel_texture", binding = 0, uniform_name = "OE_voxel_tex" },
-  { pass_name = "shadow-map-pass", resource_name = "model_buffer", binding = 0 },
   { pass_name = "environment-map-pass", resource_name = "simulation_environment_buffer", binding = 0 },
   { pass_name = "environment-map-pass", resource_name = "light_buffer", binding = 1 },
   { pass_name = "environment-map-pass", resource_name = "ambient_shadow_map", binding = 1, uniform_name = "OE_shadow_map", access = "sample" },
@@ -200,12 +197,10 @@ executors = [
   { pass_name = "smaa-blend", name = "fullscreen_quad" },
   { pass_name = "tonemap-pass", name = "fullscreen_quad" },
 ]
-## the material tag has no static resource row: the per-draw ring is the binding, filled by
-## the pipeline itself against [materials.layout]
+## ring tags (model/bone/material) have no rows here: required_tags demands a tagged static
+## resource, and the per-draw rings replaced those
 resource_tags = [
   { name = "camera", type = "BUFFER" },
-  { name = "model", type = "BUFFER" },
-  { name = "bone", type = "BUFFER" },
   { name = "light", type = "BUFFER" },
   { name = "simulation_environment", type = "BUFFER" },
 ]

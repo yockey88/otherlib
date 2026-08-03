@@ -61,6 +61,7 @@ namespace other {
     void prepare_frame(render_data* data);
     void bind_frame_resources(const render_data& data);
     void bind_draw_resources(pass_runtime& runtime, const render_data& data, size_t draw_index);
+    void apply_ring_block_bindings(const frame_node* node, const pass_runtime& runtime);
     void render_frame(renderer* renderer_ptr);
     void reset_draw_buffers();
     glm::ivec2 get_window_size() const;
@@ -70,7 +71,6 @@ namespace other {
     ///  layout texture slots bound per draw; sampler uniforms are set once per pass execution
     bool pass_uses_material_binding(const pass_runtime& runtime) const;
     void apply_material_sampler_uniforms(const frame_node* node);
-    void apply_material_block_binding(const frame_node* node, const pass_runtime& runtime);
     void bind_material_textures(const render_data& data, size_t draw_index);
 
     void register_texture_resource(const std::string_view name, resource_handle handle);

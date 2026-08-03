@@ -221,6 +221,31 @@ namespace other {
     }
   }
 
+  /// ring-tagged bindings have no static resource rows, so no frame_node input row wires
+  ///  their GLSL blocks to binding points — the blocks carry no binding qualifier (GL
+  ///  default 0) while buffer_range binds ring data at the TOML-assigned points. wired at
+  ///  every pass start because a shader hot-reload relinks the program, which resets block
+  ///  bindings to their defaults
+  void render_pipeline::apply_ring_block_bindings(const frame_node* node, const pass_runtime& runtime) {
+    OTHER_ASSERT(node != nullptr, "Frame node must not be null in apply_ring_block_bindings.");
+    if (!node->pass->shader_handle.has_value()) {
+      return;
+    }
+
+    auto& api = renderer_ptr->rendering()->api();
+    for (const auto& bd : runtime.def->bindings) {
+      if (bd.scope != binding_scope::PER_DRAW_CALL && bd.scope != binding_scope::PER_INSTANCE) {
+        continue;
+      }
+
+      /// binding names follow the scope-prefix convention ("per_draw.material_buffer");
+      ///  the GLSL block name is the unprefixed suffix
+      const size_t dot = bd.name.find('.');
+      const std::string_view block_name = dot == std::string::npos ? std::string_view{ bd.name } : std::string_view{ bd.name }.substr(dot + 1);
+      api->set_shader_block_binding(*node->pass->shader_handle, block_name, bd.binding, buffer_type_from_binding(bd.type));
+    }
+  }
+
   bool render_pipeline::pass_uses_material_binding(const pass_runtime& runtime) const {
     if (!definition.materials.has_value()) {
       return false;
@@ -242,26 +267,6 @@ namespace other {
     auto& sh = renderer_ptr->get_resource<shader>(*node->pass->shader_handle);
     for (const auto& slot : definition.materials->texture_slots) {
       sh.set_uniform(slot.uniform, static_cast<int32_t>(slot.unit));
-    }
-  }
-
-  void render_pipeline::apply_material_block_binding(const frame_node* node, const pass_runtime& runtime) {
-    OTHER_ASSERT(node != nullptr, "Frame node must not be null in apply_material_block_binding.");
-    if (!definition.materials.has_value() || !node->pass->shader_handle.has_value()) {
-      return;
-    }
-
-    auto& api = renderer_ptr->rendering()->api();
-    for (const auto& bd : runtime.def->bindings) {
-      if (bd.scope != binding_scope::PER_DRAW_CALL || bd.tag.value() != resource_tag::kMaterialTag) {
-        continue;
-      }
-
-      /// binding names follow the scope-prefix convention ("per_draw.material_buffer");
-      ///  the GLSL block name is the unprefixed suffix
-      const size_t dot = bd.name.find('.');
-      const std::string_view block_name = dot == std::string::npos ? std::string_view{ bd.name } : std::string_view{ bd.name }.substr(dot + 1);
-      api->set_shader_block_binding(*node->pass->shader_handle, block_name, bd.binding, buffer_type_from_binding(bd.type));
     }
   }
 
@@ -381,6 +386,7 @@ namespace other {
         diag.mark(iter == 0 ? "pass:begin" : "pass:iter");
 
         n.start_pass(renderer_ptr, &runtime);
+        apply_ring_block_bindings(&n, runtime);
         if (n.pass->shader_handle.has_value() && frame_render_data != nullptr) {
           const auto& env = frame_render_data->simulation_environment;
           glm::vec3 to_sun = glm::normalize(-1.f * glm::vec3(env.sun_direction));
