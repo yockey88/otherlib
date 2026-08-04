@@ -6,6 +6,7 @@
 #include <cmath>
 #include <format>
 #include <limits>
+#include <set>
 #include <string>
 
 #include <assimp/Importer.hpp>
@@ -15,6 +16,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+#include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
 
@@ -108,15 +110,53 @@ namespace other {
       return false;
     }
 
-    bool node_contains_bone(const skeleton& skel, const aiNode* node) {
+    /// per-vertex weight accumulator; results land in vertex bone_ids/bone_weights,
+    ///  the skeleton itself never stores weights
+    struct bone_influence {
+      constexpr static size_t kMaxInfluences = 4;
+      size_t current_count = 0;
+      int32_t joint_ids[kMaxInfluences] = { -1, -1, -1, -1 };
+      float weights[kMaxInfluences] = { 0.f, 0.f, 0.f, 0.f };
+
+      void add(int32_t joint_id, float weight) {
+        if (current_count >= kMaxInfluences) {
+          // should never get here - aiProcess_LimitBoneWeights caps influences at 4
+          CORE_LOG_WARN("More than {} bone influences on a vertex!", kMaxInfluences);
+          return;
+        }
+        joint_ids[current_count] = joint_id;
+        weights[current_count] = weight;
+        ++current_count;
+      }
+
+      void normalize() {
+        double total = 0.0;
+        for (size_t i = 0; i < kMaxInfluences; ++i) {
+          total += weights[i];
+        }
+        if (total > 0.0) {
+          for (size_t i = 0; i < kMaxInfluences; ++i) {
+            weights[i] = static_cast<float>(weights[i] / total);
+          }
+        }
+      }
+    };
+
+    struct skeleton_build_ctx {
+      std::set<std::string> rigged_names;       /// node names any aiBone references
+      ostd::vector<bone_influence> influences;  /// index-aligned with model_data::vertices
+      bool cap_warned = false;
+    };
+
+    bool node_contains_bone(const std::set<std::string>& rigged_names, const aiNode* node) {
       OTHER_ASSERT(node != nullptr, "aiNode is null");
 
-      if (std::ranges::any_of(skel.bone_names, [&node](const auto& b) { return b == node->mName.C_Str(); })) {
+      if (rigged_names.contains(node->mName.C_Str())) {
         return true;
       }
 
       for (uint32_t i = 0; i < node->mNumChildren; ++i) {
-        if (node_contains_bone(skel, node->mChildren[i])) {
+        if (node_contains_bone(rigged_names, node->mChildren[i])) {
           return true;
         }
       }
@@ -124,76 +164,130 @@ namespace other {
       return false;
     }
 
-    void traverse_bone(skeleton& skel, const aiNode* node, uint32_t parent_idx, ostd::vector<std::string>& warnings) {
+    /// -1 when the joint cap is hit; the caller drops the subtree so parent indices stay valid
+    int16_t emit_joint(const aiNode* node, int16_t parent_idx, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
+      if (skel.joints.size() >= kMaxBones) {
+        if (!bctx.cap_warned) {
+          bctx.cap_warned = true;
+          ctx.warn(std::format("skeleton exceeds the {}-joint cap - '{}' and every joint after it are dropped", kMaxBones, node->mName.C_Str()));
+        }
+        return -1;
+      }
+
       aiVector3D ai_scaling;
       aiQuaternion ai_rotation;
       aiVector3D ai_position;
       node->mTransformation.Decompose(ai_scaling, ai_rotation, ai_position);
 
-      glm::vec3 translation = glm::vec3(ai_position.x, ai_position.y, ai_position.z);
-      glm::quat rotation = glm::quat(ai_rotation.w, ai_rotation.x, ai_rotation.y, ai_rotation.z);
-      glm::vec3 scale = glm::vec3(ai_scaling.x, ai_scaling.y, ai_scaling.z);
-
+      const glm::vec3 scale = glm::vec3(ai_scaling.x, ai_scaling.y, ai_scaling.z);
       if (std::abs(scale.x - scale.y) > 0.00001f || std::abs(scale.x - scale.z) > 0.00001f) {
-        std::string w = std::format("bone '{}' has non-uniform scale ({}, {}, {}) - the animation system does not support this and animations will be incorrect", node->mName.C_Str(), scale.x, scale.y, scale.z);
-        CORE_LOG_WARN("{}", w);
-        warnings.push_back(std::move(w));
+        ctx.warn(std::format("bone '{}' has non-uniform scale ({}, {}, {}) - the animation system does not support this and animations will be incorrect", node->mName.C_Str(), scale.x, scale.y, scale.z));
       }
 
-      uint32_t bone_idx = skel.add_bone_data(node->mName.C_Str(), parent_idx, translation, rotation, scale);
-      for (uint32_t node_idx = 0; node_idx < node->mNumChildren; ++node_idx) {
-        /// \todo doc 03: this records the aiNode child slot, not a bone index - dies with the skeleton rework
-        skel.children_ids[bone_idx].push_back(node_idx);
-        aiNode* child_node = node->mChildren[node_idx];
+      const int16_t joint_idx = static_cast<int16_t>(skel.joints.size());
+      joint& j = skel.joints.emplace_back();
+      j.name = node->mName.C_Str();
+      j.name_hash = FNV(j.name);
+      j.parent = parent_idx;
+      j.bind_position = glm::vec3(ai_position.x, ai_position.y, ai_position.z);
+      j.bind_rotation = glm::quat(ai_rotation.w, ai_rotation.x, ai_rotation.y, ai_rotation.z);
+      j.bind_scale = scale;
+      return joint_idx;
+    }
 
-        if (node_contains_bone(skel, child_node)) {
-          traverse_bone(skel, child_node, bone_idx, warnings);
+    /// joints land parents-first (a node emits before recursing) — build_palette depends
+    ///  on this to complete every chain in one forward pass
+    void traverse_bone(const aiNode* node, int16_t parent_idx, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
+      const int16_t joint_idx = emit_joint(node, parent_idx, bctx, skel, ctx);
+      if (joint_idx == -1) {
+        return;
+      }
+
+      for (uint32_t child_idx = 0; child_idx < node->mNumChildren; ++child_idx) {
+        aiNode* child_node = node->mChildren[child_idx];
+        if (node_contains_bone(bctx.rigged_names, child_node)) {
+          traverse_bone(child_node, joint_idx, bctx, skel, ctx);
         }
       }
     }
 
-    void traverse_node(skeleton& skel, const aiNode* node, uint32_t parent_idx, ostd::vector<std::string>& warnings) {
+    /// prefix accumulates the transforms of every non-joint ancestor this walk skips;
+    ///  recorded as skeleton::root_transform at the first root joint so build_palette can
+    ///  put them back in front of the chain
+    void traverse_node(const aiNode* node, int16_t parent_idx, const glm::mat4& prefix, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
       OTHER_ASSERT(node != nullptr, "aiNode is null");
 
       uint32_t num_bone_children = 0;
       for (uint32_t i = 0; i < node->mNumChildren; ++i) {
-        if (node_contains_bone(skel, node->mChildren[i])) {
+        if (node_contains_bone(bctx.rigged_names, node->mChildren[i])) {
           ++num_bone_children;
         }
       }
 
-      bool is_multi_root_parent = num_bone_children > 1;
+      const bool is_multi_root_parent = num_bone_children > 1;
 
-      // Sometimes there is an "Armature" node or the like that is the parent of the skeleton.
-      // This node is not actually a bone, but we need to treat it as such so that its transform is not overlooked when we come
-      // to converting the bone transforms to model space.  If this node has identity transform, we can ignore it.
-      // note: As of Assimp 6.0 this appears to no longer be needed
-      bool armature_node = (num_bone_children == 1) && !node->mTransformation.IsIdentity() && !node_contains_mesh(node);
-      bool is_bone = std::ranges::any_of(skel.bone_names, [&node](const auto& b) { return b == node->mName.C_Str(); });
+      /// a transform-carrying "Armature"-style parent joins the skeleton so clip channels
+      ///  targeting it can animate it; identity ones just fold into the prefix
+      const bool armature_node = (num_bone_children == 1) && !node->mTransformation.IsIdentity() && !node_contains_mesh(node);
+      const bool is_bone = bctx.rigged_names.contains(node->mName.C_Str());
 
       if (is_bone || is_multi_root_parent || armature_node) {
-        traverse_bone(skel, node, parent_idx, warnings);
+        if (skel.joints.empty()) {
+          skel.root_transform = prefix;  // first root wins; disjoint roots share one prefix
+        }
+        traverse_bone(node, parent_idx, bctx, skel, ctx);
       } else {
+        const glm::mat4 child_prefix = prefix * mat4_from_ai_mat4(node->mTransformation);
         for (uint32_t i = 0; i < node->mNumChildren; ++i) {
-          traverse_node(skel, node->mChildren[i], parent_idx, warnings);
+          traverse_node(node->mChildren[i], parent_idx, child_prefix, bctx, skel, ctx);
         }
       }
     }
 
-    void process_assimp_skeleton(const aiScene* scene, skeleton& skel, ostd::vector<std::string>& warnings) {
+    const aiNode* find_first_rigged_mesh_node(const aiScene* scene, const aiNode* node) {
+      for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
+        if (scene->mMeshes[node->mMeshes[i]]->mNumBones > 0) {
+          return node;
+        }
+      }
+      for (uint32_t i = 0; i < node->mNumChildren; ++i) {
+        if (const aiNode* found = find_first_rigged_mesh_node(scene, node->mChildren[i])) {
+          return found;
+        }
+      }
+      return nullptr;
+    }
+
+    void process_assimp_skeleton(assimp_import_ctx& ctx, skeleton_build_ctx& bctx, model_data& data) {
       PROFILE_SECTION("model_importer::import_assimp--process-skeleton");
+      const aiScene* scene = ctx.scene;
+      skeleton& skel = data.skel;
+
+      skel.name = data.name;
 
       for (uint32_t mesh_idx = 0; mesh_idx < scene->mNumMeshes; ++mesh_idx) {
         const aiMesh* mesh = scene->mMeshes[mesh_idx];
         for (uint32_t bone_idx = 0; bone_idx < mesh->mNumBones; ++bone_idx) {
-          CORE_LOG_DEBUG(" - Creating bone from mesh bone: {}", mesh->mBones[bone_idx]->mName.C_Str());
-          skel.bone_names.emplace(mesh->mBones[bone_idx]->mName.C_Str());
+          CORE_LOG_DEBUG(" - Creating joint from mesh bone: {}", mesh->mBones[bone_idx]->mName.C_Str());
+          bctx.rigged_names.emplace(mesh->mBones[bone_idx]->mName.C_Str());
         }
       }
 
-      traverse_node(skel, scene->mRootNode, static_cast<uint32_t>(-1), warnings);
+      traverse_node(scene->mRootNode, -1, glm::mat4(1.f), bctx, skel, ctx);
 
-      /// animation channels can target nodes that no mesh rigs; they still need bones so the clips can drive them
+      /// aiBone::mOffsetMatrix maps MESH space -> bone space, so palettes land in SCENE
+      ///  space; folding inverse(mesh node global) into root_transform brings them back to
+      ///  vertex-buffer space and makes root_transform * bind_chain * offset == identity
+      ///  for any consistent export (mixamo hangs its axis fix on the mesh node)
+      if (const aiNode* mesh_node = find_first_rigged_mesh_node(scene, scene->mRootNode)) {
+        glm::mat4 mesh_global{ 1.f };
+        for (const aiNode* n = mesh_node; n != nullptr; n = n->mParent) {
+          mesh_global = mat4_from_ai_mat4(n->mTransformation) * mesh_global;
+        }
+        skel.root_transform = glm::inverse(mesh_global) * skel.root_transform;
+      }
+
+      /// animation channels can target nodes that no mesh rigs; they still need joints so the clips can drive them
       for (uint32_t anim_idx = 0; anim_idx < scene->mNumAnimations; ++anim_idx) {
         const aiAnimation* animation = scene->mAnimations[anim_idx];
 
@@ -204,8 +298,8 @@ namespace other {
             continue;
           }
 
-          std::string channel_name = node_anim->mNodeName.C_Str();
-          if (std::ranges::any_of(skel.bones, [&channel_name](const auto& b) { return b.name == channel_name; })) {
+          const std::string channel_name = node_anim->mNodeName.C_Str();
+          if (skel.find_joint(FNV(channel_name)) != -1) {
             continue;
           }
 
@@ -217,23 +311,9 @@ namespace other {
             continue;
           }
 
-          aiVector3D scaling;
-          aiQuaternion rotation;
-          aiVector3D position;
-          node->mTransformation.Decompose(scaling, rotation, position);
-          skel.bone_names.emplace(channel_name);
-
-          glm::vec3 translation = glm::vec3(position.x, position.y, position.z);
-          glm::quat rot = glm::quat(rotation.w, rotation.x, rotation.y, rotation.z);
-          glm::vec3 scale = glm::vec3(scaling.x, scaling.y, scaling.z);
-
-          CORE_LOG_DEBUG(" - Creating bone from animation channel: {}", channel_name);
-          skel.add_bone_data(channel_name, static_cast<uint32_t>(-1), translation, rot, scale);
+          CORE_LOG_DEBUG(" - Creating joint from animation channel: {}", channel_name);
+          emit_joint(node, -1, bctx, skel, ctx);
         }
-      }
-
-      for (uint32_t i = 0; i < skel.bones.size(); ++i) {
-        skel.calculate_final_transform(i);
       }
     }
 
@@ -312,7 +392,7 @@ namespace other {
     }
 
     /// pass 2 - geometry, model bounds ; pass 4 - bone rigging (weights land in accepted-submesh vertex ranges)
-    void process_assimp_meshes(assimp_import_ctx& ctx, model_data& data) {
+    void process_assimp_meshes(assimp_import_ctx& ctx, skeleton_build_ctx& bctx, model_data& data) {
       PROFILE_SECTION("model_importer::import_assimp--process-meshes");
       const aiScene* scene = ctx.scene;
 
@@ -329,7 +409,7 @@ namespace other {
         data.bounds.max = glm::max(data.bounds.max, sm.bounds.max);
       }
 
-      data.skel.bone_influence.resize(data.vertices.size());
+      bctx.influences.resize(data.vertices.size());
       for (uint32_t m = 0; m < scene->mNumMeshes; ++m) {
         const uint32_t sm_idx = ctx.submesh_of_mesh[m];
         if (sm_idx == assimp_import_ctx::kSkipped) {
@@ -358,15 +438,16 @@ namespace other {
             continue;
           }
 
-          int32_t bone_idx = data.skel.get_bone_index(ai_bone->mName.C_Str());
-          if (bone_idx == -1) {
+          /// -1 when the cap dropped this joint; its weights stay unbound
+          const int16_t joint_idx = data.skel.find_joint(FNV(ai_bone->mName.C_Str()));
+          if (joint_idx == -1) {
             continue;
           }
 
-          data.skel.bones[bone_idx].offset_matrix = mat4_from_ai_mat4(ai_bone->mOffsetMatrix);
+          data.skel.joints[joint_idx].inverse_bind = mat4_from_ai_mat4(ai_bone->mOffsetMatrix);
           for (uint32_t w = 0; w < ai_bone->mNumWeights; ++w) {
             const aiVertexWeight& weight = ai_bone->mWeights[w];
-            data.skel.bone_influence[sm.base_vertex + weight.mVertexId].add_bone_data(bone_idx, weight.mWeight);
+            bctx.influences[sm.base_vertex + weight.mVertexId].add(joint_idx, weight.mWeight);
           }
         }
       }
@@ -407,30 +488,28 @@ namespace other {
       }
     }
 
-    void process_assimp_nodes(assimp_import_ctx& ctx, model_data& data) {
+    void process_assimp_nodes(assimp_import_ctx& ctx, skeleton_build_ctx& bctx, model_data& data) {
       PROFILE_SECTION("model_importer::import_assimp--process-nodes");
 
       data.nodes.emplace_back();
       traverse_assimp_nodes(ctx.scene->mRootNode, 0, ctx, data, 0);
 
-      /// bones created from animation channels rig their node's submeshes directly
+      /// joints without mesh rigging (animation-channel / helper joints) drive their node's
+      ///  submeshes directly as rigid attachments: identity inverse_bind, full-weight influence.
+      ///  mesh-rigged joints keep the aiBone offset matrices pass 4 assigned
       for (mesh_node& node : data.nodes) {
-        int32_t bone_idx = data.skel.get_bone_index(node.name);
-        if (bone_idx < 0) {
+        const int16_t joint_idx = data.skel.find_joint(FNV(node.name));
+        if (joint_idx < 0 || bctx.rigged_names.contains(node.name)) {
           continue;
         }
-
-        data.skel.bones[bone_idx].offset_matrix = glm::mat4(1.f);
 
         for (uint32_t sm_idx : node.sub_meshes) {
           submesh& sm = data.submeshes[sm_idx];
           sm.rigged = true;
 
-          CORE_LOG_DEBUG("Rigging submesh[{}] '{}' to node bone '{}'", sm_idx, sm.name, node.name);
+          CORE_LOG_DEBUG("Rigging submesh[{}] '{}' to node joint '{}'", sm_idx, sm.name, node.name);
           for (uint32_t v = 0; v < sm.vert_cnt; ++v) {
-            for (uint32_t slot = 0; slot < bone_influence::kMaxBones; ++slot) {
-              data.skel.bone_influence[sm.base_vertex + v].add_bone_data(bone_idx, 1.f);
-            }
+            bctx.influences[sm.base_vertex + v].add(joint_idx, 1.f);
           }
         }
       }
@@ -452,7 +531,7 @@ namespace other {
           continue;
         }
 
-        /// '*N' references a texture embedded in the file (common in .glb); doc 02 decides how to consume these
+        /// '*N' references a texture embedded in the file (common in .glb)
         if (result.front() == '*') {
           return std::format("embedded:{}", result.substr(1));
         }
@@ -504,6 +583,56 @@ namespace other {
 
         CORE_LOG_DEBUG(" - Material[{}] '{}': roughness: {}, metalness: {}, textures: [base: '{}', normal: '{}', metallic-roughness: '{}', emissive: '{}']",
                        i, mat.name, mat.roughness, mat.metalness, mat.base_color_texture, mat.normal_texture, mat.metallic_roughness_texture, mat.emissive_texture);
+      }
+    }
+
+    /// immutable clips, seconds-normalized: ticks_per_second dies here
+    void process_assimp_animations(assimp_import_ctx& ctx, model_data& data) {
+      PROFILE_SECTION("model_importer::import_assimp--process-animations");
+      const aiScene* scene = ctx.scene;
+
+      data.clips.reserve(scene->mNumAnimations);
+      for (uint32_t anim_idx = 0; anim_idx < scene->mNumAnimations; ++anim_idx) {
+        const aiAnimation* animation = scene->mAnimations[anim_idx];
+        /// assimp reports 0 when the source file carries no rate
+        const double tps = animation->mTicksPerSecond != 0.0 ? animation->mTicksPerSecond : 25.0;
+
+        animation_clip& clip = data.clips.emplace_back();
+        clip.name = animation->mName.C_Str();
+        if (clip.name.empty()) {
+          clip.name = std::format("clip_{}", anim_idx);
+        }
+        clip.duration = static_cast<float>(animation->mDuration / tps);
+
+        clip.joint_tracks.reserve(animation->mNumChannels);
+        for (uint32_t channel_idx = 0; channel_idx < animation->mNumChannels; ++channel_idx) {
+          const aiNodeAnim* channel = animation->mChannels[channel_idx];
+          if (channel->mNumPositionKeys == 0 && channel->mNumRotationKeys == 0 && channel->mNumScalingKeys == 0) {
+            continue;
+          }
+
+          joint_track& track = clip.joint_tracks.emplace_back();
+          track.joint_name = channel->mNodeName.C_Str();
+          track.joint_name_hash = FNV(track.joint_name);
+
+          track.position_keyframes.reserve(channel->mNumPositionKeys);
+          for (uint32_t k = 0; k < channel->mNumPositionKeys; ++k) {
+            const aiVectorKey& key = channel->mPositionKeys[k];
+            track.position_keyframes.push_back({ static_cast<float>(key.mTime / tps), glm::vec3(key.mValue.x, key.mValue.y, key.mValue.z) });
+          }
+          track.rotation_keyframes.reserve(channel->mNumRotationKeys);
+          for (uint32_t k = 0; k < channel->mNumRotationKeys; ++k) {
+            const aiQuatKey& key = channel->mRotationKeys[k];
+            track.rotation_keyframes.push_back({ static_cast<float>(key.mTime / tps), glm::quat(key.mValue.w, key.mValue.x, key.mValue.y, key.mValue.z) });
+          }
+          track.scale_keyframes.reserve(channel->mNumScalingKeys);
+          for (uint32_t k = 0; k < channel->mNumScalingKeys; ++k) {
+            const aiVectorKey& key = channel->mScalingKeys[k];
+            track.scale_keyframes.push_back({ static_cast<float>(key.mTime / tps), glm::vec3(key.mValue.x, key.mValue.y, key.mValue.z) });
+          }
+        }
+
+        CORE_LOG_DEBUG(" - Clip[{}] '{}': {:.3f}s, {} tracks", anim_idx, clip.name, clip.duration, clip.joint_tracks.size());
       }
     }
 
@@ -609,29 +738,34 @@ namespace other {
                      scene->mNumMeshes, scene->mNumMaterials, scene->mNumTextures, scene->mNumAnimations);
 
       assimp_import_ctx ctx{ .scene = scene };
+      skeleton_build_ctx bctx;
 
       model_data data;
       data.name = file_path.filename().stem().string();
-      data.global_transform = mat4_from_ai_mat4(scene->mRootNode->mTransformation);
-      data.inverse_global_transform = glm::inverse(data.global_transform);
 
-      process_assimp_skeleton(scene, data.skel, ctx.warnings);
+      process_assimp_skeleton(ctx, bctx, data);
       map_accepted_meshes(ctx);
-      process_assimp_meshes(ctx, data);
-      process_assimp_nodes(ctx, data);
+      process_assimp_meshes(ctx, bctx, data);
+      process_assimp_nodes(ctx, bctx, data);
       process_assimp_materials(scene, data);
-      /// animation clips are not extracted yet: model_data grows clip storage with doc 03
+      process_assimp_animations(ctx, data);
 
-      for (bone_influence& infl : data.skel.bone_influence) {
+      for (bone_influence& infl : bctx.influences) {
         infl.normalize();
       }
 
       for (uint32_t v = 0; v < data.vertices.size(); ++v) {
-        const bone_influence& infl = data.skel.bone_influence[v];
+        const bone_influence& infl = bctx.influences[v];
         vertex& vert = data.vertices[v];
-        for (uint32_t b = 0; b < bone_influence::kMaxBones; ++b) {
-          vert.bone_ids[b] = infl.bone_ids[b];
+        for (uint32_t b = 0; b < bone_influence::kMaxInfluences; ++b) {
+          vert.bone_ids[b] = infl.joint_ids[b];
           vert.bone_weights[b] = infl.weights[b];
+
+          if (infl.joint_ids[b] >= 0 && infl.weights[b] > 0.f) {
+            bounding_box& jb = data.skel.joints[infl.joint_ids[b]].influenced_bounds;
+            jb.min = glm::min(jb.min, vert.position);
+            jb.max = glm::max(jb.max, vert.position);
+          }
         }
       }
 
@@ -643,7 +777,6 @@ namespace other {
     }
 
     model_import_result import_omdl(const filepath& file_path) {
-      /// .omdl is specified (doc 01 section 7) but the reader lands with the asset-pack work
       return { .error = std::format("'{}': .omdl baked models are specified but not implemented yet (lands with asset packs); re-export as .gltf/.glb", file_path.string()) };
     }
 

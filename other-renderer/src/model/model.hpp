@@ -10,7 +10,6 @@
 
 #include "gpu_resource/mesh.hpp"
 #include "gpu_resource/renderer_resource.hpp"
-#include "model/animation.hpp"
 #include "model/skeleton.hpp"
 #include "model/vertex.hpp"
 

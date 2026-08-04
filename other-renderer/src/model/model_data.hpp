@@ -6,7 +6,7 @@
 
 #include <glm/glm.hpp>
 
-#include "model/animation.hpp"
+#include "model/animation_clip.hpp"
 #include "model/skeleton.hpp"
 #include "model/vertex.hpp"
 
@@ -28,10 +28,8 @@ namespace other {
 
   struct model_data {
     std::string name;
-    glm::mat4 global_transform = glm::mat4(1.f);
-    glm::mat4 inverse_global_transform = glm::mat4(1.f);
 
-    ostd::vector<vertex> vertices;  // vertex slimmed: id/connected_triangles deleted (§2)
+    ostd::vector<vertex> vertices;
     ostd::vector<index> indices;
     ostd::vector<submesh> submeshes;
     ostd::vector<mesh_node> nodes;
@@ -39,7 +37,7 @@ namespace other {
     ostd::vector<imported_material> materials;
 
     skeleton skel;
-    // ostd::vector<animation_clip> clips;
+    ostd::vector<animation_clip> clips;
 
     bounding_box bounds = bounding_box::empty;
 

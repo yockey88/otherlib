@@ -55,7 +55,8 @@ namespace other {
   void scene_system::tick(driver_kernel* kernel, double dt) {
     PROFILE_SECTION("scene_system::tick");
     if (scene* active_scene = get_active_scene(); active_scene != nullptr) {
-      active_scene->update(dt);
+      OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not available in driver kernel.");
+      active_scene->update(dt, sibling<asset_system>(*kernel).get_asset_manager());
       active_scene->late_update(dt);
       /// not gated on playback, scripts draw debug/scene overlays every frame
       active_scene->render_update(dt);
@@ -366,7 +367,7 @@ namespace other {
     component_reg->register_component_type<direction_light_component>("Directional Light");
     component_reg->register_component_type<camera_component>("Camera");
     component_reg->register_component_type<grid_component>("Grid");
-    component_reg->register_component_type<animation_controller>("Animation Controller");
+    component_reg->register_component_type<animation_component>("Animation");
   }
 
   void scene_system::handle_scene_load_event(const value& data) {

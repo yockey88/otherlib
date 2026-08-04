@@ -3,17 +3,27 @@
  **/
 #include "asset_tests.hpp"
 
+#include <deque>
 #include <fstream>
 
 #include <asio/asio.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "file/filesystem.hpp"
 
 #include "gpu_resource/material.hpp"
 #include "gpu_resource/renderer_resource.hpp"
+#include "renderer/renderer.hpp"
 #include "renderer/renderer_backend.hpp"
+
+#include "serialization/animation_serializer.hpp"
+
+#include "object/animation_component.hpp"
+#include "object/render_component.hpp"
+#include "scene/scene.hpp"
 
 #include "driver/driver_mounts.hpp"
 
@@ -35,6 +45,9 @@ namespace other {
     EXPECT_EQ(asset::get_type_from_extension(".omdl"), asset::MODEL_SOURCE);
     /// the dead .omesh format no longer classifies
     EXPECT_EQ(asset::get_type_from_extension(".omesh"), asset::EMPTY);
+    EXPECT_EQ(asset::get_type_from_extension(".oanim"), asset::ANIMATION);
+    /// .anim never had a producer or consumer; the row was replaced by .oanim
+    EXPECT_EQ(asset::get_type_from_extension(".anim"), asset::EMPTY);
     EXPECT_EQ(asset::get_type_from_extension(".csproj"), asset::SCRIPT_PROJECT);
     EXPECT_EQ(asset::get_type_from_extension(".dll"), asset::SCRIPT_SOURCE);
     EXPECT_EQ(asset::get_type_from_extension(".so"), asset::SCRIPT_SOURCE);
@@ -85,6 +98,10 @@ namespace other {
     auto material_exts = asset::get_supported_extensions(asset::MATERIAL);
     EXPECT_NE(std::find(material_exts.begin(), material_exts.end(), ".omat"), material_exts.end());
     EXPECT_EQ(material_exts.size(), 1u);
+
+    auto animation_exts = asset::get_supported_extensions(asset::ANIMATION);
+    EXPECT_NE(std::find(animation_exts.begin(), animation_exts.end(), ".oanim"), animation_exts.end());
+    EXPECT_EQ(animation_exts.size(), 1u);
   }
 
   MATCHER(IsLoadingOrLoaded, "") {
@@ -436,6 +453,65 @@ worker_count = {}
     std::filesystem::remove_all(mat_dir, ec);
   }
 
+  TEST_F(asset_tests, animation_async_load_and_unload) {
+    dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+    event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    /// clips are pure cpu keyframe data: no gpu resource is ever created for one
+    set_up_mock_rendering_api_and_expect_no_resource_creation(events);
+
+    animation_clip clip;
+    clip.name = "walk";
+    clip.duration = 1.5f;
+    joint_track& track = clip.joint_tracks.emplace_back();
+    track.joint_name = "root";
+    track.joint_name_hash = FNV("root");
+    track.position_keyframes.push_back({ 0.f, glm::vec3(0.f) });
+    track.position_keyframes.push_back({ 1.5f, glm::vec3(0.f, 1.f, 0.f) });
+    track.rotation_keyframes.push_back({ 0.f, glm::quat(1.f, 0.f, 0.f, 0.f) });
+
+    const filepath anim_dir = std::filesystem::temp_directory_path() / "other-animation-asset-tests";
+    std::filesystem::remove_all(anim_dir);
+    std::filesystem::create_directories(anim_dir);
+    const filepath oanim = anim_dir / "walk.oanim";
+    {
+      const ostd::vector<uint8_t> bytes = serialization::serialize_animation_clip(clip);
+      std::ofstream out(oanim, std::ios::binary);
+      out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    }
+    /// stable ids virtualize against the mount table, so the temp dir must be mounted
+    ASSERT_NE(subsystem<file_system>::get()->mount_directory("animationassets", anim_dir), nullptr);
+
+    natural_t asset_id = handler->load_asset(oanim);
+    ASSERT_NE(asset_id, 0);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::LOADING; });
+    ASSERT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
+
+    /// parsed and registered on the backend under the asset's path hash
+    const natural_t clip_hash = handler->get_asset_hash(asset_id);
+    const animation_clip* loaded = subsystem<renderer_backend>::get()->get_animation(clip_hash);
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->name, "walk");
+    EXPECT_FLOAT_EQ(loaded->duration, 1.5f);
+    ASSERT_EQ(loaded->joint_tracks.size(), 1u);
+    EXPECT_EQ(loaded->joint_tracks[0].joint_name_hash, FNV("root"));
+    EXPECT_EQ(loaded->joint_tracks[0].position_keyframes.size(), 2u);
+
+    handler->unload_asset(asset_id);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::UNLOADING; });
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
+    EXPECT_EQ(subsystem<renderer_backend>::get()->get_animation(clip_hash), nullptr);
+
+    handler = nullptr;
+    std::error_code ec;
+    std::filesystem::remove_all(anim_dir, ec);
+  }
+
   TEST_F(asset_tests, backendless_types_load_as_tracked_stubs) {
     dtor ___destructor_guard;
 
@@ -447,13 +523,12 @@ worker_count = {}
     scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
     set_up_mock_rendering_api_and_expect_no_resource_creation(events);
 
-    /// audio/animation/input-map have no runtime backend yet; loading must succeed
-    /// as a tracked stub, not abort in empty_loader
+    /// audio/input-map have no runtime backend yet; loading must succeed as a
+    /// tracked stub, not abort in empty_loader (animation graduated to a real loader)
     const filepath stub_dir = std::filesystem::temp_directory_path() / "other-asset-stub-tests";
     std::filesystem::create_directories(stub_dir);
     const std::array stub_files = {
       stub_dir / "tone.wav",
-      stub_dir / "walk.anim",
       stub_dir / "controls.oinputmap",
     };
     for (const filepath& file : stub_files) {
@@ -507,6 +582,277 @@ worker_count = {}
     EXPECT_EQ(handler->get_num_pending_unloads(), 0);
     EXPECT_FALSE(handler->asset_loaded(asset_id));
     EXPECT_EQ(handler->get_num_loaded_assets(), 0);
+
+    handler = nullptr;
+  }
+
+  /// asset machinery + the script environment: prepare_render_data tests need live scenes
+  ///  (script_component hooks) AND models loaded through the real pipeline
+  class animation_draw_tests : public asset_tests {
+   protected:
+    bool script_and_physics() const override { return true; }
+  };
+
+  namespace {
+
+    /// mock setup for tests uploading a known number of model sources (each upload = one
+    ///  mesh create + a vertex/index buffer pair, in that order). every resource is a
+    ///  FRESH object carrying its minted handle, like the real backend: mesh_key batching,
+    ///  destroy_model, and the per-object reference counts all depend on per-resource
+    ///  identity (a shared static aliases the counts and trips the decrement assert)
+    void set_up_mock_rendering_api_for_model_uploads(event_system& events, int model_count) {
+      using ::testing::_;
+      scope<mock_rendering_api> mock_api = make_scope<mock_rendering_api>();
+      EXPECT_CALL(*mock_api, on_initialize(_)).Times(1);
+      EXPECT_CALL(*mock_api, shutdown_ui_context()).Times(1);
+      EXPECT_CALL(*mock_api, on_shutdown(_)).Times(1);
+
+      EXPECT_CALL(*mock_api, create_mesh_resource(_, _))
+        .Times(model_count)
+        .WillRepeatedly(testing::Invoke([](const resource_handle& handle, resource_type) -> mesh* {
+          static std::deque<mesh> meshes;  /// stable addresses; callers hold the pointer
+          return &meshes.emplace_back(handle);
+        }));
+      EXPECT_CALL(*mock_api, destroy_mesh_resource(_))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, bind_mesh_resource(_))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, unbind_mesh_resource(_))
+        .Times(testing::AnyNumber());
+
+      EXPECT_CALL(*mock_api, create_buffer_resource(_, _))
+        .Times(2 * model_count)
+        .WillRepeatedly(testing::Invoke([](const resource_handle& handle, resource_type) -> gpu_buffer* {
+          static std::deque<gpu_buffer> buffers;  /// stable addresses; callers hold the pointer
+          return &buffers.emplace_back(handle);
+        }));
+      EXPECT_CALL(*mock_api, destroy_buffer_resource(_))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, bind_buffer_resource(_, _))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, unbind_buffer_resource(_))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, set_mesh_vertex_attributes(_, _))
+        .Times(testing::AnyNumber());
+      EXPECT_CALL(*mock_api, buffer_data(_, _, _, _))
+        .Times(testing::AnyNumber());
+
+      subsystem<renderer_backend>::get()->force_set_backend(std::move(mock_api));
+
+      auto* fs = subsystem<file_system>::get();
+      OTHER_ASSERT(fs != nullptr, "File system subsystem not available for setting up mock rendering API.");
+      fs->initialize_file_events(events);
+      constexpr std::array kDefaultMounts = {
+        driver_mounts::kAssetMount,
+        driver_mounts::kSceneMount,
+        driver_mounts::kScriptMount,
+      };
+      fs->initialize_directory_structure(kDefaultMounts);
+    }
+
+    const gpu::bone_matrix_buffer* find_draw_buffer(const render_data& data, resource_handle source_handle) {
+      for (size_t i = 0; i < data.mesh_keys.size(); ++i) {
+        if (data.mesh_keys[i].model_source_handle.id == source_handle.id) {
+          return &data.bone_buffers[i];
+        }
+      }
+      return nullptr;
+    }
+
+  }  // namespace
+
+  /// each draw's bone buffer holds its own entity's palette, non-destructively, with
+  ///  use_bones set only for rigged draws
+  TEST_F(animation_draw_tests, bone_buffers_per_draw) {
+    dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+    event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    set_up_mock_rendering_api_for_model_uploads(events, 3);
+
+    /// two copies of the rigged glb = two distinct assets = two distinct draws; one static model
+    const filepath rig_dir = std::filesystem::temp_directory_path() / "other-bone-draw-tests";
+    std::filesystem::remove_all(rig_dir);
+    std::filesystem::create_directories(rig_dir);
+    std::filesystem::copy_file("tests/resources/models/bone-test-2-1.glb", rig_dir / "rig_a.glb");
+    std::filesystem::copy_file("tests/resources/models/bone-test-2-1.glb", rig_dir / "rig_b.glb");
+    ASSERT_NE(subsystem<file_system>::get()->mount_directory("bonedrawassets", rig_dir), nullptr);
+
+    const filepath rig_a_path = rig_dir / "rig_a.glb";
+    const filepath rig_b_path = rig_dir / "rig_b.glb";
+    const filepath static_path = "tests/resources/models/suzanne3.fbx";
+    const natural_t rig_a_id = handler->load_asset(rig_a_path);
+    const natural_t rig_b_id = handler->load_asset(rig_b_path);
+    const natural_t static_id = handler->load_asset(static_path);
+    ASSERT_NE(rig_a_id, 0);
+    ASSERT_NE(rig_b_id, 0);
+    ASSERT_NE(static_id, 0);
+    pump_until(io_context, jobs, *handler, [&] {
+      return handler->asset_loaded(rig_a_id) && handler->asset_loaded(rig_b_id) && handler->asset_loaded(static_id);
+    });
+
+    scene s("Bone Draw Scene");
+    const auto add_render_object = [&s](const char* name, natural_t asset_id) -> natural_t {
+      scene_object& obj = s.create_object(name);
+      render_component render = {};
+      render.model_asset_id = asset_id;
+      s.add_component<render_component>(&obj, std::move(render));
+      return obj.id;
+    };
+    const natural_t rig_a_obj = add_render_object("RigA", rig_a_id);
+    const natural_t rig_b_obj = add_render_object("RigB", rig_b_id);
+    add_render_object("Static", static_id);
+
+    /// first prepare produces the model instances; no palettes exist yet
+    render_data first = s.prepare_render_data(handler);
+    ASSERT_EQ(first.draw_calls.size(), 5u);  /// 1 + 1 rigged submeshes + 3 static submeshes
+    for (const gpu::bone_matrix_buffer& bone_buff : first.bone_buffers) {
+      EXPECT_EQ(bone_buff.use_bones, 0);
+    }
+
+    /// distinct palettes, written the way the animation tick writes them
+    render_component* rig_a_render = s.try_get_component<render_component>(rig_a_obj);
+    render_component* rig_b_render = s.try_get_component<render_component>(rig_b_obj);
+    ASSERT_NE(rig_a_render, nullptr);
+    ASSERT_NE(rig_b_render, nullptr);
+    rig_a_render->obj_model.bone_matrices = {
+      glm::translate(glm::mat4(1.f), glm::vec3(1.f, 0.f, 0.f)),
+      glm::translate(glm::mat4(1.f), glm::vec3(2.f, 0.f, 0.f)),
+    };
+    rig_b_render->obj_model.bone_matrices = {
+      glm::translate(glm::mat4(1.f), glm::vec3(0.f, 3.f, 0.f)),
+      glm::translate(glm::mat4(1.f), glm::vec3(0.f, 4.f, 0.f)),
+    };
+
+    render_data data = s.prepare_render_data(handler);
+    ASSERT_EQ(data.draw_calls.size(), 5u);
+
+    renderer_backend* backend = subsystem<renderer_backend>::get();
+    const gpu::bone_matrix_buffer* rig_a_buffer = find_draw_buffer(data, backend->get_model_source(handler->get_asset_hash(rig_a_id))->get_mesh_handle());
+    const gpu::bone_matrix_buffer* rig_b_buffer = find_draw_buffer(data, backend->get_model_source(handler->get_asset_hash(rig_b_id))->get_mesh_handle());
+    const gpu::bone_matrix_buffer* static_buffer = find_draw_buffer(data, backend->get_model_source(handler->get_asset_hash(static_id))->get_mesh_handle());
+    ASSERT_NE(rig_a_buffer, nullptr);
+    ASSERT_NE(rig_b_buffer, nullptr);
+    ASSERT_NE(static_buffer, nullptr);
+
+    /// each draw holds ITS OWN palette
+    EXPECT_EQ(rig_a_buffer->use_bones, 1);
+    EXPECT_EQ(rig_a_buffer->bone_matrices[0], rig_a_render->obj_model.bone_matrices[0]);
+    EXPECT_EQ(rig_a_buffer->bone_matrices[1], rig_a_render->obj_model.bone_matrices[1]);
+    EXPECT_EQ(rig_b_buffer->use_bones, 1);
+    EXPECT_EQ(rig_b_buffer->bone_matrices[0], rig_b_render->obj_model.bone_matrices[0]);
+    EXPECT_EQ(rig_b_buffer->bone_matrices[1], rig_b_render->obj_model.bone_matrices[1]);
+    EXPECT_NE(rig_a_buffer->bone_matrices[0], rig_b_buffer->bone_matrices[0]);
+
+    /// the static draw is untouched by every other entity's palette
+    EXPECT_EQ(static_buffer->use_bones, 0);
+
+    /// the fill is NOT destructive: the palette survives for the next frame's prepare
+    EXPECT_EQ(rig_a_render->obj_model.bone_matrices.size(), 2u);
+
+    /// a live palette drives the object's AABB: union of each joint's bind-space
+    ///  influenced bounds through its palette matrix, then the world transform —
+    ///  the box follows the animation instead of freezing at the bind pose
+    {
+      const model_data& src = rig_a_render->obj_model.source->source_data();
+      bounding_box expected = bounding_box::empty;
+      for (size_t i = 0; i < src.skel.joints.size(); ++i) {
+        bounding_box joint_bounds = src.skel.joints[i].influenced_bounds;
+        if (joint_bounds == bounding_box::empty) {
+          continue;
+        }
+        expected = bounding_box::expand_to_include(expected, joint_bounds.transform(rig_a_render->obj_model.bone_matrices[i]));
+      }
+      ASSERT_FALSE(expected == bounding_box::empty);
+      expected = expected.transform(s.get_world_transform(rig_a_obj));
+
+      const bounding_box animated = s.get_bounding_box(rig_a_obj);
+      EXPECT_FLOAT_EQ(animated.min.x, expected.min.x);
+      EXPECT_FLOAT_EQ(animated.min.y, expected.min.y);
+      EXPECT_FLOAT_EQ(animated.min.z, expected.min.z);
+      EXPECT_FLOAT_EQ(animated.max.x, expected.max.x);
+      EXPECT_FLOAT_EQ(animated.max.y, expected.max.y);
+      EXPECT_FLOAT_EQ(animated.max.z, expected.max.z);
+
+      /// and it is genuinely different from the static bind bounds (the palettes translate)
+      bounding_box static_box = src.bounds;
+      static_box = static_box.transform(s.get_world_transform(rig_a_obj));
+      EXPECT_FALSE(animated == static_box);
+    }
+
+    handler = nullptr;
+    std::error_code ec;
+    std::filesystem::remove_all(rig_dir, ec);
+  }
+
+  /// tick and draw fill composed end-to-end: embedded clip resolved from the loaded glb,
+  ///  sampled by scene::update, landing in the draw's bone buffer — and the play/stop
+  ///  snapshot restores the pre-play clock
+  TEST_F(animation_draw_tests, animation_tick_feeds_draw_palette) {
+    dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+    event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    set_up_mock_rendering_api_for_model_uploads(events, 1);
+
+    const filepath rig_path = "tests/resources/models/bone-test-2-1.glb";
+    const natural_t rig_id = handler->load_asset(rig_path);
+    ASSERT_NE(rig_id, 0);
+    pump_until(io_context, jobs, *handler, [&] { return handler->asset_loaded(rig_id); });
+
+    scene s("Tick Draw Scene");
+    scene_object& dancer = s.create_object("Dancer");
+    {
+      render_component render = {};
+      render.model_asset_id = rig_id;
+      s.add_component<render_component>(&dancer, std::move(render));
+
+      animation_component anim = {};
+      anim.clip_name = "ArmatureAction";
+      anim.time = 0.4f;
+      s.add_component<animation_component>(&dancer, std::move(anim));
+    }
+
+    /// first prepare produces the model; the tick needs obj_model.source resolved
+    render_data first = s.prepare_render_data(handler);
+    ASSERT_EQ(first.draw_calls.size(), 1u);
+    EXPECT_EQ(first.bone_buffers[0].use_bones, 0);
+
+    s.play();
+    s.update(0.1, handler);
+
+    render_component* render = s.try_get_component<render_component>(s.find_object(std::string_view{ "Dancer" })->id);
+    animation_component* anim = s.try_get_component<animation_component>(s.find_object(std::string_view{ "Dancer" })->id);
+    ASSERT_NE(render, nullptr);
+    ASSERT_NE(anim, nullptr);
+
+    /// the tick resolved the embedded clip, advanced the clock, and built the palette
+    ASSERT_NE(anim->clip, nullptr);
+    EXPECT_EQ(anim->clip->name, "ArmatureAction");
+    EXPECT_FLOAT_EQ(anim->time, 0.5f);
+    ASSERT_EQ(render->obj_model.bone_matrices.size(), 2u);
+
+    render_data data = s.prepare_render_data(handler);
+    ASSERT_EQ(data.draw_calls.size(), 1u);
+    EXPECT_EQ(data.bone_buffers[0].use_bones, 1);
+    EXPECT_EQ(data.bone_buffers[0].bone_matrices[0], render->obj_model.bone_matrices[0]);
+    EXPECT_EQ(data.bone_buffers[0].bone_matrices[1], render->obj_model.bone_matrices[1]);
+
+    /// stop's restore rewinds the clock to the pre-play serialized time; runtime state
+    ///  is rebuilt (not resurrected) by the next tick
+    s.stop();
+    animation_component* restored = s.try_get_component<animation_component>(s.find_object(std::string_view{ "Dancer" })->id);
+    ASSERT_NE(restored, nullptr);
+    EXPECT_FLOAT_EQ(restored->time, 0.4f);
+    EXPECT_EQ(restored->clip, nullptr);
 
     handler = nullptr;
   }

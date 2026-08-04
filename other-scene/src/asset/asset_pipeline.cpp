@@ -20,8 +20,11 @@
 
 #include "tools/project_tool.hpp"
 
+#include "serialization/animation_serializer.hpp"
+
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
+#include "asset/pipelines/animation_pipeline.hpp"
 #include "asset/pipelines/asset_declaration_pipeline.hpp"
 #include "asset/pipelines/material_pipeline.hpp"
 #include "asset/pipelines/model_source_pipeline.hpp"
@@ -40,6 +43,7 @@ namespace other {
 
     task load_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_stub_asset(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_animation(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -53,6 +57,7 @@ namespace other {
 
     task unload_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_stub_asset(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_animation(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_script_project(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_script_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -69,7 +74,7 @@ namespace other {
   std::array<asset_pipeline::loading_table::loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> asset_pipeline::loading_table::loaders = {
     detail::load_texture,
     detail::load_model_source,
-    detail::load_stub_asset,  // ANIMATION: no animation import backend yet
+    detail::load_animation,
     detail::load_script_project,
     detail::load_script_source,
     detail::load_script_file,
@@ -86,7 +91,7 @@ namespace other {
   std::array<asset_pipeline::loading_table::loader_fn_t, static_cast<size_t>(asset::NUM_ASSET_TYPES)> asset_pipeline::loading_table::unloaders = {
     detail::unload_texture,
     detail::unload_model_source,
-    detail::unload_stub_asset,
+    detail::unload_animation,
     detail::unload_script_project,
     detail::unload_script_source,
     detail::unload_script_file,
@@ -107,7 +112,7 @@ namespace other {
   scope<asset_pipeline> asset_pipeline::get_asset_pipeline(event_system* events, asset_handler* handler, asset::type type) {
     switch (type) {
       case asset::TEXTURE: return make_scope<texture_pipeline>(events, handler);
-      case asset::ANIMATION:
+      case asset::ANIMATION: return make_scope<animation_pipeline>(events, handler);
       case asset::AUDIO:
       case asset::INPUT_MAP:
         return make_scope<stub_pipeline>(events, handler);
@@ -352,6 +357,61 @@ namespace other {
       co_await task::yield();
       call_pipeline_fn<stub_pipeline>(pipeline, on_success);
       co_return;
+    }
+
+    /// standalone .oanim clips; embedded clips ride their model_source instead
+    task load_animation(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      const filepath source_path = asset_ptr->absolute_path;
+      if (!std::filesystem::exists(source_path)) {
+        call_pipeline_fn<animation_pipeline>(pipeline, on_failure, std::format("Animation clip file does not exist: {}", source_path.string()));
+        co_return;
+      }
+      CORE_LOG_DEBUG("Loading animation clip from file: {}", source_path.string());
+
+      serialization::clip_parse_result parsed;
+      ref<job> parse_job = handler->get_job_system().submit(
+        {
+          .name = std::format("Parse Animation Asset {}", asset_ptr->id),
+          .priority = job::priority::LOW,
+          /// pure cpu binary parse, keep it off the main thread
+          .thread_affinity = job::affinity::WORKER_THREAD,
+        },
+        [&parsed, source_path]() {
+          /// local to this coroutine; the register job depends on this one, so no concurrent access
+          parsed = serialization::load_animation_clip(source_path);
+        });
+
+      ref<job> register_job = handler->get_job_system().submit(
+        {
+          .name = std::format("Register Animation Asset {}", asset_ptr->id),
+          .priority = job::priority::LOW,
+          /// the clip registry is main-thread-owned state
+          .thread_affinity = job::affinity::MAIN_THREAD,
+        },
+        [asset_ptr, p = &parsed]() {
+          OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in register animation job");
+          if (!p->success()) {
+            throw std::runtime_error(p->error);
+          }
+
+          subsystem<renderer_backend>::get()->add_animation(asset_ptr->path_hash, std::move(*p->clip));
+          CORE_LOG_DEBUG("Animation clip loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
+        },
+        std::array{ parse_job->id });
+
+      do {
+        co_await task::yield();
+      } while (!register_job->done());
+
+      if (register_job->get_status() == job::status::COMPLETED) {
+        call_pipeline_fn<animation_pipeline>(pipeline, on_success);
+      } else if (!parsed.error.empty()) {
+        call_pipeline_fn<animation_pipeline>(pipeline, on_failure, parsed.error);
+      } else {
+        call_pipeline_fn<animation_pipeline>(pipeline, on_failure, std::format("Failed to load animation asset: {}", source_path.string()));
+      }
     }
 
     /// promote the importer's value-sets to plain materials owned by the model_source —
@@ -833,6 +893,18 @@ namespace other {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading {} stub asset (ID: {})", asset_ptr->asset_type, asset_ptr->id);
       call_pipeline_fn<stub_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task unload_animation(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+      CORE_LOG_DEBUG("Unloading animation clip (ID: {})", asset_ptr->id);
+
+      auto* renderer = subsystem<renderer_backend>::get();
+      OTHER_ASSERT(renderer != nullptr, "Renderer backend subsystem is not available in unload_animation");
+
+      renderer->remove_animation(asset_ptr->path_hash);
+      call_pipeline_fn<animation_pipeline>(pipeline, on_success);
       co_return;
     }
 

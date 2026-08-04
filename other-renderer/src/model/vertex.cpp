@@ -126,7 +126,8 @@ namespace other {
       vertex_attribute(value_type::VEC3, "tangent"),
       vertex_attribute(value_type::VEC3, "bitangent"),
       vertex_attribute(value_type::VEC2, "tex_coord"),
-      vertex_attribute(value_type::IVEC4, "bone_ids"),
+      /// floats end-to-end: to_gpu_buffer casts, shaders declare vec4 and cast back
+      vertex_attribute(value_type::VEC4, "bone_ids"),
       vertex_attribute(value_type::VEC4, "bone_weights"),
     };
   }

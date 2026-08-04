@@ -8,7 +8,7 @@
 #include "physics/physics_environment.hpp"
 #include "script/scripting_environment.hpp"
 
-#include "object/animation_controller.hpp"
+#include "object/animation_component.hpp"
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
 #include "object/physics_component.hpp"

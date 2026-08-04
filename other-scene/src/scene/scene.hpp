@@ -81,8 +81,9 @@ namespace other {
     /// fixed update called at a constant timestep (e.g., 60 Hz)
     void fixed_update(double delta_time);
 
-    /// per frame updates called with variable timestep
-    void update(double delta_time);
+    /// per frame updates called with variable timestep; update needs the asset handler to
+    ///  resolve animation clip assets after the script surfaces run
+    void update(double delta_time, scope<asset_handler>& asset_handler);
     void late_update(double delta_time);
 
     /// per frame draw hook, runs whether or not the scene is playing so scripts can

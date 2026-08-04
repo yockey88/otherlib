@@ -204,6 +204,9 @@ namespace other {
       if (registry.find_tool("model") == nullptr) {
         registry.add_tool(std::make_unique<model_tool>());
       }
+      if (registry.find_tool("anim") == nullptr) {
+        registry.add_tool(std::make_unique<anim_tool>());
+      }
       if (registry.find_tool("material") == nullptr) {
         registry.add_tool(std::make_unique<material_tool>());
       }

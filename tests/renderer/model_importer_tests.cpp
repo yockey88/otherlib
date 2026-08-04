@@ -62,7 +62,7 @@ namespace other {
     EXPECT_TRUE(data.valid());
     ASSERT_EQ(data.submeshes.size(), 1u);
     EXPECT_TRUE(data.submeshes[0].rigged);
-    EXPECT_EQ(data.skel.bones.size(), 2u);
+    EXPECT_EQ(data.skel.joints.size(), 2u);
 
     /// the rigging pass landed weights on the vertices through the remap table
     bool any_weighted = std::ranges::any_of(data.vertices, [](const vertex& v) {
@@ -71,7 +71,7 @@ namespace other {
     EXPECT_TRUE(any_weighted);
   }
 
-  /// regression anchor for the remap table (doc 01 section 4.1): a mesh assimp cannot give
+  /// regression anchor for the remap table: a mesh assimp cannot give
   ///  normals (points-only) sits BETWEEN two good meshes; before the table, every consumer
   ///  indexing submeshes by assimp mesh index desynced
   TEST_F(model_importer_tests, skipped_mesh_remap) {
@@ -126,7 +126,7 @@ namespace other {
     const model_data& data = *result.data;
 
     ASSERT_FALSE(data.materials.empty());
-    /// the uri is captured verbatim; resolving it is the material system's job (doc 02)
+    /// the uri is captured verbatim; resolving it is the material system's job
     EXPECT_EQ(data.materials[0].name, "textured_mat");
     EXPECT_EQ(data.materials[0].base_color_texture, "../textures/checker4x4.png");
   }

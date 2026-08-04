@@ -8,7 +8,7 @@
 #include "script/script_object.hpp"
 #include "script/scripting_environment.hpp"
 
-#include "object/animation_controller.hpp"
+#include "object/animation_component.hpp"
 #include "object/camera_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
@@ -161,7 +161,7 @@ namespace other {
         codecs.push_back(make_generic_codec<grid_component>("grid", "Grid", /*implicit=*/false));
         codecs.push_back(make_generic_codec<point_light_component>("point-light", "Point Light", /*implicit=*/false));
         codecs.push_back(make_generic_codec<direction_light_component>("direction-light", "Directional Light", /*implicit=*/false));
-        codecs.push_back(make_generic_codec<animation_controller>("animation", "Animation Controller", /*implicit=*/false));
+        codecs.push_back(make_generic_codec<animation_component>("animation", "Animation", /*implicit=*/false));
 
         for (size_t i = 0; i < codecs.size(); ++i) {
           for (size_t j = i + 1; j < codecs.size(); ++j) {

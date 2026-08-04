@@ -24,6 +24,11 @@ namespace other {
     native_string native_render_component_get_material_path(natural_t object_id);
     void native_render_component_set_material_path(natural_t object_id, native_string path);
 
+    /// clips are assets: scripts assign a .oanim path ("" = fall back to the component's
+    ///  embedded clip name); reads return the current asset's load path
+    native_string native_animation_component_get_clip_path(natural_t object_id);
+    void native_animation_component_set_clip_path(natural_t object_id, native_string path);
+
   }  // namespace bindings
 }  // namespace other
 

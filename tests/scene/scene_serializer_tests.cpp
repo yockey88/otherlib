@@ -8,6 +8,7 @@
 
 #include "other_test.hpp"
 
+#include "object/animation_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
 #include "object/script_component.hpp"
@@ -207,6 +208,52 @@ namespace other {
     script_component* restored_script = s.try_get_component<script_component>(restored_parent->id);
     ASSERT_NE(restored_script, nullptr);
     EXPECT_EQ(restored_script->script_object_id, pre_play_script_id);
+  }
+
+  TEST_F(scene_serializer_tests, animation_component_play_serialize) {
+    scene s("Anim Scene");
+    scene_object& dancer = s.create_object("Dancer");
+
+    animation_component anim = {};
+    anim.clip_name = "walk";
+    anim.playing = true;
+    anim.looping = false;
+    anim.speed = 2.f;
+    anim.time = 0.75f;
+    s.add_component<animation_component>(&dancer, std::move(anim));
+
+    const ostd::vector<uint8_t> snapshot = s.capture_snapshot();
+
+    /// gameplay-style mutations while "playing"
+    animation_component* live = s.try_get_component<animation_component>(dancer.id);
+    ASSERT_NE(live, nullptr);
+    live->clip_name = "idle";
+    live->playing = false;
+    live->looping = true;
+    live->speed = 1.f;
+    live->time = 0.f;
+    /// fake resolved runtime state; a restore must never resurrect it
+    live->working_pose.positions.push_back(glm::vec3(1.f));
+
+    s.restore_snapshot(snapshot);
+
+    scene_object* restored = s.find_object(std::string_view{ "Dancer" });
+    ASSERT_NE(restored, nullptr);
+    animation_component* comp = s.try_get_component<animation_component>(restored->id);
+    ASSERT_NE(comp, nullptr);
+
+    EXPECT_EQ(comp->clip_name, "walk");
+    EXPECT_TRUE(comp->playing);
+    EXPECT_FALSE(comp->looping);
+    EXPECT_FLOAT_EQ(comp->speed, 2.f);
+    /// mid-clip time round-trips — play/stop resumes the pre-play pose
+    EXPECT_FLOAT_EQ(comp->time, 0.75f);
+
+    /// runtime state never serializes; the next tick rebuilds it from the resolved clip
+    EXPECT_EQ(comp->clip, nullptr);
+    EXPECT_EQ(comp->bound_skeleton, nullptr);
+    EXPECT_TRUE(comp->working_pose.positions.empty());
+    EXPECT_TRUE(comp->binding.joint_of_track.empty());
   }
 
   TEST_F(scene_serializer_tests, snapshot_restore_is_repeatable) {

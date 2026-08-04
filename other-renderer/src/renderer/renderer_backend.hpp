@@ -67,6 +67,13 @@ namespace other {
     const material* get_material(natural_t handle) const;
     void remove_material(natural_t handle);
 
+    /// standalone animation clips keyed by asset path hash; pure cpu data, immutable after
+    ///  registration (playback state lives with the player). same add/get/remove +
+    ///  refresh-replace contract as materials; embedded clips stay on their model_source
+    void add_animation(natural_t handle, animation_clip clip);
+    const animation_clip* get_animation(natural_t handle) const;
+    void remove_animation(natural_t handle);
+
     enum class fallback_texture : uint8_t { WHITE, FLAT_NORMAL };
     /// 1x1 stand-ins bound for material texture slots with no loaded texture — an untextured
     ///  material samples white and multiplies by its params, so there are zero shader
@@ -83,6 +90,7 @@ namespace other {
     ostd::map<natural_t, resource_handle> texture_assets;
     ostd::map<natural_t, material> material_assets;
     ostd::map<natural_t, uint32_t> material_revisions;  //< high-water marks, survive remove_material
+    ostd::map<natural_t, animation_clip> animation_assets;
 
     resource_handle fallback_white = {};
     resource_handle fallback_flat_normal = {};

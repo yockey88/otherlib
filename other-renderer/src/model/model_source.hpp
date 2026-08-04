@@ -26,6 +26,9 @@ namespace other {
     inline size_t get_num_vertices() const { return data.vertices.size(); }
     inline size_t get_num_indices() const { return data.indices.size(); }
 
+    /// embedded-clip lookup; standalone .oanim clips live on the renderer_backend
+    const animation_clip* find_clip(std::string_view name) const;
+
     model produce_model(const std::string& name = "", std::span<const uint32_t> submesh_idxs = {});
 
     /// value-set materials promoted from model_data::materials at load time, index-aligned

@@ -606,8 +606,8 @@ namespace other {
       ostd::vector<dependency_declaration> out;
 
       /// buffer sidecars (.bin) are deliberately NOT declared: the plan executor loads children
-      //  through load_asset, which rejects unknown extensions - baked .omdl (doc 01 section 7)
-      //  is what makes binary payloads first-class, not fake asset nodes
+      //  through load_asset, which rejects unknown extensions - baked .omdl is what makes
+      //  binary payloads first-class, not fake asset nodes
       if (!doc.contains("images") || !doc["images"].is_array()) {
         return out;
       }
