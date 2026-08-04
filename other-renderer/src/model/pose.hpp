@@ -1,12 +1,9 @@
 /**
  * \file model/pose.hpp
  *
- * the pure runtime vocabulary of the animation system (doc 03 §4): local-space poses,
- * clip-to-skeleton bindings, sampling, blending, and palette building. plain data in,
- * plain data out — nothing here knows scenes, assets, or graphs, so everything is
- * headless-testable and job-friendly. doc 04's animation nodes speak exactly this
- * vocabulary (clip_player = advance-time + sample_clip; blend = blend_poses; the
- * output sink = build_palette).
+ * pure animation runtime primitives: local-space poses, clip-to-skeleton bindings,
+ * sampling, blending, palette building. plain data in, plain data out — nothing here
+ * knows scenes, assets, or graphs.
  **/
 #ifndef OTHER_RENDERER_MODEL_POSE_HPP
 #define OTHER_RENDERER_MODEL_POSE_HPP
@@ -35,10 +32,9 @@ namespace other {
     void build(const animation_clip& clip, const skeleton& skel);
   };
 
-  /// bound tracks overwrite their joint's authored TRS channels; unbound joints keep
-  ///  whatever @p out holds (callers reset_to_bind first for a full-body sample — or
-  ///  don't, which is what partial/layered blending rides on later). time clamps to the
-  ///  key range: wrapping (loop vs clamp) is the caller's policy, not the math's
+  /// bound tracks overwrite their joint's TRS; unbound joints keep whatever @p out holds
+  ///  (reset_to_bind first for a full-body sample; skip it for partial/layered blends).
+  ///  time clamps to the key range — wrapping is the caller's policy
   void sample_clip(const animation_clip& clip, const clip_binding& binding, float time, pose& out);
 
   /// component-wise lerp (positions/scales) + normalized slerp (rotations); a and b

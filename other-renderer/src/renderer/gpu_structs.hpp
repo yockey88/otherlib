@@ -10,7 +10,7 @@
 
 #include "glm/fwd.hpp"
 
-#include "model/skeleton.hpp"
+#include "model/animation_limits.hpp"
 
 namespace other {
   namespace gpu {

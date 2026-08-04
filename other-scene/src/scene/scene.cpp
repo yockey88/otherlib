@@ -398,9 +398,9 @@ namespace other {
 
   namespace {
 
-    /// doc 03 §5: resolve the component's clip, advance its clock, sample into the working
-    ///  pose, and build the model's palette. runs after every script surface so state
-    ///  scripts set lands in the same frame's pose
+    /// resolve the component's clip, advance its clock, sample the working pose, build the
+    ///  model's palette. runs after every script surface so state scripts set lands in the
+    ///  same frame's pose
     void tick_animation(animation_component& anim, render_component& render, double delta_time, scope<asset_handler>& asset_handler) {
       model_source* source = render.obj_model.source;
       if (source == nullptr || source->source_data().skel.empty()) {
@@ -490,8 +490,8 @@ namespace other {
       }
     }
 
-    /// after the script view AND the lua scene hook (doc 03 §1 fact 7): every script
-    ///  surface that drives animation state ran this frame before sampling
+    /// after the script view and the lua scene hook: every script surface that drives
+    ///  animation state ran this frame before sampling
     storage->registry.view<animation_component, render_component>().each([delta_time, &asset_handler](entt::entity entity, animation_component& anim, render_component& render) {
       tick_animation(anim, render, delta_time, asset_handler);
     });
@@ -908,10 +908,8 @@ namespace other {
         const model_data& source_data = rc->obj_model.source->source_data();
         box = source_data.bounds;
 
-        /// a live palette means the draw skins with it (use_bones path), so bound the
-        ///  ANIMATED pose: union of each joint's bind-space influenced bounds carried
-        ///  through its palette matrix. no palette (or a helper-only skeleton) keeps the
-        ///  static bind bounds above
+        /// a live palette means the draw skins with it, so bound the animated pose: union
+        ///  of each joint's influenced bounds through its palette matrix
         const ostd::vector<glm::mat4>& palette = rc->obj_model.bone_matrices;
         if (!palette.empty() && !source_data.skel.empty()) {
           bounding_box animated = bounding_box::empty;
@@ -1195,15 +1193,13 @@ namespace other {
         data.draw_tints[mesh_index].tints[index] = render.tint;
         data.model_buffers[mesh_index].model_matrices[index] = world_transform;
 
-        /// the palette the animation tick wrote this frame lands in THIS draw's buffer (the
-        ///  old trailing loop wrote every draw's buffer — last entity won everywhere — and
-        ///  destructively cleared the palette). no clear(): the tick recomputes each frame,
-        ///  and instances sharing one draw share one palette by design (per-draw buffer)
+        /// instances sharing one draw share one palette (per-draw buffer); the tick
+        ///  recomputes it every frame, so no clear. unrigged draws keep use_bones = 0
         if (sm.rigged && !draw_model->bone_matrices.empty()) {
           gpu::bone_matrix_buffer& bone_buff = data.bone_buffers[mesh_index];
           const size_t bone_count = std::min(draw_model->bone_matrices.size(), kMaxBones);
           std::copy_n(draw_model->bone_matrices.begin(), bone_count, bone_buff.bone_matrices);
-          bone_buff.use_bones = 1;  // the flag that was never set; 0 stays the emplace default for unrigged draws
+          bone_buff.use_bones = 1;
         }
       }
 

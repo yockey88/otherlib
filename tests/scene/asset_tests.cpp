@@ -46,7 +46,7 @@ namespace other {
     /// the dead .omesh format no longer classifies
     EXPECT_EQ(asset::get_type_from_extension(".omesh"), asset::EMPTY);
     EXPECT_EQ(asset::get_type_from_extension(".oanim"), asset::ANIMATION);
-    /// .anim never had a producer or consumer; the row was replaced by .oanim (doc 03 §3.2)
+    /// .anim never had a producer or consumer; the row was replaced by .oanim
     EXPECT_EQ(asset::get_type_from_extension(".anim"), asset::EMPTY);
     EXPECT_EQ(asset::get_type_from_extension(".csproj"), asset::SCRIPT_PROJECT);
     EXPECT_EQ(asset::get_type_from_extension(".dll"), asset::SCRIPT_SOURCE);
@@ -661,9 +661,8 @@ worker_count = {}
 
   }  // namespace
 
-  /// regression for doc 03 §1 fact 5 / §6: the old trailing bone loop wrote EVERY draw's
-  ///  buffer (last entity won everywhere), cleared the palette destructively, and never
-  ///  set use_bones
+  /// each draw's bone buffer holds its own entity's palette, non-destructively, with
+  ///  use_bones set only for rigged draws
   TEST_F(animation_draw_tests, bone_buffers_per_draw) {
     dtor ___destructor_guard;
 
@@ -790,9 +789,9 @@ worker_count = {}
     std::filesystem::remove_all(rig_dir, ec);
   }
 
-  /// the §5 tick and the §6 draw fill composed end-to-end: embedded clip resolved from the
-  ///  loaded glb, sampled by scene::update, landing in the draw's bone buffer — and the
-  ///  play/stop snapshot restores the pre-play clock (the doc 03 §8 anchor, headless)
+  /// tick and draw fill composed end-to-end: embedded clip resolved from the loaded glb,
+  ///  sampled by scene::update, landing in the draw's bone buffer — and the play/stop
+  ///  snapshot restores the pre-play clock
   TEST_F(animation_draw_tests, animation_tick_feeds_draw_palette) {
     dtor ___destructor_guard;
 

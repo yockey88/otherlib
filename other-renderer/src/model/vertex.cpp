@@ -126,8 +126,7 @@ namespace other {
       vertex_attribute(value_type::VEC3, "tangent"),
       vertex_attribute(value_type::VEC3, "bitangent"),
       vertex_attribute(value_type::VEC2, "tex_coord"),
-      /// stored as floats — to_gpu_buffer casts, the backend binds every attribute as
-      ///  GL_FLOAT, and the shaders declare vec4 + cast (the 22-float dotnet ABI)
+      /// floats end-to-end: to_gpu_buffer casts, shaders declare vec4 and cast back
       vertex_attribute(value_type::VEC4, "bone_ids"),
       vertex_attribute(value_type::VEC4, "bone_weights"),
     };

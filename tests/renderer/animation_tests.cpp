@@ -1,11 +1,11 @@
 /**
  * \file tests/renderer/animation_tests.cpp
  *
- * contract under test (doc 03 §2-4): assimp import emits a parents-first joint skeleton
- *  and immutable seconds-normalized clips, .oanim round-trips exactly through the
- *  field-codec primitives without ever aborting on malformed bytes, and the pure
- *  runtime primitives (pose / clip_binding / sample_clip / blend_poses / build_palette)
- *  behave headlessly over plain data.
+ * contract under test: assimp import emits a parents-first joint skeleton and immutable
+ *  seconds-normalized clips, .oanim round-trips exactly through the field-codec
+ *  primitives without ever aborting on malformed bytes, and the pure runtime primitives
+ *  (pose / clip_binding / sample_clip / blend_poses / build_palette) behave headlessly
+ *  over plain data.
  **/
 #include <chrono>
 #include <cmath>
@@ -180,7 +180,7 @@ namespace other {
 
     for (size_t i = 0; i < skel.joints.size(); ++i) {
       const joint& j = skel.joints[i];
-      /// parents ALWAYS precede children — build_palette (doc 03 §4) is a single forward pass
+      /// parents ALWAYS precede children — build_palette is a single forward pass
       EXPECT_LT(j.parent, static_cast<int16_t>(i));
       EXPECT_GE(j.parent, int16_t{ -1 });
       EXPECT_EQ(j.name_hash, FNV(j.name));
@@ -397,9 +397,9 @@ namespace other {
     EXPECT_EQ(out.positions[1], skel.joints[1].bind_position);
   }
 
-  /// measurement, not correctness: reports the per-character cost of a full §4 evaluation
-  ///  (reset_to_bind + sample_clip + build_palette) to ground the doc 03 appendix's
-  ///  parallel-evaluation analysis. the only assertion is a catastrophe bound.
+  /// measurement, not correctness: reports the per-character cost of a full evaluation
+  ///  (reset_to_bind + sample_clip + build_palette) to ground parallel-evaluation
+  ///  decisions. the only assertion is a catastrophe bound.
   TEST_F(animation_tests, palette_throughput_measurement) {
     constexpr size_t kJoints = 64;          /// typical humanoid rig
     constexpr size_t kKeysPerChannel = 60;  /// 2s clip baked at 30hz

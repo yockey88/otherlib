@@ -11,6 +11,7 @@
 
 #include "core/defines.hpp"
 #include "math/bounding_box.hpp"
+#include "model/animation_limits.hpp"
 
 namespace other {
 
@@ -23,24 +24,20 @@ namespace other {
     glm::quat bind_rotation{ 1.f, 0.f, 0.f, 0.f };
     glm::vec3 bind_scale{ 1.f };
     /// bind-space AABB of the vertices this joint influences (empty for helper joints);
-    ///  carried through the palette it bounds the ANIMATED mesh (scene::get_bounding_box)
+    ///  carried through the palette it bounds the animated mesh
     bounding_box influenced_bounds = bounding_box::empty;
   };
 
   struct skeleton {
     std::string name;
-    /// accumulated transform of every NON-joint ancestor above the first skeleton root
-    ///  (scene root included) — the palette pre-multiplier. inverse_bind matrices invert the
-    ///  FULL global bind chain, so build_palette needs this prefix back in front for
-    ///  bind pose to reproduce the raw mesh (axis/unit fixes often live on these nodes)
+    /// palette pre-multiplier: inverse(rigged mesh node global) * accumulated non-joint
+    ///  ancestors of the first root joint. bind pose reproduces the raw mesh exactly —
+    ///  root_transform * bind_chain * inverse_bind == identity
     glm::mat4 root_transform{ 1.f };
     ostd::vector<joint> joints;                     // topologically ordered at import; capped kMaxBones with warning
     int16_t find_joint(natural_t name_hash) const;  // linear scan; joint counts are small
     bool empty() const { return joints.empty(); }
   };
-
-  /// bone_matrix_buffer and the MAX_BONES shader define both derive from this
-  constexpr inline size_t kMaxBones = 100;
 
 }  // namespace other
 

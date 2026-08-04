@@ -4,10 +4,10 @@
  * `oecli model info <file>` — imports a model headless through model_importer::import
  * (pure cpu, no gpu or job system) and prints its geometry/material/skeleton/clip summary.
  * `oecli model extract-clips <file> [-o <dir>]` — writes each embedded animation clip to
- * its own `<stem>@<clip>.oanim` beside the model (doc 03 §3.3); the authoring loop for
- * animation graphs is import once, extract, reference the .oanim files.
+ * its own `<stem>@<clip>.oanim` beside the model; the authoring loop for animation
+ * graphs is import once, extract, reference the .oanim files.
  * `oecli anim info <file.oanim>` — parses a standalone clip and prints its track summary.
- * `model bake` is deliberately absent until the .omdl writer exists (doc 01 section 7).
+ * `model bake` is deliberately absent until the .omdl writer exists.
  *
  * lives in otherlib because it needs the cli tool interface (other_cli), the model
  * importer (other_renderer), and the .oanim codec (other_scene).

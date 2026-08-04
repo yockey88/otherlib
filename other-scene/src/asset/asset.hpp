@@ -148,9 +148,9 @@ namespace other {
     ".glb",   // MODEL_SOURCE
     ".dae",   // MODEL_SOURCE
     ".3ds",   // MODEL_SOURCE
-    ".omdl",  // MODEL_SOURCE (baked model, doc 01 section 7)
+    ".omdl",  // MODEL_SOURCE (baked model)
 
-    /// standalone binary clip (doc 03 §3.2), extracted via `oecli model extract-clips`;
+    /// standalone binary clip, extracted via `oecli model extract-clips`;
     ///  clips also load embedded in their model source
     ".oanim",  // ANIMATION
 

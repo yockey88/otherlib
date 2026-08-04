@@ -110,8 +110,8 @@ namespace other {
       return false;
     }
 
-    /// per-vertex weight accumulator; import-internal — the results land in vertex
-    ///  bone_ids/bone_weights, the skeleton itself never stores weights (doc 03 §2)
+    /// per-vertex weight accumulator; results land in vertex bone_ids/bone_weights,
+    ///  the skeleton itself never stores weights
     struct bone_influence {
       constexpr static size_t kMaxInfluences = 4;
       size_t current_count = 0;
@@ -195,8 +195,8 @@ namespace other {
       return joint_idx;
     }
 
-    /// joints land parents-first: a node emits its joint before recursing — this ordering is
-    ///  what makes build_palette (doc 03 §4) a single forward pass
+    /// joints land parents-first (a node emits before recursing) — build_palette depends
+    ///  on this to complete every chain in one forward pass
     void traverse_bone(const aiNode* node, int16_t parent_idx, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
       const int16_t joint_idx = emit_joint(node, parent_idx, bctx, skel, ctx);
       if (joint_idx == -1) {
@@ -211,11 +211,9 @@ namespace other {
       }
     }
 
-    /// prefix = accumulated transforms of every ancestor node this walk SKIPPED (non-joint
-    ///  nodes, scene root included). recorded on the skeleton when the first root joint is
-    ///  reached: aiBone offset matrices invert the FULL global bind chain, so build_palette
-    ///  must put the skipped prefix back in front or bind pose comes out rotated/scaled by
-    ///  its inverse (mixamo-style armature/axis-fix nodes are exactly this case)
+    /// prefix accumulates the transforms of every non-joint ancestor this walk skips;
+    ///  recorded as skeleton::root_transform at the first root joint so build_palette can
+    ///  put them back in front of the chain
     void traverse_node(const aiNode* node, int16_t parent_idx, const glm::mat4& prefix, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
       OTHER_ASSERT(node != nullptr, "aiNode is null");
 
@@ -228,18 +226,14 @@ namespace other {
 
       const bool is_multi_root_parent = num_bone_children > 1;
 
-      // Sometimes there is an "Armature" node or the like that is the parent of the skeleton.
-      // This node is not actually a bone, but we need to treat it as such so that its transform is not overlooked when we come
-      // to converting the bone transforms to model space.  If this node has identity transform, we can ignore it.
-      // note: As of Assimp 6.0 this appears to no longer be needed
+      /// a transform-carrying "Armature"-style parent joins the skeleton so clip channels
+      ///  targeting it can animate it; identity ones just fold into the prefix
       const bool armature_node = (num_bone_children == 1) && !node->mTransformation.IsIdentity() && !node_contains_mesh(node);
       const bool is_bone = bctx.rigged_names.contains(node->mName.C_Str());
 
       if (is_bone || is_multi_root_parent || armature_node) {
         if (skel.joints.empty()) {
-          /// first skeleton root wins; disjoint roots with differing prefixes would need a
-          ///  per-root prefix, which no supported content has
-          skel.root_transform = prefix;
+          skel.root_transform = prefix;  // first root wins; disjoint roots share one prefix
         }
         traverse_bone(node, parent_idx, bctx, skel, ctx);
       } else {
@@ -270,10 +264,6 @@ namespace other {
       skeleton& skel = data.skel;
 
       skel.name = data.name;
-      /// root_transform stays identity unless the traversal skips transform-carrying
-      ///  ancestors above the first root joint (it replaces the old unconditional
-      ///  inverse-scene-root pre-multiplier, which double-counted the root against
-      ///  the aiBone offset matrices)
 
       for (uint32_t mesh_idx = 0; mesh_idx < scene->mNumMeshes; ++mesh_idx) {
         const aiMesh* mesh = scene->mMeshes[mesh_idx];
@@ -285,12 +275,10 @@ namespace other {
 
       traverse_node(scene->mRootNode, -1, glm::mat4(1.f), bctx, skel, ctx);
 
-      /// aiBone::mOffsetMatrix maps MESH space -> bone space (it carries the mesh node's own
-      ///  global), so the palette result lands in SCENE space; inverting the rigged mesh
-      ///  node's global brings it back to the space the raw vertex buffers are in. with this,
-      ///  root_transform * bind_chain * offset == identity exactly, for any consistent export
-      ///  (mixamo-style files hang the axis fix on the mesh node — without this the whole
-      ///  skinned result renders rotated by that fix)
+      /// aiBone::mOffsetMatrix maps MESH space -> bone space, so palettes land in SCENE
+      ///  space; folding inverse(mesh node global) into root_transform brings them back to
+      ///  vertex-buffer space and makes root_transform * bind_chain * offset == identity
+      ///  for any consistent export (mixamo hangs its axis fix on the mesh node)
       if (const aiNode* mesh_node = find_first_rigged_mesh_node(scene, scene->mRootNode)) {
         glm::mat4 mesh_global{ 1.f };
         for (const aiNode* n = mesh_node; n != nullptr; n = n->mParent) {
@@ -543,7 +531,7 @@ namespace other {
           continue;
         }
 
-        /// '*N' references a texture embedded in the file (common in .glb); doc 02 decides how to consume these
+        /// '*N' references a texture embedded in the file (common in .glb)
         if (result.front() == '*') {
           return std::format("embedded:{}", result.substr(1));
         }
@@ -598,7 +586,7 @@ namespace other {
       }
     }
 
-    /// pass 6 - immutable clips, seconds-normalized: ticks_per_second dies here (doc 03 §3.1)
+    /// immutable clips, seconds-normalized: ticks_per_second dies here
     void process_assimp_animations(assimp_import_ctx& ctx, model_data& data) {
       PROFILE_SECTION("model_importer::import_assimp--process-animations");
       const aiScene* scene = ctx.scene;
@@ -773,8 +761,6 @@ namespace other {
           vert.bone_ids[b] = infl.joint_ids[b];
           vert.bone_weights[b] = infl.weights[b];
 
-          /// per-joint bind-space bounds of the vertices it influences — carried through
-          ///  the palette these bound the animated mesh without touching vertices again
           if (infl.joint_ids[b] >= 0 && infl.weights[b] > 0.f) {
             bounding_box& jb = data.skel.joints[infl.joint_ids[b]].influenced_bounds;
             jb.min = glm::min(jb.min, vert.position);
@@ -791,7 +777,6 @@ namespace other {
     }
 
     model_import_result import_omdl(const filepath& file_path) {
-      /// .omdl is specified (doc 01 section 7) but the reader lands with the asset-pack work
       return { .error = std::format("'{}': .omdl baked models are specified but not implemented yet (lands with asset packs); re-export as .gltf/.glb", file_path.string()) };
     }
 

@@ -29,7 +29,7 @@ namespace other {
   struct model_data {
     std::string name;
 
-    ostd::vector<vertex> vertices;  // vertex slimmed: id/connected_triangles deleted (§2)
+    ostd::vector<vertex> vertices;
     ostd::vector<index> indices;
     ostd::vector<submesh> submeshes;
     ostd::vector<mesh_node> nodes;

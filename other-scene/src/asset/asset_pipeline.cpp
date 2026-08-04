@@ -359,7 +359,7 @@ namespace other {
       co_return;
     }
 
-    /// standalone .oanim clips (doc 03 §3.2); embedded clips ride their model_source instead
+    /// standalone .oanim clips; embedded clips ride their model_source instead
     task load_animation(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
 

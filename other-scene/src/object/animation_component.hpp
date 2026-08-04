@@ -15,22 +15,20 @@
 
 namespace other {
 
-  /// plays one clip on the owning object's rigged model. clips are immutable shared
-  ///  data — ALL playback state lives here (doc 03 §5). when a doc-04 graph component
-  ///  targets the pose it owns resolve/sample/palette and this becomes the output target
+  /// plays one clip on the owning object's rigged model; clips are immutable shared
+  ///  data, all playback state lives here
   struct animation_component {
     natural_t last_animation_asset_id = 0;
     natural_t animation_asset_id = 0;  /// standalone .oanim asset; 0 => clip_name against the model's embedded clips
-    std::string clip_name;             /// embedded-clip lookup on this object's model_source
+    std::string clip_name;
 
     bool playing = true;
     bool looping = true;
     float speed = 1.f;
-    float time = 0.f;  /// seconds; serialized => snapshots restore mid-pose (play/stop just works)
+    float time = 0.f;  /// seconds; serialized so snapshots restore mid-pose
 
-    /// runtime state, rebuilt whenever the resolved clip / skeleton identity changes
-    ///  (hot-reload safe by revalidation, the obj_model pattern); never reflected —
-    ///  codec restores leave these null and the next tick rebuilds them
+    /// runtime state, never reflected: rebuilt by the tick whenever the resolved clip or
+    ///  skeleton identity changes, so codec restores and hot reloads need no ceremony
     const animation_clip* clip = nullptr;
     const skeleton* bound_skeleton = nullptr;
     clip_binding binding;

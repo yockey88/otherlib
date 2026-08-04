@@ -68,7 +68,7 @@ namespace other {
     void remove_material(natural_t handle);
 
     /// standalone animation clips keyed by asset path hash; pure cpu data, immutable after
-    ///  registration — playback state lives with the player (doc 03). same add/get/remove +
+    ///  registration (playback state lives with the player). same add/get/remove +
     ///  refresh-replace contract as materials; embedded clips stay on their model_source
     void add_animation(natural_t handle, animation_clip clip);
     const animation_clip* get_animation(natural_t handle) const;

@@ -82,7 +82,7 @@ namespace other {
         }
 
         ctx.print("  skeleton: {} joints", data.skel.joints.size());
-        if (!data.skel.empty()) {
+        if (!data.skel.empty() && data.skel.root_transform != glm::mat4(1.f)) {
           const glm::mat4& rt = data.skel.root_transform;
           for (int r = 0; r < 4; ++r) {
             ctx.print("    root_transform[{}] = [{:.4f}, {:.4f}, {:.4f}, {:.4f}]", r, rt[0][r], rt[1][r], rt[2][r], rt[3][r]);
@@ -91,7 +91,7 @@ namespace other {
         for (size_t i = 0; i < data.skel.joints.size(); ++i) {
           const joint& j = data.skel.joints[i];
           if (j.parent == -1) {
-            /// root joints carry the convention problems — print the full bind TRS
+            /// full bind TRS for roots — the fastest place to spot convention problems
             ctx.print("    [{}] '{}' (parent {}) | bind pos ({:.3f}, {:.3f}, {:.3f}) rot wxyz ({:.4f}, {:.4f}, {:.4f}, {:.4f}) scale ({:.3f}, {:.3f}, {:.3f})",
                       i, j.name, j.parent,
                       j.bind_position.x, j.bind_position.y, j.bind_position.z,
@@ -106,7 +106,7 @@ namespace other {
         for (size_t i = 0; i < data.clips.size(); ++i) {
           const animation_clip& clip = data.clips[i];
           ctx.print("    [{}] '{}': {:.3f}s, {} tracks", i, clip.name, clip.duration, clip.joint_tracks.size());
-          /// first keys of tracks driving ROOT joints, to compare against the bind TRS above
+          /// root-track first keys compare directly against the root bind TRS above
           for (const joint_track& track : clip.joint_tracks) {
             const int16_t joint_idx = data.skel.find_joint(track.joint_name_hash);
             if (joint_idx < 0 || data.skel.joints[joint_idx].parent != -1) {

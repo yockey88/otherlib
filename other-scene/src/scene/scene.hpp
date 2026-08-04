@@ -82,7 +82,7 @@ namespace other {
     void fixed_update(double delta_time);
 
     /// per frame updates called with variable timestep; update needs the asset handler to
-    ///  resolve animation clip assets after the script surfaces run (doc 03 §5)
+    ///  resolve animation clip assets after the script surfaces run
     void update(double delta_time, scope<asset_handler>& asset_handler);
     void late_update(double delta_time);
 

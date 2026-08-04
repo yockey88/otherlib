@@ -169,7 +169,7 @@ namespace other {
     EXPECT_EQ(snap.find(b_stable), nullptr);
   }
 
-  /// §3.1 regression: an edited manifest must re-parse ITSELF, not only react to
+  /// regression: an edited manifest must re-parse ITSELF, not only react to
   /// domain hits and parent walks
   TEST_F(asset_resolver_tests, re_resolve_manifest_edit_reparses_itself) {
     asset_resolver resolver;
