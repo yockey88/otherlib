@@ -38,6 +38,7 @@ target_sources(otherlib
     src/driver/systems/event_driver_system.cpp
     src/driver/systems/input_driver_system.cpp
     src/driver/systems/asset_system.cpp
+    src/driver/systems/audio_system.cpp
     src/driver/systems/scripting_system.cpp
     src/driver/systems/rendering_system.cpp
     src/driver/systems/vm_system.cpp
@@ -187,7 +188,7 @@ target_link_directories(otherlib PUBLIC
   $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/sol2/lib>
 )
 ## other_cli rides along so cli tools stay invocable from inside any running environment
-target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_scripting other_network other_core other_cli)
+target_link_libraries(otherlib PUBLIC other_scene other_ui other_renderer other_physics other_audio other_scripting other_network other_core other_cli)
 
 add_library(otherlib_main STATIC src/other_main.cpp)
 target_link_libraries(otherlib_main PUBLIC otherlib)

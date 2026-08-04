@@ -10,6 +10,7 @@
 #include "input/input_system.hpp"
 #include "memory/arena.hpp"
 
+#include "audio/audio_environment.hpp"
 #include "physics/physics_environment.hpp"
 #include "renderer/renderer_backend.hpp"
 #include "script/scripting_environment.hpp"
@@ -37,6 +38,7 @@ namespace other {
     void initialize_physics_environment(const config_table* config);
     void initialize_renderer_backend(const config_table* config);
     void initialize_scripting_environment(const config_table* config);
+    void initialize_audio_environment(const config_table* config);
 
     void shutdown_logger();
     void shutdown_arena();
@@ -46,6 +48,7 @@ namespace other {
     void shutdown_physics_environment();
     void shutdown_renderer_backend();
     void shutdown_scripting_environment();
+    void shutdown_audio_environment();
 
   }  // namespace detail
 
@@ -153,6 +156,10 @@ namespace other {
       profile_name == subsystem_profile::kHeadlessProfileName;
   }
 
+  bool subsystem_registry::profile_includes_audio(const std::string_view profile_name) {
+    return profile_name == subsystem_profile::kFullProfileName;
+  }
+
   void subsystem_registry::activate_necessary_subsystems_for_profile(const std::string_view profile, const config_table* config) {
     /// one by one set inert flag to true if not needed in the profile
     subsystem<scripting_environment>::inert = !profile_includes_scripting(profile);
@@ -245,6 +252,12 @@ namespace other {
       subsystem_description<scripting_environment>::dependency_names,
       detail::initialize_scripting_environment,
       detail::shutdown_scripting_environment,
+    });
+    registry.register_subsystem({
+      "audio_environment",
+      subsystem_description<audio_environment>::dependency_names,
+      detail::initialize_audio_environment,
+      detail::shutdown_audio_environment,
     });
 
     return registry;
@@ -450,6 +463,20 @@ namespace other {
       }
     }
 
+    void initialize_audio_environment(const config_table* config) {
+      subsystem<audio_environment>::inert = false;
+
+      auto* env = subsystem<audio_environment>::get();
+      if (env == nullptr) {
+        throw std::runtime_error("Audio environment subsystem is null.");
+      }
+
+      audio_config audio_cfg{};
+      audio_cfg.sample_rate = config->get_value<uint32_t>("audio.sample-rate", 48000u);
+      audio_cfg.force_pump_mode = config->get_value<bool>("audio.force-pump", false);
+      env->initialize(audio_cfg);
+    }
+
     void shutdown_logger() {
       CORE_LOG_INFO("Shutting down logger subsystem.");
       subsystem<logger>::get()->shutdown();
@@ -475,6 +502,11 @@ namespace other {
     void shutdown_renderer_backend() {
       PROFILE_SECTION("other::detail::shutdown_renderer_backend");
       subsystem<renderer_backend>::get()->unload_backend();
+    }
+
+    void shutdown_audio_environment() {
+      PROFILE_SECTION("other::detail::shutdown_audio_environment");
+      subsystem<audio_environment>::get()->shutdown();
     }
 
     void shutdown_scripting_environment() {

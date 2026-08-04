@@ -149,6 +149,7 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/glad/include
   ${OTHER_EXTERN_DIR}/assimp
   ${OTHER_EXTERN_DIR}/stb
+  ${OTHER_EXTERN_DIR}/miniaudio
   ${OTHER_EXTERN_DIR}/dotnet
   ${OTHER_EXTERN_DIR}/entt
   ${OTHER_EXTERN_DIR}/pybind11/include
@@ -177,6 +178,7 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/glad/include
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/assimp
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/stb
+  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/miniaudio
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/dotnet
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/entt
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/pybind11/include
@@ -212,6 +214,7 @@ add_subdirectory(other-ui)
 add_subdirectory(other-scripting)
 add_subdirectory(other-csharp-interop)
 add_subdirectory(other-physics)
+add_subdirectory(other-audio)
 add_subdirectory(other-scene)
 add_subdirectory(other-csharp)
 add_subdirectory(other-cli)
@@ -247,6 +250,7 @@ other_install_external_headers("asio" "${OTHER_EXTERN_DIR}/asio")
 other_install_external_headers("glad" "${OTHER_EXTERN_DIR}/glad/include")
 other_install_external_headers("assimp" "${OTHER_EXTERN_DIR}/assimp")
 other_install_external_headers("stb" "${OTHER_EXTERN_DIR}/stb")
+other_install_external_headers("miniaudio" "${OTHER_EXTERN_DIR}/miniaudio")
 other_install_external_headers("dotnet" "${OTHER_EXTERN_DIR}/dotnet")
 other_install_external_headers("entt" "${OTHER_EXTERN_DIR}/entt")
 other_install_external_headers("sdl" "${OTHER_EXTERN_DIR}/sdl")

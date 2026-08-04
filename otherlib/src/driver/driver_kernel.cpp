@@ -11,6 +11,7 @@
 #include "driver/driver_system.hpp"
 #include "driver/subsystem_registry.hpp"
 #include "driver/systems/asset_system.hpp"
+#include "driver/systems/audio_system.hpp"
 #include "driver/systems/event_driver_system.hpp"
 #include "driver/systems/input_driver_system.hpp"
 #include "driver/systems/job_driver_system.hpp"
@@ -43,6 +44,10 @@ namespace other {
     // }
     if (subsystem_registry::profile_includes_rendering(profile_name)) {
       add_system<rendering_system>(driver_system_type::RENDERING_DRIVER_SYSTEM);
+    }
+
+    if (subsystem_registry::profile_includes_audio(profile_name)) {
+      add_system<audio_system>(driver_system_type::AUDIO_DRIVER_SYSTEM);
     }
 
     if (profile_name != "minimal") {

@@ -28,6 +28,7 @@ namespace other {
     static bool profile_includes_rendering(const std::string_view profile_name);
     static bool profile_includes_vm(const std::string_view profile_name);
     static bool profile_includes_scene(const std::string_view profile_name);
+    static bool profile_includes_audio(const std::string_view profile_name);
 
     inline const std::string_view get_current_profile() const { return current_profile; }
     const std::vector<natural_t>& get_initialization_order() const { return initialization_order; }

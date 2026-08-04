@@ -21,6 +21,7 @@
 #include "file/filesystem.hpp"
 #include "input/input_system.hpp"
 
+#include "audio/audio_environment.hpp"
 #include "http/http.hpp"
 #include "renderer/renderer.hpp"
 #include "script/scripting_environment.hpp"
@@ -138,6 +139,9 @@ namespace other {
     }
     inline bool physics_enabled() const {
       return !subsystem<physics_environment>::inert;
+    }
+    inline bool audio_enabled() const {
+      return !subsystem<audio_environment>::inert;
     }
 
     inline driver_kernel& get_kernel() {

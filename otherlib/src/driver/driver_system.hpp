@@ -32,6 +32,8 @@ namespace other {
     /// group4 - primary systems managing core objects
     VM_DRIVER_SYSTEM,
     SCENE_DRIVER_SYSTEM,
+    /// after SCENE so voices read the frame's final world transforms
+    AUDIO_DRIVER_SYSTEM,
     PROJECT_DRIVER_SYSTEM,
 
     /// sentinel

@@ -81,6 +81,10 @@ namespace other {
   using natural_t = uint64_t;
   using integer_t = int64_t;
 
+  /// handle to a live audio voice (other-audio owns the semantics); 0 == invalid/none.
+  ///  lives here so scene components can carry voice handles without an audio include
+  using voice_id = uint32_t;
+
   template <typename T>
   using opt = std::optional<T>;
 
