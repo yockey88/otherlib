@@ -27,7 +27,7 @@ name = "Donut"
 [objects.components.transform]
 local_position = [ 0.0, 0.0, 0.0 ]
 local_scale = [ 1.0, 1.0, 1.0 ]
-local_rotation_quat = [ 1.0, 0.0, 0.0, 0.0 ]
+local_rotation_quat = [ 0.0, 0.0, 0.0, 0.0 ]
 [objects.components.transform.local_basis]
 i = [ 0.0, 0.0, 1.0 ]
 j = [ 0.0, 1.0, 0.0 ]
@@ -39,6 +39,12 @@ model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/Rumba-Dancing.fb
 material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/donut.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.animation]
+clip_name = "mixamo.com"
+playing = true
+looping = true
+speed = 1.0
+time = 0.0
 
 [[objects]]
 id = 3
@@ -56,6 +62,12 @@ model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.f
 material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.animation]
+clip_name = "Scene"
+playing = true
+looping = true
+speed = 1.0
+time = 0.0
 
 [[objects]]
 id = 4
@@ -73,6 +85,12 @@ model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.f
 material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.animation]
+clip_name = "Scene"
+playing = true
+looping = true
+speed = 1.0
+time = 0.0
 
 [[objects]]
 id = 5

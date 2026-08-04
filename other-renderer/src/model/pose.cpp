@@ -109,7 +109,7 @@ namespace other {
         glm::mat4_cast(p.rotations[i]) *
         glm::scale(glm::mat4(1.f), p.scales[i]);
       model_space[i] = j.parent < 0 ? local : model_space[j.parent] * local;
-      out_palette[i] = skel.global_inverse * model_space[i] * j.inverse_bind;
+      out_palette[i] = skel.root_transform * model_space[i] * j.inverse_bind;
     }
   }
 

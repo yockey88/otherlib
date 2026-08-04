@@ -211,7 +211,12 @@ namespace other {
       }
     }
 
-    void traverse_node(const aiNode* node, int16_t parent_idx, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
+    /// prefix = accumulated transforms of every ancestor node this walk SKIPPED (non-joint
+    ///  nodes, scene root included). recorded on the skeleton when the first root joint is
+    ///  reached: aiBone offset matrices invert the FULL global bind chain, so build_palette
+    ///  must put the skipped prefix back in front or bind pose comes out rotated/scaled by
+    ///  its inverse (mixamo-style armature/axis-fix nodes are exactly this case)
+    void traverse_node(const aiNode* node, int16_t parent_idx, const glm::mat4& prefix, skeleton_build_ctx& bctx, skeleton& skel, assimp_import_ctx& ctx) {
       OTHER_ASSERT(node != nullptr, "aiNode is null");
 
       uint32_t num_bone_children = 0;
@@ -231,12 +236,32 @@ namespace other {
       const bool is_bone = bctx.rigged_names.contains(node->mName.C_Str());
 
       if (is_bone || is_multi_root_parent || armature_node) {
+        if (skel.joints.empty()) {
+          /// first skeleton root wins; disjoint roots with differing prefixes would need a
+          ///  per-root prefix, which no supported content has
+          skel.root_transform = prefix;
+        }
         traverse_bone(node, parent_idx, bctx, skel, ctx);
       } else {
+        const glm::mat4 child_prefix = prefix * mat4_from_ai_mat4(node->mTransformation);
         for (uint32_t i = 0; i < node->mNumChildren; ++i) {
-          traverse_node(node->mChildren[i], parent_idx, bctx, skel, ctx);
+          traverse_node(node->mChildren[i], parent_idx, child_prefix, bctx, skel, ctx);
         }
       }
+    }
+
+    const aiNode* find_first_rigged_mesh_node(const aiScene* scene, const aiNode* node) {
+      for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
+        if (scene->mMeshes[node->mMeshes[i]]->mNumBones > 0) {
+          return node;
+        }
+      }
+      for (uint32_t i = 0; i < node->mNumChildren; ++i) {
+        if (const aiNode* found = find_first_rigged_mesh_node(scene, node->mChildren[i])) {
+          return found;
+        }
+      }
+      return nullptr;
     }
 
     void process_assimp_skeleton(assimp_import_ctx& ctx, skeleton_build_ctx& bctx, model_data& data) {
@@ -245,7 +270,10 @@ namespace other {
       skeleton& skel = data.skel;
 
       skel.name = data.name;
-      skel.global_inverse = data.inverse_global_transform;
+      /// root_transform stays identity unless the traversal skips transform-carrying
+      ///  ancestors above the first root joint (it replaces the old unconditional
+      ///  inverse-scene-root pre-multiplier, which double-counted the root against
+      ///  the aiBone offset matrices)
 
       for (uint32_t mesh_idx = 0; mesh_idx < scene->mNumMeshes; ++mesh_idx) {
         const aiMesh* mesh = scene->mMeshes[mesh_idx];
@@ -255,7 +283,21 @@ namespace other {
         }
       }
 
-      traverse_node(scene->mRootNode, -1, bctx, skel, ctx);
+      traverse_node(scene->mRootNode, -1, glm::mat4(1.f), bctx, skel, ctx);
+
+      /// aiBone::mOffsetMatrix maps MESH space -> bone space (it carries the mesh node's own
+      ///  global), so the palette result lands in SCENE space; inverting the rigged mesh
+      ///  node's global brings it back to the space the raw vertex buffers are in. with this,
+      ///  root_transform * bind_chain * offset == identity exactly, for any consistent export
+      ///  (mixamo-style files hang the axis fix on the mesh node — without this the whole
+      ///  skinned result renders rotated by that fix)
+      if (const aiNode* mesh_node = find_first_rigged_mesh_node(scene, scene->mRootNode)) {
+        glm::mat4 mesh_global{ 1.f };
+        for (const aiNode* n = mesh_node; n != nullptr; n = n->mParent) {
+          mesh_global = mat4_from_ai_mat4(n->mTransformation) * mesh_global;
+        }
+        skel.root_transform = glm::inverse(mesh_global) * skel.root_transform;
+      }
 
       /// animation channels can target nodes that no mesh rigs; they still need joints so the clips can drive them
       for (uint32_t anim_idx = 0; anim_idx < scene->mNumAnimations; ++anim_idx) {
@@ -712,8 +754,6 @@ namespace other {
 
       model_data data;
       data.name = file_path.filename().stem().string();
-      data.global_transform = mat4_from_ai_mat4(scene->mRootNode->mTransformation);
-      data.inverse_global_transform = glm::inverse(data.global_transform);
 
       process_assimp_skeleton(ctx, bctx, data);
       map_accepted_meshes(ctx);
@@ -732,6 +772,14 @@ namespace other {
         for (uint32_t b = 0; b < bone_influence::kMaxInfluences; ++b) {
           vert.bone_ids[b] = infl.joint_ids[b];
           vert.bone_weights[b] = infl.weights[b];
+
+          /// per-joint bind-space bounds of the vertices it influences — carried through
+          ///  the palette these bound the animated mesh without touching vertices again
+          if (infl.joint_ids[b] >= 0 && infl.weights[b] > 0.f) {
+            bounding_box& jb = data.skel.joints[infl.joint_ids[b]].influenced_bounds;
+            jb.min = glm::min(jb.min, vert.position);
+            jb.max = glm::max(jb.max, vert.position);
+          }
         }
       }
 

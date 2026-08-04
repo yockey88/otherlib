@@ -7,7 +7,10 @@
  *  runtime primitives (pose / clip_binding / sample_clip / blend_poses / build_palette)
  *  behave headlessly over plain data.
  **/
+#include <chrono>
 #include <cmath>
+#include <format>
+#include <iostream>
 
 #include <gtest/gtest.h>
 
@@ -204,6 +207,20 @@ namespace other {
       }
     }
     EXPECT_TRUE(any_weighted);
+
+    /// weighted joints carry the bind-space bounds of their influenced vertices (the
+    ///  animated-AABB source); every non-empty joint box sits inside the model bounds
+    bool any_joint_bounds = false;
+    for (const joint& j : skel.joints) {
+      if (j.influenced_bounds == bounding_box::empty) {
+        continue;
+      }
+      any_joint_bounds = true;
+      EXPECT_TRUE(glm::all(glm::greaterThanEqual(j.influenced_bounds.min, data.bounds.min - glm::vec3(0.0001f))));
+      EXPECT_TRUE(glm::all(glm::lessThanEqual(j.influenced_bounds.max, data.bounds.max + glm::vec3(0.0001f))));
+      EXPECT_TRUE(glm::all(glm::lessThanEqual(j.influenced_bounds.min, j.influenced_bounds.max)));
+    }
+    EXPECT_TRUE(any_joint_bounds);
   }
 
   TEST_F(animation_tests, import_clip_extraction) {
@@ -378,6 +395,76 @@ namespace other {
 
     /// untouched joints blend between identical values and stay at bind
     EXPECT_EQ(out.positions[1], skel.joints[1].bind_position);
+  }
+
+  /// measurement, not correctness: reports the per-character cost of a full §4 evaluation
+  ///  (reset_to_bind + sample_clip + build_palette) to ground the doc 03 appendix's
+  ///  parallel-evaluation analysis. the only assertion is a catastrophe bound.
+  TEST_F(animation_tests, palette_throughput_measurement) {
+    constexpr size_t kJoints = 64;          /// typical humanoid rig
+    constexpr size_t kKeysPerChannel = 60;  /// 2s clip baked at 30hz
+    constexpr float kClipLength = 2.f;
+    constexpr int kCharacters = 100;
+    constexpr int kFrames = 20;
+
+    skeleton skel;
+    skel.name = "bench";
+    for (size_t i = 0; i < kJoints; ++i) {
+      joint& j = skel.joints.emplace_back();
+      j.name = std::format("j{}", i);
+      j.name_hash = FNV(j.name);
+      j.parent = static_cast<int16_t>(i) - 1;
+      j.bind_position = glm::vec3(0.f, 0.5f, 0.f);
+      j.bind_rotation = glm::angleAxis(glm::radians(2.f), glm::vec3(0.f, 0.f, 1.f));
+      j.bind_scale = glm::vec3(1.f);
+    }
+
+    animation_clip clip;
+    clip.name = "bench_clip";
+    clip.duration = kClipLength;
+    for (size_t i = 0; i < kJoints; ++i) {
+      joint_track& track = clip.joint_tracks.emplace_back();
+      track.joint_name = skel.joints[i].name;
+      track.joint_name_hash = skel.joints[i].name_hash;
+      for (size_t k = 0; k < kKeysPerChannel; ++k) {
+        const float t = kClipLength * static_cast<float>(k) / static_cast<float>(kKeysPerChannel - 1);
+        track.position_keyframes.push_back({ t, glm::vec3(0.f, 0.5f + 0.01f * static_cast<float>(k % 7), 0.f) });
+        track.rotation_keyframes.push_back({ t, glm::angleAxis(glm::radians(2.f + static_cast<float>(k % 13)), glm::vec3(0.f, 0.f, 1.f)) });
+        track.scale_keyframes.push_back({ t, glm::vec3(1.f) });
+      }
+    }
+
+    clip_binding binding;
+    binding.build(clip, skel);
+
+    pose working;
+    ostd::vector<glm::mat4> palette;
+    palette.resize(kJoints);
+
+    const auto evaluate = [&](float time) {
+      working.reset_to_bind(skel);
+      sample_clip(clip, binding, time, working);
+      build_palette(skel, working, std::span<glm::mat4>{ palette.data(), palette.size() });
+    };
+
+    evaluate(0.5f);  /// warm the caches before timing
+
+    const auto start = std::chrono::steady_clock::now();
+    for (int frame = 0; frame < kFrames; ++frame) {
+      for (int character = 0; character < kCharacters; ++character) {
+        evaluate(std::fmod(static_cast<float>(frame) * 0.016f + static_cast<float>(character) * 0.013f, kClipLength));
+      }
+    }
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    const double total_us = std::chrono::duration<double, std::micro>(elapsed).count();
+    const double per_character_us = total_us / (kFrames * kCharacters);
+    std::cout << std::format("[bench] {} joints x {} keys/channel, {} characters x {} frames: {:.2f}us per character-eval, {:.2f}ms per {}-character frame\n",
+                             kJoints, kKeysPerChannel, kCharacters, kFrames, per_character_us, per_character_us * kCharacters / 1000.0, kCharacters);
+
+    /// catastrophically generous: only a broken algorithm (quadratic search, per-key
+    ///  allocation) can trip this
+    EXPECT_LT(per_character_us, 5000.0);
   }
 
   TEST_F(animation_tests, palette_identity) {

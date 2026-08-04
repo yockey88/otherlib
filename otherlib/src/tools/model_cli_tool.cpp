@@ -82,15 +82,45 @@ namespace other {
         }
 
         ctx.print("  skeleton: {} joints", data.skel.joints.size());
+        if (!data.skel.empty()) {
+          const glm::mat4& rt = data.skel.root_transform;
+          for (int r = 0; r < 4; ++r) {
+            ctx.print("    root_transform[{}] = [{:.4f}, {:.4f}, {:.4f}, {:.4f}]", r, rt[0][r], rt[1][r], rt[2][r], rt[3][r]);
+          }
+        }
         for (size_t i = 0; i < data.skel.joints.size(); ++i) {
           const joint& j = data.skel.joints[i];
-          ctx.print("    [{}] '{}' (parent {})", i, j.name, j.parent);
+          if (j.parent == -1) {
+            /// root joints carry the convention problems — print the full bind TRS
+            ctx.print("    [{}] '{}' (parent {}) | bind pos ({:.3f}, {:.3f}, {:.3f}) rot wxyz ({:.4f}, {:.4f}, {:.4f}, {:.4f}) scale ({:.3f}, {:.3f}, {:.3f})",
+                      i, j.name, j.parent,
+                      j.bind_position.x, j.bind_position.y, j.bind_position.z,
+                      j.bind_rotation.w, j.bind_rotation.x, j.bind_rotation.y, j.bind_rotation.z,
+                      j.bind_scale.x, j.bind_scale.y, j.bind_scale.z);
+          } else {
+            ctx.print("    [{}] '{}' (parent {})", i, j.name, j.parent);
+          }
         }
 
         ctx.print("  clips: {}", data.clips.size());
         for (size_t i = 0; i < data.clips.size(); ++i) {
           const animation_clip& clip = data.clips[i];
           ctx.print("    [{}] '{}': {:.3f}s, {} tracks", i, clip.name, clip.duration, clip.joint_tracks.size());
+          /// first keys of tracks driving ROOT joints, to compare against the bind TRS above
+          for (const joint_track& track : clip.joint_tracks) {
+            const int16_t joint_idx = data.skel.find_joint(track.joint_name_hash);
+            if (joint_idx < 0 || data.skel.joints[joint_idx].parent != -1) {
+              continue;
+            }
+            if (!track.rotation_keyframes.empty()) {
+              const glm::quat& q = track.rotation_keyframes.front().value;
+              ctx.print("      root track '{}': rot[0] wxyz ({:.4f}, {:.4f}, {:.4f}, {:.4f})", track.joint_name, q.w, q.x, q.y, q.z);
+            }
+            if (!track.position_keyframes.empty()) {
+              const glm::vec3& p = track.position_keyframes.front().value;
+              ctx.print("      root track '{}': pos[0] ({:.3f}, {:.3f}, {:.3f})", track.joint_name, p.x, p.y, p.z);
+            }
+          }
         }
         return tool_result::ok();
       }

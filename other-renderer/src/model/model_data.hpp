@@ -28,8 +28,6 @@ namespace other {
 
   struct model_data {
     std::string name;
-    glm::mat4 global_transform = glm::mat4(1.f);
-    glm::mat4 inverse_global_transform = glm::mat4(1.f);
 
     ostd::vector<vertex> vertices;  // vertex slimmed: id/connected_triangles deleted (§2)
     ostd::vector<index> indices;

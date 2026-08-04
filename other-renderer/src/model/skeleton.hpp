@@ -10,6 +10,7 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include "core/defines.hpp"
+#include "math/bounding_box.hpp"
 
 namespace other {
 
@@ -21,11 +22,18 @@ namespace other {
     glm::vec3 bind_position{ 0.f };  // decomposed node local bind TRS (the pose fallback)
     glm::quat bind_rotation{ 1.f, 0.f, 0.f, 0.f };
     glm::vec3 bind_scale{ 1.f };
+    /// bind-space AABB of the vertices this joint influences (empty for helper joints);
+    ///  carried through the palette it bounds the ANIMATED mesh (scene::get_bounding_box)
+    bounding_box influenced_bounds = bounding_box::empty;
   };
 
   struct skeleton {
     std::string name;
-    glm::mat4 global_inverse{ 1.f };                // scene root inverse (today's inverse_global_transform use)
+    /// accumulated transform of every NON-joint ancestor above the first skeleton root
+    ///  (scene root included) — the palette pre-multiplier. inverse_bind matrices invert the
+    ///  FULL global bind chain, so build_palette needs this prefix back in front for
+    ///  bind pose to reproduce the raw mesh (axis/unit fixes often live on these nodes)
+    glm::mat4 root_transform{ 1.f };
     ostd::vector<joint> joints;                     // topologically ordered at import; capped kMaxBones with warning
     int16_t find_joint(natural_t name_hash) const;  // linear scan; joint counts are small
     bool empty() const { return joints.empty(); }

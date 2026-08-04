@@ -905,7 +905,28 @@ namespace other {
     {
       const render_component* rc = storage->registry.try_get<render_component>(entity);
       if (rc != nullptr && rc->obj_model.source != nullptr) {
-        box = rc->obj_model.source->source_data().bounds;
+        const model_data& source_data = rc->obj_model.source->source_data();
+        box = source_data.bounds;
+
+        /// a live palette means the draw skins with it (use_bones path), so bound the
+        ///  ANIMATED pose: union of each joint's bind-space influenced bounds carried
+        ///  through its palette matrix. no palette (or a helper-only skeleton) keeps the
+        ///  static bind bounds above
+        const ostd::vector<glm::mat4>& palette = rc->obj_model.bone_matrices;
+        if (!palette.empty() && !source_data.skel.empty()) {
+          bounding_box animated = bounding_box::empty;
+          const size_t joint_count = std::min(palette.size(), source_data.skel.joints.size());
+          for (size_t i = 0; i < joint_count; ++i) {
+            bounding_box joint_bounds = source_data.skel.joints[i].influenced_bounds;
+            if (joint_bounds == bounding_box::empty) {
+              continue;
+            }
+            animated = bounding_box::expand_to_include(animated, joint_bounds.transform(palette[i]));
+          }
+          if (!(animated == bounding_box::empty)) {
+            box = animated;
+          }
+        }
       }
 
       const physics_component* pc = storage->registry.try_get<physics_component>(entity);
@@ -1173,20 +1194,16 @@ namespace other {
         size_t index = call.instance_count++;
         data.draw_tints[mesh_index].tints[index] = render.tint;
         data.model_buffers[mesh_index].model_matrices[index] = world_transform;
-      }
 
-      for (auto& bone_buff : data.bone_buffers) {
-        for (size_t i = 0; i < gpu::kMaxMaterials; ++i) {
-          bone_buff.bone_matrices[i] = glm::mat4(1.0f);
-        }
-        if (!draw_model->skel || draw_model->bone_matrices.size() == 0) {
-          std::ranges::fill(std::span(bone_buff.bone_matrices, gpu::kMaxMaterials), glm::mat4(1.0f));
-        } else {
-          size_t bone_count = std::min(draw_model->bone_matrices.size(), static_cast<size_t>(100));
-          for (size_t b = 0; b < bone_count; ++b) {
-            bone_buff.bone_matrices[b] = draw_model->bone_matrices[b];
-          }
-          draw_model->bone_matrices.clear();
+        /// the palette the animation tick wrote this frame lands in THIS draw's buffer (the
+        ///  old trailing loop wrote every draw's buffer — last entity won everywhere — and
+        ///  destructively cleared the palette). no clear(): the tick recomputes each frame,
+        ///  and instances sharing one draw share one palette by design (per-draw buffer)
+        if (sm.rigged && !draw_model->bone_matrices.empty()) {
+          gpu::bone_matrix_buffer& bone_buff = data.bone_buffers[mesh_index];
+          const size_t bone_count = std::min(draw_model->bone_matrices.size(), kMaxBones);
+          std::copy_n(draw_model->bone_matrices.begin(), bone_count, bone_buff.bone_matrices);
+          bone_buff.use_bones = 1;  // the flag that was never set; 0 stays the emplace default for unrigged draws
         }
       }
 

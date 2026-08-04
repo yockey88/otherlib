@@ -51,9 +51,15 @@ namespace other {
   }
 
   bounding_box bounding_box::transform(const glm::mat4& t) {
+    /// all eight corners — mapping min/max alone breaks under any rotation (the result
+    ///  isn't even ordered); the default-constructed box is an inverted-max accumulator
     bounding_box box;
-    box.min = glm::vec3(t * glm::vec4(min, 1.0f));
-    box.max = glm::vec3(t * glm::vec4(max, 1.0f));
+    for (int i = 0; i < 8; ++i) {
+      const glm::vec3 corner{ (i & 1) ? max.x : min.x, (i & 2) ? max.y : min.y, (i & 4) ? max.z : min.z };
+      const glm::vec3 p = glm::vec3(t * glm::vec4(corner, 1.f));
+      box.min = glm::min(box.min, p);
+      box.max = glm::max(box.max, p);
+    }
     return box;
   }
 

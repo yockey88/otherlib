@@ -46,7 +46,7 @@ namespace other {
   void blend_poses(const pose& a, const pose& b, float alpha, pose& out);
 
   /// model-space walk (single forward pass — parents precede children), each palette
-  ///  entry = global_inverse * model_space * inverse_bind
+  ///  entry = root_transform * model_space * inverse_bind
   void build_palette(const skeleton& skel, const pose& p, std::span<glm::mat4> out_palette);
 
 }  // namespace other
