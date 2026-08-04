@@ -5,7 +5,10 @@ layout (location = 1) in vec3 OE_normal;
 layout (location = 2) in vec3 OE_tangent;
 layout (location = 3) in vec3 OE_bitangent;
 layout (location = 4) in vec2 OE_tex_coords;
-layout (location = 5) in ivec4 OE_bone_ids;
+/// the vertex buffer is a single all-float stream (the 22-float ABI shared with the C#
+///  RawVertex mirror) and the backend binds every attribute as GL_FLOAT — an ivec4 here
+///  reads reinterpreted float bits (garbage ids). declare what arrives; cast per use.
+layout (location = 5) in vec4 OE_bone_ids;
 layout (location = 6) in vec4 OE_bone_weights;
 
 layout (std140) uniform model_buffer {
@@ -13,7 +16,7 @@ layout (std140) uniform model_buffer {
 };
 
 layout (std140) uniform bone_buffer {
-  mat4 bones[MAX_OBJECTS];
+  mat4 bones[MAX_BONES];
   int use_bones;
 };
 
@@ -57,13 +60,18 @@ mat4 get_bone_transform() {
   }
 
   mat4 bone_transform = mat4(0.f);
+  bool influenced = false;
 
   for (int i = 0; i < MAX_VERTEX_BONE_INFLUENCE; ++i) {
-    if (OE_bone_ids[i] == -1) {
+    int id = int(OE_bone_ids[i]);
+    if (id < 0 || id >= MAX_BONES) {
       continue;
     }
-    bone_transform += bones[OE_bone_ids[i]] * OE_bone_weights[i];
+    bone_transform += bones[id] * OE_bone_weights[i];
+    influenced = true;
   }
 
-  return bone_transform;
+  /// a vertex in a rigged submesh with no valid influences keeps its bind pose instead
+  ///  of collapsing to the origin through mat4(0)
+  return influenced ? bone_transform : mat4(1.f);
 }
