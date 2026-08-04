@@ -2,6 +2,7 @@ add_library(other_audio STATIC)
 target_sources(other_audio
   PRIVATE
     src/audio/audio_environment.cpp
+    src/audio/audio_import.cpp
     src/audio/miniaudio_impl.cpp
 )
 

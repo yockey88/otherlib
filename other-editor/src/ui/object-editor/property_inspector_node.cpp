@@ -13,6 +13,8 @@
 #include "renderer/renderer_backend.hpp"
 
 #include "object/animation_component.hpp"
+#include "object/audio_listener_component.hpp"
+#include "object/audio_source_component.hpp"
 #include "object/camera_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
@@ -44,6 +46,8 @@ IMGUI_REFLECT(other::point_light_component, light);
 IMGUI_REFLECT(other::direction_light_component, light);
 IMGUI_REFLECT(other::grid_component, visible, show_axes, coordinate_system, plane, origin, cell_size, extent, major_line_every, sector_count, layer_extent, layer_spacing, line_width, line_color, major_line_color);
 IMGUI_REFLECT(other::animation_component, clip_name, playing, looping, speed, time);
+IMGUI_REFLECT(other::audio_source_component, playing, looping, volume, pitch, bus, spatial, min_distance, max_distance, doppler_factor);
+IMGUI_REFLECT(other::audio_listener_component, active);
 
 IMGUI_REFLECT(other::orthonormal_basis, i, j, k);
 IMGUI_REFLECT(other::camera, position, direction, euler_angles, world_up, basis);
@@ -87,6 +91,62 @@ namespace other {
               changed = true;
             }
           }
+        }
+        return changed;
+      }
+    };
+
+    /// audio sources draw by hand for the same reason render components do: the clip
+    ///  is an asset *path* behind a natural_t id field, plus the bus wants a combo
+    template <>
+    struct component_widget<audio_source_component> {
+      bool operator()(const std::string_view, audio_source_component& comp, scene*, scene_object*, asset_handler* handler, driver* drvr) {
+        OTHER_ASSERT(drvr != nullptr, "component_widget<audio_source_component> needs a driver");
+
+        std::string current_path;
+        if (comp.clip_asset_id != 0 && handler != nullptr) {
+          if (const asset* clip_asset = handler->get_asset(comp.clip_asset_id); clip_asset != nullptr) {
+            current_path = clip_asset->load_path.generic_string();
+          }
+        }
+        char path_buf[512];
+        std::strncpy(path_buf, current_path.c_str(), sizeof(path_buf));
+        path_buf[sizeof(path_buf) - 1] = '\0';
+        bool changed = false;
+        if (inspector::property_text("Clip", path_buf, sizeof(path_buf))) {
+          const std::string new_path = path_buf;
+          if (new_path.empty()) {
+            comp.clip_asset_id = 0;
+            changed = true;
+          } else if (const filepath p{ new_path };
+                     std::filesystem::is_regular_file(p) && (p.extension() == ".wav" || p.extension() == ".mp3")) {
+            /// commit only when the text points at a real audio file — partial paths
+            ///  while typing stay inert
+            const natural_t clip_id = drvr->begin_asset_load(p);
+            if (clip_id != 0 && clip_id != comp.clip_asset_id) {
+              comp.clip_asset_id = clip_id;
+              changed = true;
+            }
+          }
+        }
+
+        changed |= inspector::property_bool("Playing", comp.playing);
+        changed |= inspector::property_bool("Looping", comp.looping);
+        changed |= inspector::property_float("Volume", comp.volume, 0.01f);
+        changed |= inspector::property_float("Pitch", comp.pitch, 0.01f);
+
+        constexpr std::array<const char*, 4> kBusNames = { "Master", "Music", "SFX", "UI" };
+        int bus_index = static_cast<int>(std::min<uint32_t>(comp.bus, static_cast<uint32_t>(kBusNames.size()) - 1));
+        if (ImGui::Combo("Bus", &bus_index, kBusNames.data(), static_cast<int>(kBusNames.size()))) {
+          comp.bus = static_cast<uint32_t>(bus_index);
+          changed = true;
+        }
+
+        changed |= inspector::property_bool("Spatial", comp.spatial);
+        if (comp.spatial) {
+          changed |= inspector::property_float("Min Distance", comp.min_distance, 0.1f);
+          changed |= inspector::property_float("Max Distance", comp.max_distance, 1.f);
+          changed |= inspector::property_float("Doppler", comp.doppler_factor, 0.01f);
         }
         return changed;
       }
@@ -248,6 +308,8 @@ namespace other {
         draw_component_section<point_light_component>("Point Light", colors::scene_object::kComponentPointLight, active_scene, &obj);
         draw_component_section<direction_light_component>("Direction Light", colors::scene_object::kComponentDirectionLight, active_scene, &obj);
         draw_component_section<animation_component>("Animation", colors::scene_object::kComponentAnimation, active_scene, &obj);
+        draw_component_section<audio_source_component>("Audio Source", colors::scene_object::kComponentAudio, active_scene, &obj);
+        draw_component_section<audio_listener_component>("Audio Listener", colors::scene_object::kComponentAudio, active_scene, &obj);
 
         const std::string button_str = std::format("Add Component##{}", obj.name);
         if (inspector::draw_add_component_button(button_str)) {

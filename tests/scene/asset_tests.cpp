@@ -27,8 +27,11 @@
 
 #include "driver/driver_mounts.hpp"
 
+#include "audio/audio_environment.hpp"
+
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
+#include "audio/audio_test_fixtures.hpp"
 #include "mock_rendering_api.hpp"
 
 namespace other {
@@ -523,31 +526,103 @@ worker_count = {}
     scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
     set_up_mock_rendering_api_and_expect_no_resource_creation(events);
 
-    /// audio/input-map have no runtime backend yet; loading must succeed as a
-    /// tracked stub, not abort in empty_loader (animation graduated to a real loader)
+    /// input-map has no runtime backend yet; loading must succeed as a tracked
+    /// stub, not abort in empty_loader (animation and audio graduated to real loaders)
     const filepath stub_dir = std::filesystem::temp_directory_path() / "other-asset-stub-tests";
     std::filesystem::create_directories(stub_dir);
-    const std::array stub_files = {
-      stub_dir / "tone.wav",
-      stub_dir / "controls.oinputmap",
-    };
-    for (const filepath& file : stub_files) {
-      std::ofstream out(file);
+    const filepath stub_file = stub_dir / "controls.oinputmap";
+    {
+      std::ofstream out(stub_file);
       out << "stub";
     }
     /// stable ids virtualize against the mount table, so the stub dir must be mounted
     ASSERT_NE(subsystem<file_system>::get()->mount_directory("stubassets", stub_dir), nullptr);
 
-    for (const filepath& file : stub_files) {
-      natural_t asset_id = handler->load_asset(file);
-      ASSERT_NE(asset_id, 0) << file.string();
-      pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::LOADING; });
-      EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED) << file.string();
-    }
+    natural_t asset_id = handler->load_asset(stub_file);
+    ASSERT_NE(asset_id, 0) << stub_file.string();
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::LOADING; });
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED) << stub_file.string();
 
     handler = nullptr;
     std::error_code ec;
     std::filesystem::remove_all(stub_dir, ec);
+  }
+
+  TEST_F(asset_tests, audio_async_load_unload_reload) {
+    dtor ___destructor_guard;
+
+    job_system jobs{ io_context };
+    event_system events{ io_context };
+    config_table cfg = config_table::load_from_source(std::format(kConfig, kNumWorkers));
+    jobs.initialize(cfg);
+
+    scope<asset_handler> handler = make_scope<asset_handler>(events, jobs);
+    /// audio clips live on the audio environment: no gpu resource is ever created
+    set_up_mock_rendering_api_and_expect_no_resource_creation(events);
+
+    auto* env = subsystem<audio_environment>::get();
+    ASSERT_NE(env, nullptr);
+    audio_config audio_cfg{};
+    audio_cfg.force_pump_mode = true;
+    ASSERT_TRUE(env->initialize(audio_cfg));
+    struct env_guard {
+      ~env_guard() { subsystem<audio_environment>::get()->shutdown(); }
+    } ___env_guard;
+
+    const filepath audio_dir = std::filesystem::temp_directory_path() / "other-audio-asset-tests";
+    std::filesystem::remove_all(audio_dir);
+    std::filesystem::create_directories(audio_dir);
+    const filepath wav = audio_dir / "tone.wav";
+    ASSERT_TRUE(write_test_wav(wav, 0.25f, 8000, 1));
+    {
+      std::ofstream sidecar(audio_dir / "tone.wav.odecl.toml");
+      sidecar << "schema-version = 1\n"
+                 "[audio]\n"
+                 "loop = true\n"
+                 "volume = 0.5\n";
+    }
+    /// stable ids virtualize against the mount table, so the temp dir must be mounted
+    ASSERT_NE(subsystem<file_system>::get()->mount_directory("audioassets", audio_dir), nullptr);
+
+    natural_t asset_id = handler->load_asset(wav);
+    ASSERT_NE(asset_id, 0);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::LOADING; });
+    ASSERT_EQ(handler->get_asset_state(asset_id), asset_state::LOADED);
+
+    /// decoded on a worker, registered on the environment under the asset's path
+    /// hash, with the sidecar folded into clip metadata (never into samples)
+    const natural_t clip_hash = handler->get_asset_hash(asset_id);
+    const audio_clip* clip = env->get_clip(clip_hash);
+    ASSERT_NE(clip, nullptr);
+    EXPECT_EQ(clip->channels, 1u);
+    EXPECT_EQ(clip->sample_rate, 8000u);
+    EXPECT_EQ(clip->frames, 2000u);
+    EXPECT_EQ(clip->pcm.size(), 2000u);
+    EXPECT_TRUE(clip->default_loop);
+    EXPECT_FLOAT_EQ(clip->default_gain, 0.5f);
+    EXPECT_EQ(env->clip_revision(clip_hash), 1u);
+
+    /// disk edit -> refresh runs unload-then-load; the revision bumps so bound
+    /// voices can detect the swap
+    ASSERT_TRUE(write_test_wav(wav, 0.5f, 8000, 1));
+    handler->reload_asset(asset_id);
+    pump_until(io_context, jobs, *handler, [&] {
+      return handler->get_asset_state(asset_id) == asset_state::LOADED && env->clip_revision(clip_hash) == 2u;
+    });
+    clip = env->get_clip(clip_hash);
+    ASSERT_NE(clip, nullptr);
+    EXPECT_EQ(clip->frames, 4000u);
+
+    handler->unload_asset(asset_id);
+    pump_until(io_context, jobs, *handler, [&] { return handler->get_asset_state(asset_id) != asset_state::UNLOADING; });
+    EXPECT_EQ(handler->get_asset_state(asset_id), asset_state::UNLOADED);
+    EXPECT_EQ(env->get_clip(clip_hash), nullptr);
+    /// high-water: revision survives remove
+    EXPECT_EQ(env->clip_revision(clip_hash), 2u);
+
+    handler = nullptr;
+    std::error_code ec;
+    std::filesystem::remove_all(audio_dir, ec);
   }
 
   TEST_F(asset_tests, unload_requested_while_loading_defers_and_drains) {

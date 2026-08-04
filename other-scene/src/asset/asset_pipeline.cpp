@@ -22,10 +22,14 @@
 
 #include "serialization/animation_serializer.hpp"
 
+#include "audio/audio_environment.hpp"
+#include "audio/audio_import.hpp"
+
 #include "asset/asset.hpp"
 #include "asset/asset_handler.hpp"
 #include "asset/pipelines/animation_pipeline.hpp"
 #include "asset/pipelines/asset_declaration_pipeline.hpp"
+#include "asset/pipelines/audio_pipeline.hpp"
 #include "asset/pipelines/material_pipeline.hpp"
 #include "asset/pipelines/model_source_pipeline.hpp"
 #include "asset/pipelines/rendering_pipeline_pipeline.hpp"
@@ -42,6 +46,7 @@ namespace other {
   namespace detail {
 
     task load_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task load_audio(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_stub_asset(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_animation(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task load_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -56,6 +61,7 @@ namespace other {
     task empty_loader(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
 
     task unload_texture(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
+    task unload_audio(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_stub_asset(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_animation(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
     task unload_model_source(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline);
@@ -79,7 +85,7 @@ namespace other {
     detail::load_script_source,
     detail::load_script_file,
     detail::load_script,
-    detail::load_stub_asset,  // AUDIO: no audio backend yet
+    detail::load_audio,
     detail::load_scene,
     detail::load_stub_asset,  // INPUT_MAP: asset model undefined; runtime input_map exists
     detail::load_rendering_pipeline,
@@ -96,7 +102,7 @@ namespace other {
     detail::unload_script_source,
     detail::unload_script_file,
     detail::unload_script,
-    detail::unload_stub_asset,
+    detail::unload_audio,
     detail::unload_scene,
     detail::unload_stub_asset,
     detail::unload_rendering_pipeline,
@@ -113,9 +119,8 @@ namespace other {
     switch (type) {
       case asset::TEXTURE: return make_scope<texture_pipeline>(events, handler);
       case asset::ANIMATION: return make_scope<animation_pipeline>(events, handler);
-      case asset::AUDIO:
-      case asset::INPUT_MAP:
-        return make_scope<stub_pipeline>(events, handler);
+      case asset::AUDIO: return make_scope<audio_pipeline>(events, handler);
+      case asset::INPUT_MAP: return make_scope<stub_pipeline>(events, handler);
       case asset::MODEL_SOURCE: return make_scope<model_source_pipeline>(events, handler);
       case asset::SCRIPT_PROJECT: return make_scope<script_project_pipeline>(events, handler);
       case asset::SCRIPT_SOURCE: return make_scope<script_source_pipeline>(events, handler);
@@ -357,6 +362,68 @@ namespace other {
       co_await task::yield();
       call_pipeline_fn<stub_pipeline>(pipeline, on_success);
       co_return;
+    }
+
+    task load_audio(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+
+      const filepath source_path = asset_ptr->absolute_path;
+      if (!std::filesystem::exists(source_path)) {
+        call_pipeline_fn<audio_pipeline>(pipeline, on_failure, std::format("Audio file does not exist: {}", source_path.string()));
+        co_return;
+      }
+      CORE_LOG_DEBUG("Loading audio from file: {}", source_path.string());
+
+      audio_import_result imported;
+      ref<job> decode_job = handler->get_job_system().submit(
+        {
+          .name = std::format("Decode Audio Asset {}", asset_ptr->id),
+          .priority = job::priority::LOW,
+          /// standalone decoder instance, never the engine — safe off the main thread
+          .thread_affinity = job::affinity::WORKER_THREAD,
+        },
+        [&imported, source_path]() {
+          /// local to this coroutine; the register job depends on this one, so no concurrent access
+          imported = import_audio(source_path);
+        });
+
+      ref<job> register_job = handler->get_job_system().submit(
+        {
+          .name = std::format("Register Audio Asset {}", asset_ptr->id),
+          .priority = job::priority::LOW,
+          /// the clip registry is main-thread-owned state
+          .thread_affinity = job::affinity::MAIN_THREAD,
+        },
+        [asset_ptr, r = &imported]() {
+          OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in register audio job");
+          if (!r->success()) {
+            throw std::runtime_error(r->error);
+          }
+          for (const std::string& warning : r->warnings) {
+            CORE_LOG_WARN("audio '{}': {}", asset_ptr->load_path.string(), warning);
+          }
+
+          if (subsystem<audio_environment>::inert) {
+            /// minimal profiles: tracked-no-payload, the stub's contract preserved
+            CORE_LOG_WARN("Audio environment inert; asset '{}' is tracked but carries no runtime data", asset_ptr->load_path.string());
+            return;
+          }
+          subsystem<audio_environment>::get()->add_clip(asset_ptr->path_hash, std::move(*r->clip));
+          CORE_LOG_DEBUG("Audio clip loaded and registered: {} with hash {}", asset_ptr->load_path.string(), asset_ptr->path_hash);
+        },
+        std::array{ decode_job->id });
+
+      do {
+        co_await task::yield();
+      } while (!register_job->done());
+
+      if (register_job->get_status() == job::status::COMPLETED) {
+        call_pipeline_fn<audio_pipeline>(pipeline, on_success);
+      } else if (!imported.error.empty()) {
+        call_pipeline_fn<audio_pipeline>(pipeline, on_failure, imported.error);
+      } else {
+        call_pipeline_fn<audio_pipeline>(pipeline, on_failure, std::format("Failed to load audio asset: {}", source_path.string()));
+      }
     }
 
     /// standalone .oanim clips; embedded clips ride their model_source instead
@@ -893,6 +960,22 @@ namespace other {
       verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
       CORE_LOG_DEBUG("Unloading {} stub asset (ID: {})", asset_ptr->asset_type, asset_ptr->id);
       call_pipeline_fn<stub_pipeline>(pipeline, on_success);
+      co_return;
+    }
+
+    task unload_audio(asset_handler* handler, asset* asset_ptr, asset_pipeline::on_load_success_fn on_success, asset_pipeline::on_load_failure_fn on_failure, void* pipeline) {
+      verify_parameters(handler, asset_ptr, on_success, on_failure, pipeline);
+      CORE_LOG_DEBUG("Unloading audio clip (ID: {})", asset_ptr->id);
+
+      if (!subsystem<audio_environment>::inert) {
+        auto* env = subsystem<audio_environment>::get();
+        OTHER_ASSERT(env != nullptr, "Audio environment subsystem is not available in unload_audio");
+        /// voices reading this clip's PCM die on the main thread before the buffer
+        ///  is freed — the remove_clip no-live-voices contract, satisfied by order
+        env->stop_voices_on(asset_ptr->path_hash);
+        env->remove_clip(asset_ptr->path_hash);
+      }
+      call_pipeline_fn<audio_pipeline>(pipeline, on_success);
       co_return;
     }
 

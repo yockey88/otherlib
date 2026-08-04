@@ -286,6 +286,14 @@ namespace other {
       return has_component<T>(node->object);
     }
 
+    /// iterate every object carrying the given components; fn receives
+    ///  (const scene::object_handle&, Ts&...) — handle.id is the tree id, so
+    ///  callers can reach world transforms without touching the registry directly
+    template <typename... Ts, typename Fn>
+    void each_component(Fn&& fn) {
+      storage->registry.view<object_handle, Ts...>().each(std::forward<Fn>(fn));
+    }
+
     inline size_t get_num_objects() const {
       return storage != nullptr ? storage->tree.num_objects : 0;
     }

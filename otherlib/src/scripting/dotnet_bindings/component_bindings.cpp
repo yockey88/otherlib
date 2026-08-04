@@ -5,7 +5,10 @@
 
 #include "thread/thread_safety.hpp"
 
+#include "audio/audio_environment.hpp"
+
 #include "object/animation_component.hpp"
+#include "object/audio_source_component.hpp"
 #include "object/render_component.hpp"
 #include "scene/scene.hpp"
 
@@ -194,6 +197,119 @@ namespace other {
       }
       comp->animation_asset_id = clip_id;
       comp->last_animation_asset_id = clip_id;
+    }
+
+    native_string native_audio_source_get_clip_path(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+
+      native_string result;
+      if (active_scene->has_component<audio_source_component>(object_id)) {
+        audio_source_component* comp = active_scene->get_component<audio_source_component>(object_id);
+        OTHER_ASSERT(comp != nullptr, "Audio source component not found for object with ID {}", object_id);
+        if (comp->clip_asset_id != 0) {
+          driver* d = detail::get_dotnet_native_driver();
+          OTHER_ASSERT(d != nullptr, "Driver is null in native_audio_source_get_clip_path.");
+          asset* clip_asset = d->get_asset(comp->clip_asset_id);
+          if (clip_asset != nullptr) {
+            result = native_string{ clip_asset->load_path.generic_string() };
+          }
+        }
+      }
+      return result;
+    }
+
+    void native_audio_source_set_clip_path(natural_t object_id, native_string path) {
+      ASSERT_MAIN_THREAD();
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+
+      /// this call is from user script so handle errors gracefully
+      if (!active_scene->has_component<audio_source_component>(object_id)) {
+        CORE_LOG_ERROR("Object with ID {} does not have an audio source component, cannot set clip.", object_id);
+        return;
+      }
+      audio_source_component* comp = active_scene->get_component<audio_source_component>(object_id);
+      OTHER_ASSERT(comp != nullptr, "Audio source component not found for object with ID {}", object_id);
+
+      const std::string path_str = path;
+      if (path_str.empty()) {
+        comp->clip_asset_id = 0;
+        return;
+      }
+
+      driver* d = detail::get_dotnet_native_driver();
+      OTHER_ASSERT(d != nullptr, "Driver is null in native_audio_source_set_clip_path.");
+      const natural_t clip_id = d->begin_asset_load(filepath{ path_str });
+      if (clip_id == 0) {
+        CORE_LOG_ERROR("Audio clip '{}' could not begin loading for object ID {}.", path_str, object_id);
+        return;
+      }
+      comp->clip_asset_id = clip_id;
+    }
+
+    void native_audio_play_one_shot(native_string path, float x, float y, float z, float volume, float pitch, uint32_t bus) {
+      ASSERT_MAIN_THREAD();
+      if (subsystem<audio_environment>::inert) {
+        return;
+      }
+      audio_environment* env = subsystem<audio_environment>::get();
+      if (env == nullptr || !env->is_initialized()) {
+        return;
+      }
+
+      driver* d = detail::get_dotnet_native_driver();
+      OTHER_ASSERT(d != nullptr, "Driver is null in native_audio_play_one_shot.");
+      const std::string path_str = path;
+      const natural_t clip_id = d->begin_asset_load(filepath{ path_str });
+      if (clip_id == 0) {
+        CORE_LOG_ERROR("Audio clip '{}' could not begin loading for one-shot.", path_str);
+        return;
+      }
+      asset* clip_asset = d->get_asset(clip_id);
+      if (clip_asset == nullptr) {
+        return;
+      }
+
+      voice_params params{};
+      params.clip_hash = clip_asset->path_hash;
+      params.volume = volume;
+      params.pitch = pitch;
+      params.bus = static_cast<audio_bus>(std::min<uint32_t>(bus, static_cast<uint32_t>(audio_bus::NUM_BUSES) - 1));
+      params.spatial = true;
+      params.position = { x, y, z };
+      /// if the clip is still mid-load the environment warns and refuses — one-shots
+      ///  are best-effort by design, the next call after load lands will sound
+      env->play_one_shot(params);
+    }
+
+    void native_audio_set_bus_volume(uint32_t bus, float volume) {
+      ASSERT_MAIN_THREAD();
+      if (subsystem<audio_environment>::inert) {
+        return;
+      }
+      audio_environment* env = subsystem<audio_environment>::get();
+      if (env == nullptr) {
+        return;
+      }
+      if (bus >= static_cast<uint32_t>(audio_bus::NUM_BUSES)) {
+        CORE_LOG_ERROR("Invalid audio bus {} in SetBusVolume.", bus);
+        return;
+      }
+      env->set_bus_volume(static_cast<audio_bus>(bus), volume);
+    }
+
+    float native_audio_get_bus_volume(uint32_t bus) {
+      ASSERT_MAIN_THREAD();
+      if (subsystem<audio_environment>::inert) {
+        return 0.f;
+      }
+      audio_environment* env = subsystem<audio_environment>::get();
+      if (env == nullptr || bus >= static_cast<uint32_t>(audio_bus::NUM_BUSES)) {
+        return 0.f;
+      }
+      return env->bus_volume(static_cast<audio_bus>(bus));
     }
 
     void native_render_component_fetch_mesh(natural_t object_id, float* out_vertex_data, int32_t* out_num_vertices, int32_t* out_index_data, int32_t* out_num_indices) {

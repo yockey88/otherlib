@@ -9,6 +9,8 @@
 #include "script/scripting_environment.hpp"
 
 #include "object/animation_component.hpp"
+#include "object/audio_listener_component.hpp"
+#include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
 #include "object/script_component.hpp"
@@ -323,7 +325,15 @@ namespace other {
       .bind("GetMaterialPath", bindings::native_render_component_get_material_path)
       .bind("SetMaterialPath", bindings::native_render_component_set_material_path)
       .bind("GetAnimationClipPath", bindings::native_animation_component_get_clip_path)
-      .bind("SetAnimationClipPath", bindings::native_animation_component_set_clip_path);
+      .bind("SetAnimationClipPath", bindings::native_animation_component_set_clip_path)
+      .bind("GetAudioClipPath", bindings::native_audio_source_get_clip_path)
+      .bind("SetAudioClipPath", bindings::native_audio_source_set_clip_path);
+
+    bindings::binding_context{ dn_host }
+      /// Audio
+      .bind("AudioPlayOneShot", bindings::native_audio_play_one_shot)
+      .bind("AudioSetBusVolume", bindings::native_audio_set_bus_volume)
+      .bind("AudioGetBusVolume", bindings::native_audio_get_bus_volume);
 
     bindings::validate_binding_points(dn_host);
   }
@@ -523,6 +533,8 @@ namespace other {
       bind_lua_component<point_light_component>(lua_state, "__native_point_light_component");
       bind_lua_component<direction_light_component>(lua_state, "__native_direction_light_component");
       bind_lua_component<animation_component>(lua_state, "__native_animation_component");
+      bind_lua_component<audio_source_component>(lua_state, "__native_audio_source_component");
+      bind_lua_component<audio_listener_component>(lua_state, "__native_audio_listener_component");
     }
 
     void bind_native_types_dotnet(dotnet_host& dn_host) {
@@ -539,6 +551,8 @@ namespace other {
       bind_dotnet_component<point_light_component>(dn_host, obj);
       bind_dotnet_component<direction_light_component>(dn_host, obj);
       bind_dotnet_component<animation_component>(dn_host, obj);
+      bind_dotnet_component<audio_source_component>(dn_host, obj);
+      bind_dotnet_component<audio_listener_component>(dn_host, obj);
 
       // dn_host.destroy_managed_object(obj);
     }

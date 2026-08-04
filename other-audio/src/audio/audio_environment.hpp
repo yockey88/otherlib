@@ -84,14 +84,23 @@ namespace other {
     void remove_clip(natural_t path_hash);
 
     /// voices — ids encode slot+generation; 0 == pool exhausted (warn, not assert);
-    ///  every other misuse of an id is a programmer error and asserts
+    ///  every other misuse of an id is a programmer error and asserts.
+    ///  streamed clips open from their source file through the resource manager
     voice_id start_voice(const voice_params& params);
     void stop_voice(voice_id id);
     void update_voice(voice_id id, const voice_dynamics& dynamics);
     bool voice_finished(voice_id id) const;
+    /// non-asserting: false for handles invalidated under their holder
+    ///  (stop_voices_on during a clip reload/unload) — probe before stop/query
+    bool voice_alive(voice_id id) const;
     void stop_voices_on(natural_t clip_hash);
     void stop_all_voices();
     size_t live_voice_count() const;
+
+    /// fire-and-forget: same pool, no handle returned; slots recycle once finished
+    ///  (recycle_finished_one_shots, called by the audio system each tick)
+    void play_one_shot(const voice_params& params);
+    void recycle_finished_one_shots();
 
     void set_listener(const glm::vec3& position, const glm::quat& rotation, const glm::vec3& velocity);
 

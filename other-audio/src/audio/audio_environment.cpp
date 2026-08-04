@@ -36,6 +36,8 @@ namespace other {
       uint16_t generation = 1;
       natural_t clip_hash = 0;
       bool looping = false;
+      bool one_shot = false;
+      bool streamed = false;  /// no buffer view; the sound owns a file stream
       ma_audio_buffer buffer{};
       ma_sound sound{};
     };
@@ -68,10 +70,14 @@ namespace other {
 
     void kill_slot(voice_slot& slot) {
       ma_sound_uninit(&slot.sound);
-      ma_audio_buffer_uninit(&slot.buffer);
+      if (!slot.streamed) {
+        ma_audio_buffer_uninit(&slot.buffer);
+      }
       slot.in_use = false;
       slot.clip_hash = 0;
       slot.looping = false;
+      slot.one_shot = false;
+      slot.streamed = false;
       slot.generation++;
       if (slot.generation == 0) {
         slot.generation = 1;
@@ -230,7 +236,7 @@ namespace other {
       CORE_LOG_WARN("start_voice: no clip registered for hash {:#x}", params.clip_hash);
       return 0;
     }
-    if (clip->streamed || clip->pcm.empty()) {
+    if (!clip->streamed && clip->pcm.empty()) {
       CORE_LOG_WARN("start_voice: clip {:#x} carries no decoded PCM", params.clip_hash);
       return 0;
     }
@@ -249,25 +255,44 @@ namespace other {
       return 0;
     }
 
-    ma_audio_buffer_config buffer_config =
-      ma_audio_buffer_config_init(ma_format_f32, clip->channels, clip->frames, clip->pcm.data(), nullptr);
-    buffer_config.sampleRate = clip->sample_rate;
-    if (ma_audio_buffer_init(&buffer_config, &free_slot->buffer) != MA_SUCCESS) {
-      CORE_LOG_ERROR("start_voice: audio buffer init failed for clip {:#x}", params.clip_hash);
-      return 0;
-    }
+    if (clip->streamed) {
+      const ma_uint32 flags = MA_SOUND_FLAG_STREAM | (params.spatial ? 0 : MA_SOUND_FLAG_NO_SPATIALIZATION);
+      const std::string path = clip->source_absolute.string();
+      if (ma_sound_init_from_file(&state->engine, path.c_str(), flags,
+                                  state->group_for(params.bus), nullptr, &free_slot->sound) != MA_SUCCESS) {
+        CORE_LOG_ERROR("start_voice: stream open failed for clip {:#x} ('{}')", params.clip_hash, path);
+        return 0;
+      }
+      free_slot->streamed = true;
+    } else {
+      ma_audio_buffer_config buffer_config =
+        ma_audio_buffer_config_init(ma_format_f32, clip->channels, clip->frames, clip->pcm.data(), nullptr);
+      buffer_config.sampleRate = clip->sample_rate;
+      if (ma_audio_buffer_init(&buffer_config, &free_slot->buffer) != MA_SUCCESS) {
+        CORE_LOG_ERROR("start_voice: audio buffer init failed for clip {:#x}", params.clip_hash);
+        return 0;
+      }
 
-    const ma_uint32 flags = params.spatial ? 0 : MA_SOUND_FLAG_NO_SPATIALIZATION;
-    if (ma_sound_init_from_data_source(&state->engine, &free_slot->buffer, flags,
-                                       state->group_for(params.bus), &free_slot->sound) != MA_SUCCESS) {
-      ma_audio_buffer_uninit(&free_slot->buffer);
-      CORE_LOG_ERROR("start_voice: sound init failed for clip {:#x}", params.clip_hash);
-      return 0;
+      const ma_uint32 flags = params.spatial ? 0 : MA_SOUND_FLAG_NO_SPATIALIZATION;
+      if (ma_sound_init_from_data_source(&state->engine, &free_slot->buffer, flags,
+                                         state->group_for(params.bus), &free_slot->sound) != MA_SUCCESS) {
+        ma_audio_buffer_uninit(&free_slot->buffer);
+        CORE_LOG_ERROR("start_voice: sound init failed for clip {:#x}", params.clip_hash);
+        return 0;
+      }
+      free_slot->streamed = false;
     }
 
     ma_sound_set_volume(&free_slot->sound, clip->default_gain * params.volume);
     ma_sound_set_pitch(&free_slot->sound, params.pitch);
     ma_sound_set_looping(&free_slot->sound, params.looping ? MA_TRUE : MA_FALSE);
+    if (params.looping && clip->loop.end_frame > clip->loop.start_frame) {
+      /// sidecar loop region; whole-clip loop otherwise
+      ma_data_source* source = ma_sound_get_data_source(&free_slot->sound);
+      if (source != nullptr) {
+        ma_data_source_set_loop_point_in_pcm_frames(source, clip->loop.start_frame, clip->loop.end_frame);
+      }
+    }
     if (params.spatial) {
       ma_sound_set_position(&free_slot->sound, params.position.x, params.position.y, params.position.z);
       ma_sound_set_min_distance(&free_slot->sound, params.min_distance);
@@ -280,7 +305,29 @@ namespace other {
     free_slot->in_use = true;
     free_slot->clip_hash = params.clip_hash;
     free_slot->looping = params.looping;
+    free_slot->one_shot = false;
     return encode_voice(slot_index, free_slot->generation);
+  }
+
+  void audio_environment::play_one_shot(const voice_params& params) {
+    const voice_id id = start_voice(params);
+    if (id == 0) {
+      return;
+    }
+    const size_t index = (id & 0xFFFF) - 1;
+    state->slots[index].one_shot = true;
+  }
+
+  void audio_environment::recycle_finished_one_shots() {
+    ASSERT_MAIN_THREAD();
+    if (!initialized) {
+      return;
+    }
+    for (impl::voice_slot& slot : state->slots) {
+      if (slot.in_use && slot.one_shot && !slot.looping && ma_sound_at_end(&slot.sound) != MA_FALSE) {
+        state->kill_slot(slot);
+      }
+    }
   }
 
   void audio_environment::stop_voice(voice_id id) {
@@ -301,6 +348,10 @@ namespace other {
     ma_sound_set_pitch(&slot->sound, dynamics.pitch);
     ma_sound_set_position(&slot->sound, dynamics.position.x, dynamics.position.y, dynamics.position.z);
     ma_sound_set_velocity(&slot->sound, dynamics.velocity.x, dynamics.velocity.y, dynamics.velocity.z);
+  }
+
+  bool audio_environment::voice_alive(voice_id id) const {
+    return initialized && id != 0 && state->resolve(id) != nullptr;
   }
 
   bool audio_environment::voice_finished(voice_id id) const {

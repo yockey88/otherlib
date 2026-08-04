@@ -29,6 +29,15 @@ namespace other {
     native_string native_animation_component_get_clip_path(natural_t object_id);
     void native_animation_component_set_clip_path(natural_t object_id, native_string path);
 
+    /// audio clips are assets too: scripts assign a .wav/.mp3 path ("" clears)
+    native_string native_audio_source_get_clip_path(natural_t object_id);
+    void native_audio_source_set_clip_path(natural_t object_id, native_string path);
+
+    /// fire-and-forget + bus control on the audio environment; no-ops when audio is inert
+    void native_audio_play_one_shot(native_string path, float x, float y, float z, float volume, float pitch, uint32_t bus);
+    void native_audio_set_bus_volume(uint32_t bus, float volume);
+    float native_audio_get_bus_volume(uint32_t bus);
+
   }  // namespace bindings
 }  // namespace other
 

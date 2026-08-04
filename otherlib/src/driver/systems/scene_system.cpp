@@ -7,6 +7,8 @@
 
 #include "serialization/scene_serializer.hpp"
 
+#include "object/audio_listener_component.hpp"
+#include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
 
 #include "driver/driver.hpp"
@@ -368,6 +370,8 @@ namespace other {
     component_reg->register_component_type<camera_component>("Camera");
     component_reg->register_component_type<grid_component>("Grid");
     component_reg->register_component_type<animation_component>("Animation");
+    component_reg->register_component_type<audio_source_component>("Audio Source");
+    component_reg->register_component_type<audio_listener_component>("Audio Listener");
   }
 
   void scene_system::handle_scene_load_event(const value& data) {
