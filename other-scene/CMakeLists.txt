@@ -14,7 +14,6 @@ target_sources(other_scene
       src/object/grid_component.cpp
       src/object/script_component.cpp
       src/object/physics_component.cpp
-      src/object/animation_controller.cpp
       src/object/component_registry.cpp
       
       src/scene/scene_network_context.cpp

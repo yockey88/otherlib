@@ -28,7 +28,7 @@ namespace other {
   };
 
   /// IMMUTABLE after load — no playback state, const everywhere. playback time,
-  ///  looping, and speed live with the player (doc 03 §5)
+  ///  looping, and speed live with the player
   struct animation_clip {
     std::string name;
     float duration = 0.f;  /// seconds

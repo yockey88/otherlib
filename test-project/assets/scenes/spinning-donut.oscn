@@ -35,7 +35,7 @@ k = [ -1.0, 0.0, 0.0 ]
 [objects.components.script]
 behaviors = [ "TestBehavior" ]
 [objects.components.render]
-model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.fbx"
+model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/Rumba-Dancing.fbx"
 material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/donut.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]

@@ -5,6 +5,7 @@
 
 #include "thread/thread_safety.hpp"
 
+#include "object/animation_component.hpp"
 #include "object/render_component.hpp"
 #include "scene/scene.hpp"
 
@@ -138,6 +139,61 @@ namespace other {
       }
       comp->material_asset_id = material_id;
       comp->last_material_asset_id = material_id;
+    }
+
+    native_string native_animation_component_get_clip_path(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+
+      native_string result;
+      if (active_scene->has_component<animation_component>(object_id)) {
+        animation_component* comp = active_scene->get_component<animation_component>(object_id);
+        OTHER_ASSERT(comp != nullptr, "Animation component not found for object with ID {}", object_id);
+        if (comp->animation_asset_id != 0) {
+          driver* d = detail::get_dotnet_native_driver();
+          OTHER_ASSERT(d != nullptr, "Driver is null in native_animation_component_get_clip_path.");
+          asset* clip_asset = d->get_asset(comp->animation_asset_id);
+          if (clip_asset != nullptr) {
+            result = native_string{ clip_asset->load_path.generic_string() };
+          }
+        }
+      } else {
+        /// no-op
+      }
+      return result;
+    }
+
+    void native_animation_component_set_clip_path(natural_t object_id, native_string path) {
+      ASSERT_MAIN_THREAD();
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+
+      /// this call is from user script so handle errors gracefully
+      if (!active_scene->has_component<animation_component>(object_id)) {
+        CORE_LOG_ERROR("Object with ID {} does not have an animation component, cannot set clip.", object_id);
+        return;
+      }
+      animation_component* comp = active_scene->get_component<animation_component>(object_id);
+      OTHER_ASSERT(comp != nullptr, "Animation component not found for object with ID {}", object_id);
+
+      const std::string path_str = path;
+      if (path_str.empty()) {
+        /// back to embedded-clip lookup (clip_name), or bind pose if that is empty too
+        comp->animation_asset_id = 0;
+        comp->last_animation_asset_id = 0;
+        return;
+      }
+
+      driver* d = detail::get_dotnet_native_driver();
+      OTHER_ASSERT(d != nullptr, "Driver is null in native_animation_component_set_clip_path.");
+      const natural_t clip_id = d->begin_asset_load(filepath{ path_str });
+      if (clip_id == 0) {
+        CORE_LOG_ERROR("Animation clip '{}' could not begin loading for object ID {}.", path_str, object_id);
+        return;
+      }
+      comp->animation_asset_id = clip_id;
+      comp->last_animation_asset_id = clip_id;
     }
 
     void native_render_component_fetch_mesh(natural_t object_id, float* out_vertex_data, int32_t* out_num_vertices, int32_t* out_index_data, int32_t* out_num_indices) {

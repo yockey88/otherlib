@@ -3,6 +3,8 @@
  **/
 #include "scene/scene.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <ranges>
 
@@ -21,7 +23,7 @@
 #include "renderer/renderer.hpp"
 #include "script/scripting_environment.hpp"
 
-#include "object/animation_controller.hpp"
+#include "object/animation_component.hpp"
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
 #include "object/physics_component.hpp"
@@ -394,7 +396,78 @@ namespace other {
     }
   }
 
-  void scene::update(double delta_time) {
+  namespace {
+
+    /// doc 03 §5: resolve the component's clip, advance its clock, sample into the working
+    ///  pose, and build the model's palette. runs after every script surface so state
+    ///  scripts set lands in the same frame's pose
+    void tick_animation(animation_component& anim, render_component& render, double delta_time, scope<asset_handler>& asset_handler) {
+      model_source* source = render.obj_model.source;
+      if (source == nullptr || source->source_data().skel.empty()) {
+        anim.clip = nullptr;
+        anim.bound_skeleton = nullptr;
+        return;
+      }
+
+      /// the render_component validation dance, clip flavored: a bad assignment reverts
+      ///  instead of killing playback
+      if (anim.last_animation_asset_id != anim.animation_asset_id && anim.animation_asset_id != 0) {
+        if (!asset_handler->asset_exists(anim.animation_asset_id)) {
+          CORE_LOG_ERROR("Animation component clip asset ID {} does not exist.", anim.animation_asset_id);
+          anim.animation_asset_id = anim.last_animation_asset_id;
+        }
+      }
+      anim.last_animation_asset_id = anim.animation_asset_id;
+
+      const animation_clip* resolved = nullptr;
+      if (anim.animation_asset_id != 0) {
+        /// standalone .oanim through the backend registry; not-yet-loaded stays in bind pose
+        if (asset_handler->asset_loaded(anim.animation_asset_id)) {
+          resolved = subsystem<renderer_backend>::get()->get_animation(asset_handler->get_asset_hash(anim.animation_asset_id));
+        }
+      } else if (!anim.clip_name.empty()) {
+        resolved = source->find_clip(anim.clip_name);
+      }
+
+      const skeleton& skel = source->source_data().skel;
+      if (resolved == nullptr) {
+        anim.clip = nullptr;
+        anim.bound_skeleton = nullptr;
+        return;
+      }
+
+      if (anim.clip != resolved || anim.bound_skeleton != &skel) {
+        /// first sight of this clip, or a hot reload swapped the clip/model underneath
+        anim.clip = resolved;
+        anim.bound_skeleton = &skel;
+        anim.binding.build(*resolved, skel);
+      }
+
+      if (anim.playing) {
+        anim.time += static_cast<float>(delta_time) * anim.speed;
+        const float duration = anim.clip->duration;
+        if (duration <= 0.f) {
+          anim.time = 0.f;
+        } else if (anim.looping) {
+          anim.time = std::fmod(anim.time, duration);
+          if (anim.time < 0.f) {  // negative speed wraps in from the end
+            anim.time += duration;
+          }
+        } else {
+          anim.time = std::clamp(anim.time, 0.f, duration);
+        }
+      }
+
+      anim.working_pose.reset_to_bind(skel);
+      sample_clip(*anim.clip, anim.binding, anim.time, anim.working_pose);
+
+      render.obj_model.bone_matrices.resize(skel.joints.size());
+      build_palette(skel, anim.working_pose, std::span<glm::mat4>{ render.obj_model.bone_matrices.data(), render.obj_model.bone_matrices.size() });
+    }
+
+  }  // namespace
+
+  void scene::update(double delta_time, scope<asset_handler>& asset_handler) {
     ASSERT_MAIN_THREAD();
     if (!playing) {
       return;
@@ -402,17 +475,6 @@ namespace other {
     PROFILE_SECTION("scene::update");
 
     // check_synchronization_updates();
-
-    storage->registry.view<render_component>().each([delta_time](entt::entity entity, render_component& render_comp) {
-      // if (!render_comp.animated) {
-      //   auto* model_ptr = render_comp.model;
-      //   model_ptr->bone_matrices = model_ptr->skel->calculate_bone_matrices(glm::mat4(1.0f));
-      // }
-    });
-    storage->registry.view<object_handle, animation_controller>().each([this, delta_time](entt::entity entity, object_handle& obj_handle, animation_controller& anim_ctrl) {
-      anim_ctrl.root_transform = get_world_transform(obj_handle.id);
-      anim_ctrl.update(delta_time);
-    });
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
       comp.update(delta_time);
@@ -427,6 +489,12 @@ namespace other {
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
     }
+
+    /// after the script view AND the lua scene hook (doc 03 §1 fact 7): every script
+    ///  surface that drives animation state ran this frame before sampling
+    storage->registry.view<animation_component, render_component>().each([delta_time, &asset_handler](entt::entity entity, animation_component& anim, render_component& render) {
+      tick_animation(anim, render, delta_time, asset_handler);
+    });
   }
 
   void scene::late_update(double delta_time) {

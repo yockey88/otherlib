@@ -13,6 +13,7 @@ target_sources(other_renderer
       
       src/model/vertex.cpp
       src/model/skeleton.cpp
+      src/model/pose.cpp
       src/model/model_importer.cpp
       src/model/model_source.cpp
       

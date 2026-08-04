@@ -8,7 +8,7 @@
 #include "http/http_request.hpp"
 #include "script/scripting_environment.hpp"
 
-#include "object/animation_controller.hpp"
+#include "object/animation_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
 #include "object/script_component.hpp"
@@ -321,7 +321,9 @@ namespace other {
       .bind("FetchMesh", bindings::native_render_component_fetch_mesh)
       .bind("UploadMesh", bindings::native_render_component_upload_mesh)
       .bind("GetMaterialPath", bindings::native_render_component_get_material_path)
-      .bind("SetMaterialPath", bindings::native_render_component_set_material_path);
+      .bind("SetMaterialPath", bindings::native_render_component_set_material_path)
+      .bind("GetAnimationClipPath", bindings::native_animation_component_get_clip_path)
+      .bind("SetAnimationClipPath", bindings::native_animation_component_set_clip_path);
 
     bindings::validate_binding_points(dn_host);
   }
@@ -520,7 +522,7 @@ namespace other {
       bind_lua_component<grid_component>(lua_state, "__native_grid_component");
       bind_lua_component<point_light_component>(lua_state, "__native_point_light_component");
       bind_lua_component<direction_light_component>(lua_state, "__native_direction_light_component");
-      bind_lua_component<animation_controller>(lua_state, "__native_animation_controller_component");
+      bind_lua_component<animation_component>(lua_state, "__native_animation_component");
     }
 
     void bind_native_types_dotnet(dotnet_host& dn_host) {
@@ -536,7 +538,7 @@ namespace other {
       bind_dotnet_component<grid_component>(dn_host, obj);
       bind_dotnet_component<point_light_component>(dn_host, obj);
       bind_dotnet_component<direction_light_component>(dn_host, obj);
-      bind_dotnet_component<animation_controller>(dn_host, obj);
+      bind_dotnet_component<animation_component>(dn_host, obj);
 
       // dn_host.destroy_managed_object(obj);
     }
