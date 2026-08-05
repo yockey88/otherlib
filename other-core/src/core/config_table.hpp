@@ -18,6 +18,12 @@
 
 namespace other {
 
+  class config_table;
+
+  /// parse a toml string into a config table; nullopt on parse failure.
+  /// (the friend declaration inside config_table alone is not found by ordinary lookup)
+  opt<config_table> parse_string_config(const std::string_view contents);
+
   class config_table {
    public:
     static config_table load(const std::string_view filename);

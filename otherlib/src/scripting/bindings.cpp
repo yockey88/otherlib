@@ -334,7 +334,15 @@ namespace other {
       .bind("GetPhysicsMass", bindings::native_physics_component_get_mass)
       .bind("SetPhysicsMass", bindings::native_physics_component_set_mass)
       .bind("GetPhysicsIsTrigger", bindings::native_physics_component_get_is_trigger)
-      .bind("SetPhysicsIsTrigger", bindings::native_physics_component_set_is_trigger);
+      .bind("SetPhysicsIsTrigger", bindings::native_physics_component_set_is_trigger)
+      .bind("GetPhysicsLinearVelocity", bindings::native_physics_component_get_linear_velocity)
+      .bind("SetPhysicsLinearVelocity", bindings::native_physics_component_set_linear_velocity)
+      .bind("GetPhysicsAngularVelocity", bindings::native_physics_component_get_angular_velocity)
+      .bind("SetPhysicsAngularVelocity", bindings::native_physics_component_set_angular_velocity)
+      .bind("PhysicsAddForce", bindings::native_physics_component_add_force)
+      .bind("PhysicsAddImpulse", bindings::native_physics_component_add_impulse)
+      .bind("PhysicsAddTorque", bindings::native_physics_component_add_torque)
+      .bind("PhysicsRaycast", bindings::native_physics_raycast);
 
     bindings::binding_context{ dn_host }
       /// Audio

@@ -20,6 +20,31 @@ namespace other {
     std::span<const uint32_t> indices;  /// triangle list; may be empty for hull-from-points
   };
 
+  /// one contact transition, queued by the backend's listener (worker threads) and drained
+  ///   on the main thread after each step. kEnd carries no point/normal (none exists)
+  struct contact_event {
+    enum kind : uint32_t {
+      kBegin = 0,
+      kEnd,
+      kTriggerBegin,
+      kTriggerEnd,
+    };
+    kind type = kBegin;
+    integer_t body_a = -1;  /// physics_body ids; kEnd events leave the backend carrying backend
+    integer_t body_b = -1;  ///   ids and the backend's drain resolves them before returning
+    glm::vec3 point = {};   /// first manifold point, world space (begin events only)
+    glm::vec3 normal = {};  /// a -> b contact normal (begin events only)
+  };
+
+  struct raycast_hit {
+    bool hit = false;
+    integer_t body_id = -1;
+    natural_t owner_object_id = 0;
+    glm::vec3 point = {};
+    glm::vec3 normal = {};
+    float distance = 0.f;
+  };
+
   /// backend-agnostic per-world creation settings, sourced from [physics] config
   /// backends consume what applies to them and ignore the rest
   struct physics_world_config {
@@ -80,6 +105,27 @@ namespace other {
 
     virtual void step_simulation(natural_t world_id, physics_world* world, double delta_time) = 0;
     virtual void update_active_transforms(natural_t world_id, physics_world* world, double delta_time) = 0;
+
+    /// pull the contact transitions recorded during the last step; engine body ids on return
+    virtual void drain_contacts(natural_t world_id, physics_world* world, ostd::vector<contact_event>& out) = 0;
+
+    /// closest-hit ray query; sensors are not surfaces and never hit
+    virtual raycast_hit cast_ray(natural_t world_id, physics_world* world, const glm::vec3& origin,
+                                 const glm::vec3& direction, float max_distance) = 0;
+
+    /// weld two bodies rigidly; returns a backend joint id, -1 on failure
+    virtual integer_t create_fixed_joint(natural_t world_id, physics_world* world, physics_body* body_a, physics_body* body_b) = 0;
+    virtual void destroy_joint(natural_t world_id, physics_world* world, integer_t joint_id) = 0;
+    /// force the weld sustained through the last step, newtons
+    virtual float joint_reaction_force(natural_t world_id, physics_world* world, integer_t joint_id, double step) = 0;
+
+    virtual void set_linear_velocity(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& velocity) = 0;
+    virtual glm::vec3 get_linear_velocity(natural_t world_id, physics_world* world, physics_body* body) = 0;
+    virtual void set_angular_velocity(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& velocity) = 0;
+    virtual glm::vec3 get_angular_velocity(natural_t world_id, physics_world* world, physics_body* body) = 0;
+    virtual void add_force(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& force) = 0;
+    virtual void add_impulse(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& impulse) = 0;
+    virtual void add_torque(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& torque) = 0;
 
    protected:
     virtual void on_initialize(const config_table& configuration) = 0;

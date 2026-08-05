@@ -10,6 +10,7 @@
 #include "object/audio_listener_component.hpp"
 #include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
+#include "object/physics_joint_component.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
@@ -350,6 +351,7 @@ namespace other {
     component_reg->register_component_type<script_component>("Script");
     component_reg->register_component_type<render_component>("Graphics Object");
     component_reg->register_component_type<physics_component>("Physics Object");
+    component_reg->register_component_type<physics_joint_component>("Physics Joint");
     component_reg->register_component_type<point_light_component>("Point Light");
     component_reg->register_component_type<direction_light_component>("Directional Light");
     component_reg->register_component_type<camera_component>("Camera");
@@ -543,6 +545,10 @@ namespace other {
     } else if (command == "stop") {
       active_scene->stop();
       get_driver().on_scene_stopped(active_scene->id);
+    } else if (command == "debug-physics-on") {
+      active_scene->enable_physics_debug_rendering();
+    } else if (command == "debug-physics-off") {
+      active_scene->disable_physics_debug_rendering();
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
     }

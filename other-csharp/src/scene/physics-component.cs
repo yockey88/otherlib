@@ -26,6 +26,20 @@ namespace Other
     internal static unsafe delegate*<UInt64, UInt32> NativeGetPhysicsIsTrigger;
     [NativeFunction("SetPhysicsIsTrigger")]
     internal static unsafe delegate*<UInt64, UInt32, void> NativeSetPhysicsIsTrigger;
+    [NativeFunction("GetPhysicsLinearVelocity")]
+    internal static unsafe delegate*<UInt64, float*, void> NativeGetPhysicsLinearVelocity;
+    [NativeFunction("SetPhysicsLinearVelocity")]
+    internal static unsafe delegate*<UInt64, float, float, float, void> NativeSetPhysicsLinearVelocity;
+    [NativeFunction("GetPhysicsAngularVelocity")]
+    internal static unsafe delegate*<UInt64, float*, void> NativeGetPhysicsAngularVelocity;
+    [NativeFunction("SetPhysicsAngularVelocity")]
+    internal static unsafe delegate*<UInt64, float, float, float, void> NativeSetPhysicsAngularVelocity;
+    [NativeFunction("PhysicsAddForce")]
+    internal static unsafe delegate*<UInt64, float, float, float, void> NativePhysicsAddForce;
+    [NativeFunction("PhysicsAddImpulse")]
+    internal static unsafe delegate*<UInt64, float, float, float, void> NativePhysicsAddImpulse;
+    [NativeFunction("PhysicsAddTorque")]
+    internal static unsafe delegate*<UInt64, float, float, float, void> NativePhysicsAddTorque;
 
     public PhysicsComponent(ulong object_id)
       : base(object_id)
@@ -85,7 +99,69 @@ namespace Other
       }
     }
 
-    /// velocity / force / raycast verbs land with the contacts + queries work
+    /// runtime verbs against the live body; forces accumulate over the next fixed step,
+    /// impulses change velocity immediately. non-dynamic bodies warn and ignore
+    public Vec3 LinearVelocity {
+      get
+      {
+        unsafe
+        {
+          float* v = stackalloc float[3];
+          NativeGetPhysicsLinearVelocity(ObjectId, v);
+          return new Vec3(v[0], v[1], v[2]);
+        }
+      }
+      set
+      {
+        unsafe
+        {
+          NativeSetPhysicsLinearVelocity(ObjectId, value.X, value.Y, value.Z);
+        }
+      }
+    }
+
+    public Vec3 AngularVelocity {
+      get
+      {
+        unsafe
+        {
+          float* v = stackalloc float[3];
+          NativeGetPhysicsAngularVelocity(ObjectId, v);
+          return new Vec3(v[0], v[1], v[2]);
+        }
+      }
+      set
+      {
+        unsafe
+        {
+          NativeSetPhysicsAngularVelocity(ObjectId, value.X, value.Y, value.Z);
+        }
+      }
+    }
+
+    public void AddForce(Vec3 force)
+    {
+      unsafe
+      {
+        NativePhysicsAddForce(ObjectId, force.X, force.Y, force.Z);
+      }
+    }
+
+    public void AddImpulse(Vec3 impulse)
+    {
+      unsafe
+      {
+        NativePhysicsAddImpulse(ObjectId, impulse.X, impulse.Y, impulse.Z);
+      }
+    }
+
+    public void AddTorque(Vec3 torque)
+    {
+      unsafe
+      {
+        NativePhysicsAddTorque(ObjectId, torque.X, torque.Y, torque.Z);
+      }
+    }
   }
 #nullable disable
 }

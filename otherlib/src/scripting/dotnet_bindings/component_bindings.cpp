@@ -254,6 +254,128 @@ namespace other {
       }
     }
 
+    namespace {
+
+      /// live body for the object's physics component, or nullptr (missing component/body/world)
+      physics_body* physics_body_for(natural_t object_id, physics_world** out_world) {
+        *out_world = nullptr;
+        scene* active_scene = detail::get_active_scene_checked();
+        OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+        physics_world* world = active_scene->physics();
+        if (world == nullptr) {
+          return nullptr;
+        }
+        physics_component* comp = physics_component_for(object_id);
+        if (comp == nullptr || comp->body == nullptr) {
+          return nullptr;
+        }
+        *out_world = world;
+        return comp->body;
+      }
+
+    }  // namespace
+
+    void native_physics_component_get_linear_velocity(natural_t object_id, float* out_velocity) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_velocity != nullptr, "Output velocity pointer is null.");
+      out_velocity[0] = out_velocity[1] = out_velocity[2] = 0.f;
+
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        glm::vec3 v = world->get_linear_velocity(body);
+        out_velocity[0] = v.x;
+        out_velocity[1] = v.y;
+        out_velocity[2] = v.z;
+      }
+    }
+
+    void native_physics_component_set_linear_velocity(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->set_linear_velocity(body, { x, y, z });
+      }
+    }
+
+    void native_physics_component_get_angular_velocity(natural_t object_id, float* out_velocity) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_velocity != nullptr, "Output velocity pointer is null.");
+      out_velocity[0] = out_velocity[1] = out_velocity[2] = 0.f;
+
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        glm::vec3 v = world->get_angular_velocity(body);
+        out_velocity[0] = v.x;
+        out_velocity[1] = v.y;
+        out_velocity[2] = v.z;
+      }
+    }
+
+    void native_physics_component_set_angular_velocity(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->set_angular_velocity(body, { x, y, z });
+      }
+    }
+
+    void native_physics_component_add_force(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->add_force(body, { x, y, z });
+      }
+    }
+
+    void native_physics_component_add_impulse(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->add_impulse(body, { x, y, z });
+      }
+    }
+
+    void native_physics_component_add_torque(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->add_torque(body, { x, y, z });
+      }
+    }
+
+    uint32_t native_physics_raycast(float ox, float oy, float oz, float dx, float dy, float dz, float max_distance,
+                                    natural_t* out_object, float* out_point, float* out_normal, float* out_distance) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_object != nullptr && out_point != nullptr && out_normal != nullptr && out_distance != nullptr,
+                   "Raycast output pointers are null.");
+      *out_object = 0;
+      *out_distance = 0.f;
+      out_point[0] = out_point[1] = out_point[2] = 0.f;
+      out_normal[0] = out_normal[1] = out_normal[2] = 0.f;
+
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+      physics_world* world = active_scene->physics();
+      if (world == nullptr) {
+        return 0;
+      }
+
+      raycast_hit hit = world->cast_ray({ ox, oy, oz }, { dx, dy, dz }, max_distance);
+      if (!hit.hit) {
+        return 0;
+      }
+
+      *out_object = hit.owner_object_id;
+      *out_distance = hit.distance;
+      out_point[0] = hit.point.x;
+      out_point[1] = hit.point.y;
+      out_point[2] = hit.point.z;
+      out_normal[0] = hit.normal.x;
+      out_normal[1] = hit.normal.y;
+      out_normal[2] = hit.normal.z;
+      return 1;
+    }
+
     native_string native_audio_source_get_clip_path(natural_t object_id) {
       ASSERT_MAIN_THREAD();
       scene* active_scene = detail::get_active_scene_checked();

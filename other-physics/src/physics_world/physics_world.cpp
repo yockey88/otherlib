@@ -59,6 +59,78 @@ namespace other {
     physics_api()->update_active_transforms(world_id, this, delta_time);
   }
 
+  void physics_world::drain_contacts(ostd::vector<contact_event>& out) {
+    physics_api()->drain_contacts(world_id, this, out);
+    for (contact_event& ev : out) {
+      if (ev.type != contact_event::kEnd) {
+        continue;
+      }
+      /// the backend cannot distinguish sensor separations; re-flag from the engine bodies
+      physics_body* a = body_by_id(ev.body_a);
+      physics_body* b = body_by_id(ev.body_b);
+      if ((a != nullptr && a->applied_settings.is_trigger) || (b != nullptr && b->applied_settings.is_trigger)) {
+        ev.type = contact_event::kTriggerEnd;
+      }
+    }
+  }
+
+  raycast_hit physics_world::cast_ray(const glm::vec3& origin, const glm::vec3& direction, float max_distance) {
+    raycast_hit hit = physics_api()->cast_ray(world_id, this, origin, direction, max_distance);
+    if (hit.hit) {
+      physics_body* body = body_by_id(hit.body_id);
+      hit.owner_object_id = body != nullptr ? body->owner_object_id : 0;
+    }
+    return hit;
+  }
+
+  integer_t physics_world::create_fixed_joint(physics_body* body_a, physics_body* body_b) {
+    OTHER_ASSERT(body_a != nullptr && body_b != nullptr, "Cannot weld a null physics body.");
+    return physics_api()->create_fixed_joint(world_id, this, body_a, body_b);
+  }
+
+  void physics_world::destroy_joint(integer_t joint_id) {
+    physics_api()->destroy_joint(world_id, this, joint_id);
+  }
+
+  float physics_world::joint_reaction_force(integer_t joint_id, double step) {
+    return physics_api()->joint_reaction_force(world_id, this, joint_id, step);
+  }
+
+  void physics_world::set_linear_velocity(physics_body* body, const glm::vec3& velocity) {
+    OTHER_ASSERT(body != nullptr, "Cannot set velocity on a null physics body.");
+    physics_api()->set_linear_velocity(world_id, this, body, velocity);
+  }
+
+  glm::vec3 physics_world::get_linear_velocity(physics_body* body) {
+    OTHER_ASSERT(body != nullptr, "Cannot read velocity from a null physics body.");
+    return physics_api()->get_linear_velocity(world_id, this, body);
+  }
+
+  void physics_world::set_angular_velocity(physics_body* body, const glm::vec3& velocity) {
+    OTHER_ASSERT(body != nullptr, "Cannot set velocity on a null physics body.");
+    physics_api()->set_angular_velocity(world_id, this, body, velocity);
+  }
+
+  glm::vec3 physics_world::get_angular_velocity(physics_body* body) {
+    OTHER_ASSERT(body != nullptr, "Cannot read velocity from a null physics body.");
+    return physics_api()->get_angular_velocity(world_id, this, body);
+  }
+
+  void physics_world::add_force(physics_body* body, const glm::vec3& force) {
+    OTHER_ASSERT(body != nullptr, "Cannot apply force to a null physics body.");
+    physics_api()->add_force(world_id, this, body, force);
+  }
+
+  void physics_world::add_impulse(physics_body* body, const glm::vec3& impulse) {
+    OTHER_ASSERT(body != nullptr, "Cannot apply impulse to a null physics body.");
+    physics_api()->add_impulse(world_id, this, body, impulse);
+  }
+
+  void physics_world::add_torque(physics_body* body, const glm::vec3& torque) {
+    OTHER_ASSERT(body != nullptr, "Cannot apply torque to a null physics body.");
+    physics_api()->add_torque(world_id, this, body, torque);
+  }
+
   void physics_world::teleport_body(physics_body* body, const glm::mat4& world_transform) {
     OTHER_ASSERT(body != nullptr, "Cannot teleport a null physics body.");
     physics_api()->teleport_body(world_id, this, body, world_transform);
@@ -83,6 +155,10 @@ namespace other {
 
   physics_body* physics_world::create_physics_body(const physics_body::settings& settings, const glm::mat4& world_transform) {
     OTHER_ASSERT(physics_bodies != nullptr, "Physics body memory pool is not initialized.");
+    if (physics_bodies->full()) {
+      CORE_LOG_ERROR("Physics body pool is full ({} bodies), cannot create another.", kMaxPhysicsBodies);
+      return nullptr;
+    }
     auto [body, idx] = physics_bodies->emplace();
 
     live_body& live_obj = live_objects[idx];

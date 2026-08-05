@@ -27,6 +27,12 @@
 #include <Jolt/Physics/Collision/Shape/MutableCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/EmptyShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Body/BodyLockMulti.h>
+#include <Jolt/Physics/Body/BodyFilter.h>
+#include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Renderer/DebugRenderer.h>
 #include <Jolt/Renderer/DebugRendererSimple.h>
 // clang-format on
@@ -86,20 +92,51 @@ namespace other {
     virtual bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
   };
 
-  class MyContactListener : public JPH::ContactListener {
+  /// queues contact transitions from jolt's worker threads for the main-thread drain.
+  /// kBegin/kTriggerBegin carry engine body ids (read off the bodies' user data); kEnd events
+  /// only have backend BodyIDs available and are resolved by the drain
+  class contact_listener final : public JPH::ContactListener {
    public:
-    virtual JPH::ValidateResult OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2, JPH::RVec3Arg inBaseOffset, const JPH::CollideShapeResult& inCollisionResult) override;
-    virtual void OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override;
-    virtual void OnContactPersisted(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override;
-    virtual void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override;
-  };
+    void OnContactAdded(const JPH::Body& body_a, const JPH::Body& body_b, const JPH::ContactManifold& manifold, JPH::ContactSettings&) override {
+      contact_event ev;
+      ev.type = (body_a.IsSensor() || body_b.IsSensor()) ? contact_event::kTriggerBegin : contact_event::kBegin;
+      ev.body_a = static_cast<integer_t>(body_a.GetUserData());
+      ev.body_b = static_cast<integer_t>(body_b.GetUserData());
+      JPH::RVec3 p = manifold.GetWorldSpaceContactPointOn1(0);
+      ev.point = { static_cast<float>(p.GetX()), static_cast<float>(p.GetY()), static_cast<float>(p.GetZ()) };
+      ev.normal = { manifold.mWorldSpaceNormal.GetX(), manifold.mWorldSpaceNormal.GetY(), manifold.mWorldSpaceNormal.GetZ() };
+      std::lock_guard lock(mutex);
+      events.push_back(ev);
+    }
 
-  /// per-world backend state; owns the jolt system, its listener, and this world's body/shape maps
+    void OnContactRemoved(const JPH::SubShapeIDPair& pair) override {
+      contact_event ev;
+      ev.type = contact_event::kEnd;
+      ev.body_a = static_cast<integer_t>(pair.GetBody1ID().GetIndexAndSequenceNumber());
+      ev.body_b = static_cast<integer_t>(pair.GetBody2ID().GetIndexAndSequenceNumber());
+      std::lock_guard lock(mutex);
+      events.push_back(ev);
+    }
+
+    void drain_into(std::vector<contact_event>& out) {
+      std::lock_guard lock(mutex);
+      out.insert(out.end(), events.begin(), events.end());
+      events.clear();
+    }
+
+   private:
+    std::mutex mutex;
+    std::vector<contact_event> events;  /// std:: — appended from jolt worker threads, the arena-backed
+  };                                    ///   ostd containers are main-thread machinery
+
+  /// per-world backend state; owns the jolt system, its listener, and this world's body/shape/joint maps
   struct jolt_world {
     JPH::PhysicsSystem* system = nullptr;
-    MyContactListener* listener = nullptr;
+    contact_listener* listener = nullptr;
     ostd::map<integer_t, uint32_t> bodies;         ///< physics_body::id -> jolt BodyID bits
     ostd::map<integer_t, shape_container> shapes;  ///< physics_body::id -> that body's jolt shape
+    ostd::map<integer_t, JPH::Ref<JPH::TwoBodyConstraint>> joints;
+    integer_t next_joint_id = 0;
   };
 
   namespace {
@@ -187,6 +224,7 @@ namespace other {
     MyDebugRenderer debug_renderer;
     JPH::BodyManager::DrawSettings body_draw_settings;
     body_draw_settings.mDrawShape = true;
+    body_draw_settings.mDrawShapeWireframe = true;  /// overlay stays readable over scene geometry
     jw.system->DrawBodies(body_draw_settings, &debug_renderer);
     jw.system->DrawConstraints(&debug_renderer);
 
@@ -212,7 +250,7 @@ namespace other {
 
     jolt_world* jw = new jolt_world();
     jw->system = physics_system;
-    jw->listener = new MyContactListener();
+    jw->listener = new contact_listener();
     physics_system->SetContactListener(jw->listener);
 
     jolt_worlds.emplace(id, jw);
@@ -228,6 +266,10 @@ namespace other {
     }
 
     jolt_world* jw = itr->second;
+    for (auto& [joint_id, constraint] : jw->joints) {
+      jw->system->RemoveConstraint(constraint);
+    }
+    jw->joints.clear();
     if (!jw->bodies.empty()) {
       /// scene teardown drains bodies through the entt destroy hooks; anything left here leaked
       CORE_LOG_WARN("Jolt world '{}' shutting down with {} live bodies, force-destroying them.", world->world_id, jw->bodies.size());
@@ -314,6 +356,19 @@ namespace other {
     OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt physics body unregistration.");
 
     jolt_world& jw = world_state(world_id);
+
+    /// welds referencing a dying body must go first or jolt is left holding a dangling constraint
+    for (auto itr = jw.joints.begin(); itr != jw.joints.end();) {
+      JPH::TwoBodyConstraint* constraint = itr->second;
+      const uint32_t bits = static_cast<uint32_t>(body->backend_id);
+      if (constraint->GetBody1()->GetID().GetIndexAndSequenceNumber() == bits ||
+          constraint->GetBody2()->GetID().GetIndexAndSequenceNumber() == bits) {
+        jw.system->RemoveConstraint(constraint);
+        itr = jw.joints.erase(itr);
+      } else {
+        ++itr;
+      }
+    }
 
     JPH::BodyInterface& body_interface = jw.system->GetBodyInterface();
     JPH::BodyID jolt_id(static_cast<uint32_t>(body->backend_id));
@@ -456,10 +511,19 @@ namespace other {
     container.jolt_shape = result.Get();
     container.default_empty = (desc.shape_kind == PHYSICS_SHAPE_NONE);
 
-    jw.system->GetBodyInterface().SetShape(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
-                                           container.jolt_shape,
+    JPH::BodyID jolt_id(static_cast<uint32_t>(body->backend_id));
+    jw.system->GetBodyInterface().SetShape(jolt_id, container.jolt_shape,
                                            /*inUpdateMassProperties=*/ body->body_type == physics_body::DYNAMIC,
                                            body->body_type == physics_body::STATIC ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
+
+    if (body->body_type == physics_body::DYNAMIC && body->mass > 0.f) {
+      /// SetShape recomputed mass from the shape's density; rescale to the AUTHORED mass
+      ///  (keeps the shape-derived inertia tensor's proportions)
+      JPH::BodyLockWrite lock(jw.system->GetBodyLockInterface(), jolt_id);
+      if (lock.Succeeded()) {
+        lock.GetBody().GetMotionProperties()->ScaleToMass(body->mass);
+      }
+    }
     return true;
   }
 
@@ -493,6 +557,192 @@ namespace other {
       b->previous_transform = b->current_transform;
       b->current_transform = transform;
     }
+  }
+
+  void jolt_api::drain_contacts(natural_t world_id, physics_world* world, ostd::vector<contact_event>& out) {
+    OTHER_ASSERT(world != nullptr, "Physics world is null during contact drain.");
+    jolt_world& jw = world_state(world_id);
+
+    scratch_events.clear();
+    jw.listener->drain_into(scratch_events);
+    for (contact_event& ev : scratch_events) {
+      if (ev.type == contact_event::kEnd) {
+        /// end events carry backend BodyID bits; resolve them against this world's body map
+        auto resolve = [&jw](integer_t backend_bits) -> integer_t {
+          for (const auto& [engine_id, bits] : jw.bodies) {
+            if (bits == static_cast<uint32_t>(backend_bits)) {
+              return engine_id;
+            }
+          }
+          return -1;
+        };
+        ev.body_a = resolve(ev.body_a);
+        ev.body_b = resolve(ev.body_b);
+        if (ev.body_a < 0 || ev.body_b < 0) {
+          continue;  /// a side died the same step — dropped by contract
+        }
+      }
+      out.push_back(ev);
+    }
+  }
+
+  namespace {
+
+    /// sensors are triggers, not surfaces — rays pass through them
+    class ignore_sensors_filter final : public JPH::BodyFilter {
+     public:
+      bool ShouldCollideLocked(const JPH::Body& body) const override {
+        return !body.IsSensor();
+      }
+    };
+
+  }  // namespace
+
+  raycast_hit jolt_api::cast_ray(natural_t world_id, physics_world* world, const glm::vec3& origin,
+                                 const glm::vec3& direction, float max_distance) {
+    OTHER_ASSERT(world != nullptr, "Physics world is null during raycast.");
+    jolt_world& jw = world_state(world_id);
+
+    raycast_hit out;
+    glm::vec3 d = glm::normalize(direction) * max_distance;
+    JPH::RRayCast ray{ JPH::RVec3(origin.x, origin.y, origin.z), JPH::Vec3(d.x, d.y, d.z) };
+    JPH::RayCastResult result;
+
+    static const ignore_sensors_filter kIgnoreSensors;
+    if (!jw.system->GetNarrowPhaseQuery().CastRay(ray, result, JPH::BroadPhaseLayerFilter{}, JPH::ObjectLayerFilter{}, kIgnoreSensors)) {
+      return out;
+    }
+
+    JPH::BodyLockRead lock(jw.system->GetBodyLockInterface(), result.mBodyID);
+    if (!lock.Succeeded()) {
+      return out;
+    }
+
+    out.hit = true;
+    out.body_id = static_cast<integer_t>(lock.GetBody().GetUserData());
+    out.distance = result.mFraction * max_distance;
+    JPH::RVec3 p = ray.GetPointOnRay(result.mFraction);
+    out.point = { static_cast<float>(p.GetX()), static_cast<float>(p.GetY()), static_cast<float>(p.GetZ()) };
+    JPH::Vec3 n = lock.GetBody().GetWorldSpaceSurfaceNormal(result.mSubShapeID2, p);
+    out.normal = { n.GetX(), n.GetY(), n.GetZ() };
+    return out;
+  }
+
+  integer_t jolt_api::create_fixed_joint(natural_t world_id, physics_world* world, physics_body* body_a, physics_body* body_b) {
+    OTHER_ASSERT(world != nullptr, "Physics world is null during weld creation.");
+    OTHER_ASSERT(body_a != nullptr && body_b != nullptr, "Cannot weld a null physics body.");
+    jolt_world& jw = world_state(world_id);
+
+    JPH::BodyID ids[2] = { JPH::BodyID(static_cast<uint32_t>(body_a->backend_id)),
+                           JPH::BodyID(static_cast<uint32_t>(body_b->backend_id)) };
+    JPH::BodyLockMultiWrite lock(jw.system->GetBodyLockInterface(), ids, 2);
+    JPH::Body* a = lock.GetBody(0);
+    JPH::Body* b = lock.GetBody(1);
+    if (a == nullptr || b == nullptr) {
+      CORE_LOG_ERROR("Cannot weld bodies {} and {}: a jolt body is missing.", body_a->id, body_b->id);
+      return -1;
+    }
+
+    JPH::FixedConstraintSettings settings;
+    settings.SetEmbedded();
+    settings.mAutoDetectPoint = true;
+    JPH::TwoBodyConstraint* constraint = settings.Create(*a, *b);
+    jw.system->AddConstraint(constraint);
+
+    integer_t joint_id = jw.next_joint_id++;
+    jw.joints.emplace(joint_id, constraint);
+    return joint_id;
+  }
+
+  void jolt_api::destroy_joint(natural_t world_id, physics_world* world, integer_t joint_id) {
+    jolt_world& jw = world_state(world_id);
+    auto itr = jw.joints.find(joint_id);
+    if (itr == jw.joints.end()) {
+      CORE_LOG_ERROR("Joint {} does not exist in jolt world {}.", joint_id, world_id);
+      return;
+    }
+    jw.system->RemoveConstraint(itr->second);
+    jw.joints.erase(itr);
+  }
+
+  float jolt_api::joint_reaction_force(natural_t world_id, physics_world* world, integer_t joint_id, double step) {
+    OTHER_ASSERT(step > 0.0, "Joint reaction force requires a positive step.");
+    jolt_world& jw = world_state(world_id);
+    auto itr = jw.joints.find(joint_id);
+    if (itr == jw.joints.end()) {
+      return 0.f;
+    }
+    JPH::FixedConstraint* fixed = static_cast<JPH::FixedConstraint*>(itr->second.GetPtr());
+    /// position impulse accumulated over the step / dt = force sustained through the weld
+    return fixed->GetTotalLambdaPosition().Length() / static_cast<float>(step);
+  }
+
+  void jolt_api::set_linear_velocity(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& velocity) {
+    OTHER_ASSERT(body != nullptr, "Physics body is null during velocity write.");
+    if (body->body_type == physics_body::STATIC) {
+      CORE_LOG_WARN("Ignoring velocity write on static physics body {}.", body->id);
+      return;
+    }
+    world_state(world_id).system->GetBodyInterface().SetLinearVelocity(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
+                                                                      JPH::Vec3(velocity.x, velocity.y, velocity.z));
+  }
+
+  glm::vec3 jolt_api::get_linear_velocity(natural_t world_id, physics_world* world, physics_body* body) {
+    OTHER_ASSERT(body != nullptr, "Physics body is null during velocity read.");
+    if (body->body_type == physics_body::STATIC) {
+      return glm::vec3(0.f);
+    }
+    JPH::Vec3 v = world_state(world_id).system->GetBodyInterface().GetLinearVelocity(JPH::BodyID(static_cast<uint32_t>(body->backend_id)));
+    return { v.GetX(), v.GetY(), v.GetZ() };
+  }
+
+  void jolt_api::set_angular_velocity(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& velocity) {
+    OTHER_ASSERT(body != nullptr, "Physics body is null during velocity write.");
+    if (body->body_type == physics_body::STATIC) {
+      CORE_LOG_WARN("Ignoring velocity write on static physics body {}.", body->id);
+      return;
+    }
+    world_state(world_id).system->GetBodyInterface().SetAngularVelocity(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
+                                                                       JPH::Vec3(velocity.x, velocity.y, velocity.z));
+  }
+
+  glm::vec3 jolt_api::get_angular_velocity(natural_t world_id, physics_world* world, physics_body* body) {
+    OTHER_ASSERT(body != nullptr, "Physics body is null during velocity read.");
+    if (body->body_type == physics_body::STATIC) {
+      return glm::vec3(0.f);
+    }
+    JPH::Vec3 v = world_state(world_id).system->GetBodyInterface().GetAngularVelocity(JPH::BodyID(static_cast<uint32_t>(body->backend_id)));
+    return { v.GetX(), v.GetY(), v.GetZ() };
+  }
+
+  void jolt_api::add_force(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& force) {
+    OTHER_ASSERT(body != nullptr, "Physics body is null during force application.");
+    if (body->body_type != physics_body::DYNAMIC) {
+      CORE_LOG_WARN("Ignoring force on non-dynamic physics body {}.", body->id);
+      return;
+    }
+    world_state(world_id).system->GetBodyInterface().AddForce(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
+                                                              JPH::Vec3(force.x, force.y, force.z));
+  }
+
+  void jolt_api::add_impulse(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& impulse) {
+    OTHER_ASSERT(body != nullptr, "Physics body is null during impulse application.");
+    if (body->body_type != physics_body::DYNAMIC) {
+      CORE_LOG_WARN("Ignoring impulse on non-dynamic physics body {}.", body->id);
+      return;
+    }
+    world_state(world_id).system->GetBodyInterface().AddImpulse(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
+                                                                JPH::Vec3(impulse.x, impulse.y, impulse.z));
+  }
+
+  void jolt_api::add_torque(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& torque) {
+    OTHER_ASSERT(body != nullptr, "Physics body is null during torque application.");
+    if (body->body_type != physics_body::DYNAMIC) {
+      CORE_LOG_WARN("Ignoring torque on non-dynamic physics body {}.", body->id);
+      return;
+    }
+    world_state(world_id).system->GetBodyInterface().AddTorque(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
+                                                               JPH::Vec3(torque.x, torque.y, torque.z));
   }
 
   void jolt_api::on_initialize(const config_table& configuration) {
@@ -602,20 +852,6 @@ namespace other {
         JPH_ASSERT(false);
         return false;
     }
-  }
-
-  JPH::ValidateResult MyContactListener::OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2, JPH::RVec3Arg inBaseOffset, const JPH::CollideShapeResult& inCollisionResult) {
-    // Allows you to ignore a contact before it is created (using layers to not make objects collide is cheaper!)
-    return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
-  }
-
-  void MyContactListener::OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) {
-  }
-
-  void MyContactListener::OnContactPersisted(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) {
-  }
-
-  void MyContactListener::OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) {
   }
 
 }  // namespace other

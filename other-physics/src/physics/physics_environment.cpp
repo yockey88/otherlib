@@ -5,6 +5,7 @@
 
 #include "core/fnv.hpp"
 
+#include "physics/backends/box3d_api.hpp"
 #include "physics/backends/jolt_api.hpp"
 
 namespace other {
@@ -14,6 +15,9 @@ namespace other {
     static constexpr std::string_view kJolt = "jolt";
     static constexpr natural_t kJoltHash = FNV(kJolt);
 
+    static constexpr std::string_view kBox3d = "box3d";
+    static constexpr natural_t kBox3dHash = FNV(kBox3d);
+
   }  // namespace backend_keys
 
   void physics_environment::load_backend(const config_table& config) {
@@ -22,6 +26,7 @@ namespace other {
     natural_t backend_hash = FNV(config.get_value<std::string>("physics.backend", "jolt"));
     switch (backend_hash) {
       case backend_keys::kJoltHash: set_physics_api(make_scope<jolt_api>(), config); break;
+      case backend_keys::kBox3dHash: set_physics_api(make_scope<box3d_api>(), config); break;
       default:
         OTHER_ASSERT(false, "Unknown/Unimplemented physics backend: {}", config.get_value<std::string>("physics.backend", "jolt"));
         break;

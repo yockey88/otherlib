@@ -77,6 +77,36 @@ namespace Other
     }
     protected virtual void OnFixedUpdate() {}
 
+    protected override void CollisionEnter(Core.CollisionInfo info)
+    {
+      OnCollisionEnter(info);
+    }
+    protected override void CollisionExit(Core.CollisionInfo info)
+    {
+      OnCollisionExit(info);
+    }
+    protected override void TriggerEnter(Core.CollisionInfo info)
+    {
+      OnTriggerEnter(info);
+    }
+    protected override void TriggerExit(Core.CollisionInfo info)
+    {
+      OnTriggerExit(info);
+    }
+    protected override void JointBreak(float force)
+    {
+      OnJointBreak(force);
+    }
+
+    /// fired on the fixed tick the contact began/ended; an exit is not guaranteed if either
+    /// body was destroyed the same tick. exits carry no point/normal
+    protected virtual void OnCollisionEnter(Core.CollisionInfo info) {}
+    protected virtual void OnCollisionExit(Core.CollisionInfo info) {}
+    protected virtual void OnTriggerEnter(Core.CollisionInfo info) {}
+    protected virtual void OnTriggerExit(Core.CollisionInfo info) {}
+    /// this object's weld broke under the given sustained force (newtons)
+    protected virtual void OnJointBreak(float force) {}
+
     protected override void Render()
     {
       OnRender();

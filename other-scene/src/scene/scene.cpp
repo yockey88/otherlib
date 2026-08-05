@@ -28,6 +28,7 @@
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
 #include "object/physics_component.hpp"
+#include "object/physics_joint_component.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
@@ -239,6 +240,7 @@ namespace other {
     if (storage->physics != nullptr) {
       revalidate_physics();  /// restored/edited bodies must match their authored settings before simulating
       seed_physics_poses();  /// edit-mode moves happened while physics was frozen
+      create_scene_joints();
       storage->physics->start_simulation();
     }
 
@@ -267,6 +269,9 @@ namespace other {
       return;
     }
 
+    if (storage->physics != nullptr) {
+      destroy_scene_joints();  /// welds go before the restore tears their bodies down
+    }
     pause();
 
     storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
@@ -379,7 +384,10 @@ namespace other {
     if (storage->physics != nullptr) {
       push_kinematic_targets(delta_time);             /// entity transform -> kinematic sweep target
       storage->physics->step_simulation(delta_time);  /// exactly one fixed step
-      /// contact drain + dispatch lands here in doc 03 §3
+      step_contacts.clear();
+      storage->physics->drain_contacts(step_contacts);
+      dispatch_contact_events(step_contacts);         /// scripts hear contacts before their FixedUpdate
+      check_joint_breaks(delta_time);
     }
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
@@ -538,6 +546,132 @@ namespace other {
         return;
       }
       storage->physics->move_kinematic(phys_comp.body, get_world_transform(handle.id), step);
+    });
+  }
+
+  void scene::dispatch_contact_events(const ostd::vector<contact_event>& events) {
+    PROFILE_SECTION("scene::dispatch_contact_events");
+    for (const contact_event& ev : events) {
+      physics_body* a = storage->physics->body_by_id(ev.body_a);
+      physics_body* b = storage->physics->body_by_id(ev.body_b);
+      if (a == nullptr || b == nullptr) {
+        continue;  /// a side was destroyed the same tick — dropped by contract
+      }
+
+      const char* method = nullptr;
+      switch (ev.type) {
+        case contact_event::kBegin: method = "CollisionEnter"; break;
+        case contact_event::kEnd: method = "CollisionExit"; break;
+        case contact_event::kTriggerBegin: method = "TriggerEnter"; break;
+        case contact_event::kTriggerEnd: method = "TriggerExit"; break;
+      }
+
+      /// both sides hear about the other; the normal points away from the receiver
+      dispatch_physics_event_to(a->owner_object_id, method, b->owner_object_id, ev.point, ev.normal);
+      dispatch_physics_event_to(b->owner_object_id, method, a->owner_object_id, ev.point, -ev.normal);
+    }
+  }
+
+  void scene::dispatch_physics_event_to(natural_t object_id, const char* method, natural_t other_id,
+                                        const glm::vec3& point, const glm::vec3& normal) {
+    scene_object* obj = find_object(object_id);
+    if (obj == nullptr) {
+      return;
+    }
+    if (script_component* comp = storage->registry.try_get<script_component>(entt::entity(obj->registry_id)); comp != nullptr) {
+      comp->dispatch_physics_event(method, other_id, point, normal);
+    }
+  }
+
+  void scene::create_scene_joints() {
+    PROFILE_SECTION("scene::create_scene_joints");
+    storage->registry.view<object_handle, physics_joint_component>().each([this](entt::entity entity, object_handle& handle, physics_joint_component& joint_comp) {
+      joint_comp.joint_id = -1;
+      if (joint_comp.broken) {
+        return;
+      }
+
+      scene_object* target = find_object(joint_comp.target_object_name);
+      if (target == nullptr) {
+        CORE_LOG_WARN("Physics joint on '{}' targets unknown object '{}'.", get_object(handle.id).name, joint_comp.target_object_name);
+        return;
+      }
+
+      physics_component* own = storage->registry.try_get<physics_component>(entity);
+      physics_component* other_comp = storage->registry.try_get<physics_component>(entt::entity(target->registry_id));
+      if (own == nullptr || own->body == nullptr || other_comp == nullptr || other_comp->body == nullptr) {
+        CORE_LOG_WARN("Physics joint between '{}' and '{}' requires physics bodies on both objects.",
+                      get_object(handle.id).name, joint_comp.target_object_name);
+        return;
+      }
+
+      joint_comp.joint_id = storage->physics->create_fixed_joint(own->body, other_comp->body);
+    });
+  }
+
+  void scene::destroy_scene_joints() {
+    storage->registry.view<physics_joint_component>().each([this](entt::entity entity, physics_joint_component& joint_comp) {
+      if (joint_comp.joint_id >= 0) {
+        storage->physics->destroy_joint(joint_comp.joint_id);
+        joint_comp.joint_id = -1;
+      }
+    });
+  }
+
+  void scene::check_joint_breaks(double step) {
+    PROFILE_SECTION("scene::check_joint_breaks");
+    storage->registry.view<object_handle, physics_joint_component>().each([this, step](entt::entity entity, object_handle& handle, physics_joint_component& joint_comp) {
+      if (joint_comp.joint_id < 0 || joint_comp.broken || joint_comp.break_force <= 0.f) {
+        return;
+      }
+
+      float force = storage->physics->joint_reaction_force(joint_comp.joint_id, step);
+      if (force <= joint_comp.break_force) {
+        return;
+      }
+
+      storage->physics->destroy_joint(joint_comp.joint_id);
+      joint_comp.joint_id = -1;
+      joint_comp.broken = true;
+
+      dispatch_joint_break_to(handle.id, force);
+      if (scene_object* target = find_object(joint_comp.target_object_name); target != nullptr) {
+        dispatch_joint_break_to(target->id, force);
+      }
+    });
+  }
+
+  void scene::dispatch_joint_break_to(natural_t object_id, float force) {
+    scene_object* obj = find_object(object_id);
+    if (obj == nullptr) {
+      return;
+    }
+    if (script_component* comp = storage->registry.try_get<script_component>(entt::entity(obj->registry_id)); comp != nullptr) {
+      comp->dispatch_joint_break(force);
+    }
+  }
+
+  void scene::sync_edit_mode_physics_poses() {
+    ASSERT_MAIN_THREAD();
+    if (playing || storage->physics == nullptr) {
+      return;
+    }
+    PROFILE_SECTION("scene::sync_edit_mode_physics_poses");
+
+    storage->registry.view<object_handle, physics_component>().each([this](entt::entity entity, object_handle& handle, physics_component& phys_comp) {
+      if (phys_comp.body == nullptr) {
+        return;
+      }
+      glm::mat4 world = get_world_transform(handle.id);
+      glm::vec3 position, scale;
+      glm::quat rotation;
+      decompose_mat4(world, position, rotation, scale);
+
+      const bool moved = glm::length(position - phys_comp.body->get_current_position()) > 1e-4f ||
+        std::abs(glm::dot(rotation, phys_comp.body->get_current_rotation())) < 1.f - 1e-5f;
+      if (moved) {
+        storage->physics->teleport_body(phys_comp.body, world);
+      }
     });
   }
 

@@ -24,6 +24,39 @@ namespace other {
     }
   }
 
+  void script_component::dispatch_physics_event(const char* method, natural_t other_id, const glm::vec3& point, const glm::vec3& normal) {
+    if (script_object_id < 0) {
+      return;
+    }
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    script_object* script_obj = env->get_object(script_object_id);
+    if (script_obj == nullptr) {
+      return;
+    }
+    if (auto* dn_obj = script_obj->dotnet_object; dn_obj != nullptr) {
+      dn_obj->invoke<>(method, static_cast<uint64_t>(other_id),
+                       point.x, point.y, point.z, normal.x, normal.y, normal.z);
+    }
+  }
+
+  void script_component::dispatch_joint_break(float force) {
+    if (script_object_id < 0) {
+      return;
+    }
+    auto* env = subsystem<scripting_environment>::get();
+    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
+
+    script_object* script_obj = env->get_object(script_object_id);
+    if (script_obj == nullptr) {
+      return;
+    }
+    if (auto* dn_obj = script_obj->dotnet_object; dn_obj != nullptr) {
+      dn_obj->invoke<>("JointBreak", force);
+    }
+  }
+
   void script_component::update(double delta_time) {
     OTHER_ASSERT(script_object_id >= 0, "Invalid script object ID: {}", script_object_id);
     PROFILE_SECTION("script_component::update");

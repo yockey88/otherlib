@@ -58,6 +58,31 @@ namespace other {
                                const bounding_box* fit_bounds = nullptr);
     void destroy_physics_shape(physics_shape* shape);
 
+    /// direct pool-index lookup; nullptr for freed/out-of-range ids
+    physics_body* body_by_id(integer_t id) {
+      if (id < 0 || static_cast<size_t>(id) >= kMaxPhysicsBodies) {
+        return nullptr;
+      }
+      return live_objects[static_cast<size_t>(id)].object;
+    }
+
+    /// pull the last step's contact transitions; sensor end events are re-flagged here
+    void drain_contacts(ostd::vector<contact_event>& out);
+
+    raycast_hit cast_ray(const glm::vec3& origin, const glm::vec3& direction, float max_distance);
+
+    integer_t create_fixed_joint(physics_body* body_a, physics_body* body_b);
+    void destroy_joint(integer_t joint_id);
+    float joint_reaction_force(integer_t joint_id, double step);
+
+    void set_linear_velocity(physics_body* body, const glm::vec3& velocity);
+    glm::vec3 get_linear_velocity(physics_body* body);
+    void set_angular_velocity(physics_body* body, const glm::vec3& velocity);
+    glm::vec3 get_angular_velocity(physics_body* body);
+    void add_force(physics_body* body, const glm::vec3& force);
+    void add_impulse(physics_body* body, const glm::vec3& impulse);
+    void add_torque(physics_body* body, const glm::vec3& torque);
+
     template <typename Fn>
       requires std::is_invocable_r_v<bool, Fn, physics_body*>
     physics_body* find_if(Fn&& predicate) {

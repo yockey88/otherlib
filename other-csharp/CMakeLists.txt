@@ -59,6 +59,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/grid-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/animation-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/physics-component.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/physics.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/audio-source-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/audio-listener-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object-handle.cs

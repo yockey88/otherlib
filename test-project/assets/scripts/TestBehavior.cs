@@ -28,6 +28,6 @@ public class TestBehavior : SceneBehavior
 
   protected override void OnUpdate()
   {
-    // Transform.EulerAngles += Vec3.Up * rotation_speed * Time.DeltaTime;
+    Transform.EulerAngles += Vec3.Up * rotation_speed * Time.DeltaTime;
   }
 }

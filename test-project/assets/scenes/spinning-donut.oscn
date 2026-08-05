@@ -20,6 +20,11 @@ model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/floor.fbx"
 material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/floor.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.physics]
+[objects.components.physics.settings]
+body_type = 0
+[objects.components.physics.settings.shape]
+fit_render_bounds = true
 
 [[objects]]
 id = 2
@@ -62,6 +67,11 @@ model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.f
 material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/glass.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.physics]
+[objects.components.physics.settings]
+body_type = 2
+[objects.components.physics.settings.shape]
+shape_kind = 5
 [objects.components.animation]
 clip_name = "Scene"
 playing = true
@@ -85,6 +95,11 @@ model_asset_id = "C:/Yock/code/Other2/OtherEnv/resources/models/spinning-torus.f
 material_asset_id = "C:/Yock/code/Other2/OtherEnv/test-project/assets/materials/gold.omat"
 visible = true
 tint = [ 1.0, 1.0, 1.0, 1.0 ]
+[objects.components.physics]
+[objects.components.physics.settings]
+body_type = 2
+[objects.components.physics.settings.shape]
+shape_kind = 5
 [objects.components.animation]
 clip_name = "Scene"
 playing = true

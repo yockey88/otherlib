@@ -220,6 +220,48 @@ namespace Other.Core
         behaviors[i].ObjectFixedUpdate();
       }
     }
+
+    /// physics dispatch entry points, invoked from native by name with flat primitives
+    ///  (no new marshal-table surface); the CollisionInfo is assembled managed-side
+    private void CollisionEnter(ulong other_id, float px, float py, float pz, float nx, float ny, float nz)
+    {
+      CollisionInfo info = new CollisionInfo(other_id, new Vec3(px, py, pz), new Vec3(nx, ny, nz));
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectCollisionEnter(info);
+      }
+    }
+    private void CollisionExit(ulong other_id, float px, float py, float pz, float nx, float ny, float nz)
+    {
+      CollisionInfo info = new CollisionInfo(other_id, new Vec3(px, py, pz), new Vec3(nx, ny, nz));
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectCollisionExit(info);
+      }
+    }
+    private void TriggerEnter(ulong other_id, float px, float py, float pz, float nx, float ny, float nz)
+    {
+      CollisionInfo info = new CollisionInfo(other_id, new Vec3(px, py, pz), new Vec3(nx, ny, nz));
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectTriggerEnter(info);
+      }
+    }
+    private void TriggerExit(ulong other_id, float px, float py, float pz, float nx, float ny, float nz)
+    {
+      CollisionInfo info = new CollisionInfo(other_id, new Vec3(px, py, pz), new Vec3(nx, ny, nz));
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectTriggerExit(info);
+      }
+    }
+    private void JointBreak(float force)
+    {
+      for (int i = 0; i < behaviors.Count; i++)
+      {
+        behaviors[i].ObjectJointBreak(force);
+      }
+    }
     /// invoked from native every frame, whether or not the scene is playing
     public void Render()
     {

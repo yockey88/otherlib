@@ -603,9 +603,11 @@ function _D:_SceneOp(args)
   elseif parsed_args.operation == "info"
   then
     self.TriggerEvent("scene.request-info")
-  elseif parsed_args.operation == "play" or 
-         parsed_args.operation == "pause" or 
-         parsed_args.operation == "stop"
+  elseif parsed_args.operation == "play" or
+         parsed_args.operation == "pause" or
+         parsed_args.operation == "stop" or
+         parsed_args.operation == "debug-physics-on" or
+         parsed_args.operation == "debug-physics-off"
   then
     self.TriggerEvent("scene.playback-command", parsed_args.operation)
   else

@@ -78,6 +78,15 @@ namespace other {
 
     void enable_physics_debug_rendering();
     void disable_physics_debug_rendering();
+    bool physics_debug_rendering() const { return debug_physics_rendering_enabled; }
+    physics_world* physics() { return storage != nullptr ? storage->physics : nullptr; }
+
+    /// while NOT playing, teleport bodies whose entity pose moved (editor authoring against
+    ///  the physics debug overlay); no-op while playing
+    void sync_edit_mode_physics_poses();
+
+    /// the contact transitions dispatched during the most recent fixed tick
+    const ostd::vector<contact_event>& last_contact_events() const { return step_contacts; }
 
     /// one fixed tick (physics step + script FixedUpdate surfaces)
     /// only ever invoked at the configured fixed step (physics_environment::get_fixed_step, 60 Hz default) by update()'s accumulator
@@ -367,6 +376,18 @@ namespace other {
     void revalidate_physics();
     void rebuild_physics_body(entt::entity entity, physics_component& phys_comp);
     void apply_component_shape(entt::entity entity, physics_component& phys_comp);
+
+    void dispatch_contact_events(const ostd::vector<contact_event>& events);
+    void dispatch_physics_event_to(natural_t object_id, const char* method, natural_t other_id,
+                                   const glm::vec3& point, const glm::vec3& normal);
+
+    /// name-resolved breakable welds: created on play, torn down on stop, checked per fixed tick
+    void create_scene_joints();
+    void destroy_scene_joints();
+    void check_joint_breaks(double step);
+    void dispatch_joint_break_to(natural_t object_id, float force);
+
+    ostd::vector<contact_event> step_contacts = {};
 
     double fixed_accumulator = 0.0;
 

@@ -6,6 +6,7 @@ target_sources(other_physics
     src/physics_world/physics_shape.cpp
 
     src/physics/backends/jolt_api.cpp
+    src/physics/backends/box3d_api.cpp
 
     src/physics/physics_api.cpp
     src/physics/physics_environment.cpp
@@ -37,6 +38,8 @@ target_link_libraries(other_physics
   PRIVATE
     other_core
     Jolt
+    # debug-family box3d carries the 'd' suffix (box3dd.lib vs box3d.lib)
+    $<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,box3dd,box3d>
 )
 
 other_install_module(other_physics "physics")

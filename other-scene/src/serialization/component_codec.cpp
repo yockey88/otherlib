@@ -15,6 +15,7 @@
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
 #include "object/physics_component.hpp"
+#include "object/physics_joint_component.hpp"
 #include "object/render_component.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
@@ -159,6 +160,7 @@ namespace other {
         codecs.push_back(make_script_codec());
         codecs.push_back(make_generic_codec<render_component>("render", "Graphics Object", /*implicit=*/false));
         codecs.push_back(make_generic_codec<physics_component>("physics", "Physics Object", /*implicit=*/false));
+        codecs.push_back(make_generic_codec<physics_joint_component>("physics-joint", "Physics Joint", /*implicit=*/false));
         codecs.push_back(make_camera_codec());
         codecs.push_back(make_generic_codec<grid_component>("grid", "Grid", /*implicit=*/false));
         codecs.push_back(make_generic_codec<point_light_component>("point-light", "Point Light", /*implicit=*/false));
