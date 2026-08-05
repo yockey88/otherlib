@@ -14,4 +14,7 @@ target_include_directories(other_ui
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/ui>
 )
 target_link_libraries(other_ui PRIVATE imgui other_renderer other_physics other_scripting other_network other_core)
+
+target_precompile_headers(other_ui PRIVATE <imgui/imgui.h>)
+
 other_install_module(other_ui "ui")

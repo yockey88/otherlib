@@ -13,9 +13,10 @@ target_sources(other_physics
 )
 
 # ABI-sensitive defines the prebuilt extern/jolt binaries (5.5.1) were built with;
-#  PUBLIC so every TU that includes a Jolt header sees the exact same layout
+#  no Jolt header escapes this module (jolt_api.hpp only forward-declares JPH types),
+#  so PRIVATE is safe — must become PUBLIC again if a header ever includes Jolt
 target_compile_definitions(other_physics
-  PUBLIC
+  PRIVATE
     JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
     JPH_PROFILE_ENABLED
     JPH_OBJECT_STREAM

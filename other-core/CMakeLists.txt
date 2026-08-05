@@ -89,6 +89,7 @@ target_precompile_headers(other_core PUBLIC
 	<vector>
 	<functional>
 	<magic_enum/magic_enum.hpp>
+	<refl/refl.hpp>
   src/core/build_config.hpp
   src/core/defines.hpp
   src/core/logger.hpp

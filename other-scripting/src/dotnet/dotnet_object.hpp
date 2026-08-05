@@ -109,7 +109,6 @@ namespace other {
     dotnet_host* host = nullptr;
 
     ostd::map<uint64_t, dotnet_field::storage> field_storage;
-    // scope<object_proxy<dotnet_object>> object_proxy = nullptr;
 
     template <typename FT>
       requires std::is_copy_constructible_v<FT>
