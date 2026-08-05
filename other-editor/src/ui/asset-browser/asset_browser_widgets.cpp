@@ -277,6 +277,9 @@ namespace other {
           asset_drag_drop_payload payload{};
           payload.handler_asset_id = desc.handler_asset_id;
           payload.asset_type = map_ui_to_asset_type(desc.type);
+          /// untracked files resolve by path at the drop site
+          std::strncpy(payload.path, desc.asset_path.c_str(), sizeof(payload.path));
+          payload.path[sizeof(payload.path) - 1] = '\0';
 
           bool _ = ImGui::SetDragDropPayload(kDragDropPayloadType, &payload, sizeof(payload));
 

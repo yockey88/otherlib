@@ -988,6 +988,36 @@ namespace other {
     storage->tree.destroy_object(id);
   }
 
+  bool scene::reparent_object(natural_t id, natural_t new_parent_id) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::reparent_object");
+
+    const glm::mat4 child_world = get_world_transform(id);
+    const glm::mat4 parent_world = get_world_transform(new_parent_id);
+
+    if (!storage->tree.reparent(id, new_parent_id)) {
+      return false;
+    }
+
+    /// recompute the local transform so the object does not visually move
+    const glm::mat4 new_local = glm::inverse(parent_world) * child_world;
+
+    transform& t = get_transform(id);
+    t.local_position = glm::vec3(new_local[3]);
+    glm::vec3 col0 = glm::vec3(new_local[0]);
+    glm::vec3 col1 = glm::vec3(new_local[1]);
+    glm::vec3 col2 = glm::vec3(new_local[2]);
+    t.local_scale = { glm::length(col0), glm::length(col1), glm::length(col2) };
+    constexpr float kMinScale = 1e-6f;
+    const glm::mat3 rot{
+      col0 / std::max(t.local_scale.x, kMinScale),
+      col1 / std::max(t.local_scale.y, kMinScale),
+      col2 / std::max(t.local_scale.z, kMinScale)
+    };
+    t.local_rotation_quat = glm::quat_cast(rot);
+    return true;
+  }
+
   bool scene::has_object(const std::string_view name) const {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::has_object_by_id");

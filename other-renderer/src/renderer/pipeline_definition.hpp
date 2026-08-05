@@ -15,7 +15,7 @@
 #include "renderer/material_layout.hpp"
 #include "renderer/render_pass.hpp"
 #include "renderer/resource_tag.hpp"
-#include "renderer/util/pipeline_asset_validation.hpp"
+#include "renderer/util/validation_result.hpp"
 
 namespace other {
 

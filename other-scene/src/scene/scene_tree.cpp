@@ -215,6 +215,35 @@ namespace other {
     destroy_object(target_node);
   }
 
+  bool scene_tree::reparent(natural_t id, natural_t new_parent_id) {
+    PROFILE_SECTION("scene_tree::reparent");
+
+    OTHER_ASSERT(nodes != nullptr, "Node array is not initialized.");
+    OTHER_ASSERT(id < kMaxNodes && new_parent_id < kMaxNodes, "ID out of bounds for scene tree nodes.");
+
+    node* n = node_at(id);
+    node* p = node_at(new_parent_id);
+    if (n == nullptr || p == nullptr || n->object == nullptr || p->object == nullptr) {
+      return false;
+    }
+    if (n == root || n == p || n->parent == p) {
+      return false;
+    }
+    /// walking up from the new parent must never reach the moving node
+    for (node* ancestor = p; ancestor != nullptr; ancestor = ancestor->parent) {
+      if (ancestor == n) {
+        return false;
+      }
+    }
+
+    if (n->parent != nullptr) {
+      std::erase_if(n->parent->children, [n](node* child) { return child == n; });
+    }
+    n->parent = p;
+    p->children.push_back(n);
+    return true;
+  }
+
   ostd::vector<uint64_t> scene_tree::get_all_object_ids() const {
     PROFILE_SECTION("scene_tree::get_all_object_ids");
 

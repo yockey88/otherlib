@@ -3,14 +3,14 @@
  **/
 #include "ui/object-editor/property_inspector_node.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <string>
 
 #include <imgui/imgui.h>
 
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
-
-#include "renderer/renderer_backend.hpp"
 
 #include "object/animation_component.hpp"
 #include "object/audio_listener_component.hpp"
@@ -29,6 +29,7 @@
 #include "driver/systems/asset_system.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "theme/colors.hpp"
+#include "ui/asset_picker.hpp"
 #include "ui/component_widget.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/script/script_property_widget.hpp"
@@ -59,79 +60,27 @@ IMGUI_REFLECT(other::camera_component, camera);
 namespace other {
   namespace ui {
 
-    /// render components draw by hand: the material override is an asset *path* (raw text
-    ///  field v1 — property_asset_slot drag-drop revival is phase 3), which the generic
-    ///  reflected walk can't express for a natural_t id field
+    /// render components draw by hand: model/material go through the asset slot + picker,
+    ///  and the reflected walk would also surface obj_model/last_* internals
     template <>
     struct component_widget<render_component> {
       bool operator()(const std::string_view, render_component& comp, scene*, scene_object*, asset_handler* handler, driver* drvr) {
         OTHER_ASSERT(drvr != nullptr, "component_widget<render_component> needs a driver");
         bool changed = inspector::property_bool("Visible", comp.visible);
         changed |= inspector::property_vec4("Tint", comp.tint, 0.01f);
-
-        std::string current_path;
-        if (comp.material_asset_id != 0 && handler != nullptr) {
-          if (const asset* mat_asset = handler->get_asset(comp.material_asset_id); mat_asset != nullptr) {
-            current_path = mat_asset->load_path.generic_string();
-          }
-        }
-        char path_buf[512];
-        std::strncpy(path_buf, current_path.c_str(), sizeof(path_buf));
-        path_buf[sizeof(path_buf) - 1] = '\0';
-        if (inspector::property_text("Material", path_buf, sizeof(path_buf))) {
-          const std::string new_path = path_buf;
-          if (new_path.empty()) {
-            comp.material_asset_id = 0;
-            comp.last_material_asset_id = 0;
-            changed = true;
-          } else if (const filepath p{ new_path }; std::filesystem::is_regular_file(p) && p.extension() == ".omat") {
-            /// commit only when the text points at a real material — partial paths while
-            ///  typing stay inert
-            const natural_t material_id = drvr->begin_asset_load(p);
-            if (material_id != 0 && material_id != comp.material_asset_id) {
-              comp.material_asset_id = material_id;
-              comp.last_material_asset_id = material_id;
-              changed = true;
-            }
-          }
-        }
+        /// prepare_render_data validates the new ids and rebuilds obj_model once loaded
+        changed |= inspector::property_asset_field("Model", comp.model_asset_id, asset::MODEL_SOURCE, handler, drvr);
+        changed |= inspector::property_asset_field("Material", comp.material_asset_id, asset::MATERIAL, handler, drvr);
         return changed;
       }
     };
 
-    /// audio sources draw by hand for the same reason render components do: the clip
-    ///  is an asset *path* behind a natural_t id field, plus the bus wants a combo
+    /// audio sources draw by hand: the clip goes through the asset slot and the bus wants a combo
     template <>
     struct component_widget<audio_source_component> {
       bool operator()(const std::string_view, audio_source_component& comp, scene*, scene_object*, asset_handler* handler, driver* drvr) {
         OTHER_ASSERT(drvr != nullptr, "component_widget<audio_source_component> needs a driver");
-
-        std::string current_path;
-        if (comp.clip_asset_id != 0 && handler != nullptr) {
-          if (const asset* clip_asset = handler->get_asset(comp.clip_asset_id); clip_asset != nullptr) {
-            current_path = clip_asset->load_path.generic_string();
-          }
-        }
-        char path_buf[512];
-        std::strncpy(path_buf, current_path.c_str(), sizeof(path_buf));
-        path_buf[sizeof(path_buf) - 1] = '\0';
-        bool changed = false;
-        if (inspector::property_text("Clip", path_buf, sizeof(path_buf))) {
-          const std::string new_path = path_buf;
-          if (new_path.empty()) {
-            comp.clip_asset_id = 0;
-            changed = true;
-          } else if (const filepath p{ new_path };
-                     std::filesystem::is_regular_file(p) && (p.extension() == ".wav" || p.extension() == ".mp3")) {
-            /// commit only when the text points at a real audio file — partial paths
-            ///  while typing stay inert
-            const natural_t clip_id = drvr->begin_asset_load(p);
-            if (clip_id != 0 && clip_id != comp.clip_asset_id) {
-              comp.clip_asset_id = clip_id;
-              changed = true;
-            }
-          }
-        }
+        bool changed = inspector::property_asset_field("Clip", comp.clip_asset_id, asset::AUDIO, handler, drvr);
 
         changed |= inspector::property_bool("Playing", comp.playing);
         changed |= inspector::property_bool("Looping", comp.looping);
@@ -196,18 +145,9 @@ namespace other {
         }
       }
 
-      /// \todo flesh this out more, this could be it but it may be more complicated
       if (remove_requested) {
-        // active_scene->remove_component<T>(object);
-      }
-    }
-
-    template <typename T>
-    bool property_inspector_node::draw_component_selector(const std::string_view component_name, scene* active_scene, scene_object* object) {
-      OTHER_ASSERT(active_scene != nullptr, "Active scene must not be nullptr in draw_add_component_button");
-      OTHER_ASSERT(object != nullptr, "Object must not be nullptr in draw_add_component_button");
-      if (active_scene->has_component<T>(object)) {
-        return false;
+        active_scene->remove_component<T>(object);
+        context.notify_scene_edited();
       }
     }
 
@@ -221,7 +161,7 @@ namespace other {
       } else if (active_scene == nullptr) {
         scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextFriendlyAlert));
         ImGui::Text("No active scene.");
-      } else if (context.multi_select_enabled()) {
+      } else if (context.current_selection.objects.size() > 1) {
         scoped_color color_text(ImGuiCol_Text, colors::rgba_to_imvec4(colors::kTextBright));
         ImGui::Text("Multiple objects selected (%zu).", context.current_selection.objects.size());
       } else {
@@ -269,37 +209,9 @@ namespace other {
         /// components
         draw_component_section<transform>("Transform", colors::scene_object::kComponentTransform, active_scene, &obj);
         draw_component_section<script_component>("Scripts", colors::scene_object::kComponentScript, active_scene, &obj);
-        draw_component_section<render_component>(
-          "Graphics Object", colors::scene_object::kComponentRenderer, active_scene, &obj,
-          [](render_component* comp, scene_object* object, scene* active_scene, driver* drvr) {
-            OTHER_ASSERT(comp != nullptr, "Render component is null in on_modified callback");
-            OTHER_ASSERT(object != nullptr, "Scene object is null in render_component on_modified callback");
-            OTHER_ASSERT(active_scene != nullptr, "Active scene is null in render_component on_modified callback");
-            OTHER_ASSERT(drvr != nullptr, "Driver is null in render_component on_modified callback");
-            natural_t new_asset_id = comp->model_asset_id;
-            if (new_asset_id == 0) {
-              /// tint/material edits fire this too; nothing to re-validate without a model
-              return;
-            }
-
-            auto& assets = drvr->get_kernel().get_core_system<asset_system>();
-            auto& handler = assets.get_asset_manager();
-            OTHER_ASSERT(handler != nullptr, "Asset handler is null in render_component on_modified callback");
-
-            auto* asset = handler->get_loaded_asset(new_asset_id);
-            OTHER_ASSERT(asset != nullptr, "Model asset ID {} not found in render_component on_modified callback", new_asset_id);
-            if (asset->asset_type == asset::type::MODEL_SOURCE) {
-              auto* renderer = subsystem<renderer_backend>::get();
-              OTHER_ASSERT(renderer != nullptr, "Renderer backend is null in render_component on_modified callback");
-              ref<model_source> model_src = renderer->get_model_source(asset->path_hash);
-              OTHER_ASSERT(model_src != nullptr, "Model source not found for asset ID {} in render_component on_modified callback", new_asset_id);
-
-              // comp->obj_model = model_src->produce_model(const std::string &name)
-
-            } else {
-              CORE_LOG_ERROR("Error: Asset ID {} is not a valid model source asset in render_component on_modified callback", new_asset_id);
-            }
-          });
+        /// model/material id edits need no callback — prepare_render_data validates and
+        ///  rebuilds obj_model once the async load lands
+        draw_component_section<render_component>("Graphics Object", colors::scene_object::kComponentRenderer, active_scene, &obj);
         draw_component_section<physics_component>("Physics Object", colors::scene_object::kComponentPhysics, active_scene, &obj);
         draw_component_section<physics_joint_component>("Physics Joint", colors::scene_object::kComponentPhysics, active_scene, &obj);
         draw_component_section<camera_component>("Camera", colors::scene_object::kComponentCamera, active_scene, &obj);
@@ -312,40 +224,52 @@ namespace other {
 
         const std::string button_str = std::format("Add Component##{}", obj.name);
         if (inspector::draw_add_component_button(button_str)) {
-          /// \todo open component picker popup
           ImGui::OpenPopup("##add_component_popup");
         }
 
-        /// \todo component picker popup
-        constexpr ImVec2 picker_size = { 800.f, 600.f };
-        ImGui::SetNextWindowSize(picker_size);
+        ImGui::SetNextWindowSize({ 300.f, 0.f });
         if (ImGui::BeginPopup("##add_component_popup")) {
-          ImGui::BeginChild("##add_component_child");
+          static char comp_search[64] = {};
+          if (ImGui::IsWindowAppearing()) {
+            comp_search[0] = '\0';
+            ImGui::SetKeyboardFocusHere();
+          }
+          ImGui::SetNextItemWidth(-FLT_MIN);
+          ImGui::InputTextWithHint("##comp_search", "search components...", comp_search, sizeof(comp_search));
+          ImGui::Separator();
 
-          auto* draw_list = ImGui::GetWindowDrawList();
+          std::string needle = comp_search;
+          std::ranges::transform(needle, needle.begin(), [](unsigned char c) { return std::tolower(c); });
 
-          ImVec2 picker_pos = ImGui::GetWindowPos();
-          ImVec2 picker_size = ImGui::GetWindowSize();
-          ImVec2 picker_end = { picker_pos.x + picker_size.x, picker_pos.y + picker_size.y };
-          draw_list->AddRectFilled(picker_pos, picker_end, colors::to_im_col({ 0.2f, 0.2f, 0.2f, 1.f }));
+          auto& comp_registry = driver_ptr->get_kernel().get_core_system<scene_system>().get_component_registry();
+          uint32_t shown = 0;
+          if (ImGui::BeginChild("##add_component_list", { 0.f, 220.f })) {
+            for (const auto& [comp_name, comp_info] : comp_registry.get_registry()) {
+              if (comp_info.has_component(active_scene, &obj)) {
+                continue;
+              }
 
-          auto& kernel = driver_ptr->get_kernel();
-          auto& scene_sys = kernel.get_core_system<scene_system>();
-          auto& comp_registry = scene_sys.get_component_registry();
+              if (!needle.empty()) {
+                std::string name_lower = comp_info.component_name;
+                std::ranges::transform(name_lower, name_lower.begin(), [](unsigned char c) { return std::tolower(c); });
+                if (name_lower.find(needle) == std::string::npos) {
+                  continue;
+                }
+              }
+              ++shown;
 
-          for (const auto& [comp_name, comp_info] : comp_registry.get_registry()) {
-            if (comp_info.has_component(active_scene, &obj)) {
-              continue;
+              if (ImGui::Selectable(comp_info.component_name.c_str())) {
+                OTHER_ASSERT(comp_info.add_component != nullptr, "Add component function is null for component '{}'", comp_info.component_name);
+                comp_info.add_component(active_scene, &obj);
+                context.notify_scene_edited();
+                ImGui::CloseCurrentPopup();
+              }
             }
 
-            if (ImGui::Selectable(comp_info.component_name.c_str())) {
-              OTHER_ASSERT(comp_info.add_component != nullptr, "Add component function is null for component '{}'", comp_info.component_name);
-              comp_info.add_component(active_scene, &obj);
-              context.notify_scene_edited();
-              ImGui::CloseCurrentPopup();
+            if (shown == 0) {
+              ImGui::TextDisabled("no matching components");
             }
           }
-
           ImGui::EndChild();
           ImGui::EndPopup();
         }

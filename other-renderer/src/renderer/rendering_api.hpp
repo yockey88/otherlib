@@ -7,7 +7,8 @@
 #include <map>
 #include <string>
 
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_video.h>
 #include <glm/glm.hpp>
 
 #include "core/scope.hpp"

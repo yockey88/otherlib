@@ -19,6 +19,7 @@
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
 #include "theme/colors.hpp"
+#include "ui/asset_picker.hpp"
 #include "ui/inspector_widgets.hpp"
 
 #include "asset/asset.hpp"
@@ -190,6 +191,14 @@ namespace other {
       template <typename FT>
       bool draw_field(std::string_view label, FT& value, const field_context& ctx) {
         const type_key key = type_key_of<FT>();
+
+        /// asset-id members must not fall through to the raw uint64 editor — they get
+        ///  the slot + picker (attr::asset_identifier_field carries the type)
+        if constexpr (std::same_as<FT, natural_t>) {
+          if (ctx.flags.asset_type != asset::EMPTY) {
+            return inspector::property_asset_field(label, value, ctx.flags.asset_type, ctx.asset_handler_ptr, ctx.driver_ptr);
+          }
+        }
 
         auto& field_editors = ctx.driver_ptr->get_field_editors();
         if (field_editors.has(key)) {

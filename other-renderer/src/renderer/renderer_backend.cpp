@@ -12,6 +12,7 @@
 #undef main
 #include <SDL3/SDL.h>
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 #include "core/config_table.hpp"
 #include "core/fnv.hpp"

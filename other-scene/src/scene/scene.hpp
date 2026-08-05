@@ -127,6 +127,10 @@ namespace other {
 
     void destroy_object(natural_t id);
 
+    /// moves the object under a new parent, keeping its world placement; false on
+    ///  refused moves (root, self, descendant cycle)
+    bool reparent_object(natural_t id, natural_t new_parent_id);
+
     bool has_object(const std::string_view name) const;
     bool has_object(natural_t id) const;
 

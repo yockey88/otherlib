@@ -4,7 +4,6 @@
 #ifndef OTHER_RENDERER_RENDERER_RENDERER_HPP
 #define OTHER_RENDERER_RENDERER_RENDERER_HPP
 
-#include <SDL3/SDL.h>
 #include <glm/glm.hpp>
 
 #include "core/config_table.hpp"

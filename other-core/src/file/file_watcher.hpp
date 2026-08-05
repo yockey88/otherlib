@@ -8,10 +8,11 @@
 
 #include "core/defines.hpp"
 #include "core/scope.hpp"
-#include "event/event_system.hpp"
 #include "file/glob.hpp"
 
 namespace other {
+
+  class event_system;
 
   struct file_event {
     enum class type {

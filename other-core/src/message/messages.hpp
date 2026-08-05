@@ -4,6 +4,8 @@
 #ifndef OTHER_CORE_MESSAGE_MESSAGES_HPP
 #define OTHER_CORE_MESSAGE_MESSAGES_HPP
 
+#include <asio/asio.hpp>
+
 #include "core/defines.hpp"
 #include "core/enum_formatter.hpp"
 

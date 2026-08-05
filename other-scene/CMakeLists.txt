@@ -35,4 +35,6 @@ target_include_directories(other_scene
 target_link_directories(other_scene PRIVATE ${OTHER_LIBRARIES_PATH})
 target_link_libraries(other_scene PRIVATE other_renderer other_ui other_physics other_audio other_scripting other_network other_core tinyxml2)
 
+target_precompile_headers(other_scene PRIVATE <entt/entt.hpp>)
+
 other_install_module(other_scene "scene")

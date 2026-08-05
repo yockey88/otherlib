@@ -8,8 +8,6 @@
 #include <queue>
 #include <string_view>
 
-#include <asio/asio.hpp>
-
 #include "core/defines.hpp"
 #include "core/job_system.hpp"
 #include "core/state_machine.hpp"

@@ -142,6 +142,7 @@ target_sources(otherlib
     src/ui/menu-bar/menu_item.cpp
     src/ui/menu-bar/menu.cpp
     src/ui/menu-bar/menu_bar.cpp
+    src/ui/asset_picker.cpp
     src/ui/component_widget_registry.cpp
     src/ui/field_ui.cpp
     src/ui/field_editor_registry.cpp

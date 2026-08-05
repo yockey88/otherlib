@@ -6,18 +6,10 @@
 
 #include <toml++/toml.hpp>
 
+#include "renderer/util/validation_result.hpp"
+
 namespace other {
   namespace detail {
-
-    struct validation_result {
-      bool valid = true;
-      ostd::vector<std::string> errors;
-
-      void fail(std::string msg) {
-        valid = false;
-        errors.push_back(std::move(msg));
-      }
-    };
 
     validation_result validate_pipeline_toml(const toml::table& tbl);
 

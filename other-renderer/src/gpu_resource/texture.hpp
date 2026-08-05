@@ -5,8 +5,8 @@
 #define OTHER_RENDERER_GPU_RESOURCE_TEXTURE_HPP
 
 #include <glm/glm.hpp>
-#include <imgui/imgui.h>
 
+#include "gpu_resource/imgui_fwd.hpp"
 #include "math/definitions.hpp"
 #include "serialization/reflection.hpp"
 

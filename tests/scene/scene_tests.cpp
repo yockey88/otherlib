@@ -25,6 +25,45 @@ namespace other {
     EXPECT_EQ(parent_of_obj2->id, obj1.id);
   }
 
+  TEST_F(scene_tests, reparent_object_moves_subtree_and_keeps_world_pose) {
+    scene s("Reparent Scene");
+
+    scene_object& a = s.create_object("A");
+    scene_object& b = s.create_object("B");
+    scene_object& c = s.create_object("C", &a);
+
+    transform ta;
+    ta.local_position = { 1.f, 2.f, 3.f };
+    s.set_transform(a.id, ta);
+
+    transform tc;
+    tc.local_position = { 10.f, 0.f, 0.f };
+    s.set_transform(c.id, tc);
+
+    const glm::vec3 world_before = glm::vec3(s.get_world_transform(c.id)[3]);
+    EXPECT_TRUE(s.reparent_object(c.id, b.id));
+
+    scene_object* parent_of_c = s.get_parent(c.id);
+    ASSERT_NE(parent_of_c, nullptr);
+    EXPECT_EQ(parent_of_c->id, b.id);
+    EXPECT_TRUE(s.get_children_ids(a.id).empty());
+
+    const glm::vec3 world_after = glm::vec3(s.get_world_transform(c.id)[3]);
+    EXPECT_NEAR(world_before.x, world_after.x, 1e-4f);
+    EXPECT_NEAR(world_before.y, world_after.y, 1e-4f);
+    EXPECT_NEAR(world_before.z, world_after.z, 1e-4f);
+
+    /// refused moves: root, self, own descendant
+    const natural_t root_id = s.root_object().id;
+    EXPECT_FALSE(s.reparent_object(root_id, a.id));
+    EXPECT_FALSE(s.reparent_object(b.id, b.id));
+    EXPECT_FALSE(s.reparent_object(b.id, c.id));
+
+    /// back to top level via the root
+    EXPECT_TRUE(s.reparent_object(c.id, root_id));
+    EXPECT_TRUE(s.get_children_ids(b.id).empty());
+  }
+
   TEST_F(scene_tests, scene_move_constructor) {
     scene scene1("Original Scene");                                         //< creates a "Original Scene:Root" object as the root of the scene
     scene_object& obj1 = scene1.create_object("Object in Original Scene");  //< creates a second object

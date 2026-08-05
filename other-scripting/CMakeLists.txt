@@ -52,4 +52,6 @@ target_link_directories(other_scripting
 )
 target_link_libraries(other_scripting PRIVATE lua-5.4.4 other_core)
 
+target_precompile_headers(other_scripting PRIVATE <sol/sol.hpp>)
+
 other_install_module(other_scripting "scripting")

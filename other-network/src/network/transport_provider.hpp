@@ -4,6 +4,7 @@
 #ifndef OTHER_NETWORK_NETWORK_TRANSPORT_PROVIDER_HPP
 #define OTHER_NETWORK_NETWORK_TRANSPORT_PROVIDER_HPP
 
+#include <set>
 #include <string>
 
 #include <asio/asio.hpp>

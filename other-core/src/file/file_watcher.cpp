@@ -5,6 +5,7 @@
 
 #include <xxHash/xxh3.h>
 
+#include "event/event_system.hpp"
 #include "file/path_helpers.hpp"
 
 namespace other {

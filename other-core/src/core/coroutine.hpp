@@ -4,9 +4,8 @@
 #ifndef OTHER_CORE_CORE_COROUTINE_HPP
 #define OTHER_CORE_CORE_COROUTINE_HPP
 
+#include <chrono>
 #include <coroutine>
-
-#include <asio/asio.hpp>
 
 #include "core/job.hpp"
 #include "core/ref.hpp"
@@ -86,7 +85,7 @@ namespace other {
 
     /// helper tasks
     static task::awaiter yield();
-    static task sleep_for(asio::chrono::milliseconds duration);
+    static task sleep_for(std::chrono::milliseconds duration);
     static task wait_for_job(ref<job> job_handle);
   };
 

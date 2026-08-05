@@ -15,16 +15,16 @@ namespace other {
     return awaiter{};
   }
 
-  task task::sleep_for(asio::chrono::milliseconds duration) {
+  task task::sleep_for(std::chrono::milliseconds duration) {
     auto left = duration.count();
 
-    auto now = asio::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
     auto last = now;
 
     while (left > 0) {
       co_await task::yield();
-      now = asio::chrono::steady_clock::now();
-      auto elapsed = asio::chrono::duration_cast<asio::chrono::milliseconds>(now - last).count();
+      now = std::chrono::steady_clock::now();
+      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count();
       left -= elapsed;
       last = now;
     }

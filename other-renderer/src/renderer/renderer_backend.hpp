@@ -4,13 +4,15 @@
 #ifndef OTHER_RENDERER_RENDERER_RENDERER_BACKEND_HPP
 #define OTHER_RENDERER_RENDERER_RENDERER_BACKEND_HPP
 
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_video.h>
 
 #include "core/scope.hpp"
 #include "core/subsystem.hpp"
 
 #include "gpu_resource/material.hpp"
 #include "model/model.hpp"
+#include "gpu_resource/imgui_fwd.hpp"
 #include "model/model_source.hpp"
 #include "renderer/rendering_api.hpp"
 

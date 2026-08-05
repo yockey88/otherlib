@@ -6,6 +6,8 @@
 
 #include <queue>
 
+#include <asio/asio.hpp>
+
 #include "core/coroutine.hpp"
 #include "core/job.hpp"
 #include "core/job_graph.hpp"
