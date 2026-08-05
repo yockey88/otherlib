@@ -39,11 +39,9 @@ namespace other {
     void teleport_body(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform) override;
     void move_kinematic(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform, double step) override;
 
-    void attach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) override;
-    void detach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) override;
-
-    void configure_empty_shape(physics_shape* shape) override;
-    void configure_box_shape(physics_shape* shape, const glm::vec3& half_extents) override;
+    bool set_body_shape(natural_t world_id, physics_world* world, physics_body* body,
+                        const physics_shape_desc& desc, const glm::vec3& world_scale,
+                        const shape_geometry* geometry) override;
 
     void step_simulation(natural_t world_id, physics_world* world, double delta_time) override;
     void update_active_transforms(natural_t world_id, physics_world* world, double delta_time) override;
@@ -57,8 +55,6 @@ namespace other {
     ObjectLayerPairFilterImpl* object_layer_pair_filter = nullptr;
 
     ostd::map<natural_t, jolt_world*> jolt_worlds;
-
-    ostd::map<uint32_t, void*> jolt_shapes;
 
     jolt_world& world_state(natural_t world_id);
     const jolt_world& world_state(natural_t world_id) const;

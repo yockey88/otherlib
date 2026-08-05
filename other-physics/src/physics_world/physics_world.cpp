@@ -81,7 +81,7 @@ namespace other {
     }
   }
 
-  physics_body* physics_world::create_physics_body(const physics_body::settings& settings) {
+  physics_body* physics_world::create_physics_body(const physics_body::settings& settings, const glm::mat4& world_transform) {
     OTHER_ASSERT(physics_bodies != nullptr, "Physics body memory pool is not initialized.");
     auto [body, idx] = physics_bodies->emplace();
 
@@ -91,12 +91,13 @@ namespace other {
     live_obj.id = idx;
     live_obj.object = &body;
     live_obj.object->id = static_cast<integer_t>(idx);
-    live_obj.object->body_type = settings.body_type;
+    live_obj.object->body_type = static_cast<physics_body::type>(settings.body_type);
     live_obj.object->mass = settings.mass;
+    live_obj.object->applied_settings = settings;
 
-    live_obj.object->previous_transform = settings.world_transform;
-    live_obj.object->current_transform = settings.world_transform;
-    live_obj.object->interpolated_transform = settings.world_transform;
+    live_obj.object->previous_transform = world_transform;
+    live_obj.object->current_transform = world_transform;
+    live_obj.object->interpolated_transform = world_transform;
 
     physics_api()->register_physics_body(world_id, this, live_obj.object);
 
@@ -121,80 +122,70 @@ namespace other {
     CORE_LOG_DEBUG("Destroyed physics body [{}:{}] with ID {}", name, idx, idx);
   }
 
-  physics_shape* physics_world::create_empty_shape(physics_body* body) {
-    OTHER_ASSERT(body != nullptr, "Cannot create a shape for a null physics body.");
+  namespace {
 
-    /// this could be called more than once rn, might make this hard failure later
-    {
-      size_t idx = static_cast<size_t>(body->id);
-      if (body->shape_id >= 0) {
-        if (live_objects[idx].shape != nullptr) {
-          return live_objects[idx].shape;
-        }
+    bounding_box scaled_geometry_bounds(const shape_geometry& geometry, const glm::vec3& world_scale) {
+      bounding_box bounds = bounding_box::empty;
+      for (const glm::vec3& p : geometry.positions) {
+        glm::vec3 sp = p * world_scale;
+        bounds.min = glm::min(bounds.min, sp);
+        bounds.max = glm::max(bounds.max, sp);
       }
+      return bounds;
     }
 
-    /// if there is no shape, attach an empty one
-    auto [shape, idx] = physics_shapes->emplace();
-    shape.id = static_cast<integer_t>(idx);
-    body->shape_id = shape.id;
+  }  // namespace
+
+  physics_shape* physics_world::apply_shape(physics_body* body, const physics_shape_desc& desc,
+                                            const glm::vec3& world_scale, const shape_geometry* geometry,
+                                            const bounding_box* fit_bounds) {
+    OTHER_ASSERT(body != nullptr, "Cannot apply a shape to a null physics body.");
 
     live_body& live_obj = live_objects[static_cast<size_t>(body->id)];
-    live_obj.shape = &shape;
-    live_obj.shape->body_id = body->id;
+    OTHER_ASSERT(live_obj.object == body, "Physics body at index {} does not match the provided body.", body->id);
 
-    physics_api()->attach_shape(world_id, this, live_obj.object, live_obj.shape);
+    if (live_obj.shape == nullptr) {
+      auto [shape, idx] = physics_shapes->emplace();
+      shape.id = static_cast<integer_t>(idx);
+      shape.body_id = body->id;
+      shape.applied.shape_kind = NUM_PHYSICS_SHAPE_KINDS;  /// never-built sentinel: first pass always builds
+      body->shape_id = shape.id;
+      live_obj.shape = &shape;
+      CORE_LOG_DEBUG("Created physics shape [{}:{}] with ID {} for body ID {}", name, idx, idx, body->id);
+    }
+    physics_shape* shape = live_obj.shape;
 
-    CORE_LOG_DEBUG("Created empty physics shape [{}:{}] with ID {} for body ID {}", name, idx, idx, body->id);
-    return &shape;
-  }
+    physics_shape_desc build_desc = desc;
+    if (build_desc.shape_kind == PHYSICS_SHAPE_TRIANGLE_MESH && body->body_type != physics_body::STATIC) {
+      CORE_LOG_WARN("Physics body {} is not static, downgrading triangle-mesh collider to a convex hull.", body->id);
+      build_desc.shape_kind = PHYSICS_SHAPE_CONVEX_HULL;
+    }
+    if (build_desc.fit_render_bounds) {
+      if (fit_bounds == nullptr) {
+        return shape;  /// model bounds not available yet — revalidation retries
+      }
+      /// symmetric fit around the model origin; exact off-center boxes need compound shapes
+      build_desc.half_extents = glm::max(glm::abs(fit_bounds->min), glm::abs(fit_bounds->max));
+    }
 
-  physics_shape* physics_world::create_box_shape(physics_body* body, const glm::vec3& half_extents) {
-    OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
+    if (!physics_api()->set_body_shape(world_id, this, body, build_desc, world_scale, geometry)) {
+      return shape;  /// build failed or deferred: applied untouched so revalidation retries
+    }
 
-    physics_shape* shape = create_empty_shape(body);
-    physics_api()->configure_box_shape(shape, half_extents);
+    /// record the AUTHORED desc (even when the build downgraded) so the dirty-check settles
+    shape->applied = desc;
+    shape->applied_scale = world_scale;
+    switch (build_desc.shape_kind) {
+      case PHYSICS_SHAPE_CONVEX_HULL:
+      case PHYSICS_SHAPE_TRIANGLE_MESH:
+        OTHER_ASSERT(geometry != nullptr, "Geometry-backed shape built without geometry.");
+        shape->local_bounds = scaled_geometry_bounds(*geometry, world_scale);
+        break;
+      default:
+        shape->local_bounds = bounding_box::empty;  /// analytic kinds compute bounds on demand
+        break;
+    }
     return shape;
-  }
-
-  physics_shape* physics_world::create_sphere_shape(physics_body* body, float radius) {
-    OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
-    CORE_LOG_ERROR("Sphere shape creation not yet implemented.");
-    // physics_shape* shape = create_empty_shape(body);
-    // physics_api()->configure_sphere_shape(shape, radius);
-    return nullptr;
-  }
-
-  physics_shape* physics_world::create_capsule_shape(physics_body* body, float radius, float height) {
-    OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
-    CORE_LOG_ERROR("Capsule shape creation not yet implemented.");
-    // physics_shape* shape = create_empty_shape(body);
-    // physics_api()->configure_capsule_shape(shape, radius, height);
-    return nullptr;
-  }
-
-  physics_shape* physics_world::create_convex_hull_shape(physics_body* body, const std::span<const glm::vec3> points) {
-    OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
-    CORE_LOG_ERROR("Convex hull shape creation not yet implemented.");
-    // physics_shape* shape = create_empty_shape(body);
-    // physics_api()->configure_convex_hull_shape(shape, points);
-    return nullptr;
-  }
-
-  physics_shape* physics_world::create_triangle_mesh_shape(physics_body* body, const std::span<const glm::vec3> vertices, const std::span<const natural_t> indices) {
-    OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
-    CORE_LOG_ERROR("Triangle mesh shape creation not yet implemented.");
-    // physics_shape* shape = create_empty_shape(body);
-    // physics_api()->configure_triangle_mesh_shape(shape, vertices, indices);
-    return nullptr;
-  }
-
-  physics_shape* physics_world::create_heightfield_shape(physics_body* body, const std::span<const float> height_data, natural_t width, natural_t depth, float min_height, float max_height) {
-    OTHER_ASSERT(body != nullptr, "Cannot create a box shape for a null physics body.");
-    CORE_LOG_ERROR("Heightfield shape creation not yet implemented.");
-    // physics_shape* shape = create_empty_shape(body);
-    // physics_api()->configure_heightfield_shape(shape, height_data, width, depth, min_height, max_height);
-    return nullptr;
   }
 
   void physics_world::destroy_physics_shape(physics_shape* shape) {
@@ -208,7 +199,6 @@ namespace other {
     live_body& live_obj = live_objects[bidx];
     OTHER_ASSERT(live_obj.shape == shape, "Physics shape at index {} does not match the provided shape.", idx);
 
-    physics_api()->detach_shape(world_id, this, live_obj.object, live_obj.shape);
     physics_shapes->free(idx);
     live_obj.shape = nullptr;
     live_obj.object->shape_id = -1;

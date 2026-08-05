@@ -40,8 +40,9 @@ IMGUI_REFLECT(other::transform, local_position, local_rotation_quat, local_scale
 IMGUI_REFLECT(other::script_component, script_object_id);
 IMGUI_REFLECT(other::render_component, visible, tint);
 IMGUI_REFLECT(other::model, name, submesh_indices);
-IMGUI_REFLECT(other::physics_component, body, shape);
-IMGUI_REFLECT(other::physics_body::settings, body_type, mass);
+IMGUI_REFLECT(other::physics_component, settings);
+IMGUI_REFLECT(other::physics_body::settings, body_type, mass, friction, restitution, linear_damping, angular_damping, gravity_factor, is_trigger, continuous_cd, shape);
+IMGUI_REFLECT(other::physics_shape_desc, shape_kind, half_extents, radius, half_height, fit_render_bounds);
 IMGUI_REFLECT(other::point_light_component, light);
 IMGUI_REFLECT(other::direction_light_component, light);
 IMGUI_REFLECT(other::grid_component, visible, show_axes, coordinate_system, plane, origin, cell_size, extent, major_line_every, sector_count, layer_extent, layer_spacing, line_width, line_color, major_line_color);
@@ -297,14 +298,9 @@ namespace other {
               CORE_LOG_ERROR("Error: Asset ID {} is not a valid model source asset in render_component on_modified callback", new_asset_id);
             }
           });
-        draw_component_section<physics_component>(
-          "Physics Object", colors::scene_object::kComponentPhysics, active_scene, &obj,
-          [](physics_component* comp, scene_object* object, scene* active_scene, driver* drvr) {
-
-          });
+        draw_component_section<physics_component>("Physics Object", colors::scene_object::kComponentPhysics, active_scene, &obj);
         draw_component_section<camera_component>("Camera", colors::scene_object::kComponentCamera, active_scene, &obj);
         draw_component_section<grid_component>("Grid", colors::scene_object::kComponentGrid, active_scene, &obj);
-        draw_component_section<physics_component>("Physics Body", colors::scene_object::kComponentPhysics, active_scene, &obj);
         draw_component_section<point_light_component>("Point Light", colors::scene_object::kComponentPointLight, active_scene, &obj);
         draw_component_section<direction_light_component>("Direction Light", colors::scene_object::kComponentDirectionLight, active_scene, &obj);
         draw_component_section<animation_component>("Animation", colors::scene_object::kComponentAnimation, active_scene, &obj);

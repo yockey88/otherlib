@@ -10,7 +10,15 @@ namespace other {
 
   struct physics_body;
   struct physics_shape;
+  struct physics_shape_desc;
   class physics_world;
+
+  /// borrowed geometry spans for hull/mesh shape builds; extracted scene-side from the
+  ///   entity's render model — physics never learns about models
+  struct shape_geometry {
+    std::span<const glm::vec3> positions;
+    std::span<const uint32_t> indices;  /// triangle list; may be empty for hull-from-points
+  };
 
   /// backend-agnostic per-world creation settings, sourced from [physics] config
   /// backends consume what applies to them and ignore the rest
@@ -63,16 +71,12 @@ namespace other {
     /// sweep a kinematic body toward the target pose over one fixed step, with contact response
     virtual void move_kinematic(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform, double step) = 0;
 
-    virtual void attach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) = 0;
-    virtual void detach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) = 0;
-
-    virtual void configure_empty_shape(physics_shape* shape) = 0;
-    virtual void configure_box_shape(physics_shape* shape, const glm::vec3& half_extents) = 0;
-    virtual void configure_sphere_shape(physics_shape* shape, float radius) {}
-    virtual void configure_capsule_shape(physics_shape* shape, float radius, float height) {}
-    virtual void configure_convex_hull_shape(physics_shape* shape, const std::span<const glm::vec3> points) {}
-    virtual void configure_triangle_mesh_shape(physics_shape* shape, const std::span<const glm::vec3> vertices, const std::span<const natural_t> indices) {}
-    virtual void configure_heightfield_shape(physics_shape* shape, const std::span<const float> height_data, natural_t width, natural_t depth, float min_height, float max_height) {}
+    /// build the described shape (entity world scale baked in) and attach it to the body;
+    ///   geometry is required for hull/mesh kinds. false = build failed, body keeps its
+    ///   previous shape (authored data never asserts)
+    virtual bool set_body_shape(natural_t world_id, physics_world* world, physics_body* body,
+                                const physics_shape_desc& desc, const glm::vec3& world_scale,
+                                const shape_geometry* geometry) = 0;
 
     virtual void step_simulation(natural_t world_id, physics_world* world, double delta_time) = 0;
     virtual void update_active_transforms(natural_t world_id, physics_world* world, double delta_time) = 0;

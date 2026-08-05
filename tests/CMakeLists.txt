@@ -51,6 +51,7 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/asset_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/physics/simulation_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/physics/shape_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_environment_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_import_tests.cpp

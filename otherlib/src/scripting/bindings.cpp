@@ -13,6 +13,7 @@
 #include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
+#include "object/physics_component.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
 
@@ -327,7 +328,13 @@ namespace other {
       .bind("GetAnimationClipPath", bindings::native_animation_component_get_clip_path)
       .bind("SetAnimationClipPath", bindings::native_animation_component_set_clip_path)
       .bind("GetAudioClipPath", bindings::native_audio_source_get_clip_path)
-      .bind("SetAudioClipPath", bindings::native_audio_source_set_clip_path);
+      .bind("SetAudioClipPath", bindings::native_audio_source_set_clip_path)
+      .bind("GetPhysicsBodyType", bindings::native_physics_component_get_body_type)
+      .bind("SetPhysicsBodyType", bindings::native_physics_component_set_body_type)
+      .bind("GetPhysicsMass", bindings::native_physics_component_get_mass)
+      .bind("SetPhysicsMass", bindings::native_physics_component_set_mass)
+      .bind("GetPhysicsIsTrigger", bindings::native_physics_component_get_is_trigger)
+      .bind("SetPhysicsIsTrigger", bindings::native_physics_component_set_is_trigger);
 
     bindings::binding_context{ dn_host }
       /// Audio
@@ -553,6 +560,7 @@ namespace other {
       bind_dotnet_component<animation_component>(dn_host, obj);
       bind_dotnet_component<audio_source_component>(dn_host, obj);
       bind_dotnet_component<audio_listener_component>(dn_host, obj);
+      bind_dotnet_component<physics_component>(dn_host, obj);
 
       // dn_host.destroy_managed_object(obj);
     }

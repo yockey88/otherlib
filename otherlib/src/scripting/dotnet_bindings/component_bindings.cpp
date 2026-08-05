@@ -9,6 +9,7 @@
 
 #include "object/animation_component.hpp"
 #include "object/audio_source_component.hpp"
+#include "object/physics_component.hpp"
 #include "object/render_component.hpp"
 #include "scene/scene.hpp"
 
@@ -197,6 +198,60 @@ namespace other {
       }
       comp->animation_asset_id = clip_id;
       comp->last_animation_asset_id = clip_id;
+    }
+
+    namespace {
+
+      physics_component* physics_component_for(natural_t object_id) {
+        scene* active_scene = detail::get_active_scene_checked();
+        OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+        if (!active_scene->has_component<physics_component>(object_id)) {
+          return nullptr;
+        }
+        physics_component* comp = active_scene->get_component<physics_component>(object_id);
+        OTHER_ASSERT(comp != nullptr, "Physics component not found for object with ID {}", object_id);
+        return comp;
+      }
+
+    }  // namespace
+
+    uint32_t native_physics_component_get_body_type(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      physics_component* comp = physics_component_for(object_id);
+      return comp != nullptr ? comp->settings.body_type : physics_body::STATIC;
+    }
+
+    void native_physics_component_set_body_type(natural_t object_id, uint32_t body_type) {
+      ASSERT_MAIN_THREAD();
+      if (physics_component* comp = physics_component_for(object_id); comp != nullptr) {
+        comp->settings.body_type = std::min(body_type, static_cast<uint32_t>(physics_body::NUM_BODY_TYPES - 1));
+      }
+    }
+
+    float native_physics_component_get_mass(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      physics_component* comp = physics_component_for(object_id);
+      return comp != nullptr ? comp->settings.mass : 0.f;
+    }
+
+    void native_physics_component_set_mass(natural_t object_id, float mass) {
+      ASSERT_MAIN_THREAD();
+      if (physics_component* comp = physics_component_for(object_id); comp != nullptr) {
+        comp->settings.mass = mass;
+      }
+    }
+
+    uint32_t native_physics_component_get_is_trigger(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      physics_component* comp = physics_component_for(object_id);
+      return (comp != nullptr && comp->settings.is_trigger) ? 1u : 0u;
+    }
+
+    void native_physics_component_set_is_trigger(natural_t object_id, uint32_t is_trigger) {
+      ASSERT_MAIN_THREAD();
+      if (physics_component* comp = physics_component_for(object_id); comp != nullptr) {
+        comp->settings.is_trigger = (is_trigger != 0);
+      }
     }
 
     native_string native_audio_source_get_clip_path(natural_t object_id) {

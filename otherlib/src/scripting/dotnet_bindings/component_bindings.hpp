@@ -29,6 +29,15 @@ namespace other {
     native_string native_animation_component_get_clip_path(natural_t object_id);
     void native_animation_component_set_clip_path(natural_t object_id, native_string path);
 
+    /// physics settings accessors write the AUTHORED component settings; the scene's
+    ///  revalidation pass reconciles the live body on the next frame
+    uint32_t native_physics_component_get_body_type(natural_t object_id);
+    void native_physics_component_set_body_type(natural_t object_id, uint32_t body_type);
+    float native_physics_component_get_mass(natural_t object_id);
+    void native_physics_component_set_mass(natural_t object_id, float mass);
+    uint32_t native_physics_component_get_is_trigger(natural_t object_id);
+    void native_physics_component_set_is_trigger(natural_t object_id, uint32_t is_trigger);
+
     /// audio clips are assets too: scripts assign a .wav/.mp3 path ("" clears)
     native_string native_audio_source_get_clip_path(natural_t object_id);
     void native_audio_source_set_clip_path(natural_t object_id, native_string path);

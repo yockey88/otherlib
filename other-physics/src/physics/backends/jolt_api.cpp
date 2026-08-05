@@ -20,6 +20,10 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/MutableCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/EmptyShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
@@ -90,12 +94,23 @@ namespace other {
     virtual void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override;
   };
 
-  /// per-world backend state; owns the jolt system, its listener, and this world's body map
+  /// per-world backend state; owns the jolt system, its listener, and this world's body/shape maps
   struct jolt_world {
     JPH::PhysicsSystem* system = nullptr;
     MyContactListener* listener = nullptr;
-    ostd::map<integer_t, uint32_t> bodies;  ///< physics_body::id -> jolt BodyID bits
+    ostd::map<integer_t, uint32_t> bodies;         ///< physics_body::id -> jolt BodyID bits
+    ostd::map<integer_t, shape_container> shapes;  ///< physics_body::id -> that body's jolt shape
   };
+
+  namespace {
+
+    constexpr float kMinShapeExtent = 0.001f;
+
+    float max_axis(const glm::vec3& v) {
+      return std::max({ std::abs(v.x), std::abs(v.y), std::abs(v.z) });
+    }
+
+  }  // namespace
 
   class MyDebugRenderer : public JPH::DebugRendererSimple {
    public:
@@ -241,17 +256,15 @@ namespace other {
 
     jolt_world& jw = world_state(world_id);
 
-    auto [sitr, success] = jolt_shapes.emplace(body->id, new shape_container());
-    OTHER_ASSERT(success && sitr != jolt_shapes.end(), "Failed to create Jolt shape during physics body registration.");
-    shape_container* container = static_cast<shape_container*>(sitr->second);
+    shape_container& container = jw.shapes[body->id];
 
     /// by default attach an empty shape, this will register as no shape in the UI
     JPH::EmptyShapeSettings shape_settings;
     shape_settings.SetEmbedded();
 
     JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
-    container->jolt_shape = shape_result.Get();
-    container->default_empty = true;
+    container.jolt_shape = shape_result.Get();
+    container.default_empty = true;
 
     JPH::BodyInterface& body_interface = jw.system->GetBodyInterface();
 
@@ -266,12 +279,20 @@ namespace other {
       default: type = JPH::EMotionType::Static; break;
     }
 
-    JPH::BodyCreationSettings body_settings(container->jolt_shape,
+    const physics_body::settings& authored = body->applied_settings;
+    JPH::BodyCreationSettings body_settings(container.jolt_shape,
                                             JPH::RVec3(position.x, position.y, position.z),
                                             JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
                                             type,
                                             body->body_type == physics_body::STATIC ? Layers::NON_MOVING : Layers::MOVING);
     body_settings.mUserData = static_cast<JPH::uint64>(body->id);
+    body_settings.mFriction = authored.friction;
+    body_settings.mRestitution = authored.restitution;
+    body_settings.mLinearDamping = authored.linear_damping;
+    body_settings.mAngularDamping = authored.angular_damping;
+    body_settings.mGravityFactor = authored.gravity_factor;
+    body_settings.mIsSensor = authored.is_trigger;
+    body_settings.mMotionQuality = authored.continuous_cd ? JPH::EMotionQuality::LinearCast : JPH::EMotionQuality::Discrete;
     if (body->body_type == physics_body::DYNAMIC) {
       body_settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
       body_settings.mMassPropertiesOverride.mMass = body->mass;
@@ -306,14 +327,7 @@ namespace other {
       CORE_LOG_ERROR("Jolt body info for physics body id '{}' does not exist during physics body unregistration.", body->id);
     }
 
-    auto sitr = jolt_shapes.find(body->id);
-    if (sitr != jolt_shapes.end()) {
-      static_cast<shape_container*>(sitr->second)->jolt_shape = nullptr;
-      delete static_cast<shape_container*>(sitr->second);
-      jolt_shapes.erase(sitr);
-    } else {
-      CORE_LOG_ERROR("Jolt shape with id '{}' does not exist during physics body unregistration.", body->id);
-    }
+    jw.shapes.erase(body->id);
   }
 
   void jolt_api::teleport_body(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform) {
@@ -358,45 +372,95 @@ namespace other {
                                                 static_cast<float>(step));
   }
 
-  void jolt_api::attach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) {
-    /// no-op for now
-  }
+  bool jolt_api::set_body_shape(natural_t world_id, physics_world* world, physics_body* body,
+                                const physics_shape_desc& desc, const glm::vec3& world_scale,
+                                const shape_geometry* geometry) {
+    OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt shape build.");
+    OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt shape build.");
 
-  void jolt_api::detach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) {
-    /// no-op for now
-  }
+    jolt_world& jw = world_state(world_id);
 
-  void jolt_api::configure_empty_shape(physics_shape* shape) {
-    OTHER_ASSERT(shape != nullptr, "Physics shape is null during Jolt empty shape configuration.");
+    JPH::ShapeSettings::ShapeResult result;
+    switch (desc.shape_kind) {
+      case PHYSICS_SHAPE_NONE: {
+        JPH::EmptyShapeSettings s;
+        s.SetEmbedded();
+        result = s.Create();
+      } break;
+      case PHYSICS_SHAPE_BOX: {
+        glm::vec3 he = glm::max(desc.half_extents * glm::abs(world_scale), glm::vec3(kMinShapeExtent));
+        JPH::BoxShapeSettings s(JPH::Vec3(he.x, he.y, he.z));
+        s.SetEmbedded();
+        result = s.Create();
+      } break;
+      case PHYSICS_SHAPE_SPHERE: {
+        /// non-uniform scale cannot apply to a sphere; the largest axis wins
+        JPH::SphereShapeSettings s(std::max(desc.radius * max_axis(world_scale), kMinShapeExtent));
+        s.SetEmbedded();
+        result = s.Create();
+      } break;
+      case PHYSICS_SHAPE_CAPSULE: {
+        float r = std::max(desc.radius * std::max(std::abs(world_scale.x), std::abs(world_scale.z)), kMinShapeExtent);
+        float hh = std::max(desc.half_height * std::abs(world_scale.y), kMinShapeExtent);
+        JPH::CapsuleShapeSettings s(hh, r);
+        s.SetEmbedded();
+        result = s.Create();
+      } break;
+      case PHYSICS_SHAPE_CONVEX_HULL: {
+        if (geometry == nullptr || geometry->positions.empty()) {
+          CORE_LOG_ERROR("Convex hull for body {} requires geometry.", body->id);
+          return false;
+        }
+        JPH::Array<JPH::Vec3> points;
+        points.reserve(geometry->positions.size());
+        for (const glm::vec3& p : geometry->positions) {
+          glm::vec3 sp = p * world_scale;
+          points.push_back(JPH::Vec3(sp.x, sp.y, sp.z));
+        }
+        JPH::ConvexHullShapeSettings s(points);
+        s.SetEmbedded();
+        result = s.Create();
+      } break;
+      case PHYSICS_SHAPE_TRIANGLE_MESH: {
+        if (geometry == nullptr || geometry->positions.empty() || geometry->indices.size() < 3) {
+          CORE_LOG_ERROR("Triangle mesh for body {} requires indexed geometry.", body->id);
+          return false;
+        }
+        JPH::VertexList vertices;
+        vertices.reserve(geometry->positions.size());
+        for (const glm::vec3& p : geometry->positions) {
+          glm::vec3 sp = p * world_scale;
+          vertices.push_back(JPH::Float3(sp.x, sp.y, sp.z));
+        }
+        JPH::IndexedTriangleList triangles;
+        triangles.reserve(geometry->indices.size() / 3);
+        for (size_t i = 0; i + 2 < geometry->indices.size(); i += 3) {
+          triangles.push_back(JPH::IndexedTriangle(geometry->indices[i], geometry->indices[i + 1], geometry->indices[i + 2], 0));
+        }
+        JPH::MeshShapeSettings s(vertices, triangles);
+        s.SetEmbedded();
+        result = s.Create();
+      } break;
+      default:
+        CORE_LOG_ERROR("Unknown physics shape kind {} for body {}.", desc.shape_kind, body->id);
+        return false;
+    }
 
-    JPH::EmptyShapeSettings empty_settings;
-    empty_settings.SetEmbedded();
+    if (!result.IsValid()) {
+      /// authored data failed to build (degenerate hull, ...) — data error, never an assert
+      CORE_LOG_ERROR("Shape build failed for body {}: {}", body->id, result.GetError().c_str());
+      return false;
+    }
 
-    JPH::ShapeSettings::ShapeResult shape_result = empty_settings.Create();
-    OTHER_ASSERT(shape_result.IsValid(), "Failed to create Jolt empty shape during empty shape configuration.");
+    shape_container& container = jw.shapes[body->id];
+    container.jolt_shape = result.Get();
+    container.default_empty = (desc.shape_kind == PHYSICS_SHAPE_NONE);
 
-    auto itr = jolt_shapes.find(shape->body_id);
-    OTHER_ASSERT(itr != jolt_shapes.end(), "Jolt shape with id '{}' does not exist during empty shape configuration.", shape->body_id);
-
-    shape_container* container = static_cast<shape_container*>(itr->second);
-    container->jolt_shape = shape_result.Get();
-  }
-
-  void jolt_api::configure_box_shape(physics_shape* shape, const glm::vec3& half_extents) {
-    OTHER_ASSERT(shape != nullptr, "Physics shape is null during Jolt box shape configuration.");
-
-    JPH::BoxShapeSettings box_settings(JPH::Vec3(half_extents.x, half_extents.y, half_extents.z));
-    box_settings.SetEmbedded();
-
-    JPH::ShapeSettings::ShapeResult shape_result = box_settings.Create();
-    OTHER_ASSERT(shape_result.IsValid(), "Failed to create Jolt box shape during box shape configuration.");
-
-    /// the map is keyed by the owning BODY's id (see register_physics_body)
-    auto itr = jolt_shapes.find(shape->body_id);
-    OTHER_ASSERT(itr != jolt_shapes.end(), "Jolt shape for body id '{}' does not exist during box shape configuration.", shape->body_id);
-
-    shape_container* container = static_cast<shape_container*>(itr->second);
-    container->jolt_shape = shape_result.Get();
+    jw.system->GetBodyInterface().SetShape(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
+                                           container.jolt_shape,
+                                           /*inUpdateMassProperties=*/ body->body_type == physics_body::DYNAMIC,
+                                           body->body_type == physics_body::STATIC ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
+    return true;
   }
 
   void jolt_api::step_simulation(natural_t world_id, physics_world* world, double delta_time) {

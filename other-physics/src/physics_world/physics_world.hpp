@@ -45,16 +45,17 @@ namespace other {
     void move_kinematic(physics_body* body, const glm::mat4& world_transform, double step);
     void interpolate_active_transforms(double alpha);
 
-    physics_body* create_physics_body(const physics_body::settings& settings);
+    physics_body* create_physics_body(const physics_body::settings& settings, const glm::mat4& world_transform);
     void destroy_physics_body(physics_body* body);
 
-    physics_shape* create_empty_shape(physics_body* body);
-    physics_shape* create_box_shape(physics_body* body, const glm::vec3& half_extents);
-    physics_shape* create_sphere_shape(physics_body* body, float radius);
-    physics_shape* create_capsule_shape(physics_body* body, float radius, float height);
-    physics_shape* create_convex_hull_shape(physics_body* body, const std::span<const glm::vec3> points);
-    physics_shape* create_triangle_mesh_shape(physics_body* body, const std::span<const glm::vec3> vertices, const std::span<const natural_t> indices);
-    physics_shape* create_heightfield_shape(physics_body* body, const std::span<const float> height_data, natural_t width, natural_t depth, float min_height, float max_height);
+    /// build/rebuild the body's collider from its authored desc (allocating the pool shape on
+    ///   first call); geometry required for hull/mesh kinds, fit_bounds for fit_render_bounds.
+    ///   mesh on a non-static body downgrades to a hull with a warning. a build that cannot
+    ///   proceed yet leaves `applied` untouched so the revalidation pass retries.
+    ///   returns the body's shape record
+    physics_shape* apply_shape(physics_body* body, const physics_shape_desc& desc,
+                               const glm::vec3& world_scale, const shape_geometry* geometry = nullptr,
+                               const bounding_box* fit_bounds = nullptr);
     void destroy_physics_shape(physics_shape* shape);
 
     template <typename Fn>

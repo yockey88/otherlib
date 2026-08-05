@@ -237,6 +237,7 @@ namespace other {
 
     playing = true;
     if (storage->physics != nullptr) {
+      revalidate_physics();  /// restored/edited bodies must match their authored settings before simulating
       seed_physics_poses();  /// edit-mode moves happened while physics was frozen
       storage->physics->start_simulation();
     }
@@ -417,6 +418,109 @@ namespace other {
       });
   }
 
+  namespace {
+
+    /// positions/indices borrowed from the entity's resolved render model for hull/mesh builds
+    struct extracted_geometry {
+      ostd::vector<glm::vec3> positions;
+      ostd::vector<uint32_t> indices;
+      bool valid() const { return !positions.empty(); }
+    };
+
+    extracted_geometry extract_render_geometry(const model_data& data) {
+      extracted_geometry geo;
+      geo.positions.reserve(data.vertices.size());
+      for (const vertex& v : data.vertices) {
+        geo.positions.push_back(v.position);
+      }
+      geo.indices.reserve(data.indices.size() * 3);
+      for (const index& tri : data.indices) {  /// model indices are whole triangles
+        geo.indices.push_back(tri.v0);
+        geo.indices.push_back(tri.v1);
+        geo.indices.push_back(tri.v2);
+      }
+      return geo;
+    }
+
+  }  // namespace
+
+  void scene::apply_component_shape(entt::entity entity, physics_component& phys_comp) {
+    object_handle& handle = storage->registry.get<object_handle>(entity);
+
+    glm::vec3 position, scale;
+    glm::quat rotation;
+    decompose_mat4(get_world_transform(handle.id), position, rotation, scale);
+
+    /// hull/mesh/fit need the render model; unresolved models defer (revalidation retries)
+    const model_data* data = nullptr;
+    if (const render_component* rc = storage->registry.try_get<render_component>(entity);
+        rc != nullptr && rc->obj_model.source != nullptr) {
+      data = &rc->obj_model.source->source_data();
+    }
+
+    const physics_shape_desc& desc = phys_comp.settings.shape;
+
+    extracted_geometry geo;
+    shape_geometry spans;
+    shape_geometry* geo_ptr = nullptr;
+    if (shape_needs_geometry(desc)) {
+      if (data == nullptr || data->vertices.empty()) {
+        return;
+      }
+      geo = extract_render_geometry(*data);
+      spans.positions = geo.positions;
+      spans.indices = geo.indices;
+      geo_ptr = &spans;
+    }
+
+    const bounding_box* fit_bounds = (desc.fit_render_bounds && data != nullptr) ? &data->bounds : nullptr;
+    phys_comp.shape = storage->physics->apply_shape(phys_comp.body, desc, scale, geo_ptr, fit_bounds);
+  }
+
+  void scene::rebuild_physics_body(entt::entity entity, physics_component& phys_comp) {
+    object_handle& handle = storage->registry.get<object_handle>(entity);
+
+    if (phys_comp.shape != nullptr) {
+      storage->physics->destroy_physics_shape(phys_comp.shape);
+      phys_comp.shape = nullptr;
+    }
+    if (phys_comp.body != nullptr) {
+      storage->physics->destroy_physics_body(phys_comp.body);
+    }
+
+    phys_comp.body = storage->physics->create_physics_body(phys_comp.settings, get_world_transform(handle.id));
+    OTHER_ASSERT(phys_comp.body != nullptr, "Failed to rebuild physics body for object {}", handle.id);
+    phys_comp.body->owner_object_id = handle.id;
+    phys_comp.body->active = true;
+  }
+
+  void scene::revalidate_physics() {
+    PROFILE_SECTION("scene::revalidate_physics");
+    storage->registry.view<object_handle, physics_component, transform>().each(
+      [this](entt::entity entity, object_handle& handle, physics_component& phys_comp, transform&) {
+        if (phys_comp.body == nullptr) {
+          return;  /// physics-off profile
+        }
+
+        /// authored body diverged from the built body (restore, inspector, C#) -> recreate;
+        /// the fresh body starts shapeless and falls through to the shape check below
+        if (!(phys_comp.settings == phys_comp.body->applied_settings)) {
+          rebuild_physics_body(entity, phys_comp);
+        }
+
+        glm::vec3 position, scale;
+        glm::quat rotation;
+        decompose_mat4(get_world_transform(handle.id), position, rotation, scale);
+
+        const bool never_built = phys_comp.shape == nullptr;
+        const bool desc_dirty = !never_built && !(phys_comp.settings.shape == phys_comp.shape->applied);
+        const bool scale_dirty = !never_built && glm::length(scale - phys_comp.shape->applied_scale) > 0.0001f;
+        if (never_built || desc_dirty || scale_dirty) {
+          apply_component_shape(entity, phys_comp);
+        }
+      });
+  }
+
   void scene::seed_physics_poses() {
     PROFILE_SECTION("scene::seed_physics_poses");
     storage->registry.view<object_handle, physics_component>().each([this](entt::entity entity, object_handle& handle, physics_component& phys_comp) {
@@ -519,6 +623,8 @@ namespace other {
     // check_synchronization_updates();
 
     if (playing && storage->physics != nullptr) {
+      revalidate_physics();  /// live settings/shape edits apply at frame granularity
+
       /// gaffer-on-games accumulator
       /// ported from the deleted physx backend's single-step accumulator, upgraded to a catch-up loop
       constexpr static uint32_t kMaxCatchUpSteps = 5;
@@ -995,7 +1101,10 @@ namespace other {
 
       const physics_component* pc = storage->registry.try_get<physics_component>(entity);
       if (pc != nullptr && pc->shape != nullptr) {
-        box = pc->shape->get_bounding_box();
+        /// a collider drives the bounds only once it actually built (kNone/deferred stay empty)
+        if (bounding_box shape_box = pc->shape->get_bounding_box(); !(shape_box == bounding_box::empty)) {
+          box = shape_box;
+        }
       }
     }
 
@@ -1510,13 +1619,12 @@ namespace other {
     }
 
     object_handle& obj_handle = storage->registry.get<object_handle>(entity);
-    physics_comp.settings.world_transform = get_world_transform(&get_object(obj_handle.id));
 
-    physics_comp.body = storage->physics->create_physics_body(physics_comp.settings);
+    physics_comp.body = storage->physics->create_physics_body(physics_comp.settings, get_world_transform(obj_handle.id));
     OTHER_ASSERT(physics_comp.body != nullptr, "Failed to create physics body for entity {}", (natural_t)entity);
     physics_comp.body->owner_object_id = obj_handle.id;
     physics_comp.body->active = true;
-    physics_comp.shape = storage->physics->create_empty_shape(physics_comp.body);
+    apply_component_shape(entity, physics_comp);
   }
 
   // void scene::on_update_physics_component(const entt::registry&, const entt::entity entity) {}

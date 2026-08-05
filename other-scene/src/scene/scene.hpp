@@ -24,6 +24,7 @@
 namespace other {
 
   struct udp_handle;
+  struct physics_component;
 
   class scene {
    private:
@@ -360,6 +361,12 @@ namespace other {
     void seed_physics_poses();
     /// hand kinematic bodies their entity pose as this step's sweep target
     void push_kinematic_targets(double step);
+
+    /// reconcile authored physics settings/shapes against the built bodies (restore rebuilds,
+    ///  inspector/C# edits, deferred geometry retries); runs on play and once per frame while playing
+    void revalidate_physics();
+    void rebuild_physics_body(entt::entity entity, physics_component& phys_comp);
+    void apply_component_shape(entt::entity entity, physics_component& phys_comp);
 
     double fixed_accumulator = 0.0;
 
