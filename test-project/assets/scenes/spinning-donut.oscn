@@ -72,12 +72,12 @@ tint = [ 1.0, 1.0, 1.0, 1.0 ]
 body_type = 2
 [objects.components.physics.settings.shape]
 shape_kind = 5
-[objects.components.animation]
-clip_name = "Scene"
-playing = true
-looping = true
-speed = 1.0
-time = 0.0
+# [objects.components.animation]
+# clip_name = "Scene"
+# playing = true
+# looping = true
+# speed = 1.0
+# time = 0.0
 
 [[objects]]
 id = 4
@@ -100,12 +100,12 @@ tint = [ 1.0, 1.0, 1.0, 1.0 ]
 body_type = 2
 [objects.components.physics.settings.shape]
 shape_kind = 5
-[objects.components.animation]
-clip_name = "Scene"
-playing = true
-looping = true
-speed = 1.0
-time = 0.0
+# [objects.components.animation]
+# clip_name = "Scene"
+# playing = true
+# looping = true
+# speed = 1.0
+# time = 0.0
 
 [[objects]]
 id = 5
