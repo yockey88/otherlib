@@ -160,15 +160,6 @@ namespace other {
     return profile_name == subsystem_profile::kFullProfileName;
   }
 
-  void subsystem_registry::activate_necessary_subsystems_for_profile(const std::string_view profile, const config_table* config) {
-    /// one by one set inert flag to true if not needed in the profile
-    subsystem<scripting_environment>::inert = !profile_includes_scripting(profile);
-    subsystem<physics_environment>::inert = !profile_includes_physics(profile);
-    subsystem<renderer_backend>::inert = !profile_includes_rendering(profile);
-    subsystem<scripting_environment>::inert = !profile_includes_vm(profile);
-    subsystem<scripting_environment>::inert = !profile_includes_scene(profile);
-  }
-
   std::vector<natural_t> subsystem_registry::resolve_dependencies(std::span<const std::string_view> requested_systems, const subsystem_definition& def) {
     std::vector<natural_t> result;
     std::unordered_map<natural_t, bool> visited;

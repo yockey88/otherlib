@@ -31,13 +31,19 @@ namespace other {
 
     physics_api::physics_render_debug_data get_debug_render_data() const;
 
-    void initialize(natural_t id);
+    void initialize(natural_t id, const physics_world_config& config);
     void shutdown();
 
     void start_simulation();
     void stop_simulation();
 
     void step_simulation(double delta_time);
+
+    /// hard-set a body's pose (and zero velocities) without waking it
+    void teleport_body(physics_body* body, const glm::mat4& world_transform);
+    /// sweep a kinematic body toward the target pose over one fixed step
+    void move_kinematic(physics_body* body, const glm::mat4& world_transform, double step);
+    void interpolate_active_transforms(double alpha);
 
     physics_body* create_physics_body(const physics_body::settings& settings);
     void destroy_physics_body(physics_body* body);
@@ -75,8 +81,7 @@ namespace other {
     constexpr static inline size_t kMaxPhysicsBodies = memory_pool<physics_body>::kMaxObjects;
     std::array<live_body, kMaxPhysicsBodies> live_objects = {};
 
-    void interpolate_active_transforms(double delta_time);
-    glm::mat4 interpolate_transform(const glm::mat4& previous, const glm::mat4& current) const;
+    glm::mat4 interpolate_transform(const glm::mat4& previous, const glm::mat4& current, double alpha) const;
   };
 
 }  // namespace other

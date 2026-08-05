@@ -49,6 +49,5 @@ development-drivers/pbrt
 extern/python312/DLLs
 extern/python312/include
 extern/python312/Lib
-extern/physx
 # local scratch / prompt context (untracked by design)
 test.ps1

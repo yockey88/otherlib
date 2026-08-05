@@ -24,7 +24,8 @@ namespace other {
     };
 
     integer_t id = 0;
-    natural_t scene_id = 0;
+    uint64_t backend_id = 0;         /// the backend's own id for this body (jolt: BodyID bits)
+    natural_t owner_object_id = 0;   /// scene-tree id of the owning scene object
 
     integer_t shape_id = -1;
 

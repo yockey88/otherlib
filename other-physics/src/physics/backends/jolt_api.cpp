@@ -7,13 +7,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+/// JPH_* ABI defines come from other-physics/CMakeLists.txt (target_compile_definitions)
+///  and must match how the prebuilt extern/jolt binaries were built
 // clang-format off
-#define JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
-#define JPH_PROFILE_ENABLED
-#define JPH_OBJECT_STREAM
-#define JPH_SHARED_LIBRARY 
-// #define JPH_DOUBLE_PRECISION 
-#define JPH_DEBUG_RENDERER
 #include <Jolt/Jolt.h>
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Memory.h>
@@ -94,6 +90,13 @@ namespace other {
     virtual void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override;
   };
 
+  /// per-world backend state; owns the jolt system, its listener, and this world's body map
+  struct jolt_world {
+    JPH::PhysicsSystem* system = nullptr;
+    MyContactListener* listener = nullptr;
+    ostd::map<integer_t, uint32_t> bodies;  ///< physics_body::id -> jolt BodyID bits
+  };
+
   class MyDebugRenderer : public JPH::DebugRendererSimple {
    public:
     virtual void DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) override {
@@ -149,17 +152,28 @@ namespace other {
     CORE_LOG_TRACE("[JOLT] {}", buffer);
   }
 
+  jolt_world& jolt_api::world_state(natural_t world_id) {
+    auto itr = jolt_worlds.find(world_id);
+    OTHER_ASSERT(itr != jolt_worlds.end(), "Jolt physics world with id '{}' does not exist.", world_id);
+    return *itr->second;
+  }
+
+  const jolt_world& jolt_api::world_state(natural_t world_id) const {
+    auto itr = jolt_worlds.find(world_id);
+    OTHER_ASSERT(itr != jolt_worlds.end(), "Jolt physics world with id '{}' does not exist.", world_id);
+    return *itr->second;
+  }
+
   physics_api::physics_render_debug_data jolt_api::get_debug_render_data(natural_t id, const physics_world* world) const {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt debug render data retrieval.");
 
-    auto itr = jolt_scenes.find(id);
-    OTHER_ASSERT(itr != jolt_scenes.end(), "Jolt physics scene with id '{}' does not exist during debug render data retrieval.", id);
+    const jolt_world& jw = world_state(id);
 
     MyDebugRenderer debug_renderer;
     JPH::BodyManager::DrawSettings body_draw_settings;
     body_draw_settings.mDrawShape = true;
-    itr->second->DrawBodies(body_draw_settings, &debug_renderer);
-    itr->second->DrawConstraints(&debug_renderer);
+    jw.system->DrawBodies(body_draw_settings, &debug_renderer);
+    jw.system->DrawConstraints(&debug_renderer);
 
     physics_api::physics_render_debug_data debug_data;
     debug_data.debug_lines = ostd::vector<line>(debug_renderer.debug_lines.begin(), debug_renderer.debug_lines.end());
@@ -170,64 +184,62 @@ namespace other {
     return debug_data;
   }
 
-  void jolt_api::initialize_world(natural_t id, physics_world* world) {
-    if (jolt_scenes.find(id) != jolt_scenes.end()) {
-      CORE_LOG_WARN("Jolt physics scene with id '{}' already exists.", id);
+  void jolt_api::initialize_world(natural_t id, physics_world* world, const physics_world_config& config) {
+    if (jolt_worlds.find(id) != jolt_worlds.end()) {
+      CORE_LOG_WARN("Jolt physics world with id '{}' already exists.", id);
       return;
     }
 
-    // This is the max amount of rigid bodies that you can add to the physics system. If you try to add more you'll get an error.
-    // Note: This value is low because this is a simple test. For a real project use something in the order of 65536.
-    const JPH::uint cMaxBodies = 1024;
-
-    // This determines how many mutexes to allocate to protect rigid bodies from concurrent access. Set it to 0 for the default settings.
-    const JPH::uint cNumBodyMutexes = 0;
-
-    // This is the max amount of body pairs that can be queued at any time (the broad phase will detect overlapping
-    // body pairs based on their bounding boxes and will insert them into a queue for the narrowphase). If you make this buffer
-    // too small the queue will fill up and the broad phase jobs will start to do narrow phase work. This is slightly less efficient.
-    // Note: This value is low because this is a simple test. For a real project use something in the order of 65536.
-    const JPH::uint cMaxBodyPairs = 1024;
-
-    // This is the maximum size of the contact constraint buffer. If more contacts (collisions between bodies) are detected than this
-    // number then these contacts will be ignored and bodies will start interpenetrating / fall through the world.
-    // Note: This value is low because this is a simple test. For a real project use something in the order of 10240.
-    const JPH::uint cMaxContactConstraints = 1024;
-
     JPH::PhysicsSystem* physics_system = new JPH::PhysicsSystem();
-    physics_system->Init(cMaxBodies, cNumBodyMutexes, cMaxBodyPairs, cMaxContactConstraints, *bp_layer_interface, *object_vs_broadphase_layer_filter, *object_layer_pair_filter);
-    physics_system->SetContactListener(new MyContactListener());
+    physics_system->Init(config.max_bodies, /*num body mutexes (0 = default)*/ 0, config.max_body_pairs, config.max_contact_constraints,
+                         *bp_layer_interface, *object_vs_broadphase_layer_filter, *object_layer_pair_filter);
+    physics_system->SetGravity(JPH::Vec3(config.gravity.x, config.gravity.y, config.gravity.z));
 
-    jolt_scenes.emplace(id, physics_system);
+    jolt_world* jw = new jolt_world();
+    jw->system = physics_system;
+    jw->listener = new MyContactListener();
+    physics_system->SetContactListener(jw->listener);
+
+    jolt_worlds.emplace(id, jw);
   }
 
   void jolt_api::shutdown_world(physics_world* world) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt shutdown.");
 
-    auto itr = jolt_scenes.find(world->world_id);
-    if (itr != jolt_scenes.end()) {
-      delete itr->second;
-      jolt_scenes.erase(itr);
-    } else {
-      CORE_LOG_ERROR("Jolt physics scene with id '{}' does not exist during shutdown.", world->world_id);
+    auto itr = jolt_worlds.find(world->world_id);
+    if (itr == jolt_worlds.end()) {
+      CORE_LOG_ERROR("Jolt physics world with id '{}' does not exist during shutdown.", world->world_id);
+      return;
     }
+
+    jolt_world* jw = itr->second;
+    if (!jw->bodies.empty()) {
+      /// scene teardown drains bodies through the entt destroy hooks; anything left here leaked
+      CORE_LOG_WARN("Jolt world '{}' shutting down with {} live bodies, force-destroying them.", world->world_id, jw->bodies.size());
+      JPH::BodyInterface& body_interface = jw->system->GetBodyInterface();
+      for (auto& [body_id, jolt_id] : jw->bodies) {
+        body_interface.RemoveBody(JPH::BodyID(jolt_id));
+        body_interface.DestroyBody(JPH::BodyID(jolt_id));
+      }
+      jw->bodies.clear();
+    }
+
+    delete jw->listener;
+    delete jw->system;
+    delete jw;
+    jolt_worlds.erase(itr);
   }
 
   void jolt_api::on_scene_start(natural_t world_id, physics_world* world) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt scene start.");
-
-    auto itr = jolt_scenes.find(world_id);
-    OTHER_ASSERT(itr != jolt_scenes.end(), "Jolt physics scene with id '{}' does not exist during scene start.", world_id);
-
-    itr->second->OptimizeBroadPhase();
+    world_state(world_id).system->OptimizeBroadPhase();
   }
 
   void jolt_api::register_physics_body(natural_t world_id, physics_world* world, physics_body* body) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt physics body registration.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt physics body registration.");
 
-    auto itr = jolt_scenes.find(world_id);
-    OTHER_ASSERT(itr != jolt_scenes.end(), "Jolt physics scene with id '{}' does not exist during physics body registration.", world_id);
+    jolt_world& jw = world_state(world_id);
 
     auto [sitr, success] = jolt_shapes.emplace(body->id, new shape_container());
     OTHER_ASSERT(success && sitr != jolt_shapes.end(), "Failed to create Jolt shape during physics body registration.");
@@ -241,7 +253,7 @@ namespace other {
     container->jolt_shape = shape_result.Get();
     container->default_empty = true;
 
-    JPH::BodyInterface& body_interface = itr->second->GetBodyInterface();
+    JPH::BodyInterface& body_interface = jw.system->GetBodyInterface();
 
     glm::vec3 position = body->get_current_position();
     glm::quat rotation = body->get_current_rotation();
@@ -254,31 +266,42 @@ namespace other {
       default: type = JPH::EMotionType::Static; break;
     }
 
-    JPH::BodyCreationSettings body_settings(container->jolt_shape, JPH::RVec3(position.x, position.y, position.z), JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w), type, Layers::MOVING);
+    JPH::BodyCreationSettings body_settings(container->jolt_shape,
+                                            JPH::RVec3(position.x, position.y, position.z),
+                                            JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+                                            type,
+                                            body->body_type == physics_body::STATIC ? Layers::NON_MOVING : Layers::MOVING);
+    body_settings.mUserData = static_cast<JPH::uint64>(body->id);
+    if (body->body_type == physics_body::DYNAMIC) {
+      body_settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+      body_settings.mMassPropertiesOverride.mMass = body->mass;
+    }
 
     JPH::Body* jolt_body = body_interface.CreateBody(body_settings);
     OTHER_ASSERT(jolt_body != nullptr, "Failed to create Jolt body for physics body registration.");
 
     JPH::BodyID body_id = jolt_body->GetID();
-    body_interface.AddBody(jolt_body->GetID(), JPH::EActivation::Activate);
+    body_interface.AddBody(body_id, body->body_type == physics_body::STATIC ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
 
-    body->scene_id = body_id.GetIndexAndSequenceNumber();
-    auto [bitr, success2] = jolt_body_ids.emplace(body->id, body_id.GetIndexAndSequenceNumber());
-    OTHER_ASSERT(success2 && bitr != jolt_body_ids.end(), "Failed to store Jolt body info during physics body registration.");
+    body->backend_id = body_id.GetIndexAndSequenceNumber();
+    auto [bitr, success2] = jw.bodies.emplace(body->id, body_id.GetIndexAndSequenceNumber());
+    OTHER_ASSERT(success2 && bitr != jw.bodies.end(), "Failed to store Jolt body info during physics body registration.");
   }
 
   void jolt_api::unregister_physics_body(natural_t world_id, physics_world* world, physics_body* body) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt physics body unregistration.");
+    OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt physics body unregistration.");
 
-    auto itr = jolt_scenes.find(world_id);
-    OTHER_ASSERT(itr != jolt_scenes.end(), "Jolt physics scene with id '{}' does not exist during physics body unregistration.", world_id);
+    jolt_world& jw = world_state(world_id);
 
-    JPH::BodyInterface& body_interface = itr->second->GetBodyInterface();
-    body_interface.RemoveBody(JPH::BodyID(static_cast<uint32_t>(body->scene_id)));
+    JPH::BodyInterface& body_interface = jw.system->GetBodyInterface();
+    JPH::BodyID jolt_id(static_cast<uint32_t>(body->backend_id));
+    body_interface.RemoveBody(jolt_id);
+    body_interface.DestroyBody(jolt_id);
 
-    auto bitr = jolt_body_ids.find(body->id);
-    if (bitr != jolt_body_ids.end()) {
-      jolt_body_ids.erase(bitr);
+    auto bitr = jw.bodies.find(body->id);
+    if (bitr != jw.bodies.end()) {
+      jw.bodies.erase(bitr);
     } else {
       CORE_LOG_ERROR("Jolt body info for physics body id '{}' does not exist during physics body unregistration.", body->id);
     }
@@ -291,6 +314,48 @@ namespace other {
     } else {
       CORE_LOG_ERROR("Jolt shape with id '{}' does not exist during physics body unregistration.", body->id);
     }
+  }
+
+  void jolt_api::teleport_body(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform) {
+    OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt body teleport.");
+    OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt body teleport.");
+
+    jolt_world& jw = world_state(world_id);
+
+    glm::vec3 position, scale;
+    glm::quat rotation;
+    decompose_mat4(world_transform, position, rotation, scale);
+
+    JPH::BodyInterface& body_interface = jw.system->GetBodyInterface();
+    JPH::BodyID jolt_id(static_cast<uint32_t>(body->backend_id));
+    body_interface.SetPositionAndRotation(jolt_id,
+                                          JPH::RVec3(position.x, position.y, position.z),
+                                          JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+                                          JPH::EActivation::DontActivate);
+    if (body->body_type != physics_body::STATIC) {
+      body_interface.SetLinearAndAngularVelocity(jolt_id, JPH::Vec3::sZero(), JPH::Vec3::sZero());
+    }
+
+    /// keep the presentation buffer coherent so nothing blends from the stale pose
+    body->previous_transform = world_transform;
+    body->current_transform = world_transform;
+    body->interpolated_transform = world_transform;
+  }
+
+  void jolt_api::move_kinematic(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform, double step) {
+    OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt kinematic move.");
+    OTHER_ASSERT(body != nullptr, "Physics body is null during Jolt kinematic move.");
+
+    jolt_world& jw = world_state(world_id);
+
+    glm::vec3 position, scale;
+    glm::quat rotation;
+    decompose_mat4(world_transform, position, rotation, scale);
+
+    jw.system->GetBodyInterface().MoveKinematic(JPH::BodyID(static_cast<uint32_t>(body->backend_id)),
+                                                JPH::RVec3(position.x, position.y, position.z),
+                                                JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+                                                static_cast<float>(step));
   }
 
   void jolt_api::attach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) {
@@ -326,8 +391,9 @@ namespace other {
     JPH::ShapeSettings::ShapeResult shape_result = box_settings.Create();
     OTHER_ASSERT(shape_result.IsValid(), "Failed to create Jolt box shape during box shape configuration.");
 
-    auto itr = jolt_shapes.find(shape->id);
-    OTHER_ASSERT(itr != jolt_shapes.end(), "Jolt shape with id '{}' does not exist during box shape configuration.", shape->id);
+    /// the map is keyed by the owning BODY's id (see register_physics_body)
+    auto itr = jolt_shapes.find(shape->body_id);
+    OTHER_ASSERT(itr != jolt_shapes.end(), "Jolt shape for body id '{}' does not exist during box shape configuration.", shape->body_id);
 
     shape_container* container = static_cast<shape_container*>(itr->second);
     container->jolt_shape = shape_result.Get();
@@ -336,23 +402,19 @@ namespace other {
   void jolt_api::step_simulation(natural_t world_id, physics_world* world, double delta_time) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt step simulation.");
 
-    auto itr = jolt_scenes.find(world_id);
-    OTHER_ASSERT(itr != jolt_scenes.end(), "Jolt physics scene with id '{}' does not exist during step simulation.", world_id);
-
     const JPH::uint cCollisionSteps = 1;
-    itr->second->Update(delta_time, cCollisionSteps, temp_allocator, job_system);
+    world_state(world_id).system->Update(delta_time, cCollisionSteps, temp_allocator, job_system);
   }
 
   void jolt_api::update_active_transforms(natural_t world_id, physics_world* world, double delta_time) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Jolt update active transforms.");
 
-    auto itr = jolt_scenes.find(world_id);
-    OTHER_ASSERT(itr != jolt_scenes.end(), "Jolt physics scene with id '{}' does not exist during update active transforms.", world_id);
+    jolt_world& jw = world_state(world_id);
 
-    JPH::BodyInterface& body_interface = itr->second->GetBodyInterface();
-    for (auto [id, body_id] : jolt_body_ids) {
-      auto* b = world->find_if([&](physics_body* p) { return p != nullptr && p->id == id && p->scene_id == body_id; });
-      OTHER_ASSERT(b != nullptr, "Failed to find physics body during transform update.");
+    JPH::BodyInterface& body_interface = jw.system->GetBodyInterface();
+    for (auto [id, body_id] : jw.bodies) {
+      auto* b = world->find_if([&](physics_body* p) { return p != nullptr && p->id == id; });
+      OTHER_ASSERT(b != nullptr, "Physics body {} in jolt world {} has no engine-side body.", id, world_id);
 
       JPH::RMat44 t = body_interface.GetWorldTransform(JPH::BodyID(body_id));
       JPH::RVec3 position = t.GetTranslation();
@@ -378,7 +440,14 @@ namespace other {
     JPH::RegisterTypes();
 
     temp_allocator = new JPH::TempAllocatorImpl(10 * 1024 * 1024);
-    job_system = new JPH::JobSystemThreadPool(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, std::thread::hardware_concurrency() - 1);
+
+    /// dedicated jolt worker pool; capped by default because the engine's asio job pool
+    ///  already claims most cores (physics.worker-threads overrides, 0 = default)
+    uint32_t worker_threads = configuration.get_value<uint32_t>("physics.worker-threads", 0);
+    if (worker_threads == 0) {
+      worker_threads = std::min(4u, std::max(1u, std::thread::hardware_concurrency() - 1));
+    }
+    job_system = new JPH::JobSystemThreadPool(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, static_cast<int>(worker_threads));
 
     // Create mapping table from object layer to broadphase layer
     // Note: As this is an interface, PhysicsSystem will take a reference to this so this instance needs to stay alive!
@@ -397,6 +466,17 @@ namespace other {
   }
 
   void jolt_api::on_shutdown() {
+    if (!jolt_worlds.empty()) {
+      CORE_LOG_WARN("Jolt backend shutting down with {} live worlds.", jolt_worlds.size());
+      while (!jolt_worlds.empty()) {
+        jolt_world* jw = jolt_worlds.begin()->second;
+        delete jw->listener;
+        delete jw->system;
+        delete jw;
+        jolt_worlds.erase(jolt_worlds.begin());
+      }
+    }
+
     delete object_layer_pair_filter;
     delete object_vs_broadphase_layer_filter;
     delete bp_layer_interface;

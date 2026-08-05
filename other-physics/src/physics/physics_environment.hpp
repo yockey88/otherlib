@@ -13,6 +13,8 @@
 
 namespace other {
 
+  constexpr inline float kDefaultFixedStep = 1.f / 60.f;
+
   class physics_environment : public subsystem<physics_environment> {
    public:
     physics_environment() = default;
@@ -20,6 +22,8 @@ namespace other {
 
     scope<physics_api>& api() { return physics_backend; }
     bool has_api() const { return physics_backend != nullptr; }
+    float get_fixed_step() const { return fixed_step; }
+    const physics_world_config& world_defaults() const { return default_world_config; }
 
     void load_backend(const config_table& config);
     void unload_backend();
@@ -37,7 +41,10 @@ namespace other {
     scope<memory_pool<physics_body>> physics_bodies = nullptr;
     scope<memory_pool<physics_shape>> physics_shapes = nullptr;
 
-    void set_phsyics_api(scope<physics_api> api, const config_table& config);
+    float fixed_step = kDefaultFixedStep;
+    physics_world_config default_world_config;
+
+    void set_physics_api(scope<physics_api> api, const config_table& config);
   };
 
 }  // namespace other

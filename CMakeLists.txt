@@ -119,7 +119,6 @@ set(OTHER_LIB_FAMILY "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,releas
 set(OTHER_LIBRARIES_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdl/lib/${OTHER_LIB_FAMILY}"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/glad/lib/${OTHER_LIB_FAMILY}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/extern/physx/lib/${OTHER_LIB_FAMILY}"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/jolt/lib/${OTHER_LIB_FAMILY}"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/tinyxml2/lib/${OTHER_LIB_FAMILY}"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/xxHash/lib/${OTHER_LIB_FAMILY}"
@@ -157,7 +156,6 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/sol2
   ${OTHER_EXTERN_DIR}/sol2/lua
   ${OTHER_EXTERN_DIR}/sol2/sol
-  ${OTHER_EXTERN_DIR}/physx
   ${OTHER_EXTERN_DIR}/jolt
   ${OTHER_EXTERN_DIR}/tinyxml2
   ${OTHER_EXTERN_DIR}/xxHash/include
@@ -281,14 +279,8 @@ install(
     "${OTHER_EXTERN_DIR}/sdl/lib/${DLL_CONFIG}/SDL3.dll"
     "${OTHER_EXTERN_DIR}/assimp/lib/assimp-vc143-mt.dll"
     "${OTHER_EXTERN_DIR}/sol2/lib/lua-5.4.4.dll"
-    "${OTHER_EXTERN_DIR}/jolt/bin/$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>/Jolt.dll"
+    "${OTHER_EXTERN_DIR}/jolt/bin/${DLL_CONFIG}/Jolt.dll"
     "${OTHER_EXTERN_DIR}/xxHash/bin/${DLL_CONFIG}/xxhash.dll"
-    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysX_64.dll"
-    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCommon_64.dll"
-    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXCooking_64.dll"
-    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXFoundation_64.dll"
-    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PhysXGpu_64.dll"
-    "${OTHER_EXTERN_DIR}/physx/bin/${DLL_CONFIG}/PVDRuntime_64.dll"
   DESTINATION "${OTHER_INSTALL_BINDIR}/${DLL_CONFIG}"
   OPTIONAL
 )

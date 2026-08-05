@@ -12,6 +12,15 @@ namespace other {
   struct physics_shape;
   class physics_world;
 
+  /// backend-agnostic per-world creation settings, sourced from [physics] config
+  /// backends consume what applies to them and ignore the rest
+  struct physics_world_config {
+    glm::vec3 gravity = { 0.f, -9.81f, 0.f };
+    uint32_t max_bodies = 65536;
+    uint32_t max_body_pairs = 65536;
+    uint32_t max_contact_constraints = 10240;
+  };
+
   class physics_api {
    public:
     struct line {
@@ -36,13 +45,9 @@ namespace other {
     void initialize(const config_table& configuration);
     void shutdown();
 
-    inline float get_interpolation_alpha() const {
-      return alpha;
-    }
-
     virtual physics_render_debug_data get_debug_render_data(natural_t id, const physics_world* world) const = 0;
 
-    virtual void initialize_world(natural_t id, physics_world* world) = 0;
+    virtual void initialize_world(natural_t id, physics_world* world, const physics_world_config& config) = 0;
     virtual void shutdown_world(physics_world* world) = 0;
 
     virtual void on_scene_start(natural_t world_id, physics_world* world) {}
@@ -50,6 +55,13 @@ namespace other {
 
     virtual void register_physics_body(natural_t world_id, physics_world* world, physics_body* body) = 0;
     virtual void unregister_physics_body(natural_t world_id, physics_world* world, physics_body* body) = 0;
+
+    /// hard-set a body's pose and zero its velocities, without waking it
+    /// (edit-mode moves, play-time reseeding, restores)
+    virtual void teleport_body(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform) = 0;
+
+    /// sweep a kinematic body toward the target pose over one fixed step, with contact response
+    virtual void move_kinematic(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform, double step) = 0;
 
     virtual void attach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) = 0;
     virtual void detach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) = 0;
@@ -66,14 +78,8 @@ namespace other {
     virtual void update_active_transforms(natural_t world_id, physics_world* world, double delta_time) = 0;
 
    protected:
-    float alpha = 0.0f;
-    float accumulator = 0.0f;
-    constexpr static float kFixedTimeStep = 1.0f / 60.0f;
-
     virtual void on_initialize(const config_table& configuration) = 0;
     virtual void on_shutdown() = 0;
-
-   private:
   };
 
 }  // namespace other

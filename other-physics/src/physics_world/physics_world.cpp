@@ -24,12 +24,12 @@ namespace other {
     return physics_api()->get_debug_render_data(world_id, this);
   }
 
-  void physics_world::initialize(natural_t id) {
+  void physics_world::initialize(natural_t id, const physics_world_config& config) {
     auto* phys_env = subsystem<physics_environment>::get();
     OTHER_ASSERT(phys_env != nullptr, "Physics environment is not initialized.");
 
     world_id = id;
-    physics_api()->initialize_world(id, this);
+    physics_api()->initialize_world(id, this, config);
   }
 
   void physics_world::shutdown() {
@@ -54,7 +54,31 @@ namespace other {
     OTHER_ASSERT(phys_env != nullptr, "Physics environment is not initialized.");
 
     physics_api()->step_simulation(world_id, this, delta_time);
-    interpolate_active_transforms(delta_time);
+    /// pull the post-step poses into the previous/current buffer, exactly once per step;
+    ///  interpolation between the buffered poses is a pure read and can run per frame
+    physics_api()->update_active_transforms(world_id, this, delta_time);
+  }
+
+  void physics_world::teleport_body(physics_body* body, const glm::mat4& world_transform) {
+    OTHER_ASSERT(body != nullptr, "Cannot teleport a null physics body.");
+    physics_api()->teleport_body(world_id, this, body, world_transform);
+  }
+
+  void physics_world::move_kinematic(physics_body* body, const glm::mat4& world_transform, double step) {
+    OTHER_ASSERT(body != nullptr, "Cannot move a null physics body.");
+    OTHER_ASSERT(body->body_type == physics_body::KINEMATIC, "move_kinematic requires a KINEMATIC body.");
+    physics_api()->move_kinematic(world_id, this, body, world_transform, step);
+  }
+
+  void physics_world::interpolate_active_transforms(double alpha) {
+    PROFILE_SECTION("physics_world::interpolate_active_transforms");
+    for (auto& live_obj : live_objects) {
+      if (live_obj.object == nullptr || !live_obj.object->active) {
+        continue;
+      }
+
+      live_obj.object->interpolated_transform = interpolate_transform(live_obj.object->previous_transform, live_obj.object->current_transform, alpha);
+    }
   }
 
   physics_body* physics_world::create_physics_body(const physics_body::settings& settings) {
@@ -204,24 +228,10 @@ namespace other {
     return phys_env->api();
   }
 
-  void physics_world::interpolate_active_transforms(double delta_time) {
-    PROFILE_SECTION("physics_world::interpolate_active_transforms");
-    physics_api()->update_active_transforms(world_id, this, delta_time);
-
-    for (auto& live_obj : live_objects) {
-      if (live_obj.object == nullptr || !live_obj.object->active) {
-        continue;
-      }
-
-      live_obj.object->interpolated_transform = interpolate_transform(live_obj.object->previous_transform, live_obj.object->current_transform);
-    }
-  }
-
-  glm::mat4 physics_world::interpolate_transform(const glm::mat4& previous, const glm::mat4& current) const {
-    float alpha = physics_api()->get_interpolation_alpha();
-
-    glm::vec3 inter_pos = glm::mix(glm::vec3(previous[3]), glm::vec3(current[3]), alpha);
-    glm::quat inter_rot = glm::slerp(glm::quat_cast(previous), glm::quat_cast(current), alpha);
+  glm::mat4 physics_world::interpolate_transform(const glm::mat4& previous, const glm::mat4& current, double alpha) const {
+    const float falpha = static_cast<float>(alpha);
+    glm::vec3 inter_pos = glm::mix(glm::vec3(previous[3]), glm::vec3(current[3]), falpha);
+    glm::quat inter_rot = glm::slerp(glm::quat_cast(previous), glm::quat_cast(current), falpha);
 
     glm::vec3 prev_scale = glm::vec3(
       glm::length(glm::vec3(previous[0])),
@@ -231,7 +241,7 @@ namespace other {
       glm::length(glm::vec3(current[0])),
       glm::length(glm::vec3(current[1])),
       glm::length(glm::vec3(current[2])));
-    glm::vec3 inter_scale = glm::mix(prev_scale, curr_scale, alpha);
+    glm::vec3 inter_scale = glm::mix(prev_scale, curr_scale, falpha);
 
     glm::mat4 translation_mat = glm::translate(glm::mat4(1.0f), inter_pos);
     glm::mat4 rotation_mat = glm::mat4_cast(inter_rot);

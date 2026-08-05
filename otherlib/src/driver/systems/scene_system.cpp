@@ -200,19 +200,6 @@ namespace other {
       }
     }
 
-    /// 60 fps fixed update
-    /// \todo make fixed update time configurable
-    if (get_driver().get_event_system()->has_event("scene-update")) {
-      get_driver().get_event_system()->cancel_event("scene-update");
-    }
-
-    get_driver().get_event_system()->register_timed_event("scene-update", milliseconds(16), true);
-    get_driver().get_event_system()->add_listener("scene-update", [this](const value& data) {
-      OTHER_ASSERT(active_scene != nullptr, "No active scene in driver during scene update event.");
-      constexpr static float kSixtyHertzFixedDeltaTime = 1.0f / 60.0f;
-      active_scene->fixed_update(kSixtyHertzFixedDeltaTime);
-    });
-
     auto& events = get_driver().get_event_system();
     events->trigger_event("scene.activated", active_scene->id);
     get_driver().on_scene_activated(active_scene->id);
@@ -281,8 +268,6 @@ namespace other {
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
     }
-
-    get_driver().get_event_system()->cancel_event("scene-update");
 
     lua_sandbox& sandbox = active_scene->get_sandbox();
     opt<sol::table> native_table = sandbox["__other_native"];
