@@ -78,6 +78,12 @@ class TestParentObject : Other.Core.OtherObject
 
 class TestBehavior : Other.Core.OtherBehavior
 {
+  /// exercised by the behavior-snapshot tests: public fields are the inspector surface
+  public float speed = 2.5f;
+  public int counter = 7;
+  public bool active = true;
+  public string label = "steady";
+
   protected override void Awake() { }
   protected override void Remove() { }
   protected override void Enable() { }

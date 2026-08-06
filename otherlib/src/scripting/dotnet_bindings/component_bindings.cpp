@@ -9,6 +9,8 @@
 
 #include "object/animation_component.hpp"
 #include "object/audio_source_component.hpp"
+#include "object/camera_component.hpp"
+#include "object/light_component.hpp"
 #include "object/physics_component.hpp"
 #include "object/render_component.hpp"
 #include "scene/scene.hpp"
@@ -374,6 +376,176 @@ namespace other {
       out_normal[1] = hit.normal.y;
       out_normal[2] = hit.normal.z;
       return 1;
+    }
+
+    namespace {
+
+      /// script-facing component resolution: a missing component logs and returns null
+      ///  rather than asserting, matching the other script-call entry points
+      template <typename CT>
+      CT* resolve_script_component(natural_t object_id, const std::string_view what) {
+        scene* active_scene = detail::get_active_scene_checked();
+        OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+        if (!active_scene->has_component<CT>(object_id)) {
+          CORE_LOG_ERROR("Object with ID {} has no {} component.", object_id, what);
+          return nullptr;
+        }
+        return active_scene->get_component<CT>(object_id);
+      }
+
+    }  // namespace
+
+    void native_camera_component_get_position(natural_t object_id, float* out_position) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_position != nullptr, "Output position pointer is null.");
+      out_position[0] = out_position[1] = out_position[2] = 0.f;
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        out_position[0] = comp->camera.position.x;
+        out_position[1] = comp->camera.position.y;
+        out_position[2] = comp->camera.position.z;
+      }
+    }
+
+    void native_camera_component_look_from(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        comp->camera.look_from({ x, y, z });
+      }
+    }
+
+    void native_camera_component_get_direction(natural_t object_id, float* out_direction) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_direction != nullptr, "Output direction pointer is null.");
+      out_direction[0] = out_direction[1] = 0.f;
+      out_direction[2] = -1.f;
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        out_direction[0] = comp->camera.direction.x;
+        out_direction[1] = comp->camera.direction.y;
+        out_direction[2] = comp->camera.direction.z;
+      }
+    }
+
+    void native_camera_component_look_at(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        comp->camera.look_at({ x, y, z });
+      }
+    }
+
+    void native_camera_component_look(natural_t object_id, float px, float py, float pz, float tx, float ty, float tz) {
+      ASSERT_MAIN_THREAD();
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        comp->camera.look({ px, py, pz }, { tx, ty, tz });
+      }
+    }
+
+    float native_camera_component_get_fov(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        return comp->camera.fov;
+      }
+      return 0.f;
+    }
+
+    void native_camera_component_set_fov(natural_t object_id, float fov) {
+      ASSERT_MAIN_THREAD();
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        comp->camera.fov = fov;
+      }
+    }
+
+    void native_camera_component_get_clip_planes(natural_t object_id, float* out_near, float* out_far) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_near != nullptr && out_far != nullptr, "Output clip plane pointers are null.");
+      *out_near = 0.f;
+      *out_far = 0.f;
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        *out_near = comp->camera.clip.near_plane;
+        *out_far = comp->camera.clip.far_plane;
+      }
+    }
+
+    void native_camera_component_set_clip_planes(natural_t object_id, float near_plane, float far_plane) {
+      ASSERT_MAIN_THREAD();
+      if (camera_component* comp = resolve_script_component<camera_component>(object_id, "camera"); comp != nullptr) {
+        comp->camera.clip.near_plane = near_plane;
+        comp->camera.clip.far_plane = far_plane;
+      }
+    }
+
+    void native_point_light_get_position(natural_t object_id, float* out_position) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_position != nullptr, "Output position pointer is null.");
+      out_position[0] = out_position[1] = out_position[2] = 0.f;
+      if (point_light_component* comp = resolve_script_component<point_light_component>(object_id, "point light"); comp != nullptr) {
+        out_position[0] = comp->light.position.x;
+        out_position[1] = comp->light.position.y;
+        out_position[2] = comp->light.position.z;
+      }
+    }
+
+    void native_point_light_set_position(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      if (point_light_component* comp = resolve_script_component<point_light_component>(object_id, "point light"); comp != nullptr) {
+        comp->light.position = { x, y, z };
+      }
+    }
+
+    void native_point_light_get_color(natural_t object_id, float* out_color) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_color != nullptr, "Output color pointer is null.");
+      out_color[0] = out_color[1] = out_color[2] = out_color[3] = 0.f;
+      if (point_light_component* comp = resolve_script_component<point_light_component>(object_id, "point light"); comp != nullptr) {
+        out_color[0] = comp->light.color.r;
+        out_color[1] = comp->light.color.g;
+        out_color[2] = comp->light.color.b;
+        out_color[3] = comp->light.color.a;
+      }
+    }
+
+    void native_point_light_set_color(natural_t object_id, float r, float g, float b, float a) {
+      ASSERT_MAIN_THREAD();
+      if (point_light_component* comp = resolve_script_component<point_light_component>(object_id, "point light"); comp != nullptr) {
+        comp->light.color = { r, g, b, a };
+      }
+    }
+
+    void native_direction_light_get_direction(natural_t object_id, float* out_direction) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_direction != nullptr, "Output direction pointer is null.");
+      out_direction[0] = out_direction[2] = 0.f;
+      out_direction[1] = 1.f;
+      if (direction_light_component* comp = resolve_script_component<direction_light_component>(object_id, "direction light"); comp != nullptr) {
+        out_direction[0] = comp->light.direction.x;
+        out_direction[1] = comp->light.direction.y;
+        out_direction[2] = comp->light.direction.z;
+      }
+    }
+
+    void native_direction_light_set_direction(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      if (direction_light_component* comp = resolve_script_component<direction_light_component>(object_id, "direction light"); comp != nullptr) {
+        comp->light.direction = { x, y, z };
+      }
+    }
+
+    void native_direction_light_get_color(natural_t object_id, float* out_color) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_color != nullptr, "Output color pointer is null.");
+      out_color[0] = out_color[1] = out_color[2] = out_color[3] = 0.f;
+      if (direction_light_component* comp = resolve_script_component<direction_light_component>(object_id, "direction light"); comp != nullptr) {
+        out_color[0] = comp->light.color.r;
+        out_color[1] = comp->light.color.g;
+        out_color[2] = comp->light.color.b;
+        out_color[3] = comp->light.color.a;
+      }
+    }
+
+    void native_direction_light_set_color(natural_t object_id, float r, float g, float b, float a) {
+      ASSERT_MAIN_THREAD();
+      if (direction_light_component* comp = resolve_script_component<direction_light_component>(object_id, "direction light"); comp != nullptr) {
+        comp->light.color = { r, g, b, a };
+      }
     }
 
     native_string native_audio_source_get_clip_path(natural_t object_id) {

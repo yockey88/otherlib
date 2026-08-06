@@ -31,14 +31,15 @@ namespace other {
   void dotnet_field::storage::copy_string_to_storage(const std::string& value) {
     size_t new_size = value.size() + 1;
     if (new_size > size) {
-      arena::free(data, size);
-      size = new_size;
-      data = (uint8_t*)arena::allocate(size);
-    } else {
+      arena::free(data);
+      data = (uint8_t*)arena::allocate(new_size);
+    } else if (data != nullptr) {
       std::memset(data, 0, size);
     }
-    std::memcpy(data, value.data(), size);
-    data[size - 1] = '\0';  // Ensure null termination
+    /// size tracks the logical string length; a shrunk block is reused, never re-read past it
+    size = new_size;
+    std::memcpy(data, value.data(), value.size());
+    data[new_size - 1] = '\0';
   }
 
   void dotnet_field::initialize_field() {

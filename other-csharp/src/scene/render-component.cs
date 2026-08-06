@@ -50,12 +50,15 @@ namespace Other
               model = new Mesh("default_mesh");
             }
 
-            float* vertices = stackalloc float[NativeGetNumVertices(ObjectId) * Vertex.Stride];
-            int* indices = stackalloc int[NativeGetNumIndices(ObjectId)];
+            int num_vertices = NativeGetNumVertices(ObjectId);
+            int num_indices = NativeGetNumIndices(ObjectId);
+            float* vertices = stackalloc float[num_vertices * Vertex.Stride];
+            int* indices = stackalloc int[num_indices];
 
             NativeFetchMesh(ObjectId, vertices, indices);
-            for (int i = 0; i < NativeGetNumVertices(ObjectId) * 3; i += 3)
+            for (int v = 0; v < num_vertices; v++)
             {
+              int i = v * Vertex.Stride;
               model.AddVertex(
                 new Vec3(vertices[i], vertices[i + 1], vertices[i + 2]),
                 new Vec3(vertices[i + 3], vertices[i + 4], vertices[i + 5]),
@@ -66,7 +69,7 @@ namespace Other
                 new Vec4(vertices[i + 18], vertices[i + 19], vertices[i + 20], vertices[i + 21])
               );
             }
-            for (int i = 0; i < NativeGetNumIndices(ObjectId); i += 3)
+            for (int i = 0; i + 2 < num_indices; i += 3)
             {
               model.AddIndices(indices[i], indices[i + 1], indices[i + 2]);
             }

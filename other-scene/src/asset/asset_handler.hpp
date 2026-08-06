@@ -7,6 +7,7 @@
 #include <deque>
 #include <queue>
 #include <string_view>
+#include <unordered_set>
 
 #include "core/defines.hpp"
 #include "core/job_system.hpp"

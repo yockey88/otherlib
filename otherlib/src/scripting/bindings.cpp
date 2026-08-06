@@ -274,12 +274,12 @@ namespace other {
       .bind("DrawPoint", bindings::native_draw_point)
       .bind("DrawRay", bindings::native_draw_ray)
       .bind("DrawArrow", bindings::native_draw_arrow)
-      // .bind("DrawAABB", bindings::native_draw_aabb)
-      // .bind("DrawOBB", bindings::native_draw_obb)
+      .bind("DrawAABB", bindings::native_draw_aabb)
+      .bind("DrawOBB", bindings::native_draw_obb)
       .bind("DrawSphere", bindings::native_draw_sphere)
-      // .bind("DrawFrustum", bindings::native_draw_frustum)
-      // .bind("DrawTransform", bindings::native_draw_transform)
-      // .bind("DrawMesh", bindings::native_draw_mesh)
+      .bind("DrawFrustum", bindings::native_draw_frustum)
+      .bind("DrawTransform", bindings::native_draw_transform)
+      .bind("DrawMesh", bindings::native_draw_mesh)
       .bind("DrawGrid", bindings::native_draw_grid);
 
     bindings::binding_context{ dn_host }
@@ -341,7 +341,24 @@ namespace other {
       .bind("PhysicsAddForce", bindings::native_physics_component_add_force)
       .bind("PhysicsAddImpulse", bindings::native_physics_component_add_impulse)
       .bind("PhysicsAddTorque", bindings::native_physics_component_add_torque)
-      .bind("PhysicsRaycast", bindings::native_physics_raycast);
+      .bind("PhysicsRaycast", bindings::native_physics_raycast)
+      .bind("CameraGetPosition", bindings::native_camera_component_get_position)
+      .bind("CameraLookFrom", bindings::native_camera_component_look_from)
+      .bind("CameraGetDirection", bindings::native_camera_component_get_direction)
+      .bind("CameraLookAt", bindings::native_camera_component_look_at)
+      .bind("CameraLook", bindings::native_camera_component_look)
+      .bind("CameraGetFov", bindings::native_camera_component_get_fov)
+      .bind("CameraSetFov", bindings::native_camera_component_set_fov)
+      .bind("CameraGetClipPlanes", bindings::native_camera_component_get_clip_planes)
+      .bind("CameraSetClipPlanes", bindings::native_camera_component_set_clip_planes)
+      .bind("PointLightGetPosition", bindings::native_point_light_get_position)
+      .bind("PointLightSetPosition", bindings::native_point_light_set_position)
+      .bind("PointLightGetColor", bindings::native_point_light_get_color)
+      .bind("PointLightSetColor", bindings::native_point_light_set_color)
+      .bind("DirectionLightGetDirection", bindings::native_direction_light_get_direction)
+      .bind("DirectionLightSetDirection", bindings::native_direction_light_set_direction)
+      .bind("DirectionLightGetColor", bindings::native_direction_light_get_color)
+      .bind("DirectionLightSetColor", bindings::native_direction_light_set_color);
 
     bindings::binding_context{ dn_host }
       /// Audio

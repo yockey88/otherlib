@@ -132,6 +132,33 @@ namespace other {
     EXPECT_EQ(received.size(), 2u);
   }
 
+  /// S0 regression: directory watches must also surface content changes — sidecar and
+  ///  live-editor reload watch directories, not individual files
+  TEST_F(file_watcher_tests, subtree_diff_emits_modified) {
+    std::filesystem::create_directories(temp_root / "scripts");
+    const filepath target = temp_root / "scripts" / "watched.cs";
+    write_file(target, "one");
+
+    scope<file_watcher> watcher = file_watcher::make_directory_watcher(*events, temp_root, file_watcher::watch_mode::RECURSIVE);
+    watcher->poll();
+    ASSERT_TRUE(received.empty());
+
+    write_file(target, "two");
+    bump_write_time(target, std::chrono::milliseconds(500));
+    watcher->poll();
+    ASSERT_EQ(count_events(file_event::type::MODIFIED), 1u);
+    EXPECT_EQ(received.back().path.filename().string(), "watched.cs");
+
+    /// steady state: an unchanged subtree emits nothing
+    watcher->poll();
+    EXPECT_EQ(received.size(), 1u);
+
+    write_file(target, "three");
+    bump_write_time(target, std::chrono::milliseconds(1500));
+    watcher->poll();
+    EXPECT_EQ(count_events(file_event::type::MODIFIED), 2u);
+  }
+
   TEST_F(file_watcher_tests, filter_prunes_excluded_subtrees) {
     std::filesystem::create_directories(temp_root / "scripts");
     std::filesystem::create_directories(temp_root / "bin" / "Debug");
