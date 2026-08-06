@@ -5,6 +5,7 @@
 
 #include <sol/types.hpp>
 
+#include "lua/lua_sandbox.hpp"
 #include "serialization/scene_serializer.hpp"
 
 #include "object/audio_listener_component.hpp"
@@ -190,9 +191,9 @@ namespace other {
     active_scene->run_script_file();
 
     auto& storage = active_scene->get_storage();
-    if (storage.sandbox["OnSceneActivate"].valid()) {
+    if ((*storage.sandbox)["OnSceneActivate"].valid()) {
       CORE_LOG_DEBUG("Calling 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
-      sol::protected_function on_scene_activate_fn = storage.sandbox["OnSceneActivate"];
+      sol::protected_function on_scene_activate_fn = (*storage.sandbox)["OnSceneActivate"];
       sol::protected_function_result result = on_scene_activate_fn();
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
@@ -259,9 +260,9 @@ namespace other {
     }
 
     auto& storage = active_scene->get_storage();
-    if (storage.sandbox["OnSceneDeactivate"].valid()) {
+    if ((*storage.sandbox)["OnSceneDeactivate"].valid()) {
       CORE_LOG_DEBUG("Calling 'OnSceneDeactivate' for scene [{}:{}]", active_scene->id, active_scene->name);
-      sol::protected_function on_scene_deactivate_fn = storage.sandbox["OnSceneDeactivate"];
+      sol::protected_function on_scene_deactivate_fn = (*storage.sandbox)["OnSceneDeactivate"];
       sol::protected_function_result result = on_scene_deactivate_fn();
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnSceneDeactivate' for scene [{}:{}]", active_scene->id, active_scene->name);

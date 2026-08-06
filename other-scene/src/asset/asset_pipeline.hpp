@@ -4,15 +4,12 @@
 #ifndef OTHER_SCENE_ASSET_ASSET_PIPELINE_HPP
 #define OTHER_SCENE_ASSET_ASSET_PIPELINE_HPP
 
-#include <asio/asio.hpp>
-
 #include "core/coroutine.hpp"
 #include "core/interfaces.hpp"
 #include "core/scope.hpp"
 #include "event/event_system.hpp"
 
 #include "model/vertex.hpp"
-#include "renderer/pipeline_definition.hpp"
 
 #include "asset/asset.hpp"
 
@@ -21,13 +18,12 @@ namespace other {
   class job_system;
   class asset_handler;
   class scene;
+  struct pipeline_definition;
 
   class asset_pipeline {
     OTHER_ENVIRONMENT_INTERFACE("Asset", "Pipeline", event_system*, asset_handler*);
 
    public:
-    using executor_t = asio::thread_pool::executor_type;
-
     using on_asset_loaded = std::function<void(asset*)>;
     using on_asset_load_failed = std::function<void(asset*, const std::string_view)>;
 

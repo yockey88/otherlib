@@ -6,20 +6,25 @@
 
 #include <queue>
 
-#include <asio/asio.hpp>
-
 #include "core/coroutine.hpp"
 #include "core/job.hpp"
 #include "core/job_graph.hpp"
 #include "core/scope.hpp"
 
+/// pool/post plumbing lives in the cpp so this header stays asio-free
+namespace asio {
+  class io_context;
+  class thread_pool;
+}
+
 namespace other {
 
   class OTHER_CLASS job_system {
    public:
-    job_system(asio::io_context& main_ctx)
-        : main_io_context(main_ctx) {}
-    ~job_system() = default;
+    /// ctor/dtor live out of line so the scope<asio::thread_pool> member only needs
+    ///  the complete type inside job_system.cpp
+    job_system(asio::io_context& main_ctx);
+    ~job_system();
 
     void initialize(const config_table& cfg);
     void poll();
@@ -30,21 +35,7 @@ namespace other {
     ref<job> submit_deferred(natural_t trigger_id, job::descriptor desc, job_graph::work_fn work);
     void post_coroutine(task&& coro);
 
-    template <typename F>
-    void post_to_main(F&& work) {
-      asio::post(main_io_context, std::forward<F>(work));
-    }
-
-    template <typename F>
-    void post_to_worker(F&& work) {
-      OTHER_ASSERT(pool != nullptr, "Thread pool for job system is not initialized.");
-      asio::post(*pool, std::forward<F>(work));
-    }
-
     void cancel(natural_t id);
-
-    asio::thread_pool& thread_pool() { return *pool; }
-    auto worker_executor() { return pool->get_executor(); }
 
     inline uint32_t get_num_workers() const { return config.worker_count; }
 

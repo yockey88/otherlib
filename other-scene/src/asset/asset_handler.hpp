@@ -14,8 +14,6 @@
 #include "event/event_system.hpp"
 #include "file/file_watcher.hpp"
 
-#include "renderer/pipeline_definition.hpp"
-
 #include "asset/asset.hpp"
 #include "asset/asset_pipeline.hpp"
 #include "asset/asset_resolver.hpp"
@@ -29,6 +27,8 @@ namespace other {
     }
 
   }  // namespace detail
+
+  struct pipeline_definition;
 
   class scene;
 

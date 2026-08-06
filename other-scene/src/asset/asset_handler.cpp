@@ -7,13 +7,13 @@
 #include <ranges>
 #include <span>
 
-#include <asio/asio.hpp>
-
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/subsystem.hpp"
 #include "file/filesystem.hpp"
 #include "file/path_helpers.hpp"
+
+#include "renderer/pipeline_definition.hpp"
 
 #include "scene/scene.hpp"
 

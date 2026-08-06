@@ -176,7 +176,7 @@ namespace other {
     auto* scripting_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment.");
 
-    lua_sandbox& sandbox = storage->sandbox;
+    lua_sandbox& sandbox = *storage->sandbox;
     lua_host& lua = scripting_env->get_lua_host();
     (void)sandbox.try_load_table(&lua, *script_path);  /// return value optional and unused
 
@@ -394,7 +394,7 @@ namespace other {
       comp.fixed_update(delta_time);
     });
 
-    if (sol::protected_function on_fixed_update_fn = storage->sandbox["OnSceneFixedUpdate"]; on_fixed_update_fn.valid()) {
+    if (sol::protected_function on_fixed_update_fn = (*storage->sandbox)["OnSceneFixedUpdate"]; on_fixed_update_fn.valid()) {
       sol::protected_function_result result = on_fixed_update_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnFixedUpdate' for scene [{}:{}]", id, name);
@@ -786,8 +786,8 @@ namespace other {
       comp.update(delta_time);
     });
 
-    if (storage->sandbox["OnSceneUpdate"].valid()) {
-      sol::protected_function on_update_fn = storage->sandbox["OnSceneUpdate"];
+    if ((*storage->sandbox)["OnSceneUpdate"].valid()) {
+      sol::protected_function on_update_fn = (*storage->sandbox)["OnSceneUpdate"];
       sol::protected_function_result result = on_update_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnUpdate' for scene [{}:{}]", id, name);
@@ -814,8 +814,8 @@ namespace other {
       comp.late_update(delta_time);
     });
 
-    if (storage->sandbox["OnSceneLateUpdate"].valid()) {
-      sol::protected_function on_late_update_fn = storage->sandbox["OnSceneLateUpdate"];
+    if ((*storage->sandbox)["OnSceneLateUpdate"].valid()) {
+      sol::protected_function on_late_update_fn = (*storage->sandbox)["OnSceneLateUpdate"];
       sol::protected_function_result result = on_late_update_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnLateUpdate' for scene [{}:{}]", id, name);
@@ -833,7 +833,7 @@ namespace other {
       comp.render_update(delta_time);
     });
 
-    if (sol::protected_function on_render_fn = storage->sandbox["OnSceneRender"]; on_render_fn.valid()) {
+    if (sol::protected_function on_render_fn = (*storage->sandbox)["OnSceneRender"]; on_render_fn.valid()) {
       sol::protected_function_result result = on_render_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnSceneRender' for scene [{}:{}]", id, name);

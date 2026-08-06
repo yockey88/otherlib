@@ -5,6 +5,7 @@
 
 #include "core/defines.hpp"
 
+#include "lua/lua_sandbox.hpp"
 #include "physics/physics_environment.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -18,6 +19,11 @@
 #include "scene/scene.hpp"
 
 namespace other {
+
+  scene_storage::scene_storage(sol::state& lua_env)
+      : lua_state(lua_env), sandbox(make_scope<lua_sandbox>(lua_env)) {}
+
+  scene_storage::~scene_storage() = default;
 
   scope<scene_storage> make_scene_storage(scene* scene_ptr) {
     auto* env = subsystem<scripting_environment>::get();

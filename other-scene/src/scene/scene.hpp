@@ -182,7 +182,7 @@ namespace other {
 
     inline lua_sandbox& get_sandbox() {
       OTHER_ASSERT(storage != nullptr, "Scene storage is null.");
-      return storage->sandbox;
+      return *storage->sandbox;
     }
 
     template <typename T>

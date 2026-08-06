@@ -3,6 +3,8 @@
  **/
 #include "physics/physics_environment.hpp"
 
+#include <toml++/toml.h>
+
 #include "core/fnv.hpp"
 
 #include "physics/backends/box3d_api.hpp"

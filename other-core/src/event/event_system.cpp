@@ -4,6 +4,9 @@
 #include "event/event_system.hpp"
 
 #include <algorithm>
+#include <deque>
+
+#include <asio/asio.hpp>
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
@@ -12,12 +15,30 @@
 
 namespace other {
 
+  struct event_system::timer_storage {
+    struct event_timer {
+      natural_t event_id;
+      asio::steady_timer timer;
+    };
+    std::deque<event_timer> entries;
+  };
+
+  event_system::event_system(asio::io_context& io_ctx)
+      : io_context(io_ctx), timers(make_scope<timer_storage>()) {}
+
+  event_system::~event_system() = default;
+
+  natural_t event_system::active_timer_count() const {
+    std::scoped_lock lock(events_mutex);
+    return timers->entries.size();
+  }
+
   void event_system::clear() {
     cancel_all();
     {
       std::scoped_lock lock(events_mutex);
       registered_events.clear();
-      event_timers.clear();
+      timers->entries.clear();
     }
     CORE_LOG_INFO("Cleared all events and listeners");
   }
@@ -136,12 +157,12 @@ namespace other {
     itr->ev.data = value{};
     registered_events.erase(itr);
 
-    auto timer_itr = std::find_if(event_timers.begin(), event_timers.end(), [event_id](const event_timer& et) {
+    auto timer_itr = std::find_if(timers->entries.begin(), timers->entries.end(), [event_id](const timer_storage::event_timer& et) {
       return et.event_id == event_id;
     });
-    if (timer_itr != event_timers.end()) {
+    if (timer_itr != timers->entries.end()) {
       timer_itr->timer.cancel();
-      event_timers.erase(timer_itr);
+      timers->entries.erase(timer_itr);
     }
 
     CORE_LOG_DEBUG("Cancelled event with ID {}", event_id);
@@ -178,7 +199,7 @@ namespace other {
 
   void event_system::cancel_all() {
     std::scoped_lock lock(events_mutex);
-    for (auto& timer : event_timers) {
+    for (auto& timer : timers->entries) {
       timer.timer.cancel();
     }
   }
@@ -197,12 +218,12 @@ namespace other {
       std::scoped_lock lock(events_mutex);
       /// one timer entry per event: recurring events re-arm their existing timer instead of
       ///  appending a new (never-erased) entry every period
-      auto timer_itr = std::find_if(event_timers.begin(), event_timers.end(), [event_id](const event_timer& et) {
+      auto timer_itr = std::find_if(timers->entries.begin(), timers->entries.end(), [event_id](const timer_storage::event_timer& et) {
         return et.event_id == event_id;
       });
-      if (timer_itr == event_timers.end()) {
-        event_timers.emplace_back(event_timer{ event_id, asio::steady_timer(io_context) });
-        timer_itr = std::prev(event_timers.end());
+      if (timer_itr == timers->entries.end()) {
+        timers->entries.emplace_back(timer_storage::event_timer{ event_id, asio::steady_timer(io_context) });
+        timer_itr = std::prev(timers->entries.end());
       }
 
       auto& timer = *timer_itr;

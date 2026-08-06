@@ -5,6 +5,8 @@
 
 #include <sstream>
 
+#include <asio/asio.hpp>
+
 #include "core/defines.hpp"
 #include "core/logger.hpp"
 
@@ -21,16 +23,6 @@ namespace other {
     }
     ss << ":" << bp.port;
     return ss.str();
-  }
-
-  std::string binding_point::write_string(const asio::ip::tcp::endpoint& ep) {
-    binding_point bp = from_asio(ep.address(), static_cast<uint16_t>(ep.port()));
-    return write_string(bp);
-  }
-
-  std::string binding_point::write_string(const asio::ip::udp::endpoint& ep) {
-    binding_point bp = from_asio(ep.address(), static_cast<uint16_t>(ep.port()));
-    return write_string(bp);
   }
 
   binding_point binding_point::from_asio(const asio::ip::address& addr, uint16_t port) {
