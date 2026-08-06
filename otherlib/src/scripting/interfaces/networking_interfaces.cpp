@@ -32,19 +32,4 @@ namespace other {
     };
   }
 
-  environment_interface get_http_server_interface() {
-    return {
-      .name = "Other.HttpServer",
-      .description = "Interface to handle HTTP requests received by the server.",
-      .actions = {
-        {
-          .name = "HandleHttpRequest",
-          .description = "Callback invoked when an HTTP request is received. Args: (request [HttpRequest])",
-          .script_name = "OnHttpRequest",
-          .plugin_name = "on_http_request",
-        },
-      }
-    };
-  }
-
 }  // namespace other

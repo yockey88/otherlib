@@ -9,6 +9,7 @@
 #include "other_test.hpp"
 
 #include "object/animation_component.hpp"
+#include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
 #include "object/script_component.hpp"
@@ -254,6 +255,57 @@ namespace other {
     EXPECT_EQ(comp->bound_skeleton, nullptr);
     EXPECT_TRUE(comp->working_pose.positions.empty());
     EXPECT_TRUE(comp->binding.joint_of_track.empty());
+  }
+
+  TEST_F(scene_serializer_tests, audio_source_component_play_serialize) {
+    scene s("Audio Scene");
+    scene_object& emitter = s.create_object("Thruster");
+
+    audio_source_component source = {};
+    source.playing = true;
+    source.looping = true;
+    source.volume = 0.75f;
+    source.pitch = 1.25f;
+    source.bus = 1;
+    source.spatial = true;
+    source.min_distance = 2.f;
+    source.max_distance = 300.f;
+    source.doppler_factor = 0.5f;
+    s.add_component<audio_source_component>(&emitter, std::move(source));
+
+    const ostd::vector<uint8_t> snapshot = s.capture_snapshot();
+
+    /// gameplay-style mutations while "playing"
+    audio_source_component* live = s.try_get_component<audio_source_component>(emitter.id);
+    ASSERT_NE(live, nullptr);
+    live->playing = false;
+    live->looping = false;
+    live->volume = 0.1f;
+    /// fake bound runtime state; a restore must never resurrect it
+    live->voice = 42;
+    live->bound_clip_id = 7;
+    live->bound_clip_revision = 3;
+
+    s.restore_snapshot(snapshot);
+
+    scene_object* restored = s.find_object(std::string_view{ "Thruster" });
+    ASSERT_NE(restored, nullptr);
+    audio_source_component* comp = s.try_get_component<audio_source_component>(restored->id);
+    ASSERT_NE(comp, nullptr);
+
+    EXPECT_TRUE(comp->playing);
+    EXPECT_TRUE(comp->looping);
+    EXPECT_FLOAT_EQ(comp->volume, 0.75f);
+    EXPECT_FLOAT_EQ(comp->pitch, 1.25f);
+    EXPECT_EQ(comp->bus, 1u);
+    EXPECT_FLOAT_EQ(comp->min_distance, 2.f);
+    EXPECT_FLOAT_EQ(comp->max_distance, 300.f);
+    EXPECT_FLOAT_EQ(comp->doppler_factor, 0.5f);
+
+    /// runtime voice state never serializes; the reconciler rebinds next tick
+    EXPECT_EQ(comp->voice, 0u);
+    EXPECT_EQ(comp->bound_clip_id, 0u);
+    EXPECT_EQ(comp->bound_clip_revision, 0u);
   }
 
   TEST_F(scene_serializer_tests, snapshot_restore_is_repeatable) {

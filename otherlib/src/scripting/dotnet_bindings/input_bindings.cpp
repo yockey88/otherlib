@@ -4,6 +4,7 @@
 #include "scripting/dotnet_bindings/input_bindings.hpp"
 
 #include <SDL3/SDL.h>
+#include <imgui/imgui.h>
 
 namespace other {
   namespace bindings {

@@ -75,6 +75,10 @@ namespace other {
 
     void destroy_object(natural_t id);
 
+    /// structural move only (no transform fixup); refuses the root, self, and any
+    ///  move that would create a cycle
+    bool reparent(natural_t id, natural_t new_parent_id);
+
     ostd::vector<uint64_t> get_all_object_ids() const;
 
     size_t get_object_count() const;

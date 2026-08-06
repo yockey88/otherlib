@@ -5,6 +5,7 @@
 
 #include "core/defines.hpp"
 
+#include "lua/lua_sandbox.hpp"
 #include "physics/physics_environment.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -18,6 +19,11 @@
 #include "scene/scene.hpp"
 
 namespace other {
+
+  scene_storage::scene_storage(sol::state& lua_env)
+      : lua_state(lua_env), sandbox(make_scope<lua_sandbox>(lua_env)) {}
+
+  scene_storage::~scene_storage() = default;
 
   scope<scene_storage> make_scene_storage(scene* scene_ptr) {
     auto* env = subsystem<scripting_environment>::get();
@@ -34,19 +40,27 @@ namespace other {
     storage->registry = entt::registry{};
     storage->render_data_cache = std::nullopt;
 
-    auto* physics_env = subsystem<physics_environment>::get();
-    OTHER_ASSERT(physics_env != nullptr, "Physics environment subsystem is not initialized.");
-
-    storage->physics = physics_env->create_world(scene_ptr->id);
+    if (subsystem<physics_environment>::inert) {
+      /// physics-off profile: a scene without a world is legal, every consumer null-checks
+      CORE_LOG_INFO("Physics environment inactive, scene '{}' created without a physics world.", scene_ptr->name);
+      storage->physics = nullptr;
+    } else {
+      auto* physics_env = subsystem<physics_environment>::get();
+      OTHER_ASSERT(physics_env != nullptr, "Physics environment subsystem is not initialized.");
+      storage->physics = physics_env->create_world(scene_ptr->id);
+    }
 
     return storage;
   }
 
   void clear_storage(scope<scene_storage>& storage) {
-    auto* env = subsystem<physics_environment>::get();
-    OTHER_ASSERT(env != nullptr, "Physics environment subsystem is not initialized.");
+    if (storage->physics != nullptr) {
+      auto* env = subsystem<physics_environment>::get();
+      OTHER_ASSERT(env != nullptr, "Physics environment subsystem is not initialized.");
 
-    env->destroy_world(storage->scene_id);
+      env->destroy_world(storage->scene_id);
+      storage->physics = nullptr;
+    }
 
     storage = nullptr;
   }

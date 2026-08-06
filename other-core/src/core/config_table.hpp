@@ -5,11 +5,12 @@
 #define OTHER_CORE_CONFIG_TABLE_HPP
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 
 #include <glm/glm.hpp>
-#include <toml++/toml.h>
+#include <toml++/impl/forward_declarations.hpp>
 
 #include "core/defines.hpp"
 #include "core/profiler.hpp"
@@ -17,6 +18,35 @@
 #include "serialization/reflection.hpp"
 
 namespace other {
+
+  class config_table;
+
+  /// parse a toml string into a config table; nullopt on parse failure.
+  /// (the friend declaration inside config_table alone is not found by ordinary lookup)
+  opt<config_table> parse_string_config(const std::string_view contents);
+
+  namespace detail {
+
+    /// value-semantic heap box for the parsed table: special members are defined in
+    ///  config_table.cpp so this header only needs toml++'s forward declarations,
+    ///  while config_table itself keeps its defaulted memberwise copy/move
+    class toml_table_box {
+     public:
+      toml_table_box();
+      toml_table_box(const toml_table_box& other);
+      toml_table_box& operator=(const toml_table_box& other);
+      toml_table_box(toml_table_box&& other) noexcept;
+      toml_table_box& operator=(toml_table_box&& other) noexcept;
+      ~toml_table_box();
+
+      toml::table& get() { return *ptr; }
+      const toml::table& get() const { return *ptr; }
+
+     private:
+      std::unique_ptr<toml::table> ptr;
+    };
+
+  }  // namespace detail
 
   class config_table {
    public:
@@ -35,32 +65,10 @@ namespace other {
      */
     value get_project_value(const std::string_view toml_subpath) const;
 
+    /// defined in config_table.cpp with explicit instantiations for the supported
+    ///  value types; an unresolved external here means a new type needs a row there
     template <typename T>
-    opt<T> try_get_value(const std::string_view toml_path) const {
-      if (!has_path(toml_path)) {
-        return std::nullopt;
-      }
-
-      if constexpr (std::is_same_v<T, toml::table>) {
-        const toml::table* subtable = get_subtable(toml_path);
-        if (subtable != nullptr) {
-          return *subtable;
-        } else {
-          CORE_LOG_WARN("Config key '{}' is not a table.", toml_path);
-        }
-      } else {
-        toml::node_view node = table.at_path(toml_path);
-        OTHER_ASSERT(node, "Config key '{}' not found.", toml_path);
-
-        if (check_type<T>(node, toml_path)) {
-          return return_node<T>(node, toml_path);
-        } else {
-          CORE_LOG_WARN("Config key '{}' is not of the expected type.", toml_path);
-        }
-      }
-
-      return std::nullopt;
-    }
+    opt<T> try_get_value(const std::string_view toml_path) const;
 
     toml::table& get_project_table();
     const toml::table& get_project_table() const;
@@ -77,13 +85,10 @@ namespace other {
       }
     }
 
-    inline bool has_path(const std::string_view toml_path) const {
-      return (bool)table.at_path(toml_path);
-    }
+    bool has_path(const std::string_view toml_path) const;
 
-    inline const auto get_raw(const std::string_view toml_path) const {
-      return table.at_path(toml_path);
-    }
+    /// callers dereferencing the view include <toml++/toml.h> themselves
+    toml::node_view<const toml::node> get_raw(const std::string_view toml_path) const;
     const toml::table* get_subtable(const std::string_view toml_path) const;
 
     bool valid = true;
@@ -112,72 +117,8 @@ namespace other {
     opt<filepath> project_file = std::nullopt;
 
    private:
-    template <typename T>
-    bool check_type(auto n, const std::string_view toml_path) const {
-      if (!n) {
-        CORE_LOG_ERROR("Config key '{}' not found.", toml_path);
-        return false;
-      }
-
-      if constexpr (std::is_same_v<T, toml::table>) {
-        return n.is_table();
-      } else if constexpr (std::is_same_v<T, std::string>) {
-        return n.is_string();
-      } else if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
-        return n.is_integer();
-      } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
-        return n.is_floating_point();
-      } else if constexpr (std::is_same_v<T, bool>) {
-        return n.is_boolean();
-      } else if constexpr (is_container<T> && !is_stringlike_type<T>) {
-        return n.is_array();
-      } else {
-        static_assert(false, "Unsupported type for config value.");
-      }
-    }
-
-    template <typename T>
-    T return_node(auto n, const std::string_view toml_path) const {
-      if constexpr (std::is_same_v<T, toml::table>) {
-        return *n.as_table();
-      } else if constexpr (std::is_same_v<T, std::string>) {
-        /// here we replace ${x} with environment variables/necessary
-        /// replacements
-        std::string v = n.as_string()->get();
-        return perform_tag_replacement(v);
-      } else if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
-        int64_t v = n.as_integer()->get();
-        return static_cast<T>(v);
-      } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
-        double v = n.as_floating_point()->get();
-        return static_cast<T>(v);
-      } else if constexpr (std::is_same_v<T, bool>) {
-        bool v = n.as_boolean()->get();
-        return v;
-      } else if constexpr (is_container<T> && !is_stringlike_type<T>) {
-        using vtype = typename T::value_type;
-        if constexpr (false) {
-        }
-
-        T result = {};
-        const toml::array* array_node = n.as_array();
-        if (array_node == nullptr) {
-          CORE_LOG_WARN("Config key '{}' is not an array, returning default value.", toml_path);
-          return result;
-        }
-
-        CORE_LOG_TRACE("Parsing config array for key '{}' ({} items)", toml_path, array_node->size());
-        array_node->for_each([&](auto&& elem) {
-          result.push_back(return_node<vtype>(elem, toml_path));
-        });
-        return result;
-      } else {
-        static_assert(false, "Unsupported type for config value.");
-      }
-    }
-
     friend opt<config_table> parse_string_config(const std::string_view contents);
-    toml::table table;
+    detail::toml_table_box table;
   };
 
   namespace configuration {

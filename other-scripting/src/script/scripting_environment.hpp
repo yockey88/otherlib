@@ -11,7 +11,6 @@
 #include "dotnet/dotnet_host.hpp"
 #include "dotnet/dotnet_object.hpp"
 #include "lua/lua_host.hpp"
-#include "python/interpreter.hpp"
 #include "script/script_object.hpp"
 
 
@@ -171,16 +170,6 @@ namespace other {
     lua_script* load_lua_file(const std::string_view file_path);
     /// END LUA
 
-    /// PYTHON
-    void attach_python_object(integer_t id, const std::string_view type_name);
-    void detach_python_object(integer_t id);
-    template <typename R = void, typename... Args>
-      requires std::is_same_v<R, void> || std::is_pointer_v<R> || std::is_trivial_v<R>
-    R call_python_method(integer_t id, const std::string_view function_name, Args&&... ctor_args) {
-      return default_return_value<R>();
-    }
-    /// END PYTHON
-
     constexpr static inline size_t kMaxScriptObjects = memory_pool<script_object>::kMaxObjects;
     ref<assembly> dotnet_binding_assembly = nullptr;
 
@@ -201,8 +190,6 @@ namespace other {
     dotnet_host dotnet;
 
     lua_host lua;
-
-    python_interpreter python;
 
     std::array<live_script_object, kMaxScriptObjects> live_objects = {};
     scope<memory_pool<script_object>> script_object_pool = nullptr;

@@ -161,6 +161,23 @@ namespace other {
     }
 
     auto draw = get_renderer().debug();
+
+    if (scene->physics_debug_rendering()) {
+      scene->sync_edit_mode_physics_poses();  /// colliders track entity edits while not playing
+      if (physics_world* world = scene->physics(); world != nullptr) {
+        physics_api::physics_render_debug_data physics_debug = world->get_debug_render_data();
+        for (size_t i = 0; i < physics_debug.debug_lines.size(); ++i) {
+          draw.line(physics_debug.debug_lines[i].start, physics_debug.debug_lines[i].end, physics_debug.debug_line_colors[i]);
+        }
+        for (size_t i = 0; i < physics_debug.debug_triangles.size(); ++i) {
+          const auto& tri = physics_debug.debug_triangles[i];
+          glm::vec4 color = physics_debug.debug_triangle_colors[i];
+          color.a = 0.25f;  /// any solid geometry jolt emits reads as a tint, not a wall
+          draw.triangle(tri.v0, tri.v1, tri.v2, color);
+        }
+      }
+    }
+
     glm::vec4 select_color = basic_colors::kGreen;
     if (context.has_selection()) {
       for (const auto& obj_id : context.current_selection.objects) {

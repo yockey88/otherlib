@@ -12,6 +12,7 @@
 #undef main
 #include <SDL3/SDL.h>
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 #include "core/config_table.hpp"
 #include "core/fnv.hpp"
@@ -25,18 +26,11 @@ namespace other {
   namespace backend_keys {
 
     static constexpr std::string_view kOpenGL = "opengl";
+    /// planned second backend; recognized so configs get "not implemented yet", not "unknown"
     static constexpr std::string_view kVulkan = "vulkan";
-    static constexpr std::string_view kDirectX = "directx";
-    static constexpr std::string_view kMetal = "metal";
-    static constexpr std::string_view kSoftware = "software";
-    static constexpr std::string_view kNull = "null";
 
     static constexpr natural_t kOpenGLHash = FNV(kOpenGL);
     static constexpr natural_t kVulkanHash = FNV(kVulkan);
-    static constexpr natural_t kDirectXHash = FNV(kDirectX);
-    static constexpr natural_t kMetalHash = FNV(kMetal);
-    static constexpr natural_t kSoftwareHash = FNV(kSoftware);
-    static constexpr natural_t kNullHash = FNV(kNull);
 
   }  // namespace backend_keys
 
@@ -82,20 +76,18 @@ namespace other {
       natural_t hash = FNV(name);
       switch (hash) {
         case backend_keys::kOpenGLHash: flags |= SDL_WINDOW_OPENGL; break;
+        case backend_keys::kVulkanHash:
+          CORE_LOG_ERROR("Vulkan backend is not implemented yet; rendering cannot start");
+          return;
         default:
-          CORE_LOG_ERROR("Unknown/Unimplmented rendering backend: {}", name);
-          break;
+          CORE_LOG_ERROR("Unknown rendering backend: {}", name);
+          return;
       }
 
       SDL_Window* window = window_mgr->create_window("Other Environment", window_size.x, window_size.y, flags);
       OTHER_ASSERT(window != nullptr, "Failed to create main window: {}", SDL_GetError());
 
-      switch (hash) {
-        case backend_keys::kOpenGLHash: set_rendering_api(make_scope<opengl_api>(), std::move(window_mgr)); break;
-        default:
-          CORE_LOG_ERROR("Unknown/Unimplmented rendering backend: {}", name);
-          break;
-      }
+      set_rendering_api(make_scope<opengl_api>(), std::move(window_mgr));
 
       state_flags.backend_loaded = true;
     }

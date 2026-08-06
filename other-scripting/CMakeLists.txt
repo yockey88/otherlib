@@ -19,21 +19,11 @@ PRIVATE
   src/lua/lua_host.cpp
   src/lua/lua_script.cpp
 
-  src/python/interpreter.cpp
-
   src/script/script_object.cpp
   src/script/scripting_environment.cpp
 )
 
-set(PYTHON_INCLUDE_DIR 
-  $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/python312/include>
-  $<INSTALL_INTERFACE:include/python312>
-)
-set(PYTHON_LIB_DIR 
-  $<BUILD_INTERFACE:${OTHER_EXTERN_DIR}/python312/libs>
-  $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
-)
-set(LUA_LIB_DIRECTORY 
+set(LUA_LIB_DIRECTORY
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lib>
   $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
@@ -43,13 +33,14 @@ target_include_directories(other_scripting
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/scripting>
 )
-target_link_directories(other_scripting 
+target_link_directories(other_scripting
   PUBLIC
-    $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}> 
-    $<BUILD_INTERFACE:${PYTHON_LIB_DIR}>
+    $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}>
     $<BUILD_INTERFACE:${LUA_LIB_DIRECTORY}>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 target_link_libraries(other_scripting PRIVATE lua-5.4.4 other_core)
+
+target_precompile_headers(other_scripting PRIVATE <sol/sol.hpp>)
 
 other_install_module(other_scripting "scripting")

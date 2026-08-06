@@ -4,6 +4,8 @@
 #ifndef OTHER_NETWORK_NETWORK_ACKNOWLEDGEMENT_LIST_HPP
 #define OTHER_NETWORK_NETWORK_ACKNOWLEDGEMENT_LIST_HPP
 
+#include <asio/asio.hpp>
+
 #include "message/message.hpp"
 
 namespace other {

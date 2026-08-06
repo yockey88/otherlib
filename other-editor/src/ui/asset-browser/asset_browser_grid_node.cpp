@@ -288,7 +288,14 @@ namespace other {
 
     void asset_browser_grid_node::on_render_node_body() {
       using namespace colors;
-      refresh_listing();
+      /// the listing is a full mount walk — refresh on a cadence, not per frame
+      if (++frames_since_refresh >= 30) {
+        refresh_listing();
+        frames_since_refresh = 0;
+      }
+      if (selected_asset_idx >= 0 && selected_asset_idx < static_cast<int>(assets.size())) {
+        assets[selected_asset_idx].is_selected = true;
+      }
       ImDrawList* dl = ImGui::GetWindowDrawList();
 
       {
@@ -353,7 +360,6 @@ namespace other {
       if (selected_asset_idx >= 0 && selected_asset_idx < static_cast<int>(assets.size()) &&
           assets[selected_asset_idx].handler_asset_id != 0) {
         show_detail_panel = true;
-        ImGui::OpenPopup("##asset-detail-popup");
       }
 
       float detail_h = show_detail_panel ? kDetailPanelHeight : 0.f;

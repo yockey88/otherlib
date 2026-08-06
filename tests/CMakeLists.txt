@@ -50,6 +50,16 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/scene_serializer_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/scene/asset_tests.cpp
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/physics/simulation_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/physics/shape_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/physics/contact_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/physics/debug_and_lifecycle_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/physics/box3d_backend_tests.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_environment_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_import_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/audio/audio_scene_tests.cpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/renderer/model_importer_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/renderer/animation_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/renderer/material_tests.cpp

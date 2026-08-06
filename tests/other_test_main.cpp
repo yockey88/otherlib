@@ -3,6 +3,7 @@
  **/
 #include <gtest/gtest.h>
 
+#include "audio/audio_environment.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "other_test.hpp"
@@ -30,6 +31,7 @@ int main(int argc, char** argv) {
   other::subsystem<other::physics_environment>::inert = false;
   other::subsystem<other::renderer_backend>::inert = false;
   other::subsystem<other::scripting_environment>::inert = false;
+  other::subsystem<other::audio_environment>::inert = false;
 
   /// this is for the CI pipeline which will start running build, but it wil fail to find resources if running there
   other::filepath cwd = std::filesystem::current_path();

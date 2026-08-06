@@ -4,6 +4,8 @@
 #ifndef OTHER_ENVIRONMENT_SCRIPTING_DOTNET_BINDINGS_UI_BINDINGS_HPP
 #define OTHER_ENVIRONMENT_SCRIPTING_DOTNET_BINDINGS_UI_BINDINGS_HPP
 
+#include <imgui/imgui.h>
+
 #include "dotnet/native_string.hpp"
 #include "dotnet/types.hpp"
 

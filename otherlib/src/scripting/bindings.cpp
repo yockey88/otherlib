@@ -5,12 +5,14 @@
 
 #include "core/logger.hpp"
 
-#include "http/http_request.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "object/animation_component.hpp"
+#include "object/audio_listener_component.hpp"
+#include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
 #include "object/light_component.hpp"
+#include "object/physics_component.hpp"
 #include "object/script_component.hpp"
 #include "object/transform.hpp"
 
@@ -323,7 +325,29 @@ namespace other {
       .bind("GetMaterialPath", bindings::native_render_component_get_material_path)
       .bind("SetMaterialPath", bindings::native_render_component_set_material_path)
       .bind("GetAnimationClipPath", bindings::native_animation_component_get_clip_path)
-      .bind("SetAnimationClipPath", bindings::native_animation_component_set_clip_path);
+      .bind("SetAnimationClipPath", bindings::native_animation_component_set_clip_path)
+      .bind("GetAudioClipPath", bindings::native_audio_source_get_clip_path)
+      .bind("SetAudioClipPath", bindings::native_audio_source_set_clip_path)
+      .bind("GetPhysicsBodyType", bindings::native_physics_component_get_body_type)
+      .bind("SetPhysicsBodyType", bindings::native_physics_component_set_body_type)
+      .bind("GetPhysicsMass", bindings::native_physics_component_get_mass)
+      .bind("SetPhysicsMass", bindings::native_physics_component_set_mass)
+      .bind("GetPhysicsIsTrigger", bindings::native_physics_component_get_is_trigger)
+      .bind("SetPhysicsIsTrigger", bindings::native_physics_component_set_is_trigger)
+      .bind("GetPhysicsLinearVelocity", bindings::native_physics_component_get_linear_velocity)
+      .bind("SetPhysicsLinearVelocity", bindings::native_physics_component_set_linear_velocity)
+      .bind("GetPhysicsAngularVelocity", bindings::native_physics_component_get_angular_velocity)
+      .bind("SetPhysicsAngularVelocity", bindings::native_physics_component_set_angular_velocity)
+      .bind("PhysicsAddForce", bindings::native_physics_component_add_force)
+      .bind("PhysicsAddImpulse", bindings::native_physics_component_add_impulse)
+      .bind("PhysicsAddTorque", bindings::native_physics_component_add_torque)
+      .bind("PhysicsRaycast", bindings::native_physics_raycast);
+
+    bindings::binding_context{ dn_host }
+      /// Audio
+      .bind("AudioPlayOneShot", bindings::native_audio_play_one_shot)
+      .bind("AudioSetBusVolume", bindings::native_audio_set_bus_volume)
+      .bind("AudioGetBusVolume", bindings::native_audio_get_bus_volume);
 
     bindings::validate_binding_points(dn_host);
   }
@@ -378,53 +402,8 @@ namespace other {
   void do_script_interface_bindings(driver* drv) {
     OTHER_ASSERT(drv != nullptr, "Driver pointer is null in do_script_interface_bindings.");
 
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
-
     detail::set_dotnet_native_driver(drv);
     abi::oe_init_abi(drv);
-
-    sol::state& lua_state = env->get_lua_host().get_lua_state();
-    lua_state.new_enum(
-      "HttpVerb",
-      "GET", http::verb::HTTP_GET,
-      "POST", http::verb::HTTP_POST,
-      "PUT", http::verb::HTTP_PUT,
-      "DELETE", http::verb::HTTP_DELETE,
-      "PATCH", http::verb::HTTP_PATCH,
-      "HEAD", http::verb::HTTP_HEAD,
-      "OPTIONS", http::verb::HTTP_OPTIONS);
-    lua_state.new_usertype<http::method_info>(
-      "HttpMethodInfo",
-      "verb", &http::method_info::method,
-      "name", &http::method_info::name);
-    lua_state.new_usertype<http::header>(
-      "HttpHeader",
-      "name", &http::header::name,
-      "value", &http::header::value);
-    lua_state.new_usertype<http::request>(
-      "HttpRequest",
-      "method", &http::request::method,
-      "path", &http::request::path,
-      "query", &http::request::query_string,
-      "headers", &http::request::headers,
-      "body", &http::request::body);
-    lua_state.new_usertype<http::response>(
-      "HttpResponse",
-      sol::constructors<http::response(), http::response(int)>(),
-      "status_code", &http::response::status_code,
-      "response_string", sol::property(&http::response::get_response_string),
-      "set_headers",
-      [](http::response& res, sol::table headers) {
-        for (const auto& kvp : headers) {
-          res.add_header({ .name = kvp.first.as<std::string>(), .value = kvp.second.as<std::string>() });
-        }
-      },
-      "add_header",
-      [](http::response& res, const std::string& name, const std::string& value) {
-        res.add_header({ .name = name, .value = value });
-      },
-      "set_body_content", &http::response::set_body_content);
   }
 
   void do_script_interface_unbinding() {
@@ -523,6 +502,8 @@ namespace other {
       bind_lua_component<point_light_component>(lua_state, "__native_point_light_component");
       bind_lua_component<direction_light_component>(lua_state, "__native_direction_light_component");
       bind_lua_component<animation_component>(lua_state, "__native_animation_component");
+      bind_lua_component<audio_source_component>(lua_state, "__native_audio_source_component");
+      bind_lua_component<audio_listener_component>(lua_state, "__native_audio_listener_component");
     }
 
     void bind_native_types_dotnet(dotnet_host& dn_host) {
@@ -539,6 +520,9 @@ namespace other {
       bind_dotnet_component<point_light_component>(dn_host, obj);
       bind_dotnet_component<direction_light_component>(dn_host, obj);
       bind_dotnet_component<animation_component>(dn_host, obj);
+      bind_dotnet_component<audio_source_component>(dn_host, obj);
+      bind_dotnet_component<audio_listener_component>(dn_host, obj);
+      bind_dotnet_component<physics_component>(dn_host, obj);
 
       // dn_host.destroy_managed_object(obj);
     }

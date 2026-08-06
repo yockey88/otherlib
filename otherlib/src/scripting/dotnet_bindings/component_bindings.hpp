@@ -29,6 +29,37 @@ namespace other {
     native_string native_animation_component_get_clip_path(natural_t object_id);
     void native_animation_component_set_clip_path(natural_t object_id, native_string path);
 
+    /// physics settings accessors write the AUTHORED component settings; the scene's
+    ///  revalidation pass reconciles the live body on the next frame
+    uint32_t native_physics_component_get_body_type(natural_t object_id);
+    void native_physics_component_set_body_type(natural_t object_id, uint32_t body_type);
+    float native_physics_component_get_mass(natural_t object_id);
+    void native_physics_component_set_mass(natural_t object_id, float mass);
+    uint32_t native_physics_component_get_is_trigger(natural_t object_id);
+    void native_physics_component_set_is_trigger(natural_t object_id, uint32_t is_trigger);
+
+    /// runtime body verbs against the live body (kinematic/static bodies warn-and-ignore forces)
+    void native_physics_component_get_linear_velocity(natural_t object_id, float* out_velocity);
+    void native_physics_component_set_linear_velocity(natural_t object_id, float x, float y, float z);
+    void native_physics_component_get_angular_velocity(natural_t object_id, float* out_velocity);
+    void native_physics_component_set_angular_velocity(natural_t object_id, float x, float y, float z);
+    void native_physics_component_add_force(natural_t object_id, float x, float y, float z);
+    void native_physics_component_add_impulse(natural_t object_id, float x, float y, float z);
+    void native_physics_component_add_torque(natural_t object_id, float x, float y, float z);
+
+    /// closest-hit raycast against the active scene's physics world; returns 0 on miss
+    uint32_t native_physics_raycast(float ox, float oy, float oz, float dx, float dy, float dz, float max_distance,
+                                    natural_t* out_object, float* out_point, float* out_normal, float* out_distance);
+
+    /// audio clips are assets too: scripts assign a .wav/.mp3 path ("" clears)
+    native_string native_audio_source_get_clip_path(natural_t object_id);
+    void native_audio_source_set_clip_path(natural_t object_id, native_string path);
+
+    /// fire-and-forget + bus control on the audio environment; no-ops when audio is inert
+    void native_audio_play_one_shot(native_string path, float x, float y, float z, float volume, float pitch, uint32_t bus);
+    void native_audio_set_bus_volume(uint32_t bus, float volume);
+    float native_audio_get_bus_volume(uint32_t bus);
+
   }  // namespace bindings
 }  // namespace other
 

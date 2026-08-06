@@ -10,18 +10,18 @@
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
 
+#include "ui/asset_picker.hpp"
+
 #include "asset/asset.hpp"
 
 namespace other {
   namespace ui {
     namespace asset_browser_w {
 
-      constexpr const char* kDragDropPayloadType = "OTHER_ASSET_BROWSER_ASSET_DRAG_PAYLOAD";
-
-      struct asset_drag_drop_payload {
-        natural_t handler_asset_id = 0;
-        asset::type asset_type = asset::EMPTY;
-      };
+      /// payload type + struct live in otherlib (ui/asset_picker.hpp) so inspector
+      ///  fields can accept browser drops
+      constexpr const char* kDragDropPayloadType = inspector::kAssetDragDropPayloadType;
+      using asset_drag_drop_payload = inspector::asset_drag_drop_payload;
 
       constexpr float kToolbarHeight = 34.f;
       constexpr float kFilterBarHeight = 28.f;

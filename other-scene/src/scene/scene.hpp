@@ -7,6 +7,7 @@
 #include <entt/entt.hpp>
 
 #include "core/defines.hpp"
+#include "serialization/scene_document.hpp"
 
 #include "renderer/debug_draw.hpp"
 #include "renderer/renderer.hpp"
@@ -17,13 +18,13 @@
 #include "object/transform.hpp"
 #include "scene/scene_storage.hpp"
 #include "scene/scene_tree.hpp"
-#include "serialization/scene_document.hpp"
 
 #include "asset/asset_handler.hpp"
 
 namespace other {
 
   struct udp_handle;
+  struct physics_component;
 
   class scene {
    private:
@@ -47,14 +48,14 @@ namespace other {
 
     void run_script_file();
 
-    /// declarative scene documents: the asset loader parses a scene file (any thread)
-    ///  and parks the result here; activation instantiates it on the main thread
+    /// declarative scene documents, asset loader parses a scene file (any thread) and sets it here
+    /// activation instantiates it on the main thread
     void set_pending_document(serialization::scene_document&& doc);
     bool has_pending_document() const { return pending_document.has_value(); }
     void instantiate_pending_document();
 
-    /// binary scene snapshot (same wire format as .oscnb) — the fast store/restore
-    ///  primitive behind play/stop restore, editor undo/redo, and state replication
+    /// binary scene snapshot (same wire format as .oscnb)
+    /// primitive backing play/stop restore, editor undo/redo, and state replication
     ostd::vector<uint8_t> capture_snapshot();
     void restore_snapshot(std::span<const uint8_t> snapshot_bytes);
 
@@ -77,12 +78,22 @@ namespace other {
 
     void enable_physics_debug_rendering();
     void disable_physics_debug_rendering();
+    bool physics_debug_rendering() const { return debug_physics_rendering_enabled; }
+    physics_world* physics() { return storage != nullptr ? storage->physics : nullptr; }
 
-    /// fixed update called at a constant timestep (e.g., 60 Hz)
+    /// while NOT playing, teleport bodies whose entity pose moved (editor authoring against
+    ///  the physics debug overlay); no-op while playing
+    void sync_edit_mode_physics_poses();
+
+    /// the contact transitions dispatched during the most recent fixed tick
+    const ostd::vector<contact_event>& last_contact_events() const { return step_contacts; }
+
+    /// one fixed tick (physics step + script FixedUpdate surfaces)
+    /// only ever invoked at the configured fixed step (physics_environment::get_fixed_step, 60 Hz default) by update()'s accumulator
     void fixed_update(double delta_time);
 
-    /// per frame updates called with variable timestep; update needs the asset handler to
-    ///  resolve animation clip assets after the script surfaces run
+    /// per frame updates called with variable timestep
+    /// update needs the asset handler to resolve animation clip assets after the script surfaces run
     void update(double delta_time, scope<asset_handler>& asset_handler);
     void late_update(double delta_time);
 
@@ -115,6 +126,10 @@ namespace other {
     bool is_visible(natural_t id) const;
 
     void destroy_object(natural_t id);
+
+    /// moves the object under a new parent, keeping its world placement; false on
+    ///  refused moves (root, self, descendant cycle)
+    bool reparent_object(natural_t id, natural_t new_parent_id);
 
     bool has_object(const std::string_view name) const;
     bool has_object(natural_t id) const;
@@ -167,7 +182,7 @@ namespace other {
 
     inline lua_sandbox& get_sandbox() {
       OTHER_ASSERT(storage != nullptr, "Scene storage is null.");
-      return storage->sandbox;
+      return *storage->sandbox;
     }
 
     template <typename T>
@@ -286,6 +301,11 @@ namespace other {
       return has_component<T>(node->object);
     }
 
+    template <typename... Ts, typename Fn>
+    void each_component(Fn&& fn) {
+      storage->registry.view<object_handle, Ts...>().each(std::forward<Fn>(fn));
+    }
+
     inline size_t get_num_objects() const {
       return storage != nullptr ? storage->tree.num_objects : 0;
     }
@@ -298,15 +318,15 @@ namespace other {
     natural_t id = 0;
     natural_t asset_id = 0;
 
-    /// clean this up, right now this is really fragile
+    /// \todo clean this up, this is really fragile
     integer_t kNoStreamBinding = -1;
     integer_t update_stream_id = kNoStreamBinding;
 
     /// the scene document file backing this scene (.oscn / .oscnb), when file-backed
     opt<filepath> source_path = std::nullopt;
-    /// behavior-hooks lua script; resolved from the document's `script` entry
+    /// behavior-hooks lua script resolved from the document's `script` entry
     opt<filepath> script_path = std::nullopt;
-    /// the document's `script` entry verbatim (scene-file-relative) for round-trip saves
+    /// the document's `script` source (scene-file-relative) for round-trip saves
     std::string script_source = "";
     bool script_loaded = false;
 
@@ -346,6 +366,35 @@ namespace other {
 
     void destroy_all_non_root_objects();
 
+    /// blend the buffered fixed-step poses by alpha and write them into entity transforms;
+    ///  runs once per rendered frame after the fixed-step loop
+    void sync_physics_transforms(float alpha);
+
+    /// re-seed every body pose from its entity (play start; edits happened while frozen)
+    void seed_physics_poses();
+    /// hand kinematic bodies their entity pose as this step's sweep target
+    void push_kinematic_targets(double step);
+
+    /// reconcile authored physics settings/shapes against the built bodies (restore rebuilds,
+    ///  inspector/C# edits, deferred geometry retries); runs on play and once per frame while playing
+    void revalidate_physics();
+    void rebuild_physics_body(entt::entity entity, physics_component& phys_comp);
+    void apply_component_shape(entt::entity entity, physics_component& phys_comp);
+
+    void dispatch_contact_events(const ostd::vector<contact_event>& events);
+    void dispatch_physics_event_to(natural_t object_id, const char* method, natural_t other_id,
+                                   const glm::vec3& point, const glm::vec3& normal);
+
+    /// name-resolved breakable welds: created on play, torn down on stop, checked per fixed tick
+    void create_scene_joints();
+    void destroy_scene_joints();
+    void check_joint_breaks(double step);
+    void dispatch_joint_break_to(natural_t object_id, float force);
+
+    ostd::vector<contact_event> step_contacts = {};
+
+    double fixed_accumulator = 0.0;
+
     bool playing = false;
     scope<scene_storage> storage = nullptr;
 
@@ -353,10 +402,9 @@ namespace other {
     /// state captured by play() and restored by reset() when the scene stops
     ostd::vector<uint8_t> play_snapshot = {};
 
-    /// stop is a disable, not a remove: managed script instances survive the restore so
-    ///  Awake/Remove stay reserved for load/unload/reload. ids park here between the
-    ///  teardown and the by-name rebind; leftovers (objects created during play) are
-    ///  swept as real removals at the end of restore_snapshot
+    /// stop is a disable, not a remove, managed script instances survive the restore
+    /// ids are stored here between the teardown and the by-name rebind
+    /// objects created during play are swept as real removals at the end of restore_snapshot
     bool preserving_script_objects = false;
     ostd::vector<integer_t> preserved_script_objects = {};
   };

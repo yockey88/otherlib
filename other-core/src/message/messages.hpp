@@ -10,6 +10,13 @@
 #include "message/message_defines.hpp"
 #include "message/message_serialization.hpp"
 
+/// from_asio only needs the address by reference; full asio stays in messages.cpp
+namespace asio {
+  namespace ip {
+    class address;
+  }
+}
+
 namespace other {
 
 #pragma pack(push, 1)
@@ -31,8 +38,6 @@ namespace other {
     constexpr binding_point(uint32_t ip, uint16_t port) : port(port), ip(ip) {}
 
     static std::string write_string(const binding_point& bp);
-    static std::string write_string(const asio::ip::tcp::endpoint& ep);
-    static std::string write_string(const asio::ip::udp::endpoint& ep);
     static binding_point from_asio(const asio::ip::address& addr, uint16_t port);
   };
   static_assert(sizeof(binding_point) == sizeof(uint32_t) + sizeof(uint16_t), "Invalid binding_point size");

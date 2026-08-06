@@ -48,6 +48,9 @@ namespace other {
 
       float zoom = 0.5f;
 
+      /// frames since the last filesystem walk; starts stale so the first frame scans
+      uint32_t frames_since_refresh = 1000;
+
       void rebuild_breadcrumbs();
       void rebuild_asset_list();
       bool passes_filter(const abw::asset_card_desc& desc) const;

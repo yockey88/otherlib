@@ -4,25 +4,27 @@
 #ifndef OTHER_CORE_EVENT_EVENT_SYSTEM_HPP
 #define OTHER_CORE_EVENT_EVENT_SYSTEM_HPP
 
-#include <deque>
 #include <mutex>
 #include <string_view>
 
-#include <asio/asio.hpp>
-
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
+#include "core/scope.hpp"
 #include "core/timer.hpp"
 #include "core/value.hpp"
 #include "event/event.hpp"
+
+/// timers live behind timer_storage so this header stays asio-free
+namespace asio {
+  class io_context;
+}
 
 namespace other {
 
   class event_system {
    public:
-    event_system(asio::io_context& io_ctx)
-        : io_context(io_ctx) {}
-    virtual ~event_system() = default;
+    event_system(asio::io_context& io_ctx);
+    virtual ~event_system();
 
     void clear();
 
@@ -72,10 +74,7 @@ namespace other {
     bool has_event(natural_t event_id) const;
 
     /// number of live timer entries; a recurring event holds exactly one for its lifetime
-    natural_t active_timer_count() const {
-      std::scoped_lock lock(events_mutex);
-      return event_timers.size();
-    }
+    natural_t active_timer_count() const;
 
    private:
     asio::io_context& io_context;
@@ -86,12 +85,9 @@ namespace other {
       event ev;
       ostd::vector<event::handler> listeners;
     };
-    struct event_timer {
-      natural_t event_id;
-      asio::steady_timer timer;
-    };
+    struct timer_storage;
     ostd::vector<event_ctx> registered_events;
-    std::deque<event_timer> event_timers;
+    scope<timer_storage> timers;
 
     void post_event_callback(natural_t event_id, microseconds duration);
   };

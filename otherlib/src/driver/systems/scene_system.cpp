@@ -5,9 +5,13 @@
 
 #include <sol/types.hpp>
 
+#include "lua/lua_sandbox.hpp"
 #include "serialization/scene_serializer.hpp"
 
+#include "object/audio_listener_component.hpp"
+#include "object/audio_source_component.hpp"
 #include "object/grid_component.hpp"
+#include "object/physics_joint_component.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/systems/asset_system.hpp"
@@ -187,9 +191,9 @@ namespace other {
     active_scene->run_script_file();
 
     auto& storage = active_scene->get_storage();
-    if (storage.sandbox["OnSceneActivate"].valid()) {
+    if ((*storage.sandbox)["OnSceneActivate"].valid()) {
       CORE_LOG_DEBUG("Calling 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
-      sol::protected_function on_scene_activate_fn = storage.sandbox["OnSceneActivate"];
+      sol::protected_function on_scene_activate_fn = (*storage.sandbox)["OnSceneActivate"];
       sol::protected_function_result result = on_scene_activate_fn();
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnSceneActivate' for scene [{}:{}]", active_scene->id, active_scene->name);
@@ -197,19 +201,6 @@ namespace other {
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
     }
-
-    /// 60 fps fixed update
-    /// \todo make fixed update time configurable
-    if (get_driver().get_event_system()->has_event("scene-update")) {
-      get_driver().get_event_system()->cancel_event("scene-update");
-    }
-
-    get_driver().get_event_system()->register_timed_event("scene-update", milliseconds(16), true);
-    get_driver().get_event_system()->add_listener("scene-update", [this](const value& data) {
-      OTHER_ASSERT(active_scene != nullptr, "No active scene in driver during scene update event.");
-      constexpr static float kSixtyHertzFixedDeltaTime = 1.0f / 60.0f;
-      active_scene->fixed_update(kSixtyHertzFixedDeltaTime);
-    });
 
     auto& events = get_driver().get_event_system();
     events->trigger_event("scene.activated", active_scene->id);
@@ -269,9 +260,9 @@ namespace other {
     }
 
     auto& storage = active_scene->get_storage();
-    if (storage.sandbox["OnSceneDeactivate"].valid()) {
+    if ((*storage.sandbox)["OnSceneDeactivate"].valid()) {
       CORE_LOG_DEBUG("Calling 'OnSceneDeactivate' for scene [{}:{}]", active_scene->id, active_scene->name);
-      sol::protected_function on_scene_deactivate_fn = storage.sandbox["OnSceneDeactivate"];
+      sol::protected_function on_scene_deactivate_fn = (*storage.sandbox)["OnSceneDeactivate"];
       sol::protected_function_result result = on_scene_deactivate_fn();
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnSceneDeactivate' for scene [{}:{}]", active_scene->id, active_scene->name);
@@ -279,8 +270,6 @@ namespace other {
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
     }
-
-    get_driver().get_event_system()->cancel_event("scene-update");
 
     lua_sandbox& sandbox = active_scene->get_sandbox();
     opt<sol::table> native_table = sandbox["__other_native"];
@@ -363,11 +352,14 @@ namespace other {
     component_reg->register_component_type<script_component>("Script");
     component_reg->register_component_type<render_component>("Graphics Object");
     component_reg->register_component_type<physics_component>("Physics Object");
+    component_reg->register_component_type<physics_joint_component>("Physics Joint");
     component_reg->register_component_type<point_light_component>("Point Light");
     component_reg->register_component_type<direction_light_component>("Directional Light");
     component_reg->register_component_type<camera_component>("Camera");
     component_reg->register_component_type<grid_component>("Grid");
     component_reg->register_component_type<animation_component>("Animation");
+    component_reg->register_component_type<audio_source_component>("Audio Source");
+    component_reg->register_component_type<audio_listener_component>("Audio Listener");
   }
 
   void scene_system::handle_scene_load_event(const value& data) {
@@ -554,6 +546,10 @@ namespace other {
     } else if (command == "stop") {
       active_scene->stop();
       get_driver().on_scene_stopped(active_scene->id);
+    } else if (command == "debug-physics-on") {
+      active_scene->enable_physics_debug_rendering();
+    } else if (command == "debug-physics-off") {
+      active_scene->disable_physics_debug_rendering();
     } else {
       CORE_LOG_ERROR("Unknown scene playback command '{}'", command);
     }

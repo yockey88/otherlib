@@ -16,6 +16,9 @@ working-directory = "test-project"
 projectrc-path = "test-project/project.lua"
 cs_project = "test-project/TestProject.csproj"
 
+# [physics]
+# backend = "box3d"
+
 [scene-graph]
 starting-scene = "SpinningDonut"
 scenes = [

@@ -5,49 +5,42 @@ target_sources(other_physics
     src/physics_world/physics_body.cpp
     src/physics_world/physics_shape.cpp
 
-    # src/physics/backends/physx_api.cpp
     src/physics/backends/jolt_api.cpp
+    src/physics/backends/box3d_api.cpp
 
     src/physics/physics_api.cpp
     src/physics/physics_environment.cpp
 )
 
-# if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-#   set(PHYSX_BUILD_TYPE "checked" CACHE STRING "PhysX build type")
-# else()
-#   set(PHYSX_BUILD_TYPE "release" CACHE STRING "PhysX build type")
-# endif()
+# ABI-sensitive defines the prebuilt extern/jolt binaries (5.5.1) were built with;
+#  no Jolt header escapes this module (jolt_api.hpp only forward-declares JPH types),
+#  so PRIVATE is safe — must become PUBLIC again if a header ever includes Jolt
+target_compile_definitions(other_physics
+  PRIVATE
+    JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
+    JPH_PROFILE_ENABLED
+    JPH_OBJECT_STREAM
+    JPH_SHARED_LIBRARY
+    JPH_DEBUG_RENDERER
+)
 
-
-target_include_directories(other_physics 
-  PUBLIC 
+target_include_directories(other_physics
+  PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_INCLUDEDIR}/physics>
 )
-target_link_directories(other_physics 
+target_link_directories(other_physics
   PUBLIC
-    $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}> 
+    $<BUILD_INTERFACE:${OTHER_LIBRARIES_PATH}>
     $<INSTALL_INTERFACE:${OTHER_INSTALL_LIBDIR}>
 )
 
-# set(PHYSX_LIBS
-#   PhysX_64
-#   PhysXCommon_64
-#   PhysXCooking_64
-#   PhysXExtensions_static_64
-#   PhysXFoundation_64
-#   PhysXGpu_64
-#   PhysXPvdSdk_static_64
-# )
-# if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "ProfileD")
-#   set(PHYSX_LIBS ${PHYSX_LIBS} PVDRuntime_64)
-# endif()
-
-target_link_libraries(other_physics 
-  PRIVATE 
-    ${PYTHON_LIB} 
-    other_core 
+target_link_libraries(other_physics
+  PRIVATE
+    other_core
     Jolt
+    # debug-family box3d carries the 'd' suffix (box3dd.lib vs box3d.lib)
+    $<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,box3dd,box3d>
 )
 
 other_install_module(other_physics "physics")

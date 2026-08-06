@@ -57,6 +57,7 @@ namespace other {
    *  - physics_environment
    *  - renderer_backend
    *  - scripting_environment
+   *  - audio_environment
    *
    * Profiles:
    *  - core only: arena, logger, file_system, input_system, type_database
@@ -64,7 +65,7 @@ namespace other {
    *  - physics environment: core + physics_environment
    *  - scripting environment: core + scripting_environment
    *  - headless environment: core + physics_environment, scripting_environment
-   *  - full: core + physics_environment, renderer_backend, scripting_environment
+   *  - full: core + physics_environment, renderer_backend, scripting_environment, audio_environment
    **/
 
   struct subsystem_profile {
@@ -76,6 +77,7 @@ namespace other {
     constexpr static std::string_view kPhysicsEnvironment = "physics_environment";
     constexpr static std::string_view kRendererBackend = "renderer_backend";
     constexpr static std::string_view kScriptingEnvironment = "scripting_environment";
+    constexpr static std::string_view kAudioEnvironment = "audio_environment";
 
     constexpr static std::string_view kMinimalProfileName = "minimal";
     constexpr static std::string_view kMinimalRenderingProfileName = "minimal-rendering";
@@ -89,7 +91,7 @@ namespace other {
     constexpr static std::string_view kMinimalPhysicsProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment };
     constexpr static std::string_view kMinimalScriptingProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kScriptingEnvironment };
     constexpr static std::string_view kHeadlessProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kScriptingEnvironment };
-    constexpr static std::string_view kFullProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kRendererBackend, kScriptingEnvironment };
+    constexpr static std::string_view kFullProfile[] = { kLogger, kArena, kFileSystem, kInputSystem, kTypeDatabase, kPhysicsEnvironment, kRendererBackend, kScriptingEnvironment, kAudioEnvironment };
   };
 
   void unactive_subsystem_initialization_error(const std::string_view subsystem_name);

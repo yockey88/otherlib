@@ -54,5 +54,9 @@ target_link_directories(other_renderer PUBLIC
 )
 target_link_libraries(other_renderer PRIVATE imgui SDL3 glad ${ASSIMP_NAME} other_core)
 
+## imgui/SDL are in most renderer TUs but deliberately kept out of public headers;
+##  precompile them for this target only
+target_precompile_headers(other_renderer PRIVATE <imgui/imgui.h> <SDL3/SDL.h>)
+
 
 other_install_module(other_renderer "renderer")

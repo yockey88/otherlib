@@ -17,6 +17,7 @@
 
 #include "model/model.hpp"
 #include "model/skeleton.hpp"
+#include "physics/physics_environment.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/draw_command.hpp"
 #include "renderer/gpu_structs.hpp"
@@ -27,6 +28,7 @@
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
 #include "object/physics_component.hpp"
+#include "object/physics_joint_component.hpp"
 #include "object/render_component.hpp"
 #include "object/scene_object.hpp"
 #include "object/script_component.hpp"
@@ -36,7 +38,6 @@
 
 #include "entt/entity/fwd.hpp"
 #include "glm/fwd.hpp"
-#include "sol/table.hpp"
 
 namespace other {
 
@@ -169,13 +170,13 @@ namespace other {
       return;
     }
 
-    /// the chunk defines behavior hooks (OnSceneLoad/Update/Render/...) in this scene's
-    ///  sandbox; scene CONTENT comes from the scene document, never from lua
+    /// the chunk defines behavior hooks (OnSceneLoad/Update/Render/...) in this scene's sandbox
+    /// scene CONTENT comes from the scene document, never from lua
     CORE_LOG_DEBUG("Running Lua hook script '{}' in scene '{}'.", script_path->string(), name);
     auto* scripting_env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(scripting_env != nullptr, "Failed to retrieve scripting environment.");
 
-    lua_sandbox& sandbox = storage->sandbox;
+    lua_sandbox& sandbox = *storage->sandbox;
     lua_host& lua = scripting_env->get_lua_host();
     (void)sandbox.try_load_table(&lua, *script_path);  /// return value optional and unused
 
@@ -236,7 +237,12 @@ namespace other {
     play_snapshot = capture_snapshot();
 
     playing = true;
-    storage->physics->start_simulation();
+    if (storage->physics != nullptr) {
+      revalidate_physics();  /// restored/edited bodies must match their authored settings before simulating
+      seed_physics_poses();  /// edit-mode moves happened while physics was frozen
+      create_scene_joints();
+      storage->physics->start_simulation();
+    }
 
     storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
       comp.scene_start();
@@ -250,7 +256,9 @@ namespace other {
       return;
     }
 
-    storage->physics->stop_simulation();
+    if (storage->physics != nullptr) {
+      storage->physics->stop_simulation();
+    }
     playing = false;
   }
 
@@ -261,6 +269,9 @@ namespace other {
       return;
     }
 
+    if (storage->physics != nullptr) {
+      destroy_scene_joints();  /// welds go before the restore tears their bodies down
+    }
     pause();
 
     storage->registry.view<script_component>().each([](entt::entity entity, script_component& comp) {
@@ -371,22 +382,19 @@ namespace other {
     PROFILE_SECTION("scene::fixed_update");
 
     if (storage->physics != nullptr) {
-      storage->physics->step_simulation(delta_time);
-      storage->registry.view<physics_component, transform>().each([](entt::entity entity, physics_component& phys_comp, transform& trans) {
-        physics_body* body = phys_comp.body;
-        if (body == nullptr || !body->active) {
-          return;
-        }
-        glm::vec3 temp_scale;
-        decompose_mat4(phys_comp.body->interpolated_transform, trans.local_position, trans.local_rotation_quat, temp_scale);
-      });
+      push_kinematic_targets(delta_time);             /// entity transform -> kinematic sweep target
+      storage->physics->step_simulation(delta_time);  /// exactly one fixed step
+      step_contacts.clear();
+      storage->physics->drain_contacts(step_contacts);
+      dispatch_contact_events(step_contacts);         /// scripts hear contacts before their FixedUpdate
+      check_joint_breaks(delta_time);
     }
 
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
       comp.fixed_update(delta_time);
     });
 
-    if (sol::protected_function on_fixed_update_fn = storage->sandbox["OnSceneFixedUpdate"]; on_fixed_update_fn.valid()) {
+    if (sol::protected_function on_fixed_update_fn = (*storage->sandbox)["OnSceneFixedUpdate"]; on_fixed_update_fn.valid()) {
       sol::protected_function_result result = on_fixed_update_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnFixedUpdate' for scene [{}:{}]", id, name);
@@ -394,6 +402,277 @@ namespace other {
         CORE_LOG_ERROR("Lua Error: {}", err.what());
       }
     }
+  }
+
+  void scene::sync_physics_transforms(float alpha) {
+    PROFILE_SECTION("scene::sync_physics_transforms");
+    storage->physics->interpolate_active_transforms(alpha);
+
+    storage->registry.view<object_handle, physics_component, transform>().each(
+      [this](entt::entity entity, object_handle& handle, physics_component& phys_comp, transform& trans) {
+        physics_body* body = phys_comp.body;
+        if (body == nullptr || !body->active || body->body_type != physics_body::DYNAMIC) {
+          return;  /// statics don't move, kinematics are entity-driven
+        }
+
+        /// the body pose is world space, the entity stores local TRS under its parent
+        glm::mat4 local = body->interpolated_transform;
+        if (const scene_object* parent = get_parent(handle.id); parent != nullptr) {
+          local = glm::inverse(get_world_transform(parent->id)) * local;
+        }
+
+        glm::vec3 unused_scale;  /// physics never writes scale
+        decompose_mat4(local, trans.local_position, trans.local_rotation_quat, unused_scale);
+      });
+  }
+
+  namespace {
+
+    /// positions/indices borrowed from the entity's resolved render model for hull/mesh builds
+    struct extracted_geometry {
+      ostd::vector<glm::vec3> positions;
+      ostd::vector<uint32_t> indices;
+      bool valid() const { return !positions.empty(); }
+    };
+
+    extracted_geometry extract_render_geometry(const model_data& data) {
+      extracted_geometry geo;
+      geo.positions.reserve(data.vertices.size());
+      for (const vertex& v : data.vertices) {
+        geo.positions.push_back(v.position);
+      }
+      geo.indices.reserve(data.indices.size() * 3);
+      for (const index& tri : data.indices) {  /// model indices are whole triangles
+        geo.indices.push_back(tri.v0);
+        geo.indices.push_back(tri.v1);
+        geo.indices.push_back(tri.v2);
+      }
+      return geo;
+    }
+
+  }  // namespace
+
+  void scene::apply_component_shape(entt::entity entity, physics_component& phys_comp) {
+    object_handle& handle = storage->registry.get<object_handle>(entity);
+
+    glm::vec3 position, scale;
+    glm::quat rotation;
+    decompose_mat4(get_world_transform(handle.id), position, rotation, scale);
+
+    /// hull/mesh/fit need the render model; unresolved models defer (revalidation retries)
+    const model_data* data = nullptr;
+    if (const render_component* rc = storage->registry.try_get<render_component>(entity);
+        rc != nullptr && rc->obj_model.source != nullptr) {
+      data = &rc->obj_model.source->source_data();
+    }
+
+    const physics_shape_desc& desc = phys_comp.settings.shape;
+
+    extracted_geometry geo;
+    shape_geometry spans;
+    shape_geometry* geo_ptr = nullptr;
+    if (shape_needs_geometry(desc)) {
+      if (data == nullptr || data->vertices.empty()) {
+        return;
+      }
+      geo = extract_render_geometry(*data);
+      spans.positions = geo.positions;
+      spans.indices = geo.indices;
+      geo_ptr = &spans;
+    }
+
+    const bounding_box* fit_bounds = (desc.fit_render_bounds && data != nullptr) ? &data->bounds : nullptr;
+    phys_comp.shape = storage->physics->apply_shape(phys_comp.body, desc, scale, geo_ptr, fit_bounds);
+  }
+
+  void scene::rebuild_physics_body(entt::entity entity, physics_component& phys_comp) {
+    object_handle& handle = storage->registry.get<object_handle>(entity);
+
+    if (phys_comp.shape != nullptr) {
+      storage->physics->destroy_physics_shape(phys_comp.shape);
+      phys_comp.shape = nullptr;
+    }
+    if (phys_comp.body != nullptr) {
+      storage->physics->destroy_physics_body(phys_comp.body);
+    }
+
+    phys_comp.body = storage->physics->create_physics_body(phys_comp.settings, get_world_transform(handle.id));
+    OTHER_ASSERT(phys_comp.body != nullptr, "Failed to rebuild physics body for object {}", handle.id);
+    phys_comp.body->owner_object_id = handle.id;
+    phys_comp.body->active = true;
+  }
+
+  void scene::revalidate_physics() {
+    PROFILE_SECTION("scene::revalidate_physics");
+    storage->registry.view<object_handle, physics_component, transform>().each(
+      [this](entt::entity entity, object_handle& handle, physics_component& phys_comp, transform&) {
+        if (phys_comp.body == nullptr) {
+          return;  /// physics-off profile
+        }
+
+        /// authored body diverged from the built body (restore, inspector, C#) -> recreate;
+        /// the fresh body starts shapeless and falls through to the shape check below
+        if (!(phys_comp.settings == phys_comp.body->applied_settings)) {
+          rebuild_physics_body(entity, phys_comp);
+        }
+
+        glm::vec3 position, scale;
+        glm::quat rotation;
+        decompose_mat4(get_world_transform(handle.id), position, rotation, scale);
+
+        const bool never_built = phys_comp.shape == nullptr;
+        const bool desc_dirty = !never_built && !(phys_comp.settings.shape == phys_comp.shape->applied);
+        const bool scale_dirty = !never_built && glm::length(scale - phys_comp.shape->applied_scale) > 0.0001f;
+        if (never_built || desc_dirty || scale_dirty) {
+          apply_component_shape(entity, phys_comp);
+        }
+      });
+  }
+
+  void scene::seed_physics_poses() {
+    PROFILE_SECTION("scene::seed_physics_poses");
+    storage->registry.view<object_handle, physics_component>().each([this](entt::entity entity, object_handle& handle, physics_component& phys_comp) {
+      if (phys_comp.body == nullptr) {
+        return;
+      }
+      storage->physics->teleport_body(phys_comp.body, get_world_transform(handle.id));
+    });
+  }
+
+  void scene::push_kinematic_targets(double step) {
+    PROFILE_SECTION("scene::push_kinematic_targets");
+    storage->registry.view<object_handle, physics_component>().each([this, step](entt::entity entity, object_handle& handle, physics_component& phys_comp) {
+      if (phys_comp.body == nullptr || phys_comp.body->body_type != physics_body::KINEMATIC) {
+        return;
+      }
+      storage->physics->move_kinematic(phys_comp.body, get_world_transform(handle.id), step);
+    });
+  }
+
+  void scene::dispatch_contact_events(const ostd::vector<contact_event>& events) {
+    PROFILE_SECTION("scene::dispatch_contact_events");
+    for (const contact_event& ev : events) {
+      physics_body* a = storage->physics->body_by_id(ev.body_a);
+      physics_body* b = storage->physics->body_by_id(ev.body_b);
+      if (a == nullptr || b == nullptr) {
+        continue;  /// a side was destroyed the same tick — dropped by contract
+      }
+
+      const char* method = nullptr;
+      switch (ev.type) {
+        case contact_event::kBegin: method = "CollisionEnter"; break;
+        case contact_event::kEnd: method = "CollisionExit"; break;
+        case contact_event::kTriggerBegin: method = "TriggerEnter"; break;
+        case contact_event::kTriggerEnd: method = "TriggerExit"; break;
+      }
+
+      /// both sides hear about the other; the normal points away from the receiver
+      dispatch_physics_event_to(a->owner_object_id, method, b->owner_object_id, ev.point, ev.normal);
+      dispatch_physics_event_to(b->owner_object_id, method, a->owner_object_id, ev.point, -ev.normal);
+    }
+  }
+
+  void scene::dispatch_physics_event_to(natural_t object_id, const char* method, natural_t other_id,
+                                        const glm::vec3& point, const glm::vec3& normal) {
+    scene_object* obj = find_object(object_id);
+    if (obj == nullptr) {
+      return;
+    }
+    if (script_component* comp = storage->registry.try_get<script_component>(entt::entity(obj->registry_id)); comp != nullptr) {
+      comp->dispatch_physics_event(method, other_id, point, normal);
+    }
+  }
+
+  void scene::create_scene_joints() {
+    PROFILE_SECTION("scene::create_scene_joints");
+    storage->registry.view<object_handle, physics_joint_component>().each([this](entt::entity entity, object_handle& handle, physics_joint_component& joint_comp) {
+      joint_comp.joint_id = -1;
+      if (joint_comp.broken) {
+        return;
+      }
+
+      scene_object* target = find_object(joint_comp.target_object_name);
+      if (target == nullptr) {
+        CORE_LOG_WARN("Physics joint on '{}' targets unknown object '{}'.", get_object(handle.id).name, joint_comp.target_object_name);
+        return;
+      }
+
+      physics_component* own = storage->registry.try_get<physics_component>(entity);
+      physics_component* other_comp = storage->registry.try_get<physics_component>(entt::entity(target->registry_id));
+      if (own == nullptr || own->body == nullptr || other_comp == nullptr || other_comp->body == nullptr) {
+        CORE_LOG_WARN("Physics joint between '{}' and '{}' requires physics bodies on both objects.",
+                      get_object(handle.id).name, joint_comp.target_object_name);
+        return;
+      }
+
+      joint_comp.joint_id = storage->physics->create_fixed_joint(own->body, other_comp->body);
+    });
+  }
+
+  void scene::destroy_scene_joints() {
+    storage->registry.view<physics_joint_component>().each([this](entt::entity entity, physics_joint_component& joint_comp) {
+      if (joint_comp.joint_id >= 0) {
+        storage->physics->destroy_joint(joint_comp.joint_id);
+        joint_comp.joint_id = -1;
+      }
+    });
+  }
+
+  void scene::check_joint_breaks(double step) {
+    PROFILE_SECTION("scene::check_joint_breaks");
+    storage->registry.view<object_handle, physics_joint_component>().each([this, step](entt::entity entity, object_handle& handle, physics_joint_component& joint_comp) {
+      if (joint_comp.joint_id < 0 || joint_comp.broken || joint_comp.break_force <= 0.f) {
+        return;
+      }
+
+      float force = storage->physics->joint_reaction_force(joint_comp.joint_id, step);
+      if (force <= joint_comp.break_force) {
+        return;
+      }
+
+      storage->physics->destroy_joint(joint_comp.joint_id);
+      joint_comp.joint_id = -1;
+      joint_comp.broken = true;
+
+      dispatch_joint_break_to(handle.id, force);
+      if (scene_object* target = find_object(joint_comp.target_object_name); target != nullptr) {
+        dispatch_joint_break_to(target->id, force);
+      }
+    });
+  }
+
+  void scene::dispatch_joint_break_to(natural_t object_id, float force) {
+    scene_object* obj = find_object(object_id);
+    if (obj == nullptr) {
+      return;
+    }
+    if (script_component* comp = storage->registry.try_get<script_component>(entt::entity(obj->registry_id)); comp != nullptr) {
+      comp->dispatch_joint_break(force);
+    }
+  }
+
+  void scene::sync_edit_mode_physics_poses() {
+    ASSERT_MAIN_THREAD();
+    if (playing || storage->physics == nullptr) {
+      return;
+    }
+    PROFILE_SECTION("scene::sync_edit_mode_physics_poses");
+
+    storage->registry.view<object_handle, physics_component>().each([this](entt::entity entity, object_handle& handle, physics_component& phys_comp) {
+      if (phys_comp.body == nullptr) {
+        return;
+      }
+      glm::mat4 world = get_world_transform(handle.id);
+      glm::vec3 position, scale;
+      glm::quat rotation;
+      decompose_mat4(world, position, rotation, scale);
+
+      const bool moved = glm::length(position - phys_comp.body->get_current_position()) > 1e-4f ||
+        std::abs(glm::dot(rotation, phys_comp.body->get_current_rotation())) < 1.f - 1e-5f;
+      if (moved) {
+        storage->physics->teleport_body(phys_comp.body, world);
+      }
+    });
   }
 
   namespace {
@@ -409,8 +688,8 @@ namespace other {
         return;
       }
 
-      /// the render_component validation dance, clip flavored: a bad assignment reverts
-      ///  instead of killing playback
+      /// the render_component validation dance, clip flavored
+      /// a bad assignment reverts instead of killing playback
       if (anim.last_animation_asset_id != anim.animation_asset_id && anim.animation_asset_id != 0) {
         if (!asset_handler->asset_exists(anim.animation_asset_id)) {
           CORE_LOG_ERROR("Animation component clip asset ID {} does not exist.", anim.animation_asset_id);
@@ -421,7 +700,8 @@ namespace other {
 
       const animation_clip* resolved = nullptr;
       if (anim.animation_asset_id != 0) {
-        /// standalone .oanim through the backend registry; not-yet-loaded stays in bind pose
+        /// standalone .oanim through the backend registry
+        /// not-yet-loaded stays in bind pose
         if (asset_handler->asset_loaded(anim.animation_asset_id)) {
           resolved = subsystem<renderer_backend>::get()->get_animation(asset_handler->get_asset_hash(anim.animation_asset_id));
         }
@@ -476,12 +756,38 @@ namespace other {
 
     // check_synchronization_updates();
 
+    if (playing && storage->physics != nullptr) {
+      revalidate_physics();  /// live settings/shape edits apply at frame granularity
+
+      /// gaffer-on-games accumulator
+      /// ported from the deleted physx backend's single-step accumulator, upgraded to a catch-up loop
+      constexpr static uint32_t kMaxCatchUpSteps = 5;
+      const double step = subsystem<physics_environment>::get()->get_fixed_step();
+
+      fixed_accumulator += delta_time;
+      uint32_t steps = 0;
+      while (fixed_accumulator >= step && steps < kMaxCatchUpSteps) {
+        fixed_update(step);  /// full fixed tick: physics + scripts (§4)
+        fixed_accumulator -= step;
+        ++steps;
+      }
+
+      if (steps == kMaxCatchUpSteps && fixed_accumulator >= step) {
+        /// death-spiral guard: drop the debt, keep alpha sane
+        CORE_LOG_WARN("scene '{}' dropped {:.1f}ms of simulation time", name, 1000.0 * (fixed_accumulator - step));
+        fixed_accumulator = std::fmod(fixed_accumulator, step);
+      }
+      /// presentation sync: entity transforms show the buffered fixed-step poses blended up
+      ///  to this frame's leftover time; physics state itself only advances in fixed_update
+      sync_physics_transforms(static_cast<float>(fixed_accumulator / step));
+    }
+
     storage->registry.view<script_component>().each([delta_time](entt::entity entity, script_component& comp) {
       comp.update(delta_time);
     });
 
-    if (storage->sandbox["OnSceneUpdate"].valid()) {
-      sol::protected_function on_update_fn = storage->sandbox["OnSceneUpdate"];
+    if ((*storage->sandbox)["OnSceneUpdate"].valid()) {
+      sol::protected_function on_update_fn = (*storage->sandbox)["OnSceneUpdate"];
       sol::protected_function_result result = on_update_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnUpdate' for scene [{}:{}]", id, name);
@@ -508,8 +814,8 @@ namespace other {
       comp.late_update(delta_time);
     });
 
-    if (storage->sandbox["OnSceneLateUpdate"].valid()) {
-      sol::protected_function on_late_update_fn = storage->sandbox["OnSceneLateUpdate"];
+    if ((*storage->sandbox)["OnSceneLateUpdate"].valid()) {
+      sol::protected_function on_late_update_fn = (*storage->sandbox)["OnSceneLateUpdate"];
       sol::protected_function_result result = on_late_update_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnLateUpdate' for scene [{}:{}]", id, name);
@@ -527,7 +833,7 @@ namespace other {
       comp.render_update(delta_time);
     });
 
-    if (sol::protected_function on_render_fn = storage->sandbox["OnSceneRender"]; on_render_fn.valid()) {
+    if (sol::protected_function on_render_fn = (*storage->sandbox)["OnSceneRender"]; on_render_fn.valid()) {
       sol::protected_function_result result = on_render_fn(delta_time);
       if (!result.valid()) {
         CORE_LOG_ERROR("Failed to execute 'OnSceneRender' for scene [{}:{}]", id, name);
@@ -680,6 +986,36 @@ namespace other {
     ASSERT_MAIN_THREAD();
     PROFILE_SECTION("scene::destroy_object");
     storage->tree.destroy_object(id);
+  }
+
+  bool scene::reparent_object(natural_t id, natural_t new_parent_id) {
+    ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("scene::reparent_object");
+
+    const glm::mat4 child_world = get_world_transform(id);
+    const glm::mat4 parent_world = get_world_transform(new_parent_id);
+
+    if (!storage->tree.reparent(id, new_parent_id)) {
+      return false;
+    }
+
+    /// recompute the local transform so the object does not visually move
+    const glm::mat4 new_local = glm::inverse(parent_world) * child_world;
+
+    transform& t = get_transform(id);
+    t.local_position = glm::vec3(new_local[3]);
+    glm::vec3 col0 = glm::vec3(new_local[0]);
+    glm::vec3 col1 = glm::vec3(new_local[1]);
+    glm::vec3 col2 = glm::vec3(new_local[2]);
+    t.local_scale = { glm::length(col0), glm::length(col1), glm::length(col2) };
+    constexpr float kMinScale = 1e-6f;
+    const glm::mat3 rot{
+      col0 / std::max(t.local_scale.x, kMinScale),
+      col1 / std::max(t.local_scale.y, kMinScale),
+      col2 / std::max(t.local_scale.z, kMinScale)
+    };
+    t.local_rotation_quat = glm::quat_cast(rot);
+    return true;
   }
 
   bool scene::has_object(const std::string_view name) const {
@@ -929,7 +1265,10 @@ namespace other {
 
       const physics_component* pc = storage->registry.try_get<physics_component>(entity);
       if (pc != nullptr && pc->shape != nullptr) {
-        box = pc->shape->get_bounding_box();
+        /// a collider drives the bounds only once it actually built (kNone/deferred stay empty)
+        if (bounding_box shape_box = pc->shape->get_bounding_box(); !(shape_box == bounding_box::empty)) {
+          box = shape_box;
+        }
       }
     }
 
@@ -1439,15 +1778,17 @@ namespace other {
     PROFILE_SECTION("scene::on_create_physics_component");
 
     physics_component& physics_comp = storage->registry.get<physics_component>(entity);
+    if (storage->physics == nullptr) {
+      return;  /// physics-off profile: the component stays inert data
+    }
+
     object_handle& obj_handle = storage->registry.get<object_handle>(entity);
-    physics_comp.settings.world_transform = get_world_transform(&get_object(obj_handle.id));
 
-    OTHER_ASSERT(storage->physics != nullptr, "Scene physics storage is not initialized.");
-    physics_comp.body = storage->physics->create_physics_body(physics_comp.settings);
-    physics_comp.shape = storage->physics->create_empty_shape(physics_comp.body);
-    physics_comp.body->active = true;
-
+    physics_comp.body = storage->physics->create_physics_body(physics_comp.settings, get_world_transform(obj_handle.id));
     OTHER_ASSERT(physics_comp.body != nullptr, "Failed to create physics body for entity {}", (natural_t)entity);
+    physics_comp.body->owner_object_id = obj_handle.id;
+    physics_comp.body->active = true;
+    apply_component_shape(entity, physics_comp);
   }
 
   // void scene::on_update_physics_component(const entt::registry&, const entt::entity entity) {}
@@ -1457,9 +1798,13 @@ namespace other {
     PROFILE_SECTION("scene::on_destroy_physics_component");
 
     physics_component& physics_comp = storage->registry.get<physics_component>(entity);
+    if (storage->physics == nullptr || physics_comp.body == nullptr) {
+      return;  /// physics-off profile, or a component that never got a body
+    }
 
-    OTHER_ASSERT(storage->physics != nullptr, "Scene physics storage is not initialized.");
-    storage->physics->destroy_physics_shape(physics_comp.shape);
+    if (physics_comp.shape != nullptr) {
+      storage->physics->destroy_physics_shape(physics_comp.shape);
+    }
     storage->physics->destroy_physics_body(physics_comp.body);
     physics_comp.shape = nullptr;
     physics_comp.body = nullptr;

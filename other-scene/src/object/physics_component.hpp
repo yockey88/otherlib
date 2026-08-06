@@ -22,10 +22,6 @@ namespace other {
     physics_component(const physics_body::settings& settings) : settings(settings) {}
   };
 
-  struct physics_component_lua_proxy {
-    physics_component* comp = nullptr;
-  };
-
 }  // namespace other
 
 OTHER_REFLECT(

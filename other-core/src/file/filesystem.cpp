@@ -9,6 +9,7 @@
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
 #include "core/profiler.hpp"
+#include "event/event_system.hpp"
 #include "file/directory.hpp"
 #include "file/path_helpers.hpp"
 

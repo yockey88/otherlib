@@ -3,11 +3,18 @@
  **/
 #include "core/job_system.hpp"
 
+#include <asio/asio.hpp>
+
 #include "core/config_table.hpp"
 
 #include "defines.hpp"
 
 namespace other {
+
+  job_system::job_system(asio::io_context& main_ctx)
+      : main_io_context(main_ctx) {}
+
+  job_system::~job_system() = default;
 
   void job_system::initialize(const config_table& cfg) {
     config.worker_count = cfg.get_value<uint32_t>("application.async.worker_count", std::max(2u, std::thread::hardware_concurrency() - 1));

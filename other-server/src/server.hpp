@@ -4,8 +4,6 @@
 #ifndef OTHER_SERVER_SERVER_HPP
 #define OTHER_SERVER_SERVER_HPP
 
-#include "http/http.hpp"
-
 #include "driver/driver.hpp"
 
 namespace other {
@@ -21,12 +19,8 @@ namespace other {
     void on_shutdown() override;
 
    private:
-    uint16_t config_http_port = 0;
+    uint16_t config_port = 0;
     filepath mount_directory;
-
-    sol::table lua_server;
-
-    void on_http_request_received(natural_t id, const http::request& req) override;
   };
 
 }  // namespace other

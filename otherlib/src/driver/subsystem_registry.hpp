@@ -28,6 +28,7 @@ namespace other {
     static bool profile_includes_rendering(const std::string_view profile_name);
     static bool profile_includes_vm(const std::string_view profile_name);
     static bool profile_includes_scene(const std::string_view profile_name);
+    static bool profile_includes_audio(const std::string_view profile_name);
 
     inline const std::string_view get_current_profile() const { return current_profile; }
     const std::vector<natural_t>& get_initialization_order() const { return initialization_order; }
@@ -38,7 +39,6 @@ namespace other {
     std::vector<natural_t> initialization_order;
     std::unordered_map<natural_t, subsystem_definition> registry;
 
-    void activate_necessary_subsystems_for_profile(const std::string_view profile, const config_table* config);
     std::vector<natural_t> resolve_dependencies(std::span<const std::string_view> requested_systems, const subsystem_definition& def);
   };
 

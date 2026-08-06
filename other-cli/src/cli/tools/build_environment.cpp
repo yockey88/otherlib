@@ -29,25 +29,15 @@ namespace other {
         --dry-run           print the commands instead of running them)";
 
       std::vector<filepath> runtime_dlls(const filepath& root, bool debug_family) {
-        const std::string family = debug_family ? "Debug" : "Release";
         const std::string family_lower = debug_family ? "debug" : "release";
 
         const filepath extern_dir = root / "extern";
         std::vector<filepath> dlls = {
           extern_dir / "sdl" / "lib" / family_lower / "SDL3.dll",
           extern_dir / "assimp" / "lib" / "assimp-vc143-mt.dll",
-          extern_dir / "python312" / "python312.dll",
           extern_dir / "sol2" / "lib" / "lua-5.4.4.dll",
-          extern_dir / "jolt" / "bin" / family / "Jolt.dll",
-          extern_dir / "physx" / "bin" / family / "PhysX_64.dll",
-          extern_dir / "physx" / "bin" / family / "PhysXCommon_64.dll",
-          extern_dir / "physx" / "bin" / family / "PhysXCooking_64.dll",
-          extern_dir / "physx" / "bin" / family / "PhysXFoundation_64.dll",
-          extern_dir / "physx" / "bin" / family / "PhysXGpu_64.dll",
+          extern_dir / "jolt" / "bin" / family_lower / "Jolt.dll",
         };
-        if (debug_family) {
-          dlls.push_back(extern_dir / "physx" / "bin" / family / "PVDRuntime_64.dll");
-        }
         return dlls;
       }
 

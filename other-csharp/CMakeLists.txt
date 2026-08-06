@@ -30,6 +30,7 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/events.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/input.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/events.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core/audio.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/time.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/driver.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core/project.cs
@@ -57,6 +58,10 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/render-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/grid-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/animation-component.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/physics-component.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/physics.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/audio-source-component.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/audio-listener-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object-handle.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-behavior.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/scene-object.cs

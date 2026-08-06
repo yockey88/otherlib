@@ -3,6 +3,8 @@
  **/
 #include "ui/menu-bar/menu.hpp"
 
+#include <imgui/imgui.h>
+
 namespace other {
   namespace ui {
 

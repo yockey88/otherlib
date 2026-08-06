@@ -58,14 +58,9 @@ def stage_oecli_dlls(cfg, user=False):
   dlls = [
     os.path.join(extern, "sdl", "lib", family.lower(), "SDL3.dll"),
     os.path.join(extern, "assimp", "lib", "assimp-vc143-mt.dll"),
-    os.path.join(extern, "python312", "python312.dll"),
     os.path.join(extern, "sol2", "lib", "lua-5.4.4.dll"),
-    os.path.join(extern, "jolt", "bin", family, "Jolt.dll"),
+    os.path.join(extern, "jolt", "bin", family.lower(), "Jolt.dll"),
   ]
-  physx = ["PhysX_64", "PhysXCommon_64", "PhysXCooking_64", "PhysXFoundation_64", "PhysXGpu_64"]
-  if family == "Debug":
-    physx.append("PVDRuntime_64")
-  dlls.extend(os.path.join(extern, "physx", "bin", family, f"{name}.dll") for name in physx)
 
   destination = os.path.dirname(oecli_path(cfg, user))
   for dll in dlls:

@@ -10,7 +10,49 @@ namespace other {
 
   struct physics_body;
   struct physics_shape;
+  struct physics_shape_desc;
   class physics_world;
+
+  /// borrowed geometry spans for hull/mesh shape builds; extracted scene-side from the
+  ///   entity's render model — physics never learns about models
+  struct shape_geometry {
+    std::span<const glm::vec3> positions;
+    std::span<const uint32_t> indices;  /// triangle list; may be empty for hull-from-points
+  };
+
+  /// one contact transition, queued by the backend's listener (worker threads) and drained
+  ///   on the main thread after each step. kEnd carries no point/normal (none exists)
+  struct contact_event {
+    enum kind : uint32_t {
+      kBegin = 0,
+      kEnd,
+      kTriggerBegin,
+      kTriggerEnd,
+    };
+    kind type = kBegin;
+    integer_t body_a = -1;  /// physics_body ids; kEnd events leave the backend carrying backend
+    integer_t body_b = -1;  ///   ids and the backend's drain resolves them before returning
+    glm::vec3 point = {};   /// first manifold point, world space (begin events only)
+    glm::vec3 normal = {};  /// a -> b contact normal (begin events only)
+  };
+
+  struct raycast_hit {
+    bool hit = false;
+    integer_t body_id = -1;
+    natural_t owner_object_id = 0;
+    glm::vec3 point = {};
+    glm::vec3 normal = {};
+    float distance = 0.f;
+  };
+
+  /// backend-agnostic per-world creation settings, sourced from [physics] config
+  /// backends consume what applies to them and ignore the rest
+  struct physics_world_config {
+    glm::vec3 gravity = { 0.f, -9.81f, 0.f };
+    uint32_t max_bodies = 65536;
+    uint32_t max_body_pairs = 65536;
+    uint32_t max_contact_constraints = 10240;
+  };
 
   class physics_api {
    public:
@@ -36,13 +78,9 @@ namespace other {
     void initialize(const config_table& configuration);
     void shutdown();
 
-    inline float get_interpolation_alpha() const {
-      return alpha;
-    }
-
     virtual physics_render_debug_data get_debug_render_data(natural_t id, const physics_world* world) const = 0;
 
-    virtual void initialize_world(natural_t id, physics_world* world) = 0;
+    virtual void initialize_world(natural_t id, physics_world* world, const physics_world_config& config) = 0;
     virtual void shutdown_world(physics_world* world) = 0;
 
     virtual void on_scene_start(natural_t world_id, physics_world* world) {}
@@ -51,29 +89,47 @@ namespace other {
     virtual void register_physics_body(natural_t world_id, physics_world* world, physics_body* body) = 0;
     virtual void unregister_physics_body(natural_t world_id, physics_world* world, physics_body* body) = 0;
 
-    virtual void attach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) = 0;
-    virtual void detach_shape(natural_t world_id, physics_world* world, physics_body* body, physics_shape* shape) = 0;
+    /// hard-set a body's pose and zero its velocities, without waking it
+    /// (edit-mode moves, play-time reseeding, restores)
+    virtual void teleport_body(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform) = 0;
 
-    virtual void configure_empty_shape(physics_shape* shape) = 0;
-    virtual void configure_box_shape(physics_shape* shape, const glm::vec3& half_extents) = 0;
-    virtual void configure_sphere_shape(physics_shape* shape, float radius) {}
-    virtual void configure_capsule_shape(physics_shape* shape, float radius, float height) {}
-    virtual void configure_convex_hull_shape(physics_shape* shape, const std::span<const glm::vec3> points) {}
-    virtual void configure_triangle_mesh_shape(physics_shape* shape, const std::span<const glm::vec3> vertices, const std::span<const natural_t> indices) {}
-    virtual void configure_heightfield_shape(physics_shape* shape, const std::span<const float> height_data, natural_t width, natural_t depth, float min_height, float max_height) {}
+    /// sweep a kinematic body toward the target pose over one fixed step, with contact response
+    virtual void move_kinematic(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform, double step) = 0;
+
+    /// build the described shape (entity world scale baked in) and attach it to the body;
+    ///   geometry is required for hull/mesh kinds. false = build failed, body keeps its
+    ///   previous shape (authored data never asserts)
+    virtual bool set_body_shape(natural_t world_id, physics_world* world, physics_body* body,
+                                const physics_shape_desc& desc, const glm::vec3& world_scale,
+                                const shape_geometry* geometry) = 0;
 
     virtual void step_simulation(natural_t world_id, physics_world* world, double delta_time) = 0;
     virtual void update_active_transforms(natural_t world_id, physics_world* world, double delta_time) = 0;
 
-   protected:
-    float alpha = 0.0f;
-    float accumulator = 0.0f;
-    constexpr static float kFixedTimeStep = 1.0f / 60.0f;
+    /// pull the contact transitions recorded during the last step; engine body ids on return
+    virtual void drain_contacts(natural_t world_id, physics_world* world, ostd::vector<contact_event>& out) = 0;
 
+    /// closest-hit ray query; sensors are not surfaces and never hit
+    virtual raycast_hit cast_ray(natural_t world_id, physics_world* world, const glm::vec3& origin,
+                                 const glm::vec3& direction, float max_distance) = 0;
+
+    /// weld two bodies rigidly; returns a backend joint id, -1 on failure
+    virtual integer_t create_fixed_joint(natural_t world_id, physics_world* world, physics_body* body_a, physics_body* body_b) = 0;
+    virtual void destroy_joint(natural_t world_id, physics_world* world, integer_t joint_id) = 0;
+    /// force the weld sustained through the last step, newtons
+    virtual float joint_reaction_force(natural_t world_id, physics_world* world, integer_t joint_id, double step) = 0;
+
+    virtual void set_linear_velocity(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& velocity) = 0;
+    virtual glm::vec3 get_linear_velocity(natural_t world_id, physics_world* world, physics_body* body) = 0;
+    virtual void set_angular_velocity(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& velocity) = 0;
+    virtual glm::vec3 get_angular_velocity(natural_t world_id, physics_world* world, physics_body* body) = 0;
+    virtual void add_force(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& force) = 0;
+    virtual void add_impulse(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& impulse) = 0;
+    virtual void add_torque(natural_t world_id, physics_world* world, physics_body* body, const glm::vec3& torque) = 0;
+
+   protected:
     virtual void on_initialize(const config_table& configuration) = 0;
     virtual void on_shutdown() = 0;
-
-   private:
   };
 
 }  // namespace other

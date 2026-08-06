@@ -8,15 +8,11 @@
 #include <queue>
 #include <string_view>
 
-#include <asio/asio.hpp>
-
 #include "core/defines.hpp"
 #include "core/job_system.hpp"
 #include "core/state_machine.hpp"
 #include "event/event_system.hpp"
 #include "file/file_watcher.hpp"
-
-#include "renderer/pipeline_definition.hpp"
 
 #include "asset/asset.hpp"
 #include "asset/asset_pipeline.hpp"
@@ -31,6 +27,8 @@ namespace other {
     }
 
   }  // namespace detail
+
+  struct pipeline_definition;
 
   class scene;
 

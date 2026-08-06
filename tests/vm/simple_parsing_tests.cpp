@@ -1,5 +1,5 @@
 /**
- * \file tests/vm/parsing_tests.cpp
+ * \file tests/vm/simple_parsing_tests.cpp
  **/
 
 #include <string>

@@ -7,8 +7,7 @@
 #include <string>
 #include <string_view>
 
-#include <imgui/imgui.h>
-
+#include "gpu_resource/imgui_fwd.hpp"
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/frame_node.hpp"
 #include "renderer/pass_runtime.hpp"

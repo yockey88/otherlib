@@ -49,7 +49,6 @@ namespace other {
     driver_metadata = build_metadata();
 
     interfaces.register_interface(get_server_interface());
-    interfaces.register_interface(get_http_server_interface());
     interfaces.register_interface(get_ui_window_interface());
 
     driver_kernel_ptr = make_scope<driver_kernel>(this);
@@ -172,8 +171,8 @@ namespace other {
       }
 
       CORE_LOG_DEBUG("calling '{}' from plugin [{}]", driver::kDynamicDriverFactorySymbolName, driver_name);
-      driver* (*fn)(const config_table*) = sym.get_function<driver* (*)(const config_table*)>();
-      driver_instance = fn(&config);
+      driver* (*fn)(const command_line*, const config_table*) = sym.get_function<driver* (*)(const command_line*, const config_table*)>();
+      driver_instance = fn(&cmd, &config);
       CORE_LOG_DEBUG("Loaded driver [{}]", driver_name);
 
       if (driver_instance == nullptr) {
@@ -436,38 +435,6 @@ namespace other {
   natural_t driver::add_interface(const std::string_view interface_name, sol::table inteface_table) {
     PROFILE_SECTION("driver::add_interface");
     return interfaces.register_interface_binding(interface_name, std::move(inteface_table));
-  }
-
-  void driver::http_request_received(natural_t id, const http::request& req) {
-    PROFILE_SECTION("driver::http_request_received");
-#if OTHER_ENVIRONMENT_DEBUG
-    {
-      std::stringstream ss;
-      ss << std::format("[HTTP Request] Connection ID: {}\n", id);
-      ss << std::format(" [HTTP: {}]\n", req.method.name);
-      ss << std::format(" [HTTP: {}]\n", req.path);
-      if (!req.query_string.empty()) {
-        ss << std::format(" [HTTP query: {}]\n", req.query_string);
-      }
-      if (!req.body.empty()) {
-        std::stringstream ss1;
-        for (size_t i = 0; i < std::min<size_t>(req.body.size(), 100); ++i) {
-          ss1 << std::hex << static_cast<int>(req.body[i]) << " ";
-        }
-        ss << std::format(" [HTTP body: {}]:\n{}\n", req.body.size(), ss1.str());
-      }
-      if (!req.headers.empty()) {
-        ss << " [HTTP Headers]:\n";
-        for (const auto& header : req.headers) {
-          ss << std::format("  - {}: {}\n", header.name, header.value);
-        }
-      }
-      CORE_LOG_DEBUG("{}", ss.str());
-    }
-#endif
-
-    on_http_request_received(id, req);
-    interfaces.invoke("Other.HttpServer", "HandleHttpRequest", id, req);
   }
 
   void driver::handle_file_refresh(const filepath& path) {

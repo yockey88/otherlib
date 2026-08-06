@@ -13,7 +13,6 @@
 #include "core/defines.hpp"
 #include "core/ref.hpp"
 #include "core/subsystem.hpp"
-#include "event/event_system.hpp"
 #include "file/directory.hpp"
 #include "file/file_handle.hpp"
 #include "file/glob.hpp"
@@ -23,6 +22,8 @@
 #include "file/virtual_file.hpp"
 
 namespace other {
+
+  class event_system;
 
   /**
    * \note this should only ever be used by the main thread

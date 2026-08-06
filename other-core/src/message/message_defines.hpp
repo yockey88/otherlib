@@ -8,13 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <spdlog/fmt/fmt.h>
-
-#ifndef ASIO_HAS_STD_INVOKE_RESULT
-  #define ASIO_HAS_STD_INVOKE_RESULT
-#endif
-#include <asio/asio.hpp>
-
 #include "serialization/reflection.hpp"
 #include "serialization/serialization.hpp"
 #include "thread/channel.hpp"

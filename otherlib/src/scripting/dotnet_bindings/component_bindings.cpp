@@ -5,7 +5,11 @@
 
 #include "thread/thread_safety.hpp"
 
+#include "audio/audio_environment.hpp"
+
 #include "object/animation_component.hpp"
+#include "object/audio_source_component.hpp"
+#include "object/physics_component.hpp"
 #include "object/render_component.hpp"
 #include "scene/scene.hpp"
 
@@ -194,6 +198,295 @@ namespace other {
       }
       comp->animation_asset_id = clip_id;
       comp->last_animation_asset_id = clip_id;
+    }
+
+    namespace {
+
+      physics_component* physics_component_for(natural_t object_id) {
+        scene* active_scene = detail::get_active_scene_checked();
+        OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+        if (!active_scene->has_component<physics_component>(object_id)) {
+          return nullptr;
+        }
+        physics_component* comp = active_scene->get_component<physics_component>(object_id);
+        OTHER_ASSERT(comp != nullptr, "Physics component not found for object with ID {}", object_id);
+        return comp;
+      }
+
+    }  // namespace
+
+    uint32_t native_physics_component_get_body_type(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      physics_component* comp = physics_component_for(object_id);
+      return comp != nullptr ? comp->settings.body_type : physics_body::STATIC;
+    }
+
+    void native_physics_component_set_body_type(natural_t object_id, uint32_t body_type) {
+      ASSERT_MAIN_THREAD();
+      if (physics_component* comp = physics_component_for(object_id); comp != nullptr) {
+        comp->settings.body_type = std::min(body_type, static_cast<uint32_t>(physics_body::NUM_BODY_TYPES - 1));
+      }
+    }
+
+    float native_physics_component_get_mass(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      physics_component* comp = physics_component_for(object_id);
+      return comp != nullptr ? comp->settings.mass : 0.f;
+    }
+
+    void native_physics_component_set_mass(natural_t object_id, float mass) {
+      ASSERT_MAIN_THREAD();
+      if (physics_component* comp = physics_component_for(object_id); comp != nullptr) {
+        comp->settings.mass = mass;
+      }
+    }
+
+    uint32_t native_physics_component_get_is_trigger(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      physics_component* comp = physics_component_for(object_id);
+      return (comp != nullptr && comp->settings.is_trigger) ? 1u : 0u;
+    }
+
+    void native_physics_component_set_is_trigger(natural_t object_id, uint32_t is_trigger) {
+      ASSERT_MAIN_THREAD();
+      if (physics_component* comp = physics_component_for(object_id); comp != nullptr) {
+        comp->settings.is_trigger = (is_trigger != 0);
+      }
+    }
+
+    namespace {
+
+      /// live body for the object's physics component, or nullptr (missing component/body/world)
+      physics_body* physics_body_for(natural_t object_id, physics_world** out_world) {
+        *out_world = nullptr;
+        scene* active_scene = detail::get_active_scene_checked();
+        OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+        physics_world* world = active_scene->physics();
+        if (world == nullptr) {
+          return nullptr;
+        }
+        physics_component* comp = physics_component_for(object_id);
+        if (comp == nullptr || comp->body == nullptr) {
+          return nullptr;
+        }
+        *out_world = world;
+        return comp->body;
+      }
+
+    }  // namespace
+
+    void native_physics_component_get_linear_velocity(natural_t object_id, float* out_velocity) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_velocity != nullptr, "Output velocity pointer is null.");
+      out_velocity[0] = out_velocity[1] = out_velocity[2] = 0.f;
+
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        glm::vec3 v = world->get_linear_velocity(body);
+        out_velocity[0] = v.x;
+        out_velocity[1] = v.y;
+        out_velocity[2] = v.z;
+      }
+    }
+
+    void native_physics_component_set_linear_velocity(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->set_linear_velocity(body, { x, y, z });
+      }
+    }
+
+    void native_physics_component_get_angular_velocity(natural_t object_id, float* out_velocity) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_velocity != nullptr, "Output velocity pointer is null.");
+      out_velocity[0] = out_velocity[1] = out_velocity[2] = 0.f;
+
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        glm::vec3 v = world->get_angular_velocity(body);
+        out_velocity[0] = v.x;
+        out_velocity[1] = v.y;
+        out_velocity[2] = v.z;
+      }
+    }
+
+    void native_physics_component_set_angular_velocity(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->set_angular_velocity(body, { x, y, z });
+      }
+    }
+
+    void native_physics_component_add_force(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->add_force(body, { x, y, z });
+      }
+    }
+
+    void native_physics_component_add_impulse(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->add_impulse(body, { x, y, z });
+      }
+    }
+
+    void native_physics_component_add_torque(natural_t object_id, float x, float y, float z) {
+      ASSERT_MAIN_THREAD();
+      physics_world* world = nullptr;
+      if (physics_body* body = physics_body_for(object_id, &world); body != nullptr) {
+        world->add_torque(body, { x, y, z });
+      }
+    }
+
+    uint32_t native_physics_raycast(float ox, float oy, float oz, float dx, float dy, float dz, float max_distance,
+                                    natural_t* out_object, float* out_point, float* out_normal, float* out_distance) {
+      ASSERT_MAIN_THREAD();
+      OTHER_ASSERT(out_object != nullptr && out_point != nullptr && out_normal != nullptr && out_distance != nullptr,
+                   "Raycast output pointers are null.");
+      *out_object = 0;
+      *out_distance = 0.f;
+      out_point[0] = out_point[1] = out_point[2] = 0.f;
+      out_normal[0] = out_normal[1] = out_normal[2] = 0.f;
+
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+      physics_world* world = active_scene->physics();
+      if (world == nullptr) {
+        return 0;
+      }
+
+      raycast_hit hit = world->cast_ray({ ox, oy, oz }, { dx, dy, dz }, max_distance);
+      if (!hit.hit) {
+        return 0;
+      }
+
+      *out_object = hit.owner_object_id;
+      *out_distance = hit.distance;
+      out_point[0] = hit.point.x;
+      out_point[1] = hit.point.y;
+      out_point[2] = hit.point.z;
+      out_normal[0] = hit.normal.x;
+      out_normal[1] = hit.normal.y;
+      out_normal[2] = hit.normal.z;
+      return 1;
+    }
+
+    native_string native_audio_source_get_clip_path(natural_t object_id) {
+      ASSERT_MAIN_THREAD();
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+
+      native_string result;
+      if (active_scene->has_component<audio_source_component>(object_id)) {
+        audio_source_component* comp = active_scene->get_component<audio_source_component>(object_id);
+        OTHER_ASSERT(comp != nullptr, "Audio source component not found for object with ID {}", object_id);
+        if (comp->clip_asset_id != 0) {
+          driver* d = detail::get_dotnet_native_driver();
+          OTHER_ASSERT(d != nullptr, "Driver is null in native_audio_source_get_clip_path.");
+          asset* clip_asset = d->get_asset(comp->clip_asset_id);
+          if (clip_asset != nullptr) {
+            result = native_string{ clip_asset->load_path.generic_string() };
+          }
+        }
+      }
+      return result;
+    }
+
+    void native_audio_source_set_clip_path(natural_t object_id, native_string path) {
+      ASSERT_MAIN_THREAD();
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
+
+      /// this call is from user script so handle errors gracefully
+      if (!active_scene->has_component<audio_source_component>(object_id)) {
+        CORE_LOG_ERROR("Object with ID {} does not have an audio source component, cannot set clip.", object_id);
+        return;
+      }
+      audio_source_component* comp = active_scene->get_component<audio_source_component>(object_id);
+      OTHER_ASSERT(comp != nullptr, "Audio source component not found for object with ID {}", object_id);
+
+      const std::string path_str = path;
+      if (path_str.empty()) {
+        comp->clip_asset_id = 0;
+        return;
+      }
+
+      driver* d = detail::get_dotnet_native_driver();
+      OTHER_ASSERT(d != nullptr, "Driver is null in native_audio_source_set_clip_path.");
+      const natural_t clip_id = d->begin_asset_load(filepath{ path_str });
+      if (clip_id == 0) {
+        CORE_LOG_ERROR("Audio clip '{}' could not begin loading for object ID {}.", path_str, object_id);
+        return;
+      }
+      comp->clip_asset_id = clip_id;
+    }
+
+    void native_audio_play_one_shot(native_string path, float x, float y, float z, float volume, float pitch, uint32_t bus) {
+      ASSERT_MAIN_THREAD();
+      if (subsystem<audio_environment>::inert) {
+        return;
+      }
+      audio_environment* env = subsystem<audio_environment>::get();
+      if (env == nullptr || !env->is_initialized()) {
+        return;
+      }
+
+      driver* d = detail::get_dotnet_native_driver();
+      OTHER_ASSERT(d != nullptr, "Driver is null in native_audio_play_one_shot.");
+      const std::string path_str = path;
+      const natural_t clip_id = d->begin_asset_load(filepath{ path_str });
+      if (clip_id == 0) {
+        CORE_LOG_ERROR("Audio clip '{}' could not begin loading for one-shot.", path_str);
+        return;
+      }
+      asset* clip_asset = d->get_asset(clip_id);
+      if (clip_asset == nullptr) {
+        return;
+      }
+
+      voice_params params{};
+      params.clip_hash = clip_asset->path_hash;
+      params.volume = volume;
+      params.pitch = pitch;
+      params.bus = static_cast<audio_bus>(std::min<uint32_t>(bus, static_cast<uint32_t>(audio_bus::NUM_BUSES) - 1));
+      params.spatial = true;
+      params.position = { x, y, z };
+      /// if the clip is still mid-load the environment warns and refuses — one-shots
+      ///  are best-effort by design, the next call after load lands will sound
+      env->play_one_shot(params);
+    }
+
+    void native_audio_set_bus_volume(uint32_t bus, float volume) {
+      ASSERT_MAIN_THREAD();
+      if (subsystem<audio_environment>::inert) {
+        return;
+      }
+      audio_environment* env = subsystem<audio_environment>::get();
+      if (env == nullptr) {
+        return;
+      }
+      if (bus >= static_cast<uint32_t>(audio_bus::NUM_BUSES)) {
+        CORE_LOG_ERROR("Invalid audio bus {} in SetBusVolume.", bus);
+        return;
+      }
+      env->set_bus_volume(static_cast<audio_bus>(bus), volume);
+    }
+
+    float native_audio_get_bus_volume(uint32_t bus) {
+      ASSERT_MAIN_THREAD();
+      if (subsystem<audio_environment>::inert) {
+        return 0.f;
+      }
+      audio_environment* env = subsystem<audio_environment>::get();
+      if (env == nullptr || bus >= static_cast<uint32_t>(audio_bus::NUM_BUSES)) {
+        return 0.f;
+      }
+      return env->bus_volume(static_cast<audio_bus>(bus));
     }
 
     void native_render_component_fetch_mesh(natural_t object_id, float* out_vertex_data, int32_t* out_num_vertices, int32_t* out_index_data, int32_t* out_num_indices) {
