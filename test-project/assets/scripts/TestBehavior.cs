@@ -3,8 +3,7 @@ using Other.Core;
 
 public class TestBehavior : SceneBehavior
 {
-  float rotation = 0.0f;
-  float rotation_speed = 90.0f; // degrees per second
+  public float rotation_speed = 90.0f; // degrees per second
 
   protected override void OnUpdate()
   {

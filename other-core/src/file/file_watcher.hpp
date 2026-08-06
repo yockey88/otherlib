@@ -4,7 +4,7 @@
 #ifndef OTHER_CORE_FILE_FILE_WATCHER_HPP
 #define OTHER_CORE_FILE_FILE_WATCHER_HPP
 
-#include <unordered_set>
+#include <unordered_map>
 
 #include "core/defines.hpp"
 #include "core/scope.hpp"
@@ -60,13 +60,15 @@ namespace other {
     watch_type type;
     watch_mode mode;
 
-    std::unordered_set<std::string> subtree;
+    /// relative path -> last write time; the per-poll diff is CREATED/DELETED from the
+    ///  key set and MODIFIED from a changed timestamp
+    std::unordered_map<std::string, std::filesystem::file_time_type> subtree;
     const glob_set* filter = nullptr;
 
     natural_t checksum = 0;
 
     natural_t compute_checksum(const filepath& path);
-    void scan_subtree(std::unordered_set<std::string>& out) const;
+    void scan_subtree(std::unordered_map<std::string, std::filesystem::file_time_type>& out) const;
   };
 
 }  // namespace other

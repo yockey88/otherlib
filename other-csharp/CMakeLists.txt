@@ -57,6 +57,8 @@ target_sources(OtherCs PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/transform.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/render-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/grid-component.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/camera-component.cs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/light-components.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/animation-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/physics-component.cs
   ${CMAKE_CURRENT_SOURCE_DIR}/src/scene/physics.cs

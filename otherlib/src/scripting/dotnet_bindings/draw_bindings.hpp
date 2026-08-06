@@ -38,7 +38,9 @@ namespace other {
                                float m20, float m21, float m22, float m23,
                                float m30, float m31, float m32, float m33,
                                float scale, nbool32 in_scene);
-    void native_draw_mesh(uint64_t mesh_handle, float m00, float m01, float m02, float m03,
+    /// draws @p object_id's render mesh at an arbitrary transform (tinted/wireframe) — the
+    ///  debug-HUD "ghost" primitive; objects without an uploaded model draw nothing
+    void native_draw_mesh(uint64_t object_id, float m00, float m01, float m02, float m03,
                           float m10, float m11, float m12, float m13,
                           float m20, float m21, float m22, float m23,
                           float m30, float m31, float m32, float m33,

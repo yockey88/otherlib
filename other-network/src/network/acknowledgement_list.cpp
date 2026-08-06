@@ -7,11 +7,6 @@
 
 namespace other {
 
-  void acknowledgement_list::poll() {
-    clear_cancelled_acks();
-    clear_finished_acks();
-  }
-
   natural_t acknowledgement_list::register_ack(asio::io_context& io, message_header header, microseconds timeout, message_handler handler) {
     natural_t ack_id = generate_ack_id();
     OTHER_ASSERT(std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == ack_id && ack.header == header; }) == pending_acks.end(), "Acknowledgment for message ID {} already pending", header);
@@ -32,25 +27,33 @@ namespace other {
     ack_itr->timer.expires_after(timeout);
     ack_itr->timer.async_wait([this, stime = ack.sent_time, id = ack_id](const asio::error_code& ec) {
       if (ec && ec == asio::error::operation_aborted) {
-        queue_cancelled_ack_id(id);
+        auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
+        if (itr != pending_acks.end()) {
+          CORE_LOG_DEBUG("Acknowledgment timer for message {} was cancelled (ACK ID: {})", itr->header, id);
+          pending_acks.erase(itr);
+        }
+        return;
+      } else if (ec) {
+        CORE_LOG_ERROR("Error in acknowledgment timer for message ID {}: {}", id, ec.message());
+        auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
+        if (itr != pending_acks.end()) {
+          pending_acks.erase(itr);
+        }
         return;
       }
 
-      if (!ec) {
-        auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
-        if (itr == pending_acks.end()) {
-          CORE_LOG_ERROR("Failed to find ack for timeout callback!");
-        }
-
-        CORE_LOG_WARN("Acknowledgment timeout for message {}", itr->header);
-        if (itr->handler.on_timeout) {
-          itr->handler.on_timeout(itr->header);
-        }
-      } else {
-        CORE_LOG_ERROR("Error in acknowledgment timer for message ID {}: {}", id, ec.message());
+      auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.sent_time == stime; });
+      if (itr == pending_acks.end()) {
+        CORE_LOG_ERROR("Failed to find ack for timeout callback!");
+        return;
       }
 
-      queue_cancelled_ack_id(id);
+      CORE_LOG_WARN("Acknowledgment timeout for message {}", itr->header);
+      if (itr->handler.on_timeout) {
+        itr->handler.on_timeout(itr->header);
+        pending_acks.erase(itr);
+        return;
+      }
     });
 
     return ack_id;
@@ -100,24 +103,6 @@ namespace other {
     natural_t msg_id = itr->header.id;
     pending_responses.erase(itr);
     return msg_id;
-  }
-
-  void acknowledgement_list::clear_cancelled_acks() {
-    for (natural_t ack_id : cancelled_ack_ids) {
-      auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == ack_id; });
-      OTHER_ASSERT(itr != pending_acks.end(), "Failed to find pending acknowledgment with ID {} to cancel", ack_id);
-      pending_acks.erase(itr);
-    }
-    cancelled_ack_ids.clear();
-  }
-
-  void acknowledgement_list::clear_finished_acks() {
-    for (natural_t ack_id : finish_ack_ids) {
-      auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == ack_id; });
-      OTHER_ASSERT(itr != pending_acks.end(), "Failed to find pending acknowledgment with ID {} to mark as finished", ack_id);
-      pending_acks.erase(itr);
-    }
-    finish_ack_ids.clear();
   }
 
 }  // namespace other

@@ -51,6 +51,29 @@ namespace other {
     uint32_t native_physics_raycast(float ox, float oy, float oz, float dx, float dy, float dz, float max_distance,
                                     natural_t* out_object, float* out_point, float* out_normal, float* out_distance);
 
+    /// camera pose verbs write the camera struct directly — the primary camera renders
+    ///  from camera.position/direction (the "main-camera" tag), not the object transform
+    void native_camera_component_get_position(natural_t object_id, float* out_position);
+    void native_camera_component_look_from(natural_t object_id, float x, float y, float z);
+    void native_camera_component_get_direction(natural_t object_id, float* out_direction);
+    void native_camera_component_look_at(natural_t object_id, float x, float y, float z);
+    void native_camera_component_look(natural_t object_id, float px, float py, float pz, float tx, float ty, float tz);
+    float native_camera_component_get_fov(natural_t object_id);
+    void native_camera_component_set_fov(natural_t object_id, float fov);
+    void native_camera_component_get_clip_planes(natural_t object_id, float* out_near, float* out_far);
+    void native_camera_component_set_clip_planes(natural_t object_id, float near_plane, float far_plane);
+
+    /// light accessors; point positions are local offsets (world-transformed at light
+    ///  collection), direction lights keep the TO-the-light convention
+    void native_point_light_get_position(natural_t object_id, float* out_position);
+    void native_point_light_set_position(natural_t object_id, float x, float y, float z);
+    void native_point_light_get_color(natural_t object_id, float* out_color);
+    void native_point_light_set_color(natural_t object_id, float r, float g, float b, float a);
+    void native_direction_light_get_direction(natural_t object_id, float* out_direction);
+    void native_direction_light_set_direction(natural_t object_id, float x, float y, float z);
+    void native_direction_light_get_color(natural_t object_id, float* out_color);
+    void native_direction_light_set_color(natural_t object_id, float r, float g, float b, float a);
+
     /// audio clips are assets too: scripts assign a .wav/.mp3 path ("" clears)
     native_string native_audio_source_get_clip_path(natural_t object_id);
     void native_audio_source_set_clip_path(natural_t object_id, native_string path);

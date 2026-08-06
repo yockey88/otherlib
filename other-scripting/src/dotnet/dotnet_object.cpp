@@ -3,6 +3,8 @@
  **/
 #include "dotnet/dotnet_object.hpp"
 
+#include <algorithm>
+#include <cstring>
 #include <print>
 #include <string>
 
@@ -21,15 +23,7 @@ namespace other {
 
     const auto& fields = dn_type->get_fields();
     for (const auto& f : fields) {
-      // skip C# property backing fields
-      if (f.name().ends_with("k__BackingField")) {
-        continue;
-      }
-
-      /// \todo find a way to deserialize the user types into storage
-      ///        class SerializedAttribute : Attribute {}
-      ///        [Serialized]
-      if (f.get_type() == value_type::USER_TYPE) {
+      if (!is_eagerly_loadable(f)) {
         continue;
       }
 
@@ -45,15 +39,7 @@ namespace other {
 
     const auto& fields = dn_type->get_fields();
     for (const auto& f : fields) {
-      // skip C# property backing fields
-      if (f.name().ends_with("k__BackingField")) {
-        continue;
-      }
-
-      /// \todo find a way to serialize the user types from storage
-      ///        class SerializedAttribute : Attribute {}
-      ///        [Serialized]
-      if (f.get_type() == value_type::USER_TYPE) {
+      if (!is_eagerly_loadable(f)) {
         continue;
       }
 
@@ -66,94 +52,16 @@ namespace other {
     }
   }
 
-  behavior_snapshot dotnet_object::get_behavior_snapshot() const {
-    // auto* env = subsystem<scripting_environment>::get();
-    // OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
-
-    // auto& fns = env->get_dotnet_host().interop();
-
-    // behavior_snapshot snapshot{};
-
-    // int32_t behavior_count = fns.get_behavior_count(managed_object);
-    // if (behavior_count <= 0) {
-    //   snapshot.valid = true;
-    //   return snapshot;
-    // }
-
-    // snapshot.behaviors.reserve(behavior_count);
-
-    // for (int32_t bi = 0; bi < behavior_count; ++bi) {
-    //   behavior_descriptor desc{};
-    //   desc.behavior_index = bi;
-
-    //   // type name
-    //   {
-    //     native_string name = fns.get_behavior_type_name(managed_object, bi);
-    //     desc.full_type_name = std::string(name);
-    //     native_string::free_str(name);
-    //   }
-
-    //   // display name
-    //   {
-    //     native_string name = fns.get_behavior_display_name(managed_object, bi);
-    //     desc.display_name = std::string(name);
-    //     native_string::free_str(name);
-    //   }
-
-    //   // fields
-    //   int32_t field_count = fns.get_behavior_field_count(managed_object, bi);
-    //   desc.fields.reserve(field_count);
-
-    //   for (int32_t fi = 0; fi < field_count; ++fi) {
-    //     behavior_field_descriptor field_desc{};
-    //     field_desc.field_index = fi;
-
-    //     // field name
-    //     {
-    //       native_string name = fns.get_behavior_field_name(managed_object, bi, fi);
-    //       field_desc.field_name = std::string(name);
-    //       native_string::free_str(name);
-    //     }
-
-    //     // display name
-    //     {
-    //       native_string name = fns.get_behavior_field_display_name(managed_object, bi, fi);
-    //       field_desc.display_name = std::string(name);
-    //       native_string::free_str(name);
-    //     }
-
-    //     // descriptor (type, flags, range)
-    //     {
-    //       native_behavior_field_descriptor native_desc{};
-    //       fns.get_behavior_field_descriptor(managed_object, bi, fi, &native_desc);
-    //       field_desc.type = static_cast<value_type>(native_desc.field_value_type);
-    //       field_desc.flags = static_cast<behavior_display_flags>(native_desc.flags);
-    //       field_desc.range_min = native_desc.range_min;
-    //       field_desc.range_max = native_desc.range_max;
-    //     }
-
-    //     // tooltip
-    //     if (has_flag(field_desc.flags, behavior_display_flags::has_tooltip)) {
-    //       native_string tip = fns.get_behavior_field_tooltip(managed_object, bi, fi);
-    //       field_desc.tooltip = std::string(tip);
-    //       native_string::free_str(tip);
-    //     }
-
-    //     // group name
-    //     if (has_flag(field_desc.flags, behavior_display_flags::is_group_start)) {
-    //       native_string group = fns.get_behavior_field_group_name(managed_object, bi, fi);
-    //       field_desc.group_name = std::string(group);
-    //       native_string::free_str(group);
-    //     }
-
-    //     desc.fields.push_back(std::move(field_desc));
-    //   }
-
-    //   snapshot.behaviors.push_back(std::move(desc));
-    // }
-
-    // snapshot.valid = true;
-    return {};
+  /// eager sweeps cover plain data fields only. properties stay lazy, by name: getters can
+  ///  run arbitrary code (SceneObject.WorldMatrix calls back into native), so evaluating
+  ///  them wholesale at attach/serialize time is never safe. user types are unrepresentable
+  ///  in flat storage until a [Serialized] story exists
+  bool dotnet_object::is_eagerly_loadable(const dotnet_field& f) const {
+    if (f.is_property() || f.name().ends_with("k__BackingField")) {
+      return false;
+    }
+    const value_type ft = f.get_type();
+    return ft != value_type::USER_TYPE && ft != value_type::EMPTY_TYPE;
   }
 
   bool dotnet_object::has_method(const std::string_view method_name) const {
@@ -161,27 +69,102 @@ namespace other {
     return dn_type->has_method(method_name);
   }
 
-  int32_t dotnet_object::read_behavior_field_value(int32_t behavior_index, int32_t field_index, void* out_data, int32_t buffer_size) {
-    if (managed_object == nullptr) {
+  int32_t dotnet_object::read_field_value(const std::string_view field_name, void* out_data, int32_t buffer_size) {
+    if (managed_object == nullptr || dn_type == nullptr || out_data == nullptr || buffer_size <= 0) {
       return 0;
     }
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
 
-    int32_t bytes_written = 0;
-    // env->get_dotnet_host().interop().get_behavior_field_value(managed_object, behavior_index, field_index, out_data, &bytes_written);
-    return bytes_written;
+    const dotnet_field* f = get_dotnet_field(field_name);
+    if (f == nullptr) {
+      return 0;
+    }
+    const value_type ft = f->get_type();
+    if (ft == value_type::EMPTY_TYPE || ft == value_type::USER_TYPE) {
+      return 0;
+    }
+
+    auto itr = load_field(field_name, ft);
+    if (itr == field_storage.end()) {
+      return 0;
+    }
+
+    dotnet_field::storage& storage = itr->second;
+    if (storage.stored_type == value_type::STRING) {
+      /// strings re-measure on every read; the arena block regrows only when the managed
+      ///  string outgrew it
+      native_string name = native_string::new_str(field_name);
+      native_string str_native;
+      if (dn_type->is_field_property(field_name)) {
+        host->interop().get_string_property(managed_object, name, &str_native);
+      } else {
+        host->interop().get_string_field(managed_object, name, &str_native);
+      }
+      std::string str = str_native;
+      native_string::free_str(str_native);
+      native_string::free_str(name);
+
+      const size_t needed = str.size() + 1;
+      if (needed > storage.size || storage.data == nullptr) {
+        arena::free(storage.data);
+        storage.data = (uint8_t*)arena::allocate(needed);
+      }
+      storage.size = needed;
+      std::memcpy(storage.data, str.data(), str.size());
+      storage.data[needed - 1] = '\0';
+    } else {
+      load_field_into_storage(field_name, storage);
+    }
+
+    const int32_t written = (int32_t)std::min<size_t>(storage.size, (size_t)buffer_size);
+    std::memcpy(out_data, storage.data, written);
+    return written;
   }
 
-  bool dotnet_object::write_field_value(int32_t behavior_index, int32_t field_index, void* in_data, int32_t data_size) {
-    if (managed_object == nullptr) {
+  bool dotnet_object::write_field_value(const std::string_view field_name, const void* in_data, int32_t data_size) {
+    if (managed_object == nullptr || dn_type == nullptr || in_data == nullptr || data_size <= 0) {
       return false;
     }
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
 
-    // env->get_dotnet_host().interop().set_behavior_field_value(managed_object, behavior_index, field_index, in_data, data_size);
-    return true;
+    const dotnet_field* f = get_dotnet_field(field_name);
+    if (f == nullptr) {
+      return false;
+    }
+
+    const auto write_as = [&]<typename FT>() -> bool {
+      if ((size_t)data_size < sizeof(FT)) {
+        CORE_LOG_ERROR("write_field_value: buffer too small for field '{}' ({} < {})", field_name, data_size, sizeof(FT));
+        return false;
+      }
+      FT v{};
+      std::memcpy(&v, in_data, sizeof(FT));
+      set_field<FT>(field_name, v);
+      return true;
+    };
+
+    switch (f->get_type()) {
+      case value_type::CHAR: return write_as.operator()<char>();
+      case value_type::OEBOOL: return write_as.operator()<bool>();
+      case value_type::INT8: return write_as.operator()<int8_t>();
+      case value_type::INT16: return write_as.operator()<int16_t>();
+      case value_type::INT32: return write_as.operator()<int32_t>();
+      case value_type::INT64: return write_as.operator()<int64_t>();
+      case value_type::UINT8: return write_as.operator()<uint8_t>();
+      case value_type::UINT16: return write_as.operator()<uint16_t>();
+      case value_type::UINT32: return write_as.operator()<uint32_t>();
+      case value_type::UINT64: return write_as.operator()<uint64_t>();
+      case value_type::FLOAT: return write_as.operator()<float>();
+      case value_type::DOUBLE: return write_as.operator()<double>();
+      case value_type::STRING: {
+        /// data is a null-terminated buffer from the widget; trust data_size as the cap
+        const char* chars = reinterpret_cast<const char*>(in_data);
+        const size_t len = strnlen(chars, (size_t)data_size);
+        set_field<std::string>(field_name, std::string(chars, len));
+        return true;
+      }
+      default:
+        CORE_LOG_ERROR("write_field_value: unsupported field type [{}] for field '{}'", f->get_type(), field_name);
+        return false;
+    }
   }
 
   std::string dotnet_object::get_type_name() const {

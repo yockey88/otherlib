@@ -19,22 +19,23 @@ namespace Other
       public UInt64 native_id;
     }
 
-    protected ulong object_id;
-    public UInt64 ObjectId => object_id;
-
     private readonly ulong bound_object_id;   // raw-id fallback (wrapper built from a bare id)
     private Core.OtherObject owner = null;    // set by SceneObject.GetComponent
     protected readonly ulong component_id;
 
+    /// owner-bound wrappers follow the owner's current native id — a play/stop restore
+    /// mints new runtime ids, so a cached raw id goes stale the moment the scene rebuilds
+    public UInt64 ObjectId => owner != null ? owner.ObjectID : bound_object_id;
+
     private static readonly Dictionary<Type, ulong> component_ids = new();
     private static readonly Dictionary<FieldKey, FieldInfo> field_maps = new();
 
-    protected Component(ulong object_id) 
+    protected Component(ulong object_id)
     {
-      this.object_id = object_id;
-      component_id = TypeId(GetType());    
+      bound_object_id = object_id;
+      component_id = TypeId(GetType());
     }
-    
+
     internal void BindOwner(Core.OtherObject new_owner)
     {
       owner = new_owner;
@@ -90,135 +91,135 @@ namespace Other
     protected bool GetBool([CallerMemberName] string prop = "")
     {
       bool v = false;
-      unsafe { OtherABI.NativeGetFieldBool(object_id, component_id, FieldId(prop), &v); }
+      unsafe { OtherABI.NativeGetFieldBool(ObjectId, component_id, FieldId(prop), &v); }
       return v;
     }
 
     protected void SetBool(bool value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldBool(object_id, component_id, FieldId(prop), value); }
+      unsafe { OtherABI.NativeSetFieldBool(ObjectId, component_id, FieldId(prop), value); }
     }
 
     protected int GetI32([CallerMemberName] string prop = "")
     {
       int v = 0;
-      unsafe { OtherABI.NativeGetFieldI32(object_id, component_id, FieldId(prop), &v); }
+      unsafe { OtherABI.NativeGetFieldI32(ObjectId, component_id, FieldId(prop), &v); }
       return v;
     }
 
     protected void SetI32(int value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldI32(object_id, component_id, FieldId(prop), value); }
+      unsafe { OtherABI.NativeSetFieldI32(ObjectId, component_id, FieldId(prop), value); }
     }
 
     protected uint GetU32([CallerMemberName] string prop = "")
     {
       uint v = 0;
-      unsafe { OtherABI.NativeGetFieldU32(object_id, component_id, FieldId(prop), &v); }
+      unsafe { OtherABI.NativeGetFieldU32(ObjectId, component_id, FieldId(prop), &v); }
       return v;
     }
 
     protected void SetU32(uint value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldU32(object_id, component_id, FieldId(prop), value); }
+      unsafe { OtherABI.NativeSetFieldU32(ObjectId, component_id, FieldId(prop), value); }
     }
 
     protected long GetI64([CallerMemberName] string prop = "")
     {
       long v = 0;
-      unsafe { OtherABI.NativeGetFieldI64(object_id, component_id, FieldId(prop), &v); }
+      unsafe { OtherABI.NativeGetFieldI64(ObjectId, component_id, FieldId(prop), &v); }
       return v;
     }
 
     protected void SetI64(long value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldI64(object_id, component_id, FieldId(prop), value); }
+      unsafe { OtherABI.NativeSetFieldI64(ObjectId, component_id, FieldId(prop), value); }
     }
 
     protected ulong GetU64([CallerMemberName] string prop = "")
     {
       ulong v = 0;
-      unsafe { OtherABI.NativeGetFieldU64(object_id, component_id, FieldId(prop), &v); }
+      unsafe { OtherABI.NativeGetFieldU64(ObjectId, component_id, FieldId(prop), &v); }
       return v;
     }
 
     protected void SetU64(ulong value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldU64(object_id, component_id, FieldId(prop), value); }
+      unsafe { OtherABI.NativeSetFieldU64(ObjectId, component_id, FieldId(prop), value); }
     }
 
     protected float GetF32([CallerMemberName] string prop = "")
     {
       float v = 0;
-      unsafe { OtherABI.NativeGetFieldF32(object_id, component_id, FieldId(prop), &v); }
+      unsafe { OtherABI.NativeGetFieldF32(ObjectId, component_id, FieldId(prop), &v); }
       return v;
     }
 
     protected void SetF32(float value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldF32(object_id, component_id, FieldId(prop), value); }
+      unsafe { OtherABI.NativeSetFieldF32(ObjectId, component_id, FieldId(prop), value); }
     }
 
     protected double GetF64([CallerMemberName] string prop = "")
     {
       double v = 0;
-      unsafe { OtherABI.NativeGetFieldF64(object_id, component_id, FieldId(prop), &v); }
+      unsafe { OtherABI.NativeGetFieldF64(ObjectId, component_id, FieldId(prop), &v); }
       return v;
     }
 
     protected void SetF64(double value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldF64(object_id, component_id, FieldId(prop), value); }
+      unsafe { OtherABI.NativeSetFieldF64(ObjectId, component_id, FieldId(prop), value); }
     }
 
     protected Vec2 GetVec2([CallerMemberName] string prop = "")
     {
       float x = 0, y = 0;
-      unsafe { OtherABI.NativeGetFieldVec2(object_id, component_id, FieldId(prop), &x, &y); }
+      unsafe { OtherABI.NativeGetFieldVec2(ObjectId, component_id, FieldId(prop), &x, &y); }
       return new Vec2(x, y);
     }
 
     protected void SetVec2(Vec2 value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldVec2(object_id, component_id, FieldId(prop), value.X, value.Y); }
+      unsafe { OtherABI.NativeSetFieldVec2(ObjectId, component_id, FieldId(prop), value.X, value.Y); }
     }
 
     protected Vec3 GetVec3([CallerMemberName] string prop = "")
     {
       float x = 0, y = 0, z = 0;
-      unsafe { OtherABI.NativeGetFieldVec3(object_id, component_id, FieldId(prop), &x, &y, &z); }
+      unsafe { OtherABI.NativeGetFieldVec3(ObjectId, component_id, FieldId(prop), &x, &y, &z); }
       return new Vec3(x, y, z);
     }
 
     protected void SetVec3(Vec3 value, [CallerMemberName] string prop = "")
     {
       unsafe { 
-        OtherABI.NativeSetFieldVec3(object_id, component_id, FieldId(prop), value.X, value.Y, value.Z); 
+        OtherABI.NativeSetFieldVec3(ObjectId, component_id, FieldId(prop), value.X, value.Y, value.Z); 
       }
     }
 
     protected Vec4 GetVec4([CallerMemberName] string prop = "")
     {
       float x = 0, y = 0, z = 0, w = 0;
-      unsafe { OtherABI.NativeGetFieldVec4(object_id, component_id, FieldId(prop), &x, &y, &z, &w); }
+      unsafe { OtherABI.NativeGetFieldVec4(ObjectId, component_id, FieldId(prop), &x, &y, &z, &w); }
       return new Vec4(x, y, z, w);
     }
 
     protected void SetVec4(Vec4 value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldVec4(object_id, component_id, FieldId(prop), value.X, value.Y, value.Z, value.W); }
+      unsafe { OtherABI.NativeSetFieldVec4(ObjectId, component_id, FieldId(prop), value.X, value.Y, value.Z, value.W); }
     }
 
     protected Quaternion GetQuat([CallerMemberName] string prop = "")
     {
       float x = 0, y = 0, z = 0, w = 0;
-      unsafe { OtherABI.NativeGetFieldQuat(object_id, component_id, FieldId(prop), &x, &y, &z, &w); }
+      unsafe { OtherABI.NativeGetFieldQuat(ObjectId, component_id, FieldId(prop), &x, &y, &z, &w); }
       return new Quaternion(x, y, z, w);
     }
 
     protected void SetQuat(Quaternion value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldQuat(object_id, component_id, FieldId(prop), value.X, value.Y, value.Z, value.W); }
+      unsafe { OtherABI.NativeSetFieldQuat(ObjectId, component_id, FieldId(prop), value.X, value.Y, value.Z, value.W); }
     }
 
     protected Mat4 GetMat4([CallerMemberName] string prop = "")
@@ -226,7 +227,7 @@ namespace Other
       unsafe
       {
         float* ptr = stackalloc float[16];
-        OtherABI.NativeGetFieldMat4(object_id, component_id, FieldId(prop), ptr);
+        OtherABI.NativeGetFieldMat4(ObjectId, component_id, FieldId(prop), ptr);
         return new Mat4(
           ptr[0], ptr[1], ptr[2], ptr[3],
           ptr[4], ptr[5], ptr[6], ptr[7],
@@ -245,7 +246,7 @@ namespace Other
         ptr[4] = value.M21; ptr[5] = value.M22; ptr[6] = value.M23; ptr[7] = value.M24;
         ptr[8] = value.M31; ptr[9] = value.M32; ptr[10] = value.M33; ptr[11] = value.M34;
         ptr[12] = value.M41; ptr[13] = value.M42; ptr[14] = value.M43; ptr[15] = value.M44;
-        OtherABI.NativeSetFieldMat4(object_id, component_id, FieldId(prop), ptr);
+        OtherABI.NativeSetFieldMat4(ObjectId, component_id, FieldId(prop), ptr);
       }
     }
 
@@ -254,14 +255,14 @@ namespace Other
       unsafe
       {
         NativeString ns = default;
-        OtherABI.NativeGetFieldString(object_id, component_id, FieldId(prop), &ns);
+        OtherABI.NativeGetFieldString(ObjectId, component_id, FieldId(prop), &ns);
         return ns.ToString();
       }
     }
 
     protected void SetNativeString(string value, [CallerMemberName] string prop = "")
     {
-      unsafe { OtherABI.NativeSetFieldString(object_id, component_id, FieldId(prop), value); }
+      unsafe { OtherABI.NativeSetFieldString(ObjectId, component_id, FieldId(prop), value); }
     }
   }  
 }

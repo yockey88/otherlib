@@ -41,6 +41,21 @@ namespace Other
     }
     public override int GetHashCode() => HashCode.Combine(X, Y, Z);
 
+    public static float Dot(Vec3 a, Vec3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+    public static Vec3 Cross(Vec3 a, Vec3 b) => new Vec3(
+      a.Y * b.Z - a.Z * b.Y,
+      a.Z * b.X - a.X * b.Z,
+      a.X * b.Y - a.Y * b.X
+    );
+
+    public float LengthSquared() => X * X + Y * Y + Z * Z;
+    public float Length() => MathF.Sqrt(LengthSquared());
+    public Vec3 Normalized()
+    {
+      float len = Length();
+      return len <= float.Epsilon ? Zero : this / len;
+    }
+
     public static Vec3 Zero => new Vec3(0f, 0f, 0f);
     public static Vec3 One => new Vec3(1f, 1f, 1f);
     public static Vec3 Up => new Vec3(0f, 1f, 0f);

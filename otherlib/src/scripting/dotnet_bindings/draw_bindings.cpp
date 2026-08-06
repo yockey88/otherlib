@@ -5,7 +5,9 @@
 
 #include "renderer/renderer.hpp"
 
+#include "model/model_source.hpp"
 #include "object/grid_component.hpp"
+#include "object/render_component.hpp"
 #include "scene/scene.hpp"
 
 #include "driver/driver.hpp"
@@ -108,19 +110,27 @@ namespace other {
       draw.transform(xform, scale);
     }
 
-    void native_draw_mesh(uint64_t mesh_handle, float m00, float m01, float m02, float m03,
+    void native_draw_mesh(uint64_t object_id, float m00, float m01, float m02, float m03,
                           float m10, float m11, float m12, float m13,
                           float m20, float m21, float m22, float m23,
                           float m30, float m31, float m32, float m33,
                           float r, float g, float b, float a,
                           nbool32 wireframe, nbool32 in_scene) {
-      CORE_LOG_ERROR("Draw.Mesh is not yet implemented in the native renderer.");
-      // debug_draw draw = detail::get_draw_sink(in_scene);
-      // glm::mat4 model{ {m00, m01, m02, m03},
-      //                  {m10, m11, m12, m13},
-      //                  {m20, m21, m22, m23},
-      //                  {m30, m31, m32, m33} };
-      // draw.mesh(resource_handle{ mesh_handle }, model, { r, g, b, a }, wireframe);
+      scene* active_scene = detail::get_active_scene_checked();
+      OTHER_ASSERT(active_scene->has_object(object_id), "Draw.Mesh: object {} does not exist in the active scene.", object_id);
+
+      const render_component* rc = active_scene->try_get_component<render_component>(object_id);
+      if (rc == nullptr || rc->obj_model.source == nullptr || !rc->obj_model.source->uploaded()) {
+        /// nothing renderable yet (no component, or the async model load hasn't landed)
+        return;
+      }
+
+      debug_draw draw = detail::get_draw_sink(in_scene);
+      glm::mat4 model{ { m00, m01, m02, m03 },
+                       { m10, m11, m12, m13 },
+                       { m20, m21, m22, m23 },
+                       { m30, m31, m32, m33 } };
+      draw.mesh(rc->obj_model.source->get_mesh_handle(), model, { r, g, b, a }, wireframe);
     }
 
     void native_draw_grid(uint64_t object_id, nbool32 in_scene) {

@@ -297,6 +297,8 @@ namespace other {
   void network_thread::handle_command_shutdown_request(message&& msg) {
     CORE_LOG_DEBUG("Received shutdown request, shutting down network thread...");
     current_state.shutdown_pending = true;
+
+    std::unique_lock l{ providers_mutex };
     for (auto* provider : providers) {
       OTHER_ASSERT(provider != nullptr, "Provider list contains null provider");
       provider->begin_shutdown();
@@ -309,6 +311,8 @@ namespace other {
     command_listen_connection request = deserialize_direct<command_listen_connection>(msg.data).first;
 
     transport_provider* provider = nullptr;
+
+    std::unique_lock l{ providers_mutex };
     for (auto* p : providers) {
       OTHER_ASSERT(p != nullptr, "Provider list contains null provider");
       if (p->hash() == request.transport_hash) {

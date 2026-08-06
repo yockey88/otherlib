@@ -134,12 +134,17 @@ namespace other {
       shift_cursor_y(4.f);
     }
 
-    bool draw_behavior_field(integer_t script_object_id, const behavior_descriptor& behavior, const behavior_field_descriptor& field) {
+    bool draw_behavior_field(const behavior_descriptor& behavior, const behavior_field_descriptor& field) {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "Scripting environment is not available");
 
-      auto* script_obj = env->get_object(script_object_id);
-      OTHER_ASSERT(script_obj != nullptr, "Script object with ID {} not found", script_object_id);
+      /// field access goes through the behavior's own script object, by name — snapshots
+      ///  are per-frame so the id is never stale across an assembly refresh
+      auto* script_obj = env->get_object(behavior.script_object_id);
+      if (script_obj == nullptr || script_obj->dotnet_object == nullptr) {
+        inspector::property_display(field.field_name, "<detached>", colors::kTextDisabled);
+        return false;
+      }
 
       /// determine which label to show
       const std::string& label = field.display_name.empty() ? field.field_name : field.display_name;
@@ -149,7 +154,7 @@ namespace other {
 
       /// read the current value from the managed side
       uint8_t buffer[detail::kFieldValueBufferSize] = {};
-      int32_t bytes_read = script_obj->dotnet_object->read_behavior_field_value(behavior.behavior_index, field.field_index, buffer, detail::kFieldValueBufferSize);
+      int32_t bytes_read = script_obj->dotnet_object->read_field_value(field.field_name, buffer, detail::kFieldValueBufferSize);
 
       if (bytes_read <= 0 && field.type != value_type::OEBOOL) {
         inspector::property_display(label, "<unreadable>", colors::kTextDisabled);
@@ -171,7 +176,7 @@ namespace other {
         case value_type::OEBOOL: {
           bool val = *reinterpret_cast<bool*>(buffer);
           if (inspector::property_bool(label, val)) {
-            script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &val, sizeof(val));
+            script_obj->dotnet_object->write_field_value(field.field_name, &val, sizeof(val));
             changed = true;
           }
         } break;
@@ -198,19 +203,19 @@ namespace other {
             switch (field.type) {
               case value_type::INT8: {
                 int8_t v = static_cast<int8_t>(val);
-                script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &v, sizeof(v));
+                script_obj->dotnet_object->write_field_value(field.field_name, &v, sizeof(v));
               } break;
               case value_type::INT16: {
                 int16_t v = static_cast<int16_t>(val);
-                script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &v, sizeof(v));
+                script_obj->dotnet_object->write_field_value(field.field_name, &v, sizeof(v));
               } break;
               case value_type::INT32: {
                 int32_t v = static_cast<int32_t>(val);
-                script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &v, sizeof(v));
+                script_obj->dotnet_object->write_field_value(field.field_name, &v, sizeof(v));
               } break;
               case value_type::INT64: {
                 int64_t v = static_cast<int64_t>(val);
-                script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &v, sizeof(v));
+                script_obj->dotnet_object->write_field_value(field.field_name, &v, sizeof(v));
               } break;
               default: break;
             }
@@ -235,19 +240,19 @@ namespace other {
             switch (field.type) {
               case value_type::UINT8: {
                 uint8_t v = static_cast<uint8_t>(val);
-                script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &v, sizeof(v));
+                script_obj->dotnet_object->write_field_value(field.field_name, &v, sizeof(v));
               } break;
               case value_type::UINT16: {
                 uint16_t v = static_cast<uint16_t>(val);
-                script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &v, sizeof(v));
+                script_obj->dotnet_object->write_field_value(field.field_name, &v, sizeof(v));
               } break;
               case value_type::UINT32: {
                 uint32_t v = static_cast<uint32_t>(val);
-                script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &v, sizeof(v));
+                script_obj->dotnet_object->write_field_value(field.field_name, &v, sizeof(v));
               } break;
               case value_type::UINT64: {
                 uint64_t v = static_cast<uint64_t>(val);
-                script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &v, sizeof(v));
+                script_obj->dotnet_object->write_field_value(field.field_name, &v, sizeof(v));
               } break;
               default: break;
             }
@@ -275,7 +280,7 @@ namespace other {
           }
 
           if (field_changed) {
-            script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &val, sizeof(val));
+            script_obj->dotnet_object->write_field_value(field.field_name, &val, sizeof(val));
             changed = true;
           }
         } break;
@@ -296,7 +301,7 @@ namespace other {
 
           if (field_changed) {
             val = static_cast<double>(fval);
-            script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &val, sizeof(val));
+            script_obj->dotnet_object->write_field_value(field.field_name, &val, sizeof(val));
             changed = true;
           }
         } break;
@@ -309,7 +314,7 @@ namespace other {
 
           if (inspector::property_text(label, text_buf, sizeof(text_buf))) {
             size_t new_len = std::strlen(text_buf) + 1;
-            script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, text_buf, static_cast<int32_t>(new_len));
+            script_obj->dotnet_object->write_field_value(field.field_name, text_buf, static_cast<int32_t>(new_len));
             changed = true;
           }
         } break;
@@ -319,7 +324,7 @@ namespace other {
           char text_buf[4] = { val, '\0' };
           if (inspector::property_text(label, text_buf, sizeof(text_buf))) {
             val = text_buf[0];
-            script_obj->dotnet_object->write_field_value(behavior.behavior_index, field.field_index, &val, sizeof(val));
+            script_obj->dotnet_object->write_field_value(field.field_name, &val, sizeof(val));
             changed = true;
           }
         } break;

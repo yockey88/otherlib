@@ -14,7 +14,7 @@ namespace other {
     /// '/'-separated paths relative to @p root; the filter prunes excluded subtrees
     //  (bin/, obj/, .*/), which is the rebuild-loop safety mechanism — do not drop it.
     //  iteration tolerates transient races (files vanishing mid-scan) via error codes.
-    void scan_subtree_impl(const filepath& root, const filepath& dir, const glob_set* filter, std::unordered_set<std::string>& out) {
+    void scan_subtree_impl(const filepath& root, const filepath& dir, const glob_set* filter, std::unordered_map<std::string, std::filesystem::file_time_type>& out) {
       std::error_code ec;
       for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
         const opt<std::string> rel = try_relative(it->path(), root);
@@ -28,7 +28,9 @@ namespace other {
           }
         } else if (it->is_regular_file(ec)) {
           if (filter == nullptr || filter->matches(*rel)) {
-            out.insert(*rel);
+            std::error_code time_ec;
+            const auto write_time = it->last_write_time(time_ec);
+            out.emplace(*rel, time_ec ? std::filesystem::file_time_type::min() : write_time);
           }
         }
       }
@@ -91,16 +93,20 @@ namespace other {
   void file_watcher::poll_directory() {
     PROFILE_SECTION("file_watcher::poll_directory");
 
-    std::unordered_set<std::string> current;
+    std::unordered_map<std::string, std::filesystem::file_time_type> current;
     scan_subtree(current);
 
-    for (const std::string& rel : current) {
-      if (!subtree.contains(rel)) {
+    for (const auto& [rel, write_time] : current) {
+      auto prev = subtree.find(rel);
+      if (prev == subtree.end()) {
         events.trigger_event("filesystem.watch-event",
                              file_event{ .type = file_event::type::CREATED, .path = watch_path / rel });
+      } else if (prev->second != write_time) {
+        events.trigger_event("filesystem.watch-event",
+                             file_event{ .type = file_event::type::MODIFIED, .path = watch_path / rel });
       }
     }
-    for (const std::string& rel : subtree) {
+    for (const auto& [rel, write_time] : subtree) {
       if (!current.contains(rel)) {
         events.trigger_event("filesystem.watch-event",
                              file_event{ .type = file_event::type::DELETED, .path = watch_path / rel });
@@ -120,7 +126,7 @@ namespace other {
     }
   }
 
-  void file_watcher::scan_subtree(std::unordered_set<std::string>& out) const {
+  void file_watcher::scan_subtree(std::unordered_map<std::string, std::filesystem::file_time_type>& out) const {
     scan_subtree_impl(watch_path, watch_path, filter, out);
   }
 

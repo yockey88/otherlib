@@ -3,6 +3,10 @@
  **/
 #include "script_environment_tests.hpp"
 
+#include <cstring>
+
+#include "dotnet/dotnet_object.hpp"
+
 #include "gtest/gtest.h"
 
 namespace other {
@@ -80,6 +84,88 @@ namespace other {
 
     EXPECT_NO_FATAL_FAILURE(env->detach_all_dotnet_behaviors(parent_id));
     EXPECT_EQ(parent->dotnet_object->invoke<int>("CountBehaviors"), 0);
+    EXPECT_NO_FATAL_FAILURE(env->destroy_object(parent_id));
+  }
+
+  /// the managed-reflection pipeline behind the behavior inspector: GetFields/GetProperties
+  ///  must enumerate public members (the BindingFlags regression returned none), the
+  ///  snapshot walks each behavior's own dotnet type, and field edits round-trip by name
+  TEST_F(script_environment_tests, behavior_snapshot_lists_fields_and_roundtrips) {
+    auto* env = subsystem<scripting_environment>::get();
+    ASSERT_NE(env, nullptr);
+
+    integer_t parent_id = -1;
+    EXPECT_NO_FATAL_FAILURE(parent_id = env->create_object("SnapshotFieldsParent"));
+    ASSERT_GE(parent_id, 0);
+    EXPECT_NO_FATAL_FAILURE(env->attach_dotnet_object(parent_id, "TestParentObject"));
+
+    script_object* parent = env->get_object(parent_id);
+    ASSERT_NE(parent, nullptr);
+    ASSERT_NE(parent->dotnet_object, nullptr);
+    EXPECT_NO_FATAL_FAILURE(env->attach_dotnet_behavior(parent_id, "TestBehavior"));
+
+    behavior_snapshot snapshot = parent->get_behavior_snapshot();
+    ASSERT_TRUE(snapshot.valid);
+    ASSERT_EQ(snapshot.behaviors.size(), 1u);
+
+    const behavior_descriptor& behavior = snapshot.behaviors[0];
+    EXPECT_EQ(behavior.display_name, "TestBehavior");
+    ASSERT_GE(behavior.script_object_id, 0);
+
+    auto find_field = [&](std::string_view name) -> const behavior_field_descriptor* {
+      for (const auto& f : behavior.fields) {
+        if (f.field_name == name) {
+          return &f;
+        }
+      }
+      return nullptr;
+    };
+
+    const behavior_field_descriptor* speed = find_field("speed");
+    ASSERT_NE(speed, nullptr);
+    EXPECT_EQ(speed->type, value_type::FLOAT);
+    const behavior_field_descriptor* counter = find_field("counter");
+    ASSERT_NE(counter, nullptr);
+    EXPECT_EQ(counter->type, value_type::INT32);
+    const behavior_field_descriptor* active = find_field("active");
+    ASSERT_NE(active, nullptr);
+    EXPECT_EQ(active->type, value_type::OEBOOL);
+    const behavior_field_descriptor* label = find_field("label");
+    ASSERT_NE(label, nullptr);
+    EXPECT_EQ(label->type, value_type::STRING);
+
+    script_object* behavior_obj = env->get_object(behavior.script_object_id);
+    ASSERT_NE(behavior_obj, nullptr);
+    ASSERT_NE(behavior_obj->dotnet_object, nullptr);
+
+    float speed_val = 0.f;
+    EXPECT_EQ(behavior_obj->dotnet_object->read_field_value("speed", &speed_val, sizeof(speed_val)), (int32_t)sizeof(float));
+    EXPECT_FLOAT_EQ(speed_val, 2.5f);
+
+    const float new_speed = 11.25f;
+    EXPECT_TRUE(behavior_obj->dotnet_object->write_field_value("speed", &new_speed, sizeof(new_speed)));
+    speed_val = 0.f;
+    behavior_obj->dotnet_object->read_field_value("speed", &speed_val, sizeof(speed_val));
+    EXPECT_FLOAT_EQ(speed_val, 11.25f);
+
+    char text[64] = {};
+    int32_t text_len = behavior_obj->dotnet_object->read_field_value("label", text, sizeof(text));
+    EXPECT_EQ(std::string(text), "steady");
+    EXPECT_EQ(text_len, (int32_t)std::string("steady").size() + 1);
+
+    /// shrink then grow, the storage block reuse path both ways
+    const char* short_label = "ok";
+    EXPECT_TRUE(behavior_obj->dotnet_object->write_field_value("label", short_label, (int32_t)std::strlen(short_label) + 1));
+    std::memset(text, 0, sizeof(text));
+    behavior_obj->dotnet_object->read_field_value("label", text, sizeof(text));
+    EXPECT_EQ(std::string(text), "ok");
+
+    const char* long_label = "a longer label than before";
+    EXPECT_TRUE(behavior_obj->dotnet_object->write_field_value("label", long_label, (int32_t)std::strlen(long_label) + 1));
+    std::memset(text, 0, sizeof(text));
+    behavior_obj->dotnet_object->read_field_value("label", text, sizeof(text));
+    EXPECT_EQ(std::string(text), long_label);
+
     EXPECT_NO_FATAL_FAILURE(env->destroy_object(parent_id));
   }
 

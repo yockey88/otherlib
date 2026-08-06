@@ -33,12 +33,12 @@ namespace other {
     void load_fields();
     void write_fields();
 
-    behavior_snapshot get_behavior_snapshot() const;
-
     bool has_method(const std::string_view method_name) const;
 
-    int32_t read_behavior_field_value(int32_t behavior_index, int32_t field_index, void* out_data, int32_t buffer_size);
-    bool write_field_value(int32_t behavior_index, int32_t field_index, void* in_data, int32_t data_size);
+    /// fresh managed-side read/write by field name (the inspector's live-value path);
+    ///  read returns bytes copied into @p out_data, strings include the terminator
+    int32_t read_field_value(const std::string_view field_name, void* out_data, int32_t buffer_size);
+    bool write_field_value(const std::string_view field_name, const void* in_data, int32_t data_size);
 
     std::string get_type_name() const;
 
@@ -181,6 +181,7 @@ namespace other {
 
     size_t managed_strlen(const std::string_view field_name);
     bool type_has_field(const std::string_view field_name);
+    bool is_eagerly_loadable(const dotnet_field& f) const;
     void load_field_into_storage(const std::string_view field_name, dotnet_field::storage& storage);
     void load_string_field_into_storage(const std::string_view field_name, dotnet_field::storage& storage);
 
