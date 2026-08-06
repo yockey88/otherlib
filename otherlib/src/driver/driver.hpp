@@ -22,7 +22,6 @@
 #include "input/input_system.hpp"
 
 #include "audio/audio_environment.hpp"
-#include "http/http.hpp"
 #include "renderer/renderer.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -196,7 +195,6 @@ namespace other {
     void file_event(const struct file_event& event);
 
     // void data_received(natural_t id, ostd::vector<uint8_t> data);
-    // void handle_http_request_received(natural_t id, const http::request& req);
     // void new_connection_accepted(natural_t from_connection_id, natural_t connection_id);
     // void connection_closed(natural_t connection_id);
 
@@ -251,7 +249,6 @@ namespace other {
     natural_t add_interface(const std::string_view interface_name, sol::table inteface_table);
     // void add_interface(const std::string_view interface_name, plugin* plugin_ptr);
 
-    void http_request_received(natural_t id, const http::request& req);
 
     void handle_file_refresh(const filepath& path);
 
@@ -272,7 +269,6 @@ namespace other {
 
     /// notifications
     virtual void on_data_received(natural_t id, std::span<const uint8_t> data) {}
-    virtual void on_http_request_received(natural_t id, const http::request& req) {}
     virtual void on_new_connection_accepted(natural_t main_connection_id, natural_t connection_id) {}
     virtual void on_connection_closed(natural_t connection_id) {}
 

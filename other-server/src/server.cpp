@@ -13,8 +13,6 @@
 
 #include "message/message.hpp"
 
-// #include "tcp_listener.hpp"
-
 OTHER_DRIVER(other::server)
 
 namespace other {
@@ -27,7 +25,7 @@ namespace other {
   }  // namespace
 
   void server::on_early_initialize() {
-    // http server
+    // served-content mount
     {
       opt<filepath> directory = std::nullopt;
       if (configuration().has_path("server.mount-directory")) {
@@ -73,38 +71,6 @@ namespace other {
       OTHER_ASSERT(mount != nullptr, "Server mount directory not found in file system");
       return mount->absolute_path().string();
     });
-    add_native_lua_function(lua_name("ReadFileToHttpBody"), [this](const std::string& path) -> ostd::vector<uint8_t> {
-      CORE_LOG_DEBUG("Attempting to read file '{}' to HTTP body", path);
-      const filepath full_path = path;
-      if (std::filesystem::exists(full_path) && std::filesystem::is_regular_file(full_path)) {
-        std::ifstream file_stream(full_path, std::ios::binary);
-        if (!file_stream) {
-          CORE_LOG_ERROR("Failed to open file at path: '{}'", full_path.string());
-          return {};
-        }
-        ostd::vector<uint8_t> data((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
-        CORE_LOG_DEBUG(" - read {} bytes from '{}'", data.size(), path);
-        return data;
-      }
-      CORE_LOG_DEBUG(" - attempting to register local file for path '{}'", path);
-
-      auto* fs = subsystem<file_system>::get();
-      OTHER_ASSERT(fs != nullptr, "File system subsystem should be available");
-      ref<directory> mount = fs->get_mount("server_mount");
-      OTHER_ASSERT(mount != nullptr, "Server mount directory not found in file system");
-
-      ref<file_handle> file = mount->get_file(path);
-      if (file == nullptr) {
-        CORE_LOG_ERROR("File '{}' not found in server mount directory", path);
-        return {};
-      }
-
-      CORE_LOG_DEBUG(" - read {} bytes from '{}'", file->size(), path);
-      return file->read_all();
-    });
-    add_native_lua_function(lua_name("SendHttpResponse"), [this](natural_t id, const http::response& response) {
-      core_system<network_system>().tx_data(id, response.serialize(http::kHttpVersion1_1));
-    });
     add_native_lua_function(lua_name("FileExists"), [this](const std::string& path) -> bool {
       const filepath full_path = path;
       if (std::filesystem::exists(full_path) &&
@@ -123,22 +89,14 @@ namespace other {
   }
 
   void server::on_initialize() {
-    // http port
-    config_http_port = configuration().get_value("server.main-http-port", uint16_t(8080));
-    binding_point endpoint{ network_system::network_context::kLocalhostAddress, config_http_port };
+    config_port = configuration().get_value("server.main-port", uint16_t(8080));
+    binding_point endpoint{ network_system::network_context::kLocalhostAddress, config_port };
 
-    // initialize lua side
-    invoke_driver_method("InitializeHttpServer", config_http_port);
+    invoke_driver_method("InitializeServer", config_port);
     core_system<network_system>().listen_at_endpoint(endpoint, "tcp");
-
-    // auto& job_system = get_job_system();
-    // core_system<other::network_system>().register_transport_listener("tcp", make_scope<tcp_listener>(job_system));
   }
 
   void server::on_shutdown() {
-  }
-
-  void server::on_http_request_received(natural_t id, const http::request& req) {
   }
 
 }  // namespace other

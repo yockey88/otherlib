@@ -8,11 +8,6 @@ target_sources(other_network
     "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/packet_sink.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/peer_state_machine.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/peer_actor.cpp"
-
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/http/http_response.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/http/http.cpp"
-
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/html/html_document.cpp"
 )
 
 target_include_directories(other_network 

@@ -9,7 +9,6 @@
 namespace other {
 
   environment_interface get_server_interface();
-  environment_interface get_http_server_interface();
 
 }  // namespace other
 

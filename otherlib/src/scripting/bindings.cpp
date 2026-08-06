@@ -5,7 +5,6 @@
 
 #include "core/logger.hpp"
 
-#include "http/http_request.hpp"
 #include "script/scripting_environment.hpp"
 
 #include "object/animation_component.hpp"
@@ -403,53 +402,8 @@ namespace other {
   void do_script_interface_bindings(driver* drv) {
     OTHER_ASSERT(drv != nullptr, "Driver pointer is null in do_script_interface_bindings.");
 
-    auto* env = subsystem<scripting_environment>::get();
-    OTHER_ASSERT(env != nullptr, "scripting_environment null in initialize!");
-
     detail::set_dotnet_native_driver(drv);
     abi::oe_init_abi(drv);
-
-    sol::state& lua_state = env->get_lua_host().get_lua_state();
-    lua_state.new_enum(
-      "HttpVerb",
-      "GET", http::verb::HTTP_GET,
-      "POST", http::verb::HTTP_POST,
-      "PUT", http::verb::HTTP_PUT,
-      "DELETE", http::verb::HTTP_DELETE,
-      "PATCH", http::verb::HTTP_PATCH,
-      "HEAD", http::verb::HTTP_HEAD,
-      "OPTIONS", http::verb::HTTP_OPTIONS);
-    lua_state.new_usertype<http::method_info>(
-      "HttpMethodInfo",
-      "verb", &http::method_info::method,
-      "name", &http::method_info::name);
-    lua_state.new_usertype<http::header>(
-      "HttpHeader",
-      "name", &http::header::name,
-      "value", &http::header::value);
-    lua_state.new_usertype<http::request>(
-      "HttpRequest",
-      "method", &http::request::method,
-      "path", &http::request::path,
-      "query", &http::request::query_string,
-      "headers", &http::request::headers,
-      "body", &http::request::body);
-    lua_state.new_usertype<http::response>(
-      "HttpResponse",
-      sol::constructors<http::response(), http::response(int)>(),
-      "status_code", &http::response::status_code,
-      "response_string", sol::property(&http::response::get_response_string),
-      "set_headers",
-      [](http::response& res, sol::table headers) {
-        for (const auto& kvp : headers) {
-          res.add_header({ .name = kvp.first.as<std::string>(), .value = kvp.second.as<std::string>() });
-        }
-      },
-      "add_header",
-      [](http::response& res, const std::string& name, const std::string& value) {
-        res.add_header({ .name = name, .value = value });
-      },
-      "set_body_content", &http::response::set_body_content);
   }
 
   void do_script_interface_unbinding() {

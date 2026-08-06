@@ -24,4 +24,5 @@ other-csharp = "../build/other-csharp/${build-config}/OtherCs.dll"
 other-lua-directory = "../other-lua-interop" 
 
 [server]
-mount-directory = "C:/Yock/work/website"
+mount-directory = "."
+main-port = 8080
