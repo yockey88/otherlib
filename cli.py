@@ -58,7 +58,6 @@ def stage_oecli_dlls(cfg, user=False):
   dlls = [
     os.path.join(extern, "sdl", "lib", family.lower(), "SDL3.dll"),
     os.path.join(extern, "assimp", "lib", "assimp-vc143-mt.dll"),
-    os.path.join(extern, "python312", "python312.dll"),
     os.path.join(extern, "sol2", "lib", "lua-5.4.4.dll"),
     os.path.join(extern, "jolt", "bin", family.lower(), "Jolt.dll"),
   ]

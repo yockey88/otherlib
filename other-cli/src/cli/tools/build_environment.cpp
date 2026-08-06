@@ -35,7 +35,6 @@ namespace other {
         std::vector<filepath> dlls = {
           extern_dir / "sdl" / "lib" / family_lower / "SDL3.dll",
           extern_dir / "assimp" / "lib" / "assimp-vc143-mt.dll",
-          extern_dir / "python312" / "python312.dll",
           extern_dir / "sol2" / "lib" / "lua-5.4.4.dll",
           extern_dir / "jolt" / "bin" / family_lower / "Jolt.dll",
         };

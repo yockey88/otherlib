@@ -25,9 +25,6 @@ namespace other {
 
     lua.load_host(configuration);
     lua.call_entry_point();
-
-    python.load_host();
-    python.call_entry_point();
   }
 
   void scripting_environment::destroy_all_objects() {
@@ -44,7 +41,6 @@ namespace other {
                  "Script leaks detected");
     // clang-format on
 
-    python.unload_host();
     {
       if (dotnet_load_context == nullptr) {
         CORE_LOG_ERROR("DotNet load context is not initialized.");
@@ -109,13 +105,6 @@ namespace other {
       CORE_LOG_DEBUG(" - destroying .NET object for script object with ID {}", id);
       detach_dotnet_object(id);
     }
-    if (obj->python_object != nullptr) {
-      CORE_LOG_DEBUG(" - destroying Python object for script object with ID {}", id);
-      detach_python_object(id);
-    }
-    // if (obj->lua_object != nullptr) {
-    // detach_lua_object(id);
-    // }
 
     script_object_pool->free(id);
     live_objects[id].object = nullptr;
@@ -471,22 +460,6 @@ namespace other {
 
   lua_script* scripting_environment::load_lua_file(const std::string_view file_path) {
     return lua.load_file(file_path);
-  }
-
-  void scripting_environment::attach_python_object(integer_t id, const std::string_view type_name) {
-    script_object* obj = get_object(id);
-    OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
-
-    if (obj->python_object != nullptr) {
-      CORE_LOG_ERROR("Script object with ID {} already has a Python object attached.", id);
-      return;
-    }
-
-    CORE_LOG_DEBUG("[script {}] creating Python object [{}] of type [{}]", id, obj->name, type_name);
-    // obj->python_object = python.create_script_context(type_name);
-  }
-
-  void scripting_environment::detach_python_object(integer_t id) {
   }
 
 }  // namespace other

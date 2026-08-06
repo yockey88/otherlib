@@ -20,7 +20,6 @@ set(OTHERLIB_EXTERN_INCLUDE_DIRS
   "${OTHERLIB_INCLUDE_DIR}/extern/dotnet"
   "${OTHERLIB_INCLUDE_DIR}/extern/entt"
   "${OTHERLIB_INCLUDE_DIR}/extern/sdl"
-  "${OTHERLIB_INCLUDE_DIR}/extern/python312"
   "${OTHERLIB_INCLUDE_DIR}/extern/sol2"
   "${OTHERLIB_INCLUDE_DIR}/extern/sol2/lua"
   "${OTHERLIB_INCLUDE_DIR}/extern/sol2/sol"
@@ -137,7 +136,6 @@ endfunction()
 _otherlib_setup_external_lib(SDL3 SDL3 SHARED sdl SDL3)
 _otherlib_setup_external_lib(assimp assimp SHARED assimp assimp-vc143-mt assimp-vc143-mt)
 _otherlib_setup_external_lib(glad glad STATIC glad glad)
-_otherlib_setup_external_lib(python312 python STATIC python312 python312 python3)
 _otherlib_setup_external_lib(Jolt jolt STATIC jolt Jolt)
 
 ## Create convenience aliases
@@ -155,15 +153,6 @@ if(TARGET nfd::nfd)
   endif()
   if(NOT TARGET nfd)
     add_library(nfd ALIAS nfd::nfd)
-  endif()
-endif()
-
-if(TARGET python::python312)
-  if(NOT TARGET python312)
-    add_library(python312 ALIAS python::python312)
-  endif()
-  if(NOT TARGET python3)
-    add_library(python3 ALIAS python::python312)
   endif()
 endif()
 
@@ -246,9 +235,6 @@ if(TARGET otherlib::otherlib)
   endif()
   if(TARGET nfd::nfd)
     list(APPEND _OTHERLIB_LINK_LIBS nfd::nfd)
-  endif()
-  if(TARGET python::python312)
-    list(APPEND _OTHERLIB_LINK_LIBS python::python312)
   endif()
   if(TARGET jolt::Jolt)
     list(APPEND _OTHERLIB_LINK_LIBS jolt::Jolt)

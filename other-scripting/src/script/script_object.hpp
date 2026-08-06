@@ -13,7 +13,6 @@
 namespace other {
 
   class dotnet_object;
-  class python_object;
 
   struct script_object {
     script_object() = default;
@@ -23,7 +22,6 @@ namespace other {
     integer_t id = -1;
 
     dotnet_object* dotnet_object = nullptr;
-    python_object* python_object = nullptr;
 
     /// set when this object was registered with the C# NativeObjectManager
     ///  (scene objects are, behaviors are not) so detach only unregisters what

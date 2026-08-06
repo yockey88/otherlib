@@ -152,7 +152,6 @@ set(OTHER_EXTERN_INCLUDE_DIRS
   ${OTHER_EXTERN_DIR}/miniaudio
   ${OTHER_EXTERN_DIR}/dotnet
   ${OTHER_EXTERN_DIR}/entt
-  ${OTHER_EXTERN_DIR}/pybind11/include
   ${OTHER_EXTERN_DIR}/json
   ${OTHER_EXTERN_DIR}/sol2
   ${OTHER_EXTERN_DIR}/sol2/lua
@@ -181,7 +180,6 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/miniaudio
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/dotnet
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/entt
-  ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/pybind11/include
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/json
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2
   ${OTHER_EXTERN_INSTALL_INCLUDEDIR}/sol2/lua
@@ -193,15 +191,10 @@ set(OTHER_EXTERN_INSTALL_INCLUDE_DIRS
 
 set(DOTNET_INCLUDE_DIRECTORY
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet"
-  "${CMAKE_CURRENT_SOURCE_DIR}/extern/pybind11/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/json"
 )
 set(DOTNET_LIBRARIES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extern/dotnet/lib")
 set(DOTNET_LIBRARIES nethost)
-
-set(PYTHON_EXECUTABLE "C:\\Python313\\python")
-set(PYBIND11_FINDPYTHON ON) 
-set(PYBIND11_PYTHON_VERSION "3.13")
 
 find_package(Threads REQUIRED)
 
@@ -255,9 +248,7 @@ other_install_external_headers("dotnet" "${OTHER_EXTERN_DIR}/dotnet")
 other_install_external_headers("entt" "${OTHER_EXTERN_DIR}/entt")
 other_install_external_headers("sdl" "${OTHER_EXTERN_DIR}/sdl")
 other_install_external_headers("imgui" "${IMGUI_INCLUDE_DIRS}")
-other_install_external_headers("pybind11" "${OTHER_EXTERN_DIR}/pybind11/include")
 other_install_external_headers("json" "${OTHER_EXTERN_DIR}/json")
-other_install_external_headers("python312" "${OTHER_EXTERN_DIR}/python312/include")
 other_install_external_headers("sol2" "${OTHER_EXTERN_DIR}/sol2")
 other_install_external_headers("jolt" "${OTHER_EXTERN_DIR}/jolt/Jolt")
 other_install_external_headers("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2")
@@ -267,7 +258,6 @@ other_install_external_headers("xxHash" "${OTHER_EXTERN_DIR}/xxHash/include")
 other_install_external_library("sdl3" "${OTHER_EXTERN_DIR}/sdl/lib")
 other_install_external_library("assimp" "${OTHER_EXTERN_DIR}/assimp/lib")
 other_install_external_library("glad" "${OTHER_EXTERN_DIR}/glad/lib")
-other_install_external_library("python312" "${OTHER_EXTERN_DIR}/python312/libs")
 other_install_external_library("jolt" "${OTHER_EXTERN_DIR}/jolt/lib")
 other_install_external_library("sol2" "${OTHER_EXTERN_DIR}/sol2/lib")
 other_install_external_library("tinyxml2" "${OTHER_EXTERN_DIR}/tinyxml2/lib")
@@ -277,7 +267,6 @@ set(DLL_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,debug,release>")
 set(ASSEMBLY_CONFIG "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:ProfileD>>,Debug,Release>")
 install(
   FILES
-    "${OTHER_EXTERN_DIR}/python312/python312.dll"
     "${OTHER_EXTERN_DIR}/sdl/lib/${DLL_CONFIG}/SDL3.dll"
     "${OTHER_EXTERN_DIR}/assimp/lib/assimp-vc143-mt.dll"
     "${OTHER_EXTERN_DIR}/sol2/lib/lua-5.4.4.dll"

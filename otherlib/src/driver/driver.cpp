@@ -172,8 +172,8 @@ namespace other {
       }
 
       CORE_LOG_DEBUG("calling '{}' from plugin [{}]", driver::kDynamicDriverFactorySymbolName, driver_name);
-      driver* (*fn)(const config_table*) = sym.get_function<driver* (*)(const config_table*)>();
-      driver_instance = fn(&config);
+      driver* (*fn)(const command_line*, const config_table*) = sym.get_function<driver* (*)(const command_line*, const config_table*)>();
+      driver_instance = fn(&cmd, &config);
       CORE_LOG_DEBUG("Loaded driver [{}]", driver_name);
 
       if (driver_instance == nullptr) {

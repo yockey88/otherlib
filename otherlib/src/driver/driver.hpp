@@ -406,7 +406,7 @@ namespace other {
 }  // namespace other
 
 #define OTHER_DRIVER(name)                                                                                                              \
-  OTHER_PLUGIN(name_##_otherlib_driver, "", "", "")                                                                                     \
+  OTHER_PLUGIN(name##_otherlib_driver, "", "", "")                                                                                      \
   extern "C" OTHER_API ::other::driver* otherlib_create_driver(const ::other::command_line* cmd, const ::other::config_table* config) { \
     return ::other::arena_allocator<name>{}.allocate(*cmd, *config);                                                                    \
   }                                                                                                                                     \
