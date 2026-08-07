@@ -1,8 +1,8 @@
 /**
- * \file network/connect_state_machine.hpp
+ * \file network/tcp/connection_state_machine.hpp
  **/
-#ifndef OTHERLIB_NETWORK_TCP_CONNECTION_STATE_MACHING_HPP
-#define OTHERLIB_NETWORK_TCP_CONNECTION_STATE_MACHING_HPP
+#ifndef OTHER_NETWORK_NETWORK_TCP_CONNECTION_STATE_MACHINE_HPP
+#define OTHER_NETWORK_NETWORK_TCP_CONNECTION_STATE_MACHINE_HPP
 
 #include "core/profiler.hpp"
 #include "core/state_machine.hpp"
@@ -64,14 +64,16 @@ namespace other {
       add_transition(connection_state::RECONNECTING, connection_event::CONNECT_FAILURE_NO_RETRY, connection_state::DISCONNECTED);
       add_transition(connection_state::RECONNECTING, connection_event::CONNECT_FAILURE_RETRY, connection_state::RECONNECTING);
 
-      add_transition(connection_state::CONNECTED, connection_event::CONNECTION_LOST_NO_RETRY, connection_state::RECONNECTING);
+      add_transition(connection_state::CONNECTED, connection_event::CONNECTION_LOST_NO_RETRY, connection_state::DISCONNECTED);
       add_transition(connection_state::CONNECTED, connection_event::CONNECTION_LOST_RETRY, connection_state::RECONNECTING);
       add_transition(connection_state::CONNECTED, connection_event::START_DISCONNECT, connection_state::DISCONNECTING);
       add_transition(connection_state::CONNECTED, connection_event::DISCONNECT_SUCCESS, connection_state::DISCONNECTED);
       add_transition(connection_state::CONNECTED, connection_event::READ_SUCCESS, connection_state::CONNECTED);
-      // add_transition(connection_state::CONNECTED, connection_event::READ_FAILURE, connection_state::RECONNECTING);
-      // add_transition(connection_state::CONNECTED, connection_event::SEND_FAILURE_NO_RETRY, connection_state::RECONNECTING);
-      // add_transition(connection_state::CONNECTED, connection_event::SEND_FAILURE_RETRY, connection_state::RECONNECTING);
+      /// passive failures start a teardown, they do not retry: the driver-facing
+      ///  lifecycle reports the close and the consumer decides whether to redial
+      add_transition(connection_state::CONNECTED, connection_event::READ_FAILURE, connection_state::DISCONNECTING);
+      add_transition(connection_state::CONNECTED, connection_event::SEND_FAILURE_NO_RETRY, connection_state::DISCONNECTING);
+      add_transition(connection_state::CONNECTED, connection_event::SEND_FAILURE_RETRY, connection_state::DISCONNECTING);
 
       add_transition(connection_state::DISCONNECTING, connection_event::DISCONNECT_SUCCESS, connection_state::DISCONNECTED);
       add_transition(connection_state::DISCONNECTING, connection_event::DISCONNECT_FAILURE, connection_state::DISCONNECTED);
@@ -80,4 +82,4 @@ namespace other {
 
 }  // namespace other
 
-#endif  // OTHERLIB_NETWORK_TCP_CONNECTION_STATE_MACHING_HPP
+#endif  // OTHER_NETWORK_NETWORK_TCP_CONNECTION_STATE_MACHINE_HPP

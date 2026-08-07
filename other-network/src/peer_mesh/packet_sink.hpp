@@ -20,16 +20,18 @@ namespace other {
 
     void set_job_system(job_system* jobs);
 
-    /// any thread accept main
-    void rx_data(natural_t from_peer_id, std::span<const uint8_t> data);
-    void connection_opened(natural_t peer_id);
-    void connection_closed(natural_t peer_id);
+    /// delivery entry points, called from the owning transport's thread. the default
+    ///  implementations job-hop to the main thread; implementations that need ordered
+    ///  same-thread delivery (the mesh's transport adapters) override these directly
+    virtual void rx_data(natural_t conn_id, std::span<const uint8_t> data);
+    virtual void connection_opened(natural_t conn_id);
+    virtual void connection_closed(natural_t conn_id);
 
    protected:
     /// called on MAIN THREAD
-    virtual void on_rx_data(natural_t from_peer_id, std::span<const uint8_t> data) = 0;
-    virtual void on_connection_opened(natural_t peer_id) = 0;
-    virtual void on_connection_closed(natural_t peer_id) = 0;
+    virtual void on_rx_data(natural_t conn_id, std::span<const uint8_t> data) = 0;
+    virtual void on_connection_opened(natural_t conn_id) = 0;
+    virtual void on_connection_closed(natural_t conn_id) = 0;
 
    private:
     job_system* jobs;

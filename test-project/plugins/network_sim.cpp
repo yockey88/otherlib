@@ -12,12 +12,11 @@ class OTHER_API network_simulator : public other::transport_provider {
   std::string name() const override { return "Network Simulator"; }
 
  private:
-  void tx_data(other::natural_t connection_id, std::span<const uint8_t> data) override {}
+  void tx_data(other::natural_t connection_id, ostd::vector<uint8_t>&& data) override {}
   void close(other::natural_t connection_id) override {}
 
   void on_initialize() override {}
   void on_tick() override {}
-  // void on_begin_shutdown() override {}
   void on_shutdown() override {}
 
   void on_start_listen(other::natural_t conn_id, const other::binding_point& endpoint) override {}

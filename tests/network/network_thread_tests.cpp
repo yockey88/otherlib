@@ -22,7 +22,7 @@ namespace other {
       std::atomic<uint64_t> ticks = 0;
 
       std::string name() const override { return "CountingTransport"; }
-      void tx_data(natural_t connection_id, std::span<const uint8_t> data) override {}
+      void tx_data(natural_t connection_id, ostd::vector<uint8_t>&& data) override {}
       void close(natural_t connection_id) override {}
 
      private:

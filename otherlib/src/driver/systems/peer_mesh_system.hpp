@@ -9,7 +9,6 @@
 
 #include "driver/systems/core_system.hpp"
 
-#include "peer_mesh/peer_actor_host.hpp"
 #include "peer_mesh/peer_graph.hpp"
 
 namespace other {

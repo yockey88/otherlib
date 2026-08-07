@@ -74,25 +74,24 @@ namespace other {
       EXPECT_EQ(out.ack, 1);
     }
     {
-      notification_connect_connection value{
-        .connection_endpoint = { 0x0A000001, 1000 },
-        .endpoint = { 0x0A000002, 2000 },
+      notification_connection_opened value{
+        .remote = { 0x0A000001, 1000 },
         .connection_id = 5,
-        .new_connection_id = 6,
-        .transport_hash = 0xABCD,
+        .listener_id = 6,
+        .outbound = 1,
       };
       auto [out, consumed] = round_trip(value);
-      EXPECT_EQ(out.connection_endpoint.ip, value.connection_endpoint.ip);
-      EXPECT_EQ(out.endpoint.port, value.endpoint.port);
+      EXPECT_EQ(out.remote.ip, value.remote.ip);
+      EXPECT_EQ(out.remote.port, value.remote.port);
       EXPECT_EQ(out.connection_id, 5u);
-      EXPECT_EQ(out.new_connection_id, 6u);
-      EXPECT_EQ(out.transport_hash, 0xABCDu);
+      EXPECT_EQ(out.listener_id, 6u);
+      EXPECT_EQ(out.outbound, 1);
     }
     {
-      notification_close_connection value{ .connection_id = 9, .transport_hash = 0x1234 };
+      notification_connection_closed value{ .connection_id = 9, .reason = 0x1234 };
       auto [out, consumed] = round_trip(value);
       EXPECT_EQ(out.connection_id, 9u);
-      EXPECT_EQ(out.transport_hash, 0x1234u);
+      EXPECT_EQ(out.reason, 0x1234u);
     }
     {
       command_listen_connection value{ .endpoint = { 0x7f000001, 8080 }, .connection_id = 3, .transport_hash = 42 };

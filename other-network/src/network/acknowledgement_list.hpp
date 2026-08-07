@@ -34,6 +34,9 @@ namespace other {
 
     natural_t register_ack(asio::io_context& io, message_header header, microseconds timeout, message_handler handler);
     void handle_ack(natural_t ack_id, message_header original_header, std::span<const uint8_t> data);
+    /// failure acknowledgment: resolves the pending entry through its on_failure
+    ///  handler (or a log) — never fatal
+    void handle_failure(natural_t ack_id, message_header original_header, std::span<const uint8_t> data);
     void clear();
 
     size_t pending_count() const;

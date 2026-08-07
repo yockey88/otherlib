@@ -151,9 +151,6 @@ target_sources(otherlib
     src/ui/type_database.cpp
     src/ui/driver_ui.cpp
 
-    src/network/tcp/connection.cpp
-    src/network/tcp/tcp_transport_provider.cpp
-
     src/other.cpp
 )
 

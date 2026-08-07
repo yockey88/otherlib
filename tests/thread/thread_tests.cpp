@@ -56,13 +56,6 @@ namespace other {
 
     EXPECT_THAT(thread_ptr->get_current_state(), IsLaunchingOrWaiting());
 
-    // session_status_request ping_msg;
-    // ping_msg.session_type = 1;
-    // ping_msg.node_id = 42;
-    // message ping_message(CONTROL, PING);
-    // ping_message.data = ping_msg.build();
-    // thread_ptr->send_message(std::move(ping_message));
-
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // signals stop

@@ -12,6 +12,7 @@
 #include "data-structures/std_container.hpp"
 
 #include "network/acknowledgement_list.hpp"
+#include "network/net_address.hpp"
 #include "network/network_thread.hpp"
 #include "network/transport_provider.hpp"
 
@@ -21,7 +22,6 @@
 #include "message/message.hpp"
 #include "message/message_bus.hpp"
 #include "peer_mesh/packet_sink.hpp"
-#include "peer_mesh/peer_actor_host.hpp"
 
 namespace other {
 
@@ -46,12 +46,14 @@ namespace other {
     struct network_context {
       asio::io_context io_context;
       asio::signal_set signals;
-      natural_t netw_thread_heartbeat_timeout_id = 0;
       message_bus net_thread_message_bus;
       scope<network_thread> net_thread = nullptr;
 
       ostd::unordered_map<natural_t, scope<packet_sink>> registered_packet_sinks;
       ostd::unordered_map<natural_t, scope<transport_provider>> registered_transport_providers;
+      /// providers whose posted net-io teardown never confirmed; destroyed only after
+      ///  the network thread has joined
+      ostd::vector<scope<transport_provider>> orphaned_transport_providers;
 
       constexpr static uint32_t kLocalhostAddress = 0x7f000001;
       constexpr static uint32_t kPrimarySessionBindingPort = 49222;
@@ -88,8 +90,13 @@ namespace other {
     natural_t register_transport_listener(const std::string_view transport_name, scope<packet_sink> sink);
     void unregister_transport_listener(natural_t sink_id);
 
-    natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp", natural_t preferred_sink_id = 0);
-    natural_t connect(const binding_point& ep, const std::string_view transport_name = "tcp", natural_t preferred_sink_id = 0);
+    natural_t listen_at_endpoint(const binding_point& ep, const std::string_view transport_name = "tcp");
+    /// dial by kind-tagged address; empty transport resolves by kind (IP -> "tcp").
+    ///  returns the allocated connection id, 0 when refused. completion arrives as the
+    ///  "network.connection-opened" event (or "network.connection-closed" with a
+    ///  CONNECT_FAILED reason)
+    natural_t connect(const net_address& remote, const std::string_view transport_name = "");
+    void close(natural_t connection_id);
 
     void tx_data(natural_t connection_id, std::span<const uint8_t> data);
 
@@ -128,9 +135,14 @@ namespace other {
 
     void process_network_thread_messages(driver_kernel* kernel, message&& msg);
 
-    /// ack/timeout callbacks
+    /// ack/timeout/failure callbacks
     void on_ack_listen_at_endpoint(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
     void on_timeout_listen_at_endpoint(driver_kernel* kernel, message_header header);
+    void on_failed_listen_at_endpoint(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
+
+    void on_ack_connect(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
+    void on_timeout_connect(driver_kernel* kernel, message_header header);
+    void on_failed_connect(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
 
     void on_ack_shutdown_request_network_thread(driver_kernel* kernel, message_header header, const std::span<const uint8_t> data);
     void on_timeout_shutdown_request_network_thread(driver_kernel* kernel, message_header header);
@@ -140,12 +152,10 @@ namespace other {
     /// notifications
     void handle_notification_network_thread_ready(driver_kernel* kernel, message&& msg);
     void handle_notification_network_thread_shutdown_complete(driver_kernel* kernel, message&& msg);
+    void handle_notification_connection_opened(driver_kernel* kernel, message&& msg);
+    void handle_notification_connection_closed(driver_kernel* kernel, message&& msg);
     /// acknowledgments
     void handle_acknowledgement_ack(driver_kernel* kernel, message&& msg);
-    /// control messages
-    /// command messages
-    /// request messages
-    /// response messages
   };
 
 }  // namespace other

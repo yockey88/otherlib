@@ -5,6 +5,7 @@
 add_static_driver(other_soak
   src/harness_driver.cpp
   src/soak_scenario.cpp
+  src/network_scenario.cpp
   src/memory_sampler.cpp
 )
 target_include_directories(other_soak PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

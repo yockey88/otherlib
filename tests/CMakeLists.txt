@@ -73,6 +73,8 @@ target_sources(other_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/network/transport_provider_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network/slot_registry_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network/acknowledgement_list_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/network/peer_mesh_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/network/transport_conformance_tests.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/network_thread_test_runner.cpp
 

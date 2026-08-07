@@ -1,11 +1,11 @@
 /**
  * \file network/tcp/tcp_transport_provider.hpp
  **/
-#ifndef OTHERLIB_NETWORK_TCP_TCP_TRANSPORT_PROVIDER_HPP
-#define OTHERLIB_NETWORK_TCP_TCP_TRANSPORT_PROVIDER_HPP
+#ifndef OTHER_NETWORK_NETWORK_TCP_TCP_TRANSPORT_PROVIDER_HPP
+#define OTHER_NETWORK_NETWORK_TCP_TCP_TRANSPORT_PROVIDER_HPP
 
 #include "network/tcp/connection.hpp"
-#include "network/tcp/connection_state_maching.hpp"
+#include "network/tcp/connection_state_machine.hpp"
 #include "network/transport_provider.hpp"
 
 namespace other {
@@ -19,11 +19,13 @@ namespace other {
     std::string name() const override { return "TCP"; }
 
    private:
-    static inline std::atomic<natural_t> connection_id_counter = 1;
+    friend class connection;
+
     std::map<natural_t, scope<connection>> active_connections;
     std::map<natural_t, scope<asio::ip::tcp::acceptor>> active_tcp_listeners;
     std::map<natural_t, connection_state_machine> connection_state_machines;
-    std::deque<natural_t> recently_closed_connections;
+    /// retired connections whose async handlers have not yet drained; destroyed once idle
+    std::deque<natural_t> pending_destroy;
 
     void on_initialize() override;
     void on_tick() override;
@@ -32,19 +34,23 @@ namespace other {
 
     void on_start_listen(natural_t conn_id, const binding_point& endpoint) override;
     void on_start_connect(natural_t conn_id, const binding_point& endpoint) override;
-    void tx_data(natural_t connection_id, std::span<const uint8_t> data) override;
+    void tx_data(natural_t connection_id, ostd::vector<uint8_t>&& data) override;
     void close(natural_t connection_id) override;
     void connection_removed(natural_t connection_id) override;
 
-    void on_rx_data(natural_t connection_id, std::span<const uint8_t> data) override;
-    void on_connection_socket_closed(natural_t connection_id) override;
-    void on_connection_socket_broken(natural_t connection_id) override;
+    /// connection callbacks, network thread
+    void notify_conn_rx(natural_t connection_id, std::span<const uint8_t> data);
+    void notify_conn_closed(natural_t connection_id, connection_close_reason reason);
+    void notify_connect_failed(natural_t connection_id);
+    void notify_connect_succeeded(natural_t connection_id);
 
-    void start_accept_on(natural_t listener_id);
+    void start_accept_on(natural_t listener_id, const binding_point& endpoint);
     void on_accepted(natural_t listener_id, const binding_point& endpoint, asio::error_code ec, asio::ip::tcp::socket&& socket);
-    void register_new_connection(asio::ip::tcp::socket&& socket, const binding_point& endpoint, natural_t listener_conn_id);
+
+    void handle_state_event(natural_t connection_id, connection_event event);
+    void destroy_if_idle(natural_t connection_id);
   };
 
 }  // namespace other
 
-#endif  // OTHERLIB_NETWORK_TCP_TCP_TRANSPORT_PROVIDER_HPP
+#endif  // OTHER_NETWORK_NETWORK_TCP_TCP_TRANSPORT_PROVIDER_HPP

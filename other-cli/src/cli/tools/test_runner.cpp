@@ -33,56 +33,72 @@ namespace other {
     -bf, --break-on-failure   stop on first test failure (default: false)
          --no-shuffle         run tests in declaration order instead of shuffled
          --soak               run the soak harness and validate logs/soak-report.json
+         --network            run the network harness scenario and validate
+                              logs/network-report.json (the tag-pipeline gate)
          --env-root <path>    explicit source tree root
          --dry-run            print the launch instead of running it)";
 
-      tool_result run_soak_harness(tool_context& ctx, const dev_tool_options& options) {
-        PROFILE_SECTION("run_soak_harness");
+      /// harness runs share one shape: launch the scenario driver against a config,
+      ///  then read the verdict out of its report (the driver exits 0 for any clean
+      ///  run; the verdict lives in the report — the harness_scenario contract)
+      tool_result run_harness_scenario(tool_context& ctx, const dev_tool_options& options,
+                                       std::string_view label, const filepath& scenario_config,
+                                       std::string_view report_name) {
+        PROFILE_SECTION("run_harness_scenario");
         std::string resolved_config = "";
         const filepath harness = find_built_executable(ctx.env, filepath("tests") / "harness", "other_soak", options.config, resolved_config);
         if (harness.empty()) {
-          return tool_result::error(std::format("no{} soak harness build found under 'build/tests/harness' (build one with: build --tests{})",
+          return tool_result::error(std::format("no{} harness build found under 'build/tests/harness' (build one with: build --tests{})",
                                                 options.config.has_value() ? std::format(" {}", options.config.value()) : "",
                                                 options.config.has_value() ? std::format(" --config {}", options.config.value()) : ""));
         }
 
-        const filepath report_path = ctx.env.root / "logs" / "soak-report.json";
+        const filepath report_path = ctx.env.root / "logs" / report_name;
         if (!options.dry_run) {
           std::error_code ec;
           std::filesystem::remove(report_path, ec);
         }
 
-        ctx.print("running soak harness [{}]", resolved_config);
+        ctx.print("running {} harness [{}]", label, resolved_config);
         const tool_result ran = run_attached(ctx,
                                              { .executable = harness,
-                                               .arguments = { (filepath("tests") / "harness" / "soak-config.toml").string() },
+                                               .arguments = { scenario_config.string() },
                                                .working_directory = ctx.env.root },
                                              options.dry_run);
         if (options.dry_run) {
           return tool_result::ok("dry run only, nothing launched");
         }
         if (!ran.success()) {
-          return { .code = ran.code, .message = std::format("soak harness exited with code {}", ran.code) };
+          return { .code = ran.code, .message = std::format("{} harness exited with code {}", label, ran.code) };
         }
 
-        /// the driver exits 0 for any clean run; the verdict lives in the report
         if (!std::filesystem::exists(report_path)) {
-          return tool_result::error(std::format("soak FAILED: no report written to '{}' (harness crashed or never finalized)", report_path.string()));
+          return tool_result::error(std::format("{} FAILED: no report written to '{}' (harness crashed or never finalized)", label, report_path.string()));
         }
 
         std::ifstream report_file(report_path);
         const nlohmann::json report = nlohmann::json::parse(report_file, nullptr, false);
         if (report.is_discarded()) {
-          return tool_result::error(std::format("soak FAILED: report '{}' is not valid json", report_path.string()));
+          return tool_result::error(std::format("{} FAILED: report '{}' is not valid json", label, report_path.string()));
         }
 
         const bool passed = report.value("pass", false);
         const std::string reason = report.value("reason", "");
-        ctx.print("soak result: {} - {}", passed ? "PASS" : "FAIL", reason);
+        ctx.print("{} result: {} - {}", label, passed ? "PASS" : "FAIL", reason);
         if (!passed) {
-          return tool_result::error(std::format("soak failed: {}", reason));
+          return tool_result::error(std::format("{} failed: {}", label, reason));
         }
-        return tool_result::ok("soak passed");
+        return tool_result::ok(std::format("{} passed", label));
+      }
+
+      tool_result run_soak_harness(tool_context& ctx, const dev_tool_options& options) {
+        return run_harness_scenario(ctx, options, "soak",
+                                    filepath("tests") / "harness" / "soak-config.toml", "soak-report.json");
+      }
+
+      tool_result run_network_harness(tool_context& ctx, const dev_tool_options& options) {
+        return run_harness_scenario(ctx, options, "network",
+                                    filepath("tests") / "harness" / "network-config.toml", "network-report.json");
       }
 
     }  // namespace
@@ -101,6 +117,7 @@ namespace other {
       bool shuffle = true;
       bool break_on_failure = false;
       bool soak = false;
+      bool network = false;
 
       for (size_t i = 0; i < args.size(); ++i) {
         if (opt<tool_result> shared = try_parse_dev_flag(ctx, args, i, options); shared.has_value()) {
@@ -138,6 +155,8 @@ namespace other {
           break_on_failure = true;
         } else if (arg == "--soak") {
           soak = true;
+        } else if (arg == "--network") {
+          network = true;
         } else {
           return tool_result::error(std::format("unknown argument '{}'\n{}", arg, kTestUsage));
         }
@@ -149,6 +168,9 @@ namespace other {
 
       if (soak) {
         return run_soak_harness(ctx, options);
+      }
+      if (network) {
+        return run_network_harness(ctx, options);
       }
 
       std::string resolved_config = "";

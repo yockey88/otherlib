@@ -72,6 +72,26 @@ namespace other {
     pending_acks.erase(itr);
   }
 
+  void acknowledgement_list::handle_failure(natural_t ack_id, message_header original_header, std::span<const uint8_t> data) {
+    PROFILE_SECTION("acknowledgement_list::handle_failure");
+    auto itr = std::ranges::find_if(pending_acks, [&](const pending_ack& ack) { return ack.id == ack_id && ack.header == original_header; });
+    if (itr == pending_acks.end()) {
+      CORE_LOG_ERROR("Received failure acknowledgment for unknown message ID {} with ACK ID {}", original_header, ack_id);
+      return;
+    }
+
+    CORE_LOG_WARN("[ACK FAILED: {}] (ACK ID: {})", original_header, ack_id);
+    /// resolve the entry before invoking: the handler may register new acks and
+    ///  invalidate deque iterators
+    message_handler::handler_fn on_failure = std::move(itr->handler.on_failure);
+    itr->timer->cancel();
+    pending_acks.erase(itr);
+
+    if (on_failure) {
+      on_failure(original_header, data);
+    }
+  }
+
   void acknowledgement_list::clear() {
     PROFILE_SECTION("acknowledgement_list::clear");
     for (auto& ack : pending_acks) {

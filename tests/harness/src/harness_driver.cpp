@@ -5,6 +5,7 @@
 
 #include "core/logger.hpp"
 
+#include "network_scenario.hpp"
 #include "soak_scenario.hpp"
 
 namespace other {
@@ -12,6 +13,9 @@ namespace other {
   scope<harness_scenario> harness_driver::create_scenario(std::string_view scenario_name) {
     if (scenario_name == "soak") {
       return make_scope<soak_scenario>();
+    }
+    if (scenario_name == "network") {
+      return make_scope<network_scenario>();
     }
 
     /// future scenarios (fuzzing, replay, stress, ...) register here
