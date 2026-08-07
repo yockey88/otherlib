@@ -28,6 +28,7 @@ namespace other {
     if (script_object_id < 0) {
       return;
     }
+    PROFILE_SECTION("script_component::dispatch_physics_event");
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
 
@@ -45,6 +46,7 @@ namespace other {
     if (script_object_id < 0) {
       return;
     }
+    PROFILE_SECTION("script_component::dispatch_joint_break");
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized.");
 

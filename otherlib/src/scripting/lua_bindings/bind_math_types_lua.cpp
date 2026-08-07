@@ -7,6 +7,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
+#include "core/profiler.hpp"
+
 #include "math/definitions.hpp"
 
 #include "scripting/lua_bindings/bind_glm_matrices.hpp"
@@ -15,6 +17,7 @@
 namespace other {
 
   void bind_linear_algebra_types(sol::state& lua_state) {
+    PROFILE_SECTION("bind_linear_algebra_types");
     bind_glm_vector_types(lua_state);
     bind_glm_matrix_types(lua_state);
 

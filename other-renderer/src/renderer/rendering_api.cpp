@@ -50,6 +50,7 @@ namespace other {
   }
 
   void rendering_api::verify_shutdown() {
+    PROFILE_SECTION("rendering_api::verify_shutdown");
     if (!resources.empty()) {
       CORE_LOG_ERROR("Rendering API shutdown with {} unreleased resources!", resources.size());
       for (const auto& [id, res] : resources) {
@@ -89,6 +90,7 @@ namespace other {
   }
 
   void rendering_api::begin_ui_frame() {
+    PROFILE_SECTION("rendering_api::begin_ui_frame");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("Rendering API context handle is null, cannot begin UI frame.");
       return;
@@ -102,6 +104,7 @@ namespace other {
   }
 
   void rendering_api::end_ui_frame() {
+    PROFILE_SECTION("rendering_api::end_ui_frame");
     if (get_gpu_context() == nullptr) {
       CORE_LOG_ERROR("Rendering API context handle is null, cannot end UI frame.");
       return;
@@ -114,6 +117,7 @@ namespace other {
   }
 
   resource_handle rendering_api::create_resource(const std::string_view name, resource_type type) {
+    PROFILE_SECTION("rendering_api::create_resource");
     resource_handle handle = { get_next_resource_id(), type };
     handle.name_hash = FNV(name);
     CORE_LOG_DEBUG("Creating GPU resource [{}] : {}", name, handle);
@@ -175,6 +179,7 @@ namespace other {
   }
 
   void rendering_api::destroy_resource(const resource_handle& handle) {
+    PROFILE_SECTION("rendering_api::destroy_resource");
     auto itr = resources.find(handle.id);
     if (itr == resources.end()) {
       return;

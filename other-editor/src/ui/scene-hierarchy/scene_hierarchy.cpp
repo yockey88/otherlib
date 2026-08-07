@@ -3,6 +3,7 @@
  **/
 #include "ui/scene-hierarchy/scene_hierarchy.hpp"
 
+#include "core/profiler.hpp"
 #include "driver/driver.hpp"
 #include "driver/systems/scene_system.hpp"
 #include "theme/colors.hpp"
@@ -23,6 +24,7 @@ namespace other {
     }
 
     void scene_hierarchy::on_render_body() {
+      PROFILE_SECTION("scene_hierarchy::on_render_body");
       auto& scenes = driver_ptr->get_kernel().get_core_system<scene_system>();
       auto* active_scene = scenes.get_active_scene();
 

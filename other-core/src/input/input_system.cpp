@@ -14,6 +14,7 @@
 namespace other {
 
   void input_system::initialize() {
+    PROFILE_SECTION("input_system::initialize");
     CORE_LOG_INFO("Initializing input system.");
 
     /// SDL_INIT_GAMEPAD implies SDL_INIT_JOYSTICK
@@ -49,6 +50,7 @@ namespace other {
   }
 
   void input_system::shutdown() {
+    PROFILE_SECTION("input_system::shutdown");
     for (auto& entry : sdl_gamepads) {
       if (entry.handle) {
         SDL_CloseGamepad(entry.handle);
@@ -213,6 +215,7 @@ namespace other {
   }
 
   void input_system::load_input_map(input_map&& map) {
+    PROFILE_SECTION("input_system::load_input_map");
     this->map = std::move(map);
     context_stack.clear();
     action_cache.clear();
@@ -222,6 +225,7 @@ namespace other {
   }
 
   void input_system::push_context(const std::string_view name) {
+    PROFILE_SECTION("input_system::push_context");
     natural_t id = FNV(name);
     input_context* ctx = nullptr;
     for (auto& c : map.contexts) {
@@ -244,6 +248,7 @@ namespace other {
   }
 
   void input_system::pop_context() {
+    PROFILE_SECTION("input_system::pop_context");
     if (context_stack.empty()) {
       CORE_LOG_WARN("Attempted to pop from empty input context stack.");
       return;
@@ -553,6 +558,7 @@ namespace other {
   }
 
   void input_system::handle_gamepad_added(uint32_t id) {
+    PROFILE_SECTION("input_system::handle_gamepad_added");
     SDL_JoystickID sdl_id = static_cast<SDL_JoystickID>(id);
 
     int32_t slot = -1;
@@ -604,6 +610,7 @@ namespace other {
   }
 
   void input_system::handle_gamepad_removed(uint32_t id) {
+    PROFILE_SECTION("input_system::handle_gamepad_removed");
     for (auto it = sdl_gamepads.begin(); it != sdl_gamepads.end(); ++it) {
       if (it->instance_id == id) {
         int32_t slot = it->our_index;

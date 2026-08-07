@@ -12,6 +12,7 @@
 #include <stb/stb_include.h>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "renderer/renderer_backend.hpp"
 
@@ -28,6 +29,7 @@ namespace other {
   }
 
   resource_handle shader::create(const std::string_view name, const filepath& filepath, const std::span<const setting> settings) {
+    PROFILE_SECTION("shader::create");
     resource_handle handle = create_handle(name);
     if (handle.id == 0) {
       return { 0, resource_type::EMPTY };
@@ -49,6 +51,7 @@ namespace other {
   }
 
   resource_handle shader::create(const std::string_view name, const filepath& vertpath, const filepath& fragpath, const std::span<const setting> settings) {
+    PROFILE_SECTION("shader::create");
     resource_handle handle = create_handle(name);
     if (handle.id == 0) {
       return { 0, resource_type::EMPTY };
@@ -75,6 +78,7 @@ namespace other {
   }
 
   resource_handle shader::create(const std::string_view name, const filepath& vertpath, const filepath& geompath, const filepath& fragpath, const std::span<const setting> settings) {
+    PROFILE_SECTION("shader::create");
     resource_handle handle = create_handle(name);
     if (handle.id == 0) {
       return { 0, resource_type::EMPTY };
@@ -108,6 +112,7 @@ namespace other {
   }
 
   resource_handle shader::create(const std::string_view name, const std::string_view source, source_type type) {
+    PROFILE_SECTION("shader::create");
     resource_handle handle = create_handle(name);
     if (handle.id == 0) {
       return { 0, resource_type::EMPTY };
@@ -122,6 +127,7 @@ namespace other {
   }
 
   resource_handle shader::create(const std::string_view name, const std::string_view vert_source, const std::string_view frag_source) {
+    PROFILE_SECTION("shader::create");
     if (name.empty() || vert_source.empty() || frag_source.empty()) {
       CORE_LOG_ERROR("Shader name or source is empty, cannot create shader.");
       return { 0, resource_type::EMPTY };
@@ -143,6 +149,7 @@ namespace other {
   }
 
   std::string shader::preprocess_file(const filepath& file, const std::span<const setting> setting_definitions) {
+    PROFILE_SECTION("shader::preprocess_file");
     CORE_LOG_DEBUG(" - Attempting to preprocess shader source from file: {}", file.string());
     std::ifstream file_stream(file);
     if (!file_stream.is_open()) {
@@ -215,6 +222,7 @@ namespace other {
   }
 
   shader& shader::dispatch(const glm::ivec3& group_dims, compute_barrier_type barrier_type) {
+    PROFILE_SECTION("shader::dispatch");
     if (!complete) {
       CORE_LOG_ERROR("Shader is not complete, cannot dispatch.");
       return *this;
@@ -230,6 +238,7 @@ namespace other {
   }
 
   shader& shader::add_source(const std::string_view source, source_type type) {
+    PROFILE_SECTION("shader::add_source");
     if (complete) {
       CORE_LOG_ERROR("Shader already completed, cannot add more sources.");
       return *this;
@@ -251,6 +260,7 @@ namespace other {
   }
 
   void shader::finalize_shader() {
+    PROFILE_SECTION("shader::finalize_shader");
     if (compiled) {
       CORE_LOG_ERROR("Shader already compiled, cannot finalize again.");
       return;

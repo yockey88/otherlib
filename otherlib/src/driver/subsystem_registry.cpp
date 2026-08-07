@@ -86,6 +86,7 @@ namespace other {
   }
 
   void subsystem_registry::resolve_dependency_list_and_do_initialization(std::span<const std::string_view> requested_systems, const config_table* config) {
+    PROFILE_SECTION("subsystem_registry::resolve_dependency_list_and_do_initialization");
     initialization_order.clear();
     initialization_order = resolve_dependencies(requested_systems, subsystem_definition{});
 
@@ -106,6 +107,7 @@ namespace other {
   }
 
   void subsystem_registry::shutdown_all(bool skip_logger) {
+    PROFILE_SECTION("subsystem_registry::shutdown_all");
     for (auto it = initialization_order.rbegin(); it != initialization_order.rend(); ++it) {
       const natural_t id = *it;
       auto reg_it = registry.find(id);
@@ -402,6 +404,7 @@ namespace other {
     }
 
     void initialize_physics_environment(const config_table* config) {
+      PROFILE_SECTION("other::detail::initialize_physics_environment");
       subsystem<physics_environment>::inert = false;
 
       physics_environment* physics_env = subsystem<physics_environment>::get();
@@ -414,6 +417,7 @@ namespace other {
     }
 
     void initialize_renderer_backend(const config_table* config) {
+      PROFILE_SECTION("other::detail::initialize_renderer_backend");
       subsystem<renderer_backend>::inert = false;
 
       auto* backend = subsystem<renderer_backend>::get();
@@ -455,6 +459,7 @@ namespace other {
     }
 
     void initialize_audio_environment(const config_table* config) {
+      PROFILE_SECTION("other::detail::initialize_audio_environment");
       subsystem<audio_environment>::inert = false;
 
       auto* env = subsystem<audio_environment>::get();
@@ -486,6 +491,7 @@ namespace other {
     }
 
     void shutdown_physics_environment() {
+      PROFILE_SECTION("other::detail::shutdown_physics_environment");
       subsystem<physics_environment>::get()->shutdown_physics_environment();
       subsystem<physics_environment>::get()->unload_backend();
     }

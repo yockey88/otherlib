@@ -4,6 +4,7 @@
 #include "dotnet/type_cache.hpp"
 
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
 
 #include "dotnet/dotnet_host.hpp"
 
@@ -38,6 +39,7 @@ namespace other {
   }
 
   dotnet_type* type_cache::get_type(const std::string_view name) {
+    PROFILE_SECTION("type_cache::get_type");
     bool contains = name_cache.contains(FNV(name));
     dotnet_type* res = nullptr;
 

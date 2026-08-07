@@ -55,6 +55,7 @@ namespace other {
     event_system& events = *get_driver().get_event_system();
     events.add_listener("script-source.asset-loaded", [this](const value& data) {
       OTHER_ASSERT(data.type() == value_type::UINT64, "Expected uint64 asset ID for script source asset-loaded event");
+      PROFILE_SECTION("scripting_system::initialize--script-source-loaded-listener");
       uint64_t asset_id = data;
 
       asset* asset_ptr = get_driver().get_asset(asset_id);

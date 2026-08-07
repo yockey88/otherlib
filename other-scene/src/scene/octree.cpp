@@ -3,11 +3,13 @@
  **/
 #include "scene/octree.hpp"
 
+#include "core/profiler.hpp"
 #include "memory/arena.hpp"
 
 namespace other {
 
   octree::octree(glm::vec3 extent, natural_t resolution) {
+    PROFILE_SECTION("octree::octree");
     size_t num_sectors = resolution * resolution * resolution;
     size_t num_octants = num_sectors * 8;
 

@@ -4,6 +4,8 @@
 #ifndef OTHERLIB_SCRIPTING_INTERFACE_REGISTRY_HPP
 #define OTHERLIB_SCRIPTING_INTERFACE_REGISTRY_HPP
 
+#include "core/profiler.hpp"
+
 #include "scripting/environment_interface.hpp"
 
 namespace other {
@@ -44,6 +46,7 @@ namespace other {
 
     template <typename R = void, typename... Args>
     R invoke_callback(const std::string_view callback_name, Args&&... args) {
+      PROFILE_SECTION("interface_registry::invoke_callback");
       auto cb_itr = bound_callbacks.find(FNV(callback_name));
       if (cb_itr == bound_callbacks.end()) {
         CORE_LOG_WARN("Attempted to invoke unknown callback '{}'.", callback_name);
@@ -92,6 +95,7 @@ namespace other {
 
     template <typename R, typename... Args>
     R invoke_interface_method(const std::string_view interface_name, const std::string_view method_name, Args&&... args) {
+      PROFILE_SECTION("interface_registry::invoke_interface_method");
       CORE_LOG_TRACE("[INTERFACE] Attempting to invoke '{}.{}'", interface_name, method_name);
       auto iface_itr = std::ranges::find_if(interfaces, [&interface_name](const auto& pair) {
         return pair.second.name == interface_name;
@@ -126,6 +130,7 @@ namespace other {
 
     template <typename R, typename... Args>
     R invoke_method_on_binding(natural_t id, const std::string_view interface_name, const std::string_view method_name, Args&&... args) {
+      PROFILE_SECTION("interface_registry::invoke_method_on_binding");
       CORE_LOG_TRACE("[INTERFACE] Attempting to invoke '{}.{}' on binding {}", interface_name, method_name, id);
       auto bi_itr = bound_interfaces.find(id);
       OTHER_ASSERT(bi_itr != bound_interfaces.end(), "Binding with id {} not found when attempting to invoke '{}.{}'.", id, interface_name, method_name);

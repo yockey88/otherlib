@@ -4,10 +4,12 @@
 #include "core/defines.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
 
   filepath get_program_files_folder(const std::string_view app_name) {
+    PROFILE_SECTION("get_program_files_folder");
     /// get program files folder
     ///   windows: PROGRAMFILES/OtherEngine
     ///   linux: /usr/local/OtherEngine
@@ -31,6 +33,7 @@ namespace other {
   }
 
   filepath get_app_data_folder(const std::string_view app_name, bool create) {
+    PROFILE_SECTION("get_app_data_folder");
     /// get app folder
     ///   windows: APPDATA/OtherServer
     ///   linux: ~/.otherserver
@@ -85,6 +88,7 @@ namespace other {
   }
 
   filepath get_system_default_working_directory() {
+    PROFILE_SECTION("get_system_default_working_directory");
     /// get system default working directory
     ///   windows: C:/Users/<username>/Documents/OtherEngine
     ///   linux: /home/<username>/OtherEngine
@@ -114,6 +118,7 @@ namespace other {
   }
 
   std::string get_tag_replacement(const std::string_view tag) {
+    PROFILE_SECTION("get_tag_replacement");
     if (!tag.starts_with("${") || !tag.ends_with("}")) {
       return std::string{ tag };
     }
@@ -176,6 +181,7 @@ namespace other {
   }  // namespace
 
   std::string perform_tag_replacement(const std::string_view tag) {
+    PROFILE_SECTION("perform_tag_replacement");
     if (!has_tags(tag)) {
       return std::string{ tag };
     }
@@ -234,6 +240,7 @@ namespace other {
   }
 
   std::string get_current_exe_name() {
+    PROFILE_SECTION("get_current_exe_name");
 #ifdef OTHER_ENVIRONMENT_WINDOWS
     char buffer[MAX_PATH];
     GetModuleFileNameA(NULL, buffer, MAX_PATH);
@@ -264,6 +271,7 @@ namespace other {
   }
 
   std::string get_current_exe_full_path() {
+    PROFILE_SECTION("get_current_exe_full_path");
 #ifdef OTHER_ENVIRONMENT_WINDOWS
     char buffer[MAX_PATH];
     GetModuleFileNameA(NULL, buffer, MAX_PATH);
@@ -311,6 +319,7 @@ namespace other {
   }
 
   void launch_process(const filepath& working_dir, const filepath& exe_name, const std::vector<std::string>& args) {
+    PROFILE_SECTION("launch_process");
     if (!std::filesystem::exists(working_dir) || !std::filesystem::is_directory(working_dir)) {
       CORE_LOG_ERROR("Working directory does not exist or is not a directory: {}", working_dir.string());
       return;

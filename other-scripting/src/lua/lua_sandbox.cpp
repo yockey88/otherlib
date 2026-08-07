@@ -3,6 +3,8 @@
  **/
 #include "lua/lua_sandbox.hpp"
 
+#include "core/profiler.hpp"
+
 #include "lua/lua_host.hpp"
 #include "script/scripting_environment.hpp"
 
@@ -12,6 +14,7 @@
 namespace other {
 
   void lua_sandbox::script(const std::string_view code) {
+    PROFILE_SECTION("lua_sandbox::script");
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment is not initialized in lua_sandbox::script");
 
@@ -28,6 +31,7 @@ namespace other {
 
   opt<sol::table> lua_sandbox::try_load_table(lua_host* lua_host, const filepath& path) {
     OTHER_ASSERT(lua_host != nullptr, "Lua host is null in lua_sandbox::try_load_table");
+    PROFILE_SECTION("lua_sandbox::try_load_table");
 
     CORE_LOG_TRACE("Loading Lua table from file '{}'", path.string());
     sol::state& lua_state = lua_host->get_lua_state();

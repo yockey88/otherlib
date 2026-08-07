@@ -3,6 +3,8 @@
  **/
 #include "renderer/render_stream.hpp"
 
+#include "core/profiler.hpp"
+
 #include "renderer/renderer.hpp"
 
 namespace other {
@@ -15,6 +17,7 @@ namespace other {
 
   void render_stream::configure_stream(renderer* renderer_ptr, const render_stream_definition& defn) {
     OTHER_ASSERT(renderer_ptr != nullptr, "render_stream::configure_stream: renderer_ptr is null.");
+    PROFILE_SECTION("render_stream::configure_stream");
     natural_t hash = FNV(defn.name);
     auto [itr, success] = storages.try_emplace(hash, render_stream_storage{});
     if (!success) {

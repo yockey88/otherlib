@@ -10,6 +10,7 @@
 
 #include <tinyxml2/tinyxml2.h>
 
+#include "core/profiler.hpp"
 #include "file/filesystem.hpp"
 #include "serialization/scene_serializer.hpp"
 
@@ -63,6 +64,7 @@ namespace other {
     }
 
     static void build_reverse_and_layers(dependency_snapshot& snap) {
+      PROFILE_SECTION("build_reverse_and_layers");
       const size_t n = snap.nodes.size();
       snap.reverse.assign(n, {});
       ostd::vector<uint32_t> remaining_children(n, 0);
@@ -126,6 +128,7 @@ namespace other {
     }
 
     static void garbage_collect_unreachable(dependency_snapshot& snap, std::span<const natural_t> root_ids) {
+      PROFILE_SECTION("garbage_collect_unreachable");
       ostd::vector<bool> live(snap.nodes.size(), false);
       ostd::vector<uint32_t> worklist;
       for (const natural_t root : root_ids) {
@@ -355,99 +358,108 @@ namespace other {
     }
 
     ostd::vector<uint32_t> worklist;
-    for (const natural_t owner : dirty_owners) {
-      const uint32_t slot = detail::slot_of(next, owner);
-      const dependency_snapshot::node parent = next.nodes[slot];
-      const ostd::vector<dependency_declaration> decls = parse_manifest(parent);
-      const natural_t hash = effective_hash_for(parent, decls);
-      if (hash == parent.manifest_hash) {
-        continue;
-      }
-
-      next.nodes[slot].manifest_hash = hash;
-      std::erase_if(next.edges, [slot](const auto& e) { return e.first == slot; });
-      for (const dependency_declaration& decl : decls) {
-        const size_t before = next.nodes.size();
-        const uint32_t child = detail::intern(next, slots, decl.virtual_path, decl.type);
-        next.edges.emplace_back(slot, child);
-        if (next.nodes.size() != before) {
-          worklist.push_back(child);
+    {
+      PROFILE_SECTION("asset_resolver::re_resolve--reparse-dirty");
+      for (const natural_t owner : dirty_owners) {
+        const uint32_t slot = detail::slot_of(next, owner);
+        const dependency_snapshot::node parent = next.nodes[slot];
+        const ostd::vector<dependency_declaration> decls = parse_manifest(parent);
+        const natural_t hash = effective_hash_for(parent, decls);
+        if (hash == parent.manifest_hash) {
+          continue;
         }
-      }
 
-      detail::apply_produces(next, slots, root_ids, slot);
+        next.nodes[slot].manifest_hash = hash;
+        std::erase_if(next.edges, [slot](const auto& e) { return e.first == slot; });
+        for (const dependency_declaration& decl : decls) {
+          const size_t before = next.nodes.size();
+          const uint32_t child = detail::intern(next, slots, decl.virtual_path, decl.type);
+          next.edges.emplace_back(slot, child);
+          if (next.nodes.size() != before) {
+            worklist.push_back(child);
+          }
+        }
+
+        detail::apply_produces(next, slots, root_ids, slot);
+      }
     }
 
-    while (!worklist.empty()) {
-      const uint32_t slot = worklist.back();
-      worklist.pop_back();
+    {
+      PROFILE_SECTION("asset_resolver::re_resolve--expand-children");
+      while (!worklist.empty()) {
+        const uint32_t slot = worklist.back();
+        worklist.pop_back();
 
-      const dependency_snapshot::node parent = next.nodes[slot];
-      const ostd::vector<dependency_declaration> decls = parse_manifest(parent);
-      next.nodes[slot].manifest_hash = effective_hash_for(parent, decls);
+        const dependency_snapshot::node parent = next.nodes[slot];
+        const ostd::vector<dependency_declaration> decls = parse_manifest(parent);
+        next.nodes[slot].manifest_hash = effective_hash_for(parent, decls);
 
-      for (const dependency_declaration& decl : decls) {
-        const size_t before = next.nodes.size();
-        const uint32_t child = detail::intern(next, slots, decl.virtual_path, decl.type);
-        next.edges.emplace_back(slot, child);
-        if (next.nodes.size() != before) {
-          worklist.push_back(child);
+        for (const dependency_declaration& decl : decls) {
+          const size_t before = next.nodes.size();
+          const uint32_t child = detail::intern(next, slots, decl.virtual_path, decl.type);
+          next.edges.emplace_back(slot, child);
+          if (next.nodes.size() != before) {
+            worklist.push_back(child);
+          }
         }
-      }
 
-      detail::apply_produces(next, slots, root_ids, slot);
+        detail::apply_produces(next, slots, root_ids, slot);
+      }
     }
 
     detail::garbage_collect_unreachable(next, root_ids);
     detail::build_reverse_and_layers(next);
 
     resolve_delta delta;
-    for (const dependency_snapshot::node& n : next.nodes) {
-      if (snap.find(n.stable_id) == nullptr) {
-        delta.added.push_back(n.stable_id);
-      }
-    }
-    for (const dependency_snapshot::node& n : snap.nodes) {
-      if (next.find(n.stable_id) == nullptr) {
-        delta.removed.push_back(n.stable_id);
-      }
-    }
-    if (known != nullptr && next.find(known->stable_id) != nullptr) {
-      delta.modified.push_back(known->stable_id);
-    }
-
-    std::unordered_set<natural_t> seeds;
-    seeds.insert(delta.added.begin(), delta.added.end());
-    seeds.insert(delta.modified.begin(), delta.modified.end());
-    for (const natural_t removed : delta.removed) {
-      for (const uint32_t parent : snap.reverse[detail::slot_of(snap, removed)]) {
-        seeds.insert(snap.nodes[parent].stable_id);
-      }
-    }
-
-    std::unordered_set<uint32_t> affected;
-    const auto mark_parents = [&](auto&& self, uint32_t slot) -> void {
-      for (const uint32_t parent : next.reverse[slot]) {
-        if (affected.insert(parent).second) {
-          self(self, parent);
+    {
+      PROFILE_SECTION("asset_resolver::re_resolve--compute-delta");
+      for (const dependency_snapshot::node& n : next.nodes) {
+        if (snap.find(n.stable_id) == nullptr) {
+          delta.added.push_back(n.stable_id);
         }
       }
-    };
-
-    for (const natural_t seed : seeds) {
-      if (next.find(seed) != nullptr) {
-        const uint32_t slot = detail::slot_of(next, seed);
-        if (detail::delta_bucket_is_parent_seed(seed, delta)) {
-          affected.insert(slot);
+      for (const dependency_snapshot::node& n : snap.nodes) {
+        if (next.find(n.stable_id) == nullptr) {
+          delta.removed.push_back(n.stable_id);
         }
-        mark_parents(mark_parents, slot);
       }
-    }
+      if (known != nullptr && next.find(known->stable_id) != nullptr) {
+        delta.modified.push_back(known->stable_id);
+      }
 
-    for (const ostd::vector<uint32_t>& layer : next.topo_layers) {
-      for (const uint32_t slot : layer) {
-        if (affected.contains(slot) && !std::ranges::contains(delta.modified, next.nodes[slot].stable_id)) {
-          delta.affected_parents.push_back(next.nodes[slot].stable_id);
+      std::unordered_set<natural_t> seeds;
+      seeds.insert(delta.added.begin(), delta.added.end());
+      seeds.insert(delta.modified.begin(), delta.modified.end());
+      for (const natural_t removed : delta.removed) {
+        for (const uint32_t parent : snap.reverse[detail::slot_of(snap, removed)]) {
+          seeds.insert(snap.nodes[parent].stable_id);
+        }
+      }
+
+      std::unordered_set<uint32_t> affected;
+      const auto mark_parents = [&](auto&& self, uint32_t slot) -> void {
+        for (const uint32_t parent : next.reverse[slot]) {
+          if (affected.insert(parent).second) {
+            self(self, parent);
+          }
+        }
+      };
+
+      for (const natural_t seed : seeds) {
+        if (next.find(seed) != nullptr) {
+          const uint32_t slot = detail::slot_of(next, seed);
+          if (detail::delta_bucket_is_parent_seed(seed, delta)) {
+            affected.insert(slot);
+          }
+          mark_parents(mark_parents, slot);
+        }
+      }
+
+      for (const ostd::vector<uint32_t>& layer : next.topo_layers) {
+        for (const uint32_t slot : layer) {
+          if (affected.contains(slot) && !std::ranges::contains(delta.modified, next.nodes[slot].stable_id)) {
+            delta.affected_parents.push_back(next.nodes[slot].stable_id);
+          }
         }
       }
     }
@@ -463,6 +475,7 @@ namespace other {
   }
 
   natural_t asset_resolver::effective_hash_for(const dependency_snapshot::node& n, std::span<const dependency_declaration> decls) {
+    PROFILE_SECTION("asset_resolver::effective_hash_for");
     if (decls.empty() && asset_resolver_tables::builders[n.type] == nullptr) {
       return 0;
     }
@@ -509,6 +522,7 @@ namespace other {
     }
 
     ostd::vector<dependency_declaration> parse_csproj_manifest(const filepath& csproj) {
+      PROFILE_SECTION("parse_csproj_manifest");
       const std::string build_config = get_environment_build_config_string();
       const std::string_view dotnet_config = dotnet_config_for(build_config);
 
@@ -553,6 +567,7 @@ namespace other {
     }
 
     ostd::vector<dependency_declaration> parse_model_manifest(const filepath& model_path) {
+      PROFILE_SECTION("parse_model_manifest");
       /// gltf is json, so its texture dependencies are cheaply scannable without assimp; the
       //  legacy formats (.fbx/.obj/.dae/.3ds) resolve their textures at load time through the
       //  material system - documented asymmetry, gltf is the first-class citizen
@@ -611,38 +626,42 @@ namespace other {
       if (!doc.contains("images") || !doc["images"].is_array()) {
         return out;
       }
-      for (const nlohmann::json& image : doc["images"]) {
-        if (!image.is_object() || !image.contains("uri") || !image["uri"].is_string()) {
-          continue;  // embedded textures reference a bufferView instead of a uri
-        }
-        const std::string uri = image["uri"].get<std::string>();
-        if (uri.empty() || uri.starts_with("data:")) {
-          continue;  // embedded payloads are not filesystem edges
-        }
+      {
+        PROFILE_SECTION("parse_model_manifest--image-edges");
+        for (const nlohmann::json& image : doc["images"]) {
+          if (!image.is_object() || !image.contains("uri") || !image["uri"].is_string()) {
+            continue;  // embedded textures reference a bufferView instead of a uri
+          }
+          const std::string uri = image["uri"].get<std::string>();
+          if (uri.empty() || uri.starts_with("data:")) {
+            continue;  // embedded payloads are not filesystem edges
+          }
 
-        const filepath abs = resolve_relative(std::filesystem::absolute(model_path), uri);
-        if (!std::filesystem::exists(abs)) {
-          CORE_LOG_WARN("model '{}' references missing image '{}'; edge skipped", model_path.string(), abs.string());
-          continue;
-        }
-        if (!fs->deep_search_for_mount(abs).is_valid()) {
-          CORE_LOG_WARN("model '{}' references '{}' outside every mount; edge skipped", model_path.string(), abs.string());
-          continue;
-        }
+          const filepath abs = resolve_relative(std::filesystem::absolute(model_path), uri);
+          if (!std::filesystem::exists(abs)) {
+            CORE_LOG_WARN("model '{}' references missing image '{}'; edge skipped", model_path.string(), abs.string());
+            continue;
+          }
+          if (!fs->deep_search_for_mount(abs).is_valid()) {
+            CORE_LOG_WARN("model '{}' references '{}' outside every mount; edge skipped", model_path.string(), abs.string());
+            continue;
+          }
 
-        asset::type type = asset::get_type_from_extension(abs.extension().string());
-        if (type == asset::EMPTY) {
-          type = asset::TEXTURE;
-        }
-        std::string virtual_path = virtualize(abs);
-        if (!std::ranges::contains(out, virtual_path, &dependency_declaration::virtual_path)) {
-          out.push_back({ std::move(virtual_path), type, false });
+          asset::type type = asset::get_type_from_extension(abs.extension().string());
+          if (type == asset::EMPTY) {
+            type = asset::TEXTURE;
+          }
+          std::string virtual_path = virtualize(abs);
+          if (!std::ranges::contains(out, virtual_path, &dependency_declaration::virtual_path)) {
+            out.push_back({ std::move(virtual_path), type, false });
+          }
         }
       }
       return out;
     }
 
     ostd::vector<dependency_declaration> parse_scene_manifest(const filepath& scene_path) {
+      PROFILE_SECTION("parse_scene_manifest");
       /// malformed scene files are data errors, not contracts: declare no edges and let
       //  the scene node's own load surface the parse failure
       serialization::scene_parse_result parsed = serialization::load_scene_document(scene_path);
@@ -687,6 +706,7 @@ namespace other {
     }
 
     ostd::vector<dependency_declaration> parse_material_manifest(const filepath& material_path) {
+      PROFILE_SECTION("parse_material_manifest");
       /// malformed material files are data errors, not contracts: declare no edges and let
       //  the material node's own load surface the parse failure
       const material_parse_result parsed = parse_material_toml(material_path);
@@ -731,6 +751,7 @@ namespace other {
     }
 
     opt<manifest_domain> build_csproj_manifest_domain(const filepath& manifest_path) {
+      PROFILE_SECTION("build_csproj_manifest_domain");
       tinyxml2::XMLDocument doc;
       xml::load_project_root(doc, manifest_path);
 

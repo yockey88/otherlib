@@ -4,6 +4,7 @@
 #include "scripting/dotnet_bindings/scene_bindings.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "script/scripting_environment.hpp"
 
@@ -29,6 +30,7 @@ namespace other {
   namespace bindings {
 
     natural_t native_scene_create_object(native_string name, float x, float y, float z) {
+      PROFILE_SECTION("native_scene_create_object");
       scene* active_scene = detail::get_active_scene_checked();
       if (active_scene == nullptr) {
         CORE_LOG_ERROR("No active scene to create object in.");
@@ -40,6 +42,7 @@ namespace other {
     }
 
     void native_scene_destroy_object(natural_t id) {
+      PROFILE_SECTION("native_scene_destroy_object");
       scene* active_scene = detail::get_active_scene_checked();
       if (active_scene == nullptr) {
         return;
@@ -74,6 +77,7 @@ namespace other {
     }
 
     void native_scene_get_object_ids(natural_t* out_ids, int32_t* out_count, int32_t max_count) {
+      PROFILE_SECTION("native_scene_get_object_ids");
       scene* active_scene = detail::get_active_scene_checked();
       if (active_scene == nullptr) {
         *out_count = 0;
@@ -96,6 +100,7 @@ namespace other {
     }
 
     natural_t native_scene_find_object_by_name(native_string name) {
+      PROFILE_SECTION("native_scene_find_object_by_name");
       scene* active_scene = detail::get_active_scene_checked();
       if (active_scene == nullptr) {
         return 0;

@@ -130,6 +130,7 @@ namespace other {
   }
 
   void dotnet_host::unload_host() {
+    PROFILE_SECTION("dotnet_host::unload_host");
     /// gc
     if (interop_functions.collect_garbage != nullptr) {
       OTHER_ASSERT(interop_functions.wait_for_pending_finalizers != nullptr, "Interop function wait_for_pending_finalizers is not initialized");
@@ -188,6 +189,7 @@ namespace other {
 
   assembly_context* dotnet_host::create_assembly_context(const std::string_view name) {
     OTHER_ASSERT(!name.empty(), "Assembly context name cannot be empty.");
+    PROFILE_SECTION("dotnet_host::create_assembly_context");
     int32_t context_handle = -1;
     {
       native_scoped_string name_str = native_string::new_str(name);
@@ -212,6 +214,7 @@ namespace other {
   }
 
   void dotnet_host::destroy_assembly_context(natural_t context_id) {
+    PROFILE_SECTION("dotnet_host::destroy_assembly_context");
     auto itr = assembly_contexts.find(context_id);
     if (itr != assembly_contexts.end()) {
       CORE_LOG_DEBUG("Destroying assembly context [{}:{}]", itr->second.get_handle(), itr->second.get_name());
@@ -230,6 +233,7 @@ namespace other {
   }
 
   int32_t dotnet_host::get_behavior_base_type_id() {
+    PROFILE_SECTION("dotnet_host::get_behavior_base_type_id");
     if (behavior_base_type_id.has_value()) {
       return behavior_base_type_id.value();
     }
@@ -250,6 +254,7 @@ namespace other {
   }
 
   void dotnet_host::purge_dotnet_type(int32_t dotnet_type_id) {
+    PROFILE_SECTION("dotnet_host::purge_dotnet_type");
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not initialized.");
 
@@ -268,6 +273,7 @@ namespace other {
     OTHER_ASSERT(type != nullptr, "Type cannot be null");
     OTHER_ASSERT(type->dotnet_id != -1, "Type ID is invalid: {}", type->dotnet_id);
     OTHER_ASSERT(interop_functions.create_object != nullptr, "Interop function create_object is not initialized");
+    PROFILE_SECTION("dotnet_host::instantiate_managed_object_of_type");
 
     CORE_LOG_DEBUG("Attempting to create managed object [{}] of type [{}]", name, type->full_name());
     dotnet_object* obj = new_object(name, type);
@@ -288,6 +294,7 @@ namespace other {
 
   void dotnet_host::destroy_managed_object(dotnet_object* obj) {
     OTHER_ASSERT(obj != nullptr, "dotnet_object is null");
+    PROFILE_SECTION("dotnet_host::destroy_managed_object");
     if (obj->managed_object == nullptr) {
       CORE_LOG_ERROR("Cannot destroy object: managed_object is null");
       return;
@@ -301,6 +308,7 @@ namespace other {
 
   ostd::map<natural_t, dotnet_object>::iterator dotnet_host::destroy_managed_object(ostd::map<natural_t, dotnet_object>::iterator obj_itr) {
     OTHER_ASSERT(obj_itr != managed_objects.end(), "Invalid object iterator");
+    PROFILE_SECTION("dotnet_host::destroy_managed_object--by-iterator");
     if (obj_itr->second.managed_object == nullptr) {
       CORE_LOG_ERROR("Cannot destroy object: managed_object is null");
       return obj_itr;
@@ -584,6 +592,7 @@ namespace other {
   }
 
   void* dotnet_host::load_managed_function(const filepath& asm_path, const std::basic_string<char_t>& type_name, const std::basic_string<char_t>& method_name, const char_t* delegate_type) const {
+    PROFILE_SECTION("dotnet_host::load_managed_function--by-path");
     if (!std::filesystem::exists(asm_path)) {
       CORE_LOG_ERROR("Assembly {} does not exist!", asm_path.string());
       return nullptr;
@@ -602,6 +611,7 @@ namespace other {
   }
 
   void dotnet_host::invoke_static_method_with_args(const std::string_view type_name, const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc) {
+    PROFILE_SECTION("dotnet_host::invoke_static_method_with_args");
     auto type = native_string::new_str(type_name);
     auto name = native_string::new_str(method_name);
     interop().invoke_static_method(type, name, argv, arg_ts, argc);
@@ -610,6 +620,7 @@ namespace other {
   }
 
   void dotnet_host::invoke_static_returning_method_args(const std::string_view type_name, const std::string_view method_name, const void** argv, const managed_type* arg_ts, size_t argc, void* out) {
+    PROFILE_SECTION("dotnet_host::invoke_static_returning_method_args");
     auto type = native_string::new_str(type_name);
     auto name = native_string::new_str(method_name);
     interop().invoke_static_method_ret(type, name, argv, arg_ts, argc, out);
@@ -620,6 +631,7 @@ namespace other {
   namespace {
 
     std::optional<filepath> get_host_path() {
+      PROFILE_SECTION("other::<detail>::get_host_path");
 #ifdef OTHER_ENVIRONMENT_WINDOWS
       filepath base_path = "";
 

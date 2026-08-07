@@ -1,11 +1,14 @@
 /**
- * \file peer-mesh/peer_state_machine.cpp
+ * \file peer_mesh/peer_state_machine.cpp
  **/
-#include "peer-mesh/peer_state_machine.hpp"
+#include "peer_mesh/peer_state_machine.hpp"
+
+#include "core/profiler.hpp"
 
 namespace other {
 
   void peer_state_machine::on_enter_state(role_state state) {
+    PROFILE_SECTION("peer_state_machine::on_enter_state");
     switch (state) {
       case role_state::UNJOINED:
         break;

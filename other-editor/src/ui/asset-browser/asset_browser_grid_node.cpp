@@ -16,6 +16,7 @@
 
 #include "core/defines.hpp"
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 #include "file/directory.hpp"
 #include "file/file_handle.hpp"
@@ -100,6 +101,7 @@ namespace other {
     }
 
     void asset_browser_grid_node::navigate_to(const std::string& path) {
+      PROFILE_SECTION("asset_browser_grid_node::navigate_to");
       CORE_LOG_DEBUG("Navigating to path: {}", path);
       current_path = path;
       selected_asset_idx = -1;
@@ -142,6 +144,7 @@ namespace other {
     }
 
     void asset_browser_grid_node::rebuild_asset_list() {
+      PROFILE_SECTION("asset_browser_grid_node::rebuild_asset_list");
       assets.clear();
 
       asset_handler* handler = nullptr;
@@ -287,6 +290,7 @@ namespace other {
     }
 
     void asset_browser_grid_node::on_render_node_body() {
+      PROFILE_SECTION("asset_browser_grid_node::on_render_node_body");
       using namespace colors;
       /// the listing is a full mount walk — refresh on a cadence, not per frame
       if (++frames_since_refresh >= 30) {
@@ -299,6 +303,7 @@ namespace other {
       ImDrawList* dl = ImGui::GetWindowDrawList();
 
       {
+        PROFILE_SECTION("asset_browser_grid_node::on_render_node_body--toolbar");
         ImVec2 cursor = ImGui::GetCursorScreenPos();
         float w = ImGui::GetContentRegionAvail().x;
 
@@ -329,6 +334,7 @@ namespace other {
       }
 
       {
+        PROFILE_SECTION("asset_browser_grid_node::on_render_node_body--filter_bar");
         ImVec2 cursor = ImGui::GetCursorScreenPos();
         float w = ImGui::GetContentRegionAvail().x;
 
@@ -370,6 +376,7 @@ namespace other {
 
       float top_of_grid_y = ImGui::GetCursorScreenPos().y;
       if (ImGui::BeginChild("##asset-grid-scroll", ImVec2(0, avail_h), ImGuiChildFlags_None)) {
+        PROFILE_SECTION("asset_browser_grid_node::on_render_node_body--card_grid");
         int cols = std::max(1, static_cast<int>((avail_w - abw::kPaddingX) / (card_w + abw::kCardSpacing)));
         int col = 0;
 
@@ -421,6 +428,7 @@ namespace other {
       ImGui::PopStyleColor();
 
       {
+        PROFILE_SECTION("asset_browser_grid_node::on_render_node_body--status_bar");
         int asset_count = 0;
         int folder_count = 0;
         for (const auto& a : assets) {
@@ -449,6 +457,7 @@ namespace other {
 
       /// \todo move this to a separate window or popup
       if (show_detail_panel && ImGui::BeginChild("##asset-detail-popup")) {
+        PROFILE_SECTION("asset_browser_grid_node::on_render_node_body--detail_panel");
         const auto& sel = assets[selected_asset_idx];
 
         // ImGui::PushStyleColor(ImGuiCol_ChildBg, rgba_to_imvec4(colors::kBG0));

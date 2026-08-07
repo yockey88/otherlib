@@ -3,6 +3,8 @@
  **/
 #include "vm/command_bus.hpp"
 
+#include "core/profiler.hpp"
+
 #include "vm/default_symbol_resolver.hpp"
 #include "vm/opcode.hpp"
 #include "vm/other_device.hpp"
@@ -41,6 +43,7 @@ namespace other {
 
   bool command_bus::dispatch(uint16_t syscall_id, other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "Device cannot be null for dispatch");
+    PROFILE_SECTION("command_bus::dispatch");
 
     const syscall sc{ syscall_id };
     if (uint16_t{ sc.device } >= kMaxDevices) {
@@ -60,6 +63,7 @@ namespace other {
   }
 
   scope<symbol_resolver> command_bus::create_default_symbol_resolver() const {
+    PROFILE_SECTION("command_bus::create_default_symbol_resolver");
     auto res = make_scope<default_symbol_resolver>();
 
     for (uint16_t i = 0; i < kMaxDevices; ++i) {

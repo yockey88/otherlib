@@ -106,6 +106,8 @@ def main(argv):
     path = bootstrap(cfg, with_tests="--tests" in argv, regen="--regen" in argv, user=user)
     print(f"[cli.py] {'user' if user else 'developer'} oecli ready at {path}")
     return 0
+  elif argv and argv[0] == "cloc":
+    return subprocess.call(["cloc", "--match-d=other-*", "--not-match-d=other-(server|editor|cli)", "--include-ext=cpp,hpp,h,cc,c" , "."], cwd=REPO_ROOT)
 
   cfg = infer_config(argv)
   if cfg is not None and cfg not in CONFIGS:

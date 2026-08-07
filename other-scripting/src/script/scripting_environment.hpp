@@ -5,6 +5,7 @@
 #define OTHER_SCRIPTING_SCRIPT_SCRIPTING_ENVIRONMENT_HPP
 
 #include "core/memory_pool.hpp"
+#include "core/profiler.hpp"
 #include "core/scope.hpp"
 #include "core/subsystem.hpp"
 
@@ -64,6 +65,7 @@ namespace other {
 
     template <typename... Args>
     void attach_dotnet_object(integer_t id, const std::string_view type_name, Args&&... ctor_args) {
+      PROFILE_SECTION("scripting_environment::attach_dotnet_object");
       script_object* obj = get_object(id);
       OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
 

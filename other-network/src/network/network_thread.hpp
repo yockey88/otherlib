@@ -15,8 +15,7 @@
 
 #include "message/message_bus.hpp"
 #include "message/message_fields.hpp"
-
-#include "peer-mesh/packet_sink.hpp"
+#include "peer_mesh/packet_sink.hpp"
 
 namespace other {
 
@@ -45,7 +44,6 @@ namespace other {
     void unregister_packet_sink(natural_t id);
 
     void register_transport_listener(natural_t transport_hash, natural_t id, packet_sink* sink);
-    void attach_connection_listener(natural_t connection_id, natural_t id, packet_sink* sink);
     void attach_connection_listener(natural_t connection_id, natural_t sink_id);
     void unregister_transport_listener(natural_t sink_id);
     void unregister_connection_listener(natural_t connection_id);

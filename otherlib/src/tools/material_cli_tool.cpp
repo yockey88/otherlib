@@ -6,6 +6,7 @@
 #include <toml++/toml.h>
 
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
 #include "file/path_helpers.hpp"
 
 #include "gpu_resource/material.hpp"
@@ -117,6 +118,7 @@ namespace other {
       }
 
       tool_result info(tool_context& ctx, const filepath& input) {
+        PROFILE_SECTION("material_tool::info");
         material_parse_result parsed = parse_material_toml(input);
         for (const std::string& warning : parsed.warnings) {
           ctx.print("warning: {}", warning);
@@ -192,6 +194,7 @@ namespace other {
       }
 
       layout_read_result read_layout_declaration(const filepath& pipeline_path) {
+        PROFILE_SECTION("material_tool::read_layout_declaration");
         layout_read_result result;
 
         toml::table table;
@@ -309,6 +312,7 @@ namespace other {
       }
 
       tool_result check(tool_context& ctx, const filepath& input, const filepath& pipeline_path) {
+        PROFILE_SECTION("material_tool::check");
         material_parse_result parsed = parse_material_toml(input);
         for (const std::string& warning : parsed.warnings) {
           ctx.print("warning: {}", warning);
@@ -401,6 +405,7 @@ namespace other {
     }
 
     tool_result material_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("material_tool::execute");
       ensure_cli_runtime();
 
       parsed_arguments parsed = parse_arguments(args);

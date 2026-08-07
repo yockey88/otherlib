@@ -5,6 +5,8 @@
 
 #include <glm/glm.hpp>
 
+#include "core/profiler.hpp"
+
 #include "math/definitions.hpp"
 
 #include "glm/fwd.hpp"
@@ -12,6 +14,7 @@
 namespace other {
 
   void bind_glm_vector_types(sol::state& lua_state) {
+    PROFILE_SECTION("bind_glm_vector_types");
     auto vec2_type = lua_state.new_usertype<glm::vec2>(
       "__native_vector2",
       sol::constructors<

@@ -153,7 +153,6 @@ target_sources(otherlib
 
     src/network/tcp/connection.cpp
     src/network/tcp/tcp_transport_provider.cpp
-    src/network/default_peer_actor_host.cpp
 
     src/other.cpp
 )

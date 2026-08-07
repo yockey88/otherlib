@@ -4,6 +4,7 @@
 #include "renderer/render_graph.hpp"
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "gpu_resource/texture.hpp"
@@ -61,6 +62,7 @@ namespace other {
   }
 
   render_graph& render_graph::pass_builder::end_pass() {
+    PROFILE_SECTION("render_graph::pass_builder::end_pass");
     if (pass.framebuffer_handle.has_value() && pass.pass_type == render_pass::RENDER_PASS) {
       auto& fb = graph.renderer_ptr->get_resource<framebuffer>(*pass.framebuffer_handle);
 
@@ -83,6 +85,7 @@ namespace other {
   }
 
   render_graph::~render_graph() {
+    PROFILE_SECTION("render_graph::~render_graph");
     for (auto& [_, pass] : passes) {
       if (pass.pass.framebuffer_handle.has_value()) {
         renderer_ptr->destroy_resource(*pass.pass.framebuffer_handle);
@@ -99,6 +102,7 @@ namespace other {
   }
 
   render_graph::pass_builder render_graph::start_pass(const std::string_view name, opt<resource_handle> shader_handle, render_pass::type rptype, const glm::vec2& size, bool create_framebuffer, uint32_t samples) {
+    PROFILE_SECTION("render_graph::start_pass");
     CORE_LOG_DEBUG("Starting pass [{}] with shader [{}] and size [{}, {}]", name, shader_handle.has_value() ? *shader_handle : resource_handle{}, size.x, size.y);
     pass& pass_data = create_pass(rptype);
     render_pass& rp = pass_data.pass;
@@ -123,6 +127,7 @@ namespace other {
   }
 
   void render_graph::replace_texture_resource(resource_handle old_handle, resource_handle new_handle) {
+    PROFILE_SECTION("render_graph::replace_texture_resource");
     for (auto& [_, pass] : passes) {
       for (auto& [_, texture] : pass.pass.texture_resources) {
         if (texture.handle == old_handle) {
@@ -146,6 +151,7 @@ namespace other {
   }
 
   void render_graph::replace_buffer_resource(resource_handle old_handle, resource_handle new_handle) {
+    PROFILE_SECTION("render_graph::replace_buffer_resource");
     for (auto& [_, pass] : passes) {
       for (auto& [_, buffer] : pass.pass.buffer_resources) {
         if (buffer.handle == old_handle) {
@@ -184,6 +190,7 @@ namespace other {
   }
 
   void render_graph::build_graph() {
+    PROFILE_SECTION("render_graph::build_graph");
     bool all_passes_have_executors = true;
     for (auto& [id, pass] : passes) {
       auto itr = executors.find(id);
@@ -199,6 +206,7 @@ namespace other {
     }
 
     {
+      PROFILE_SECTION("render_graph::build_graph--nodes_and_edges");
       ostd::vector<frame_node> nodes;
       nodes.reserve(passes.size());
 
@@ -326,6 +334,7 @@ else
   */
 
   ostd::vector<natural_t> render_graph::get_topological_sort(const graph& g) {
+    PROFILE_SECTION("render_graph::get_topological_sort");
     /// if graph is empty (i.e. no passes), return a vector with -1 to signal that this
     ///   is a valid but empty graph (the -1 is to differentiate from an invalid graph which returns {})
     if (g.nodes.empty()) {

@@ -1,11 +1,12 @@
 /**
- * \file peer-mesh/peer_state_machine.hpp
+ * \file peer_mesh/peer_state_machine.hpp
  **/
 #ifndef OTHER_NETWORK_PEER_MESH_PEER_STATE_MACHINE_HPP
 #define OTHER_NETWORK_PEER_MESH_PEER_STATE_MACHINE_HPP
 
 #include <cstdint>
 
+#include "core/profiler.hpp"
 #include "core/state_machine.hpp"
 
 namespace other {
@@ -39,6 +40,7 @@ namespace other {
    public:
     peer_state_machine()
         : state_machine(role_state::UNJOINED) {
+      PROFILE_SECTION("peer_state_machine::peer_state_machine");
       add_transition(role_state::UNJOINED, role_event::HANDSHAKE_STARTED, role_state::JOINING);
       add_transition(role_state::JOINING, role_event::HANDSHAKE_COMPLETED, role_state::PEER);
       add_transition(role_state::PEER, role_event::NOMINATE, role_state::SERVER_CANDIDATE);

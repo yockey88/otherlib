@@ -3,6 +3,7 @@
  **/
 #include "editor_context.hpp"
 
+#include "core/profiler.hpp"
 #include "editor_driver.hpp"
 
 namespace other {
@@ -50,6 +51,7 @@ namespace other {
   }  // namespace
 
   void editor_context::notify_scene_edited() {
+    PROFILE_SECTION("editor_context::notify_scene_edited");
     scene* s = current_selection.scene_ptr;
     if (s == nullptr || s->is_playing()) {
       return;
@@ -68,6 +70,7 @@ namespace other {
   }
 
   void editor_context::tick_edit_tracker() {
+    PROFILE_SECTION("editor_context::tick_edit_tracker");
     scene* s = current_selection.scene_ptr;
     if (s == nullptr) {
       return;
@@ -94,6 +97,7 @@ namespace other {
   }
 
   void editor_context::reset_scene_edit_tracking() {
+    PROFILE_SECTION("editor_context::reset_scene_edit_tracking");
     editing_history.clear();
     edit_tracker.baseline.clear();
     edit_tracker.session_active = false;
@@ -101,6 +105,7 @@ namespace other {
   }
 
   void editor_context::undo_scene_edit() {
+    PROFILE_SECTION("editor_context::undo_scene_edit");
     scene* s = current_selection.scene_ptr;
     if (s == nullptr || s->is_playing()) {
       return;
@@ -117,6 +122,7 @@ namespace other {
   }
 
   void editor_context::redo_scene_edit() {
+    PROFILE_SECTION("editor_context::redo_scene_edit");
     scene* s = current_selection.scene_ptr;
     if (s == nullptr || s->is_playing()) {
       return;
@@ -129,6 +135,7 @@ namespace other {
   }
 
   void editor_context::capture_playback_selection() {
+    PROFILE_SECTION("editor_context::capture_playback_selection");
     playback_selection_names.clear();
     scene* s = current_selection.scene_ptr;
     if (s == nullptr) {
@@ -144,6 +151,7 @@ namespace other {
   }
 
   void editor_context::restore_playback_selection() {
+    PROFILE_SECTION("editor_context::restore_playback_selection");
     scene* s = current_selection.scene_ptr;
     if (s == nullptr) {
       return;
@@ -199,6 +207,7 @@ namespace other {
   }
 
   bounding_box editor_context::get_selection_bounding_box() const {
+    PROFILE_SECTION("editor_context::get_selection_bounding_box");
     if (!has_selection()) {
       return {};
     }
@@ -215,6 +224,7 @@ namespace other {
   }
 
   natural_t editor_context::register_viewport(const std::string_view name, const std::string_view render_pipeline_name) {
+    PROFILE_SECTION("editor_context::register_viewport");
     auto& vp = viewports.emplace_back() = viewport_info{
       .viewport_name = std::format("{}:{}", name, render_pipeline_name),
     };
@@ -231,6 +241,7 @@ namespace other {
   }
 
   natural_t editor_context::register_viewport(const std::string_view name, const std::string_view render_pipeline_name, camera* cam) {
+    PROFILE_SECTION("editor_context::register_viewport--with_camera");
     auto& vp = viewports.emplace_back() = viewport_info{
       .viewport_name = std::format("{}:{}", name, render_pipeline_name),
     };
@@ -247,6 +258,7 @@ namespace other {
   }
 
   void editor_context::remove_viewport(natural_t vp_id) {
+    PROFILE_SECTION("editor_context::remove_viewport");
     auto vp_itr = std::ranges::find_if(viewports, [vp_id](const viewport_info& vp) { return vp.vp_id == vp_id; });
     if (vp_itr != viewports.end()) {
       auto& kernel = driver->get_kernel();
@@ -259,6 +271,7 @@ namespace other {
   }
 
   void editor_context::remove_all_viewports() {
+    PROFILE_SECTION("editor_context::remove_all_viewports");
     auto& kernel = driver->get_kernel();
     auto& rendering_sys = kernel.get_core_system<rendering_system>();
     for (const auto& vp : viewports) {

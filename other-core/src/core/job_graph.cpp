@@ -3,14 +3,18 @@
  **/
 #include "core/job_graph.hpp"
 
+#include "core/profiler.hpp"
+
 namespace other {
 
   job_graph::job_node* job_graph::get_node(natural_t id) {
+    PROFILE_SECTION("job_graph::get_node");
     std::lock_guard lck{ graph_mutex };
     return find_node(node_id_from_job_id(id));
   }
 
   ref<job> job_graph::insert(job::descriptor desc, work_fn work) {
+    PROFILE_SECTION("job_graph::insert");
     auto handle = make_ref<job>();
     handle->id = allocate_id();
     handle->current_status.store(job::status::PENDING, std::memory_order_release);
@@ -31,6 +35,7 @@ namespace other {
   }
 
   ref<job> job_graph::add_deferred(natural_t trigger, job::descriptor desc, work_fn work) {
+    PROFILE_SECTION("job_graph::add_deferred");
     ref<job> deferred_job = make_ref<job>();
     deferred_job->id = allocate_id();
     deferred_job->current_status.store(job::status::PENDING, std::memory_order_release);
@@ -54,6 +59,7 @@ namespace other {
   void job_graph::add_dependency(natural_t parent, natural_t child) {
     OTHER_ASSERT(parent != child, "A job cannot depend on itself. Job ID: {}", parent);
     OTHER_ASSERT(parent != 0 && child != 0, "Job IDs must be non-zero. Parent ID: {}, Child ID: {}", parent, child);
+    PROFILE_SECTION("job_graph::add_dependency");
 
     std::lock_guard lck{ graph_mutex };
 
@@ -85,6 +91,7 @@ namespace other {
   }
 
   ostd::vector<natural_t> job_graph::collect_ready() {
+    PROFILE_SECTION("job_graph::collect_ready");
     std::lock_guard lck{ graph_mutex };
     ostd::vector<natural_t> ready_jobs;
     work_graph.for_each_node([&ready_jobs](const job_node& node) {
@@ -104,6 +111,7 @@ namespace other {
   }
 
   ostd::vector<natural_t> job_graph::resolve(natural_t job_id, job::status status) {
+    PROFILE_SECTION("job_graph::resolve");
     job_node* completed_node = find_node(node_id_from_job_id(job_id));
     if (completed_node == nullptr) {
       return {};
@@ -135,6 +143,7 @@ namespace other {
   }
 
   void job_graph::mark_dispatched(natural_t job_id) {
+    PROFILE_SECTION("job_graph::mark_dispatched");
     if (auto* n = find_node(node_id_from_job_id(job_id)); n != nullptr) {
       std::lock_guard lck{ graph_mutex };
       n->dispatched = true;
@@ -147,6 +156,7 @@ namespace other {
   }
 
   void job_graph::remove(natural_t job_id) {
+    PROFILE_SECTION("job_graph::remove");
     natural_t node_id = node_id_from_job_id(job_id);
     if (node_id == 0) {
       return;

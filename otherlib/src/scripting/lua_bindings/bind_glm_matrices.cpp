@@ -7,11 +7,14 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "core/profiler.hpp"
+
 #include "math/definitions.hpp"
 
 namespace other {
 
   void bind_glm_matrix_types(sol::state& lua_state) {
+    PROFILE_SECTION("bind_glm_matrix_types");
     auto mat2_type = lua_state.new_usertype<glm::mat2>(
       "mat2",
       sol::constructors<

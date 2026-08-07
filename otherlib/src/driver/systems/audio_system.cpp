@@ -20,6 +20,7 @@ namespace other {
 
     /// explicit active listener -> "main-camera" tagged object -> origin
     void resolve_listener(scene* active_scene, audio_environment* env, double dt) {
+      PROFILE_SECTION("resolve_listener");
       if (active_scene != nullptr) {
         bool found = false;
         active_scene->each_component<audio_listener_component>([&](const scene::object_handle& handle, audio_listener_component& listener) {
@@ -52,6 +53,7 @@ namespace other {
 
   void reconcile_scene_audio(scene* active_scene, audio_environment* env, const asset_hash_fn& hash_of_asset, double dt, audio_reconcile_state& state) {
     OTHER_ASSERT(env != nullptr, "reconcile_scene_audio requires an audio environment");
+    PROFILE_SECTION("reconcile_scene_audio");
     if (!env->is_initialized()) {
       state.bound.clear();
       return;
@@ -178,6 +180,7 @@ namespace other {
   }
 
   void audio_system::tick(driver_kernel* kernel, double dt) {
+    PROFILE_SECTION("audio_system::tick");
     if (subsystem<audio_environment>::inert) {
       return;
     }
@@ -201,11 +204,13 @@ namespace other {
 
     /// after the diff so voices started this frame advance this frame
     if (env->pump_mode()) {
+      PROFILE_SECTION("audio_system::tick--pump");
       env->pump(dt);
     }
   }
 
   void audio_system::shutdown(driver_kernel* kernel) {
+    PROFILE_SECTION("audio_system::shutdown");
     if (subsystem<audio_environment>::inert) {
       return;
     }

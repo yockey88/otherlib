@@ -49,6 +49,7 @@ namespace other {
   }
 
   render_graph::pass_executor default_pass_executor_resolver::resolve_executor(std::string_view target, const pipeline_pass_definition& def, render_pipeline* pl) {
+    PROFILE_SECTION("default_pass_executor_resolver::resolve_executor");
     // target = "cs:Game.Pipelines.Foo", "lua:mod.fn", "vm:prog@label"
     auto colon = target.find(':');
     OTHER_ASSERT(colon != std::string_view::npos, "script target '{}' missing host prefix", target);
@@ -107,6 +108,7 @@ namespace other {
       return nullptr;
     }
     return [this, e = std::string{ entry }, p = pl](pass_context& ctx) {
+      PROFILE_SECTION("default_pass_executor_resolver::script_pass_executor");
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "scripting_environment null in dotnet_make_pass_executor!");
       pass_invocation_interop interop{

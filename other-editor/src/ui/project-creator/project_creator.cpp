@@ -3,6 +3,7 @@
  **/
 #include "ui/project-creator/project_creator.hpp"
 
+#include "core/profiler.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/project-creator/project_creator_widgets.hpp"
 
@@ -17,6 +18,7 @@ namespace other {
     }
 
     void project_creator::on_render_body() {
+      PROFILE_SECTION("project_creator::on_render_body");
       ImGui::BeginChild("##project-creator-body", ImVec2(0, 0), false);
 
       inspector::begin_property_row("Project Settings");

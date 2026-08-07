@@ -1,5 +1,5 @@
 /**
- * \file peer-mesh/packet_sink.hpp
+ * \file peer_mesh/packet_sink.hpp
  **/
 #ifndef OTHER_NETWORK_PEER_MESH_PACKET_SINK_HPP
 #define OTHER_NETWORK_PEER_MESH_PACKET_SINK_HPP

@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 
 #include "cli/tools/dev_common.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
   namespace cli {
@@ -32,6 +33,7 @@ namespace other {
         --dry-run            print the launch instead of running it)";
 
       tool_result run_soak_harness(tool_context& ctx, const dev_tool_options& options) {
+        PROFILE_SECTION("run_soak_harness");
         std::string resolved_config = "";
         const filepath harness = find_built_executable(ctx.env, filepath("tests") / "harness", "other_soak", options.config, resolved_config);
         if (harness.empty()) {
@@ -86,6 +88,7 @@ namespace other {
     }
 
     tool_result test_runner_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("test_runner_tool::execute");
       dev_tool_options options;
       opt<std::string> filter = std::nullopt;
       opt<std::string> xml_path = std::nullopt;

@@ -9,6 +9,7 @@
 #include <toml++/toml.hpp>
 
 #include "cli/process.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
   namespace cli {
@@ -40,6 +41,7 @@ namespace other {
       }
 
       tool_result resolve_project_file(const filepath& target, filepath& resolved) {
+        PROFILE_SECTION("resolve_project_file");
         std::error_code ec;
         const filepath absolute_target = std::filesystem::absolute(target, ec);
         if (ec || !std::filesystem::exists(absolute_target)) {
@@ -91,6 +93,7 @@ namespace other {
     }
 
     tool_result open_project_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("open_project_tool::execute");
       opt<filepath> target = std::nullopt;
       opt<std::string> requested_config = std::nullopt;
       bool wait_for_exit = false;

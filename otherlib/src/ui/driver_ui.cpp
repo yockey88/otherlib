@@ -7,6 +7,7 @@
 #include <span>
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 
 #include "dotnet/dotnet_object.hpp"
 #include "script/scripting_environment.hpp"
@@ -18,6 +19,7 @@
 namespace other {
 
   void driver_ui::initialize() {
+    PROFILE_SECTION("driver_ui::initialize");
     component_reg = make_scope<ui::component_widget_registry>();
     OTHER_ASSERT(component_reg != nullptr, "Failed to create component widget registry in driver UI initialization.");
 
@@ -37,7 +39,9 @@ namespace other {
   }
 
   void driver_ui::render() {
+    PROFILE_SECTION("driver_ui::render");
     if (main_menu_bar_open) {
+      PROFILE_SECTION("driver_ui::render--main_menu_bar");
       auto menus =
         main_menu_bar_menus |
         std::views::transform(&main_menu_bar_menu::menu) |
@@ -50,6 +54,7 @@ namespace other {
   }
 
   void driver_ui::shutdown() {
+    PROFILE_SECTION("driver_ui::shutdown");
     {
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "scripting_environment is not initialized in driver UI shutdown.");
@@ -62,6 +67,7 @@ namespace other {
   }
 
   void driver_ui::available_ui_window_menu() {
+    PROFILE_SECTION("driver_ui::available_ui_window_menu");
     auto builtin_window_item = [this](const builtin_window& win) {
       if (ImGui::MenuItem(win.get_name().data(), nullptr, win.open)) {
         if (win.open) {
@@ -96,6 +102,7 @@ namespace other {
   }
 
   ostd::vector<std::string> driver_ui::get_open_window_names() const {
+    PROFILE_SECTION("driver_ui::get_open_window_names");
     ostd::vector<std::string> open_windows;
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       if (i == 0 || i == static_cast<size_t>(INVALID_WINDOW_TYPE)) {
@@ -118,6 +125,7 @@ namespace other {
   }
 
   ostd::vector<std::string> driver_ui::get_available_builtin_window_names() const {
+    PROFILE_SECTION("driver_ui::get_available_builtin_window_names");
     ostd::vector<std::string> available_windows;
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       if (i == 0 || i == static_cast<size_t>(INVALID_WINDOW_TYPE)) {
@@ -131,6 +139,7 @@ namespace other {
   }
 
   ostd::vector<std::string> driver_ui::get_available_custom_window_names() const {
+    PROFILE_SECTION("driver_ui::get_available_custom_window_names");
     ostd::vector<std::string> available_windows;
     for (const auto& [hash, window] : custom_windows) {
       available_windows.push_back(window.name);
@@ -139,6 +148,7 @@ namespace other {
   }
 
   void driver_ui::open_window(const std::string_view window_name) {
+    PROFILE_SECTION("driver_ui::open_window");
     CORE_LOG_DEBUG("Request to open UI window: {}", window_name);
     natural_t hash = FNV(window_name);
 
@@ -159,6 +169,7 @@ namespace other {
   }
 
   void driver_ui::close_window(const std::string_view window_name) {
+    PROFILE_SECTION("driver_ui::close_window");
     CORE_LOG_DEBUG("Request to close UI window: {}", window_name);
     natural_t hash = FNV(window_name);
 
@@ -179,6 +190,7 @@ namespace other {
   }
 
   void driver_ui::close_all_windows() {
+    PROFILE_SECTION("driver_ui::close_all_windows");
     CORE_LOG_DEBUG("Request to close all UI windows");
     for (auto& win : builtin_windows) {
       if (win.open) {
@@ -206,6 +218,7 @@ namespace other {
   }
 
   void driver_ui::register_main_menu_bar_sub_menu(const std::string_view menu_name, const ui::menu& sub_menu) {
+    PROFILE_SECTION("driver_ui::register_main_menu_bar_sub_menu");
     natural_t hash = FNV(menu_name);
     auto it = std::ranges::find_if(main_menu_bar_menus, [hash](const auto& menu) { return menu.hash == hash; });
     if (it == main_menu_bar_menus.end()) {
@@ -219,6 +232,7 @@ namespace other {
   }
 
   void driver_ui::register_main_menu_bar_menu(const std::string_view menu_name) {
+    PROFILE_SECTION("driver_ui::register_main_menu_bar_menu");
     natural_t hash = FNV(menu_name);
     if (std::ranges::find_if(main_menu_bar_menus, [hash](const auto& item) { return item.hash == hash; }) != main_menu_bar_menus.end()) {
       CORE_LOG_ERROR("Main menu bar menu with name '{}' is already registered.", menu_name);
@@ -237,6 +251,7 @@ namespace other {
   }
 
   void driver_ui::register_main_menu_bar_menu(const ui::menu& menu) {
+    PROFILE_SECTION("driver_ui::register_main_menu_bar_menu");
     natural_t hash = FNV(menu.name);
     if (std::ranges::find_if(main_menu_bar_menus, [hash](const auto& item) { return item.hash == hash; }) != main_menu_bar_menus.end()) {
       CORE_LOG_ERROR("Main menu bar menu with name '{}' is already registered.", menu.name);
@@ -251,6 +266,7 @@ namespace other {
   }
 
   void driver_ui::register_main_menu_bar_menu_item(const std::string_view menu_name, const ui::menu_item& item) {
+    PROFILE_SECTION("driver_ui::register_main_menu_bar_menu_item");
     natural_t hash = FNV(menu_name);
     auto it = std::ranges::find_if(main_menu_bar_menus, [hash](const auto& menu) { return menu.hash == hash; });
     if (it == main_menu_bar_menus.end()) {
@@ -264,6 +280,7 @@ namespace other {
   }
 
   natural_t driver_ui::register_window(const std::string_view name, scope<ui_window> window) {
+    PROFILE_SECTION("driver_ui::register_window");
     natural_t hash = FNV(name);
     auto [itr, inserted] = custom_windows.emplace(hash, driver_window{
                                                           .name = std::string(name),
@@ -282,6 +299,7 @@ namespace other {
   }
 
   void driver_ui::unregister_window(natural_t id) {
+    PROFILE_SECTION("driver_ui::unregister_window");
     auto it = custom_windows.find(id);
     if (it == custom_windows.end()) {
       CORE_LOG_ERROR("Failed to unregister custom window with ID {}: no such window registered.", id);
@@ -305,6 +323,7 @@ namespace other {
   }
 
   void driver_ui::initialize_builtin_windows() {
+    PROFILE_SECTION("driver_ui::initialize_builtin_windows");
     CORE_LOG_DEBUG("Initializing builtin UI windows...");
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       if (i == 0 || i == static_cast<size_t>(INVALID_WINDOW_TYPE)) {
@@ -327,6 +346,7 @@ namespace other {
   }
 
   void driver_ui::shutdown_builtin_windows() {
+    PROFILE_SECTION("driver_ui::shutdown_builtin_windows");
     CORE_LOG_DEBUG("Shutting down builtin UI windows...");
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       if (i == 0 || i == static_cast<size_t>(INVALID_WINDOW_TYPE)) {
@@ -340,6 +360,7 @@ namespace other {
   }
 
   void driver_ui::shutdown_custom_windows() {
+    PROFILE_SECTION("driver_ui::shutdown_custom_windows");
     CORE_LOG_DEBUG("Shutting down custom UI windows...");
     for (auto& [hash, window] : custom_windows) {
       CORE_LOG_DEBUG("  - shutting down custom window: {} [{}]", window.name, hash);
@@ -363,6 +384,7 @@ namespace other {
   }
 
   void driver_ui::render_builtin_windows() {
+    PROFILE_SECTION("driver_ui::render_builtin_windows");
     for (size_t i = 0; i < NUM_BUILTIN_WINDOW_TYPES; ++i) {
       auto& window = builtin_windows[i];
       if (window.open && window.window_ptr != nullptr) {
@@ -373,6 +395,7 @@ namespace other {
   }
 
   void driver_ui::render_custom_windows() {
+    PROFILE_SECTION("driver_ui::render_custom_windows");
     for (auto& [hash, window] : custom_windows) {
       if (window.open && window.window_ptr != nullptr) {
         window.window_ptr->render();
@@ -381,6 +404,7 @@ namespace other {
     }
 
     {
+      PROFILE_SECTION("driver_ui::render_custom_windows--script_windows");
       auto* env = subsystem<scripting_environment>::get();
       OTHER_ASSERT(env != nullptr, "scripting_environment is not initialized in driver UI render.");
 
@@ -392,6 +416,7 @@ namespace other {
   }
 
   void driver_ui::open_custom_window(const std::string_view name) {
+    PROFILE_SECTION("driver_ui::open_custom_window");
     CORE_LOG_DEBUG("Attempting to open custom UI window '{}'.", name);
     auto itr = custom_windows.find(FNV(name));
     if (itr == custom_windows.end()) {
@@ -417,6 +442,7 @@ namespace other {
   }
 
   void driver_ui::close_custom_window(const std::string_view name) {
+    PROFILE_SECTION("driver_ui::close_custom_window");
     CORE_LOG_DEBUG("Attempting to close custom UI window '{}'.", name);
     auto itr = custom_windows.find(FNV(name));
     if (itr == custom_windows.end()) {

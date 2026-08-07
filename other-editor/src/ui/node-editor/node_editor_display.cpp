@@ -10,6 +10,7 @@
 #include <imgui/imgui_internal.h>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "theme/colors.hpp"
 #include "ui/node-editor/node_editor_canvas.hpp"
@@ -57,6 +58,7 @@ namespace other {
     }
 
     void node_editor_display::connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx) {
+      PROFILE_SECTION("node_editor_display::connect_node_pins");
       natural_t from_name_hash = FNV(from_node);
       natural_t to_name_hash = FNV(to_node);
 
@@ -87,6 +89,7 @@ namespace other {
     }
 
     void node_editor_display::reorganize_nodes() {
+      PROFILE_SECTION("node_editor_display::reorganize_nodes");
       /// go through the, starting at the root, and place the nodes in a directed graph
       /// 1. build graph data
       /// 2. topological sort to get order of nodes

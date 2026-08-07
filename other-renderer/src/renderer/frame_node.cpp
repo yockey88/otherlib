@@ -3,6 +3,8 @@
  **/
 #include "renderer/frame_node.hpp"
 
+#include "core/profiler.hpp"
+
 #include "gpu_resource/gpu_buffer.hpp"
 #include "renderer/renderer.hpp"
 
@@ -11,6 +13,7 @@ namespace other {
   void frame_node::start_pass(renderer* renderer_ptr, pass_runtime* runtime) const {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
     OTHER_ASSERT(runtime != nullptr, "Pass runtime pointer must not be null.");
+    PROFILE_SECTION("frame_node::start_pass");
 
     pass_begin_info info{
       .framebuffer = pass->framebuffer_handle,
@@ -108,6 +111,7 @@ namespace other {
 
   void frame_node::end_pass(renderer* renderer_ptr) const {
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer pointer must not be null.");
+    PROFILE_SECTION("frame_node::end_pass");
 
     if (pass->shader_handle.has_value()) {
       for (const auto& [id, tex] : input_textures) {

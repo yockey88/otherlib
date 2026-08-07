@@ -1,5 +1,5 @@
 /**
- * \file peer-mesh/peer_actor_host.hpp
+ * \file peer_mesh/peer_actor_host.hpp
  **/
 #ifndef OTHER_NETWORK_PEER_MESH_PEER_ACTOR_HOST_HPP
 #define OTHER_NETWORK_PEER_MESH_PEER_ACTOR_HOST_HPP
@@ -12,8 +12,6 @@
 #include "core/ref_counted.hpp"
 
 #include "message/message.hpp"
-
-#include "peer-mesh/peer_actor.hpp"
 
 namespace other {
 

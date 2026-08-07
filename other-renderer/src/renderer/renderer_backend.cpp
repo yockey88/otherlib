@@ -217,6 +217,7 @@ namespace other {
 
   void renderer_backend::upload_model(model_source& source) {
     OTHER_ASSERT(!source.uploaded(), "Model source '{}' is already uploaded.", source.get_name());
+    PROFILE_SECTION("renderer_backend::upload_model");
 
     const model_data& data = source.source_data();
     const std::string& name = data.name;
@@ -248,6 +249,7 @@ namespace other {
   }
 
   void renderer_backend::destroy_model(model_source& source) {
+    PROFILE_SECTION("renderer_backend::destroy_model");
     if (api()->resource_exists(source.index_buffer_handle)) {
       api()->destroy_resource(source.index_buffer_handle);
       CORE_LOG_DEBUG("Destroyed index buffer resource for model source '{}'", source.get_name());

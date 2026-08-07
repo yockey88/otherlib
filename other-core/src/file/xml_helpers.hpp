@@ -6,6 +6,7 @@
 
 #include <tinyxml2/tinyxml2.h>
 
+#include "core/profiler.hpp"
 #include "file/path_helpers.hpp"
 
 namespace other {
@@ -103,6 +104,7 @@ namespace other {
     }
 
     inline const tinyxml2::XMLElement& load_project_root(tinyxml2::XMLDocument& doc, const filepath& file) {
+      PROFILE_SECTION("load_project_root");
       OTHER_ASSERT(doc.LoadFile(file.string().c_str()) == tinyxml2::XML_SUCCESS,
                    "unparseable xml '{}': {}", file.string(), doc.ErrorStr());
       const tinyxml2::XMLElement* root = doc.FirstChildElement("Project");

@@ -10,6 +10,7 @@
 
 #include "core/defines.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "core/ref.hpp"
 #include "core/ref_counted.hpp"
 #include "core/scope.hpp"
@@ -38,6 +39,7 @@ namespace other {
 
     void push(T&& item) {
       OTHER_ASSERT(queue != nullptr, "Channel queue is invalid!");
+      PROFILE_SECTION("channel<T>::push");
 
       std::lock_guard lck(queue->mutex);
       queue->queue.push(std::forward<T>(item));
@@ -51,6 +53,7 @@ namespace other {
 
     opt<T> await_message(opt<microseconds> timeout = std::nullopt) {
       OTHER_ASSERT(queue != nullptr, "Awaiting message on a null queue!");
+      PROFILE_SECTION("channel<T>::await_message");
 
       if (!timeout.has_value()) {
         std::lock_guard lck(queue->mutex);

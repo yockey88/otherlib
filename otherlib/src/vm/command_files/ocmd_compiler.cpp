@@ -6,6 +6,7 @@
 #include <ranges>
 
 #include "core/enum_formatter.hpp"
+#include "core/profiler.hpp"
 
 #include "vm/command_files/code_block.hpp"
 #include "vm/command_files/compiler_error.hpp"
@@ -35,6 +36,7 @@ namespace other {
   ocmd_program ocmd_compiler::compile(const std::string_view source, scope<ocmd_code_generator> generator, diagnostic_engine* diag) {
     OTHER_ASSERT(generator != nullptr, "Code generator scope is null in ocmd_compiler::compile!");
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine cannot be null");
+    PROFILE_SECTION("ocmd_compiler::compile");
     diagnostics = diag;
     {
       const auto tokens = ocmd_lexer{ source }.tokenize(diag);
@@ -54,6 +56,7 @@ namespace other {
   ocmd_program ocmd_compiler::compile(scope<ocmd_code_generator> generator, diagnostic_engine* diag) {
     OTHER_ASSERT(generator != nullptr, "Code generator scope is null in ocmd_compiler::compile!");
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine cannot be null");
+    PROFILE_SECTION("ocmd_compiler::compile--codegen");
     diagnostics = diag;
 
     if (!ir.valid) {
@@ -123,6 +126,7 @@ namespace other {
     }
 
     for (const auto& code_blk_ir : ir.code_blocks) {
+      PROFILE_SECTION("ocmd_compiler::compile--lower_code_block");
       EMIT_TRACE(" - code block {}", code_blk_ir.name);
       opcode_builder builder(generator->target_version());
       for (const auto& instr_ir : code_blk_ir.instructions) {
@@ -140,6 +144,7 @@ namespace other {
     }
 
     for (const auto& data_blk_ir : ir.data_blocks) {
+      PROFILE_SECTION("ocmd_compiler::compile--pack_data_section");
       EMIT_TRACE(" - data block {}", data_blk_ir.name);
       compiled_data_section out = {
         .name = data_blk_ir.name,

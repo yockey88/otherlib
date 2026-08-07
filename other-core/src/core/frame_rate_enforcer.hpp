@@ -6,6 +6,7 @@
 
 #include <thread>
 
+#include "core/profiler.hpp"
 #include "core/time.hpp"
 
 namespace other {
@@ -18,6 +19,7 @@ namespace other {
     frame_rate_enforcer() {}
 
     void wait() {
+      PROFILE_SECTION("frame_rate_enforcer::wait");
       auto now = std::chrono::steady_clock::now();
       if (last_frame_time.time_since_epoch().count() == 0) {
         last_frame_time = now;

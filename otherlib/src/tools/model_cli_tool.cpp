@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <fstream>
 
+#include "core/profiler.hpp"
+
 #include "model/model_importer.hpp"
 
 #include "serialization/animation_serializer.hpp"
@@ -43,6 +45,7 @@ namespace other {
       }
 
       tool_result info(tool_context& ctx, const filepath& input) {
+        PROFILE_SECTION("model_tool::info");
         model_import_result result = import(input);
         for (const std::string& warning : result.warnings) {
           ctx.print("warning: {}", warning);
@@ -126,6 +129,7 @@ namespace other {
       }
 
       tool_result extract_clips(tool_context& ctx, const filepath& input, const filepath& output_dir) {
+        PROFILE_SECTION("model_tool::extract_clips");
         model_import_result result = import(input);
         for (const std::string& warning : result.warnings) {
           ctx.print("warning: {}", warning);
@@ -148,6 +152,7 @@ namespace other {
 
         const std::string stem = input.filename().stem().string();
         for (const animation_clip& clip : data.clips) {
+          PROFILE_SECTION("model_tool::extract_clips--write-clip");
           const filepath out_path = output_dir / std::format("{}@{}{}", stem, filesystem_safe(clip.name), serialization::kAnimationClipExtension);
           const ostd::vector<uint8_t> bytes = serialization::serialize_animation_clip(clip);
 
@@ -161,6 +166,7 @@ namespace other {
       }
 
       tool_result anim_info(tool_context& ctx, const filepath& input) {
+        PROFILE_SECTION("anim_tool::anim_info");
         serialization::clip_parse_result parsed = serialization::load_animation_clip(input);
         if (!parsed.success()) {
           return tool_result::error(parsed.error);
@@ -185,6 +191,7 @@ namespace other {
     }
 
     tool_result model_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("model_tool::execute");
       ensure_cli_runtime();
 
       if (args.empty()) {
@@ -242,6 +249,7 @@ namespace other {
     }
 
     tool_result anim_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("anim_tool::execute");
       ensure_cli_runtime();
 
       if (args.empty()) {

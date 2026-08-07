@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "cli/tools/dev_common.hpp"
+#include "core/profiler.hpp"
 
 namespace other {
   namespace cli {
@@ -42,6 +43,7 @@ namespace other {
       }
 
       void stage_runtime_dlls(const tool_context& ctx, const filepath& root, std::string_view config, bool dry_run) {
+        PROFILE_SECTION("stage_runtime_dlls");
         const bool debug_family = (config == "Debug" || config == "ProfileD");
 
         /// every directory that holds a runnable build output; plugin outputs (spacesim,
@@ -103,6 +105,7 @@ namespace other {
     }
 
     tool_result build_environment_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("build_environment_tool::execute");
       dev_tool_options options;
       bool with_tests = false;
       bool regen = false;

@@ -5,9 +5,8 @@ target_sources(other_network
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/acknowledgement_list.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/network/network_thread.cpp"
 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/packet_sink.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/peer_state_machine.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/peer-mesh/peer_actor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/peer_mesh/packet_sink.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/peer_mesh/peer_state_machine.cpp"
 )
 
 target_include_directories(other_network 

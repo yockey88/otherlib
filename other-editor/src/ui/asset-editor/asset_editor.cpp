@@ -7,6 +7,7 @@
 
 #include <imgui/imgui.h>
 
+#include "core/profiler.hpp"
 #include "theme/colors.hpp"
 
 namespace other {
@@ -22,6 +23,7 @@ namespace other {
     }
 
     void asset_editor::on_render_body() {
+      PROFILE_SECTION("asset_editor::on_render_body");
       if (bound_asset == nullptr || editor_node == nullptr) {
         ImGui::TextDisabled("No asset bound or no editor available.");
         return;

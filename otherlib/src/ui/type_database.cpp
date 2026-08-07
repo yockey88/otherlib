@@ -3,6 +3,7 @@
  **/
 #include "ui/type_database.hpp"
 
+#include "core/profiler.hpp"
 #include "serialization/reflection.hpp"
 
 namespace other {
@@ -14,6 +15,7 @@ namespace other {
       virtual ~type_list() = default;
 
       virtual void on_render_node_body() override {
+        PROFILE_SECTION("type_list::on_render_node_body");
         auto* type_db = subsystem<other::type_database>::get();
         OTHER_ASSERT(type_db != nullptr, "Type database subsystem is not initialized in ui::type_database::type_list::on_render_node_body");
 

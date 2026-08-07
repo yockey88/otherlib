@@ -3,8 +3,6 @@
  **/
 #include "driver/systems/peer_mesh_system.hpp"
 
-#include "network/default_peer_actor_host.hpp"
-
 #include "driver/systems/job_driver_system.hpp"
 
 namespace other {

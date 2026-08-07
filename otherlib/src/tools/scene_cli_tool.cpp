@@ -22,6 +22,7 @@ namespace other {
     ///  paths log — so the two memory/log subsystems must be live before any codec
     ///  runs. inside a running environment they already are and this is a no-op.
     void ensure_cli_runtime() {
+      PROFILE_SECTION("ensure_cli_runtime");
       if (subsystem<logger>::inert) {
         static config_table cli_config = [] {
           config_table cfg;
@@ -107,6 +108,7 @@ namespace other {
       }
 
       tool_result convert(tool_context& ctx, const parsed_arguments& parsed, const std::string_view expected_extension, const std::string_view output_extension) {
+        PROFILE_SECTION("scene_tool::convert");
         if (parsed.input.extension().string() != expected_extension) {
           return tool_result::error(std::format("'{}' expects a {} input, got '{}'", parsed.command, expected_extension, parsed.input.string()));
         }
@@ -128,6 +130,7 @@ namespace other {
       }
 
       tool_result info(tool_context& ctx, const parsed_arguments& parsed) {
+        PROFILE_SECTION("scene_tool::info");
         serialization::scene_parse_result loaded = serialization::load_scene_document(parsed.input);
         if (!loaded.success()) {
           return tool_result::error(loaded.error);
@@ -168,6 +171,7 @@ namespace other {
     }
 
     tool_result scene_tool::execute(tool_context& ctx, std::span<const std::string> args) {
+      PROFILE_SECTION("scene_tool::execute");
       ensure_cli_runtime();
 
       parsed_arguments parsed = parse_arguments(args);

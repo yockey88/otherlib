@@ -3,6 +3,7 @@
  **/
 #include "ui/console/console_input_node.hpp"
 
+#include "core/profiler.hpp"
 #include "theme/colors.hpp"
 #include "tools/environment_console.hpp"
 
@@ -60,6 +61,7 @@ namespace other {
     }
 
     void console_input_node::update_suggestions() {
+      PROFILE_SECTION("console_input_node::update_suggestions");
       if (suggestion_provider == nullptr) {
         suggestions.clear();
         return;
@@ -103,6 +105,7 @@ namespace other {
     }
 
     void console_input_node::submit_command() {
+      PROFILE_SECTION("console_input_node::submit_command");
       std::string command = input_buf;
 
       /// trim whitespace
@@ -137,6 +140,7 @@ namespace other {
     }
 
     void console_input_node::on_render_node_body() {
+      PROFILE_SECTION("console_input_node::on_render_node_body");
       namespace cw = console_w;
 
       ImGui::PushStyleColor(ImGuiCol_ChildBg, colors::rgba_to_imvec4(colors::console::kPromptBG));

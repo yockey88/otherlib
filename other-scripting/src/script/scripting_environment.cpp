@@ -28,6 +28,7 @@ namespace other {
   }
 
   void scripting_environment::destroy_all_objects() {
+    PROFILE_SECTION("scripting_environment::destroy_all_objects");
     for (auto& obj : live_objects) {
       if (obj.object != nullptr) {
         destroy_object(obj.index);
@@ -41,6 +42,7 @@ namespace other {
                  "Script leaks detected");
     // clang-format on
 
+    PROFILE_SECTION("scripting_environment::shutdown_script_environment");
     {
       if (dotnet_load_context == nullptr) {
         CORE_LOG_ERROR("DotNet load context is not initialized.");
@@ -76,6 +78,7 @@ namespace other {
 
   void scripting_environment::destroy_object(integer_t id) {
     OTHER_ASSERT(script_object_pool != nullptr, "Script object memory pool is not initialized.");
+    PROFILE_SECTION("scripting_environment::destroy_object");
     /// may occur if object encountered error during creation/on reload
     /// \todo maybe be stricter about this?
     if (id < 0 || id >= kMaxScriptObjects) {
@@ -112,6 +115,7 @@ namespace other {
   }
 
   void scripting_environment::dotnet_register_native_object(integer_t id, const std::string_view type_name) {
+    PROFILE_SECTION("scripting_environment::dotnet_register_native_object");
     auto* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
 
@@ -127,6 +131,7 @@ namespace other {
   }
 
   void scripting_environment::dotnet_unregister_native_object(integer_t id) {
+    PROFILE_SECTION("scripting_environment::dotnet_unregister_native_object");
     auto* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
 
@@ -201,6 +206,7 @@ namespace other {
 
   void scripting_environment::unload_dotnet_module(ref<assembly> module) {
     OTHER_ASSERT(dotnet_load_context != nullptr, "DotNet load context is not initialized.");
+    PROFILE_SECTION("scripting_environment::unload_dotnet_module");
     dotnet_load_context->unload_assembly(module->get_handle());
     dotnet_load_context->remove_assembly(module->get_handle());
 
@@ -211,6 +217,7 @@ namespace other {
   }
 
   void scripting_environment::reset_dotnet_environment() {
+    PROFILE_SECTION("scripting_environment::reset_dotnet_environment");
     natural_t context_handle = dotnet_load_context ? dotnet_load_context->get_handle() : 0;
     dotnet_load_context = nullptr;
     dotnet.destroy_assembly_context(context_handle);
@@ -276,6 +283,7 @@ namespace other {
   }
 
   integer_t scripting_environment::instantiate_dotnet_behavior(script_object* parent, const std::string_view behavior_name) {
+    PROFILE_SECTION("scripting_environment::instantiate_dotnet_behavior");
     /// create a script_object slot for this behavior so we have a native-side handle
     std::string behavior_obj_name = std::format("{}__behavior__{}", parent->name, behavior_name);
     integer_t behavior_script_id = create_object(behavior_obj_name);
@@ -434,6 +442,7 @@ namespace other {
   }
 
   void scripting_environment::detach_dotnet_object(integer_t id) {
+    PROFILE_SECTION("scripting_environment::detach_dotnet_object");
     script_object* obj = get_object(id);
     OTHER_ASSERT(obj != nullptr, "Script object with ID {} does not exist.", id);
 

@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 
+#include "core/profiler.hpp"
 #include "math/orthonormal_basis.hpp"
 #include "serialization/reflection.hpp"
 
@@ -271,6 +272,7 @@ namespace other {
     struct component_widget {
       bool operator()(const std::string_view name, T& component, scene* active_scene, scene_object* object, asset_handler* handler = nullptr, driver* drvr = nullptr) {
         OTHER_ASSERT(drvr != nullptr, "component_widget needs a driver for '{}'", name);
+        PROFILE_SECTION("component_widget::operator()");
         bool changed = false;
         for_each(refl::reflect(component).members, [&](auto field) {
           field_context ctx{ active_scene, object, handler, drvr, detail::read_field_flags(field) };

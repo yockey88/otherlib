@@ -3,6 +3,7 @@
  **/
 #include "tools/project_tool.hpp"
 
+#include "core/profiler.hpp"
 #include "dotnet/native_string.hpp"
 
 namespace other {
@@ -10,6 +11,7 @@ namespace other {
   void project_tool::generate_dotnet_project(const filepath& csproj_path) {
     OTHER_ASSERT(!csproj_path.empty(), "Csproj path is empty in generate_dotnet_project.");
     OTHER_ASSERT(!std::filesystem::exists(csproj_path), "Csproj file '{}' already exists in generate_dotnet_project.", csproj_path.string());
+    PROFILE_SECTION("project_tool::generate_dotnet_project");
 
     native_string path = native_string::new_str(csproj_path.string());
     invoke_tool_method("CreateDefaultCsproj", path);
@@ -21,6 +23,7 @@ namespace other {
   void project_tool::start_project_build(const filepath& csproj_path) {
     OTHER_ASSERT(!csproj_path.empty(), "Dotnet project path is empty in start_project_build.");
     OTHER_ASSERT(std::filesystem::exists(csproj_path), "Dotnet project file '{}' does not exist.", csproj_path.string());
+    PROFILE_SECTION("project_tool::start_project_build");
 
     std::string build_config = get_project_build_config_string();
     native_string path = native_string::new_str(csproj_path.string());

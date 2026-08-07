@@ -151,6 +151,7 @@ namespace other {
     render_data* data_ptr = nullptr;
     render_data prepared_data = {};
     if (active_scene != nullptr) {
+      PROFILE_SECTION("rendering_system::render--prepare_render_data");
       prepared_data = active_scene->prepare_render_data(asset_mgr);
       data_ptr = &prepared_data;
     }
@@ -166,6 +167,7 @@ namespace other {
 
       const bool ui_enabled = get_driver().get_config_value<bool>("ui.enable", true);
       if (ui_enabled) {
+        PROFILE_SECTION("rendering_system::render--ui");
         renderer_ptr->begin_ui_frame();
         driver_ui_ptr->render();
         get_driver().on_ui_render();
@@ -244,6 +246,7 @@ namespace other {
   }
 
   natural_t rendering_system::register_viewport(const std::string_view name, const viewport_definition& def) {
+    PROFILE_SECTION("rendering_system::register_viewport");
     natural_t id = FNV(name);
     if (std::ranges::find_if(viewports, [id](const viewport& vd) { return vd.id == id; }) != viewports.end()) {
       CORE_LOG_WARN("Viewport with name '{}' already exists.", name);
@@ -324,6 +327,7 @@ namespace other {
   }
 
   void rendering_system::register_field_widgets() {
+    PROFILE_SECTION("rendering_system::register_field_widgets");
     auto& field_editors = get_driver().get_field_editors();
     field_editors.register_editor<bool>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_bool(l, *static_cast<bool*>(d)); });
     field_editors.register_editor<int8_t>([](const std::string_view l, void* d, const ui::field_context& c) { return ui::inspector::property_int8(l, *static_cast<int8_t*>(d)); });
@@ -511,6 +515,7 @@ namespace other {
   void rendering_system::configure_pipelines(driver_kernel* kernel) {
     OTHER_ASSERT(kernel != nullptr, "Driver kernel is null in configure_pipelines.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized in configure_pipelines.");
+    PROFILE_SECTION("rendering_system::configure_pipelines");
 
     std::string pass_resolver = get_driver().get_config_value<std::string>("rendering.pass-resolver", "default");
     if (pass_resolver == "default" && kernel->has_core_system<scripting_system>()) {
@@ -570,6 +575,7 @@ namespace other {
     OTHER_ASSERT(kernel != nullptr, "Kernel is null.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for rendering pipeline asset loaded event. Expected UINT64.");
+    PROFILE_SECTION("rendering_system::handle_rendering_pipeline_asset_loaded_event");
 
     OTHER_ASSERT(kernel->has_core_system<asset_system>(), "Asset system is not initialized in the kernel.");
     auto& assets = kernel->get_core_system<asset_system>();
@@ -614,6 +620,7 @@ namespace other {
     OTHER_ASSERT(kernel != nullptr, "Kernel is null.");
     OTHER_ASSERT(renderer_ptr != nullptr, "Renderer is not initialized.");
     OTHER_ASSERT(data.type() == value_type::UINT64, "Invalid data type for rendering pipeline asset unloaded event. Expected UINT64.");
+    PROFILE_SECTION("rendering_system::handle_rendering_pipeline_asset_unloaded_event");
 
     natural_t asset_id = data;
     auto itr = std::ranges::find(rendering_pipeline_assets, asset_id, &pipeline_asset::asset_id);

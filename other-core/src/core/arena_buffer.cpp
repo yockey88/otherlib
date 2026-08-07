@@ -5,6 +5,7 @@
 #include "core/arena_buffer.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "memory/arena.hpp"
 
 namespace other {
@@ -85,6 +86,7 @@ namespace other {
   }
 
   void arena_buffer::allocate(uint64_t size) {
+    PROFILE_SECTION("arena_buffer::allocate");
     release();
     if (size == 0) {
       return;
@@ -97,6 +99,7 @@ namespace other {
 
   void arena_buffer::extend() {
     OTHER_ASSERT(memory_start != nullptr && capacity > 0, "extend() called on an unallocated arena buffer.");
+    PROFILE_SECTION("arena_buffer::extend");
     const size_t new_capacity = capacity * 2;
     void* new_memory = subsystem<arena>::get()->allocate(new_capacity);
     OTHER_ASSERT(new_memory != nullptr, "Failed to extend arena buffer memory.");
@@ -110,6 +113,7 @@ namespace other {
   }
 
   void arena_buffer::release() {
+    PROFILE_SECTION("arena_buffer::release");
     if (memory_start != nullptr) {
       subsystem<arena>::get()->free(memory_start, capacity);
       memory_start = nullptr;

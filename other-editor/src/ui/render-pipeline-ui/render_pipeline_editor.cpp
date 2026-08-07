@@ -3,6 +3,7 @@
  **/
 #include "ui/render-pipeline-ui/render_pipeline_editor.hpp"
 
+#include "core/profiler.hpp"
 #include "theme/colors.hpp"
 #include "ui/inspector_widgets.hpp"
 #include "ui/unicode.hpp"
@@ -47,6 +48,7 @@ namespace other {
     }
 
     void render_pipeline_editor::on_render_body() {
+      PROFILE_SECTION("render_pipeline_editor::on_render_body");
       draw_list();
       draw_validation_banner();
       draw_properties();
@@ -57,6 +59,7 @@ namespace other {
     }
 
     void render_pipeline_editor::draw_list() {
+      PROFILE_SECTION("render_pipeline_editor::draw_list");
       entries = inspector::rebuild_render_pipeline_list(editor_ctx.driver->get_renderer(), editor_ctx.driver->get_kernel().get_core_system<asset_system>());
       uint32_t new_idx = inspector::draw_render_pipeline_list(entries, selected, pending_select);
 
@@ -106,6 +109,7 @@ namespace other {
     }
 
     void render_pipeline_editor::draw_properties() {
+      PROFILE_SECTION("render_pipeline_editor::draw_properties");
       if (selected < 0 || selected >= entries.size()) {
         ImGui::TextDisabled("No pipeline selected.");
         return;
@@ -135,6 +139,7 @@ namespace other {
     }
 
     void render_pipeline_editor::draw_node_editor() {
+      PROFILE_SECTION("render_pipeline_editor::draw_node_editor");
       if (!has_doc) {
         ImGui::TextDisabled("No pipeline loaded.");
         return;
@@ -377,6 +382,7 @@ namespace other {
     }
 
     void render_pipeline_editor::load_into_working(const std::string_view pipeline_name) {
+      PROFILE_SECTION("render_pipeline_editor::load_into_working");
       const inspector::render_pipeline_data* e = find_entry(pipeline_name);
       OTHER_ASSERT(e != nullptr, "load_into_working: '{}.{}' not in list", (int)pipeline_name.size(), pipeline_name.data());
 

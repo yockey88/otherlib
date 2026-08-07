@@ -3,6 +3,8 @@
  **/
 #include "vm/devices/asset_device.hpp"
 
+#include "core/profiler.hpp"
+
 #include "driver/driver.hpp"
 #include "vm/device_utils.hpp"
 #include "vm/vm.hpp"
@@ -48,6 +50,7 @@ namespace other {
 
   void asset_device::dispatch(uint8_t function_id, other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "device must not be null");
+    PROFILE_SECTION("asset_device::dispatch");
     switch (function_id) {
       case LOAD_ASSET: {
         std::string path = detail::read_device_string(device, vm_register_idx::VM_R0, vm_register_idx::VM_R1);

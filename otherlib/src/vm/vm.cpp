@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "memory/arena_allocator.hpp"
 #include "thread/thread_safety.hpp"
 
@@ -57,6 +58,7 @@ namespace other {
   void vm::initialize_device(other_command_device* device) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null device!");
+    PROFILE_SECTION("vm::initialize_device");
 
     device->memory = arena_allocator<other_command_device::memory_t>{}.allocate();
     OTHER_ASSERT(device->memory != nullptr, "Failed to allocate device memory!");
@@ -100,6 +102,7 @@ namespace other {
   void vm::load_program_from_file(other_command_device* device, const filepath& file_path) {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device != nullptr, "Null VM device!");
+    PROFILE_SECTION("vm::load_program_from_file");
     if (!std::filesystem::exists(file_path)) {
       CORE_LOG_ERROR("[VM] : {} does not exist. can not load file", file_path.string());
       return;
@@ -143,6 +146,7 @@ namespace other {
     ASSERT_MAIN_THREAD();
     OTHER_ASSERT(device, "Device is null!");
     OTHER_ASSERT(device->memory, "Device memory is null");
+    PROFILE_SECTION("vm::load_program_from_bytes");
 
     /// \todo we may not want to run it right away?
     ocmd_file_header header = *reinterpret_cast<const ocmd_file_header*>(bytes.data());
@@ -218,6 +222,7 @@ namespace other {
 
   void vm::shutdown_device(other_command_device* device) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("vm::shutdown_device");
     if (device == nullptr) {
       return;
     }
@@ -326,6 +331,7 @@ namespace other {
     OTHER_ASSERT(device, "Device is null!");
     OTHER_ASSERT(device->memory, "Device memory is null");
     OTHER_ASSERT(address + size < other_command_device::kMemorySize, "Address out of bounds!");
+    PROFILE_SECTION("vm::load_bytes_to_address");
     if (size == 0) {
       return;
     }

@@ -5,10 +5,13 @@
 
 #include <imgui/imgui.h>
 
+#include "core/profiler.hpp"
+
 namespace other {
   namespace ui {
 
     void menu_bar::render(std::span<menu> menus) {
+      PROFILE_SECTION("menu_bar::render");
       bool open = false;
       if (main_menu_bar) {
         open = ImGui::BeginMainMenuBar();

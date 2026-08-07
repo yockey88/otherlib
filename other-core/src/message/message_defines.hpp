@@ -37,7 +37,6 @@ namespace other {
     /// notification messages
     NETWORK_THREAD_READY,
     NETWORK_THREAD_SHUTDOWN_COMPLETE,
-    RX_DATA,
 
     /// control messages
     PING,
@@ -50,10 +49,6 @@ namespace other {
     CLOSE_CONNECTION,
 
     TX_DATA,
-    ATTACH_TRANSPORT_LISTENER,
-    DETACH_TRANSPORT_LISTENER,
-    ATTACH_CONNECTION_SINK,
-    DETACH_CONNECTION_SINK,
 
     /// request/response messages
     /// error alert messages

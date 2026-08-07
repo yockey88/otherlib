@@ -7,6 +7,7 @@
 #include <string>
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 
 #include "driver/driver.hpp"
 #include "driver/systems/network_system.hpp"
@@ -25,8 +26,10 @@ namespace other {
   }  // namespace
 
   void server::on_early_initialize() {
+    PROFILE_SECTION("server::on_early_initialize");
     // served-content mount
     {
+      PROFILE_SECTION("server::on_early_initialize--resolve_mount_directory");
       opt<filepath> directory = std::nullopt;
       if (configuration().has_path("server.mount-directory")) {
         directory = configuration().get_value<std::string>("server.mount-directory");
@@ -54,6 +57,7 @@ namespace other {
     }
 
     {
+      PROFILE_SECTION("server::on_early_initialize--mount_server_directory");
       auto* fs = subsystem<file_system>::get();
       OTHER_ASSERT(fs != nullptr, "File system subsystem should be available");
 
@@ -72,6 +76,7 @@ namespace other {
       return mount->absolute_path().string();
     });
     add_native_lua_function(lua_name("FileExists"), [this](const std::string& path) -> bool {
+      PROFILE_SECTION("server::lua_file_exists");
       const filepath full_path = path;
       if (std::filesystem::exists(full_path) &&
           std::filesystem::is_regular_file(full_path)) {
@@ -89,6 +94,7 @@ namespace other {
   }
 
   void server::on_initialize() {
+    PROFILE_SECTION("server::on_initialize");
     config_port = configuration().get_value("server.main-port", uint16_t(8080));
     binding_point endpoint{ network_system::network_context::kLocalhostAddress, config_port };
 

@@ -9,6 +9,8 @@
 #include <miniaudio/miniaudio.h>
 #include <toml++/toml.hpp>
 
+#include "core/profiler.hpp"
+
 namespace other {
 
   namespace {
@@ -49,6 +51,7 @@ namespace other {
   }  // namespace
 
   sidecar_parse_result parse_audio_sidecar(const filepath& audio_absolute) {
+    PROFILE_SECTION("parse_audio_sidecar");
     sidecar_parse_result out{};
 
     filepath sidecar_path = audio_absolute;
@@ -92,6 +95,7 @@ namespace other {
   }
 
   audio_import_result import_audio(const filepath& absolute) {
+    PROFILE_SECTION("import_audio");
     audio_import_result out{};
 
     sidecar_parse_result sidecar = parse_audio_sidecar(absolute);
@@ -134,15 +138,18 @@ namespace other {
 
     clip.pcm.resize(clip.frames * clip.channels);
     ma_uint64 total_read = 0;
-    while (total_read < clip.frames) {
-      ma_uint64 read = 0;
-      const ma_result read_result = ma_decoder_read_pcm_frames(&decoder, clip.pcm.data() + total_read * clip.channels, clip.frames - total_read, &read);
-      total_read += read;
-      if (read == 0 || read_result == MA_AT_END) {
-        break;
-      }
-      if (read_result != MA_SUCCESS) {
-        break;
+    {
+      PROFILE_SECTION("import_audio--decode_pcm");
+      while (total_read < clip.frames) {
+        ma_uint64 read = 0;
+        const ma_result read_result = ma_decoder_read_pcm_frames(&decoder, clip.pcm.data() + total_read * clip.channels, clip.frames - total_read, &read);
+        total_read += read;
+        if (read == 0 || read_result == MA_AT_END) {
+          break;
+        }
+        if (read_result != MA_SUCCESS) {
+          break;
+        }
       }
     }
     ma_decoder_uninit(&decoder);

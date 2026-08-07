@@ -9,6 +9,7 @@
 
 #include <box3d/box3d.h>
 
+#include "core/profiler.hpp"
 #include "data-structures/std_container.hpp"
 #include "math/matrix.hpp"
 
@@ -182,6 +183,7 @@ namespace other {
 
   physics_api::physics_render_debug_data box3d_api::get_debug_render_data(natural_t id, const physics_world* world) const {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Box3D debug render data retrieval.");
+    PROFILE_SECTION("box3d_api::get_debug_render_data");
     const box3d_world& bw = world_state(id);
 
     physics_api::physics_render_debug_data data;
@@ -207,6 +209,7 @@ namespace other {
   }
 
   void box3d_api::initialize_world(natural_t id, physics_world* world, const physics_world_config& config) {
+    PROFILE_SECTION("box3d_api::initialize_world");
     if (box3d_worlds.find(id) != box3d_worlds.end()) {
       CORE_LOG_WARN("Box3D physics world with id '{}' already exists.", id);
       return;
@@ -222,6 +225,7 @@ namespace other {
 
   void box3d_api::shutdown_world(physics_world* world) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Box3D shutdown.");
+    PROFILE_SECTION("box3d_api::shutdown_world");
 
     auto itr = box3d_worlds.find(world->world_id);
     if (itr == box3d_worlds.end()) {
@@ -244,6 +248,7 @@ namespace other {
   void box3d_api::register_physics_body(natural_t world_id, physics_world* world, physics_body* body) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Box3D physics body registration.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Box3D physics body registration.");
+    PROFILE_SECTION("box3d_api::register_physics_body");
 
     box3d_world& bw = world_state(world_id);
 
@@ -273,6 +278,7 @@ namespace other {
   void box3d_api::unregister_physics_body(natural_t world_id, physics_world* world, physics_body* body) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Box3D physics body unregistration.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Box3D physics body unregistration.");
+    PROFILE_SECTION("box3d_api::unregister_physics_body");
 
     box3d_world& bw = world_state(world_id);
 
@@ -297,6 +303,7 @@ namespace other {
   void box3d_api::teleport_body(natural_t world_id, physics_world* world, physics_body* body, const glm::mat4& world_transform) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Box3D body teleport.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Box3D body teleport.");
+    PROFILE_SECTION("box3d_api::teleport_body");
 
     glm::vec3 position, scale;
     glm::quat rotation;
@@ -333,6 +340,7 @@ namespace other {
                                  const shape_geometry* geometry) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Box3D shape build.");
     OTHER_ASSERT(body != nullptr, "Physics body is null during Box3D shape build.");
+    PROFILE_SECTION("box3d_api::set_body_shape");
 
     box3d_world& bw = world_state(world_id);
     b3BodyId body_id = body_id_of(body);
@@ -378,6 +386,7 @@ namespace other {
         b3CreateCapsuleShape(body_id, &shape_def, &capsule);
       } break;
       case PHYSICS_SHAPE_CONVEX_HULL: {
+        PROFILE_SECTION("box3d_api::set_body_shape--convex_hull");
         if (geometry == nullptr || geometry->positions.empty()) {
           CORE_LOG_ERROR("Convex hull for body {} requires geometry.", body->id);
           return false;
@@ -396,6 +405,7 @@ namespace other {
         b3DestroyHull(hull);
       } break;
       case PHYSICS_SHAPE_TRIANGLE_MESH: {
+        PROFILE_SECTION("box3d_api::set_body_shape--triangle_mesh");
         if (geometry == nullptr || geometry->positions.empty() || geometry->indices.size() < 3) {
           CORE_LOG_ERROR("Triangle mesh for body {} requires indexed geometry.", body->id);
           return false;
@@ -450,64 +460,72 @@ namespace other {
 
   void box3d_api::step_simulation(natural_t world_id, physics_world* world, double delta_time) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Box3D step simulation.");
+    PROFILE_SECTION("box3d_api::step_simulation");
     box3d_world& bw = world_state(world_id);
 
-    b3World_Step(bw.world, static_cast<float>(delta_time), kSubStepCount);
+    {
+      PROFILE_SECTION("box3d_api::step_simulation--world_step");
+      b3World_Step(bw.world, static_cast<float>(delta_time), kSubStepCount);
+    }
 
-    /// box3d is a polling backend: collect this step's transitions right here, main thread
-    b3ContactEvents contacts = b3World_GetContactEvents(bw.world);
-    for (int i = 0; i < contacts.beginCount; ++i) {
-      const b3ContactBeginTouchEvent& ev = contacts.beginEvents[i];
-      contact_event out;
-      out.type = contact_event::kBegin;
-      out.body_a = engine_id_of(b3Shape_GetBody(ev.shapeIdA));
-      out.body_b = engine_id_of(b3Shape_GetBody(ev.shapeIdB));
-      if (b3Contact_IsValid(ev.contactId)) {
-        b3ContactData data = b3Contact_GetData(ev.contactId);
-        if (data.manifoldCount > 0 && data.manifolds[0].pointCount > 0) {
-          out.normal = from_b3(data.manifolds[0].normal);
-          b3Pos center_a = b3Body_GetWorldCenter(b3Shape_GetBody(ev.shapeIdA));
-          out.point = from_b3(center_a) + from_b3(data.manifolds[0].points[0].anchorA);
+    {
+      PROFILE_SECTION("box3d_api::step_simulation--poll_events");
+      /// box3d is a polling backend: collect this step's transitions right here, main thread
+      b3ContactEvents contacts = b3World_GetContactEvents(bw.world);
+      for (int i = 0; i < contacts.beginCount; ++i) {
+        const b3ContactBeginTouchEvent& ev = contacts.beginEvents[i];
+        contact_event out;
+        out.type = contact_event::kBegin;
+        out.body_a = engine_id_of(b3Shape_GetBody(ev.shapeIdA));
+        out.body_b = engine_id_of(b3Shape_GetBody(ev.shapeIdB));
+        if (b3Contact_IsValid(ev.contactId)) {
+          b3ContactData data = b3Contact_GetData(ev.contactId);
+          if (data.manifoldCount > 0 && data.manifolds[0].pointCount > 0) {
+            out.normal = from_b3(data.manifolds[0].normal);
+            b3Pos center_a = b3Body_GetWorldCenter(b3Shape_GetBody(ev.shapeIdA));
+            out.point = from_b3(center_a) + from_b3(data.manifolds[0].points[0].anchorA);
+          }
         }
+        bw.pending.push_back(out);
       }
-      bw.pending.push_back(out);
-    }
-    for (int i = 0; i < contacts.endCount; ++i) {
-      const b3ContactEndTouchEvent& ev = contacts.endEvents[i];
-      if (!b3Shape_IsValid(ev.shapeIdA) || !b3Shape_IsValid(ev.shapeIdB)) {
-        continue;  /// a side died this step — dropped by contract
+      for (int i = 0; i < contacts.endCount; ++i) {
+        const b3ContactEndTouchEvent& ev = contacts.endEvents[i];
+        if (!b3Shape_IsValid(ev.shapeIdA) || !b3Shape_IsValid(ev.shapeIdB)) {
+          continue;  /// a side died this step — dropped by contract
+        }
+        contact_event out;
+        out.type = contact_event::kEnd;
+        out.body_a = engine_id_of(b3Shape_GetBody(ev.shapeIdA));
+        out.body_b = engine_id_of(b3Shape_GetBody(ev.shapeIdB));
+        bw.pending.push_back(out);
       }
-      contact_event out;
-      out.type = contact_event::kEnd;
-      out.body_a = engine_id_of(b3Shape_GetBody(ev.shapeIdA));
-      out.body_b = engine_id_of(b3Shape_GetBody(ev.shapeIdB));
-      bw.pending.push_back(out);
-    }
 
-    b3SensorEvents sensors = b3World_GetSensorEvents(bw.world);
-    for (int i = 0; i < sensors.beginCount; ++i) {
-      const b3SensorBeginTouchEvent& ev = sensors.beginEvents[i];
-      contact_event out;
-      out.type = contact_event::kTriggerBegin;
-      out.body_a = engine_id_of(b3Shape_GetBody(ev.sensorShapeId));
-      out.body_b = engine_id_of(b3Shape_GetBody(ev.visitorShapeId));
-      bw.pending.push_back(out);
-    }
-    for (int i = 0; i < sensors.endCount; ++i) {
-      const b3SensorEndTouchEvent& ev = sensors.endEvents[i];
-      if (!b3Shape_IsValid(ev.sensorShapeId) || !b3Shape_IsValid(ev.visitorShapeId)) {
-        continue;
+      b3SensorEvents sensors = b3World_GetSensorEvents(bw.world);
+      for (int i = 0; i < sensors.beginCount; ++i) {
+        const b3SensorBeginTouchEvent& ev = sensors.beginEvents[i];
+        contact_event out;
+        out.type = contact_event::kTriggerBegin;
+        out.body_a = engine_id_of(b3Shape_GetBody(ev.sensorShapeId));
+        out.body_b = engine_id_of(b3Shape_GetBody(ev.visitorShapeId));
+        bw.pending.push_back(out);
       }
-      contact_event out;
-      out.type = contact_event::kTriggerEnd;
-      out.body_a = engine_id_of(b3Shape_GetBody(ev.sensorShapeId));
-      out.body_b = engine_id_of(b3Shape_GetBody(ev.visitorShapeId));
-      bw.pending.push_back(out);
+      for (int i = 0; i < sensors.endCount; ++i) {
+        const b3SensorEndTouchEvent& ev = sensors.endEvents[i];
+        if (!b3Shape_IsValid(ev.sensorShapeId) || !b3Shape_IsValid(ev.visitorShapeId)) {
+          continue;
+        }
+        contact_event out;
+        out.type = contact_event::kTriggerEnd;
+        out.body_a = engine_id_of(b3Shape_GetBody(ev.sensorShapeId));
+        out.body_b = engine_id_of(b3Shape_GetBody(ev.visitorShapeId));
+        bw.pending.push_back(out);
+      }
     }
   }
 
   void box3d_api::update_active_transforms(natural_t world_id, physics_world* world, double delta_time) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during Box3D update active transforms.");
+    PROFILE_SECTION("box3d_api::update_active_transforms");
     box3d_world& bw = world_state(world_id);
 
     for (auto& [engine_id, backend_bits] : bw.bodies) {
@@ -560,6 +578,7 @@ namespace other {
   raycast_hit box3d_api::cast_ray(natural_t world_id, physics_world* world, const glm::vec3& origin,
                                   const glm::vec3& direction, float max_distance) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during raycast.");
+    PROFILE_SECTION("box3d_api::cast_ray");
     box3d_world& bw = world_state(world_id);
 
     glm::vec3 translation = glm::normalize(direction) * max_distance;
@@ -581,6 +600,7 @@ namespace other {
   integer_t box3d_api::create_fixed_joint(natural_t world_id, physics_world* world, physics_body* body_a, physics_body* body_b) {
     OTHER_ASSERT(world != nullptr, "Physics world is null during weld creation.");
     OTHER_ASSERT(body_a != nullptr && body_b != nullptr, "Cannot weld a null physics body.");
+    PROFILE_SECTION("box3d_api::create_fixed_joint");
     box3d_world& bw = world_state(world_id);
 
     /// box3d requires the weld's bodyB in the awake set: a static side must be bodyA, and the
@@ -622,6 +642,7 @@ namespace other {
   }
 
   void box3d_api::destroy_joint(natural_t world_id, physics_world* world, integer_t joint_id) {
+    PROFILE_SECTION("box3d_api::destroy_joint");
     box3d_world& bw = world_state(world_id);
     auto itr = bw.joints.find(joint_id);
     if (itr == bw.joints.end()) {
@@ -727,6 +748,7 @@ namespace other {
   }
 
   void box3d_api::on_shutdown() {
+    PROFILE_SECTION("box3d_api::on_shutdown");
     if (!box3d_worlds.empty()) {
       CORE_LOG_WARN("Box3D backend shutting down with {} live worlds.", box3d_worlds.size());
       while (!box3d_worlds.empty()) {

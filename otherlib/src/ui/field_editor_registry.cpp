@@ -4,6 +4,7 @@
 #include "ui/field_editor_registry.hpp"
 
 #include "core/fnv.hpp"
+#include "core/profiler.hpp"
 
 #include "theme/colors.hpp"
 #include "ui/inspector_widgets.hpp"
@@ -13,6 +14,7 @@ namespace other {
 
     void field_editor_registry::register_editor(type_key key, const std::string_view type_name, field_editor_fn fn, bool override) {
       OTHER_ASSERT(fn != nullptr, "Null field_editor_fn for type '{}'", type_name);
+      PROFILE_SECTION("field_editor_registry::register_editor");
       auto it = by_type.find(key);
       if (it != by_type.end()) {
         OTHER_ASSERT(override || it->second.type_name == type_name, "type_key collision: '{}' and '{}' share key {}", it->second.type_name, type_name, key);
@@ -49,6 +51,7 @@ namespace other {
     }
 
     bool field_editor_registry::resolve_type_name(const std::string_view type_name, type_key& out_key) const {
+      PROFILE_SECTION("field_editor_registry::resolve_type_name");
       for (const auto& [key, entry] : by_type) {
         if (entry.type_name == type_name) {
           out_key = key;

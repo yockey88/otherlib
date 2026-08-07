@@ -4,6 +4,7 @@
 #ifndef OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
 #define OTHER_CORE_MESSAGE_MESSAGE_SERIALIZATION_HPP
 
+#include "core/profiler.hpp"
 #include "data-structures/std_container.hpp"
 #include "serialization/reflection.hpp"
 #include "serialization/serialization.hpp"
@@ -43,6 +44,7 @@ namespace other {
   template <typename T>
     requires reflected_type<T>
   ostd::vector<uint8_t> serialize_direct(const T& value, size_t level = 0) {
+    PROFILE_SECTION("serialize_direct");
     ostd::vector<uint8_t> data;
 
     CORE_LOG_TRACE("{}[WRITE: {}]", std::string(level * 2, ' '), get_type_name<T>());
@@ -89,6 +91,7 @@ namespace other {
   template <typename T>
     requires reflected_type<T>
   std::pair<T, size_t> deserialize_direct(std::span<const uint8_t> data, size_t level = 0) {
+    PROFILE_SECTION("deserialize_direct");
     validate_message_data<T>(data);
 
     T value{};

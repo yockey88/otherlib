@@ -40,6 +40,7 @@ namespace other {
 
     OTHER_ASSERT(std::filesystem::exists(path), "Project file '{}' does not exist.", path.string());
     OTHER_ASSERT(std::filesystem::is_regular_file(path), "Project file '{}' is not a regular file.", path.string());
+    PROFILE_SECTION("project::load_from_file");
     CORE_LOG_DEBUG("Loading project from file: '{}'", path.string());
 
     auto* fs = subsystem<file_system>::get();
@@ -154,6 +155,7 @@ namespace other {
   }
 
   void project::unload() {
+    PROFILE_SECTION("project::unload");
     if (current_state != LOADED && current_state != LOAD_FAILED) {
       return;
     }
@@ -249,6 +251,7 @@ namespace other {
   }
 
   void project::begin_assembly_refresh(const filepath& dll_path) {
+    PROFILE_SECTION("project::begin_assembly_refresh");
     if (dll_path != project_scripts.cs_script_source) {
       return;
     }
@@ -301,6 +304,7 @@ namespace other {
 
   void project::attach_project_dll(const filepath& dll_path) {
     OTHER_ASSERT(std::filesystem::exists(dll_path), "Project assembly file '{}' does not exist.", dll_path.string());
+    PROFILE_SECTION("project::attach_project_dll");
     auto* env = subsystem<scripting_environment>::get();
     OTHER_ASSERT(env != nullptr, "Scripting environment subsystem is not available.");
 
@@ -347,6 +351,7 @@ namespace other {
   }
 
   void project::process_project_plugins(const toml::table& table) {
+    PROFILE_SECTION("project::process_project_plugins");
     toml::node_view plugins_node = table.at_path("project.plugins");
     if (!plugins_node) {
       CORE_LOG_DEBUG("No 'plugins' section found in project file, skipping project plugin processing.");
@@ -406,6 +411,7 @@ namespace other {
   }
 
   bool project::process_scripting_sections(const toml::table& table, driver_kernel* kernel) {
+    PROFILE_SECTION("project::process_scripting_sections");
     toml::node_view scripting_node = table.at_path("scripting");
     if (!scripting_node) {
       CORE_LOG_DEBUG("No 'scripting' section found in project file, skipping scripting data processing.");

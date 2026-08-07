@@ -4,6 +4,7 @@
 #include "gpu_resource/gpu_buffer.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/renderer_backend.hpp"
@@ -11,6 +12,7 @@
 namespace other {
 
   resource_handle gpu_buffer::create(const std::string_view name, buf_type type, usage buf_usage) {
+    PROFILE_SECTION("gpu_buffer::create");
     if (name.empty()) {
       CORE_LOG_ERROR("Buffer name cannot be empty.");
       return { 0, resource_type::EMPTY };
@@ -93,6 +95,7 @@ namespace other {
   }
 
   gpu_buffer& gpu_buffer::set_data(const void* data, size_t size) {
+    PROFILE_SECTION("gpu_buffer::set_data");
     current_size = size;
     if (current_size == 0) {
       CORE_LOG_ERROR("Invalid buffer data: size is zero.");
@@ -116,6 +119,7 @@ namespace other {
   }
 
   gpu_buffer& gpu_buffer::upload_range(size_t start, size_t size, const void* data) {
+    PROFILE_SECTION("gpu_buffer::upload_range");
     if (start + size > current_size) {
       CORE_LOG_ERROR("Buffer overflow: trying to write beyond buffer size.");
       return *this;
@@ -126,6 +130,7 @@ namespace other {
   }
 
   gpu_buffer& gpu_buffer::upload_buffer() {
+    PROFILE_SECTION("gpu_buffer::upload_buffer");
     subsystem<renderer_backend>::get()->api()->buffer_data(handle(), binding_point, get_data(), get_data_size());
     return *this;
   }
@@ -139,6 +144,7 @@ namespace other {
   }
 
   void gpu_buffer::finalize_buffer() {
+    PROFILE_SECTION("gpu_buffer::finalize_buffer");
     if (shader_resource_handle.has_value()) {
       subsystem<renderer_backend>::get()->api()->bind_shader_buffer_resource(handle(), *shader_resource_handle, *binding_name, binding_point, buffer_type, get_data(), get_data_size());
     } else {

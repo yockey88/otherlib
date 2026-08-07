@@ -5,6 +5,8 @@
 
 #include <filesystem>
 
+#include "core/profiler.hpp"
+
 #include "driver/driver.hpp"
 #include "driver/systems/project_system.hpp"
 #include "vm/device_utils.hpp"
@@ -42,6 +44,7 @@ namespace other {
 
   void project_device::dispatch(uint8_t function_id, other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "device must not be null");
+    PROFILE_SECTION("project_device::dispatch");
     switch (function_id) {
       case LOADED: {
         auto& kernel = device->host_driver->get_kernel();

@@ -4,6 +4,7 @@
 #include "vm/devices/core_command_device.hpp"
 
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "driver/driver.hpp"
 #include "vm/device_utils.hpp"
@@ -55,6 +56,7 @@ namespace other {
 
   void core_command_device::dispatch(uint8_t function_id, other_command_device* device) {
     OTHER_ASSERT(device != nullptr, "Device cannot be null for dispatch");
+    PROFILE_SECTION("core_command_device::dispatch");
     switch (function_id) {
       case LOG: {
         std::string msg = detail::read_device_string(device, vm_register_idx::VM_R0, vm_register_idx::VM_R1);

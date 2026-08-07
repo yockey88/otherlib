@@ -8,6 +8,7 @@
 
 #include "core/enum_formatter.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "vm/command_files/code_block.hpp"
 #include "vm/command_files/compiler_error.hpp"
@@ -39,6 +40,7 @@ namespace other {
 
   ocmd_ir oasm_parser::parse(diagnostic_engine* diag) {
     OTHER_ASSERT(diag != nullptr, "Diagnostic engine must not be null");
+    PROFILE_SECTION("oasm_parser::parse");
     diagnostics = diag;
 
     oasm_error_sink error_sink{};
@@ -157,6 +159,7 @@ namespace other {
   }
 
   section_ir oasm_parser::parse_sections() {
+    PROFILE_SECTION("oasm_parser::parse_sections");
     section_ir sections;
 
     while (!finished()) {
@@ -508,6 +511,7 @@ namespace other {
   }
 
   void oasm_parser::process_code_sections(ostd::vector<code_section_ir>& sections) {
+    PROFILE_SECTION("oasm_parser::process_code_sections");
     EMIT_TRACE("Processing code sections");
 
     /// \todo type-checking
@@ -619,6 +623,7 @@ namespace other {
   }
 
   void oasm_parser::process_data_sections(ostd::vector<data_section_ir>& sections) {
+    PROFILE_SECTION("oasm_parser::process_data_sections");
     EMIT_TRACE("Processing data sections");
 
     for (auto& data_section : sections) {

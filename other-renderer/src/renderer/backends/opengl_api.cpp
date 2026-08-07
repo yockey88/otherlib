@@ -228,6 +228,7 @@ namespace other {
   }
 
   void opengl_api::end_pass() {
+    PROFILE_SECTION("opengl_api::end_pass");
     if (current_pass_framebuffer_id != 0 &&
         framebuffer_msaa_fbos.contains(current_pass_framebuffer_id)) {
       resolve_msaa_framebuffer(current_pass_framebuffer_id);
@@ -913,6 +914,7 @@ namespace other {
   }
 
   void opengl_api::set_shader_block_binding(const resource_handle& shader_handle, const std::string_view name, uint32_t binding_point, gpu_buffer::buf_type buffer_type) {
+    PROFILE_SECTION("opengl_api::set_shader_block_binding");
     auto gpu_itr = gpu_resources.find(shader_handle.id);
     if (gpu_itr == gpu_resources.end()) {
       CORE_LOG_ERROR("Shader resource with ID {} not found.", shader_handle.id);
@@ -2259,6 +2261,7 @@ namespace other {
   }
 
   void opengl_api::build_msaa_framebuffer(const resource_handle& handle, const framebuffer& fb) {
+    PROFILE_SECTION("opengl_api::build_msaa_framebuffer");
     const uint32_t samples = clamp_sample_count(fb.samples);
     if (samples <= 1) {
       return;
@@ -2307,6 +2310,7 @@ namespace other {
   }
 
   void opengl_api::resolve_msaa_framebuffer(natural_t fb_id) {
+    PROFILE_SECTION("opengl_api::resolve_msaa_framebuffer");
     const framebuffer& fb = framebuffer_resources.at(fb_id);
     const uint32_t msaa = framebuffer_msaa_fbos.at(fb_id);
     const uint32_t resolve = (uint32_t)get_resource_handle(fb_id);

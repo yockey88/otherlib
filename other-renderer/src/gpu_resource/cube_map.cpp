@@ -3,11 +3,14 @@
  **/
 #include "gpu_resource/cube_map.hpp"
 
+#include "core/profiler.hpp"
+
 #include "renderer/renderer_backend.hpp"
 
 namespace other {
 
   resource_handle cube_map::create(const std::string& name, texture::format format, uint32_t width, uint32_t height) {
+    PROFILE_SECTION("cube_map::create");
     resource_handle handle = subsystem<renderer_backend>::get()->api()->create_resource(name, resource_type::CUBEMAP);
     if (handle.id == 0) {
       CORE_LOG_ERROR("Failed to create texture resource with name: {}", name);
@@ -75,6 +78,7 @@ namespace other {
   }
 
   cube_map& cube_map::set_data(face face_idx, const std::span<const uint8_t> data) {
+    PROFILE_SECTION("cube_map::set_data");
     if (data.empty()) {
       CORE_LOG_ERROR("Invalid cube map data: data vector is empty.");
       return *this;
@@ -92,6 +96,7 @@ namespace other {
   }
 
   cube_map& cube_map::set_data(face face_idx, const uint8_t* data, size_t size) {
+    PROFILE_SECTION("cube_map::set_data");
     if (data == nullptr || size == 0) {
       CORE_LOG_ERROR("Invalid cube map data: data pointer is null or size is zero.");
       return *this;
@@ -141,6 +146,7 @@ namespace other {
   }  // namespace
 
   void cube_map::finalize_cube_map() {
+    PROFILE_SECTION("cube_map::finalize_cube_map");
     if (face_size.x == 0 || face_size.y == 0) {
       CORE_LOG_ERROR("Cube map not finalized: face size is zero.");
       return;

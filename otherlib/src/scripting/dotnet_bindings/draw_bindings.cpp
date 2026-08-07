@@ -3,6 +3,8 @@
  **/
 #include "scripting/dotnet_bindings/draw_bindings.hpp"
 
+#include "core/profiler.hpp"
+
 #include "renderer/renderer.hpp"
 
 #include "model/model_source.hpp"
@@ -116,6 +118,7 @@ namespace other {
                           float m30, float m31, float m32, float m33,
                           float r, float g, float b, float a,
                           nbool32 wireframe, nbool32 in_scene) {
+      PROFILE_SECTION("native_draw_mesh");
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene->has_object(object_id), "Draw.Mesh: object {} does not exist in the active scene.", object_id);
 
@@ -134,6 +137,7 @@ namespace other {
     }
 
     void native_draw_grid(uint64_t object_id, nbool32 in_scene) {
+      PROFILE_SECTION("native_draw_grid");
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene->has_object(object_id), "Draw.Grid: object {} does not exist in the active scene.", object_id);
 

@@ -3,6 +3,7 @@
  **/
 #include "renderer/pass_context.hpp"
 
+#include "core/profiler.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "renderer/frame_node.hpp"
@@ -82,6 +83,7 @@ namespace other {
 
   void pass_context::draw_debug_vertices(std::string_view stream_name, mesh::primitive_type topology) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("pass_context::draw_debug_vertices");
     const render_stream& s = renderer_ptr->get_draw_streams();
     const size_t verts = s.count(stream_name);
 
@@ -98,6 +100,7 @@ namespace other {
 
   void pass_context::draw_debug_mesh(const debug_mesh_instance& instance) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("pass_context::draw_debug_mesh");
     if (!renderer_ptr->resource_exists(instance.mesh_handle)) {
       return;
     }

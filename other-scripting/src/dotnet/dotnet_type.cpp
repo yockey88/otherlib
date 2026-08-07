@@ -6,6 +6,8 @@
 #include <ranges>
 #include <string>
 
+#include "core/profiler.hpp"
+
 #include "dotnet/dotnet_assembly.hpp"
 #include "dotnet/dotnet_host.hpp"
 #include "dotnet/dotnet_object.hpp"
@@ -15,6 +17,7 @@ namespace other {
 
   void dotnet_type::initialize_type_interface() {
     OTHER_ASSERT(host != nullptr, "dotnet_host is null");
+    PROFILE_SECTION("dotnet_type::initialize_type_interface");
     if (dotnet_id == -1 || type_interface_initialized) {
       return;
     }
@@ -25,6 +28,7 @@ namespace other {
     dotnet_attributes.clear();
 
     {
+      PROFILE_SECTION("dotnet_type::initialize_type_interface--attributes");
       ostd::vector<int32_t> dotnet_attribute_ids;
       fill_out_type_information(dotnet_attribute_ids, host->interop().get_attributes);
 
@@ -37,6 +41,7 @@ namespace other {
     }
 
     {
+      PROFILE_SECTION("dotnet_type::initialize_type_interface--methods");
       ostd::vector<int32_t> dotnet_method_ids;
       fill_out_type_information(dotnet_method_ids, host->interop().get_type_methods);
 
@@ -47,6 +52,7 @@ namespace other {
       }
     }
     {
+      PROFILE_SECTION("dotnet_type::initialize_type_interface--fields");
       ostd::vector<int32_t> dotnet_field_ids;
       fill_out_type_information(dotnet_field_ids, host->interop().get_type_fields);
 

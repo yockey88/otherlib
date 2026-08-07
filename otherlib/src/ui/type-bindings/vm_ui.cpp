@@ -8,6 +8,7 @@
 #include <imgui/ImReflect.hpp>
 #include <imgui/imgui_memory_editor.h>
 
+#include "core/profiler.hpp"
 #include "vm/opcode.hpp"
 #include "vm/other_device.hpp"
 
@@ -17,6 +18,7 @@ namespace other {
   namespace ui {
 
     void device_display::on_render_node_body() {
+      PROFILE_SECTION("device_display::on_render_node_body");
       {
         auto settings = ImReflect::ImSettings{};
         settings.push_member<&other_command_device::pc>()

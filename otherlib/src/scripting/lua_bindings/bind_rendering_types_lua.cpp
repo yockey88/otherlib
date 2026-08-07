@@ -3,6 +3,8 @@
  **/
 #include "scripting/lua_bindings/bind_rendering_types_lua.hpp"
 
+#include "core/profiler.hpp"
+
 #include "object/camera_component.hpp"
 #include "object/light_component.hpp"
 #include "object/render_component.hpp"
@@ -13,6 +15,7 @@
 namespace other {
 
   void bind_rendering_types(sol::state& lua_state) {
+    PROFILE_SECTION("bind_rendering_types");
     lua_state.new_usertype<point_light>(
       "__native_point_light",
       sol::constructors<point_light()>(),

@@ -44,6 +44,7 @@ namespace other {
   }  // namespace
 
   void render_pipeline::initialize_pipeline(renderer* renderer) {
+    PROFILE_SECTION("render_pipeline::initialize_pipeline");
     renderer_ptr = renderer;
     graph = arena_allocator<render_graph>{}.allocate(renderer_ptr);
 
@@ -73,6 +74,7 @@ namespace other {
   }
 
   void render_pipeline::shutdown_pipeline() {
+    PROFILE_SECTION("render_pipeline::shutdown_pipeline");
     destroy_resources();
 
     material_pack_cache.clear();
@@ -229,6 +231,7 @@ namespace other {
   ///  bindings to their defaults
   void render_pipeline::apply_ring_block_bindings(const frame_node* node, const pass_runtime& runtime) {
     OTHER_ASSERT(node != nullptr, "Frame node must not be null in apply_ring_block_bindings.");
+    PROFILE_SECTION("render_pipeline::apply_ring_block_bindings");
     if (!node->pass->shader_handle.has_value()) {
       return;
     }
@@ -272,6 +275,7 @@ namespace other {
   }
 
   void render_pipeline::bind_material_textures(const render_data& data, size_t draw_index) {
+    PROFILE_SECTION("render_pipeline::bind_material_textures");
     if (!definition.materials.has_value() || definition.materials->texture_slots.empty()) {
       return;
     }
@@ -560,6 +564,7 @@ namespace other {
   }
 
   void render_pipeline::upload_buffer(resource_handle handle, const void* data, size_t size) {
+    PROFILE_SECTION("render_pipeline::upload_buffer");
     if (!get_renderer()->resource_exists(handle)) {
       CORE_LOG_ERROR("Cannot upload to buffer [{}] — resource does not exist.", handle);
       return;
@@ -568,6 +573,7 @@ namespace other {
   }
 
   void render_pipeline::upload_to_handle(resource_handle handle, const void* data, size_t size) {
+    PROFILE_SECTION("render_pipeline::upload_to_handle");
     get_renderer()->get_resource<gpu_buffer>(handle).set_data(data, size).finalize_buffer();
   }
 
@@ -622,6 +628,7 @@ namespace other {
   }
 
   void render_pipeline::apply_uniforms(shader& s, const ostd::map<std::string, value>& uniforms) {
+    PROFILE_SECTION("render_pipeline::apply_uniforms");
     for (const auto& [name, val] : uniforms) {
       switch (val.type()) {
         case value_type::INT8: s.set_uniform(name, (int8_t)val); break;
@@ -670,6 +677,7 @@ namespace other {
   }
 
   void render_pipeline::build_pass_runtimes() {
+    PROFILE_SECTION("render_pipeline::build_pass_runtimes");
     pass_runtimes.clear();
 
     for (const auto& pass_def : definition.passes) {
@@ -696,6 +704,7 @@ namespace other {
   }
 
   void render_pipeline::destroy_pass_runtimes() {
+    PROFILE_SECTION("render_pipeline::destroy_pass_runtimes");
     for (auto& [_, runtime] : pass_runtimes) {
       for (auto& ring : runtime.state.per_draw_rings) {
         if (ring.ring_buffer.id != 0) {
@@ -712,7 +721,9 @@ namespace other {
   }
 
   void render_pipeline::create_resources_from_def() {
+    PROFILE_SECTION("render_pipeline::create_resources_from_def");
     for (const auto& buf_def : definition.buffers) {
+      PROFILE_SECTION("render_pipeline::create_resources_from_def--buffer");
       resource_handle handle = gpu_buffer::create(get_pipeline_name(buf_def.name), buf_def.type, buf_def.usage);
       natural_t name_hash = FNV(buf_def.name);
 
@@ -727,6 +738,7 @@ namespace other {
     glm::ivec2 window_size = get_renderer()->get_window_size();
 
     for (const auto& tex_def : definition.textures) {
+      PROFILE_SECTION("render_pipeline::create_resources_from_def--texture");
       glm::ivec2 size = tex_def.use_window_size ? window_size : tex_def.fixed_size;
 
       uint32_t mips = tex_def.mip_levels;
@@ -769,6 +781,7 @@ namespace other {
     }
 
     for (const auto& shader_def : definition.shaders) {
+      PROFILE_SECTION("render_pipeline::create_resources_from_def--shader");
       resource_handle handle;
       if (shader_def.geometry_path.has_value()) {
         handle = shader::create(get_pipeline_name(shader_def.name), shader_def.vertex_path, *shader_def.geometry_path, shader_def.fragment_path, shader_def.defines);
@@ -853,6 +866,7 @@ namespace other {
   }
 
   void render_pipeline::build_tag_maps() {
+    PROFILE_SECTION("render_pipeline::build_tag_maps");
     for (const auto& [hash, res] : buffer_resources) {
       if (res.tag != resource_tag::none() && !tagged_buffer_handles.contains(res.tag)) {
         auto itr = tagged_buffer_handles.insert({ res.tag, res.handle });
@@ -872,6 +886,7 @@ namespace other {
   }
 
   void render_pipeline::build_passes_from_def() {
+    PROFILE_SECTION("render_pipeline::build_passes_from_def");
     for (const auto& pass_def : definition.passes) {
       CORE_LOG_DEBUG("Building render-pass: {}", pass_def.name);
       /// find the shader for this pass
@@ -906,6 +921,7 @@ namespace other {
   }
 
   void render_pipeline::destroy_resources() {
+    PROFILE_SECTION("render_pipeline::destroy_resources");
     for (const auto& [hash, res] : buffer_resources) {
       get_renderer()->destroy_resource(res.handle);
     }
@@ -929,6 +945,7 @@ namespace other {
   }
 
   void render_pipeline::build_pass(const pipeline_pass_definition& pass_def, render_graph::pass_builder& builder) {
+    PROFILE_SECTION("render_pipeline::build_pass");
     if (pass_def.clear_color.has_value()) {
       CORE_LOG_DEBUG(" - setting clear color: {}", *pass_def.clear_color);
       builder.set_clear_color(*pass_def.clear_color);
@@ -1032,6 +1049,7 @@ namespace other {
 
   pass_runtime& render_pipeline::build_pass_runtime(pass_runtime& runtime, render_pass* pass, const pipeline_pass_definition& pass_def) {
     OTHER_ASSERT(pass != nullptr, "Cannot build pass runtime for null pass pointer.");
+    PROFILE_SECTION("render_pipeline::build_pass_runtime");
 
     runtime.pass_id = pass->id;
     runtime.def = &pass_def;

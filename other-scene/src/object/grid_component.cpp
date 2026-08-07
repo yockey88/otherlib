@@ -7,6 +7,8 @@
 
 #include <glm/gtc/constants.hpp>
 
+#include "core/profiler.hpp"
+
 namespace other {
   namespace {
 
@@ -92,6 +94,7 @@ namespace other {
     if (grid.cell_size <= 0.f || grid.extent == 0) {
       return;
     }
+    PROFILE_SECTION("emit_grid_lines");
 
     const auto [u, v, n] = grid_basis_for_plane(grid.plane);
     const auto tp = [&](const glm::vec3& p) { return glm::vec3(world * glm::vec4(grid.origin + p, 1.f)); };
@@ -140,6 +143,7 @@ namespace other {
     }
 
     if (grid.coordinate_system == GRID_COORDINATES_CYLINDRICAL) {
+      PROFILE_SECTION("emit_grid_lines--cylindrical_layers");
       /// off-plane layers repeat the full polar pattern so the lattice reads above and below the
       ///   base plane, thinning rings to the major cadence and finally the boundary ring once the
       ///   stack outgrows the budget
@@ -172,6 +176,7 @@ namespace other {
     }
 
     if (grid.coordinate_system == GRID_COORDINATES_SPHERICAL) {
+      PROFILE_SECTION("emit_grid_lines--spherical_meridians");
       /// meridian great circles through the poles give the outer shell its sphere skeleton
       const auto meridian_point = [&](float theta, float phi) {
         const glm::vec3 dir = u * glm::cos(theta) + v * glm::sin(theta);
@@ -200,6 +205,7 @@ namespace other {
     if (layers == 0 || grid.cell_size <= 0.f || grid.extent == 0) {
       return;
     }
+    PROFILE_SECTION("emit_grid_shell_lines");
 
     const auto [u, v, n] = grid_basis_for_plane(grid.plane);
     const auto tp = [&](const glm::vec3& p) { return glm::vec3(world * glm::vec4(grid.origin + p, 1.f)); };

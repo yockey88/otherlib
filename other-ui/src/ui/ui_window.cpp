@@ -171,6 +171,7 @@ namespace other {
   }
 
   void ui_window::refresh(bool current_state) {
+    PROFILE_SECTION("ui_window::refresh");
     if (current_state != state.open) {
       state.open = current_state;
       state.just_closed = !state.open;

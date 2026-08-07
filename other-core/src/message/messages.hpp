@@ -15,7 +15,7 @@ namespace asio {
   namespace ip {
     class address;
   }
-}
+}  // namespace asio
 
 namespace other {
 
@@ -74,11 +74,6 @@ namespace other {
     natural_t transport_hash;
   };
 
-  struct notification_rx_data {
-    natural_t connection_id;
-    ostd::vector<uint8_t> data;
-  };
-
   /// control messages
   /// command messages
   struct command_listen_connection {
@@ -101,26 +96,6 @@ namespace other {
   struct command_tx_data {
     natural_t connection_id;
     ostd::vector<uint8_t> data;
-  };
-
-  struct command_attach_transport_listener {
-    natural_t sink_id;
-    natural_t transport_hash;
-  };
-
-  struct command_detach_transport_listener {
-    natural_t sink_id;
-    natural_t transport_hash;
-  };
-
-  struct command_attach_connection_sink {
-    natural_t sink_id;
-    natural_t connection_id;
-  };
-
-  struct command_detach_connection_sink {
-    natural_t sink_id;
-    natural_t connection_id;
   };
 
   /// request/response messages
@@ -172,11 +147,6 @@ OTHER_REFLECT(
   OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
-  other::notification_rx_data,
-  OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
-  OTHER_MSG_FIELD(data, DATA))
-
-OTHER_REFLECT(
   other::command_listen_connection,
   OTHER_MSG_FIELD(endpoint, ENDPOINT),
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
@@ -197,16 +167,6 @@ OTHER_REFLECT(
   other::command_tx_data,
   OTHER_MSG_FIELD(connection_id, CONNECTION_ID),
   OTHER_MSG_FIELD(data, DATA))
-
-OTHER_REFLECT(
-  other::command_attach_transport_listener,
-  OTHER_MSG_FIELD(sink_id, SINK_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
-
-OTHER_REFLECT(
-  other::command_detach_transport_listener,
-  OTHER_MSG_FIELD(sink_id, SINK_ID),
-  OTHER_MSG_FIELD(transport_hash, TRANSPORT_HASH))
 
 OTHER_REFLECT(
   other::request_acknowledgment,

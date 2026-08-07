@@ -37,6 +37,7 @@ namespace other {
   }
 
   void directory::recursive_scan() {
+    PROFILE_SECTION("directory::recursive_scan");
     if (type == file_type::VIRTUAL) {
       return;
     }
@@ -140,6 +141,7 @@ namespace other {
   }
 
   ref<file_handle> directory::get_file(natural_t hash) {
+    PROFILE_SECTION("directory::get_file");
     auto it = file_handles.find(hash);
     if (it != file_handles.end()) {
       return it->second;
@@ -163,6 +165,7 @@ namespace other {
   }
 
   ref<file_handle> directory::get_file(const std::string_view name, const std::string_view ext) {
+    PROFILE_SECTION("directory::get_file");
     for (const auto& [hash, file] : file_handles) {
       bool name_match = (file->name() == name);
       bool ext_match = ext.empty() || (file->extension() == ext);
@@ -215,6 +218,7 @@ namespace other {
   }
 
   void directory::remove_file_by_path(const filepath& path) {
+    PROFILE_SECTION("directory::remove_file_by_path");
     for (auto it = file_handles.begin(); it != file_handles.end(); ++it) {
       if (it->second->absolute_path() == path) {
         file_handles.erase(it);

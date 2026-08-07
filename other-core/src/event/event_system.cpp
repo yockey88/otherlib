@@ -10,6 +10,7 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 
 #include "event.hpp"
 
@@ -34,6 +35,7 @@ namespace other {
   }
 
   void event_system::clear() {
+    PROFILE_SECTION("event_system::clear");
     cancel_all();
     {
       std::scoped_lock lock(events_mutex);
@@ -59,6 +61,7 @@ namespace other {
   }
 
   void event_system::trigger_event(natural_t event_id) {
+    PROFILE_SECTION("event_system::trigger_event");
     ostd::vector<event::handler> listeners;
     value data;
     {
@@ -82,6 +85,7 @@ namespace other {
   }
 
   natural_t event_system::register_timed_event(const std::string_view name, microseconds duration, bool recurring) {
+    PROFILE_SECTION("event_system::register_timed_event");
     natural_t id = FNV(name);
 
     {
@@ -110,6 +114,7 @@ namespace other {
   }
 
   natural_t event_system::register_event(const std::string_view name) {
+    PROFILE_SECTION("event_system::register_event");
     natural_t id = FNV(name);
 
     {
@@ -143,6 +148,7 @@ namespace other {
   }
 
   void event_system::cancel_event(natural_t event_id) {
+    PROFILE_SECTION("event_system::cancel_event");
     std::scoped_lock lock(events_mutex);
     auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) {
       return ctx.ev.id == event_id;
@@ -169,6 +175,7 @@ namespace other {
   }
 
   void event_system::set_user_data(natural_t event_id, const value& data) {
+    PROFILE_SECTION("event_system::set_user_data");
     std::scoped_lock lock(events_mutex);
     auto itr = std::find_if(registered_events.begin(), registered_events.end(), [event_id](const event_ctx& ctx) { return ctx.ev.id == event_id; });
     if (itr == registered_events.end()) {
@@ -185,6 +192,7 @@ namespace other {
   }
 
   void event_system::add_listener(natural_t id, event::handler callback) {
+    PROFILE_SECTION("event_system::add_listener");
     std::scoped_lock lock(events_mutex);
     auto itr = std::find_if(registered_events.begin(), registered_events.end(), [id](const event_ctx& ctx) {
       return ctx.ev.id == id;
@@ -198,6 +206,7 @@ namespace other {
   }
 
   void event_system::cancel_all() {
+    PROFILE_SECTION("event_system::cancel_all");
     std::scoped_lock lock(events_mutex);
     for (auto& timer : timers->entries) {
       timer.timer.cancel();
@@ -214,6 +223,7 @@ namespace other {
   }
 
   void event_system::post_event_callback(natural_t event_id, microseconds duration) {
+    PROFILE_SECTION("event_system::post_event_callback");
     {
       std::scoped_lock lock(events_mutex);
       /// one timer entry per event: recurring events re-arm their existing timer instead of

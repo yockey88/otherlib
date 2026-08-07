@@ -40,6 +40,7 @@ namespace other {
   }
 
   void renderer::shutdown() {
+    PROFILE_SECTION("renderer::shutdown");
     for (auto& [_, res] : stream_meshes) {
       destroy_resource(res);
     }
@@ -115,6 +116,7 @@ namespace other {
 
   void renderer::register_draw_stream(std::string_view name, render_stream_definition defn) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("renderer::register_draw_stream");
     stream_registry.register_stream(name, defn);
     const render_stream_definition* registered = stream_registry.find(name);
     OTHER_ASSERT(registered != nullptr, "Draw stream [{}] not found immediately after registration.", name);
@@ -158,6 +160,7 @@ namespace other {
   }
 
   void renderer::register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& vert_path, const filepath& geom_path, const filepath& frag_path) {
+    PROFILE_SECTION("renderer::register_shader_resource");
     auto itr = pipelines.find(FNV(pipeline));
     if (itr == pipelines.end()) {
       CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register shader resource [{}].", pipeline, name);
@@ -178,6 +181,7 @@ namespace other {
   }
 
   void renderer::register_shader_resource(const std::string_view pipeline, const std::string_view name, const filepath& comp_path) {
+    PROFILE_SECTION("renderer::register_shader_resource");
     auto itr = pipelines.find(FNV(pipeline));
     if (itr == pipelines.end()) {
       CORE_LOG_ERROR("Pipeline with name [{}] not found. Cannot register shader resource [{}].", pipeline, name);
@@ -282,6 +286,7 @@ namespace other {
   }
 
   resource_handle renderer::get_or_create_stream_mesh(std::string_view stream_name, const render_stream_definition& definition) {
+    PROFILE_SECTION("renderer::get_or_create_stream_mesh");
     natural_t key = FNV(stream_name);
     if (auto itr = stream_meshes.find(key); itr != stream_meshes.end()) {
       return itr->second;
@@ -308,6 +313,7 @@ namespace other {
   }
 
   resource_handle renderer::copy_texture(const std::string_view pipeline_name, const resource_handle& src_handle, const std::string_view dst_name) {
+    PROFILE_SECTION("renderer::copy_texture");
     auto* pl = get_pipeline(pipeline_name);
     OTHER_ASSERT(pl != nullptr, "Pipeline with name '{}' not found. Cannot copy texture.", pipeline_name);
 
@@ -345,6 +351,7 @@ namespace other {
   }
 
   void renderer::resize_viewport_texture(const resource_handle& texture_handle, const glm::ivec2& new_size) {
+    PROFILE_SECTION("renderer::resize_viewport_texture");
     if (!resource_exists(texture_handle)) {
       CORE_LOG_ERROR("Cannot resize viewport texture with handle {} — resource does not exist.", texture_handle);
       return;
@@ -504,6 +511,7 @@ namespace other {
 
   void renderer::remove_pipeline(const std::string_view name) {
     ASSERT_MAIN_THREAD();
+    PROFILE_SECTION("renderer::remove_pipeline");
     uint64_t hash = FNV(name);
     auto itr = pipelines.find(hash);
     if (itr == pipelines.end()) {
@@ -548,6 +556,7 @@ namespace other {
   }  // namespace
 
   void renderer::partition_draw_calls(render_data& data) {
+    PROFILE_SECTION("renderer::partition_draw_calls");
     data.opaque_draws.clear();
     data.transparent_draws.clear();
     for (natural_t i = 0; i < data.num_draw_calls; ++i) {
@@ -572,6 +581,7 @@ namespace other {
     /// draw lists were partitioned in begin_frame; opaque passes (geometry, shadow, voxelize)
     ///  consume one half, the blended forward pass the other
     if (set == draw_set::kTransparent && scene_data->primary_camera != nullptr) {
+      PROFILE_SECTION("renderer::execute_draw_calls--sort_transparent");
       /// painter's order against the viewport camera (viewport rendering swaps primary_camera
       ///  before each pipeline run): farthest first. the key is the first live instance's
       ///  translation — ordering instances inside one batch is instancing-rework territory
@@ -599,6 +609,7 @@ namespace other {
     }
 
     for (const natural_t i : draws) {
+      PROFILE_SECTION("renderer::execute_draw_calls--draw");
       const draw_call& call = scene_data->draw_calls[i];
       OTHER_ASSERT(call.instance_count > 0, "partitioned draw {} has no live instances", i);
 
@@ -618,6 +629,7 @@ namespace other {
   }
 
   ostd::vector<natural_t> renderer::get_pipeline_order() const {
+    PROFILE_SECTION("renderer::get_pipeline_order");
     ostd::map<natural_t, uint32_t> in_degree;
     for (const auto& [id, deps] : pipeline_dependencies) {
       in_degree[id] = deps.size();
@@ -702,6 +714,7 @@ namespace other {
       if (vp.cam == nullptr) {
         continue;
       }
+      PROFILE_SECTION("renderer::render--viewport");
 
       rendering()->api()->debug_group_begin(std::format("Render Viewport: {}", vp.name).c_str());
 

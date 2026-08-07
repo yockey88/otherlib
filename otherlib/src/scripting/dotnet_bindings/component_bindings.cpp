@@ -3,6 +3,7 @@
  **/
 #include "scripting/dotnet_bindings/component_bindings.hpp"
 
+#include "core/profiler.hpp"
 #include "thread/thread_safety.hpp"
 
 #include "audio/audio_environment.hpp"
@@ -118,6 +119,7 @@ namespace other {
 
     void native_render_component_set_material_path(natural_t object_id, native_string path) {
       ASSERT_MAIN_THREAD();
+      PROFILE_SECTION("native_render_component_set_material_path");
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
 
@@ -172,6 +174,7 @@ namespace other {
 
     void native_animation_component_set_clip_path(natural_t object_id, native_string path) {
       ASSERT_MAIN_THREAD();
+      PROFILE_SECTION("native_animation_component_set_clip_path");
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
 
@@ -350,6 +353,7 @@ namespace other {
       ASSERT_MAIN_THREAD();
       OTHER_ASSERT(out_object != nullptr && out_point != nullptr && out_normal != nullptr && out_distance != nullptr,
                    "Raycast output pointers are null.");
+      PROFILE_SECTION("native_physics_raycast");
       *out_object = 0;
       *out_distance = 0.f;
       out_point[0] = out_point[1] = out_point[2] = 0.f;
@@ -571,6 +575,7 @@ namespace other {
 
     void native_audio_source_set_clip_path(natural_t object_id, native_string path) {
       ASSERT_MAIN_THREAD();
+      PROFILE_SECTION("native_audio_source_set_clip_path");
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
 
@@ -600,6 +605,7 @@ namespace other {
 
     void native_audio_play_one_shot(native_string path, float x, float y, float z, float volume, float pitch, uint32_t bus) {
       ASSERT_MAIN_THREAD();
+      PROFILE_SECTION("native_audio_play_one_shot");
       if (subsystem<audio_environment>::inert) {
         return;
       }
@@ -667,6 +673,7 @@ namespace other {
       OTHER_ASSERT(out_index_data != nullptr, "Output index data pointer is null.");
       OTHER_ASSERT(out_num_vertices != nullptr, "Output vertex count pointer is null.");
       OTHER_ASSERT(out_num_indices != nullptr, "Output index count pointer is null.");
+      PROFILE_SECTION("native_render_component_fetch_mesh");
 
       scene* active_scene = detail::get_active_scene_checked();
       OTHER_ASSERT(active_scene != nullptr, "Active scene is null.");
@@ -695,6 +702,7 @@ namespace other {
       OTHER_ASSERT(index_data != nullptr, "Index data pointer is null.");
       OTHER_ASSERT(vertex_count != nullptr, "Vertex count pointer is null.");
       OTHER_ASSERT(index_count != nullptr, "Index count pointer is null.");
+      PROFILE_SECTION("native_render_component_upload_mesh");
 
       driver* d = detail::get_dotnet_native_driver();
       OTHER_ASSERT(d != nullptr, "Driver is null in native_render_component_upload_mesh.");
@@ -727,6 +735,7 @@ namespace other {
   namespace detail {
 
     ostd::vector<vertex> build_vertex_data(const float* vertex_data, int32_t vertex_count) {
+      PROFILE_SECTION("build_vertex_data");
       ostd::vector<vertex> vertices(vertex_count);
 
       size_t cursor = 0;
@@ -767,6 +776,7 @@ namespace other {
     }
 
     ostd::vector<index> build_index_data(const int32_t* index_data, int32_t index_count) {
+      PROFILE_SECTION("build_index_data");
       ostd::vector<index> indices(index_count);
 
       size_t cursor = 0;

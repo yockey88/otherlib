@@ -8,6 +8,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
+#include "core/profiler.hpp"
 #include "theme/colors.hpp"
 #include "ui/node-editor/node_editor_display.hpp"
 #include "ui/ui_helpers.hpp"
@@ -71,6 +72,7 @@ namespace other {
     }
 
     natural_t node_editor_canvas::create_single_node(const std::string_view node_name, uint8_t input_pins, uint8_t output_pins) {
+      PROFILE_SECTION("node_editor_canvas::create_single_node");
       glm::vec2 position = glm::vec2(0.f, 0.f);
       glm::vec2 size = glm::vec2(kMinNodeWidth, kMinNodeHeight);
 
@@ -110,6 +112,7 @@ namespace other {
     }
 
     void node_editor_canvas::remove_single_node(natural_t node_id) {
+      PROFILE_SECTION("node_editor_canvas::remove_single_node");
       auto node_pins = { nodes.node_input_pin_indices[node_id], nodes.node_output_pin_indices[node_id] };
       for (const auto& in_pin : node_pins | std::views::join) {
         // Remove pin data
@@ -170,6 +173,7 @@ namespace other {
     }
 
     void node_editor_canvas::connect_node_pins(const std::string_view from_node, uint8_t from_pin_idx, const std::string_view to_node, uint8_t to_pin_idx) {
+      PROFILE_SECTION("node_editor_canvas::connect_node_pins");
       natural_t from_name_hash = FNV(from_node);
       natural_t to_name_hash = FNV(to_node);
 
@@ -203,6 +207,7 @@ namespace other {
     }
 
     void node_editor_canvas::on_render_node_body() {
+      PROFILE_SECTION("node_editor_canvas::on_render_node_body");
       canvas_position = { ImGui::GetCurrentWindow()->Pos.x, ImGui::GetCurrentWindow()->Pos.y };
       canvas_size = { ImGui::GetCurrentWindow()->Size.x * zoom_level, ImGui::GetCurrentWindow()->Size.y * zoom_level };
 
@@ -219,8 +224,11 @@ namespace other {
         }
       }
 
-      for (natural_t node_id = 0; node_id < nodes.node_names.size(); ++node_id) {
-        update_node_state(node_id);
+      {
+        PROFILE_SECTION("node_editor_canvas::on_render_node_body--update_node_states");
+        for (natural_t node_id = 0; node_id < nodes.node_names.size(); ++node_id) {
+          update_node_state(node_id);
+        }
       }
 
       bool link_open = currently_open_link.has_value();
@@ -244,12 +252,18 @@ namespace other {
         dragging_link = std::nullopt;
       }
 
-      for (natural_t node_id = 0; node_id < nodes.node_names.size(); ++node_id) {
-        render_node(node_id);
+      {
+        PROFILE_SECTION("node_editor_canvas::on_render_node_body--render_nodes");
+        for (natural_t node_id = 0; node_id < nodes.node_names.size(); ++node_id) {
+          render_node(node_id);
+        }
       }
 
-      for (natural_t link_id = 0; link_id < links.link_start_pin_indices.size(); ++link_id) {
-        render_link(link_id);
+      {
+        PROFILE_SECTION("node_editor_canvas::on_render_node_body--render_links");
+        for (natural_t link_id = 0; link_id < links.link_start_pin_indices.size(); ++link_id) {
+          render_link(link_id);
+        }
       }
 
       if (currently_open_link.has_value()) {
@@ -282,6 +296,7 @@ namespace other {
     }
 
     void node_editor_canvas::on_render_end() {
+      PROFILE_SECTION("node_editor_canvas::on_render_end");
       if (create_node) {
         ImVec2 mouse_pos = ImGui::GetIO().MousePos;
         natural_t node_id = create_single_node("New Node", 2, 2);
@@ -346,6 +361,7 @@ namespace other {
     }
 
     void node_editor_canvas::draw_grid_lines() {
+      PROFILE_SECTION("node_editor_canvas::draw_grid_lines");
       static constexpr float grid_step = 50.0f;
       static constexpr float major_grid_step = grid_step * 5.0f;
       static constexpr glm::vec4 grid_color = glm::vec4(0.2f, 0.2f, 0.2f, 0.4f);

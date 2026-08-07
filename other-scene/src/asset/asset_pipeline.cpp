@@ -6,6 +6,7 @@
 #include <filesystem>
 
 #include "core/job_system.hpp"
+#include "core/profiler.hpp"
 #include "file/filesystem.hpp"
 #include "file/path_helpers.hpp"
 #include "serialization/scene_serializer.hpp"
@@ -136,6 +137,7 @@ namespace other {
   }
 
   scope<asset_pipeline> asset_pipeline::get_model_source_pipeline(event_system* events, asset_handler* handler, const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
+    PROFILE_SECTION("asset_pipeline::get_model_source_pipeline");
     CORE_LOG_DEBUG("Building model source pipeline for model '{}', vertex count {}, index count {}", name, vertices.size(), indices.size());
     scope<model_source_pipeline> pl = make_scope<model_source_pipeline>(events, handler);
     pl->data = build(name, vertices, indices);
@@ -218,6 +220,7 @@ namespace other {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null");
     OTHER_ASSERT(function != nullptr, "Loader function pointer is null");
     OTHER_ASSERT(handler != nullptr, "Asset handler pointer is null");
+    PROFILE_SECTION("asset_pipeline::start_load_operation");
 
     on_success_callback = on_success;
     on_failure_callback = on_failure;
@@ -247,6 +250,7 @@ namespace other {
   void asset_pipeline::pipeline_complete(asset* asset_ptr) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in pipeline_complete");
     OTHER_ASSERT(pipeline_state.loading || pipeline_state.unloading, "Pipeline is not in loading or unloading state in pipeline_complete");
+    PROFILE_SECTION("asset_pipeline::pipeline_complete");
     CORE_LOG_TRACE("Pipeline complete for asset ID: {}", asset_ptr->id);
 
     std::string event_name = "";
@@ -267,6 +271,7 @@ namespace other {
   void asset_pipeline::pipeline_failed(asset* asset_ptr, const std::string_view error_message) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in pipeline_failed");
     OTHER_ASSERT(pipeline_state.loading || pipeline_state.unloading, "Pipeline is not in loading or unloading state in pipeline_failed");
+    PROFILE_SECTION("asset_pipeline::pipeline_failed");
 
     std::string event_name = "";
     if (pipeline_state.loading) {
@@ -383,6 +388,7 @@ namespace other {
           .thread_affinity = job::affinity::WORKER_THREAD,
         },
         [&imported, source_path]() {
+          PROFILE_SECTION("load_audio--decode");
           /// local to this coroutine; the register job depends on this one, so no concurrent access
           imported = import_audio(source_path);
         });
@@ -487,6 +493,7 @@ namespace other {
     ///  loading through the plan (the load here dedupes), legacy formats get their lazy
     ///  best-effort kick-off here (documented asymmetry).
     static ostd::vector<material> build_imported_materials(const model_data& data, asset* asset_ptr, asset_handler* handler) {
+      PROFILE_SECTION("build_imported_materials");
       ostd::vector<material> out;
       if (data.materials.empty()) {
         return out;
@@ -641,6 +648,7 @@ namespace other {
           /// csproj generation is a project-creation concern; the resolver refuses a
           //  missing root long before this pipeline runs
           OTHER_ASSERT(std::filesystem::exists(path), "csproj '{}' vanished between resolve and build", path.string());
+          PROFILE_SECTION("load_script_project--dotnet-build");
           t->start_project_build(path);
 
           do {
@@ -871,6 +879,7 @@ namespace other {
           .thread_affinity = job::affinity::WORKER_THREAD,
         },
         [&parsed, source_path]() {
+          PROFILE_SECTION("load_material--parse");
           /// local to this coroutine; the register job depends on this one, so no concurrent access
           parsed = parse_material_toml(source_path);
         });

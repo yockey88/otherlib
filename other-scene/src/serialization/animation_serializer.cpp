@@ -6,6 +6,7 @@
 #include <array>
 #include <fstream>
 
+#include "core/profiler.hpp"
 #include "serialization/scene_field_codec.hpp"
 
 namespace other {
@@ -49,6 +50,7 @@ namespace other {
     }  // namespace
 
     ostd::vector<uint8_t> serialize_animation_clip(const animation_clip& clip) {
+      PROFILE_SECTION("serialize_animation_clip");
       ostd::vector<uint8_t> out;
       out.insert(out.end(), kMagic.begin(), kMagic.end());
       field_codec::write_raw<uint16_t>(kFormatVersion, out);
@@ -68,6 +70,7 @@ namespace other {
     }
 
     clip_parse_result parse_animation_clip(std::span<const uint8_t> bytes) {
+      PROFILE_SECTION("parse_animation_clip");
       size_t offset = 0;
 
       std::array<uint8_t, 4> magic{};
@@ -111,6 +114,7 @@ namespace other {
     }
 
     clip_parse_result load_animation_clip(const filepath& path) {
+      PROFILE_SECTION("load_animation_clip");
       std::ifstream in(path, std::ios::binary | std::ios::ate);
       if (!in) {
         return { .error = std::format("could not open '{}'", path.string()) };

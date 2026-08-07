@@ -7,6 +7,7 @@
 #include <imgui/imgui.h>
 #include <imguizmo/ImGuizmo.h>
 
+#include "core/profiler.hpp"
 #include "renderer/render_pipeline.hpp"
 
 #include "theme/colors.hpp"
@@ -23,6 +24,7 @@ namespace other {
     }
 
     void viewport::custom_render() {
+      PROFILE_SECTION("viewport::custom_render");
       auto viewports = get_driver().get_kernel().get_core_system<rendering_system>().get_viewports();
       for (auto& vp : viewports) {
         draw_viewport(vp);
@@ -45,6 +47,7 @@ namespace other {
     // }
 
     void viewport::draw_viewport(other::viewport& vp) {
+      PROFILE_SECTION("viewport::draw_viewport");
       auto& kernel = get_driver().get_kernel();
       auto& rendering_sys = kernel.get_core_system<rendering_system>();
 

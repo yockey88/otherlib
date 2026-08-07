@@ -339,6 +339,7 @@ namespace other {
 
     template <typename R = void, typename... Args>
     R invoke_driver_script_function(const std::string_view function_name, Args&&... args) {
+      PROFILE_SECTION("driver::invoke_driver_script_function");
       if (!scripting_enabled()) {
         CORE_LOG_WARN("Scripting is not enabled, cannot invoke driver script function '{}'", function_name);
         return default_return<R>();

@@ -48,6 +48,7 @@ namespace other {
     }
 
     void clear() {
+      PROFILE_SECTION("graph<T>::clear");
       for (auto& n : *this) {
         if (n.value != nullptr) {
           arena_allocator<T>{}.free(n.value);
@@ -73,6 +74,7 @@ namespace other {
 
     void remove_neighbors(natural_t node_id) {
       OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
+      PROFILE_SECTION("graph<T>::remove_neighbors");
       /// easiest way is to just remove all edges leaving this node
       for (const natural_t other_id : get_all_node_ids()) {
         remove_edge(node_id, other_id);
@@ -80,6 +82,7 @@ namespace other {
     }
 
     ostd::vector<natural_t> get_neighbors(natural_t node_id) const {
+      PROFILE_SECTION("graph<T>::get_neighbors");
       ostd::vector<natural_t> neighbors;
       if (adjacency_matrix == nullptr) {
         return neighbors;
@@ -93,6 +96,7 @@ namespace other {
     }
 
     natural_t add_node(T&& value) {
+      PROFILE_SECTION("graph<T>::add_node");
       auto id = get_next_id();
 
       node n = {
@@ -116,6 +120,7 @@ namespace other {
 
     void remove_node(natural_t id) {
       OTHER_ASSERT(adjacency_matrix != nullptr, "Adjacency matrix is not initialized for graph.");
+      PROFILE_SECTION("graph<T>::remove_node");
       auto itr = std::ranges::find(nodes, id, &node::id);
       if (itr == nodes.end()) {
         CORE_LOG_ERROR("Node with ID {} not found in graph.", id);

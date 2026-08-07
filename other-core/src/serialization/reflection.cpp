@@ -3,6 +3,8 @@
  **/
 #include "serialization/reflection.hpp"
 
+#include "core/profiler.hpp"
+
 namespace other {
 
   std::string reflection_data::member::get_name() const {
@@ -13,6 +15,7 @@ namespace other {
   }
 
   bool type_database::has_type(const std::string_view type_name) const {
+    PROFILE_SECTION("type_database::has_type");
     return std::ranges::find_if(data_map, [&](const auto& pair) {
              CORE_LOG_TRACE("Checking type '{}' against stored type '{}'.", strip_namespace(type_name), strip_namespace(pair.second.type_name));
              return strip_namespace(pair.second.type_name) == strip_namespace(type_name) &&
@@ -21,6 +24,7 @@ namespace other {
   }
 
   const reflection_data* type_database::get_reflection_data(const std::string_view type_name) {
+    PROFILE_SECTION("type_database::get_reflection_data");
     auto itr = std::ranges::find_if(data_map, [&](const auto& pair) {
       CORE_LOG_TRACE("Checking type '{}' against stored type '{}'.", strip_namespace(type_name), strip_namespace(pair.second.type_name));
       return strip_namespace(pair.second.type_name) == strip_namespace(type_name) &&

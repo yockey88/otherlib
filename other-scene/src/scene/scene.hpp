@@ -7,6 +7,7 @@
 #include <entt/entt.hpp>
 
 #include "core/defines.hpp"
+#include "core/profiler.hpp"
 #include "serialization/scene_document.hpp"
 
 #include "renderer/debug_draw.hpp"
@@ -198,6 +199,7 @@ namespace other {
     template <typename T>
     T& add_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
+      PROFILE_SECTION("scene::add_component");
       entt::entity entity = entt::entity(object->registry_id);
       auto& comp = storage->registry.emplace<T>(entity);
       register_component<T>(object, comp);
@@ -215,6 +217,7 @@ namespace other {
       requires std::constructible_from<T, Args...>
     T& add_component(scene_object* object, Args&&... args) {
       OTHER_ASSERT(object != nullptr, "Cannot add component to a null scene object.");
+      PROFILE_SECTION("scene::add_component");
       entt::entity entity = entt::entity(object->registry_id);
       auto& comp = storage->registry.emplace<T>(entity, std::forward<Args>(args)...);
       register_component<T>(object, comp);
@@ -271,6 +274,7 @@ namespace other {
     template <typename T>
     void remove_component(scene_object* object) {
       OTHER_ASSERT(object != nullptr, "Cannot remove component from a null scene object.");
+      PROFILE_SECTION("scene::remove_component");
       entt::entity entity = entt::entity(object->registry_id);
 
       auto* comp_reg = get_component<object_component_registry>(object);
@@ -303,6 +307,7 @@ namespace other {
 
     template <typename... Ts, typename Fn>
     void each_component(Fn&& fn) {
+      PROFILE_SECTION("scene::each_component");
       storage->registry.view<object_handle, Ts...>().each(std::forward<Fn>(fn));
     }
 

@@ -9,6 +9,7 @@
 
 #include "core/fnv.hpp"
 #include "core/logger.hpp"
+#include "core/profiler.hpp"
 #include "core/subsystem.hpp"
 #include "file/filesystem.hpp"
 #include "file/path_helpers.hpp"
@@ -22,6 +23,7 @@
 namespace other {
 
   void asset_handler::begin_unload() {
+    PROFILE_SECTION("asset_handler::begin_unload");
     remove_after_unload = true;
     for (auto it = loaded_assets.begin(); it != loaded_assets.end();) {
       /// add unloading pipelines for each asset to be unloaded
@@ -211,6 +213,7 @@ namespace other {
   }
 
   natural_t asset_handler::load_asset(const std::string_view engine_path, load_completion_callback on_complete) {
+    PROFILE_SECTION("asset_handler::load_asset");
     auto* fs = subsystem<file_system>::get();
     if (fs == nullptr) {
       CORE_LOG_ERROR("File system subsystem not available for engine path: {}", engine_path);
@@ -232,6 +235,7 @@ namespace other {
   }
 
   natural_t asset_handler::add_model_source_asset(const std::string& name, const std::span<const vertex> vertices, const std::span<const index> indices) {
+    PROFILE_SECTION("asset_handler::add_model_source_asset");
     CORE_LOG_DEBUG("Adding model source asset with name: {} (vertex count: {}, index count: {})", name, vertices.size(), indices.size());
     natural_t model_id = get_next_asset_id();
 
@@ -261,6 +265,7 @@ namespace other {
 
   natural_t asset_handler::add_scene_asset(scene* scene_ptr, opt<filepath> scene_path) {
     OTHER_ASSERT(scene_ptr != nullptr, "Scene pointer is null");
+    PROFILE_SECTION("asset_handler::add_scene_asset");
     CORE_LOG_DEBUG("Adding scene asset with name: {} (scene pointer: {})", scene_path.has_value() ? scene_path->string() : "<no path>", static_cast<void*>(scene_ptr));
     natural_t scene_id = get_next_asset_id();
 
@@ -300,6 +305,7 @@ namespace other {
   }
 
   natural_t asset_handler::add_rendering_pipeline_asset(const std::string_view name, const pipeline_definition& definition) {
+    PROFILE_SECTION("asset_handler::add_rendering_pipeline_asset");
     CORE_LOG_DEBUG("Adding rendering pipeline asset with name: {}", name);
     natural_t pl_id = get_next_asset_id();
 
@@ -328,6 +334,7 @@ namespace other {
   }
 
   void asset_handler::unload_asset(natural_t asset_id) {
+    PROFILE_SECTION("asset_handler::unload_asset");
     auto state_itr = asset_states.find(asset_id);
     if (state_itr == asset_states.end()) {
       CORE_LOG_ERROR("Asset state machine not found for asset ID: {}", asset_id);
@@ -366,6 +373,7 @@ namespace other {
   }
 
   void asset_handler::reload_asset(natural_t asset_id) {
+    PROFILE_SECTION("asset_handler::reload_asset");
     if (!asset_loaded(asset_id)) {
       CORE_LOG_WARN("Asset ID {} is not currently loaded. Cannot reload asset that is not loaded.", asset_id);
       return;
@@ -401,6 +409,7 @@ namespace other {
   }
 
   asset* asset_handler::get_asset(natural_t asset_id) {
+    PROFILE_SECTION("asset_handler::get_asset");
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return &it->second;
     }
@@ -414,6 +423,7 @@ namespace other {
   }
 
   asset* asset_handler::get_asset_by_virtual_path(const filepath& virtual_path) {
+    PROFILE_SECTION("asset_handler::get_asset_by_virtual_path");
     if (auto it = std::ranges::find_if(loaded_assets, [&virtual_path](const auto& pair) { return pair.second.virtual_path == virtual_path; }); it != loaded_assets.end()) {
       return &it->second;
     }
@@ -427,6 +437,7 @@ namespace other {
   }
 
   ostd::vector<asset*> asset_handler::get_assets_of_type(asset::type type) {
+    PROFILE_SECTION("asset_handler::get_assets_of_type");
     return loaded_assets |
       std::views::values |
       std::views::filter([type](asset& a) { return a.asset_type == type; }) |
@@ -447,6 +458,7 @@ namespace other {
   }
 
   natural_t asset_handler::get_asset_hash(natural_t asset_id) const {
+    PROFILE_SECTION("asset_handler::get_asset_hash");
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.path_hash;
     }
@@ -464,6 +476,7 @@ namespace other {
   }
 
   natural_t asset_handler::get_asset_id_by_path_hash(natural_t path_hash) const {
+    PROFILE_SECTION("asset_handler::get_asset_id_by_path_hash");
     for (const auto& [id, a] : loaded_assets) {
       if (a.path_hash == path_hash) {
         return a.id;
@@ -480,6 +493,7 @@ namespace other {
   }
 
   opt<filepath> asset_handler::get_local_asset_path(natural_t asset_id) const {
+    PROFILE_SECTION("asset_handler::get_local_asset_path");
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.absolute_path;
     }
@@ -491,6 +505,7 @@ namespace other {
   }
 
   opt<filepath> asset_handler::get_virtual_asset_path(natural_t asset_id) const {
+    PROFILE_SECTION("asset_handler::get_virtual_asset_path");
     if (auto it = loaded_assets.find(asset_id); it != loaded_assets.end()) {
       return it->second.virtual_path;
     }
@@ -504,6 +519,7 @@ namespace other {
   void asset_handler::begin_load(ostd::map<natural_t, pipeline_context>::iterator pipeline_it, ostd::unordered_map<natural_t, asset_state_machine>::iterator state_it) {
     OTHER_ASSERT(pipeline_it != asset_pipelines.end(), "Invalid pipeline iterator in begin_load");
     OTHER_ASSERT(state_it != asset_states.end(), "Invalid state machine iterator in begin_load");
+    PROFILE_SECTION("asset_handler::begin_load");
 
     asset* loading_asset = &pipeline_it->second.loading_asset;
 
@@ -520,6 +536,7 @@ namespace other {
   }
 
   ostd::unordered_map<natural_t, asset>::iterator asset_handler::begin_unload(natural_t asset_id) {
+    PROFILE_SECTION("asset_handler::begin_unload");
     auto state_itr = asset_states.find(asset_id);
     if (state_itr == asset_states.end()) {
       CORE_LOG_ERROR("Asset state machine not found for asset ID: {}", asset_id);
@@ -555,6 +572,7 @@ namespace other {
   }
 
   asset* asset_handler::find_asset_by_path(const filepath& file_path) const {
+    PROFILE_SECTION("asset_handler::find_asset_by_path");
     natural_t hash = FNV(std::filesystem::absolute(file_path).string());
 
     for (const auto& [id, a] : loaded_assets) {
@@ -622,6 +640,7 @@ namespace other {
   }
 
   void asset_handler::on_asset_load_failed(natural_t id) {
+    PROFILE_SECTION("asset_handler::on_asset_load_failed");
     CORE_LOG_DEBUG("Asset load failed (ID: {})", id);
 
     auto state_itr = asset_states.find(id);
@@ -652,6 +671,7 @@ namespace other {
   }
 
   void asset_handler::on_asset_unloaded(natural_t id) {
+    PROFILE_SECTION("asset_handler::on_asset_unloaded");
     CORE_LOG_DEBUG("Asset unloaded successfully (ID: {})", id);
 
     auto state_itr = asset_states.find(id);
@@ -684,6 +704,7 @@ namespace other {
   }
 
   void asset_handler::on_asset_unload_failed(natural_t id) {
+    PROFILE_SECTION("asset_handler::on_asset_unload_failed");
     auto state_itr = asset_states.find(id);
     OTHER_ASSERT(state_itr != asset_states.end(), "Asset state machine not found for asset ID: {}", id);
 
@@ -711,6 +732,7 @@ namespace other {
 
   void asset_handler::register_asset_in_filesystem(const asset* asset_ptr) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in register_asset_in_filesystem");
+    PROFILE_SECTION("asset_handler::register_asset_in_filesystem");
     auto* fs = subsystem<file_system>::get();
     if (fs == nullptr) {
       return;
@@ -769,6 +791,7 @@ namespace other {
 
   void asset_handler::unregister_asset_in_filesystem(const asset* asset_ptr) {
     OTHER_ASSERT(asset_ptr != nullptr, "Asset pointer is null in unregister_asset_in_filesystem");
+    PROFILE_SECTION("asset_handler::unregister_asset_in_filesystem");
 
     auto* fs = subsystem<file_system>::get();
     OTHER_ASSERT(fs != nullptr, "File system subsystem not available in asset handler for unregistering asset from filesystem");
@@ -796,6 +819,7 @@ namespace other {
   }
 
   asset_state asset_handler::get_asset_state_by_path_hash(natural_t path_hash) const {
+    PROFILE_SECTION("asset_handler::get_asset_state_by_path_hash");
     for (const auto& [id, a] : loaded_assets) {
       if (a.path_hash == path_hash) {
         return get_asset_state(id);
@@ -820,6 +844,7 @@ namespace other {
   }
 
   ostd::vector<natural_t> asset_handler::get_all_tracked_ids() const {
+    PROFILE_SECTION("asset_handler::get_all_tracked_ids");
     ostd::vector<natural_t> ids;
     ids.reserve(loaded_assets.size() + asset_pipelines.size());
 
@@ -835,6 +860,7 @@ namespace other {
   }
 
   asset_handler::pipeline_context* asset_handler::get_asset_pipeline_context(natural_t asset_id) {
+    PROFILE_SECTION("asset_handler::get_asset_pipeline_context");
     for (auto& ctx : asset_pipelines) {
       if (ctx.second.loading_asset.id == asset_id) {
         return &ctx.second;
@@ -867,6 +893,7 @@ namespace other {
 
   void asset_handler::dispatch_slot(uint32_t slot) {
     OTHER_ASSERT(slot < snapshot.nodes.size(), "dispatch_slot out of range: {}", slot);
+    PROFILE_SECTION("asset_handler::dispatch_slot");
     if (plan.failed[slot]) {
       return;
     }
@@ -888,6 +915,7 @@ namespace other {
   }
 
   void asset_handler::on_planned_child_loaded(natural_t stable_id) {
+    PROFILE_SECTION("asset_handler::on_planned_child_loaded");
     if (snapshot.nodes.empty()) {
       return;
     }
@@ -912,6 +940,7 @@ namespace other {
   }
 
   void asset_handler::on_planned_child_failed(natural_t stable_id, const std::string_view error_msg) {
+    PROFILE_SECTION("asset_handler::on_planned_child_failed");
     if (snapshot.nodes.empty()) {
       return;
     }

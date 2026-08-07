@@ -6,6 +6,7 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 
+#include "core/profiler.hpp"
 #include "serialization/scene_serializer.hpp"
 #include "thread/thread_safety.hpp"
 
@@ -32,6 +33,7 @@
 namespace other {
 
   void editor_driver::on_early_initialize() {
+    PROFILE_SECTION("editor_driver::on_early_initialize");
     auto& ui = get_ui();
     viewport_id = ui->register_window<ui::viewport>("viewport", context, *get_event_system(), get_renderer(), this);
     ui->register_window<ui::scene_hierarchy>("scene-hierarchy", context, *get_event_system(), this);
@@ -42,6 +44,7 @@ namespace other {
   }
 
   void editor_driver::on_initialize() {
+    PROFILE_SECTION("editor_driver::on_initialize");
     CORE_LOG_INFO("Initialized editor driver.");
 
     get_event_system()->register_event("viewport.clicked");
@@ -89,6 +92,7 @@ namespace other {
   }
 
   void editor_driver::on_build_driver_input_map(input_map& map) {
+    PROFILE_SECTION("editor_driver::on_build_driver_input_map");
     auto& ctx = map.add_context("editor-controls", true);
     ctx.add_action("move", action_value_type::AXIS_2D, false)
       // keyboard – each key contributes ±1 to one component
@@ -123,6 +127,7 @@ namespace other {
 
   void editor_driver::on_rendering_pipeline_loaded(natural_t asset_id, render_pipeline* pipeline) {
     OTHER_ASSERT(pipeline != nullptr, "Loaded rendering pipeline is null.");
+    PROFILE_SECTION("editor_driver::on_rendering_pipeline_loaded");
     const auto& definition = pipeline->get_definition();
     if (definition.name == "default-instancing") {
       auto& renderer_ptr = get_renderer();
@@ -143,6 +148,7 @@ namespace other {
 
   void editor_driver::on_rendering_pipeline_unloaded(natural_t asset_id, render_pipeline* pipeline) {
     OTHER_ASSERT(pipeline != nullptr, "Unloaded rendering pipeline is null.");
+    PROFILE_SECTION("editor_driver::on_rendering_pipeline_unloaded");
     const auto& definition = pipeline->get_definition();
     if (definition.name == "default-instancing") {
       get_renderer().remove_pipeline("editor-debug-rendering");
@@ -151,6 +157,7 @@ namespace other {
   }
 
   void editor_driver::on_begin_frame(render_data* data) {
+    PROFILE_SECTION("editor_driver::on_begin_frame");
     if (data == nullptr) {
       return;
     }
@@ -163,6 +170,7 @@ namespace other {
     auto draw = get_renderer().debug();
 
     if (scene->physics_debug_rendering()) {
+      PROFILE_SECTION("editor_driver::on_begin_frame--physics_debug");
       scene->sync_edit_mode_physics_poses();  /// colliders track entity edits while not playing
       if (physics_world* world = scene->physics(); world != nullptr) {
         physics_api::physics_render_debug_data physics_debug = world->get_debug_render_data();
@@ -180,6 +188,7 @@ namespace other {
 
     glm::vec4 select_color = basic_colors::kGreen;
     if (context.has_selection()) {
+      PROFILE_SECTION("editor_driver::on_begin_frame--selection_overlay");
       for (const auto& obj_id : context.current_selection.objects) {
         if (!scene->is_visible(obj_id)) {
           continue;
@@ -234,10 +243,12 @@ namespace other {
   }
 
   void editor_driver::on_shutdown() {
+    PROFILE_SECTION("editor_driver::on_shutdown");
     context.remove_all_viewports();
   }
 
   void editor_driver::update_running() {
+    PROFILE_SECTION("editor_driver::update_running");
     auto& kernel = get_kernel();
     auto& rendering_sys = kernel.get_core_system<rendering_system>();
     auto* s = get_active_scene();
@@ -257,6 +268,7 @@ namespace other {
   }
 
   void editor_driver::on_scene_activated(natural_t scene_id) {
+    PROFILE_SECTION("editor_driver::on_scene_activated");
     auto* s = get_kernel().get_core_system<scene_system>().get_scene(scene_id);
     OTHER_ASSERT(s != nullptr, "Activated scene with ID {} not found in scene system.", scene_id);
 
@@ -276,6 +288,7 @@ namespace other {
   }
 
   void editor_driver::update_input() {
+    PROFILE_SECTION("editor_driver::update_input");
     auto* input_sys = subsystem<input_system>::get();
     OTHER_ASSERT(input_sys != nullptr, "Input system is null");
 
@@ -333,6 +346,7 @@ namespace other {
   }
 
   void editor_driver::save_active_scene() {
+    PROFILE_SECTION("editor_driver::save_active_scene");
     scene* s = get_active_scene();
     if (s == nullptr) {
       CORE_LOG_WARN("No active scene to save.");
@@ -353,6 +367,7 @@ namespace other {
   }
 
   std::vector<selected_draw> editor_driver::get_selection_draws() const {
+    PROFILE_SECTION("editor_driver::get_selection_draws");
     std::vector<selected_draw> draws;
     if (!context.has_selection()) {
       return draws;
@@ -412,6 +427,7 @@ namespace other {
   }
 
   pipeline_definition editor_driver::get_debug_overlay_pipeline_definition() const {
+    PROFILE_SECTION("editor_driver::get_debug_overlay_pipeline_definition");
     pipeline_definition def;
     def.name = "debug-overlay";
 

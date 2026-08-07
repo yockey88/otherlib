@@ -5,6 +5,8 @@
 
 #include <toml++/toml.hpp>
 
+#include "core/profiler.hpp"
+
 #include "gpu_resource/renderer_resource.hpp"
 #include "renderer/gpu_structs.hpp"
 #include "renderer/util/pipeline_asset_validation.hpp"
@@ -298,9 +300,11 @@ namespace other {
   pipeline_definition read_pipeline_definition_from_file(const filepath& pl_def_path) {
     OTHER_ASSERT(std::filesystem::exists(pl_def_path), "Rendering pipeline asset does not exist! {}", pl_def_path.string());
     OTHER_ASSERT(pl_def_path.extension() == ".toml", "Rendering pipeline asset must be a TOML file! {}", pl_def_path.string());
+    PROFILE_SECTION("read_pipeline_definition_from_file");
 
     toml::table pipeline_table;
     try {
+      PROFILE_SECTION("read_pipeline_definition_from_file--parse_toml");
       std::string contents;
       std::stringstream ss;
       std::ifstream file(pl_def_path);
@@ -432,6 +436,7 @@ namespace other {
   namespace detail {
 
     void parse_resources(pipeline_definition& into_def, const toml::table& pipeline_table) {
+      PROFILE_SECTION("parse_resources");
       /// resources
       auto buffers = pipeline_table.at_path("resources.buffers");
       auto textures = pipeline_table.at_path("resources.textures");
@@ -643,6 +648,7 @@ namespace other {
     ///  computes std430 offsets and the element size from the declaration, so the
     ///  hand-maintained element_size for the material binding dies here
     void parse_materials_section(pipeline_definition& into_def, const toml::table& pipeline_table) {
+      PROFILE_SECTION("parse_materials_section");
       auto params = pipeline_table.at_path("materials.layout.params");
       if (!params) {
         return;  /// no layout declared — this pipeline draws without materials
@@ -689,6 +695,7 @@ namespace other {
     }
 
     bool collect_frame_details(pipeline_definition& into_def, frame_section& into_section, const toml::table& pipeline_table) {
+      PROFILE_SECTION("collect_frame_details");
       auto frame_bindings = pipeline_table.at_path("frame.bindings");
       auto frame_inputs = pipeline_table.at_path("frame.inputs");
       auto frame_outputs = pipeline_table.at_path("frame.outputs");
@@ -1038,6 +1045,7 @@ namespace other {
     }
 
     void build_pass_definitions(pipeline_definition& into_def, const frame_section& frame, const toml::table& pipeline_table) {
+      PROFILE_SECTION("build_pass_definitions");
       auto frame_passes = pipeline_table.at_path("frame.passes");
       if (!frame_passes) {
         CORE_LOG_ERROR("frame passes: {}", (bool)frame_passes);
@@ -1291,6 +1299,7 @@ namespace other {
     }
 
     void get_pass_uniforms(pipeline_definition& into_def, const frame_section& frame, const toml::table& pipeline_table) {
+      PROFILE_SECTION("get_pass_uniforms");
       const auto pass_uniforms = pipeline_table.at_path("frame.pass-uniforms");
       if (!pass_uniforms) {
         return;

@@ -8,6 +8,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "core/profiler.hpp"
+
 namespace other {
 
   namespace {
@@ -34,6 +36,7 @@ namespace other {
   }  // namespace
 
   void pose::reset_to_bind(const skeleton& skel) {
+    PROFILE_SECTION("pose::reset_to_bind");
     const size_t joint_count = skel.joints.size();
     positions.resize(joint_count);
     rotations.resize(joint_count);
@@ -47,6 +50,7 @@ namespace other {
   }
 
   void clip_binding::build(const animation_clip& clip, const skeleton& skel) {
+    PROFILE_SECTION("clip_binding::build");
     joint_of_track.resize(clip.joint_tracks.size());
     for (size_t t = 0; t < clip.joint_tracks.size(); ++t) {
       joint_of_track[t] = skel.find_joint(clip.joint_tracks[t].joint_name_hash);
@@ -56,6 +60,7 @@ namespace other {
   void sample_clip(const animation_clip& clip, const clip_binding& binding, float time, pose& out) {
     OTHER_ASSERT(binding.joint_of_track.size() == clip.joint_tracks.size(),
                  "clip binding was built for a different clip ({} tracks bound, clip has {})", binding.joint_of_track.size(), clip.joint_tracks.size());
+    PROFILE_SECTION("sample_clip");
 
     for (size_t t = 0; t < clip.joint_tracks.size(); ++t) {
       const int16_t joint_idx = binding.joint_of_track[t];
@@ -82,6 +87,7 @@ namespace other {
 
   void blend_poses(const pose& a, const pose& b, float alpha, pose& out) {
     OTHER_ASSERT(a.size() == b.size(), "blend_poses size mismatch ({} joints vs {})", a.size(), b.size());
+    PROFILE_SECTION("blend_poses");
 
     const size_t joint_count = a.size();
     out.positions.resize(joint_count);
@@ -99,6 +105,7 @@ namespace other {
     OTHER_ASSERT(p.size() == joint_count, "pose has {} joints, skeleton '{}' has {}", p.size(), skel.name, joint_count);
     OTHER_ASSERT(out_palette.size() >= joint_count, "palette span of {} cannot hold {} joints", out_palette.size(), joint_count);
     OTHER_ASSERT(joint_count <= kMaxBones, "skeleton '{}' exceeds the {}-joint cap", skel.name, kMaxBones);
+    PROFILE_SECTION("build_palette");
 
     /// parents precede children (skeleton import invariant), so one forward pass
     ///  completes every model-space chain

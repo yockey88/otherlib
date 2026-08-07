@@ -4,6 +4,7 @@
 #ifndef OTHER_SCRIPTING_DOTNET_CSPROJ_HELPERS_HPP
 #define OTHER_SCRIPTING_DOTNET_CSPROJ_HELPERS_HPP
 
+#include "core/profiler.hpp"
 #include "file/xml_helpers.hpp"
 
 namespace other {
@@ -65,6 +66,7 @@ namespace other {
   }
 
   void for_each_item(const tinyxml2::XMLDocument& doc, const char* item_name, std::string_view dotnet_config, std::invocable<const cs_xml::item&> auto&& fn) {
+    PROFILE_SECTION("for_each_item");
     const tinyxml2::XMLElement* project = doc.FirstChildElement("Project");
     OTHER_ASSERT(project != nullptr, "csproj has no <Project> root");
 
@@ -113,6 +115,7 @@ namespace other {
   }
 
   static void warn_on_directory_build_files(const filepath& csproj) {
+    PROFILE_SECTION("warn_on_directory_build_files");
     for (filepath dir = dir_of(csproj); !dir.empty(); dir = dir.parent_path()) {
       for (const std::string_view name : { "Directory.Build.props", "Directory.Build.targets" }) {
         if (std::filesystem::exists(dir / name)) {

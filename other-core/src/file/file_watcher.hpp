@@ -51,8 +51,18 @@ namespace other {
     static scope<file_watcher> make_directory_watcher(event_system& events, const filepath& path, watch_mode mode = watch_mode::NON_RECURSIVE);
 
    private:
+    struct file_time {
+      filepath path;
+      std::filesystem::file_time_type last_write_time;
+    };
+
+    friend void scan_subtree_impl(const filepath& root, const filepath& dir, const glob_set* filter, ostd::vector<file_time>& out);
+
     bool exists = false;
     event_system& events;
+    // counts all files recursively under the watched directory;
+    // used to detect new files in a directory that is not being watched recursively
+    size_t directory_contained_files = 0;
 
     std::filesystem::file_time_type last_write_timestamp;
 
@@ -62,13 +72,15 @@ namespace other {
 
     /// relative path -> last write time; the per-poll diff is CREATED/DELETED from the
     ///  key set and MODIFIED from a changed timestamp
-    std::unordered_map<std::string, std::filesystem::file_time_type> subtree;
+    ostd::vector<file_time> subtree;
     const glob_set* filter = nullptr;
 
     natural_t checksum = 0;
 
+    size_t calculate_directory_file_count() const;
+
     natural_t compute_checksum(const filepath& path);
-    void scan_subtree(std::unordered_map<std::string, std::filesystem::file_time_type>& out) const;
+    void scan_subtree(ostd::vector<file_time>& out) const;
   };
 
 }  // namespace other
